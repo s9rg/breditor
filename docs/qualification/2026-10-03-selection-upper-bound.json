@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "32c3b0d",
+  "status": "original-upper-bound-false-captured-no-production-fix",
+  "shippingCodeChanged": false,
+  "naturalReproduction": {
+    "command": "playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-boundary.spec.ts --grep 'clipboard (crossParagraph|boundaryOnly)' --project=webkit --repeat-each=50 --max-failures=1 --output=target/playwright-selection-operands-repeat-20261003",
+    "environment": {
+      "BREDITOR_QUEUE_CAPTURE": "stop", "BREDITOR_QUEUE_ADAPTER_THROWS": "1",
+      "BREDITOR_QUEUE_SELECTION": "1", "BREDITOR_QUEUE_SELECTION_NUMERIC": "1",
+      "BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS": "1", "BREDITOR_QUEUE_DELIVERY": "1",
+      "BREDITOR_QUEUE_PROJECTION": "1", "BREDITOR_QUEUE_PROJECTION_VALIDATION": "1",
+      "BREDITOR_QUEUE_CLIPBOARD": "1"
+    },
+    "passed": 155, "failed": 1, "unrun": 144, "retries": 0, "durationReported": "1.9m",
+    "scenario": "boundaryOnly backward, repeat25, replacement and typing history: undo replacement, revision15",
+    "firstThrow": "wasm_command_adapter:throw:1321",
+    "point": { "kind": "text", "nodeIndex": 6, "offset": 0, "affinity": "after" },
+    "operand": {
+      "stage": "wasm_selection_adapter:numeric:265:operand:2",
+      "expression": "value <= 4_294_967_295", "originalResult": false,
+      "capturedValue": 6, "capturedBits": "4018000000000000",
+      "laterRechecks": { "safeInteger": true, "nonnegative": true, "withinU32": true },
+      "compoundOriginalResult": false
+    },
+    "log": "/tmp/breditor-selection-operands-repeat-20261003.log",
+    "logSha256": "14fa77316c72281421e071bc06d8f2deb29b9cee8fac05f94d7116c0f0443930",
+    "trace": "target/playwright-selection-operands-repeat-20261003/clipboard-boundary-clipboa-56904-ragraphs-and-atomic-history-webkit-repeat25/trace.zip",
+    "traceSha256": "fc0bd3f13a2556ec3ae66033e2fa9bc692ddbf40a130ad05209c3bf220cee7ab",
+    "recorderSha1": "0aa445ffaa6c3cce3b8c1ab9cff1e05c579e6642",
+    "manifestSha1": "f3e30e6f7a63ef3add53ffe25b59c65fdba3d5e8",
+    "selectionSourceSha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb",
+    "interpretation": "The original upper-bound expression returned false. Earlier operands admitted the value by short circuit order. The primitive value was snapshotted afterward; native registers were not captured."
+  },
+  "javascriptReduction": {
+    "command": "playwright test -c playwright.projection-validator.config.ts tests/browser/diagnostics/selection-validator.spec.ts --repeat-each=3 --output=target/playwright-selection-validator-20261003",
+    "description": "Actual production isU32/readPoint bodies exposed by appended test-only exports. No Wasm initialization or editor owner. 29 fixtures, three admissions each, 10000 cycles per case, literal and decimal-normalized modes.",
+    "browsers": ["chromium", "firefox", "webkit"],
+    "passed": 18, "failed": 0, "retries": 0, "durationSeconds": 15,
+    "checksPerCase": 870000, "totalChecks": 15660000,
+    "all18AttachmentsVerified": true, "wasmRequests": 0, "objectCoercions": 0,
+    "log": "/tmp/breditor-selection-validator-20261003.log",
+    "logSha256": "94bedf5302b5dea295184f8f7904ef3f392189259a5a24dcdc606693ef26a49d"
+  },
+  "verification": {
+    "diagnostics": { "command": "npm run test:diagnostics", "passed": 281, "files": 48,
+      "logSha256": "5145208606ea395d6143e2a63c93f06fbec7b415e69784107aaba50f3acfea8e" },
+    "browserTypes": { "command": "npm run typecheck:browser", "passed": true,
+      "logSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2" },
+    "existingProjectionControl": {
+      "command": "playwright test -c playwright.projection-validator.config.ts tests/browser/diagnostics/projection-validator.spec.ts --output=target/playwright-selection-upper-projection-control-20261003",
+      "passed": 3, "failed": 0, "retries": 0, "browsers": ["chromium", "firefox", "webkit"],
+      "logSha256": "64b9eb5fee5e958f76ee504dd049450bf11e4690a89c01fb8f853d9d4205a886"
+    },
+    "expressionMapControl": {
+      "command": "Same environment as naturalReproduction, one WebKit clipboard boundaryOnly backward case with --trace=on --output=target/playwright-selection-upper-manifest-20261003",
+      "passed": 1, "failed": 0, "retries": 0, "recorderEmpty": true,
+      "manifestSha1": "0ead86cce7197796ad74acbf95b3e27db600cd74",
+      "operandExpressionsVerified": ["Number.isSafeInteger(value)", "value >= 0", "value <= 4_294_967_295"],
+      "logSha256": "2c64d8f2f572e932af342d03f6d46320359322b0e8b1d24e4191365de1b2d9bc"
+    }
+  },
+  "limits": [
+    "Safari/WebKit remains experimental. Selection and required Link-property faults remain unresolved.",
+    "Operand instrumentation changes hot calls and can alter optimization. The native machine operands were not captured.",
+    "Passing the isolated JavaScript control does not prove that Rust, Wasm or browser events cause the full-editor failure.",
+    "The contract-equivalent unsigned-shift selection rewrite already has a historical counterexample and was not reintroduced.",
+    "Trace artifacts are local ignored files; the evidence summary is committed."
+  ]
+}

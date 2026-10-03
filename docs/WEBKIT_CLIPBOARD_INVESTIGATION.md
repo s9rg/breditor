@@ -3024,3 +3024,49 @@ three operand sites are installed and the recorder stays empty on success.
 
 Commands, artifact hashes and follow-up results are recorded in the
 [explicit-index transport evidence](qualification/2026-10-02-projection-explicit-index.json).
+
+### Original selection upper-bound failure captured (2026-10-03)
+
+Repeating the unchanged operand-observed clipboard batch stopped at **155
+passed / 1 failed / 144 unrun**, with zero retries. Backward `boundaryOnly`,
+repeat 25, failed during Undo replacement at revision 15. The original numeric
+recorder retained `wasm_selection_adapter:numeric:265:operand:2` as **false**,
+followed by the compound predicate's false return. The captured point was
+`(text, nodeIndex=6, offset=0, affinity=after)`. The captured node index has bits
+`4018000000000000`; later checks all pass.
+
+The source hash matches the unchanged emitted selection adapter. Operand 2 is
+exactly **`value <= 4_294_967_295`**. The preceding safe-integer and nonnegative
+checks admitted the value; otherwise JavaScript short circuiting would not
+reach this operand. This is an original comparison-result observation, not
+just a later recheck. It still does not capture the native instruction's
+registers or prove that every historical fault has the same underlying cause.
+Diagnostic maps now include the exact static source expression for each
+numeric operand, guarded by a production-source mapping test.
+
+The earlier unsigned-shift selection rewrite was already rejected after a
+selection-consumption failure (see "Rejected selection-u32 candidate" above).
+It was not reintroduced. The proposed additional cold observer was unnecessary
+once this repeat captured the leaf, and was not implemented. No shipping code,
+timeouts, retries, optimization flags or validation contracts changed this pass.
+
+A new isolated control appends test-only exports for the actual `isU32` and
+`readPoint` functions, without rewriting their bodies or existing source bytes.
+It exercises 29 valid/invalid fixtures through direct numeric admission and
+both endpoint coordinates. Literal and decimal-normalized inputs are separate
+cases; zero, negative zero, 6, signed-boundary and maximum-u32 values are covered,
+along with fractions, overflow, non-finite values and non-number inputs. Hostile
+objects must never be coerced. No Wasm requests or editor owners are involved.
+
+All **18 cases / 15,660,000 checks** passed across Chromium, Firefox and WebKit;
+all 18 result attachments were inspected. This control narrows the reproduction
+gap, but adding exports and changing callers may change optimization. It does
+not establish that Wasm, clipboard events or Rust causes the fault, nor does
+it invalidate the full-editor counterexample. The next reduction must retain
+more of the failing caller/data-flow context or capture the native comparison.
+All **281 diagnostic tests** and browser type checking pass. The existing
+projection-validator controls pass in all three engines. A traced WebKit
+clipboard control confirms the updated map includes the three exact operand
+expressions and leaves the recorder empty on success.
+
+See the [upper-bound evidence record](qualification/2026-10-03-selection-upper-bound.json).

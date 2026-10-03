@@ -188,6 +188,15 @@ it("refuses operand capture when the numeric shape drifts or its parent is disab
     { numericOperands: true, numericPredicates: false })).toThrow("requires numeric predicates");
 });
 
+it("maps each production numeric operand to the exact source expression", () => {
+  const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_selection_adapter.js", import.meta.url), "utf8");
+  const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_selection_adapter"),
+    "/recorder.js", { numericPredicates: true, numericOperands: true })!;
+  expect(output.sites.filter(site => site.stage.includes(":operand:")).map(site => site.expression)).toEqual([
+    "Number.isSafeInteger(value)", "value >= 0", "value <= 4_294_967_295",
+  ]);
+});
+
 it("captures bounded loop-count bits separately from numeric return transport", () => {
   const emit = vi.fn(() => { throw new Error("sink unavailable"); });
   const recorder = createLinkFaultRecorder(undefined, undefined, emit);

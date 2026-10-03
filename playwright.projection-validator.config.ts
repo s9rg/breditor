@@ -3,7 +3,7 @@ import base from "./playwright.config";
 
 export default defineConfig({ ...base,
   testIgnore: ["**/harness/**"],
-  testMatch: ["**/diagnostics/projection-validator.spec.ts"],
+  testMatch: ["**/diagnostics/projection-validator.spec.ts", "**/diagnostics/selection-validator.spec.ts"],
   maxFailures: 1,
   outputDir: "./target/playwright-projection-validator",
   use: { ...base.use, baseURL: "http://127.0.0.1:4221", trace: "on" },

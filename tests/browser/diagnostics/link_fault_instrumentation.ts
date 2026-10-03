@@ -14,7 +14,7 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
   const parsed = parseSync(id, code);
   if (parsed.errors.length) throw new Error(`Cannot parse Link diagnostic module ${module}`);
   const edits: { start: number; end: number; text: string }[] = [];
-  const sites: { stage: string; line: number }[] = [];
+  const sites: { stage: string; line: number; expression?: string }[] = [];
   let childSites = 0;
   let impactSites = 0;
   function visit(node: ESTree.Node, parent?: ESTree.Node, functionName?: string): void {
@@ -82,7 +82,8 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
         collect(value);
         if (leaves.length !== 3) throw new Error("Expected three numeric predicate operands");
         for (const [index, leaf] of leaves.entries()) {
-          sites.push({ stage: `${stage}:operand:${index}`, line });
+          sites.push({ stage: `${stage}:operand:${index}`, line,
+            expression: code.slice(leaf.start, leaf.end) });
         }
         for (let index = leaves.length - 1; index >= 0; index--) {
           const leaf = leaves[index]!;
