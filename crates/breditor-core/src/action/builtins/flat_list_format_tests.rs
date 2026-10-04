@@ -255,6 +255,64 @@ fn format_source_keeps_empty_and_zero_offset_endpoint_blocks_across_root_familie
 }
 
 #[test]
+fn format_source_path_filter_matches_every_mixed_root_endpoint_pair() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let roots = vec![
+        block(TextBlockKind::Paragraph, "a🙂", formats()?)?,
+        list(
+            vec![
+                block(heading(2)?, "b", formats()?)?,
+                block(TextBlockKind::Paragraph, "", FormatSet::default())?,
+            ],
+            None,
+        )?,
+        block(heading(3)?, "c", formats()?)?,
+        list(
+            vec![
+                block(TextBlockKind::Paragraph, "d", formats()?)?,
+                block(heading(4)?, "e", formats()?)?,
+            ],
+            Some(7),
+        )?,
+        block(TextBlockKind::Paragraph, "f", formats()?)?,
+    ];
+    // Independent document-order oracle, including bare blocks, two list
+    // families, an empty block, and zero-offset endpoints. Inclusive capture
+    // is intentional: each action decides whether the last block is touched.
+    let paths: [&[u32]; 7] = [&[0], &[1, 0, 0], &[1, 1, 0], &[2], &[3, 0, 0], &[3, 1, 0], &[4]];
+    for first in 0..paths.len() {
+        for last in first..paths.len() {
+            for reverse in [false, true] {
+                let point = |path: &[u32]| -> Result<Point, Box<dyn Error>> {
+                    if path == [1, 1, 0] {
+                        gap(path, 0, Affinity::Before)
+                    } else {
+                        let mut leaf = path.to_vec();
+                        leaf.push(0);
+                        text(&leaf, 0, Affinity::After)
+                    }
+                };
+                let (a, b) = (point(paths[first])?, point(paths[last])?);
+                let selection = if reverse { select(b, a) } else { select(a, b) };
+                let before = state(&context, roots.clone(), selection, None)?;
+                let range =
+                    crate::action::text_position::normalize_flat_list_range_selection(&before)?;
+                let source = flat_list_format_source::FormatSource::capture(&before, &range)?;
+                assert_eq!(
+                    source.blocks.iter().map(|b| b.path.as_slice()).collect::<Vec<_>>(),
+                    paths[first..=last]
+                );
+                let start = usize::try_from(paths[first][0])?;
+                let end = usize::try_from(paths[last][0])?;
+                assert_eq!(source.roots, roots[start..=end]);
+                assert_eq!(source.layout.len(), end - start + 1);
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn mixed_inline_selection_across_all_families_preserves_layout_and_history() -> TestResult {
     let context = context(DocumentLimits::default())?;
     for reverse in [false, true] {

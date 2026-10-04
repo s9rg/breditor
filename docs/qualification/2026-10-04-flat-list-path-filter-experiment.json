@@ -1,0 +1,57 @@
+{
+  "baseCommit": "9823b47",
+  "status": "path-filter-runtime-experiment-rejected-regression-retained",
+  "releaseQualified": false,
+  "borrowedValidationFollowup": {
+    "baselinePackage": "target/flat-list-packages-yU336W/qualification.json",
+    "candidatePackage": "target/flat-list-packages-KklioP/qualification.json",
+    "order": ["baseline", "candidate", "candidate", "baseline"],
+    "completeCorrectnessCases": 108,
+    "edit500MedianMsInRunOrder": {
+      "chromium": [46.8, 45.4, 46.2, 46.0],
+      "firefox": [146, 142, 141, 146],
+      "webkit": [68, 74, 67, 78]
+    },
+    "decision": "Small local Firefox benefit, mixed Chromium/WebKit. Keep the existing borrowed-validation implementation private; these completed comparisons do not supersede the original queueUncertain failure or qualify release performance.",
+    "reportRoot": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T",
+    "reports": [
+      {"path": "breditor-flat-list-consumer-tciy3E/performance-p0h3vX/measurement.json", "sha256": "d30be1be4d3deb4f791fec644c9ca4349d7358a408c58bfb9c93b037c2f03114"},
+      {"path": "breditor-flat-list-consumer-c55C4E/performance-Vi0nWN/measurement.json", "sha256": "2864191819c7547cd4b80839e7b0dc2e724a975a107e05a02ef4eef34f1be749"},
+      {"path": "breditor-flat-list-consumer-c55C4E/performance-9X5vVL/measurement.json", "sha256": "eeb4ac0f55141f3fdfb7d4a7c75d9d179f7ade075f232b8593c7bb69cfff4399"},
+      {"path": "breditor-flat-list-consumer-tciy3E/performance-KD37Q3/measurement.json", "sha256": "8289f786b6069984bc3b94fafe4d8cea5aaa8b9aea5c69e7c80aad13da804566"}
+    ]
+  },
+  "rejectedExperiment": {
+    "change": "In FormatSource::capture, compare stack-backed [root,item,0] indices against normalized endpoints before constructing NodePath. Keep complete guards/layout and full operation validation unchanged.",
+    "correctness": "1132 core all-feature unit tests passed, strict workspace/all-target/all-feature Clippy passed, formatting passed. Private generated ABI/types, 14 declaration cases, Node checks, five raw-Wasm checks per browser, and installed package consumer checks passed.",
+    "wasmCandidate": "target/flat-list-candidate-wpaD2R",
+    "wasmQualificationSha256": "830eadce2af3fc1b5da6494a797e4335924d51844471bd58adc9196d48e67c37",
+    "wasmSha256": "a2077fee8b3eb6ff178bb4ede75b86330ed876071d3aeb1368110013ed703a99",
+    "wasmBytes": 2045148,
+    "wasmGzip9Bytes": 569338,
+    "packageRecord": "target/flat-list-packages-AfnEoq/qualification.json",
+    "packageRecordSha256": "ff0f3f3a822157743609789f0ce2f91c85314f2310a0fc2990469927fafd2ae6",
+    "baselinePackage": "target/flat-list-packages-KklioP/qualification.json",
+    "order": ["baseline", "experiment", "experiment", "baseline"],
+    "completeCorrectnessCases": 108,
+    "edit500MedianMsInRunOrder": {
+      "chromium": [47.5, 52.6, 52.8, 48.3],
+      "firefox": [152, 154, 150, 151],
+      "webkit": [85, 86, 80, 81]
+    },
+    "reportRoot": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T",
+    "reports": [
+      {"path": "breditor-flat-list-consumer-c55C4E/performance-LFH76W/measurement.json", "sha256": "03ae9f20baaa5fa919f739810f83c65b402950dcfa7105db40a565bd6e8ec903"},
+      {"path": "breditor-flat-list-consumer-3qT7jP/performance-bRbhOt/measurement.json", "sha256": "aa2f72100742b41590fb4f5c288f6933529397bcdc6866857dead9782bff5670"},
+      {"path": "breditor-flat-list-consumer-3qT7jP/performance-0ImxL2/measurement.json", "sha256": "bcf305d7d18dc70da72acdf0d7cbd634f4fbb22e7a99579d50d5b35f9aaac1f0"},
+      {"path": "breditor-flat-list-consumer-c55C4E/performance-kOhfxW/measurement.json", "sha256": "ddd4b0de22698bafe50436380d66b5847defd1b8787d9fc8faa34d05d47abb7f"}
+    ],
+    "decision": "Reject: Chromium edit medians worsen in both orders, other engines show no consistent useful benefit, and compressed Wasm grows 461 bytes. No claim about the browser/compiler cause of the regression.",
+    "restoration": "The runtime source is byte-identical to HEAD after reversing only this turn's experiment; git diff --exit-code confirms it. Retain the new 56-combination mixed-root endpoint regression. Rerun all 1132 core tests after restoration: passed. Rust formatting and whitespace checks passed.",
+    "artifactDisposition": "Private generated artifacts and measurements remain retained for inspection, not shipping or promotion. No full editor/browser matrix was needed after the experiment was rejected."
+  },
+  "method": "Each run used the existing uninstrumented full-editor performance fixture, 10/100/500 items with three owners per size in Chromium/Firefox/WebKit. Sequential ABBA order, no concurrent task builds during timings, bounded caffeinate. Host background load was not controlled. First path-filter baseline has retained Firefox outliers (including 996ms restore); no samples were removed. Medians above rounded to 0.1ms where applicable.",
+  "remaining": "Intermittent WebKit fault, native Safari/current-artifact and physical IME/VoiceOver evidence, large-list responsiveness, delivery/size decision and complete release gate remain open.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}
