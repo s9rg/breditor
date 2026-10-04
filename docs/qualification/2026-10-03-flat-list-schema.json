@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "88bdb6b",
+  "status": "Gated flat-list document admission verified; editing operations and browser integration not implemented",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "factory": "CompiledSchema::try_compile_flat_list_profile",
+    "root": "One or more paragraphs, headings, bullet lists or ordered lists",
+    "list": "One or more items, each with exactly one paragraph or heading",
+    "unsupported": ["Nested lists", "Multiple blocks per item", "Reversed lists", "Per-item numbering", "Structural entity IDs"],
+    "numbering": "Positive explicit start and final ordinal at most 2147483647; checked arithmetic, no saturation or fallback",
+    "fingerprintVersion": 5,
+    "legacyFingerprintEncoding": "Versions 1-4 unchanged; existing locked vectors pass",
+    "documentCodec": "Existing generic Document V2 with explicit schema fingerprint; no history wire format was widened",
+    "selection": "Text and text-block child boundaries inside items, not list/container boundaries",
+    "editingCapabilities": "All existing paragraph/heading operation capabilities still reject the list schema"
+  },
+  "verification": {
+    "focusedTests": 13,
+    "featureCoreUnitTests": 928,
+    "defaultCoreUnitTests": 697,
+    "allFeatureWorkspaceUnitTests": { "core": 928, "wasm": 51 },
+    "arithmeticPropertyCases": 10000,
+    "propertySeed": 20261003,
+    "clippy": "All core features and targets, warnings denied, passed",
+    "rustdoc": "All core features, warnings denied, passed",
+    "independentVector": {
+      "method": "Node big-endian field encoding and SHA-256, checked against Rust",
+      "canonicalBytes": 798,
+      "fingerprint": "sha256:9399b646002ba442c8af3d8e8a6fd7bb6e6eb599943691a9591c62d35bcddd95"
+    },
+    "commands": [
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib flat_list_profile_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo clippy -p breditor-core --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet"
+    ]
+  },
+  "next": [
+    "Guarded list reframing operation with exact inverse and text-preserving path relocation",
+    "Separate wrap/unwrap actions and atomic history tests",
+    "List split/exit, boundary deletion, typing and inline-format routes",
+    "Explicit durable history and Wasm/browser profile integration",
+    "Existing release size and native-input qualification gates"
+  ],
+  "browserEvidence": "No fresh list browser evidence claimed; the live heading demo remains on its earlier qualified candidate",
+  "pushed": false,
+  "published": false
+}

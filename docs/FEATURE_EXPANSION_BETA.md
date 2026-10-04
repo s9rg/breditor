@@ -600,3 +600,19 @@ package. Default declarations and compressed demo JS still exceed their original
 budgets, which have not been increased. Next feature work is the flat-list Rust
 contract and its wrap/unwrap/split/exit operations, followed by the same durable,
 browser and recovery path. Lists remain unimplemented at this checkpoint.
+
+## Flat-list Rust schema checkpoint
+
+The list milestone now has a sealed, feature-gated document schema: root-level
+bullet/ordered containers with one paragraph or heading per item. Nested and
+multi-block items reject explicitly. Both the start and final ordered ordinal
+are validated before publication; the new arithmetic rule selects compiler
+fingerprint contract 5 without changing older fingerprints or wire formats.
+Typed inline values, document round trips and deep selection boundaries are
+covered, along with structural/property resource limits.
+
+This is not an editable list profile yet. Existing heading/paragraph operations
+remain closed to it. The next implementation is the guarded, selection-preserving
+list reframing operation, then separately named wrap/unwrap actions and their
+runtime inverse/history tests. See the [operation plan](STRUCTURAL_BLOCKS.md#next-operation-and-action-contracts)
+and [verification](qualification/2026-10-03-flat-list-schema.json).

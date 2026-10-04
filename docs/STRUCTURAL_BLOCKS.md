@@ -1,11 +1,10 @@
 # Structural blocks: heading and list contract
 
-Status: experimental Rust values, private child grammar, opt-in closed
-integer element-property contracts, and a guarded Rust paragraph/heading-kind
-operation. Headings and lists are **not yet browser editing features**.
-The default paragraph-only schema, existing fingerprints,
-durable formats, Wasm ABI and browser renderer are unchanged. Links already
-exist as typed inline formatting and must continue to work inside future blocks.
+Current status: headings have a separately built experimental browser demo;
+flat lists now have a gated Rust document schema, but **no list editing actions
+or browser support yet**. The historical checkpoints below explain the route
+to these features. The default paragraph-only schema and existing fingerprints
+remain unchanged. Links remain typed inline formatting inside structural blocks.
 
 This document records the next implementation decisions and acceptance gates.
 The active [feature-expansion beta plan](FEATURE_EXPANSION_BETA.md) prioritizes
@@ -73,6 +72,10 @@ The first proposed grammar is:
 - List: one or more list items.
 - List item: one or more text blocks, followed by zero or more nested lists.
 - Nested lists are admitted only under list items, never directly under text.
+
+That is the longer-term grammar, not the flat-list beta admission rule. The
+implemented beta grammar at the end of this document restricts each list item
+to exactly one paragraph or heading, without nested lists.
 
 The private schema compiler now supports bounded alternatives and ordered child
 groups. Its test-only structural fixture proves these tree shapes, including
@@ -522,3 +525,66 @@ seams for text-empty structural ranges. All inserted lines use that complete
 format set. Prefix/suffix text retains its own properties. Undo restores every
 source kind, directional point and pending format exactly, including after V5
 session reload. Default profile registration and browser routing remain unchanged.
+
+## Flat-list beta document admission
+
+`CompiledSchema::try_compile_flat_list_profile` is now available only behind
+`experimental-structural-properties`. It composes existing inline extensions
+with this sealed grammar:
+
+- Document: one or more paragraphs, headings, bullet lists or ordered lists.
+- Bullet/ordered list: one or more list items.
+- List item: exactly one paragraph or heading. No second block or nested list.
+- Paragraph/heading: the existing canonical text runs and typed inline values.
+- Heading: exactly `breditor/level` in 1–6. Ordered list: exactly `breditor/start`
+  in 1–2147483647, with every displayed ordinal inside that range too.
+- Other elements have no properties. All structural elements forbid entity IDs.
+
+For example, an ordered list starting at 2147483647 may contain one item but
+not two. A valid start is insufficient: the validator checks the final ordinal
+using checked wide arithmetic before document publication. This extra rule is
+bound into compiler-contract fingerprint version 5, independently of operation
+and session codec version numbers. Existing version 1–4 fingerprint bytes remain
+unchanged, including the heading schema. No existing history codec gained a
+new operation tag.
+
+Document V2 can round-trip this schema's tree through explicit fingerprint
+binding. List containers and items count toward ordinary node/depth/child
+budgets; heading ranks and ordered starts count toward property budgets.
+Range selections reach text or text-block child boundaries inside list items,
+including empty paragraphs, with existing scalar checks and direction/affinity.
+List/container boundaries are not admitted as range-selection endpoints.
+
+This is **document admission, not an editable profile**. Existing paragraph and
+heading operations deliberately do not gain a list-schema capability. There
+is no list action registry, Wasm bootstrap, projection, toolbar, or list-history
+wire route at this checkpoint. The running heading demo still uses the prior
+qualified heading-only artifact.
+
+### Next operation and action contracts
+
+The first list-aware operation will reframe a guarded nonempty root-child span
+without changing the sequence or values of its contained text blocks. This
+supports wrapping, unwrapping and changing a list container while preserving
+all paragraph/heading ranks, text runs and typed format properties. It must
+retain complete expected nodes, validate the full result, create an exact
+inverse, and map each preserved text block's path through reparenting. A generic
+delete-and-insert relocation is insufficient because it would lose selections.
+No durable tag is frozen until these laws are tested.
+
+Separate `wrap_list` and `unwrap_list` action files will prepare those edits
+against the exact current state and publish one atomic history event. The
+selection's spatial span, not anchor direction, chooses targets; an end at the
+next text block's start excludes that block. Partial list-item spans retain
+unselected prefixes/suffixes rather than flattening the whole list.
+
+Splitting an ordered container during unwrap or empty-item exit must preserve
+the original ordinals of surviving following items by explicitly setting the
+suffix start. Inserting/removing an item within a retained contiguous ordered
+list uses normal ascending renumbering, with overflow checked before commit.
+Merging adjacent containers must not silently discard an explicit start.
+Mixed root/list ranges, boundary deletion, pending formats and stale-preparation
+behavior require explicit tests before UI exposure. Nested lists, multi-block
+items, reversed numbering and per-item number overrides remain deferred.
+
+See [schema qualification](qualification/2026-10-03-flat-list-schema.json).

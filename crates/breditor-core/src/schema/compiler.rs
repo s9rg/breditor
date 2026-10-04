@@ -33,6 +33,8 @@ const SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES: u32 = 2;
 const SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_GROUPS: u32 = 3;
 #[cfg(feature = "experimental-structural-properties")]
 const SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER: u32 = 4;
+#[cfg(feature = "experimental-structural-properties")]
+const SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_ORDINALS: u32 = 5;
 const FINGERPRINT_DOMAIN: &[u8] = b"breditor/schema-fingerprint\0";
 
 const MAX_ELEMENT_TYPES: u32 = 256;
@@ -384,8 +386,16 @@ fn base_text_profile_spec(
 }
 
 #[cfg(feature = "experimental-structural-properties")]
+#[path = "flat_list_profile.rs"]
+mod flat_list_profile;
+#[cfg(feature = "experimental-structural-properties")]
 #[path = "text_block_profile.rs"]
 mod text_block_profile;
+#[cfg(feature = "experimental-structural-properties")]
+pub(super) use flat_list_profile::compile_flat_list_profile;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+#[path = "flat_list_profile_tests.rs"]
+mod flat_list_profile_tests;
 #[cfg(feature = "experimental-structural-properties")]
 pub(super) use text_block_profile::{
     compile_text_block_profile, supports_text_block_kind_operations,
@@ -575,7 +585,9 @@ fn reject_invalid_element_property_contract(
     element: &ElementSpec,
 ) -> Result<(), SchemaCompilerError> {
     if let Some(contract) = &element.property_contract
-        && (!element.allows_properties || contract.minimum > contract.maximum)
+        && (!element.allows_properties
+            || contract.minimum > contract.maximum
+            || (contract.child_ordinals && contract.minimum.get() < 1))
     {
         return Err(SchemaCompilerError::InvalidElementPropertyContract {
             element: element.kind.clone(),
@@ -685,6 +697,12 @@ fn fingerprint(definition: &CompiledSchemaDefinition) -> SchemaFingerprint {
 
 fn compiler_contract_version(definition: &CompiledSchemaDefinition) -> u32 {
     #[cfg(feature = "experimental-structural-properties")]
+    if definition.elements.values().any(|element| {
+        element.property_contract.as_ref().is_some_and(|contract| contract.child_ordinals)
+    }) {
+        return SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_ORDINALS;
+    }
+    #[cfg(feature = "experimental-structural-properties")]
     if definition.elements.values().any(|element| element.property_contract.is_some()) {
         return SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER;
     }
@@ -721,12 +739,15 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
         encoder.boolean(0x34, element.allows_properties);
         encoder.boolean(0x35, element.allows_entity_id);
         #[cfg(feature = "experimental-structural-properties")]
-        if compiler_contract_version == SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER {
+        if compiler_contract_version >= SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER {
             encoder.boolean(0x52, element.property_contract.is_some());
             if let Some(contract) = &element.property_contract {
                 encoder.name(0x53, &contract.name);
                 encoder.i64(0x54, contract.minimum.get());
                 encoder.i64(0x55, contract.maximum.get());
+                if compiler_contract_version >= SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_ORDINALS {
+                    encoder.boolean(0x56, contract.child_ordinals);
+                }
             }
         }
         if let Some((kind, group)) = element.children.single() {

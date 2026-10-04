@@ -31,6 +31,7 @@ fn contract(
     maximum: i64,
 ) -> Result<RequiredIntegerProperty, Box<dyn Error>> {
     Ok(RequiredIntegerProperty {
+        child_ordinals: false,
         name: QualifiedName::try_new(name)?,
         minimum: PropertyInteger::try_new(minimum)?,
         maximum: PropertyInteger::try_new(maximum)?,

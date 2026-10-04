@@ -111,6 +111,30 @@ impl CompiledSchema {
         super::compiler::compile_text_block_profile(schema_id, extensions)
     }
 
+    /// Compiles the experimental flat-list document language.
+    ///
+    /// Root children are paragraphs, headings or bullet/ordered lists. Each list
+    /// has at least one item; each item owns exactly one paragraph or heading.
+    /// Ordered-list start and final ordinals must be in `1..=2147483647`.
+    /// Nested lists, multiple blocks per item, item numbering overrides and
+    /// entity IDs are rejected. Inline extensions retain their exact contracts.
+    ///
+    /// This grants no existing paragraph/heading editing capability. List-aware
+    /// operations, durable history and browser integration are separate gates.
+    /// Existing schema fingerprints and document languages remain unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SchemaCompilationError`] for reserved identities, duplicate
+    /// formats or aggregate limits, as with the base-text compiler.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_compile_flat_list_profile(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        super::compiler::compile_flat_list_profile(schema_id, extensions)
+    }
+
     /// Returns a test-only schema with the base selector and different content meaning.
     ///
     /// This narrow factory exists only so crate tests can prove that a matching

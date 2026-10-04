@@ -9,7 +9,7 @@ use super::{
 use crate::document::PropertyInteger;
 use crate::schema::child_grammar::ChildGroup;
 
-fn with_headings(mut spec: SchemaSpec) -> Result<SchemaSpec, SchemaCompilationError> {
+pub(super) fn with_headings(mut spec: SchemaSpec) -> Result<SchemaSpec, SchemaCompilationError> {
     let heading = QualifiedName::from_known_static("breditor/heading");
     // This function receives the trusted base spec; element zero is its root.
     spec.elements.first_mut().ok_or(SchemaCompilationError::InternalInvariant)?.children =
@@ -29,6 +29,7 @@ fn with_headings(mut spec: SchemaSpec) -> Result<SchemaSpec, SchemaCompilationEr
         revision: PersistedTypeRevision::one(),
         allows_properties: true,
         property_contract: Some(RequiredIntegerProperty {
+            child_ordinals: false,
             name: QualifiedName::from_known_static("breditor/level"),
             minimum: PropertyInteger::try_new(1)
                 .map_err(|_| SchemaCompilationError::InternalInvariant)?,

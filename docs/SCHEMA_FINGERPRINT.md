@@ -53,6 +53,11 @@ for closed required-integer element contracts. It likewise adds no public
 structural profile and no document wire version. Without any element contract,
 the exact version 1–3 fingerprints remain unchanged even with this feature on.
 
+The experimental flat-list schema selects compiler-contract version 5 for a
+required integer which also bounds the final direct-child ordinal. Without that
+rule, version 1–4 encodings remain byte-for-byte unchanged. This is not a new
+document/session wire version and does not grant list editing capabilities.
+
 ## Canonical byte encoding
 
 The SHA-256 input starts with the exact ASCII/UTF-8 domain bytes
@@ -67,7 +72,8 @@ tag.
    `2` when those child constraints remain single-kind repeats but any format
    has a typed property contract; `3` when any element uses multiple alternatives
    or ordered child groups, whether or not typed format properties are present;
-   `4` takes precedence when any element has a required-integer property contract.
+   `4` takes precedence when any element has a required-integer property contract;
+   `5` takes precedence when such a contract additionally constrains child ordinals.
 4. `0x10`: qualified schema name.
 5. `0x11`: nonzero `SchemaVersion` as a big-endian `u32`.
 6. `0x12`: qualified root element kind.
@@ -120,7 +126,7 @@ Its independent encoding was checked with Node big-endian Buffer writes and
 SHA-256. This is a shape-only test vector, **not** an admitted editor profile:
 heading rank and ordered-list properties are intentionally absent.
 
-In version 4 only, immediately after **every** element's `0x35` entity-ID field,
+In versions 4 and 5, immediately after **every** element's `0x35` entity-ID field,
 insert `0x52` plus a Boolean indicating whether it has an integer contract.
 When true, append `0x53` plus the qualified property name, `0x54` plus the
 inclusive minimum as a signed big-endian `i64`, and `0x55` plus the inclusive
@@ -129,6 +135,17 @@ one required integer and no other properties; it does not imply defaults or
 coercion. Bounds must be JavaScript-safe and ordered, and the existing `0x34`
 property permission must be true. Child and inline-format encoding is otherwise
 unchanged. Version 1–3 elements receive **no** `0x52` marker.
+
+Version 5 additionally appends `0x56` and a Boolean immediately after `0x55` for
+each present integer contract. False retains ordinary inclusive-range semantics.
+True requires a positive minimum and, for a nonempty child sequence, checked
+`value + child_count - 1 <= maximum`. Empty-child rejection remains the grammar's
+responsibility. Arithmetic never wraps, saturates or defaults numbering. Version
+4 receives no `0x56` field. All other encoding rules remain unchanged.
+
+The flat-list fixture `example/flat-list-test@1`, including its required string
+Link format, has a 798-byte input and independently cross-checked digest
+`sha256:9399b646002ba442c8af3d8e8a6fd7bb6e6eb599943691a9591c62d35bcddd95`.
 
 The separate `example/structural-properties-test@1` fixture has a 798-byte
 canonical encoding and fingerprint

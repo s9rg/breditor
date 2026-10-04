@@ -48,6 +48,20 @@ impl ValidationState<'_> {
                             },
                             "element integer property is outside its declared range",
                         );
+                    } else if contract.child_ordinals
+                        && !crate::schema::element_property_contract::child_ordinals_fit(
+                            integer.get(),
+                            element.children().len(),
+                            contract.maximum.get(),
+                        )
+                    {
+                        self.element_property_issue(
+                            ValidationCode::ElementChildOrdinalOutOfRange,
+                            path,
+                            &contract.name,
+                            ValidationDetail::None,
+                            "final child ordinal exceeds the declared integer ceiling",
+                        );
                     }
                 } else {
                     self.element_property_issue(

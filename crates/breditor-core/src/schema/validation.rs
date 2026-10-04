@@ -73,6 +73,9 @@ pub enum ValidationCode {
     ElementPropertyTypeMismatch,
     /// An element integer property falls outside its inclusive range.
     ElementPropertyIntegerOutOfRange,
+    /// The final child ordinal exceeds the element's declared integer ceiling.
+    #[cfg(feature = "experimental-structural-properties")]
+    ElementChildOrdinalOutOfRange,
     /// A property-bearing format contains a property absent from its contract.
     UnknownFormatProperty,
     /// A required property-bearing format property is absent.
@@ -117,6 +120,8 @@ impl ValidationCode {
             Self::ElementPropertyIntegerOutOfRange => {
                 "document.element_property_integer_out_of_range"
             }
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::ElementChildOrdinalOutOfRange => "document.element_child_ordinal_out_of_range",
             Self::UnknownFormatProperty => "document.unknown_format_property",
             Self::MissingRequiredFormatProperty => "document.missing_required_format_property",
             Self::FormatPropertyTypeMismatch => "document.format_property_type_mismatch",
