@@ -2029,3 +2029,28 @@ Vitest working-directory error. Shipping trees remain unchanged. This candidate
 does not qualify native IME/VoiceOver, resolve the historical intermittent WebKit
 fault, approve larger size ceilings, or complete the release gate. Nothing was
 pushed or published.
+
+## Selection-read performance experiment rejected — 2026-10-04
+
+A fresh CPU profile of the `36bf0ab` candidate attributed 137 ms of whole-fixture
+self time to native Selection admission, including about 82 ms beneath range
+installation. An isolated experiment removed the intervening `rangeCount` read
+between the native remove/add-range writes, preserving the surrounding exact
+endpoint validation and rollback.
+
+The experiment passed 1,860 unit tests, strict types, private consumers and 108
+production measurement correctness cases. However, two old/new pairs showed no
+consistent useful improvement: 500-item edit medians were Chromium 61.5/65.5 to
+63.2/63.4 ms, Firefox 196/197 to 194/196 ms, and WebKit 95/98 to 100/101 ms. The
+candidate profile instead attributed about 84 ms to the combined range-write
+helper. This is consistent with moving native browser work, not eliminating it;
+the profile alone does not identify the browser's internal cause.
+
+The experiment and its helper-specific tests were removed, with exact source
+equality to the verified `36bf0ab` implementation checked. The private rejected
+package and measurements remain available for comparison, not release use. See
+[selection-read experiment evidence](qualification/2026-10-04-selection-range-read-experiment.json).
+Next investigate document-sized rendering/validation work or obtain a rendering
+trace before changing selection reads again. No shipping artifact changed and
+no native-input or historical WebKit gate was cleared. Nothing was pushed or
+published.

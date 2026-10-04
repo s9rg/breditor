@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "36bf0ab",
+  "status": "rejected-no-consistent-end-to-end-benefit",
+  "runtimeChangeRetained": false,
+  "hypothesis": "Avoid the native rangeCount brand-check read between removeAllRanges and addRange when installing an exact forward range. A new internal helper captured/validated Selection before both native writes; existing endpoint verification and rollback stayed unchanged.",
+  "decision": "Restore all three experimental source/test files exactly to the base commit. Paired production measurements did not show a useful consistent benefit. CPU samples moved from the intervening selection getter to the combined native range-write helper, consistent with browser work being deferred rather than eliminated. This is an inference from sampled JavaScript stacks, not a browser layout trace or an engine root-cause claim.",
+  "baseline": {
+    "packageRecord": "target/flat-list-packages-MjzA5N/qualification.json",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-HjgHjP",
+    "profileReport": "performance-SVjzxH/measurement.json",
+    "profileReportSha256": "2a8862617d39d265a20014d3e24c19ab443eea894778f5488e11e335fb71e9de",
+    "cpuProfile": "performance-SVjzxH/chromium-0.cpuprofile",
+    "cpuProfileSha256": "b629a355796e725b2966e2b0e36416680fb08f3ddb367aad36727775e011b659",
+    "profileDurationMs": 1530.714,
+    "selectionIntrinsicsSelfMs": 137.142,
+    "selectionIntrinsicsUnderAddRangeSelfMs": 82.341
+  },
+  "rejectedCandidate": {
+    "packageRecord": "target/flat-list-packages-Rbe9Fu/qualification.json",
+    "packageRecordSha256": "00c520d2ca98f8bc460c60226e910652eff98355c2c8d9f9d0e6c6c2d167042b",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ZXXpbZ",
+    "browserTarballSha256": "fc4f64768c8e00d8b130a0cbdc008c2e33a31f7d9aae2dd63fde5fb6c0636326",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d",
+    "profileReport": "performance-7o7A4G/measurement.json",
+    "profileReportSha256": "156480255ecd899d170e9e145415097bfc0eb06d243bfb72d53bbfe0c23b4565",
+    "cpuProfile": "performance-7o7A4G/chromium-0.cpuprofile",
+    "cpuProfileSha256": "8983e1786b844cfe9e620843773bc010826244e920549d5d4df92f1b8b535125",
+    "profileDurationMs": 1600.515,
+    "selectionIntrinsicsSelfMs": 62.109,
+    "combinedRangeWriteHelperSelfMs": 83.918,
+    "consumerJavaScriptByteDelta": 93,
+    "consumerGzip9ByteDelta": 22,
+    "publishable": false
+  },
+  "tests": [
+    "Experimental implementation passed strict browser source/test TypeScript and 1860 unit cases, including three new native helper cases (collapsed/expanded exact range, own-property shadows, non-native receiver rejection). Those experiment-only tests were removed with the rejected helper.",
+    "Private package consumers passed in Chromium, Firefox and WebKit; base Node, strict TypeScript and Chromium smoke also passed. All four shipping artifact trees were checked unchanged.",
+    "Four sequential production performance runs passed 108 correctness cases total. Two additional unminified Chromium CPU-profile runs passed nine cases each. No full browser matrix was run for this rejected candidate.",
+    "git diff --exit-code against the base for html_host.ts, dom_selection.ts and html_host.test.ts confirmed exact restoration. The retained implementation remains the previously qualified 36bf0ab runtime."
+  ],
+  "runs": [
+    {"artifact": "baseline", "report": "performance-LVH6eT/measurement.json", "sha256": "6b9521fd0a8d0c0579c8bfe8b590af60c05884be73a34d664ce602461dfbdb2c", "edit500MediansMs": {"chromium": 61.5, "firefox": 196, "webkit": 95}},
+    {"artifact": "rejectedCandidate", "report": "performance-oFMRoA/measurement.json", "sha256": "7192e56e416510e25dfa0c5359850907b254590b544127415290d57da2fc4684", "edit500MediansMs": {"chromium": 63.2, "firefox": 194, "webkit": 100}},
+    {"artifact": "baseline", "report": "performance-Ucg0Qi/measurement.json", "sha256": "33ce125f588b5817bed3738f2bcd7d1fa831bd40dcc417d39a59e9015c5d770a", "edit500MediansMs": {"chromium": 65.5, "firefox": 197, "webkit": 98}},
+    {"artifact": "rejectedCandidate", "report": "performance-t7Lbrl/measurement.json", "sha256": "888fada413be187648d2b8fbb7839383732762c7713dba77080a88de7892e758", "edit500MediansMs": {"chromium": 63.4, "firefox": 196, "webkit": 101}}
+  ],
+  "reproduction": [
+    "node scripts/measure-flat-list-performance.mjs <packageRecord> (alternate the retained baseline and rejected private package records twice)",
+    "BREDITOR_PERF_BROWSER=chromium BREDITOR_PERF_CPU_PROFILE=1 node scripts/measure-flat-list-performance.mjs <packageRecord>"
+  ],
+  "limits": "Reports/profiles are relative to each artifact's consumer. Production measurements use the unchanged minified full-editor fixture and no diagnostic transforms. Runs were sequential with no concurrent Breditor builds/tests; background host load was not controlled. CPU profiles are separate unminified whole-fixture samples including startup/recovery and untimed assertions, not exclusive edit phase costs. No statistical reliability, native input, general responsiveness, historical WebKit fix or release readiness is established.",
+  "nextAction": "Investigate actual document-sized renderer and ownership-validation work, or collect a browser rendering trace before revisiting selection reads. Do not remove caret consistency checks merely because they appear as a sampled hotspot.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}
