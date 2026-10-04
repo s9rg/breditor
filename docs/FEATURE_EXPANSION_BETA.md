@@ -1045,3 +1045,20 @@ editing claim is made by this contract-only checkpoint.
 Next: shared queue and Wasm adapter integration for these requests, then normal
 controller/toolbar/keyboard delivery, visible persistence and release gates.
 See [verification](qualification/2026-10-04-flat-list-command-contract.json).
+
+## Flat-list shared queue checkpoint
+
+The list queue now shares the existing FIFO, capacity, reentrancy, uncertainty and
+composition-reservation state machine. Its admission mode is captured privately;
+legacy/base requests and cross-mode lease ports reject. Tests exercise reentrant
+executor/observer work, stale delivery rejection by the owner, terminal failures,
+single-use leases, disposal during inspection and public-method overrides.
+
+All 1,704 browser tests and strict TypeScript pass. Five runs each in Chromium,
+Firefox and WebKit include list queue/state and lease scenarios alongside the
+existing real-Wasm recovery checks. Shipping artifacts are unchanged.
+
+Next: connect list queue requests to the shared Wasm command adapter and editor
+controller. The queue is ready for that connection, not yet a user-facing editor
+command path. Toolbar/native-input and persistence/release gates remain open.
+See [verification](qualification/2026-10-04-flat-list-command-queue.json).

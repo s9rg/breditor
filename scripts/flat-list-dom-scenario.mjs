@@ -8,6 +8,7 @@ import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoin
 import { issueFlatListEditorDeliveryToken, issueEditorDeliveryAuthority, flatListEditorDeliveryTokenMatches,
   flatListEditorDeliveryAuthorityAccepts, flatListCommandRequest, flatListRangeSelectionSync,
   canonicalFlatListEditorCommandRequest, canonicalEditorCommandRequest, flatListBrowserInputActionIds } from "../packages/breditor-browser/src/editor_command.ts";
+import { BreditorFlatListCommandQueue, openFlatListCommandQueueLeasePort, openCommandQueueLeasePort } from "../packages/breditor-browser/src/command_queue.ts";
 
 const value = result => { if (!result.ok) throw new Error(result.error.code); return result.value; };
 const equal = (actual, expected) => {
@@ -56,7 +57,28 @@ export function verifyFlatListDom(before, after, owner, transitions) {
     if (!canonical || canonical.selection.selection !== exact || canonical.delivery !== token) throw new Error("list command capture lost identity");
     equal(canonicalEditorCommandRequest(request), null);
     equal(flatListEditorDeliveryAuthorityAccepts(capability, token), true);
-    epoch += 1n;
+    const deliveries = [];
+    let admitted = 0;
+    // Queue-state qualification only; the normal Wasm adapter is not substituted
+    // by this harness executor. It proves stale reentrant requests are delivered
+    // serially to an owner that can reject them before mutation.
+    const executor = queued => {
+      if (!flatListEditorDeliveryAuthorityAccepts(capability, queued.delivery)) return "stale";
+      equal(queue.submit(queued).status, "queued");
+      admitted += 1; epoch += 1n; return "admitted";
+    };
+    const queue = new BreditorFlatListCommandQueue(executor, {observer: delivery => { deliveries.push(delivery.result); }});
+    equal(queue.submit(request).status, "completed");
+    equal(deliveries, ["admitted", "stale"]); equal(admitted, 1); equal(queue.pendingCount, 0);
+    equal(openCommandQueueLeasePort(queue, executor), undefined);
+    const leasePort = openFlatListCommandQueueLeasePort(queue, executor);
+    if (!leasePort) throw new Error("list queue owner port rejected");
+    const lease = leasePort.acquireLease();
+    if (!lease) throw new Error("list queue reservation rejected");
+    equal(queue.submit(request), {status: "rejected", reason: "leased"});
+    equal(leasePort.submitLeased(lease, request).result, "stale");
+    equal(leasePort.submitLeased(lease, request), {status: "rejected", reason: "leased"});
+    equal(leasePort.releaseLease(lease), true); queue.dispose();
     equal(flatListEditorDeliveryAuthorityAccepts(capability, token), false);
     equal(value(bridge.read(rendered)).origin, "dom");
     equal(mapDomPointToFlatListSelectionPoint(rendered, heading, 2).ok, false); // Inside 🙂.

@@ -1,6 +1,8 @@
 import {
   canonicalEditorCommandRequest,
+  canonicalFlatListEditorCommandRequest,
   type EditorCommandRequest,
+  type FlatListEditorCommandRequest,
 } from "./editor_command.js";
 import { containAsyncRejection } from "./contain_async_rejection.js";
 
@@ -20,20 +22,22 @@ export interface CommandQueueFailure {
 }
 
 /** One successful executor return in exact FIFO order. */
-export interface CommandQueueDelivery<TResult> {
+type QueueRequest = EditorCommandRequest | FlatListEditorCommandRequest;
+
+export interface CommandQueueDelivery<TResult, TRequest extends QueueRequest = EditorCommandRequest> {
   readonly sequence: bigint;
-  readonly request: EditorCommandRequest;
+  readonly request: TRequest;
   readonly result: TResult;
 }
 
 /** Synchronous semantic command executor. It must not return a Promise. */
-export type EditorCommandExecutor<TResult> = (
-  request: EditorCommandRequest,
+export type EditorCommandExecutor<TResult, TRequest extends QueueRequest = EditorCommandRequest> = (
+  request: TRequest,
 ) => TResult;
 
 /** Optional delivery observer, invoked inside the same non-recursive drain. */
-export type CommandQueueObserver<TResult> = (
-  delivery: Readonly<CommandQueueDelivery<TResult>>,
+export type CommandQueueObserver<TResult, TRequest extends QueueRequest = EditorCommandRequest> = (
+  delivery: Readonly<CommandQueueDelivery<TResult, TRequest>>,
 ) => void;
 
 /** Result of submitting one item to the serial queue. */
@@ -74,26 +78,27 @@ export type CommandQueueLeasedSubmission<TResult> = Exclude<
  *
  * @internal
  */
-export interface CommandQueueLeasePort<TResult> {
+export interface CommandQueueLeasePort<TResult, TRequest extends QueueRequest = EditorCommandRequest> {
   readonly failure: () => CommandQueueFailure | undefined;
   readonly acquireLease: () => CommandQueueLease | undefined;
   readonly submitLeased: (
     lease: CommandQueueLease,
-    request: EditorCommandRequest,
+    request: TRequest,
   ) => CommandQueueLeasedSubmission<TResult>;
   readonly releaseLease: (lease: CommandQueueLease) => boolean;
 }
 
-type OpenCommandQueueLeasePort = <TResult>(
-  queue: BreditorCommandQueue<TResult>,
+type OpenCommandQueueLeasePort = <TResult, TRequest extends QueueRequest>(
+  queue: CommandQueueCore<TResult, TRequest>,
   executor: unknown,
-) => CommandQueueLeasePort<TResult> | undefined;
+  canonicalize: (value: unknown) => TRequest | null,
+) => CommandQueueLeasePort<TResult, TRequest> | undefined;
 
 let openCommandQueueLeasePortIntrinsic: OpenCommandQueueLeasePort = () => undefined;
 
-interface PendingCommand {
+interface PendingCommand<TRequest extends QueueRequest> {
   readonly sequence: bigint;
-  readonly request: EditorCommandRequest;
+  readonly request: TRequest;
 }
 
 class OwnedCommandQueueLease implements CommandQueueLease {
@@ -114,11 +119,12 @@ Object.freeze(OwnedCommandQueueLease.prototype);
  * current item is considered uncertain, later items remain quarantined, and
  * every later submission rejects until this queue is disposed.
  */
-export class BreditorCommandQueue<TResult> {
+class CommandQueueCore<TResult, TRequest extends QueueRequest> {
   readonly #capacity: number;
-  readonly #executor: EditorCommandExecutor<TResult>;
-  readonly #observer: CommandQueueObserver<TResult> | undefined;
-  readonly #pending: PendingCommand[] = [];
+  readonly #canonicalize: (value: unknown) => TRequest | null;
+  readonly #executor: EditorCommandExecutor<TResult, TRequest>;
+  readonly #observer: CommandQueueObserver<TResult, TRequest> | undefined;
+  readonly #pending: PendingCommand<TRequest>[] = [];
   #draining = false;
   #disposed = false;
   #failure: CommandQueueFailure | undefined;
@@ -128,18 +134,19 @@ export class BreditorCommandQueue<TResult> {
   #leaseSubmitting = false;
 
   static {
-    openCommandQueueLeasePortIntrinsic = <TResult>(
-      queue: BreditorCommandQueue<TResult>,
+    openCommandQueueLeasePortIntrinsic = <TResult, TRequest extends QueueRequest>(
+      queue: CommandQueueCore<TResult, TRequest>,
       executor: unknown,
-    ): CommandQueueLeasePort<TResult> | undefined => {
+      canonicalize: (value: unknown) => TRequest | null,
+    ): CommandQueueLeasePort<TResult, TRequest> | undefined => {
       try {
-        if (queue.#executor !== executor) return undefined;
+        if (queue.#executor !== executor || queue.#canonicalize !== canonicalize) return undefined;
         return Object.freeze({
           failure: () => queue.#failure,
           acquireLease: () => queue.#acquireLease(),
           submitLeased: (
             lease: CommandQueueLease,
-            request: EditorCommandRequest,
+            request: TRequest,
           ) => queue.#submitLeased(lease, request),
           releaseLease: (lease: CommandQueueLease) => queue.#releaseLease(lease),
         });
@@ -150,12 +157,14 @@ export class BreditorCommandQueue<TResult> {
   }
 
   constructor(
-    executor: EditorCommandExecutor<TResult>,
+    executor: EditorCommandExecutor<TResult, TRequest>,
     options: Readonly<{
       capacity?: number;
-      observer?: CommandQueueObserver<TResult>;
-    }> = {},
+      observer?: CommandQueueObserver<TResult, TRequest>;
+    }>,
+    canonicalize: (value: unknown) => TRequest | null,
   ) {
+    this.#canonicalize = canonicalize;
     if (typeof executor !== "function") {
       throw new TypeError("command queue executor must be a function");
     }
@@ -203,7 +212,7 @@ export class BreditorCommandQueue<TResult> {
    * A reentrant call appends only. Capacity includes the currently executing
    * item, so a capacity of one rejects every reentrant submission.
    */
-  submit(request: EditorCommandRequest): CommandQueueSubmission<TResult> {
+  submit(request: TRequest): CommandQueueSubmission<TResult> {
     if (this.#disposed) {
       return rejected("disposed");
     }
@@ -217,9 +226,9 @@ export class BreditorCommandQueue<TResult> {
       return rejected("failed");
     }
 
-    let canonical: EditorCommandRequest | null;
+    let canonical: TRequest | null;
     try {
-      canonical = canonicalEditorCommandRequest(request);
+      canonical = this.#canonicalize(request);
     } catch {
       canonical = null;
     }
@@ -263,7 +272,7 @@ export class BreditorCommandQueue<TResult> {
 
   #submitLeased(
     lease: CommandQueueLease,
-    request: EditorCommandRequest,
+    request: TRequest,
   ): CommandQueueLeasedSubmission<TResult> {
     if (this.#disposed) {
       return leasedRejected("disposed");
@@ -285,9 +294,9 @@ export class BreditorCommandQueue<TResult> {
     this.#leaseUsed = true;
     this.#leaseSubmitting = true;
     try {
-      let canonical: EditorCommandRequest | null;
+      let canonical: TRequest | null;
       try {
-        canonical = canonicalEditorCommandRequest(request);
+        canonical = this.#canonicalize(request);
       } catch {
         canonical = null;
       }
@@ -431,6 +440,20 @@ export class BreditorCommandQueue<TResult> {
   }
 }
 
+/** Legacy base/heading queue; the request admission function cannot be replaced. */
+export class BreditorCommandQueue<TResult> extends CommandQueueCore<TResult, EditorCommandRequest> {
+  constructor(executor: EditorCommandExecutor<TResult>, options: Readonly<{
+    capacity?: number; observer?: CommandQueueObserver<TResult>;
+  }> = {}) { super(executor, options, canonicalEditorCommandRequest); }
+}
+
+/** Explicit list queue sharing the same drain, bounds, failure and lease state machine. @internal */
+export class BreditorFlatListCommandQueue<TResult> extends CommandQueueCore<TResult, FlatListEditorCommandRequest> {
+  constructor(executor: EditorCommandExecutor<TResult, FlatListEditorCommandRequest>, options: Readonly<{
+    capacity?: number; observer?: CommandQueueObserver<TResult, FlatListEditorCommandRequest>;
+  }> = {}) { super(executor, options, canonicalFlatListEditorCommandRequest); }
+}
+
 /**
  * Opens the package-owned lease port only for the exact constructor executor.
  *
@@ -443,7 +466,13 @@ export function openCommandQueueLeasePort<TResult>(
   queue: BreditorCommandQueue<TResult>,
   executor: unknown,
 ): CommandQueueLeasePort<TResult> | undefined {
-  return openCommandQueueLeasePortIntrinsic(queue, executor);
+  return openCommandQueueLeasePortIntrinsic(queue, executor, canonicalEditorCommandRequest);
+}
+
+/** List-only lease port, checking both executor identity and captured admission mode. @internal */
+export function openFlatListCommandQueueLeasePort<TResult>(queue: BreditorFlatListCommandQueue<TResult>, executor: unknown):
+  CommandQueueLeasePort<TResult, FlatListEditorCommandRequest> | undefined {
+  return openCommandQueueLeasePortIntrinsic(queue, executor, canonicalFlatListEditorCommandRequest);
 }
 
 function rejected<TResult>(

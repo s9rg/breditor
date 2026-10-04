@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "28b1808",
+  "status": "Shared list queue and lease state machine qualified; production list Wasm adapter not yet connected",
+  "contracts": {
+    "implementation": "One private generic queue core; base and list facades capture their exact canonical validator",
+    "delivery": "Bounded synchronous FIFO, non-recursive reentrancy, immutable snapshots, private active-plus-pending capacity",
+    "failure": "Executor/observer throws or thenables produce terminal uncertainty; no automatic head retry; disposal clears quarantine",
+    "lease": "Exact executor plus captured mode, non-overridable private-state port, one-use settlement even on invalid requests, exclusivity through observers",
+    "staleness": "Queue executor remains responsible for current owner/render/epoch; stale queued work is rejected before mutation",
+    "legacy": "Base requests and cross-mode ports reject; borrowed facade methods cannot replace admission"
+  },
+  "verification": {
+    "newTests": 11,
+    "browserTests": 1704,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "firefox",
+        "version": "153.0",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "runs": 5,
+        "status": "passed"
+      }
+    ],
+    "browserScope": "List request captured from native DOM selection, reentrant FIFO delivery with stale epoch rejection, mode-bound lease exclusivity and single-use settlement; retains separate real Wasm bootstrap/recovery/DOM scenarios",
+    "developmentCorrections": [
+      "Test typecheck required explicit generic result types for mocked async/union executors and an explicit undefined observer return."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Shared list Wasm command adapter and owner/controller integration",
+    "Toolbar, keyboard, composition and clipboard",
+    "Visible persistence and native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Queue state-machine executor, not production list Wasm dispatch or native editing. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

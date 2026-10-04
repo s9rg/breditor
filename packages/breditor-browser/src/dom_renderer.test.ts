@@ -37,8 +37,9 @@ import { issueFlatListEditorDeliveryToken, flatListEditorDeliveryTokenMatches, f
   issueEditorDeliveryAuthority, flatListEditorDeliveryAuthorityAccepts, editorDeliveryAuthorityAccepts,
   editorDeliveryTokenMatchesRender, flatListRangeSelectionSync, flatListCommandRequest,
   canonicalFlatListEditorCommandRequest, canonicalEditorCommandRequest, flatListBrowserInputActionIds,
-  noSelectionSync, type EngineCommand } from "./editor_command.js";
-import { BreditorCommandQueue } from "./command_queue.js";
+  noSelectionSync, type EngineCommand, type FlatListEditorCommandRequest } from "./editor_command.js";
+import { BreditorCommandQueue, BreditorFlatListCommandQueue, openFlatListCommandQueueLeasePort,
+  openCommandQueueLeasePort } from "./command_queue.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
@@ -64,6 +65,121 @@ describe("hierarchical flat-list DOM and points", () => {
     return {renderer, host, projection, rendered, make, inputBlocks};
   }
   const textPoint = (textPath: number[], utf16Offset: number, affinity = "after") => ({kind: "text", textPath, utf16Offset, affinity});
+
+  function queuedRequest(detail = "one") {
+    const f = fixture(), token = issueFlatListEditorDeliveryToken(f.projection, f.rendered, 0n, Symbol("queue owner"));
+    return flatListCommandRequest(token, preserveSelectionSync(), {kind: "api", detail},
+      {kind: "action", actionId: "breditor/wrap-bullet-list", input: {kind: "none"}});
+  }
+
+  it("drains list requests FIFO without recursively invoking the executor or observer", () => {
+    const first = queuedRequest("one"), second = queuedRequest("two"), third = queuedRequest("three");
+    const order: string[] = []; let depth = 0;
+    const queue: BreditorFlatListCommandQueue<string> = new BreditorFlatListCommandQueue(request => {
+      depth += 1; expect(depth).toBe(1); order.push(`execute:${request.source.detail}`);
+      if (request.source.detail === "one") expect(queue.submit(second)).toEqual({status: "queued", sequence: 2n});
+      depth -= 1; return request.source.detail;
+    }, {observer: delivery => {
+      order.push(`observe:${delivery.result}`);
+      if (delivery.sequence === 1n) expect(queue.submit(third)).toEqual({status: "queued", sequence: 3n});
+      expect(Object.isFrozen(delivery.request)).toBe(true);
+    }});
+    expect(queue.submit(first)).toEqual({status: "completed", sequence: 1n, result: "one"});
+    expect(order).toEqual(["execute:one", "observe:one", "execute:two", "observe:two", "execute:three", "observe:three"]);
+    expect(queue.pendingCount).toBe(0); expect(queue.failure).toBeUndefined();
+  });
+
+  it("uses authoritative list queue capacity even when public getters are replaced", () => {
+    const request = queuedRequest();
+    const queue: BreditorFlatListCommandQueue<string> = new BreditorFlatListCommandQueue(() => {
+      expect(queue.submit(request)).toEqual({status: "rejected", reason: "capacity"}); return "done";
+    }, {capacity: 1});
+    Object.defineProperty(queue, "pendingCount", {get: () => 0});
+    Object.defineProperty(queue, "capacity", {get: () => 999});
+    expect(queue.submit(request).status).toBe("completed");
+  });
+
+  it("rejects base requests even through a borrowed legacy submit method", () => {
+    const projection = valueOf(BaseDocumentProjection.create({schema: {name: "breditor/base", version: 1},
+      snapshot: {lineage: "base-queue", revision: "0"}, paragraphs: [{runs: []}]}));
+    const rendered = valueOf(new BreditorDomRenderer().render(document.createElement("div"), projection)).rendered;
+    const token = issueEditorDeliveryToken(projection, rendered, 0n, Symbol());
+    const request = noInputActionRequest(token, preserveSelectionSync(), {kind: "api", detail: "base"}, "breditor/delete-backward");
+    const executor = vi.fn(); const queue = new BreditorFlatListCommandQueue(executor);
+    expect(queue.submit(request as never)).toEqual({status: "rejected", reason: "invalidRequest"});
+    expect(Reflect.apply(BreditorCommandQueue.prototype.submit, queue, [request])).toEqual({status: "rejected", reason: "invalidRequest"});
+    expect(executor).not.toHaveBeenCalled();
+  });
+
+  it.each(["executor throw", "executor async", "observer throw", "observer async"])("quarantines list work after %s without retry", fault => {
+    const request = queuedRequest(); let executions = 0;
+    const queue: BreditorFlatListCommandQueue<unknown> = new BreditorFlatListCommandQueue<unknown>(() => {
+      executions += 1; queue.submit(request);
+      if (fault === "executor throw") throw new Error("uncertain");
+      if (fault === "executor async") return Promise.resolve("uncertain");
+      return "done";
+    }, {observer: () => {
+      if (fault === "observer throw") throw new Error("uncertain");
+      if (fault === "observer async") return Promise.resolve();
+      return undefined;
+    }});
+    expect(queue.submit(request).status).toBe("failed");
+    expect(queue.failure?.code).toBe(fault.startsWith("executor") ? "command_queue.executor_threw" : "command_queue.observer_threw");
+    expect(executions).toBe(1); expect(queue.pendingCount).toBe(1);
+    expect(queue.submit(request)).toEqual({status: "rejected", reason: "failed"});
+    queue.dispose(); expect(queue.pendingCount).toBe(0);
+    expect(queue.submit(request)).toEqual({status: "rejected", reason: "disposed"});
+  });
+
+  it("binds list leases to their exact executor and mode and spends malformed settlements once", () => {
+    const request = queuedRequest(), executor = vi.fn(() => "done");
+    const queue = new BreditorFlatListCommandQueue(executor);
+    expect(openFlatListCommandQueueLeasePort(queue, () => "done")).toBeUndefined();
+    expect(openCommandQueueLeasePort(queue as never, executor)).toBeUndefined();
+    expect(openFlatListCommandQueueLeasePort(new BreditorCommandQueue(executor) as never, executor)).toBeUndefined();
+    const port = openFlatListCommandQueueLeasePort(queue, executor)!;
+    Object.defineProperty(queue, "submit", {value: () => { throw new Error("public override"); }});
+    const lease = port.acquireLease()!;
+    expect(port.acquireLease()).toBeUndefined();
+    expect(port.submitLeased(lease, {...request, extra: true} as never)).toEqual({status: "rejected", reason: "invalidRequest"});
+    expect(port.submitLeased(lease, request)).toEqual({status: "rejected", reason: "leased"});
+    expect(executor).not.toHaveBeenCalled(); expect(port.releaseLease(lease)).toBe(true);
+    const next = port.acquireLease()!;
+    expect(port.submitLeased(next, request)).toEqual({status: "completed", sequence: 1n, result: "done"});
+    expect(executor).toHaveBeenCalledOnce(); expect(port.releaseLease(next)).toBe(true);
+  });
+
+  it("keeps list queue leases exclusive through observer callbacks", () => {
+    const request = queuedRequest(), executor = vi.fn(() => "done");
+    let lease: ReturnType<NonNullable<ReturnType<typeof openFlatListCommandQueueLeasePort>>["acquireLease"]>;
+    const queue = new BreditorFlatListCommandQueue(executor, {observer: () => {
+      expect(queue.submit(request)).toEqual({status: "rejected", reason: "leased"});
+      expect(port.releaseLease(lease!)).toBe(false);
+    }});
+    const port = openFlatListCommandQueueLeasePort(queue, executor)!; lease = port.acquireLease();
+    expect(port.submitLeased(lease!, request).status).toBe("completed");
+    expect(port.releaseLease(lease!)).toBe(true);
+  });
+
+  it("rechecks disposal after inspecting a list request proxy", () => {
+    const request = queuedRequest(), executor = vi.fn();
+    const queue = new BreditorFlatListCommandQueue(executor);
+    const proxy = new Proxy(request, {ownKeys(target) { queue.dispose(); return Reflect.ownKeys(target); }});
+    expect(queue.submit(proxy)).toEqual({status: "rejected", reason: "disposed"});
+    expect(executor).not.toHaveBeenCalled(); expect(queue.pendingCount).toBe(0);
+  });
+
+  it("lets the owning executor reject a queued stale epoch without applying it twice", () => {
+    const f = fixture(), authority = Symbol(), token = issueFlatListEditorDeliveryToken(f.projection, f.rendered, 0n, authority);
+    const request = flatListCommandRequest(token, preserveSelectionSync(), {kind: "api", detail: "list"}, {kind: "history", operation: "undo"});
+    let epoch = 0n, applied = 0; const results: string[] = [];
+    const queue: BreditorFlatListCommandQueue<string> = new BreditorFlatListCommandQueue<string>((request: FlatListEditorCommandRequest) => {
+      if (!flatListEditorDeliveryTokenMatches(request.delivery, f.rendered, epoch, authority)) return "stale";
+      queue.submit(request); applied += 1; epoch += 1n; return "applied";
+    }, {observer: delivery => { results.push(delivery.result); }});
+    expect(queue.submit(request).status).toBe("completed");
+    expect(applied).toBe(1); expect(results).toEqual(["applied", "stale"]);
+  });
 
   it("binds list delivery to exact render, authority and observation epoch", () => {
     const f = fixture(), authority = Symbol("list owner");

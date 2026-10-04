@@ -1404,3 +1404,27 @@ not yet wired into an executing queue or the Wasm command adapter. The real-brow
 harness checks native list selection capture into immutable requests and rejects
 stale epoch/render tokens, alongside the existing low-level edit/recovery checks.
 See [command qualification](qualification/2026-10-04-flat-list-command-contract.json).
+
+### Shared flat-list command queue
+
+`BreditorFlatListCommandQueue` uses the same private queue core as
+`BreditorCommandQueue`, with a constructor-fixed list request validator. The
+legacy facade retains base admission. Borrowing a facade's submit method does
+not change its receiver's captured mode. Both paths preserve synchronous FIFO
+delivery, non-recursive reentrant submissions, active-plus-pending capacity,
+immutable request snapshots and terminal uncertainty after an executor/observer
+throws or returns a thenable. Failed heads are never retried automatically.
+
+The list lease port requires both the exact captured executor and the list
+admission function. Cross-mode lease ports reject. Ports use private state and
+cannot be replaced by public queue methods. A lease reserves the queue through
+execution and observer callbacks; even a malformed settlement spends it once.
+Disposal during request inspection is rechecked before retention or execution.
+
+The queue does not guess whether a captured editor snapshot is still live. Its
+executor must check current authority/render/observation epoch immediately before
+mutation. Unit and browser scenarios prove that a reentrant request can be
+delivered serially and rejected as stale without applying it twice. The harness
+uses a queue-state executor, not a substitute production Wasm adapter. Connecting
+the normal list Wasm adapter/controller remains next. See
+[queue qualification](qualification/2026-10-04-flat-list-command-queue.json).
