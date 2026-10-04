@@ -1,5 +1,8 @@
 // Reproducible measurements of already-qualified installed experimental packages.
 // No hard timing threshold: correctness is mandatory, timing is machine-specific evidence.
+// Optional Chromium rendering diagnosis: BREDITOR_PERF_BROWSER=chromium
+// BREDITOR_PERF_RENDER_TRACE=1. Keeps minification; raw traces may include local
+// URLs and must be inspected before sharing. Not a Firefox performance oracle.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -9,6 +12,7 @@ import {dirname, join, relative, resolve, sep} from "node:path";
 import {fileURLToPath} from "node:url";
 import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
+import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 
 assert.ok(process.argv.length === 3 || (process.argv.length === 4 && ["--diagnose-export", "--core-only"].includes(process.argv[3])), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export|--core-only]");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -17,6 +21,9 @@ const browserName = process.env["BREDITOR_PERF_BROWSER"] ?? "all";
 assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
 const cpuProfileEnabled = process.env["BREDITOR_PERF_CPU_PROFILE"] === "1";
 assert.ok(!cpuProfileEnabled || browserName === "chromium", "CPU profiling requires BREDITOR_PERF_BROWSER=chromium");
+const renderingTraceEnabled = process.env["BREDITOR_PERF_RENDER_TRACE"] === "1";
+assert.ok(!renderingTraceEnabled || (browserName === "chromium" && !cpuProfileEnabled && !coreOnly && !diagnoseExport),
+  "Rendering trace requires Chromium full-editor mode without CPU/export diagnostics");
 const runCount = Number(process.env["BREDITOR_PERF_RUNS"] ?? "1");
 assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BREDITOR_PERF_RUNS must be 1..10");
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
@@ -94,7 +101,7 @@ const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport, releasePerformanceQualified: false,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
-  deepDiagnostics, browserName, runCount, cpuProfileEnabled, profileBuild: cpuProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
+  deepDiagnostics, browserName, runCount, cpuProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
   packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
@@ -115,6 +122,19 @@ try {
     const pageErrors = [];
     let cpuSession;
     let cpuProfile;
+    let tracing = false;
+    let renderingTrace;
+    const captureRenderingTrace = async () => {
+      if (!tracing) return;
+      tracing = false;
+      const bytes = await browser.stopTracing();
+      const path = join(fixture, `${name}-${run}.rendering-trace.json`);
+      await writeFile(path, bytes);
+      // Retain the raw artifact identity even if the summary rejects its shape.
+      renderingTrace = {path, sha256: hash(bytes)};
+      Object.assign(renderingTrace, summarizeRenderingTrace(JSON.parse(bytes.toString("utf8"))));
+      console.log(JSON.stringify({renderingTrace: {path, sha256: renderingTrace.sha256, spanCount: renderingTrace.spans.length}}));
+    };
     const captureCpuProfile = async () => {
       if (!cpuSession) return;
       const session = cpuSession; cpuSession = undefined;
@@ -143,6 +163,11 @@ try {
     try {
       browser = await type.launch();
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
+      if (renderingTraceEnabled) {
+        await browser.startTracing(page, {screenshots: false,
+          categories: ["devtools.timeline", "blink.user_timing"]});
+        tracing = true;
+      }
       if (cpuProfileEnabled) {
         cpuSession = await page.context().newCDPSession(page);
         await cpuSession.send("Profiler.enable");
@@ -151,9 +176,10 @@ try {
       }
       page.on("console", message => { if (message.type() === "error" && diagnostics.length < 100) { diagnostics.push(message.text()); console.error(message.text()); } });
       page.on("pageerror", error => { if (pageErrors.length < 100) pageErrors.push(String(error)); });
-      await page.goto(`http://127.0.0.1:${address.port}/`);
+      await page.goto(`http://127.0.0.1:${address.port}/${renderingTraceEnabled ? "?renderTrace=1" : ""}`);
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
       await captureCpuProfile();
+      await captureRenderingTrace();
       const output = page.locator("#result"), status = await output.getAttribute("data-status");
       assert.equal(status, "passed", await output.textContent());
       assert.deepEqual(pageErrors, [], "uncaught browser errors");
@@ -167,11 +193,13 @@ try {
           return [metric, {min: values[0], median: values[1], max: values[2]}];
         }))};
       });
-      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile};
+      if (renderingTraceEnabled) assert.equal(renderingTrace.spans.length, 60, "six measured spans for warm-up plus nine cases");
+      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile, renderingTrace};
       measurements.push(measured); console.log(JSON.stringify({browser: name, summary}));
       await save("running");
     } catch (error) {
       try { await captureCpuProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
+      try { await captureRenderingTrace(); } catch (traceError) { diagnostics.push(String(traceError)); }
       let fixtureState;
       try {
         // Read completion and payload in one evaluation: separate protocol calls
@@ -181,7 +209,7 @@ try {
           visibility: document.visibilityState, readyState: document.readyState,
         }), undefined, {timeout: 5000});
       } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
-      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, fixtureState});
+      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, renderingTrace, fixtureState});
       await save("failed"); throw error;
     } finally {await browser?.close();}
     }

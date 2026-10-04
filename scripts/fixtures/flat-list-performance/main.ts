@@ -14,6 +14,7 @@ const semanticProfile = {formatVersion: 4 as const, bootstrapJson: JSON.stringif
 })};
 type Metrics = Record<string, number>;
 let progress = "initialization";
+const renderingTrace = new URLSearchParams(location.search).get("renderTrace") === "1";
 
 void run().catch(error => { output.textContent = JSON.stringify({progress, error: String(error)}); output.dataset["status"] = "failed"; });
 async function run(): Promise<void> {
@@ -53,7 +54,13 @@ async function sample(items: number, fingerprint: string, repetition: number) {
     keyboard: {editing: "beforeinputPrimary" as const, primaryModifier: "control" as const, shortcuts: "enabled" as const}};
   const measured = <T>(name: string, action: () => T): T => {
     progress = `${items} items, repetition ${repetition}: ${name}`;
-    const before = performance.now(); const result = action(); host.getBoundingClientRect(); metrics[name] = performance.now() - before; return result;
+    const marker = renderingTrace ? `breditor-perf:${items}:${repetition}:${name}` : "";
+    if (renderingTrace) performance.mark(`${marker}:start`);
+    try {
+      const before = performance.now(); const result = action(); host.getBoundingClientRect(); metrics[name] = performance.now() - before; return result;
+    } finally {
+      if (renderingTrace) performance.mark(`${marker}:end`);
+    }
   };
   const exported = (format: "documentJson" | "sessionCheckpointJson" | "plainText") => {
     const value = owner!.exportContent(format);

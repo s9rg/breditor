@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "d269c0f",
+  "status": "diagnostic-completed-no-runtime-change",
+  "change": "Added opt-in Chromium rendering tracing to the existing isolated private-package performance fixture. Six synchronous measurement spans receive static size/repetition/metric marks only when explicitly enabled. Production minification remains enabled. CPU profiling, raw-core mode and export instrumentation cannot be combined with this mode.",
+  "summaryContract": "Only same-process, same-thread complete devtools.timeline rendering events are clipped to the marked span. Interval unions avoid double-counting nesting and overlap. Malformed durations, incomplete, reversed or duplicate fixture marks reject the summary. Raw traces are saved before summarizing. Unclassified duration is not claimed as JS, Wasm or Rust execution time. Raw traces can contain local URLs; inspect before sharing.",
+  "packageRecord": "target/flat-list-packages-0o7wkE/qualification.json",
+  "packageRecordSha256": "585a58f9754881ad796bac3e53997a916c4479770b4dc551b75e6a16bf804da9",
+  "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-aLkLwM",
+  "runs": [
+    {
+      "directory": "performance-NbawiR",
+      "measurementSha256": "c730a6ed3b1ad95b45cf1073ff45dc2090c48c4c900a6ec917e6b4891cfbb6ca",
+      "traceSha256": "274a9b3e082277866822faa688070f2563025ff8e0de58c0912896b161412411",
+      "fixtureSha256": "2078e58f2301b1397a24613f9f0153e105d86412e4286927c0396b6db4d2851b",
+      "casesPassed": 9,
+      "spans": 60,
+      "edit500TotalMs": [61.451, 57.829, 59.361],
+      "edit500RenderingUnionMs": [6.894, 7.233, 6.557],
+      "note": "Initial collector printed the full span summary. Subsequent code only constructs marker strings when tracing is enabled, emits compact console metadata, preserves raw trace identity on summary failure and rejects repeated completed spans."
+    },
+    {
+      "directory": "performance-E9szhc",
+      "measurementSha256": "4bacfd61c03b95c4af2cfb7622845b8630326b604dfb73698b9c234066713fad",
+      "traceSha256": "bbc0c19df9d581b2926ce8ac89dd443261365b95c156a71326dce930240ac55a",
+      "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+      "casesPassed": 9,
+      "spans": 60,
+      "edit500TotalMs": [61.930, 61.063, 62.024],
+      "edit500RenderingUnionMs": [6.608, 6.414, 6.552]
+    },
+    {
+      "directory": "performance-KQFjMr",
+      "measurementSha256": "41fc9214dd402a95d7e62b5e0402334633be2eef6192c3ad67fed9b1a55aceee",
+      "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+      "tracing": false,
+      "casesPassed": {"chromium": 9, "firefox": 9, "webkit": 9},
+      "edit500MedianMs": {"chromium": 59, "firefox": 182, "webkit": 102}
+    }
+  ],
+  "observations": "Each of the six traced 500-item edits contained exactly one Layout and one UpdateLayoutTree event, accounting for 6.4-7.2 ms of a 57.8-62.0 ms span. Each 500-item selection span contained no Layout and one UpdateLayoutTree event (0.013-0.025 ms), despite total selection spans of 38.8-42.0 ms. These selected complete rendering events do not account for the majority of the measured Chromium time; repeated synchronous layout is not supported as its main cause by these traces.",
+  "nextInvestigation": "Profile document-sized canonical validation, projection/state processing and native call overhead with operation-scoped evidence. Do not weaken validation, add unproved caches or attribute the remaining time to Rust from this trace. Firefox requires its own attribution before making engine-specific claims.",
+  "verification": [
+    "Six node:test summary tests pass: clipping/union, process-thread-category-phase isolation, interleaved marks, static-only summaries, incomplete/duplicate marks and malformed durations.",
+    "node --check scripts/measure-flat-list-performance.mjs and git diff --check pass.",
+    "Both traced runs and the three-browser untraced run passed strict fixture TypeScript and all exact document/selection/undo/reload/redo assertions; 45 measured cases total, excluding warm-up.",
+    "All four shipping artifact trees match the previously qualified private-package record. No runtime, Rust, wire or published declarations changed."
+  ],
+  "reproduction": [
+    "node --test scripts/rendering-trace-summary.test.mjs",
+    "BREDITOR_PERF_BROWSER=chromium BREDITOR_PERF_RENDER_TRACE=1 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-0o7wkE/qualification.json",
+    "node scripts/measure-flat-list-performance.mjs target/flat-list-packages-0o7wkE/qualification.json"
+  ],
+  "limitations": "Two local Chromium diagnostic runs, three samples per size per run, uncontrolled host load and instrumentation overhead. Not a latency guarantee, Firefox attribution, native-input check, historical WebKit fault fix or release qualification. Startup/restore asynchronous spans are not marked by this change.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}
