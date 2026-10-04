@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Reuse a flat-list text replacement's validated derivation within one Rust
+  application instead of reconstructing it twice. Keep full source/result and
+  final-document checks; add a repeated-application budget regression. Add
+  opt-in Chromium CPU profiles to the isolated measurement runner. Timing
+  variance prevents claiming a reliable end-to-end speedup from this alone.
+
 - Mitigate a reproduced large-list WebKit heading-export rejection by comparing
   exact semantic block labels after validation. Retain strict rank rejection and
   exact undo/backup/redo checks; no Rust/Wasm or shipping artifacts changed.

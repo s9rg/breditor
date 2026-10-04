@@ -1440,3 +1440,47 @@ optional delivery budget and native desktop input. The historic broader WebKit
 issue, native clipboard/IME/assistive-technology checks and the complete release
 gate are not declared fixed/passed by this narrower result. Flat lists remain
 first; nesting stays deferred. Shipping artifact trees are unchanged.
+
+## First measured Rust work reduction — 2026-10-04
+
+An opt-in, unminified Chromium CPU profile located substantial fixture time in
+toolbar action-state preflight (about 841 ms inclusive) and canonical DOM/map
+validation (about 603 ms inclusive), out of a 2,652 ms sampled run. The fixture
+also includes startup and untimed correctness assertions; these are not typing
+latency percentages. The raw call tree is retained, and the profiler has no
+shipping/runtime hooks.
+
+`FlatListTextReplace::apply` was deriving the same immutable replacement once
+inside validation and again afterward. It now retains the derivation validated
+by that call. Every application still checks schema/proof identity, resource
+limits, complete source/result roots, exact source guards and the complete final
+document. Nothing is cached between calls or contexts. A new test applies the
+same operation successfully, rejects it when an unguarded sibling fills the
+document budget, then verifies repeat application and its exact inverse.
+
+All 1,118 experimental Rust library tests pass. An isolated Wasm rebuild retains
+the same declaration hash and durable versions; raw Wasm and full list DOM,
+queue, toolbar, synthetic composition/clipboard, autosave and recovery scenarios
+pass five times per browser engine. Fresh private installed-package consumers
+also pass in all three engines. Shipping outputs and size ceilings stay intact.
+
+The production A/B/A measurement runs all passed correctness checks. Their
+500-item edit medians (old/new/old) were Chromium 182/161/157 ms, Firefox
+846/709/706 ms and WebKit 248/210/220 ms. Thus the first apparent improvement was
+partly environmental variation: no reliable overall speedup or release latency
+claim is made. The deterministic result is one fewer derivation per application.
+See [evidence](qualification/2026-10-04-flat-list-derivation-reuse.json).
+
+Next target: heading-kind actions currently reconstruct every block of a guarded
+list even when only one item changes. Preserve the complete root guards and
+layout, but investigate restricting the replacement range/fragments to touched
+blocks. Native app control was rechecked and the Mac remains locked; clipboard,
+IME and assistive-technology qualification are still pending. The beta goal
+remains active; nothing was pushed or published.
+
+The final profiling-mode check timed out once waiting for the fixture's completed
+status; no browser error was reported, and its partial CPU trace was saved. A
+separate recheck with unchanged fixture, assertions and timeout passed. The runner
+now records DOM fixture status/output on failure as well. This improves the next
+diagnostic; it does not establish why the original profiling timeout occurred.
+Ordinary production A/B/A and DOM checks above passed independently.

@@ -92,3 +92,11 @@ rank scalars. Diagnostic runs cannot substitute for ordinary qualification.
 Timing includes synchronous public-event work and forced layout. It is not
 physical input, p95, memory profiling or a supported maximum document size.
 The three-sample min/median/max values are local observations, not release gates.
+
+For CPU investigation, set `BREDITOR_PERF_BROWSER=chromium
+BREDITOR_PERF_CPU_PROFILE=1` when running the same command. This explicitly uses
+an unminified diagnostic bundle and saves a Chrome-compatible `.cpuprofile`
+alongside the report, with a sampled self-time summary. It profiles the whole
+fixture, including untimed correctness assertions; its timings are not ordinary
+production measurements. Neither installed tarballs nor shipping artifacts are
+modified by profiling.

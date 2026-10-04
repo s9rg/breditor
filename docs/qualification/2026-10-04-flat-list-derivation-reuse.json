@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "0c1ec84",
+  "status": "duplicate-derivation-removed-correctness-passed-latency-open",
+  "releaseQualified": false,
+  "change": {
+    "file": "crates/breditor-core/src/operation/flat_list_text_replace.rs",
+    "before": "apply calls validate (which derives the result), then derives the same immutable result again",
+    "after": "validate_and_derive returns that call's validated result for apply to reuse",
+    "preserved": ["schema capability and document proof", "resource bounds and error ordering", "source and result root validation", "exact source guards", "complete final-document validation", "inverse and relocation recipes", "durable versions and ABI"],
+    "notAdded": ["cross-call caches", "new wire fields", "validation bypasses", "shipping output changes"]
+  },
+  "profile": {
+    "command": "BREDITOR_PERF_BROWSER=chromium BREDITOR_PERF_CPU_PROFILE=1 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-3ByR1m/qualification.json",
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-Nx0z6w/performance-9ie3jJ/measurement.json",
+    "sha256": "689393ee0595202c5203b83f23fd4efe8dfff7320834e127c5159573d4d9d111",
+    "cpuProfile": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-Nx0z6w/performance-9ie3jJ/chromium-0.cpuprofile",
+    "cpuProfileSha256": "9cf12f6ae7d43012b0613d97406dc667263422b8afcd7f00048d9cf5c0d5f1e7",
+    "durationMs": 2651.949,
+    "sampledInclusiveMs": { "actionStates": 840.695, "canonicalDomAndMapsMatch": 602.824 },
+    "limit": "Unminified diagnostic bundle, whole fixture including startup and untimed assertions, not isolated typing percentages or a controlled speed comparison."
+  },
+  "candidate": {
+    "directory": "target/flat-list-candidate-DXgnNm",
+    "wasmSha256": "10fd0f77e0459826833c29e0f5f6c97b72c031c836ffabb51459f3f2266adc01",
+    "wasmBytes": 2044414,
+    "wasmGzip9Bytes": 568550,
+    "declarationsSha256": "b0bc19f07e305569a42a7c3c1f3246f718315df4e324d4c443bcdf7acc2a9d3b",
+    "packageRecord": "target/flat-list-packages-kgarKa/qualification.json",
+    "browserTarballSha256": "8f11d2a64c8b37a09a307db1224da7d25e26d9fc3a39658e361dcb2a987aeba3",
+    "wasmTarballSha256": "23ff21a3e6a4cd09551eabd6f492805ede0d81f89e6006c50994bffa020e968a",
+    "shippingArtifactsWritten": false,
+    "sizeBudgetQualified": false
+  },
+  "verification": {
+    "rustLibrary": { "command": "cargo test --locked -p breditor-core --features experimental-structural-properties --lib --quiet", "passed": 1118, "failed": 0 },
+    "newRegression": "repeated_application_rechecks_untouched_document_budget: success, untouched-sibling total-budget rejection, repeat success and exact inverse with the same operation",
+    "clippy": "cargo clippy --locked -p breditor-core --features experimental-structural-properties --lib --tests -- -D warnings: passed",
+    "format": "cargo fmt --all -- --check: passed after correcting the new test's let-else wrapping",
+    "initialTargetedRun": "14 selected replacement tests passed; remaining zero-test integration executable launches were intentionally stopped. The subsequent complete library run includes the new regression. This is not a full integration-suite pass.",
+    "abiBoundaryTests": 14,
+    "rawWasm": "Node list commands/recovery and heading compatibility passed; five runs each Chromium 151.0.7922.34, Firefox 153.0 and WebKit 26.5 passed",
+    "dom": { "command": "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-DXgnNm --browser-dom", "passedRunsPerEngine": 5, "engines": ["chromium", "firefox", "webkit"], "scope": "List router, controllers, queue, toolbar, selection, exact history and V6 recovery; synthetic clipboard/composition; native IndexedDB/SHA-256 autosave; high-level startup/rollback and backup recovery. Not physical OS clipboard or IME." },
+    "packedConsumers": "Three browser engines passed; base Node import, strict types and Chromium smoke passed against the same private installed artifacts"
+  },
+  "productionTiming": {
+    "method": "Sequential A/B/A runs, identical minified fixture and browser JS tarball, old/new/old experimental Wasm, three independent owners per size, no profiling or compilation overlap",
+    "sizes": [10, 100, 500],
+    "runs": [
+      { "variant": "old-before", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-Nx0z6w/performance-4Pj5ad/measurement.json", "sha256": "1f75d35cf8905eb9e2bcd3a5dfc9c77e7f3f86cb6eedba5a4464c875d056afbf", "status": "measured", "editMedianMs": { "chromium": [7.1, 39.7, 181.6], "firefox": [25, 180, 846], "webkit": [10, 54, 248] } },
+      { "variant": "new", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-GfGe8y/performance-56u42J/measurement.json", "sha256": "394ea617a213b29c97ca3c370a28d72c9f74b26c9b1bce2fc2bbc481dbfae21e", "status": "measured", "editMedianMs": { "chromium": [5.9, 35.1, 160.5], "firefox": [22, 146, 709], "webkit": [10, 46, 210] } },
+      { "variant": "old-after", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-Nx0z6w/performance-GyH6Qt/measurement.json", "sha256": "58f6e0fdd98e7037db5aa52240b015a7fd26c93cfc7a617c88fca51fa6f455ef", "status": "measured", "editMedianMs": { "chromium": [6.4, 35.1, 156.8], "firefox": [24, 157, 706], "webkit": [8, 51, 220] } }
+    ],
+    "conclusion": "All 81 measured correctness cases passed. Variation is too large to claim a reliable end-to-end speedup; large-list latency remains an open gate. The deterministic reduction is one fewer derivation per apply."
+  },
+  "profilingFollowup": {
+    "failedReport": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-GfGe8y/performance-MAX4lZ/measurement.json",
+    "failedReportSha256": "ee3c33fd60271fbd8ac7a06a25af12e6797f3e467c6998e1099c1dee8dbbdf61",
+    "failure": "One Chromium profiling-mode run timed out at the unchanged 180-second completion wait with no console/page errors. Partial CPU profile saved. Cause not established.",
+    "failedCpuProfileSha256": "9b6c743a45e3b2032a4e75b9a10bd4bc2c635a29f98fac6f055cd07e11610869",
+    "recheckReport": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-GfGe8y/performance-ZYvZO7/measurement.json",
+    "recheckReportSha256": "50817497275dfaa753c2ce116d8c3619ae525e08fbc75979af332905b0d488ab",
+    "recheckCpuProfileSha256": "8def83893919755f99513b22e27dcec829b4bb300afa472447a5eb92cf8867db",
+    "recheck": "Passed all nine cases and warm-up. Fixture/assertions/timeout unchanged; runner now captures fixture DOM status/output on failure. Unminified JS bundles differ only in a source-region comment containing the unique temporary fixture path. The passing recheck does not explain the timeout."
+  },
+  "next": "Narrow heading-kind replacement fragments to touched blocks while retaining complete list guards/layout; continue profiling without weakening validation.",
+  "remaining": ["Large-list latency", "Optional delivery and size budget", "Native OS clipboard, IME and assistive-technology evidence; Mac rechecked and still locked", "Full release qualification and broader historical WebKit evidence", "Unexplained diagnostic profiling timeout"],
+  "pushedOrPublished": false
+}

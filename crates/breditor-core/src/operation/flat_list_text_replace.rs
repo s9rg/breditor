@@ -121,6 +121,17 @@ impl FlatListTextReplace {
     }
 
     pub(crate) fn validate(&self, context: &EditorContext) -> Result<(), FlatListTextReplaceError> {
+        self.validate_and_derive(context).map(|_| ())
+    }
+
+    /// Retains the exact replacement already reconstructed for result validation.
+    /// No proof is cached across operations or contexts: source, result and final
+    /// document validation still run on every application. Reusing this value
+    /// only avoids reconstructing the same immutable recipe twice in one call.
+    fn validate_and_derive(
+        &self,
+        context: &EditorContext,
+    ) -> Result<Derived, FlatListTextReplaceError> {
         require_schema(context)?;
         let maximum =
             u64::try_from(context.limits().max_children_per_element()).unwrap_or(u64::MAX);
@@ -128,8 +139,9 @@ impl FlatListTextReplace {
             return Err(FlatListTextReplaceError::RootChildLimit);
         }
         validate_roots(context, self.expected.to_vec())?;
-        validate_roots(context, self.derive()?.roots)?;
-        Ok(())
+        let derived = self.derive()?;
+        validate_roots(context, derived.roots.clone())?;
+        Ok(derived)
     }
     pub(crate) fn apply(
         &self,
@@ -137,7 +149,7 @@ impl FlatListTextReplace {
         document: &Document,
     ) -> Result<AppliedOperation, FlatListTextReplaceError> {
         require_document(context, document)?;
-        self.validate(context)?;
+        let derived = self.validate_and_derive(context)?;
         let start = usize::try_from(self.guard_start)
             .map_err(|_| FlatListTextReplaceError::InvalidTarget)?;
         let end = usize::try_from(self.guard_end()?)
@@ -153,7 +165,6 @@ impl FlatListTextReplace {
         {
             return Err(FlatListTextReplaceError::ExpectedMismatch);
         }
-        let derived = self.derive()?;
         if derived.roots.as_slice() == self.expected.as_ref() {
             return Ok(AppliedOperation::Unchanged);
         }

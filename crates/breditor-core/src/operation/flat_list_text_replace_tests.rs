@@ -558,6 +558,41 @@ fn foreign_proofs_legacy_schemas_and_all_existing_codecs_remain_closed() -> Test
     Ok(())
 }
 
+#[test]
+fn repeated_application_rechecks_untouched_document_budget() -> TestResult {
+    let context = context(DocumentLimits::default().with_max_total_text_bytes(6))?;
+    let source = list(vec![p("ab")?], None)?;
+    let before = state(&context, vec![source.clone(), p("c")?], None, None)?;
+    let op = FlatListTextReplace::capture(
+        &context,
+        before.document(),
+        range(&[0, 0, 0], 1, &[0, 0, 0], 1)?,
+        vec![p("x")?],
+        vec![bullet(1)],
+    )?;
+    let AppliedOperation::Changed(first) = op.apply(&context, before.document())? else {
+        return Err("expected changed document".into());
+    };
+    // Same operation, exact guarded root and compiled context; only an unguarded
+    // sibling grew. A prior successful derivation cannot prove this full result.
+    let full = state(&context, vec![source, p("cdef")?], None, None)?;
+    assert!(matches!(
+        op.apply(&context, full.document()),
+        Err(FlatListTextReplaceError::Validation(_))
+    ));
+    let AppliedOperation::Changed(repeated) = op.apply(&context, before.document())? else {
+        return Err("expected repeated changed document".into());
+    };
+    assert_eq!(first.document, repeated.document);
+    assert_eq!(first.inverse, repeated.inverse);
+    let AppliedOperation::Changed(restored) = first.inverse.apply(&context, &first.document)?
+    else {
+        return Err("expected inverse document".into());
+    };
+    assert_eq!(restored.document, *before.document());
+    Ok(())
+}
+
 /// Enumerates every scalar-aligned leaf point and every element-child gap,
 /// including root/list/item boundaries that have no text-leaf representation.
 fn points(node: &NodeRef, path: &[u32], result: &mut Vec<Point>) -> TestResult {

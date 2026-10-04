@@ -14,6 +14,8 @@ assert.ok(process.argv.length === 3 || (process.argv.length === 4 && process.arg
 const diagnoseExport = process.argv[3] === "--diagnose-export";
 const browserName = process.env["BREDITOR_PERF_BROWSER"] ?? "all";
 assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
+const cpuProfileEnabled = process.env["BREDITOR_PERF_CPU_PROFILE"] === "1";
+assert.ok(!cpuProfileEnabled || browserName === "chromium", "CPU profiling requires BREDITOR_PERF_BROWSER=chromium");
 const runCount = Number(process.env["BREDITOR_PERF_RUNS"] ?? "1");
 assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BREDITOR_PERF_RUNS must be 1..10");
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
@@ -84,12 +86,12 @@ const diagnosticPlugin = {name: "document-export-rejection-sites", transform(cod
     return code.slice(0, from) + section + code.slice(to);
   }
 }};
-await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, target: "es2022", modulePreload: {polyfill: false}}});
+await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
 const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport, releasePerformanceQualified: false,
-  deepDiagnostics, browserName, runCount, bundleAssets: await tree(join(fixture, "bundle/assets")),
+  deepDiagnostics, browserName, runCount, cpuProfileEnabled, profileBuild: cpuProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
   packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
@@ -103,15 +105,50 @@ try {
     if (browserName !== "all" && name !== browserName) continue;
     for (let run = 0; run < runCount; run++) {
     let browser;
+    let page;
     const diagnostics = [];
     const pageErrors = [];
+    let cpuSession;
+    let cpuProfile;
+    const captureCpuProfile = async () => {
+      if (!cpuSession) return;
+      const session = cpuSession; cpuSession = undefined;
+      const {profile} = await session.send("Profiler.stop");
+      const path = join(fixture, `${name}-${run}.cpuprofile`);
+      const bytes = JSON.stringify(profile);
+      await writeFile(path, bytes);
+      const times = new Map();
+      for (let index = 0; index < (profile.samples?.length ?? 0); index++) {
+        const id = profile.samples[index]; times.set(id, (times.get(id) ?? 0) + profile.timeDeltas[index]);
+      }
+      // A function may appear under many caller stacks; combine identical frames
+      // for self time while retaining the complete call tree in the raw profile.
+      const frames = new Map();
+      for (const node of profile.nodes) {
+        const key = JSON.stringify(node.callFrame);
+        const frame = frames.get(key) ?? {function: node.callFrame.functionName,
+          line: node.callFrame.lineNumber + 1, selfMs: 0};
+        frame.selfMs += (times.get(node.id) ?? 0) / 1000;
+        frames.set(key, frame);
+      }
+      const hottest = [...frames.values()].sort((a, b) => b.selfMs - a.selfMs).slice(0, 25);
+      cpuProfile = {path, sha256: hash(bytes), durationMs: (profile.endTime - profile.startTime) / 1000, hottest};
+      console.log(JSON.stringify({cpuProfile}));
+    };
     try {
       browser = await type.launch();
-      const page = await browser.newPage({viewport: {width: 1280, height: 960}});
+      page = await browser.newPage({viewport: {width: 1280, height: 960}});
+      if (cpuProfileEnabled) {
+        cpuSession = await page.context().newCDPSession(page);
+        await cpuSession.send("Profiler.enable");
+        await cpuSession.send("Profiler.setSamplingInterval", {interval: 1000});
+        await cpuSession.send("Profiler.start");
+      }
       page.on("console", message => { if (message.type() === "error" && diagnostics.length < 100) { diagnostics.push(message.text()); console.error(message.text()); } });
       page.on("pageerror", error => { if (pageErrors.length < 100) pageErrors.push(String(error)); });
       await page.goto(`http://127.0.0.1:${address.port}/`);
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
+      await captureCpuProfile();
       const output = page.locator("#result"), status = await output.getAttribute("data-status");
       assert.equal(status, "passed", await output.textContent());
       assert.deepEqual(pageErrors, [], "uncaught browser errors");
@@ -125,11 +162,17 @@ try {
           return [metric, {min: values[0], median: values[1], max: values[2]}];
         }))};
       });
-      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics};
+      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile};
       measurements.push(measured); console.log(JSON.stringify({browser: name, summary}));
       await save("running");
     } catch (error) {
-      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors});
+      try { await captureCpuProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
+      let fixtureState;
+      try {
+        fixtureState = {status: await page?.locator("#result").getAttribute("data-status", {timeout: 5000}),
+          output: await page?.locator("#result").textContent({timeout: 5000})};
+      } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
+      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, fixtureState});
       await save("failed"); throw error;
     } finally {await browser?.close();}
     }
