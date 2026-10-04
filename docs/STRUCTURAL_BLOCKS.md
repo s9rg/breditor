@@ -8,6 +8,13 @@ release gates remain open. The historical checkpoints below explain the route
 to these features. The default paragraph-only schema and existing fingerprints
 remain unchanged. Links remain typed inline formatting inside structural blocks.
 
+The disposable clipboard/formatting checklist has now been observed passing in
+native Safari and Chrome app control, including cross-item text, heading/list
+conversion and Link history. This is one agent-operated run per browser, not
+physical human-input, OS IME or screen-reader certification. See the
+[native desktop record](qualification/2026-10-04-list-native-desktop.json);
+release qualification and the earlier intermittent faults remain open.
+
 This document records the next implementation decisions and acceptance gates.
 The active [feature-expansion beta plan](FEATURE_EXPANSION_BETA.md) prioritizes
 end-to-end headings and flat lists; nested lists and additional local-log work

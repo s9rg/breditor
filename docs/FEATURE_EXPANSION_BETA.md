@@ -1794,3 +1794,29 @@ still showed substantial large-list latency, particularly in Firefox. Its exact
 report hash is retained with these observations; no release performance claim
 or size ceiling changed. Flat lists remain first, nesting later, as explicitly
 confirmed by the user. No runtime changes, push or publication in this checkpoint.
+
+## Native Safari and Chrome checklist completed — 2026-10-04
+
+Both browsers now have an observed native-app checklist pass on the same
+isolated candidate. Safari's existing recording was completed with heading-rank
+changes, bullet/numbered conversion, unwrapping, Link apply/Undo/Redo and forward
+cross-item cut. A fresh Chrome tab passed single-item and both-direction
+cross-item copy/cut, typing and native paste, numbered history, the same
+structural conversions and Link value restoration. Actual scratch-area paste
+was checked; Chrome's accessibility selected-text rendering includes a marker
+that the editor correctly excludes from its clipboard output.
+
+Both reports end `operator-confirmed`, live and fault-free, with no pending or
+dropped recorded events. This means the agent observed each checklist result
+using native app controls, not that a human physically entered input or that
+trusted events certify correctness. The original Safari invalid-selection
+attempt remains in the report and is not counted as a passing clipboard case.
+Exact asset hashes, reproduction steps, observations and full report snapshots
+are saved in [native desktop evidence](qualification/2026-10-04-list-native-desktop.json).
+
+This closes the disposable desktop clipboard/formatting checklist for these
+observed runs. It does not close OS IME, screen-reader, native main-demo
+reload/recovery, large-list responsiveness, delivery/size or full release gates.
+The previous intermittent WebKit fault and timeouts remain unresolved; a passing
+native scenario is not their reproduction or fix. No runtime change, push or
+publication was made.
