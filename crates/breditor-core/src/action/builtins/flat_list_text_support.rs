@@ -1,9 +1,9 @@
 //! Real-path text capture and explicit layout coordinates for flat-list actions.
 use super::{flat_list_support::list_kind, support::fault};
 use crate::{
-    action::ActionFault,
+    action::{ActionFault, text_position::TextRangeSelection},
     block::{ListKind, OrderedListStart},
-    document::{ElementNode, NodeRef, PropertyMap, TextFragment, TextRun},
+    document::{ElementNode, FormatSet, NodeRef, PropertyMap, TextFragment, TextRun},
     identity::QualifiedName,
     operation::FlatListRootShape,
     position::NodePath,
@@ -140,4 +140,107 @@ pub(super) fn result_path(
         index = index.checked_sub(count).ok_or_else(|| fault("breditor/list-text-path-fault"))?;
     }
     Err(fault("breditor/list-text-path-fault"))
+}
+
+/// Joining keeps the start block/container and all unselected items. A suffix
+/// in a different root remains separate with its original displayed ordinals.
+pub(super) fn joined_layout(
+    first: &ListTextBlock,
+    last: &ListTextBlock,
+) -> Result<Vec<FlatListRootShape>, ActionFault> {
+    if first.root == last.root {
+        let removed = last
+            .item
+            .checked_sub(first.item)
+            .ok_or_else(|| fault("breditor/list-join-layout-fault"))?;
+        let count = first
+            .items
+            .checked_sub(removed)
+            .ok_or_else(|| fault("breditor/list-join-layout-fault"))?;
+        return Ok(vec![shape(first.kind, 0, count)?]);
+    }
+    let left = first.item.checked_add(1).ok_or_else(|| fault("breditor/list-join-layout-fault"))?;
+    let suffix =
+        last.item.checked_add(1).ok_or_else(|| fault("breditor/list-join-layout-fault"))?;
+    let count =
+        last.items.checked_sub(suffix).ok_or_else(|| fault("breditor/list-join-layout-fault"))?;
+    let mut layout = vec![shape(first.kind, 0, left)?];
+    if count > 0 {
+        layout.push(shape(last.kind, suffix, count)?);
+    }
+    Ok(layout)
+}
+
+/// Empty endpoint fragments must not hide selected text in an intervening item
+/// or bare block. Walk only the touched root span, in actual document order.
+pub(super) fn first_middle_formats(
+    state: &EditorState,
+    range: &TextRangeSelection,
+) -> Result<Option<FormatSet>, ActionFault> {
+    let start = range.start().paragraph_path();
+    let end = range.end().paragraph_path();
+    let first = start.as_slice()[0];
+    let last = end.as_slice()[0];
+    let count = last
+        .checked_sub(first)
+        .and_then(|n| n.checked_add(1))
+        .ok_or_else(|| fault("breditor/list-type-over-range-fault"))?;
+    let root = state
+        .document()
+        .root()
+        .as_element()
+        .ok_or_else(|| fault("breditor/list-text-source-fault"))?;
+    let between = |path: &[u32], node: &NodeRef| -> Result<Option<FormatSet>, ActionFault> {
+        if path <= start.as_slice() || path >= end.as_slice() {
+            return Ok(None);
+        }
+        let block = node.as_element().ok_or_else(|| fault("breditor/list-text-source-fault"))?;
+        Ok(block
+            .children()
+            .iter()
+            .next()
+            .and_then(NodeRef::as_text)
+            .map(|text| text.formats().clone()))
+    };
+    for (relative, node) in root
+        .children()
+        .iter()
+        .skip(usize::try_from(first).map_err(|_| fault("breditor/list-text-source-fault"))?)
+        .take(usize::try_from(count).map_err(|_| fault("breditor/list-text-source-fault"))?)
+        .enumerate()
+    {
+        let index = first
+            .checked_add(
+                u32::try_from(relative).map_err(|_| fault("breditor/list-text-source-fault"))?,
+            )
+            .ok_or_else(|| fault("breditor/list-text-source-fault"))?;
+        if list_kind(node)?.is_some() {
+            for (item, node) in node
+                .as_element()
+                .ok_or_else(|| fault("breditor/list-text-source-fault"))?
+                .children()
+                .iter()
+                .enumerate()
+            {
+                let block = node
+                    .as_element()
+                    .and_then(|node| node.children().iter().next())
+                    .ok_or_else(|| fault("breditor/list-text-source-fault"))?;
+                if let Some(formats) = between(
+                    &[
+                        index,
+                        u32::try_from(item)
+                            .map_err(|_| fault("breditor/list-text-source-fault"))?,
+                        0,
+                    ],
+                    block,
+                )? {
+                    return Ok(Some(formats));
+                }
+            }
+        } else if let Some(formats) = between(&[index], node)? {
+            return Ok(Some(formats));
+        }
+    }
+    Ok(None)
 }

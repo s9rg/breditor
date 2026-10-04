@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "ecd0d08",
+  "status": "Experimental Rust cross-block list typing qualified; deletion, formatting, durable lists and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "action": "InsertFlatListTextAction with unchanged bounded InsertTextInput contract",
+    "operation": "FlatListTextSplice for same-block input; one FlatListTextReplace for cross-block input",
+    "kindAndContainer": "Spatial start block kind/rank and container family retained; prefix, insertion and endpoint suffix form one block",
+    "sameList": "Original start retained; subsequent ordinals adjust to resulting item count",
+    "differentRoots": "Fully selected middle roots removed; untouched start-prefix items retained; untouched endpoint-list suffix remains separate at its original first ordinal; no implicit merge or restart",
+    "formats": "First spatially selected run, including middle items/roots; if selected text is empty, surviving left seam then right seam then plain text; unselected outside items excluded",
+    "selection": "Before-affinity caret after insertion, pending formats consumed, exact original directional selection on undo",
+    "history": "Existing typing merge group; following same-block typing can join the structural replacement history event",
+    "admission": "Operation budget before planning; complete atomic result preview includes node, item, text-leaf and total-text limits",
+    "failure": "Disabled typing preserves state and existing redo; stale prepared replacement rejects without overwriting later typing",
+    "scope": "Separate flat-list capture and layout helpers; direct-root-only APIs, browser registrations and existing wire formats unchanged"
+  },
+  "verification": {
+    "focusedSpliceAndTypingTests": 24,
+    "allFeatureWorkspaceUnitTests": { "core": 1006, "wasm": 51 },
+    "defaultCoreUnitTests": 697,
+    "propertyCases": 20000,
+    "propertySeed": 20261004,
+    "propertyOracles": [
+      "10000 retained single-block Unicode splice/string/inverse cases",
+      "10000 cross-item Unicode typing cases with independent scalar slicing, expected strings, heading ranks, empty endpoints, forward/backward selections and exact history"
+    ],
+    "coverage": [
+      "Complete cross-item replacement as one undo event rather than the former disabled branch",
+      "All bare/bullet/numbered endpoint family pairs in both selection directions",
+      "Start rank retention, untouched prefix/suffix items, separate suffix numbering and outside root preservation",
+      "All paragraph/heading ranks and grouping of following single-block typing",
+      "Formatting from selected middle items, bare roots and list roots, skipping empty blocks and unselected outside items",
+      "Break-only formatting fallback: left seam, right seam, plain text",
+      "Per-leaf and total-text rejection without partial edits; atomic success at exact node/item/text budgets",
+      "Existing redo survives a rejected cross-block replacement after a selection change",
+      "Prepared cross-block input rejects after later typing; zero operation budget disables before planning",
+      "Retained single-block typing, pending-format, Unicode, guard, codec and scope-isolation regressions"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib flat_list_text_splice_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Backward/forward and selected-range deletion actions with list boundary policy",
+    "List-aware inline-format actions",
+    "Explicit durable operation/session admission and reload/recovery",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native-input qualification and existing release size gates",
+    "Nested lists and indent/outdent remain deferred beyond the flat-list beta"
+  ],
+  "evidenceBoundary": "Rust tests and static checks only; no list browser/native qualification, rebuilt shipping Wasm, or performance claim",
+  "pushed": false,
+  "published": false
+}

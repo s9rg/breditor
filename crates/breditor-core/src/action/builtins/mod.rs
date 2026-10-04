@@ -14,6 +14,8 @@ pub use insert_flat_list_break::{InsertFlatListBreakAction, insert_flat_list_bre
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod insert_flat_list_break_tests;
 #[cfg(feature = "experimental-structural-properties")]
+mod insert_flat_list_structure;
+#[cfg(feature = "experimental-structural-properties")]
 mod insert_flat_list_text;
 #[cfg(feature = "experimental-structural-properties")]
 pub use insert_flat_list_text::InsertFlatListTextAction;

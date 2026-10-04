@@ -709,3 +709,22 @@ The existing shipping and heading-only demo paths remain unchanged.
 
 See [Enter contract](STRUCTURAL_BLOCKS.md#flat-list-enter-action) and
 [verification](qualification/2026-10-04-flat-list-enter.json).
+
+## Cross-block flat-list typing checkpoint
+
+`InsertFlatListTextAction` now replaces a complete cross-item/cross-root selection
+in one atomic structural operation. The start block kind and list family win;
+unselected endpoint-list suffix items stay separate with their original numbering.
+Middle selected blocks contribute formatting when endpoint fragments are empty.
+Break-only selections use the left/right surviving seam before falling back to
+plain text. Adjacent following typing groups normally, with exact directional
+undo/redo, stale-preparation rejection and failure preservation of existing redo.
+
+The former cross-block-disabled branch is replaced with tested execution, while
+same-block typing retains its guarded-splice path. Next: list-aware backward/
+forward deletion and inline-format actions, then durable operation/session
+admission, Wasm/browser controls and native/reload/recovery qualification. The
+shipping/default and heading-demo paths remain unchanged.
+
+See [typing contract](STRUCTURAL_BLOCKS.md#cross-block-flat-list-typing) and
+[verification](qualification/2026-10-04-flat-list-cross-typing.json).

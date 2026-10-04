@@ -667,11 +667,11 @@ inserted text and offers the established typing history group. Coordinate
 normalization has a separate flat-list scope; old direct-root callers still
 reject nested block paths.
 
-Cross-block typing returns `breditor/list-cross-block-edit-not-supported` until
-list-aware structural replacement is integrated into the action; it never
-partially edits a selection.
-Enter/split, empty-item exit, boundary deletion and list-aware formatting actions
-remain separate work. Operation V1–V5 and history containing the new splice in
+At the initial single-block checkpoint, cross-block typing returned
+`breditor/list-cross-block-edit-not-supported`; the later cross-block action
+integration is described below. Enter and empty-item exit are also separately
+qualified below. Boundary deletion and list-aware formatting remain separate
+work. Operation V1–V5 and history containing the new splice in
 Session V5 reject it. This is not a browser or session-reload qualification.
 
 See [text/typing qualification](qualification/2026-10-04-flat-list-text.json).
@@ -713,8 +713,7 @@ all valid text and structural points in representative forward/inverse edits,
 stale-batch rollback, resource limits and independent Unicode/layout oracles.
 
 This primitive checkpoint alone does not enable Enter or cross-block typing.
-The separately qualified Enter action is described below;
-`InsertFlatListTextAction` still rejects cross-block selection.
+Their separately qualified action integrations are described below.
 Operation V1–V5 and Session V5 history remain closed to the new operation.
 Durable list admission, Wasm/browser controls, reload/recovery and native testing
 remain separate gates. Nested lists are deferred by the user's explicit choice.
@@ -756,6 +755,43 @@ are unchanged.
   Numbering overflow has the explicit `breditor/list-ordinal-overflow` reason.
 
 This action is not yet exposed through Wasm/browser keyboard controls or durable
-list sessions. Cross-block typing, boundary deletion, inline formatting and
-native qualification remain next work; nested lists/indent-outdent remain deferred.
+list sessions. Cross-block typing is qualified below. Boundary deletion, inline
+formatting and native qualification remain next work; nested lists/indent-outdent
+remain deferred.
 See [Enter qualification](qualification/2026-10-04-flat-list-enter.json).
+
+### Cross-block flat-list typing
+
+`InsertFlatListTextAction` now replaces selections across items, bare blocks and
+mixed list/root families. The bounded input contract and action registration do
+not change. Same-block typing still uses `FlatListTextSplice`; cross-block typing
+uses one `FlatListTextReplace`, without a transient delete/insert document.
+
+- The spatial start block kind/rank and container family win. Its surviving
+  prefix, inserted text and the endpoint suffix become one block. Selection
+  direction does not change this policy or the typed-format choice.
+- Within one list, its original start remains and subsequent item ordinals
+  adjust to the resulting count. Across roots, all fully selected middle roots
+  disappear; unselected start-prefix items remain in their original container.
+  Unselected items following the endpoint in another list remain in a separate
+  container with the original first surviving ordinal. No implicit adjacent-list
+  merge, list restart or marker conversion is performed.
+- The first spatially selected text run supplies the inserted format set,
+  including typed inline properties. Empty endpoint fragments do not conceal
+  selected text in middle items or roots. If only breaks/empty blocks are selected,
+  formatting comes from the surviving left seam, then right seam, then plain text.
+  Unselected items outside the range never contribute a format.
+- The final caret has Before affinity after the insertion, pending formats are
+  consumed, and adjacent subsequent typing can join the existing typing-history
+  group. Undo restores the exact prior directional selection and all removed
+  roots/items/ranks/formats; redo restores the joined result.
+- Operation-budget, full-document and per-leaf limits are previewed before an
+  enabled decision. Invalid/stale preparations and disabled typing leave state
+  and existing redo untouched. At exact resource budgets, selected content is
+  replaced atomically rather than requiring temporary duplicate nodes/text.
+
+Shared list-text capture remains a separate explicit scope; direct-root-only
+callers are not widened. Existing operation/session wires and browser registries
+are unchanged. List-aware deletion/formatting, durable sessions, browser controls
+and native qualification remain outstanding.
+See [cross-block typing qualification](qualification/2026-10-04-flat-list-cross-typing.json).

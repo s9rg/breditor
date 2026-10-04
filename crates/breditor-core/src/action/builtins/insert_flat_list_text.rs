@@ -1,6 +1,7 @@
-//! Typing inside bare blocks and flat-list items without changing their structure.
+//! Typing within and across bare blocks and flat-list items.
 use super::{
     INSERT_TEXT_HISTORY_GROUP_NAME, InsertTextAction, InsertTextInput,
+    flat_list_text_support::capture,
     insert_text::{ReplacementError, concat_result, replacement_fragment, source_range},
     support::{
         disabled, effective_typing_formats, fault, fragment_range_parts, require_operation_budget,
@@ -12,7 +13,6 @@ use crate::{
         Action, ActionDecision, ActionEvaluation, ActionFault, ActionPlan, ActionStateSpec,
         text_position::{normalize_flat_list_range_selection, point_at_flat_list_fragment_offset},
     },
-    document::{TextFragment, TextRun},
     identity::QualifiedName,
     operation::{
         AppliedOperation, FlatListTextSplice, FlatListTextSpliceError, Operation, TextRange,
@@ -24,17 +24,21 @@ use crate::{
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
 };
 
-/// Inserts exact text into one paragraph/heading in the flat-list profile.
+/// Inserts exact text within or across paragraphs/headings in the flat-list profile.
 ///
 /// Uses the existing bounded `InsertTextInput`. Collapsed typing uses pending
 /// formats or focus affinity; type-over uses the first selected run's formats.
-/// Preserves list structure, numbering and heading rank, consumes pending formats
+/// Single-block typing preserves list structure, numbering and heading rank,
+/// consumes pending formats
 /// and places a Before-affinity caret after insertion. Adjacent typing offers the
 /// existing typing history group. Registration is explicit and experimental.
 ///
-/// Cross-block selections remain explicitly disabled in this action. Structural
-/// replacement policy must be integrated separately; selections are never
-/// partially edited.
+/// Cross-block replacement retains the spatial start block kind and container
+/// family. Within one list, its start is retained and later ordinals adjust to
+/// the resulting item count. A surviving suffix in a different list remains
+/// separate with its original ordinal start. The first selected text run supplies
+/// formatting, or the surviving left/right seam when only breaks are selected.
+/// There is no implicit adjacent-list merge or numbered-list restart.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertFlatListTextAction;
 impl Action for InsertFlatListTextAction {
@@ -59,30 +63,14 @@ fn evaluate(state: &EditorState, input: &InsertTextInput) -> Result<ActionDecisi
     }
     let range = normalize_flat_list_range_selection(state)
         .map_err(|_| fault("breditor/list-text-position-fault"))?;
-    if !range.is_same_paragraph() {
-        return Ok(disabled("breditor/list-cross-block-edit-not-supported"));
-    }
     if let Some(decision) = require_operation_budget(state, 1) {
         return Ok(decision);
     }
+    if !range.is_same_paragraph() {
+        return super::insert_flat_list_structure::evaluate(state, input, &range);
+    }
     let path = range.start().paragraph_path();
-    let block = state
-        .document()
-        .node_at(path)
-        .map_err(|_| fault("breditor/list-text-source-fault"))?
-        .as_element()
-        .ok_or_else(|| fault("breditor/list-text-source-fault"))?;
-    let runs = block
-        .children()
-        .iter()
-        .map(|node| {
-            node.as_text()
-                .map(TextRun::from_text_node)
-                .ok_or_else(|| fault("breditor/list-text-source-fault"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let source =
-        TextFragment::try_from_runs(runs).map_err(|_| fault("breditor/list-text-source-fault"))?;
+    let source = capture(state, path)?.text;
     let (prefix, selected, suffix) =
         fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
     let formats = if range.is_collapsed() {

@@ -2,8 +2,8 @@
 use super::*;
 use crate::{
     action::{
-        Action, ActionDecision, ActionId, ActionInput, ActionInvocation, ActionRegistration,
-        ActionRegistry, ActionValue,
+        Action, ActionDecision, ActionExecutionError, ActionId, ActionInput, ActionInvocation,
+        ActionRegistration, ActionRegistry, ActionValue,
         builtins::{InsertFlatListTextAction, InsertTextInput, insert_text_input_contract},
     },
     block::TextBlockKind,
@@ -23,7 +23,7 @@ use crate::{
     selection::{RangeSelection, Selection},
     session::EditorSession,
     state::{EditorContext, EditorState},
-    transaction::Transaction,
+    transaction::{SelectionUpdate, Transaction},
 };
 use proptest::prelude::*;
 use std::error::Error;
@@ -484,7 +484,7 @@ fn type_over_uses_first_spatial_format_and_preserves_direction_on_undo() -> Test
 }
 
 #[test]
-fn cross_block_typing_is_explicitly_disabled_without_partial_edits() -> TestResult {
+fn cross_block_typing_replaces_the_whole_selection_in_one_history_event() -> TestResult {
     let context = context(DocumentLimits::default())?;
     let before = state(
         &context,
@@ -498,10 +498,19 @@ fn cross_block_typing_is_explicitly_disabled_without_partial_edits() -> TestResu
         )),
         None,
     )?;
-    assert!(
-        matches!(InsertFlatListTextAction.evaluate(&before,&InsertTextInput::try_new("x")?)?.decision(),ActionDecision::Disabled(reason) if reason.code().as_str()=="breditor/list-cross-block-edit-not-supported")
+    let mut session = EditorSession::new(before.clone());
+    type_text(&mut session, "x")?;
+    exact(
+        session.state(),
+        &state(
+            &context,
+            vec![list(vec![block(heading(1)?, "x", formats()?)?], None)?],
+            caret(point(&[0, 0, 0, 0], 1, Affinity::Before)?),
+            None,
+        )?,
     );
-    Ok(())
+    assert_eq!(session.undo_depth(), 1);
+    history(&mut session, &before)
 }
 
 #[test]
@@ -650,7 +659,414 @@ fn wrap_then_splice_in_one_transaction_replays_and_undoes_exactly() -> TestResul
     Ok(())
 }
 
+fn marked(value: &str) -> Result<NodeRef, Box<dyn Error>> {
+    block(TextBlockKind::Paragraph, value, formats()?)
+}
+fn mixed_block(kind: TextBlockKind, parts: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>> {
+    let template = block(kind, "", FormatSet::default())?;
+    let mut children = Vec::new();
+    for part in parts {
+        children.extend(part.as_element().ok_or("part")?.children().iter().cloned());
+    }
+    Ok(NodeRef::element(template.as_element().ok_or("template")?.try_with_children(children)?))
+}
+
+#[test]
+fn cross_container_typing_preserves_start_kind_and_unselected_suffix_numbering() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    for left_family in 0..3 {
+        for right_family in 0..3 {
+            for backward in [false, true] {
+                let left = block(heading(2)?, "ab", formats()?)?;
+                let right = block(heading(5)?, "cd", formats()?)?;
+                let (left, path) = if left_family == 0 {
+                    (left, vec![1, 0])
+                } else {
+                    (
+                        list(
+                            vec![marked("prefix")?, left, marked("deleted")?],
+                            (left_family == 2).then_some(8),
+                        )?,
+                        vec![1, 1, 0, 0],
+                    )
+                };
+                let (right, endpath) = if right_family == 0 {
+                    (right, vec![3, 0])
+                } else {
+                    (
+                        list(
+                            vec![marked("deleted")?, right, marked("suffix")?],
+                            (right_family == 2).then_some(40),
+                        )?,
+                        vec![3, 1, 0, 0],
+                    )
+                };
+                let a = point(&path, 1, Affinity::After)?;
+                let b = point(&endpath, 1, Affinity::Before)?;
+                let selection =
+                    if backward { RangeSelection::new(b, a) } else { RangeSelection::new(a, b) };
+                let before = state(
+                    &context,
+                    vec![marked("outside")?, left, marked("removed root")?, right, marked("tail")?],
+                    Selection::Range(selection),
+                    None,
+                )?;
+                let joined = block(heading(2)?, "aX🙂d", formats()?)?;
+                let left = if left_family == 0 {
+                    joined
+                } else {
+                    list(vec![marked("prefix")?, joined], (left_family == 2).then_some(8))?
+                };
+                let mut roots = vec![marked("outside")?, left];
+                if right_family != 0 {
+                    roots.push(list(vec![marked("suffix")?], (right_family == 2).then_some(42))?);
+                }
+                roots.push(marked("tail")?);
+                let mut session = EditorSession::new(before.clone());
+                type_text(&mut session, "X🙂")?;
+                exact(
+                    session.state(),
+                    &state(&context, roots, caret(point(&path, 4, Affinity::Before)?), None)?,
+                );
+                assert_eq!(session.undo_depth(), 1);
+                history(&mut session, &before)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn typing_across_items_keeps_one_list_and_start_rank_then_groups_following_input() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    for rank in 0..=6 {
+        let kind = if rank == 0 { TextBlockKind::Paragraph } else { heading(rank)? };
+        let before = state(
+            &context,
+            vec![list(
+                vec![
+                    marked("prefix")?,
+                    block(kind, "ab", formats()?)?,
+                    marked("deleted")?,
+                    block(heading(6)?, "cd", formats()?)?,
+                    marked("suffix")?,
+                ],
+                Some(9),
+            )?],
+            Selection::Range(RangeSelection::new(
+                point(&[0, 3, 0, 0], 1, Affinity::Before)?,
+                point(&[0, 1, 0, 0], 1, Affinity::After)?,
+            )),
+            None,
+        )?;
+        let mut session = EditorSession::new(before.clone());
+        type_text(&mut session, "🙂")?;
+        type_text(&mut session, "X")?;
+        exact(
+            session.state(),
+            &state(
+                &context,
+                vec![list(
+                    vec![marked("prefix")?, block(kind, "a🙂Xd", formats()?)?, marked("suffix")?],
+                    Some(9),
+                )?],
+                caret(point(&[0, 1, 0, 0], 4, Affinity::Before)?),
+                None,
+            )?,
+        );
+        assert_eq!(session.undo_depth(), 1);
+        history(&mut session, &before)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn first_selected_middle_run_beats_endpoint_seams_across_items_and_roots() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    for middle_family in 0..3 {
+        let first = block(heading(2)?, "a", formats()?)?;
+        let last = marked("b")?;
+        let middle = block(TextBlockKind::Paragraph, "M", FormatSet::default())?;
+        let (roots, start, end) = match middle_family {
+            0 => (
+                vec![list(
+                    vec![marked("outside")?, first, marked("")?, middle, last, marked("tail")?],
+                    Some(5),
+                )?],
+                vec![0, 1, 0, 0],
+                vec![0, 4, 0, 0],
+            ),
+            1 => (
+                vec![list(vec![first], Some(5))?, middle, list(vec![last], None)?],
+                vec![0, 0, 0, 0],
+                vec![2, 0, 0, 0],
+            ),
+            _ => {
+                (vec![first, list(vec![marked("")?, middle], None)?, last], vec![0, 0], vec![2, 0])
+            }
+        };
+        let before = state(
+            &context,
+            roots,
+            Selection::Range(RangeSelection::new(
+                point(&end, 0, Affinity::Before)?,
+                point(&start, 1, Affinity::After)?,
+            )),
+            None,
+        )?;
+        let joined = mixed_block(
+            heading(2)?,
+            vec![
+                marked("a")?,
+                block(TextBlockKind::Paragraph, "X", FormatSet::default())?,
+                marked("b")?,
+            ],
+        )?;
+        let roots = match middle_family {
+            0 => vec![list(vec![marked("outside")?, joined, marked("tail")?], Some(5))?],
+            1 => vec![list(vec![joined], Some(5))?],
+            _ => vec![joined],
+        };
+        let mut caret_path = start[..start.len() - 1].to_vec();
+        caret_path.push(2);
+        let mut session = EditorSession::new(before.clone());
+        type_text(&mut session, "X")?;
+        exact(
+            session.state(),
+            &state(&context, roots, caret(point(&caret_path, 0, Affinity::Before)?), None)?,
+        );
+        history(&mut session, &before)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn text_empty_structural_selection_uses_left_then_right_then_plain_formats() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    for scenario in 0..3 {
+        let left = if scenario == 0 {
+            block(heading(3)?, "a", FormatSet::default())?
+        } else {
+            block(heading(3)?, "", FormatSet::default())?
+        };
+        let right = marked(if scenario == 2 { "" } else { "b" })?;
+        let start = if scenario == 0 {
+            point(&[0, 0, 0, 0], 1, Affinity::After)?
+        } else {
+            Point::Children {
+                parent_path: NodePath::try_from_indices(vec![0, 0, 0])?,
+                child_index: 0,
+                affinity: Affinity::After,
+            }
+        };
+        let end = if scenario == 2 {
+            Point::Children {
+                parent_path: NodePath::try_from_indices(vec![0, 1, 0])?,
+                child_index: 0,
+                affinity: Affinity::Before,
+            }
+        } else {
+            point(&[0, 1, 0, 0], 0, Affinity::Before)?
+        };
+        let before = state(
+            &context,
+            vec![list(vec![left, right], None)?],
+            Selection::Range(RangeSelection::new(start, end)),
+            None,
+        )?;
+        let (joined, caret_leaf, offset) = match scenario {
+            0 => (
+                mixed_block(
+                    heading(3)?,
+                    vec![
+                        block(TextBlockKind::Paragraph, "aX", FormatSet::default())?,
+                        marked("b")?,
+                    ],
+                )?,
+                1,
+                0,
+            ),
+            1 => (block(heading(3)?, "Xb", formats()?)?, 0, 1),
+            _ => (block(heading(3)?, "X", FormatSet::default())?, 0, 1),
+        };
+        let mut session = EditorSession::new(before.clone());
+        type_text(&mut session, "X")?;
+        exact(
+            session.state(),
+            &state(
+                &context,
+                vec![list(vec![joined], None)?],
+                caret(point(&[0, 0, 0, caret_leaf], offset, Affinity::Before)?),
+                None,
+            )?,
+        );
+        history(&mut session, &before)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn cross_block_typing_limits_disable_without_partial_edit_and_exact_budget_can_succeed()
+-> TestResult {
+    for limits in [
+        DocumentLimits::default().with_max_text_bytes(3),
+        DocumentLimits::default().with_max_total_text_bytes(6),
+    ] {
+        let context = context(limits)?;
+        let before = state(
+            &context,
+            vec![list(vec![marked("abc")?, marked("def")?], None)?],
+            Selection::Range(RangeSelection::new(
+                point(&[0, 0, 0, 0], 3, Affinity::After)?,
+                point(&[0, 1, 0, 0], 0, Affinity::Before)?,
+            )),
+            None,
+        )?;
+        assert!(
+            matches!(InsertFlatListTextAction.evaluate(&before,&InsertTextInput::try_new("X")?)?.decision(),ActionDecision::Disabled(reason) if reason.code().as_str()=="breditor/result-limit-exceeded")
+        );
+        let mut session = EditorSession::new(before.clone());
+        let history = session.history_status();
+        assert!(type_text(&mut session, "X").is_err());
+        assert_eq!(session.state(), &before);
+        assert_eq!(session.history_status(), history);
+    }
+    let context = context(
+        DocumentLimits::default()
+            .with_max_children_per_element(2)
+            .with_max_nodes(8)
+            .with_max_total_text_bytes(4),
+    )?;
+    let before = state(
+        &context,
+        vec![list(vec![marked("ab")?, marked("cd")?], None)?],
+        Selection::Range(RangeSelection::new(
+            point(&[0, 0, 0, 0], 1, Affinity::After)?,
+            point(&[0, 1, 0, 0], 1, Affinity::Before)?,
+        )),
+        None,
+    )?;
+    let mut session = EditorSession::new(before.clone());
+    type_text(&mut session, "XY")?;
+    exact(
+        session.state(),
+        &state(
+            &context,
+            vec![list(vec![marked("aXYd")?], None)?],
+            caret(point(&[0, 0, 0, 0], 3, Affinity::Before)?),
+            None,
+        )?,
+    );
+    history(&mut session, &before)
+}
+
+#[test]
+fn rejected_cross_block_typing_preserves_existing_redo_after_selection_change() -> TestResult {
+    let context = context(DocumentLimits::default().with_max_text_bytes(3))?;
+    let before = state(
+        &context,
+        vec![list(vec![marked("ab")?, marked("cd")?], None)?],
+        caret(point(&[0, 0, 0, 0], 0, Affinity::Before)?),
+        None,
+    )?;
+    let mut session = EditorSession::new(before.clone());
+    type_text(&mut session, "x")?;
+    let typed = session.state().clone();
+    session.undo()?.ok_or("undo")?;
+    let range = Selection::Range(RangeSelection::new(
+        point(&[0, 0, 0, 0], 2, Affinity::After)?,
+        point(&[0, 1, 0, 0], 0, Affinity::Before)?,
+    ));
+    session.apply_transaction(
+        &Transaction::new(session.state(), vec![])
+            .with_selection_update(SelectionUpdate::Set(Some(range))),
+    )?;
+    let current = session.state().clone();
+    let history = session.history_status();
+    assert_eq!(session.redo_depth(), 1);
+    assert!(type_text(&mut session, "X").is_err());
+    assert_eq!(session.state(), &current);
+    assert_eq!(session.history_status(), history);
+    session.redo()?.ok_or("redo")?;
+    exact(session.state(), &typed);
+    Ok(())
+}
+
+#[test]
+fn stale_cross_block_preparation_cannot_overwrite_later_typing() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let before = state(
+        &context,
+        vec![list(vec![marked("ab")?, marked("cd")?], None)?],
+        Selection::Range(RangeSelection::new(
+            point(&[0, 0, 0, 0], 1, Affinity::After)?,
+            point(&[0, 1, 0, 0], 1, Affinity::Before)?,
+        )),
+        None,
+    )?;
+    let id = ActionId::try_new("test/type-list")?;
+    let registry = ActionRegistry::try_new(vec![ActionRegistration::with_input(
+        id.clone(),
+        insert_text_input_contract(),
+        InsertFlatListTextAction,
+    )])?;
+    let request = ActionInvocation::new(
+        id,
+        ActionInput::typed(insert_text_input_contract(), ActionValue::try_from_string("stale")?),
+    );
+    let stale = registry.prepare(&before, &request)?;
+    let mut session = EditorSession::new(before.clone());
+    type_text(&mut session, "current")?;
+    let current = session.state().clone();
+    let history = session.history_status();
+    assert!(matches!(
+        session.execute_prepared_action(stale),
+        Err(ActionExecutionError::Prepared(_))
+    ));
+    assert_eq!(session.state(), &current);
+    assert_eq!(session.history_status(), history);
+    Ok(())
+}
+
+#[test]
+fn cross_block_typing_checks_operation_budget_before_planning() -> TestResult {
+    let context = context(DocumentLimits::default())?.with_max_operations_per_transaction(0);
+    let before = state(
+        &context,
+        vec![list(vec![marked("a")?, marked("b")?], None)?],
+        Selection::Range(RangeSelection::new(
+            point(&[0, 0, 0, 0], 1, Affinity::After)?,
+            point(&[0, 1, 0, 0], 0, Affinity::Before)?,
+        )),
+        None,
+    )?;
+    assert!(
+        matches!(InsertFlatListTextAction.evaluate(&before,&InsertTextInput::try_new("X")?)?.decision(),ActionDecision::Disabled(reason) if reason.code().as_str()=="breditor/operation-budget-exceeded")
+    );
+    let mut session = EditorSession::new(before.clone());
+    assert!(type_text(&mut session, "X").is_err());
+    assert_eq!(session.state(), &before);
+    Ok(())
+}
+
 proptest! {
+    #[test]
+    fn cross_item_typing_matches_independent_unicode_string_and_history(left in "[a-z🙂אב]{0,20}",right in "[a-z🙂]{0,20}",insert in "[a-z🙂]{1,8}",a in any::<usize>(),b in any::<usize>(),rank in 0_u32..7,backward in any::<bool>()) {
+        let check=||->TestResult {
+            let context=context(DocumentLimits::default())?;let kind=if rank==0{TextBlockKind::Paragraph}else{heading(rank)?};
+            let lb:Vec<usize>=left.char_indices().map(|(i,_)|i).chain(std::iter::once(left.len())).collect();let rb:Vec<usize>=right.char_indices().map(|(i,_)|i).chain(std::iter::once(right.len())).collect();
+            let first=lb[a%lb.len()];let last=rb[b%rb.len()];let first_offset=u32::try_from(left[..first].encode_utf16().count())?;let last_offset=u32::try_from(right[..last].encode_utf16().count())?;
+            let endpoint=|path:Vec<u32>,value:&str,offset:u32|->Result<Point,Box<dyn Error>> {if value.is_empty(){Ok(Point::Children{parent_path:NodePath::try_from_indices(path)?,child_index:0,affinity:Affinity::After})}else{let mut path=path;path.push(0);point(&path,offset,Affinity::Before)}};
+            let start=endpoint(vec![0,1,0],&left,first_offset)?;let end=endpoint(vec![0,2,0],&right,last_offset)?;
+            let selection=if backward{RangeSelection::new(end,start)}else{RangeSelection::new(start,end)};
+            let before=state(&context,vec![list(vec![marked("prefix")?,block(kind,&left,formats()?)?,marked(&right)?,marked("suffix")?],Some(7))?],Selection::Range(selection),None)?;
+            let mut session=EditorSession::new(before.clone());type_text(&mut session,&insert)?;
+            let result=format!("{}{}{}",&left[..first],insert,&right[last..]);
+            let format=if left.is_empty()&&right.is_empty(){FormatSet::default()}else{formats()?};
+            exact(session.state(),&state(&context,vec![list(vec![marked("prefix")?,block(kind,&result,format)?,marked("suffix")?],Some(7))?],caret(point(&[0,1,0,0],first_offset+u32::try_from(insert.encode_utf16().count())?,Affinity::Before)?),None)?);
+            history(&mut session,&before)
+        };let result=check();prop_assert!(result.is_ok(),"{result:?}");
+    }
     #[test]
     fn scalar_aligned_list_splice_matches_independent_string_and_inverse(source in "[a-z🙂אב]{0,20}",insert in "[a-z🙂]{0,8}",a in any::<usize>(),b in any::<usize>(),rank in 1_u32..7) {
         let check=||->TestResult {
