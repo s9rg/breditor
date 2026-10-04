@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "dc2f9b8",
+  "status": "production-react-compatibility-passed",
+  "releaseQualified": false,
+  "change": "Add isolated Vite and Playwright configurations for the existing React application against qualified private browser/Wasm packages. Reuse the browser candidate's package-record, archive and installed-tree checks. Build only under target/react-demo-candidate and use a candidate-local Vite cache. Preserve default application config, shipping dist trees, test assertions, per-case/global deadlines, one worker and zero retries. No editor runtime change.",
+  "candidate": {
+    "packageRecord": "target/flat-list-packages-0o7wkE/qualification.json",
+    "packageRecordSha256": "585a58f9754881ad796bac3e53997a916c4479770b4dc551b75e6a16bf804da9",
+    "browserTarballSha256": "955541e58d89b8ff72ba08d7b48c5fabc00055eef955ef6d319455cc0a2ef713",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d"
+  },
+  "tests": {
+    "report": "target/feature-candidate-react-demo-20261004.json",
+    "sha256": "082fd547067002a2dcb6b3411ba9a273117c0e0834cb33acc0494736faac9fbd",
+    "passed": 39,
+    "perEngine": 13,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "retries": 0,
+    "durationMs": 83251.572,
+    "scope": "Eleven application cases and two autosave-observation helper cases per engine, using Chromium, Firefox and WebKit. Application checks cover conflicting-tab backup without overwriting the winning save, fault-time Rust backup, invalid UTF-8 rejection, editing/format/history/autosave/recovery, shortcuts, size/color/Link controls, accessibility and trailing-space typing. This is compatibility of the existing paragraph-profile React app, not an end-to-end heading/list UI test; the separate list demo supplies that evidence."
+  },
+  "additionalChecks": [
+    "Strict demo/test/config TypeScript passed after correcting three TS4111 index-signature property accesses in the new config. The initial typecheck failed before any browser test started.",
+    "Vite configuration loading with no candidate record and with package.json as an out-of-target record rejected before a build. Expected rejection assertions passed.",
+    "A second isolated production build produced a byte-identical complete output tree.",
+    "All four shipping artifact tree hashes match the candidate package qualification baseline after both builds."
+  ],
+  "output": {
+    "directory": "target/react-demo-candidate",
+    "indexHtmlSha256": "1f9e33d338f8cfa8226c4c304e600a3454f5704c68331faf9c550f8003cd2ee0",
+    "assets": [
+      {"name": "index-C38GMkZR.js", "bytes": 907272, "gzip9Bytes": 236028, "sha256": "7d077850ba862379c526e522fe69d050c776efb42622c287289dc83daadaf8ae"},
+      {"name": "index-CKRF8HDk.css", "bytes": 8086, "gzip9Bytes": 2414, "sha256": "55066d184c457f2850abb8d13f4650a77271f7a596dc1cdd286a8a46dccf2f72"},
+      {"name": "breditor_wasm_bg-DLAD4I5P.wasm", "bytes": 2044734, "gzip9Bytes": 568462, "sha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64"}
+    ]
+  },
+  "unchangedDefaultBudgetComparisons": [
+    {"label": "React JavaScript raw", "actual": 907272, "maximum": 865000, "passed": false},
+    {"label": "React JavaScript gzip-9", "actual": 236028, "maximum": 225000, "passed": false},
+    {"label": "React Wasm raw", "actual": 2044734, "maximum": 1610000, "passed": false},
+    {"label": "React Wasm gzip-9", "actual": 568462, "maximum": 452000, "passed": false}
+  ],
+  "budgetNote": "Comparisons use unchanged limits from scripts/check-size-budgets.mjs, applied to the isolated candidate assets rather than shipping paths. Gzip-9 is measured explicitly, not Vite's default gzip display. No budget was raised; these results do not pass the production-size gate.",
+  "reproduction": [
+    "npm run typecheck:demo",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-0o7wkE/qualification.json PLAYWRIGHT_JSON_OUTPUT_NAME=target/feature-candidate-react-demo-20261004.json npx playwright test -c playwright.demo-candidate.config.ts --max-failures=1 --reporter=line,json --output target/feature-candidate-react-demo-20261004",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-0o7wkE/qualification.json node node_modules/vite/bin/vite.js build -c vite.demo-candidate.config.ts"
+  ],
+  "limits": "The target output directory is shared by this qualification config; schedule runs sequentially. This config is not a delivery/package naming decision or a complete release verifier. Native physical input/IME/VoiceOver, current-artifact native qualification, larger-list responsiveness and delivery/size approval remain open. Historical WebKit issues are not cleared by a finite passing suite.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}

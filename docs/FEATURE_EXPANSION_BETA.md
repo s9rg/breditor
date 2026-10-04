@@ -2084,3 +2084,29 @@ for artifact hashes, commands and limitations. Shipping artifact trees remain
 unchanged. Native-input qualification, delivery policy, larger-list
 responsiveness, historical WebKit issues and complete release qualification
 remain open. Nothing was pushed or published.
+
+## Existing React application on the private production candidate — 2026-10-04
+
+The existing React application now has an isolated candidate build/test path:
+`vite.demo-candidate.config.ts` and `playwright.demo-candidate.config.ts`. It
+reuses the browser harness's private package-record, archive and installed-tree
+admission, but builds a minified React application under `target` and tests its
+production preview. Default configs and shipping dist trees are untouched.
+
+All **39 cases (13 per engine)** pass in Chromium, Firefox and WebKit, with zero
+retries, skips or failures. This covers the existing paragraph-profile app's
+formatting, shortcuts, history, autosave conflicts, backup recovery and
+accessibility; the separate list demo remains the feature UI proof. Strict types
+pass, missing/out-of-target candidate records are rejected before building, and
+a repeated production build is byte-identical.
+
+The measured application still exceeds all four relevant default asset budgets:
+JavaScript 907,272 raw / 236,028 gzip-9 bytes versus 865,000 / 225,000, and Wasm
+2,044,734 raw / 568,462 gzip-9 bytes versus 1,610,000 / 452,000. These are measured
+candidate costs, not approved new ceilings. No size gate is declared passed.
+
+See [React production candidate evidence](qualification/2026-10-04-candidate-react-production.json)
+for package/output/report hashes and reproducible commands. All shipping trees
+remain unchanged. Delivery/size policy, native input, performance and complete
+release qualification remain open; historical WebKit faults remain unresolved.
+Nothing was pushed or published.
