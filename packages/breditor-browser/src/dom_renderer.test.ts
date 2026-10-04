@@ -696,6 +696,19 @@ describe("hierarchical flat-list DOM and points", () => {
     expect(rendered.nodeForAstPath([0])).toBeNull();
   });
 
+  it.each(["ol", "li", "h2", "strong", "p", "ul"])("rejects an identical %s clone with different mapped node identities", selector => {
+    const {host, rendered} = fixture();
+    const text = rendered.nodeForAstPath([0, 0, 0, 0])!;
+    const before = host.innerHTML;
+    const original = host.querySelector(selector)!;
+    original.replaceWith(original.cloneNode(true));
+    expect(host.innerHTML).toBe(before);
+    // The semantic shape is unchanged, but the bidirectional ownership maps
+    // must still reject replacement DOM before the observer callback runs.
+    expect(mapDomPointToFlatListSelectionPoint(rendered, text, 0)).toMatchObject({ok: false, error: {code: "selection.dom_drift"}});
+    expect(rendered.current).toBe(false);
+  });
+
   it("invalidates prior generations and arbitrates the host with legacy renderers", () => {
     const {host, renderer, rendered, make} = fixture();
     const next = valueOf(renderer.renderFlatList(host, make(1))).rendered;

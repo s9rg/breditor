@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "c9059bb",
+  "status": "qualified-private-consumers",
+  "releasePerformanceQualified": false,
+  "change": "Flat-list canonical DOM validation compares the private reverse-map path indices to the already validated expected path instead of constructing a second identical key string. Forward map lookup, reverse equality, every node/attribute/text/wrapper/placeholder check and mapped-node count remain mandatory. No DOM-validation result cache or skipped subtree was added.",
+  "profile": {
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-E5BqVV",
+    "record": "performance-HuhDDg/measurement.json",
+    "recordSha256": "ccde619919cc36d14ce5a8c8302646b7a310f4310feec956d5c146b0ac4f98b9",
+    "trace": "performance-HuhDDg/chromium-0.cpuprofile",
+    "traceSha256": "f973f6c117c99bb14ad8b20c326fee218fb6e78e3599b68b016aa5cdc7b41f0e",
+    "durationMs": 1811.69,
+    "selectedSampledSelfMs": {"selectionIntrinsics": 145.924, "matchesMap": 109.436, "nativeChildNodes": 98.892, "astPathKey": 37.410},
+    "limits": "Unminified Chromium whole-fixture sample with nine passing correctness cases, including untimed assertions/recovery. Not an exclusive edit breakdown. Numeric Wasm names are not mapped to Rust source. Production comparisons below do not enable profiling."
+  },
+  "baseline": {
+    "packageRecord": "target/flat-list-packages-rjdsim/qualification.json",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-E5BqVV"
+  },
+  "candidate": {
+    "packageRecord": "target/flat-list-packages-bW21G2/qualification.json",
+    "packageRecordSha256": "6fc3c492cc12bd4fe99da68f3f1f5b9a31f461e457cf4dc524443daef9430e9e",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-6m2iD1",
+    "wasmCandidate": "target/flat-list-candidate-Rq6C5V",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64",
+    "browserTarballSha256": "1413975ae094b8e6b827fbae669c49f55fb0c97e0d1a690830679e5012e61f34",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d",
+    "browserJavaScriptByteDelta": 87,
+    "browserTarballByteDelta": 25,
+    "consumerJavaScriptByteDelta": 21,
+    "consumerGzip9ByteDelta": 2,
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "tests": [
+    "149 renderer tests passed before the runtime change, including six new identical-HTML clone cases (ol, li, h2, strong, p, ul) that require immediate mapping rejection before observer delivery.",
+    "All 1844 browser tests and strict source/test TypeScript passed after the change.",
+    "Five full DOM/controller/recovery runs in each of Chromium, Firefox and WebKit passed.",
+    "Private packed consumers passed in all three engines; base Node, strict TypeScript and Chromium smoke passed against the same installed packages. Shipping artifact trees were verified unchanged."
+  ],
+  "runs": [
+    {"artifact": "baseline", "report": "performance-3nG4zy/measurement.json", "sha256": "64af9abdfe134fd057a5b902cc9c69fdd812e37e2acd065b588bfd93bece2d44", "edit500MediansMs": {"chromium": 76.8, "firefox": 203, "webkit": 119}},
+    {"artifact": "candidate", "report": "performance-xXt8UV/measurement.json", "sha256": "7a2cd97aeed8674bb2930273b091c6c8c5c58f8d906d7fab8afdcb74736c282e", "edit500MediansMs": {"chromium": 65.3, "firefox": 202, "webkit": 123}, "webkitEdit500MaxMs": 255},
+    {"artifact": "baseline", "report": "performance-kHvntw/measurement.json", "sha256": "ec4be9f31d930235f30bb1efc47bb24fc23f0ac2b2c1f3039da89c08714660d7", "edit500MediansMs": {"chromium": 74.2, "firefox": 203, "webkit": 118}},
+    {"artifact": "candidate", "report": "performance-COKnWT/measurement.json", "sha256": "506fbb1edf09e6a7f6c19008475c07671596b6290185f385c76507769840ac62", "edit500MediansMs": {"chromium": 64.9, "firefox": 197, "webkit": 112}}
+  ],
+  "measurementMethod": "Unchanged production installed-package full-editor fixture, old/new/old/new, three cases at each of 10/100/500 items per engine. Reports are relative to the corresponding consumer. All 108 correctness cases passed. Initial baseline may overlap the tail of DOM qualification; second pair followed its confirmed completion. No host-load control or statistical reliability claim.",
+  "interpretation": "Chromium edit medians decreased in both pairs; Firefox improvement is small. WebKit ranges vary and include a retained 255 ms candidate outlier. Reduced redundant path serialization is established by code, not a general latency guarantee. No prior WebKit fault is resolved by these runs.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}

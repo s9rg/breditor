@@ -1898,3 +1898,27 @@ Exact artifacts, report hashes and remaining limits are recorded in
 Earlier native evidence retains its original artifact identity. This candidate
 does not close IME, screen-reader, size/delivery, prior intermittent fault or full
 release gates. Nothing was pushed or published.
+
+## Avoid duplicate reverse-map key construction — 2026-10-04
+
+A fresh whole-editor Chromium CPU profile identifies repeated DOM/map checks as
+material work, alongside native selection reads. Flat-list DOM validation now
+compares reverse-path indices directly to the validated expected path, removing
+one duplicate key serialization per mapped node. It still validates the entire
+DOM and both map directions; no validation cache or subtree shortcut was added.
+
+Six new identical-HTML clone regressions passed before and after the change:
+replacing a mapped list/block/wrapper with an identical-looking clone must fail
+immediately, before observer delivery. All 1,844 browser unit tests, strict
+TypeScript, five full DOM/recovery runs per engine and private packed consumers
+passed. Four alternating production measurements passed 108 correctness cases.
+At 500 items, edit medians were 76.8/65.3/74.2/64.9 ms Chromium,
+203/202/203/197 ms Firefox and 119/123/118/112 ms WebKit. The first candidate
+WebKit run includes a retained 255 ms edit outlier. This is not a general WebKit
+speedup claim or resolution of the prior intermittent faults.
+
+The consumer bundle adds 21 raw bytes and 2 gzip-9 bytes. Existing size ceilings,
+shipping bundles, native-input qualification and release limits remain unchanged.
+See [map comparison evidence](qualification/2026-10-04-flat-list-map-comparison.json)
+for exact artifacts, profile limitations and measurements. Nothing was published
+or pushed.

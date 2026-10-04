@@ -1,6 +1,7 @@
 import {
   type AstPath,
   astPathKey,
+  astPathsEqual,
   paragraphAstPath,
   rootAstPath,
   textRunAstPath,
@@ -1162,8 +1163,11 @@ function flatListDomAndMapsMatch(
 ): boolean {
   const matchesMap = (node: Node | undefined, path: AstPath): node is Node => {
     const key = astPathKey(path, 4);
-    return node !== undefined && key !== null && maps.astToDom.get(key) === node &&
-      astPathKey(maps.domToAst.get(node) ?? [-1], 4) === key;
+    if (node === undefined || key === null || maps.astToDom.get(key) !== node) return false;
+    const reverse = maps.domToAst.get(node);
+    // The expected path was validated above. Exact index equality proves the
+    // private reverse path too, without building a second identical key string.
+    return reverse !== undefined && astPathsEqual(reverse, path);
   };
   const children = nativeChildNodes(host);
   if (children.length !== projection.blocks.length || !matchesMap(host, [])) return false;
