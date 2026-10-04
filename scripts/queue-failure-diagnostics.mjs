@@ -7,7 +7,20 @@ export function instrumentQueueFailures(code) {
   const transformed = code.replace(/\}\s+catch \{\n(\s+)((?:const failure = )?this\.#fail\("command_queue\.(executor|observer)_threw", (?:sequence|pending\.sequence)\);)/gu,
     (_, indent, statement, phase) => {
       sites.push(phase);
-      return `} catch (queueDiagnosticError) {\n${indent}try { console.error("breditor queue failure: ${phase}", String(queueDiagnosticError).slice(0, 1024)); } catch {}\n${indent}${statement}`;
+      // Catch-site capture also sees engine-created exceptions, unlike a
+      // constructor proxy. Read message and stack independently: arbitrary
+      // thrown values/accessors and even the logger may themselves throw.
+      // Only use this with synthetic fixtures; stacks can contain local URLs.
+      return `} catch (queueDiagnosticError) {
+${indent}let queueDiagnosticMessage = "<unprintable>";
+${indent}let queueDiagnosticStack = "<unavailable>";
+${indent}try { queueDiagnosticMessage = String(queueDiagnosticError).slice(0, 1024); } catch {}
+${indent}try {
+${indent}  const stack = queueDiagnosticError?.stack;
+${indent}  if (typeof stack === "string") queueDiagnosticStack = stack.slice(0, 4096);
+${indent}} catch {}
+${indent}try { console.error("breditor queue failure: ${phase}", queueDiagnosticMessage, queueDiagnosticStack); } catch {}
+${indent}${statement}`;
     });
   assert.deepEqual(sites.sort(), ["executor", "executor", "observer", "observer"], "queue diagnostic catch sites changed");
   return transformed;

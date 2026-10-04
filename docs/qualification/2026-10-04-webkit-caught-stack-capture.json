@@ -1,0 +1,43 @@
+{
+  "scope": "Disposable synthetic queue diagnostics only; no runtime or shipping artifact change",
+  "status": "diagnostics-verified-original-fault-unresolved",
+  "changes": [
+    "Capture up to 4096 stack characters at all four executor/observer catches, in addition to the existing 1024-character message bound.",
+    "Read message and stack independently and contain both reads and console failures. Unprintable thrown values still produce a phase marker.",
+    "Add an opt-in bundled-WebKit positive control for engine-created exceptions, all four catch sites, and failing logger containment. This uses a synthetic queue fixture, not the production editor."
+  ],
+  "verification": {
+    "command": "BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1 caffeinate -is -t120 node --test scripts/queue-failure-diagnostics.test.mjs scripts/exception-constructor-probe.test.mjs",
+    "passed": 12,
+    "failed": 0,
+    "editorFixture": {
+      "command": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 caffeinate -is -t600 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-KklioP/qualification.json",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-EuE2o8/measurement.json",
+      "sha256": "587a50746b7ac81fd3f3cc150de9bfcdecb2ee83e19583c7b71bfb8e0e19531e",
+      "browser": "WebKit 26.5",
+      "correctnessCasesPassed": 9,
+      "diagnostics": [],
+      "diagnosticInstrumentation": true,
+      "releasePerformanceQualified": false
+    }
+  },
+  "originalFailure": {
+    "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-ldkYaY/measurement.json",
+    "sha256": "4db4fd776488a37890b8012947d547d29ddafdc0008961df42e784be9669715a",
+    "progress": "500 items, repetition 1: selectionMs",
+    "ownerReason": "queueUncertain",
+    "superseded": false,
+    "rootCauseIdentified": false
+  },
+  "nativeComparison": {
+    "status": "not-run",
+    "reason": "Computer-use tool reported the Mac locked and automatic unlock unavailable; native Safari requires the user to unlock it.",
+    "systemSettingsChanged": false
+  },
+  "limits": [
+    "A passing rerun is not a fix or proof of absence of the intermittent fault.",
+    "Catch instrumentation changes the diagnostic bundle and may affect reproduction timing.",
+    "Stacks may contain local URLs; inspect diagnostic artifacts before sharing.",
+    "No package promotion, push, publish, or version change."
+  ]
+}
