@@ -179,6 +179,82 @@ fn kind_registry(target: TextBlockKind) -> Result<ActionRegistry, Box<dyn Error>
 }
 
 #[test]
+fn format_source_captures_selected_blocks_but_keeps_complete_large_list_guards() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let blocks = (0..500)
+        .map(|_| block(TextBlockKind::Paragraph, "a🙂b", formats()?))
+        .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
+    let root = list(blocks, Some(17))?;
+    for (first, last) in [(0, 0), (249, 249), (498, 499), (499, 499)] {
+        for reverse in [false, true] {
+            let a = text(&[0, first, 0, 0], 1, Affinity::Before)?;
+            let b = text(&[0, last, 0, 0], 3, Affinity::After)?;
+            let selection = if reverse { select(b, a) } else { select(a, b) };
+            let before = state(&context, vec![root.clone()], selection, None)?;
+            let range = crate::action::text_position::normalize_flat_list_range_selection(&before)?;
+            let source = flat_list_format_source::FormatSource::capture(&before, &range)?;
+            assert_eq!(source.start, 0);
+            assert_eq!(source.roots, vec![root.clone()]);
+            assert_eq!(source.layout.len(), 1);
+            assert!(matches!(
+                source.layout[0],
+                crate::operation::FlatListRootShape::List { items: 500, .. }
+            ));
+            assert_eq!(source.blocks.len(), usize::try_from(last - first + 1)?);
+            for (offset, captured) in source.blocks.iter().enumerate() {
+                let item = first + u32::try_from(offset)?;
+                assert_eq!(captured.path.as_slice(), &[0, item, 0]);
+                assert_eq!(&captured.node, before.document().node_at(&captured.path)?);
+                assert_eq!(captured.text.utf16_len().get(), 4);
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn format_source_keeps_empty_and_zero_offset_endpoint_blocks_across_root_families() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let roots = vec![
+        list(
+            vec![
+                block(heading(2)?, "prefix", formats()?)?,
+                block(TextBlockKind::Paragraph, "", FormatSet::default())?,
+            ],
+            None,
+        )?,
+        block(heading(3)?, "🙂", formats()?)?,
+        list(
+            vec![
+                block(heading(4)?, "end", formats()?)?,
+                block(TextBlockKind::Paragraph, "suffix", formats()?)?,
+            ],
+            Some(9),
+        )?,
+    ];
+    for reverse in [false, true] {
+        let a = gap(&[0, 1, 0], 0, Affinity::Before)?;
+        let b = text(&[2, 0, 0, 0], 0, Affinity::After)?;
+        let selection = if reverse { select(b, a) } else { select(a, b) };
+        let before = state(&context, roots.clone(), selection, None)?;
+        let range = crate::action::text_position::normalize_flat_list_range_selection(&before)?;
+        let source = flat_list_format_source::FormatSource::capture(&before, &range)?;
+        assert_eq!(source.roots, roots);
+        assert_eq!(source.layout.len(), 3);
+        assert_eq!(
+            source.blocks.iter().map(|b| b.path.as_slice()).collect::<Vec<_>>(),
+            vec![&[0, 1, 0][..], &[1][..], &[2, 0, 0][..]]
+        );
+        assert!(source.blocks[0].text.is_empty());
+        assert_eq!(source.blocks[1].text.utf16_len().get(), 2);
+        // Endpoint exclusion belongs to the caller: inline operations retain
+        // this block's empty selected fragment, while kind changes exclude it.
+        assert_eq!(source.blocks[2].text.utf16_len().get(), 3);
+    }
+    Ok(())
+}
+
+#[test]
 fn mixed_inline_selection_across_all_families_preserves_layout_and_history() -> TestResult {
     let context = context(DocumentLimits::default())?;
     for reverse in [false, true] {

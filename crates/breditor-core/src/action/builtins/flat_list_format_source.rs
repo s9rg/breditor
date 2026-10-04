@@ -26,6 +26,10 @@ pub(super) struct FormatSource {
 impl FormatSource {
     /// The schema and selection have already been admitted by the action. Root
     /// guards include unselected prefix/suffix items; their layout stays exact.
+    /// Text fragments are captured only for blocks between the normalized
+    /// endpoints, inclusive. Callers own offset/excluded-end semantics, so an
+    /// empty block or an end block at offset zero is still captured. Complete
+    /// operation preflight continues to validate all guarded roots and limits.
     pub(super) fn capture(
         state: &EditorState,
         range: &TextRangeSelection,
@@ -73,6 +77,9 @@ impl FormatSource {
                 } else {
                     path.clone()
                 };
+                if path < *range.start().paragraph_path() || path > *range.end().paragraph_path() {
+                    continue;
+                }
                 let source = capture(state, &path)?;
                 blocks.push(FormatBlock { path, node: source.node, text: source.text });
             }

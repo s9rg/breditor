@@ -1,0 +1,111 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "bfadfa2",
+  "status": "private-candidate-regressions-pass-measured-firefox-improvement-not-release-qualified",
+  "motivation": "FormatSource::capture copied TextFragments for every block of complete guarded list roots; both callers then discarded blocks outside the normalized selection. A one-item selection in a 500-item list unnecessarily materialized 500 fragments for each heading action evaluation.",
+  "change": "Retain complete source root guards and original layout, but skip text capture for block paths strictly outside the normalized inclusive endpoint paths. Root/path enumeration remains intact. No changes to the registry, action-state cache, preflight, document limits, operation recipe, codecs, selection relocation, public API or default shipping behavior.",
+  "correctness": "Both callers first require the sealed flat-list schema and normalize a selection from a validated immutable EditorState. They already discarded precisely these outside-range blocks before deriving indicators and operations. The helper still captures an empty endpoint and an end block at offset zero; the inline and block-kind callers retain their distinct endpoint policies. Complete root guards and layout, operation construction, full result validation and registry transaction preflight remain unchanged.",
+  "redGreenRegressions": [
+    "Before the helper change, the large-list regression failed with 500 captured blocks versus one expected; mixed-root capture failed with five paths versus three expected. The focused command exited 101 with exactly these two assertion failures.",
+    "After the change, tests cover first/middle/last item and two-item ranges in both directions, exact complete ordered-list guards and 500-item layout, Unicode lengths, mixed bare/bullet/numbered roots, empty start block and a zero-offset end block.",
+    "All 1128 all-feature core library tests pass, including existing public registry/session tests for exact selection, pending formats, history, activation, disabled reasons, complete-result limits and V6 codec round trips."
+  ],
+  "verification": [
+    "cargo fmt --all --check passes.",
+    "cargo clippy --workspace --all-targets --all-features -- -D warnings passes.",
+    "Private Wasm candidate passes strict generated TypeScript/declarations, 14 declaration tests, Node heading/list/recovery checks and five raw-Wasm runs per engine.",
+    "Private installed packages pass Node/type/base-consumer and flat-list smoke checks in Chromium, Firefox and WebKit.",
+    "Complete packaged browser matrix: 165 passed, zero skipped, unexpected or flaky results.",
+    "List demo matrix: 54 passed, zero skipped, unexpected or flaky results.",
+    "Six sequential unprofiled production performance runs: all 162 exact-state cases pass across three engines.",
+    "Shipping distribution hashes remain unchanged. Scoped sleep-prevention processes completed; pmset reports zero PreventSystemSleep and PreventUserIdleSystemSleep assertions."
+  ],
+  "browserReports": [
+    {
+      "path": "target/list-selected-capture-browser-20261004.json",
+      "sha256": "082666ea79a5b9329b4eb8a9525f0bc80ee0238728f30a56cfc8fe703e9c922a",
+      "passed": 165
+    },
+    {
+      "path": "target/list-selected-capture-demo-20261004.json",
+      "sha256": "29ba1e04a55d206b598eb26cf44bcffd848abf7aa89ccdef0b1fae23e7a4ff71",
+      "passed": 54
+    }
+  ],
+  "performance": {
+    "baselinePackageRecord": "target/flat-list-packages-nCstie/qualification.json",
+    "baselinePackageRecordSha256": "b184cb42aaab65622b76ba6a7efd87d92c606a93d02579d0a3724fc343ba9a95",
+    "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+    "method": "Sequential production-minified installed-package runs after build and regression processes completed. Three independent owners at each of 10/100/500 items per engine; exact selection, document, edit, undo, checkpoint, restore and redo assertions outside measured spans. Baseline/candidate, baseline/candidate, then reversed candidate/baseline. No profiler or diagnostic instrumentation. Apple M1 Pro, headless Chromium 151.0.7922.34, Firefox 153.0 and WebKit 26.5. Scoped sleep prevention; uncontrolled background host load. Per-run medians below are rounded to 0.1 ms, not statistical p95 or release performance qualification.",
+    "runsInOrder": [
+      {
+        "kind": "baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-2wx7yc/performance-efky6m/measurement.json",
+        "sha256": "3e553ece483069583e52bb9c99b478f8d84ec4388cbf1db9a42b5a233795424c",
+        "edit500MedianMs": {"chromium": 53.4, "firefox": 165, "webkit": 81},
+        "firefox500MedianMs": {"selection": 131, "undo": 144, "restore": 202, "redo": 147}
+      },
+      {
+        "kind": "candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E/performance-HijCj1/measurement.json",
+        "sha256": "6a378b5cc49448a5dc8ef13a09a74eb26f1f254dd3e131ce42b84cb9b9dced9f",
+        "edit500MedianMs": {"chromium": 50.2, "firefox": 160, "webkit": 76},
+        "firefox500MedianMs": {"selection": 123, "undo": 138, "restore": 199, "redo": 141}
+      },
+      {
+        "kind": "baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-2wx7yc/performance-gCVJUA/measurement.json",
+        "sha256": "363c2f770e60178c33b881fde4370ad48fabc2b6711ecc2fc5f72c88f0f96948",
+        "edit500MedianMs": {"chromium": 49.1, "firefox": 167, "webkit": 74},
+        "firefox500MedianMs": {"selection": 128, "undo": 145, "restore": 206, "redo": 147}
+      },
+      {
+        "kind": "candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E/performance-6Nlb4o/measurement.json",
+        "sha256": "5645ec6bb1bfefd27910bf0a5ee37d280e4582d78aade4ec2376b90123d1e1c9",
+        "edit500MedianMs": {"chromium": 50.1, "firefox": 160, "webkit": 74},
+        "firefox500MedianMs": {"selection": 125, "undo": 140, "restore": 199, "redo": 141}
+      },
+      {
+        "kind": "candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E/performance-t4az3c/measurement.json",
+        "sha256": "3971d293883f951aaec618a391f052693fbadebf133c97f8d0213fdd21831627",
+        "edit500MedianMs": {"chromium": 50.3, "firefox": 161, "webkit": 75},
+        "firefox500MedianMs": {"selection": 127, "undo": 138, "restore": 200, "redo": 140}
+      },
+      {
+        "kind": "baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-2wx7yc/performance-MieL4H/measurement.json",
+        "sha256": "212b832efc02a9f1f02ea8aadbe7573a7692f94809d08ed10fcdf76d2084dfac",
+        "edit500MedianMs": {"chromium": 50.3, "firefox": 165, "webkit": 78},
+        "firefox500MedianMs": {"selection": 128, "undo": 144, "restore": 205, "redo": 145}
+      }
+    ],
+    "decision": "Retain this small capture-scope correction. Firefox 500-item edit medians improve by 4-7 ms (about 2-4%) in each pair, including reversed order. Firefox selection, undo, restore and redo also improve in each pair. Chromium edit results are mixed; WebKit is equal or lower but variable. Do not claim a general all-engine speedup. The exact capture-count regression proves removal of unnecessary text copies independently of noisy wall-clock timings. Large-list responsiveness remains unfinished.",
+    "releasePerformanceQualified": false
+  },
+  "candidate": {
+    "wasmCandidate": "target/flat-list-candidate-31JEom",
+    "wasmQualificationSha256": "efb9becfa72ebbe25975d947e4120d21a50310bde196c10e71e1e573453fb317",
+    "wasmSha256": "7f774be3b9a879102741824653d73cb185e78e472edb7a7713ad4a225c980e85",
+    "wasmBytes": 2045424,
+    "wasmGzip9Bytes": 568836,
+    "wasmByteDelta": 261,
+    "wasmGzip9ByteDelta": 210,
+    "packageRecord": "target/flat-list-packages-yU336W/qualification.json",
+    "packageRecordSha256": "f602685e6d1d0a0870748c953f783124310f7bb4c6143c5894ecb24f6eca57af",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E",
+    "browserTarballSha256": "702c79c0e1a659b12daffdb19edf35d10adfc6e5c657cf0def969b3adae7fcda",
+    "wasmTarballSha256": "5056902e0f19adaf27001a1dc5b91c885ac7df59193c635e9011de0b7b49b816",
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "remaining": "Responsiveness, human native IME/VoiceOver checks, intermittent WebKit faults, delivery/size policy and full release qualification remain open. No version change, shipping rebuild, push or publish.",
+  "shippingArtifactsChanged": false,
+  "shippingTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  }
+}
