@@ -2,8 +2,8 @@
 
 Current status: headings have a separately built experimental browser demo;
 flat lists now have a gated Rust schema, container-reframing operation and
-selection-driven wrap/unwrap actions, but **no list typing or browser support
-yet**. The historical checkpoints below explain the route
+selection-driven wrap/unwrap actions and single-block typing, but **no complete
+list structural editing or browser support yet**. The historical checkpoints below explain the route
 to these features. The default paragraph-only schema and existing fingerprints
 remain unchanged. Links remain typed inline formatting inside structural blocks.
 
@@ -640,3 +640,37 @@ coverage and declares selection-dependent reads and selection-changing writes.
 This milestone does not implement a numbered-list restart action, Enter/exit,
 list typing/deletion/formatting, durable history or browser controls. See
 [action qualification](qualification/2026-10-03-flat-list-actions.json).
+
+### Single-block list text edits and typing
+
+`FlatListTextSplice` edits aggregate scalar-aligned UTF-16 coordinates in a bare
+paragraph/heading (`[root]`) or a flat-list item's block (`[root, item, 0]`). Its
+guard is the **complete containing root child**, including numbering and sibling
+items. This conservative contract rejects even a disjoint edit in that list;
+other root siblings are not guarded. It does not change list structure, heading
+kind/rank or numbering. Static admission validates source/result root fragments
+with their actual list/item depth, and final publication validates the complete
+document including untouched roots.
+
+The operation reuses established text slicing, canonical run merging and
+relocation. Deleted interior points use the existing explicit deletion-policy
+contract; same-text formatting changes preserve aggregate positions. Inverse
+recipes restore the complete prior root and exact history boundary values.
+Wrap then splice composes and replays in one transaction. No existing splice's
+path language, wire tag or schema capability was widened.
+
+`InsertFlatListTextAction` exposes explicit, opt-in single-block typing with the
+existing bounded `InsertTextInput` contract. Collapsed typing uses pending
+formats or focus affinity; type-over uses the first spatially selected run.
+The action consumes pending formats, places a Before-affinity caret after the
+inserted text and offers the established typing history group. Coordinate
+normalization has a separate flat-list scope; old direct-root callers still
+reject nested block paths.
+
+Cross-block typing returns `breditor/list-cross-block-edit-not-supported` until
+list-aware structural replacement exists; it never partially edits a selection.
+Enter/split, empty-item exit, boundary deletion and list-aware formatting actions
+remain separate work. Operation V1–V5 and history containing the new splice in
+Session V5 reject it. This is not a browser or session-reload qualification.
+
+See [text/typing qualification](qualification/2026-10-04-flat-list-text.json).

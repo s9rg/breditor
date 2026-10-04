@@ -7,7 +7,8 @@ use crate::{
     state::EditorState,
 };
 
-/// One spatial position normalized into a direct-root paragraph coordinate.
+/// One spatial position normalized into a text-block coordinate.
+/// Direct-root callers retain their original path gate; flat-list callers opt in.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TextPosition {
     paragraph_path: NodePath,
@@ -15,12 +16,12 @@ pub(crate) struct TextPosition {
 }
 
 impl TextPosition {
-    /// Returns the direct-root paragraph containing this position.
+    /// Returns the containing block path in the caller's admitted scope.
     pub(crate) const fn paragraph_path(&self) -> &NodePath {
         &self.paragraph_path
     }
 
-    /// Returns the aggregate UTF-16 offset within the paragraph.
+    /// Returns the aggregate UTF-16 offset within the text block.
     pub(crate) const fn offset(&self) -> TextOffset {
         self.offset
     }
@@ -69,6 +70,39 @@ impl TextRangeSelection {
 pub(crate) fn normalize_range_selection(
     state: &EditorState,
 ) -> Result<TextRangeSelection, TextPositionError> {
+    normalize_range_in_scope(state, TextContainerScope::DirectRoot)
+}
+
+#[derive(Clone, Copy)]
+enum TextContainerScope {
+    DirectRoot,
+    #[cfg(feature = "experimental-structural-properties")]
+    FlatList,
+}
+
+impl TextContainerScope {
+    fn admits(self, path: &NodePath) -> bool {
+        match self {
+            Self::DirectRoot => path.len() == 1,
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatList => matches!(path.as_slice(), [_] | [_, _, 0]),
+        }
+    }
+}
+
+/// Normalizes only the sealed flat-list block shapes; callers also check their
+/// schema capability. This does not widen the existing direct-root entry point.
+#[cfg(feature = "experimental-structural-properties")]
+pub(crate) fn normalize_flat_list_range_selection(
+    state: &EditorState,
+) -> Result<TextRangeSelection, TextPositionError> {
+    normalize_range_in_scope(state, TextContainerScope::FlatList)
+}
+
+fn normalize_range_in_scope(
+    state: &EditorState,
+    scope: TextContainerScope,
+) -> Result<TextRangeSelection, TextPositionError> {
     let selection = state.selection().ok_or(TextPositionError::NoSelection)?;
     #[allow(clippy::manual_let_else, unreachable_patterns)]
     let range = match selection {
@@ -89,8 +123,8 @@ pub(crate) fn normalize_range_selection(
     };
 
     Ok(TextRangeSelection {
-        start: normalize_point(state.document(), start, start_endpoint)?,
-        end: normalize_point(state.document(), end, end_endpoint)?,
+        start: normalize_point(state.document(), start, start_endpoint, scope)?,
+        end: normalize_point(state.document(), end, end_endpoint, scope)?,
         order,
     })
 }
@@ -107,6 +141,29 @@ pub(crate) fn point_at_fragment_offset(
     affinity: Affinity,
 ) -> Result<Point, TextPositionError> {
     direct_paragraph_index(paragraph_path)?;
+    point_at_block_offset(paragraph_path, fragment, offset, affinity)
+}
+
+/// Builds a canonical point in a bare or flat-list text block.
+#[cfg(feature = "experimental-structural-properties")]
+pub(crate) fn point_at_flat_list_fragment_offset(
+    path: &NodePath,
+    fragment: &TextFragment,
+    offset: TextOffset,
+    affinity: Affinity,
+) -> Result<Point, TextPositionError> {
+    if !TextContainerScope::FlatList.admits(path) {
+        return Err(TextPositionError::NotDirectRootParagraph { path: path.clone() });
+    }
+    point_at_block_offset(path, fragment, offset, affinity)
+}
+
+fn point_at_block_offset(
+    paragraph_path: &NodePath,
+    fragment: &TextFragment,
+    offset: TextOffset,
+    affinity: Affinity,
+) -> Result<Point, TextPositionError> {
     if fragment.is_empty() {
         if offset != TextOffset::ZERO {
             return Err(TextPositionError::FragmentOffsetOutOfBounds {
@@ -177,6 +234,7 @@ fn normalize_point(
     document: &Document,
     point: &Point,
     endpoint: RangeEndpoint,
+    scope: TextContainerScope,
 ) -> Result<TextPosition, TextPositionError> {
     let (paragraph_path, boundary) = match point {
         Point::Text { text_path, utf16_offset, .. } => {
@@ -187,7 +245,7 @@ fn normalize_point(
                     UnsupportedPositionRule::NotDirectRootParagraph,
                 ));
             };
-            if paragraph_path.len() != 1 || text_path.len() != 2 {
+            if !scope.admits(&paragraph_path) {
                 return Err(unsupported_position(
                     endpoint,
                     text_path,
@@ -204,7 +262,7 @@ fn normalize_point(
             (paragraph_path, PointBoundary::Text { child_index, local: *utf16_offset })
         }
         Point::Children { parent_path, child_index, .. } => {
-            if parent_path.len() != 1 {
+            if !scope.admits(parent_path) {
                 return Err(unsupported_position(
                     endpoint,
                     parent_path,
@@ -214,7 +272,6 @@ fn normalize_point(
             (parent_path.clone(), PointBoundary::Children { child_index: *child_index })
         }
     };
-    direct_paragraph_index(&paragraph_path)?;
     let paragraph = document
         .node_at(&paragraph_path)
         .ok()
@@ -393,6 +450,24 @@ mod tests {
     };
 
     type TestResult = Result<(), Box<dyn Error>>;
+
+    #[cfg(feature = "experimental-structural-properties")]
+    #[test]
+    fn flat_list_paths_are_an_explicit_scope_not_a_direct_root_widening() -> TestResult {
+        use super::TextContainerScope;
+        for indices in [vec![0], vec![3]] {
+            let path = NodePath::try_from_indices(indices)?;
+            assert!(TextContainerScope::DirectRoot.admits(&path));
+            assert!(TextContainerScope::FlatList.admits(&path));
+        }
+        let nested = NodePath::try_from_indices(vec![2, 5, 0])?;
+        assert!(!TextContainerScope::DirectRoot.admits(&nested));
+        assert!(TextContainerScope::FlatList.admits(&nested));
+        for indices in [vec![], vec![1, 0], vec![1, 0, 1], vec![1, 0, 0, 0]] {
+            assert!(!TextContainerScope::FlatList.admits(&NodePath::try_from_indices(indices)?));
+        }
+        Ok(())
+    }
 
     fn path(indices: &[u32]) -> Result<NodePath, Box<dyn Error>> {
         NodePath::try_from_indices(indices.to_vec()).map_err(Into::into)

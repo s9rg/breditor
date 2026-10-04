@@ -6,6 +6,10 @@ mod flat_list_action_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_support;
 #[cfg(feature = "experimental-structural-properties")]
+mod insert_flat_list_text;
+#[cfg(feature = "experimental-structural-properties")]
+pub use insert_flat_list_text::InsertFlatListTextAction;
+#[cfg(feature = "experimental-structural-properties")]
 mod unwrap_list;
 #[cfg(feature = "experimental-structural-properties")]
 mod wrap_list;

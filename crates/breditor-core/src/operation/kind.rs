@@ -18,7 +18,7 @@ use super::OperationValidationError;
 /// four paragraph-operation variants, the operation V1 wire tag. The experimental
 /// structural kinds have no V1–V3 wire tag; operation V4 admits block-kind
 /// changes only and V5 admits text-block splices and replacements. Flat-list
-/// reframing has no durable encoding.
+/// reframing and flat-list text splices have no durable encoding.
 /// Adding a runtime kind is an
 /// additive Rust API change, but does not silently extend the closed V1 wire
 /// union; admitting a new tag requires an explicit format-version decision.
@@ -26,6 +26,9 @@ use super::OperationValidationError;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationKind {
+    /// Experimental text editing within a bare block or flat-list item.
+    #[cfg(feature = "experimental-structural-properties")]
+    FlatListTextSplice,
     /// Experimental flat-list container edit preserving every text block.
     #[cfg(feature = "experimental-structural-properties")]
     FlatListReframe,
@@ -54,6 +57,8 @@ impl OperationKind {
     pub const fn as_str(self) -> &'static str {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListTextSplice => "flatListTextSplice",
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe => "flatListReframe",
             #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockReplace => "textBlockReplace",
@@ -76,6 +81,9 @@ impl OperationKind {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operation {
+    /// Experimental flat-list text edit with a complete containing-root guard.
+    #[cfg(feature = "experimental-structural-properties")]
+    FlatListTextSplice(super::FlatListTextSplice),
     /// Experimental flat-list container edit with exact source guards.
     #[cfg(feature = "experimental-structural-properties")]
     FlatListReframe(super::FlatListReframe),
@@ -128,6 +136,8 @@ impl Operation {
     pub const fn kind(&self) -> OperationKind {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListTextSplice(_) => OperationKind::FlatListTextSplice,
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe(_) => OperationKind::FlatListReframe,
             #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockReplace(_) => OperationKind::TextBlockReplace,
@@ -168,6 +178,10 @@ impl Operation {
         document: &Document,
     ) -> Result<AppliedOperation, OperationApplyError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListTextSplice(operation) => {
+                operation.apply(context, document).map_err(Into::into)
+            }
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe(operation) => {
                 operation.apply(context, document).map_err(Into::into)
@@ -214,6 +228,10 @@ pub(crate) struct AppliedChange {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationApplyError {
+    /// An experimental flat-list text edit failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    FlatListTextSplice(#[from] super::FlatListTextSpliceError),
     /// An experimental list-container edit failed.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]

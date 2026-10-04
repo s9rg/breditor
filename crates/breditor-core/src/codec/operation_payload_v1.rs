@@ -120,7 +120,8 @@ pub(crate) fn encode_operation_payload_v1(
         Operation::TextBlockKindChange(_)
         | Operation::TextBlockSplice(_)
         | Operation::TextBlockReplace(_)
-        | Operation::FlatListReframe(_) => {
+        | Operation::FlatListReframe(_)
+        | Operation::FlatListTextSplice(_) => {
             return Err(OperationValidationError::UnsupportedSchema {
                 kind: operation.kind(),
                 schema: context.schema().id().clone(),

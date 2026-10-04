@@ -4,6 +4,12 @@ mod change_set;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_reframe;
 #[cfg(feature = "experimental-structural-properties")]
+mod flat_list_text_splice;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_text_splice_tests;
+#[cfg(feature = "experimental-structural-properties")]
+pub use flat_list_text_splice::{FlatListTextSplice, FlatListTextSpliceError};
+#[cfg(feature = "experimental-structural-properties")]
 mod flat_list_reframe_map;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod flat_list_reframe_tests;

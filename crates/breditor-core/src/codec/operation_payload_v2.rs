@@ -111,7 +111,8 @@ pub(crate) fn encode_operation_payload_v2(
         Operation::TextBlockKindChange(_)
         | Operation::TextBlockSplice(_)
         | Operation::TextBlockReplace(_)
-        | Operation::FlatListReframe(_) => {
+        | Operation::FlatListReframe(_)
+        | Operation::FlatListTextSplice(_) => {
             return Err(operation.kind());
         }
         Operation::TextSplice(operation) => OperationRecordV2::TextSplice {

@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "6a56394",
+  "status": "Experimental single-block list text edits and typing verified; structural editing, durable list history and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "operation": "FlatListTextSplice",
+    "action": "InsertFlatListTextAction with the existing bounded InsertTextInput contract",
+    "paths": "Bare text block [root] or flat-list text block [root, item, 0]; scalar-aligned aggregate UTF-16 offsets",
+    "guard": "Complete containing root child, including list numbering and sibling items; unrelated root siblings are not guarded",
+    "admission": "Exact sealed flat-list capability and document proof; source/result fragments include actual wrappers; complete resulting document includes untouched siblings in resource limits",
+    "relocation": "Existing TextSpliceMap with affinity-aware insertions, explicit deleted interior points, and aggregate-offset preservation for same-text formatting changes",
+    "typing": "Pending formats override contextual affinity; type-over uses first spatially selected run; result caret has Before affinity after insertion; pending formats consumed; adjacent typing offers the existing history group",
+    "history": "Exact inverse and selection/pending-format boundaries; wrap-plus-splice composition and deterministic runtime replay",
+    "coordinates": "Separate explicit flat-list scope; old direct-root coordinate admission remains closed to nested paths",
+    "crossBlockTyping": "Explicitly disabled with breditor/list-cross-block-edit-not-supported; no partial edit",
+    "wire": "No widening of Operation V1-V5; Session V5 refuses retained history containing the new splice"
+  },
+  "verification": {
+    "focusedSpliceAndTypingTests": 15,
+    "coordinateScopeIsolationTests": 1,
+    "allFeatureWorkspaceUnitTests": { "core": 972, "wasm": 51 },
+    "defaultCoreUnitTests": 697,
+    "unicodePropertyCases": 10000,
+    "propertySeed": 20261004,
+    "propertyOracle": "Independent UTF-8 scalar slicing, UTF-16 coordinate conversion, expected string construction, exact undo/redo and no-op detection",
+    "coverage": [
+      "All heading ranks and paragraphs, bare blocks, bullets and ordered containers",
+      "Unicode replacement, surrogate-split rejection, empty blocks, typed inline formats",
+      "Backward type-over, format-only selection preservation, pending-format consumption and grouped typing",
+      "Both affinities at mixed-format text-run seams with explicit pending-format override",
+      "Deleted interior point reporting and surviving offset relocation",
+      "Containing-root numbering/sibling guards, unrelated-root independence, stale batch rollback and redo preservation",
+      "Wrap then splice in one transaction and forward replay",
+      "Foreign proofs, legacy schemas, invalid root/item/block paths, operation budget and complete-document text budget",
+      "Legacy operation/session encoding rejection and explicit cross-block typing rejection"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib flat_list_text_splice_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo test -p breditor-core --all-features --lib flat_list_paths_are_an_explicit_scope --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "List structural replacement, Enter/split, empty-item exit and cross-block type-over",
+    "Backward/forward and boundary deletion, list-aware inline-format actions",
+    "Explicit durable operation/session admission and reload/recovery",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native-input qualification and existing release size gates"
+  ],
+  "evidenceBoundary": "Rust unit/property tests only; no list browser/native-input evidence or rebuilt shipping Wasm claimed",
+  "pushed": false,
+  "published": false
+}

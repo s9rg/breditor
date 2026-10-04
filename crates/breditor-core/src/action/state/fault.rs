@@ -159,6 +159,26 @@ pub enum ActionStateTransactionFault {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum ActionStateOperationFault {
+    /// Flat-list text schema is unsupported.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text splice schema is unsupported")]
+    FlatListTextSpliceUnsupportedSchema,
+    /// Invalid root/item/block path or shape.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text splice target is invalid")]
+    FlatListTextSpliceInvalidTarget,
+    /// The containing-root guard is stale.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text splice source guard is stale")]
+    FlatListTextSpliceExpectedMismatch,
+    /// Document proof differs from the active context.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text splice document proof differs")]
+    FlatListTextSpliceDocumentProof,
+    /// Fragment or result admission failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text splice schema or resource validation failed")]
+    FlatListTextSpliceValidation,
     /// Flat-list schema capability was not granted.
     #[cfg(feature = "experimental-structural-properties")]
     #[error("flat-list reframe schema is unsupported")]
@@ -797,6 +817,22 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
 #[allow(clippy::too_many_lines)]
 fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFault {
     match error {
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::FlatListTextSplice(source) => {
+            use crate::operation::FlatListTextSpliceError as E;
+            match source {
+                E::UnsupportedSchema => {
+                    ActionStateOperationFault::FlatListTextSpliceUnsupportedSchema
+                }
+                E::InvalidTarget => ActionStateOperationFault::FlatListTextSpliceInvalidTarget,
+                E::ExpectedMismatch => {
+                    ActionStateOperationFault::FlatListTextSpliceExpectedMismatch
+                }
+                E::DocumentProof(_) => ActionStateOperationFault::FlatListTextSpliceDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::FlatListTextSpliceValidation,
+                E::Text(error) => project_operation_error(OperationApplyError::TextSplice(error)),
+            }
+        }
         #[cfg(feature = "experimental-structural-properties")]
         OperationApplyError::FlatListReframe(source) => {
             use crate::operation::FlatListReframeError as E;

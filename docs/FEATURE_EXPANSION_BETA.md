@@ -654,3 +654,20 @@ profile, wire union or bundle budget changed in this checkpoint.
 
 See [action contract](STRUCTURAL_BLOCKS.md#selection-driven-wrapunwrap-actions)
 and [verification](qualification/2026-10-03-flat-list-actions.json).
+
+## Flat-list text and typing checkpoint
+
+`FlatListTextSplice` and `InsertFlatListTextAction` now support text insertion and
+type-over inside one bare paragraph/heading or one list-item block, preserving
+rank, list structure and numbering. Typed inline values, scalar boundaries,
+format-seam affinities, pending formats and grouped typing history are covered.
+The splice uses the complete containing root as a conservative guard and shares
+the established text slicing/relocation machinery. Direct-root coordinate callers
+keep their existing path gate; only explicit flat-list callers admit item paths.
+
+Cross-block selections remain explicitly disabled for typing rather than being
+partially applied. Next: list-aware structural replacement for Enter/split,
+empty-item exit, boundary deletion and cross-block type-over, followed by inline
+format actions and durable/browser integration. Existing wire unions and shipping
+profiles remain unchanged. See
+[verification](qualification/2026-10-04-flat-list-text.json).
