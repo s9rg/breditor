@@ -1,0 +1,114 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "df24143",
+  "status": "private-candidate-regressions-pass-measured-firefox-improvement-not-release-qualified",
+  "motivation": "The preceding operation-scoped Firefox profiles identify action-state preflight, including heading conversion and document validation, as a major large-list cost. Source inspection found a freshly validated complete replacement document discarded immediately before the same complete final root was validated again.",
+  "change": "FlatListTextReplace::validate_and_derive returns both the derived recipe and its newly validated result document. apply still validates source/result roots in the same order and checks the current document proof and exact source guards. After constructing the final root, complete semantic NodeRef equality (kind, entity identity, properties, all children) permits returning the fresh result document only when it is exactly that root. Any retained siblings or metadata differences take the existing final Document::try_new path. No cross-call/context cache, assumed resource summary, new wire tag or approximate action-state query.",
+  "correctnessArgument": "The reused Document was created in this same synchronous call by Document::try_new with this exact context schema and limits. Its full immutable root equals the final immutable root, so its validation proof and summary are already a proof for the complete final result. The optimization cannot bypass source mismatch: source guards are checked before reuse. Partial spans have additional siblings and therefore cannot pass complete-root equality; aggregate resource checks remain required.",
+  "newRegressions": [
+    "Whole-document and partial-root-span list insertions match independently constructed documents and all summary fields, retain exact context proofs, and invert to the original document and summary.",
+    "After a successful whole-result application, different source content still fails ExpectedMismatch; a freshly admitted source under stricter limits rejects the enlarged result; a foreign policy proof rejects; returning to the original context still succeeds.",
+    "Existing repeated-application, untouched-sibling budget, depth, child-count, malformed untouched block, source-before-no-op, property-budget, disabled-state, exact-history and V6 codec properties remain in the full core test run."
+  ],
+  "verification": [
+    "cargo fmt --all --check passes.",
+    "cargo test -p breditor-core --all-features --lib: all 1126 tests pass.",
+    "cargo clippy --workspace --all-targets --all-features -- -D warnings passes.",
+    "The earlier broad-target filtered command passed its 19 matching library tests, then was intentionally interrupted while launching integration binaries with zero matching tests. It is not reported as a complete command pass; the complete 1126-test library run above is authoritative.",
+    "Private Wasm build passes strict generated TypeScript/declarations, 14 declaration-surface tests, Node heading and list/recovery checks, and five raw-Wasm runs per engine.",
+    "Private installed packages pass Node/type/base-consumer and flat-list smoke checks in Chromium, Firefox and WebKit.",
+    "Full packaged browser matrix: 165 expected passes, zero skipped, unexpected or flaky results.",
+    "Flat-list demo matrix: 54 expected passes, zero skipped, unexpected or flaky results.",
+    "Six sequential unprofiled production performance runs (baseline, candidate, baseline, candidate, candidate, baseline), each with nine exact-state cases per engine: 162 cases pass across Chromium, Firefox and WebKit.",
+    "All four shipping distribution tree hashes remain unchanged. Scoped caffeinate processes completed; pmset reports no PreventSystemSleep or PreventUserIdleSystemSleep assertion."
+  ],
+  "browserReports": [
+    {
+      "path": "target/list-result-proof-browser-20261004.json",
+      "sha256": "c8924fba11f2c58eaca224b8c8f1807ada3a700187587fcbbc781bc598610194",
+      "passed": 165
+    },
+    {
+      "path": "target/list-result-proof-demo-20261004.json",
+      "sha256": "f012a75be4126db866eb4d127cd51abd302280f996d77812d1d55c189f35a3f0",
+      "passed": 54
+    }
+  ],
+  "performance": {
+    "baselinePackageRecord": "target/flat-list-packages-ui9FQE/qualification.json",
+    "baselinePackageRecordSha256": "def59f1d93c9c203391df5bc495aa93d73e10305c35ba4f57e58bc35c94a307a",
+    "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+    "method": "Sequential installed-package, production-minified, unprofiled runs after regression/build processes completed. Three independent editor owners at each of 10, 100 and 500 items per engine, with exact selection/document/edit/undo/checkpoint/restore/redo assertions outside measured spans. First two pairs baseline then candidate; final pair reversed. Apple M1 Pro, headless Chromium 151.0.7922.34, Firefox 153.0, WebKit 26.5. Scoped sleep prevention; other host load is uncontrolled. Values below are per-run medians rounded to 0.1 ms, not statistical p95 or multi-device qualification.",
+    "runsInOrder": [
+      {
+        "kind": "baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-gXkrlA/performance-nUUDym/measurement.json",
+        "sha256": "2cef46166330bdabe512cec12867210a2919e2309d43e62cb6b488db44528cbe",
+        "edit500MedianMs": {"chromium": 51.9, "firefox": 176, "webkit": 77},
+        "firefox500MedianMs": {"selection": 140, "undo": 155, "restore": 215, "redo": 158}
+      },
+      {
+        "kind": "candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-2wx7yc/performance-L4qmPJ/measurement.json",
+        "sha256": "490d89491e75e173defc0be648c6f22e733227f1a31e786f10e5fdc631fd05a7",
+        "edit500MedianMs": {"chromium": 52.4, "firefox": 165, "webkit": 77},
+        "firefox500MedianMs": {"selection": 133, "undo": 146, "restore": 204, "redo": 146}
+      },
+      {
+        "kind": "baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-gXkrlA/performance-WhXttL/measurement.json",
+        "sha256": "2ccfef110b840b81af6321aa44edb875be2b853ffa7943f6fea5b03b9323a4e8",
+        "edit500MedianMs": {"chromium": 49.8, "firefox": 175, "webkit": 81},
+        "firefox500MedianMs": {"selection": 138, "undo": 152, "restore": 216, "redo": 155}
+      },
+      {
+        "kind": "candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-2wx7yc/performance-rXdAo2/measurement.json",
+        "sha256": "6d34d442017c4de10017d7d27693453b7773623e4c1674508dc22374c91b2eca",
+        "edit500MedianMs": {"chromium": 49.8, "firefox": 164, "webkit": 79},
+        "firefox500MedianMs": {"selection": 128, "undo": 147, "restore": 203, "redo": 147}
+      },
+      {
+        "kind": "candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-2wx7yc/performance-piSYv4/measurement.json",
+        "sha256": "2e6bed2311a108b6f2f2529c4676e1cea4f00823a958704b0189d117a0bce67b",
+        "edit500MedianMs": {"chromium": 52.1, "firefox": 166, "webkit": 78},
+        "firefox500MedianMs": {"selection": 129, "undo": 146, "restore": 206, "redo": 145}
+      },
+      {
+        "kind": "baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-gXkrlA/performance-JRAoHF/measurement.json",
+        "sha256": "4d89fa0e7ad45ff71d46737939490b31edbb8ca820bb7cfd7c6b6fb843893fb5",
+        "edit500MedianMs": {"chromium": 53.1, "firefox": 176, "webkit": 83},
+        "firefox500MedianMs": {"selection": 141, "undo": 157, "restore": 215, "redo": 156}
+      }
+    ],
+    "decision": "Retain the narrowly scoped proof reuse. Firefox 500-item edit medians improve by 10-11 ms (approximately 6%) in all three paired runs, including reversed order. Selection, undo, restore and redo also improve consistently in Firefox. Chromium differences are small/mixed; WebKit does not justify a general improvement claim. The result is a local repeatable improvement, not completion of the responsiveness gate or proof of the prior profile attribution.",
+    "releasePerformanceQualified": false
+  },
+  "candidate": {
+    "wasmCandidate": "target/flat-list-candidate-qZblTP",
+    "wasmQualificationSha256": "481ba642bbef7ce1427225e3f0465e132cff4cd70750d0bad2c1a8d31baba645",
+    "wasmSha256": "cad497712ff7486c3bf1c61879198caae22e9a9aa44b2bdcd57189d27e9b4856",
+    "wasmBytes": 2045163,
+    "wasmGzip9Bytes": 568626,
+    "wasmByteDelta": 429,
+    "wasmGzip9ByteDelta": 164,
+    "packageRecord": "target/flat-list-packages-nCstie/qualification.json",
+    "packageRecordSha256": "b184cb42aaab65622b76ba6a7efd87d92c606a93d02579d0a3724fc343ba9a95",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-2wx7yc",
+    "browserTarballSha256": "702c79c0e1a659b12daffdb19edf35d10adfc6e5c657cf0def969b3adae7fcda",
+    "wasmTarballSha256": "7ae4c65af86e24cbe16861aa99e0dcb31e4f3018a2b1b499d8f487a654e838ba",
+    "identity": "Browser JavaScript tarball, generated Wasm JavaScript and both generated declaration files are byte-identical to the prior candidate. Only the private Wasm executable changed.",
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "remaining": "The responsiveness gate is not complete. Native IME/VoiceOver qualification, intermittent WebKit faults, approved delivery/size policy and full release qualification remain open. No shipping rebuild, version change, push or publish.",
+  "shippingArtifactsChanged": false,
+  "shippingTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  }
+}

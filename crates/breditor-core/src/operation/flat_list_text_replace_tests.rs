@@ -559,6 +559,78 @@ fn foreign_proofs_legacy_schemas_and_all_existing_codecs_remain_closed() -> Test
 }
 
 #[test]
+fn complete_and_partial_results_keep_exact_validation_summaries_and_inverses() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    for outside in [false, true] {
+        let mut roots = vec![list(vec![p("first")?, p("a🙂b")?, p("last")?], Some(8))?];
+        if outside {
+            roots.insert(0, p("prefix")?);
+            roots.push(p("suffix")?);
+        }
+        let root_index = u32::from(outside);
+        let before = state(&context, roots.clone(), None, None)?;
+        let op = FlatListTextReplace::capture(
+            &context,
+            before.document(),
+            range(&[root_index, 1, 0], 3, &[root_index, 1, 0], 3)?,
+            vec![p("x")?],
+            vec![ordered(8, 3)?],
+        )?;
+        let AppliedOperation::Changed(result) = op.apply(&context, before.document())? else {
+            return Err("expected insertion".into());
+        };
+        roots[usize::try_from(root_index)?] =
+            list(vec![p("first")?, p("a🙂xb")?, p("last")?], Some(8))?;
+        let expected = state(&context, roots, None, None)?;
+        assert_eq!(result.document, *expected.document());
+        assert_eq!(result.document.summary(), expected.document().summary());
+        assert!(result.document.is_proven_for(context.schema(), context.limits()));
+        let AppliedOperation::Changed(restored) =
+            result.inverse.apply(&context, &result.document)?
+        else {
+            return Err("expected inverse".into());
+        };
+        assert_eq!(restored.document, *before.document());
+        assert_eq!(restored.document.summary(), before.document().summary());
+    }
+    Ok(())
+}
+
+#[test]
+fn whole_result_reuse_never_skips_source_guards_or_new_context_limits() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let before = state(&context, vec![list(vec![p("ab")?], None)?], None, None)?;
+    let op = FlatListTextReplace::capture(
+        &context,
+        before.document(),
+        range(&[0, 0, 0], 1, &[0, 0, 0], 1)?,
+        vec![p("x")?],
+        vec![bullet(1)],
+    )?;
+    assert!(matches!(op.apply(&context, before.document())?, AppliedOperation::Changed(_)));
+    let other = state(&context, vec![list(vec![p("cd")?], None)?], None, None)?;
+    assert!(matches!(
+        op.apply(&context, other.document()),
+        Err(FlatListTextReplaceError::ExpectedMismatch)
+    ));
+    let strict = EditorContext::new(
+        context.schema().clone(),
+        DocumentLimits::default().with_max_total_text_bytes(2),
+    );
+    let strict_before = state(&strict, vec![list(vec![p("ab")?], None)?], None, None)?;
+    assert!(matches!(
+        op.apply(&strict, strict_before.document()),
+        Err(FlatListTextReplaceError::Validation(_))
+    ));
+    assert!(matches!(
+        op.apply(&strict, before.document()),
+        Err(FlatListTextReplaceError::DocumentProof(_))
+    ));
+    assert!(matches!(op.apply(&context, before.document())?, AppliedOperation::Changed(_)));
+    Ok(())
+}
+
+#[test]
 fn repeated_application_rechecks_untouched_document_budget() -> TestResult {
     let context = context(DocumentLimits::default().with_max_total_text_bytes(6))?;
     let source = list(vec![p("ab")?], None)?;
