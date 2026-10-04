@@ -183,7 +183,8 @@ the experimental singular
 [operation V4 codec](OPERATION_V4.md). The separate [transaction V4
 codec](TRANSACTION_V4.md) supports atomic request persistence, and
 [Session Checkpoint V4](SESSION_CHECKPOINT_V4.md) preserves the retained undo/redo
-history. Commit and local-log formats have not yet advanced.
+history. Commit V5 now also supports the heading edit language (see below);
+the local-log format has not advanced.
 
 ## Structural transactions and action files
 
@@ -400,7 +401,50 @@ Same-count formatting relocation preserves positions only when each correspondin
 block retains identical logical text; changing run layout is not deletion.
 This law is derived from the decoded operation, not asserted by an extra wire flag.
 V1–V4 and their golden encodings remain unchanged. The V5 family is experimental
-and does not add a Commit/local-log format or enable the shipping browser profile.
+and does not enable the shipping browser profile. The subsequent opt-in Wasm
+bridge adds Commit V5 below; local-log formats remain unchanged.
+
+### Commit V5 and the opt-in Wasm bridge
+
+`CommitJsonCodecV5` uses the explicit `breditor/commit` version 5 envelope,
+Editor State V3 for the before-state, and the same closed V5 forward-operation
+language. It replay-proves the transaction, rejects noncanonical forward recipes,
+and derives inverses and relocation maps instead of trusting them on the wire.
+It preserves final selection, pending formats and metadata, including state-only
+commits. Decode enforces byte and operation-count limits before materializing
+operations; encode requires the exact runtime context and the same byte budget.
+V1–V3 Commit codecs remain closed. There is no Commit V4 or local-log upgrade.
+
+The Wasm crate's `experimental-text-blocks` feature is off by default. It adds
+`BreditorCompiledProfile.fromBootstrapJsonV3`, which retains the closed typed
+extension declaration shape of bootstrap V2 but explicitly compiles the heading
+profile. Neither bootstrap entry point accepts the other's version.
+`createEngineFromDocumentJsonV5` takes Document V2; and
+`createEngineFromSessionCheckpointJsonV5` replay-proves Session V5. Engine
+mutations retain checkpoint-before-publication semantics. These engines export
+Document V2, Editor State V3, Session V5, and Commit V5—these formats intentionally
+do not share a single version number. Heading string actions require their exact
+registered input contracts; paragraph-only action IDs are not aliases.
+
+This is an opt-in developer boundary, not an addition to the default npm package.
+Generated bindings can be checked with
+`node scripts/check-experimental-heading-wasm.mjs <wasm-bindgen-output-dir>`.
+That check exercises actual Wasm under Node, not browser DOM/native-input behavior.
+The isolated build/load/package contract, heading projection/renderer, browser
+toolbar/selection/input, and desktop qualification remain separate work.
+
+Reproduce the developer smoke from the repository root with the locked Rust
+toolchain and wasm-bindgen CLI 0.2.127:
+
+```sh
+cargo build -p breditor-wasm --features experimental-text-blocks --profile wasm-release --target wasm32-unknown-unknown --locked
+wasm-bindgen target/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm --target web --typescript --remove-name-section --remove-producers-section --out-dir target/heading-bridge-smoke --out-name breditor_wasm
+node scripts/check-experimental-heading-wasm.mjs target/heading-bridge-smoke
+```
+
+This keeps generated bindings under ignored `target/`; it does not overwrite
+`packages/breditor-wasm/dist` or establish a reproducible release-size baseline.
+Run the ordinary package build separately to validate the default reviewed ABI.
 
 ### Normalized plain-text paste
 

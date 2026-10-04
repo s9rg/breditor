@@ -9,6 +9,21 @@ use super::{
 
 #[wasm_bindgen]
 impl BreditorCompiledProfile {
+    /// Compiles an opt-in heading profile from strict bootstrap V3 declarations.
+    ///
+    /// Available only in the experimental text-block build. V3 explicitly
+    /// selects heading-capable commands; V1/V2 keep paragraph-only semantics.
+    /// Use the V5 engine factories to retain complete heading edit history.
+    #[cfg(feature = "experimental-text-blocks")]
+    #[must_use]
+    #[wasm_bindgen(js_name = fromBootstrapJsonV3)]
+    pub fn from_bootstrap_json_v3(json: &str) -> BreditorCompiledProfileResult {
+        match super::bootstrap_json_v2::decode_text_block_profile(json) {
+            Ok(profile) => BreditorCompiledProfileResult::success(Self::new(profile)),
+            Err(error) => BreditorCompiledProfileResult::from_error(error),
+        }
+    }
+
     /// Strictly decodes and compiles one complete ABI-local profile request.
     ///
     /// The request is bootstrap configuration rather than durable editor data;

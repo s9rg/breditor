@@ -203,6 +203,18 @@ impl BreditorCommandResult {
             return BreditorStringResult::absent();
         };
         match self.checkpoint_format_version {
+            #[cfg(feature = "experimental-text-blocks")]
+            5 => {
+                match breditor_core::codec::CommitJsonCodecV5::new(commit.after().context().clone())
+                    .encode(commit)
+                {
+                    Ok(json) => BreditorStringResult::from_value(json),
+                    Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                        error.code(),
+                        "the published heading commit could not be encoded",
+                    )),
+                }
+            }
             1 => match CommitJsonCodec::new(commit.after().context().clone()).encode(commit) {
                 Ok(json) => BreditorStringResult::from_value(json),
                 Err(error) => BreditorStringResult::from_error(BreditorError::codec(

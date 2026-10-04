@@ -2,14 +2,26 @@
 
 mod commit_encoding_v2;
 mod commit_encoding_v3;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_encoding_v5;
 mod commit_error;
 mod commit_json;
 mod commit_json_v2;
 mod commit_json_v3;
 #[cfg(test)]
 mod commit_json_v3_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_json_v5;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod commit_json_v5_tests;
 mod commit_v2_error;
 mod commit_v3_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_v5_error;
+#[cfg(feature = "experimental-structural-properties")]
+pub use commit_json_v5::{COMMIT_V5_FORMAT_VERSION, CommitJsonCodecV5};
+#[cfg(feature = "experimental-structural-properties")]
+pub use commit_v5_error::CommitV5CodecError;
 mod diagnostic;
 mod document_encoding;
 mod document_json;

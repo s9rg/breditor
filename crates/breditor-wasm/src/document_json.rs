@@ -38,7 +38,7 @@ impl BreditorEngine {
                     "the current document could not be encoded",
                 )),
             },
-            2 | 3 => match DocumentJsonCodecV2::new(state.context().schema().clone())
+            2 | 3 | 5 => match DocumentJsonCodecV2::new(state.context().schema().clone())
                 .with_limits(state.context().limits().clone())
                 .encode(state.document())
             {

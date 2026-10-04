@@ -20,6 +20,8 @@ diagnostic-selection-inputs = []
 diagnostic-projection-format-count = []
 # Unqualified local candidate; deliberately excluded from default packaging.
 candidate-rust-selection-tokens = []
+# Opt-in heading profile/Session V5 bridge. Never enabled by default packaging.
+experimental-text-blocks = ["breditor-core/experimental-structural-properties"]
 
 [dependencies]
 breditor-core = { path = "../breditor-core", version = "=0.3.0-alpha.22" }

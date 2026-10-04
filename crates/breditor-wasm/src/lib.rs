@@ -16,6 +16,8 @@ mod action_value_json;
 mod command;
 mod command_result;
 mod compiled_profile_engine_v3;
+#[cfg(feature = "experimental-text-blocks")]
+mod compiled_profile_engine_v5;
 mod document_json;
 mod engine;
 mod engine_result;

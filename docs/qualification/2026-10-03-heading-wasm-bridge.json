@@ -1,0 +1,111 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "d19c931b4128327083dc7b84911333f5b241418e",
+  "status": "Opt-in heading bridge verified in native Rust and generated Wasm under Node; beta goal remains active",
+  "contract": {
+    "feature": "breditor-wasm/experimental-text-blocks (off by default)",
+    "bootstrap": "fromBootstrapJsonV3: closed V2 declaration shape, explicit heading profile; versions do not fall back",
+    "factories": [
+      "createEngineFromDocumentJsonV5",
+      "createEngineFromSessionCheckpointJsonV5"
+    ],
+    "exports": {
+      "document": 2,
+      "state": 3,
+      "session": 5,
+      "commit": 5
+    },
+    "commit": "Replay-proved before-state plus canonical forward recipes; derived inverses/maps are not trusted on the wire. Exact context and byte/count limits; typed formats, selection, pending formats and metadata retained.",
+    "publication": "Existing V5 checkpoint-before-publication owner; legacy actions are not aliases; no local-log upgrade"
+  },
+  "verification": {
+    "coreAllFeatureTests": 915,
+    "wasmAllFeatureTests": 49,
+    "coreDefaultTests": 697,
+    "wasmDefaultTests": 43,
+    "newTests": 8,
+    "clippy": "Workspace all targets/all features, warnings denied, passed",
+    "rustdoc": "Core and Wasm all-feature no-dependency docs, warnings denied, passed",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "generatedWasmSmoke": "Passed: JS selection, Unicode typing, multiline insertion, commit export, restore with redo branch, stale owner rejection, kind change and pending Strong formatting",
+    "defaultPackage": "Canonical build passed reviewed declaration comparison, third-party notices, host-path checks and generated package check; V3 bootstrap and V5 factories absent",
+    "defaultWasm": {
+      "bytes": 1609338,
+      "budget": 1610000,
+      "gzipLevel9Bytes": 451499,
+      "sha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd"
+    },
+    "experimentalDeveloperWasm": {
+      "bytes": 1805564,
+      "gzipLevel9Bytes": 505241,
+      "sha256": "a0569969b0dcabc2005bb49c84e3f1d0a4632a6f01df1868729fbbafc2503878",
+      "releaseSizeBaseline": false
+    },
+    "developmentCorrections": [
+      "Corrected new tests to use explicit structural operation enum variants and FormatSet::default.",
+      "Generated-JS smoke initially asserted a nonexistent descriptor actionCount; corrected to the existing actionStateCount and intentCount getters."
+    ],
+    "freshBrowserRun": false,
+    "freshFullReleaseRun": false,
+    "freshDemoBundleRun": false,
+    "limitsRaised": false,
+    "pushed": false,
+    "published": false
+  },
+  "remaining": [
+    "Isolated optional release build/load and reviewed declaration contract; generated developer artifact is not a shipped package",
+    "Heading projection, browser renderer, selection, toolbar/keyboard and reload/recovery qualification",
+    "Flat bullet and numbered lists, then desktop/native-input qualification; nested lists deferred"
+  ],
+  "evidence": [
+    {
+      "path": "crates/breditor-core/src/codec/commit_json_v5.rs",
+      "sha256": "ea4ce08e037cc7308208d27b05add8f3aa69be5d02444724817fde00d3bfe044"
+    },
+    {
+      "path": "crates/breditor-core/src/codec/commit_json_v5_tests.rs",
+      "sha256": "debcd137da0b19c3d4bb185c24c44d87f6b18c105aeab7caf10382add7d149cd"
+    },
+    {
+      "path": "crates/breditor-wasm/src/compiled_profile_engine_v5.rs",
+      "sha256": "fc0d4c8d81a1c66cb644f419bef83848790d9b27fc882766bc3d548f7e01d37e"
+    },
+    {
+      "path": "crates/breditor-wasm/src/compiled_profile_engine_v5_tests.rs",
+      "sha256": "33b360aba413b0b4fbee128bf859a73fe0afc11e4e9718d87c05dc518bd9102a"
+    },
+    {
+      "path": "scripts/check-experimental-heading-wasm.mjs",
+      "sha256": "88d000380e0b9cd562dd31b9b4cf43ead0f23d49a984e499cbfb667a90adb7e7"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-bridge-all.log",
+      "sha256": "9951cfc316a62eba76072515bc1379ea7c919ebb2cb265bf11c074755f6ca99a"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-bridge-default.log",
+      "sha256": "1b8c3cd645db5242666ff2a1176868e5912de36c09b51a1bda6009a471f68ade"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-bridge-clippy-final.log",
+      "sha256": "97d070b349bd1b9465d9c8e718fb35cd5cf57a1d9b4b7e7881162d273da4b717"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-bridge-doc.log",
+      "sha256": "48363e046e5627b4a770e8354b65dbcb6f99f71eb73a6891e75ae5b1ecac2409"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-wasm-smoke.log",
+      "sha256": "93b261ada51fa50990e29c649a6319ea86e2c732b70ea7b6711693e332b47a8d"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-default-package.log",
+      "sha256": "c621bccfe5909cd78bdf1816362f1aa46df3b067b2ad2a8f85ee715df4ff79d4"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-default-isolation.log",
+      "sha256": "36185274a3ac9c41bd979ac534a24086765bc38f31ceb2bdc41db52b590f9d97"
+    }
+  ]
+}

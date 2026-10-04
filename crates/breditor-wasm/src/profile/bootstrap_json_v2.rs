@@ -137,6 +137,25 @@ struct InlineFormatBehaviorRecord {
 
 /// Strictly decodes and compiles one complete typed ABI-local profile request.
 pub(crate) fn decode_compiled_profile(json: &str) -> Result<CompiledEditorProfile, BreditorError> {
+    let (schema, extensions) = decode_configuration(json, PROFILE_BOOTSTRAP_FORMAT_VERSION)?;
+    CompiledEditorProfile::try_compile_base_text_profile(schema, extensions)
+        .map_err(|_| profile_compilation())
+}
+
+/// V3 retains the closed typed declaration shape but explicitly selects headings.
+#[cfg(feature = "experimental-text-blocks")]
+pub(crate) fn decode_text_block_profile(
+    json: &str,
+) -> Result<CompiledEditorProfile, BreditorError> {
+    let (schema, extensions) = decode_configuration(json, 3)?;
+    CompiledEditorProfile::try_compile_text_block_profile(schema, extensions)
+        .map_err(|_| profile_compilation())
+}
+
+fn decode_configuration(
+    json: &str,
+    version: u32,
+) -> Result<(SchemaId, ExtensionSet), BreditorError> {
     if json.len() > MAX_PROFILE_BOOTSTRAP_V2_JSON_BYTES {
         return Err(BreditorError::new(
             PROFILE_BOOTSTRAP_LIMIT_CODE,
@@ -146,9 +165,7 @@ pub(crate) fn decode_compiled_profile(json: &str) -> Result<CompiledEditorProfil
     preflight_profile(json)?;
     let record: ProfileBootstrapRecord =
         serde_json::from_str(json).map_err(|_| invalid_bootstrap())?;
-    if record.format != PROFILE_BOOTSTRAP_FORMAT
-        || record.format_version != PROFILE_BOOTSTRAP_FORMAT_VERSION
-    {
+    if record.format != PROFILE_BOOTSTRAP_FORMAT || record.format_version != version {
         return Err(invalid_bootstrap());
     }
 
@@ -160,8 +177,7 @@ pub(crate) fn decode_compiled_profile(json: &str) -> Result<CompiledEditorProfil
         record.extensions.into_iter().map(extension_manifest).collect::<Result<Vec<_>, _>>()?;
     let extensions = ExtensionSet::try_new(manifests, ExtensionLimits::default())
         .map_err(|_| profile_compilation())?;
-    CompiledEditorProfile::try_compile_base_text_profile(schema, extensions)
-        .map_err(|_| profile_compilation())
+    Ok((schema, extensions))
 }
 
 #[derive(Deserialize)]

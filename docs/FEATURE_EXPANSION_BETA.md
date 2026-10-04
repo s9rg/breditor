@@ -409,3 +409,28 @@ projection, DOM/selection, toolbar/input and browser reload/recovery. The defaul
 Wasm/browser remains paragraph-only; lists and desktop qualification still follow.
 
 See [compiled-profile qualification](qualification/2026-10-03-heading-profile.json).
+
+## Opt-in heading Wasm bridge
+
+The Rust Wasm adapter now has an explicit `experimental-text-blocks` feature,
+bootstrap V3 factory and Session V5 document/restore factories. Heading typing,
+normalized multiline insertion, kind changes and formatting use the compiled
+profile's named actions; they are not dispatched to paragraph-only handlers.
+
+Commit export was the remaining format gap: it now uses a replay-proved Commit
+V5 codec for these engines. Document export remains V2 and state export remains
+V3. Session V5 is still the authoritative save/recovery boundary, encoded before
+publication. Old factories and codec versions are not implicitly upgraded.
+
+Regression checks cover Unicode edits, full-source guards, strict envelopes,
+context and byte/count budgets, exact selection restoration, both history
+branches, stale observations after reload, and failed legacy-action dispatch
+without mutation. A developer-only generated-Wasm smoke script exercises the
+JavaScript ABI separately from native Rust tests.
+
+Next: qualify an isolated optional build/load and declaration boundary, then
+wire headings through projection, DOM/selection, toolbar, keyboard, and browser
+reload/recovery. The shipping browser remains paragraph-only. Flat bullet and
+numbered lists follow headings; nested lists remain deferred by user choice.
+
+See [heading Wasm bridge qualification](qualification/2026-10-03-heading-wasm-bridge.json).

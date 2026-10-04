@@ -29,6 +29,17 @@ pub struct BreditorEngine {
 }
 
 impl BreditorEngine {
+    #[cfg(feature = "experimental-text-blocks")]
+    pub(crate) fn try_new_v5(
+        inner: EditorEngine,
+        action_states: ActionStateCache,
+    ) -> Result<Self, BreditorError> {
+        let (generation, descriptor) = profile_identity(&inner, &action_states)?;
+        let inner = CheckpointedEditorEngine::try_new_v5(inner, SessionCheckpointLimits::default())
+            .map_err(|error| BreditorError::checkpointed_engine(&error))?;
+        Ok(Self { inner, action_states, generation, descriptor })
+    }
+
     pub(crate) fn try_new_v1(
         inner: EditorEngine,
         action_states: ActionStateCache,

@@ -7,6 +7,19 @@ use breditor_core::action::{
 };
 
 pub(super) fn supports_string_input(action: &ActionId, contract: &ActionInputContract) -> bool {
+    #[cfg(feature = "experimental-text-blocks")]
+    {
+        use breditor_core::action::builtins::{
+            insert_text_block_plain_text_action_id, insert_text_block_text_action_id,
+        };
+        if (action == &insert_text_block_text_action_id()
+            && contract == &insert_text_input_contract())
+            || (action == &insert_text_block_plain_text_action_id()
+                && contract == &insert_plain_text_input_contract())
+        {
+            return true;
+        }
+    }
     (action == &insert_text_action_id() && contract == &insert_text_input_contract())
         || (action == &insert_plain_text_action_id()
             && contract == &insert_plain_text_input_contract())
@@ -22,6 +35,17 @@ mod tests {
     };
 
     use super::supports_string_input;
+
+    #[cfg(feature = "experimental-text-blocks")]
+    #[test]
+    fn heading_strings_require_the_exact_registered_contract() {
+        let text = insert_text_block_text_action_id();
+        let plain = insert_text_block_plain_text_action_id();
+        assert!(supports_string_input(&text, &insert_text_input_contract()));
+        assert!(supports_string_input(&plain, &insert_plain_text_input_contract()));
+        assert!(!supports_string_input(&text, &insert_plain_text_input_contract()));
+        assert!(!supports_string_input(&plain, &insert_text_input_contract()));
+    }
 
     #[test]
     fn string_input_routing_is_an_exact_action_and_contract_allowlist() -> Result<(), Box<dyn Error>>
