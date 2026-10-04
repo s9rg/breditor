@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "320a382",
+  "status": "operation-scoped-diagnosis-complete-no-runtime-fix",
+  "change": "Opt-in BREDITOR_PERF_FIREFOX_PROFILE=1 for the private-package measurement runner. Launches only the isolated Firefox process with native profiler environment settings, enables existing static operation marks, uses an unminified disposable fixture, closes the browser to capture its multiprocess shutdown profile, preserves raw SHA before analysis, and records operation-scoped sample counts. No persistent settings, extension, upload or runtime change.",
+  "source": "https://firefox-source-docs.mozilla.org/tools/profiler/code-overview.html",
+  "summaryContract": "Gecko profile version 34, tab GeckoMain only, UserTiming mark payloads paired within one thread/window. Samples use the same process-local clock and half-open operation intervals. Inclusive counts deduplicate recursion and are non-additive. Innermost fixture/Wasm frame includes deeper native work and is not true self time. Unknown native frames remain unclassified. Static summary omits URLs; raw profiles may contain local URLs/paths and must be inspected before sharing. Malformed schemas, selected stacks, timestamps or fixture intervals reject rather than silently yielding partial evidence.",
+  "normalCandidate": {
+    "packageRecord": "target/flat-list-packages-ui9FQE/qualification.json",
+    "packageRecordSha256": "def59f1d93c9c203391df5bc495aa93d73e10305c35ba4f57e58bc35c94a307a",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-gXkrlA",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64"
+  },
+  "normalCandidateProfiles": [
+    {"directory": "performance-BZQj4H", "measurementSha256": "b9a1942d4376c1b90bc5e1b727f083ca10bd96f8d072f3a4830af9a23d6c6c93", "profileSha256": "70923ce5442832477c3b4ed0ddba13a2cf00bb0662b86a2cc65e0664f812d9aa", "edit500Samples": [213, 217, 211], "actionStatesInnermostFixtureSamples": [131, 136, 129], "note": "Raw profile retained; operation summary added afterward and reproducible with current parser."},
+    {"directory": "performance-xO7flg", "measurementSha256": "026e0968aa3d5a51653a3c2faf2cf81f5a35740382dbbb40fa786da639d21f21", "profileSha256": "1bbae3c94888dcf937ca350d1b6144974513dcea7d6f01c1867b98029308c86d", "edit500Samples": [229, 231, 209], "actionStatesInnermostFixtureSamples": [139, 134, 126], "selection500Samples": [173, 170, 177], "selectionActionStatesSamples": [130, 130, 134]}
+  ],
+  "symbolCandidate": {
+    "candidate": "target/flat-list-symbols-PhHPjR",
+    "qualificationSha256": "f0719bf70ba7522c38da05e997cad4cad1b0b9bb1e17b743890ef26b2081593d",
+    "packageRecord": "target/flat-list-packages-f3E35R/qualification.json",
+    "packageRecordSha256": "c18c5c8885f68651ad1e8410d721dd2e446b1805e1660e276d272ad899fde41e",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ktJvIZ",
+    "wasmSha256": "cd290f0051a4f532ed94202e71a8d8f45e45b01a2cd07de9e06079d2ada8e5d0",
+    "nonCustomSectionsSha256": "77da36d63452708bc22b363cfd7219f52f88cea07e9f5967aa8224273111e830",
+    "identityBoundary": "Executable sections differ from normal candidate, so its names were NOT applied to normal-candidate indices. This artifact was independently qualified and independently profiled. Browser JavaScript tarball is identical (702c79c0e1a659b12daffdb19edf35d10adfc6e5c657cf0def969b3adae7fcda). Named results support a source-level investigation, not exact production instruction attribution.",
+    "runs": [
+      {"directory": "performance-IZ3emm", "measurementSha256": "976398e0a25d8494ca8b59027444a8dde500723d3d11ccc5b3b8cc0ae0da91b6", "profileSha256": "e1d7a402ca4f2b321d6b199a740214a1202b172bc0e6c85313ab6935cb69c386", "edit500Samples": [214, 217, 211], "actionStatesSamples": [130, 133, 128], "headingEvaluationInclusiveSamples": [68, 73, 68], "documentValidationInclusiveSamples": [67, 66, 65], "note": "Named Wasm counts were obtained by reparsing the retained raw profile after extending the summary to named frames."},
+      {"directory": "performance-XqkllP", "measurementSha256": "244ab63e180b82f22fbc461a36361b19a11b2bbda35c37fad0c7c0b28174bcf1", "profileSha256": "6fb11229cb28f49d28fb0ce0ee3438a192315a9c38fbe34636c8a5265ee8b34e", "edit500Samples": [207, 221, 216], "actionStatesSamples": [126, 135, 130], "headingEvaluationInclusiveSamples": [65, 72, 71], "documentValidationInclusiveSamples": [63, 65, 64], "note": "Final collector/summary integrated; all 60 marked spans retained, including named Wasm frames."}
+    ]
+  },
+  "interpretation": "Across six normal-candidate 500-item edit spans, the actionStates binding is the innermost fixture frame in 58-63% of samples. Three selection spans place 75-76% there. Both independently profiled named-artifact runs show ActionStateCache::refresh -> ActionStateCatalog::derive_entry -> ActionRegistry::prepare / IntentRouter::route, with substantial SetFlatListBlockKindAction::evaluate and Document::try_new / ValidationState::visit_element work. Heading evaluation and document-validation counts overlap; do not add them. Samples narrow the target to action-state preflight, not chiefly DOM mapping, but do not measure call counts or prove how much of validation is redundant.",
+  "sourceInspection": [
+    "crates/breditor-wasm/src/action_state/read.rs: action_states checks the observation and refreshes the complete catalog.",
+    "crates/breditor-core/src/action/state/catalog.rs: direct/routed enabled states invoke actual action preparation; history states preflight replay.",
+    "crates/breditor-core/src/action/registry.rs: preparation evaluates handlers then applies a real transaction and verifies declared write effects.",
+    "crates/breditor-core/src/action/builtins/set_flat_list_block_kind.rs: handler constructs FlatListTextReplace and applies it to distinguish result-limit-disabled from faults; preparation later applies the returned plan. This preserves important exact disabled/error semantics.",
+    "crates/breditor-core/src/operation/flat_list_text_replace.rs: application validates expected roots, derived roots and final document. No cross-context proof cache exists."
+  ],
+  "nextStep": "Investigate bounded reuse of validated immutable action-plan work, or a narrower equally exact block-kind operation, before changing runtime behavior. Preserve result-limit disabled reasons, full source guards, context/limits binding, fault behavior, exact transaction preflight, undo/redo and durable replay; do not replace actual toolbar availability with approximation or suppress refreshes.",
+  "unprofiledControl": {"directory": "performance-qDUUrW", "consumer": "normalCandidate.consumer", "measurementSha256": "bb74aa02bcc51dd9f7e9eb5efe1335657ea12d88981da53dabdbf14f69ed15d1", "cases": 27, "edit500MedianMs": {"chromium": 55.3, "firefox": 174, "webkit": 79}, "geckoProfileEnabled": false, "profileBuild": null},
+  "verification": [
+    "Seven Gecko summary tests plus six rendering-summary and eight Wasm-metadata tests pass (21 total). Syntax and whitespace checks pass.",
+    "Wrong-browser, raw-core and mixed rendering-trace options reject before staging.",
+    "Five Firefox profiled fixtures (including initial environment-only probe) and one ordinary three-engine run pass 72 exact document/selection/history/recovery cases in total. Four marked profiles contain 60 operation spans each. Profiling timing overhead is visible and not presented as ordinary latency.",
+    "Named Wasm passes strict generated declarations, Node list/recovery and heading compatibility, five raw-Wasm runs per browser, and separate private packed consumers in all three engines.",
+    "Initial named build target/flat-list-symbols-TTiKqP stopped before compilation because wasm-bindgen was not on PATH. Retained failed directory; retried with verified CARGO_BIN and WASM_BINDGEN_BIN paths.",
+    "Scoped caffeinate assertions released after testing. No persistent Mac settings changed."
+  ],
+  "initialProbe": {"directory": "performance-krKKB5", "measurementSha256": "62a0c54cab3c45f4b0fe748b3c8ac19576e7b4d7c8744abc92efdcc98acb4bda", "profile": "/private/tmp/breditor-firefox-profile-Cv70rm/profile.json", "profileSha256": "cc6add3bcef19dd4a4fe2e1473ac8cf4ab37ed6a9c359a7bf37f92137631447a", "boundary": "External MOZ_PROFILER environment before explicit mode existed; minified, no operation marks. Despite old report lacking the new flag, this IS profiled evidence and must not be treated as normal benchmark timing."},
+  "reproduction": [
+    "node --test scripts/gecko-profile-summary.test.mjs scripts/rendering-trace-summary.test.mjs scripts/wasm-function-names.test.mjs",
+    "BREDITOR_PERF_BROWSER=firefox BREDITOR_PERF_FIREFOX_PROFILE=1 caffeinate -is -t 600 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-ui9FQE/qualification.json",
+    "BREDITOR_PERF_BROWSER=firefox BREDITOR_PERF_FIREFOX_PROFILE=1 caffeinate -is -t 600 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-f3E35R/qualification.json"
+  ],
+  "remaining": "No performance runtime fix this checkpoint. Intermittent WebKit faults, physical IME/VoiceOver checks, delivery/size decisions and complete release qualification remain open. No shipping rebuild, version change, push or publish.",
+  "shippingArtifactsChanged": false
+}

@@ -3,6 +3,9 @@
 // Optional Chromium rendering diagnosis: BREDITOR_PERF_BROWSER=chromium
 // BREDITOR_PERF_RENDER_TRACE=1. Keeps minification; raw traces may include local
 // URLs and must be inspected before sharing. Not a Firefox performance oracle.
+// Optional Firefox native sampling: BREDITOR_PERF_BROWSER=firefox
+// BREDITOR_PERF_FIREFOX_PROFILE=1. Unminified disposable fixture, static operation
+// marks, local shutdown profile. Diagnostic sample counts, not normal latency.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -13,6 +16,7 @@ import {fileURLToPath} from "node:url";
 import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
+import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
 
 assert.ok(process.argv.length === 3 || (process.argv.length === 4 && ["--diagnose-export", "--core-only"].includes(process.argv[3])), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export|--core-only]");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -21,6 +25,9 @@ const browserName = process.env["BREDITOR_PERF_BROWSER"] ?? "all";
 assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
 const cpuProfileEnabled = process.env["BREDITOR_PERF_CPU_PROFILE"] === "1";
 assert.ok(!cpuProfileEnabled || browserName === "chromium", "CPU profiling requires BREDITOR_PERF_BROWSER=chromium");
+const geckoProfileEnabled = process.env["BREDITOR_PERF_FIREFOX_PROFILE"] === "1";
+assert.ok(!geckoProfileEnabled || (browserName === "firefox" && !coreOnly && !diagnoseExport && !cpuProfileEnabled),
+  "Firefox profiling requires Firefox full-editor mode without CPU/export diagnostics");
 const renderingTraceEnabled = process.env["BREDITOR_PERF_RENDER_TRACE"] === "1";
 assert.ok(!renderingTraceEnabled || (browserName === "chromium" && !cpuProfileEnabled && !coreOnly && !diagnoseExport),
   "Rendering trace requires Chromium full-editor mode without CPU/export diagnostics");
@@ -94,14 +101,14 @@ const diagnosticPlugin = {name: "document-export-rejection-sites", transform(cod
     return code.slice(0, from) + section + code.slice(to);
   }
 }};
-await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
+await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
 const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport, releasePerformanceQualified: false,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
-  deepDiagnostics, browserName, runCount, cpuProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
+  deepDiagnostics, browserName, runCount, cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
   packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
@@ -122,6 +129,20 @@ try {
     const pageErrors = [];
     let cpuSession;
     let cpuProfile;
+    let geckoProfile;
+    const geckoProfilePath = join(fixture, `${name}-${run}.gecko-profile.json`);
+    const captureGeckoProfile = async () => {
+      if (!geckoProfileEnabled || geckoProfile) return;
+      // Gecko writes the multiprocess profile on clean shutdown. No extension,
+      // persistent browser preference or external upload is involved. Preserve
+      // raw identity before analysis; profiles may contain local URLs/paths.
+      await browser?.close();
+      const bytes = await readFile(geckoProfilePath);
+      geckoProfile = {path: geckoProfilePath, sha256: hash(bytes)};
+      Object.assign(geckoProfile, summarizeGeckoProfile(JSON.parse(bytes.toString("utf8"))));
+      assert.equal(geckoProfile.spans.length, 60, "six operation spans for warm-up plus nine cases");
+      console.log(JSON.stringify({geckoProfile: {path: geckoProfile.path, sha256: geckoProfile.sha256, spanCount: geckoProfile.spans.length}}));
+    };
     let tracing = false;
     let renderingTrace;
     const captureRenderingTrace = async () => {
@@ -161,7 +182,11 @@ try {
       console.log(JSON.stringify({cpuProfile}));
     };
     try {
-      browser = await type.launch();
+      browser = await type.launch(geckoProfileEnabled ? {env: {...process.env,
+        MOZ_PROFILER_STARTUP: "1", MOZ_PROFILER_STARTUP_FILTERS: "GeckoMain",
+        MOZ_PROFILER_STARTUP_FEATURES: "js,stackwalk,leaf", MOZ_PROFILER_STARTUP_INTERVAL: "1",
+        MOZ_PROFILER_SHUTDOWN: geckoProfilePath,
+      }} : {});
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
       if (renderingTraceEnabled) {
         await browser.startTracing(page, {screenshots: false,
@@ -176,7 +201,7 @@ try {
       }
       page.on("console", message => { if (message.type() === "error" && diagnostics.length < 100) { diagnostics.push(message.text()); console.error(message.text()); } });
       page.on("pageerror", error => { if (pageErrors.length < 100) pageErrors.push(String(error)); });
-      await page.goto(`http://127.0.0.1:${address.port}/${renderingTraceEnabled ? "?renderTrace=1" : ""}`);
+      await page.goto(`http://127.0.0.1:${address.port}/${renderingTraceEnabled || geckoProfileEnabled ? "?renderTrace=1" : ""}`);
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
       await captureCpuProfile();
       await captureRenderingTrace();
@@ -194,7 +219,8 @@ try {
         }))};
       });
       if (renderingTraceEnabled) assert.equal(renderingTrace.spans.length, 60, "six measured spans for warm-up plus nine cases");
-      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile, renderingTrace};
+      await captureGeckoProfile();
+      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile, geckoProfile, renderingTrace};
       measurements.push(measured); console.log(JSON.stringify({browser: name, summary}));
       await save("running");
     } catch (error) {
@@ -209,7 +235,8 @@ try {
           visibility: document.visibilityState, readyState: document.readyState,
         }), undefined, {timeout: 5000});
       } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
-      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, renderingTrace, fixtureState});
+      try { await captureGeckoProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
+      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, fixtureState});
       await save("failed"); throw error;
     } finally {await browser?.close();}
     }
