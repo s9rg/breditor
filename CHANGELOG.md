@@ -6,6 +6,11 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Borrow each element's immutable schema definition once per validation visit,
+  reusing its property, identity and child rules without caching validation
+  results or skipping checks. Add an exact unknown-element diagnostic regression
+  covering properties, duplicate IDs and descendants.
+
 - Reserve the appended slot when constructing child paths, avoiding temporary
   vector growth during validation and editing. Cover every supported path depth,
   shared sources and extreme child indices without changing path limits or wire

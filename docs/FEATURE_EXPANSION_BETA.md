@@ -1656,3 +1656,36 @@ an end-to-end WebKit improvement or persistent regression.
 See [evidence](qualification/2026-10-04-node-path-allocation.json).
 The Mac remains locked, so native input/accessibility gates remain open.
 Shipping files are unchanged and nothing was pushed/published.
+
+## Reuse schema rules within each element visit — 2026-10-04
+
+Document validation now borrows one immutable element definition per visit and
+passes its property, entity-ID and child rules to the existing checks. This
+removes repeated BTreeMap lookups, not validation work: every node, property,
+identity, child grammar and resource limit is still checked in the original
+order. No validation-result cache, new proof, fingerprint or wire format was
+introduced. The new accessor is internal to the schema module.
+
+A regression passed before and after the change, asserting the exact ordered
+codes, paths, subjects and details for an unknown element with forbidden
+properties/identity and a descendant with a duplicate identity. All 1,122
+all-feature and 699 default core tests passed, as did 52 targeted integration
+contracts, strict Clippy and formatting. Initial Clippy failure was test import
+placement, corrected without changing runtime code. The ordinary stripped Wasm
+candidate passed ABI/TypeScript/Node checks, five raw and five DOM/recovery runs
+per engine, and private installed consumers in all three engines. It is 17 raw
+bytes smaller and 43 gzip-9 bytes larger than the preceding candidate.
+
+Four alternating core measurements and two full-editor measurements passed all
+162 correctness cases. The new artifact's measured core preparation times were
+lower in both alternating pairs, but the machine was not quiet: a process
+snapshot during the full-editor comparison showed a background virtualization
+process consuming 527% CPU. Nothing was stopped or reconfigured. The substantial
+timing drift prevents a reliable percentage or release-latency claim; this
+snapshot also does not prove the cause of earlier browser timeouts. See
+[evidence](qualification/2026-10-04-element-definition-reuse.json).
+
+The earlier package-navigation and Firefox completion timeouts remain open;
+neither occurred in this checkpoint's runs. Default shipping trees are unchanged.
+Optional delivery/size policy, native clipboard/IME/accessibility and the full
+release gate remain pending. No push or publication was performed.

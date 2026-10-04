@@ -1156,12 +1156,13 @@ mod tests {
         assert_eq!(schema.root_kind().as_str(), "breditor/document");
         assert_eq!(schema.paragraph_kind().as_str(), "breditor/paragraph");
         assert_eq!(schema.strong_kind().as_str(), "breditor/strong");
-        assert!(schema.knows_element(schema.root_kind()));
-        assert!(schema.knows_element(schema.paragraph_kind()));
+        assert!(schema.element_definition(schema.root_kind()).is_some());
+        assert!(schema.element_definition(schema.paragraph_kind()).is_some());
         assert!(schema.is_text_container(schema.paragraph_kind()));
         assert!(schema.allows_text_format(schema.strong_kind()));
-        assert!(!schema.element_allows_properties(schema.root_kind()));
-        assert!(!schema.element_allows_entity_id(schema.root_kind()));
+        assert!(schema.element_definition(schema.root_kind()).is_some_and(|definition| {
+            !definition.allows_properties() && !definition.allows_entity_id()
+        }));
         assert!(schema.inline_format_property_contract(schema.strong_kind()).is_none());
         assert!(schema.is_exact_breditor_base());
         assert!(schema.supports_base_text_operations());
@@ -1376,7 +1377,7 @@ mod tests {
         spec.inline_formats.push(external_format(shared.clone(), owner));
 
         let schema = compile(spec, CompilerLimits::default())?;
-        assert!(schema.knows_element(&shared));
+        assert!(schema.element_definition(&shared).is_some());
         assert!(schema.allows_text_format(&shared));
         Ok(())
     }

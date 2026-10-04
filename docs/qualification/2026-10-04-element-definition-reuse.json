@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "127d19f",
+  "status": "single-definition-visit-qualified-locally",
+  "releaseQualified": false,
+  "change": "Borrow one immutable ElementDefinition during each validation visit. Reuse property, identity and child constraints while preserving traversal, diagnostic collection order, resource checks and complete validation. No cross-visit cache or new validation proof.",
+  "regression": "Unknown kind with forbidden properties and identity, plus a known descendant with repeated identity. Exact ordered codes, paths, subjects and duplicate-first-path details passed on both old and new implementations.",
+  "candidate": "target/flat-list-candidate-3ln0Nh",
+  "candidateRecordSha256": "0aae4bc8318db12c8b8cb1538e0bb916b988160edc9867c04c741e63092bba42",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "wasmBytes": 2044791,
+  "wasmGzip9Bytes": 568654,
+  "sizeDeltaFromPreviousCandidate": {"rawBytes": -17, "gzip9Bytes": 43},
+  "declarationsSha256": "b0bc19f07e305569a42a7c3c1f3246f718315df4e324d4c443bcdf7acc2a9d3b",
+  "oldPackageRecord": "target/flat-list-packages-GoFbBU/qualification.json",
+  "newPackageRecord": "target/flat-list-packages-MKE3rN/qualification.json",
+  "newPackageRecordSha256": "8eb2790a624dd746fcf4162e6c8b1f0bca7b9e96b356504ddd3318f09a1d8bdc",
+  "coreCommand": "node scripts/measure-flat-list-performance.mjs <package-record> --core-only",
+  "fullEditorCommand": "node scripts/measure-flat-list-performance.mjs <package-record>",
+  "consumerRoot": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T",
+  "coreRuns": [
+    {"name": "old1", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-T1aAbD/measurement.json", "sha256": "00eb1adaca69b4465fe94401078eb2276b9d29395cfaca1445f32e1760c3d77c", "casesPassed": 27},
+    {"name": "new1", "consumer": "breditor-flat-list-consumer-YRFu5f", "measurement": "performance-FmdvR5/measurement.json", "sha256": "9b1d76482fcd1cff671a2766045d914561e617a0bf0d7d5f2577fb9dfacbc01e", "casesPassed": 27},
+    {"name": "old2", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-zmpu4q/measurement.json", "sha256": "579800f708b1c6b66133343f43099057233197d4500e231ed12d44d90d51313d", "casesPassed": 27},
+    {"name": "new2", "consumer": "breditor-flat-list-consumer-YRFu5f", "measurement": "performance-tpqeyi/measurement.json", "sha256": "5ab73a202107ae6cd5747419b4833b022e3cd39b70a68efc27d659aab51ae4f3", "casesPassed": 27}
+  ],
+  "core500ItemMedianMsOldNewOldNew": {
+    "chromium": {"coldStates": [29.3, 19.5, 24.5, 22.2], "postEditStates": [30.3, 19.9, 24.9, 23.6], "insert": [6.4, 4, 5.1, 5]},
+    "firefox": {"coldStates": [291, 199, 291, 200], "postEditStates": [308, 203, 282, 203], "insert": [61, 38, 56, 39]},
+    "webkit": {"coldStates": [26, 19, 24, 20], "postEditStates": [28, 19, 25, 21], "insert": [6, 4, 5, 4]}
+  },
+  "fullEditorRuns": [
+    {"name": "new", "consumer": "breditor-flat-list-consumer-YRFu5f", "measurement": "performance-2qYG9m/measurement.json", "sha256": "abaa479b5d15fe21f1b4328b025b3720e36e9525e21963045cdd164796dbcd3d", "casesPassed": 27, "edit500MedianMs": {"chromium": 69.6, "firefox": 369, "webkit": 161}},
+    {"name": "old", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-rVDhzk/measurement.json", "sha256": "abb2e0fbec5ab5253c37c234c5b56bba27cc4196c4712dd57dd6b193f2e2e8e3", "casesPassed": 27, "edit500MedianMs": {"chromium": 104.3, "firefox": 425, "webkit": 177}}
+  ],
+  "timingLimitations": "Sequential ordinary stripped-artifact runs after our compilation and qualification stopped. Three samples per size and engine, no diagnostic-name or CPU-profile build. Large host-load variation; do not infer a reliable percentage speedup, p95, release latency or supported maximum document size. Core phases cannot be subtracted from full-editor timings.",
+  "hostObservation": {"when": "during the final old full-editor run", "process": "com.apple.Virtualization.VirtualMachine", "cpuPercent": 527.3, "actionTaken": "read-only observation; no processes stopped or settings changed", "thermalStatus": "pmset reported no thermal warning, performance warning or CPU power status recorded", "causality": "Background load is a benchmark confounder, not a proven explanation of earlier browser timeouts."},
+  "tests": {"allFeatureLibrary": 1122, "defaultLibrary": 699, "targetedIntegration": 52, "abi": 14, "rawRunsPerEngine": 5, "domRecoveryRunsPerEngine": 5},
+  "integrationTargets": ["document_invariants", "inline_format_property_contracts", "typed_inline_format_safety_contracts", "text_splice_fast_path_contracts", "paragraph_structure_contracts", "root_text_replace_contracts"],
+  "verification": ["Strict all-feature Clippy including tests passed", "cargo fmt --check passed", "Exact diagnostic regression rerun after test-only import fix", "Strict generated TypeScript and Node heading/list checks passed", "Private installed packages passed Chromium 151.0.7922.34, Firefox 153.0 and WebKit 26.5", "Ordinary Node/TypeScript/Chromium consumer passed against those packages", "All four shipping artifact trees unchanged"],
+  "initialLintFailure": "items_after_statements in the new regression test; imports moved before statements, then strict lint and the regression rerun successfully. Runtime code unchanged by this repair.",
+  "priorTimeoutsResolved": false,
+  "remaining": ["Earlier unidentified package navigation timeout and Firefox completion timeout", "Large-list responsiveness and controlled release-latency measurements", "Optional structural delivery choice and size budgets", "Native clipboard/IME/accessibility; last Mac check was locked", "Full release gate"],
+  "pushedOrPublished": false
+}

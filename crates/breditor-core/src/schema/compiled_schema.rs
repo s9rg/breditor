@@ -269,28 +269,12 @@ impl CompiledSchema {
         self.definition.inline_format(kind).is_some()
     }
 
-    pub(crate) fn knows_element(&self, kind: &QualifiedName) -> bool {
-        self.definition.element(kind).is_some()
-    }
-
-    pub(crate) fn element_allows_properties(&self, kind: &QualifiedName) -> bool {
-        self.definition
-            .element(kind)
-            .is_some_and(super::compiler::ElementDefinition::allows_properties)
-    }
-
-    #[cfg(feature = "experimental-structural-properties")]
-    pub(super) fn element_property_contract(
+    /// Borrows one immutable rule set for an entire element validation visit.
+    pub(super) fn element_definition(
         &self,
         kind: &QualifiedName,
-    ) -> Option<&super::element_property_contract::RequiredIntegerProperty> {
-        self.definition.element(kind)?.property_contract()
-    }
-
-    pub(crate) fn element_allows_entity_id(&self, kind: &QualifiedName) -> bool {
-        self.definition
-            .element(kind)
-            .is_some_and(super::compiler::ElementDefinition::allows_entity_id)
+    ) -> Option<&super::compiler::ElementDefinition> {
+        self.definition.element(kind)
     }
 
     pub(crate) fn format_property_contract(

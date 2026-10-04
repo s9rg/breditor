@@ -22,7 +22,10 @@ use crate::{
     },
 };
 
-use super::child_grammar::{ChildConstraint, ChildKind, ChildSequence};
+use super::{
+    child_grammar::{ChildConstraint, ChildKind, ChildSequence},
+    compiler::ElementDefinition,
+};
 
 #[path = "element_property_validation.rs"]
 #[cfg(feature = "experimental-structural-properties")]
@@ -658,7 +661,10 @@ impl<'a> ValidationState<'a> {
     }
 
     fn visit_element(&mut self, element: &crate::document::ElementNode, path: &NodePath) {
-        if !self.schema.knows_element(element.kind()) {
+        // Reuse only immutable schema rules within this visit, never a node's
+        // validation result. Unknown kinds still undergo every remaining check.
+        let definition = self.schema.element_definition(element.kind());
+        if definition.is_none() {
             self.issue(
                 ValidationCode::UnknownElement,
                 path,
@@ -671,7 +677,11 @@ impl<'a> ValidationState<'a> {
                 ),
             );
         }
-        self.visit_entity_id(element, path);
+        self.visit_entity_id(
+            element,
+            path,
+            definition.is_some_and(ElementDefinition::allows_entity_id),
+        );
         if self.report_is_saturated() {
             return;
         }
@@ -680,9 +690,13 @@ impl<'a> ValidationState<'a> {
             return;
         }
         #[cfg(feature = "experimental-structural-properties")]
-        self.validate_element_property_contract(element, path);
+        self.validate_element_property_contract(
+            element,
+            path,
+            definition.and_then(ElementDefinition::property_contract),
+        );
         if !element.properties().is_empty()
-            && !self.schema.element_allows_properties(element.kind())
+            && !definition.is_some_and(ElementDefinition::allows_properties)
         {
             self.issue(
                 ValidationCode::PropertiesNotAllowed,
@@ -710,7 +724,7 @@ impl<'a> ValidationState<'a> {
                 point_protocol_child_count_maximum(),
             );
         }
-        self.validate_child_shape(element, path);
+        self.validate_child_shape(element, path, definition.map(ElementDefinition::children));
         if self.report_is_saturated() {
             return;
         }
@@ -734,7 +748,12 @@ impl<'a> ValidationState<'a> {
         }
     }
 
-    fn visit_entity_id(&mut self, element: &crate::document::ElementNode, path: &NodePath) {
+    fn visit_entity_id(
+        &mut self,
+        element: &crate::document::ElementNode,
+        path: &NodePath,
+        allows_entity_id: bool,
+    ) {
         let Some(identity) = element.entity_id() else {
             return;
         };
@@ -755,7 +774,7 @@ impl<'a> ValidationState<'a> {
                 }
             }
         }
-        if !self.schema.element_allows_entity_id(element.kind()) {
+        if !allows_entity_id {
             self.issue(
                 ValidationCode::EntityIdForbidden,
                 path,
@@ -766,10 +785,13 @@ impl<'a> ValidationState<'a> {
         }
     }
 
-    fn validate_child_shape(&mut self, element: &crate::document::ElementNode, path: &NodePath) {
-        let Some(constraint) = self.schema.element_child_constraint(element.kind()) else {
-            return;
-        };
+    fn validate_child_shape(
+        &mut self,
+        element: &crate::document::ElementNode,
+        path: &NodePath,
+        constraint: Option<&ChildConstraint>,
+    ) {
+        let Some(constraint) = constraint else { return };
         let Some((kind, group)) = constraint.single() else {
             self.validate_grouped_child_shape(element, path, constraint);
             return;
@@ -1360,6 +1382,10 @@ fn usize_as_u64(value: usize) -> u64 {
 fn u64_as_usize(value: u64) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
 }
+
+#[cfg(test)]
+#[path = "element_definition_validation_tests.rs"]
+mod element_definition_tests;
 
 #[cfg(test)]
 mod tests {

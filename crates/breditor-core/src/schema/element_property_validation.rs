@@ -6,6 +6,7 @@ use crate::{
     document::{ElementNode, PropertyValueKind},
     identity::QualifiedName,
     position::NodePath,
+    schema::element_property_contract::RequiredIntegerProperty,
 };
 
 use super::{
@@ -17,8 +18,9 @@ impl ValidationState<'_> {
         &mut self,
         element: &ElementNode,
         path: &NodePath,
+        contract: Option<&RequiredIntegerProperty>,
     ) {
-        let Some(contract) = self.schema.element_property_contract(element.kind()) else { return };
+        let Some(contract) = contract else { return };
         match element.properties().get(&contract.name) {
             None => self.element_property_issue(
                 ValidationCode::MissingRequiredElementProperty,
