@@ -1,12 +1,14 @@
 import {
   type RenderedProjection,
   isOwnedRenderedProjection,
+  isOwnedFlatListRenderedProjection,
 } from "./dom_renderer.js";
 import {
   mapDomPointToBaseSelectionPoint,
   soleMappedTextDescendant,
 } from "./dom_point_mapping.js";
 import {
+  nativeChildNodes,
   nativeContainsNode,
   nativeDocumentCreateRange,
   nativeDocumentSelection,
@@ -42,6 +44,12 @@ import type {
   BrowserSelectionResult,
 } from "./selection_result.js";
 import { selectionFailure, selectionSuccess } from "./selection_result.js";
+import type { FlatListDocumentProjection } from "./flat_list_projection.js";
+import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
+import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "./flat_list_dom_point_mapping.js";
+
+type AnyRangeSelection = BaseRangeSelection | FlatListRangeSelection;
+type AnyRenderedProjection = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
 
 /**
  * Frozen affinity policy for DOM-originated points lacking an exact sidecar.
@@ -61,10 +69,10 @@ export type DomSelectionUnavailableReason = "noDomRange" | "outsideHost";
  * A DOM selection observation which never conflates missing browser focus with
  * the core's explicit `None` selection value.
  */
-export type DomSelectionObservation =
+export type DomSelectionObservation<S extends AnyRangeSelection = BaseRangeSelection> =
   | Readonly<{
       kind: "range";
-      selection: BaseRangeSelection;
+      selection: S;
       origin: DomSelectionOrigin;
     }>
   | Readonly<{
@@ -91,10 +99,10 @@ interface DomPoint {
 }
 
 interface SuppressionReceipt {
-  readonly rendered: RenderedProjection;
+  readonly rendered: AnyRenderedProjection;
   readonly rendererGeneration: bigint;
   readonly signature: string;
-  readonly selection: BaseRangeSelection | null;
+  readonly selection: AnyRangeSelection | null;
 }
 
 type RenderPreflight =
@@ -136,13 +144,14 @@ type DomSelectionSnapshotResult =
 const ACTIVE_SELECTION_WRITE_DOCUMENTS = new WeakSet<Document>();
 
 /**
- * Exact base-schema AST/DOM selection mapper with generation-bound echo control.
+ * Shared native selection transaction machinery with generation-bound echo control.
  *
  * The bridge supports one light-DOM host and one browser range. It never calls
  * `focus()` or `blur()`: focus observation and semantic selection publication
  * remain separate integration decisions.
  */
-export class BreditorDomSelectionBridge {
+class DomSelectionBridgeCore {
+  constructor(readonly flatLists: boolean) {}
   /** Policy used only when no exact programmatic affinity sidecar is available. */
   get affinityPolicy(): DomSelectionAffinityPolicy {
     return "boundaryDerived";
@@ -156,9 +165,9 @@ export class BreditorDomSelectionBridge {
    * range outside the host is reported as unavailable, not semantic absence.
    */
   read(
-    rendered: RenderedProjection,
-  ): BrowserSelectionResult<DomSelectionObservation> {
-    const preflight = validateRenderedForSelection(rendered);
+    rendered: AnyRenderedProjection,
+  ): BrowserSelectionResult<DomSelectionObservation<AnyRangeSelection>> {
+    const preflight = validateRenderedForSelection(rendered, this.flatLists);
     if (!preflight.ok) {
       this.#receipt = undefined;
       return selectionFailure(preflight.code);
@@ -207,7 +216,7 @@ export class BreditorDomSelectionBridge {
           Object.freeze({ kind: "unavailable", reason: "outsideHost", origin: "dom" }),
         );
       }
-      const anchor = mapDomPointToBaseSelectionPoint(
+      const anchor = mapDomPoint(
         rendered,
         anchorNode,
         anchorOffset,
@@ -216,7 +225,7 @@ export class BreditorDomSelectionBridge {
         this.#receipt = undefined;
         return selectionFailure(anchor.code);
       }
-      const focus = mapDomPointToBaseSelectionPoint(
+      const focus = mapDomPoint(
         rendered,
         focusNode,
         focusOffset,
@@ -225,7 +234,7 @@ export class BreditorDomSelectionBridge {
         this.#receipt = undefined;
         return selectionFailure(focus.code);
       }
-      const created = BaseRangeSelection.create(rendered.projection, {
+      const created = createRange(rendered, {
         kind: "range",
         anchor: anchor.value,
         focus: focus.value,
@@ -277,17 +286,17 @@ export class BreditorDomSelectionBridge {
    * use a verified `Range`, but backward ranges fail before DOM mutation.
    */
   write(
-    rendered: RenderedProjection,
-    selection: BaseEditorSelection,
+    rendered: AnyRenderedProjection,
+    selection: AnyRangeSelection | null,
   ): BrowserSelectionResult<DomSelectionWriteOutcome> {
-    const preflight = validateRenderedForSelection(rendered);
+    const preflight = validateRenderedForSelection(rendered, this.flatLists);
     if (!preflight.ok) {
       this.#receipt = undefined;
       return selectionFailure(preflight.code);
     }
     if (
       selection !== null &&
-      (!isOwnedBaseRangeSelection(selection) || selection.projection !== rendered.projection)
+      (!(this.flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) || selection.projection !== rendered.projection)
     ) {
       this.#receipt = undefined;
       return selectionFailure("selection.snapshot_mismatch");
@@ -478,7 +487,7 @@ export class BreditorDomSelectionBridge {
   }
 
   /** Reads focus ownership without reading or changing semantic selection. */
-  readFocus(rendered: RenderedProjection): BrowserSelectionResult<DomFocusObservation> {
+  readFocus(rendered: AnyRenderedProjection): BrowserSelectionResult<DomFocusObservation> {
     try {
       const receipt = this.#receipt;
       if (
@@ -492,7 +501,7 @@ export class BreditorDomSelectionBridge {
       this.#receipt = undefined;
       return selectionFailure("selection.dom_read_failed");
     }
-    const preflight = validateRenderedForSelection(rendered);
+    const preflight = validateRenderedForSelection(rendered, this.flatLists);
     if (!preflight.ok) {
       this.#receipt = undefined;
       return selectionFailure(preflight.code);
@@ -525,9 +534,9 @@ export class BreditorDomSelectionBridge {
   }
 
   #matchesReceipt(
-    rendered: RenderedProjection,
+    rendered: AnyRenderedProjection,
     signature: string,
-    selection: BaseRangeSelection | null,
+    selection: AnyRangeSelection | null,
   ): boolean {
     const receipt = this.#receipt;
     return (
@@ -540,9 +549,9 @@ export class BreditorDomSelectionBridge {
   }
 
   #matchingReceiptSelection(
-    rendered: RenderedProjection,
+    rendered: AnyRenderedProjection,
     signature: string,
-  ): BaseRangeSelection | null {
+  ): AnyRangeSelection | null {
     const receipt = this.#receipt;
     return receipt !== undefined &&
       receipt.rendered === rendered &&
@@ -554,8 +563,81 @@ export class BreditorDomSelectionBridge {
   }
 }
 
-function validateRenderedForSelection(rendered: RenderedProjection): RenderPreflight {
-  if (!isOwnedRenderedProjection(rendered) || !rendered.current) {
+/** Legacy paragraph/heading bridge; list handles and selections remain rejected. */
+export class BreditorDomSelectionBridge {
+  readonly #core = new DomSelectionBridgeCore(false);
+  get affinityPolicy(): DomSelectionAffinityPolicy { return this.#core.affinityPolicy; }
+  read(rendered: RenderedProjection): BrowserSelectionResult<DomSelectionObservation> {
+    // Core mode proves both the render brand and range factory before returning.
+    return this.#core.read(rendered) as BrowserSelectionResult<DomSelectionObservation>;
+  }
+  write(rendered: RenderedProjection, selection: BaseEditorSelection): BrowserSelectionResult<DomSelectionWriteOutcome> {
+    return this.#core.write(rendered, selection);
+  }
+  readFocus(rendered: RenderedProjection): BrowserSelectionResult<DomFocusObservation> { return this.#core.readFocus(rendered); }
+  clearSuppression(): void { this.#core.clearSuppression(); }
+  dispose(): void { this.#core.dispose(); }
+}
+
+/**
+ * Explicit hierarchical-list bridge. Shares native selection ownership, rollback,
+ * document-wide write exclusion and one-use exact affinity receipts with the
+ * legacy bridge, but never admits legacy handles or ranges. @internal
+ */
+export class BreditorFlatListDomSelectionBridge {
+  readonly #core = new DomSelectionBridgeCore(true);
+  get affinityPolicy(): DomSelectionAffinityPolicy { return this.#core.affinityPolicy; }
+  read(rendered: RenderedProjection<FlatListDocumentProjection>): BrowserSelectionResult<DomSelectionObservation<FlatListRangeSelection>> {
+    return this.#core.read(rendered) as BrowserSelectionResult<DomSelectionObservation<FlatListRangeSelection>>;
+  }
+  write(rendered: RenderedProjection<FlatListDocumentProjection>, selection: FlatListRangeSelection | null): BrowserSelectionResult<DomSelectionWriteOutcome> {
+    return this.#core.write(rendered, selection);
+  }
+  readFocus(rendered: RenderedProjection<FlatListDocumentProjection>): BrowserSelectionResult<DomFocusObservation> { return this.#core.readFocus(rendered); }
+  clearSuppression(): void { this.#core.clearSuppression(); }
+  dispose(): void { this.#core.dispose(); }
+}
+
+function createRange(rendered: AnyRenderedProjection, input: unknown): BrowserSelectionResult<AnyRangeSelection> {
+  if (isOwnedFlatListRenderedProjection(rendered)) return FlatListRangeSelection.create(rendered.projection, input);
+  return isOwnedRenderedProjection(rendered) ? BaseRangeSelection.create(rendered.projection, input) : selectionFailure("selection.foreign_or_stale_render");
+}
+
+function mapDomPoint(rendered: AnyRenderedProjection, node: Node, offset: number):
+  {readonly ok: true; readonly value: BaseSelectionPoint} | {readonly ok: false; readonly code: BrowserSelectionErrorCode} {
+  if (isOwnedFlatListRenderedProjection(rendered)) {
+    const result = mapDomPointToFlatListSelectionPoint(rendered, node, offset);
+    return result.ok ? result : {ok: false, code: result.error.code};
+  }
+  return isOwnedRenderedProjection(rendered) ? mapDomPointToBaseSelectionPoint(rendered, node, offset)
+    : {ok: false, code: "selection.foreign_or_stale_render"};
+}
+
+/** Snapshot-local signatures distinguish exact DOM aliases, not just positions. */
+function flatListDomContainerDescriptor(rendered: RenderedProjection<FlatListDocumentProjection>, node: Node): string | null {
+  if (node === rendered.host) return "host";
+  const path = rendered.astPathForDomNode(node);
+  if (path !== null) return `ast:${path.join("/")}`;
+  if (isHtmlElementNamed(node, "BR")) {
+    const parent = nativeParentNode(node);
+    const parentPath = parent === null ? null : rendered.astPathForDomNode(parent);
+    return parentPath === null ? null : `placeholder:${parentPath.join("/")}`;
+  }
+  if (nativeNodeType(node) !== 1) return null;
+  let current = node;
+  for (let depth = 1; depth <= 32; depth += 1) {
+    const children = nativeChildNodes(current);
+    const child = children[0];
+    if (children.length !== 1 || child === undefined || nativeParentNode(child) !== current) return null;
+    current = child;
+    const textPath = rendered.astPathForDomNode(current);
+    if (textPath !== null) return nativeNodeType(current) === 3 ? `wrapper:${textPath.join("/")}:${depth}` : null;
+  }
+  return null;
+}
+
+function validateRenderedForSelection(rendered: AnyRenderedProjection, flatLists: boolean): RenderPreflight {
+  if (!(flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
     return { ok: false, code: "selection.foreign_or_stale_render" };
   }
   try {
@@ -571,7 +653,7 @@ function validateRenderedForSelection(rendered: RenderedProjection): RenderPrefl
   }
 }
 
-function selectionForRendered(rendered: RenderedProjection): Selection | null {
+function selectionForRendered(rendered: AnyRenderedProjection): Selection | null {
   return nativeDocumentSelection(requiredOwnerDocument(rendered.host));
 }
 
@@ -646,7 +728,7 @@ function captureDomSelection(selection: Selection): DomSelectionSnapshotResult {
 }
 
 function incoherentSelectionIsOwnedByRenderedProjection(
-  rendered: RenderedProjection,
+  rendered: AnyRenderedProjection,
   snapshot: DomSelectionRangeSnapshot,
 ): boolean {
   try {
@@ -699,35 +781,42 @@ export function incoherentSelectionHasOwnedEndpointWitness(
 }
 
 function domPointMapsInsideRendered(
-  rendered: RenderedProjection,
+  rendered: AnyRenderedProjection,
   node: Node,
   offset: number,
 ): boolean {
   return (
     nodeIsInsideHost(rendered.host, node) &&
     isDomOffset(offset) &&
-    mapDomPointToBaseSelectionPoint(rendered, node, offset).ok
+    mapDomPoint(rendered, node, offset).ok
   );
 }
 
 function installedSemanticSelectionSignature(
-  rendered: RenderedProjection,
+  rendered: AnyRenderedProjection,
   domSelection: Selection,
-  expected: BaseRangeSelection,
+  expected: AnyRangeSelection,
 ): string | null {
   const captured = captureDomSelection(domSelection);
   if (!captured.ok || captured.value.kind !== "range") return null;
-  const actualAnchor = mapDomPointToBaseSelectionPoint(
+  const actualAnchor = mapDomPoint(
     rendered,
     captured.value.anchorNode,
     captured.value.anchorOffset,
   );
-  const actualFocus = mapDomPointToBaseSelectionPoint(
+  const actualFocus = mapDomPoint(
     rendered,
     captured.value.focusNode,
     captured.value.focusOffset,
   );
   if (!actualAnchor.ok || !actualFocus.ok) return null;
+  if (isOwnedFlatListRenderedProjection(rendered)) {
+    const sameAnchor = FlatListRangeSelection.create(rendered.projection, {kind: "range", anchor: expected.anchor, focus: actualAnchor.value});
+    const sameFocus = FlatListRangeSelection.create(rendered.projection, {kind: "range", anchor: expected.focus, focus: actualFocus.value});
+    return sameAnchor.ok && sameFocus.ok && sameAnchor.value.order === "collapsed" && sameFocus.value.order === "collapsed"
+      ? domRangeSignature(rendered, captured.value.anchorNode, captured.value.anchorOffset, captured.value.focusNode, captured.value.focusOffset) : null;
+  }
+  if (!isOwnedRenderedProjection(rendered)) return null;
   const expectedAnchor = spatialPositionForPoint(
     rendered.projection,
     expected.anchor,
@@ -868,9 +957,14 @@ function domSelectionMatchesSnapshot(
 }
 
 function domPointForSemantic(
-  rendered: RenderedProjection,
+  rendered: AnyRenderedProjection,
   point: BaseSelectionPoint,
 ): DomPoint | null {
+  if (isOwnedFlatListRenderedProjection(rendered)) {
+    const mapped = mapFlatListSelectionPointToDomPoint(rendered, point);
+    return mapped.ok ? mapped.value : null;
+  }
+  if (!isOwnedRenderedProjection(rendered)) return null;
   const path = point.kind === "text" ? point.textPath : point.parentPath;
   const node = rendered.nodeForAstPath(path);
   if (node === null) {
@@ -911,7 +1005,7 @@ function installForwardRange(
 }
 
 function domRangeSignature(
-  rendered: RenderedProjection,
+  rendered: AnyRenderedProjection,
   anchorNode: Node,
   anchorOffset: number,
   focusNode: Node,
@@ -924,7 +1018,9 @@ function domRangeSignature(
     : `range:${anchor}@${anchorOffset}>${focus}@${focusOffset}`;
 }
 
-function domContainerDescriptor(rendered: RenderedProjection, node: Node): string | null {
+function domContainerDescriptor(rendered: AnyRenderedProjection, node: Node): string | null {
+  if (isOwnedFlatListRenderedProjection(rendered)) return flatListDomContainerDescriptor(rendered, node);
+  if (!isOwnedRenderedProjection(rendered)) return null;
   if (node === rendered.host) {
     return "host";
   }

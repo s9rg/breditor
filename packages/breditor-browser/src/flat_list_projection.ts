@@ -1,6 +1,7 @@
 import {
   createStructuralTextProjection, exactDataRecord, readExactBoundedArray,
   bindProjectionPresentation,
+  projectionMatchesProfileGeneration,
   type BaseDocumentProjection, type BaseParagraphProjection,
   type ProjectionSchema, type ProjectionSnapshot,
 } from "./projection.js";
@@ -106,6 +107,12 @@ export function isOwnedFlatListProjection(value: unknown): value is FlatListDocu
 export function bindFlatListProjectionPresentation(projection: FlatListDocumentProjection, presentation: BrowserCompiledPresentation): boolean {
   const text = TEXT_PROOFS.get(projection);
   return text !== undefined && bindProjectionPresentation(text, presentation);
+}
+
+/** Exact owner correlation for consuming generated selection/update handles. @internal */
+export function flatListProjectionMatchesProfileGeneration(projection: FlatListDocumentProjection, generation: WasmProfileGenerationView): boolean {
+  const text = TEXT_PROOFS.get(projection);
+  return text !== undefined && projectionMatchesProfileGeneration(text, generation);
 }
 
 /** Internal adapter bridge; the temporary flat text proof is never a renderer result. @internal */

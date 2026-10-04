@@ -1,4 +1,7 @@
 import type { AstPath } from "./ast_path.js";
+import { astPathsEqual } from "./ast_path.js";
+import { flatListProjectionMatchesProfileGeneration, isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
 import { normalizeWasmBoundaryNumber } from "./normalize_wasm_boundary_number.js";
 import { type BaseDocumentProjection, isOwnedProjection } from "./projection.js";
 import {
@@ -34,6 +37,8 @@ const selectionSnapshotFields = Object.freeze([
 // Claim before touching any foreign getter, including `free` and `then`.
 // Nested consumers must neither inspect nor free the active owner's view.
 const ACTIVE_SELECTION_CONSUMPTIONS = new WeakSet<object>();
+type SelectionProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type EditorSelection = BaseRangeSelection | FlatListRangeSelection | null;
 
 /** Point kinds exposed by the scalar Wasm selection boundary. */
 export type SemanticSelectionPointKind = "text" | "children";
@@ -102,6 +107,17 @@ export function consumeSemanticSelectionWithCleanup(
   generation: WasmProfileGenerationView,
   asynchronous?: boolean,
 ): BrowserSelectionResult<BaseEditorSelection> {
+  return consumeSelection(projection, view, cleanup, generation, asynchronous, false) as BrowserSelectionResult<BaseEditorSelection>;
+}
+
+/** Explicit list selection consumption with the same captured-read/cleanup guard. @internal */
+export function consumeFlatListSemanticSelection(projection: FlatListDocumentProjection, view: SemanticSelectionView,
+  generation: WasmProfileGenerationView): BrowserSelectionResult<FlatListRangeSelection | null> {
+  return consumeSelection(projection, view, undefined, generation, undefined, true) as BrowserSelectionResult<FlatListRangeSelection | null>;
+}
+
+function consumeSelection(projection: SelectionProjection, view: SemanticSelectionView, cleanup: (() => unknown) | undefined,
+  generation: WasmProfileGenerationView, asynchronous: boolean | undefined, flatLists: boolean): BrowserSelectionResult<EditorSelection> {
   if (((typeof view !== "object" || view === null) && typeof view !== "function") ||
       (view as unknown) === generation || ACTIVE_SELECTION_CONSUMPTIONS.has(view)) {
     return selectionFailure("selection.invalid_wasm_view");
@@ -111,14 +127,14 @@ export function consumeSemanticSelectionWithCleanup(
     const capturedCleanup = cleanup ?? snapshotGeneratedCleanup(view);
     const capturedAsynchronous = asynchronous ?? containGeneratedThenable(view);
     if (capturedCleanup === null) return selectionFailure("selection.invalid_wasm_view");
-    let result: BrowserSelectionResult<BaseEditorSelection> = selectionFailure(
+    let result: BrowserSelectionResult<EditorSelection> = selectionFailure(
       "selection.invalid_wasm_view",
     );
     try {
       result = !capturedAsynchronous &&
-        isOwnedProjection(projection) &&
+        (flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) &&
         wasmProfileGenerationIsLive(generation) &&
-        projectionMatchesProfileGeneration(projection, generation) &&
+        (isOwnedFlatListProjection(projection) ? flatListProjectionMatchesProfileGeneration(projection, generation) : projectionMatchesProfileGeneration(projection, generation)) &&
         wasmViewMatchesProfileGeneration(view, generation)
         ? readSemanticSelection(projection, view)
         : selectionFailure("selection.invalid_wasm_view");
@@ -208,6 +224,15 @@ export function semanticRangeSelectionScalars(
   if (!isOwnedBaseRangeSelection(selection)) {
     return selectionFailure("selection.invalid_shape");
   }
+  return rangeSelectionScalars(selection);
+}
+
+/** Exact preorder indices include list and item wrappers; no engine call. @internal */
+export function flatListSemanticRangeSelectionScalars(selection: FlatListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
+  return isOwnedFlatListRangeSelection(selection) ? rangeSelectionScalars(selection) : selectionFailure("selection.invalid_shape");
+}
+
+function rangeSelectionScalars(selection: BaseRangeSelection | FlatListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
   try {
     const anchorNodeIndex = preorderIndexForPoint(selection.projection, selection.anchor);
     const focusNodeIndex = preorderIndexForPoint(selection.projection, selection.focus);
@@ -238,9 +263,9 @@ export function semanticRangeSelectionScalars(
 }
 
 function readSemanticSelection(
-  projection: BaseDocumentProjection,
+  projection: SelectionProjection,
   view: SemanticSelectionView,
-): BrowserSelectionResult<BaseEditorSelection> {
+): BrowserSelectionResult<EditorSelection> {
   if (!isSemanticSelectionView(view)) {
     return selectionFailure("selection.invalid_wasm_view");
   }
@@ -292,11 +317,12 @@ function readSemanticSelection(
   if (anchorInput === null || focusInput === null) {
     return selectionFailure("selection.invalid_wasm_view");
   }
-  const selection = BaseRangeSelection.create(projection, {
+  const input = {
     kind: "range",
     anchor: anchorInput,
     focus: focusInput,
-  });
+  };
+  const selection = isOwnedFlatListProjection(projection) ? FlatListRangeSelection.create(projection, input) : BaseRangeSelection.create(projection, input);
   if (!selection.ok || selection.value.order !== rangeOrder) {
     return selectionFailure("selection.invalid_wasm_view");
   }
@@ -321,7 +347,7 @@ function readPoint(
 }
 
 function pointInputAtPreorderIndex(
-  projection: BaseDocumentProjection,
+  projection: SelectionProjection,
   point: ReadPoint,
 ): Readonly<Record<string, unknown>> | null {
   const path = pathAtPreorderIndex(projection, point.nodeIndex, point.kind);
@@ -344,10 +370,17 @@ function pointInputAtPreorderIndex(
 }
 
 function pathAtPreorderIndex(
-  projection: BaseDocumentProjection,
+  projection: SelectionProjection,
   requestedIndex: number,
   expectedKind: SemanticSelectionPointKind,
 ): AstPath | null {
+  if (isOwnedFlatListProjection(projection)) {
+    for (const entry of flatListSelectableNodes(projection)) {
+      if (entry.index === requestedIndex) return entry.kind === expectedKind ? entry.path : null;
+      if (entry.index > requestedIndex) return null;
+    }
+    return null;
+  }
   let nodeIndex = 1;
   for (let paragraphIndex = 0; paragraphIndex < projection.paragraphs.length; paragraphIndex += 1) {
     const paragraph = projection.paragraphs[paragraphIndex];
@@ -369,10 +402,16 @@ function pathAtPreorderIndex(
 }
 
 function preorderIndexForPoint(
-  projection: BaseDocumentProjection,
+  projection: SelectionProjection,
   point: BaseSelectionPoint,
 ): number | null {
   const path = point.kind === "text" ? point.textPath : point.parentPath;
+  if (isOwnedFlatListProjection(projection)) {
+    for (const entry of flatListSelectableNodes(projection)) {
+      if (entry.kind === point.kind && astPathsEqual(entry.path, path)) return entry.index;
+    }
+    return null;
+  }
   const targetParagraph = path[0];
   if (targetParagraph === undefined) {
     return null;
@@ -395,6 +434,21 @@ function preorderIndexForPoint(
     nodeIndex += 1 + paragraph.runs.length;
   }
   return null;
+}
+
+/** Traverses the validated topology, counting—but never selecting—wrappers. */
+function* flatListSelectableNodes(projection: FlatListDocumentProjection): Generator<Readonly<{index: number; path: AstPath; kind: SemanticSelectionPointKind}>> {
+  let index = 1;
+  for (const [rootIndex, root] of projection.blocks.entries()) {
+    if (root.kind !== "textBlock") index += 1;
+    const blocks = root.kind === "textBlock" ? [root.block] : root.items;
+    for (const [itemIndex, block] of blocks.entries()) {
+      const path = root.kind === "textBlock" ? [rootIndex] : [rootIndex, itemIndex, 0];
+      if (root.kind !== "textBlock") index += 1;
+      yield {index: index++, path: Object.freeze(path), kind: "children"};
+      for (let run = 0; run < block.runs.length; run += 1) yield {index: index++, path: Object.freeze([...path, run]), kind: "text"};
+    }
+  }
 }
 
 function isSemanticSelectionView(view: unknown): view is SemanticSelectionView {

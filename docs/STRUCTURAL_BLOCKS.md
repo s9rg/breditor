@@ -1234,3 +1234,39 @@ recovery scenarios. These checks cover backward endpoints, emoji boundaries,
 empty items, replacement generations and changed numbering. They do not qualify
 keyboard input, OS clipboard or IME, or resolve every historical WebKit issue.
 See [DOM qualification](qualification/2026-10-04-flat-list-dom.json).
+
+### Flat-list DOM selection bridge and Wasm coordinates
+
+`BreditorFlatListDomSelectionBridge` now supplies read/write/focus observation and
+one-use exact affinity receipts for list render handles. It shares the native
+selection transaction implementation with the legacy bridge: connected light-DOM
+and canonical-shape preflight, directional endpoint verification, whole-document
+write exclusion, rollback, outside/cross-host handling, and the existing
+same-container Range caret path used for WebKit. The public legacy bridge keeps
+its old types and rejects list handles at runtime; the list bridge likewise
+rejects legacy handles and mismatched projection snapshots.
+
+A successful programmatic write retains the exact owned selection, including
+affinities that native DOM does not represent. Only the next matching read on
+the same render generation and exact DOM endpoint signature returns that value
+as `programmaticEcho`. Different wrapper/text aliases, another snapshot, clear,
+disposal or a nonmatching read invalidate the receipt. Outside-host browser
+selection remains unavailable rather than semantic None, and clearing this
+editor does not clear an outside selection. No bridge operation focuses the host.
+
+`consumeFlatListSemanticSelection` and
+`flatListSemanticRangeSelectionScalars` explicitly bridge hierarchical paths to
+the generated preorder selection API. Preorder counting includes list and item
+wrappers, but only text leaves and actual text-block child boundaries may be
+selected. The shared generated-handle consumer retains captured scalar reads,
+numeric normalization, exact generation/snapshot correlation, canonical direction
+checks, reentrancy exclusion, and cleanup/final-liveness checks. None requires all
+range-only fields absent. Scalar serialization grants no command authority: the
+caller still needs a fresh engine observation for `setRangeSelection`.
+
+The `--browser-dom` harness now sends list selection scalars to real Wasm, consumes
+the resulting selection after edits/recovery, and exercises native directional
+selection reads/writes and exact affinity receipts. This remains isolated from
+the browser owner/controller; incremental list update admission, toolbar/input,
+composition, clipboard and the user-facing demo are later integration steps.
+See [selection qualification](qualification/2026-10-04-flat-list-selection-bridge.json).

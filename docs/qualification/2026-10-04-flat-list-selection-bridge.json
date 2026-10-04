@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "0699f65",
+  "status": "Isolated list DOM selection bridge and Wasm selection conversion qualified; controller integration incomplete",
+  "contracts": {
+    "domBridge": "Explicit list facade over shared native transaction, rollback, document-wide write exclusion and exact receipt machinery",
+    "echo": "One-use exact owned selection on matching render generation and DOM endpoint signature; no affinity inference for programmatic echo",
+    "ownership": "Connected canonical light-DOM host, exact projection selection identity; outside selection preserved and cross-host ranges rejected",
+    "wasm": "Shared captured scalar reads, numeric normalization, generation/snapshot/direction proof, reentrancy guard and cleanup",
+    "preorder": "Counts list/item wrappers, admits only text leaves or text-block child boundaries",
+    "legacy": "Legacy and list entry points reject each other's handles/selections",
+    "authority": "Scalar serialization alone never calls the engine or supplies an observation"
+  },
+  "verification": {
+    "newSelectionTests": 25,
+    "browserTests": 1604,
+    "browserTestFiles": 52,
+    "typecheck": "passed, source and tests",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Retained real-Wasm commands/recovery, hierarchical projection and semantic selection decoding, serialized range command, native directional selection bridge and exact affinity echo",
+    "testScope": "Caret/forward/backward echo, native range reuse, empty items, explicit None, outside/cross-host ranges, wrapper aliases, stale and wrong-mode handles, malformed Wasm indices/snapshots/direction, cleanup failure/retirement and reentrant consumption",
+    "developmentCorrections": ["Narrowed the new mock destructor type to the generated void-returning API"],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "List projection-update admission and browser owner/controller integration",
+    "Toolbar, keyboard, composition and clipboard integration",
+    "Visible demo, browser reload and backup recovery",
+    "Native-input qualification, packed-consumer and size/performance gates"
+  ],
+  "evidenceBoundary": "Selection API and generated selection transport are tested; native editing, OS clipboard, IME and broad historical WebKit resolution are not claimed",
+  "pushed": false,
+  "published": false
+}

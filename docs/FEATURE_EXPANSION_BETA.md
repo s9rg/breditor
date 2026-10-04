@@ -933,3 +933,23 @@ beta goal is not complete.
 
 See [contract](STRUCTURAL_BLOCKS.md#flat-list-dom-and-selection-coordinates) and
 [verification](qualification/2026-10-04-flat-list-dom.json).
+
+## Flat-list selection integration checkpoint
+
+Lists now have an explicit DOM selection bridge sharing the established native
+read/write/rollback machinery, with exact one-use affinity receipts. A matching
+Wasm selection adapter counts structural wrappers correctly, validates actual
+paths and direction, and retains generation/snapshot/cleanup checks. Legacy
+selection entry points stay closed to hierarchical handles.
+
+Strict TypeScript and all 1,604 browser tests pass. The retained Wasm candidate
+passes five runs each in Chromium, Firefox and WebKit, covering selection scalar
+commands, decoded post-edit selections, recovery, native backward/empty-item
+selections and exact affinity echoes. Shipping artifact hashes are unchanged.
+
+Next: list projection-update admission and browser owner/controller mode, then
+toolbar/keyboard and the visible demo's reload/backup path. Native editing,
+clipboard/IME and release gates remain incomplete; the full beta goal is active.
+
+See [contract](STRUCTURAL_BLOCKS.md#flat-list-dom-selection-bridge-and-wasm-coordinates)
+and [verification](qualification/2026-10-04-flat-list-selection-bridge.json).

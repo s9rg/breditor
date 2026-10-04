@@ -19,6 +19,11 @@ import {
 import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
 import { incoherentSelectionHasOwnedEndpointWitness } from "./dom_selection.js";
 import { createProfiledDocumentProjection } from "./projection.js";
+import { BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
+import { FlatListDocumentProjection } from "./flat_list_projection.js";
+import { FlatListRangeSelection } from "./flat_list_selection.js";
+import { consumeFlatListSemanticSelection, consumeSemanticSelection, flatListSemanticRangeSelectionScalars,
+  semanticRangeSelectionScalars, type SemanticSelectionView } from "./wasm_selection_adapter.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
@@ -81,6 +86,191 @@ function semanticSelection(
 beforeEach(() => {
   window.getSelection()?.removeAllRanges();
   document.body.replaceChildren();
+});
+
+describe("flat-list selection bridge and Wasm coordinates", () => {
+  function fixture() {
+    const generation = selectionProfileGeneration();
+    const descriptor = selectionProfileDescriptor(generation, ["breditor/strong"]);
+    const presentation = compileBrowserPresentation(generation, descriptor,
+      createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]}));
+    const block = (text: string) => ({headingLevel: null, runs: text === "" ? [] : [{text, formatDetails: []}]});
+    const make = (revision = 0) => projectionValue(FlatListDocumentProjection.create({schema: descriptor.schema,
+      snapshot: {lineage: "list-selection", revision: String(revision)}, blocks: [
+        {kind: "orderedList", start: 8, items: [{headingLevel: 2, runs: [
+          {text: "A😀", formatDetails: []}, {text: "bold", formatDetails: [{kind: "breditor/strong", properties: []}]},
+        ]}, block("")]},
+        {kind: "textBlock", block: block("tail")}, {kind: "bulletList", items: [block("B")]},
+      ]}, generation, descriptor));
+    const projection = make();
+    const host = document.createElement("div"); document.body.append(host);
+    const renderer = new BreditorDomRenderer(presentation);
+    const rendered = projectionValue(renderer.renderFlatList(host, projection)).rendered;
+    const bridge = new BreditorFlatListDomSelectionBridge();
+    const point = (path: number[], offset: number, affinity: "before" | "after" = "after") => ({kind: "text", textPath: path, utf16Offset: offset, affinity});
+    const range = (anchor = point([1, 0], 2, "before"), focus = point([0, 0, 0, 0], 1)) =>
+      selectionValue(FlatListRangeSelection.create(projection, {kind: "range", anchor, focus}));
+    const view = (selection = range()): SemanticSelectionView & {free: ReturnType<typeof vi.fn<() => void>>} => {
+      const scalars = selectionValue(flatListSemanticRangeSelectionScalars(selection));
+      return {snapshotLineage: projection.snapshot.lineage, snapshotRevision: projection.snapshot.revision,
+        kind: "range", ...scalars, rangeOrder: selection.order, matchesProfileGeneration: candidate => candidate === generation, free: vi.fn<() => void>()};
+    };
+    return {generation, host, projection, rendered, renderer, bridge, point, range, view, make};
+  }
+
+  it.each(["caret", "forward", "backward"])("preserves %s direction and one-use exact affinity receipt", direction => {
+    const {host, rendered, bridge, range, point} = fixture();
+    const start = point([0, 0, 0, 0], 1, "before");
+    const end = point([1, 0], 2, "before");
+    const requested = range(direction === "backward" ? end : start, direction === "caret" ? start : direction === "backward" ? start : end);
+    expect(bridge.write(rendered, requested).ok).toBe(true);
+    const installed = domSelection(host).getRangeAt(0);
+    const echo = selectionValue(bridge.read(rendered));
+    expect(echo).toMatchObject({kind: "range", origin: "programmaticEcho", selection: {order: direction === "caret" ? "collapsed" : direction}});
+    if (echo.kind === "range") expect(echo.selection).toBe(requested);
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({kind: "range", origin: "dom"});
+    expect(bridge.write(rendered, requested).ok).toBe(true);
+    expect(domSelection(host).getRangeAt(0)).toBe(installed);
+  });
+
+  it("writes an empty list caret and distinguishes clear-selection echo from no DOM range", () => {
+    const {projection, rendered, bridge, host} = fixture();
+    const point = {kind: "children", parentPath: [0, 1, 0], childIndex: 0, affinity: "before"};
+    const caret = selectionValue(FlatListRangeSelection.create(projection, {kind: "range", anchor: point, focus: point}));
+    expect(bridge.write(rendered, caret).ok).toBe(true);
+    expect(domSelection(host).anchorNode).toBe(rendered.nodeForAstPath([0, 1, 0]));
+    const echo = selectionValue(bridge.read(rendered));
+    if (echo.kind !== "range") throw Error("missing echo");
+    expect(echo.selection).toBe(caret);
+    expect(bridge.write(rendered, null).ok).toBe(true);
+    expect(selectionValue(bridge.read(rendered))).toEqual({kind: "unavailable", reason: "noDomRange", origin: "programmaticEcho"});
+    expect(selectionValue(bridge.read(rendered))).toEqual({kind: "unavailable", reason: "noDomRange", origin: "dom"});
+  });
+
+  it("preserves outside-host selection and rejects ranges crossing the host", () => {
+    const {rendered, bridge, host} = fixture();
+    const outside = document.createTextNode("outside"); document.body.append(outside);
+    domSelection(host).setBaseAndExtent(outside, 0, outside, 3);
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({kind: "unavailable", reason: "outsideHost"});
+    expect(bridge.write(rendered, null).ok).toBe(true);
+    expect(domSelection(host).anchorNode).toBe(outside);
+    domSelection(host).setBaseAndExtent(rendered.nodeForAstPath([1, 0])!, 0, outside, 3);
+    expect(bridge.read(rendered)).toMatchObject({ok: false, error: {code: "selection.crosses_host"}});
+    expect(bridge.write(rendered, null).ok).toBe(false);
+  });
+
+  it("normalizes wrapper and root edges but rejects an interior list gap", () => {
+    const {rendered, bridge, host} = fixture();
+    const strong = host.querySelector("strong")!;
+    domSelection(host).setBaseAndExtent(strong, 0, strong, 1);
+    const wrapper = selectionValue(bridge.read(rendered));
+    expect(wrapper).toMatchObject({kind: "range", selection: {anchor: {textPath: [0, 0, 0, 1], utf16Offset: 0}, focus: {textPath: [0, 0, 0, 1], utf16Offset: 4}}});
+    domSelection(host).setBaseAndExtent(host, 0, host, 3);
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({kind: "range", selection: {order: "forward", anchor: {parentPath: [0, 0, 0]}, focus: {parentPath: [2, 0, 0]}}});
+    const list = host.querySelector("ol")!;
+    domSelection(host).setBaseAndExtent(list, 1, list, 1);
+    expect(bridge.read(rendered)).toMatchObject({ok: false, error: {code: "selection.ambiguous_dom_point"}});
+  });
+
+  it("keeps legacy admission closed and binds list writes to the exact projection", () => {
+    const {rendered, bridge, range, host, renderer, make} = fixture();
+    const requested = range();
+    // @ts-expect-error Legacy bridge cannot accept hierarchical handles.
+    expect(new BreditorDomSelectionBridge().read(rendered).ok).toBe(false);
+    // @ts-expect-error Legacy scalar writer cannot accept hierarchical ranges.
+    expect(semanticRangeSelectionScalars(requested).ok).toBe(false);
+    const legacy = render(new BreditorDomRenderer(), document.body.appendChild(document.createElement("div"))).rendered;
+    // @ts-expect-error List bridge cannot accept paragraph handles.
+    expect(bridge.read(legacy).ok).toBe(false);
+    const next = projectionValue(renderer.renderFlatList(host, make(1))).rendered;
+    expect(bridge.write(next, requested)).toMatchObject({ok: false, error: {code: "selection.snapshot_mismatch"}});
+    expect(bridge.read(rendered)).toMatchObject({ok: false, error: {code: "selection.foreign_or_stale_render"}});
+  });
+
+  it("discards receipts on lifecycle reset and synchronously invalidates changed list DOM", () => {
+    const {rendered, bridge, range, host} = fixture();
+    expect(bridge.write(rendered, range()).ok).toBe(true); bridge.clearSuppression();
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom"});
+    expect(bridge.write(rendered, range()).ok).toBe(true); bridge.dispose();
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom"});
+    host.querySelector("ol")!.setAttribute("start", "9");
+    expect(bridge.read(rendered)).toMatchObject({ok: false, error: {code: "selection.dom_drift"}});
+  });
+
+  it("converts actual preorder indices both ways, including wrappers and empty items", () => {
+    const {generation, projection, range, view} = fixture();
+    const requested = range();
+    expect(selectionValue(flatListSemanticRangeSelectionScalars(requested))).toMatchObject({anchorNodeIndex: 9, focusNodeIndex: 4});
+    const handle = view(requested);
+    const received = selectionValue(consumeFlatListSemanticSelection(projection, handle, generation));
+    expect(received).toMatchObject({anchor: requested.anchor, focus: requested.focus, order: "backward"});
+    expect(handle.free).toHaveBeenCalledTimes(1);
+    const empty = {kind: "children", parentPath: [0, 1, 0], childIndex: 0, affinity: "before"};
+    const caret = selectionValue(FlatListRangeSelection.create(projection, {kind: "range", anchor: empty, focus: empty}));
+    expect(selectionValue(flatListSemanticRangeSelectionScalars(caret))).toMatchObject({anchorNodeIndex: 7, focusNodeIndex: 7});
+    expect(selectionValue(consumeFlatListSemanticSelection(projection, view(caret), generation))).toMatchObject({anchor: empty, focus: empty});
+  });
+
+  it.each([0, 1, 2, 6, 10, 11, 14])("rejects a wrapper or missing node at preorder index %s", index => {
+    const {generation, projection, view} = fixture();
+    const handle = {...view(), anchorNodeIndex: index};
+    expect(consumeFlatListSemanticSelection(projection, handle, generation).ok).toBe(false);
+    expect(handle.free).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["snapshot", "order", "surrogate", "generation", "cleanup"])("rejects invalid %s without leaking the Wasm handle", fault => {
+    const {generation, projection, view} = fixture();
+    const base = view();
+    const handle = {...base,
+      ...(fault === "snapshot" ? {snapshotRevision: "99"} : {}),
+      ...(fault === "order" ? {rangeOrder: "forward" as const} : {}),
+      ...(fault === "surrogate" ? {focusOffset: 2} : {}),
+      ...(fault === "generation" ? {matchesProfileGeneration: () => false} : {}),
+      ...(fault === "cleanup" ? {free: vi.fn(() => {throw Error("failed");})} : {}),
+    };
+    expect(consumeFlatListSemanticSelection(projection, handle, generation).ok).toBe(false);
+    expect(handle.free).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares consumption exclusion across list and legacy adapters", () => {
+    const {generation, projection, view} = fixture();
+    const handle = view(); let nested: unknown;
+    handle.free.mockImplementation(() => {
+      // @ts-expect-error Wrong-mode reentry must reject before touching/freeing the handle.
+      nested = consumeSemanticSelection(projection, handle, generation);
+    });
+    expect(consumeFlatListSemanticSelection(projection, handle, generation).ok).toBe(true);
+    expect(nested).toMatchObject({ok: false}); expect(handle.free).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not mistake a different DOM alias at the same position for an exact echo", () => {
+    const {host, rendered, bridge, range, point} = fixture();
+    const caret = range(point([0, 0, 0, 1], 0, "before"), point([0, 0, 0, 1], 0, "before"));
+    expect(bridge.write(rendered, caret).ok).toBe(true);
+    const wrapper = host.querySelector("strong")!;
+    domSelection(host).setBaseAndExtent(wrapper, 0, wrapper, 0);
+    const read = selectionValue(bridge.read(rendered));
+    expect(read).toMatchObject({kind: "range", origin: "dom", selection: {anchor: {textPath: [0, 0, 0, 1], affinity: "after"}}});
+  });
+
+  it("requires range-only fields to be absent for semantic None", () => {
+    const {generation, projection, view} = fixture();
+    const empty = {...view(), kind: "none" as const, anchorPointKind: undefined, anchorNodeIndex: undefined, anchorOffset: undefined, anchorAffinity: undefined,
+      focusPointKind: undefined, focusNodeIndex: undefined, focusOffset: undefined, focusAffinity: undefined, rangeOrder: undefined};
+    expect(selectionValue(consumeFlatListSemanticSelection(projection, empty, generation))).toBeNull();
+    expect(empty.free).toHaveBeenCalledTimes(1);
+    const inconsistent = {...empty, anchorOffset: 0, free: vi.fn()};
+    expect(consumeFlatListSemanticSelection(projection, inconsistent, generation).ok).toBe(false);
+    expect(inconsistent.free).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a successfully decoded selection when cleanup retires its owner", () => {
+    const {generation, projection, view} = fixture();
+    const handle = view();
+    handle.free.mockImplementation(() => { generation.matches = () => false; });
+    expect(consumeFlatListSemanticSelection(projection, handle, generation).ok).toBe(false);
+    expect(handle.free).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("BreditorDomSelectionBridge", () => {

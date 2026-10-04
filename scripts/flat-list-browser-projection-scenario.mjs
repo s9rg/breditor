@@ -1,6 +1,8 @@
 // Real Wasm -> browser projection qualification, deliberately without editor DOM.
 import { consumeFlatListSemanticProjection } from "../packages/breditor-browser/src/wasm_projection_adapter.ts";
 import { consumeWasmCompiledProfileDescriptor } from "../packages/breditor-browser/src/wasm_profile_descriptor.ts";
+import { consumeFlatListSemanticSelection, flatListSemanticRangeSelectionScalars } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
+import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
 
 const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`projection mismatch: ${JSON.stringify(actual)}`);
@@ -8,6 +10,7 @@ const equal = (actual, expected) => {
 
 export function runFlatListBrowserProjectionScenario(api, verifyDom) {
   const handles = [];
+  const selections = new WeakMap();
   const own = value => { if (!value) throw new Error("missing handle"); handles.push(value); return value; };
   const observation = engine => own(engine.observation());
   const committed = result => { own(result); equal(result.status, "committed"); };
@@ -29,6 +32,10 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     const projected = consumeFlatListSemanticProjection(result.takeProjection(), owner.generation, owner.descriptor);
     if (!projected.ok) throw new Error(`projection rejected: ${projected.error.code}`);
     if (!projected.value.matchesProfile(owner.generation, owner.descriptor)) throw new Error("owner mismatch");
+    const selected = own(engine.selection(observation(engine)));
+    const selection = consumeFlatListSemanticSelection(projected.value, selected.takeSelection(), owner.generation);
+    if (!selection.ok) throw new Error(`selection rejected: ${selection.error.code}`);
+    selections.set(projected.value, selection.value);
     return projected.value;
   };
   try {
@@ -45,12 +52,23 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(before.textBlocks.map(entry => entry.path), [[0], [1, 0, 0], [1, 1, 0], [2, 0, 0]]);
     equal(before.blocks.map(entry => entry.kind), ["textBlock", "orderedList", "bulletList"]);
     equal(before.blocks[1].start, 8); equal(before.blocks[1].items[0].headingLevel, 2);
-    committed(engine.setRangeSelection(observation(engine), "text", 6, 1, "before", "text", 6, 1, "before"));
+    equal(selections.get(before), null);
+    const point = {kind: "text", textPath: [1, 0, 0, 0], utf16Offset: 1, affinity: "before"};
+    const requested = FlatListRangeSelection.create(before, {kind: "range", anchor: point, focus: point});
+    if (!requested.ok) throw new Error("requested selection rejected");
+    const scalar = flatListSemanticRangeSelectionScalars(requested.value);
+    if (!scalar.ok) throw new Error("selection serialization rejected");
+    const s = scalar.value;
+    equal(s.anchorNodeIndex, 6);
+    committed(engine.setRangeSelection(observation(engine), s.anchorPointKind, s.anchorNodeIndex, s.anchorOffset, s.anchorAffinity,
+      s.focusPointKind, s.focusNodeIndex, s.focusOffset, s.focusAffinity));
     committed(engine.executeStringAction(observation(engine), "breditor/insert-flat-list-plain-text", "x\ny", true));
     const after = project(engine, owner);
     equal(after.blocks[1].items.length, 3);
     equal(after.textBlocks.map(entry => entry.path), [[0], [1, 0, 0], [1, 1, 0], [1, 2, 0], [2, 0, 0]]);
     equal(after.textBlocks.map(entry => entry.block.runs.map(run => run.text).join("")), ["Intro", "Ax", "y🙂", "B", ""]);
+    equal(selections.get(after).focus.textPath, [1, 1, 0, 0]);
+    equal(selections.get(after).focus.utf16Offset, 1);
     committed(engine.undo(observation(engine), false));
     equal(project(engine, owner).blocks, before.blocks);
     const saved = json(engine.sessionCheckpointJson());
@@ -65,8 +83,8 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(before.matchesProfile(freshOwner.generation, freshOwner.descriptor), false);
     if (verifyDom !== undefined) verifyDom(before, after, owner);
     return {status: "passed", scope: verifyDom === undefined
-      ? "real Wasm to hierarchical browser projection, list paste/undo and fresh-owner redo; no DOM/native input"
-      : "real Wasm list projection and recovery plus semantic DOM, directional native Selection endpoints and drift rejection; no keyboard/IME/clipboard"};
+      ? "real Wasm hierarchical projection/selection conversion, list paste/undo and fresh-owner redo; no DOM/native input"
+      : "real Wasm list projection/selection and recovery plus semantic DOM, directional selection bridge, affinity echo and drift rejection; no keyboard/IME/clipboard"};
   } finally {
     for (const handle of handles.reverse()) handle.free();
   }

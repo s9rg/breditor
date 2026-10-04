@@ -3,6 +3,7 @@ import { BreditorDomRenderer } from "../packages/breditor-browser/src/dom_render
 import { compileBrowserPresentation } from "../packages/breditor-browser/src/compiled_browser_presentation.ts";
 import { createInlineFormatRenderManifest } from "../packages/breditor-browser/src/inline_format_render_manifest.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
+import { BreditorFlatListDomSelectionBridge } from "../packages/breditor-browser/src/dom_selection.ts";
 import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "../packages/breditor-browser/src/flat_list_dom_point_mapping.ts";
 
 const value = result => { if (!result.ok) throw new Error(result.error.code); return result.value; };
@@ -14,6 +15,7 @@ export function verifyFlatListDom(before, after, owner) {
   const presentation = compileBrowserPresentation(owner.generation, owner.descriptor,
     createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]}));
   const renderer = new BreditorDomRenderer(presentation);
+  const bridge = new BreditorFlatListDomSelectionBridge();
   const host = document.createElement("div");
   host.contentEditable = "true";
   document.body.append(host);
@@ -34,10 +36,21 @@ export function verifyFlatListDom(before, after, owner) {
     const range = value(FlatListRangeSelection.create(before, {kind: "range", anchor, focus}));
     equal(range.order, "backward");
     equal(range.anchor.textPath, [1, 1, 0, 0]); equal(range.focus.textPath, [1, 0, 0, 0]);
+    equal(value(bridge.read(rendered)).selection.order, "backward");
+    const exact = value(FlatListRangeSelection.create(before, {kind: "range",
+      anchor: {...anchor, affinity: "after"}, focus: {...focus, affinity: "before"}}));
+    value(bridge.write(rendered, exact));
+    const echoed = value(bridge.read(rendered));
+    equal(echoed.origin, "programmaticEcho");
+    if (echoed.selection !== exact) throw new Error("exact affinity receipt lost");
+    equal(value(bridge.read(rendered)).origin, "dom");
     equal(mapDomPointToFlatListSelectionPoint(rendered, heading, 2).ok, false); // Inside 🙂.
     const empty = value(mapFlatListSelectionPointToDomPoint(rendered, {kind: "children", parentPath: [2, 0, 0], childIndex: 0, affinity: "after"}));
     selection.setBaseAndExtent(empty.node, empty.offset, empty.node, empty.offset);
     equal(value(mapDomPointToFlatListSelectionPoint(rendered, selection.anchorNode, selection.anchorOffset)).parentPath, [2, 0, 0]);
+    const emptyPoint = {kind: "children", parentPath: [2, 0, 0], childIndex: 0, affinity: "before"};
+    value(bridge.write(rendered, value(FlatListRangeSelection.create(before, {kind: "range", anchor: emptyPoint, focus: emptyPoint}))));
+    equal(value(bridge.read(rendered)).selection.anchor.affinity, "before");
     // Clear an owned native range before replacing the tree to avoid retaining
     // detached native editing nodes (the same disposal discipline as the demo).
     selection.removeAllRanges();
@@ -55,6 +68,7 @@ export function verifyFlatListDom(before, after, owner) {
   } finally {
     if (selection.anchorNode && host.contains(selection.anchorNode)) selection.removeAllRanges();
     if (rendered) renderer.releaseFlatList(rendered);
+    bridge.dispose();
     host.remove();
   }
 }
