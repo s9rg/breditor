@@ -1062,3 +1062,25 @@ Next: connect list queue requests to the shared Wasm command adapter and editor
 controller. The queue is ready for that connection, not yet a user-facing editor
 command path. Toolbar/native-input and persistence/release gates remain open.
 See [verification](qualification/2026-10-04-flat-list-command-queue.json).
+
+## Flat-list adapter cleanup and text-export checkpoint
+
+List projection updates and selections now accept the owning command result's
+already-captured cleanup. Both list and legacy paths share the same consumption
+guards: cleanup runs once, active parent/child views cannot be consumed again,
+outer owner aliases remain protected, and cleanup failure rejects the result.
+Legacy entry points still reject list projections.
+
+The DOM-independent list plain-text exporter joins text blocks in document order
+with one LF, preserving empty items, Unicode and the snapshot. It intentionally
+omits bullets, numbers, headings and inline formatting; Document JSON is the
+lossless export. The existing 8,398,607-byte ceiling is unchanged. A valid list
+AST may exceed that export ceiling because it can contain more than 10,000 text
+blocks across containers; export then rejects rather than truncating text.
+
+All 1,722 browser tests and strict TypeScript pass. Five runs each in Chromium,
+Firefox and WebKit exercise the captured-cleanup handoff with real Wasm views
+and exact list text export, alongside the retained recovery and DOM scenarios.
+Shipping hashes are unchanged. Next is the shared production Wasm command adapter;
+this checkpoint does not claim toolbar, native typing, IME or clipboard integration.
+See [verification](qualification/2026-10-04-flat-list-adapter-content.json).

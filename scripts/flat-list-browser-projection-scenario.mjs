@@ -1,7 +1,8 @@
 // Real Wasm -> browser projection qualification, deliberately without editor DOM.
-import { consumeFlatListSemanticProjection, consumeFlatListSemanticProjectionUpdate } from "../packages/breditor-browser/src/wasm_projection_adapter.ts";
+import { consumeFlatListSemanticProjection, consumeFlatListSemanticProjectionUpdateWithCleanup } from "../packages/breditor-browser/src/wasm_projection_adapter.ts";
 import { consumeWasmCompiledProfileDescriptor } from "../packages/breditor-browser/src/wasm_profile_descriptor.ts";
-import { consumeFlatListSemanticSelection, flatListSemanticRangeSelectionScalars } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
+import { consumeFlatListSemanticSelectionWithCleanup, flatListSemanticRangeSelectionScalars } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
+import { projectFlatListPlainText } from "../packages/breditor-browser/src/projection_plain_text.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
 import { consumeWasmDocumentJson, documentJsonMatchesFlatListProjection } from "../packages/breditor-browser/src/wasm_document_json.ts";
 import { consumeWasmSessionCheckpoint, sessionCheckpointJsonMatchesDurableContract } from "../packages/breditor-browser/src/wasm_session_checkpoint.ts";
@@ -32,13 +33,19 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     if (!descriptor.ok) throw new Error("descriptor rejected");
     return {profile, generation, descriptor: descriptor.descriptor};
   };
+  // Mirror the owning adapter's handoff: capture the generated destructor once,
+  // then let the consuming boundary own it. Never add these views to handles.
+  const consumeSelection = (projection, view, generation) => {
+    const cleanup = view.free.bind(view);
+    return consumeFlatListSemanticSelectionWithCleanup(projection, view, cleanup, generation);
+  };
   const project = (engine, owner) => {
     const result = own(engine.projection(observation(engine)));
     const projected = consumeFlatListSemanticProjection(result.takeProjection(), owner.generation, owner.descriptor);
     if (!projected.ok) throw new Error(`projection rejected: ${projected.error.code}`);
     if (!projected.value.matchesProfile(owner.generation, owner.descriptor)) throw new Error("owner mismatch");
     const selected = own(engine.selection(observation(engine)));
-    const selection = consumeFlatListSemanticSelection(projected.value, selected.takeSelection(), owner.generation);
+    const selection = consumeSelection(projected.value, selected.takeSelection(), owner.generation);
     if (!selection.ok) throw new Error(`selection rejected: ${selection.error.code}`);
     selections.set(projected.value, selection.value);
     const contract = {mode: "v6", schema: owner.descriptor.schema, formats: owner.descriptor.formats};
@@ -54,11 +61,13 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
   };
   const transition = (base, command, engine, owner) => {
     committed(command);
-    const changed = consumeFlatListSemanticProjectionUpdate(base, command.projectionUpdate(), owner.generation, owner.descriptor, [engine, owner.profile, command]);
+    const view = command.projectionUpdate();
+    const cleanup = view.free.bind(view);
+    const changed = consumeFlatListSemanticProjectionUpdateWithCleanup(base, view, cleanup, owner.generation, owner.descriptor, [engine, owner.profile, command]);
     if (!changed.ok) throw new Error(`update rejected: ${changed.error.code}`);
     const result = changed.value.result;
     const selected = own(engine.selection(observation(engine)));
-    const selection = consumeFlatListSemanticSelection(result, selected.takeSelection(), owner.generation);
+    const selection = consumeSelection(result, selected.takeSelection(), owner.generation);
     if (!selection.ok) throw new Error(`updated selection rejected: ${selection.error.code}`);
     transitions.push({update: changed.value, selection: selection.value});
     return result;
@@ -78,6 +87,9 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(before.blocks.map(entry => entry.kind), ["textBlock", "orderedList", "bulletList"]);
     equal(before.blocks[1].start, 8); equal(before.blocks[1].items[0].headingLevel, 2);
     equal(selections.get(before), null);
+    const plain = projectFlatListPlainText(before);
+    if (!plain.ok) throw new Error("list plain-text export rejected");
+    equal(plain.content, {text: "Intro\nA🙂\nB\n", utf8Bytes: 14, snapshot: before.snapshot});
     const point = {kind: "text", textPath: [1, 0, 0, 0], utf16Offset: 1, affinity: "before"};
     const requested = FlatListRangeSelection.create(before, {kind: "range", anchor: point, focus: point});
     if (!requested.ok) throw new Error("requested selection rejected");

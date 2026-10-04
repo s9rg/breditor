@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { consumeSemanticProjectionUpdateWithCleanup, consumeTextBlockSemanticProjection, consumeFlatListSemanticProjection, consumeFlatListSemanticProjectionUpdate, type FlatListSemanticProjectionView } from "./wasm_projection_adapter.js";
+import { consumeSemanticProjectionUpdateWithCleanup, consumeTextBlockSemanticProjection, consumeFlatListSemanticProjection, consumeFlatListSemanticProjectionUpdate, consumeFlatListSemanticProjectionUpdateWithCleanup, type FlatListSemanticProjectionView } from "./wasm_projection_adapter.js";
+import { consumeFlatListSemanticSelection, consumeFlatListSemanticSelectionWithCleanup, consumeSemanticSelectionWithCleanup, type SemanticSelectionView } from "./wasm_selection_adapter.js";
+import { projectPlainText, projectFlatListPlainText, MAX_BROWSER_PLAIN_TEXT_UTF8_BYTES } from "./projection_plain_text.js";
 import { FlatListDocumentProjection, isOwnedFlatListProjection } from "./flat_list_projection.js";
 import { isOwnedProjection } from "./projection.js";
 
@@ -33,6 +35,45 @@ describe("flat-list generated updates", () => {
     const update = new FakeUpdateView({baseRevision: "7", resultRevision: "8", impact, projection: child});
     return {base, child, update, descriptor};
   }
+  it("uses the outer owner's captured cleanup without rereading free", () => {
+    const {base, child, update, descriptor} = fixture();
+    const cleanup = vi.fn(update.free.bind(update));
+    const getter = vi.fn(() => { throw new Error("must not reread cleanup"); });
+    Object.defineProperty(update, "free", {get: getter});
+    const result = consumeFlatListSemanticProjectionUpdateWithCleanup(base, update, cleanup, TEST_PROFILE_GENERATION, descriptor);
+    expect(result.ok).toBe(true); expect(getter).not.toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalledOnce(); expect(update.freeCalls).toBe(1); expect(child.freeCalls).toBe(1);
+  });
+  it.each(["throw", "thenable"])("rejects %s captured cleanup after freeing its child", mode => {
+    const {base, child, update, descriptor} = fixture();
+    const cleanup = vi.fn(() => {
+      if (mode === "throw") throw new Error("cleanup failure");
+      return {then(resolve: (value: undefined) => void) { resolve(undefined); }};
+    });
+    expect(consumeFlatListSemanticProjectionUpdateWithCleanup(base, update, cleanup, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    expect(cleanup).toHaveBeenCalledOnce(); expect(child.freeCalls).toBe(1); expect(update.freeCalls).toBe(0);
+  });
+  it("holds both claims through captured cleanup and protects outer aliases", () => {
+    const {base, child, update, descriptor} = fixture();
+    const nestedCleanup = vi.fn();
+    const cleanup = vi.fn(() => {
+      expect(consumeFlatListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+      expect(consumeFlatListSemanticProjectionUpdateWithCleanup(base, update, nestedCleanup, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+      expect(consumeFlatListSemanticProjection(child, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    });
+    expect(consumeFlatListSemanticProjectionUpdateWithCleanup(base, update, cleanup, TEST_PROFILE_GENERATION, descriptor).ok).toBe(true);
+    expect(cleanup).toHaveBeenCalledOnce(); expect(nestedCleanup).not.toHaveBeenCalled(); expect(child.freeCalls).toBe(1);
+    const other = fixture(); const protectedCleanup = vi.fn();
+    expect(consumeFlatListSemanticProjectionUpdateWithCleanup(other.base, other.update, protectedCleanup,
+      TEST_PROFILE_GENERATION, other.descriptor, [other.update]).ok).toBe(false);
+    expect(protectedCleanup).not.toHaveBeenCalled(); expect(other.child.freeCalls).toBe(0);
+  });
+  it("does not let captured legacy cleanup opt a list into the base contract", () => {
+    const {base, child, update, descriptor} = fixture(); const cleanup = vi.fn(update.free.bind(update));
+    // @ts-expect-error The captured-cleanup route must retain legacy admission.
+    expect(consumeSemanticProjectionUpdateWithCleanup(base, update, cleanup, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    expect(cleanup).toHaveBeenCalledOnce(); expect(child.freeCalls).toBe(0);
+  });
   it("consumes exact list transitions and frees the child and parent once", () => {
     const {base, child, update, descriptor} = fixture();
     const result = valueOf(consumeFlatListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor));
@@ -98,11 +139,105 @@ function flatListView(): FakeProjectionView & FlatListSemanticProjectionView {
   });
 }
 
+describe("flat-list selection captured cleanup", () => {
+  function fixture() {
+    const projection = valueOf(consumeFlatListSemanticProjection(flatListView(), TEST_PROFILE_GENERATION, ownedProfileDescriptor([])));
+    const free = vi.fn();
+    const view: SemanticSelectionView = {
+      snapshotLineage: projection.snapshot.lineage, snapshotRevision: projection.snapshot.revision,
+      kind: "range", anchorPointKind: "children", anchorNodeIndex: 12, anchorOffset: 0, anchorAffinity: "before",
+      focusPointKind: "text", focusNodeIndex: 6, focusOffset: 1, focusAffinity: "after", rangeOrder: "backward",
+      matchesProfileGeneration: generation => generation === TEST_PROFILE_GENERATION, free,
+    };
+    return {projection, view, free};
+  }
+  it("uses captured cleanup for exact backward paths and affinities without reading free again", () => {
+    const {projection, view, free} = fixture();
+    const getter = vi.fn(() => { throw new Error("must not reread cleanup"); });
+    Object.defineProperty(view, "free", {get: getter});
+    const result = consumeFlatListSemanticSelectionWithCleanup(projection, view, free, TEST_PROFILE_GENERATION);
+    expect(result).toMatchObject({ok: true, value: {
+      anchor: {kind: "children", parentPath: [2, 0, 0], childIndex: 0, affinity: "before"},
+      focus: {kind: "text", textPath: [1, 0, 0, 0], utf16Offset: 1, affinity: "after"},
+      order: "backward",
+    }});
+    expect(getter).not.toHaveBeenCalled(); expect(free).toHaveBeenCalledOnce();
+  });
+  it.each(["throw", "thenable"])("rejects %s captured cleanup", mode => {
+    const {projection, view, free} = fixture();
+    const cleanup = vi.fn(() => {
+      if (mode === "throw") throw new Error("cleanup failure");
+      return {then(resolve: (value: undefined) => void) { resolve(undefined); }};
+    });
+    expect(consumeFlatListSemanticSelectionWithCleanup(projection, view, cleanup, TEST_PROFILE_GENERATION).ok).toBe(false);
+    expect(cleanup).toHaveBeenCalledOnce(); expect(free).not.toHaveBeenCalled();
+  });
+  it("shares the active claim across public, captured and legacy consumers", () => {
+    const {projection, view, free} = fixture(); const nestedCleanup = vi.fn();
+    const cleanup = vi.fn(() => {
+      expect(consumeFlatListSemanticSelection(projection, view, TEST_PROFILE_GENERATION).ok).toBe(false);
+      expect(consumeFlatListSemanticSelectionWithCleanup(projection, view, nestedCleanup, TEST_PROFILE_GENERATION).ok).toBe(false);
+      // @ts-expect-error Legacy selection admission stays closed to lists.
+      expect(consumeSemanticSelectionWithCleanup(projection, view, nestedCleanup, TEST_PROFILE_GENERATION).ok).toBe(false);
+    });
+    expect(consumeFlatListSemanticSelectionWithCleanup(projection, view, cleanup, TEST_PROFILE_GENERATION).ok).toBe(true);
+    expect(cleanup).toHaveBeenCalledOnce(); expect(nestedCleanup).not.toHaveBeenCalled(); expect(free).not.toHaveBeenCalled();
+  });
+  it.each(["surrogate", "revision", "direction", "wrapper", "asynchronous"])("rejects %s and still uses captured cleanup once", fault => {
+    const {projection, view, free} = fixture();
+    if (fault === "surrogate") Object.defineProperty(view, "focusOffset", {value: 2});
+    if (fault === "revision") Object.defineProperty(view, "snapshotRevision", {value: "8"});
+    if (fault === "direction") Object.defineProperty(view, "rangeOrder", {value: "forward"});
+    if (fault === "wrapper") Object.defineProperty(view, "anchorNodeIndex", {value: 11});
+    expect(consumeFlatListSemanticSelectionWithCleanup(projection, view, free, TEST_PROFILE_GENERATION, fault === "asynchronous").ok).toBe(false);
+    expect(free).toHaveBeenCalledOnce();
+  });
+  it("rejects legacy consumption even outside reentry and rejects lookalike list projections", () => {
+    const {projection, view, free} = fixture();
+    // @ts-expect-error Captured cleanup must not widen legacy admission.
+    expect(consumeSemanticSelectionWithCleanup(projection, view, free, TEST_PROFILE_GENERATION).ok).toBe(false);
+    expect(free).toHaveBeenCalledOnce();
+    const second = fixture();
+    expect(consumeFlatListSemanticSelectionWithCleanup({...second.projection} as never, second.view, second.free, TEST_PROFILE_GENERATION).ok).toBe(false);
+    expect(second.free).toHaveBeenCalledOnce();
+  });
+});
+
 describe("opt-in flat-list projection", () => {
   const empty = () => ({headingLevel: null, runs: []});
   const input = (blocks: unknown[]) => ({schema: {name: "example/document", version: 1, fingerprint: TEST_SCHEMA_FINGERPRINT},
     snapshot: {lineage: "lists", revision: "0"}, blocks});
   const create = (blocks: unknown[]) => FlatListDocumentProjection.create(input(blocks), TEST_PROFILE_GENERATION, ownedProfileDescriptor([]));
+
+  it("exports mixed blocks and empty list items in document order without markers or formats", () => {
+    const projection = valueOf(consumeFlatListSemanticProjection(flatListView(), TEST_PROFILE_GENERATION, ownedProfileDescriptor([])));
+    const result = projectFlatListPlainText(projection);
+    expect(result).toEqual({ok: true, content: {text: "Intro\nA🙂\nB\n", utf8Bytes: 14, snapshot: projection.snapshot}});
+    expect(Object.isFrozen(result)).toBe(true);
+    if (result.ok) { expect(Object.isFrozen(result.content)).toBe(true); expect(Object.isFrozen(result.content.snapshot)).toBe(true); }
+    // @ts-expect-error Legacy export cannot silently flatten a list projection.
+    expect(projectPlainText(projection).ok).toBe(false);
+    expect(projectFlatListPlainText({...projection} as never).ok).toBe(false);
+  });
+  it("preserves empty blocks and copies caller-owned text before export", () => {
+    const block = {headingLevel: 2, runs: [{text: "é漢💡", formatDetails: []}]};
+    const projection = valueOf(create([{kind: "bulletList", items: [empty(), block, empty()]}]));
+    block.runs[0]!.text = "changed";
+    expect(projectFlatListPlainText(projection)).toMatchObject({ok: true, content: {text: "\né漢💡\n", utf8Bytes: 11}});
+    expect(projectFlatListPlainText(valueOf(create([{kind: "bulletList", items: [empty()]}]))))
+      .toMatchObject({ok: true, content: {text: "", utf8Bytes: 0}});
+  });
+  it("accepts the exact export ceiling and rejects a valid AST one LF beyond it", () => {
+    // Eight maximum-size runs use the full text budget. More than 10,000
+    // flattened blocks are valid across containers, but export stays bounded.
+    const full = {headingLevel: null, runs: [{text: "x".repeat(1024 * 1024), formatDetails: []}]};
+    const items = Array.from({length: 10_000}, (_, i) => i < 8 ? full : empty());
+    const exact = projectFlatListPlainText(valueOf(create([{kind: "bulletList", items}])));
+    expect(exact.ok).toBe(true);
+    if (exact.ok) { expect(exact.content.utf8Bytes).toBe(MAX_BROWSER_PLAIN_TEXT_UTF8_BYTES); expect(exact.content.text.length).toBe(MAX_BROWSER_PLAIN_TEXT_UTF8_BYTES); }
+    const over = valueOf(create([{kind: "bulletList", items}, {kind: "textBlock", block: empty()}]));
+    expect(projectFlatListPlainText(over)).toMatchObject({ok: false, error: {code: "plain_text.invalid_projection"}});
+  });
 
   it("preserves hierarchy, starts, headings, empty items and actual AST paths", () => {
     const view = flatListView();

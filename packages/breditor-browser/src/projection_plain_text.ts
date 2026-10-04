@@ -2,7 +2,9 @@ import {
   isOwnedProjection,
   type BaseDocumentProjection,
   type ProjectionSnapshot,
+  type BaseParagraphProjection,
 } from "./projection.js";
+import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { wellFormedUtf8Length as utf8Length } from "./well_formed_utf8_length.js";
 
 /** Maximum UTF-8 bytes in a plain-text projection, including paragraph LFs. */
@@ -61,17 +63,35 @@ export function projectPlainText(
   projection: BaseDocumentProjection,
 ): BrowserProjectionPlainTextResult {
   if (!isOwnedProjection(projection)) return failure();
+  return projectTextBlocks(projection.snapshot, projection.paragraphs);
+}
+
+/**
+ * Plain text in document order, one LF between text blocks (including items).
+ * Empty items are preserved. List markers/numbering and heading/inline formats
+ * are intentionally absent from plain text; use Document JSON for lossless data.
+ * Keeps the existing export byte ceiling, independently of AST limits. @internal
+ */
+export function projectFlatListPlainText(projection: FlatListDocumentProjection): BrowserProjectionPlainTextResult {
+  if (!isOwnedFlatListProjection(projection)) return failure();
+  function* blocks(): Iterable<BaseParagraphProjection> {
+    for (const entry of projection.textBlocks) yield entry.block;
+  }
+  return projectTextBlocks(projection.snapshot, blocks());
+}
+
+function projectTextBlocks(snapshot: ProjectionSnapshot, paragraphs: Iterable<BaseParagraphProjection>): BrowserProjectionPlainTextResult {
   try {
     const chunks: string[] = [];
     let utf8Bytes = 0;
-    const paragraphs = projection.paragraphs;
-    for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex += 1) {
-      if (paragraphIndex !== 0) {
+    let first = true;
+    for (const paragraph of paragraphs) {
+      if (!first) {
         utf8Bytes += 1;
         if (utf8Bytes > MAX_BROWSER_PLAIN_TEXT_UTF8_BYTES) return failure();
         chunks.push("\n");
       }
-      const paragraph = paragraphs[paragraphIndex];
+      first = false;
       if (paragraph === undefined) return failure();
       for (let runIndex = 0; runIndex < paragraph.runs.length; runIndex += 1) {
         const run = paragraph.runs[runIndex];
@@ -83,7 +103,6 @@ export function projectPlainText(
       }
     }
     const text = Reflect.apply(ARRAY_JOIN, chunks, [""]) as string;
-    const snapshot = projection.snapshot;
     const content: BrowserProjectionPlainText = Object.freeze({
       text,
       utf8Bytes,

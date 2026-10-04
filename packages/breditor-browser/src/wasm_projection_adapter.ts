@@ -323,6 +323,14 @@ export function consumeSemanticProjectionUpdate(
   return consumeProjectionUpdate(isOwnedProjection(base) ? base : undefined, view, generation, expectedProfile, protectedHandles) as BrowserProjectionResult<BaseProjectionUpdate>;
 }
 
+/** Consumes a list update without rereading the outer owner's captured free method. @internal */
+export function consumeFlatListSemanticProjectionUpdateWithCleanup(base: FlatListDocumentProjection,
+  view: SemanticProjectionUpdateView, cleanup: () => unknown, generation: WasmProfileGenerationView,
+  expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<FlatListProjectionUpdate> {
+  return consumeProjectionUpdateWithCleanup(isOwnedFlatListProjection(base) ? base : undefined, view, cleanup,
+    generation, expectedProfile, protectedHandles) as BrowserProjectionResult<FlatListProjectionUpdate>;
+}
+
 /** Consumes an exact list update, including its owned result projection. @internal */
 export function consumeFlatListSemanticProjectionUpdate(base: FlatListDocumentProjection, view: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView, expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<FlatListProjectionUpdate> {
@@ -385,6 +393,13 @@ export function consumeSemanticProjectionUpdateWithCleanup(
   expectedProfile: string | BrowserCompiledProfileDescriptor,
   protectedHandles: readonly unknown[] = [],
 ): BrowserProjectionResult<BaseProjectionUpdate> {
+  return consumeProjectionUpdateWithCleanup(isOwnedProjection(base) ? base : undefined, view, cleanup,
+    generation, expectedProfile, protectedHandles) as BrowserProjectionResult<BaseProjectionUpdate>;
+}
+
+function consumeProjectionUpdateWithCleanup(base: UpdateBase, view: SemanticProjectionUpdateView, cleanup: () => unknown,
+  generation: WasmProfileGenerationView, expectedProfile: string | BrowserCompiledProfileDescriptor,
+  protectedHandles: readonly unknown[]): BrowserProjectionResult<ProjectionUpdate> {
   const identity = objectIdentity(view);
   if (identity === null || ACTIVE_GENERATED_CONSUMPTIONS.has(identity)) {
     return projectionFailure("projection.invalid_update");
@@ -392,13 +407,13 @@ export function consumeSemanticProjectionUpdateWithCleanup(
   ACTIVE_GENERATED_CONSUMPTIONS.set(identity, undefined);
   try {
     return consumeSemanticProjectionUpdateWithCleanupUnlocked(
-      isOwnedProjection(base) ? base : undefined,
+      base,
       view,
       cleanup,
       generation,
       expectedProfile,
       protectedHandles,
-    ) as BrowserProjectionResult<BaseProjectionUpdate>;
+    );
   } finally {
     releaseGeneratedConsumption(identity);
   }

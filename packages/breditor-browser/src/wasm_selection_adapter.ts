@@ -113,7 +113,13 @@ export function consumeSemanticSelectionWithCleanup(
 /** Explicit list selection consumption with the same captured-read/cleanup guard. @internal */
 export function consumeFlatListSemanticSelection(projection: FlatListDocumentProjection, view: SemanticSelectionView,
   generation: WasmProfileGenerationView): BrowserSelectionResult<FlatListRangeSelection | null> {
-  return consumeSelection(projection, view, undefined, generation, undefined, true) as BrowserSelectionResult<FlatListRangeSelection | null>;
+  return consumeFlatListSemanticSelectionWithCleanup(projection, view, undefined, generation);
+}
+
+/** List selection consumption with cleanup captured by the command-result owner. @internal */
+export function consumeFlatListSemanticSelectionWithCleanup(projection: FlatListDocumentProjection, view: SemanticSelectionView,
+  cleanup: (() => unknown) | undefined, generation: WasmProfileGenerationView, asynchronous?: boolean): BrowserSelectionResult<FlatListRangeSelection | null> {
+  return consumeSelection(projection, view, cleanup, generation, asynchronous, true) as BrowserSelectionResult<FlatListRangeSelection | null>;
 }
 
 function consumeSelection(projection: SelectionProjection, view: SemanticSelectionView, cleanup: (() => unknown) | undefined,
