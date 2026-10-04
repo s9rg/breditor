@@ -709,6 +709,37 @@ describe("hierarchical flat-list DOM and points", () => {
     expect(rendered.current).toBe(false);
   });
 
+  it.each(["block-attribute", "wrapper-attribute", "wrapper-tag", "wrapper-child", "wrapper-comment",
+    "nested-wrapper", "text-value", "text-identity", "extra-run", "placeholder-attribute",
+    "placeholder-child", "placeholder-text", "extra-placeholder"])("rejects flat-list %s drift before observer delivery", fault => {
+    const {host, rendered} = fixture();
+    const text = rendered.nodeForAstPath([0, 0, 0, 0])!;
+    const block = host.querySelector("h2")!;
+    const wrapper = host.querySelector("strong")!;
+    const placeholder = host.querySelector("br")!;
+    if (fault === "block-attribute") block.setAttribute("class", "foreign");
+    if (fault === "wrapper-attribute") wrapper.setAttribute("title", "foreign");
+    if (fault === "wrapper-tag") {
+      const replacement = document.createElement("em");
+      replacement.append(...wrapper.childNodes); wrapper.replaceWith(replacement);
+    }
+    if (fault === "wrapper-child") wrapper.append(document.createTextNode(""));
+    if (fault === "wrapper-comment") wrapper.append(document.createComment(""));
+    if (fault === "nested-wrapper") {
+      const nested = document.createElement("em");
+      nested.append(...wrapper.childNodes); wrapper.append(nested);
+    }
+    if (fault === "text-value") text.nodeValue = "changed";
+    if (fault === "text-identity") text.parentNode!.replaceChild(text.cloneNode(), text);
+    if (fault === "extra-run") block.append(document.createElement("br"));
+    if (fault === "placeholder-attribute") placeholder.setAttribute("title", "foreign");
+    if (fault === "placeholder-child") placeholder.append(document.createTextNode(""));
+    if (fault === "placeholder-text") placeholder.replaceWith(document.createTextNode(""));
+    if (fault === "extra-placeholder") placeholder.after(document.createElement("br"));
+    expect(mapDomPointToFlatListSelectionPoint(rendered, text, 0)).toMatchObject({ok: false, error: {code: "selection.dom_drift"}});
+    expect(rendered.current).toBe(false);
+  });
+
   it("invalidates prior generations and arbitrates the host with legacy renderers", () => {
     const {host, renderer, rendered, make} = fixture();
     const next = valueOf(renderer.renderFlatList(host, make(1))).rendered;

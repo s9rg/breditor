@@ -2001,3 +2001,31 @@ the older native preview at 4188 is untouched.
 See [native control follow-up](qualification/2026-10-04-voiceover-control-followup.json).
 Human native-input evidence is still required. No editor runtime or wire change,
 push or publication was made.
+
+## Remove duplicate flat-list run validation — 2026-10-04
+
+Flat-list canonical DOM validation now checks each run's shape/text and mapping
+in the same run iteration, removing a redundant shape/text walk. Wrapper
+ownership checks remain separate and mandatory; no validation result is cached
+and no subtree is skipped. Base paragraph behavior, Rust, wire formats and public
+declarations are unchanged.
+
+Thirteen new before-observer drift regressions pass against both old and new
+implementations. The candidate passes all **1,857 browser unit tests**, strict
+source/test TypeScript, private packed consumers, five full DOM/recovery runs per
+engine, **54 list-demo cases**, and the **165-case existing browser matrix**.
+Both Playwright matrices pass without retries, skips or failures.
+
+Two sequential old/new performance pairs show modest improvements in 500-item
+edit medians: Chromium 69.4/67.2 to 64.4/60.9 ms, Firefox 197/198 to 191/193 ms,
+and WebKit 119/109 to 105/100 ms. All 108 measurement correctness cases pass.
+Host load was not controlled and WebKit ranges overlap in the second pair;
+these results are not a general latency guarantee. Firefox large-list editing
+remains a responsiveness concern.
+
+See [single-pass validation evidence](qualification/2026-10-04-flat-list-single-pass-validation.json)
+for exact package/report hashes, reproduction commands and the corrected initial
+Vitest working-directory error. Shipping trees remain unchanged. This candidate
+does not qualify native IME/VoiceOver, resolve the historical intermittent WebKit
+fault, approve larger size ceilings, or complete the release gate. Nothing was
+pushed or published.

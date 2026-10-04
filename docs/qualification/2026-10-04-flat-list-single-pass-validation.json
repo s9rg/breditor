@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "14e4a69",
+  "status": "qualified-private-consumers",
+  "releasePerformanceQualified": false,
+  "change": "Combine flat-list text-run DOM shape/text validation and ownership-map validation in one run iteration, removing the duplicate shape/text traversal. The separate wrapper-map ownership walk remains. Every block, run, wrapper, attribute, child count, text value, identity, placeholder and map count check remains mandatory. No validation cache or skipped subtree; base paragraph validation retains its existing path. No Rust, wire, public API or declaration change.",
+  "baseline": {
+    "packageRecord": "target/flat-list-packages-bW21G2/qualification.json",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-6m2iD1"
+  },
+  "candidate": {
+    "packageRecord": "target/flat-list-packages-MjzA5N/qualification.json",
+    "packageRecordSha256": "f1ea1b16ddfd6b6dd9f11b710963b0215450abdf87e57f1d72e313538252c250",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-HjgHjP",
+    "wasmCandidate": "target/flat-list-candidate-Rq6C5V",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64",
+    "browserTarballSha256": "39a02ddc11265c786f2f9831b1faea15c935ff6ae5d0be293b7d29d003952149",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d",
+    "browserJavaScriptByteDelta": 7,
+    "browserTarballByteDelta": 3,
+    "consumerJavaScriptByteDelta": -13,
+    "consumerGzip9ByteDelta": 14,
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "tests": [
+    "162 renderer cases passed against the unchanged runtime, including 13 new before-observer drift cases covering block/wrapper attributes, wrapper tag/children/comments/nesting, text value/identity, extra runs and placeholder shape/count.",
+    "After the runtime edit, all 1857 browser tests across 52 files and strict source/test TypeScript passed.",
+    "Five full DOM/controller/composition/clipboard/toolbar/queue/history/native IndexedDB V6 autosave/recovery runs passed in each of Chromium, Firefox and WebKit.",
+    "Private packed consumers passed in all three engines; base Node, strict TypeScript and Chromium smoke passed using the same installed packages. Shipping trees were verified unchanged."
+  ],
+  "toolingFailure": "The initial renderer test command ran Vitest from the repository root instead of the browser workspace and lacked jsdom: 159 failures reported document is not defined, with 3 passing. Correcting the command to npm test --workspace @breditor/browser -- src/dom_renderer.test.ts yielded the 162-case unchanged-runtime baseline. This was a test-environment error, not a runtime regression.",
+  "listDemo": {
+    "report": "target/list-single-pass-demo-20261004.json",
+    "sha256": "6acd654b07f4ce6abeb6a94665d52bb71487f67d0482dfd89b72f32bd39e8c89",
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0
+  },
+  "existingBrowserMatrix": {
+    "report": "target/list-single-pass-base-matrix-20261004.json",
+    "sha256": "727b0eef1cd12ba47369996e3fa5b43090452785a726389b3774aca611be8868",
+    "passed": 165,
+    "perEngine": 55,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "retries": 0
+  },
+  "runs": [
+    {"artifact": "baseline", "report": "performance-8JmIgS/measurement.json", "sha256": "b832c1ef9d7cd11cee0da66c15b9a59e8a8c70507560dc821fa86a57905f5d14", "edit500MediansMs": {"chromium": 69.4, "firefox": 197, "webkit": 119}, "edit500RangesMs": {"chromium": [69.1, 69.9], "firefox": [197, 199], "webkit": [109, 124]}},
+    {"artifact": "candidate", "report": "performance-5nQNGP/measurement.json", "sha256": "4c709b50932e479087788c3ab044354ecf4159e1b243d3b8247919b1035b7b3e", "edit500MediansMs": {"chromium": 64.4, "firefox": 191, "webkit": 105}, "edit500RangesMs": {"chromium": [63.7, 66.2], "firefox": [191, 193], "webkit": [103, 105]}},
+    {"artifact": "baseline", "report": "performance-0XfNpC/measurement.json", "sha256": "1512ba8e75fd6de7dc034b0f4641d4d64714c4f12491e9544169a970395638d6", "edit500MediansMs": {"chromium": 67.2, "firefox": 198, "webkit": 109}, "edit500RangesMs": {"chromium": [65.2, 72.1], "firefox": [196, 200], "webkit": [104, 112]}},
+    {"artifact": "candidate", "report": "performance-epBYxa/measurement.json", "sha256": "8fa291ef145e11f4c74e2970a3455adf5fa1e44c60c7cbaf7470b04a0cfc305b", "edit500MediansMs": {"chromium": 60.9, "firefox": 193, "webkit": 100}, "edit500RangesMs": {"chromium": [60.1, 63.1], "firefox": [192, 193], "webkit": [99, 107]}}
+  ],
+  "reproduction": [
+    "npm run typecheck --workspace @breditor/browser",
+    "npm test --workspace @breditor/browser",
+    "node scripts/check-experimental-flat-list-packages.mjs target/flat-list-candidate-Rq6C5V",
+    "node scripts/measure-flat-list-performance.mjs <package-record> (alternate the baseline and candidate records twice)",
+    "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-Rq6C5V --browser-dom",
+    "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-Rq6C5V BREDITOR_LIST_TEST_PORT=4193 PLAYWRIGHT_JSON_OUTPUT_NAME=target/list-single-pass-demo-20261004.json npx playwright test -c playwright.lists.config.ts --reporter=line,json --output target/list-single-pass-demo-20261004",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-MjzA5N/qualification.json PLAYWRIGHT_JSON_OUTPUT_NAME=target/list-single-pass-base-matrix-20261004.json npx playwright test -c playwright.browser-candidate.config.ts --max-failures=1 --reporter=line,json --output target/list-single-pass-base-matrix-20261004"
+  ],
+  "measurementMethod": "Sequential old/new/old/new using unchanged production minified installed-package full-editor fixture; no concurrent Breditor build/test. Reports are relative to the corresponding consumer. Each run passed all 27 correctness cases (three repetitions at 10/100/500 items per engine), 108 total. No diagnostic instrumentation or JIT changes. Background host load was not controlled; values are rounded to one decimal millisecond.",
+  "interpretation": "All engine medians improved in both local pairs, but this is not statistical or universal latency evidence. Second-pair WebKit ranges overlap. Firefox 500-item edits still take about 191-193 ms and remain an open responsiveness concern. These clean runs do not establish the cause or fix of historical WebKit faults.",
+  "nativeQualification": "No new physical-keyboard IME or spoken VoiceOver evidence. The human checklist on port 4194 and older native preview on port 4188 remain bound to their earlier artifacts, not this optimized browser package.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}

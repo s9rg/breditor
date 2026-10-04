@@ -1173,16 +1173,16 @@ function flatListDomAndMapsMatch(
   if (children.length !== projection.blocks.length || !matchesMap(host, [])) return false;
   let mappedNodes = 1;
   const blockMatches = (node: Node | undefined, block: BaseParagraphProjection, path: AstPath): boolean => {
-    if (!paragraphDomMatches(node, block, presentation) || !matchesMap(node, path)) return false;
-    mappedNodes += 1 + block.runs.length;
-    const runs = nativeChildNodes(node);
-    if (block.runs.length === 0) return runs[0] !== undefined && maps.domToAst.get(runs[0]) === undefined;
-    return block.runs.every((run, index) => {
-      const outer = runs[index];
-      if (outer === undefined) return false;
+    if (!matchesMap(node, path) || !paragraphDomMatches(node, block, presentation, (outer, run, index) => {
+      // This resolves and validates the complete run shape and text, then checks
+      // its ownership. Do not first walk the same run with runDomMatches.
       const text = textNodeForRunDom(outer, run, presentation);
       return matchesMap(text, [...path, index]) && wrappersAreUnmapped(outer, text, maps.domToAst);
-    });
+    })) return false;
+    mappedNodes += 1 + block.runs.length;
+    if (block.runs.length !== 0) return true;
+    const placeholder = nativeChildNodes(node)[0];
+    return placeholder !== undefined && maps.domToAst.get(placeholder) === undefined;
   };
   for (const [rootIndex, root] of projection.blocks.entries()) {
     const node = children[rootIndex];
@@ -1352,6 +1352,9 @@ function paragraphDomMatches(
   paragraphNode: Node | undefined,
   paragraph: BaseParagraphProjection,
   presentation: BrowserCompiledPresentation | undefined,
+  // Private callers may combine full run validation with additional map checks.
+  // A supplied predicate must validate shape/text as well as ownership.
+  matchesRun?: (outer: Node, run: BaseTextRunProjection, index: number) => boolean,
 ): paragraphNode is HTMLElement {
   if (
     !isHtmlElementNamed(paragraphNode, textBlockTag(paragraph)) ||
@@ -1374,7 +1377,9 @@ function paragraphDomMatches(
   }
   return paragraph.runs.every((run, runIndex) => {
     const child = children[runIndex];
-    return child !== undefined && runDomMatches(child, run, presentation);
+    return child !== undefined && (matchesRun === undefined
+      ? runDomMatches(child, run, presentation)
+      : matchesRun(child, run, runIndex));
   });
 }
 
