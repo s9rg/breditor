@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "1264431",
+  "status": "private-experiment-regressions-pass-webkit-performance-failure-retained-not-qualified",
+  "motivation": "FlatListTextReplace::derive allocated owned text fragments for every untouched source block just to validate and discard them, and reparsed the already admitted edited span for its text-preservation decision. This repeats during action evaluation, inverse construction and transaction preflight.",
+  "change": "Borrow untouched immutable text leaves for canonical-fragment admission, and compare already-admitted source/result fragments for the edited span. Owned fragment construction and borrowed validation share one allocation-free measurement helper. Complete source guards, schema/resource validation, inverse checks and registry preflight are unchanged. No new cache, wire tag, public API or shipping build.",
+  "correctness": "Untouched prefix/suffix nodes in the derived result are exact immutable source clones. They still require block-kind, all-text-child, adjacent-format and aggregate-length admission, but do not require copied TextRuns. Source span fragments are admitted before replacement derivation, and rebuild uses exactly edit.result, so comparing those fragments preserves the original text-preservation predicate. The borrowed and owned paths share adjacent-format-first, then per-run UTF-16-before-byte-overflow error precedence. The check still runs only for equal total block counts, matching the original behavior; edited and inserted fragments retain their existing unconditional validation.",
+  "regressions": [
+    "511 exhaustive two-format patterns with 0-8 Unicode runs compare owned and borrowed admission against an independent adjacent-format oracle and exact lengths.",
+    "Synthetic metadata tests cover exact aggregate UTF-16/host-byte maxima, separate overflow failures, simultaneous overflow precedence and a later adjacent-format violation taking precedence over earlier length overflow without allocating enormous strings.",
+    "A list operation with untouched mixed-format Unicode prefix/suffix and an empty block retains exact nodes, text-preservation relocation and inverse document/summary.",
+    "Existing non-text untouched-block rejection, same-length changed-text rejection, complete-result limits, every-endpoint relocation, randomized sessions, history and codec laws remain in the full core suite."
+  ],
+  "verification": [
+    "cargo fmt --all --check and git diff --check pass.",
+    "All-feature core library: 1131 passed.",
+    "All-feature public text_fragment_algebra, text_splice_fast_path_contracts and text_splice_properties: 3 + 4 + 1 passed.",
+    "Default-feature core library: 703 passed; public text_fragment_algebra: 3 passed. These overlap the all-feature cases and are not counted as distinct coverage.",
+    "Strict workspace Clippy with all targets/features and -D warnings passes.",
+    "Private Wasm candidate passes generated TypeScript/ABI and 14 declaration tests, Node heading/list/recovery checks, and five raw-Wasm checks per engine.",
+    "Private installed packages pass Node/types/base-consumer and flat-list Chromium/Firefox/WebKit smoke checks.",
+    "Full packaged browser matrix: 165 passed; list demo matrix: 54 passed. Both have zero skipped, unexpected or flaky results.",
+    "The subsequent uninstrumented performance comparison FAILED in WebKit. It is retained below and is not superseded by later passes.",
+    "Queue diagnostic helper: four tests pass, including generated catch formatting, missing/duplicate site rejection, original terminal semantics with throwing logger/string conversion, and bounded exception text. Existing Gecko/render summary suites also pass (13 tests). Three invalid queue diagnostic mode combinations reject before fixture staging.",
+    "After the failure: 90 baseline and 90 candidate WebKit cases passed with initial failure-only diagnostics; 90 candidate cases passed without diagnostics; final bounded diagnostic implementation passed another nine cases on each artifact. These 288 passing follow-up cases do not prove the fault fixed or identify its source.",
+    "Shipping distribution tree hashes remain unchanged. All scoped caffeinate processes completed; PreventSystemSleep and PreventUserIdleSystemSleep assertions are zero."
+  ],
+  "browserReports": [
+    {"path": "target/list-borrowed-fragment-browser-20261004.json", "sha256": "9019deee88d71ca69d3294ab7e43ca8a1386771096202adcf6cf017b5b5fac1d", "passed": 165},
+    {"path": "target/list-borrowed-fragment-demo-20261004.json", "sha256": "65d16bb9fd3a4e19db5d0418c1af9d2de75c316183678312060758fb22af296f", "passed": 54}
+  ],
+  "retainedFailure": {
+    "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-ldkYaY/measurement.json",
+    "sha256": "4db4fd776488a37890b8012947d547d29ddafdc0008961df42e784be9669715a",
+    "browser": "WebKit 26.5",
+    "diagnosticInstrumentation": false,
+    "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+    "stage": "500 items, repetition 1: selectionMs",
+    "failure": "documentJson export returned content_export.unavailable; owner phase faulted, reason queueUncertain. Fixture was visible and complete; diagnostics and pageErrors arrays were empty.",
+    "scope": "The same run completed Chromium and Firefox, then failed the mandatory WebKit correctness assertion. The six-run comparison stopped immediately after this second command. Remaining planned pairs were not run.",
+    "classification": "Unresolved queue uncertainty during selection. No captured underlying executor/observer exception in this original uninstrumented artifact. Similarity to older faults is not proof of the same cause. Neither this Rust change nor WebKit itself has been established as the cause. No timing speedup claim or release qualification follows from this run."
+  },
+  "followup": {
+    "baselinePackageRecord": "target/flat-list-packages-yU336W/qualification.json",
+    "baselinePackageRecordSha256": "f602685e6d1d0a0870748c953f783124310f7bb4c6143c5894ecb24f6eca57af",
+    "diagnosticMode": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 node scripts/measure-flat-list-performance.mjs <private-package-record>; optionally BREDITOR_PERF_RUNS=10. Transform only the disposable command_queue.js module's four exact executor/observer catches. Preserve normal failure calls. Final implementation verifies exactly one transformed module and caps each exception string at 1024 characters; runner retains at most 100 console errors. No user document, production package, browser setting or shipping log is changed.",
+    "diagnosticRepair": "First diagnostic build rejected before browser launch because TypeScript emits a newline before catch. Updated the explicit matcher and added same-line/generated-newline coverage; the strict four-site assertion remains. This is a diagnostic setup failure, not an editor failure.",
+    "reports": [
+      {
+        "kind": "original-uninstrumented-baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E/performance-EOjwrd/measurement.json",
+        "sha256": "1d34a31c65820c02baa82a4cab552a4526c910069902b69614e062222936d3eb",
+        "completeCases": 27
+      },
+      {
+        "kind": "initial-diagnostic-baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E/performance-2bRKes/measurement.json",
+        "sha256": "5f17695d65226aa0939ad415c1ef497eea6087cb5be2686604eba9a0618df45f",
+        "completeCases": 90
+      },
+      {
+        "kind": "initial-diagnostic-candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-Nhx61i/measurement.json",
+        "sha256": "568d96788e588cf0b806dbef600ee979cf0c9ac118a329a6b97f5914168de1da",
+        "completeCases": 90
+      },
+      {
+        "kind": "uninstrumented-candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-zQ2EEj/measurement.json",
+        "sha256": "06b42b9a341a2f3c0b9d52b8de35cc274a6ca455d04c59537e6be44922522d1d",
+        "completeCases": 90
+      },
+      {
+        "kind": "final-bounded-diagnostic-baseline",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E/performance-5gJqx0/measurement.json",
+        "sha256": "6e56a95c18cb645a69eb58b6e1bd1e688c0ad44cbae595d4d3ae80eafe23f8a8",
+        "completeCases": 9
+      },
+      {
+        "kind": "final-bounded-diagnostic-candidate",
+        "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-IJx5Ig/measurement.json",
+        "sha256": "1f337e2284b6c9b84e2b371064cf98ced8a3466cd5f91c6939ff078246fb27f9",
+        "completeCases": 9
+      }
+    ],
+    "decision": "Retain the Rust change only as a private tested experiment, not a promoted/shipping candidate. Broad regressions pass but performance qualification is incomplete because of the retained WebKit failure. The next useful evidence is the caught queue exception or a reliable reproducer, not additional unqualified speed claims.",
+    "releasePerformanceQualified": false
+  },
+  "candidate": {
+    "wasmCandidate": "target/flat-list-candidate-7awIKQ",
+    "wasmQualificationSha256": "87840988b1601f7ae8df4b26e7f4918b25539f8d7c8077fd4787ec8b076db932",
+    "wasmSha256": "870ec13e74dd9c3526c577cd4662f8ddde39771de0886d078daa4e28c6205323",
+    "wasmBytes": 2045100,
+    "wasmGzip9Bytes": 568877,
+    "wasmByteDelta": -324,
+    "wasmGzip9ByteDelta": 41,
+    "packageRecord": "target/flat-list-packages-KklioP/qualification.json",
+    "packageRecordSha256": "63137133fecfe6cb30d00a2c34d73b87d23f0392b6e82d15b5b480cc9057f317",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E",
+    "browserTarballSha256": "702c79c0e1a659b12daffdb19edf35d10adfc6e5c657cf0def969b3adae7fcda",
+    "wasmTarballSha256": "07b62e0c842b75aa46f1ef240cd240e9067371284f9f31af771f15756111b5bd",
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "remaining": "Large-document responsiveness, native IME/VoiceOver evidence, intermittent WebKit faults, delivery/size policy and full release qualification remain open. No version change, shipping rebuild, push or publish.",
+  "shippingArtifactsChanged": false,
+  "shippingTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  }
+}

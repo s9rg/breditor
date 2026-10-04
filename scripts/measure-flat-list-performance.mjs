@@ -6,6 +6,9 @@
 // Optional Firefox native sampling: BREDITOR_PERF_BROWSER=firefox
 // BREDITOR_PERF_FIREFOX_PROFILE=1. Unminified disposable fixture, static operation
 // marks, local shutdown profile. Diagnostic sample counts, not normal latency.
+// Optional WebKit queue failure diagnosis: BREDITOR_PERF_BROWSER=webkit
+// BREDITOR_PERF_QUEUE_DIAGNOSTICS=1. Logs bounded caught exceptions only in the
+// disposable synthetic fixture; never shipping code or a normal timing result.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -17,6 +20,7 @@ import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
+import {instrumentQueueFailures} from "./queue-failure-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3 || (process.argv.length === 4 && ["--diagnose-export", "--core-only"].includes(process.argv[3])), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export|--core-only]");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -35,6 +39,9 @@ const runCount = Number(process.env["BREDITOR_PERF_RUNS"] ?? "1");
 assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BREDITOR_PERF_RUNS must be 1..10");
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
+const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
+assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
+  "queue diagnostics require WebKit full-editor mode without other instrumentation");
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const recordPath = await realpath(resolve(repository, process.argv[2]));
 const local = relative(join(repository, "target"), recordPath);
@@ -101,11 +108,19 @@ const diagnosticPlugin = {name: "document-export-rejection-sites", transform(cod
     return code.slice(0, from) + section + code.slice(to);
   }
 }};
-await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
+let queueDiagnosticModules = 0;
+const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", transform(code, id) {
+  if (id === join(consumer, "node_modules/@breditor/browser/dist/command_queue.js")) {
+    queueDiagnosticModules++;
+    return instrumentQueueFailures(code);
+  }
+}};
+await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
+assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
 const measurements = [];
 const output = join(fixture, "measurement.json");
-const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport, releasePerformanceQualified: false,
+const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled, queueDiagnosticsEnabled, releasePerformanceQualified: false,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   deepDiagnostics, browserName, runCount, cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),

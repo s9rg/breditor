@@ -281,8 +281,8 @@ impl FlatListTextReplace {
             .map_err(|_| FlatListTextReplaceError::InvalidTarget)?,
         )
         .map_err(|_| FlatListTextReplaceError::InvalidTarget)?;
-        let edit =
-            derive_replacement(&flat_range, &fragments(&guarded)?, &fragments(&self.inserted)?)?;
+        let guarded_text = fragments(&guarded)?;
+        let edit = derive_replacement(&flat_range, &guarded_text, &fragments(&self.inserted)?)?;
         let edited = rebuild(&self.inserted, &edit.result)?;
         let nodes = source[..first]
             .iter()
@@ -303,18 +303,19 @@ impl FlatListTextReplace {
             edit.inverse_range.end().offset(),
         )
         .map_err(|_| FlatListTextReplaceError::InvalidLayout)?;
-        let original = source.iter().map(|(_, node)| (*node).clone()).collect::<Vec<_>>();
-        let preserves_text = if original.len() == nodes.len() {
-            // Validate every source block, including untouched items: try_new
-            // must still reject non-text children outside the edited range.
-            let original_text = fragments(&original)?;
-            // Equal total counts imply equal replaced/inserted counts. The
-            // prefix and suffix in `nodes` are exact immutable source clones,
-            // so only the rebuilt span needs another parse and comparison.
-            original_text[first..=last]
+        let preserves_text = if source.len() == nodes.len() {
+            // Untouched blocks are exact immutable clones, but try_new must
+            // still admit their complete canonical fragment contract. Borrow
+            // them instead of copying every text run merely to discard it.
+            for (_, node) in source[..first].iter().chain(&source[last + 1..]) {
+                validate_fragment(node)?;
+            }
+            // The edited span was already admitted above. Rebuild uses exactly
+            // edit.result, so compare these fragments without reparsing nodes.
+            guarded_text
                 .iter()
-                .zip(fragments(&nodes[first..=last])?)
-                .all(|(left, right)| fragments_have_identical_text(left, &right))
+                .zip(&edit.result)
+                .all(|(left, right)| fragments_have_identical_text(left, right))
         } else {
             false
         };
@@ -381,6 +382,15 @@ fn fragments(nodes: &[NodeRef]) -> Result<Vec<TextFragment>, FlatListTextReplace
             TextFragment::try_from_runs(runs).map_err(|_| FlatListTextReplaceError::InvalidTarget)
         })
         .collect()
+}
+fn validate_fragment(node: &NodeRef) -> Result<(), FlatListTextReplaceError> {
+    super::block_kind(node).map_err(|_| FlatListTextReplaceError::InvalidTarget)?;
+    let children = node.as_element().ok_or(FlatListTextReplaceError::InvalidTarget)?.children();
+    if children.iter().any(|node| node.as_text().is_none()) {
+        return Err(FlatListTextReplaceError::InvalidTarget);
+    }
+    TextFragment::validate_text_nodes(|| children.iter().filter_map(NodeRef::as_text))
+        .map_err(|_| FlatListTextReplaceError::InvalidTarget)
 }
 fn rebuild(
     templates: &[NodeRef],

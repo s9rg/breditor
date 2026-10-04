@@ -728,6 +728,63 @@ fn text_preservation_ignores_formats_but_not_equal_length_text_changes() -> Test
     Ok(())
 }
 
+#[test]
+fn borrowed_untouched_fragments_keep_unicode_run_seams_and_exact_inverse() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let mut children = Vec::new();
+    for (value, marks) in [("a🙂", formats()?), ("e\u{301}", FormatSet::default())] {
+        children.extend(
+            p(value)?
+                .as_element()
+                .ok_or("paragraph")?
+                .children()
+                .iter()
+                .map(|node| {
+                    let text = node.as_text().ok_or("text")?;
+                    Ok(NodeRef::text(crate::document::TextNode::try_new(
+                        text.text().to_owned(),
+                        marks.clone(),
+                    )?))
+                })
+                .collect::<Result<Vec<_>, Box<dyn Error>>>()?,
+        );
+    }
+    let multi_run =
+        NodeRef::element(p("")?.as_element().ok_or("paragraph")?.try_with_children(children)?);
+    let before = state(
+        &context,
+        vec![list(vec![multi_run.clone(), empty()?, p("selected")?, multi_run.clone()], Some(8))?],
+        None,
+        None,
+    )?;
+    let op = FlatListTextReplace::capture(
+        &context,
+        before.document(),
+        range(&[0, 2, 0], 0, &[0, 2, 0], 8)?,
+        vec![block(heading(3)?, "selected", formats()?)?],
+        vec![ordered(8, 4)?],
+    )?;
+    let AppliedOperation::Changed(change) = op.apply(&context, before.document())? else {
+        return Err("changed heading".into());
+    };
+    let RelocationStepMap::FlatListTextReplace(map) = &change.relocation else {
+        return Err("list map".into());
+    };
+    assert!(map.preserves_text);
+    for item in [0, 3] {
+        assert_eq!(
+            change.document.node_at(&NodePath::try_from_indices(vec![0, item, 0])?)?,
+            &multi_run
+        );
+    }
+    let AppliedOperation::Changed(undo) = change.inverse.apply(&context, &change.document)? else {
+        return Err("inverse".into());
+    };
+    assert_eq!(undo.document, *before.document());
+    assert_eq!(undo.document.summary(), before.document().summary());
+    Ok(())
+}
+
 /// Enumerates every scalar-aligned leaf point and every element-child gap,
 /// including root/list/item boundaries that have no text-leaf representation.
 fn points(node: &NodeRef, path: &[u32], result: &mut Vec<Point>) -> TestResult {

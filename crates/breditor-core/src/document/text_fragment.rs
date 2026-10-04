@@ -3,7 +3,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::{
-    document::{TextRun, TextRunError, Utf16BoundaryError},
+    document::{TextRun, TextRunError, Utf16BoundaryError, text_fragment_validation::measure_runs},
     position::{TextOffset, TextOffsetError},
 };
 
@@ -32,24 +32,23 @@ impl TextFragment {
     /// Returns [`TextFragmentError`] when adjacent runs have equal formats or
     /// their aggregate UTF-16 length exceeds the cross-language protocol bound.
     pub fn try_from_runs(runs: Vec<TextRun>) -> Result<Self, TextFragmentError> {
-        for (left_index, pair) in runs.windows(2).enumerate() {
-            if pair[0].formats() == pair[1].formats() {
-                return Err(TextFragmentError::AdjacentEqualFormats {
-                    left_index,
-                    right_index: left_index + 1,
-                });
-            }
-        }
-
-        let mut utf16_length = TextOffset::ZERO;
-        let mut text_bytes = 0_usize;
-        for run in &runs {
-            utf16_length = utf16_length.checked_add(u64::from(run.utf16_len()))?;
-            text_bytes = text_bytes
-                .checked_add(run.text().len())
-                .ok_or(TextFragmentError::TextByteLengthOverflow)?;
-        }
+        let (utf16_length, text_bytes) = measure_runs(|| {
+            runs.iter().map(|run| (run.formats(), u64::from(run.utf16_len()), run.text().len()))
+        })?;
         Ok(Self { runs: Arc::from(runs), utf16_length, text_bytes })
+    }
+
+    /// Checks the same canonical fragment contract without copying text nodes
+    /// into owned runs. The factory must revisit the same immutable sequence.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub(crate) fn validate_text_nodes<'a, I>(nodes: impl Fn() -> I) -> Result<(), TextFragmentError>
+    where
+        I: Iterator<Item = &'a crate::document::TextNode>,
+    {
+        measure_runs(|| {
+            nodes().map(|node| (node.formats(), u64::from(node.utf16_len()), node.text().len()))
+        })
+        .map(|_| ())
     }
 
     /// Returns whether the fragment contains no text.

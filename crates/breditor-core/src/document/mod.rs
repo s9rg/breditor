@@ -14,6 +14,7 @@ mod schema_admission_error;
 mod summary;
 mod text;
 mod text_fragment;
+mod text_fragment_validation;
 mod text_run;
 mod validated_document;
 
