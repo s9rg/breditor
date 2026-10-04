@@ -159,6 +159,38 @@ pub enum ActionStateTransactionFault {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum ActionStateOperationFault {
+    /// Flat-list structural text schema is unsupported.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement schema is unsupported")]
+    FlatListTextReplaceUnsupportedSchema,
+    /// Source paths or shape are invalid.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement target is invalid")]
+    FlatListTextReplaceInvalidTarget,
+    /// Result partition is invalid.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement layout is invalid")]
+    FlatListTextReplaceInvalidLayout,
+    /// Result numbering exceeds the supported ordinal range.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement ordinal overflow")]
+    FlatListTextReplaceOrdinalOverflow,
+    /// Source roots no longer match.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement source guard is stale")]
+    FlatListTextReplaceExpectedMismatch,
+    /// Root span exceeds the resource budget.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement root child limit exceeded")]
+    FlatListTextReplaceRootChildLimit,
+    /// Document belongs to a different context.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement document proof differs")]
+    FlatListTextReplaceDocumentProof,
+    /// Source or result admission failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list text replacement schema or resource validation failed")]
+    FlatListTextReplaceValidation,
     /// Flat-list text schema is unsupported.
     #[cfg(feature = "experimental-structural-properties")]
     #[error("flat-list text splice schema is unsupported")]
@@ -817,6 +849,27 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
 #[allow(clippy::too_many_lines)]
 fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFault {
     match error {
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::FlatListTextReplace(source) => {
+            use crate::operation::FlatListTextReplaceError as E;
+            match source {
+                E::UnsupportedSchema => {
+                    ActionStateOperationFault::FlatListTextReplaceUnsupportedSchema
+                }
+                E::InvalidTarget => ActionStateOperationFault::FlatListTextReplaceInvalidTarget,
+                E::InvalidLayout => ActionStateOperationFault::FlatListTextReplaceInvalidLayout,
+                E::OrdinalOverflow => ActionStateOperationFault::FlatListTextReplaceOrdinalOverflow,
+                E::RootChildLimit => ActionStateOperationFault::FlatListTextReplaceRootChildLimit,
+                E::ExpectedMismatch => {
+                    ActionStateOperationFault::FlatListTextReplaceExpectedMismatch
+                }
+                E::DocumentProof(_) => ActionStateOperationFault::FlatListTextReplaceDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::FlatListTextReplaceValidation,
+                E::Text(error) => project_operation_error(OperationApplyError::RootTextReplace(
+                    RootTextReplaceApplyError::Contract(error),
+                )),
+            }
+        }
         #[cfg(feature = "experimental-structural-properties")]
         OperationApplyError::FlatListTextSplice(source) => {
             use crate::operation::FlatListTextSpliceError as E;

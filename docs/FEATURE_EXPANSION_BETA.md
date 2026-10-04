@@ -671,3 +671,23 @@ empty-item exit, boundary deletion and cross-block type-over, followed by inline
 format actions and durable/browser integration. Existing wire unions and shipping
 profiles remain unchanged. See
 [verification](qualification/2026-10-04-flat-list-text.json).
+
+## Structural flat-list replacement checkpoint
+
+The Rust core now has `FlatListTextReplace`: one guarded operation combines a
+real-path text range with an explicit flat-list result layout. It supports the
+mechanics of item splitting, empty-item exit and cross-block replacement while
+preserving untouched blocks and deriving an exact inverse. Result numbering is
+explicit and checked; no automatic list coalescing or restart policy is hidden
+inside the primitive. Unicode and arbitrary mixed-root layouts have independent
+property-test oracles, and text/list/item/root boundaries are checked in both
+directions.
+
+Next is the action layer: Enter/split, empty-item exit, cross-block typing and
+boundary deletion, followed by list-aware formatting. These actions are not yet
+enabled by this primitive alone. Durable operation/session admission and browser
+integration remain ahead; the running heading demo and shipping profiles are
+unchanged. Flat lists remain the first beta scope; nested lists follow later.
+
+See [contract](STRUCTURAL_BLOCKS.md#structural-flat-list-text-replacement) and
+[verification](qualification/2026-10-04-flat-list-replace.json).

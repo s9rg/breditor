@@ -204,7 +204,7 @@ fn end(start: u32, count: usize) -> Result<u32, FlatListReframeError> {
 
 /// Enumerates only the sealed flat shape; schema validation owns property and
 /// text-run admission. No recursion or arbitrary-depth traversal is necessary.
-fn blocks(roots: &[NodeRef]) -> Result<Vec<(NodePath, &NodeRef)>, FlatListReframeError> {
+pub(super) fn blocks(roots: &[NodeRef]) -> Result<Vec<(NodePath, &NodeRef)>, FlatListReframeError> {
     let mut result = Vec::new();
     for (index, node) in roots.iter().enumerate() {
         let index = u32::try_from(index).map_err(|_| FlatListReframeError::InvalidTarget)?;

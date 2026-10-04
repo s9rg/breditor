@@ -668,9 +668,54 @@ normalization has a separate flat-list scope; old direct-root callers still
 reject nested block paths.
 
 Cross-block typing returns `breditor/list-cross-block-edit-not-supported` until
-list-aware structural replacement exists; it never partially edits a selection.
+list-aware structural replacement is integrated into the action; it never
+partially edits a selection.
 Enter/split, empty-item exit, boundary deletion and list-aware formatting actions
 remain separate work. Operation V1–V5 and history containing the new splice in
 Session V5 reject it. This is not a browser or session-reload qualification.
 
 See [text/typing qualification](qualification/2026-10-04-flat-list-text.json).
+
+### Structural flat-list text replacement
+
+`FlatListTextReplace` is the experimental Rust primitive for splitting an item,
+joining/replacing text across flat blocks, or exiting an empty item. It does not
+itself choose Enter, deletion, marker-merging or numbering-continuation policy.
+Those policies belong to separately named actions; the operation requires an
+explicit result layout and explicit ordered starts.
+
+- `FlatListTextRange` uses actual block paths (`[root]` or `[root, item, 0]`) and
+  scalar-aligned aggregate UTF-16 offsets. Flattened indexes are private slicing
+  machinery, never public document coordinates or a synthetic document.
+- Complete guarded roots form a contiguous span starting at `guard_start`.
+  `capture` uses the minimum intersected root span; `try_new` can guard a wider
+  span. The range must resolve inside that span. Stale guards reject even no-ops.
+- A nonempty sequence of inserted paragraph/heading fragments carries result
+  block kinds. Source prefix text joins the first fragment and suffix text joins
+  the last. Blocks outside the edited range remain exactly equal and in order.
+- `FlatListRootShape` partitions all resulting blocks in the guarded span into
+  bare roots or flat lists, consuming every block exactly once. Empty lists,
+  missing/extra consumption and final-ordinal overflow reject the recipe.
+- The same-type inverse restores original blocks, runs, ranks, list boundaries
+  and starts. Guard scope is independent of text scope: undoing an empty-item
+  exit may guard both adjacent lists as well as the intervening paragraph.
+- Relocation preserves surviving offsets and affinities, reports deleted
+  interiors explicitly and canonically maps removed wrapper gaps. Untouched
+  blocks retain their point representation under reparenting. Same-text edits
+  preserve logical positions even when formatting or wrappers change.
+- Admission checks the exact flat-list schema/proof, source/result fragments
+  with their real wrappers, and the complete resulting document including
+  untouched roots. Root limits are never relaxed for a flattened intermediate.
+
+Tests cover split seams, empty-item exits, cross-root replacements, mixed typed
+format runs, all paragraph/heading ranks, exact selection/pending-format history,
+all valid text and structural points in representative forward/inverse edits,
+stale-batch rollback, resource limits and independent Unicode/layout oracles.
+
+This is a runtime operation checkpoint, **not an enabled Enter or cross-block
+typing action**. `InsertFlatListTextAction` still rejects cross-block selection.
+Operation V1–V5 and Session V5 history remain closed to the new operation.
+Durable list admission, Wasm/browser controls, reload/recovery and native testing
+remain separate gates. Nested lists are deferred by the user's explicit choice.
+
+See [structural text qualification](qualification/2026-10-04-flat-list-replace.json).

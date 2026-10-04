@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "23241a7",
+  "status": "Experimental structural flat-list replacement verified in Rust; action policy, durable list history and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "operation": "FlatListTextReplace",
+    "range": "FlatListTextRange uses real bare/list block paths and aggregate scalar-aligned UTF-16 offsets",
+    "guard": "Explicit complete-root span independent of edited text scope; capture uses the minimal intersected span; inverses may guard extra roots to restore containers around an exited item",
+    "layout": "FlatListRootShape consumes every result block exactly once into bare roots or positive flat lists; explicit ordered starts and checked final ordinals",
+    "text": "Nonempty inserted block fragments choose result kinds; source prefix/suffix join first/last inserted blocks; untouched blocks remain exactly equal and in order",
+    "inverse": "Same operation type restores original text, typed formats, heading ranks, list containers and ordinal starts",
+    "relocation": "Affinity-aware split seams, explicit deleted interiors, surviving prefix/suffix offsets, canonical wrapper gaps, unchanged-block point representation, and same-text logical-position preservation",
+    "admission": "Sealed schema capability, matching document proof, actual source/result wrapper depth, and complete-document resource limits without synthetic flattened-document allowances",
+    "wire": "Operation V1-V5 and Session V5 retained history reject the operation; no existing format widened",
+    "actions": "No Enter, boundary-delete or cross-block typing action enabled by this checkpoint"
+  },
+  "verification": {
+    "focusedTests": 14,
+    "allFeatureWorkspaceUnitTests": { "core": 986, "wasm": 51 },
+    "defaultCoreUnitTests": 697,
+    "propertyCases": 30000,
+    "propertySeed": 20261004,
+    "propertyOracles": [
+      "10000 Unicode split cases using independent scalar slicing and string construction",
+      "10000 Unicode cross-item join cases using independent prefix/insert/suffix strings",
+      "10000 arbitrary mixed-root partitions with real-path ranges, wider guard spans and independent expected layout construction"
+    ],
+    "coverage": [
+      "All paragraph/heading ranks, bullet and ordered splits, exact caret/pending-format undo and redo",
+      "Middle empty-item exit with preserved suffix numbering and inverse guard wider than its text range",
+      "Cross-root and cross-item replacements preserving untouched blocks",
+      "Mixed typed-format run seams and original heading-kind restoration",
+      "Every scalar-aligned leaf point and every root/list/item/block gap in representative forward and inverse split/join/exit edits",
+      "Both affinities at insertion seams, deleted interior points, surviving suffix offsets and unrelated root shifts",
+      "Same-text formatting/reparenting with backward selection and untouched child-gap representation",
+      "Invalid paths/order/scalar boundaries, invalid layouts, ordinal overflow, foreign proofs and legacy schema rejection",
+      "Complete-document text/child budgets and actual list wrapper depth",
+      "Guard checks before no-op, atomic failed-batch rollback and redo preservation",
+      "Existing operation and session codec rejection"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib flat_list_text_replace_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Separately named Enter/split and empty-item-exit actions",
+    "Cross-block typing and backward/forward boundary deletion policy",
+    "List-aware inline-format actions",
+    "Explicit durable operation/session admission and reload/recovery",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native-input qualification and existing release size gates",
+    "Nested lists and indent/outdent are deferred beyond the flat-list beta"
+  ],
+  "evidenceBoundary": "Rust unit/property and static checks only; no rebuilt shipping Wasm, list browser/native qualification, or performance claim",
+  "pushed": false,
+  "published": false
+}

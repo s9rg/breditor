@@ -32,8 +32,9 @@ use crate::{
 /// and places a Before-affinity caret after insertion. Adjacent typing offers the
 /// existing typing history group. Registration is explicit and experimental.
 ///
-/// Cross-block selections are explicitly disabled until the list-structure
-/// replacement operation is implemented. They are never partially edited.
+/// Cross-block selections remain explicitly disabled in this action. Structural
+/// replacement policy must be integrated separately; selections are never
+/// partially edited.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertFlatListTextAction;
 impl Action for InsertFlatListTextAction {

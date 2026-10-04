@@ -26,6 +26,9 @@ use super::OperationValidationError;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationKind {
+    /// Experimental text replacement with explicit flat-list result structure.
+    #[cfg(feature = "experimental-structural-properties")]
+    FlatListTextReplace,
     /// Experimental text editing within a bare block or flat-list item.
     #[cfg(feature = "experimental-structural-properties")]
     FlatListTextSplice,
@@ -57,6 +60,8 @@ impl OperationKind {
     pub const fn as_str(self) -> &'static str {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListTextReplace => "flatListTextReplace",
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextSplice => "flatListTextSplice",
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe => "flatListReframe",
@@ -81,6 +86,9 @@ impl OperationKind {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operation {
+    /// Experimental cross-block text edit and flat-list layout change.
+    #[cfg(feature = "experimental-structural-properties")]
+    FlatListTextReplace(super::FlatListTextReplace),
     /// Experimental flat-list text edit with a complete containing-root guard.
     #[cfg(feature = "experimental-structural-properties")]
     FlatListTextSplice(super::FlatListTextSplice),
@@ -136,6 +144,8 @@ impl Operation {
     pub const fn kind(&self) -> OperationKind {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListTextReplace(_) => OperationKind::FlatListTextReplace,
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextSplice(_) => OperationKind::FlatListTextSplice,
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe(_) => OperationKind::FlatListReframe,
@@ -178,6 +188,10 @@ impl Operation {
         document: &Document,
     ) -> Result<AppliedOperation, OperationApplyError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListTextReplace(operation) => {
+                operation.apply(context, document).map_err(Into::into)
+            }
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextSplice(operation) => {
                 operation.apply(context, document).map_err(Into::into)
@@ -228,6 +242,10 @@ pub(crate) struct AppliedChange {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationApplyError {
+    /// An experimental structural flat-list text edit failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    FlatListTextReplace(#[from] super::FlatListTextReplaceError),
     /// An experimental flat-list text edit failed.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]

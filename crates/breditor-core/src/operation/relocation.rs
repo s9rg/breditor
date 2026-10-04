@@ -261,6 +261,8 @@ impl RelocationStep {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum RelocationStepMap {
     #[cfg(feature = "experimental-structural-properties")]
+    FlatListTextReplace(super::flat_list_text_replace_map::FlatListTextReplaceMap),
+    #[cfg(feature = "experimental-structural-properties")]
     FlatListReframe(super::flat_list_reframe_map::FlatListReframeMap),
     #[cfg(feature = "experimental-structural-properties")]
     TextBlockKindIdentity,
@@ -288,6 +290,8 @@ impl RelocationStepMap {
             Self::FlatListReframe(map) => map.relocate(before, after, point),
             #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockKindIdentity => Ok(PointRelocation::Exact(point.clone())),
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListTextReplace(map) => map.relocate(before, after, point),
             #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockTextIdentity { start, end } => {
                 relocate_text_block_identity(before, after, point, *start, *end)
@@ -918,7 +922,7 @@ fn point_container(point: &Point) -> Option<NodePath> {
     }
 }
 
-fn point_offset_in_container(
+pub(super) fn point_offset_in_container(
     document: &Document,
     container_path: &NodePath,
     point: &Point,
@@ -956,7 +960,7 @@ fn point_offset_in_container(
     Ok(offset)
 }
 
-fn point_at_offset(
+pub(super) fn point_at_offset(
     document: &Document,
     container_path: &NodePath,
     offset: TextOffset,

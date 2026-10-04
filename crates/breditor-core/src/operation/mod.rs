@@ -2,6 +2,22 @@
 
 mod change_set;
 #[cfg(feature = "experimental-structural-properties")]
+mod flat_list_layout;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_text_range;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_text_replace;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_text_replace_map;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_text_replace_tests;
+#[cfg(feature = "experimental-structural-properties")]
+pub use flat_list_layout::FlatListRootShape;
+#[cfg(feature = "experimental-structural-properties")]
+pub use flat_list_text_range::{FlatListTextRange, FlatListTextRangeError};
+#[cfg(feature = "experimental-structural-properties")]
+pub use flat_list_text_replace::{FlatListTextReplace, FlatListTextReplaceError};
+#[cfg(feature = "experimental-structural-properties")]
 mod flat_list_reframe;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_text_splice;
