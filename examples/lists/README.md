@@ -34,7 +34,9 @@ npm run typecheck:demo:lists
 BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-EXACT_ID npm run test:demo:lists
 ```
 
-The test command builds only `target/list-demo`, then checks heading ranks,
+The test command builds only `target/list-demo-qualification` using Vite's
+`qualification` mode; it does not replace the ordinary preview at
+`target/list-demo`. It then checks heading ranks,
 list conversion/removal, typed Link/size, undo/redo, real reload, downloaded V6
 backup recovery, browser keyboard input, automated accessibility and narrow
 layout. Browser automation is not physical OS clipboard/IME or screen-reader
@@ -115,9 +117,10 @@ pass is not a size-budget pass or approval of an optional shipping package.
 - The 21-control toolbar is manifest-composed: ten structural controls plus the
   existing eleven-control inline/history showcase. Shortcut declarations remain
   profile-owned and unchanged.
-- This preview is not a published release. Bundle size/performance,
-  packed-consumer and physical native-input qualification remain open; existing
-  shipping size ceilings are unchanged.
+- This preview is not a published release. Private packed-consumer checks have
+  passed, but that is not approval of a shipping package or its size budgets.
+  Bundle size/performance, physical native-input and complete release
+  qualification remain open; existing shipping size ceilings are unchanged.
 ## Repeatable installed-package measurements
 
 After `test:lists:packages` passes, pass its saved qualification record to

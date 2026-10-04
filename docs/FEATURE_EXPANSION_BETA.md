@@ -9,6 +9,43 @@ Additional storage machinery is not a prerequisite unless the chosen browser
 session-backup/autosave path actually requires it. No publishing or pushing is
 authorized by this plan.
 
+## Current readiness — October 4, 2026
+
+The current Rust implementation checkpoint is `62b2e90`. Headings, flat lists,
+directional selection, toolbar actions, undo/redo and V6 reload/recovery are
+implemented in the **private experimental profile**, not the default shipping
+bundle. The most recent qualification passed 1,135 core tests, strict workspace
+Clippy, private Wasm/package checks, 165 existing browser cases and 54 list-demo
+cases. See [exact-source proof qualification](qualification/2026-10-04-flat-list-source-proof-reuse.json)
+for the artifact identities, retained failed runs and complete limits.
+
+The beta is **not release-qualified**. The remaining gates are:
+
+- Native Safari/Chrome qualification on the final candidate, plus real Japanese
+  IME and spoken VoiceOver evidence. Earlier native passes apply only to their
+  recorded artifacts. Automation has not established reliable IME/VoiceOver
+  control, and the latest Safari attachment attempt was unavailable.
+- The retained intermittent WebKit `queueUncertain` fault. Passing reruns and
+  improved diagnostics have not identified its cause or demonstrated a fix.
+- An explicit delivery decision and reviewed budgets. Private feature packages
+  exceed unchanged default ceilings; functional consumer tests do not approve
+  larger budgets or a shipping package. No delivery choice is assumed.
+- Large-list responsiveness and the complete final release gate. Current local
+  500-item edit medians are roughly 45–46 ms Chromium, 136 ms Firefox and 67 ms
+  WebKit; these small synthetic samples are not native-input latency guarantees
+  or a supported maximum document size.
+
+The first source-proof browser runs encountered disk exhaustion and are retained,
+not counted as passes. Removing only rebuildable Rust incremental cache restored
+headroom; both complete browser suites then passed. This does not explain or
+resolve the separate historical WebKit fault. Shipping artifacts remain unchanged;
+no version bump, push or publication has occurred in these checkpoints.
+
+The sections below retain chronological implementation evidence. Statements such
+as “unfinished” in an older checkpoint describe that checkpoint, not necessarily
+the current feature state; consult the current gates above and exact artifact
+records before making a support or release claim.
+
 ## Milestones and acceptance gates
 
 1. **Heading editing in Rust.** Guarded text edits inside paragraphs/headings;
