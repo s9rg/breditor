@@ -401,3 +401,20 @@ block retains identical logical text; changing run layout is not deletion.
 This law is derived from the decoded operation, not asserted by an extra wire flag.
 V1–V4 and their golden encodings remain unchanged. The V5 family is experimental
 and does not add a Commit/local-log format or enable the shipping browser profile.
+
+### Normalized plain-text paste
+
+The experimental `InsertTextBlockPlainTextAction` accepts the existing bounded
+plain-text input contract, not rich HTML. It represents the complete selected
+range replacement with one `TextBlockReplace` and independent history. Single
+lines retain the spatial start kind. Multiple lines retain the start kind on
+the first block, use paragraphs for middle lines, and keep the end kind only
+when a suffix of that source block survives on the final line. Otherwise the
+last line is a paragraph. Empty lines are not discarded.
+
+Formatting inheritance follows typing: pending formats/focus affinity at a
+caret, first spatially selected text for ranges, then left/right surviving
+seams for text-empty structural ranges. All inserted lines use that complete
+format set. Prefix/suffix text retains its own properties. Undo restores every
+source kind, directional point and pending format exactly, including after V5
+session reload. Default profile registration and browser routing remain unchanged.

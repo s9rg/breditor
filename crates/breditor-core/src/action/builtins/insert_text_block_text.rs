@@ -41,7 +41,7 @@ pub fn insert_text_block_text_action_id() -> ActionId {
 /// Cross-block replacement retains the spatial start block kind and first
 /// selected run's formats. A text-empty structural selection uses the surviving
 /// left seam, then right seam, then plain text. This action is opt-in, feature-gated,
-/// absent from base/browser registries, and not yet durably serializable.
+/// absent from base/browser registries, and durably supported by the V5 codecs.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertTextBlockTextAction;
 

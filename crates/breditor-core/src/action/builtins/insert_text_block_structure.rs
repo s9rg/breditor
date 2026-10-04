@@ -98,7 +98,7 @@ pub(super) fn evaluate(
 }
 
 /// Empty boundary fragments must not hide selected text in a middle block.
-fn first_middle_formats(
+pub(super) fn first_middle_formats(
     state: &EditorState,
     range: &TextRangeSelection,
 ) -> Result<Option<FormatSet>, ActionFault> {

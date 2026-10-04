@@ -31,7 +31,7 @@ use crate::{
 ///
 /// The result caret is at the right block start (or converted empty block).
 /// Pending formats survive and each break is one undo event. Experimental only:
-/// no base/browser registration and no durable encoding yet.
+/// no base/browser registration; durable history uses the explicit V5 codecs.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertTextBlockBreakAction;
 

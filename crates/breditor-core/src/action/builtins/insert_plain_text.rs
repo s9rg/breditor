@@ -465,7 +465,7 @@ fn insertion_formats(
         .unwrap_or_default())
 }
 
-fn replacement_fragments(
+pub(super) fn replacement_fragments(
     input: &InsertPlainTextInput,
     formats: &FormatSet,
 ) -> Result<Vec<TextFragment>, ReplacementError> {
@@ -490,7 +490,7 @@ fn replacement_fragments(
     Ok(fragments)
 }
 
-fn derive_result(
+pub(super) fn derive_result(
     prefix: &TextFragment,
     replacement: &[TextFragment],
     suffix: &TextFragment,
@@ -541,7 +541,7 @@ const fn fragment_error_is_capacity(error: &TextFragmentError) -> bool {
     )
 }
 
-fn result_selection(
+pub(super) fn result_selection(
     range: &RootTextRange,
     replacement: &[TextFragment],
     result: &[TextFragment],
@@ -601,7 +601,7 @@ fn source_range(state: &EditorState) -> Result<&RangeSelection, ActionFault> {
     Ok(range)
 }
 
-enum ReplacementError {
+pub(super) enum ReplacementError {
     Capacity,
     Invariant,
 }

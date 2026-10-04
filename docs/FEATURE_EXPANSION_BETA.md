@@ -317,8 +317,9 @@ remaining integration gates found in the current code are concrete:
 
 1. Compile a complete text-block semantic profile, including extension format
    actions, observable toolbar state and routes. Existing compiled profiles still
-   register paragraph-only editing actions; heading-aware multiline plain-text
-   insertion also needs an explicit contract before clipboard/IME exposure.
+   register paragraph-only editing actions. Heading-aware multiline plain-text
+   insertion now has the separate core contract below; browser clipboard/IME
+   routing and qualification are still pending.
 2. Add an opt-in Wasm build/load path and explicit V5 factories. State/document
    exports can retain State V3 / Document V2, but the current Wasm dispatch only
    selects session versions 1–3. Commit export still uses older operation
@@ -330,3 +331,37 @@ remaining integration gates found in the current code are concrete:
    release gates. No size ceiling is raised by this core checkpoint.
 
 See [live-engine qualification](qualification/2026-10-03-heading-engine-v5.json).
+
+## Heading-aware plain-text insertion
+
+`InsertTextBlockPlainTextAction` (`breditor/insert-text-block-plain-text`) adds
+the missing core paste operation, in its own documented file and behind the
+experimental structural feature. It reuses `InsertPlainTextInput` V1 and its
+existing bounds: CRLF, CR and LF become block separators; other Unicode scalars
+are kept exactly. It does not import rich HTML or clipboard metadata.
+
+- A single line retains the spatial start block kind, including cross-block
+  replacement. For multiple lines, the first block retains the start kind,
+  interior blocks are paragraphs, and the final block retains the original
+  end kind only if original suffix text survives there; otherwise it is a
+  paragraph. This is independent of selection direction.
+- Leading, trailing and repeated empty lines are preserved. Pasting one newline
+  into an empty heading creates an empty heading followed by a paragraph; it is
+  not interpreted as the Enter shortcut that converts an empty heading in place.
+- Carets inherit pending formats, then focus-affinity formatting. Extended
+  selections inherit the first spatially selected text's complete format set.
+  A text-empty structural range falls back to the surviving left seam, then
+  right seam, then no formatting. Retained text keeps its own formats.
+- The complete edit is one guarded `TextBlockReplace`, one V5 forward recipe
+  and one independent history event. Exact replacements can be selection-only
+  commits and do not manufacture undo entries. The result caret is before any
+  retained suffix; pending formats are consumed and restored exactly by undo.
+- Full-result admission counts untouched siblings, heading properties and
+  duplicated typed formats. Failed preparation or checkpoint publication leaves
+  the old state and future redo intact. Default paragraph actions are unchanged.
+
+This completes another core prerequisite. The next step remains compiling the
+complete text-block action/intent/toolbar profile before connecting the optional
+Wasm boundary and browser renderer. No browser clipboard qualification is implied.
+
+See [plain-text insertion qualification](qualification/2026-10-03-heading-plain-text.json).

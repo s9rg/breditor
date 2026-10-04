@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "9bd4750f8d4d209773b34df2e2e9e0e8ffd67ffe",
+  "status": "Heading-aware plain-text core insertion verified; feature-expansion beta remains active",
+  "scope": "Experimental Rust action and V5 history integration; no browser clipboard exposure",
+  "contract": {
+    "action": "breditor/insert-text-block-plain-text",
+    "input": "Existing InsertPlainTextInput V1, with unchanged bounds and CRLF/CR/LF normalization",
+    "feature": "experimental-structural-properties",
+    "kinds": "First block retains spatial start kind; multiline middle blocks are paragraphs; final block retains end kind only with a surviving original suffix, otherwise paragraph; a single line retains start kind",
+    "formatting": "Caret pending/focus-affinity formats; first spatially selected format for ranges; left/right/plain fallback for text-empty structural selection; retained runs unchanged",
+    "publication": "One TextBlockReplace with full result admission, one independent history event, V5 save/undo/redo; exact replacements can be state-only commits",
+    "remaining": "Complete heading-aware compiled profile, optional Wasm factories/exports, browser renderer/toolbar/input/reload qualification, then flat lists"
+  },
+  "verification": {
+    "newCoreTests": 14,
+    "focusedStressTestsPassed": 13,
+    "stressNote": "The cross-kind matrix was added after the focused stress build and passed in the final 902-test all-feature suite; the stressed property and production implementation did not change.",
+    "unicodePropertyCases": 10000,
+    "propertySeed": 20261003,
+    "stressCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib --locked insert_text_block_plain_text_tests",
+    "coreAllFeatureTestsPassed": 902,
+    "coreDefaultTestsPassed": 697,
+    "existingParagraphPasteTestsPassed": 11,
+    "liveHeadingEngineContractTestsPassed": 10,
+    "integrationCommand": "cargo test -p breditor-core --all-features --locked --test insert_plain_text_contracts --test checkpointed_editor_engine_v5_contracts",
+    "coverage": [
+      "All heading ranks and paragraphs at start, middle, end and empty caret positions",
+      "Leading/trailing/consecutive empty input lines, CRLF/CR/LF and preserved Unicode separators",
+      "Every start/end paragraph or heading kind with and without surviving suffix, in both selection directions",
+      "Typed property preservation, format seam affinity, pending formats and selected middle-block inheritance",
+      "Independent-context V5 restore before undo and at redo frontier; exact tree, direction and pending-format recovery",
+      "Single saved operation per paste, independent paste history, no history for exact document replacement",
+      "Whole-tree node, child, leaf/text, total-text and property budgets including untouched siblings",
+      "Stable disabled reasons for unsupported schema, missing selection and exhausted operation budget",
+      "Malformed input and stale preparations preserve future redo; live V5 publication failure preserves exact owner"
+    ],
+    "clippy": "Final workspace all-target all-feature pass with warnings denied",
+    "rustdoc": "Core all-feature no-dependency pass with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "developmentCorrections": "Initial tests incorrectly combined pending formats with an extended selection, which the existing EditorState contract forbids. Corrected those fixtures; caret pending-format coverage remains explicit.",
+    "freshBrowserRun": false,
+    "freshFullReleaseRun": false,
+    "freshBundleSizeMeasurements": false,
+    "pushed": false,
+    "published": false
+  },
+  "evidence": [
+    {"path":"crates/breditor-core/src/action/builtins/insert_text_block_plain_text.rs","sha256":"24f39eed0b6d890391b02caafc4bd96ce3f42f6d3740a1a6132623e2148008b6"},
+    {"path":"crates/breditor-core/src/action/builtins/insert_text_block_plain_text_tests.rs","sha256":"84fb54067bebbb3b1ac1ca4ea4a801ef05aa75728ad15774959354905ca8cbf5"},
+    {"path":"/private/tmp/breditor-heading-paste-stress.log","sha256":"30f87a28387dd55717f0aa71bc8cefdc45efad92b55aae1d3a7f109f37adfe45"},
+    {"path":"/private/tmp/breditor-heading-paste-core.log","sha256":"82356a70767620c2e2d380e3ad3dbfb0feac9b56aab98b0b66b7540f55fc0ee5"},
+    {"path":"/private/tmp/breditor-heading-paste-default.log","sha256":"c7336331e7960223bc3198b3f342538530883a3ef5ee5cf285048283fd60c431"},
+    {"path":"/private/tmp/breditor-heading-paste-legacy.log","sha256":"cacd05a7a841bcb0c759de358193d2b4640724e740ac749f7e89cd46b6e46c36"}
+  ]
+}
