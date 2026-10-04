@@ -33,6 +33,12 @@ import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_li
 import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "./flat_list_dom_point_mapping.js";
 import { isOwnedFlatListRenderedProjection, isOwnedRenderedProjection } from "./dom_renderer.js";
 import { FlatListProjectionUpdate, flatListUpdatePlan } from "./flat_list_projection_update.js";
+import { issueFlatListEditorDeliveryToken, flatListEditorDeliveryTokenMatches, flatListEditorDeliveryTokenMatchesRender,
+  issueEditorDeliveryAuthority, flatListEditorDeliveryAuthorityAccepts, editorDeliveryAuthorityAccepts,
+  editorDeliveryTokenMatchesRender, flatListRangeSelectionSync, flatListCommandRequest,
+  canonicalFlatListEditorCommandRequest, canonicalEditorCommandRequest, flatListBrowserInputActionIds,
+  noSelectionSync, type EngineCommand } from "./editor_command.js";
+import { BreditorCommandQueue } from "./command_queue.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
@@ -58,6 +64,97 @@ describe("hierarchical flat-list DOM and points", () => {
     return {renderer, host, projection, rendered, make, inputBlocks};
   }
   const textPoint = (textPath: number[], utf16Offset: number, affinity = "after") => ({kind: "text", textPath, utf16Offset, affinity});
+
+  it("binds list delivery to exact render, authority and observation epoch", () => {
+    const f = fixture(), authority = Symbol("list owner");
+    const token = issueFlatListEditorDeliveryToken(f.projection, f.rendered, 4n, authority);
+    expect(Object.isFrozen(token)).toBe(true);
+    expect(flatListEditorDeliveryTokenMatches(token, f.rendered, 4n, authority)).toBe(true);
+    expect(flatListEditorDeliveryTokenMatches(token, f.rendered, 5n, authority)).toBe(false);
+    expect(flatListEditorDeliveryTokenMatches(token, f.rendered, 4n, Symbol("list owner"))).toBe(false);
+    expect(flatListEditorDeliveryTokenMatchesRender({ ...token }, f.rendered)).toBe(false);
+    expect(editorDeliveryTokenMatchesRender(token, f.rendered)).toBe(false);
+    const port = issueEditorDeliveryAuthority(candidate => flatListEditorDeliveryTokenMatches(candidate, f.rendered, 4n, authority));
+    expect(flatListEditorDeliveryAuthorityAccepts(port, token)).toBe(true);
+    expect(editorDeliveryAuthorityAccepts(port, token)).toBe(false);
+    expect(flatListEditorDeliveryAuthorityAccepts(issueEditorDeliveryAuthority(() => { throw new Error("owner failed"); }), token)).toBe(false);
+    const next = valueOf(f.renderer.renderFlatList(f.host, f.make(1))).rendered;
+    expect(flatListEditorDeliveryTokenMatchesRender(token, next)).toBe(false);
+    expect(() => issueFlatListEditorDeliveryToken(f.projection, next, 4n, authority)).toThrow();
+  });
+
+  it("admits every supported command shape with exact backward list selection and immutable values", () => {
+    const f = fixture(), token = issueFlatListEditorDeliveryToken(f.projection, f.rendered, 0n, Symbol());
+    const selection = valueOf(FlatListRangeSelection.create(f.projection, {kind: "range",
+      anchor: textPoint([1, 0], 2, "before"), focus: textPoint([0, 0, 0, 0], 1)}));
+    const commands: EngineCommand[] = [
+      {kind: "action", actionId: "breditor/wrap-bullet-list", input: {kind: "none"}},
+      {kind: "action", actionId: "breditor/insert-flat-list-text", input: {kind: "string", value: "🙂"}},
+      {kind: "action", actionId: "example/typed", input: {kind: "json", value: "{}"}},
+      {kind: "intent", intentId: "breditor/format-bullet-list", input: {kind: "none"}},
+      {kind: "intent", intentId: "example/typed", input: {kind: "json", value: "{}"}},
+      {kind: "history", operation: "undo"}, {kind: "history", operation: "redo"},
+      {kind: "control", operation: "closeHistoryGroup"}, {kind: "selection", operation: "synchronize"},
+    ];
+    for (const command of commands) {
+      const request = flatListCommandRequest(token, flatListRangeSelectionSync(selection), {kind: "api", detail: "list test"}, command);
+      expect(canonicalFlatListEditorCommandRequest(request)).toEqual(request);
+      expect(request.selection).toEqual({kind: "range", selection});
+      expect(request.command).not.toBe(command);
+      expect(Object.isFrozen(request)).toBe(true); expect(Object.isFrozen(request.command)).toBe(true);
+      expect(Object.isFrozen(request.requirements)).toBe(true); expect(Object.isFrozen(request.source)).toBe(true);
+      expect(request.requirements.history).toBe(command.kind === "history" ? "closeBefore" : "preserve");
+      expect(canonicalEditorCommandRequest(request)).toBeNull();
+    }
+    const execute = vi.fn(); const queue = new BreditorCommandQueue(execute);
+    const request = flatListCommandRequest(token, preserveSelectionSync(), {kind: "api", detail: "list"}, commands[0]!);
+    expect(queue.submit(request as never)).toEqual({status: "rejected", reason: "invalidRequest"});
+    expect(execute).not.toHaveBeenCalled();
+    expect(() => noInputActionRequest(token as never, preserveSelectionSync(), {kind: "api", detail: "list"}, "breditor/wrap-bullet-list")).toThrow();
+  });
+
+  it("rejects copied and equal-looking foreign selections without consulting accessor payloads", () => {
+    const f = fixture(), token = issueFlatListEditorDeliveryToken(f.projection, f.rendered, 0n, Symbol());
+    const point = textPoint([0, 0, 0, 0], 1);
+    const selected = valueOf(FlatListRangeSelection.create(f.projection, {kind: "range", anchor: point, focus: point}));
+    const other = valueOf(FlatListRangeSelection.create(f.make(), {kind: "range", anchor: point, focus: point}));
+    const request = flatListCommandRequest(token, flatListRangeSelectionSync(selected), {kind: "api", detail: "list"}, {kind: "history", operation: "undo"});
+    expect(canonicalFlatListEditorCommandRequest({...request, selection: {kind: "range", selection: other}})).toBeNull();
+    expect(canonicalFlatListEditorCommandRequest({...request, selection: {kind: "range", selection: {...selected}}})).toBeNull();
+    expect(canonicalFlatListEditorCommandRequest({...request, delivery: {...token}})).toBeNull();
+    const getter = vi.fn(() => request.command);
+    const accessor = {...request}; Object.defineProperty(accessor, "command", {get: getter});
+    expect(canonicalFlatListEditorCommandRequest(accessor)).toBeNull(); expect(getter).not.toHaveBeenCalled();
+    const kindGetter = vi.fn(() => "history");
+    const command = {get kind() { return kindGetter(); }, operation: "undo"};
+    expect(() => flatListCommandRequest(token, preserveSelectionSync(), {kind: "api", detail: "list"}, command as never)).toThrow();
+    expect(kindGetter).not.toHaveBeenCalled();
+    const selectionGetter = vi.fn(() => "preserve");
+    expect(() => flatListCommandRequest(token, {get kind() { return selectionGetter(); }} as never,
+      {kind: "api", detail: "list"}, {kind: "history", operation: "undo"})).toThrow();
+    expect(selectionGetter).not.toHaveBeenCalled();
+    expect(() => flatListRangeSelectionSync({...selected} as never)).toThrow();
+  });
+
+  it("retains command text limits, closed records and synchronization/history rules for lists", () => {
+    const f = fixture(), token = issueFlatListEditorDeliveryToken(f.projection, f.rendered, 0n, Symbol());
+    const valid = flatListCommandRequest(token, noSelectionSync(), {kind: "api", detail: "list"},
+      {kind: "action", actionId: "breditor/insert-flat-list-text", input: {kind: "string", value: "🙂"}});
+    expect(() => flatListCommandRequest(token, noSelectionSync(), {kind: "api", detail: "list"}, valid.command, null as never)).toThrow();
+    for (const text of ["", "\ud800", "x".repeat(65_537), "🙂".repeat(16_385)]) {
+      expect(canonicalFlatListEditorCommandRequest({...valid, command: {kind: "action", actionId: "breditor/insert-flat-list-text", input: {kind: "string", value: text}}})).toBeNull();
+    }
+    for (const value of [{...valid, extra: true}, {...valid, command: {kind: "history", operation: "undo"}},
+      {...valid, command: {kind: "selection", operation: "synchronize"}},
+      {...valid, requirements: {selection: "preserve", history: "preserve"}},
+      {...valid, command: {kind: "intent", intentId: "example/typed", input: {kind: "string", value: "bad"}}},
+    ]) expect(canonicalFlatListEditorCommandRequest(value)).toBeNull();
+    const ids = flatListBrowserInputActionIds(token);
+    expect(ids.insertText).toBe("breditor/insert-flat-list-text"); expect(ids.insertParagraphBreak).toBe("breditor/insert-flat-list-break");
+    expect(Object.isFrozen(ids)).toBe(true);
+    expect(() => browserInputActionIds(token as never)).toThrow();
+    expect(() => flatListBrowserInputActionIds({...token} as never)).toThrow();
+  });
 
   it("renders semantic list containers with real text and wrapper AST paths", () => {
     const {renderer, host, projection, rendered} = fixture();

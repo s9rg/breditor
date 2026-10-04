@@ -1028,3 +1028,20 @@ Next: list command tokens and owner/controller integration, toolbar/keyboard,
 visible reload/backup and native-input/release qualification. The low-level list
 startup/restore path is verified; the user-facing list editor is not yet complete.
 See [verification](qualification/2026-10-04-flat-list-browser-bootstrap.json).
+
+## Flat-list command contract checkpoint
+
+List selections can now be captured into exact, immutable command requests with
+separate issued capabilities. They share base command validation and bounded
+Unicode inputs, but cannot enter the legacy queue or masquerade as base delivery.
+Tests cover all command shapes, backward selections, stale epochs/renders, wrong
+authorities, copied/foreign selections, getter rejection and history requirements.
+
+All 1,693 browser tests and strict TypeScript pass. Five runs each in Chromium,
+Firefox and WebKit include native selection-to-request capture and stale-token
+rejection. Shipping artifacts remain unchanged. No list queue execution or native
+editing claim is made by this contract-only checkpoint.
+
+Next: shared queue and Wasm adapter integration for these requests, then normal
+controller/toolbar/keyboard delivery, visible persistence and release gates.
+See [verification](qualification/2026-10-04-flat-list-command-contract.json).

@@ -5,6 +5,9 @@ import { createInlineFormatRenderManifest } from "../packages/breditor-browser/s
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
 import { BreditorFlatListDomSelectionBridge } from "../packages/breditor-browser/src/dom_selection.ts";
 import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "../packages/breditor-browser/src/flat_list_dom_point_mapping.ts";
+import { issueFlatListEditorDeliveryToken, issueEditorDeliveryAuthority, flatListEditorDeliveryTokenMatches,
+  flatListEditorDeliveryAuthorityAccepts, flatListCommandRequest, flatListRangeSelectionSync,
+  canonicalFlatListEditorCommandRequest, canonicalEditorCommandRequest, flatListBrowserInputActionIds } from "../packages/breditor-browser/src/editor_command.ts";
 
 const value = result => { if (!result.ok) throw new Error(result.error.code); return result.value; };
 const equal = (actual, expected) => {
@@ -43,6 +46,18 @@ export function verifyFlatListDom(before, after, owner, transitions) {
     const echoed = value(bridge.read(rendered));
     equal(echoed.origin, "programmaticEcho");
     if (echoed.selection !== exact) throw new Error("exact affinity receipt lost");
+    const authority = Symbol("list DOM commands");
+    let epoch = 0n;
+    const capability = issueEditorDeliveryAuthority(token => flatListEditorDeliveryTokenMatches(token, rendered, epoch, authority));
+    const token = issueFlatListEditorDeliveryToken(before, rendered, epoch, authority);
+    const request = flatListCommandRequest(token, flatListRangeSelectionSync(echoed.selection), {kind: "api", detail: "browser qualification"},
+      {kind: "action", actionId: flatListBrowserInputActionIds(token).insertText, input: {kind: "string", value: "🙂"}});
+    const canonical = canonicalFlatListEditorCommandRequest(request);
+    if (!canonical || canonical.selection.selection !== exact || canonical.delivery !== token) throw new Error("list command capture lost identity");
+    equal(canonicalEditorCommandRequest(request), null);
+    equal(flatListEditorDeliveryAuthorityAccepts(capability, token), true);
+    epoch += 1n;
+    equal(flatListEditorDeliveryAuthorityAccepts(capability, token), false);
     equal(value(bridge.read(rendered)).origin, "dom");
     equal(mapDomPointToFlatListSelectionPoint(rendered, heading, 2).ok, false); // Inside 🙂.
     const empty = value(mapFlatListSelectionPointToDomPoint(rendered, {kind: "children", parentPath: [2, 0, 0], childIndex: 0, affinity: "after"}));
@@ -56,6 +71,7 @@ export function verifyFlatListDom(before, after, owner, transitions) {
     selection.removeAllRanges();
     const old = rendered;
     rendered = value(renderer.renderFlatList(host, after)).rendered;
+    equal(flatListEditorDeliveryTokenMatches(token, rendered, 0n, authority), false);
     equal(old.current, false); equal(rendered.validateCanonicalDom(), true);
     equal(host.querySelectorAll("li").length, 4);
     const changed = value(mapFlatListSelectionPointToDomPoint(rendered,

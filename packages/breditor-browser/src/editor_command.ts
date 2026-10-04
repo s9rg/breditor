@@ -1,8 +1,11 @@
 import {
   isOwnedRenderedProjection,
+  isOwnedFlatListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
-import { projectionUsesTextBlockActions, type BaseDocumentProjection } from "./projection.js";
+import { isOwnedProjection, projectionUsesTextBlockActions, type BaseDocumentProjection } from "./projection.js";
+import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
 import {
   isOwnedBaseRangeSelection,
   type BaseRangeSelection,
@@ -76,17 +79,19 @@ export interface EditorCommandRequirements {
 }
 
 /** Exact semantic selection captured while deriving a command request. */
-export type EditorSelectionSync =
-  | Readonly<{ kind: "range"; selection: BaseRangeSelection }>
+type CommandProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type CommandSelection = BaseRangeSelection | FlatListRangeSelection;
+export type EditorSelectionSync<S extends CommandSelection = BaseRangeSelection> =
+  | Readonly<{ kind: "range"; selection: S }>
   | Readonly<{ kind: "none" }>
   | Readonly<{ kind: "preserve" }>;
 
 /** Immutable source, requirements, and semantic command delivered as one FIFO item. */
-export interface EditorCommandRequest {
+export interface EditorCommandRequest<P extends CommandProjection = BaseDocumentProjection, S extends CommandSelection = BaseRangeSelection> {
   /** Opaque exact-base capability issued by the owning command adapter. */
-  readonly delivery: EditorDeliveryToken;
+  readonly delivery: EditorDeliveryToken<P>;
   /** Immutable selection intent derived against that exact delivery base. */
-  readonly selection: EditorSelectionSync;
+  readonly selection: EditorSelectionSync<S>;
   readonly source: EditorCommandSource;
   readonly requirements: Readonly<EditorCommandRequirements>;
   readonly command: EngineCommand;
@@ -96,6 +101,7 @@ declare const EDITOR_DELIVERY_TOKEN_BRAND: unique symbol;
 declare const EDITOR_DELIVERY_AUTHORITY_BRAND: unique symbol;
 
 const DELIVERY_TOKENS = new WeakSet<object>();
+const FLAT_LIST_DELIVERY_TOKENS = new WeakSet<object>();
 const DELIVERY_TOKEN_AUTHORITIES = new WeakMap<object, symbol>();
 const DELIVERY_AUTHORITY_VALIDATORS = new WeakMap<
   object,
@@ -108,9 +114,9 @@ const DELIVERY_AUTHORITY_VALIDATORS = new WeakMap<
  * Visible fields are diagnostics. Only the adapter that issued the token can
  * prove its hidden authority when delivery occurs.
  */
-export interface EditorDeliveryToken {
-  readonly projection: BaseDocumentProjection;
-  readonly rendered: RenderedProjection;
+export interface EditorDeliveryToken<P extends CommandProjection = BaseDocumentProjection> {
+  readonly projection: P;
+  readonly rendered: RenderedProjection<P>;
   readonly snapshotLineage: string;
   readonly snapshotRevision: string;
   readonly rendererGeneration: bigint;
@@ -130,20 +136,21 @@ export interface EditorDeliveryAuthority {
   readonly [EDITOR_DELIVERY_AUTHORITY_BRAND]: true;
 }
 
-class OwnedEditorDeliveryToken implements EditorDeliveryToken {
+class OwnedEditorDeliveryToken<P extends CommandProjection> implements EditorDeliveryToken<P> {
   declare readonly [EDITOR_DELIVERY_TOKEN_BRAND]: true;
-  readonly projection: BaseDocumentProjection;
-  readonly rendered: RenderedProjection;
+  readonly projection: P;
+  readonly rendered: RenderedProjection<P>;
   readonly snapshotLineage: string;
   readonly snapshotRevision: string;
   readonly rendererGeneration: bigint;
   readonly observationEpoch: bigint;
 
   constructor(
-    projection: BaseDocumentProjection,
-    rendered: RenderedProjection,
+    projection: P,
+    rendered: RenderedProjection<P>,
     observationEpoch: bigint,
     authority: symbol,
+    flatLists = false,
   ) {
     this.projection = projection;
     this.rendered = rendered;
@@ -152,6 +159,7 @@ class OwnedEditorDeliveryToken implements EditorDeliveryToken {
     this.rendererGeneration = rendered.rendererGeneration;
     this.observationEpoch = observationEpoch;
     DELIVERY_TOKENS.add(this);
+    if (flatLists) FLAT_LIST_DELIVERY_TOKENS.add(this);
     DELIVERY_TOKEN_AUTHORITIES.set(this, authority);
     Object.freeze(this);
   }
@@ -179,6 +187,47 @@ export function issueEditorDeliveryToken(
   );
 }
 
+/** Explicit list command types keep legacy delivery/selection admission closed. @internal */
+export type FlatListEditorCommandRequest = EditorCommandRequest<FlatListDocumentProjection, FlatListRangeSelection>;
+export type FlatListEditorDeliveryToken = EditorDeliveryToken<FlatListDocumentProjection>;
+export type FlatListEditorSelectionSync = EditorSelectionSync<FlatListRangeSelection>;
+
+/** Issues a list capability against one exact owned render, never flattened text. @internal */
+export function issueFlatListEditorDeliveryToken(projection: FlatListDocumentProjection,
+  rendered: RenderedProjection<FlatListDocumentProjection>, observationEpoch: bigint, authority: symbol): FlatListEditorDeliveryToken {
+  if (!isOwnedFlatListProjection(projection) || !isOwnedFlatListRenderedProjection(rendered) || rendered.projection !== projection ||
+    typeof observationEpoch !== "bigint" || observationEpoch < 0n || typeof authority !== "symbol") {
+    throw new TypeError("flat-list delivery base is invalid");
+  }
+  return new OwnedEditorDeliveryToken(projection, rendered, observationEpoch, authority, true);
+}
+
+/** Same epoch/authority checks as legacy delivery, with an explicit list render. @internal */
+export function flatListEditorDeliveryTokenMatches(token: unknown, rendered: unknown, observationEpoch: bigint,
+  authority: symbol): token is FlatListEditorDeliveryToken {
+  return flatListEditorDeliveryTokenMatchesRender(token, rendered) && DELIVERY_TOKEN_AUTHORITIES.get(token) === authority &&
+    token.observationEpoch === observationEpoch;
+}
+
+/** Visible list correlation alone is not adapter authorization. @internal */
+export function flatListEditorDeliveryTokenMatchesRender(token: unknown, rendered: unknown): token is FlatListEditorDeliveryToken {
+  if (!isOwnedFlatListRenderedProjection(rendered) || !isIssuedDeliveryToken(token, true)) return false;
+  return token.rendered === rendered && token.projection === rendered.projection &&
+    token.rendererGeneration === rendered.rendererGeneration && token.snapshotLineage === rendered.projection.snapshot.lineage &&
+    token.snapshotRevision === rendered.projection.snapshot.revision;
+}
+
+/** Captures an exact owned list selection for later queue delivery. @internal */
+export function flatListRangeSelectionSync(selection: FlatListRangeSelection): FlatListEditorSelectionSync {
+  if (!isOwnedFlatListRangeSelection(selection)) throw new TypeError("flat-list selection is foreign or invalid");
+  return Object.freeze({ kind: "range", selection });
+}
+
+/** Consults the existing opaque authority, after explicit list token admission. @internal */
+export function flatListEditorDeliveryAuthorityAccepts(authority: unknown, token: unknown): token is FlatListEditorDeliveryToken {
+  return isIssuedDeliveryToken(token, true) && deliveryAuthorityAccepts(authority, token);
+}
+
 /** @internal Creates an opaque controller validator owned by one adapter. */
 export function issueEditorDeliveryAuthority(
   validator: (token: unknown) => boolean,
@@ -196,6 +245,10 @@ export function editorDeliveryAuthorityAccepts(
   authority: unknown,
   token: unknown,
 ): token is EditorDeliveryToken {
+  return isIssuedEditorDeliveryToken(token) && deliveryAuthorityAccepts(authority, token);
+}
+
+function deliveryAuthorityAccepts(authority: unknown, token: unknown): boolean {
   try {
     if (typeof authority !== "object" || authority === null) {
       return false;
@@ -270,12 +323,12 @@ export function rangeSelectionSync(selection: BaseRangeSelection): EditorSelecti
 }
 
 /** Explicit semantic absence for non-DOM API integrations. */
-export function noSelectionSync(): EditorSelectionSync {
+export function noSelectionSync(): Readonly<{ kind: "none" }> {
   return Object.freeze({ kind: "none" });
 }
 
 /** Uses the core's current semantic selection without reading or writing DOM. */
-export function preserveSelectionSync(): EditorSelectionSync {
+export function preserveSelectionSync(): Readonly<{ kind: "preserve" }> {
   return Object.freeze({ kind: "preserve" });
 }
 
@@ -301,6 +354,23 @@ const TEXT_BLOCK_ACTION_IDS = Object.freeze({
   insertText: "breditor/insert-text-block-text",
   toggleStrong: "breditor/toggle-text-block-strong",
 });
+
+const FLAT_LIST_ACTION_IDS = Object.freeze({
+  clearInlineFormats: "breditor/clear-flat-list-inline-formats",
+  deleteBackward: "breditor/delete-flat-list-backward",
+  deleteForward: "breditor/delete-flat-list-forward",
+  deleteSelection: "breditor/delete-flat-list-selection",
+  insertParagraphBreak: "breditor/insert-flat-list-break",
+  insertPlainText: "breditor/insert-flat-list-plain-text",
+  insertText: "breditor/insert-flat-list-text",
+  toggleStrong: "breditor/toggle-flat-list-strong",
+});
+
+/** Native-input IDs only for an explicitly issued list capability. @internal */
+export function flatListBrowserInputActionIds(delivery: FlatListEditorDeliveryToken): Readonly<Record<keyof typeof BASE_ACTION_IDS, string>> {
+  if (!isIssuedDeliveryToken(delivery, true)) throw new TypeError("flat-list delivery token is invalid");
+  return FLAT_LIST_ACTION_IDS;
+}
 
 /** Selects native-input handlers from a validated profile-bound delivery. @internal */
 export function browserInputActionIds(delivery: EditorDeliveryToken): Readonly<Record<keyof typeof BASE_ACTION_IDS, string>> {
@@ -530,6 +600,31 @@ export function isEditorCommandRequest(value: unknown): value is EditorCommandRe
 
 /** @internal Creates a deeply frozen snapshot after exact runtime validation. */
 export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequest | null {
+  return canonicalRequest(value, false);
+}
+
+/** Copies and validates one list request with the shared command/Unicode limits. @internal */
+export function canonicalFlatListEditorCommandRequest(value: unknown): FlatListEditorCommandRequest | null {
+  return canonicalRequest(value, true);
+}
+
+/** All list actions, intents, selections and history share one request constructor. @internal */
+export function flatListCommandRequest(delivery: FlatListEditorDeliveryToken, selection: FlatListEditorSelectionSync,
+  source: EditorCommandSource, command: EngineCommand,
+  history?: EditorCommandRequirements["history"]): FlatListEditorCommandRequest {
+  const safeCommand = snapshotEngineCommand(command);
+  const safeSelection = snapshotSelectionForMode(selection, isIssuedDeliveryToken(delivery, true) ? delivery : null, true);
+  if (safeCommand === null || safeSelection === null) throw new TypeError("flat-list command request is invalid");
+  const result = canonicalFlatListEditorCommandRequest({ delivery, selection: safeSelection, source,
+    requirements: { selection: safeSelection.kind === "preserve" ? "preserve" : "synchronize",
+      history: history === undefined ? (safeCommand.kind === "history" ? "closeBefore" : "preserve") : history }, command: safeCommand });
+  if (result === null) throw new TypeError("flat-list command request is invalid");
+  return result;
+}
+
+function canonicalRequest(value: unknown, flatLists: false): EditorCommandRequest | null;
+function canonicalRequest(value: unknown, flatLists: true): FlatListEditorCommandRequest | null;
+function canonicalRequest(value: unknown, flatLists: boolean): EditorCommandRequest<CommandProjection, CommandSelection> | null {
   try {
     const outer = readExactDataRecord(value, [
       "delivery",
@@ -538,8 +633,8 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
       "requirements",
       "command",
     ]);
-    const delivery = snapshotDelivery(outer?.["delivery"]);
-    const selection = snapshotSelection(outer?.["selection"], delivery);
+    const delivery = isIssuedDeliveryToken(outer?.["delivery"], flatLists) ? outer!["delivery"] as EditorDeliveryToken<CommandProjection> : null;
+    const selection = snapshotSelectionForMode(outer?.["selection"], delivery, flatLists);
     const source = snapshotSource(outer?.["source"]);
     const requirements = readExactDataRecord(outer?.["requirements"], [
       "selection",
@@ -561,58 +656,8 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
       return null;
     }
     const history = requirements["history"];
-    if (command.kind === "selection") {
-      return selection.kind === "range"
-        ? selectionSynchronizationRequest(
-            delivery,
-            selection.selection,
-            source,
-          )
-        : null;
-    }
-    if (command.kind === "history") {
-      return historyRequest(delivery, selection, source, command.operation);
-    }
-    if (command.kind === "control") {
-      return closeHistoryGroupRequest(delivery, selection, source);
-    }
-    if (command.kind === "intent") {
-      return command.input.kind === "none"
-        ? noInputIntentRequest(
-            delivery,
-            selection,
-            source,
-            command.intentId,
-            history,
-          )
-        : jsonIntentRequest(
-            delivery,
-            selection,
-            source,
-            command.intentId,
-            command.input.value,
-            history,
-          );
-    }
-    return command.input.kind === "none"
-      ? noInputActionRequest(delivery, selection, source, command.actionId, history)
-      : command.input.kind === "string"
-        ? stringActionRequest(
-          delivery,
-          selection,
-          source,
-          command.actionId,
-          command.input.value,
-          history,
-        )
-        : jsonActionRequest(
-            delivery,
-            selection,
-            source,
-            command.actionId,
-            command.input.value,
-            history,
-          );
+    if (command.kind === "selection" && selection.kind !== "range") return null;
+    return freezeRequest(delivery, selection, source, history, command);
   } catch {
     return null;
   }
@@ -627,13 +672,13 @@ export function isEngineCommand(value: unknown): value is EngineCommand {
   }
 }
 
-function freezeRequest<TCommand extends EngineCommand>(
-  delivery: EditorDeliveryToken,
-  selection: EditorSelectionSync,
+function freezeRequest<TCommand extends EngineCommand, P extends CommandProjection, S extends CommandSelection>(
+  delivery: EditorDeliveryToken<P>,
+  selection: EditorSelectionSync<S>,
   source: EditorCommandSource,
   history: EditorCommandRequirements["history"],
   command: TCommand,
-): EditorCommandRequest & { readonly command: TCommand } {
+): EditorCommandRequest<P, S> & { readonly command: TCommand } {
   const frozenSource = Object.freeze({ kind: source.kind, detail: source.detail });
   return Object.freeze({
     delivery,
@@ -662,6 +707,11 @@ function snapshotSelection(
   value: unknown,
   delivery: EditorDeliveryToken | null,
 ): EditorSelectionSync | null {
+  return snapshotSelectionForMode(value, delivery, false) as EditorSelectionSync | null;
+}
+
+function snapshotSelectionForMode(value: unknown, delivery: EditorDeliveryToken<CommandProjection> | null,
+  flatLists: boolean): EditorSelectionSync<CommandSelection> | null {
   if (delivery === null) {
     return null;
   }
@@ -674,15 +724,18 @@ function snapshotSelection(
     return Object.freeze({ kind: "none" });
   }
   const range = readExactDataRecord(value, ["kind", "selection"]);
+  const selection = range?.["selection"];
+  if (flatLists ? !isOwnedFlatListRangeSelection(selection) : !isOwnedBaseRangeSelection(selection)) return null;
+  // The explicit mode guard above proves this union; correlation is by identity.
+  const owned = selection as CommandSelection;
   if (
     range === null ||
     range["kind"] !== "range" ||
-    !isOwnedBaseRangeSelection(range["selection"]) ||
-    range["selection"].projection !== delivery.projection
+    owned.projection !== delivery.projection
   ) {
     return null;
   }
-  return Object.freeze({ kind: "range", selection: range["selection"] });
+  return Object.freeze({ kind: "range", selection: owned });
 }
 
 function requireDelivery(value: EditorDeliveryToken): EditorDeliveryToken {
@@ -698,7 +751,17 @@ function snapshotDelivery(value: unknown): EditorDeliveryToken | null {
 }
 
 function isIssuedEditorDeliveryToken(value: unknown): value is EditorDeliveryToken {
-  return typeof value === "object" && value !== null && DELIVERY_TOKENS.has(value);
+  return isIssuedDeliveryToken(value, false);
+}
+
+function isIssuedDeliveryToken(value: unknown, flatLists: true): value is FlatListEditorDeliveryToken;
+function isIssuedDeliveryToken(value: unknown, flatLists: false): value is EditorDeliveryToken;
+function isIssuedDeliveryToken(value: unknown, flatLists: boolean): value is EditorDeliveryToken<CommandProjection>;
+function isIssuedDeliveryToken(value: unknown, flatLists: boolean): value is EditorDeliveryToken<CommandProjection> {
+  if (typeof value !== "object" || value === null || !DELIVERY_TOKENS.has(value)) return false;
+  if (FLAT_LIST_DELIVERY_TOKENS.has(value) !== flatLists) return false;
+  const projection = (value as EditorDeliveryToken<CommandProjection>).projection;
+  return flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection);
 }
 
 function requirementsMatchCommand(
@@ -719,7 +782,7 @@ function requirementsMatchCommand(
 
 function selectionRequirementMatches(
   requirement: unknown,
-  selection: EditorSelectionSync,
+  selection: EditorSelectionSync<CommandSelection>,
 ): boolean {
   return requirement === (selection.kind === "preserve" ? "preserve" : "synchronize");
 }

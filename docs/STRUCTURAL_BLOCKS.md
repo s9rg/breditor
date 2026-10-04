@@ -1379,3 +1379,28 @@ checkpoint through this bootstrap, then checks exact document and selection
 recovery after redo. Normal owner/controller scheduling, toolbar and input routing
 remain separate integration work. See
 [bootstrap qualification](qualification/2026-10-04-flat-list-browser-bootstrap.json).
+
+### Flat-list command capabilities
+
+List requests now have explicit `FlatListEditorDeliveryToken`, selection-sync and
+request types, with base types retained as the generic defaults. Tokens preserve
+the exact hierarchical projection/render, snapshot, renderer generation and
+observation epoch, plus hidden adapter-local authority. Their issuance mode is
+private provenance, not inferred from equal-looking fields. Copies, foreign
+selections and wrong render/epoch/authority checks reject. Visible correlation
+alone does not establish current adapter liveness: the owner must validate its
+current render and epoch at delivery.
+
+`flatListCommandRequest` and `canonicalFlatListEditorCommandRequest` share the
+existing command, source, requirement and Unicode-bound validation. The list
+constructor snapshots own-data fields before deciding defaults, without invoking
+command/selection getters. Exact owned selections preserve direction and
+affinities. Actions, typed intents, selection synchronization, history and group
+boundaries produce immutable requests; undo/redo require a closed history group.
+Explicit list native-input IDs point to the list actions, not paragraph actions.
+
+The legacy request/authority/queue paths remain base-only. The list requests are
+not yet wired into an executing queue or the Wasm command adapter. The real-browser
+harness checks native list selection capture into immutable requests and rejects
+stale epoch/render tokens, alongside the existing low-level edit/recovery checks.
+See [command qualification](qualification/2026-10-04-flat-list-command-contract.json).

@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "f604bf3",
+  "status": "Explicit list command capabilities and request validation qualified; queue/adapter execution not yet connected",
+  "contracts": {
+    "identity": "Private issued-mode provenance, exact projection/render and snapshot plus renderer generation, observation epoch and hidden adapter authority",
+    "selection": "Owned hierarchical range with exact projection identity; direction and affinity retained",
+    "commands": "Shared closed action/intent/history/selection/control validation, source and requirement checks, bounded well-formed text/JSON transport",
+    "construction": "Own-data snapshots before default selection/history decisions; command/selection accessors are not invoked",
+    "legacy": "Legacy request builders, authority checks and command queue reject list capabilities"
+  },
+  "verification": {
+    "newTests": 4,
+    "browserTests": 1693,
+    "browserTestFiles": 52,
+    "focusedTests": 136,
+    "typecheck": "passed, implementation and tests",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "firefox",
+        "version": "153.0",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "runs": 5,
+        "status": "passed"
+      }
+    ],
+    "browserScope": "Native backward list selection captured in immutable request with identical owned selection/token, legacy rejection, observation-epoch and replaced-render rejection; retains previous bootstrap/restore/DOM checks",
+    "developmentCorrections": [
+      "Typecheck required explicit owned-selection union narrowing after mode-specific brand validation.",
+      "Review caught direct reads of constructor inputs while computing defaults; moved them behind own-data snapshot checks and added getter tests.",
+      "An explicit null history requirement is rejected rather than defaulted; final focused regression passed."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser -- src/dom_renderer.test.ts src/editor_command.test.ts src/command_queue.test.ts",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Shared list queue and Wasm command adapter",
+    "Controller/toolbar/keyboard, composition and clipboard",
+    "Visible persistence and native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Request capture/validation, not list queue delivery or normal editor input. The owner must check current liveness/epoch at dispatch.",
+  "pushed": false,
+  "published": false
+}
