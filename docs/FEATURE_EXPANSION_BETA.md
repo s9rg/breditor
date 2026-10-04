@@ -832,3 +832,19 @@ readiness. No publish, push or shipping-profile change is implied.
 
 See [session contract](STRUCTURAL_BLOCKS.md#complete-flat-list-sessions-v6) and
 [verification](qualification/2026-10-04-flat-list-session-v6.json).
+
+## Flat-list request and commit checkpoint
+
+Explicit V6 transaction requests and replay-verified durable commits now complete
+the Rust wire path for flat-list operations. Multi-operation requests remain
+atomic; commits derive inverses, maps and summaries from replay, preserving
+selection and pending formats. Failed later guards or whole-document limits do
+not alter state or lose redo. Existing format versions remain closed and unchanged.
+
+The next vertical slice is the opt-in list Wasm/bootstrap profile and projection,
+then browser commands, toolbar/keyboard behavior and demo recovery. These Rust
+checks do not qualify browser/native interaction or resolve release size gates.
+Flat lists remain first; nested lists and indent/outdent are deferred.
+
+See [boundary contract](STRUCTURAL_BLOCKS.md#flat-list-transaction-and-commit-boundaries-v6)
+and [verification](qualification/2026-10-04-flat-list-transaction-v6.json).

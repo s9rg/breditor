@@ -4,6 +4,8 @@ mod commit_encoding_v2;
 mod commit_encoding_v3;
 #[cfg(feature = "experimental-structural-properties")]
 mod commit_encoding_v5;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_encoding_v6;
 mod commit_error;
 mod commit_json;
 mod commit_json_v2;
@@ -14,14 +16,24 @@ mod commit_json_v3_tests;
 mod commit_json_v5;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod commit_json_v5_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_json_v6;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod commit_json_v6_tests;
 mod commit_v2_error;
 mod commit_v3_error;
 #[cfg(feature = "experimental-structural-properties")]
 mod commit_v5_error;
 #[cfg(feature = "experimental-structural-properties")]
+mod commit_v6_error;
+#[cfg(feature = "experimental-structural-properties")]
 pub use commit_json_v5::{COMMIT_V5_FORMAT_VERSION, CommitJsonCodecV5};
 #[cfg(feature = "experimental-structural-properties")]
+pub use commit_json_v6::{COMMIT_V6_FORMAT_VERSION, CommitJsonCodecV6};
+#[cfg(feature = "experimental-structural-properties")]
 pub use commit_v5_error::CommitV5CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+pub use commit_v6_error::CommitV6CodecError;
 mod diagnostic;
 mod document_encoding;
 mod document_json;
@@ -47,6 +59,8 @@ mod error;
 mod flat_list_operation_v6_tests;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod flat_list_session_v6_tests;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_transaction_v6_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_wire;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
@@ -511,6 +525,8 @@ mod transaction_json_v4;
 mod transaction_json_v4_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod transaction_json_v5;
+#[cfg(feature = "experimental-structural-properties")]
+mod transaction_json_v6;
 mod transaction_payload_v1;
 mod transaction_payload_v2;
 mod transaction_v2_error;
@@ -519,6 +535,8 @@ mod transaction_v3_error;
 mod transaction_v4_error;
 #[cfg(feature = "experimental-structural-properties")]
 mod transaction_v5_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod transaction_v6_error;
 
 pub use commit_error::{
     CommitApplicationError, CommitApplicationErrorCode, CommitCodecError, CommitRecordError,
@@ -988,9 +1006,13 @@ pub use transaction_json_v3::{TRANSACTION_REQUEST_V3_FORMAT_VERSION, Transaction
 pub use transaction_json_v4::{TRANSACTION_REQUEST_V4_FORMAT_VERSION, TransactionJsonCodecV4};
 #[cfg(feature = "experimental-structural-properties")]
 pub use transaction_json_v5::{TRANSACTION_REQUEST_V5_FORMAT_VERSION, TransactionJsonCodecV5};
+#[cfg(feature = "experimental-structural-properties")]
+pub use transaction_json_v6::{TRANSACTION_REQUEST_V6_FORMAT_VERSION, TransactionJsonCodecV6};
 pub use transaction_v2_error::TransactionV2CodecError;
 pub use transaction_v3_error::TransactionV3CodecError;
 #[cfg(feature = "experimental-structural-properties")]
 pub use transaction_v4_error::TransactionV4CodecError;
 #[cfg(feature = "experimental-structural-properties")]
 pub use transaction_v5_error::TransactionV5CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+pub use transaction_v6_error::TransactionV6CodecError;

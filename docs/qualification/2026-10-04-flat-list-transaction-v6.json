@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "981ae76",
+  "status": "Experimental V6 flat-list transaction requests and replay-verified commits qualified in Rust",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "codecs": ["TransactionJsonCodecV6", "CommitJsonCodecV6"],
+    "versions": {"request": 6, "commit": 6, "operation": 6, "state": 3, "document": 2},
+    "request": "Exact context, schema binding and base snapshot; static payload admission followed by separate atomic application with consecutive live guards",
+    "commit": "Before-state plus canonical forward recipe and result editor values; replay derives result document, successor snapshot, inverse operations, relocation and summary",
+    "noops": "Requests may include valid no-ops; commits reject unchanged recipes and redundant noncanonical operations; state-only commits are supported",
+    "limits": "Count and payload preflight, symmetric JSON byte limits, indexed typed errors and whole-document result validation including untouched roots",
+    "compatibility": "Older codecs are unchanged and V5 rejects list history even under relabelled envelopes; heading payload bytes remain unchanged apart from the explicit envelope version"
+  },
+  "verification": {
+    "focusedFlatListTests": 11,
+    "genericCommitTests": 4,
+    "allFeatureWorkspaceUnitTests": {"core": 1103, "wasm": 51},
+    "defaultCoreUnitTests": 697,
+    "extendedPropertyRun": "passed",
+    "propertyCases": 10000,
+    "propertySeed": 20261004,
+    "coverage": [
+      "All three list primitives, typed formats, Unicode and exact derived inverse replay through both boundaries",
+      "Mixed atomic reframe/splice/replace with explicit selection, pending formats and metadata",
+      "Fresh-context replay, exact durable commit equality, one-event undo/redo and Session V6 restoration",
+      "Late stale guard and full-document result-budget failure preserve state and redo",
+      "Binding, snapshot and operation-count precedence over invalid payloads",
+      "Indexed malformed payloads, unknown and duplicate fields, typed-property and ordinal errors",
+      "Rejection of wire-supplied inverses, maps and summaries",
+      "Exact input/output byte budgets and process-local context refusal",
+      "State-only commits, unchanged recipe rejection and redundant no-op rejection",
+      "Earlier heading behavior and V5 list refusal"
+    ],
+    "developmentCorrections": [
+      "Corrected new test calls to the existing owned Commit and TransactionOutcome APIs",
+      "The mixed-operation fixture's scratch session initially retained a selection deleted by an intermediate operation. It now clears that scratch selection; the real atomic request still explicitly supplies and verifies its final selection"
+    ],
+    "commands": [
+      "cargo test -p breditor-core --all-features --lib flat_list_transaction_v6_tests --quiet",
+      "cargo test -p breditor-core --all-features --lib commit_json_v6_tests --quiet",
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib flat_list_transaction_v6_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Opt-in compiled list command profile and checkpointed engine integration",
+    "Wasm/bootstrap factories and list projection",
+    "Browser commands, toolbar, keyboard, selection, clipboard and recovery",
+    "Cross-browser/native qualification and release size gates",
+    "Nested lists and indent/outdent remain deferred"
+  ],
+  "evidenceBoundary": "Rust transaction/commit codecs and existing workspace regression tests, not rebuilt list Wasm or browser/native support",
+  "pushed": false,
+  "published": false
+}

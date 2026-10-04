@@ -1025,5 +1025,43 @@ paragraph/heading conversion, inline clear/set/toggle, unwrapping and first-item
 lifting. Randomized mixed-list histories and the general session admission matrix
 exercise complete undo/redo after reload. These are in-memory Rust codec tests,
 not browser autosave, native clipboard, host backup-file recovery or release
-qualification. Request/commit V6 and the Wasm/browser bridge remain next.
+qualification. Request/commit V6 qualification follows below; the Wasm/browser
+bridge remains next.
 See [session V6 qualification](qualification/2026-10-04-flat-list-session-v6.json).
+
+### Flat-list transaction and commit boundaries (V6)
+
+`TransactionJsonCodecV6` and `CommitJsonCodecV6` explicitly admit Operation V6
+recipes. Both retain the existing schema identity/fingerprint binding, typed
+editor values and strict bounded JSON records. The commit embeds Editor State
+V3 and Document V2. No older wire format changes its accepted language.
+
+- A transaction request targets an exact base snapshot under the codec's exact
+  process-local context. Static decoding checks the binding, snapshot, operation
+  count and each indexed payload. Applying it separately proves consecutive live
+  source guards and full-document result limits, atomically across all operations.
+- A durable commit stores its before-state, canonical forward recipe, result
+  selection/pending formats and metadata. Decode reapplies the recipe; the result
+  document, successor snapshot, inverse operations, relocation maps and change
+  summary are derived, never accepted from the wire. This proves internal
+  consistency, not authenticity, authorization or exactly-once delivery.
+- Requests may contain valid no-ops. Commits must describe a real state change
+  and carry the canonical forward recipe; redundant no-op operations reject.
+  Selection-only commits remain valid without inventing document operations.
+- A matching independently compiled context can replay a saved request when
+  supplied its restored exact base snapshot. Wrong local contexts reject at
+  encode/decode; stale snapshots reject before operation payload admission.
+- Exact JSON byte budgets apply to both encoding and decoding. Count checks
+  precede materializing operations; commit counts precede decoding the embedded
+  document. Malformed operations retain their index and typed cause.
+- Multi-step list reframe/splice/replace requests preserve exact selections,
+  pending formats and undo/redo as one history event. A later stale guard or
+  full-document budget failure leaves state and the retained redo branch intact.
+  Previously admissible heading payload bytes are unchanged apart from the new
+  outer version. V5 refuses list operations, including relabelled envelopes.
+
+Qualification covers Unicode request/commit/inverse replay, independent contexts,
+typed formats, state-only commits, malformed records, budget boundaries and
+complete-session interoperability. This closes the Rust wire layer for flat
+lists; it does not expose those lists through the shipping Wasm/browser profile.
+See [request/commit V6 qualification](qualification/2026-10-04-flat-list-transaction-v6.json).
