@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "952df43",
+  "status": "Experimental Rust flat-list plain-text insertion qualified; durable lists and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "action": "InsertFlatListPlainTextAction",
+    "identity": "breditor/insert-flat-list-plain-text",
+    "input": "Existing bounded InsertPlainTextInput and typed input contract; normalize CRLF/CR/LF, retain other Unicode scalars and all blank lines",
+    "containers": "Every inserted line inherits the spatial start family; within one list retain original start and adjust item count; untouched endpoint-list suffix in another root stays separate at its original ordinal",
+    "kinds": "Single-line retains start kind; multiline first retains start kind, interior lines are paragraphs, final retains end kind only with surviving suffix text",
+    "blankLines": "Explicit empty blocks/items, never Enter's empty-item exit; cross-container paste uses start-family replacement rather than Enter's two-sided retention",
+    "formats": "Shared tree-neutral heading-paste policy with explicit flat-list middle-run scan; pending/focus-affinity for caret, first selected run for ranges, surviving left/right/plain fallback for text-empty ranges",
+    "selection": "Before-affinity caret after final inserted scalar and before surviving suffix; empty final block uses child boundary; pending formats consumed",
+    "history": "One guarded structural replacement and independent history record; exact undo/redo, including original direction, affinities, ranks, typed formats, numbering and pending formats; content-identical replacement can be selection-only without redo loss",
+    "admission": "Input/schema/operation limits, complete-result resource use and final ordinal validated before publication; no transient intermediate document; rejected and stale preparations retain state/redo",
+    "wire": "Explicit experimental Rust registration only; no existing durable/session/browser widening or rebuilt shipping Wasm"
+  },
+  "verification": {
+    "focusedPlainTextTests": 12,
+    "allFeatureWorkspaceUnitTests": {"core": 1046, "wasm": 51},
+    "defaultCoreUnitTests": 697,
+    "propertyCases": 10000,
+    "propertySeed": 20261004,
+    "propertyOracle": "Independent scalar prefix/suffix slicing and normalized-line reconstruction across selected list items; randomized Unicode, empty endpoints/lines, rank, direction and bullet/numbered families with exact state/undo/redo",
+    "coverage": [
+      "Paragraph and all heading ranks in bare/bullet/numbered families; start/middle/end/empty carets; Unicode, CRLF/CR/LF, U+2028 and blank lines",
+      "Every pair of cross-root container families in both directions, with and without surviving endpoint text; outside roots and suffix numbering",
+      "Single-line cross-item replacement retains start rank and independent paste history",
+      "Middle selected text supplies formatting; affinity and pending overrides; left/right/plain fallback",
+      "Final ordinal overflow, node/property/merged-leaf limits, untouched-root resource use and exact-final-budget success",
+      "Content-identical replacement moves selection without adding history or losing redo",
+      "Stale preparation and rejected paste preserve newer state and existing redo",
+      "Legacy/heading-only schema rejection, missing selection, zero operation budget and typed-input bounds"
+    ],
+    "developmentCorrections": [
+      "First focused run: 11 passed and the schema-isolation fixture failed because it used a typed Link format in the base schema; corrected the fixture to plain text before testing action admission",
+      "First strict lint run rejected test-only boolean-to-integer branches and manual empty-string construction; corrected without lint suppression"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib insert_flat_list_plain_text_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Explicit durable flat-list operation/session admission and reload/recovery",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native clipboard and input qualification, plus release size gates",
+    "Nested lists and indent/outdent remain deferred beyond the flat-list beta"
+  ],
+  "evidenceBoundary": "Rust action/session and static checks only; no list browser/native clipboard qualification or performance claim",
+  "pushed": false,
+  "published": false
+}

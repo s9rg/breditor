@@ -773,3 +773,25 @@ indent/outdent remain deferred. This checkpoint does not complete the beta goal.
 
 See [formatting contract](STRUCTURAL_BLOCKS.md#flat-list-formatting-actions) and
 [verification](qualification/2026-10-04-flat-list-formatting.json).
+
+## Flat-list plain-text checkpoint
+
+The experimental Rust profile now supports atomic single/multiline plain-text
+insertion. Inserted lines follow the starting container, blank lines stay explicit,
+and untouched suffix items in another list retain their original numbers. Heading
+retention, format inheritance, Unicode caret placement and independent undo/redo
+are defined and tested. Pasted blank lines intentionally do not trigger Enter's
+empty-item exit behavior.
+
+The action uses the existing bounded plain-text input, shared text/format policy
+and guarded flat-list replacement. Resource and ordinal failures reject before
+publication; exact replacements and rejected edits preserve redo. All existing
+profiles remain scoped to their original contracts.
+
+The next milestone is durable list operation/session admission, followed by
+Wasm/browser projection, toolbar/keyboard and the demo's reload/recovery flow.
+Native clipboard, three-browser and release-size qualification still remain;
+these Rust tests do not establish that lists are browser-ready.
+
+See [plain-text contract](STRUCTURAL_BLOCKS.md#flat-list-plain-text-insertion) and
+[verification](qualification/2026-10-04-flat-list-plain-text.json).

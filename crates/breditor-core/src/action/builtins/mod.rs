@@ -130,8 +130,16 @@ pub use delete_text_block_selection::{
 mod format_strong;
 mod grapheme_boundary;
 mod inline_format_properties_state;
+#[cfg(feature = "experimental-structural-properties")]
+mod insert_flat_list_plain_text;
 mod insert_paragraph_break;
 mod insert_plain_text;
+#[cfg(feature = "experimental-structural-properties")]
+pub use insert_flat_list_plain_text::{
+    InsertFlatListPlainTextAction, insert_flat_list_plain_text_action_id,
+};
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod insert_flat_list_plain_text_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod insert_text_block_plain_text;
 #[cfg(feature = "experimental-structural-properties")]

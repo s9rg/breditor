@@ -889,7 +889,53 @@ and durable formats remain unchanged.
 The implementation shares the established pure inline-format policy, with a
 separate flat-list capture/planning scope. It reuses guarded structural replacement
 rather than inventing a new persistence tag. This is Rust-only qualification:
-multiline plain-text input, durable lists, Wasm/browser controls and native/recovery
+multiline input is qualified below; durable lists, Wasm/browser controls and native/recovery
 qualification remain ahead. No list browser or performance claim follows from
 these tests.
 See [formatting qualification](qualification/2026-10-04-flat-list-formatting.json).
+
+### Flat-list plain-text insertion
+
+`InsertFlatListPlainTextAction`, explicitly registered as
+`breditor/insert-flat-list-plain-text`, accepts the existing bounded
+`InsertPlainTextInput`. It replaces same-block or cross-item/root selections with
+one guarded structural operation and requests independent history. Existing
+heading/default actions and durable wires remain unchanged.
+
+- CRLF, CR and LF become structural boundaries. Other Unicode scalars, including
+  U+2028, remain text. Leading, trailing and consecutive blank lines are retained.
+- All inserted lines inherit the spatial start container: bare blocks if the
+  start is bare, otherwise items in that list. Within one list its original start
+  remains and subsequent ordinals follow the new count. When a range crosses
+  roots, untouched suffix items of the endpoint list stay separate, with their
+  original first surviving ordinal. Adjacent lists are not implicitly merged.
+- A one-line replacement retains the start block's kind. For multiline input,
+  the first block retains the start kind, interior blocks are paragraphs, and
+  the last retains the end kind only when original suffix text survives.
+  Otherwise it is a paragraph. Container inheritance does not override this
+  explicit heading policy.
+- Pasting a blank line into an empty item creates empty items; it does not invoke
+  Enter's empty-item exit. Pasting across container families follows start-family
+  replacement policy, unlike Enter's two-sided container retention.
+- Carets use pending formats, then focus-affinity context. Extended selections
+  use the first selected text run, including intervening items/roots. Text-empty
+  ranges fall back to surviving left text, then right text, then plain text.
+  Every inserted nonempty line uses the inherited format set; retained prefix
+  and suffix runs retain their own formats.
+- Success consumes pending formats and sets a Before-affinity caret after the
+  final inserted scalar, before retained suffix text. An empty resulting final
+  block uses its child boundary. Undo/redo restores exact state, including
+  original direction, affinities, kinds, typed formats, numbering and pending
+  formats. Each document-changing paste is its own history event; exact content
+  replacements can be selection-only without an undo entry or redo loss.
+- Input byte/UTF-16/line bounds, schema admission, operation budget, complete
+  result limits and final ordered ordinal are checked before publication.
+  Ordinal overflow disables explicitly. Atomic replacement may succeed at exact
+  final budgets without needing a larger intermediate document. Disabled and
+  stale preparations leave the current state and redo branch untouched.
+
+The action shares tree-neutral text/format policy with heading paste while
+supplying a flat-list-specific middle-run scan and layout. Qualification is Rust
+action/session only, not native clipboard or browser paste support. Durable
+operation/session admission and browser integration are the next vertical slice.
+See [plain-text qualification](qualification/2026-10-04-flat-list-plain-text.json).

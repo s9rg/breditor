@@ -86,7 +86,8 @@ fn evaluate(
     }
     let (first, source) = text_block_source(state, range.start().paragraph_path())?;
     let (last, tail) = text_block_source(state, range.end().paragraph_path())?;
-    let (prefix, suffix, formats) = insertion_parts(state, &range, &source, &tail)?;
+    let (prefix, suffix, formats) =
+        insertion_parts(state, &range, &source, &tail, first_middle_formats)?;
     let replacement = match replacement_fragments(input, &formats) {
         Ok(replacement) => replacement,
         Err(ReplacementError::Capacity) => return Ok(disabled("breditor/result-limit-exceeded")),
@@ -140,11 +141,13 @@ fn evaluate(
     )))
 }
 
-fn insertion_parts(
+/// Tree-neutral text/format policy; callers provide a scope-specific middle scan.
+pub(super) fn insertion_parts(
     state: &EditorState,
     range: &TextRangeSelection,
     source: &TextFragment,
     tail: &TextFragment,
+    find_middle: fn(&EditorState, &TextRangeSelection) -> Result<Option<FormatSet>, ActionFault>,
 ) -> Result<(TextFragment, TextFragment, FormatSet), ActionFault> {
     if range.is_same_paragraph() {
         let (prefix, selected, suffix) =
@@ -175,7 +178,7 @@ fn insertion_parts(
         .map_err(|_| fault("breditor/text-block-plain-text-range-fault"))?;
     let first_formats = match selected_first.iter().next() {
         Some(run) => Some(run.formats().clone()),
-        None => first_middle_formats(state, range)?,
+        None => find_middle(state, range)?,
     };
     let formats = first_formats
         .or_else(|| selected_last.iter().next().map(|run| run.formats().clone()))
@@ -185,7 +188,7 @@ fn insertion_parts(
     Ok((prefix, suffix, formats))
 }
 
-fn replacement_block(
+pub(super) fn replacement_block(
     template: Option<&NodeRef>,
     fragment: &TextFragment,
 ) -> Result<NodeRef, ActionFault> {
