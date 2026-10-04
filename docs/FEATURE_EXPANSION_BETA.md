@@ -1518,3 +1518,32 @@ another optimization. Native clipboard/IME/accessibility evidence, package-size
 and delivery qualification, broader historical WebKit investigation and the
 unexplained profiling timeout remain open. Nothing was pushed or published; the
 feature-expansion goal is still active.
+
+## Avoid repeated parsing of unchanged list items — 2026-10-04
+
+Text-preservation derivation still parses every source block, but now reparses
+only the rebuilt output span. Unchanged prefixes/suffixes are exact immutable
+source clones. For an equal-count replacement touching one of 500 items, this
+avoids 499 output-fragment parses and comparisons per derivation. Full source,
+result-root and final-document validation, inverse checks and wire behavior
+remain unchanged. No cross-call cache or incremental publication proof was added.
+
+Two added tests pass before and after the optimization: non-text children in an
+untouched prefix/suffix must still be rejected; formatting/layout-only changes
+preserve text, while equal-length different text does not. Empty text, emoji,
+combining characters and exact inverse recovery are included. All 1,120 Rust
+library tests, strict Clippy, formatting, ABI/Node checks, five raw-Wasm and five
+full DOM/recovery runs per engine, and private installed-package consumers pass.
+
+Four alternating production runs (old/new/old/new) passed all 108 measured
+correctness cases. Firefox's 500-item edit medians were 349/317/349/319 ms:
+about 9% lower on this machine in both candidate runs. Chromium measured
+82.2/80.5/81.9/76.1 ms; WebKit 122/119/122/122 ms. These are local observations,
+not a general speed guarantee or completed latency gate. See the
+[evidence](qualification/2026-10-04-flat-list-text-preservation.json).
+
+The Mac was rechecked and remains locked, so physical clipboard, OS IME and
+assistive-technology qualification remain pending. Shipping files are unchanged,
+size ceilings remain exceeded, and nothing was pushed/published. Next: isolate
+Rust action-state preparation from DOM validation with a focused measurement;
+retain complete readiness checks while investigating the remaining latency.

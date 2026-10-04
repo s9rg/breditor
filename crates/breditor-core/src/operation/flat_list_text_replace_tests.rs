@@ -593,6 +593,69 @@ fn repeated_application_rechecks_untouched_document_budget() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn text_preservation_checks_still_reject_non_text_untouched_blocks() -> TestResult {
+    // Shape enumeration accepts this paragraph shell. Text-fragment checking
+    // must still reject its non-text child outside the replaced span.
+    let malformed = NodeRef::element(ElementNode::try_new(
+        name("breditor/paragraph")?,
+        None,
+        PropertyMap::default(),
+        vec![p("nested")?],
+    )?);
+    for index in [0, 2] {
+        let mut blocks = vec![p("before")?, p("middle")?, p("after")?];
+        blocks[index] = malformed.clone();
+        assert!(matches!(
+            FlatListTextReplace::try_new(
+                0,
+                range(&[0, 1, 0], 0, &[0, 1, 0], 6)?,
+                vec![list(blocks, None)?],
+                vec![block(heading(2)?, "middle", formats()?)?],
+                vec![bullet(3)],
+            ),
+            Err(FlatListTextReplaceError::InvalidTarget)
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn text_preservation_ignores_formats_but_not_equal_length_text_changes() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    for source in ["", "a🙂b", "e\u{301}"] {
+        for replacement in [source.to_owned(), format!("{source}x"), "z🙂q".to_owned()] {
+            let before = state(
+                &context,
+                vec![list(vec![p("prefix")?, p(source)?, p("suffix")?], Some(9))?],
+                None,
+                None,
+            )?;
+            let op = FlatListTextReplace::capture(
+                &context,
+                before.document(),
+                range(&[0, 1, 0], 0, &[0, 1, 0], u64::try_from(source.encode_utf16().count())?)?,
+                vec![block(heading(3)?, &replacement, FormatSet::default())?],
+                vec![ordered(9, 1)?, FlatListRootShape::TextBlock, bullet(1)],
+            )?;
+            let AppliedOperation::Changed(change) = op.apply(&context, before.document())? else {
+                return Err("changed layout".into());
+            };
+            let RelocationStepMap::FlatListTextReplace(map) = &change.relocation else {
+                return Err("list map".into());
+            };
+            assert_eq!(map.preserves_text, source == replacement);
+            let AppliedOperation::Changed(undo) =
+                change.inverse.apply(&context, &change.document)?
+            else {
+                return Err("inverse".into());
+            };
+            assert_eq!(undo.document, *before.document());
+        }
+    }
+    Ok(())
+}
+
 /// Enumerates every scalar-aligned leaf point and every element-child gap,
 /// including root/list/item boundaries that have no text-leaf representation.
 fn points(node: &NodeRef, path: &[u32], result: &mut Vec<Point>) -> TestResult {

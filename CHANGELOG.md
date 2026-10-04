@@ -6,6 +6,11 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Avoid reparsing unchanged output items when deriving flat-list text-preservation
+  metadata. Keep complete source-fragment checking and full result/document
+  validation. Add malformed-untouched-content and formatting-versus-text-change
+  regressions, including exact inverse recovery.
+
 - Restrict flat-list paragraph/heading replacement payloads to touched blocks,
   while retaining complete list guards, layout and final-document validation.
   Regression checks cover narrow ranges, empty and Unicode items, excluded end

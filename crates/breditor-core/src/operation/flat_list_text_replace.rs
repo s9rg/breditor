@@ -296,11 +296,20 @@ impl FlatListTextReplace {
         )
         .map_err(|_| FlatListTextReplaceError::InvalidLayout)?;
         let original = source.iter().map(|(_, node)| (*node).clone()).collect::<Vec<_>>();
-        let preserves_text = original.len() == nodes.len()
-            && fragments(&original)?
+        let preserves_text = if original.len() == nodes.len() {
+            // Validate every source block, including untouched items: try_new
+            // must still reject non-text children outside the edited range.
+            let original_text = fragments(&original)?;
+            // Equal total counts imply equal replaced/inserted counts. The
+            // prefix and suffix in `nodes` are exact immutable source clones,
+            // so only the rebuilt span needs another parse and comparison.
+            original_text[first..=last]
                 .iter()
-                .zip(fragments(&nodes)?)
-                .all(|(left, right)| fragments_have_identical_text(left, &right));
+                .zip(fragments(&nodes[first..=last])?)
+                .all(|(left, right)| fragments_have_identical_text(left, &right))
+        } else {
+            false
+        };
         Ok(Derived {
             roots,
             flat_range,

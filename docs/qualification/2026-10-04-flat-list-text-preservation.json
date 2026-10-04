@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "539ebfd",
+  "status": "unchanged-result-parsing-removed-correctness-passed",
+  "releaseQualified": false,
+  "change": {
+    "file": "crates/breditor-core/src/operation/flat_list_text_replace.rs",
+    "before": "Equal-count text-preservation checking parsed every source and every result block, including unchanged immutable prefix/suffix clones",
+    "after": "Parse all source blocks, then parse and compare only rebuilt result blocks",
+    "preserved": ["constructor rejection of non-text untouched blocks", "exact text-preservation relocation flag", "source/result root validation", "full final-document validation", "inverse and history", "wire versions and ABI"],
+    "avoidedWorkExample": "499 unchanged output-fragment parses/comparisons per derivation for an equal-count edit of one item in a 500-item list",
+    "notAdded": ["cross-call caches", "validation bypasses", "incremental publication proofs"]
+  },
+  "verification": {
+    "rustLibrary": "cargo test --locked -p breditor-core --features experimental-structural-properties --lib --quiet: 1120 passed",
+    "clippy": "cargo clippy --locked -p breditor-core --features experimental-structural-properties --lib --tests -- -D warnings: passed",
+    "format": "cargo fmt --all -- --check: passed",
+    "newTests": ["text_preservation_checks_still_reject_non_text_untouched_blocks", "text_preservation_ignores_formats_but_not_equal_length_text_changes"],
+    "testBaseline": "Both tests passed on the old implementation and after the change. An initial additional fixture failed during setup because ElementNode already rejects adjacent equal-format text children; that unconstructible fixture was removed before the baseline pass. Not an editor regression or claimed bug fix.",
+    "abiTestsPassed": 14,
+    "node": "List commands/recovery and retained heading compatibility passed",
+    "rawWasmRunsPerEngine": 5,
+    "domRunsPerEngine": 5,
+    "engines": ["Chromium 151.0.7922.34", "Firefox 153.0", "WebKit 26.5"],
+    "domCommand": "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-oJbT7d --browser-dom",
+    "domScope": "List router/controllers, toolbar/queue/adapter, synthetic clipboard/composition, exact undo/redo and V6 recovery, native IndexedDB/SHA-256 autosave and high-level startup/rollback/backup; not physical OS input",
+    "packedConsumers": "All three browser engines, base Node import, strict TypeScript and Chromium smoke passed against the same private installed artifacts"
+  },
+  "candidate": {
+    "directory": "target/flat-list-candidate-oJbT7d",
+    "wasmBytes": 2044717,
+    "wasmGzip9Bytes": 568564,
+    "wasmSha256": "8307fcc66aa3af6796ad42da58fa5bd7b88acb1391c7abc142a7885a3d63a0c1",
+    "declarationsSha256": "b0bc19f07e305569a42a7c3c1f3246f718315df4e324d4c443bcdf7acc2a9d3b",
+    "packageRecord": "target/flat-list-packages-wZ8mSb/qualification.json",
+    "browserTarballSha256": "8f11d2a64c8b37a09a307db1224da7d25e26d9fc3a39658e361dcb2a987aeba3",
+    "wasmTarballSha256": "0039312e2e2b6caa21823ee57019b443d790b28685013b56f9eaf20d7869e5a2",
+    "shippingArtifactsWritten": false,
+    "sizeBudgetQualified": false
+  },
+  "productionTiming": {
+    "method": "Sequential old/new/old/new qualified private installed-package runs; identical production-minified fixture/browser JS, fresh browser processes, no profiling or compilation overlap; three independent owners per size per engine",
+    "fixtureSha256": "ef57f64044a4d3a8df69d17a080ac6018b1898d723d6be79013c60cac4a91171",
+    "sizes": [10, 100, 500],
+    "oldPackageRecord": "target/flat-list-packages-9M9jgg/qualification.json",
+    "newPackageRecord": "target/flat-list-packages-wZ8mSb/qualification.json",
+    "runs": [
+      {"variant": "old-before", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-hG9PnA/performance-XsjxWc/measurement.json", "sha256": "fdd3421226671c458a5dc271d8b3efc0bed56a62b2c1e40759da0ebdec0a7d1b", "status": "measured", "editMedianMs": {"chromium": [3.3, 18, 82.2], "firefox": [12, 75, 349], "webkit": [6, 28, 122]}},
+      {"variant": "new-first", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-gEI14R/measurement.json", "sha256": "b0764a0325af6801207e185f22feecfb3ddef88f9b90f073eee6646298ff5f32", "status": "measured", "editMedianMs": {"chromium": [3.5, 18.7, 80.5], "firefox": [11, 68, 317], "webkit": [6, 27, 119]}},
+      {"variant": "old-after", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-hG9PnA/performance-VgfTJF/measurement.json", "sha256": "6f8b947847b65ea9013bcdd1d6d3b97c3a2b10fce0da7509ffbb67684087bee9", "status": "measured", "editMedianMs": {"chromium": [3.5, 18.3, 81.9], "firefox": [10, 73, 349], "webkit": [6, 28, 122]}},
+      {"variant": "new-confirmation", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-1zpb3a/measurement.json", "sha256": "e00fbc21feffc976618945b7fd47e6e530998f4ddd127c7d767e5af480026fda", "status": "measured", "editMedianMs": {"chromium": [3.3, 17.1, 76.1], "firefox": [11, 66, 319], "webkit": [6, 27, 122]}}
+    ],
+    "passedCorrectnessCases": 108,
+    "conclusion": "Firefox 500-item edit medians were about 9% lower in both candidate runs against repeated 349 ms controls. Other engine differences were small/variable. Local evidence only, not multi-device or p95 qualification; latency remains open."
+  },
+  "remaining": ["Large-list latency", "Optional delivery and size budget", "Native clipboard, OS IME and accessibility qualification; Mac rechecked and still locked", "Full release qualification and broader historical WebKit evidence", "Unexplained diagnostic profiling timeout"],
+  "pushedOrPublished": false
+}
