@@ -1403,3 +1403,40 @@ native-input failure or success. Physical clipboard/IME and assistive-technology
 performance and complete release qualification remain open. See
 [qualification](qualification/2026-10-04-flat-list-packed-consumer.json).
 Nothing was pushed or published.
+
+## Large-list export and measurement checkpoint — 2026-10-04
+
+The installed-package measurement fixture now exercises 10, 100 and 500-item
+ordered lists with headings and Unicode text. It measures startup, selection,
+typing, undo, backup, disposal, restoration and redo, checking exact document
+and selection recovery outside measured spans. Each size has three independent
+owners; bounded repeated-browser runs stop at the first failure. Failed and
+successful reports are retained with artifact hashes. No timing threshold is
+silently promoted to a supported document limit.
+
+This exposed an intermittent WebKit document-export rejection in
+`documentTextBlockMatches`: the optional heading-rank inequality rejected,
+while subsequent diagnostic reads saw numeric `2` on both sides. The document
+reader had accepted the export; the projection consistency check rejected it.
+Those subsequent observations do not establish a WebKit compiler root cause.
+Replacing the inequality with captured `Object.is` also failed and was discarded.
+
+The retained candidate compares distinct semantic labels for already-validated
+paragraphs and heading ranks 1–6. This preserves the exact accepted domain;
+it adds no retries, numeric rounding, validation bypass or Rust/Wasm changes.
+Seven tests cover all 49 admitted rank pairings. All 1,837 browser-package unit
+tests pass, as do strict types and fresh packed consumers in all three browsers.
+The uninstrumented candidate completed ten fresh WebKit processes (90 measured
+cases plus ten warm-ups), then the full three-engine fixture (27 measured cases).
+See [the reproduction and verification record](qualification/2026-10-04-flat-list-performance.json).
+
+Performance is still an open beta gate. In the final local M1 Pro sample,
+500-item edits took median 127 ms in Chromium, 632 ms in Firefox and 182 ms in
+WebKit. These three-sample, forced-layout timings are neither p95 nor a controlled
+before/after speed comparison; earlier runs varied materially. This checkpoint
+does not claim to improve latency. Next: profile repeated whole-document work
+without dropping ownership/canonical-DOM validation, then qualify an explicit
+optional delivery budget and native desktop input. The historic broader WebKit
+issue, native clipboard/IME/assistive-technology checks and the complete release
+gate are not declared fixed/passed by this narrower result. Flat lists remain
+first; nesting stays deferred. Shipping artifact trees are unchanged.

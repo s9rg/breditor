@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "19231d7",
+  "status": "targeted-heading-export-mitigation-verified-performance-open",
+  "releaseQualified": false,
+  "scope": "Installed private flat-list packages; synthetic public events and exact document/selection/history recovery. Not general WebKit or native-input qualification.",
+  "environment": { "platform": "darwin", "arch": "arm64", "cpu": "Apple M1 Pro", "webkit": "26.5", "chromium": "151.0.7922.34", "firefox": "153.0" },
+  "reproduction": {
+    "command": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_RUNS=5 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-a5hxJB/qualification.json",
+    "fixture": "scripts/fixtures/flat-list-performance/main.ts",
+    "fixtureSha256": "ef57f64044a4d3a8df69d17a080ac6018b1898d723d6be79013c60cac4a91171",
+    "sizes": [10, 100, 500],
+    "ownersPerSize": 3,
+    "warmupItems": 5,
+    "content": "One ordered list starting at 7; every tenth item is heading 2; other items are paragraphs; all contain a single Unicode text run.",
+    "scenario": "Open, select middle item child boundary, export original content, insert X, export, undo, exact selection comparison, export V6 backup, dispose/reopen, exact content/selection comparison, redo, exact edited content/selection comparison, dispose.",
+    "failure": "content_export.invalid_wasm_view while owner remains live, during document export of a 500-item document",
+    "localizedFunction": "packages/breditor-browser/src/wasm_document_json.ts: documentTextBlockMatches",
+    "originalGuard": "level !== projectedBlock?.headingLevel",
+    "diagnosticObservation": { "documentLevel": 2, "documentType": "number", "projectedLevel": 2, "projectedType": "number" },
+    "interpretationLimit": "These are subsequent observations after the original guard rejected, not CPU-level operands captured at comparison time. No WebKit compiler root cause or common cause with historical faults is proven."
+  },
+  "baselineEvidence": [
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-q31UND/performance-XjmHcR/measurement.json",
+      "sha256": "ffc789ab19713b9b137a8192a246b4803b937830e728e9ad2b5042eb3db196ab",
+      "result": "Chromium and Firefox passed; uninstrumented WebKit failed at 500 items, repetition 2, original export after selection."
+    },
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-q31UND/performance-JYQGRZ/measurement.json",
+      "sha256": "2b4f3bcafc2301e106beb315b8fac2cb359ce57276de4dc0dc464b8149143b3c",
+      "result": "Single uninstrumented three-browser rerun passed; did not resolve the intermittent failure."
+    },
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-q31UND/performance-h5WEgx/measurement.json",
+      "sha256": "b2068e9f9c4ac8ffd41018bd5d0dc3101dab3a45a015c2eee9cfd796bf07b75f",
+      "result": "Uninstrumented: three fresh processes passed, fourth failed at 500 items, repetition 0, original export after selection; stopped before fifth."
+    },
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-q31UND/performance-gndXXH/measurement.json",
+      "sha256": "5631abf1740f810aa02770729e99a32fe104c74e5d65d889657b0f2a8ad6c668",
+      "result": "Reader-only diagnostics: fourth process rejected projection consistency after the document consumer accepted."
+    },
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-q31UND/performance-5kgPm9/measurement.json",
+      "sha256": "32507c708f9a23e673389054d136a70e3f135385a537fb1f21892ec41d93444c",
+      "result": "Deep diagnostics: second process identified emitted wasm_document_json.js line 163, the rank mismatch return."
+    },
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-q31UND/performance-DqCW5j/measurement.json",
+      "sha256": "7b7c11f4f11479556d92579f3e41e4041b29cacec591be338333dda5759a97b8",
+      "result": "Rank-value diagnostics: first process rejected at the same guard, with subsequent numeric 2/2 observations."
+    },
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-q31UND/performance-kuIfx2/measurement.json",
+      "sha256": "7affa32ab010733c24d2b70c5dc5284e0db66cde4247338d42424a1e190d031a",
+      "result": "Final unchanged-baseline control after candidate verification: second process failed at 500 items, repetition 2, document export after redo."
+    }
+  ],
+  "discardedCandidate": {
+    "comparison": "Captured Object.is on the optional numeric ranks",
+    "packageRecord": "target/flat-list-packages-qsniX2/qualification.json",
+    "ordinaryReport": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-YOGLaA/performance-BpadmQ/measurement.json",
+    "ordinaryReportSha256": "24910a0cf16d6ade1c3cd8cbe0c60e7a2f02c0b49356be7dade209bd895dde2a",
+    "result": "Failed in the eighth fresh uninstrumented process; stopped before runs nine and ten.",
+    "diagnosticReport": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-YOGLaA/performance-8BPhH4/measurement.json",
+    "diagnosticReportSha256": "074513aaace76452ec07aa69b7df515556764926df99a7fc05fd9ffdb5f691ed",
+    "diagnosticResult": "Same rank guard rejected in the second process, subsequent numeric 2/2 observations. Object.is is not retained."
+  },
+  "retainedChange": {
+    "comparison": "Distinct paragraph / heading:1..heading:6 semantic labels, only after complete document and owned-projection validation",
+    "contract": "Identical accepted rank domain, no rounding, retries, skipped validation or foreign-value coercion; no Rust/Wasm changes",
+    "packageRecord": "target/flat-list-packages-3ByR1m/qualification.json",
+    "browserTarballSha256": "8f11d2a64c8b37a09a307db1224da7d25e26d9fc3a39658e361dcb2a987aeba3",
+    "wasmTarballSha256": "b882f2faacbbdd9506261384ec7946356f78b6f4d3d73edfd8c120f91742d59b"
+  },
+  "verification": {
+    "strictBrowserTypes": "passed",
+    "documentBoundaryTests": 78,
+    "allBrowserPackageTests": 1837,
+    "testFiles": 52,
+    "newRankCases": "Seven parameterized tests cover all 49 paragraph/heading-rank pairings; these assert contract equivalence, not reproduction of WebKit behavior in Node.",
+    "packedConsumers": "Three engines passed; existing base Node import, strict TypeScript and Chromium smoke also passed.",
+    "webkitStress": {
+      "command": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_RUNS=10 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-3ByR1m/qualification.json",
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-Nx0z6w/performance-ur6IbE/measurement.json",
+      "sha256": "9f4bc6632bfbc89c4d97cda5d95e83034f5c60cbba4451fab2d57b7ab13f2b85",
+      "freshProcessesPassed": 10,
+      "measuredCasesPassed": 90,
+      "warmupsPassed": 10,
+      "instrumentation": false,
+      "timingCaveat": "Some processes overlapped unit tests; this repeated run is correctness stress, not a controlled speed comparison."
+    },
+    "threeEngineMatrix": {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-Nx0z6w/performance-GPu9PC/measurement.json",
+      "sha256": "9a4d63a5e1cc23d890fc372898ebec247dfcf0f870a9b1affb8e13982651e4ed",
+      "measuredCasesPassed": 27,
+      "instrumentation": false,
+      "editMedianMillisecondsAt10_100_500Items": { "chromium": [4.8, 31.1, 126.9], "firefox": [21, 142, 632], "webkit": [9, 44, 182] }
+    },
+    "shippingArtifactsWritten": false,
+    "pushedOrPublished": false
+  },
+  "remaining": [
+    "Large-list latency: profile repeated full-document work without weakening ownership/canonical-DOM validation.",
+    "Optional package/load and size-budget decision; default ceilings remain unchanged and exceeded by the candidate.",
+    "Native Safari/Chrome clipboard, OS IME and assistive-technology evidence; Mac was last observed locked.",
+    "Complete release gate and broader historical WebKit qualification. This bounded mitigation is not an engine root-cause repair or universal fix."
+  ]
+}

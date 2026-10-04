@@ -334,10 +334,17 @@ export function documentJsonMatchesFlatListProjection(
 
 /** Compare a previously validated text block, including complete typed formats. */
 function documentTextBlockMatches(paragraph: Record<string, unknown>, projectedBlock: BaseParagraphProjection | undefined): boolean {
-  const level = paragraph["type"] === "breditor/heading"
-    ? (paragraph["properties"] as Record<string, unknown>)["breditor/level"]
-    : undefined;
-  if (level !== projectedBlock?.headingLevel) return false;
+  // Compare semantic labels only after both inputs have passed validation.
+  // Paragraph and each of the six heading ranks have distinct labels; no
+  // rounding or coercion of unvalidated foreign values is admitted here.
+  // Avoid the optional numeric equality path at the observed large-list
+  // WebKit rejection site (also reproduced with Object.is).
+  const kind = paragraph["type"] === "breditor/heading"
+    ? `heading:${(paragraph["properties"] as Record<string, unknown>)["breditor/level"]}`
+    : "paragraph";
+  const projectedKind = projectedBlock?.headingLevel === undefined
+    ? "paragraph" : `heading:${projectedBlock.headingLevel}`;
+  if (kind !== projectedKind) return false;
   const documentRuns = paragraph["children"] as unknown[];
   const projectionRuns = projectedBlock?.runs;
   if (projectionRuns === undefined || documentRuns.length !== projectionRuns.length) {

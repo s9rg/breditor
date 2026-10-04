@@ -1255,6 +1255,22 @@ describe("explicit V5 heading document contract", () => {
     properties: { "breditor/level": level }, children,
   });
 
+  it.each([null, 1, 2, 3, 4, 5, 6])("compares every admitted block rank exactly against %j", (projectedLevel) => {
+    const generation = new FakeProfileGeneration();
+    const descriptor = consumeWasmCompiledProfileDescriptor(generation, new FakeTypedProfileDescriptor(generation));
+    if (!descriptor.ok) throw new Error(descriptor.error.code);
+    const projected = createTextBlockDocumentProjection({
+      schema: contract.schema, snapshot: EXPECTED,
+      paragraphs: [{ headingLevel: projectedLevel, runs: [{ text: "a🙂b", formatDetails: [] }] }],
+    }, generation, descriptor.descriptor);
+    if (!projected.ok) throw new Error(projected.error.code);
+    for (const documentLevel of [null, 1, 2, 3, 4, 5, 6]) {
+      const block = documentLevel === null ? paragraph([run("a🙂b", false)]) : heading(documentLevel);
+      expect(documentJsonMatchesProjection(documentV2Json([block]), projected.value, contract))
+        .toBe(documentLevel === projectedLevel);
+    }
+  });
+
   it.each([1, 2, 3, 4, 5, 6])("admits rank %i, empty headings and typed inline properties only in V5", (level) => {
     const value = documentV2Json([heading(level), heading(level, []), paragraph([
       formattedRunWithProperties("link", [linkFormat("a")]),

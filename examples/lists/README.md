@@ -73,3 +73,22 @@ pass is not a size-budget pass or approval of an optional shipping package.
 - This preview is not a published release. Bundle size/performance,
   packed-consumer and physical native-input qualification remain open; existing
   shipping size ceilings are unchanged.
+## Repeatable installed-package measurements
+
+After `test:lists:packages` passes, pass its saved qualification record to
+`npm run test:lists:performance -- target/flat-list-packages-XXXXXX/qualification.json`.
+This builds an external consumer of those exact installed tarballs, not source
+aliases. It measures 10/100/500-item documents and asserts exact document,
+selection, undo, backup/reopen and redo behavior. Reports retain browser versions,
+artifact hashes and partial results on failure. No shipping output is replaced.
+
+`BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_RUNS=5` runs up to five fresh browser
+processes, stopping on the first failure (not retrying it). The default is one
+process for each of Chromium, Firefox and WebKit. Optional `--diagnose-export`
+instruments only the disposable bundle's export reader; additionally set
+`BREDITOR_EXPORT_DEEP_DIAGNOSTICS=1` to log validation rejection sites and heading
+rank scalars. Diagnostic runs cannot substitute for ordinary qualification.
+
+Timing includes synchronous public-event work and forced layout. It is not
+physical input, p95, memory profiling or a supported maximum document size.
+The three-sample min/median/max values are local observations, not release gates.

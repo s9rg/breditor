@@ -6,6 +6,13 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Mitigate a reproduced large-list WebKit heading-export rejection by comparing
+  exact semantic block labels after validation. Retain strict rank rejection and
+  exact undo/backup/redo checks; no Rust/Wasm or shipping artifacts changed.
+  Add installed-package performance/correctness measurements with retained
+  failures. Large-list latency and broader/native browser qualification remain
+  open; this is not a general WebKit fix.
+
 - Add a non-publishing flat-list packed-consumer check: stage private tarballs,
   install offline outside the workspace, verify strict package-root imports and
   V6 toolbar/history recovery in three browsers, and run the existing base

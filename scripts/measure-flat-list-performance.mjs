@@ -1,0 +1,138 @@
+// Reproducible measurements of already-qualified installed experimental packages.
+// No hard timing threshold: correctness is mandatory, timing is machine-specific evidence.
+import assert from "node:assert/strict";
+import {spawnSync} from "node:child_process";
+import {createHash} from "node:crypto";
+import {cp, mkdtemp, readFile, readdir, realpath, writeFile} from "node:fs/promises";
+import {tmpdir, platform, arch, cpus} from "node:os";
+import {dirname, join, relative, resolve, sep} from "node:path";
+import {fileURLToPath} from "node:url";
+import {build, preview} from "vite";
+import {chromium, firefox, webkit} from "playwright-core";
+
+assert.ok(process.argv.length === 3 || (process.argv.length === 4 && process.argv[3] === "--diagnose-export"), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export]");
+const diagnoseExport = process.argv[3] === "--diagnose-export";
+const browserName = process.env["BREDITOR_PERF_BROWSER"] ?? "all";
+assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
+const runCount = Number(process.env["BREDITOR_PERF_RUNS"] ?? "1");
+assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BREDITOR_PERF_RUNS must be 1..10");
+const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
+assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
+const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
+const recordPath = await realpath(resolve(repository, process.argv[2]));
+const local = relative(join(repository, "target"), recordPath);
+assert.ok(local.length > 0 && !local.startsWith(`..${sep}`) && local !== "..", "qualification must be inside target");
+const record = JSON.parse(await readFile(recordPath, "utf8"));
+assert.equal(record.status, "passed"); assert.equal(record.publishable, false);
+const consumer = await realpath(record.consumer), temporaryRoot = await realpath(tmpdir());
+assert.match(relative(temporaryRoot, consumer), /^breditor-flat-list-consumer-[a-zA-Z0-9]+$/u);
+const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+const tree = async root => {
+  const result = {};
+  for (const name of (await readdir(root)).sort()) result[name] = hash(await readFile(join(root, name)));
+  return result;
+};
+for (const name of ["browser", "wasm"]) {
+  const archive = await realpath(record[`${name}Package`].path);
+  assert.equal(dirname(archive), join(dirname(recordPath), "tarballs"));
+  assert.equal(hash(await readFile(archive)), record.tarballSha256[name]);
+  const installed = join(consumer, `node_modules/@breditor/${name}`);
+  assert.equal(await realpath(installed), installed);
+  assert.equal(JSON.parse(await readFile(join(installed, "package.json"), "utf8")).private, true);
+}
+assert.deepEqual(await tree(join(consumer, "node_modules/@breditor/browser/dist")), await tree(join(dirname(recordPath), "browser/dist")));
+for (const name of ["breditor_wasm.js", "breditor_wasm_bg.wasm", "breditor_wasm.d.ts"]) {
+  assert.equal(hash(await readFile(join(consumer, "node_modules/@breditor/wasm/dist", name))),
+    hash(await readFile(join(dirname(recordPath), "wasm/dist", name))));
+}
+const fixture = await mkdtemp(join(consumer, "performance-"));
+await cp(join(repository, "scripts/fixtures/flat-list-performance"), fixture, {recursive: true});
+await cp(join(consumer, "tsconfig.json"), join(fixture, "tsconfig.json"));
+await cp(join(consumer, "package.json"), join(fixture, "package.json"));
+const types = spawnSync(process.execPath, [join(repository, "node_modules/typescript/bin/tsc"), "-p", join(fixture, "tsconfig.json")], {encoding: "utf8"});
+assert.equal(types.status, 0, `${types.stdout}\n${types.stderr}`);
+// Diagnostic transforms affect only this disposable bundle, never the installed
+// artifacts. Report rejection sites without logging document/user payloads.
+const diagnosticPlugin = {name: "document-export-rejection-sites", transform(code, id) {
+  if (!id.startsWith(join(consumer, "node_modules/@breditor/browser/dist/"))) return;
+  if (id.endsWith("/wasm_document_json.js") && deepDiagnostics) {
+    const names = ["documentJsonUtf8Bytes", "documentJsonMatchesFlatListProjection", "documentTextBlockMatches", "readDocument", "validDocument", "durableDocumentRootMatchesContract"];
+    let active = false;
+    let functionName;
+    const lines = code.split("\n");
+    return lines.map((line, index) => {
+      const match = /^(?:export )?function (\w+)\(/u.exec(line);
+      if (match) { functionName = match[1]; active = names.includes(match[1]); }
+      if (!active) return line;
+      const label = JSON.stringify(`document export rejection: wasm_document_json.js:${index + 1}`);
+      const rank = functionName === "documentTextBlockMatches" &&
+        (lines[index - 1]?.includes("if (level !== projectedBlock?.headingLevel)") ||
+          lines[index - 1]?.includes("if (!OBJECT_IS(level, projectedBlock?.headingLevel))"))
+        ? ", JSON.stringify({documentLevel: level, documentType: typeof level, projectedLevel: projectedBlock?.headingLevel, projectedType: typeof projectedBlock?.headingLevel})" : "";
+      return line.replace(/return (false|null|boundaryFailure\(\));/gu, (_, value) => `return (console.error(${label}${rank}), ${value});`);
+    }).join("\n");
+  }
+  if (id.endsWith("/wasm_command_adapter.js")) {
+    const from = code.indexOf("    #readDocumentJson() {"), to = code.indexOf("    #readPlainText() {", from);
+    assert.ok(from >= 0 && to > from, "document reader diagnostic anchors");
+    for (const anchor of ["return consumed.ok &&", "? invalidWasmDocumentJsonReadResult()", "catch {"]) {
+      assert.equal(code.slice(from, to).split(anchor).length, 2, `document reader diagnostic drift: ${anchor}`);
+    }
+    const section = code.slice(from, to).replace("return consumed.ok &&", "if (!consumed.ok) console.error('document export: consumer rejected');\n            return consumed.ok &&")
+      .replace("? invalidWasmDocumentJsonReadResult()", "? (console.error('document export: projection mismatch'), invalidWasmDocumentJsonReadResult())")
+      .replace("catch {", "catch { console.error('document export: exception');");
+    return code.slice(0, from) + section + code.slice(to);
+  }
+}};
+await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, target: "es2022", modulePreload: {polyfill: false}}});
+const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
+const measurements = [];
+const output = join(fixture, "measurement.json");
+const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport, releasePerformanceQualified: false,
+  deepDiagnostics, browserName, runCount, bundleAssets: await tree(join(fixture, "bundle/assets")),
+  fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
+  packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
+  environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
+  methodology: "One 5-item warm-up followed by three independent editor owners at each of 10/100/500 ordered items, every tenth item a heading, about 75 UTF-16 units per item. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock synchronous spans include a forced layout read. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Not OS input, statistical p95, memory or multi-device performance qualification.",
+}, null, 2)+"\n");
+console.log(JSON.stringify({output}));
+await save("running");
+try {
+  const address = server.httpServer.address(); assert.ok(address && typeof address !== "string");
+  for (const [name, type] of Object.entries({chromium, firefox, webkit})) {
+    if (browserName !== "all" && name !== browserName) continue;
+    for (let run = 0; run < runCount; run++) {
+    let browser;
+    const diagnostics = [];
+    const pageErrors = [];
+    try {
+      browser = await type.launch();
+      const page = await browser.newPage({viewport: {width: 1280, height: 960}});
+      page.on("console", message => { if (message.type() === "error" && diagnostics.length < 100) { diagnostics.push(message.text()); console.error(message.text()); } });
+      page.on("pageerror", error => { if (pageErrors.length < 100) pageErrors.push(String(error)); });
+      await page.goto(`http://127.0.0.1:${address.port}/`);
+      await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
+      const output = page.locator("#result"), status = await output.getAttribute("data-status");
+      assert.equal(status, "passed", await output.textContent());
+      assert.deepEqual(pageErrors, [], "uncaught browser errors");
+      const results = JSON.parse(await output.textContent()); assert.equal(results.cases.length, 9);
+      const summary = [10, 100, 500].map(items => {
+        const samples = results.cases.filter(sample => sample.items === items);
+        assert.equal(samples.length, 3);
+        return {items, metrics: Object.fromEntries(Object.keys(samples[0].metrics).map(metric => {
+          const values = samples.map(sample => sample.metrics[metric]).sort((a,b) => a-b);
+          assert.ok(values.every(value => Number.isFinite(value) && value >= 0), `invalid ${metric} samples`);
+          return [metric, {min: values[0], median: values[1], max: values[2]}];
+        }))};
+      });
+      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics};
+      measurements.push(measured); console.log(JSON.stringify({browser: name, summary}));
+      await save("running");
+    } catch (error) {
+      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors});
+      await save("failed"); throw error;
+    } finally {await browser?.close();}
+    }
+  }
+  await save("measured");
+} finally {await new Promise((resolveClose, rejectClose) => server.httpServer.close(error => error ? rejectClose(error) : resolveClose()));}
