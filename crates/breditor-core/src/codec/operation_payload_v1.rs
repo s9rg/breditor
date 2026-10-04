@@ -119,7 +119,8 @@ pub(crate) fn encode_operation_payload_v1(
         #[cfg(feature = "experimental-structural-properties")]
         Operation::TextBlockKindChange(_)
         | Operation::TextBlockSplice(_)
-        | Operation::TextBlockReplace(_) => {
+        | Operation::TextBlockReplace(_)
+        | Operation::FlatListReframe(_) => {
             return Err(OperationValidationError::UnsupportedSchema {
                 kind: operation.kind(),
                 schema: context.schema().id().clone(),

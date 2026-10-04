@@ -231,6 +231,7 @@ fn list_properties_are_closed_required_and_not_coerced() -> TestResult {
 fn old_schemas_and_operation_capabilities_remain_closed_to_lists() -> TestResult {
     let schema = schema()?;
     assert!(!schema.supports_text_splice_operations());
+    assert!(schema.supports_flat_list_operations());
     assert!(!schema.supports_paragraph_structure_operations());
     assert!(!schema.supports_text_block_kind_operations());
     assert!(!schema.supports_base_text_operations());
@@ -238,6 +239,7 @@ fn old_schemas_and_operation_capabilities_remain_closed_to_lists() -> TestResult
         CompiledSchema::breditor_base(),
         CompiledSchema::try_compile_text_block_profile(id()?, &extensions()?)?,
     ] {
+        assert!(!old.supports_flat_list_operations());
         assert!(old.validate_root(&tree(None, 1)?, &DocumentLimits::default()).is_err());
         assert_ne!(schema.fingerprint(), old.fingerprint());
     }
@@ -255,6 +257,7 @@ fn old_schemas_and_operation_capabilities_remain_closed_to_lists() -> TestResult
 fn numbering_rule_is_fingerprint_bound_and_declaration_order_is_not() -> TestResult {
     let spec = spec()?;
     let baseline = compile(spec.clone(), CompilerLimits::default())?;
+    assert!(baseline.supports_flat_list_operations());
     let mut bytes = Vec::new();
     encode_fingerprint(baseline.definition(), |chunk| bytes.extend_from_slice(chunk));
     // Independently encoded from the field table with Node big-endian writes.
@@ -271,6 +274,7 @@ fn numbering_rule_is_fingerprint_bound_and_declaration_order_is_not() -> TestRes
         }
     }
     let old_rule = compile(old_rule, CompilerLimits::default())?;
+    assert!(!old_rule.supports_flat_list_operations());
     assert_ne!(baseline.fingerprint(), old_rule.fingerprint());
     let overflow = tree(Some(i64::from(MAX_ORDERED_LIST_ORDINAL)), 2)?;
     old_rule.validate_root(&overflow, &DocumentLimits::default())?;

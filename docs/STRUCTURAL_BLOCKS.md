@@ -1,7 +1,7 @@
 # Structural blocks: heading and list contract
 
 Current status: headings have a separately built experimental browser demo;
-flat lists now have a gated Rust document schema, but **no list editing actions
+flat lists now have a gated Rust schema and container-reframing operation, but **no list editing actions
 or browser support yet**. The historical checkpoints below explain the route
 to these features. The default paragraph-only schema and existing fingerprints
 remain unchanged. Links remain typed inline formatting inside structural blocks.
@@ -555,7 +555,7 @@ Range selections reach text or text-block child boundaries inside list items,
 including empty paragraphs, with existing scalar checks and direction/affinity.
 List/container boundaries are not admitted as range-selection endpoints.
 
-This is **document admission, not an editable profile**. Existing paragraph and
+This is **not an editable profile yet**. Existing paragraph and
 heading operations deliberately do not gain a list-schema capability. There
 is no list action registry, Wasm bootstrap, projection, toolbar, or list-history
 wire route at this checkpoint. The running heading demo still uses the prior
@@ -563,14 +563,29 @@ qualified heading-only artifact.
 
 ### Next operation and action contracts
 
-The first list-aware operation will reframe a guarded nonempty root-child span
-without changing the sequence or values of its contained text blocks. This
-supports wrapping, unwrapping and changing a list container while preserving
-all paragraph/heading ranks, text runs and typed format properties. It must
-retain complete expected nodes, validate the full result, create an exact
-inverse, and map each preserved text block's path through reparenting. A generic
-delete-and-insert relocation is insufficient because it would lose selections.
-No durable tag is frozen until these laws are tested.
+The first list-aware operation, `FlatListReframe`, now reframes a guarded nonempty
+root-child span without changing the sequence or values of its contained text
+blocks. It supports wrapping, unwrapping, retyping, restarting and regrouping list
+containers while preserving all paragraph/heading ranks, text runs and typed
+format properties. Complete expected roots guard both content and numbering.
+Both standalone fragments and the complete resulting document must pass the
+same context's validation. No-op recipes still check their source guards.
+
+Its inverse exchanges source and replacement roots. Selection endpoints retain
+their leaf/child-boundary representation, UTF-16 offset and affinity through a
+block-prefix path map; untouched following roots shift by the root-count delta.
+Generic list/item/root-interior boundary points canonicalize to the same gap's
+affinity-owned adjacent text-block boundary. They are never reported as deleted;
+their removed wrapper provenance is not promised to round-trip. These structural
+points remain invalid as range-selection endpoints. Runtime history restores
+exact document, directional selection and pending formats, including composed
+reframes. A failed later operation publishes nothing and preserves redo.
+
+Only a separately proved exact flat-list schema grants this operation. The
+capability matches canonical grammar alternatives, including the required
+final-ordinal rule; changing that rule does not grant editing permission.
+Operation codecs V1–V5 reject this new runtime kind, and Session V5 refuses
+history containing it. This checkpoint adds no durable list tag or browser route.
 
 Separate `wrap_list` and `unwrap_list` action files will prepare those edits
 against the exact current state and publish one atomic history event. The
@@ -588,3 +603,5 @@ behavior require explicit tests before UI exposure. Nested lists, multi-block
 items, reversed numbering and per-item number overrides remain deferred.
 
 See [schema qualification](qualification/2026-10-03-flat-list-schema.json).
+Runtime operation evidence is recorded separately in
+[reframing qualification](qualification/2026-10-03-flat-list-reframe.json).

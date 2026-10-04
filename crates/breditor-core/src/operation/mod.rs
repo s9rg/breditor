@@ -1,6 +1,14 @@
 //! Deterministic immutable operations and their replay artifacts.
 
 mod change_set;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_reframe;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_reframe_map;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_reframe_tests;
+#[cfg(feature = "experimental-structural-properties")]
+pub use flat_list_reframe::{FlatListReframe, FlatListReframeError};
 mod kind;
 mod paragraph_join;
 mod paragraph_split;

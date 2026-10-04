@@ -159,6 +159,34 @@ pub enum ActionStateTransactionFault {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum ActionStateOperationFault {
+    /// Flat-list schema capability was not granted.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list reframe schema is unsupported")]
+    FlatListReframeUnsupportedSchema,
+    /// Invalid flat-list source or result shape/coordinate.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list reframe target is invalid")]
+    FlatListReframeInvalidTarget,
+    /// Container edit attempted to change the text-block sequence.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list reframe changed the text-block sequence")]
+    FlatListReframeContentChanged,
+    /// Root-child span exceeded configured limits.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list reframe root child limit exceeded")]
+    FlatListReframeRootChildLimit,
+    /// Complete source guards differed from the live document.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list reframe source guard is stale")]
+    FlatListReframeExpectedMismatch,
+    /// Document proof belonged to a different context.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list reframe document proof differs")]
+    FlatListReframeDocumentProof,
+    /// Source, replacement or result failed document validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("flat-list reframe schema or resource validation failed")]
+    FlatListReframeValidation,
     /// Experimental structural replacement schema is unsupported.
     #[cfg(feature = "experimental-structural-properties")]
     #[error("text-block replacement schema is unsupported")]
@@ -769,6 +797,19 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
 #[allow(clippy::too_many_lines)]
 fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFault {
     match error {
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::FlatListReframe(source) => {
+            use crate::operation::FlatListReframeError as E;
+            match source {
+                E::UnsupportedSchema => ActionStateOperationFault::FlatListReframeUnsupportedSchema,
+                E::InvalidTarget => ActionStateOperationFault::FlatListReframeInvalidTarget,
+                E::ContentChanged => ActionStateOperationFault::FlatListReframeContentChanged,
+                E::RootChildLimit => ActionStateOperationFault::FlatListReframeRootChildLimit,
+                E::ExpectedMismatch => ActionStateOperationFault::FlatListReframeExpectedMismatch,
+                E::DocumentProof(_) => ActionStateOperationFault::FlatListReframeDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::FlatListReframeValidation,
+            }
+        }
         #[cfg(feature = "experimental-structural-properties")]
         OperationApplyError::TextBlockReplace(source) => {
             use crate::operation::TextBlockReplaceError as E;

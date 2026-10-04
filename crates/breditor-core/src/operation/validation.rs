@@ -106,6 +106,10 @@ pub enum OperationRootChildSpanRole {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationValidationError {
+    /// An experimental list-container edit failed static validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    FlatListReframe(#[from] super::FlatListReframeError),
     /// An experimental structural text-block replacement failed static validation.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]
@@ -551,6 +555,8 @@ pub(crate) fn validate_operation(
     match operation {
         #[cfg(feature = "experimental-structural-properties")]
         Operation::TextBlockReplace(operation) => operation.validate(context).map_err(Into::into),
+        #[cfg(feature = "experimental-structural-properties")]
+        Operation::FlatListReframe(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]
         Operation::TextBlockSplice(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]

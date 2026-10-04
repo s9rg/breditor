@@ -1,8 +1,7 @@
 //! Sealed beta grammar: direct-root text blocks or flat lists with one block per item.
 //!
-//! This is document admission only. The paragraph and heading operation
-//! capabilities intentionally reject this schema until list-aware operations
-//! prove path relocation, exact inverses and full-result resource accounting.
+//! The paragraph and heading operation capabilities intentionally reject this
+//! schema. Only operations with a separate flat-list capability may edit it.
 
 use super::{
     ChildConstraint, ChildKind, CompiledSchema, CompilerLimits, DeclarationOwner, ElementSpec,
@@ -79,4 +78,12 @@ pub(in crate::schema) fn compile_flat_list_profile(
 ) -> Result<CompiledSchema, SchemaCompilationError> {
     let spec = with_flat_lists(base_text_profile_spec(schema_id, extensions)?)?;
     compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
+}
+
+pub(in crate::schema) fn supports_flat_list_operations(
+    definition: &super::CompiledSchemaDefinition,
+) -> bool {
+    with_flat_lists(super::base_spec()).is_ok_and(|expected| {
+        super::text_block_profile::supports_structural_profile(definition, &expected)
+    })
 }

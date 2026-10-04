@@ -616,3 +616,22 @@ remain closed to it. The next implementation is the guarded, selection-preservin
 list reframing operation, then separately named wrap/unwrap actions and their
 runtime inverse/history tests. See the [operation plan](STRUCTURAL_BLOCKS.md#next-operation-and-action-contracts)
 and [verification](qualification/2026-10-03-flat-list-schema.json).
+
+## Flat-list runtime operation checkpoint
+
+`FlatListReframe` now provides the source-guarded container edit underlying
+wrap/unwrap/retype/restart. It preserves the exact flattened text-block sequence,
+maps preserved block paths rather than deleting and reinserting selections, and
+derives an exact inverse. Tests cover backward ranges, empty-item carets, typed
+formats, mixed text runs, partial ordered-list splits with explicit suffix starts,
+composed edits, runtime replay, no-ops, stale guards and atomic resource failures.
+
+This is still a Rust primitive, not a toolbar feature: separately named
+selection-driven actions must determine the touched span and preserve unselected
+list prefixes/suffixes. List typing/split/exit/delete/formatting, new durable
+history admission, Wasm projection, browser controls and native qualification
+remain ahead. Existing operation/session wire unions are not widened; the
+shipping build and running heading demo remain unchanged.
+
+See [runtime contract](STRUCTURAL_BLOCKS.md#next-operation-and-action-contracts)
+and [verification](qualification/2026-10-03-flat-list-reframe.json).

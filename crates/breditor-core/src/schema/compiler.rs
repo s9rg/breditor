@@ -392,7 +392,7 @@ mod flat_list_profile;
 #[path = "text_block_profile.rs"]
 mod text_block_profile;
 #[cfg(feature = "experimental-structural-properties")]
-pub(super) use flat_list_profile::compile_flat_list_profile;
+pub(super) use flat_list_profile::{compile_flat_list_profile, supports_flat_list_operations};
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 #[path = "flat_list_profile_tests.rs"]
 mod flat_list_profile_tests;

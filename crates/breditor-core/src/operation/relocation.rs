@@ -261,6 +261,8 @@ impl RelocationStep {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum RelocationStepMap {
     #[cfg(feature = "experimental-structural-properties")]
+    FlatListReframe(super::flat_list_reframe_map::FlatListReframeMap),
+    #[cfg(feature = "experimental-structural-properties")]
     TextBlockKindIdentity,
     /// Same-count blocks whose logical text is unchanged, regardless of run layout.
     #[cfg(feature = "experimental-structural-properties")]
@@ -282,6 +284,8 @@ impl RelocationStepMap {
         point: &Point,
     ) -> Result<PointRelocation, RelocationError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::FlatListReframe(map) => map.relocate(before, after, point),
             #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockKindIdentity => Ok(PointRelocation::Exact(point.clone())),
             #[cfg(feature = "experimental-structural-properties")]

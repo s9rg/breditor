@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "313ffba",
+  "status": "Experimental flat-list runtime reframing verified; selection-driven actions, durable list history and browser support remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "operation": "FlatListReframe",
+    "scope": "Nonempty guarded root-child span; wrap, unwrap, retype, restart or regroup containers while preserving the exact flattened paragraph/heading sequence",
+    "guards": "Complete source roots, including list starts, heading ranks and all typed text content; guards checked before no-op detection",
+    "admission": "Exact sealed flat-list compiler capability, matching process-local document proof, source/replacement fragment validation and full-result limits",
+    "inverse": "Swap expected and replacement roots at the same root index",
+    "selection": "Preserve text-block prefix identity, exact text-leaf or child-boundary representation, UTF-16 offsets, direction, affinity and pending formats",
+    "structuralPoints": "Root/list/item interior boundaries map to the same flattened gap's affinity-owned text-block boundary; removed wrapper provenance is not promised to round-trip",
+    "atomicity": "A stale later operation or over-budget final result publishes nothing and preserves redo",
+    "wire": "No new wire tag; Operation V1-V5 reject list reframing, and Session V5 rejects history containing it"
+  },
+  "verification": {
+    "operationTests": 13,
+    "allFeatureWorkspaceUnitTests": { "core": 941, "wasm": 51 },
+    "defaultCoreUnitTests": 697,
+    "propertyCasesPerProperty": 10000,
+    "propertyCount": 2,
+    "propertySeed": 20261003,
+    "properties": [
+      "Unicode wrap/unwrap: every scalar-aligned text point and empty-block caret maps exactly forward and backward, with retained outer siblings",
+      "Arbitrary mixed flat layouts: bullet/ordered containers and bare blocks regroup with independently constructed expected paths and exact undo/redo"
+    ],
+    "deterministicCoverage": [
+      "Backward selection with typed Link/Strong values and preserved heading rank",
+      "Partial ordered-list unwrap retains explicit prefix/suffix starts and empty-item caret/pending formats",
+      "Root/list/item boundaries on both affinities",
+      "Mixed text-run leaf identity through composed operations and deterministic runtime replay",
+      "No-op revision behavior; numbering-only stale guards; invalid/overflowing capture spans",
+      "Content, format, rank and order changes rejected by the container-only primitive",
+      "Final ordinal overflow rejected before publication",
+      "Retained siblings count toward final node and root-child budgets",
+      "Existing operation codecs and Session V5 reject the new recipe",
+      "Legacy schemas reject flat-list capability; weakened final-ordinal contract cannot gain it"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib flat_list_reframe --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ],
+    "testDrivenCorrection": "Initial capability matching compared unsorted grammar declarations with compiled sorted alternatives and rejected all valid list schemas. Matching now canonicalizes alternatives; the minimized empty-heading seed is retained. No compiler fingerprint bytes changed."
+  },
+  "remaining": [
+    "Separately named wrap/unwrap actions: touched-block selection semantics, activation and partial list preservation",
+    "List-aware typing, formatting, split/exit and boundary deletion",
+    "Explicit durable list operation/session admission and reload/recovery qualification",
+    "Wasm/bootstrap projection, toolbar and keyboard integration",
+    "Browser/native-input qualification and existing release size gates"
+  ],
+  "evidenceBoundary": "Rust unit and property tests only; no list browser/native qualification or rebuilt shipping Wasm claimed",
+  "pushed": false,
+  "published": false
+}

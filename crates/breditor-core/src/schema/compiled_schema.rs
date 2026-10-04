@@ -29,12 +29,18 @@ pub struct CompiledSchema {
     supports_base_text_operations: bool,
     #[cfg(feature = "experimental-structural-properties")]
     text_block_kind_capability: Option<TextBlockKindCapability>,
+    #[cfg(feature = "experimental-structural-properties")]
+    flat_list_capability: Option<FlatListCapability>,
 }
 
 /// Presence records the compiler's exact experimental structural-language proof.
 #[cfg(feature = "experimental-structural-properties")]
 #[derive(Clone)]
 struct TextBlockKindCapability;
+
+#[cfg(feature = "experimental-structural-properties")]
+#[derive(Clone)]
+struct FlatListCapability;
 
 /// Cloneable crate-private handle to one process-local schema-proof allocation.
 ///
@@ -119,8 +125,9 @@ impl CompiledSchema {
     /// Nested lists, multiple blocks per item, item numbering overrides and
     /// entity IDs are rejected. Inline extensions retain their exact contracts.
     ///
-    /// This grants no existing paragraph/heading editing capability. List-aware
-    /// operations, durable history and browser integration are separate gates.
+    /// This grants only the separate flat-list operation capability, not the
+    /// existing paragraph/heading capabilities. Durable history and browser
+    /// integration are separate gates.
     /// Existing schema fingerprints and document languages remain unchanged.
     ///
     /// # Errors
@@ -156,6 +163,9 @@ impl CompiledSchema {
         let text_block_kind_capability =
             super::compiler::supports_text_block_kind_operations(&definition)
                 .then_some(TextBlockKindCapability);
+        #[cfg(feature = "experimental-structural-properties")]
+        let flat_list_capability = super::compiler::supports_flat_list_operations(&definition)
+            .then_some(FlatListCapability);
         Self {
             definition,
             fingerprint,
@@ -165,6 +175,8 @@ impl CompiledSchema {
             supports_base_text_operations,
             #[cfg(feature = "experimental-structural-properties")]
             text_block_kind_capability,
+            #[cfg(feature = "experimental-structural-properties")]
+            flat_list_capability,
         }
     }
 
@@ -343,6 +355,11 @@ impl CompiledSchema {
     #[cfg(feature = "experimental-structural-properties")]
     pub(crate) const fn supports_text_block_kind_operations(&self) -> bool {
         self.text_block_kind_capability.is_some()
+    }
+
+    #[cfg(feature = "experimental-structural-properties")]
+    pub(crate) const fn supports_flat_list_operations(&self) -> bool {
+        self.flat_list_capability.is_some()
     }
 }
 

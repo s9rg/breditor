@@ -56,6 +56,13 @@ pub(in crate::schema) fn supports_text_block_kind_operations(
     let Ok(expected) = with_headings(base_spec()) else {
         return false;
     };
+    supports_structural_profile(definition, &expected)
+}
+
+pub(super) fn supports_structural_profile(
+    definition: &CompiledSchemaDefinition,
+    expected: &SchemaSpec,
+) -> bool {
     definition.root_kind == expected.root_kind
         && definition.paragraph_kind == expected.paragraph_kind
         && definition.strong_kind == expected.strong_kind
@@ -63,11 +70,17 @@ pub(in crate::schema) fn supports_text_block_kind_operations(
         && definition.elements.len() == expected.elements.len()
         && expected.elements.iter().all(|element| {
             definition.elements.get(&element.kind).is_some_and(|compiled| {
+                // Compilation sorts alternatives; declaration order is not
+                // part of the admitted language or its capability proof.
+                let mut children = element.children.clone();
+                for group in &mut children.groups {
+                    group.kinds.sort();
+                }
                 compiled.revision == element.revision
                     && compiled.allows_properties == element.allows_properties
                     && compiled.property_contract == element.property_contract
                     && compiled.allows_entity_id == element.allows_entity_id
-                    && compiled.children == element.children
+                    && compiled.children == children
             })
         })
         && definition.inline_formats.get(&expected.strong_kind).is_some_and(|strong| {
