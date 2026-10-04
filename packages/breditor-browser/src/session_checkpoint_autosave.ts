@@ -161,10 +161,10 @@ const DEFAULT_SCHEDULER: SessionCheckpointAutosaveScheduler = Object.freeze({
     const performance = globalThis.performance;
     return performance === undefined ? Date.now() : performance.now();
   },
-  schedule: (callback: () => void, delayMs: number): number =>
+  schedule: (callback: () => void, delayMs: number): ReturnType<typeof globalThis.setTimeout> =>
     globalThis.setTimeout(callback, delayMs),
   cancel: (handle: unknown): void => {
-    globalThis.clearTimeout(handle as number);
+    globalThis.clearTimeout(handle as ReturnType<typeof globalThis.setTimeout>);
   },
 });
 

@@ -48,6 +48,7 @@ import {
 } from "./dom_renderer.js";
 import {
   baseSelectionPointsEqual,
+  spatialPositionForPoint,
   type BaseRangeSelection,
 } from "./selection.js";
 import {
@@ -62,7 +63,7 @@ import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
 import { nativeCommandBuilder, type NativeCommandRequest, type NativeDeliveryToken, type NativeSelectionSync } from "./native_command_builder.js";
 import { type FlatListDocumentProjection } from "./flat_list_projection.js";
-import { flatListBlockAtPath, isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
+import { flatListBlockAtPath, flatListSpatialPositionForPoint, isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
 import { astPathsEqual } from "./ast_path.js";
 
 type NativeRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
@@ -838,9 +839,12 @@ function validateTargetRangeForTranslation(
  * collapsible spaces even when the live DOM Selection is immediately after
  * them. A controlled editor has already prevented Chromium from converting or
  * deleting those spaces, so the semantic selection remains authoritative. The
- * only admitted alias is that proven shape: both ranges collapsed in the same
+ * only admitted unequal-position alias is that proven shape: both ranges collapsed in the same
  * terminal text run and the entire gap consists of U+0020. Replacement and
- * non-collapsed ranges continue to require exact endpoint equality.
+ * non-collapsed ranges continue to require equal spatial endpoints. A native
+ * target has no affinity: child boundaries and text-run edges may name the same
+ * location. Only comparison is normalized; the captured directional selection
+ * and its exact endpoint forms/affinities remain authoritative for the command.
  */
 function targetRangeMatchesSelection(
   rendered: NativeRender,
@@ -852,8 +856,8 @@ function targetRangeMatchesSelection(
   selectionEnd: BaseRangeSelection["focus"],
 ): boolean {
   if (
-    baseSelectionPointsEqual(targetStart, selectionStart) &&
-    baseSelectionPointsEqual(targetEnd, selectionEnd)
+    targetPointHasSamePosition(rendered, targetStart, selectionStart) &&
+    targetPointHasSamePosition(rendered, targetEnd, selectionEnd)
   ) {
     return true;
   }
@@ -895,6 +899,21 @@ function targetRangeMatchesSelection(
     if (run.text[offset] !== " ") return false;
   }
   return true;
+}
+
+/** Compare validated owned points without flattening distinct list-item paths. */
+function targetPointHasSamePosition(rendered: NativeRender,
+  target: BaseRangeSelection["anchor"], selected: BaseRangeSelection["anchor"]): boolean {
+  if (baseSelectionPointsEqual(target, selected)) return true;
+  if (isOwnedFlatListRenderedProjection(rendered)) {
+    const a = flatListSpatialPositionForPoint(rendered.projection, target);
+    const b = flatListSpatialPositionForPoint(rendered.projection, selected);
+    return a !== null && b !== null && a.utf16Offset === b.utf16Offset &&
+      astPathsEqual(a.textBlockPath, b.textBlockPath);
+  }
+  const a = spatialPositionForPoint((rendered as RenderedProjection).projection, target);
+  const b = spatialPositionForPoint((rendered as RenderedProjection).projection, selected);
+  return a !== null && b !== null && a.paragraphIndex === b.paragraphIndex && a.utf16Offset === b.utf16Offset;
 }
 
 function readEventBase(event: unknown): EventBase | null {

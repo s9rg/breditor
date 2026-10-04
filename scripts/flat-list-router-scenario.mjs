@@ -65,6 +65,32 @@ export function verifyFlatListRouter(boot, documentJson) {
     equal(typing.ports.plainText.read()?.content.text, "Intro\nAX\nY\nB\n");
     typing.roundTripHistory(); typing.router.dispose();
 
+    const boundary = setup("boundary-alias");
+    const block = boundary.adapter.rendered.nodeForAstPath([1, 0, 0]);
+    const leaf = boundary.adapter.rendered.nodeForAstPath([1, 0, 0, 0]);
+    boundary.host.focus();
+    const caret = document.createRange(); caret.selectNodeContents(block); caret.collapse(false);
+    document.getSelection().removeAllRanges(); document.getSelection().addRange(caret);
+    document.dispatchEvent(new Event("selectionchange"));
+    const exactBoundary = boundary.selection();
+    equal(exactBoundary.anchor.kind, "children");
+    const elsewhere = boundary.adapter.rendered.nodeForAstPath([0, 0]);
+    const wrong = new StaticRange({startContainer: elsewhere, startOffset: 3, endContainer: elsewhere, endOffset: 3});
+    equal(boundary.dispatch("beforeinput", {inputType: "insertText", data: "wrong", targetRanges: [wrong]}).defaultPrevented, true);
+    equal(boundary.documentRoot(), boundary.original);
+    const alias = new StaticRange({startContainer: leaf, startOffset: 3, endContainer: leaf, endOffset: 3});
+    equal(boundary.dispatch("beforeinput", {inputType: "insertText", data: "Z", targetRanges: [alias]}).defaultPrevented, true);
+    equal(boundary.ports.plainText.read()?.content.text, "Intro\nA🙂Z\nB\n");
+    const aliasEdit = boundary.documentRoot(), aliasSelection = boundary.selection();
+    boundary.send({kind: "history", operation: "undo"});
+    equal(boundary.documentRoot(), boundary.original); equal(boundary.selection(), exactBoundary);
+    const boundaryBackup = boundary.ports.sessionCheckpointJson.read();
+    if (!boundaryBackup?.ok) throw new Error("boundary checkpoint failed");
+    const boundaryRestored = boot({kind: "sessionCheckpoint", checkpointJson: boundaryBackup.checkpoint.checkpointJson});
+    boundaryRestored.send({kind: "history", operation: "redo"});
+    equal(boundaryRestored.documentRoot(), aliasEdit); equal(boundaryRestored.selection(), aliasSelection);
+    boundary.router.dispose();
+
     const cut = setup("cut");
     equal(cut.clipboard("cut").getData("text/plain"), "🙂");
     equal(cut.ports.plainText.read()?.content.text, "Intro\nA\nB\n");

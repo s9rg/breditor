@@ -6,6 +6,17 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add a separate experimental flat-list React preview with headings, typed inline
+  controls, V6 autosave/reload and independent backup recovery. Keep standard and
+  heading demo slots and package artifacts unchanged. Bind each demo profile to
+  its editor factory before inspecting backup bytes.
+- Fix ordinary input rejecting equivalent child-boundary and text-run target
+  positions in Chromium/WebKit. Compare spatial endpoints within the same block
+  while preserving exact directional selections and affinities for Rust history.
+  Four regressions failed before the fix; browser keyboard and list undo/reload
+  scenarios now cover the case. This is distinct from the historical intermittent
+  WebKit fault.
+
 - Add explicit experimental `BreditorBrowserEditor.openFlatLists` startup through
   the shared high-level owner. Integrate the list renderer, controllers, toolbar,
   intent API, Session V6 autosave and backup restore with all-or-nothing teardown.

@@ -12,19 +12,19 @@ support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
 The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
-Experimental headings have a separately built browser demo. Flat lists now have
+Experimental headings and flat lists have separately built browser demos. Flat lists now have
 gated Rust editing, exact retained undo/redo, explicit Session V6 recovery, and
 an experimental high-level browser owner integrating projection, input, toolbar
-and persistence. The default packaged demo remains paragraph-only; the visible
-list demo still needs integration. Clipboard interchange
+and persistence. The default packaged demo remains paragraph-only. Clipboard interchange
 is selected text, not structural list/heading rich paste. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
 The explicit source-level `BreditorBrowserEditor.openFlatLists` factory supports
 Session V6 autosave, reopen and backup restoration with exact history recovery.
 Its shared lifecycle preserves host ownership and startup rollback; the ordinary
-`open` factory still rejects list profiles. This is not yet wired into the visible
-demo's persistence UI or qualified as a packaged release.
+`open` factory still rejects list profiles. The separate
+[list demo](examples/lists/README.md) now includes autosave, download and
+independent backup recovery. It is not qualified as a packaged release.
 
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
 end-to-end headings followed by flat bullet/numbered lists. Nested lists follow

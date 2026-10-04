@@ -1332,3 +1332,40 @@ Next is the visible list demo with reload/backup/autosave UI, followed by physic
 input/clipboard/IME, accessibility and release size/performance gates. This does
 not establish physical-input support or resolve the historical WebKit fault.
 Nothing was pushed or published.
+
+## Visible flat-list demo and native target alias checkpoint — 2026-10-04
+
+The separate [list preview](../examples/lists/README.md) now composes ten
+structural toolbar controls with the existing eleven inline/history controls.
+It reuses React ownership, autosave status/retry, backup download and independent
+recovery, explicitly binding the V4 profile to the V6 list owner. Standard,
+heading and list storage identities remain separate. Its source-only browser
+alias and qualified Wasm candidate build into `target/list-demo`, not package
+artifacts.
+
+Real browser keyboard tests found typing at a child-boundary caret was canceled
+in Chromium and WebKit. Native tracing showed the caret at `(P, 1)` and the
+target at `(#text, 18)` represented the same position. Exact endpoint-shape and
+affinity comparison incorrectly rejected it. Four unit regressions failed before
+the shared controller fix. It now compares validated spatial endpoints, retaining
+the original exact selection for history; different block paths still reject.
+The list router scenario additionally proves exact undo and fresh-owner redo.
+
+All twelve production list-demo checks pass across Chromium, Firefox and WebKit:
+heading ranks, list conversion/removal, typed Link/size, backup and redo recovery,
+keyboard typing/Enter, automated accessibility and 390px layout. Unit verification
+passes 1,830 browser tests and 34 React tests. The
+[qualification record](qualification/2026-10-04-flat-list-react-demo.json)
+preserves development failures and distinguishes automated keyboard events from
+physical clipboard, OS IME and screen-reader qualification.
+
+The existing heading demo passes 9/9 and the standard demo passes 39/39 on a
+separate recheck. An earlier standard run hit an internal Firefox axe error and
+the whole-suite time limit; that evidence is retained rather than erased by the
+passing rerun. The recheck allowed 240 seconds for the suite without changing
+individual assertions or retrying tests. Shipping artifact hashes are unchanged.
+
+Next: physical desktop input/clipboard/IME and assistive-technology qualification,
+then source/package load, size/performance and release gates. Nested lists remain
+deferred. This fixes a reproduced target-alias defect, not the historical
+intermittent WebKit fault. Nothing was pushed or published.

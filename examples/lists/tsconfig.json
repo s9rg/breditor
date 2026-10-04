@@ -1,0 +1,8 @@
+{
+  "extends": "../react/tsconfig.json",
+  "compilerOptions": {"paths": {
+    "@breditor/browser": ["../../packages/breditor-browser/src/index.ts"],
+    "@breditor/browser/advanced": ["../../packages/breditor-browser/src/advanced.ts"]
+  }},
+  "include": ["./*.ts", "./*.tsx", "../../vite.lists.config.ts"]
+}

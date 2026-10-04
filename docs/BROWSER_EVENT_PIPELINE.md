@@ -172,7 +172,13 @@ supply endpoints. No native range or endpoint is retained. The target is tied
 to the exact projection, renderer handle, and renderer generation.
 
 Replacement and ordinary range-targeting intents require the normalized target
-to equal the spatial extent of the captured selection. Collapsed backward and
+to equal the spatial extent of the captured selection. Child-container boundaries
+and text-run edges at the same offset in the same block are equivalent for this
+comparison, including full list-item paths. Native targets carry no affinity;
+the command retains the exact captured endpoint forms, direction and affinities
+for history. Equal offsets in different blocks are never equivalent. This fixes
+Chromium/WebKit rejecting typing when a child-boundary caret is reported as a
+text-run target. Collapsed backward and
 forward deletion validate a supplied browser target but do not adopt it: Rust's
 grapheme-aware actions own the actual deletion boundary. History commands
 require no target range. Multiple, detached, cross-host, reversed, stale, or

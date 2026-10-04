@@ -1030,6 +1030,41 @@ describe("BreditorBrowserEventController", () => {
     expect(delivered).toHaveLength(0);
   });
 
+  it.each(["insertText", "insertParagraph", "insertReplacementText"])(
+    "accepts the text-run alias of a child-boundary %s target without rewriting the selection",
+    (inputType) => {
+      const fixture = createFixture();
+      const point = {kind: "children", parentPath: [0], childIndex: 1, affinity: "after"};
+      const exact = selectionValue(BaseRangeSelection.create(fixture.rendered.projection,
+        {kind: "range", anchor: point, focus: point}));
+      expect(fixture.bridge.write(fixture.rendered, exact).ok).toBe(true);
+      const text = canonicalText(fixture.host);
+      const target = new StaticRange({startContainer: text, startOffset: 5, endContainer: text, endOffset: 5});
+      const delivered: EditorCommandRequest[] = [];
+      const controller = createController(fixture.bridge, delivered);
+      const event = inputEvent("beforeinput", inputType, inputType === "insertParagraph" ? null : "X", [target]);
+      expect(dispatch(fixture.host, event, observed => controller.handleBeforeInput(
+        observed as InputEvent, fixture.rendered, fixture.delivery)).kind).toBe("handled");
+      expect(delivered[0]?.selection).toEqual({kind: "range", selection: exact});
+    },
+  );
+
+  it("preserves backward endpoints and affinities when target aliases span formatting runs", () => {
+    const fixture = createFixture("hello", "world");
+    const exact = selectionValue(BaseRangeSelection.create(fixture.rendered.projection, {kind: "range",
+      anchor: {kind: "children", parentPath: [0], childIndex: 2, affinity: "after"},
+      focus: {kind: "children", parentPath: [0], childIndex: 1, affinity: "before"}}));
+    expect(fixture.bridge.write(fixture.rendered, exact).ok).toBe(true);
+    const text = fixture.rendered.nodeForAstPath([0, 1])!;
+    const target = new StaticRange({startContainer: text, startOffset: 0, endContainer: text, endOffset: 5});
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const event = inputEvent("beforeinput", "insertReplacementText", "X", [target]);
+    expect(dispatch(fixture.host, event, observed => controller.handleBeforeInput(
+      observed as InputEvent, fixture.rendered, fixture.delivery)).kind).toBe("handled");
+    expect(delivered[0]?.selection).toEqual({kind: "range", selection: exact});
+  });
+
   it("accepts Chromium's collapsed insert target before controlled trailing spaces", () => {
     const fixture = createFixture("text  ");
     installCollapsedDomSelection(fixture.host, 6);

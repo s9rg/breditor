@@ -1,9 +1,10 @@
 # Structural blocks: heading and list contract
 
-Current status: headings have a separately built experimental browser demo;
-flat lists now have gated Rust structural editing, exact history/recovery and
-internal browser projection, ordinary/composition/clipboard event routing and toolbar integration, but **no
-complete list-enabled browser editor yet**. The historical checkpoints below explain the route
+Current status: headings and flat lists have separately built experimental browser
+demos. Flat lists include gated Rust structural editing, exact history/recovery,
+the high-level browser owner, input routing, toolbar and visible autosave/backup
+UI. They are **not yet a qualified shipping release**: physical native-input and
+release gates remain open. The historical checkpoints below explain the route
 to these features. The default paragraph-only schema and existing fingerprints
 remain unchanged. Links remain typed inline formatting inside structural blocks.
 

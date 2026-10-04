@@ -10,7 +10,6 @@ import {
 } from "react";
 
 import {
-  openBreditorBrowserEditor,
   type BreditorBrowserEditor,
   type BreditorBrowserEditorOpenError,
   type BreditorBrowserEditorPersistenceResult,
@@ -367,7 +366,7 @@ export const BreditorEditor = forwardRef<
         }
         setMountsRetiring(editorHost, toolbarHost, false);
         const profile = createDemoProfile(breditorWasm);
-        const result = await openBreditorBrowserEditor({
+        const result = await profile.openEditor({
           host: editorHost,
           label,
           wasm: breditorWasm,
@@ -385,7 +384,6 @@ export const BreditorEditor = forwardRef<
                 },
               }
             : { initialSessionCheckpointJson }),
-          semanticProfile: profile.semanticProfile,
           rendering: profile.rendering,
           keyboardShortcuts: profile.keyboardShortcuts,
           keyboard: {

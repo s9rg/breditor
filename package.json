@@ -11,6 +11,11 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "demo:lists": "vite --config vite.lists.config.ts --port 4187 --strictPort",
+    "build:demo:lists": "vite build --config vite.lists.config.ts",
+    "test:demo:lists": "playwright test --config playwright.lists.config.ts",
+    "typecheck:demo:lists": "tsc -p examples/lists/tsconfig.json && tsc -p tests/lists/tsconfig.json",
+    "test:lists:experimental": "node scripts/build-experimental-flat-list.mjs",
     "demo:headings": "vite --config vite.headings.config.ts --port 4186 --strictPort",
     "build:demo:headings": "vite build --config vite.headings.config.ts",
     "test:demo:headings": "playwright test --config playwright.headings.config.ts",

@@ -1,4 +1,4 @@
-import { createToolbarManifest } from "@breditor/browser";
+import { createToolbarManifest, openBreditorBrowserEditor } from "@breditor/browser";
 import { preflightWasmSemanticProfile, type WasmEngineBootstrapModuleView } from "@breditor/browser/advanced";
 import {
   REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
@@ -34,7 +34,7 @@ export function createDemoProfile(wasm: WasmEngineBootstrapModuleView): DemoProf
     children: [{ kind: "text", text, formats: [] }],
   });
   return {
-    semanticProfile, toolbar,
+    openEditor: options => openBreditorBrowserEditor({...options, semanticProfile}), toolbar,
     rendering: REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
     keyboardShortcuts: REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
     lineageId: "breditor-heading-showcase",

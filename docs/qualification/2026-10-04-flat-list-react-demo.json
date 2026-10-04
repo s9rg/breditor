@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "b915d39",
+  "status": "Experimental list React demo and reproduced native-target alias fix verified; not a release",
+  "implementation": {
+    "entry": "examples/lists/main.tsx",
+    "schema": "example/flat-list-showcase",
+    "bootstrap": 4,
+    "session": 6,
+    "storageSlot": "breditor.experimental-flat-list-showcase.v1",
+    "toolbar": "21 controls: ten structural plus eleven existing inline/history showcase controls",
+    "loadBoundary": "Explicit qualified-candidate Wasm alias and source browser alias, separate target/list-demo output; no package dist writes",
+    "sharedLifecycle": "DemoProfile binds its matching editor factory; shared React retirement, status, autosave, backup and independent recovery UI",
+    "typeCompatibility": "Opaque default autosave timer handle uses ReturnType<typeof globalThis.setTimeout> so browser source can typecheck with Node tooling declarations; emitted runtime behavior unchanged"
+  },
+  "targetAliasDefect": {
+    "reproduction": "Place a collapsed caret after the P child in the first bullet item, then send browser keyboard input. Chromium/WebKit retain Selection(P,1), report beforeinput StaticRange(#text,18), and previously cancel all input without committing.",
+    "rootCause": "Ordinary target validation compared exact endpoint kind/path/affinity rather than the spatial positions already required by the event contract",
+    "fix": "Compare validated spatial endpoints within the same actual text-block path. Preserve captured endpoint forms, direction and affinities in the command. Keep different block paths distinct and retain the existing narrowly bounded trailing-space alias.",
+    "redTests": "Four new unit cases failed as blocked before the change: insertText, insertParagraph, insertReplacementText child-edge aliases and backward formatted-run selection",
+    "browserRegression": "Production list demo keyboard typing/Enter/reload/undo/redo passes in all three engines. Router harness also rejects a different block with the same offset and proves exact child-boundary undo plus fresh-owner Session V6 redo.",
+    "historicalWebKitFault": "Distinct reproduced defect; no claim to resolve the historical intermittent queueUncertain fault"
+  },
+  "verification": {
+    "browserUnitTests": 1830,
+    "browserTestFiles": 52,
+    "reactUnitTests": 34,
+    "typecheck": "Browser implementation/tests, standard/heading/list React consumers and list Playwright test source passed",
+    "temporaryDeclarationEmission": "passed; shipping dist untouched",
+    "productionListDemo": {"passed": 12, "failed": 0, "retries": 0, "seconds": 59.0},
+    "productionHeadingDemo": {"passed": 9, "failed": 0, "retries": 0, "seconds": 50.9},
+    "defaultDemoRecheck": {"passed": 39, "failed": 0, "retries": 0, "duration": "2.2 minutes", "wholeSuiteTimeoutSeconds": 240, "individualAssertionsAndTimeoutsChanged": false},
+    "listHarness": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "demoCoverage": [
+      "Heading ranks 1-6; list conversion/removal with exact rendered undo",
+      "Typed Link and size survive list conversion",
+      "Autosave and real navigation preserve downloaded checkpoint and redo branch",
+      "Downloaded V6 backup restores byte-identically into a separate non-persistent editor",
+      "Recovered edits leave the primary document unchanged",
+      "Browser keyboard typing at a child boundary, Enter, saved split and exact undo/redo after reload",
+      "Automated axe accessibility and 390px overflow checks"
+    ],
+    "developmentFailures": [
+      "List demo initial run: 10 passed, keyboard alias test failed in Chromium and WebKit. Native endpoint trace and four red unit cases identified and verified the fix.",
+      "Heading default port 4186 was already in use. A first alternate port 4190 was blocked by Firefox (restricted-address error page) and WebKit navigation timed out; that run was stopped. Passing full recheck used 4188 without altering browser protections. Original artifacts retained under target/playwright-heading-demo-results.",
+      "A direct CLI invocation lacked npm's local vite PATH; rerun through npm script corrected the test launch.",
+      "Initial default-demo regression had a Firefox axe internal elmSpec-is-null error; 32 tests passed, six did not run before the 120-second whole-suite limit. A separate sequential recheck retained the original artifacts and increased only the whole-suite timeout to 240 seconds: all 39 passed in 2.2 minutes. The axe error did not recur; no claim of fixing the checker or establishing its root cause."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "npm test --workspace @breditor/example-react",
+      "npm run typecheck --workspace @breditor/example-react",
+      "node node_modules/typescript/bin/tsc -p examples/lists/tsconfig.json",
+      "node node_modules/typescript/bin/tsc -p examples/headings/tsconfig.json",
+      "node node_modules/typescript/bin/tsc -p tests/lists/tsconfig.json",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-omNw3K npm run test:demo:lists",
+      "BREDITOR_HEADING_DEMO_PORT=4188 BREDITOR_HEADING_BINDINGS=target/heading-candidate-vJD5gX npm run test:demo:headings -- --output target/playwright-heading-demo-owner-repeat",
+      "node node_modules/@playwright/test/cli.js test --config playwright.demo.config.ts --output target/playwright-demo-list-factory-repeat --global-timeout 240000",
+      "git diff --check"
+    ],
+    "screenshot": "target/review-evidence/flat-list-demo-2026-10-04.png",
+    "visualReview": "Inspected desktop screenshot: all 21 controls, heading, bullets, ordered start 3, autosave and backup/recovery UI visible without clipping. Local artifact, not a cloud upload."
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactsWritten": false,
+    "experimentalDemoJavaScriptBytes": 895783,
+    "experimentalDemoJavaScriptGzip9Bytes": 234032,
+    "experimentalWasmBytes": 2044484,
+    "experimentalWasmGzip9Bytes": 568550,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Physical desktop keyboard/clipboard and OS IME qualification",
+    "Assistive-technology qualification beyond automated axe checks",
+    "Source/package load contract, packed-consumer, size/performance and release gates"
+  ],
+  "evidenceBoundary": "Real browser engines, Wasm, native storage, downloaded files and Playwright keyboard events. No physical OS clipboard, OS IME or screen-reader claim. No historical WebKit fault-resolution claim.",
+  "pushed": false,
+  "published": false
+}
