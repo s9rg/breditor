@@ -100,3 +100,22 @@ alongside the report, with a sampled self-time summary. It profiles the whole
 fixture, including untimed correctness assertions; its timings are not ordinary
 production measurements. Neither installed tarballs nor shipping artifacts are
 modified by profiling.
+
+Append `--core-only` to the measurement command to run the raw installed Wasm
+engine without an editor DOM or browser owner. This separately measures fresh
+action-state preparation, an exact cache hit, post-edit refresh, selection,
+typing, projection, undo, export, backup/restore and redo. Every snapshot must
+match the current revision, contain the complete fault-free catalog, and retain
+correct undo/redo availability; reads must leave document/selection unchanged.
+The same document sizes/text and three independent engines per size are used.
+
+Raw commands do not request the result's `projectionUpdate()` readback;
+projection-handle acquisition is timed separately, not full node readback or
+rendering. Their final Boolean argument controls history-group closure, not
+projection generation, and is `false` in this fixture.
+Profile compilation happens once per process. Inspection/assertions
+are outside the timed calls, and a reported zero can be timer rounding rather
+than free work. These phase measurements are diagnostic, not quantities to
+subtract directly from the browser-owner timings. `--core-only` and
+`--diagnose-export` are mutually exclusive; optional Chromium CPU profiling also
+works in core-only mode. Neither mode relaxes shipping behavior or release gates.

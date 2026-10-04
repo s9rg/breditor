@@ -10,8 +10,9 @@ import {fileURLToPath} from "node:url";
 import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 
-assert.ok(process.argv.length === 3 || (process.argv.length === 4 && process.argv[3] === "--diagnose-export"), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export]");
+assert.ok(process.argv.length === 3 || (process.argv.length === 4 && ["--diagnose-export", "--core-only"].includes(process.argv[3])), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export|--core-only]");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
+const coreOnly = process.argv[3] === "--core-only";
 const browserName = process.env["BREDITOR_PERF_BROWSER"] ?? "all";
 assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
 const cpuProfileEnabled = process.env["BREDITOR_PERF_CPU_PROFILE"] === "1";
@@ -48,7 +49,7 @@ for (const name of ["breditor_wasm.js", "breditor_wasm_bg.wasm", "breditor_wasm.
     hash(await readFile(join(dirname(recordPath), "wasm/dist", name))));
 }
 const fixture = await mkdtemp(join(consumer, "performance-"));
-await cp(join(repository, "scripts/fixtures/flat-list-performance"), fixture, {recursive: true});
+await cp(join(repository, coreOnly ? "scripts/fixtures/flat-list-core-performance" : "scripts/fixtures/flat-list-performance"), fixture, {recursive: true});
 await cp(join(consumer, "tsconfig.json"), join(fixture, "tsconfig.json"));
 await cp(join(consumer, "package.json"), join(fixture, "package.json"));
 const types = spawnSync(process.execPath, [join(repository, "node_modules/typescript/bin/tsc"), "-p", join(fixture, "tsconfig.json")], {encoding: "utf8"});
@@ -91,11 +92,14 @@ const server = await preview({configFile: false, root: fixture, logLevel: "warn"
 const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport, releasePerformanceQualified: false,
+  measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   deepDiagnostics, browserName, runCount, cpuProfileEnabled, profileBuild: cpuProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
   packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
-  methodology: "One 5-item warm-up followed by three independent editor owners at each of 10/100/500 ordered items, every tenth item a heading, about 75 UTF-16 units per item. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock synchronous spans include a forced layout read. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Not OS input, statistical p95, memory or multi-device performance qualification.",
+  methodology: coreOnly
+    ? "One 5-item warm-up followed by three independent raw engines at each of 10/100/500 ordered items, every tenth item a heading, identical text to the DOM fixture. Installed packed Wasm, production bundle, headless browser, no editor DOM or browser owner. Raw synchronous calls include observation acquisition/disposal but exclude returned-handle inspection/disposal, except JSON exports which include takeValue and disposal. Action-state cold, exact-hit and post-edit refresh measured separately with full status/revision assertions. Commands pass false for history-group closure and do not call the result's projectionUpdate() readback; projection handle acquisition is a separate span, not full node readback or DOM rendering. Profile compilation once per process, no autosave/layout. Exact document/selection and undo/reload/redo assertions outside spans. Diagnostic decomposition, not an additive subtraction from browser timings or release performance qualification."
+    : "One 5-item warm-up followed by three independent editor owners at each of 10/100/500 ordered items, every tenth item a heading, about 75 UTF-16 units per item. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock synchronous spans include a forced layout read. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Not OS input, statistical p95, memory or multi-device performance qualification.",
 }, null, 2)+"\n");
 console.log(JSON.stringify({output}));
 await save("running");

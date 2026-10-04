@@ -1547,3 +1547,38 @@ assistive-technology qualification remain pending. Shipping files are unchanged,
 size ceilings remain exceeded, and nothing was pushed/published. Next: isolate
 Rust action-state preparation from DOM validation with a focused measurement;
 retain complete readiness checks while investigating the remaining latency.
+
+## Separate core preparation from browser work — 2026-10-04
+
+The installed-package measurement runner now accepts `--core-only`, using the
+same 10/100/500-item text documents but no editor DOM or high-level browser owner.
+It times fresh action-state preparation, exact cache hits, post-edit/undo refresh,
+raw editing, projection-handle acquisition, export and backup/restore/redo.
+Projection-node inspection and correctness checks remain outside timed spans;
+command results are not read through `projectionUpdate()`. The command Boolean
+controls history-group closure, not rendering, and is false in this fixture.
+These timings cannot simply be
+subtracted from browser-owner timings, whose work and call sequence differ.
+
+At 500 items, the final core fixture measured post-edit action-state refresh
+medians of 21.8 ms Chromium, 203 ms Firefox and 19 ms WebKit. Raw insertion was
+4.7/41/4 ms respectively. Exact cache-hit medians rounded to zero, not evidence
+of zero work. The measured bottleneck is fresh preparation, not failed cache
+reuse. Firefox has substantial core costs; browser validation/readback/rendering
+remain separate targets, especially for the other engines. No runtime behavior
+was changed by this diagnostic checkpoint.
+
+The fixture checks complete unique fault-free catalog entries, exact snapshot
+revision/lineage, unchanged cache contents, read-only document/selection/pending
+formats, undo/redo availability, and exact document/selection through recovery.
+Its initial assertion incorrectly excluded valid routed `blocked` outcomes; that
+harness failure is retained. Corrected preliminary and strengthened final runs
+passed all three engines. The unchanged full-browser fixture also passed all 27
+cases; core-only Chromium CPU profiling passed nine cases and saved a trace.
+See [evidence](qualification/2026-10-04-flat-list-core-measurement.json).
+
+Next: resolve the hot Wasm functions to source or measure preparation phases
+directly before changing readiness validation. The current production Wasm has
+stripped function names, so a numeric profiler label is not a source-level
+diagnosis. Packaging, native input/accessibility and full release gates remain
+open; nothing was pushed or published.

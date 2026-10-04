@@ -6,6 +6,11 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add a separate installed-Wasm `--core-only` performance diagnostic for fresh
+  action-state preparation, exact cache hits, editing, projection-handle reads
+  and recovery. Keep the full-browser fixture unchanged; record measurement
+  scope explicitly and retain correctness checks and failed diagnostic runs.
+
 - Avoid reparsing unchanged output items when deriving flat-list text-preservation
   metadata. Keep complete source-fragment checking and full result/document
   validation. Add malformed-untouched-content and formatting-versus-text-change

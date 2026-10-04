@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "863a747",
+  "status": "core-browser-decomposition-measured",
+  "releaseQualified": false,
+  "runtimeChanged": false,
+  "packageRecord": "target/flat-list-packages-wZ8mSb/qualification.json",
+  "wasmSha256": "8307fcc66aa3af6796ad42da58fa5bd7b88acb1391c7abc142a7885a3d63a0c1",
+  "command": "node scripts/measure-flat-list-performance.mjs target/flat-list-packages-wZ8mSb/qualification.json --core-only",
+  "method": "One 5-item warm-up, three independent raw engines each at 10/100/500 items, one compiled profile per process, exact installed Wasm package; no editor DOM/browser owner. Raw commands pass false for history-group closure and do not call projectionUpdate() on returned results. Timed projection is handle acquisition only. Checks/returned-handle inspection and disposal are outside timed calls, except JSON helpers include takeValue/disposal. Timer-rounded zero is not zero work. Not directly subtractable from browser-owner timings.",
+  "assertions": ["full/unchanged/delta action-state cache status", "14 unique entries with no faults or absent identity/status", "snapshot revision and lineage match exact current observation", "exact-hit contents match and changedCount is zero", "action-state reads preserve document, selection and pending formats", "undo/redo availability tracks history", "inserted text and complete document match an independent expected edit", "exact undo, V6 backup/reopen and redo"],
+  "runs": [
+    {"name": "final-with-corrected-methodology", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-j3omIb/measurement.json", "sha256": "c6ade0e79c21d7eed50e0c448b0286dd6400991844c5aa45cba9d14e1233e125", "status": "measured", "cases": 27, "fixtureSha256": "5c123f0cc1495003f09e00ee2ae7e22da15caff79092924a702f26bde3a36306"},
+    {"name": "initial-harness-failure", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-50qbaI/measurement.json", "sha256": "0858b90f9f68cdf48eaadf66253564034c661585b1cc72ec0d2113b0652a2801", "status": "failed", "explanation": "Fixture incorrectly admitted only enabled/disabled snapshots. Valid routed blocked outcomes caused the warm-up assertion to fail. Corrected to admit documented non-fault outcomes, then strengthened revision/read-only/history checks. Not a product bug."},
+    {"name": "corrected-preliminary", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-IrRAYL/measurement.json", "sha256": "f28f01ecb133e6ca59b1e8b8df7a6952a487d086c317d6b4580ae831a7b0371e", "status": "measured", "cases": 27},
+    {"name": "strengthened-final", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-dAL8nx/measurement.json", "sha256": "85f931ffe6393184969102fef6d580030f10ee72e016547989f435d84cd6b8a9", "status": "measured", "cases": 27, "fixtureSha256": "3fa5fa90c366caf22fd890a3ca0be631a3f35af41a10163f61a0ceba4dd5f931"},
+    {"name": "full-browser-mode-regression", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-NXumev/measurement.json", "sha256": "c5f3913b01e8545661d65aebebe09a30fcd91eae60fb749f0dd25e6feafefdb1", "status": "measured", "cases": 27},
+    {"name": "core-cpu-profile", "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-ulnxLR/performance-PWjQhZ/measurement.json", "sha256": "d8676051b1bca3b5b2eeea1d3308e38615c1dddbc1f6b29403946c4e8eb98105", "status": "measured", "cases": 9, "cpuProfileSha256": "f3c44b58ad600dd5ff433d5f1868ce3b7fc0755fa8e2a1b3b02c3d8547523186", "scope": "Unminified diagnostic Chromium run; whole fixture including untimed checks. Numeric stripped Wasm function names do not establish Rust source attribution."}
+  ],
+  "final500ItemMedianMs": {
+    "chromium": {"actionStatesCold": 21.1, "actionStatesExactHit": 0, "actionStatesAfterEdit": 21.8, "insertCommand": 4.7},
+    "firefox": {"actionStatesCold": 195, "actionStatesExactHit": 0, "actionStatesAfterEdit": 203, "insertCommand": 41},
+    "webkit": {"actionStatesCold": 19, "actionStatesExactHit": 0, "actionStatesAfterEdit": 19, "insertCommand": 4}
+  },
+  "methodologyCorrection": "Earlier retained core reports inaccurately described the final Boolean command argument as disabling projection generation. Source/API inspection confirmed that it controls history-group closure. The final fixture asserts historyGroupClosedBefore=false, and the corrected report states that command.projectionUpdate() is not called; explicit projection handle acquisition is separate. Command behavior did not change, and the final complete three-engine run passed. Earlier raw report metadata is superseded by this correction, not rewritten.",
+  "verification": ["Strict TypeScript compilation for every measured fixture", "Conflicting --core-only/--diagnose-export and deep-export/core options reject before artifact access", "node --check scripts/measure-flat-list-performance.mjs passed", "All four shipping artifact trees independently matched the prior package qualification hashes"],
+  "next": "Resolve source-level preparation hotspots before changing readiness checks; continue independent browser validation/readback/rendering investigation",
+  "remaining": ["Large-list responsiveness", "Optional delivery and size budgets", "Native OS clipboard, IME and accessibility qualification", "Full release gate and broader historical WebKit evidence", "Unexplained earlier full-fixture profiling timeout; a passing core-only profile does not resolve it"],
+  "pushedOrPublished": false
+}
