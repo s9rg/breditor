@@ -116,7 +116,9 @@ pub(super) fn compile_breditor_base_profile()
     Ok(CompiledEditorProfile::from_compilation(extensions, schema, router, action_states))
 }
 
-fn validate_declaration_counts(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
+pub(super) fn validate_declaration_counts(
+    extensions: &ExtensionSet,
+) -> Result<(), ProfileCompilationError> {
     let toggle_count = extensions.manifests().fold(0_u32, |total, manifest| {
         total.saturating_add(fixed_count(manifest.inline_format_toggles().len()))
     });
@@ -138,7 +140,9 @@ fn validate_declaration_counts(extensions: &ExtensionSet) -> Result<(), ProfileC
     Ok(())
 }
 
-fn validate_declaration_targets(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
+pub(super) fn validate_declaration_targets(
+    extensions: &ExtensionSet,
+) -> Result<(), ProfileCompilationError> {
     let mut declarations = extensions
         .manifests()
         .flat_map(|manifest| {
@@ -326,7 +330,7 @@ fn inline_format_set_state_value_error(
     }
 }
 
-fn validate_cross_owner_identities(
+pub(super) fn validate_cross_owner_identities(
     extensions: &ExtensionSet,
 ) -> Result<(), ProfileCompilationError> {
     validate_action_id_ownership(extensions)?;
@@ -428,7 +432,9 @@ fn declaration_claims<T: Ord>(
         .collect()
 }
 
-fn validate_reserved_identities(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
+pub(super) fn validate_reserved_identities(
+    extensions: &ExtensionSet,
+) -> Result<(), ProfileCompilationError> {
     validate_reserved_action_ids(extensions)?;
     validate_reserved_intent_ids(extensions)?;
     validate_reserved_binding_ids(extensions)?;
@@ -503,7 +509,7 @@ fn validate_reserved_action_state_ids(
 /// active means every selected run has the configured format, mixed means only
 /// some do, and inactive means none do. Commands remain free to route their own
 /// dynamic set or remove input through the same typed intent.
-fn inline_format_presence_input() -> Result<ActionInput, ProfileCompilationError> {
+pub(super) fn inline_format_presence_input() -> Result<ActionInput, ProfileCompilationError> {
     let operation = ActionValue::try_from_string("remove")
         .map_err(|source| ProfileCompilationError::InlineFormatSetPresenceInput { source })?;
     let value = ActionValue::try_object(vec![("operation".to_owned(), operation)])
@@ -511,7 +517,7 @@ fn inline_format_presence_input() -> Result<ActionInput, ProfileCompilationError
     Ok(ActionInput::typed(set_inline_format_input_contract(), value))
 }
 
-fn base_action_state_registrations() -> Vec<ActionStateRegistration> {
+pub(super) fn base_action_state_registrations() -> Vec<ActionStateRegistration> {
     vec![
         ActionStateRegistration::new(
             ActionStateId::from_qualified_name(QualifiedName::from_known_static(

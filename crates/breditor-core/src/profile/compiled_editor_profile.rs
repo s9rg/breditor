@@ -29,6 +29,38 @@ pub struct CompiledEditorProfile {
 }
 
 impl CompiledEditorProfile {
+    /// Compiles an opt-in direct-root paragraph/heading editor profile.
+    ///
+    /// Registers heading-aware typing, normalized plain-text insertion, Enter,
+    /// deletion and inline formatting under explicit text-block action IDs.
+    /// Bold/Clear and extension formatting keep their semantic intent IDs, but
+    /// route only to heading-capable handlers. Seven no-input block-kind routes
+    /// (`breditor/format-paragraph`, `breditor/format-heading-1` through `-6`)
+    /// expose tracked controls (`breditor/control-paragraph`,
+    /// `breditor/control-heading-1` through `-6`). Each corresponds to a fixed
+    /// `breditor/set-paragraph` or `breditor/set-heading-N` action and a
+    /// `breditor/format-...-binding` binding. All routes block at priority zero.
+    ///
+    /// Eleven built-in controls fit under the unchanged 514-entry state ceiling.
+    /// The existing schema limit of 255 extension format types is stricter:
+    /// unique toggle/setter targets currently permit at most 255 combined
+    /// extension controls (266 total). Schema-only formats also consume slots.
+    /// The profile is feature-gated and is not selected by existing factories.
+    /// Hosts must explicitly use V5 session admission for durable heading edits.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProfileCompilationError`] for invalid schema/declarations,
+    /// ownership or reserved identities, exceeded resource limits, or invalid
+    /// generated registries. No partial schema/command/state graph is returned.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_compile_text_block_profile(
+        schema_id: SchemaId,
+        extensions: ExtensionSet,
+    ) -> Result<Self, ProfileCompilationError> {
+        super::text_block_compiler::compile(schema_id, extensions)
+    }
+
     /// Compiles one sealed base-text editor profile from a resolved extension set.
     ///
     /// Every inline-format toggle declaration becomes one Rust-owned generic

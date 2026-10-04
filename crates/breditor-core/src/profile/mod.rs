@@ -16,6 +16,10 @@ mod compiled_profile_inline_format_set_descriptor;
 mod compiled_profile_intent_descriptor;
 mod compiler;
 mod error;
+#[cfg(feature = "experimental-structural-properties")]
+mod text_block_compiler;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod text_block_profile_tests;
 
 pub use compiled_editor_profile::CompiledEditorProfile;
 pub use compiled_profile_action_state_descriptor::CompiledProfileActionStateDescriptor;

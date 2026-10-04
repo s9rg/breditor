@@ -315,10 +315,10 @@ cross restore, and stale observations are rejected before candidate admission.
 This is the core ownership prerequisite, **not browser integration**. The
 remaining integration gates found in the current code are concrete:
 
-1. Compile a complete text-block semantic profile, including extension format
-   actions, observable toolbar state and routes. Existing compiled profiles still
-   register paragraph-only editing actions. Heading-aware multiline plain-text
-   insertion now has the separate core contract below; browser clipboard/IME
+1. The opt-in text-block semantic profile is now compiled as described below,
+   including extension format actions, observable toolbar state and routes.
+   Existing factories still select paragraph-only profiles. Heading-aware
+   multiline plain-text insertion has a core contract; browser clipboard/IME
    routing and qualification are still pending.
 2. Add an opt-in Wasm build/load path and explicit V5 factories. State/document
    exports can retain State V3 / Document V2, but the current Wasm dispatch only
@@ -360,8 +360,52 @@ are kept exactly. It does not import rich HTML or clipboard metadata.
   duplicated typed formats. Failed preparation or checkpoint publication leaves
   the old state and future redo intact. Default paragraph actions are unchanged.
 
-This completes another core prerequisite. The next step remains compiling the
-complete text-block action/intent/toolbar profile before connecting the optional
-Wasm boundary and browser renderer. No browser clipboard qualification is implied.
+This completes another core prerequisite. The following checkpoint compiles the
+complete text-block action/intent/toolbar profile. The optional Wasm boundary
+and browser renderer remain pending. No browser clipboard qualification is implied.
 
 See [plain-text insertion qualification](qualification/2026-10-03-heading-plain-text.json).
+
+## Compiled heading command and toolbar profile
+
+`CompiledEditorProfile::try_compile_text_block_profile` now builds the complete
+opt-in semantic profile as one immutable generation. It shares the established
+extension declaration/ownership/resource validators, but does not replace the
+paragraph compiler or implicitly upgrade existing factories.
+
+The profile registers the six explicit text-block typing, plain-text insertion,
+Enter and deletion actions; heading-aware Bold and Clear handlers; and seven
+fixed-target kind conversions. No paragraph-only editing handlers are installed.
+Bold/Clear keep their existing semantic intent identities. Extension toggle/set
+declarations keep their declared action, intent, binding and state identities,
+but use heading-capable Rust handlers. All routes remain priority-zero/blocking.
+
+The kind controls are `breditor/control-paragraph` and
+`breditor/control-heading-1` through `-6`, routed through the corresponding
+`breditor/format-paragraph` / `breditor/format-heading-N` intents to
+`breditor/set-paragraph` / `breditor/set-heading-N` actions. They are tracked:
+mixed block kinds report mixed, an already-uniform target reports active but
+blocked/unchanged, and missing selection reports inactive/blocked. They use the
+same generic state catalog/cache as extension formatting and Undo/Redo.
+
+The complete no-extension profile has 15 actions, 9 intents/bindings and 11
+state controls. **Limits are unchanged:** the schema admits at most 255
+extension format types (plus built-in Strong), and each uniquely owned type can
+have a toggle or typed setter. Thus at most 255 combined extension controls are
+currently reachable, for 266 total state entries. The independent 514-entry
+catalog ceiling is not an entitlement to 503 extension formats; schema-only
+formats also consume the stricter type budget. Tests exercise all-toggle,
+mixed-toggle/set and all-setter capacity, plus rejection at 256 types.
+
+Runtime tests route formatting and kind commands through a V5 checkpointed
+profile engine, compare cached toolbar state with fresh derivation, preserve
+directional selections, and restore under a newly compiled profile before
+undo/redo. Old observations and old profile-bound caches are rejected after
+restore. Typed controls distinguish uniform, mixed and unset values; failed
+typed input does not change the owner or cached checkpoint.
+
+Next: optional Wasm build/factories and all related exports, followed by heading
+projection, DOM/selection, toolbar/input and browser reload/recovery. The default
+Wasm/browser remains paragraph-only; lists and desktop qualification still follow.
+
+See [compiled-profile qualification](qualification/2026-10-03-heading-profile.json).

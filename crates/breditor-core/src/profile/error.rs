@@ -20,6 +20,13 @@ use crate::{
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 #[non_exhaustive]
 pub enum ProfileCompilationError {
+    /// A compiled-in text-block command used an invalid semantic heading rank.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("invalid built-in text-block command: {source}")]
+    TextBlockKind {
+        /// The checked block-value failure; no profile has been published.
+        source: crate::block::BlockValueError,
+    },
     /// The aggregate generated inline-format toggle count exceeds its ceiling.
     #[error("profile has {actual} inline-format toggles; the maximum is {maximum}")]
     TooManyInlineFormatToggles {

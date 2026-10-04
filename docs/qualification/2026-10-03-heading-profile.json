@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "7316ca905a03c3bf9f343997f02d8738d986cdd5",
+  "status": "Compiled heading semantic profile verified in Rust; beta goal remains active",
+  "scope": "Explicit feature-gated profile compilation, command routing, toolbar state and V5 engine integration; no Wasm/browser exposure",
+  "contract": {
+    "factory": "CompiledEditorProfile::try_compile_text_block_profile",
+    "feature": "experimental-structural-properties",
+    "baseGraph": {"actions": 15, "intents": 9, "bindings": 9, "stateControls": 11},
+    "kindIntents": "breditor/format-paragraph and breditor/format-heading-1 through -6",
+    "kindActions": "breditor/set-paragraph and breditor/set-heading-1 through -6",
+    "kindStates": "breditor/control-paragraph and breditor/control-heading-1 through -6",
+    "routing": "Priority-zero blocking routes; tracked kind and format controls; stateless clear; existing undo/redo state sources",
+    "compatibility": "Explicit text-block editing action IDs; shared Bold/Clear semantic intents; extension-declared IDs preserved with heading-capable handlers; old compiler and factories unchanged",
+    "identity": "One immutable generation; clones retain it; independent compilation and restore reject old observations and profile-bound caches",
+    "limits": "Existing 255-extension-format schema bound is stricter than 514 state entries; unique toggle/set targets currently permit 255 combined extension controls and 266 total states; no limits raised",
+    "remaining": "Optional Wasm build/load/factories and compatible exports, browser projection/renderer/selection/toolbar/input/reload, flat lists, desktop qualification"
+  },
+  "verification": {
+    "newProfileTestsPassed": 9,
+    "coreAllFeatureTestsPassed": 911,
+    "coreDefaultTestsPassed": 697,
+    "legacyProfileCacheAndEngineTestsPassed": 40,
+    "targetedCommand": "cargo test -p breditor-core --all-features --lib --locked text_block_profile_",
+    "legacyCommand": "cargo test -p breditor-core --all-features --locked --test compiled_editor_profile_runtime_contracts --test profiled_editor_engine_contracts --test inline_format_set_profile_contracts --test action_state_cache_contracts",
+    "coverage": [
+      "Complete distinct editing action surface and declared heading intent/binding/state identities",
+      "Every paragraph/heading kind route applies the correct target; active unchanged targets are blocked without publication",
+      "Mixed block-kind state, end-at-next-start exclusion and no-selection disabled state",
+      "Incremental toolbar cache equals fresh derivation after kind changes",
+      "Bold, clear, extension toggle and typed-set routing work on headings",
+      "Typed controls distinguish unset, uniform and mixed property values; invalid input preserves owner/checkpoint",
+      "Typing, multiline paste, Enter and directional deletion through a V5 checkpointed profile engine",
+      "Independent-profile session restore preserves selections and bidirectional history but refreshes runtime identities",
+      "Reserved core IDs rejected; old paragraph profile semantics and fingerprint separation retained",
+      "Exact 255-type all-toggle, mixed and all-setter graphs compile and derive state; 256 types reject"
+    ],
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustdoc": "Core all-feature no-dependency API documentation passed with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "developmentCorrections": "Corrected ActionInput and ActionRegistration API usage, unused/wildcard imports. Initial capacity fixtures incorrectly duplicated targets and then assumed the 514-entry state cap was the first limit. Unique fixtures demonstrated the existing stricter 255-extension-format schema limit. Removed the redundant proposed 503-control cap; documented and tested the actual reachable boundary without widening it.",
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "freshFullReleaseRun": false,
+    "pushed": false,
+    "published": false
+  },
+  "evidence": [
+    {"path":"crates/breditor-core/src/profile/text_block_compiler.rs","sha256":"e18326bb22d1d44cc48dbd23e89eeba129e4e297bdecd392bb215cadc84aa0c6"},
+    {"path":"crates/breditor-core/src/profile/text_block_profile_tests.rs","sha256":"9042599d4cf82dd7173a7bad7a5f6f2a71999a0d8013f30adb863f650c99d748"},
+    {"path":"/private/tmp/breditor-heading-profile-qualified.log","sha256":"fc84b89a3ab03db2b411d5ac8aef65d812faacb3314de2ea0a958bedc80f0dd7"},
+    {"path":"/private/tmp/breditor-heading-profile-core.log","sha256":"fe02a0eb998dbd572607e085ec4f3a2baa2bceae870614b56157205dc9dccaf3"},
+    {"path":"/private/tmp/breditor-heading-profile-default.log","sha256":"f13cc6b8c0399e206965896ea3748e1154c9fad25a996ff22795d8d40de9bf95"},
+    {"path":"/private/tmp/breditor-heading-profile-clippy-pass.log","sha256":"c44f1de114abb563a64d95d99de1de03f84261e9debf05ccf445c8f995709b44"}
+  ]
+}
