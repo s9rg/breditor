@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "fc1a94c",
+  "status": "native-control-unverified-human-check-prepared",
+  "screenReaderQualified": false,
+  "imeQualified": false,
+  "method": "CUA native app controls, under the existing explicit approval to temporarily enable VoiceOver and restore settings. No shell-driven system changes, browser injection, OS clipboard access or new input source installation.",
+  "nativeControl": {
+    "originalVoiceOverSwitch": "off",
+    "observations": [
+      "System Settings AX_VOICEOVER_ENABLED changed from off to on after clicking its switch. The app inventory nevertheless reported com.apple.VoiceOver isRunning=false.",
+      "Opened Apple's VoiceOver Tutorial via the observed settings button. The tutorial displayed page 1 of 11, The VoiceOver Modifier, and asked for Control-Option-Space.",
+      "ctrl+alt+space did not visibly advance the tutorial. Raising its window and repeating the shortcut still left page 1 displayed.",
+      "Restored the System Settings VoiceOver switch to off, verified by its accessibility state.",
+      "Reacquiring the tutorial revealed a separate Turn on VoiceOver / Continue without VoiceOver prompt. Clicking Turn on VoiceOver returned to page 1, but Control_L+Alt_L+space did not advance it, and the inventory still reported VoiceOver not running.",
+      "Quit the temporary tutorial through its application menu. Subsequent inventory reported Accessibility Tutorial and VoiceOver both not running; the pre-existing VoiceOver Utility remained running.",
+      "After the prompt/menu cleanup, the settings AX diff reported no VoiceOver switch change from the previously observed off state. A subsequent attempt to obtain a new complete settings window returned an empty/menu-only surface and then noWindowsAvailable. No further native settings actions were taken."
+    ],
+    "interpretation": "The requested screen-reader command was not observably delivered even in Apple's tutorial, without Breditor involved. A settings switch alone is insufficient evidence. Activation, inventory and automation behavior remain uncertain; this does not prove an OS fault or an editor defect.",
+    "restorationLimit": "Last readable switch state was off, and final inventory reported VoiceOver not running. No fresh complete settings-window observation was available at the end. No VoiceOver Utility preferences or keyboard/input-source settings were changed during this follow-up.",
+    "editorTestPerformed": false
+  },
+  "manualFixture": {
+    "change": "Added a keyboard-accessible disclosure with human IME and VoiceOver controls and exact heading/list/history/focus checks. Reuses existing scratch textarea and redacted event recorder; no new recorder, persistence, permissions or automatic qualification flag.",
+    "testCommand": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-Rq6C5V BREDITOR_LIST_TEST_PORT=4193 PLAYWRIGHT_JSON_OUTPUT_NAME=target/list-native-instructions-20261004.json npx playwright test -c playwright.lists.config.ts tests/lists/manual-clipboard.spec.ts --reporter=line,json --output target/list-native-instructions-20261004",
+    "report": "target/list-native-instructions-20261004.json",
+    "reportSha256": "7c45adac587bc2e4b90576db37a1a2081ca3a01dcfeff83defd2a47c22bd1709",
+    "passed": 15, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+    "typecheck": "npm run typecheck:demo:lists passed",
+    "coverage": "All existing disposable/clipboard/history tests plus open/close through keyboard, unchanged report outcome and event count, axe with disclosure expanded, and 390px layout in Chromium, Firefox and WebKit.",
+    "preview": "http://127.0.0.1:4194/manual-clipboard.html#native-input-checks",
+    "snapshotDirectory": "target/native-input-demo-TFLgQi",
+    "htmlSha256": "4f588a3086f8c6817fb7be89ac94abeb71cc8a3fe8b7a6ed942a89506947df64",
+    "clipboardJavaScriptSha256": "7275511b6861357477190449e67a4331b5302ec64508049a07733876adff16a0",
+    "previewObservation": "In-app browser reports live/incomplete and zero recorded events. Initial click attempts did not expand the disclosure; Tab from the scratch field followed by Return did, with expanded instructions exposed. This is preview usability evidence, not native IME or VoiceOver qualification.",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64"
+  },
+  "existingNativePreview": "Port 4188 and target/list-demo were left unchanged; original demo JS and Wasm hashes still match the recorded native artifact.",
+  "runtimeChanges": false,
+  "pushedOrPublished": false,
+  "nextNativeAction": "Human physical-keyboard control: establish actual IME preedit/commit in the plain scratch textarea and actual spoken VoiceOver navigation in browser chrome, then exercise the editor checklist. Keep these gates unverified until observed."
+}

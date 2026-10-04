@@ -33,6 +33,42 @@
   </ol>
   <label for="scratch">Scratch area — excluded from the report</label>
   <textarea id="scratch" autocomplete="off" spellcheck="false"></textarea>
+  <details id="native-input-checks">
+    <summary>Separate OS input and screen-reader checks</summary>
+    <p>These checks require a person using the Mac's keyboard. A settings switch,
+      accessible page tree, or trusted event alone is not proof. The clipboard
+      checklist and report do not certify either check.</p>
+    <h2>Input method: establish a control first</h2>
+    <ol>
+      <li>Record the browser version, input source and fixture Wasm hash from the
+        report. Note original system settings before changing them.</li>
+      <li>Select Japanese–Romaji (or the input method under test). In the scratch
+        area above, compose and commit a short non-sensitive word. Confirm an
+        actual candidate/preedit interaction and the intended committed text.
+        If only literal Latin keys appear, stop: IME activation is unverified.</li>
+      <li>Repeat inside the heading, a bullet item and a numbered item. Confirm
+        one committed insertion, unchanged surrounding text and numbering, then
+        one Undo and one Redo restoring the exact before/after states.</li>
+      <li>Start another composition and cancel it using the input method's cancel
+        command. Confirm the original text and caret return and no extra history
+        entry appears. Use the main demo separately for commit/reload/recovery.</li>
+    </ol>
+    <h2>Screen reader: establish audible navigation first</h2>
+    <ol>
+      <li>Enable VoiceOver and confirm spoken navigation in the browser's own
+        controls before entering the editor. If speech or the VoiceOver cursor
+        cannot be observed, stop and record the check as unverified.</li>
+      <li>Navigate to the editor and toolbar. Check their announced names, heading
+        ranks, list boundaries/items, button names and pressed/disabled states.
+        Enter editing, move/select text, and verify the announced selection.</li>
+      <li>Apply a heading/list change, Undo and Redo. Open Link, edit its URL, then
+        close with Escape. Confirm usable focus returns and text is preserved.
+        Compare what is spoken with what actually changed.</li>
+    </ol>
+    <p>Record exact observations and failures separately; never infer a pass from
+      this page's clipboard status. Restore any input-source, input-menu,
+      dictation, shortcut and VoiceOver settings you changed.</p>
+  </details>
   <fieldset id="checks" disabled><legend>Your observations (manual, not inferred)</legend>
     <label><input type="checkbox" data-check="copy" /> Copy produced exact text outside the editor, including cross-item newlines.</label>
     <label><input type="checkbox" data-check="cut" /> Cut deleted exactly once and produced exact text outside the editor.</label>

@@ -71,6 +71,27 @@ test("unmodified manual list page passes accessibility and narrow layout checks"
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test("native input instructions are keyboard accessible and cannot certify the clipboard report", async ({page}) => {
+  await open(page, false);
+  const details = page.locator("#native-input-checks");
+  const summary = details.locator("summary");
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(details).toHaveAttribute("open", "");
+  await expect(details).toContainText("IME activation is unverified");
+  await expect(details).toContainText("confirm spoken navigation");
+  await expect(details).toContainText("Restore any input-source");
+  await expect(page.locator("#checks input")).toHaveCount(MANUAL_CHECKS.length);
+  const captured = await report(page);
+  expect(captured).toMatchObject({outcome: "incomplete", observedEvents: 0, firstFault: null});
+  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+  await page.setViewportSize({width: 390, height: 844});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(details).not.toHaveAttribute("open");
+});
+
 test("controlled cross-item clipboard and history retain structure without claiming native evidence", async ({page}) => {
   const editor = await open(page), original = await editor.innerHTML();
   await page.locator("#scratch").fill("private-scratch-value");

@@ -1978,3 +1978,26 @@ recorded hash. The original failure log is still present and hash-verified.
 Historical preservation claims must not be interpreted as current availability.
 See [candidate browser evidence](qualification/2026-10-04-candidate-browser-matrix.json)
 for retained results and limits. No push or publication was performed.
+
+## Native control check and human-test preparation — 2026-10-04
+
+VoiceOver activation remains unverified. The settings switch could be toggled,
+but the app inventory still reported VoiceOver not running; its documented
+modifier command did not advance Apple's own tutorial. The separate tutorial
+activation prompt did not establish observable command handling either. No
+Breditor input test was counted as a pass. The last readable settings state was
+off, the temporary tutorial was quit, and final inventory reported both it and
+VoiceOver not running. A final full settings-window read was unavailable.
+
+The disposable list fixture now provides a keyboard-accessible human checklist:
+establish real IME composition in its plain scratch textarea and actual spoken
+VoiceOver navigation outside the editor, then test heading/list editing and
+history/focus. This reuses existing tooling without adding automatic pass flags
+or recording infrastructure. All 15 manual-fixture tests pass across the three
+engines, including expanded-section accessibility and narrow layout, and strict
+TypeScript passes. The checklist is open in an isolated preview on port 4194;
+the older native preview at 4188 is untouched.
+
+See [native control follow-up](qualification/2026-10-04-voiceover-control-followup.json).
+Human native-input evidence is still required. No editor runtime or wire change,
+push or publication was made.

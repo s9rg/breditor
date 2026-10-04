@@ -135,3 +135,27 @@ cut/paste/history behavior, report redaction, synthetic-event non-qualification,
 recording bounds, and model-level pending/fault/checklist status. Model-injected
 trusted flags test recorder logic; they are not evidence of native clipboard
 behavior. The ordinary browser matrix includes these fixture checks.
+
+## Headings/lists: separate human input checks
+
+The experimental list fixture now includes a collapsed **Separate OS input and
+screen-reader checks** section below the scratch textarea. It reuses the same
+disposable editor; it does not add a recording system or change the meaning of
+the clipboard report. The section can be opened with keyboard focus and Enter.
+
+First establish a working control outside Breditor: actual IME preedit/commit in
+the plain scratch textarea, or audible VoiceOver navigation in browser chrome.
+Only then test heading/bullet/numbered editing, commit/cancel, exact Undo/Redo,
+and toolbar/Link focus. Record observations separately, along with the browser,
+input method and candidate Wasm hash. Restore every temporary system setting.
+Use the main demo separately for autosave/reload/recovery. Merely installing an
+input source, enabling a switch, inspecting an accessibility tree or observing
+trusted events does not qualify either gate.
+
+The October 4 follow-up could not observe VoiceOver command handling even in
+Apple's tutorial. Its final app inventory reported VoiceOver and the temporary
+tutorial not running; the last readable switch was off, but a fresh complete
+settings window became unavailable. See the
+[control follow-up](qualification/2026-10-04-voiceover-control-followup.json)
+for exact limits and the isolated human-test preview. Neither IME nor VoiceOver
+is qualified by this attempt.
