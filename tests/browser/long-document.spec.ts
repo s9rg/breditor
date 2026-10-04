@@ -1,7 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test as base } from "@playwright/test";
+
+const test = base.extend<{ directRetainedSelectionTransfer: boolean }>({
+  directRetainedSelectionTransfer: [false, {option: true}],
+});
+type SelectionSnapshot = ReturnType<NonNullable<Window["__breditorHarness"]>["selection"]>;
+type RetainedSelectionWindow = Window & { __breditorRetainedSelectionSnapshot?: SelectionSnapshot };
 
 /** Bounded correctness qualification, not a latency benchmark or native paste test. */
-test("250 Unicode paragraphs retain backward selection and redo history across reload", async ({ page }, testInfo) => {
+test("250 Unicode paragraphs retain backward selection and redo history across reload", async ({ page, directRetainedSelectionTransfer }, testInfo) => {
   const paragraphs = Array.from({ length: 250 }, (_, index) =>
     `Block ${String(index).padStart(3, "0")}: 🙂 e\u0301 ${"stable text ".repeat(8)}`);
   const plainText = paragraphs.join("\n");
@@ -38,11 +44,20 @@ test("250 Unicode paragraphs retain backward selection and redo history across r
   // numeric baseline must never become the expected result for later steps.
   // Retain the original frozen object for failure-only transport diagnostics;
   // do not rerun selection acquisition or normalize a bad value into a pass.
-  const selectionHandle = await page.evaluateHandle(() => window.__breditorHarness!.selection());
+  // The opt-in diagnostic keeps the original evaluate()/direct-number path,
+  // saving that exact result before transfer. No second selection read occurs.
+  const directSnapshot = directRetainedSelectionTransfer ? await page.evaluate(() => {
+    const snapshot = window.__breditorHarness!.selection();
+    (window as RetainedSelectionWindow).__breditorRetainedSelectionSnapshot = snapshot;
+    return snapshot;
+  }) : undefined;
+  const selectionHandle = directRetainedSelectionTransfer
+    ? await page.evaluateHandle(() => (window as RetainedSelectionWindow).__breditorRetainedSelectionSnapshot!)
+    : await page.evaluateHandle(() => window.__breditorHarness!.selection());
   const backwards = {anchorOffset: paragraphs.reduce((sum, text) => sum + text.length, 0),
     focusOffset: 0, direction: "backward" as const};
   try {
-    expect(await selectionHandle.jsonValue()).toEqual(backwards);
+    expect(directRetainedSelectionTransfer ? directSnapshot : await selectionHandle.jsonValue()).toEqual(backwards);
   } catch (error) {
     const encoded = await selectionHandle.evaluate(snapshot => {
       const fields = Object.fromEntries((["anchorOffset", "focusOffset"] as const).map(key => {
@@ -57,6 +72,9 @@ test("250 Unicode paragraphs retain backward selection and redo history across r
     throw error;
   } finally {
     await selectionHandle.dispose();
+    if (directRetainedSelectionTransfer) await page.evaluate(() => {
+      delete (window as RetainedSelectionWindow).__breditorRetainedSelectionSnapshot;
+    });
   }
   await page.getByRole("button", { name: "Bold", exact: true }).click();
   await expect(editor.locator("strong")).toHaveCount(paragraphs.length);

@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "47ebb3a",
+  "status": "diagnostic-added-no-new-reproduction",
+  "bugFixed": false,
+  "motivation": "The prior long-document WebKit case received an initial focusOffset NaN before formatting, but its original page snapshot was not retained. Forty later evaluateHandle/jsonValue repetitions passed; that observation path differs from the failing direct page.evaluate transfer.",
+  "originalFailure": {
+    "record": "docs/qualification/2026-10-04-renderer-attribute-presence.json",
+    "trace": "target/list-attribute-presence-browser-20261004/long-document-250-Unicode--01176--redo-history-across-reload-webkit/trace.zip",
+    "traceSha256": "bde28640aeb08d2f8ab56997a7ed50e7ceab46d554b86ea645086099ff45001a"
+  },
+  "change": {
+    "configuration": "playwright.selection-snapshot-candidate.config.ts",
+    "option": "directRetainedSelectionTransfer",
+    "default": false,
+    "directMode": "Call harness.selection() exactly once, retain its frozen result in a test-page-only slot, and return that same object through page.evaluate. Acquire a handle to the retained result afterward without rereading DOM selection. Assert independently known exact coordinates. On failure, attach decimal/native-JSON/binary64 strings from the retained object. Dispose the handle and delete the temporary slot.",
+    "ordinaryMode": "Keep the preceding evaluateHandle/jsonValue path and exact expected coordinates. No result coercion, retries, fallback acceptance or test deadline changes.",
+    "scope": "Test/config changes only. No editor runtime, Rust, Wasm, package, wire, selection-write, history or persistence behavior changes. The diagnostic config inherits private package admission and can run either the focused case or the complete suite to preserve preceding worker activity."
+  },
+  "candidatePackageRecord": "target/flat-list-packages-MP7DW1/qualification.json",
+  "candidatePackageRecordSha256": "5ea65746827ee24a1f95694db17e82490511875cdf197847a8b8264c911ca85d",
+  "runs": [
+    {
+      "kind": "direct transfer, fresh-worker WebKit repeats",
+      "report": "target/selection-snapshot-direct-retained-20261004.json",
+      "sha256": "7750ad7f4bee493008aafabced414941cb0d9be25bd9003103b0f3180805014f",
+      "passed": 60, "failed": 0, "skipped": 0, "flaky": 0,
+      "note": "At this run the diagnostic config restricted testMatch to long-document.spec.ts. It now inherits the full suite; explicitly pass that filename to reproduce the focused batch."
+    },
+    {
+      "kind": "complete WebKit sequence with direct transfer for the long-document case",
+      "report": "target/selection-snapshot-warm-webkit-20261004.json",
+      "sha256": "e5855db59d9234b9a385b104bf652f1ac1a620c2cc96b62992cab7bbeadaa395",
+      "passed": 55, "failed": 0, "skipped": 0, "flaky": 0,
+      "note": "One worker, original case order. Long-document case ran at position 44 after clipboard, Link, selection and history workflows. Other tests retain their existing observation paths."
+    },
+    {
+      "kind": "direct transfer Chromium/Firefox controls",
+      "report": "target/selection-snapshot-direct-controls-20261004.json",
+      "sha256": "5eb38df973202087028dcc7c8cf516385129d049d00322ea773735527057564c",
+      "passed": 2, "failed": 0, "skipped": 0, "flaky": 0
+    },
+    {
+      "kind": "default retained-handle path in all three engines",
+      "report": "target/selection-snapshot-default-controls-20261004.json",
+      "sha256": "bc4bdd123cdcc6694e550450bbb1fc8ddbb8fba1aa8c4eedfe092aac1e969b82",
+      "passed": 3, "failed": 0, "skipped": 0, "flaky": 0
+    }
+  ],
+  "verification": "Strict browser harness/config TypeScript and git diff --check pass. All runs used zero retries and unchanged deadlines. Each run used caffeinate -is -t 600 scoped to its test command. Final pmset assertions showed no caffeinate entries and both PreventSystemSleep and PreventUserIdleSystemSleep at 0. No persistent power settings changed.",
+  "reproduction": [
+    "npm run typecheck:browser",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-MP7DW1/qualification.json caffeinate -is -t 600 npx playwright test -c playwright.selection-snapshot-candidate.config.ts tests/browser/long-document.spec.ts --project=webkit --repeat-each=60 --max-failures=1",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-MP7DW1/qualification.json caffeinate -is -t 600 npx playwright test -c playwright.selection-snapshot-candidate.config.ts --project=webkit --max-failures=1"
+  ],
+  "limitations": "No new mismatch, so no same-object comparison is available for the original failure and no causal diagnosis is established. Retaining a result and later acquiring a handle can affect timing. Finite clean runs do not prove the intermittent fault fixed. These are scripted browser checks, not native IME/VoiceOver evidence or completed beta qualification.",
+  "nextAction": "Keep the direct-retained mode available for the next broad qualification failure. Do not increase identical cold-repeat counts without a new hypothesis; prioritize remaining feature-beta performance/delivery/native-input gates while preserving this unresolved fault.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}
