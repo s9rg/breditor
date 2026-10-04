@@ -13,7 +13,7 @@ import {
   type ProfiledDocumentProjectionInput,
 } from "./projection.js";
 import { BaseProjectionUpdate, type BaseProjectionImpact } from "./projection_update.js";
-import { createFlatListTextProjection, FlatListDocumentProjection, type FlatListRootShape } from "./flat_list_projection.js";
+import { createFlatListTextProjection, FlatListDocumentProjection, flatListProjectionDescriptor, flatListProjectionMatchesProfileGeneration, isOwnedFlatListProjection, type FlatListRootShape } from "./flat_list_projection.js";
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
@@ -25,6 +25,10 @@ import {
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
+
+import { FlatListProjectionUpdate } from "./flat_list_projection_update.js";
+type UpdateBase = BaseDocumentProjection | FlatListDocumentProjection | undefined;
+type ProjectionUpdate = BaseProjectionUpdate | FlatListProjectionUpdate;
 
 type TextBlockProjectionFactory = typeof createTextBlockDocumentProjection;
 const TEXT_BLOCK_FACTORIES = new WeakMap<BaseDocumentProjection, TextBlockProjectionFactory>();
@@ -316,6 +320,17 @@ export function consumeSemanticProjectionUpdate(
   expectedProfile: string | BrowserCompiledProfileDescriptor,
   protectedHandles: readonly unknown[] = [],
 ): BrowserProjectionResult<BaseProjectionUpdate> {
+  return consumeProjectionUpdate(isOwnedProjection(base) ? base : undefined, view, generation, expectedProfile, protectedHandles) as BrowserProjectionResult<BaseProjectionUpdate>;
+}
+
+/** Consumes an exact list update, including its owned result projection. @internal */
+export function consumeFlatListSemanticProjectionUpdate(base: FlatListDocumentProjection, view: SemanticProjectionUpdateView,
+  generation: WasmProfileGenerationView, expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<FlatListProjectionUpdate> {
+  return consumeProjectionUpdate(isOwnedFlatListProjection(base) ? base : undefined, view, generation, expectedProfile, protectedHandles) as BrowserProjectionResult<FlatListProjectionUpdate>;
+}
+
+function consumeProjectionUpdate(base: UpdateBase, view: SemanticProjectionUpdateView, generation: WasmProfileGenerationView,
+  expectedProfile: string | BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[]): BrowserProjectionResult<ProjectionUpdate> {
   const identity = objectIdentity(view);
   if (identity === null || ACTIVE_GENERATED_CONSUMPTIONS.has(identity)) {
     return projectionFailure("projection.invalid_update");
@@ -335,12 +350,12 @@ export function consumeSemanticProjectionUpdate(
 }
 
 function consumeSemanticProjectionUpdateUnlocked(
-  base: BaseDocumentProjection,
+  base: UpdateBase,
   view: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
   protectedHandles: readonly unknown[],
-): BrowserProjectionResult<BaseProjectionUpdate> {
+): BrowserProjectionResult<ProjectionUpdate> {
   const protectedSet = snapshotProtectedHandleArray(protectedHandles, generation);
   if (protectedSet === null || protectedSet.has(view)) {
     return projectionFailure("projection.invalid_update");
@@ -377,26 +392,26 @@ export function consumeSemanticProjectionUpdateWithCleanup(
   ACTIVE_GENERATED_CONSUMPTIONS.set(identity, undefined);
   try {
     return consumeSemanticProjectionUpdateWithCleanupUnlocked(
-      base,
+      isOwnedProjection(base) ? base : undefined,
       view,
       cleanup,
       generation,
       expectedProfile,
       protectedHandles,
-    );
+    ) as BrowserProjectionResult<BaseProjectionUpdate>;
   } finally {
     releaseGeneratedConsumption(identity);
   }
 }
 
 function consumeSemanticProjectionUpdateWithCleanupUnlocked(
-  base: BaseDocumentProjection,
+  base: UpdateBase,
   view: SemanticProjectionUpdateView,
   cleanup: () => unknown,
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
   protectedHandles: readonly unknown[],
-): BrowserProjectionResult<BaseProjectionUpdate> {
+): BrowserProjectionResult<ProjectionUpdate> {
   const protectedSet = snapshotProtectedHandleArray(protectedHandles, generation);
   if (protectedSet === null || protectedSet.has(view)) {
     return projectionFailure("projection.invalid_update");
@@ -452,15 +467,15 @@ export function associateProjectionWithProfileGeneration(
 }
 
 function consumeClaimedSemanticProjectionUpdate(
-  base: BaseDocumentProjection,
+  base: UpdateBase,
   view: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
   cleanup: () => unknown,
   protectedHandles: ReadonlySet<object>,
   asynchronous: boolean,
-): BrowserProjectionResult<BaseProjectionUpdate> {
-  let result: BrowserProjectionResult<BaseProjectionUpdate> = projectionFailure(
+): BrowserProjectionResult<ProjectionUpdate> {
+  let result: BrowserProjectionResult<ProjectionUpdate> = projectionFailure(
     "projection.invalid_update",
   );
   try {
@@ -1055,18 +1070,21 @@ function formatPropertyValueProbeIsAbsent(
 }
 
 function readProfiledSemanticProjectionUpdate(
-  base: BaseDocumentProjection,
+  base: UpdateBase,
   view: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
   protectedHandles: ReadonlySet<object>,
-): BrowserProjectionResult<BaseProjectionUpdate> {
+): BrowserProjectionResult<ProjectionUpdate> {
+  if (base === undefined) return projectionFailure("projection.invalid_update");
+  const flat = isOwnedFlatListProjection(base);
+  const descriptor = flat ? flatListProjectionDescriptor(base) : projectionProfileDescriptor(base);
   if (
     !wasmProfileGenerationIsLive(generation) ||
-    !projectionMatchesProfileGeneration(base, generation) ||
+    !(flat ? flatListProjectionMatchesProfileGeneration(base, generation) : projectionMatchesProfileGeneration(base, generation)) ||
     (typeof expectedProfile === "string"
-      ? projectionProfileDescriptor(base) !== undefined
-      : projectionProfileDescriptor(base) !== expectedProfile ||
+      ? flat || descriptor !== undefined
+      : descriptor !== expectedProfile ||
         !browserCompiledProfileDescriptorMatchesGeneration(
           expectedProfile,
           generation,
@@ -1113,7 +1131,7 @@ function readProfiledSemanticProjectionUpdate(
     resultView,
     generation,
     expectedProfile,
-    TEXT_BLOCK_FACTORIES.get(base),
+    flat ? createFlatListTextProjection : TEXT_BLOCK_FACTORIES.get(base),
   );
   if (!projectionResult.ok) {
     return projectionFailure("projection.invalid_update");
@@ -1124,6 +1142,10 @@ function readProfiledSemanticProjectionUpdate(
     projection.snapshot.revision !== snapshot.resultRevision
   ) {
     return projectionFailure("projection.invalid_update");
+  }
+  if (flat) {
+    const list = FlatListDocumentProjection.fromValidatedText(projection);
+    return list.ok ? FlatListProjectionUpdate.create({base, result: list.value, impact}) : projectionFailure("projection.invalid_update");
   }
   return BaseProjectionUpdate.create({ base, result: projection, impact });
 }

@@ -1270,3 +1270,35 @@ selection reads/writes and exact affinity receipts. This remains isolated from
 the browser owner/controller; incremental list update admission, toolbar/input,
 composition, clipboard and the user-facing demo are later integration steps.
 See [selection qualification](qualification/2026-10-04-flat-list-selection-bridge.json).
+
+### Flat-list projection updates and subtree reuse
+
+`FlatListProjectionUpdate` admits consecutive same-lineage snapshots from the
+same exact profile owner. It owns closed copied impact records and independently
+proves every unchanged root subtree, including list type/start, heading rank,
+text and typed inline properties. False narrow claims reject. `none` proves all
+roots unchanged; `rootSplice` proves the untouched prefix and shifted suffix.
+Legacy `textContainers` coordinates remain direct-root indices and are admitted
+only when every affected root is a bare text block on both sides. A list item is
+never interpreted as a root paragraph. Broad impacts retain full-render plans.
+
+`consumeFlatListSemanticProjectionUpdate` uses the shared generated update/child
+consumption path. It validates the duplicate base/result identities, exact
+profile binding and impact, protects outer-owner aliases, and retains the child's
+consumption claim through parent cleanup. The legacy entry points remain
+base-only, including their cleanup-captured return type.
+
+`updateFlatList` checks exact renderer/base ownership before installation. Proved
+unchanged roots retain complete DOM subtree identity; when a list moves, all
+list/item/block/text mappings are rebuilt against its new AST paths. Affected
+roots are rebuilt, not patched using paragraph indices. Selection-only updates
+can retain the entire DOM. Full-root impacts and detected synchronous DOM drift
+take the full checked render path. All paths share install guards, rollback and
+canonical-DOM validation. This does not promise identity within changed lists;
+nested typing still uses the Rust core's conservative full-root impact.
+
+The real-browser harness now consumes generated selection, multiline insertion
+and undo updates consecutively, installs each result, and restores its exact
+semantic selection through the list bridge. Browser owner/controller dispatch,
+composition leases and input integrations remain outstanding. See
+[update qualification](qualification/2026-10-04-flat-list-updates.json).

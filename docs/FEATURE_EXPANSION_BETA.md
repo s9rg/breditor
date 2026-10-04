@@ -953,3 +953,22 @@ clipboard/IME and release gates remain incomplete; the full beta goal is active.
 
 See [contract](STRUCTURAL_BLOCKS.md#flat-list-dom-selection-bridge-and-wasm-coordinates)
 and [verification](qualification/2026-10-04-flat-list-selection-bridge.json).
+
+## Flat-list update checkpoint
+
+Consecutive list snapshots now have owned, independently validated update plans.
+Unchanged root subtrees retain DOM identity, including whole lists shifted by a
+root edit, with every descendant path remapped. Changed lists use root replacement;
+the old direct-paragraph impact is never reinterpreted as nested coordinates.
+Generated update/child handles share the established ownership and cleanup guards.
+
+All 1,619 browser tests and strict TypeScript pass. Five runs each in Chromium,
+Firefox and WebKit now execute generated selection, multiline list insertion and
+undo updates through the renderer and selection bridge. Shipping artifacts remain
+unchanged. This is an integrated low-level transition path, not yet the editor
+controller or native keyboard/clipboard/IME qualification.
+
+Next: browser owner/controller profile mode, toolbar/keyboard and visible demo
+reload/backup behavior, followed by native-input and release qualification.
+See [contract](STRUCTURAL_BLOCKS.md#flat-list-projection-updates-and-subtree-reuse)
+and [verification](qualification/2026-10-04-flat-list-updates.json).

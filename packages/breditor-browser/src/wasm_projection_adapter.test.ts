@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { consumeSemanticProjectionUpdateWithCleanup, consumeTextBlockSemanticProjection, consumeFlatListSemanticProjection, type FlatListSemanticProjectionView } from "./wasm_projection_adapter.js";
+import { consumeSemanticProjectionUpdateWithCleanup, consumeTextBlockSemanticProjection, consumeFlatListSemanticProjection, consumeFlatListSemanticProjectionUpdate, type FlatListSemanticProjectionView } from "./wasm_projection_adapter.js";
 import { FlatListDocumentProjection, isOwnedFlatListProjection } from "./flat_list_projection.js";
 import { isOwnedProjection } from "./projection.js";
 
@@ -24,6 +24,58 @@ const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
   },
   free: vi.fn(),
 };
+
+describe("flat-list generated updates", () => {
+  function fixture(impact: SemanticProjectionImpact = "none") {
+    const descriptor = ownedProfileDescriptor([]);
+    const base = valueOf(consumeFlatListSemanticProjection(flatListView(), TEST_PROFILE_GENERATION, descriptor));
+    const child = flatListView(); Object.defineProperty(child, "snapshotRevision", {value: "8"});
+    const update = new FakeUpdateView({baseRevision: "7", resultRevision: "8", impact, projection: child});
+    return {base, child, update, descriptor};
+  }
+  it("consumes exact list transitions and frees the child and parent once", () => {
+    const {base, child, update, descriptor} = fixture();
+    const result = valueOf(consumeFlatListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor));
+    expect(result.base).toBe(base); expect(result.result.snapshot.revision).toBe("8");
+    expect(result.result.blocks).toEqual(base.blocks); expect(result.impact).toEqual({kind: "none"});
+    expect(child.freeCalls).toBe(1); expect(update.freeCalls).toBe(1);
+  });
+  it("rejects a false unchanged claim but accepts a broad root change", () => {
+    for (const impact of ["none", "root"] as const) {
+      const {base, child, update, descriptor} = fixture(impact);
+      child.orderedListStart = index => index === 3 ? 9 : undefined;
+      expect(consumeFlatListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor).ok).toBe(impact === "root");
+      expect(child.freeCalls).toBe(1); expect(update.freeCalls).toBe(1);
+    }
+  });
+  it("rejects inconsistent parent result metadata and retains cleanup", () => {
+    const {base, child, update, descriptor} = fixture();
+    Object.defineProperty(update, "resultRevision", {value: "9"});
+    expect(consumeFlatListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    expect(child.freeCalls).toBe(1); expect(update.freeCalls).toBe(1);
+  });
+  it("keeps the child claimed through parent cleanup across both consumer modes", () => {
+    const {base, child, update, descriptor} = fixture(); let nested: unknown;
+    update.free = () => {
+      update.freeCalls += 1;
+      nested = consumeFlatListSemanticProjection(child, TEST_PROFILE_GENERATION, descriptor);
+      expect(consumeTextBlockSemanticProjection(child, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    };
+    expect(consumeFlatListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor).ok).toBe(true);
+    expect(nested).toMatchObject({ok: false}); expect(child.freeCalls).toBe(1); expect(update.freeCalls).toBe(1);
+  });
+  it("protects outer owner aliases before reading or freeing a taken child", () => {
+    const {base, child, update, descriptor} = fixture();
+    expect(consumeFlatListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor, [child]).ok).toBe(false);
+    expect(child.freeCalls).toBe(0); expect(update.freeCalls).toBe(1);
+  });
+  it("does not let the legacy adapter consume a list base", () => {
+    const {base, child, update, descriptor} = fixture(); const take = vi.spyOn(update, "takeProjection");
+    // @ts-expect-error Flat-list base is deliberately not a legacy projection.
+    expect(consumeSemanticProjectionUpdateRaw(base, update, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    expect(take).not.toHaveBeenCalled(); expect(child.freeCalls).toBe(0); expect(update.freeCalls).toBe(1);
+  });
+});
 
 /** A mixed preorder tree, including a numbered heading and an empty bullet item. */
 function flatListView(): FakeProjectionView & FlatListSemanticProjectionView {

@@ -1,5 +1,5 @@
 // Real Wasm -> browser projection qualification, deliberately without editor DOM.
-import { consumeFlatListSemanticProjection } from "../packages/breditor-browser/src/wasm_projection_adapter.ts";
+import { consumeFlatListSemanticProjection, consumeFlatListSemanticProjectionUpdate } from "../packages/breditor-browser/src/wasm_projection_adapter.ts";
 import { consumeWasmCompiledProfileDescriptor } from "../packages/breditor-browser/src/wasm_profile_descriptor.ts";
 import { consumeFlatListSemanticSelection, flatListSemanticRangeSelectionScalars } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
@@ -11,6 +11,7 @@ const equal = (actual, expected) => {
 export function runFlatListBrowserProjectionScenario(api, verifyDom) {
   const handles = [];
   const selections = new WeakMap();
+  const transitions = [];
   const own = value => { if (!value) throw new Error("missing handle"); handles.push(value); return value; };
   const observation = engine => own(engine.observation());
   const committed = result => { own(result); equal(result.status, "committed"); };
@@ -38,6 +39,17 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     selections.set(projected.value, selection.value);
     return projected.value;
   };
+  const transition = (base, command, engine, owner) => {
+    committed(command);
+    const changed = consumeFlatListSemanticProjectionUpdate(base, command.projectionUpdate(), owner.generation, owner.descriptor, [engine, owner.profile, command]);
+    if (!changed.ok) throw new Error(`update rejected: ${changed.error.code}`);
+    const result = changed.value.result;
+    const selected = own(engine.selection(observation(engine)));
+    const selection = consumeFlatListSemanticSelection(result, selected.takeSelection(), owner.generation);
+    if (!selection.ok) throw new Error(`updated selection rejected: ${selection.error.code}`);
+    transitions.push({update: changed.value, selection: selection.value});
+    return result;
+  };
   try {
     const owner = compile();
     const element = (type, children, properties = {}) => ({kind: "element", type: `breditor/${type}`, entityId: null, properties, children});
@@ -60,16 +72,18 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     if (!scalar.ok) throw new Error("selection serialization rejected");
     const s = scalar.value;
     equal(s.anchorNodeIndex, 6);
-    committed(engine.setRangeSelection(observation(engine), s.anchorPointKind, s.anchorNodeIndex, s.anchorOffset, s.anchorAffinity,
-      s.focusPointKind, s.focusNodeIndex, s.focusOffset, s.focusAffinity));
-    committed(engine.executeStringAction(observation(engine), "breditor/insert-flat-list-plain-text", "x\ny", true));
+    let current = transition(before, engine.setRangeSelection(observation(engine), s.anchorPointKind, s.anchorNodeIndex, s.anchorOffset, s.anchorAffinity,
+      s.focusPointKind, s.focusNodeIndex, s.focusOffset, s.focusAffinity), engine, owner);
+    current = transition(current, engine.executeStringAction(observation(engine), "breditor/insert-flat-list-plain-text", "x\ny", true), engine, owner);
     const after = project(engine, owner);
     equal(after.blocks[1].items.length, 3);
     equal(after.textBlocks.map(entry => entry.path), [[0], [1, 0, 0], [1, 1, 0], [1, 2, 0], [2, 0, 0]]);
     equal(after.textBlocks.map(entry => entry.block.runs.map(run => run.text).join("")), ["Intro", "Ax", "y🙂", "B", ""]);
     equal(selections.get(after).focus.textPath, [1, 1, 0, 0]);
     equal(selections.get(after).focus.utf16Offset, 1);
-    committed(engine.undo(observation(engine), false));
+    equal(current.blocks, after.blocks);
+    current = transition(current, engine.undo(observation(engine), false), engine, owner);
+    equal(current.blocks, before.blocks);
     equal(project(engine, owner).blocks, before.blocks);
     const saved = json(engine.sessionCheckpointJson());
     const freshOwner = compile();
@@ -81,7 +95,7 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     // Held JS projections are immutable values, not borrowed Wasm memory.
     equal(before.blocks[1].items.length, 2);
     equal(before.matchesProfile(freshOwner.generation, freshOwner.descriptor), false);
-    if (verifyDom !== undefined) verifyDom(before, after, owner);
+    if (verifyDom !== undefined) verifyDom(before, after, owner, transitions);
     return {status: "passed", scope: verifyDom === undefined
       ? "real Wasm hierarchical projection/selection conversion, list paste/undo and fresh-owner redo; no DOM/native input"
       : "real Wasm list projection/selection and recovery plus semantic DOM, directional selection bridge, affinity echo and drift rejection; no keyboard/IME/clipboard"};

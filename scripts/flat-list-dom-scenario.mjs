@@ -11,7 +11,7 @@ const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`list DOM mismatch: ${JSON.stringify(actual)}`);
 };
 
-export function verifyFlatListDom(before, after, owner) {
+export function verifyFlatListDom(before, after, owner, transitions) {
   const presentation = compileBrowserPresentation(owner.generation, owner.descriptor,
     createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]}));
   const renderer = new BreditorDomRenderer(presentation);
@@ -65,6 +65,25 @@ export function verifyFlatListDom(before, after, owner) {
     host.querySelector("ol").setAttribute("start", "9");
     equal(mapDomPointToFlatListSelectionPoint(rendered, changed.node, changed.offset).ok, false);
     equal(rendered.current, false);
+    selection.removeAllRanges();
+    rendered = value(renderer.renderFlatList(host, before)).rendered;
+    for (const {update, selection: semantic} of transitions) {
+      const previous = rendered;
+      const oldRoots = [...host.children];
+      const outcome = value(renderer.updateFlatList(rendered, update));
+      rendered = outcome.rendered;
+      equal(previous.current, false); equal(rendered.validateCanonicalDom(), true);
+      if (update.impact.kind === "none") {
+        equal(outcome.mode, "incremental");
+        if (oldRoots.some((root, index) => root !== host.children[index])) throw new Error("unchanged root identity lost");
+      }
+      value(bridge.write(rendered, semantic));
+      const echo = value(bridge.read(rendered));
+      equal(echo.origin, "programmaticEcho");
+      if (semantic !== null && echo.selection !== semantic) throw new Error("update selection echo lost");
+    }
+    equal(host.querySelector("ol").getAttribute("start"), "8");
+    equal(host.querySelectorAll("li").length, 3);
   } finally {
     if (selection.anchorNode && host.contains(selection.anchorNode)) selection.removeAllRanges();
     if (rendered) renderer.releaseFlatList(rendered);

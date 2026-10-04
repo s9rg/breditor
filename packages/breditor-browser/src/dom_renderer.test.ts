@@ -32,6 +32,7 @@ import { FlatListDocumentProjection } from "./flat_list_projection.js";
 import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
 import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "./flat_list_dom_point_mapping.js";
 import { isOwnedFlatListRenderedProjection, isOwnedRenderedProjection } from "./dom_renderer.js";
+import { FlatListProjectionUpdate, flatListUpdatePlan } from "./flat_list_projection_update.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
@@ -43,17 +44,18 @@ describe("hierarchical flat-list DOM and points", () => {
       createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]}));
     const block = (text: string, headingLevel: number | null = null, strong = false) => ({headingLevel,
       runs: text === "" ? [] : [{text, formatDetails: propertyFreeFormats(strong ? ["breditor/strong"] : [])}]});
-    const make = (revision = 0) => valueOf(FlatListDocumentProjection.create({schema: descriptor.schema,
-      snapshot: {lineage: "flat-list-dom", revision: String(revision)}, blocks: [
+    const inputBlocks = () => [
         {kind: "orderedList", start: 8, items: [block("a🙂b", 2, true), block("")]},
         {kind: "textBlock", block: block("tail")},
         {kind: "bulletList", items: [block("bullet")]},
-      ]}, generation, descriptor));
+      ];
+    const make = (revision = 0, blocks = inputBlocks()) => valueOf(FlatListDocumentProjection.create({schema: descriptor.schema,
+      snapshot: {lineage: "flat-list-dom", revision: String(revision)}, blocks}, generation, descriptor));
     const renderer = new BreditorDomRenderer(presentation);
     const host = document.createElement("div");
     const projection = make();
     const rendered = valueOf(renderer.renderFlatList(host, projection)).rendered;
-    return {renderer, host, projection, rendered, make};
+    return {renderer, host, projection, rendered, make, inputBlocks};
   }
   const textPoint = (textPath: number[], utf16Offset: number, affinity = "after") => ({kind: "text", textPath, utf16Offset, affinity});
 
@@ -244,6 +246,102 @@ describe("hierarchical flat-list DOM and points", () => {
         expect(range.order).toBe("collapsed");
       }
     }
+  });
+
+  it("preserves every subtree for a verified document-unchanged update", () => {
+    const {renderer, host, projection, rendered, make} = fixture();
+    const prior = [...host.children];
+    const result = make(1);
+    const update = valueOf(FlatListProjectionUpdate.create({base: projection, result, impact: {kind: "none"}}));
+    const next = valueOf(renderer.updateFlatList(rendered, update));
+    expect(next.mode).toBe("incremental");
+    expect([...host.children]).toEqual(prior);
+    expect(rendered.current).toBe(false);
+    expect(next.rendered.projection).toBe(result);
+    expect(next.rendered.validateCanonicalDom()).toBe(true);
+    expect(Object.isFrozen(update)).toBe(true);
+    expect(() => Reflect.construct(FlatListProjectionUpdate, [Symbol("forged")])).toThrow(TypeError);
+  });
+
+  it("retains and remaps a whole list after a root deletion", () => {
+    const {renderer, host, projection, rendered, make, inputBlocks} = fixture();
+    const priorTail = host.children[1], priorList = host.children[2];
+    const priorText = rendered.nodeForAstPath([2, 0, 0, 0]);
+    const result = make(1, inputBlocks().slice(1));
+    const update = valueOf(FlatListProjectionUpdate.create({base: projection, result,
+      impact: {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 0, end: 0}}}));
+    const next = valueOf(renderer.updateFlatList(rendered, update));
+    expect(next.mode).toBe("incremental");
+    expect(host.children[0]).toBe(priorTail); expect(host.children[1]).toBe(priorList);
+    expect(next.rendered.nodeForAstPath([1, 0, 0, 0])).toBe(priorText);
+    expect(next.rendered.astPathForDomNode(priorText!)).toEqual([1, 0, 0, 0]);
+    expect(next.rendered.nodeForAstPath([2, 0, 0, 0])).toBeNull();
+  });
+
+  it("limits textContainers to bare root blocks and preserves unrelated lists", () => {
+    const {renderer, host, projection, rendered, make, inputBlocks} = fixture();
+    const blocks = inputBlocks(); blocks[1]!.block!.runs[0]!.text = "changed";
+    const result = make(1, blocks), prior = [...host.children];
+    const update = valueOf(FlatListProjectionUpdate.create({base: projection, result, impact: {kind: "textContainers", paragraphIndexes: [1]}}));
+    const next = valueOf(renderer.updateFlatList(rendered, update));
+    expect(next.mode).toBe("incremental");
+    expect(host.children[0]).toBe(prior[0]); expect(host.children[2]).toBe(prior[2]);
+    expect(host.children[1]).not.toBe(prior[1]); expect(host.children[1]?.textContent).toBe("changed");
+    expect(FlatListProjectionUpdate.create({base: projection, result, impact: {kind: "textContainers", paragraphIndexes: [0]}}).ok).toBe(false);
+    expect(FlatListProjectionUpdate.create({base: projection, result, impact: {kind: "none"}}).ok).toBe(false);
+  });
+
+  it.each(["start", "rank", "text"])("rejects a false narrow claim hiding a list %s change", change => {
+    const {projection, make, inputBlocks} = fixture();
+    const blocks = inputBlocks();
+    if (change === "start") blocks[0]!.start = 9;
+    if (change === "rank") blocks[0]!.items![0]!.headingLevel = 3;
+    if (change === "text") blocks[0]!.items![0]!.runs[0]!.text = "different";
+    const result = make(1, blocks);
+    for (const impact of [{kind: "none"}, {kind: "textContainers", paragraphIndexes: [1]},
+      {kind: "rootSplice", oldRange: {start: 1, end: 2}, newRange: {start: 1, end: 2}}]) {
+      expect(FlatListProjectionUpdate.create({base: projection, result, impact}).ok).toBe(false);
+    }
+    expect(FlatListProjectionUpdate.create({base: projection, result, impact: {kind: "root"}}).ok).toBe(true);
+  });
+
+  it("falls back to a full checked render for root impact or synchronous DOM drift", () => {
+    for (const drift of [false, true]) {
+      const {renderer, host, projection, rendered, make} = fixture();
+      const prior = host.children[0];
+      const update = valueOf(FlatListProjectionUpdate.create({base: projection, result: make(1), impact: {kind: drift ? "none" : "root"}}));
+      if (drift) host.querySelector("ol")!.setAttribute("start", "99");
+      const next = valueOf(renderer.updateFlatList(rendered, update));
+      expect(next).toMatchObject({mode: "full", fallbackReason: drift ? "domDrift" : "root"});
+      expect(host.children[0]).not.toBe(prior);
+      expect(next.rendered.validateCanonicalDom()).toBe(true);
+    }
+  });
+
+  it("rejects nonconsecutive/foreign bases, wrong-mode and stale updates before mutation", () => {
+    const {renderer, host, projection, rendered, make} = fixture();
+    for (const result of [make(0), make(2), fixture().make(1)]) expect(FlatListProjectionUpdate.create({base: projection, result, impact: {kind: "root"}}).ok).toBe(false);
+    const update = valueOf(FlatListProjectionUpdate.create({base: projection, result: make(1), impact: {kind: "none"}}));
+    // @ts-expect-error List updates must not enter the legacy renderer.
+    expect(renderer.update(rendered, update).ok).toBe(false);
+    expect(new BreditorDomRenderer().updateFlatList(rendered, update).ok).toBe(false);
+    valueOf(renderer.updateFlatList(rendered, update));
+    const before = host.innerHTML;
+    expect(renderer.updateFlatList(rendered, update).ok).toBe(false); expect(host.innerHTML).toBe(before);
+  });
+
+  it("copies impact records and rejects sparse/getter/invalid ranges", () => {
+    const {projection, make} = fixture(); const result = make(1);
+    const impact = {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 0, end: 1}};
+    const update = valueOf(FlatListProjectionUpdate.create({base: projection, result, impact}));
+    impact.oldRange.end = 3;
+    expect(update.impact).toMatchObject({oldRange: {end: 1}});
+    expect(Object.isFrozen(flatListUpdatePlan(update))).toBe(true);
+    const getter = vi.fn(() => "none");
+    for (const invalid of [{get kind() {return getter();}}, {kind: "textContainers", paragraphIndexes: new Array(1)},
+      {kind: "textContainers", paragraphIndexes: [1, 1]}, {kind: "rootSplice", oldRange: {start: 0, end: 4}, newRange: {start: 0, end: 3}},
+      {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 1, end: 2}}]) expect(FlatListProjectionUpdate.create({base: projection, result, impact: invalid}).ok).toBe(false);
+    expect(getter).not.toHaveBeenCalled();
   });
 });
 

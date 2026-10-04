@@ -2,6 +2,7 @@ import {
   createStructuralTextProjection, exactDataRecord, readExactBoundedArray,
   bindProjectionPresentation,
   projectionMatchesProfileGeneration,
+  projectionsShareProfileBinding, projectionProfileDescriptor,
   type BaseDocumentProjection, type BaseParagraphProjection,
   type ProjectionSchema, type ProjectionSnapshot,
 } from "./projection.js";
@@ -113,6 +114,18 @@ export function bindFlatListProjectionPresentation(projection: FlatListDocumentP
 export function flatListProjectionMatchesProfileGeneration(projection: FlatListDocumentProjection, generation: WasmProfileGenerationView): boolean {
   const text = TEXT_PROOFS.get(projection);
   return text !== undefined && projectionMatchesProfileGeneration(text, generation);
+}
+
+/** @internal */
+export function flatListProjectionsShareProfile(left: FlatListDocumentProjection, right: FlatListDocumentProjection): boolean {
+  const a = TEXT_PROOFS.get(left), b = TEXT_PROOFS.get(right);
+  return a !== undefined && b !== undefined && projectionsShareProfileBinding(a, b);
+}
+
+/** @internal */
+export function flatListProjectionDescriptor(projection: FlatListDocumentProjection): BrowserCompiledProfileDescriptor | undefined {
+  const text = TEXT_PROOFS.get(projection);
+  return text === undefined ? undefined : projectionProfileDescriptor(text);
 }
 
 /** Internal adapter bridge; the temporary flat text proof is never a renderer result. @internal */

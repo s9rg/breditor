@@ -13,7 +13,8 @@ import {
   isOwnedProjection,
   projectionPresentation,
 } from "./projection.js";
-import { bindFlatListProjectionPresentation, isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { bindFlatListProjectionPresentation, isOwnedFlatListProjection, type FlatListDocumentProjection, type FlatListRootProjection } from "./flat_list_projection.js";
+import { flatListUpdatePlan, isOwnedFlatListProjectionUpdate, type FlatListProjectionUpdate } from "./flat_list_projection_update.js";
 import {
   browserPresentationRecipesForFormatDetails,
   isOwnedBrowserCompiledPresentation,
@@ -757,6 +758,40 @@ export class BreditorDomRenderer {
     }
   }
 
+  /** Installs an exact list transition, retaining only proved unchanged root subtrees. @internal */
+  updateFlatList(rendered: RenderedProjection<FlatListDocumentProjection>, update: FlatListProjectionUpdate): BrowserProjectionResult<ProjectionRenderOutcome<FlatListDocumentProjection>> {
+    if (!isOwnedFlatListProjectionUpdate(update)) return projectionFailure("projection.invalid_update");
+    if (!isOwnedFlatListRenderedProjection(rendered)) return projectionFailure("renderer.foreign_or_stale_render");
+    const host = rendered.host;
+    if (!beginHostOperation(host)) return projectionFailure("renderer.dom_write_failed");
+    try {
+      const owner = HOST_OWNERS.get(host);
+      if (!rendered.current || owner?.rendererToken !== this.#rendererToken || owner.handle !== rendered || update.base !== rendered.projection) return projectionFailure("renderer.foreign_or_stale_render");
+      const guard = this.#snapshotInstallGuard(host);
+      if (guard === null) return projectionFailure("renderer.dom_write_failed");
+      const plan = flatListUpdatePlan(update);
+      if (plan === undefined || !this.#bindProjectionPresentation(update.result)) return projectionFailure("projection.invalid_update");
+      if (!renderFitsDomBudget(update.result)) return projectionFailure("projection.resource_limit");
+      try {
+        const canonical = rendered.canonicalDomMatches();
+        if (plan.kind === "full" || !canonical) return this.#install(host, update.result,
+          buildFullProjection(host, update.result, this.#presentation), "full", plan.kind === "full" ? plan.reason : "domDrift", guard);
+        const document = nativeOwnerDocument(host);
+        if (document === null) return projectionFailure("renderer.dom_write_failed");
+        const maps = createMaps(host);
+        const reuse = new Map(plan.roots.map(pair => [pair.newIndex, pair.oldIndex]));
+        const roots = update.result.blocks.map((root, index) => {
+          const oldIndex = reuse.get(index);
+          if (oldIndex === undefined) return buildFlatListRoot(document, root, index, maps, this.#presentation);
+          const node = rendered.nodeForAstPath([oldIndex]);
+          if (node === null || !mapExistingFlatListRoot(node, root, index, maps, this.#presentation)) throw new TypeError("List reuse no longer matches canonical DOM.");
+          return node as HTMLElement;
+        });
+        return this.#install(host, update.result, {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze([])}, "incremental", undefined, guard);
+      } catch { return projectionFailure("renderer.dom_write_failed"); }
+    } finally { endHostOperation(host); }
+  }
+
   /** Invalidates a current handle without changing its host DOM. */
   release(rendered: RenderedProjection): boolean {
     if (!isOwnedRenderedProjection(rendered)) {
@@ -1031,21 +1066,45 @@ function buildFlatListProjection(
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): PreparedDom {
-  const roots = projection.blocks.map((root, rootIndex) => {
-    if (root.kind === "textBlock") return buildParagraph(document, root.block, rootIndex, maps, presentation);
-    const tag = root.kind === "bulletList" ? "ul" : "ol";
-    const list = createHtmlElement(document, tag, tag);
-    mapNode(list, Object.freeze([rootIndex]), maps.astToDom, maps.domToAst, true);
-    if (root.kind === "orderedList") nativeSetAttribute(list, "start", String(root.start));
-    for (const [itemIndex, block] of root.items.entries()) {
-      const item = createHtmlElement(document, "li", "li");
-      mapNode(item, Object.freeze([rootIndex, itemIndex]), maps.astToDom, maps.domToAst, true);
-      item.append(buildParagraph(document, block, Object.freeze([rootIndex, itemIndex, 0]), maps, presentation));
-      list.append(item);
-    }
-    return list;
-  });
+  const roots = projection.blocks.map((root, rootIndex) => buildFlatListRoot(document, root, rootIndex, maps, presentation));
   return {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze([])};
+}
+
+function buildFlatListRoot(document: Document, root: FlatListRootProjection, rootIndex: number, maps: ProjectionMaps,
+  presentation: BrowserCompiledPresentation | undefined): HTMLElement {
+  if (root.kind === "textBlock") return buildParagraph(document, root.block, rootIndex, maps, presentation);
+  const tag = root.kind === "bulletList" ? "ul" : "ol";
+  const list = createHtmlElement(document, tag, tag);
+  mapNode(list, Object.freeze([rootIndex]), maps.astToDom, maps.domToAst, true);
+  if (root.kind === "orderedList") nativeSetAttribute(list, "start", String(root.start));
+  for (const [itemIndex, block] of root.items.entries()) {
+    const item = createHtmlElement(document, "li", "li");
+    mapNode(item, Object.freeze([rootIndex, itemIndex]), maps.astToDom, maps.domToAst, true);
+    item.append(buildParagraph(document, block, Object.freeze([rootIndex, itemIndex, 0]), maps, presentation));
+    list.append(item);
+  }
+  return list;
+}
+
+/** Rebinds every descendant path when a proved root subtree moves. */
+function mapExistingFlatListRoot(node: Node, root: FlatListRootProjection, rootIndex: number, maps: ProjectionMaps,
+  presentation: BrowserCompiledPresentation | undefined): boolean {
+  if (root.kind === "textBlock") return isHtmlElementNamed(node, textBlockTag(root.block)) && mapExistingParagraph(node, root.block, rootIndex, maps, presentation);
+  if (!isHtmlElementNamed(node, root.kind === "bulletList" ? "ul" : "ol")) return false;
+  const attrs = nativeAttributeNames(node);
+  if (root.kind === "bulletList" ? attrs.length !== 0 : attrs.length !== 1 || attrs[0] !== "start" || nativeGetAttribute(node, "start") !== String(root.start)) return false;
+  const items = nativeChildNodes(node);
+  if (items.length !== root.items.length) return false;
+  mapNode(node, Object.freeze([rootIndex]), maps.astToDom, maps.domToAst, true);
+  for (const [index, block] of root.items.entries()) {
+    const item = items[index];
+    if (!isHtmlElementNamed(item, "li") || nativeAttributeNames(item).length !== 0) return false;
+    const children = nativeChildNodes(item), paragraph = children[0];
+    if (children.length !== 1 || !isHtmlElementNamed(paragraph, textBlockTag(block)) ||
+      !mapExistingParagraph(paragraph, block, Object.freeze([rootIndex, index, 0]), maps, presentation)) return false;
+    mapNode(item, Object.freeze([rootIndex, index]), maps.astToDom, maps.domToAst, true);
+  }
+  return true;
 }
 
 /** Full shape and private-map proof, including unmapped placeholders/wrappers. */
@@ -1272,21 +1331,21 @@ function paragraphDomMatches(
 function mapExistingParagraph(
   paragraphNode: HTMLElement,
   paragraph: BaseParagraphProjection,
-  paragraphIndex: number,
+  paragraphIndex: number | AstPath,
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): boolean {
   if (!paragraphDomMatches(paragraphNode, paragraph, presentation)) {
     return false;
   }
-  const paragraphPath = paragraphAstPath(paragraphIndex);
+  const paragraphPath = typeof paragraphIndex === "number" ? paragraphAstPath(paragraphIndex) : paragraphIndex;
   mapNode(paragraphNode, paragraphPath, maps.astToDom, maps.domToAst, true);
   if (paragraph.runs.length === 0) {
     return true;
   }
   const children = nativeChildNodes(paragraphNode);
   paragraph.runs.forEach((run, runIndex) => {
-    const path = textRunAstPath(paragraphIndex, runIndex);
+    const path = typeof paragraphIndex === "number" ? textRunAstPath(paragraphIndex, runIndex) : Object.freeze([...paragraphIndex, runIndex]);
     const child = children[runIndex];
     if (child === undefined) {
       return;

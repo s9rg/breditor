@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "062d847",
+  "status": "Low-level list updates, rendering and selection restoration qualified; editor controller integration incomplete",
+  "contracts": {
+    "identity": "Consecutive same-lineage revisions and exact shared profile binding",
+    "proof": "Independent whole-root equality for none, rootSplice prefix/suffix and unaffected bare textContainers",
+    "coordinates": "textContainers remains bare direct-root only; nested list text never uses that coordinate domain",
+    "reuse": "Unchanged whole root subtrees retain identity, with every descendant mapped to its result AST path",
+    "fallback": "Broad impact or detected synchronous DOM drift uses full checked render",
+    "consumption": "Shared parent/child claim, outer alias protection, cleanup and final generation checks",
+    "legacy": "Legacy update consumers/renderers keep base-only admission and result types"
+  },
+  "verification": {
+    "newUpdateTests": 15,
+    "browserTests": 1619,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Retained raw Wasm and projection/recovery scenarios plus consecutive generated selection, multiline insertion and undo updates through list rendering and exact selection echoes",
+    "testScope": "False narrow-impact rejection, heading/number/text equality, list suffix movement and path remapping, direct-root-only textContainers, full fallback, foreign/stale bases, copied closed impacts, generated child/parent cleanup and reentrancy",
+    "developmentCorrections": ["Kept the legacy cleanup-captured update adapter return type base-only during shared implementation refactoring"],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "List browser owner/controller profile mode",
+    "Toolbar, keyboard, composition and clipboard integration",
+    "Visible demo, browser reload and backup recovery",
+    "Native-input qualification, packed-consumer and size/performance gates"
+  ],
+  "evidenceBoundary": "Generated command updates are exercised, not native editing events or controller scheduling; changed list DOM identity and broad historical WebKit resolution are not claimed",
+  "pushed": false,
+  "published": false
+}
