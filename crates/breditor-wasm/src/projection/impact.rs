@@ -59,7 +59,7 @@ fn text_container_impact(commit: &Commit) -> Option<Box<[u32]>> {
     let changes = commit.changes();
     if operations.is_empty()
         || operations.len() != changes.len()
-        || !operations.iter().all(|operation| matches!(operation, Operation::TextSplice(_)))
+        || !operations.iter().all(is_text_splice)
     {
         return None;
     }
@@ -68,8 +68,8 @@ fn text_container_impact(commit: &Commit) -> Option<Box<[u32]>> {
     for change in changes {
         let text = change.as_text()?;
         let path = text.container_path();
-        if !is_direct_root_paragraph(commit.before().document(), path)
-            || !is_direct_root_paragraph(commit.after().document(), path)
+        if !is_direct_root_text_container(commit.before().document(), path)
+            || !is_direct_root_text_container(commit.after().document(), path)
         {
             return None;
         }
@@ -97,13 +97,22 @@ fn root_splice_impact(commit: &Commit) -> Option<(u32, u32, u32, u32)> {
     Some((old_range.start(), old_range.end(), new_range.start(), new_range.end()))
 }
 
-fn is_direct_root_paragraph(document: &Document, path: &NodePath) -> bool {
+fn is_text_splice(operation: &Operation) -> bool {
+    match operation {
+        Operation::TextSplice(_) => true,
+        #[cfg(feature = "experimental-text-blocks")]
+        Operation::TextBlockSplice(_) => true,
+        _ => false,
+    }
+}
+
+fn is_direct_root_text_container(document: &Document, path: &NodePath) -> bool {
     path.len() == 1
-        && document
-            .node_at(path)
-            .ok()
-            .and_then(|node| node.as_element())
-            .is_some_and(|element| element.kind().as_str() == "breditor/paragraph")
+        && document.node_at(path).ok().and_then(|node| node.as_element()).is_some_and(|element| {
+            element.kind().as_str() == "breditor/paragraph"
+                || (cfg!(feature = "experimental-text-blocks")
+                    && element.kind().as_str() == "breditor/heading")
+        })
 }
 
 fn valid_root_range(document: &Document, start: u32, end: u32) -> bool {

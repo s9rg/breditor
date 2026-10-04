@@ -1,0 +1,145 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "86668091c77bdc04da9b93d0435cecc918d2074b",
+  "status": "Experimental heading projection/rendering qualified through real Wasm and three browser engines; full beta goal remains active",
+  "contract": {
+    "wasmFeature": "experimental-text-blocks",
+    "getter": "headingLevel(index): explicit JS number 1–6 only on heading elements; undefined otherwise; snapshot-local read-only indexes",
+    "browserConsumer": "consumeTextBlockSemanticProjection; explicit internal entry, not public index/advanced export",
+    "projection": "Legacy paragraphs collection names retained for the direct-root text-block view. Immutable optional headingLevel; experimental input uses null for paragraphs. Existing constructors remain closed.",
+    "ownership": "Exact profile generation and snapshot checks; projection mode cannot cross in updates; child consumption, cleanup and reentrancy guards preserved.",
+    "render": "Semantic h1–h6 tags, empty-block BR placeholders, scalar UTF-16 mappings, rank-aware equality and canonical DOM checks; typing keeps heading node identity, kind/rank changes replace the affected tag and preserve unaffected siblings.",
+    "composition": "Leased-DOM reconciliation validates the exact heading tag and unchanged prefix/suffix. Native IME/input qualification is not claimed.",
+    "optimization": "Compact shared adapter snapshots preserve method read order/phases, receiver, argument counts, numeric normalization, thenable checks and cleanup. No budget increases."
+  },
+  "verification": {
+    "browserUnitTests": 1448,
+    "browserUnitFiles": 52,
+    "newBrowserTests": 8,
+    "experimentalWasmNativeTests": 49,
+    "experimentalWasmTestFeatures": "experimental-text-blocks (default selection-token-codes retained)",
+    "newWasmTests": 2,
+    "defaultWasmNativeTests": 43,
+    "clippy": "Workspace/all targets/all features passed with warnings denied",
+    "typecheck": "Production and test TypeScript passed",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "defaultBrowserTests": {
+      "passed": 90,
+      "command": "playwright test tests/browser/editor.spec.ts tests/browser/profile-descriptor.spec.ts tests/browser/action-state-restore.spec.ts tests/browser/link-history-lifecycle.spec.ts",
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "retries": 0
+    },
+    "experimentalBrowsers": [
+      {
+        "name": "chromium",
+        "version": "151.0.7922.34",
+        "runs": 5
+      },
+      {
+        "name": "firefox",
+        "version": "153.0",
+        "runs": 5
+      },
+      {
+        "name": "webkit",
+        "version": "26.5",
+        "runs": 5
+      }
+    ],
+    "experimentalScenario": "Real generated Wasm to profile descriptor to heading projection to DOM; selection command, Unicode typing, incremental rank change, untouched sibling retention, DOM point mapping, undo/redo, fresh Session V5 restore, stale observation rejection, restored undo/redo. Seven successful command/render updates per run.",
+    "jsdom": "Same shared scenario passed",
+    "wireSmoke": "Generated experimental Wasm command/export/session regression passed",
+    "defaultPackage": "Reviewed default ABI/notice/path-leak build checks and generated package smoke passed",
+    "sizes": {
+      "browserJavaScript": 1079664,
+      "browserDeclarations": 275856,
+      "defaultWasm": 1609338,
+      "defaultWasmGzip9": 451499,
+      "demoJavaScript": 861060,
+      "demoJavaScriptGzip9": 224984,
+      "allExistingSizeChecksPassed": true
+    },
+    "experimentalDeveloperWasm": {
+      "bytes": 1806460,
+      "gzip9": 505561,
+      "sha256": "88c819f874e3d75d31a1b8d32bbf032a4565ffda97b171bbcfe96b96830d5017",
+      "releaseBaseline": false
+    },
+    "developmentCorrections": [
+      "Composition fixture needed a connected host, matching the existing lease contract.",
+      "The initial harness appended its route after Vite's 404 fallback; a pre-handler plugin and HTTP health check fixed Firefox navigation before editor code ran.",
+      "The initial heading code exceeded existing browser/declaration/demo gzip budgets; deduplicated adapter snapshots, invocation helpers and DOM tag checks rather than raising ceilings.",
+      "Corrected fixture descriptor-result access and installed jsdom DOM constructors for native-intrinsic capture."
+    ],
+    "fullReleaseGateRun": false,
+    "nativeSafariRun": false,
+    "nativeClipboardOrIMERun": false,
+    "pushed": false,
+    "published": false
+  },
+  "remaining": [
+    "Isolated optional Wasm build/load and reviewed declaration boundary",
+    "Heading bootstrap/command-adapter input routing, toolbar/keyboard and full recovery integration",
+    "Flat bullet and numbered lists",
+    "Native desktop input and clipboard qualification; nested lists deferred"
+  ],
+  "evidence": [
+    {
+      "path": "crates/breditor-wasm/src/projection/heading.rs",
+      "sha256": "a0abf1d7629a583f524929fce9410c8470d94e7f475d9c7e6d6bdd28e1fd872d"
+    },
+    {
+      "path": "crates/breditor-wasm/src/projection/impact.rs",
+      "sha256": "a6c8d0b0b1b01c3fd60fd5297a1b5031605f2e6f5f76c0439c62c303e33282a3"
+    },
+    {
+      "path": "packages/breditor-browser/src/projection.ts",
+      "sha256": "9ebe1bb6f99a57842e18b8c0126736138e5b9c5fac8f3faef97ce9cc1377a54f"
+    },
+    {
+      "path": "packages/breditor-browser/src/wasm_projection_adapter.ts",
+      "sha256": "c78e4803fec4decca10dd97fe8f8a4be7cd1349f72421f341944c82476550325"
+    },
+    {
+      "path": "packages/breditor-browser/src/dom_renderer.ts",
+      "sha256": "25176fd907b623aa420d084fc744466eeb8bd976a41c9b4674e2125d7921eed8"
+    },
+    {
+      "path": "scripts/heading-dom-scenario.mjs",
+      "sha256": "6adade29b9c26a9a925e111d7aacfff807bf724b7d992aa5b2634566576b872a"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-browser-all-tests.log",
+      "sha256": "0d391b87e57a063f677e3ee895e68b85ac739a7272fef5ee38b3f48d4bf2c808"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-default-browsers.log",
+      "sha256": "c1838116032960307b5cdfe2ee71a9c638a0527017769f12676716215d53a46d"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-real-browsers.log",
+      "sha256": "e1f624f3dd3dbbb429c966f99a85cc304d7031f468386734b3bdefd743720236"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-projection-size.log",
+      "sha256": "fe988804b75654cf8813d3c7fe022cff09d7a28114bdc3284c07c2f0560e8cb3"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-projection-rust.log",
+      "sha256": "0fe961d18731c527fecef93ce3667b770ccd81acfc96c601973dfeec84fb1e97"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-projection-default-rust.log",
+      "sha256": "23a1bdd3c771b843feccf809899b9a70bc9d0361a1722aa1b60090b08f9a40e4"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-projection-clippy.log",
+      "sha256": "0c716d1e540d466172794b3ed48cc7934090e7bcc9b064a593a194010043781d"
+    }
+  ]
+}

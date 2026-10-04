@@ -77,9 +77,14 @@ export interface BaseTextRunProjection {
 
 /** One direct-root base-schema paragraph. */
 export interface BaseParagraphProjection {
+  /** Opt-in semantic heading rank; absent means an ordinary paragraph. */
+  readonly headingLevel?: HeadingProjectionLevel;
   /** Canonical text leaves; an empty list represents an empty paragraph. */
   readonly runs: readonly BaseTextRunProjection[];
 }
+
+/** Closed semantic heading rank, independent of font size. */
+export type HeadingProjectionLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 /** Input accepted by {@link BaseDocumentProjection.create}. */
 export interface BaseDocumentProjectionInput {
@@ -131,6 +136,7 @@ const OWNED_PROJECTIONS = new WeakSet<BaseDocumentProjection>();
 interface ProjectionProfileBinding {
   readonly generation: WasmProfileGenerationView;
   readonly descriptor: BrowserCompiledProfileDescriptor;
+  readonly textBlocks: boolean;
 }
 const PROFILE_BINDINGS = new WeakMap<BaseDocumentProjection, ProjectionProfileBinding>();
 const PROJECTION_PRESENTATIONS = new WeakMap<
@@ -242,23 +248,40 @@ export function createProfiledDocumentProjection(
   generation: WasmProfileGenerationView,
   descriptor: BrowserCompiledProfileDescriptor,
 ): BrowserProjectionResult<BaseDocumentProjection> {
+  return createOwnedProfiledProjection(input, generation, descriptor, false);
+}
+
+/** Experimental input: headingLevel is null (paragraph) or 1–6. @internal */
+export function createTextBlockDocumentProjection(
+  input: unknown,
+  generation: WasmProfileGenerationView,
+  descriptor: BrowserCompiledProfileDescriptor,
+): BrowserProjectionResult<BaseDocumentProjection> {
+  return createOwnedProfiledProjection(input, generation, descriptor, true);
+}
+
+function createOwnedProfiledProjection(
+  input: unknown,
+  generation: WasmProfileGenerationView,
+  descriptor: BrowserCompiledProfileDescriptor,
+  textBlocks: boolean,
+): BrowserProjectionResult<BaseDocumentProjection> {
   try {
     if (
       !browserCompiledProfileDescriptorMatchesGeneration(descriptor, generation)
     ) {
       return projectionFailure("projection.invalid_shape");
     }
-    const validation = validateProfiledProjection(input, descriptor);
+    const validation = validateProfiledProjection(input, descriptor, textBlocks);
     if (!validation.ok) return projectionFailure(validation.code);
-    const binding = Object.freeze({ generation, descriptor });
-    return projectionSuccess(
-      new OwnedProfiledDocumentProjection(
-        validation.value.schema,
-        validation.value.snapshot,
-        validation.value.paragraphs,
-        binding,
-      ),
+    const binding = Object.freeze({ generation, descriptor, textBlocks });
+    const projection = new OwnedProfiledDocumentProjection(
+      validation.value.schema,
+      validation.value.snapshot,
+      validation.value.paragraphs,
+      binding,
     );
+    return projectionSuccess(projection);
   } catch {
     return projectionFailure("projection.invalid_shape");
   }
@@ -299,7 +322,8 @@ export function projectionsShareProfileBinding(
     return leftBinding === rightBinding;
   }
   return leftBinding.generation === rightBinding.generation &&
-    leftBinding.descriptor === rightBinding.descriptor;
+    leftBinding.descriptor === rightBinding.descriptor &&
+    leftBinding.textBlocks === rightBinding.textBlocks;
 }
 
 /** Binds a profiled projection to one checked browser presentation exactly once. @internal */
@@ -359,7 +383,7 @@ export function paragraphsEqual(
   if (left === right) {
     return true;
   }
-  if (left.runs.length !== right.runs.length) {
+  if (left.headingLevel !== right.headingLevel || left.runs.length !== right.runs.length) {
     return false;
   }
   for (let index = 0; index < left.runs.length; index += 1) {
@@ -490,6 +514,7 @@ function validateProjection(input: unknown): ValidationResult {
 function validateProfiledProjection(
   input: unknown,
   descriptor: BrowserCompiledProfileDescriptor,
+  textBlocks: boolean,
 ): ValidationResult {
   const projection = exactDataRecord(input, ["schema", "snapshot", "paragraphs"]);
   if (projection === null) return validationFailure("projection.invalid_shape");
@@ -530,9 +555,17 @@ function validateProfiledProjection(
   const paragraphs: BaseParagraphProjection[] = [];
   for (let paragraphIndex = 0; paragraphIndex < paragraphInputs.length; paragraphIndex += 1) {
     const paragraphInput = paragraphInputs[paragraphIndex];
-    const paragraph = exactDataRecord(paragraphInput, ["runs"]);
+    const paragraph = exactDataRecord(paragraphInput, textBlocks ? ["runs", "headingLevel"] : ["runs"]);
     if (paragraph === null) {
       return validationFailure("projection.invalid_shape");
+    }
+    const headingLevel = textBlocks ? paragraph["headingLevel"] : null;
+    if (headingLevel !== null && !isHeadingProjectionLevel(headingLevel)) {
+      return validationFailure("projection.invalid_shape");
+    }
+    if (headingLevel !== null) totalPropertyValues += 1;
+    if (totalPropertyValues > MAX_TOTAL_PROPERTY_VALUES) {
+      return validationFailure("projection.resource_limit");
     }
     const runArray = readExactBoundedArray(
       paragraph["runs"],
@@ -593,7 +626,9 @@ function validateProfiledProjection(
       }
       runs.push(freezeRun(text, formats, formatDetails));
     }
-    paragraphs.push(Object.freeze({ runs: Object.freeze(runs) }));
+    paragraphs.push(Object.freeze(headingLevel === null
+      ? { runs: Object.freeze(runs) }
+      : { headingLevel, runs: Object.freeze(runs) }));
   }
 
   const ownedSchema: CompiledProjectionSchema = Object.freeze({
@@ -609,6 +644,11 @@ function validateProfiledProjection(
       paragraphs: Object.freeze(paragraphs),
     },
   };
+}
+
+/** @internal */
+export function isHeadingProjectionLevel(value: unknown): value is HeadingProjectionLevel {
+  return typeof value === "number" && value >= 1 && value <= 6 && Number.isInteger(value);
 }
 
 interface ValidatedFormatDetails {

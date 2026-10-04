@@ -510,38 +510,38 @@ function readFormatProperties(
   const output: BrowserProfileFormatPropertyDescriptor[] = [];
   let prior = "";
   for (let propertyIndex = 0; propertyIndex < count; propertyIndex += 1) {
-    const name = invoke2(methods.formatPropertyName, receiver, formatIndex, propertyIndex);
-    const presence = invoke2(
+    const name = invoke(methods.formatPropertyName, receiver, formatIndex, propertyIndex);
+    const presence = invoke(
       methods.formatPropertyPresence,
       receiver,
       formatIndex,
       propertyIndex,
     );
-    const kind = invoke2(
+    const kind = invoke(
       methods.formatPropertyValueType,
       receiver,
       formatIndex,
       propertyIndex,
     );
-    const integerMinimum = invoke2(
+    const integerMinimum = invoke(
       methods.formatPropertyIntegerMinimum,
       receiver,
       formatIndex,
       propertyIndex,
     );
-    const integerMaximum = invoke2(
+    const integerMaximum = invoke(
       methods.formatPropertyIntegerMaximum,
       receiver,
       formatIndex,
       propertyIndex,
     );
-    const stringMinimum = invoke2(
+    const stringMinimum = invoke(
       methods.formatPropertyStringMinimumUtf8Bytes,
       receiver,
       formatIndex,
       propertyIndex,
     );
-    const stringMaximum = invoke2(
+    const stringMaximum = invoke(
       methods.formatPropertyStringMaximumUtf8Bytes,
       receiver,
       formatIndex,
@@ -632,7 +632,7 @@ function formatPropertySentinelsAreAbsent(
     methods.formatPropertyStringMaximumUtf8Bytes,
   ];
   return calls.every(
-    (method) => invoke2(method, receiver, formatIndex, propertyCount) === undefined,
+    (method) => invoke(method, receiver, formatIndex, propertyCount) === undefined,
   );
 }
 
@@ -828,18 +828,18 @@ function descriptorSentinelsAreAbsent(
 ): boolean {
   if (
     invoke(methods.formatPropertyCount, receiver, counts.formatCount) !== undefined ||
-    invoke2(methods.formatPropertyName, receiver, counts.formatCount, 0) !== undefined ||
-    invoke2(methods.formatPropertyPresence, receiver, counts.formatCount, 0) !== undefined ||
-    invoke2(methods.formatPropertyValueType, receiver, counts.formatCount, 0) !== undefined ||
-    invoke2(methods.formatPropertyIntegerMinimum, receiver, counts.formatCount, 0) !== undefined ||
-    invoke2(methods.formatPropertyIntegerMaximum, receiver, counts.formatCount, 0) !== undefined ||
-    invoke2(
+    invoke(methods.formatPropertyName, receiver, counts.formatCount, 0) !== undefined ||
+    invoke(methods.formatPropertyPresence, receiver, counts.formatCount, 0) !== undefined ||
+    invoke(methods.formatPropertyValueType, receiver, counts.formatCount, 0) !== undefined ||
+    invoke(methods.formatPropertyIntegerMinimum, receiver, counts.formatCount, 0) !== undefined ||
+    invoke(methods.formatPropertyIntegerMaximum, receiver, counts.formatCount, 0) !== undefined ||
+    invoke(
       methods.formatPropertyStringMinimumUtf8Bytes,
       receiver,
       counts.formatCount,
       0,
     ) !== undefined ||
-    invoke2(
+    invoke(
       methods.formatPropertyStringMaximumUtf8Bytes,
       receiver,
       counts.formatCount,
@@ -934,19 +934,8 @@ function readScalar(value: object, key: string): unknown {
   return normalizeWasmBoundaryNumber(result);
 }
 
-function invoke(method: Function, receiver: object, index: number): unknown {
-  const result = Reflect.apply(method, receiver, [index]) as unknown;
-  if (valueIsThenable(result)) throw new TypeError("asynchronous descriptor method");
-  return normalizeWasmBoundaryNumber(result);
-}
-
-function invoke2(
-  method: Function,
-  receiver: object,
-  first: number,
-  second: number,
-): unknown {
-  const result = Reflect.apply(method, receiver, [first, second]) as unknown;
+function invoke(method: Function, receiver: object, ...indexes: number[]): unknown {
+  const result = Reflect.apply(method, receiver, indexes) as unknown;
   if (valueIsThenable(result)) throw new TypeError("asynchronous descriptor method");
   return normalizeWasmBoundaryNumber(result);
 }

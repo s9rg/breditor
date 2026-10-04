@@ -446,6 +446,37 @@ This keeps generated bindings under ignored `target/`; it does not overwrite
 `packages/breditor-wasm/dist` or establish a reproducible release-size baseline.
 Run the ordinary package build separately to validate the default reviewed ABI.
 
+### Experimental heading browser projection
+
+`BreditorProjection.headingLevel` is feature-gated with the heading Wasm build.
+It reports only checked heading ranks and uses explicit JS values rather than
+optional-number sentinel transport. The browser's separately selected
+`consumeTextBlockSemanticProjection` consumes that view under an exact owned
+profile descriptor/generation. The legacy consumer remains paragraph-only.
+Updates inherit the initial projection's experimental factory and cannot mix
+legacy/experimental projection modes. All child handles retain existing
+single-consumption, cleanup and reentrancy checks.
+
+For this direct-root text-block slice, the existing projection collection name
+`paragraphs` remains an adapter compatibility name, not a claim that headings
+are paragraphs. Optional immutable `headingLevel` metadata controls semantic
+`h1`–`h6` rendering. Rank changes participate in equality, DOM drift checks,
+incremental replacement and composition structure checks. Native DOM selection
+points keep the same AST paths and scalar-aligned UTF-16 rules.
+
+After building the browser package and the experimental bindings above, run:
+
+```sh
+node scripts/check-experimental-heading-dom.mjs target/heading-bridge-smoke
+node scripts/check-experimental-heading-browsers.mjs
+```
+
+The first check uses jsdom. The second serves a local harness and runs five
+fresh editor owners each under Playwright Chromium, Firefox and WebKit. Both
+exercise the same real-Wasm scenario, including restore/undo/redo; neither
+asserts native keyboard, clipboard, IME, Safari-app or mobile qualification.
+The ordinary demo has not switched to the heading profile.
+
 ### Normalized plain-text paste
 
 The experimental `InsertTextBlockPlainTextAction` accepts the existing bounded

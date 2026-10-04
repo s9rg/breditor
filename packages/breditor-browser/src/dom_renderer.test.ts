@@ -23,7 +23,7 @@ import {
   nativeNodeValue,
   nativeParentNode,
 } from "./html_host.js";
-import { createProfiledDocumentProjection } from "./projection.js";
+import { createProfiledDocumentProjection, createTextBlockDocumentProjection } from "./projection.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
@@ -60,6 +60,126 @@ function render(
 }
 
 describe("BreditorDomRenderer", () => {
+  function headingFixture() {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, ["breditor/strong"]);
+    const presentation = compileBrowserPresentation(generation, descriptor,
+      createInlineFormatRenderManifest({ recipes: [{ formatKind: "breditor/strong", element: "strong" }] }));
+    const input = (revision: number, levels: readonly unknown[]) => ({
+      schema: descriptor.schema,
+      snapshot: { lineage: "heading-dom", revision: String(revision) },
+      paragraphs: levels.map((headingLevel) => ({ headingLevel,
+        runs: [{ text: "a🙂b", formatDetails: propertyFreeFormats(["breditor/strong"]) }] })),
+    });
+    const make = (revision: number, levels: readonly unknown[]) => valueOf(
+      createTextBlockDocumentProjection(input(revision, levels), generation, descriptor));
+    return { generation, descriptor, input, make, renderer: new BreditorDomRenderer(presentation) };
+  }
+
+  it("renders all heading ranks as semantic tags with exact scalar selection maps", () => {
+    const { make, renderer } = headingFixture();
+    const host = document.createElement("div");
+    const projection = make(0, [null, 1, 2, 3, 4, 5, 6]);
+    const rendered = valueOf(renderer.render(host, projection)).rendered;
+    expect(Array.from(host.children, (element) => element.localName)).toEqual(["p", "h1", "h2", "h3", "h4", "h5", "h6"]);
+    expect(rendered.validateCanonicalDom()).toBe(true);
+    for (let index = 0; index < 7; index += 1) {
+      const node = rendered.nodeForAstPath([index, 0]);
+      expect(node?.textContent).toBe("a🙂b");
+      expect(mapDomPointToBaseSelectionPoint(rendered, node!, 3)).toMatchObject({
+        ok: true, value: { kind: "text", textPath: [index, 0], utf16Offset: 3 },
+      });
+      expect(mapDomPointToBaseSelectionPoint(rendered, node!, 2).ok).toBe(false);
+    }
+    expect(Object.isFrozen(projection.paragraphs[1])).toBe(true);
+  });
+
+  it("replaces changed heading tags while retaining unaffected siblings", () => {
+    const { make, renderer } = headingFixture();
+    const host = document.createElement("div");
+    const base = make(0, [2, null, 3]);
+    const first = valueOf(renderer.render(host, base)).rendered;
+    const prior = Array.from(host.children);
+    const next = make(1, [4, null, 3]);
+    expect(BaseProjectionUpdate.create({ base, result: next, impact: { kind: "none" } }).ok).toBe(false);
+    expect(BaseProjectionUpdate.create({ base, result: next,
+      impact: { kind: "textContainers", paragraphIndexes: [1] } }).ok).toBe(false);
+    const update = valueOf(BaseProjectionUpdate.create({ base, result: next,
+      impact: { kind: "textContainers", paragraphIndexes: [0] } }));
+    const second = valueOf(renderer.update(first, update)).rendered;
+    expect(host.children[0]?.localName).toBe("h4");
+    expect(host.children[0]).not.toBe(prior[0]);
+    expect(host.children[1]).toBe(prior[1]);
+    expect(host.children[2]).toBe(prior[2]);
+    expect(first.current).toBe(false);
+    expect(second.validateCanonicalDom()).toBe(true);
+    const back = make(2, [2, null, 3]);
+    const undone = valueOf(renderer.update(second, valueOf(BaseProjectionUpdate.create({
+      base: next, result: back, impact: { kind: "textContainers", paragraphIndexes: [0] },
+    })))).rendered;
+    expect(host.children[0]?.localName).toBe("h2");
+    expect(undone.astPathForDomNode(undone.nodeForAstPath([0, 0])!)).toEqual([0, 0]);
+  });
+
+  it("keeps legacy constructors closed and rejects invalid heading ranks without coercion", () => {
+    const { generation, descriptor, input } = headingFixture();
+    expect(createProfiledDocumentProjection(input(0, [2]), generation, descriptor).ok).toBe(false);
+    const experimental = valueOf(createTextBlockDocumentProjection(input(0, [null]), generation, descriptor));
+    const legacyInput = input(1, [null]);
+    const legacy = valueOf(createProfiledDocumentProjection({ ...legacyInput,
+      paragraphs: legacyInput.paragraphs.map(({ runs }) => ({ runs })),
+    }, generation, descriptor));
+    expect(BaseProjectionUpdate.create({ base: experimental, result: legacy, impact: { kind: "none" } }).ok).toBe(false);
+    for (const rank of [undefined, 0, 7, -1, 1.5, NaN, Infinity, "2", {}, new Number(2)]) {
+      expect(createTextBlockDocumentProjection(input(0, [rank]), generation, descriptor).ok).toBe(false);
+    }
+    const bad = input(0, [2]);
+    Object.defineProperty(bad.paragraphs[0], "headingLevel", { get() { throw new Error("must not call"); } });
+    expect(createTextBlockDocumentProjection(bad, generation, descriptor).ok).toBe(false);
+  });
+
+  it("maps empty headings and invalidates semantic tag drift", () => {
+    const { generation, descriptor, input, renderer } = headingFixture();
+    const empty = input(0, [2]);
+    empty.paragraphs[0]!.runs = [];
+    const projection = valueOf(createTextBlockDocumentProjection(empty, generation, descriptor));
+    const host = document.createElement("div");
+    const rendered = valueOf(renderer.render(host, projection)).rendered;
+    expect(host.innerHTML).toBe("<h2><br></h2>");
+    expect(mapDomPointToBaseSelectionPoint(rendered, host.firstChild!, 0)).toMatchObject({
+      ok: true, value: { kind: "children", parentPath: [0], childIndex: 0 },
+    });
+    const replacement = document.createElement("h3");
+    replacement.append(document.createElement("br"));
+    host.replaceChildren(replacement);
+    expect(rendered.validateCanonicalDom()).toBe(false);
+  });
+
+  it("reconciles composition inside a heading but rejects a changed semantic rank", () => {
+    const { make, renderer } = headingFixture();
+    const projection = make(0, [2, null]);
+    const host = document.createElement("div");
+    document.body.append(host);
+    const rendered = valueOf(renderer.render(host, projection)).rendered;
+    const selection = valueOf(BaseRangeSelection.create(projection, {
+      kind: "range",
+      anchor: { kind: "text", textPath: [0, 0], utf16Offset: 1, affinity: "after" },
+      focus: { kind: "text", textPath: [0, 0], utf16Offset: 3, affinity: "before" },
+    }));
+    expect(renderer.beginCompositionDomLease(rendered)).not.toBeNull();
+    host.querySelector("h2 strong")!.textContent = "a漢b";
+    expect(reconcileCompositionDom(host, projection, selection)).toMatchObject({
+      ok: true, value: { originalText: "🙂", text: "漢" },
+    });
+    const wrong = document.createElement("h3");
+    wrong.append(...Array.from(host.firstChild!.childNodes));
+    host.replaceChild(wrong, host.firstChild!);
+    expect(reconcileCompositionDom(host, projection, selection)).toMatchObject({
+      ok: false, error: { code: "composition.dom.invalid_structure" },
+    });
+    host.remove();
+  });
+
   it("renders canonical mixed profile formats and detects wrapper drift", () => {
     const generation = profileGeneration();
     const descriptor = ownedProfileDescriptor(generation, [

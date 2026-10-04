@@ -156,3 +156,72 @@ fn explicit_bootstrap_and_session_versions_reject_fallback() -> TestResult {
     assert_eq!(profile.create_engine_from_document_json_v5("valid", "{}", 0.5).status(), "error");
     Ok(())
 }
+
+#[test]
+fn heading_projection_ranks_are_snapshot_bound_and_absent_on_other_nodes() -> TestResult {
+    let profile = profile()?;
+    let mut engine = engine(&profile)?;
+    select(&mut engine, 0, 3)?;
+    let mut first = engine.projection(&engine.observation());
+    let first = first.take_projection().ok_or_else(|| io::Error::other("missing projection"))?;
+    assert_eq!(first.heading_level(1), Some(2));
+    for rank in 1..=6 {
+        let changed = engine.execute_no_input_action(
+            &engine.observation(),
+            &format!("breditor/set-heading-{rank}"),
+            false,
+        );
+        assert_eq!(changed.status(), "committed");
+        let mut update =
+            changed.projection_update().ok_or_else(|| io::Error::other("missing update"))?;
+        assert_eq!(update.impact(), "rootSplice");
+        let projection = update
+            .take_projection()
+            .ok_or_else(|| io::Error::other("missing result projection"))?;
+        assert_eq!(projection.heading_level(1), Some(rank));
+        for index in [0, 2, 3, u32::MAX] {
+            assert_eq!(projection.heading_level(index), None);
+        }
+        assert_eq!(first.heading_level(1), Some(2));
+    }
+    let changed =
+        engine.execute_no_input_action(&engine.observation(), "breditor/set-paragraph", false);
+    let mut update =
+        changed.projection_update().ok_or_else(|| io::Error::other("missing update"))?;
+    assert_eq!(
+        update
+            .take_projection()
+            .ok_or_else(|| io::Error::other("missing result"))?
+            .heading_level(1),
+        None
+    );
+    Ok(())
+}
+
+#[test]
+fn heading_typing_has_narrow_impact_and_break_has_structural_impact() -> TestResult {
+    let profile = profile()?;
+    let mut engine = engine(&profile)?;
+    select(&mut engine, 1, 1)?;
+    let typed = engine.execute_string_action(
+        &engine.observation(),
+        "breditor/insert-text-block-text",
+        "x",
+        false,
+    );
+    let impact = typed.projection_update().ok_or_else(|| io::Error::other("missing update"))?;
+    assert_eq!(impact.impact(), "textContainers");
+    assert_eq!(impact.affected_paragraph_count(), 1);
+    assert_eq!(impact.affected_paragraph_index(0), Some(0));
+    let split = engine.execute_no_input_action(
+        &engine.observation(),
+        "breditor/insert-text-block-break",
+        true,
+    );
+    let mut impact = split.projection_update().ok_or_else(|| io::Error::other("missing update"))?;
+    assert_eq!(impact.impact(), "rootSplice");
+    let projection = impact.take_projection().ok_or_else(|| io::Error::other("missing result"))?;
+    assert_eq!(projection.heading_level(1), Some(2));
+    assert_eq!(projection.heading_level(3), Some(2));
+    Ok(())
+}

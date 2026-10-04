@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { consumeSemanticProjectionUpdateWithCleanup } from "./wasm_projection_adapter.js";
+import { consumeSemanticProjectionUpdateWithCleanup, consumeTextBlockSemanticProjection } from "./wasm_projection_adapter.js";
 
 import {
   type BrowserCompiledProfileDescriptor,
@@ -474,6 +474,64 @@ function typedProperties(priority = 7): readonly FlatProperty[] {
 }
 
 describe("Wasm semantic projection adapter", () => {
+  function headingView(rank: unknown = 2, revision = "0") {
+    const descriptor = ownedProfileDescriptor(["breditor/strong"]);
+    const view = new FakeProjectionView(revision, [[{ text: "a🙂", strong: true }]], descriptor.schema);
+    const priorType = view.elementType.bind(view);
+    view.elementType = (index) => index === 1 ? "breditor/heading" : priorType(index);
+    return { descriptor, view: Object.assign(view, {
+      headingLevel: (index: number) => index === 1 ? rank as number : undefined,
+    }) };
+  }
+
+  it("consumes explicit heading metadata and carries the mode through updates", () => {
+    const { view, descriptor } = headingView();
+    const result = consumeTextBlockSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("missing heading projection");
+    expect(result.value.paragraphs[0]?.headingLevel).toBe(2);
+    expect(view.freeCalls).toBe(1);
+    const next = headingView(4, "1").view;
+    const update = new FakeUpdateView({ baseRevision: "0", resultRevision: "1",
+      impact: "textContainers", affected: [0], projection: next });
+    const changed = consumeSemanticProjectionUpdateRaw(result.value, update, TEST_PROFILE_GENERATION, descriptor);
+    expect(changed.ok).toBe(true);
+    if (!changed.ok) throw new Error("missing update");
+    expect(changed.value.result.paragraphs[0]?.headingLevel).toBe(4);
+    expect(next.freeCalls).toBe(1);
+    expect(update.freeCalls).toBe(1);
+  });
+
+  it("rejects malformed or misplaced heading metadata and frees each view once", () => {
+    for (const rank of [undefined, null, 0, 7, 2.1, "2", {}, NaN, Infinity]) {
+      const { view, descriptor } = headingView(rank);
+      // Explicit undefined must not activate the fixture's default argument.
+      view.headingLevel = (index) => index === 1 ? rank as number : undefined;
+      expect(consumeTextBlockSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
+    for (const wrongIndex of [0, 2, 3]) {
+      const { view, descriptor } = headingView();
+      view.headingLevel = (index) => index === 1 || index === wrongIndex ? 2 : undefined;
+      expect(consumeTextBlockSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
+    const { view, descriptor } = headingView();
+    view.elementType = (index) => index === 0 ? "breditor/document" : index === 1 ? "breditor/paragraph" : undefined;
+    expect(consumeTextBlockSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+  });
+
+  it("never reads the experimental getter through the legacy consumer", () => {
+    const { view, descriptor } = headingView();
+    Object.defineProperty(view, "headingLevel", { get: () => { throw new Error("not a legacy capability"); } });
+    expect(consumeSemanticProjectionRaw(view, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+    const paragraph = new FakeProjectionView("0", [[{ text: "p", strong: false }]], descriptor.schema);
+    Object.defineProperty(paragraph, "headingLevel", { get: () => { throw new Error("not a legacy capability"); } });
+    expect(consumeSemanticProjectionRaw(paragraph, TEST_PROFILE_GENERATION, descriptor).ok).toBe(true);
+    expect(paragraph.freeCalls).toBe(1);
+  });
+
   it("consumes profile formats against the exact owned descriptor", () => {
     const descriptor = ownedProfileDescriptor([
       "breditor/strong",

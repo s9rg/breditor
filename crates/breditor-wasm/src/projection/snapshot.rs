@@ -60,7 +60,7 @@ impl BreditorProjection {
         }
     }
 
-    fn node(&self, index: u32) -> Option<&ProjectionNodeRecord> {
+    pub(super) fn node(&self, index: u32) -> Option<&ProjectionNodeRecord> {
         self.nodes.get(index as usize)
     }
 

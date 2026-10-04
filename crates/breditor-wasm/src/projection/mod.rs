@@ -1,5 +1,7 @@
 #[cfg(feature = "diagnostic-projection-format-count")]
 mod format_count_diagnostics;
+#[cfg(feature = "experimental-text-blocks")]
+mod heading;
 mod impact;
 mod node_record;
 mod read_projection;

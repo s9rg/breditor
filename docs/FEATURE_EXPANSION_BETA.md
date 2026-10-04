@@ -434,3 +434,47 @@ reload/recovery. The shipping browser remains paragraph-only. Flat bullet and
 numbered lists follow headings; nested lists remain deferred by user choice.
 
 See [heading Wasm bridge qualification](qualification/2026-10-03-heading-wasm-bridge.json).
+
+## Heading projection and DOM checkpoint
+
+The experimental Wasm projection now exposes `headingLevel(index)` as an
+explicit JavaScript number (1–6), or `undefined` for every non-heading node.
+The browser's explicit `consumeTextBlockSemanticProjection` boundary validates
+the rank together with the node type, preorder topology, profile generation,
+typed inline formats and snapshot identity. Legacy consumers never probe this
+getter and still reject heading nodes. The optional constructor/consumer is not
+added to the public browser entry points yet.
+
+The owned projection keeps its legacy `paragraphs` collection name for the
+direct-root text-block view. An optional `headingLevel` identifies headings;
+ordinary paragraphs keep their existing shape. Experimental input explicitly
+uses null for paragraphs. Ranks are never inferred from DOM styles or tags,
+and structural rank properties count toward the existing property-value limit.
+Projection mode is bound to the profile; an update cannot cross between the
+legacy and experimental construction modes even when all text is identical.
+
+The renderer creates real `h1`–`h6` elements, including `<br>` placeholders for
+empty headings. Typing retains the existing heading element. Kind/rank changes
+replace the affected tag, rebuild its maps and preserve unaffected siblings.
+Equality checks include rank, so a false “no change”/unaffected-block claim is
+rejected. Selection maps retain scalar UTF-16 boundaries through inline wrappers.
+Leased composition reconciliation accepts the exact heading tag but rejects a
+rank change or unexpected structure; this is not native IME qualification.
+
+Generated Wasm → browser adapter → DOM → session restore checks pass five fresh
+editor runs each in Chromium, Firefox and WebKit, without retries. They cover
+Unicode typing, rank changes, unaffected-node identity, DOM point mapping,
+undo/redo, fresh Session V5 restore and stale-owner rejection. The regular
+paragraph editor/profile/action-state/link-history browser regressions also pass
+(90 tests across the same three engines), alongside all 1,448 browser unit tests.
+
+The default size ceilings were not raised. Shared adapter method snapshots and
+invocation helpers were deduplicated while preserving read phases, exact
+receiver/arity, numeric normalization, asynchronous-value rejection and cleanup.
+All current package/demo size checks pass, but gzip headroom is still very small.
+An isolated optional build/load/declaration contract remains necessary before
+exposing the feature publicly. Next: heading bootstrap and command-adapter input
+routing, toolbar/keyboard, recovery integration and native desktop qualification;
+flat bullet/numbered lists still follow.
+
+See [heading projection qualification](qualification/2026-10-03-heading-projection.json).

@@ -134,7 +134,8 @@ export function reconcileCompositionDom(
         paragraphNode === undefined ||
         paragraph === undefined ||
         !consumeNode(budget) ||
-        !isPropertyFreeHtmlElement(paragraphNode, "p")
+        !isPropertyFreeHtmlElement(paragraphNode,
+          paragraph.headingLevel === undefined ? "p" : `h${paragraph.headingLevel}`)
       ) {
         return compositionFailure(
           budget.nodes > MAX_COMPOSITION_DOM_NODES

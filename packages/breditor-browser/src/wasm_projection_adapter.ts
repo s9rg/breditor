@@ -1,6 +1,9 @@
 import {
   BaseDocumentProjection,
   createProfiledDocumentProjection,
+  createTextBlockDocumentProjection,
+  isHeadingProjectionLevel,
+  type HeadingProjectionLevel,
   isOwnedProjection,
   projectionMatchesProfileGeneration as ownedProjectionMatchesProfileGeneration,
   projectionProfileDescriptor,
@@ -21,6 +24,9 @@ import {
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
+
+type TextBlockProjectionFactory = typeof createTextBlockDocumentProjection;
+const TEXT_BLOCK_FACTORIES = new WeakMap<BaseDocumentProjection, TextBlockProjectionFactory>();
 
 const PROJECTION_PROFILE_GENERATIONS = new WeakMap<
   BaseDocumentProjection,
@@ -106,6 +112,11 @@ export interface SemanticProjectionView extends WasmProfileCorrelatedView {
   free(): void;
 }
 
+/** Opt-in heading projection surface. */
+export interface TextBlockSemanticProjectionView extends SemanticProjectionView {
+  headingLevel(index: number): number | undefined;
+}
+
 /** Semantic invalidation kinds exposed by the Wasm projection update. */
 export type SemanticProjectionImpact = "none" | "textContainers" | "rootSplice" | "root";
 
@@ -146,6 +157,7 @@ export interface SemanticProjectionUpdateView extends WasmProfileCorrelatedView 
 }
 
 interface SemanticProjectionMethods {
+  readonly headingLevel: TextBlockSemanticProjectionView["headingLevel"] | undefined;
   readonly nodeKind: SemanticProjectionView["nodeKind"];
   readonly elementType: SemanticProjectionView["elementType"];
   readonly childCount: SemanticProjectionView["childCount"];
@@ -205,13 +217,31 @@ export function consumeSemanticProjection(
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
 ): BrowserProjectionResult<BaseDocumentProjection> {
+  return consumeProjection(view, generation, expectedProfile, undefined);
+}
+
+/** Consumes an explicit heading-capable view. */
+export function consumeTextBlockSemanticProjection(
+  view: TextBlockSemanticProjectionView,
+  generation: WasmProfileGenerationView,
+  expectedProfile: BrowserCompiledProfileDescriptor,
+): BrowserProjectionResult<BaseDocumentProjection> {
+  return consumeProjection(view, generation, expectedProfile, createTextBlockDocumentProjection);
+}
+
+function consumeProjection(
+  view: SemanticProjectionView,
+  generation: WasmProfileGenerationView,
+  expectedProfile: string | BrowserCompiledProfileDescriptor,
+  textBlockFactory: TextBlockProjectionFactory | undefined,
+): BrowserProjectionResult<BaseDocumentProjection> {
   const identity = objectIdentity(view);
   if (identity === null || ACTIVE_GENERATED_CONSUMPTIONS.has(identity)) {
     return projectionFailure("projection.invalid_shape");
   }
   ACTIVE_GENERATED_CONSUMPTIONS.set(identity, undefined);
   try {
-    return consumeSemanticProjectionUnlocked(view, generation, expectedProfile);
+    return consumeSemanticProjectionUnlocked(view, generation, expectedProfile, textBlockFactory);
   } finally {
     releaseGeneratedConsumption(identity);
   }
@@ -221,6 +251,7 @@ function consumeSemanticProjectionUnlocked(
   view: SemanticProjectionView,
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
+  textBlockFactory: TextBlockProjectionFactory | undefined = undefined,
 ): BrowserProjectionResult<BaseDocumentProjection> {
   if ((view as unknown) === generation) {
     return projectionFailure("projection.invalid_shape");
@@ -236,7 +267,7 @@ function consumeSemanticProjectionUnlocked(
   try {
     result = asynchronous
       ? projectionFailure("projection.invalid_shape")
-      : readProfiledSemanticProjection(view, generation, expectedProfile);
+      : readProfiledSemanticProjection(view, generation, expectedProfile, textBlockFactory);
   } catch {
     result = projectionFailure("projection.invalid_shape");
   } finally {
@@ -499,8 +530,10 @@ function readProfiledSemanticProjection(
   view: SemanticProjectionView,
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
+  textBlockFactory: TextBlockProjectionFactory | undefined,
 ): BrowserProjectionResult<BaseDocumentProjection> {
   if (
+    (textBlockFactory !== undefined && typeof expectedProfile === "string") ||
     !wasmProfileGenerationIsLive(generation) ||
     (typeof expectedProfile !== "string" &&
       !browserCompiledProfileDescriptorMatchesGeneration(
@@ -520,7 +553,7 @@ function readProfiledSemanticProjection(
   ) {
     return projectionFailure("projection.invalid_shape");
   }
-  const snapshot = snapshotSemanticProjection(view);
+  const snapshot = snapshotSemanticProjection(view, textBlockFactory !== undefined);
   if (
     snapshot === null ||
     snapshot.schemaFingerprint !== expectedSchemaFingerprint
@@ -532,7 +565,9 @@ function readProfiledSemanticProjection(
     snapshot,
     generation,
     expectedProfile,
+    textBlockFactory,
   );
+  if (result.ok && textBlockFactory !== undefined) TEXT_BLOCK_FACTORIES.set(result.value, textBlockFactory);
   if (result.ok && typeof expectedProfile === "string") {
     PROJECTION_PROFILE_GENERATIONS.set(result.value, generation);
   }
@@ -544,6 +579,7 @@ function readSemanticProjection(
   snapshot: SemanticProjectionSnapshot,
   generation: WasmProfileGenerationView,
   expectedProfile: string | BrowserCompiledProfileDescriptor,
+  textBlockFactory: TextBlockProjectionFactory | undefined,
 ): BrowserProjectionResult<BaseDocumentProjection> {
   const {
     schemaName,
@@ -565,6 +601,7 @@ function readSemanticProjection(
     nodeCount < 2 ||
     nodeCount > 100_000 ||
     rootIndex !== 0 ||
+    !headingLevelIsAbsent(view, methods, 0) ||
     invokeGenerated(methods.nodeKind, view, 0) !== "element" ||
     invokeGenerated(methods.elementType, view, 0) !== "breditor/document" ||
     invokeGenerated(methods.text, view, 0) !== undefined ||
@@ -589,6 +626,7 @@ function readSemanticProjection(
     ? new Set(["breditor/strong"])
     : new Set(expectedProfile.formats.map((format) => format.kind));
   const paragraphs: Array<{
+    headingLevel: HeadingProjectionLevel | null;
     runs: Array<{
       text: string;
       strong: boolean;
@@ -609,10 +647,16 @@ function readSemanticProjection(
       0,
       paragraphOrdinal,
     );
+    const blockType = paragraphIndex === expectedIndex
+      ? invokeGenerated(methods.elementType, view, paragraphIndex) : undefined;
+    const headingLevel = paragraphIndex === expectedIndex && methods.headingLevel !== undefined
+      ? invokeGenerated(methods.headingLevel, view, paragraphIndex) : undefined;
     if (
       paragraphIndex !== expectedIndex ||
       invokeGenerated(methods.nodeKind, view, paragraphIndex) !== "element" ||
-      invokeGenerated(methods.elementType, view, paragraphIndex) !== "breditor/paragraph" ||
+      (blockType === "breditor/heading"
+        ? !isHeadingProjectionLevel(headingLevel)
+        : blockType !== "breditor/paragraph" || headingLevel !== undefined) ||
       invokeGenerated(methods.text, view, paragraphIndex) !== undefined ||
       invokeGenerated(methods.formatCount, view, paragraphIndex) !== undefined ||
       invokeGenerated(methods.formatType, view, paragraphIndex, 0) !== undefined ||
@@ -646,6 +690,7 @@ function readSemanticProjection(
       if (
         runIndex !== expectedIndex ||
         invokeGenerated(methods.nodeKind, view, runIndex) !== "text" ||
+        !headingLevelIsAbsent(view, methods, runIndex) ||
         invokeGenerated(methods.elementType, view, runIndex) !== undefined ||
         invokeGenerated(methods.childCount, view, runIndex) !== undefined ||
         invokeGenerated(methods.childAt, view, runIndex, 0) !== undefined
@@ -753,10 +798,11 @@ function readSemanticProjection(
     if (invokeGenerated(methods.childAt, view, paragraphIndex, runCount) !== undefined) {
       return projectionFailure("projection.invalid_shape");
     }
-    paragraphs.push({ runs });
+    paragraphs.push({ headingLevel: isHeadingProjectionLevel(headingLevel) ? headingLevel : null, runs });
   }
   if (
     expectedIndex !== nodeCount ||
+    !headingLevelIsAbsent(view, methods, nodeCount) ||
     invokeGenerated(methods.childAt, view, 0, paragraphCount) !== undefined ||
     invokeGenerated(methods.nodeKind, view, nodeCount) !== undefined ||
     invokeGenerated(methods.elementType, view, nodeCount) !== undefined ||
@@ -788,13 +834,23 @@ function readSemanticProjection(
     },
     snapshot: { lineage: snapshotLineage, revision: snapshotRevision },
     paragraphs: paragraphs.map((paragraph) => ({
+      ...(methods.headingLevel === undefined ? {} : { headingLevel: paragraph.headingLevel }),
       runs: paragraph.runs.map((run) => ({
         text: run.text,
         formatDetails: run.formatDetails,
       })),
     })),
   };
-  return createProfiledDocumentProjection(input, generation, expectedProfile);
+  return (textBlockFactory ?? createProfiledDocumentProjection)(
+    input, generation, expectedProfile);
+}
+
+function headingLevelIsAbsent(
+  view: SemanticProjectionView,
+  methods: SemanticProjectionMethods,
+  index: number,
+): boolean {
+  return methods.headingLevel === undefined || invokeGenerated(methods.headingLevel, view, index) === undefined;
 }
 
 interface ReadProjectedFormatProperty {
@@ -809,41 +865,11 @@ function readProjectedFormatProperty(
   formatIndex: number,
   propertyIndex: number,
 ): ReadProjectedFormatProperty | null {
-  const name = invokeGenerated(
-    methods.formatPropertyName,
-    view,
-    nodeIndex,
-    formatIndex,
-    propertyIndex,
-  );
-  const kind = invokeGenerated(
-    methods.formatPropertyValueKind,
-    view,
-    nodeIndex,
-    formatIndex,
-    propertyIndex,
-  );
-  const booleanValue = invokeGenerated(
-    methods.formatPropertyBoolean,
-    view,
-    nodeIndex,
-    formatIndex,
-    propertyIndex,
-  );
-  const integerValue = invokeGenerated(
-    methods.formatPropertyInteger,
-    view,
-    nodeIndex,
-    formatIndex,
-    propertyIndex,
-  );
-  const stringValue = invokeGenerated(
-    methods.formatPropertyString,
-    view,
-    nodeIndex,
-    formatIndex,
-    propertyIndex,
-  );
+  const [name, kind, booleanValue, integerValue, stringValue] = [
+    methods.formatPropertyName, methods.formatPropertyValueKind, methods.formatPropertyBoolean,
+    methods.formatPropertyInteger, methods.formatPropertyString,
+  ].map((method) => invokeGenerated(method as (...indexes: number[]) => unknown,
+    view, nodeIndex, formatIndex, propertyIndex));
   if (!isQualifiedName(name)) return null;
 
   switch (kind) {
@@ -909,41 +935,11 @@ function formatPropertyValueProbeIsAbsent(
   formatIndex: number,
   propertyIndex: number,
 ): boolean {
-  return invokeGenerated(
-    methods.formatPropertyName,
-    view,
-    nodeIndex,
-    formatIndex,
-    propertyIndex,
-  ) === undefined &&
-    invokeGenerated(
-      methods.formatPropertyValueKind,
-      view,
-      nodeIndex,
-      formatIndex,
-      propertyIndex,
-    ) === undefined &&
-    invokeGenerated(
-      methods.formatPropertyBoolean,
-      view,
-      nodeIndex,
-      formatIndex,
-      propertyIndex,
-    ) === undefined &&
-    invokeGenerated(
-      methods.formatPropertyInteger,
-      view,
-      nodeIndex,
-      formatIndex,
-      propertyIndex,
-    ) === undefined &&
-    invokeGenerated(
-      methods.formatPropertyString,
-      view,
-      nodeIndex,
-      formatIndex,
-      propertyIndex,
-    ) === undefined;
+  return [
+    methods.formatPropertyName, methods.formatPropertyValueKind, methods.formatPropertyBoolean,
+    methods.formatPropertyInteger, methods.formatPropertyString,
+  ].every((method) => invokeGenerated(method as (...indexes: number[]) => unknown,
+    view, nodeIndex, formatIndex, propertyIndex) === undefined);
 }
 
 function readProfiledSemanticProjectionUpdate(
@@ -1005,6 +1001,7 @@ function readProfiledSemanticProjectionUpdate(
     resultView,
     generation,
     expectedProfile,
+    TEXT_BLOCK_FACTORIES.get(base),
   );
   if (!projectionResult.ok) {
     return projectionFailure("projection.invalid_update");
@@ -1157,78 +1154,51 @@ function schemaMatchesExpectedProfile(
 
 function snapshotSemanticProjection(
   view: SemanticProjectionView,
+  textBlocks: boolean,
 ): SemanticProjectionSnapshot | null {
   try {
-    const nodeKind = readProjectionMethod(view, "nodeKind");
-    const elementType = readProjectionMethod(view, "elementType");
-    const childCount = readProjectionMethod(view, "childCount");
-    const childAt = readProjectionMethod(view, "childAt");
-    const text = readProjectionMethod(view, "text");
-    const formatCount = readProjectionMethod(view, "formatCount");
-    const formatType = readProjectionMethod(view, "formatType");
-    const formatPropertyCount = readProjectionMethod(view, "formatPropertyCount");
-    const formatPropertyName = readProjectionMethod(view, "formatPropertyName");
-    const formatPropertyValueKind = readProjectionMethod(
-      view,
-      "formatPropertyValueKind",
-    );
-    const formatPropertyBoolean = readProjectionMethod(view, "formatPropertyBoolean");
-    const formatPropertyInteger = readProjectionMethod(view, "formatPropertyInteger");
-    const formatPropertyString = readProjectionMethod(view, "formatPropertyString");
-    if (
-      nodeKind === null ||
-      elementType === null ||
-      childCount === null ||
-      childAt === null ||
-      text === null ||
-      formatCount === null ||
-      formatType === null ||
-      formatPropertyCount === null ||
-      formatPropertyName === null ||
-      formatPropertyValueKind === null ||
-      formatPropertyBoolean === null ||
-      formatPropertyInteger === null ||
-      formatPropertyString === null
-    ) {
-      return null;
+    const headingLevel = textBlocks ? readGeneratedScalar(view, "headingLevel") : undefined;
+    if (textBlocks && typeof headingLevel !== "function") return null;
+    const names = [
+      "nodeKind", "elementType", "childCount", "childAt", "text", "formatCount",
+      "formatType", "formatPropertyCount", "formatPropertyName", "formatPropertyValueKind",
+      "formatPropertyBoolean", "formatPropertyInteger", "formatPropertyString",
+    ] as const;
+    const methods: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+    let valid = true;
+    for (const name of names) {
+      const method = readGeneratedMethod(view, name);
+      if (method === null) valid = false;
+      methods[name] = method;
     }
+    if (!valid) return null;
+    methods["headingLevel"] = headingLevel;
     return {
-      schemaName: readGeneratedScalar(view, "schemaName"),
-      schemaVersion: readGeneratedScalar(view, "schemaVersion"),
-      schemaFingerprint: readGeneratedScalar(view, "schemaFingerprint"),
-      snapshotLineage: readGeneratedScalar(view, "snapshotLineage"),
-      snapshotRevision: readGeneratedScalar(view, "snapshotRevision"),
-      nodeCount: readGeneratedScalar(view, "nodeCount"),
-      rootIndex: readGeneratedScalar(view, "rootIndex"),
-      methods: {
-        nodeKind,
-        elementType,
-        childCount,
-        childAt,
-        text,
-        formatCount,
-        formatType,
-        formatPropertyCount,
-        formatPropertyName,
-        formatPropertyValueKind,
-        formatPropertyBoolean,
-        formatPropertyInteger,
-        formatPropertyString,
-      },
+      ...readGeneratedScalars(view, [
+        "schemaName", "schemaVersion", "schemaFingerprint", "snapshotLineage",
+        "snapshotRevision", "nodeCount", "rootIndex",
+      ]),
+      methods: methods as unknown as SemanticProjectionMethods,
     };
   } catch {
     return null;
   }
 }
 
-function readProjectionMethod<TKey extends keyof SemanticProjectionMethods>(
-  view: SemanticProjectionView,
-  key: TKey,
-): SemanticProjectionMethods[TKey] | null {
+function readGeneratedMethod<TView extends object, TKey extends keyof TView>(
+  view: TView, key: TKey,
+): TView[TKey] | null {
   const method = Reflect.get(view, key, view) as unknown;
   return typeof method === "function" && !containGeneratedThenable(method)
-    ? method as SemanticProjectionMethods[TKey]
-    : null;
+    ? method as TView[TKey] : null;
+}
+
+function readGeneratedScalars<TKey extends string>(
+  view: object, keys: readonly TKey[],
+): Record<TKey, unknown> {
+  const result = Object.create(null) as Record<TKey, unknown>;
+  for (const key of keys) result[key] = readGeneratedScalar(view, key);
+  return result;
 }
 
 function readGeneratedScalar(view: object, key: string): unknown {
@@ -1255,36 +1225,20 @@ function snapshotSemanticProjectionUpdate(
   view: SemanticProjectionUpdateView,
 ): SemanticProjectionUpdateSnapshot | null {
   try {
-    const affectedParagraphIndex = readUpdateMethod(
+    const affectedParagraphIndex = readGeneratedMethod(
       view,
       "affectedParagraphIndex",
     );
-    const takeProjection = readUpdateMethod(view, "takeProjection");
+    const takeProjection = readGeneratedMethod(view, "takeProjection");
     if (affectedParagraphIndex === null || takeProjection === null) return null;
     return {
-      baseLineage: readGeneratedScalar(view, "baseLineage"),
-      baseRevision: readGeneratedScalar(view, "baseRevision"),
-      resultLineage: readGeneratedScalar(view, "resultLineage"),
-      resultRevision: readGeneratedScalar(view, "resultRevision"),
-      impact: readGeneratedScalar(view, "impact"),
-      affectedParagraphCount: readGeneratedScalar(view, "affectedParagraphCount"),
-      oldChildStart: readGeneratedScalar(view, "oldChildStart"),
-      oldChildEnd: readGeneratedScalar(view, "oldChildEnd"),
-      newChildStart: readGeneratedScalar(view, "newChildStart"),
-      newChildEnd: readGeneratedScalar(view, "newChildEnd"),
+      ...readGeneratedScalars(view, [
+        "baseLineage", "baseRevision", "resultLineage", "resultRevision", "impact",
+        "affectedParagraphCount", "oldChildStart", "oldChildEnd", "newChildStart", "newChildEnd",
+      ]),
       methods: { affectedParagraphIndex, takeProjection },
     };
   } catch {
     return null;
   }
-}
-
-function readUpdateMethod<TKey extends keyof SemanticProjectionUpdateMethods>(
-  view: SemanticProjectionUpdateView,
-  key: TKey,
-): SemanticProjectionUpdateMethods[TKey] | null {
-  const method = Reflect.get(view, key, view) as unknown;
-  return typeof method === "function" && !containGeneratedThenable(method)
-    ? method as SemanticProjectionUpdateMethods[TKey]
-    : null;
 }

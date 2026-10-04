@@ -108,12 +108,12 @@ interface ProjectionMaps {
 }
 
 interface PreparedDom extends ProjectionMaps {
-  readonly paragraphs: readonly HTMLParagraphElement[];
+  readonly paragraphs: readonly HTMLElement[];
   readonly refreshes: readonly ParagraphRefresh[];
 }
 
 interface ParagraphRefresh {
-  readonly paragraph: HTMLParagraphElement;
+  readonly paragraph: HTMLElement;
   readonly children: readonly Node[];
 }
 
@@ -281,7 +281,6 @@ class RenderedProjectionHandle implements RenderedProjection {
       const paragraphKey = `root/${paragraphIndex}`;
       if (
         projection === undefined ||
-        !isHtmlParagraph(paragraph) ||
         !paragraphDomMatches(paragraph, projection, this.#presentation) ||
         this.#astToDom.get(paragraphKey) !== paragraph ||
         astPathKey(this.#domToAst.get(paragraph) ?? Object.freeze([-1])) !== paragraphKey
@@ -825,7 +824,7 @@ export class BreditorDomRenderer {
     const prior = HOST_OWNERS.get(host)?.handle;
     let priorHostChildren: readonly ChildNode[];
     let priorChildren: Array<{
-      readonly paragraph: HTMLParagraphElement;
+      readonly paragraph: HTMLElement;
       readonly children: readonly ChildNode[];
     }>;
     try {
@@ -996,13 +995,12 @@ function buildIncrementalProjection(
   if (ownerDocument === null) return null;
   const reusable = new Map<
     number,
-    { readonly node: HTMLParagraphElement; readonly content: "preserve" | "refresh" }
+    { readonly node: HTMLElement; readonly content: "preserve" | "refresh" }
   >();
   for (const pair of reuse) {
     const node = rendered.rawNodeForParagraph(pair.oldIndex);
     const oldParagraph = rendered.projection.paragraphs[pair.oldIndex];
     if (
-      !isHtmlParagraph(node) ||
       oldParagraph === undefined ||
       !paragraphDomMatches(node, oldParagraph, presentation) ||
       reusable.has(pair.newIndex)
@@ -1013,7 +1011,7 @@ function buildIncrementalProjection(
   }
 
   const maps = createMaps(rendered.host);
-  const paragraphs: HTMLParagraphElement[] = [];
+  const paragraphs: HTMLElement[] = [];
   const refreshes: ParagraphRefresh[] = [];
   for (let newIndex = 0; newIndex < result.paragraphs.length; newIndex += 1) {
     const paragraph = result.paragraphs[newIndex];
@@ -1021,7 +1019,7 @@ function buildIncrementalProjection(
       return null;
     }
     const retained = reusable.get(newIndex);
-    if (retained === undefined) {
+    if (retained === undefined || !isHtmlElementNamed(retained.node, textBlockTag(paragraph))) {
       paragraphs.push(
         buildParagraph(
           ownerDocument,
@@ -1077,8 +1075,9 @@ function buildParagraph(
   paragraphIndex: number,
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
-): HTMLParagraphElement {
-  const element = createHtmlElement(document, "p", "P");
+): HTMLElement {
+  const tag = textBlockTag(paragraph);
+  const element = createHtmlElement(document, tag, tag.toUpperCase());
   const paragraphPath = paragraphAstPath(paragraphIndex);
   mapNode(element, paragraphPath, maps.astToDom, maps.domToAst, true);
   element.append(
@@ -1123,12 +1122,12 @@ function buildParagraphChildren(
 }
 
 function paragraphDomMatches(
-  paragraphNode: HTMLParagraphElement,
+  paragraphNode: Node | undefined,
   paragraph: BaseParagraphProjection,
   presentation: BrowserCompiledPresentation | undefined,
-): boolean {
+): paragraphNode is HTMLElement {
   if (
-    !isHtmlParagraph(paragraphNode) ||
+    !isHtmlElementNamed(paragraphNode, textBlockTag(paragraph)) ||
     nativeAttributeNames(paragraphNode).length !== 0
   ) {
     return false;
@@ -1153,7 +1152,7 @@ function paragraphDomMatches(
 }
 
 function mapExistingParagraph(
-  paragraphNode: HTMLParagraphElement,
+  paragraphNode: HTMLElement,
   paragraph: BaseParagraphProjection,
   paragraphIndex: number,
   maps: ProjectionMaps,
@@ -1373,8 +1372,8 @@ function mapNode(
   domToAst.set(node, path);
 }
 
-function isHtmlParagraph(node: Node | undefined): node is HTMLParagraphElement {
-  return isHtmlElementNamed(node, "P");
+function textBlockTag(paragraph: BaseParagraphProjection): "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" {
+  return paragraph.headingLevel === undefined ? "p" : `h${paragraph.headingLevel}`;
 }
 
 function isHtmlElementNamed(node: Node | undefined, tagName: string): node is HTMLElement {
@@ -1422,7 +1421,7 @@ function isFreshHtmlElement(
     nativeChildNodes(node).length === 0;
 }
 
-function sameChildren(host: HTMLElement, paragraphs: readonly HTMLParagraphElement[]): boolean {
+function sameChildren(host: HTMLElement, paragraphs: readonly HTMLElement[]): boolean {
   const children = nativeChildNodes(host);
   if (children.length !== paragraphs.length) {
     return false;
@@ -1444,7 +1443,7 @@ function rollbackInstalledProjection(
   prepared: PreparedDom,
   priorHostChildren: readonly ChildNode[],
   priorParagraphChildren: readonly Readonly<{
-    readonly paragraph: HTMLParagraphElement;
+    readonly paragraph: HTMLElement;
     readonly children: readonly ChildNode[];
   }>[],
   appliedRefreshes: number,

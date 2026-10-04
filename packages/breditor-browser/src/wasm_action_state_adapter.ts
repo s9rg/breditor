@@ -764,45 +764,17 @@ function readSnapshot(
 
 function readSnapshotMethods(view: WasmActionStateSnapshotView): SnapshotMethods | null {
   try {
-    const entryId = readSnapshotMethod(view, "entryId");
-    if (entryId === null) return null;
-    const entryStatus = readSnapshotMethod(view, "entryStatus");
-    if (entryStatus === null) return null;
-    const entryActivation = readSnapshotMethod(view, "entryActivation");
-    if (entryActivation === null) return null;
-    const entryReasonCode = readSnapshotMethod(view, "entryReasonCode");
-    if (entryReasonCode === null) return null;
-    const entryValueStatus = readSnapshotMethod(view, "entryValueStatus");
-    if (entryValueStatus === null) return null;
-    const entryValueContractName = readSnapshotMethod(
-      view,
-      "entryValueContractName",
-    );
-    if (entryValueContractName === null) return null;
-    const entryValueContractVersion = readSnapshotMethod(
-      view,
-      "entryValueContractVersion",
-    );
-    if (entryValueContractVersion === null) return null;
-    const entryUniformValueJson = readSnapshotMethod(
-      view,
-      "entryUniformValueJson",
-    );
-    if (entryUniformValueJson === null) return null;
-    const changedId = readSnapshotMethod(view, "changedId");
-    if (changedId === null) return null;
-    const methods: SnapshotMethods = {
-      entryId,
-      entryStatus,
-      entryActivation,
-      entryReasonCode,
-      entryValueStatus,
-      entryValueContractName,
-      entryValueContractVersion,
-      entryUniformValueJson,
-      changedId,
-    };
-    return methods;
+    const names = [
+      "entryId", "entryStatus", "entryActivation", "entryReasonCode", "entryValueStatus",
+      "entryValueContractName", "entryValueContractVersion", "entryUniformValueJson", "changedId",
+    ] as const;
+    const methods: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+    for (const name of names) {
+      const method = readSnapshotMethod(view, name);
+      if (method === null) return null;
+      methods[name] = method;
+    }
+    return methods as unknown as SnapshotMethods;
   } catch {
     return null;
   }

@@ -2658,106 +2658,28 @@ function readError(value: WasmCommandErrorView): WasmCommandError | null {
 function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
   try {
     if (!objectLike(value)) return null;
-    const receiver = value as WasmCommandEngineView;
-    const actionStates = receiver.actionStates;
-    const sessionCheckpointJson = receiver.sessionCheckpointJson;
-    const documentJson = receiver.documentJson;
-    const clearSelection = receiver.clearSelection;
-    const setRangeSelection = receiver.setRangeSelection;
-    const selection = receiver.selection;
-    const executeNoInputAction = receiver.executeNoInputAction;
-    const executeNoInputIntent = receiver.executeNoInputIntent;
-    const executeStringAction = receiver.executeStringAction;
-    const executeTypedActionJson = receiver.executeTypedActionJson;
-    const executeTypedIntentJson = receiver.executeTypedIntentJson;
-    const undo = receiver.undo;
-    const redo = receiver.redo;
-    const closeHistoryGroup = receiver.closeHistoryGroup;
-    const matchesProfileGeneration = receiver.matchesProfileGeneration;
-    const methods: readonly unknown[] = [
-      actionStates,
-      sessionCheckpointJson,
-      documentJson,
-      clearSelection,
-      setRangeSelection,
-      selection,
-      executeNoInputAction,
-      executeNoInputIntent,
-      executeStringAction,
-      executeTypedActionJson,
-      executeTypedIntentJson,
-      undo,
-      redo,
-      closeHistoryGroup,
-      matchesProfileGeneration,
-    ];
-    if (
-      methods.some((method) =>
-        typeof method !== "function" || containGeneratedThenable(method)
-      )
-    ) {
-      return null;
+    // Read every method once, in the established order, before testing them.
+    // Preserve each adapter call's exact arity and original receiver.
+    const fields = [
+      ["actionStates", 1], ["sessionCheckpointJson", 0], ["documentJson", 1],
+      ["clearSelection", 1], ["setRangeSelection", 9], ["selection", 1],
+      ["executeNoInputAction", 3], ["executeNoInputIntent", 3],
+      ["executeStringAction", 4], ["executeTypedActionJson", 4], ["executeTypedIntentJson", 4],
+      ["undo", 2], ["redo", 2], ["closeHistoryGroup", 1], ["matchesProfileGeneration", 1],
+    ] as const;
+    const captured = fields.map(([name, arity]) => ({
+      name, arity, method: Reflect.get(value, name, value) as unknown,
+    }));
+    if (captured.some(({ method }) =>
+      typeof method !== "function" || containGeneratedThenable(method))) return null;
+    const snapshot: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+    for (const { name, arity, method } of captured) {
+      snapshot[name] = (...args: unknown[]) => {
+        args.length = arity;
+        return Reflect.apply(method as Function, value, args);
+      };
     }
-    const snapshot: WasmCommandEngineView = {
-      actionStates: (expected) =>
-        Reflect.apply(actionStates, value, [expected]),
-      sessionCheckpointJson: () =>
-        Reflect.apply(sessionCheckpointJson, value, []),
-      documentJson: (expected) =>
-        Reflect.apply(documentJson, value, [expected]),
-      clearSelection: (expected) =>
-        Reflect.apply(clearSelection, value, [expected]),
-      setRangeSelection: (
-        expected,
-        anchorKind,
-        anchorNodeIndex,
-        anchorOffset,
-        anchorAffinity,
-        focusKind,
-        focusNodeIndex,
-        focusOffset,
-        focusAffinity,
-      ) =>
-        Reflect.apply(setRangeSelection, value, [
-          expected,
-          anchorKind,
-          anchorNodeIndex,
-          anchorOffset,
-          anchorAffinity,
-          focusKind,
-          focusNodeIndex,
-          focusOffset,
-          focusAffinity,
-        ]),
-      selection: (expected) => Reflect.apply(selection, value, [expected]),
-      executeNoInputAction: (expected, actionId, closeBefore) =>
-        Reflect.apply(executeNoInputAction, value, [expected, actionId, closeBefore]),
-      executeNoInputIntent: (expected, intentId, closeBefore) =>
-        Reflect.apply(executeNoInputIntent, value, [expected, intentId, closeBefore]),
-      executeStringAction: (expected, actionId, input, closeBefore) =>
-        Reflect.apply(executeStringAction, value, [expected, actionId, input, closeBefore]),
-      executeTypedActionJson: (expected, actionId, inputJson, closeBefore) =>
-        Reflect.apply(executeTypedActionJson, value, [
-          expected,
-          actionId,
-          inputJson,
-          closeBefore,
-        ]),
-      executeTypedIntentJson: (expected, intentId, inputJson, closeBefore) =>
-        Reflect.apply(executeTypedIntentJson, value, [
-          expected,
-          intentId,
-          inputJson,
-          closeBefore,
-        ]),
-      undo: (expected, closeBefore) => Reflect.apply(undo, value, [expected, closeBefore]),
-      redo: (expected, closeBefore) => Reflect.apply(redo, value, [expected, closeBefore]),
-      closeHistoryGroup: (expected) =>
-        Reflect.apply(closeHistoryGroup, value, [expected]),
-      matchesProfileGeneration: (generation) =>
-        Reflect.apply(matchesProfileGeneration, value, [generation]) as boolean,
-    };
-    return Object.freeze(snapshot);
+    return Object.freeze(snapshot) as unknown as WasmCommandEngineView;
   } catch {
     return null;
   }
@@ -2780,34 +2702,17 @@ function isCommandResultView(value: unknown): value is WasmCommandResultView {
 function isIntentResultView(value: unknown): value is WasmIntentResultView {
   try {
     const result = value as Partial<WasmIntentResultView>;
-    const methods = [
-      result.matchesProfileGeneration,
-      result.observation,
-      result.projectionUpdate,
-      result.blockedReasonDetailJson,
-      result.blockedValueJson,
-      result.commitJson,
-      result.fallthroughBindingId,
-      result.fallthroughActionId,
-      result.fallthroughPriority,
-      result.fallthroughReasonCode,
-      result.fallthroughReasonDetailJson,
-    ];
+    const names = [
+      "matchesProfileGeneration", "observation", "projectionUpdate", "blockedReasonDetailJson",
+      "blockedValueJson", "commitJson", "fallthroughBindingId", "fallthroughActionId",
+      "fallthroughPriority", "fallthroughReasonCode", "fallthroughReasonDetailJson",
+    ] as const;
+    const methods = names.map((name) => result[name]);
     return (
       typeof value === "object" &&
       value !== null &&
       generatedScalarsAreSynchronous(methods) &&
-      typeof result.matchesProfileGeneration === "function" &&
-      typeof result.observation === "function" &&
-      typeof result.projectionUpdate === "function" &&
-      typeof result.blockedReasonDetailJson === "function" &&
-      typeof result.blockedValueJson === "function" &&
-      typeof result.commitJson === "function" &&
-      typeof result.fallthroughBindingId === "function" &&
-      typeof result.fallthroughActionId === "function" &&
-      typeof result.fallthroughPriority === "function" &&
-      typeof result.fallthroughReasonCode === "function" &&
-      typeof result.fallthroughReasonDetailJson === "function"
+      names.every((name) => typeof result[name] === "function")
     );
   } catch {
     return false;
