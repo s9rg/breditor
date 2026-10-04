@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "43ddc3a",
+  "status": "native-safari-clipboard-subset-observed",
+  "releaseQualified": false,
+  "nativeInputQualified": false,
+  "method": "CUA native Safari app clicks and macOS keyboard shortcuts; AX text plus visible selection inspection. No page JavaScript event dispatch, injected clipboard contents or direct system clipboard reads.",
+  "url": "http://127.0.0.1:4188/manual-clipboard.html",
+  "candidate": "target/flat-list-candidate-3ln0Nh",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "build": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-3ln0Nh npm run build:demo:lists",
+  "preview": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-3ln0Nh npx vite preview --config vite.lists.config.ts --host 127.0.0.1 --port 4188 --strictPort",
+  "observations": [
+    "Keyboard-selected first bullet copied to the scratch textarea with exact text and no bullet marker.",
+    "Cut of the same range emptied only that bullet. Pasting into scratch retained its exact text. One toolbar Undo restored the text and visible selection.",
+    "Typing ! at the end of the first numbered item inserted one character. Cmd+Z removed it; Cmd+Shift+Z restored it.",
+    "Cmd+V then inserted the bullet text exactly once after ! without importing a bullet. One Cmd+Z removed only the paste; a second removed !.",
+    "Forward selection across both numbered items copied exact text separated by one newline, without ordinal markers.",
+    "Backward selection across both numbered items cut to one empty item starting at 3. The scratch textarea received exact newline-separated text. One Undo restored both items numbered 3 and 4 and the selected text.",
+    "Cmd+Shift+Z reapplied the cross-item cut; Cmd+Z restored both items. Copy of the restored range again produced exact newline-separated text."
+  ],
+  "initialSelectionAttempt": {
+    "result": "Not a valid clipboard pass or confirmed product failure.",
+    "observation": "CUA selectText on the editor left a caret at the end of the second bullet, not the requested selected first bullet. The initial trusted Copy was followed by an empty scratch paste. A second selection attempt was inspected visually and likewise had no highlighted range.",
+    "correction": "Click inside the intended line, use Cmd+Left followed by Cmd+Shift+Right, and verify the highlighted text before Copy. Native copy then passed without product changes.",
+    "limit": "The cause of the accessibility selection action failing to establish a range was not diagnosed. A trusted event alone does not prove a valid selection or clipboard output."
+  },
+  "capturedReport": {
+    "format": "breditor/manual-clipboard-evidence",
+    "formatVersion": 1,
+    "outcome": "incomplete",
+    "qualification": "Not automatic certification. Trusted events can also originate from browser automation; checklist observations are self-reported.",
+    "owner": {"phase": "live", "reason": null, "revision": "33"},
+    "firstFault": null,
+    "observedEvents": 8,
+    "pendingEvents": 0,
+    "droppedEvents": 0,
+    "trustedClipboardEvents": {"copy": 4, "cut": 2, "paste": 1},
+    "operatorChecks": {"copy": false, "cut": false, "paste": false, "caret": false, "history": false, "formatting": false},
+    "events": [
+      {"sequence": 1, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "2"}, "after": {"phase": "live", "reason": null, "revision": "2"}},
+      {"sequence": 2, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "7"}, "after": {"phase": "live", "reason": null, "revision": "7"}},
+      {"sequence": 3, "kind": "cut", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "11"}, "after": {"phase": "live", "reason": null, "revision": "12"}},
+      {"sequence": 4, "kind": "beforeinput", "trusted": true, "inputType": "insertText", "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "15"}, "after": {"phase": "live", "reason": null, "revision": "16"}},
+      {"sequence": 5, "kind": "paste", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "18"}, "after": {"phase": "live", "reason": null, "revision": "19"}},
+      {"sequence": 6, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "24"}, "after": {"phase": "live", "reason": null, "revision": "24"}},
+      {"sequence": 7, "kind": "cut", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "29"}, "after": {"phase": "live", "reason": null, "revision": "30"}},
+      {"sequence": 8, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "33"}, "after": {"phase": "live", "reason": null, "revision": "33"}}
+    ],
+    "fixture": {"name": "flat-list-showcase", "schema": "example/flat-list-showcase", "sessionFormatVersion": 6, "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df"},
+    "environment": {"userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15", "platform": "MacIntel"}
+  },
+  "performanceRecheck": {
+    "command": "node scripts/measure-flat-list-performance.mjs target/flat-list-packages-D4gWtu/qualification.json",
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-5SxlfD/performance-yrGJV3/measurement.json",
+    "reportSha256": "98df46d66bdbd90881d98616bc34551890bbef4e8e07088bd8c51c1cc13c9bf9",
+    "passedCorrectnessCases": 27,
+    "releasePerformanceQualified": false,
+    "interpretation": "Three samples per size per engine on this Mac. Large-list latency remains material, especially Firefox. No p95, speedup, physical-input latency or supported maximum-size claim."
+  },
+  "remaining": [
+    "Complete native Safari formatting/list conversions and forward cut coverage",
+    "Native Chrome clipboard and keyboard qualification",
+    "Actual OS IME and screen-reader checks",
+    "Large-list performance, delivery/size decision and full release gates"
+  ],
+  "priorWebKitFaultResolved": false,
+  "priorTimeoutsResolved": false,
+  "runtimeChanges": false,
+  "pushedOrPublished": false
+}

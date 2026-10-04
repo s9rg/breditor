@@ -68,6 +68,14 @@ it excludes document, clipboard, scratch and input contents. Review it before
 sharing. Truncation, pending events, faults or missing observations prevent a
 complete result. Reload starts a new recording.
 
+When driving Safari through native accessibility automation, verify the actual
+highlighted range before Copy or Cut. An accessibility `selectText` request can
+leave a caret instead of the requested range. If that happens, click the intended
+line and use native keyboard selection (for example, Cmd+Left then
+Cmd+Shift+Right), checking the visible selection before proceeding. A trusted
+Copy event by itself proves neither a nonempty selection nor clipboard output;
+paste into the scratch area and inspect the exact result.
+
 An `operator-confirmed` result is self-reported, not automatic certification:
 browser automation can also produce trusted events. The automated suite verifies
 the fixture, synthetic cross-item transfer, numbered-list history, empty-item

@@ -1771,3 +1771,26 @@ Strict TypeScript passes. See [evidence](qualification/2026-10-04-typing-affinit
 This is a selection-bookkeeping fix, not a general WebKit or performance fix.
 Native qualification, earlier timeouts, size/delivery decisions and full release
 gates remain open. No push or publication was performed.
+
+## Native Safari clipboard subset — 2026-10-04
+
+The desktop became available. Native Safari app control now demonstrates exact
+single-bullet copy/cut, one-step undo, numbered-item typing and redo, plaintext
+paste once at the restored caret, forward cross-item copy, backward cross-item
+cut and undo/redo restoring numbering from 3. Scratch-area output was inspected,
+not inferred from trusted-event counts. The editor remained live with no recorded
+fault. An initial accessibility selection request left a caret rather than a
+range; keyboard selection with a visibly checked highlight passed without a
+runtime change. Keep that failed setup separate from valid clipboard evidence.
+
+The saved report deliberately remains incomplete: native formatting/conversion,
+forward cut and Chrome checks remain, along with OS IME and screen-reader work.
+CUA-driven native shortcuts are not a human physical-input certification, nor a
+resolution of the earlier intermittent WebKit fault. See the artifact-bound
+[native observations and report](qualification/2026-10-04-list-native-safari.json).
+
+A fresh installed-package performance run passed all 27 correctness cases but
+still showed substantial large-list latency, particularly in Firefox. Its exact
+report hash is retained with these observations; no release performance claim
+or size ceiling changed. Flat lists remain first, nesting later, as explicitly
+confirmed by the user. No runtime changes, push or publication in this checkpoint.
