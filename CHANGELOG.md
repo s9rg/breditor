@@ -6,6 +6,13 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Extend experimental list composition ownership through the shared renderer
+  and production Wasm adapter. Reconcile provisional text by its exact list-item
+  path; reject structural, numbering and neighboring-text drift. Restore or
+  discard native DOM without mutating Rust, then commit the validated candidate
+  through normal commands with exact undo/redo and checkpoint recovery. Native
+  composition event routing and OS IME qualification remain pending.
+
 - Connect the experimental flat-list toolbar to the production list queue and
   Wasm adapter. Add named-intent controls for paragraph, headings 1–6, bullet
   lists, numbered lists and Remove list alongside formatting and undo/redo.

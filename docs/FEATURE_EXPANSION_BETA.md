@@ -1165,3 +1165,35 @@ Next: high-level list editor owner/router, then composition and supported
 clipboard integration, visible persistence and native-input/release gates.
 Nested lists remain deferred. Shipping hashes are unchanged; nothing was pushed
 or published. See [verification](qualification/2026-10-04-flat-list-toolbar.json).
+
+## Flat-list composition lease and reconciliation checkpoint
+
+The production list adapter now owns composition leases through the same private
+state machine as the base adapter. Separate list token/renderer entry points
+preserve exact snapshot, render, selection, epoch, session and owner binding.
+Normal delivery is unavailable while the lease is active. Refinement is one-use;
+restoration spends the lease before DOM effects and returns a fresh normal token.
+Render/selection restoration failure requires reconciliation, never token replay.
+Recovery and disposal restore the authoritative base without applying native text
+to Rust or creating history.
+
+The shared strict DOM scanner now traverses the actual list hierarchy. It checks
+root/list/item topology, exact ordered start, heading ranks and every non-target
+block. Only one captured text block may change; admitted inline wrappers, exact
+unchanged prefix/suffix, Unicode and existing resource limits still apply. Results
+carry the real text-block path, not a flattened paragraph index. Cross-item
+composition rejects, matching the established single-block lease boundary.
+
+All 1,788 browser tests (30 new), strict TypeScript and temporary declaration
+emission pass. Five runs each in Chromium, Firefox and WebKit exercise scripted
+native-DOM replacement of an emoji inside a numbered heading, strict restoration,
+normal queued Rust commit, exact undo and redo recovered from a saved checkpoint.
+Changing the ordered start during the lease rejects and restores the base while
+preserving that redo branch. A stale selection capability after synchronization
+rejects before opening or spending a lease.
+
+This is adapter/renderer protocol qualification, not composition-event scheduling
+or OS IME certification. Next is list composition-controller routing, followed by
+clipboard and full editor owner/router integration, visible reload/backup and
+native/release gates. Shipping artifacts remain unchanged; nothing was pushed or
+published. See [verification](qualification/2026-10-04-flat-list-composition-lease.json).

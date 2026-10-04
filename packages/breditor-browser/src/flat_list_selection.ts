@@ -90,3 +90,12 @@ function spatial(projection: FlatListDocumentProjection, point: BaseSelectionPoi
   const prefix = block.runs.slice(0, boundary).reduce((sum, run) => sum + run.text.length, 0);
   return {path, offset: prefix + (point.kind === "text" ? point.utf16Offset : 0)};
 }
+
+/** Scalar-checked aggregate offset in the actual hierarchical text block. @internal */
+export function flatListSpatialPositionForPoint(projection: FlatListDocumentProjection, point: unknown):
+  Readonly<{textBlockPath: AstPath; utf16Offset: number}> | null {
+  const checked = validateFlatListSelectionPoint(projection, point);
+  if (!checked.ok) return null;
+  const position = spatial(projection, checked.value);
+  return Object.freeze({textBlockPath: Object.freeze([...position.path]), utf16Offset: position.offset});
+}

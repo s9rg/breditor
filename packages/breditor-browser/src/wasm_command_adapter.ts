@@ -21,6 +21,10 @@ import {
   compositionDeliveryTokenMatchesOpeningBase,
   compositionDeliveryTokenMatchesSettlement,
   issueCompositionDeliveryToken,
+  issueFlatListCompositionDeliveryToken,
+  flatListCompositionDeliveryTokenMatchesOpeningBase,
+  flatListCompositionDeliveryTokenMatchesSettlement,
+  type FlatListCompositionDeliveryToken,
   type CompositionDeliveryToken,
 } from "./composition_delivery_token.js";
 import {
@@ -28,6 +32,7 @@ import {
   isOwnedFlatListRenderedProjection,
   isOwnedRenderedProjection,
   type DomCompositionLease,
+  type FlatListDomCompositionLease,
   type ProjectionFallbackReason,
   type ProjectionRenderOutcome,
   type RenderedProjection,
@@ -422,12 +427,12 @@ export type WasmRenderReconciliationOutcome<P extends CommandProjection = BaseDo
  *
  * @internal
  */
-export type WasmCompositionLeaseRestoreOutcome =
+export type WasmCompositionLeaseRestoreOutcome<P extends CommandProjection = BaseDocumentProjection> =
   | Readonly<{
       ok: true;
-      rendered: RenderedProjection;
-      delivery: EditorDeliveryToken;
-      selection: BaseRangeSelection;
+      rendered: RenderedProjection<P>;
+      delivery: P extends FlatListDocumentProjection ? FlatListEditorDeliveryToken : EditorDeliveryToken;
+      selection: P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
     }>
   | Readonly<{
       ok: false;
@@ -503,12 +508,15 @@ interface AppliedTransition {
   readonly domFailure: boolean;
 }
 
+type AnyCompositionToken = CompositionDeliveryToken | FlatListCompositionDeliveryToken;
+type AnyDomCompositionLease = DomCompositionLease | FlatListDomCompositionLease;
+
 interface ActiveCompositionLease {
-  readonly token: CompositionDeliveryToken;
-  readonly selection: BaseRangeSelection;
+  readonly token: AnyCompositionToken;
+  readonly selection: NonNullable<CommandSelection>;
   readonly sessionId: bigint;
   readonly refined: boolean;
-  readonly domLease?: DomCompositionLease;
+  readonly domLease?: AnyDomCompositionLease;
 }
 
 /**
@@ -958,15 +966,14 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
    * @internal
    */
   beginCompositionLease(
-    delivery: EditorDeliveryToken,
-    selection: BaseRangeSelection,
+    delivery: CommandToken,
+    selection: NonNullable<CommandSelection>,
     sessionId: bigint,
-  ): CompositionDeliveryToken {
-    const {projection, rendered} = this.#baseCompositionDependencies();
+  ): AnyCompositionToken {
     this.#requireState("live");
     this.#requireObservation();
     if (
-      !isOwnedBaseRangeSelection(selection) ||
+      !(this.#flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
       selection.projection !== this.#projection ||
       !isNonzeroU64(sessionId) ||
       !hostIsConnected(this.#host) ||
@@ -976,14 +983,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     }
 
     const leaseEpoch = this.#deliveryEpoch + 1n;
-    const token = issueCompositionDeliveryToken(
-      projection,
-      rendered,
-      selection,
-      leaseEpoch,
-      sessionId,
-      this.#authority,
-    );
+    const token = this.#issueCompositionToken(selection, leaseEpoch, sessionId);
     this.#deliveryEpoch = leaseEpoch;
     this.#compositionLease = Object.freeze({
       token,
@@ -1004,17 +1004,16 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
    * @internal
    */
   refineCompositionLease(
-    token: CompositionDeliveryToken,
-    selection: BaseRangeSelection,
-  ): CompositionDeliveryToken {
-    const {projection, rendered} = this.#baseCompositionDependencies();
+    token: AnyCompositionToken,
+    selection: NonNullable<CommandSelection>,
+  ): AnyCompositionToken {
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
       lease.refined ||
-      !isOwnedBaseRangeSelection(selection) ||
+      !(this.#flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
       selection.projection !== this.#projection ||
-      !compositionDeliveryTokenMatchesOpeningBase(
+      !(this.#flatLists ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
         token,
         this.#projection,
         this.#rendered,
@@ -1027,14 +1026,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
       throw new TypeError("composition lease cannot be refined");
     }
 
-    const replacement = issueCompositionDeliveryToken(
-      projection,
-      rendered,
-      selection,
-      this.#deliveryEpoch,
-      lease.sessionId,
-      this.#authority,
-    );
+    const replacement = this.#issueCompositionToken(selection, this.#deliveryEpoch, lease.sessionId);
     this.#compositionLease = Object.freeze({
       token: replacement,
       selection,
@@ -1053,13 +1045,13 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
    *
    * @internal
    */
-  openCompositionDomLease(token: CompositionDeliveryToken): boolean {
-    const {rendered} = this.#baseCompositionDependencies();
+  openCompositionDomLease(token: AnyCompositionToken): boolean {
+    const rendered = this.#rendered;
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
       lease.domLease !== undefined ||
-      !compositionDeliveryTokenMatchesOpeningBase(
+      !(this.#flatLists ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
         token,
         this.#projection,
         this.#rendered,
@@ -1072,20 +1064,22 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
       throw new TypeError("composition DOM lease cannot be opened");
     }
 
-    let domLease: DomCompositionLease | null = null;
+    let domLease: AnyDomCompositionLease | null = null;
     let ownsDomLease = false;
     try {
-      domLease = this.#renderer.beginCompositionDomLease(rendered);
+      domLease = isOwnedFlatListRenderedProjection(rendered)
+        ? this.#renderer.beginFlatListCompositionDomLease(rendered)
+        : isOwnedRenderedProjection(rendered) ? this.#renderer.beginCompositionDomLease(rendered) : null;
       ownsDomLease =
         domLease !== null &&
-        this.#renderer.ownsCompositionDomLease(domLease, rendered);
+        this.#ownsCompositionDomLease(domLease);
     } catch {
       ownsDomLease = false;
     }
     if (domLease === null || !ownsDomLease) {
       if (domLease !== null) {
         try {
-          this.#renderer.discardCompositionDomLease(domLease);
+          this.#discardDomLease(domLease);
         } catch {
           // The renderer refused ownership; adapter recovery remains explicit.
         }
@@ -1110,18 +1104,18 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
    * @internal
    */
   restoreCompositionLease(
-    token: CompositionDeliveryToken,
-  ): WasmCompositionLeaseRestoreOutcome {
+    token: AnyCompositionToken,
+  ): WasmCompositionLeaseRestoreOutcome<CommandProjection> {
     return this.#restoreCompositionLease(token);
   }
 
   #restoreCompositionLease(
-    token: CompositionDeliveryToken,
-  ): WasmCompositionLeaseRestoreOutcome {
+    token: AnyCompositionToken,
+  ): WasmCompositionLeaseRestoreOutcome<CommandProjection> {
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
-      !compositionDeliveryTokenMatchesSettlement(
+      !(this.#flatLists ? flatListCompositionDeliveryTokenMatchesSettlement : compositionDeliveryTokenMatchesSettlement)(
         token,
         this.#projection,
         this.#rendered,
@@ -1131,7 +1125,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
         this.#authority,
       ) ||
       (lease.domLease === undefined
-        ? !compositionDeliveryTokenMatchesOpeningBase(
+        ? !(this.#flatLists ? flatListCompositionDeliveryTokenMatchesOpeningBase : compositionDeliveryTokenMatchesOpeningBase)(
             token,
             this.#projection,
             this.#rendered,
@@ -1161,22 +1155,22 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
    * @internal
    */
   recoverCompositionLease(
-    token: CompositionDeliveryToken,
-  ): WasmCompositionLeaseRestoreOutcome {
+    token: AnyCompositionToken,
+  ): WasmCompositionLeaseRestoreOutcome<CommandProjection> {
     return this.#recoverCompositionLease(token);
   }
 
   #recoverCompositionLease(
-    token: CompositionDeliveryToken,
-  ): WasmCompositionLeaseRestoreOutcome {
+    token: AnyCompositionToken,
+  ): WasmCompositionLeaseRestoreOutcome<CommandProjection> {
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
       !isNonzeroU64(lease.sessionId) ||
       token.sessionId !== lease.sessionId ||
-      !isOwnedProjection(this.#projection) ||
+      !(this.#flatLists ? isOwnedFlatListProjection(this.#projection) : isOwnedProjection(this.#projection)) ||
       token.projection !== this.#projection ||
-      !isOwnedBaseRangeSelection(lease.selection) ||
+      !(this.#flatLists ? isOwnedFlatListRangeSelection(lease.selection) : isOwnedBaseRangeSelection(lease.selection)) ||
       lease.selection.projection !== this.#projection ||
       token.selection !== lease.selection
     ) {
@@ -1189,26 +1183,28 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
   #finishCompositionLease(
     lease: ActiveCompositionLease,
     strategy: "canonicalFull" | "rendererLease" | "recoveryFull",
-  ): WasmCompositionLeaseRestoreOutcome {
-    const {projection, bridge} = this.#baseCompositionDependencies();
+  ): WasmCompositionLeaseRestoreOutcome<CommandProjection> {
+    const projection = this.#projection;
     // Spend identity and epoch before the first DOM effect. A failed restore is
     // recovered through the ordinary reconciliation path, never token replay.
     this.#compositionLease = undefined;
     this.#deliveryEpoch += 1n;
     this.#state = "executing";
 
-    let rendered: ReturnType<BreditorDomRenderer["render"]>;
+    let rendered: ReturnType<BreditorDomRenderer["render"] | BreditorDomRenderer["renderFlatList"]>;
     try {
       if (strategy === "recoveryFull") {
         this.#discardCompositionDomLease(lease);
       }
-      rendered =
-        strategy === "rendererLease" && lease.domLease !== undefined
-          ? this.#renderer.restoreCompositionDomLease(
-              lease.domLease,
-              projection,
-            )
+      if (isOwnedFlatListProjection(projection)) {
+        rendered = strategy === "rendererLease" && lease.domLease !== undefined
+          ? this.#renderer.restoreFlatListCompositionDomLease(lease.domLease as FlatListDomCompositionLease, projection)
+          : this.#renderer.renderFlatList(this.#host, projection);
+      } else {
+        rendered = strategy === "rendererLease" && lease.domLease !== undefined
+          ? this.#renderer.restoreCompositionDomLease(lease.domLease as DomCompositionLease, projection)
           : this.#renderer.render(this.#host, projection);
+      }
     } catch {
       this.#discardCompositionDomLease(lease);
       this.#state = "reconcile";
@@ -1223,10 +1219,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
 
     let selectionWritten = false;
     try {
-      selectionWritten = bridge.write(
-        this.#rendered,
-        lease.selection,
-      ).ok;
+      selectionWritten = this.#writeSelection(this.#rendered, lease.selection);
     } catch {
       selectionWritten = false;
     }
@@ -1236,9 +1229,9 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     }
 
     this.#state = "live";
-    let delivery: EditorDeliveryToken;
+    let delivery: CommandToken;
     try {
-      delivery = this.#deliveryToken() as EditorDeliveryToken;
+      delivery = this.#deliveryToken();
     } catch {
       this.#state = "reconcile";
       return compositionRestoreFailure("renderFailed");
@@ -1421,7 +1414,7 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
         if (token === undefined) {
           throw new TypeError("composition lease ownership is unavailable");
         }
-        let restored: WasmCompositionLeaseRestoreOutcome;
+        let restored: WasmCompositionLeaseRestoreOutcome<CommandProjection>;
         try {
           restored = this.#restoreCompositionLease(token);
         } catch {
@@ -2432,15 +2425,34 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
       return;
     }
     try {
-      this.#renderer.discardCompositionDomLease(lease.domLease);
+      this.#discardDomLease(lease.domLease);
     } catch {
       // Best-effort cleanup only; callers preserve their primary failure.
     }
   }
 
-  #ownsCompositionDomLease(lease: DomCompositionLease): boolean {
+  #discardDomLease(lease: AnyDomCompositionLease): void {
+    if (this.#flatLists) this.#renderer.discardFlatListCompositionDomLease(lease as FlatListDomCompositionLease);
+    else this.#renderer.discardCompositionDomLease(lease as DomCompositionLease);
+  }
+
+  #issueCompositionToken(selection: NonNullable<CommandSelection>, epoch: bigint, session: bigint): AnyCompositionToken {
+    if (this.#flatLists && isOwnedFlatListProjection(this.#projection) &&
+      isOwnedFlatListRenderedProjection(this.#rendered) && isOwnedFlatListRangeSelection(selection)) {
+      return issueFlatListCompositionDeliveryToken(this.#projection, this.#rendered, selection, epoch, session, this.#authority);
+    }
+    if (!this.#flatLists && isOwnedProjection(this.#projection) && isOwnedRenderedProjection(this.#rendered) &&
+      isOwnedBaseRangeSelection(selection)) {
+      return issueCompositionDeliveryToken(this.#projection, this.#rendered, selection, epoch, session, this.#authority);
+    }
+    throw new TypeError("composition dependencies have mismatched modes");
+  }
+
+  #ownsCompositionDomLease(lease: AnyDomCompositionLease): boolean {
     try {
-      return this.#renderer.ownsCompositionDomLease(lease, this.#baseCompositionDependencies().rendered);
+      return isOwnedFlatListRenderedProjection(this.#rendered)
+        ? this.#renderer.ownsFlatListCompositionDomLease(lease, this.#rendered)
+        : isOwnedRenderedProjection(this.#rendered) && this.#renderer.ownsCompositionDomLease(lease, this.#rendered);
     } catch {
       return false;
     }
@@ -2480,11 +2492,11 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
       this.#selectionBridge.write(rendered, selection).ok;
   }
 
-  /** Composition stays base-only until list native-input leases are qualified. */
+  /** Narrows the legacy normal-delivery token construction path. */
   #baseCompositionDependencies(): {projection: BaseDocumentProjection; rendered: RenderedProjection; bridge: BreditorDomSelectionBridge} {
     if (this.#flatLists || !isOwnedProjection(this.#projection) || !isOwnedRenderedProjection(this.#rendered) ||
         !(this.#selectionBridge instanceof BreditorDomSelectionBridge)) {
-      throw new TypeError("flat-list composition leases are not supported yet");
+      throw new TypeError("legacy dependencies cannot use flat-list mode");
     }
     return {projection: this.#projection, rendered: this.#rendered, bridge: this.#selectionBridge};
   }
@@ -2507,6 +2519,20 @@ export class BreditorWasmCommandAdapter extends WasmCommandAdapterCore<EditorCom
   override deliveryToken(): EditorDeliveryToken { return super.deliveryToken() as EditorDeliveryToken; }
   override acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken { return super.acceptsDeliveryToken(token); }
   override execute(request: EditorCommandRequest): WasmCommandSequenceOutcome { return super.execute(request) as WasmCommandSequenceOutcome; }
+
+  override beginCompositionLease(delivery: EditorDeliveryToken, selection: BaseRangeSelection, sessionId: bigint): CompositionDeliveryToken {
+    return super.beginCompositionLease(delivery, selection, sessionId) as CompositionDeliveryToken;
+  }
+  override refineCompositionLease(token: CompositionDeliveryToken, selection: BaseRangeSelection): CompositionDeliveryToken {
+    return super.refineCompositionLease(token, selection) as CompositionDeliveryToken;
+  }
+  override openCompositionDomLease(token: CompositionDeliveryToken): boolean { return super.openCompositionDomLease(token); }
+  override restoreCompositionLease(token: CompositionDeliveryToken): WasmCompositionLeaseRestoreOutcome {
+    return super.restoreCompositionLease(token) as WasmCompositionLeaseRestoreOutcome;
+  }
+  override recoverCompositionLease(token: CompositionDeliveryToken): WasmCompositionLeaseRestoreOutcome {
+    return super.recoverCompositionLease(token) as WasmCompositionLeaseRestoreOutcome;
+  }
   override restoreCanonicalRender(): WasmRenderReconciliationOutcome { return super.restoreCanonicalRender() as WasmRenderReconciliationOutcome; }
 }
 
@@ -2524,6 +2550,20 @@ export class BreditorFlatListWasmCommandAdapter extends WasmCommandAdapterCore<F
   override acceptsDeliveryToken(token: unknown): token is FlatListEditorDeliveryToken { return super.acceptsDeliveryToken(token); }
   override execute(request: FlatListEditorCommandRequest): WasmCommandSequenceOutcome<FlatListDocumentProjection> {
     return super.execute(request) as WasmCommandSequenceOutcome<FlatListDocumentProjection>;
+  }
+
+  override beginCompositionLease(delivery: FlatListEditorDeliveryToken, selection: FlatListRangeSelection, sessionId: bigint): FlatListCompositionDeliveryToken {
+    return super.beginCompositionLease(delivery, selection, sessionId) as FlatListCompositionDeliveryToken;
+  }
+  override refineCompositionLease(token: FlatListCompositionDeliveryToken, selection: FlatListRangeSelection): FlatListCompositionDeliveryToken {
+    return super.refineCompositionLease(token, selection) as FlatListCompositionDeliveryToken;
+  }
+  override openCompositionDomLease(token: FlatListCompositionDeliveryToken): boolean { return super.openCompositionDomLease(token); }
+  override restoreCompositionLease(token: FlatListCompositionDeliveryToken): WasmCompositionLeaseRestoreOutcome<FlatListDocumentProjection> {
+    return super.restoreCompositionLease(token) as WasmCompositionLeaseRestoreOutcome<FlatListDocumentProjection>;
+  }
+  override recoverCompositionLease(token: FlatListCompositionDeliveryToken): WasmCompositionLeaseRestoreOutcome<FlatListDocumentProjection> {
+    return super.recoverCompositionLease(token) as WasmCompositionLeaseRestoreOutcome<FlatListDocumentProjection>;
   }
   override restoreCanonicalRender(): WasmRenderReconciliationOutcome<FlatListDocumentProjection> {
     return super.restoreCanonicalRender() as WasmRenderReconciliationOutcome<FlatListDocumentProjection>;

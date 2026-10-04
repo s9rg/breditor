@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "42c9088",
+  "status": "List composition renderer/adapter ownership and strict reconciliation integrated; composition controller and OS IME qualification remain open",
+  "contracts": {
+    "capabilities": "Explicit list composition token and renderer lease; exact projection, selection, render, epoch, session and hidden owner; legacy matchers reject list mode",
+    "ownership": "Shared private renderer and adapter lifecycle; one refinement, one opening, spend-before-restore; superseded ownership requires explicit recovery",
+    "reconciliation": "Actual list-item paths, exact roots/list/item topology, ordered start and block kind; non-target content canonical; target prefix/suffix exact with existing text/inline-policy/Unicode/resource checks",
+    "commit": "Restore authoritative base without Rust mutation, then deliver validated text through normal list command under the held queue reservation",
+    "failure": "Failed restoration enters reconciliation and cannot replay the spent lease; cancellation/disposal does not import provisional DOM",
+    "boundary": "One text block per native composition lease; cross-item composition rejects; no nesting or arbitrary native structural import"
+  },
+  "verification": {
+    "newTests": 30,
+    "browserTests": 1788,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Scripted provisional DOM replaces an emoji with Japanese text inside a numbered heading. Production adapter/renderer restore the base, a leased normal command commits text to Rust, undo restores exact original document/selection, structural drift cancels without losing redo, and a fresh Session V6 owner redoes exactly. Includes prior toolbar/controller/recovery scenarios.",
+    "developmentCorrections": [
+      "Typecheck caught union narrowing at renderer/adapter boundaries and an old base-only disposal result annotation; explicit owned-mode checks and a generic result retain legacy defaults.",
+      "Initial real-browser run failed in all three engines because the harness reused its pre-synchronization selection capability. Synchronization publishes a new snapshot. The harness now explicitly proves stale selection rejection leaves the normal token unspent, then captures the same endpoints against the current projection. Production checks were not weakened."
+    ],
+    "commands": [
+      "npm test --workspace @breditor/browser -- src/wasm_command_adapter.test.ts src/composition_controller.test.ts src/dom_renderer.test.ts src/dom_composition_reconcile.test.ts src/composition_delivery_token.test.ts",
+      "npm test --workspace @breditor/browser",
+      "npm run typecheck --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "List composition controller event scheduling and routing",
+    "Supported clipboard and full editor owner/router integration",
+    "Visible reload/backup and physical native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Adapter/renderer composition protocol with scripted DOM, not physical input, OS IME or complete list editor qualification. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BreditorDomRenderer, type RenderedProjection } from "./dom_renderer.js";
 import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
 import { FlatListDocumentProjection } from "./flat_list_projection.js";
+import { FlatListRangeSelection } from "./flat_list_selection.js";
+import { reconcileFlatListCompositionDom } from "./dom_composition_reconcile.js";
 import { compileBrowserPresentation } from "./compiled_browser_presentation.js";
 import { createInlineFormatRenderManifest } from "./inline_format_render_manifest.js";
 import { issueCompositionDeliveryToken } from "./composition_delivery_token.js";
@@ -199,6 +201,106 @@ describe("explicit flat-list command adapter", () => {
   const request = (adapter: BreditorFlatListWasmCommandAdapter) => flatListCommandRequest(adapter.deliveryToken(),
     preserveSelectionSync(), {kind: "api", detail: "lists"},
     {kind: "action", actionId: "breditor/toggle-flat-list-strong", input: {kind: "none"}});
+
+  function compositionAdapterFixture() {
+    const f = fixture(); const initial = observation(0); const engine = engineQueues({});
+    const action = vi.spyOn(engine, "executeStringAction");
+    const adapter = new BreditorFlatListWasmCommandAdapter(engine, initial, f.options);
+    const selected = FlatListRangeSelection.create(adapter.rendered.projection, {kind: "range",
+      anchor: {kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 3, affinity: "before"},
+      focus: {kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 1, affinity: "after"}});
+    if (!selected.ok) throw new Error(selected.error.code);
+    return {...f, initial, engine, action, adapter, selected: selected.value,
+      dispose() { adapter.dispose(); f.bridge.dispose(); f.host.remove(); }};
+  }
+
+  it("owns a one-use list composition lease and restores exact selection without a Rust edit", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const delivery = f.adapter.deliveryToken(); const before = f.adapter.rendered;
+      const lease = f.adapter.beginCompositionLease(delivery, f.selected, 1n);
+      expect(f.adapter.state).toBe("composition"); expect(f.adapter.acceptsDeliveryToken(delivery)).toBe(false);
+      expect(() => f.adapter.deliveryToken()).toThrow();
+      expect(f.adapter.openCompositionDomLease(lease)).toBe(true);
+      f.host.querySelector("h2")!.textContent = "A漢";
+      expect(reconcileFlatListCompositionDom(f.host, before.projection, f.selected)).toMatchObject({ok: true,
+        value: {textBlockPath: [0, 0, 0], originalText: "🙂", text: "漢"}});
+      const restored = f.adapter.restoreCompositionLease(lease);
+      expect(restored.ok).toBe(true);
+      if (!restored.ok) throw new Error(restored.reason);
+      expect(restored.selection).toBe(f.selected); expect(f.adapter.acceptsDeliveryToken(restored.delivery)).toBe(true);
+      expect(f.host.querySelector("h2")!.textContent).toBe("A🙂"); expect(f.host.querySelector("ol")!.start).toBe(8);
+      expect(f.bridge.read(restored.rendered)).toMatchObject({ok: true, value: {origin: "programmaticEcho", selection: f.selected}});
+      expect(() => f.adapter.restoreCompositionLease(lease)).toThrow(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.initial.free).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+    expect(f.initial.free).toHaveBeenCalledOnce();
+  });
+
+  it("refines a list composition range once, invalidating the previous exact token", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+      const refined = f.adapter.refineCompositionLease(lease, f.selected);
+      expect(() => f.adapter.openCompositionDomLease(lease)).toThrow("stale");
+      expect(() => f.adapter.refineCompositionLease(refined, f.selected)).toThrow();
+      expect(f.adapter.openCompositionDomLease(refined)).toBe(true);
+      expect(() => f.adapter.openCompositionDomLease(refined)).toThrow();
+      expect(f.adapter.restoreCompositionLease(refined).ok).toBe(true);
+    } finally { f.dispose(); }
+  });
+
+  it("rejects foreign list composition selections and tokens before changing state", () => {
+    const f = compositionAdapterFixture(); const other = compositionAdapterFixture();
+    try {
+      const delivery = f.adapter.deliveryToken();
+      expect(() => f.adapter.beginCompositionLease(delivery, other.selected, 1n)).toThrow();
+      expect(f.adapter.acceptsDeliveryToken(delivery)).toBe(true);
+      const lease = f.adapter.beginCompositionLease(delivery, f.selected, 1n);
+      expect(() => other.adapter.openCompositionDomLease(lease)).toThrow();
+      expect(() => f.adapter.restoreCompositionLease({...lease})).toThrow("stale");
+      expect(f.adapter.restoreCompositionLease(lease).ok).toBe(true);
+    } finally { f.dispose(); other.dispose(); }
+  });
+
+  it("recovers a list composition after its DOM lease is superseded", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+      expect(f.adapter.openCompositionDomLease(lease)).toBe(true);
+      f.host.querySelector("h2")!.textContent = "native";
+      expect(f.renderer.renderFlatList(f.host, lease.projection).ok).toBe(true);
+      expect(() => f.adapter.restoreCompositionLease(lease)).toThrow("stale");
+      expect(f.adapter.recoverCompositionLease(lease)).toMatchObject({ok: true, selection: f.selected});
+      expect(f.adapter.state).toBe("live"); expect(f.host.textContent).toBe("A🙂");
+      expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it.each(["render", "selection"])("spends the list lease after a %s restoration failure", failure => {
+    const f = compositionAdapterFixture();
+    const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+    expect(f.adapter.openCompositionDomLease(lease)).toBe(true);
+    const override = failure === "render"
+      ? vi.spyOn(f.renderer, "restoreFlatListCompositionDomLease").mockImplementation(() => { throw new Error("render failure"); })
+      : vi.spyOn(f.bridge, "write").mockImplementation(() => { throw new Error("selection failure"); });
+    try {
+      expect(f.adapter.restoreCompositionLease(lease)).toEqual({ok: false, reason: failure === "render" ? "renderFailed" : "selectionWriteFailed"});
+      expect(f.adapter.state).toBe("reconcile"); expect(() => f.adapter.restoreCompositionLease(lease)).toThrow();
+      expect(f.action).not.toHaveBeenCalled();
+    } finally { override.mockRestore(); f.dispose(); }
+  });
+
+  it("disposal discards provisional list composition DOM and frees observation once", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+      expect(f.adapter.openCompositionDomLease(lease)).toBe(true); f.host.querySelector("h2")!.textContent = "native";
+      f.adapter.dispose(); f.adapter.dispose();
+      expect(f.host.textContent).toBe("A🙂"); expect(f.initial.free).toHaveBeenCalledOnce();
+      expect(f.adapter.state).toBe("disposed"); expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
 
   function toolbarFixture(observer?: () => void, malformed = false) {
     const f = fixture();

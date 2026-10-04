@@ -1,7 +1,8 @@
 // Real toolbar/controller -> queue -> adapter -> Wasm -> DOM; synthetic input only.
 import { bootstrapFlatListWasmEngine } from "../packages/breditor-browser/src/wasm_engine_bootstrap.ts";
 import { BreditorFlatListWasmCommandAdapter, contentReadPortsForAdapter } from "../packages/breditor-browser/src/wasm_command_adapter.ts";
-import { BreditorFlatListCommandQueue } from "../packages/breditor-browser/src/command_queue.ts";
+import { BreditorFlatListCommandQueue, openFlatListCommandQueueLeasePort } from "../packages/breditor-browser/src/command_queue.ts";
+import { reconcileFlatListCompositionDom } from "../packages/breditor-browser/src/dom_composition_reconcile.ts";
 import { BreditorActionStateStore } from "../packages/breditor-browser/src/action_state_store.ts";
 import { BreditorToolbar } from "../packages/breditor-browser/src/toolbar.ts";
 import { FLAT_LIST_TOOLBAR_MANIFEST } from "../packages/breditor-browser/src/flat_list_toolbar_manifest.ts";
@@ -161,7 +162,7 @@ export function verifyFlatListCommandAdapter(api, semanticProfile, documentJson)
         return endpoints(exact);
       } finally { result?.free(); observation.free(); }
     };
-    return {adapter, host, bridge, send, ports, documentRoot, selection, dispatch, click, button, failNextUpdate: () => { failUpdate = true; }};
+    return {adapter, host, bridge, queue, send, ports, documentRoot, selection, dispatch, click, button, failNextUpdate: () => { failUpdate = true; }};
   };
   try {
     const first = boot({kind: "document", lineageId: "list-command-adapter", documentJson, historyCapacity: 20});
@@ -172,8 +173,9 @@ export function verifyFlatListCommandAdapter(api, semanticProfile, documentJson)
     value(bridge.write(adapter.rendered, selection));
     const originalRoot = first.documentRoot();
     const openingToken = adapter.deliveryToken();
-    mustThrow(() => adapter.beginCompositionLease(openingToken, selection, 1n));
-    equal(adapter.state, "live"); equal(adapter.acceptsDeliveryToken(openingToken), true);
+    const unusedComposition = adapter.beginCompositionLease(openingToken, selection, 1n);
+    equal(adapter.restoreCompositionLease(unusedComposition).ok, true);
+    equal(adapter.state, "live"); equal(adapter.acceptsDeliveryToken(openingToken), false);
     const inserted = first.dispatch("beforeinput", {inputType: "insertText", data: "x\ny"});
     equal(inserted.event.defaultPrevented, true); equal(inserted.disposition.kind, "handled");
     equal(inserted.disposition.submission.result.command.status, "committed");
@@ -220,6 +222,73 @@ export function verifyFlatListCommandAdapter(api, semanticProfile, documentJson)
     equal(restored.adapter.restoreCanonicalRender().ok, true);
     equal(restored.send({kind: "history", operation: "undo"}).command.status, "committed");
     equal(restored.documentRoot(), editedRoot); equal(restored.selection(), editedSelection); stop();
+
+    // Adapter/renderer composition protocol with scripted provisional DOM, not
+    // OS IME or composition-controller scheduling qualification.
+    const composing = boot({kind: "document", lineageId: "list-composition", documentJson, historyCapacity: 20});
+    let replacement = value(FlatListRangeSelection.create(composing.adapter.rendered.projection, {kind: "range",
+      anchor: {kind: "text", textPath: [1, 0, 0, 0], utf16Offset: 3, affinity: "before"},
+      focus: {kind: "text", textPath: [1, 0, 0, 0], utf16Offset: 1, affinity: "after"},
+    }));
+    composing.send({kind: "selection", operation: "synchronize"}, flatListRangeSelectionSync(replacement));
+    // Synchronization publishes a new snapshot. Equal-looking endpoints from
+    // its predecessor are not a current composition selection capability.
+    const currentDelivery = composing.adapter.deliveryToken();
+    mustThrow(() => composing.adapter.beginCompositionLease(currentDelivery, replacement, 1n));
+    equal(composing.adapter.acceptsDeliveryToken(currentDelivery), true);
+    replacement = value(FlatListRangeSelection.create(composing.adapter.rendered.projection,
+      {kind: "range", anchor: replacement.anchor, focus: replacement.focus}));
+    const beforeComposition = composing.documentRoot();
+    const leasePort = openFlatListCommandQueueLeasePort(composing.queue, composing.adapter.commandExecutor);
+    if (!leasePort) throw new Error("composition queue owner mismatch");
+    const reservation = leasePort.acquireLease();
+    if (!reservation) throw new Error("composition queue busy");
+    try {
+      const normal = composing.adapter.deliveryToken();
+      const composition = composing.adapter.beginCompositionLease(normal, replacement, 1n);
+      equal(composing.adapter.openCompositionDomLease(composition), true);
+      equal(composing.adapter.acceptsDeliveryToken(normal), false);
+      equal(composing.queue.submit(flatListCommandRequest(normal, preserveSelectionSync(), {kind: "api", detail: "busy"},
+        {kind: "history", operation: "undo"})).status, "rejected");
+      composing.host.querySelector("h2").textContent = "A漢字";
+      const candidate = value(reconcileFlatListCompositionDom(composing.host, composition.projection, replacement));
+      equal(candidate, {textBlockPath: [1, 0, 0], replacementStartUtf16: 1, replacementEndUtf16: 3, originalText: "🙂", text: "漢字"});
+      const restoredBase = composing.adapter.restoreCompositionLease(composition);
+      if (!restoredBase.ok) throw new Error(restoredBase.reason);
+      equal(composing.documentRoot(), beforeComposition); equal(composing.selection(), endpoints(replacement));
+      const delivered = leasePort.submitLeased(reservation, flatListCommandRequest(restoredBase.delivery,
+        flatListRangeSelectionSync(restoredBase.selection), {kind: "beforeinput", detail: "composition"},
+        {kind: "action", actionId: "breditor/insert-flat-list-text", input: {kind: "string", value: candidate.text}}, "closeBefore"));
+      equal(delivered.status, "completed"); equal(delivered.result.command.status, "committed");
+      mustThrow(() => composing.adapter.restoreCompositionLease(composition));
+    } finally { equal(leasePort.releaseLease(reservation), true); }
+    const composedRoot = composing.documentRoot(); const composedSelection = composing.selection();
+    equal(composing.host.querySelector("h2").textContent, "A漢字");
+    equal(composing.host.querySelector("ol").start, 8);
+    composing.send({kind: "history", operation: "undo"});
+    equal(composing.documentRoot(), beforeComposition); equal(composing.selection(), endpoints(replacement));
+
+    // Invalid native structural mutation is rejected and discarded, not
+    // imported into Rust or turned into an extra undo entry.
+    const cancellationRange = value(FlatListRangeSelection.create(composing.adapter.rendered.projection,
+      {kind: "range", anchor: replacement.anchor, focus: replacement.focus}));
+    const cancellationReservation = leasePort.acquireLease();
+    if (!cancellationReservation) throw new Error("cancellation queue busy");
+    try {
+      const cancellation = composing.adapter.beginCompositionLease(composing.adapter.deliveryToken(), cancellationRange, 2n);
+      equal(composing.adapter.openCompositionDomLease(cancellation), true);
+      composing.host.querySelector("ol").start = 99;
+      equal(reconcileFlatListCompositionDom(composing.host, cancellation.projection, cancellationRange).error.code,
+        "composition.dom.invalid_structure");
+      equal(composing.adapter.restoreCompositionLease(cancellation).ok, true);
+      equal(composing.documentRoot(), beforeComposition); equal(composing.selection(), endpoints(replacement));
+      equal(composing.host.querySelector("ol").start, 8);
+    } finally { equal(leasePort.releaseLease(cancellationReservation), true); }
+    const compositionCheckpoint = composing.ports.sessionCheckpointJson.read();
+    if (!compositionCheckpoint?.ok) throw new Error("composition checkpoint unavailable");
+    const resumedComposition = boot({kind: "sessionCheckpoint", checkpointJson: compositionCheckpoint.checkpoint.checkpointJson});
+    resumedComposition.send({kind: "history", operation: "redo"});
+    equal(resumedComposition.documentRoot(), composedRoot); equal(resumedComposition.selection(), composedSelection);
 
     const controls = boot({kind: "document", lineageId: "list-toolbar", documentJson, historyCapacity: 20});
     const selected = value(FlatListRangeSelection.create(controls.adapter.rendered.projection, {kind: "range",

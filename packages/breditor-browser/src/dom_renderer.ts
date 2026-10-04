@@ -106,6 +106,11 @@ export interface DomCompositionLease {
   readonly __domCompositionLeaseBrand: never;
 }
 
+/** Explicit hierarchical counterpart; legacy lease entry points reject it. @internal */
+export interface FlatListDomCompositionLease {
+  readonly __flatListDomCompositionLeaseBrand: never;
+}
+
 interface ProjectionMaps {
   readonly astToDom: Map<string, Node>;
   readonly domToAst: WeakMap<Node, AstPath>;
@@ -128,7 +133,7 @@ interface HostOwnership {
 
 interface DomCompositionLeaseRecord {
   readonly rendererToken: symbol;
-  readonly handle: RenderedProjectionHandle<BaseDocumentProjection>;
+  readonly handle: RenderedProjectionHandle;
   active: boolean;
 }
 
@@ -443,10 +448,20 @@ export class BreditorDomRenderer {
    * @internal
    */
   beginCompositionDomLease(rendered: RenderedProjection): DomCompositionLease | null {
+    return this.#beginCompositionDomLease(rendered, false) as DomCompositionLease | null;
+  }
+
+  /** Yields one exact hierarchical host to native composition. @internal */
+  beginFlatListCompositionDomLease(rendered: RenderedProjection<FlatListDocumentProjection>): FlatListDomCompositionLease | null {
+    return this.#beginCompositionDomLease(rendered, true) as FlatListDomCompositionLease | null;
+  }
+
+  #beginCompositionDomLease(rendered: RenderedProjection<RenderableProjection>, flatLists: boolean): object | null {
     if (
-      !isOwnedRenderedProjection(rendered) ||
+      !(isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) ||
+      isOwnedFlatListProjection(rendered.projection) !== flatLists ||
       ACTIVE_HOST_OPERATIONS.has(rendered.host) ||
-      !this.owns(rendered)
+      !(flatLists ? this.ownsFlatList(rendered) : this.owns(rendered))
     ) {
       return null;
     }
@@ -461,7 +476,7 @@ export class BreditorDomRenderer {
       }
       return null;
     }
-    const lease = Object.freeze({}) as DomCompositionLease;
+    const lease = Object.freeze({});
     DOM_COMPOSITION_LEASES.set(lease, {
       rendererToken: this.#rendererToken,
       handle: rendered,
@@ -475,10 +490,20 @@ export class BreditorDomRenderer {
     lease: unknown,
     rendered: RenderedProjection,
   ): lease is DomCompositionLease {
+    return isOwnedRenderedProjection(rendered) && this.#ownsCompositionDomLease(lease, rendered);
+  }
+
+  /** Exact list-mode lease proof, without consulting deliberately mutable DOM. @internal */
+  ownsFlatListCompositionDomLease(lease: unknown,
+    rendered: RenderedProjection<FlatListDocumentProjection>): lease is FlatListDomCompositionLease {
+    return isOwnedFlatListRenderedProjection(rendered) && this.#ownsCompositionDomLease(lease, rendered);
+  }
+
+  #ownsCompositionDomLease(lease: unknown, rendered: RenderedProjection<RenderableProjection>): boolean {
     if (
       typeof lease !== "object" ||
       lease === null ||
-      !isOwnedRenderedProjection(rendered)
+      !(isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered))
     ) {
       return false;
     }
@@ -508,8 +533,19 @@ export class BreditorDomRenderer {
     lease: DomCompositionLease,
     projection: BaseDocumentProjection,
   ): BrowserProjectionResult<ProjectionRenderOutcome> {
+    return this.#restoreCompositionDomLease(lease, projection, false);
+  }
+
+  /** Spends a list lease and restores canonical hierarchical DOM. @internal */
+  restoreFlatListCompositionDomLease(lease: FlatListDomCompositionLease,
+    projection: FlatListDocumentProjection): BrowserProjectionResult<ProjectionRenderOutcome<FlatListDocumentProjection>> {
+    return this.#restoreCompositionDomLease(lease, projection, true);
+  }
+
+  #restoreCompositionDomLease<P extends RenderableProjection>(lease: object, projection: P,
+    flatLists: boolean): BrowserProjectionResult<ProjectionRenderOutcome<P>> {
     const record = this.#liveCompositionLeaseRecord(lease);
-    if (record === null) {
+    if (record === null || isOwnedFlatListProjection(record.handle.projection) !== flatLists) {
       return projectionFailure("renderer.foreign_or_stale_render");
     }
     const host = record.handle.host;
@@ -521,7 +557,7 @@ export class BreditorDomRenderer {
       if (installGuard === null) {
         return projectionFailure("renderer.dom_write_failed");
       }
-      if (!isOwnedProjection(projection)) {
+      if (flatLists ? !isOwnedFlatListProjection(projection) : !isOwnedProjection(projection)) {
         return projectionFailure("projection.invalid_shape");
       }
       if (!this.#bindProjectionPresentation(projection)) {
@@ -555,7 +591,7 @@ export class BreditorDomRenderer {
         return projectionFailure("renderer.dom_write_failed");
       }
 
-      let installed: BrowserProjectionResult<ProjectionRenderOutcome>;
+      let installed: BrowserProjectionResult<ProjectionRenderOutcome<P>>;
       try {
         installed = this.#install(
           host,
@@ -583,8 +619,18 @@ export class BreditorDomRenderer {
 
   /** Invalidates and releases one exact composition lease. @internal */
   discardCompositionDomLease(lease: DomCompositionLease): boolean {
+    return this.#discardCompositionDomLease(lease, false);
+  }
+
+  /** Invalidates a list lease without interpreting provisional native DOM. @internal */
+  discardFlatListCompositionDomLease(lease: FlatListDomCompositionLease): boolean {
+    return this.#discardCompositionDomLease(lease, true);
+  }
+
+  #discardCompositionDomLease(lease: object, flatLists: boolean): boolean {
     const record = this.#liveCompositionLeaseRecord(lease);
-    if (record === null || ACTIVE_HOST_OPERATIONS.has(record.handle.host)) {
+    if (record === null || isOwnedFlatListProjection(record.handle.projection) !== flatLists ||
+      ACTIVE_HOST_OPERATIONS.has(record.handle.host)) {
       return false;
     }
     this.#invalidateCompositionLeaseRecord(record);
@@ -840,7 +886,7 @@ export class BreditorDomRenderer {
       return null;
     }
     const record = DOM_COMPOSITION_LEASES.get(lease);
-    if (record === undefined || !this.ownsCompositionDomLease(lease, record.handle)) {
+    if (record === undefined || !this.#ownsCompositionDomLease(lease, record.handle)) {
       return null;
     }
     return record;

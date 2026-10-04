@@ -16,7 +16,12 @@ import {
 import {
   MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES,
   reconcileCompositionDom,
+  reconcileFlatListCompositionDom,
 } from "./dom_composition_reconcile.js";
+import { MAX_COMPOSITION_TEXT_UTF16 } from "./composition_event.js";
+import { issueFlatListCompositionDeliveryToken, flatListCompositionDeliveryTokenMatchesOpeningBase,
+  flatListCompositionDeliveryTokenMatchesSettlement, compositionDeliveryTokenMatchesOpeningBase,
+  compositionDeliveryTokenMatchesSettlement, issueCompositionDeliveryToken } from "./composition_delivery_token.js";
 import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
 import {
   nativeChildNodes,
@@ -69,6 +74,158 @@ describe("hierarchical flat-list DOM and points", () => {
     return {renderer, host, projection, rendered, make, inputBlocks};
   }
   const textPoint = (textPath: number[], utf16Offset: number, affinity = "after") => ({kind: "text", textPath, utf16Offset, affinity});
+
+  function compositionFixture() {
+    const f = fixture(); document.body.append(f.host);
+    const selection = valueOf(FlatListRangeSelection.create(f.projection, {kind: "range",
+      anchor: textPoint([0, 0, 0, 0], 3, "before"), focus: textPoint([0, 0, 0, 0], 1, "after")}));
+    const authority = Symbol("list composition owner");
+    const token = issueFlatListCompositionDeliveryToken(f.projection, f.rendered, selection, 7n, 1n, authority);
+    const matches = (candidate: unknown = token, epoch = 7n, session = 1n, owner = authority) =>
+      flatListCompositionDeliveryTokenMatchesOpeningBase(candidate, f.projection, f.rendered, selection, epoch, session, owner);
+    const settled = () => flatListCompositionDeliveryTokenMatchesSettlement(token, f.projection, f.rendered, selection, 7n, 1n, authority);
+    const lease = f.renderer.beginFlatListCompositionDomLease(f.rendered)!;
+    expect(lease).not.toBeNull();
+    const reconcile = () => reconcileFlatListCompositionDom(f.host, f.projection, selection);
+    const dispose = () => { f.renderer.discardFlatListCompositionDomLease(lease); f.host.remove(); };
+    return {...f, selection, authority, token, matches, settled, lease, reconcile, dispose};
+  }
+
+  it("binds list composition tokens to exact mode, selection, epoch, session and authority", () => {
+    const f = fixture(); document.body.append(f.host);
+    const selected = valueOf(FlatListRangeSelection.create(f.projection, {kind: "range",
+      anchor: textPoint([0, 0, 0, 0], 1), focus: textPoint([0, 0, 0, 0], 1)}));
+    const owner = Symbol("composition");
+    const token = issueFlatListCompositionDeliveryToken(f.projection, f.rendered, selected, 0n, 1n, owner);
+    const args = [f.projection, f.rendered, selected, 0n, 1n, owner] as const;
+    try {
+      expect(flatListCompositionDeliveryTokenMatchesOpeningBase(token, ...args)).toBe(true);
+      expect(compositionDeliveryTokenMatchesOpeningBase(token, ...args)).toBe(false);
+      expect(compositionDeliveryTokenMatchesSettlement(token, ...args)).toBe(false);
+      expect(flatListCompositionDeliveryTokenMatchesOpeningBase({...token}, ...args)).toBe(false);
+      expect(flatListCompositionDeliveryTokenMatchesOpeningBase(token, f.projection, f.rendered, {...selected}, 0n, 1n, owner)).toBe(false);
+      expect(flatListCompositionDeliveryTokenMatchesOpeningBase(token, f.projection, f.rendered, selected, 1n, 1n, owner)).toBe(false);
+      expect(flatListCompositionDeliveryTokenMatchesOpeningBase(token, f.projection, f.rendered, selected, 0n, 2n, owner)).toBe(false);
+      expect(flatListCompositionDeliveryTokenMatchesOpeningBase(token, f.projection, f.rendered, selected, 0n, 1n, Symbol())).toBe(false);
+      // @ts-expect-error Explicit list projections cannot issue legacy capabilities.
+      expect(() => issueCompositionDeliveryToken(...args)).toThrow();
+      for (const id of [0n, -1n, 18_446_744_073_709_551_616n]) {
+        expect(() => issueFlatListCompositionDeliveryToken(f.projection, f.rendered, selected, 0n, id, owner)).toThrow();
+      }
+      expect(() => new (token.constructor as new (...args: unknown[]) => object)(...args)).toThrow();
+    } finally { f.renderer.releaseFlatList(f.rendered); f.host.remove(); }
+  });
+
+  it("leases a list heading, reconciles one backward emoji range and restores exact hierarchy once", () => {
+    const f = compositionFixture();
+    try {
+      expect(f.rendered.current).toBe(false); expect(f.rendered.nodeForAstPath([0, 0, 0, 0])).toBeNull();
+      f.host.querySelector("strong")!.textContent = "a漢b";
+      expect(f.matches()).toBe(false); expect(f.settled()).toBe(true);
+      expect(f.renderer.ownsFlatListCompositionDomLease(f.lease, f.rendered)).toBe(true);
+      expect(f.reconcile()).toEqual({ok: true, value: {textBlockPath: [0, 0, 0],
+        replacementStartUtf16: 1, replacementEndUtf16: 3, originalText: "🙂", text: "漢"}});
+      expect(reconcileCompositionDom(f.host, f.projection, f.selection)).toMatchObject({ok: false});
+      const restored = valueOf(f.renderer.restoreFlatListCompositionDomLease(f.lease, f.projection)).rendered;
+      expect(restored.current).toBe(true); expect(restored.rendererGeneration > f.rendered.rendererGeneration).toBe(true);
+      expect(f.host.querySelector("ol")!.start).toBe(8); expect(f.host.querySelector("h2")!.textContent).toBe("a🙂b");
+      expect(restored.nodeForAstPath([0, 0, 0, 0])!.textContent).toBe("a🙂b");
+      expect(f.renderer.restoreFlatListCompositionDomLease(f.lease, f.projection).ok).toBe(false);
+      f.renderer.releaseFlatList(restored);
+    } finally { f.dispose(); }
+  });
+
+  it("keeps list leases recoverable after cross-mode, foreign-owner and detached-build refusals", () => {
+    const f = compositionFixture();
+    try {
+      // @ts-expect-error List leases do not enter legacy restore.
+      expect(f.renderer.restoreCompositionDomLease(f.lease, f.projection).ok).toBe(false);
+      // @ts-expect-error List leases do not enter legacy discard.
+      expect(f.renderer.discardCompositionDomLease(f.lease)).toBe(false);
+      // @ts-expect-error The base ownership API cannot accept a list render.
+      expect(f.renderer.ownsCompositionDomLease(f.lease, f.rendered)).toBe(false);
+      expect(new BreditorDomRenderer().ownsFlatListCompositionDomLease(f.lease, f.rendered)).toBe(false);
+      expect(f.renderer.restoreFlatListCompositionDomLease({} as never, f.projection).ok).toBe(false);
+      expect(f.renderer.restoreFlatListCompositionDomLease(f.lease, {} as never).ok).toBe(false);
+      const constructor = vi.spyOn(document, "createElementNS").mockImplementation(() => { throw new Error("constructor failed"); });
+      try { expect(f.renderer.restoreFlatListCompositionDomLease(f.lease, f.projection).ok).toBe(false); }
+      finally { constructor.mockRestore(); }
+      expect(f.renderer.ownsFlatListCompositionDomLease(f.lease, f.rendered)).toBe(true);
+      expect(f.renderer.discardFlatListCompositionDomLease(f.lease)).toBe(true);
+      expect(f.renderer.discardFlatListCompositionDomLease(f.lease)).toBe(false);
+    } finally { f.dispose(); }
+  });
+
+  it("rejects detached settlement and superseded renderer ownership", () => {
+    const f = compositionFixture();
+    try {
+      f.host.remove(); expect(f.settled()).toBe(false);
+      expect(f.reconcile()).toMatchObject({ok: false, error: {code: "composition.dom.invalid_input"}});
+      document.body.append(f.host);
+      const replacement = valueOf(f.renderer.renderFlatList(f.host, f.projection)).rendered;
+      expect(f.renderer.ownsFlatListCompositionDomLease(f.lease, f.rendered)).toBe(false);
+      expect(f.renderer.restoreFlatListCompositionDomLease(f.lease, f.projection).ok).toBe(false);
+      f.renderer.releaseFlatList(replacement);
+    } finally { f.dispose(); }
+  });
+
+  it.each([
+    ["ordered start", (h: HTMLElement) => h.querySelector("ol")!.setAttribute("start", "9")],
+    ["noncanonical start", (h: HTMLElement) => h.querySelector("ol")!.setAttribute("start", "08")],
+    ["missing start", (h: HTMLElement) => h.querySelector("ol")!.removeAttribute("start")],
+    ["reversed list", (h: HTMLElement) => h.querySelector("ol")!.setAttribute("reversed", "")],
+    ["item attribute", (h: HTMLElement) => h.querySelector("li")!.setAttribute("value", "1")],
+    ["extra item block", (h: HTMLElement) => h.querySelector("li")!.append(document.createElement("p"))],
+    ["nested list", (h: HTMLElement) => h.querySelector("li")!.append(document.createElement("ul"))],
+    ["heading rank", (h: HTMLElement) => h.querySelector("h2")!.replaceWith(document.createElement("h3"))],
+    ["untouched item", (h: HTMLElement) => h.querySelectorAll("li")[1]!.replaceChildren()],
+    ["untouched root", (h: HTMLElement) => { h.children[1]!.textContent = "changed"; }],
+    ["bullet attribute", (h: HTMLElement) => h.querySelector("ul")!.setAttribute("style", "color: red")],
+    ["extra root", (h: HTMLElement) => h.append(document.createElement("p"))],
+    ["unadmitted wrapper", (h: HTMLElement) => h.querySelector("h2")!.replaceChildren(document.createElement("span"))],
+  ] as const)("rejects composition drift in %s without consuming the recoverable lease", (_name, mutate) => {
+    const f = compositionFixture();
+    try {
+      mutate(f.host);
+      expect(f.reconcile()).toMatchObject({ok: false, error: {code: "composition.dom.invalid_structure"}});
+      expect(f.renderer.ownsFlatListCompositionDomLease(f.lease, f.rendered)).toBe(true);
+      const restored = valueOf(f.renderer.restoreFlatListCompositionDomLease(f.lease, f.projection)).rendered;
+      expect(restored.validateCanonicalDom()).toBe(true); f.renderer.releaseFlatList(restored);
+    } finally { f.dispose(); }
+  });
+
+  it.each([
+    ["prefix", "x漢b", "composition.dom.unchanged_region_mismatch"],
+    ["suffix", "a漢x", "composition.dom.unchanged_region_mismatch"],
+    ["surrogate", "a\ud800b", "composition.dom.invalid_unicode"],
+    ["oversized", `a${"x".repeat(MAX_COMPOSITION_TEXT_UTF16 + 1)}b`, "composition.dom.resource_limit"],
+  ])("rejects %s composition text", (_name, text, code) => {
+    const f = compositionFixture();
+    try { f.host.querySelector("strong")!.textContent = text!; expect(f.reconcile()).toMatchObject({ok: false, error: {code}}); }
+    finally { f.dispose(); }
+  });
+
+  it("does not treat equal item-local indexes as the same composition block", () => {
+    const f = compositionFixture();
+    try {
+      const selection = valueOf(FlatListRangeSelection.create(f.projection, {kind: "range",
+        anchor: textPoint([0, 0, 0, 0], 1), focus: textPoint([2, 0, 0, 0], 1)}));
+      expect(reconcileFlatListCompositionDom(f.host, f.projection, selection))
+        .toMatchObject({ok: false, error: {code: "composition.dom.cross_paragraph"}});
+    } finally { f.dispose(); }
+  });
+
+  it("recovers native text in an empty item without changing its child-point contract", () => {
+    const f = fixture(); document.body.append(f.host);
+    const point = {kind: "children", parentPath: [0, 1, 0], childIndex: 0, affinity: "after"};
+    const selection = valueOf(FlatListRangeSelection.create(f.projection, {kind: "range", anchor: point, focus: point}));
+    const lease = f.renderer.beginFlatListCompositionDomLease(f.rendered)!;
+    try {
+      f.host.querySelectorAll("li p")[0]!.textContent = "日本語";
+      expect(reconcileFlatListCompositionDom(f.host, f.projection, selection)).toEqual({ok: true, value: {
+        textBlockPath: [0, 1, 0], replacementStartUtf16: 0, replacementEndUtf16: 0, originalText: "", text: "日本語"}});
+    } finally { f.renderer.discardFlatListCompositionDomLease(lease); f.host.remove(); }
+  });
 
   function eventFixture(firstText = "a🙂b", secondText = "") {
     const f = fixture(firstText, secondText); f.host.contentEditable = "true"; document.body.append(f.host);

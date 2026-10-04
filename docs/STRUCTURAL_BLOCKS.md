@@ -1481,3 +1481,37 @@ composition, supported clipboard flows, visible reload/backup, native input and
 release size/accessibility qualification remain open. Flat lists come first;
 nested lists and indent/outdent follow in a later feature phase. See
 [toolbar qualification](qualification/2026-10-04-flat-list-toolbar.json).
+
+### Flat-list composition ownership and strict DOM reconciliation
+
+The list adapter now implements begin, one-time refinement, native DOM opening,
+strict restoration, explicit recovery and disposal through the shared composition
+state machine. `FlatListCompositionDeliveryToken` captures actual hierarchical
+projection/selection identity and a private list issuance mode; old matchers do
+not accept it. Separate list renderer lease entry points share the existing
+ownership, detached-build, reentrancy, installation and rollback machinery.
+Wrong-mode or foreign leases cannot restore or discard another host's ownership.
+
+`reconcileFlatListCompositionDom` shares the base scanner's text/inline-policy,
+Unicode, node and attribute budgets. It additionally proves every root, list
+container, `li` and text-block kind, including the exact canonical ordered start.
+Every non-target block remains canonical. The target may contain only admitted
+text/wrappers, and its captured prefix and suffix remain exact. Empty-item child
+points and backward ranges resolve to aggregate offsets in their actual block.
+The returned `textBlockPath` is `[root]` or `[root, item, 0]`; no list flattening
+enters the selection or mutation protocol. More than one text block rejects with
+the existing `composition.dom.cross_paragraph` code.
+
+Restoration removes provisional DOM and writes the captured exact selection
+without changing Rust. An accepted replacement is subsequently delivered through
+the normal list command under the still-held queue reservation. Failed DOM/text
+validation is cancellation/recovery, not permission to import structure. The
+adapter cannot infer whether an arbitrary native event should commit: the event
+controller still owns that decision and its list-mode integration remains next.
+
+Unit tests cover exact ownership, stale/foreign/refined tokens, hierarchy drift,
+Unicode/resource refusal, empty items, strict recovery, failed restoration and
+disposal. Real-browser protocol tests use scripted provisional DOM and real Wasm
+commands to prove exact undo/redo and Session V6 recovery, including preserved
+redo after structural cancellation. They do not establish OS IME support. See
+[composition lease qualification](qualification/2026-10-04-flat-list-composition-lease.json).

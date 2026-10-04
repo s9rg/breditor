@@ -1,3 +1,6 @@
+import { astPathsEqual, type AstPath } from "./ast_path.js";
+import { isOwnedFlatListProjection, flatListProjectionPresentation, type FlatListRootProjection } from "./flat_list_projection.js";
+import { isOwnedFlatListRangeSelection, flatListSpatialPositionForPoint, flatListBlockAtPath } from "./flat_list_selection.js";
 import {
   MAX_COMPOSITION_TEXT_UTF16,
   MAX_COMPOSITION_TEXT_UTF8,
@@ -6,7 +9,6 @@ import {
 import type { CompositionResult } from "./composition_result.js";
 import { compositionFailure, compositionSuccess } from "./composition_result.js";
 import {
-  type BaseDocumentProjection,
   type BaseParagraphProjection,
   type BaseTextRunProjection,
   isOwnedProjection,
@@ -32,7 +34,6 @@ import {
   nativeNodeValue,
 } from "./html_host.js";
 import {
-  type BaseRangeSelection,
   isOwnedBaseRangeSelection,
   spatialPositionForPoint,
 } from "./selection.js";
@@ -59,6 +60,15 @@ export interface DomCompositionReconciliation {
   /** Exact base text covered by the captured semantic range. */
   readonly originalText: string;
   /** Exact text observed in that range after the native composition lease. */
+  readonly text: string;
+}
+
+/** Same single-text-block replacement, with its real list-aware AST path. @internal */
+export interface FlatListDomCompositionReconciliation {
+  readonly textBlockPath: AstPath;
+  readonly replacementStartUtf16: number;
+  readonly replacementEndUtf16: number;
+  readonly originalText: string;
   readonly text: string;
 }
 
@@ -93,77 +103,101 @@ export function reconcileCompositionDom(
   projection: unknown,
   selection: unknown,
 ): CompositionResult<DomCompositionReconciliation> {
-  try {
-    if (
-      !isUsableConnectedHost(host) ||
-      !isOwnedProjection(projection) ||
-      !isOwnedBaseRangeSelection(selection) ||
-      selection.projection !== projection
-    ) {
-      return compositionFailure("composition.dom.invalid_input");
-    }
+  const result = reconcileDom(host, projection, selection, false);
+  if (!result.ok) return result;
+  const {textBlockPath, ...replacement} = result.value;
+  return compositionSuccess(Object.freeze({paragraphIndex: textBlockPath[0]!, ...replacement}));
+}
 
-    const anchor = spatialPositionForPoint(projection, selection.anchor);
-    const focus = spatialPositionForPoint(projection, selection.focus);
-    if (anchor === null || focus === null) {
-      return compositionFailure("composition.dom.invalid_input");
+/** Validates every list wrapper/item and non-target block before recovering text. @internal */
+export function reconcileFlatListCompositionDom(host: unknown, projection: unknown, selection: unknown):
+  CompositionResult<FlatListDomCompositionReconciliation> {
+  return reconcileDom(host, projection, selection, true);
+}
+
+function reconcileDom(host: unknown, projection: unknown, selection: unknown, flatLists: boolean):
+  CompositionResult<FlatListDomCompositionReconciliation> {
+  try {
+    if (!isUsableConnectedHost(host)) return compositionFailure("composition.dom.invalid_input");
+    let anchor: Readonly<{textBlockPath: AstPath; utf16Offset: number}>;
+    let focus: Readonly<{textBlockPath: AstPath; utf16Offset: number}>;
+    let baseParagraph: BaseParagraphProjection | undefined;
+    let roots: readonly FlatListRootProjection[];
+    let presentation: BrowserCompiledPresentation | undefined;
+    if (flatLists) {
+      if (!isOwnedFlatListProjection(projection) || !isOwnedFlatListRangeSelection(selection) ||
+        selection.projection !== projection) return compositionFailure("composition.dom.invalid_input");
+      const a = flatListSpatialPositionForPoint(projection, selection.anchor);
+      const f = flatListSpatialPositionForPoint(projection, selection.focus);
+      if (a === null || f === null) return compositionFailure("composition.dom.invalid_input");
+      anchor = a; focus = f;
+      baseParagraph = flatListBlockAtPath(projection, a.textBlockPath);
+      roots = projection.blocks;
+      presentation = flatListProjectionPresentation(projection);
+      if (presentation === undefined) return compositionFailure("composition.dom.invalid_input");
+    } else {
+      if (!isOwnedProjection(projection) || !isOwnedBaseRangeSelection(selection) ||
+        selection.projection !== projection) return compositionFailure("composition.dom.invalid_input");
+      const a = spatialPositionForPoint(projection, selection.anchor);
+      const f = spatialPositionForPoint(projection, selection.focus);
+      if (a === null || f === null) return compositionFailure("composition.dom.invalid_input");
+      anchor = {textBlockPath: [a.paragraphIndex], utf16Offset: a.utf16Offset};
+      focus = {textBlockPath: [f.paragraphIndex], utf16Offset: f.utf16Offset};
+      baseParagraph = projection.paragraphs[a.paragraphIndex];
+      roots = projection.paragraphs.map(block => ({kind: "textBlock" as const, block}));
+      presentation = projectionPresentation(projection);
+      if (projection.schema.fingerprint !== undefined && presentation === undefined) {
+        return compositionFailure("composition.dom.invalid_input");
+      }
     }
-    if (anchor.paragraphIndex !== focus.paragraphIndex) {
+    if (!astPathsEqual(anchor.textBlockPath, focus.textBlockPath)) {
       return compositionFailure("composition.dom.cross_paragraph");
     }
-    const paragraphIndex = anchor.paragraphIndex;
-    const baseParagraph = projection.paragraphs[paragraphIndex];
-    if (baseParagraph === undefined) {
-      return compositionFailure("composition.dom.invalid_input");
-    }
-    const presentation = projectionPresentation(projection);
-    if (projection.schema.fingerprint !== undefined && presentation === undefined) {
-      return compositionFailure("composition.dom.invalid_input");
-    }
-
+    if (baseParagraph === undefined) return compositionFailure("composition.dom.invalid_input");
     const hostChildren = nativeChildNodes(host);
-    if (hostChildren.length !== projection.paragraphs.length) {
-      return compositionFailure("composition.dom.invalid_structure");
-    }
-    const budget: ScanBudget = { nodes: 1, dynamicAttributeUtf8Bytes: 0 };
+    if (hostChildren.length !== roots.length) return compositionFailure("composition.dom.invalid_structure");
+    const budget: ScanBudget = {nodes: 1, dynamicAttributeUtf8Bytes: 0};
     let observedTargetText: string | null = null;
-    for (let index = 0; index < projection.paragraphs.length; index += 1) {
-      const paragraphNode = hostChildren[index];
-      const paragraph = projection.paragraphs[index];
-      if (
-        paragraphNode === undefined ||
-        paragraph === undefined ||
-        !consumeNode(budget) ||
-        !isPropertyFreeHtmlElement(paragraphNode,
-          paragraph.headingLevel === undefined ? "p" : `h${paragraph.headingLevel}`)
-      ) {
-        return compositionFailure(
-          budget.nodes > MAX_COMPOSITION_DOM_NODES
-            ? "composition.dom.resource_limit"
-            : "composition.dom.invalid_structure",
-        );
+    const visitBlock = (node: Node | undefined, block: BaseParagraphProjection, path: AstPath): DomScanFailure | null => {
+      if (node === undefined || !consumeNode(budget) ||
+        !isPropertyFreeHtmlElement(node, block.headingLevel === undefined ? "p" : `h${block.headingLevel}`)) {
+        return budgetExceeded(budget) ? "resourceLimit" : "invalidStructure";
       }
-      if (index === paragraphIndex) {
-        const target = extractTargetText(paragraphNode, budget, presentation);
-        if (!target.ok) {
-          return compositionFailure(scanFailureCode(target.reason));
-        }
+      if (astPathsEqual(path, anchor.textBlockPath)) {
+        const target = extractTargetText(node, budget, presentation);
+        if (!target.ok) return target.reason;
         observedTargetText = target.text;
-      } else {
-        const failure = validateCanonicalParagraph(
-          paragraphNode,
-          paragraph,
-          budget,
-          presentation,
-        );
-        if (failure !== null) {
-          return compositionFailure(scanFailureCode(failure));
+        return null;
+      }
+      return validateCanonicalParagraph(node, block, budget, presentation);
+    };
+    for (let index = 0; index < roots.length; index += 1) {
+      const root = roots[index]!;
+      const node = hostChildren[index];
+      if (root.kind === "textBlock") {
+        const failure = visitBlock(node, root.block, [index]);
+        if (failure !== null) return compositionFailure(scanFailureCode(failure));
+        continue;
+      }
+      if (node === undefined || !consumeNode(budget) || !listElementMatches(node, root)) {
+        return compositionFailure(budgetExceeded(budget) ? "composition.dom.resource_limit" : "composition.dom.invalid_structure");
+      }
+      const items = nativeChildNodes(node);
+      if (items.length !== root.items.length) return compositionFailure("composition.dom.invalid_structure");
+      for (let itemIndex = 0; itemIndex < root.items.length; itemIndex += 1) {
+        const item = items[itemIndex];
+        if (item === undefined || !consumeNode(budget) || !isPropertyFreeHtmlElement(item, "li")) {
+          return compositionFailure(budgetExceeded(budget) ? "composition.dom.resource_limit" : "composition.dom.invalid_structure");
         }
+        const children = nativeChildNodes(item);
+        if (children.length !== 1) return compositionFailure("composition.dom.invalid_structure");
+        const failure = visitBlock(children[0], root.items[itemIndex]!, [index, itemIndex, 0]);
+        if (failure !== null) return compositionFailure(scanFailureCode(failure));
       }
     }
-    if (observedTargetText === null) {
-      return compositionFailure("composition.dom.invalid_input");
-    }
+    // TypeScript does not track assignments made by the bounded visitor.
+    const targetText = observedTargetText as string | null;
+    if (targetText === null) return compositionFailure("composition.dom.invalid_input");
 
     const baseText = baseParagraph.runs.map((run) => run.text).join("");
     const start = Math.min(anchor.utf16Offset, focus.utf16Offset);
@@ -171,17 +205,17 @@ export function reconcileCompositionDom(
     const prefix = baseText.slice(0, start);
     const suffix = baseText.slice(end);
     if (
-      observedTargetText.length < prefix.length + suffix.length ||
-      observedTargetText.slice(0, prefix.length) !== prefix ||
-      observedTargetText.slice(observedTargetText.length - suffix.length) !== suffix
+      targetText.length < prefix.length + suffix.length ||
+      targetText.slice(0, prefix.length) !== prefix ||
+      targetText.slice(targetText.length - suffix.length) !== suffix
     ) {
       return compositionFailure("composition.dom.unchanged_region_mismatch");
     }
-    const candidateEnd = observedTargetText.length - suffix.length;
+    const candidateEnd = targetText.length - suffix.length;
     if (candidateEnd < prefix.length) {
       return compositionFailure("composition.dom.unchanged_region_mismatch");
     }
-    const text = observedTargetText.slice(prefix.length, candidateEnd);
+    const text = targetText.slice(prefix.length, candidateEnd);
     const candidateMeasure = measureBoundedUnicodeText(
       text,
       MAX_COMPOSITION_TEXT_UTF16,
@@ -196,7 +230,7 @@ export function reconcileCompositionDom(
     }
     return compositionSuccess(
       Object.freeze({
-        paragraphIndex,
+        textBlockPath: Object.freeze([...anchor.textBlockPath]),
         replacementStartUtf16: start,
         replacementEndUtf16: end,
         originalText: baseText.slice(start, end),
@@ -206,6 +240,14 @@ export function reconcileCompositionDom(
   } catch {
     return compositionFailure("composition.dom.invalid_input");
   }
+}
+
+function listElementMatches(node: Node, root: Exclude<FlatListRootProjection, {kind: "textBlock"}>): node is Element {
+  if (root.kind === "bulletList") return isPropertyFreeHtmlElement(node, "ul");
+  const facts = nativeHtmlHostFacts(node);
+  if (facts === undefined || nativeElementLocalName(facts.element) !== "ol") return false;
+  const names = nativeAttributeNames(facts.element);
+  return names.length === 1 && names[0] === "start" && nativeGetAttribute(facts.element, "start") === String(root.start);
 }
 
 function extractTargetText(

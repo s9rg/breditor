@@ -1,5 +1,6 @@
 import {
   isOwnedRenderedProjection,
+  isOwnedFlatListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
 import { nativeHtmlHostFacts } from "./html_host.js";
@@ -12,11 +13,19 @@ import {
   type BaseRangeSelection,
 } from "./selection.js";
 
+import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
+
+type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type CompositionSelection<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
+/** Explicit list composition capability; legacy matchers reject it. @internal */
+export type FlatListCompositionDeliveryToken = CompositionDeliveryToken<FlatListDocumentProjection>;
+
 declare const COMPOSITION_DELIVERY_TOKEN_BRAND: unique symbol;
 
 const MAX_U64 = 18_446_744_073_709_551_615n;
 const CONSTRUCTION_PERMIT = Object.freeze({});
-const COMPOSITION_DELIVERY_TOKENS = new WeakSet<object>();
+const COMPOSITION_DELIVERY_TOKENS = new WeakMap<object, boolean>();
 const COMPOSITION_DELIVERY_AUTHORITIES = new WeakMap<object, symbol>();
 
 /**
@@ -26,13 +35,13 @@ const COMPOSITION_DELIVERY_AUTHORITIES = new WeakMap<object, symbol>();
  * owning adapter must additionally match the hidden symbol and spend this
  * exact token identity before opening or settling the lease.
  */
-export interface CompositionDeliveryToken {
+export interface CompositionDeliveryToken<P extends CompositionProjection = BaseDocumentProjection> {
   /** Exact semantic projection from which the composition starts. */
-  readonly projection: BaseDocumentProjection;
+  readonly projection: P;
   /** Exact current canonical DOM projection for the leased host. */
-  readonly rendered: RenderedProjection;
+  readonly rendered: RenderedProjection<P>;
   /** Exact semantic start range captured against `projection`. */
-  readonly selection: BaseRangeSelection;
+  readonly selection: CompositionSelection<P>;
   /** Exact connected light-DOM host represented by `rendered`. */
   readonly host: HTMLElement;
   /** Copied snapshot diagnostics for fail-closed correlation. */
@@ -48,11 +57,11 @@ export interface CompositionDeliveryToken {
   readonly [COMPOSITION_DELIVERY_TOKEN_BRAND]: true;
 }
 
-class OwnedCompositionDeliveryToken implements CompositionDeliveryToken {
+class OwnedCompositionDeliveryToken<P extends CompositionProjection> implements CompositionDeliveryToken<P> {
   declare readonly [COMPOSITION_DELIVERY_TOKEN_BRAND]: true;
-  readonly projection: BaseDocumentProjection;
-  readonly rendered: RenderedProjection;
-  readonly selection: BaseRangeSelection;
+  readonly projection: P;
+  readonly rendered: RenderedProjection<P>;
+  readonly selection: CompositionSelection<P>;
   readonly host: HTMLElement;
   readonly snapshotLineage: string;
   readonly snapshotRevision: string;
@@ -61,13 +70,14 @@ class OwnedCompositionDeliveryToken implements CompositionDeliveryToken {
   readonly sessionId: bigint;
 
   constructor(
-    projection: BaseDocumentProjection,
-    rendered: RenderedProjection,
-    selection: BaseRangeSelection,
+    projection: P,
+    rendered: RenderedProjection<P>,
+    selection: CompositionSelection<P>,
     observationEpoch: bigint,
     sessionId: bigint,
     authority: symbol,
     permit: object,
+    flatLists: boolean,
   ) {
     if (permit !== CONSTRUCTION_PERMIT) {
       throw new TypeError("composition delivery tokens have no public constructor");
@@ -81,7 +91,7 @@ class OwnedCompositionDeliveryToken implements CompositionDeliveryToken {
     this.rendererGeneration = rendered.rendererGeneration;
     this.observationEpoch = observationEpoch;
     this.sessionId = sessionId;
-    COMPOSITION_DELIVERY_TOKENS.add(this);
+    COMPOSITION_DELIVERY_TOKENS.set(this, flatLists);
     COMPOSITION_DELIVERY_AUTHORITIES.set(this, authority);
     Object.freeze(this);
   }
@@ -102,11 +112,24 @@ export function issueCompositionDeliveryToken(
   sessionId: bigint,
   authority: symbol,
 ): CompositionDeliveryToken {
+  return issueToken(projection, rendered, selection, observationEpoch, sessionId, authority, false);
+}
+
+/** Issues an exact list-mode lease base; does not open or spend the lease. @internal */
+export function issueFlatListCompositionDeliveryToken(projection: FlatListDocumentProjection,
+  rendered: RenderedProjection<FlatListDocumentProjection>, selection: FlatListRangeSelection,
+  observationEpoch: bigint, sessionId: bigint, authority: symbol): FlatListCompositionDeliveryToken {
+  return issueToken(projection, rendered, selection, observationEpoch, sessionId, authority, true);
+}
+
+function issueToken<P extends CompositionProjection>(projection: P, rendered: RenderedProjection<P>,
+  selection: CompositionSelection<P>, observationEpoch: bigint, sessionId: bigint, authority: symbol,
+  flatLists: boolean): CompositionDeliveryToken<P> {
   if (
-    !isOwnedProjection(projection) ||
-    !isOwnedRenderedProjection(rendered) ||
+    !(flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) ||
+    !(flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
     rendered.projection !== projection ||
-    !isOwnedBaseRangeSelection(selection) ||
+    !(flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
     selection.projection !== projection ||
     typeof observationEpoch !== "bigint" ||
     observationEpoch < 0n ||
@@ -124,6 +147,7 @@ export function issueCompositionDeliveryToken(
     sessionId,
     authority,
     CONSTRUCTION_PERMIT,
+    flatLists,
   );
 }
 
@@ -153,6 +177,7 @@ export function compositionDeliveryTokenMatchesOpeningBase(
       observationEpoch,
       sessionId,
       authority,
+      false,
     ) && renderIsLiveAndCanonical(rendered)
   );
 }
@@ -186,8 +211,25 @@ export function compositionDeliveryTokenMatchesSettlement(
       observationEpoch,
       sessionId,
       authority,
+      false,
     ) && renderHostIsConnected(rendered)
   );
+}
+
+/** List-mode canonical opening proof. @internal */
+export function flatListCompositionDeliveryTokenMatchesOpeningBase(token: unknown, projection: unknown,
+  rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
+): token is FlatListCompositionDeliveryToken {
+  return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
+    sessionId, authority, true) && renderIsLiveAndCanonical(rendered);
+}
+
+/** List-mode settlement proof; renderer lease must separately prove uninterrupted ownership. @internal */
+export function flatListCompositionDeliveryTokenMatchesSettlement(token: unknown, projection: unknown,
+  rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
+): token is FlatListCompositionDeliveryToken {
+  return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
+    sessionId, authority, true) && renderHostIsConnected(rendered);
 }
 
 function compositionDeliveryTokenMatchesExactBase(
@@ -198,13 +240,14 @@ function compositionDeliveryTokenMatchesExactBase(
   observationEpoch: unknown,
   sessionId: unknown,
   authority: unknown,
-): token is CompositionDeliveryToken {
+  flatLists: boolean,
+): token is CompositionDeliveryToken<CompositionProjection> {
   try {
     return (
-      isIssuedCompositionDeliveryToken(token) &&
-      isOwnedProjection(projection) &&
-      isOwnedRenderedProjection(rendered) &&
-      isOwnedBaseRangeSelection(selection) &&
+      isIssuedCompositionDeliveryToken(token, flatLists) &&
+      (isOwnedFlatListProjection(projection) || isOwnedProjection(projection)) &&
+      (isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) &&
+      (isOwnedFlatListRangeSelection(selection) || isOwnedBaseRangeSelection(selection)) &&
       typeof observationEpoch === "bigint" &&
       observationEpoch >= 0n &&
       isNonzeroU64(sessionId) &&
@@ -229,18 +272,19 @@ function compositionDeliveryTokenMatchesExactBase(
 
 function isIssuedCompositionDeliveryToken(
   value: unknown,
-): value is CompositionDeliveryToken {
+  flatLists: boolean,
+): value is CompositionDeliveryToken<CompositionProjection> {
   return (
     typeof value === "object" &&
     value !== null &&
-    COMPOSITION_DELIVERY_TOKENS.has(value)
+    COMPOSITION_DELIVERY_TOKENS.get(value) === flatLists
   );
 }
 
-function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjection {
+function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjection<CompositionProjection> {
   try {
     return (
-      isOwnedRenderedProjection(rendered) &&
+      (isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
       rendered.current &&
       nativeHtmlHostFacts(rendered.host)?.isConnected === true &&
       rendered.validateCanonicalDom() === true &&
@@ -252,10 +296,10 @@ function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjec
   }
 }
 
-function renderHostIsConnected(rendered: unknown): rendered is RenderedProjection {
+function renderHostIsConnected(rendered: unknown): rendered is RenderedProjection<CompositionProjection> {
   try {
     return (
-      isOwnedRenderedProjection(rendered) &&
+      (isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
       nativeHtmlHostFacts(rendered.host)?.isConnected === true
     );
   } catch {

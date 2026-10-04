@@ -1,6 +1,7 @@
 import {
   createStructuralTextProjection, exactDataRecord, readExactBoundedArray,
   bindProjectionPresentation,
+  projectionPresentation,
   projectionMatchesProfileGeneration,
   projectionsShareProfileBinding, projectionProfileDescriptor,
   type BaseDocumentProjection, type BaseParagraphProjection,
@@ -108,6 +109,12 @@ export function isOwnedFlatListProjection(value: unknown): value is FlatListDocu
 export function bindFlatListProjectionPresentation(projection: FlatListDocumentProjection, presentation: BrowserCompiledPresentation): boolean {
   const text = TEXT_PROOFS.get(projection);
   return text !== undefined && bindProjectionPresentation(text, presentation);
+}
+
+/** Exact bound presentation for strict DOM reconciliation; no text proof escapes. @internal */
+export function flatListProjectionPresentation(projection: FlatListDocumentProjection): BrowserCompiledPresentation | undefined {
+  const text = TEXT_PROOFS.get(projection);
+  return text === undefined ? undefined : projectionPresentation(text);
 }
 
 /** Exact owner correlation for consuming generated selection/update handles. @internal */
