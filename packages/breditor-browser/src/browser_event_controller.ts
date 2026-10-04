@@ -1,17 +1,22 @@
-import { translateBeforeInput } from "./beforeinput.js";
+import { translateBeforeInput, translateFlatListBeforeInput } from "./beforeinput.js";
 import { containAsyncRejection } from "./contain_async_rejection.js";
-import { type CommandQueueSubmission, BreditorCommandQueue } from "./command_queue.js";
-import { mapDomTargetRange } from "./dom_target_range.js";
-import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { type CommandQueueSubmission, BreditorCommandQueue, BreditorFlatListCommandQueue } from "./command_queue.js";
+import { mapDomTargetRange, mapDomFlatListTargetRange } from "./dom_target_range.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
+  flatListEditorDeliveryAuthorityAccepts,
+  flatListEditorDeliveryTokenMatchesRender,
+  flatListRangeSelectionSync,
+  type FlatListEditorCommandRequest,
+  type FlatListEditorDeliveryToken,
+  type FlatListEditorSelectionSync,
   editorDeliveryAuthorityAccepts,
   editorDeliveryTokenMatchesRender,
   isEditorDeliveryAuthority,
   MAX_BROWSER_COMMAND_TEXT_UTF16,
   noSelectionSync,
   rangeSelectionSync,
-  selectionSynchronizationRequest,
   type EditorCommandRequest,
   type EditorDeliveryAuthority,
   type EditorDeliveryToken,
@@ -26,6 +31,7 @@ import type {
 } from "./event_disposition.js";
 import {
   translateKeyDown,
+  translateFlatListKeyDown,
   type KeyboardSnapshot,
   type KeyboardTranslationPolicy,
 } from "./keyboard.js";
@@ -37,6 +43,7 @@ import {
 } from "./keyboard_shortcut_profile_contract.js";
 import {
   isOwnedRenderedProjection,
+  isOwnedFlatListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
 import {
@@ -53,6 +60,20 @@ import {
 } from "./dom_event_intrinsics.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
+import { nativeCommandBuilder, type NativeCommandRequest, type NativeDeliveryToken, type NativeSelectionSync } from "./native_command_builder.js";
+import { type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { flatListBlockAtPath, isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
+import { astPathsEqual } from "./ast_path.js";
+
+type NativeRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
+type NativeRange = BaseRangeSelection | FlatListRangeSelection;
+type NativeBridge = BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
+
+/** Explicit list event admission dependencies. @internal */
+export interface FlatListBrowserEventControllerOptions extends Omit<BrowserEventControllerOptions, "selectionBridge"> {
+  readonly selectionBridge: BreditorFlatListDomSelectionBridge;
+}
+
 interface KeyboardReceipt {
   readonly kind: "keyboard";
   readonly fingerprint: string;
@@ -61,9 +82,9 @@ interface KeyboardReceipt {
   /** Stable identity shared by phase promotion and its one task-bound expiry. */
   readonly expiryToken: object;
   /** Token consumed by the keydown command which created this receipt. */
-  readonly delivery: EditorDeliveryToken;
+  readonly delivery: NativeDeliveryToken;
   /** Bound only after a correlated beforeinput; direct input echoes are rejected. */
-  readonly rendered?: RenderedProjection;
+  readonly rendered?: NativeRender;
   readonly rendererGeneration?: bigint;
 }
 
@@ -84,7 +105,7 @@ type TargetRangeSnapshot =
 type AcceptedTargetRangeSnapshot = Exclude<TargetRangeSnapshot, Readonly<{ ok: false }>>;
 
 type EventAdmission<TResult> =
-  | Readonly<{ ok: true; base: EventBase; rendered: RenderedProjection }>
+  | Readonly<{ ok: true; base: EventBase; rendered: NativeRender }>
   | Readonly<{
       ok: false;
       owned: boolean;
@@ -119,30 +140,33 @@ const defaultScheduleTask = (callback: () => void): void => {
  * request enters the queue; no Event, DOM node, StaticRange, or DataTransfer is
  * retained. The semantic model remains the sole editing authority.
  */
-export class BreditorBrowserEventController<TResult> {
-  readonly #queue: BreditorCommandQueue<TResult>;
+class BrowserEventControllerCore<TResult, R extends NativeRender, D extends NativeDeliveryToken> {
+  readonly #flatLists: boolean;
+  readonly #queue: BreditorCommandQueue<TResult> | BreditorFlatListCommandQueue<TResult>;
   readonly #keyboard: KeyboardTranslationPolicy;
   readonly #keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
   readonly #compositionActive: () => boolean;
-  readonly #selectionBridge: BreditorDomSelectionBridge;
+  readonly #selectionBridge: NativeBridge;
   readonly #deliveryAuthority: EditorDeliveryAuthority;
   readonly #scheduleTask: (callback: () => void) => void;
   #keyboardReceipt: KeyboardReceipt | undefined;
 
   constructor(
-    queue: BreditorCommandQueue<TResult>,
-    options: BrowserEventControllerOptions,
+    queue: BreditorCommandQueue<TResult> | BreditorFlatListCommandQueue<TResult>,
+    options: BrowserEventControllerOptions | FlatListBrowserEventControllerOptions,
+    flatLists: boolean,
   ) {
+    this.#flatLists = flatLists;
     let validQueue = false;
     try {
-      validQueue = queue instanceof BreditorCommandQueue;
+      validQueue = flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue;
     } catch {
       // Rejected below.
     }
     if (!validQueue) {
       throw new TypeError("browser event controller requires an owned command queue");
     }
-    const snapshot = snapshotControllerOptions(options);
+    const snapshot = snapshotControllerOptions(options, flatLists);
     if (snapshot === null) {
       throw new TypeError("browser event controller options are invalid");
     }
@@ -158,8 +182,8 @@ export class BreditorBrowserEventController<TResult> {
   /** Handles one native `beforeinput`; every owned cancelable mutation is canceled. */
   handleBeforeInput(
     event: InputEvent,
-    rendered: RenderedProjection,
-    delivery: EditorDeliveryToken,
+    rendered: R,
+    delivery: D,
   ): BrowserEventDisposition<TResult> {
     const admitted = this.#admitEvent(event, rendered, delivery, "beforeinput");
     if (!admitted.ok) {
@@ -176,7 +200,7 @@ export class BreditorBrowserEventController<TResult> {
       return this.#cancelBlocked(event, base, "invalidEvent");
     }
 
-    let translation = translateBeforeInput(
+    let translation = this.#translateBeforeInput(
       input,
       compositionActive,
       delivery,
@@ -202,14 +226,14 @@ export class BreditorBrowserEventController<TResult> {
       return this.#cancelBlocked(event, base, "invalidEvent");
     }
 
-    let capturedSelection: EditorSelectionSync | undefined;
+    let capturedSelection: NativeSelectionSync | undefined;
     if (translation.kind === "command") {
       capturedSelection = this.#captureRangeSelection(admitted.rendered);
       if (capturedSelection === undefined) {
         this.#clearReceipts();
         return this.#cancelBlocked(event, base, "selectionUnavailable");
       }
-      translation = translateBeforeInput(
+      translation = this.#translateBeforeInput(
         input,
         compositionActive,
         delivery,
@@ -279,8 +303,8 @@ export class BreditorBrowserEventController<TResult> {
   /** Handles explicit shortcuts and the host-selected structural fallback only. */
   handleKeyDown(
     event: KeyboardEvent,
-    rendered: RenderedProjection,
-    delivery: EditorDeliveryToken,
+    rendered: R,
+    delivery: D,
   ): BrowserEventDisposition<TResult> {
     const admitted = this.#admitEvent(event, rendered, delivery, "keydown");
     if (!admitted.ok) {
@@ -295,7 +319,7 @@ export class BreditorBrowserEventController<TResult> {
     if (snapshot === null || compositionActive === null) {
       return this.#cancelBlocked(event, admitted.base, "invalidEvent");
     }
-    let translation = translateKeyDown(
+    let translation = this.#translateKeyDown(
       snapshot,
       this.#keyboard,
       compositionActive,
@@ -323,7 +347,7 @@ export class BreditorBrowserEventController<TResult> {
     if (capturedSelection === undefined) {
       return this.#cancelBlocked(event, admitted.base, "selectionUnavailable");
     }
-    translation = translateKeyDown(
+    translation = this.#translateKeyDown(
       snapshot,
       this.#keyboard,
       compositionActive,
@@ -363,14 +387,14 @@ export class BreditorBrowserEventController<TResult> {
   /** Treats `input` only as a postcondition; it never submits a command. */
   handleInput(
     event: InputEvent,
-    rendered: RenderedProjection,
+    rendered: R,
   ): BrowserEventDisposition<TResult> {
     const base = readEventBase(event);
     if (base === null) {
       this.#clearReceipts();
       return reconcile("eventAccessFailed", false);
     }
-    if (!isOwnedRenderedProjection(rendered)) {
+    if (!this.#ownsRender(rendered)) {
       this.#clearReceipts();
       return reconcile("eventAccessFailed", base.defaultPrevented);
     }
@@ -440,10 +464,10 @@ export class BreditorBrowserEventController<TResult> {
    */
   handleSelectionChange(
     event: Event,
-    rendered: RenderedProjection,
-    delivery: EditorDeliveryToken,
+    rendered: R,
+    delivery: D,
   ): BrowserSelectionChangeDisposition<TResult> {
-    if (!editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)) {
+    if (!this.#acceptsDelivery(delivery)) {
       return selectionReconcile("deliveryRejected");
     }
     const base = readEventBase(event);
@@ -451,14 +475,14 @@ export class BreditorBrowserEventController<TResult> {
       this.#clearReceipts();
       return selectionBlocked("invalidEvent");
     }
-    if (!isOwnedRenderedProjection(rendered)) {
+    if (!this.#ownsRender(rendered)) {
       this.#clearReceipts();
       return selectionReconcile("domDrift");
     }
     let validBase = false;
     let canonical = false;
     try {
-      validBase = editorDeliveryTokenMatchesRender(delivery, rendered);
+      validBase = this.#matchesRender(delivery, rendered);
       canonical = rendered.current && rendered.validateCanonicalDom();
     } catch {
       validBase = false;
@@ -482,9 +506,9 @@ export class BreditorBrowserEventController<TResult> {
       return selectionBlocked("compositionActive");
     }
 
-    let observed: ReturnType<BreditorDomSelectionBridge["read"]>;
+    let observed: ReturnType<BreditorDomSelectionBridge["read"] | BreditorFlatListDomSelectionBridge["read"]>;
     try {
-      observed = this.#selectionBridge.read(rendered);
+      observed = this.#readSelection(rendered);
     } catch {
       this.#clearReceipts();
       return selectionBlocked("selectionUnavailable");
@@ -506,21 +530,18 @@ export class BreditorBrowserEventController<TResult> {
     // DOM reads and custom Selection methods are effect boundaries. Reprove
     // the exact adapter/render base before constructing queue work.
     try {
-      if (!editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery) ||
-          !editorDeliveryTokenMatchesRender(delivery, rendered)) {
+      if (!this.#acceptsDelivery(delivery) ||
+          !this.#matchesRender(delivery, rendered)) {
         return selectionReconcile("deliveryRejected");
       }
       if (!rendered.current || !rendered.validateCanonicalDom()) {
         return selectionReconcile("domDrift");
       }
-      const request = selectionSynchronizationRequest(
-        delivery,
-        observed.value.selection,
-        Object.freeze({
-          kind: "selectionchange",
-          detail: "document-selection",
-        }),
-      );
+      const selection = observed.value.selection;
+      const sync = selection === null ? noSelectionSync() : isOwnedFlatListRangeSelection(selection)
+        ? flatListRangeSelectionSync(selection) : rangeSelectionSync(selection);
+      const request = nativeCommandBuilder(this.#flatLists, delivery, sync).request(
+        {kind: "selectionchange", detail: "document-selection"}, {kind: "selection", operation: "synchronize"}, "preserve");
       const submission = this.#submit(request);
       if (submission.status === "completed" || submission.status === "queued") {
         return Object.freeze({ kind: "synchronized", submission });
@@ -540,11 +561,11 @@ export class BreditorBrowserEventController<TResult> {
 
   #admitEvent(
     event: Event,
-    rendered: RenderedProjection,
-    delivery: EditorDeliveryToken,
+    rendered: NativeRender,
+    delivery: NativeDeliveryToken,
     expectedType: string,
   ): EventAdmission<TResult> {
-    if (!editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)) {
+    if (!this.#acceptsDelivery(delivery)) {
       return admissionFailure(
         false,
         true,
@@ -559,7 +580,7 @@ export class BreditorBrowserEventController<TResult> {
         reconcile("eventAccessFailed", false),
       );
     }
-    if (!isOwnedRenderedProjection(rendered)) {
+    if (!this.#ownsRender(rendered)) {
       return admissionFailure(
         false,
         false,
@@ -593,7 +614,7 @@ export class BreditorBrowserEventController<TResult> {
       canonical =
         base.type === expectedType &&
         rendered.current &&
-        editorDeliveryTokenMatchesRender(delivery, rendered) &&
+        this.#matchesRender(delivery, rendered) &&
         rendered.validateCanonicalDom();
     } catch {
       canonical = false;
@@ -618,14 +639,15 @@ export class BreditorBrowserEventController<TResult> {
   }
 
   #captureRangeSelection(
-    rendered: RenderedProjection,
-  ): EditorSelectionSync | undefined {
+    rendered: NativeRender,
+  ): NativeSelectionSync | undefined {
     try {
-      const observed = this.#selectionBridge.read(rendered);
+      const observed = this.#readSelection(rendered);
       if (!observed.ok || observed.value.kind !== "range") {
         return undefined;
       }
-      return rangeSelectionSync(observed.value.selection);
+      return isOwnedFlatListRangeSelection(observed.value.selection)
+        ? flatListRangeSelectionSync(observed.value.selection) : rangeSelectionSync(observed.value.selection);
     } catch {
       return undefined;
     }
@@ -634,7 +656,7 @@ export class BreditorBrowserEventController<TResult> {
   #cancelAndSubmit(
     event: Event,
     base: EventBase,
-    request: EditorCommandRequest,
+    request: NativeCommandRequest,
   ): BrowserEventDisposition<TResult> {
     const canceled = cancelOwnedEvent<TResult>(event, base);
     if (!canceled.ok) {
@@ -654,9 +676,11 @@ export class BreditorBrowserEventController<TResult> {
       : canceled.disposition;
   }
 
-  #submit(request: EditorCommandRequest): CommandQueueSubmission<TResult> {
+  #submit(request: NativeCommandRequest): CommandQueueSubmission<TResult> {
     try {
-      return this.#queue.submit(request);
+      return this.#queue instanceof BreditorFlatListCommandQueue
+        ? this.#queue.submit(request as FlatListEditorCommandRequest)
+        : this.#queue.submit(request as EditorCommandRequest);
     } catch {
       return Object.freeze({
         status: "failed",
@@ -666,6 +690,39 @@ export class BreditorBrowserEventController<TResult> {
         }),
       });
     }
+  }
+
+  #ownsRender(rendered: NativeRender): boolean {
+    return this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered);
+  }
+
+  #acceptsDelivery(delivery: NativeDeliveryToken): boolean {
+    return this.#flatLists ? flatListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)
+      : editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery);
+  }
+
+  #matchesRender(delivery: NativeDeliveryToken, rendered: NativeRender): boolean {
+    return this.#flatLists ? flatListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<FlatListDocumentProjection>)
+      : editorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection);
+  }
+
+  #readSelection(rendered: NativeRender): ReturnType<NativeBridge["read"]> {
+    return this.#selectionBridge instanceof BreditorFlatListDomSelectionBridge
+      ? this.#selectionBridge.read(rendered as RenderedProjection<FlatListDocumentProjection>)
+      : this.#selectionBridge.read(rendered as RenderedProjection);
+  }
+
+  #translateBeforeInput(input: InputEventSnapshot, composing: boolean, delivery: NativeDeliveryToken, selection: NativeSelectionSync) {
+    return this.#flatLists
+      ? translateFlatListBeforeInput(input, composing, delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync)
+      : translateBeforeInput(input, composing, delivery as EditorDeliveryToken, selection as EditorSelectionSync);
+  }
+
+  #translateKeyDown(input: KeyboardSnapshot, policy: KeyboardTranslationPolicy, composing: boolean,
+    delivery: NativeDeliveryToken, selection: NativeSelectionSync, shortcuts: BrowserCompiledKeyboardShortcuts) {
+    return this.#flatLists
+      ? translateFlatListKeyDown(input, policy, composing, delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync, shortcuts)
+      : translateKeyDown(input, policy, composing, delivery as EditorDeliveryToken, selection as EditorSelectionSync, shortcuts);
   }
 
   #clearReceipts(): void {
@@ -713,11 +770,21 @@ export class BreditorBrowserEventController<TResult> {
   }
 }
 
+/** Existing event controller; base admission is unchanged. */
+export class BreditorBrowserEventController<TResult> extends BrowserEventControllerCore<TResult, RenderedProjection, EditorDeliveryToken> {
+  constructor(queue: BreditorCommandQueue<TResult>, options: BrowserEventControllerOptions) { super(queue, options, false); }
+}
+
+/** List events share cancellation, range checks, queue submission and echo receipts. @internal */
+export class BreditorFlatListBrowserEventController<TResult> extends BrowserEventControllerCore<TResult, RenderedProjection<FlatListDocumentProjection>, FlatListEditorDeliveryToken> {
+  constructor(queue: BreditorFlatListCommandQueue<TResult>, options: FlatListBrowserEventControllerOptions) { super(queue, options, true); }
+}
+
 function validateTargetRangeForTranslation(
-  rendered: RenderedProjection,
+  rendered: NativeRender,
   inputType: string,
   targets: AcceptedTargetRangeSnapshot,
-  selection: BaseRangeSelection | undefined,
+  selection: NativeRange | undefined,
 ): BrowserEventBlockReason | null {
   if (inputType === "historyUndo" || inputType === "historyRedo") {
     return targets.count === 0 ? null : "targetRangeCount";
@@ -731,7 +798,8 @@ function validateTargetRangeForTranslation(
   if (targets.count === "multiple") {
     return "targetRangeCount";
   }
-  const target = mapDomTargetRange(rendered, targets.range);
+  const target = isOwnedFlatListRenderedProjection(rendered) ? mapDomFlatListTargetRange(rendered, targets.range)
+    : mapDomTargetRange(rendered as RenderedProjection, targets.range);
   if (!target.ok) {
     return "targetRangeInvalid";
   }
@@ -775,11 +843,11 @@ function validateTargetRangeForTranslation(
  * non-collapsed ranges continue to require exact endpoint equality.
  */
 function targetRangeMatchesSelection(
-  rendered: RenderedProjection,
+  rendered: NativeRender,
   inputType: string,
   targetStart: BaseRangeSelection["anchor"],
   targetEnd: BaseRangeSelection["focus"],
-  selection: BaseRangeSelection,
+  selection: NativeRange,
   selectionStart: BaseRangeSelection["anchor"],
   selectionEnd: BaseRangeSelection["focus"],
 ): boolean {
@@ -798,18 +866,18 @@ function targetRangeMatchesSelection(
     selectionStart.kind !== "text" ||
     targetStart.affinity !== "after" ||
     selectionStart.affinity !== "before" ||
-    targetStart.textPath[0] !== selectionStart.textPath[0] ||
-    targetStart.textPath[1] !== selectionStart.textPath[1] ||
+    !astPathsEqual(targetStart.textPath, selectionStart.textPath) ||
     targetStart.utf16Offset >= selectionStart.utf16Offset
   ) {
     return false;
   }
 
-  const paragraphIndex = selectionStart.textPath[0];
-  const runIndex = selectionStart.textPath[1];
-  const paragraph = paragraphIndex === undefined
-    ? undefined
-    : rendered.projection.paragraphs[paragraphIndex];
+  const path = selectionStart.textPath;
+  const paragraphIndex = path[0];
+  const runIndex = path[path.length - 1];
+  const paragraph = isOwnedFlatListRenderedProjection(rendered)
+    ? flatListBlockAtPath(rendered.projection, path.slice(0, -1))
+    : paragraphIndex === undefined ? undefined : (rendered as RenderedProjection).projection.paragraphs[paragraphIndex];
   const run = runIndex === undefined ? undefined : paragraph?.runs[runIndex];
   if (
     paragraph === undefined ||
@@ -958,7 +1026,7 @@ function isClipboardInputType(inputType: string): boolean {
 }
 
 function keyboardEchoInputTypes(
-  request: EditorCommandRequest,
+  request: NativeCommandRequest,
   keyboard: KeyboardSnapshot,
   primaryModifier: "control" | "meta",
 ): readonly string[] {
@@ -999,21 +1067,25 @@ function keyboardEchoInputTypes(
   switch (command.actionId) {
     case "breditor/toggle-strong":
     case "breditor/toggle-text-block-strong":
+    case "breditor/toggle-flat-list-strong":
       return code === "KeyB" && !keyboard.shiftKey
         ? Object.freeze(["formatBold"])
         : Object.freeze([]);
     case "breditor/delete-backward":
     case "breditor/delete-text-block-backward":
+    case "breditor/delete-flat-list-backward":
       return keyboard.key === "Backspace"
         ? Object.freeze(["deleteContentBackward"])
         : Object.freeze([]);
     case "breditor/delete-forward":
     case "breditor/delete-text-block-forward":
+    case "breditor/delete-flat-list-forward":
       return keyboard.key === "Delete"
         ? Object.freeze(["deleteContentForward"])
         : Object.freeze([]);
     case "breditor/insert-paragraph-break":
     case "breditor/insert-text-block-break":
+    case "breditor/insert-flat-list-break":
       return keyboard.key === "Enter" && !keyboard.shiftKey
         ? Object.freeze(["insertParagraph"])
         : Object.freeze([]);
@@ -1022,7 +1094,7 @@ function keyboardEchoInputTypes(
   }
 }
 
-function commandFingerprint(request: EditorCommandRequest): string {
+function commandFingerprint(request: NativeCommandRequest): string {
   const command = request.command;
   if (command.kind === "history") {
     return `history:${command.operation}`;
@@ -1043,10 +1115,11 @@ function commandFingerprint(request: EditorCommandRequest): string {
 
 function snapshotControllerOptions(
   value: unknown,
+  flatLists: boolean,
 ): Readonly<{
   keyboard: KeyboardTranslationPolicy;
   keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
-  selectionBridge: BreditorDomSelectionBridge;
+  selectionBridge: NativeBridge;
   deliveryAuthority: EditorDeliveryAuthority;
   compositionActive: () => boolean;
   scheduleTask: (callback: () => void) => void;
@@ -1069,7 +1142,7 @@ function snapshotControllerOptions(
   if (
     keyboard === null ||
     !isOwnedBrowserCompiledKeyboardShortcuts(keyboardShortcuts) ||
-    !(selectionBridge instanceof BreditorDomSelectionBridge) ||
+    !(flatLists ? selectionBridge instanceof BreditorFlatListDomSelectionBridge : selectionBridge instanceof BreditorDomSelectionBridge) ||
     !isEditorDeliveryAuthority(deliveryAuthority) ||
     typeof compositionActive !== "function" ||
     typeof scheduleTask !== "function"
@@ -1079,7 +1152,7 @@ function snapshotControllerOptions(
   return Object.freeze({
     keyboard,
     keyboardShortcuts,
-    selectionBridge,
+    selectionBridge: selectionBridge as NativeBridge,
     deliveryAuthority: deliveryAuthority as EditorDeliveryAuthority,
     compositionActive: compositionActive as () => boolean,
     scheduleTask: scheduleTask as (callback: () => void) => void,

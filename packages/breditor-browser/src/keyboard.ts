@@ -1,12 +1,12 @@
 import {
-  browserInputActionIds,
-  historyRequest,
-  noInputActionRequest,
-  noInputIntentRequest,
+  type FlatListEditorCommandRequest,
+  type FlatListEditorDeliveryToken,
+  type FlatListEditorSelectionSync,
   type EditorDeliveryToken,
   type EditorCommandRequest,
   type EditorSelectionSync,
 } from "./editor_command.js";
+import { nativeCommandBuilder, type NativeCommandRequest, type NativeDeliveryToken, type NativeSelectionSync } from "./native_command_builder.js";
 import {
   compiledKeyboardShortcutBindingFor,
   DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
@@ -37,8 +37,8 @@ export interface KeyboardSnapshot {
 }
 
 /** Pure classification before cancellation and FIFO submission. */
-export type KeyboardTranslation =
-  | Readonly<{ kind: "command"; request: EditorCommandRequest }>
+export type KeyboardTranslation<R extends NativeCommandRequest = EditorCommandRequest> =
+  | Readonly<{ kind: "command"; request: R }>
   | Readonly<{
       kind: "blocked";
       reason:
@@ -64,6 +64,19 @@ export function translateKeyDown(
   shortcuts: BrowserCompiledKeyboardShortcuts =
     DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
 ): KeyboardTranslation {
+  return translateKeyboard(snapshot, policy, compositionActive, delivery, selection, shortcuts, false) as KeyboardTranslation;
+}
+
+/** Same shortcut policy with explicit hierarchical list command admission. @internal */
+export function translateFlatListKeyDown(snapshot: KeyboardSnapshot, policy: KeyboardTranslationPolicy,
+  compositionActive: boolean, delivery: FlatListEditorDeliveryToken, selection: FlatListEditorSelectionSync,
+  shortcuts: BrowserCompiledKeyboardShortcuts = DEFAULT_COMPILED_KEYBOARD_SHORTCUTS): KeyboardTranslation<FlatListEditorCommandRequest> {
+  return translateKeyboard(snapshot, policy, compositionActive, delivery, selection, shortcuts, true) as KeyboardTranslation<FlatListEditorCommandRequest>;
+}
+
+function translateKeyboard(snapshot: KeyboardSnapshot, policy: KeyboardTranslationPolicy, compositionActive: boolean,
+  delivery: NativeDeliveryToken, selection: NativeSelectionSync, shortcuts: BrowserCompiledKeyboardShortcuts,
+  flatLists: boolean): KeyboardTranslation<NativeCommandRequest> {
   const safeSnapshot = snapshotKeyboard(snapshot);
   const safePolicy = snapshotPolicy(policy);
   if (
@@ -82,6 +95,7 @@ export function translateKeyDown(
       delivery,
       selection,
       shortcuts,
+      flatLists,
     );
   } catch {
     return Object.freeze({ kind: "invalid" });
@@ -92,10 +106,11 @@ function translateSafeKeyDown(
   snapshot: KeyboardSnapshot,
   policy: KeyboardTranslationPolicy,
   compositionActive: boolean,
-  delivery: EditorDeliveryToken,
-  selection: EditorSelectionSync,
+  delivery: NativeDeliveryToken,
+  selection: NativeSelectionSync,
   shortcuts: BrowserCompiledKeyboardShortcuts,
-): KeyboardTranslation {
+  flatLists: boolean,
+): KeyboardTranslation<NativeCommandRequest> {
   if (
     compositionActive ||
     snapshot.isComposing ||
@@ -108,6 +123,8 @@ function translateSafeKeyDown(
   if (snapshot.altGraph) {
     return native("selectionOrPageCommand");
   }
+
+  const builder = nativeCommandBuilder(flatLists, delivery, selection);
 
   const primary = policy.primaryModifier === "meta" ? snapshot.metaKey : snapshot.ctrlKey;
   const secondaryPrimary =
@@ -131,24 +148,13 @@ function translateSafeKeyDown(
       const source = keyboardSource(snapshot, policy.primaryModifier);
       if (binding.target.kind === "history") {
         return command(
-          historyRequest(
-            delivery,
-            selection,
-            source,
-            binding.target.operation,
-          ),
+          builder.request(source, {kind: "history", operation: binding.target.operation}),
         );
       }
       return snapshot.repeat
         ? blocked("repeatSuppressed")
         : command(
-            noInputIntentRequest(
-              delivery,
-              selection,
-              source,
-              binding.target.intentId,
-              "closeBefore",
-            ),
+            builder.request(source, {kind: "intent", intentId: binding.target.intentId, input: {kind: "none"}}, "closeBefore"),
           );
     }
     if (isUnsupportedNativeEditingShortcut(snapshot)) {
@@ -167,25 +173,19 @@ function translateSafeKeyDown(
   const source = keyboardSource(snapshot, "none");
   if (snapshot.key === "Backspace") {
     return command(
-      noInputActionRequest(delivery, selection, source, browserInputActionIds(delivery).deleteBackward),
+      builder.request(source, {kind: "action", actionId: builder.actionIds().deleteBackward, input: {kind: "none"}}),
     );
   }
   if (snapshot.key === "Delete") {
     return command(
-      noInputActionRequest(delivery, selection, source, browserInputActionIds(delivery).deleteForward),
+      builder.request(source, {kind: "action", actionId: builder.actionIds().deleteForward, input: {kind: "none"}}),
     );
   }
   if (snapshot.key === "Enter") {
     return snapshot.shiftKey
       ? blocked("unsupportedLineBreak")
       : command(
-          noInputActionRequest(
-            delivery,
-            selection,
-            source,
-            browserInputActionIds(delivery).insertParagraphBreak,
-            "closeBefore",
-          ),
+          builder.request(source, {kind: "action", actionId: builder.actionIds().insertParagraphBreak, input: {kind: "none"}}, "closeBefore"),
         );
   }
   if (isPotentialTextKey(snapshot.key)) {
@@ -253,7 +253,7 @@ function isPotentialTextKey(key: string): boolean {
   return key.length === 1 || key === "Unidentified";
 }
 
-function command(request: EditorCommandRequest): KeyboardTranslation {
+function command(request: NativeCommandRequest): KeyboardTranslation<NativeCommandRequest> {
   return Object.freeze({ kind: "command", request });
 }
 

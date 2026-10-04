@@ -1,15 +1,14 @@
 import {
-  browserInputActionIds,
   BASE_INTENT_IDS,
   browserCommandTextIsAdmissible,
-  historyRequest,
-  noInputActionRequest,
-  noInputIntentRequest,
-  stringActionRequest,
+  type FlatListEditorCommandRequest,
+  type FlatListEditorDeliveryToken,
+  type FlatListEditorSelectionSync,
   type EditorDeliveryToken,
   type EditorCommandRequest,
   type EditorSelectionSync,
 } from "./editor_command.js";
+import { nativeCommandBuilder, type NativeCommandRequest, type NativeDeliveryToken, type NativeSelectionSync } from "./native_command_builder.js";
 
 /** Safe scalar snapshot read from one native `beforeinput` event. */
 export interface BeforeInputSnapshot {
@@ -19,8 +18,8 @@ export interface BeforeInputSnapshot {
 }
 
 /** Pure classification before cancellation and FIFO submission. */
-export type BeforeInputTranslation =
-  | Readonly<{ kind: "command"; request: EditorCommandRequest }>
+export type BeforeInputTranslation<R extends NativeCommandRequest = EditorCommandRequest> =
+  | Readonly<{ kind: "command"; request: R }>
   | Readonly<{ kind: "clipboardEcho"; operation: "cut" | "paste" }>
   | Readonly<{
       kind: "blocked";
@@ -42,12 +41,23 @@ export function translateBeforeInput(
   delivery: EditorDeliveryToken,
   selection: EditorSelectionSync,
 ): BeforeInputTranslation {
+  return translateInput(snapshot, compositionActive, delivery, selection, false) as BeforeInputTranslation;
+}
+
+/** Explicit list syntax translation; no legacy token or flattened selection. @internal */
+export function translateFlatListBeforeInput(snapshot: BeforeInputSnapshot, compositionActive: boolean,
+  delivery: FlatListEditorDeliveryToken, selection: FlatListEditorSelectionSync): BeforeInputTranslation<FlatListEditorCommandRequest> {
+  return translateInput(snapshot, compositionActive, delivery, selection, true) as BeforeInputTranslation<FlatListEditorCommandRequest>;
+}
+
+function translateInput(snapshot: BeforeInputSnapshot, compositionActive: boolean,
+  delivery: NativeDeliveryToken, selection: NativeSelectionSync, flatLists: boolean): BeforeInputTranslation<NativeCommandRequest> {
   const safeSnapshot = snapshotBeforeInput(snapshot);
   if (safeSnapshot === null || typeof compositionActive !== "boolean") {
     return Object.freeze({ kind: "invalid" });
   }
   try {
-    return translateSafeBeforeInput(safeSnapshot, compositionActive, delivery, selection);
+    return translateSafeBeforeInput(safeSnapshot, compositionActive, delivery, selection, flatLists);
   } catch {
     return Object.freeze({ kind: "invalid" });
   }
@@ -56,85 +66,41 @@ export function translateBeforeInput(
 function translateSafeBeforeInput(
   snapshot: BeforeInputSnapshot,
   compositionActive: boolean,
-  delivery: EditorDeliveryToken,
-  selection: EditorSelectionSync,
-): BeforeInputTranslation {
+  delivery: NativeDeliveryToken,
+  selection: NativeSelectionSync,
+  flatLists: boolean,
+): BeforeInputTranslation<NativeCommandRequest> {
   if (compositionActive || snapshot.isComposing || isCompositionInputType(snapshot.inputType)) {
     return Object.freeze({ kind: "composition" });
   }
 
+  const builder = nativeCommandBuilder(flatLists, delivery, selection);
+  const action = (actionId: string, history: "preserve" | "closeBefore" = "preserve") =>
+    command(builder.request(source(snapshot.inputType), {kind: "action", actionId, input: {kind: "none"}}, history));
+  const intent = (intentId: string) => command(builder.request(source(snapshot.inputType),
+    {kind: "intent", intentId, input: {kind: "none"}}, "closeBefore"));
   switch (snapshot.inputType) {
     case "insertText":
     case "insertReplacementText":
       return browserCommandTextIsAdmissible(snapshot.data)
-        ? command(textRequest(delivery, selection, snapshot.inputType, snapshot.data))
+        ? command(textRequest(builder, snapshot.inputType, snapshot.data))
         : blocked("invalidText");
     case "insertParagraph":
-      return command(
-        noInputActionRequest(
-          delivery,
-          selection,
-          source(snapshot.inputType),
-          browserInputActionIds(delivery).insertParagraphBreak,
-          "closeBefore",
-        ),
-      );
+      return action(builder.actionIds().insertParagraphBreak, "closeBefore");
     case "deleteContentBackward":
-      return command(
-        noInputActionRequest(
-          delivery,
-          selection,
-          source(snapshot.inputType),
-          browserInputActionIds(delivery).deleteBackward,
-        ),
-      );
+      return action(builder.actionIds().deleteBackward);
     case "deleteContentForward":
-      return command(
-        noInputActionRequest(
-          delivery,
-          selection,
-          source(snapshot.inputType),
-          browserInputActionIds(delivery).deleteForward,
-        ),
-      );
+      return action(builder.actionIds().deleteForward);
     case "deleteContent":
-      return command(
-        noInputActionRequest(
-          delivery,
-          selection,
-          source(snapshot.inputType),
-          browserInputActionIds(delivery).deleteSelection,
-          "closeBefore",
-        ),
-      );
+      return action(builder.actionIds().deleteSelection, "closeBefore");
     case "formatBold":
-      return command(
-        noInputIntentRequest(
-          delivery,
-          selection,
-          source(snapshot.inputType),
-          BASE_INTENT_IDS.formatStrong,
-          "closeBefore",
-        ),
-      );
+      return intent(BASE_INTENT_IDS.formatStrong);
     case "formatRemove":
-      return command(
-        noInputIntentRequest(
-          delivery,
-          selection,
-          source(snapshot.inputType),
-          BASE_INTENT_IDS.clearInlineFormatting,
-          "closeBefore",
-        ),
-      );
+      return intent(BASE_INTENT_IDS.clearInlineFormatting);
     case "historyUndo":
-      return command(
-        historyRequest(delivery, selection, source(snapshot.inputType), "undo"),
-      );
+      return command(builder.request(source(snapshot.inputType), {kind: "history", operation: "undo"}));
     case "historyRedo":
-      return command(
-        historyRequest(delivery, selection, source(snapshot.inputType), "redo"),
-      );
+      return command(builder.request(source(snapshot.inputType), {kind: "history", operation: "redo"}));
     case "deleteByCut":
       return Object.freeze({ kind: "clipboardEcho", operation: "cut" });
     case "insertFromPaste":
@@ -155,18 +121,15 @@ function isCompositionInputType(inputType: string): boolean {
 }
 
 function textRequest(
-  delivery: EditorDeliveryToken,
-  selection: EditorSelectionSync,
+  builder: ReturnType<typeof nativeCommandBuilder>,
   inputType: "insertText" | "insertReplacementText",
   data: string,
 ) {
   const structural = data.includes("\n") || data.includes("\r");
-  return stringActionRequest(
-    delivery,
-    selection,
+  return builder.request(
     source(inputType),
-    structural ? browserInputActionIds(delivery).insertPlainText : browserInputActionIds(delivery).insertText,
-    data,
+    {kind: "action", actionId: structural ? builder.actionIds().insertPlainText : builder.actionIds().insertText,
+      input: {kind: "string", value: data}},
     structural ? "closeBefore" : "preserve",
   );
 }
@@ -175,7 +138,7 @@ function source(detail: string): Readonly<{ kind: "beforeinput"; detail: string 
   return Object.freeze({ kind: "beforeinput", detail });
 }
 
-function command(request: EditorCommandRequest): BeforeInputTranslation {
+function command(request: NativeCommandRequest): BeforeInputTranslation<NativeCommandRequest> {
   return Object.freeze({ kind: "command", request });
 }
 

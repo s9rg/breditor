@@ -25,9 +25,13 @@ import {
 } from "./html_host.js";
 import { createProfiledDocumentProjection, createTextBlockDocumentProjection } from "./projection.js";
 import { browserInputActionIds, issueEditorDeliveryToken, noInputActionRequest, preserveSelectionSync } from "./editor_command.js";
-import { translateBeforeInput } from "./beforeinput.js";
+import { translateBeforeInput, translateFlatListBeforeInput } from "./beforeinput.js";
 import { cutDeleteRequest, pasteInsertRequest } from "./clipboard_command.js";
-import { translateKeyDown } from "./keyboard.js";
+import { translateKeyDown, translateFlatListKeyDown } from "./keyboard.js";
+import { BreditorFlatListBrowserEventController, BreditorBrowserEventController } from "./browser_event_controller.js";
+import { BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
+import { mapDomFlatListTargetRange, mapDomTargetRange } from "./dom_target_range.js";
+import { FlatListTargetRange, isOwnedFlatListTargetRange } from "./flat_list_target_range.js";
 import { FlatListDocumentProjection } from "./flat_list_projection.js";
 import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
 import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "./flat_list_dom_point_mapping.js";
@@ -44,7 +48,7 @@ import { BreditorCommandQueue, BreditorFlatListCommandQueue, openFlatListCommand
 type Run = Readonly<{ text: string; strong: boolean }>;
 
 describe("hierarchical flat-list DOM and points", () => {
-  function fixture() {
+  function fixture(firstText = "a🙂b", secondText = "") {
     const generation = profileGeneration();
     const descriptor = ownedProfileDescriptor(generation, ["breditor/strong"]);
     const presentation = compileBrowserPresentation(generation, descriptor,
@@ -52,7 +56,7 @@ describe("hierarchical flat-list DOM and points", () => {
     const block = (text: string, headingLevel: number | null = null, strong = false) => ({headingLevel,
       runs: text === "" ? [] : [{text, formatDetails: propertyFreeFormats(strong ? ["breditor/strong"] : [])}]});
     const inputBlocks = () => [
-        {kind: "orderedList", start: 8, items: [block("a🙂b", 2, true), block("")]},
+        {kind: "orderedList", start: 8, items: [block(firstText, 2, true), block(secondText)]},
         {kind: "textBlock", block: block("tail")},
         {kind: "bulletList", items: [block("bullet")]},
       ];
@@ -65,6 +69,163 @@ describe("hierarchical flat-list DOM and points", () => {
     return {renderer, host, projection, rendered, make, inputBlocks};
   }
   const textPoint = (textPath: number[], utf16Offset: number, affinity = "after") => ({kind: "text", textPath, utf16Offset, affinity});
+
+  function eventFixture(firstText = "a🙂b", secondText = "") {
+    const f = fixture(firstText, secondText); f.host.contentEditable = "true"; document.body.append(f.host);
+    const bridge = new BreditorFlatListDomSelectionBridge(); const authority = Symbol("list event owner"); let epoch = 0n;
+    const delivery = () => issueFlatListEditorDeliveryToken(f.projection, f.rendered, epoch, authority);
+    const capability = issueEditorDeliveryAuthority(token => flatListEditorDeliveryTokenMatches(token, f.rendered, epoch, authority));
+    const delivered: FlatListEditorCommandRequest[] = []; const tasks: Array<() => void> = [];
+    const queue = new BreditorFlatListCommandQueue(request => { delivered.push(request); epoch += 1n; return "done"; });
+    const controller = new BreditorFlatListBrowserEventController(queue, {selectionBridge: bridge, deliveryAuthority: capability,
+      keyboard: {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"}, scheduleTask: task => { tasks.push(task); }});
+    const text = f.rendered.nodeForAstPath([0, 0, 0, 0])!;
+    document.getSelection()!.setBaseAndExtent(text, 1, text, 1);
+    const input = (inputType: string, ranges: AbstractRange[] = [], data: string | null = null) => ({
+      type: "beforeinput", target: f.host, cancelable: true, defaultPrevented: false,
+      inputType, data, isComposing: false, getTargetRanges: () => ranges,
+      preventDefault() { this.defaultPrevented = true; },
+    });
+    const dispose = () => { document.getSelection()!.removeAllRanges(); bridge.dispose(); queue.dispose(); f.renderer.releaseFlatList(f.rendered); f.host.remove(); };
+    return {...f, bridge, queue, controller, delivery, capability, delivered, tasks, text, input, dispose};
+  }
+
+  it.each([
+    ["insertText", "x", "breditor/insert-flat-list-text"],
+    ["insertText", "x\ny", "breditor/insert-flat-list-plain-text"],
+    ["insertParagraph", null, "breditor/insert-flat-list-break"],
+    ["deleteContentBackward", null, "breditor/delete-flat-list-backward"],
+    ["deleteContentForward", null, "breditor/delete-flat-list-forward"],
+    ["deleteContent", null, "breditor/delete-flat-list-selection"],
+  ] as const)("maps %s/%s into the explicit list action", (inputType, data, actionId) => {
+    const f = eventFixture();
+    try {
+      const result = translateFlatListBeforeInput({inputType, data, isComposing: false}, false, f.delivery(), noSelectionSync());
+      expect(result).toMatchObject({kind: "command", request: {command: {actionId}, delivery: {projection: f.projection}}});
+      // @ts-expect-error Legacy translator cannot admit a list command token.
+      expect(translateBeforeInput({inputType, data, isComposing: false}, false, f.delivery(), noSelectionSync()).kind).toBe("invalid");
+    } finally { f.dispose(); }
+  });
+
+  it.each(["formatBold", "formatRemove", "historyUndo", "historyRedo"])("retains semantic intent/history mapping for %s", inputType => {
+    const f = eventFixture();
+    try {
+      const result = translateFlatListBeforeInput({inputType, data: null, isComposing: false}, false, f.delivery(), preserveSelectionSync());
+      expect(result.kind).toBe("command");
+      if (result.kind === "command") {
+        expect(result.request.command).toEqual(inputType.startsWith("history")
+          ? {kind: "history", operation: inputType === "historyUndo" ? "undo" : "redo"}
+          : {kind: "intent", intentId: inputType === "formatBold" ? "breditor/format-strong" : "breditor/clear-inline-formatting", input: {kind: "none"}});
+        expect(result.request.requirements.history).toBe("closeBefore");
+      }
+    } finally { f.dispose(); }
+  });
+
+  it("retains list paths, rejects reversed/wrong-host/surrogate targets and stale ranges", () => {
+    const f = eventFixture();
+    try {
+      const empty = f.rendered.nodeForAstPath([0, 1, 0])!;
+      const range = new StaticRange({startContainer: f.text, startOffset: 1, endContainer: empty, endOffset: 0});
+      const mapped = valueOf(mapDomFlatListTargetRange(f.rendered, range));
+      expect(isOwnedFlatListTargetRange(mapped)).toBe(true);
+      expect(mapped.start).toMatchObject({textPath: [0, 0, 0, 0], utf16Offset: 1});
+      expect(mapped.end).toMatchObject({parentPath: [0, 1, 0], childIndex: 0});
+      expect(Object.isFrozen(mapped)).toBe(true);
+      expect(FlatListTargetRange.create(f.rendered, {kind: "range", start: mapped.end, end: mapped.start}).ok).toBe(false);
+      expect(mapDomFlatListTargetRange(f.rendered, new StaticRange({startContainer: f.text, startOffset: 2, endContainer: f.text, endOffset: 3})).ok).toBe(false);
+      expect(mapDomFlatListTargetRange(f.rendered, new StaticRange({startContainer: f.text, startOffset: 0, endContainer: document.body, endOffset: 0})).ok).toBe(false);
+      // @ts-expect-error A list range must never be mapped as a base range.
+      expect(mapDomTargetRange(f.rendered, range).ok).toBe(false);
+      f.host.querySelector("ol")!.setAttribute("start", "9");
+      expect(mapDomFlatListTargetRange(f.rendered, range).ok).toBe(false);
+    } finally { f.dispose(); }
+  });
+
+  it("cancels mismatched replacement ranges and admits exact list targets once", () => {
+    const f = eventFixture();
+    try {
+      const wrong = new StaticRange({startContainer: f.text, startOffset: 0, endContainer: f.text, endOffset: 1});
+      const blocked = f.input("insertReplacementText", [wrong], "x");
+      expect(f.controller.handleBeforeInput(blocked as unknown as InputEvent, f.rendered, f.delivery()))
+        .toEqual({kind: "blocked", defaultPrevented: true, reason: "targetRangeMismatch"});
+      expect(f.delivered).toHaveLength(0);
+      const exact = new StaticRange({startContainer: f.text, startOffset: 1, endContainer: f.text, endOffset: 1});
+      const admitted = f.input("insertReplacementText", [exact], "x");
+      expect(f.controller.handleBeforeInput(admitted as unknown as InputEvent, f.rendered, f.delivery()).kind).toBe("handled");
+      expect(admitted.defaultPrevented).toBe(true); expect(f.delivered).toHaveLength(1);
+      expect(f.delivered[0]?.selection).toMatchObject({kind: "range", selection: {anchor: {textPath: [0, 0, 0, 0], utf16Offset: 1}}});
+    } finally { f.dispose(); }
+  });
+
+  it("synchronizes native list selections but does not queue programmatic echoes", () => {
+    const f = eventFixture();
+    try {
+      const event = {type: "selectionchange", target: document, cancelable: false, defaultPrevented: false} as unknown as Event;
+      expect(f.controller.handleSelectionChange(event, f.rendered, f.delivery()).kind).toBe("synchronized");
+      expect(f.delivered[0]?.requirements.history).toBe("preserve");
+      const point = textPoint([0, 0, 0, 0], 1, "before");
+      const selected = valueOf(FlatListRangeSelection.create(f.projection, {kind: "range", anchor: point, focus: point}));
+      valueOf(f.bridge.write(f.rendered, selected));
+      expect(f.controller.handleSelectionChange(event, f.rendered, f.delivery())).toEqual({kind: "ignored", reason: "programmaticEcho"});
+      expect(f.delivered).toHaveLength(1);
+    } finally { f.dispose(); }
+  });
+
+  it("admits the Chromium trailing-space alias only inside the exact list text path", () => {
+    const f = eventFixture("a  ", "b  ");
+    try {
+      document.getSelection()!.setBaseAndExtent(f.text, 3, f.text, 3);
+      const other = f.rendered.nodeForAstPath([0, 1, 0, 0])!;
+      const mismatched = new StaticRange({startContainer: other, startOffset: 1, endContainer: other, endOffset: 1});
+      expect(f.controller.handleBeforeInput(f.input("insertText", [mismatched], "x") as unknown as InputEvent, f.rendered, f.delivery()))
+        .toMatchObject({kind: "blocked", reason: "targetRangeMismatch"});
+      const alias = new StaticRange({startContainer: f.text, startOffset: 1, endContainer: f.text, endOffset: 1});
+      expect(f.controller.handleBeforeInput(f.input("insertText", [alias], "x") as unknown as InputEvent, f.rendered, f.delivery()).kind).toBe("handled");
+      expect(f.delivered[0]?.selection).toMatchObject({kind: "range", selection: {anchor: {textPath: [0, 0, 0, 0], utf16Offset: 3}}});
+    } finally { f.dispose(); }
+  });
+
+  it("does not evaluate accessor fields in list target or command selection records", () => {
+    const f = eventFixture(); const getter = vi.fn(() => "preserve");
+    try {
+      expect(FlatListTargetRange.create(f.rendered, {kind: "range", get start() { return getter(); }, end: textPoint([0, 0, 0, 0], 1)}).ok).toBe(false);
+      expect(translateFlatListBeforeInput({inputType: "insertText", data: "x", isComposing: false}, false, f.delivery(),
+        {get kind() { return getter(); }} as never).kind).toBe("invalid");
+      expect(getter).not.toHaveBeenCalled();
+      expect(() => Reflect.construct(FlatListTargetRange, [Symbol("forged"), f.rendered, {}, {}])).toThrow();
+      expect(isOwnedFlatListTargetRange(Object.create(FlatListTargetRange.prototype))).toBe(false);
+    } finally { f.dispose(); }
+  });
+
+  it("correlates list Enter keyboard echoes without executing a second edit", () => {
+    const f = eventFixture();
+    try {
+      const keyboard = {key: "Enter", code: "Enter", altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+        repeat: false, isComposing: false, keyCode: 13, altGraph: false};
+      expect(translateFlatListKeyDown(keyboard, {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"},
+        false, f.delivery(), noSelectionSync())).toMatchObject({kind: "command", request: {command: {actionId: "breditor/insert-flat-list-break"}}});
+      const key = {...keyboard, type: "keydown", target: f.host, cancelable: true, defaultPrevented: false,
+        getModifierState: () => false, preventDefault() { this.defaultPrevented = true; }};
+      expect(f.controller.handleKeyDown(key as unknown as KeyboardEvent, f.rendered, f.delivery()).kind).toBe("handled");
+      const echo = f.input("insertParagraph");
+      expect(f.controller.handleBeforeInput(echo as unknown as InputEvent, f.rendered, f.delivery()).kind).toBe("keyboardEcho");
+      expect(f.delivered).toHaveLength(1); f.tasks.forEach(task => task());
+      expect(f.controller.handleBeforeInput(f.input("insertParagraph") as unknown as InputEvent, f.rendered, f.delivery()).kind).toBe("handled");
+      expect(f.delivered).toHaveLength(2);
+    } finally { f.dispose(); }
+  });
+
+  it("keeps list event construction closed to base queues and bridges", () => {
+    const f = eventFixture();
+    try {
+      const options = {selectionBridge: f.bridge, deliveryAuthority: f.capability,
+        keyboard: {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"} as const};
+      // @ts-expect-error Legacy controller cannot receive a list queue/bridge.
+      expect(() => new BreditorBrowserEventController(f.queue, options)).toThrow();
+      // @ts-expect-error List controller requires a list queue.
+      expect(() => new BreditorFlatListBrowserEventController(new BreditorCommandQueue(() => "done"), options)).toThrow();
+    } finally { f.dispose(); }
+  });
 
   function queuedRequest(detail = "one") {
     const f = fixture(), token = issueFlatListEditorDeliveryToken(f.projection, f.rendered, 0n, Symbol("queue owner"));

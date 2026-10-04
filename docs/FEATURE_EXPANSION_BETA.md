@@ -1114,3 +1114,32 @@ integration is complete; this is an unfinished beta requirement, not a reduced
 product scope. Clipboard, visible persistence, native-input/accessibility and
 release gates also remain open.
 See [verification](qualification/2026-10-04-flat-list-command-adapter.json).
+
+## Flat-list ordinary event controller checkpoint
+
+`BreditorFlatListBrowserEventController` now shares the existing event admission,
+cancellation, selection-change, target-range and keyboard-echo state machine.
+Explicit list beforeinput/keyboard translators share the same syntax and shortcut
+policy as the base translators. They select list editing actions while preserving
+named formatting intents, history boundaries and custom compiled shortcuts.
+Legacy controllers and translators remain closed to list inputs.
+
+Native target ranges now have a separate owned hierarchical representation. The
+shared DOM mapper checks canonical render, host ownership, native ordering and
+Unicode scalar boundaries, retaining full list-item paths. The narrowly supported
+Chromium trailing-space alias compares complete text paths and cannot jump to
+another item. Selection-change requests preserve the existing history policy.
+
+All 1,748 browser tests, strict TypeScript and temporary declaration emission
+pass. Five runs each in Chromium, Firefox and WebKit exercise the production
+controller with platform-branded synthetic input/keyboard events, native selection,
+real Wasm editing, duplicate-echo suppression and session recovery. The harness
+reads exact Rust affinities independently of native DOM endpoints, without
+consuming the controller's one-use programmatic selection receipt as a diagnostic
+side effect. DOM selections themselves do not store affinity.
+
+Next: high-level owner/router and toolbar integration, then list composition and
+clipboard. These controller checks do not qualify physical typing, OS input
+methods or the complete visible editor. Shipping artifacts remain unchanged;
+nothing is pushed or published.
+See [verification](qualification/2026-10-04-flat-list-event-controller.json).

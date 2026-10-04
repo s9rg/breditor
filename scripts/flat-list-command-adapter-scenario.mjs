@@ -2,12 +2,15 @@
 import { bootstrapFlatListWasmEngine } from "../packages/breditor-browser/src/wasm_engine_bootstrap.ts";
 import { BreditorFlatListWasmCommandAdapter, contentReadPortsForAdapter } from "../packages/breditor-browser/src/wasm_command_adapter.ts";
 import { BreditorFlatListCommandQueue } from "../packages/breditor-browser/src/command_queue.ts";
+import { BreditorFlatListBrowserEventController } from "../packages/breditor-browser/src/browser_event_controller.ts";
 import { BreditorDomRenderer } from "../packages/breditor-browser/src/dom_renderer.ts";
 import { BreditorFlatListDomSelectionBridge } from "../packages/breditor-browser/src/dom_selection.ts";
 import { compileBrowserPresentation } from "../packages/breditor-browser/src/compiled_browser_presentation.ts";
 import { createInlineFormatRenderManifest } from "../packages/breditor-browser/src/inline_format_render_manifest.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
-import { flatListCommandRequest, flatListRangeSelectionSync, preserveSelectionSync, flatListEditorDeliveryAuthorityAccepts,
+import { consumeFlatListSemanticSelection } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
+import { mapDomPointToFlatListSelectionPoint } from "../packages/breditor-browser/src/flat_list_dom_point_mapping.ts";
+import { flatListCommandRequest, preserveSelectionSync, flatListEditorDeliveryAuthorityAccepts,
   editorDeliveryAuthorityAccepts } from "../packages/breditor-browser/src/editor_command.ts";
 
 const equal = (actual, expected) => {
@@ -52,6 +55,24 @@ export function verifyFlatListCommandAdapter(api, semanticProfile, documentJson)
     });
     const queue = new BreditorFlatListCommandQueue(adapter.commandExecutor);
     owners.push(() => queue.dispose());
+    const controller = new BreditorFlatListBrowserEventController(queue, {
+      selectionBridge: bridge, deliveryAuthority: adapter.deliveryAuthority,
+      keyboard: {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"},
+    });
+    // Platform-branded synthetic events exercise controller cancellation and
+    // native Selection reads, but do not qualify physical input or IME.
+    const dispatch = (kind, init) => {
+      const event = kind === "keydown" ? new KeyboardEvent(kind, {bubbles: true, cancelable: true, ...init})
+        : new InputEvent(kind, {bubbles: true, cancelable: kind === "beforeinput", ...init});
+      let disposition;
+      host.addEventListener(kind, incoming => {
+        disposition = kind === "keydown" ? controller.handleKeyDown(incoming, adapter.rendered, adapter.deliveryToken())
+          : kind === "beforeinput" ? controller.handleBeforeInput(incoming, adapter.rendered, adapter.deliveryToken())
+          : controller.handleInput(incoming, adapter.rendered);
+      }, {once: true});
+      host.dispatchEvent(event);
+      return {event, disposition};
+    };
     const send = (command, selection = preserveSelectionSync(), history) => {
       const token = adapter.deliveryToken();
       const request = flatListCommandRequest(token, selection, {kind: "api", detail: "list adapter qualification"}, command, history);
@@ -71,8 +92,31 @@ export function verifyFlatListCommandAdapter(api, semanticProfile, documentJson)
       if (!result?.ok) throw new Error("list document reader failed");
       return JSON.parse(result.document.documentJson).root;
     };
-    const selection = () => endpoints(value(bridge.read(adapter.rendered)).selection);
-    return {adapter, host, bridge, send, ports, documentRoot, selection, failNextUpdate: () => { failUpdate = true; }};
+    const selection = () => {
+      const observation = started.engine.observation();
+      let result;
+      try {
+        result = started.engine.selection(observation);
+        const exact = value(consumeFlatListSemanticSelection(adapter.rendered.projection, result.takeSelection(), started.profileGeneration));
+        const native = document.getSelection();
+        if (!native) throw new Error("native selection unavailable");
+        const dom = native.rangeCount === 0 ? null : value(FlatListRangeSelection.create(adapter.rendered.projection, {
+          kind: "range",
+          anchor: value(mapDomPointToFlatListSelectionPoint(adapter.rendered, native.anchorNode, native.anchorOffset)),
+          focus: value(mapDomPointToFlatListSelectionPoint(adapter.rendered, native.focusNode, native.focusOffset)),
+        }));
+        // DOM has no affinity bit. Prove observable endpoints independently;
+        // compare Rust's exact affinities in the returned semantic snapshot.
+        // Do not consume the controller's one-use programmatic echo receipt
+        // merely to inspect a postcondition before its next keyboard event.
+        const observable = range => range === null ? null : {
+          anchor: {...range.anchor, affinity: undefined}, focus: {...range.focus, affinity: undefined}, order: range.order,
+        };
+        equal(observable(dom), observable(exact));
+        return endpoints(exact);
+      } finally { result?.free(); observation.free(); }
+    };
+    return {adapter, host, bridge, send, ports, documentRoot, selection, dispatch, failNextUpdate: () => { failUpdate = true; }};
   };
   try {
     const first = boot({kind: "document", lineageId: "list-command-adapter", documentJson, historyCapacity: 20});
@@ -85,13 +129,17 @@ export function verifyFlatListCommandAdapter(api, semanticProfile, documentJson)
     const openingToken = adapter.deliveryToken();
     mustThrow(() => adapter.beginCompositionLease(openingToken, selection, 1n));
     equal(adapter.state, "live"); equal(adapter.acceptsDeliveryToken(openingToken), true);
-    const inserted = send({kind: "action", actionId: "breditor/insert-flat-list-plain-text", input: {kind: "string", value: "x\ny"}},
-      flatListRangeSelectionSync(selection), "closeBefore");
-    equal(inserted.command.status, "committed");
+    const inserted = first.dispatch("beforeinput", {inputType: "insertText", data: "x\ny"});
+    equal(inserted.event.defaultPrevented, true); equal(inserted.disposition.kind, "handled");
+    equal(inserted.disposition.submission.result.command.status, "committed");
     equal(host.querySelectorAll("li").length, 4); equal(host.querySelector("ol").start, 8);
     equal(ports.plainText.read()?.content.text, "Intro\nAx\ny🙂\nB\n");
     const editedRoot = first.documentRoot(); const editedSelection = first.selection();
-    equal(send({kind: "history", operation: "undo"}).command.status, "committed");
+    const undone = first.dispatch("keydown", {key: "z", code: "KeyZ", ctrlKey: true});
+    equal(undone.event.defaultPrevented, true); equal(undone.disposition.kind, "handled");
+    equal(undone.disposition.submission.result.command.status, "committed");
+    equal(first.dispatch("beforeinput", {inputType: "historyUndo"}).disposition.kind, "keyboardEcho");
+    equal(first.dispatch("input", {inputType: "historyUndo"}).disposition.kind, "inputPostcondition");
     equal(first.documentRoot(), originalRoot); equal(first.selection(), endpoints(selection));
     const checkpoint = ports.sessionCheckpointJson.read();
     if (!checkpoint?.ok) throw new Error("adapter checkpoint reader failed");

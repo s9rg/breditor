@@ -1,6 +1,7 @@
 import {
   type RenderedProjection,
   isOwnedRenderedProjection,
+  isOwnedFlatListRenderedProjection,
 } from "./dom_renderer.js";
 import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
 import {
@@ -21,6 +22,11 @@ import type {
 } from "./selection_result.js";
 import { selectionFailure } from "./selection_result.js";
 import { BaseTargetRange } from "./target_range.js";
+import { FlatListTargetRange } from "./flat_list_target_range.js";
+import type { FlatListDocumentProjection } from "./flat_list_projection.js";
+import { mapDomPointToFlatListSelectionPoint } from "./flat_list_dom_point_mapping.js";
+
+type TargetRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
 
 interface DomRangeSnapshot {
   readonly startContainer: Node;
@@ -49,7 +55,17 @@ export function mapDomTargetRange(
   rendered: RenderedProjection,
   range: AbstractRange,
 ): BrowserSelectionResult<BaseTargetRange> {
-  const preflight = validateRenderedForTargetRange(rendered);
+  return mapTargetRange(rendered, range, false) as BrowserSelectionResult<BaseTargetRange>;
+}
+
+/** Same native ordering/host checks, retaining full list-item AST paths. @internal */
+export function mapDomFlatListTargetRange(rendered: RenderedProjection<FlatListDocumentProjection>,
+  range: AbstractRange): BrowserSelectionResult<FlatListTargetRange> {
+  return mapTargetRange(rendered, range, true) as BrowserSelectionResult<FlatListTargetRange>;
+}
+
+function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists: boolean): BrowserSelectionResult<BaseTargetRange | FlatListTargetRange> {
+  const preflight = validateRenderedForTargetRange(rendered, flatLists);
   if (!preflight.ok) {
     return selectionFailure(preflight.code);
   }
@@ -71,7 +87,7 @@ export function mapDomTargetRange(
       return selectionFailure("selection.dom_drift");
     }
 
-    const start = mapDomPointToBaseSelectionPoint(
+    const start = mapPoint(
       rendered,
       snapshot.startContainer,
       snapshot.startOffset,
@@ -79,7 +95,7 @@ export function mapDomTargetRange(
     if (!start.ok) {
       return selectionFailure(start.code);
     }
-    const end = mapDomPointToBaseSelectionPoint(
+    const end = mapPoint(
       rendered,
       snapshot.endContainer,
       snapshot.endOffset,
@@ -90,18 +106,28 @@ export function mapDomTargetRange(
     if (!rendered.validateCanonicalDom()) {
       return selectionFailure("selection.dom_drift");
     }
-    return BaseTargetRange.create(rendered, {
+    const input = {
       kind: "range",
       start: start.value,
       end: end.value,
-    });
+    };
+    return isOwnedFlatListRenderedProjection(rendered) ? FlatListTargetRange.create(rendered, input)
+      : BaseTargetRange.create(rendered as RenderedProjection, input);
   } catch {
     return selectionFailure("selection.dom_read_failed");
   }
 }
 
-function validateRenderedForTargetRange(rendered: RenderedProjection): DomRangePreflight {
-  if (!isOwnedRenderedProjection(rendered) || !rendered.current) {
+function mapPoint(rendered: TargetRender, node: Node, offset: number) {
+  if (isOwnedFlatListRenderedProjection(rendered)) {
+    const result = mapDomPointToFlatListSelectionPoint(rendered, node, offset);
+    return result.ok ? result : {ok: false as const, code: result.error.code};
+  }
+  return mapDomPointToBaseSelectionPoint(rendered as RenderedProjection, node, offset);
+}
+
+function validateRenderedForTargetRange(rendered: TargetRender, flatLists: boolean): DomRangePreflight {
+  if (!(flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
     return { ok: false, code: "selection.foreign_or_stale_render" };
   }
   return rendered.validateCanonicalDom()

@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "146ed09",
+  "status": "Explicit list ordinary-event controller integrated; owner/router, toolbar, composition and clipboard remain open",
+  "contracts": {
+    "implementation": "Shared event controller core and native command builder; explicit base/list facades retain mode-specific queue, bridge, render and token admission",
+    "mapping": "Shared beforeinput/keyboard syntax, explicit list text/break/delete actions, named formatting intents and descriptor-compiled shortcut policy",
+    "targetRanges": "Owned ordered list endpoints with full AST paths, exact native host/order checks, scalar UTF-16 boundaries and current canonical render",
+    "whitespaceAlias": "Only the existing terminal U+0020 collapsed insertText alias; complete text paths must match",
+    "history": "Selection-change preserves history; structural commands and undo/redo keep established boundaries",
+    "echo": "Task-bound, epoch-correlated keyboard-beforeinput-input receipts suppress duplicate edits",
+    "legacy": "Legacy construction and translators reject list mode; shipping package exports unchanged"
+  },
+  "verification": {
+    "newTests": 17,
+    "browserTests": 1748,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Platform-branded synthetic beforeinput inserts multiline list text; synthetic Ctrl+Z invokes history through the controller; correlated beforeinput/input echoes do not repeat undo; real Wasm, native DOM endpoints, exact semantic affinity, redo/session recovery and post-commit render recovery",
+    "developmentCorrections": [
+      "Initial refactor typecheck caught differing base/list DOM-point error shapes; normalized them at the shared mapper.",
+      "Initial full suite: 1729 passed, two selection-change tests failed because the new shared request used closeBefore. Restored the existing preserve policy; full suite passes.",
+      "Two browser attempts failed in all three engines on affinity assertions. The harness consumed the one-use bridge receipt while inspecting state, first after an echo and then before the next keydown. Replaced diagnostic bridge reads with independent native endpoint observation and authoritative Rust selection reads. No affinity normalization was added to production code."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser -- src/dom_renderer.test.ts src/browser_event_controller.test.ts src/beforeinput.test.ts src/keyboard.test.ts src/dom_target_range.test.ts",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "High-level list owner/router and toolbar",
+    "List composition and supported clipboard flows",
+    "Visible reload/backup and physical native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Controller with synthetic native-branded events, not a physical keyboard/OS IME or complete visible editor qualification. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}
