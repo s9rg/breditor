@@ -21,7 +21,8 @@ use thiserror::Error;
 /// The complete source block is an optimistic guard, including all inline
 /// formats and the heading rank. Unrelated root siblings are not guarded.
 /// This experimental primitive is deliberately separate from paragraph-only
-/// `TextSplice`. It has no durable encoding or browser exposure yet.
+/// `TextSplice`. V5 codecs preserve it; older codecs and the shipping browser
+/// profile do not admit it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TextBlockSplice {
     range: TextRange,

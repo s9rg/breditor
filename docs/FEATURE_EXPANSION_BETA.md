@@ -90,10 +90,10 @@ selection relocation, preserves rank and typed inline formats, validates the
 complete result document, and derives an exact inverse. Source guards include
 the whole edited block; unchanged siblings are not guarded.
 
-This is **in-memory only**: all current codecs reject this new primitive.
-Its explicit durable recipe and browser exposure remain unfinished. Later
+The original slice was **in-memory only**: V1–V4 codecs reject this primitive.
+The V5 checkpoint below adds durable recipes; browser exposure remains unfinished. Later
 checkpoints below add typing, Enter, deletion, structural action behavior and
-formatting. Durable text-edit replay and browser integration remain unfinished.
+formatting and durable text-edit replay. Browser integration remains unfinished.
 No fresh browser, bundle-size or full release qualification is claimed for
 this isolated core checkpoint.
 
@@ -119,11 +119,10 @@ selection and pending formats; stale preparations cannot destroy a redo branch.
 
 Cross-block replacement now retains the spatial start block's kind; it does not
 flatten a heading into a paragraph. See the cross-block checkpoint below.
-The action is not in the browser/default registry and its text edit still cannot
-be saved in any current operation/session format. Durable encoding is the next
-integration dependency: V4 is a closed language, so adding a new tag silently is
-not acceptable. Settle the remaining heading edit recipe set together before
-introducing the next explicit format, rather than issuing a format per command.
+The action is not in the browser/default registry. V5 now saves its text edits
+and retained history. V4 remains a closed language: neither text primitive was
+silently added to it. Both new recipes were settled together before introducing
+the next explicit format, rather than issuing a format per command.
 
 See the [typing verification record](qualification/2026-10-03-heading-typing-action.json)
 for current evidence. These core checks are not browser feature qualification.
@@ -152,7 +151,7 @@ The new shared text-block source/preview helper is also used by heading typing;
 its behavior is covered by the whole-core regression suite. Existing paragraph
 actions, base registration and all durable formats remain unchanged.
 
-**Still unfinished:** durable text-edit sessions, browser
+**Still unfinished:** browser
 integration, flat lists and desktop/native qualification. Start/end of the entire
 document return their normal disabled states; internal boundaries now join through
 the structural primitive. This is not a finished editing profile and must not be
@@ -192,7 +191,7 @@ existing durable languages, including V4, explicitly continue rejecting it.
 
 Join mechanics have operation-level coverage across all 49 paragraph/heading
 kind pairs and are now connected to boundary/cross-block editing actions below.
-Formatting is covered below; durable session replay remains next. This does not enable headings
+Formatting and durable session replay are covered below. This does not enable headings
 in the browser or qualify a beta release.
 
 See [structural-break qualification](qualification/2026-10-03-heading-structural-break.json).
@@ -218,8 +217,8 @@ The tests exercise 392 boundary-join combinations (49 kind pairs, four empty/non
 side combinations and two directions), mixed-format type-over, selected deletion,
 regional-indicator seam snapping, bounded-result rejection, merged history and
 stale preparation/redo safety. Seven text-block property tests run 10,000 seeded
-cases each. Exact retained-kind and selection recovery is still **in-memory**;
-this does not yet claim durable text-block history or browser support.
+cases each. That checkpoint proved **in-memory** retained-kind and selection
+recovery; the V5 checkpoint below adds persistence. Neither claims browser support.
 
 See [cross-edit qualification](qualification/2026-10-03-heading-cross-edit.json).
 
@@ -261,9 +260,37 @@ their exact encodings; affected points are canonicalized in the result runs.
 The legacy `RootTextReplace` relocation contract is unchanged.
 
 This finishes the planned in-memory heading editing commands, not the demo or
-beta release. The next integration dependency is a new explicit durable recipe
-generation covering `TextBlockSplice` and `TextBlockReplace` together. Existing
-V1–V4 formats remain closed. Then connect the optional structural browser profile
-and qualify heading editing/reload before implementing flat lists.
+beta release. V5 below adds durable recipes for `TextBlockSplice` and
+`TextBlockReplace` together. Existing V1–V4 formats remain closed. Next connect
+the optional structural browser profile and qualify heading editing/reload
+before implementing flat lists.
 
 See [formatting qualification](qualification/2026-10-03-heading-formatting.json).
+
+## Durable heading-edit checkpoint (V5)
+
+`OperationJsonCodecV5`, `TransactionJsonCodecV5` and
+`SessionCheckpointJsonCodecV5` preserve the complete heading edit recipe set,
+including both text primitives and the existing block-kind change. They remain
+behind `experimental-structural-properties`; no shipping Wasm ABI, registration,
+browser persistence or default package changes are made here.
+
+The tests save actual typing, heading conversion, Enter, deletion/join and
+formatting action histories at every retained cursor, restore them under an
+independently compiled context, then compare every undo/redo boundary. Current
+revision, document, directional selection, pending formats, capacity and open
+typing merge groups survive. Runtime preparation stamps intentionally do not:
+a new session cannot inherit the authority of old cached preparations.
+
+Recovery admits chronological forward recipes only and proves their locally
+derived inverses. Invalid future redo guards, incompatible editor values,
+malformed payloads and exceeded whole-tree/history budgets reject the complete
+restore. Errors retain both history-entry and operation indexes. Exact output
+byte limits match decoding limits. V1–V4 continue rejecting the new text recipes,
+including if an input's outer version is misleadingly relabelled.
+
+Wire details are in [the structural contract](STRUCTURAL_BLOCKS.md#v5-heading-text-edit-persistence).
+See [V5 qualification](qualification/2026-10-03-heading-edit-v5.json).
+The next gate is the optional browser load/profile boundary, semantic heading
+rendering and toolbar/keyboard integration, followed by real reload/recovery
+tests. Flat lists remain the subsequent feature slice; nesting is deferred.

@@ -95,6 +95,9 @@ pub enum OperationFragmentField {
     TextSpliceExpectedRemoved,
     /// `textSplice.replacement`.
     TextSpliceReplacement,
+    /// `textBlockSplice.replacement` in the experimental V5 operation language.
+    #[cfg(feature = "experimental-structural-properties")]
+    TextBlockSpliceReplacement,
     /// `paragraphSplit.expected`.
     ParagraphSplitExpected,
     /// `paragraphJoin.expectedLeft`.

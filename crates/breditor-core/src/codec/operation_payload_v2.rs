@@ -241,7 +241,7 @@ fn fragment_list_from_record(
         .collect()
 }
 
-fn fragment_from_record(
+pub(super) fn fragment_from_record(
     record: TextFragmentRecordV2,
     field: OperationFragmentField,
     paragraph_index: u64,

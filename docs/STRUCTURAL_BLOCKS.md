@@ -322,9 +322,9 @@ Prefix it with `PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261002` to run the gram
 and integer-admission property checks at the larger fixed-seed count. Run the same schema
 filter with `--no-default-features` to check the shipped configuration separately.
 
-The singular heading-operation format is implemented as experimental V4. The
-session checkpoint now preserves retained heading history. Commit/local-log
-integration and heading-aware text editing, Wasm projection and UI remain pending.
+Experimental V4 preserves heading-kind changes; V5 below adds heading text-edit
+operations, atomic requests and retained session history. Wasm projection and UI
+remain pending. Commit/local-log expansion is not required by the beta plan.
 List-wide numbering validation remains required before lists. WebKit evidence
 is tracked separately in `WEBKIT_CLIPBOARD_INVESTIGATION.md`.
 
@@ -352,3 +352,52 @@ changes on both undo and redo branches, replay from an independent decoded
 state, reject stale source guards and malformed ranks, enforce
 operation/history/byte limits, and retain old format rejection tests.
 A browser toolbar is not enabled by passing these Rust-only checks.
+
+## V5 heading text-edit persistence
+
+The explicit Operation, Transaction Request and Session Checkpoint V5 envelopes
+retain their existing format names and schema ID/fingerprint binding, but require
+`formatVersion: 5`. They do not accept older outer versions. Host code may
+explicitly decode an older supported format and encode its validated runtime
+value as V5; changing the version number on arbitrary saved JSON is not migration.
+
+The closed operation union retains V4's admitted payloads and adds:
+
+- `textBlockSplice`: exactly `kind`, `block`, `start`, `end`, `expected`,
+  `replacement`. `block` is a direct-root child index; `start`/`end` are ordered
+  block-local UTF-16 offsets. `expected` is a synthetic document root with
+  **exactly one complete source block**. `replacement` uses the established
+  property-preserving text-fragment shape: `runs`, each with `text` and `formats`.
+  It has no replacement kind: the primitive preserves its source kind/rank.
+- `textBlockReplace`: exactly `kind`, `start`, `end`, `expected`, `replacement`.
+  Each boundary has exactly `block` and `offset`. Both node sequences use the
+  existing document-node language under a synthetic root. The expected sequence
+  covers the whole intersected source span; the replacement sequence is nonempty
+  and explicitly supplies each result block's kind/rank and inserted text.
+  Surviving prefix/suffix text attaches to its first/last blocks respectively.
+
+Block indexes use checked unsigned 32-bit integers; offsets use checked exact
+safe integers and must resolve to scalar boundaries. Fractions, exponents, null,
+strings, overflow, unknown/duplicate fields and noncanonical run/property data
+are rejected rather than coerced. Trees/fragments pass borrowed allocation
+preflight before owned reconstruction, followed by compiled-schema validation.
+Outer bytes and operation counts bound requests; session admission additionally
+bounds retained nodes/text/properties and aggregate forward operations.
+
+Static decode does not prove a recipe applies to a live document: application
+rechecks complete source guards and validates the full result, including retained
+siblings. A late operation or final-selection failure cannot publish a partial
+request. Transaction metadata, pending formats and snapshot binding keep their
+existing contracts. Earlier schemas are not implicitly granted structural editing.
+
+Session V5 embeds Editor State V3 (Document V2), saves chronological forward
+recipes and result editor values, and preserves capacity, cursor, revision and
+open merge group. Every retained boundary, including future redo entries, is
+forward-replayed and inverse-proved before a session is returned. No serialized
+inverse is trusted or accepted. Restored runtime preparation stamps are new.
+
+Same-count formatting relocation preserves positions only when each corresponding
+block retains identical logical text; changing run layout is not deletion.
+This law is derived from the decoded operation, not asserted by an extra wire flag.
+V1–V4 and their golden encodings remain unchanged. The V5 family is experimental
+and does not add a Commit/local-log format or enable the shipping browser profile.

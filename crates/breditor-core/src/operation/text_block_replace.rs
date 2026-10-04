@@ -25,7 +25,7 @@ use thiserror::Error;
 /// The inverse restores every source kind, not just the retained left kind.
 /// When block count and each block's logical text are unchanged, relocation
 /// preserves aggregate offsets and affinities through any text-run reshaping.
-/// Experimental only; no existing durable codec admits this operation.
+/// Experimental only; V5 codecs preserve this recipe and older codecs reject it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TextBlockReplace {
     range: RootTextRange,
