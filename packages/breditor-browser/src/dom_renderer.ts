@@ -1162,7 +1162,11 @@ function flatListDomAndMapsMatch(
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): boolean {
-  const matchesMap = (node: Node | undefined, path: AstPath): node is Node => {
+  // One traversal-local cursor avoids allocating an expected path for every
+  // node. It never escapes this synchronous proof or enters either map.
+  // Keep astPathKey's depth/index validation at every comparison.
+  const path: number[] = [];
+  const matchesMap = (node: Node | undefined): node is Node => {
     const key = astPathKey(path, 4);
     if (node === undefined || key === null || maps.astToDom.get(key) !== node) return false;
     const reverse = maps.domToAst.get(node);
@@ -1171,14 +1175,17 @@ function flatListDomAndMapsMatch(
     return reverse !== undefined && astPathsEqual(reverse, path);
   };
   const children = nativeChildNodes(host);
-  if (children.length !== projection.blocks.length || !matchesMap(host, [])) return false;
+  if (children.length !== projection.blocks.length || !matchesMap(host)) return false;
   let mappedNodes = 1;
-  const blockMatches = (node: Node | undefined, block: BaseParagraphProjection, path: AstPath): boolean => {
-    if (!matchesMap(node, path) || !paragraphDomMatches(node, block, presentation, (outer, run, index) => {
+  const blockMatches = (node: Node | undefined, block: BaseParagraphProjection): boolean => {
+    if (!matchesMap(node) || !paragraphDomMatches(node, block, presentation, (outer, run, index) => {
       // This resolves and validates the complete run shape and text, then checks
       // its ownership. Do not first walk the same run with runDomMatches.
       const text = textNodeForRunDom(outer, run, presentation);
-      return matchesMap(text, [...path, index]) && wrappersAreUnmapped(outer, text, maps.domToAst);
+      path.push(index);
+      const matches = matchesMap(text) && wrappersAreUnmapped(outer, text, maps.domToAst);
+      path.pop();
+      return matches;
     })) return false;
     mappedNodes += 1 + block.runs.length;
     if (block.runs.length !== 0) return true;
@@ -1187,11 +1194,13 @@ function flatListDomAndMapsMatch(
   };
   for (const [rootIndex, root] of projection.blocks.entries()) {
     const node = children[rootIndex];
+    path.push(rootIndex);
     if (root.kind === "textBlock") {
-      if (!blockMatches(node, root.block, [rootIndex])) return false;
+      if (!blockMatches(node, root.block)) return false;
+      path.pop();
       continue;
     }
-    if (!isHtmlElementNamed(node, root.kind === "bulletList" ? "ul" : "ol") || !matchesMap(node, [rootIndex])) return false;
+    if (!isHtmlElementNamed(node, root.kind === "bulletList" ? "ul" : "ol") || !matchesMap(node)) return false;
     const attrs = nativeAttributeNames(node);
     if (root.kind === "bulletList" ? attrs.length !== 0 :
       attrs.length !== 1 || attrs[0] !== "start" || nativeGetAttribute(node, "start") !== String(root.start)) return false;
@@ -1200,11 +1209,16 @@ function flatListDomAndMapsMatch(
     mappedNodes += 1 + items.length;
     for (const [itemIndex, block] of root.items.entries()) {
       const item = items[itemIndex];
+      path.push(itemIndex);
       if (!isHtmlElementNamed(item, "li") || nativeHasAttributes(item) ||
-          !matchesMap(item, [rootIndex, itemIndex])) return false;
+          !matchesMap(item)) return false;
       const blocks = nativeChildNodes(item);
-      if (blocks.length !== 1 || !blockMatches(blocks[0], block, [rootIndex, itemIndex, 0])) return false;
+      path.push(0);
+      if (blocks.length !== 1 || !blockMatches(blocks[0], block)) return false;
+      path.pop();
+      path.pop();
     }
+    path.pop();
   }
   return maps.astToDom.size === mappedNodes;
 }

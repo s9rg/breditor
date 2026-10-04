@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "9fa9e27",
+  "status": "private-candidate-tested-intermittent-webkit-fault-still-open",
+  "change": "The complete flat-list DOM/map proof uses one traversal-local expected-path cursor instead of allocating a new array for every node. The cursor is private and synchronous, never stored or returned. Every comparison retains astPathKey depth/index validation, exact reverse-path equality, DOM identity, shape, attributes, text, wrappers and placeholder checks. No validation cache, skipped subtree, public API, Rust, wire, selection-write or history changes.",
+  "verification": [
+    "Strict browser source/test types and all 1870 browser unit tests pass.",
+    "New regression retains every mapped path across an ordered-list heading, empty item, root paragraph and trailing bullet list. Three full validations preserve distinct reverse-path identities, frozen state, exact indexes and forward mappings.",
+    "Private packed Node/types/Chromium base consumer and all three flat-list browser consumers pass. Shipping trees remained unchanged.",
+    "All 165 browser matrix cases and 54 list-demo cases pass across Chromium, Firefox and WebKit, with zero retries, failures, skips or suite errors. These ran concurrently on distinct ports only after performance measurements completed.",
+    "After all tests, the four shipping tree hashes still match and pmset reports no remaining caffeinate assertions; PreventSystemSleep and PreventUserIdleSystemSleep are both zero."
+  ],
+  "browserMatrix": {"report": "target/list-path-cursor-browser-20261004.json", "sha256": "f36be68e6a037a29ee2f72ba261c8bf8fe8b967e1ee6dd29d41bdb888a78725c", "passed": 165, "retries": 0, "skipped": 0},
+  "listDemo": {"report": "target/list-path-cursor-demo-20261004.json", "sha256": "73ae831e9491101d8d5a2fd460836b111e59f953dd18e081d1e5ff47c5394c8e", "passed": 54, "retries": 0, "skipped": 0},
+  "candidate": {
+    "packageRecord": "target/flat-list-packages-ui9FQE/qualification.json",
+    "packageRecordSha256": "def59f1d93c9c203391df5bc495aa93d73e10305c35ba4f57e58bc35c94a307a",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-gXkrlA",
+    "browserTarballSha256": "702c79c0e1a659b12daffdb19edf35d10adfc6e5c657cf0def969b3adae7fcda",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d",
+    "wasmCandidate": "target/flat-list-candidate-ZxeIdg",
+    "consumerJavaScriptByteDelta": 50,
+    "consumerGzip9ByteDelta": 15,
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "performance": {
+    "method": "Sequential baseline/candidate/baseline/candidate across three engines, then a reversed candidate/baseline WebKit-only pair. No concurrent Breditor builds/tests during measurements. Each run has three independent owners at each of 10, 100 and 500 items, exact selection/document/edit/undo/checkpoint/reload/redo assertions. All 126 correctness cases passed. Production minified fixture, bounded caffeinate -is assertions, one machine, uncontrolled external load; not p95 or a general latency guarantee.",
+    "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+    "baselinePackageRecord": "target/flat-list-packages-MP7DW1/qualification.json",
+    "baselineConsumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-C7sUZJ",
+    "runs": [
+      {"artifact": "baseline", "directory": "performance-ySnFne", "sha256": "1c568e97862946a3e1e875dd171aabfc0c63b7581e6b5ffd10a0f07d604bd18e", "edit500MedianMs": {"chromium": 50.6, "firefox": 176, "webkit": 86}},
+      {"artifact": "candidate", "directory": "performance-1vI5j0", "sha256": "0bf99342ddf16a62ddc45126c37d143eb27197bb9da11928f89492d7f18bb9cc", "edit500MedianMs": {"chromium": 53.6, "firefox": 175, "webkit": 78}},
+      {"artifact": "baseline", "directory": "performance-fb2T3v", "sha256": "c8ac5f821b9ad5a875998b319d8285ef51baa49755b21f1a9560660065b1bdc9", "edit500MedianMs": {"chromium": 52.5, "firefox": 177, "webkit": 87}},
+      {"artifact": "candidate", "directory": "performance-YPSsG7", "sha256": "0f951c66a14dfb721a11e764d5a9c2f805e431aa50509b11c5155d963c6b4302", "edit500MedianMs": {"chromium": 49.8, "firefox": 176, "webkit": 78}},
+      {"artifact": "candidate", "directory": "performance-O27jvJ", "sha256": "fc2fde48f42f2c089e60376b4ec45e113dee2c875ffde4c691ac6240a95f01c2", "edit500MedianMs": {"webkit": 77}},
+      {"artifact": "baseline", "directory": "performance-yrnUW1", "sha256": "f3e7491c82d299e6dfb7133b302d4c6a0f74bc509dcd86c4833ce1082e553b16", "edit500MedianMs": {"webkit": 84}}
+    ],
+    "interpretation": "Retain the small allocation reduction: WebKit large-list edit medians improve in both original pairs and the reversed-order pair. Chromium varies in both directions and Firefox is essentially unchanged. Other operations show noise and some overlapping/slightly worse ranges (including WebKit restore); this is not a blanket speedup or completion of the responsiveness gate. The intermittent WebKit selection/transport observation remains unresolved."
+  },
+  "shippingArtifactTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  },
+  "remaining": [
+    "Intermittent WebKit faults are not claimed fixed by finite passing runs.",
+    "Physical-keyboard IME and audible VoiceOver qualification remain pending; prior temporary settings were restored.",
+    "Large-list Firefox responsiveness, approved optional delivery/size budgets and complete release qualification remain open.",
+    "No shipping rebuild, version change, push or publish."
+  ]
+}

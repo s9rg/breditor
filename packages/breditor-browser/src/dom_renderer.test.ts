@@ -612,6 +612,28 @@ describe("hierarchical flat-list DOM and points", () => {
     expect(renderer.releaseFlatList(rendered)).toBe(false);
   });
 
+  it("preserves independent immutable reverse paths through repeated mixed-depth validation", () => {
+    const {rendered} = fixture();
+    // Ordered-list heading, empty item, root paragraph and trailing bullet list
+    // exercise every depth transition in the complete canonical DOM proof.
+    const paths = [[], [0], [0, 0], [0, 0, 0], [0, 0, 0, 0], [0, 1], [0, 1, 0],
+      [1], [1, 0], [2], [2, 0], [2, 0, 0], [2, 0, 0, 0]];
+    const retained = paths.map(path => {
+      const node = rendered.nodeForAstPath(path)!;
+      return {node, reverse: rendered.astPathForDomNode(node), expected: [...path]};
+    });
+    expect(new Set(retained.map(entry => entry.reverse)).size).toBe(paths.length);
+    for (let pass = 0; pass < 3; pass += 1) {
+      expect(rendered.validateCanonicalDom()).toBe(true);
+      for (const {node, reverse, expected} of retained) {
+        expect(Object.isFrozen(reverse)).toBe(true);
+        expect(reverse).toEqual(expected);
+        expect(rendered.astPathForDomNode(node)).toBe(reverse);
+        expect(rendered.nodeForAstPath(expected)).toBe(node);
+      }
+    }
+  });
+
   it("rejects implicit legacy list renders and missing/foreign presentations without mutation", () => {
     const {renderer, host, projection, rendered} = fixture();
     const before = host.innerHTML;
