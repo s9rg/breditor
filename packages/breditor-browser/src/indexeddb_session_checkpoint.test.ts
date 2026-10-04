@@ -403,6 +403,11 @@ describe("IndexedDbSessionCheckpointStore", () => {
       {
         slot: "profile.one",
         schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT,
+        checkpointFormatVersion: 7,
+      },
+      {
+        slot: "profile.one",
+        schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT,
         checkpointFormatVersion: 1,
       },
       {
@@ -548,7 +553,7 @@ describe("IndexedDbSessionCheckpointStore", () => {
     comment.close();
   });
 
-  it.each([3, 5] as const)("round-trips checkpoint generation %i as an exact retained binding", async (checkpointFormatVersion) => {
+  it.each([3, 5, 6] as const)("round-trips checkpoint generation %i as an exact retained binding", async (checkpointFormatVersion) => {
     const factory = new IDBFactory();
     const digest = digestFixture();
     const binding: IndexedDbSessionCheckpointBinding = Object.freeze({
@@ -579,6 +584,49 @@ describe("IndexedDbSessionCheckpointStore", () => {
       error: { code: "session_checkpoint.binding_mismatch" },
     });
     wrongGeneration.close();
+  });
+
+  it("keeps V6 list checkpoints separate from legacy, headings and foreign owners", async () => {
+    const factory = new IDBFactory(), digest = digestFixture();
+    const binding: IndexedDbSessionCheckpointBinding = {slot: "profile.lists", schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT, checkpointFormatVersion: 6};
+    const first = createStore(factory, digest, undefined, binding).store;
+    const second = createStore(factory, digest, undefined, binding).store;
+    const heading = createStore(factory, digest, undefined, {...binding, checkpointFormatVersion: 5}).store;
+    const legacy = createStore(factory, digest).store;
+    try {
+      const a = await first.load(), b = await second.load();
+      if (!a.ok || !b.ok) throw new Error("load fixture failed");
+      expect(await second.save(a.token, "foreign")).toMatchObject({ok: false, error: {code: "session_checkpoint.invalid_token"}});
+      expect(await first.save(a.token, "list checkpoint one")).toMatchObject({ok: true});
+      expect(await second.save(b.token, "stale checkpoint")).toMatchObject({ok: false, error: {code: "session_checkpoint.conflict"}});
+      expect(await heading.load()).toMatchObject({ok: false, error: {code: "session_checkpoint.binding_mismatch"}});
+      expect(await legacy.load()).toMatchObject({ok: true, status: "empty"});
+      const observed = await second.load();
+      if (!observed.ok) throw new Error(observed.error.code);
+      expect(observed).toMatchObject({status: "loaded", checkpointJson: "list checkpoint one"});
+      expect(await second.save(observed.token, "list checkpoint two")).toMatchObject({ok: true});
+      expect(await first.load()).toMatchObject({ok: true, status: "loaded", checkpointJson: "list checkpoint two"});
+      expect(await rawSlot(factory, binding.slot)).toMatchObject({formatVersion: 2, checkpointFormatVersion: 6, generation: "2"});
+    } finally { first.close(); second.close(); heading.close(); legacy.close(); }
+  });
+
+  it("rejects corrupted V6 storage without changing its retained bytes", async () => {
+    const factory = new IDBFactory(), digest = digestFixture();
+    const binding: IndexedDbSessionCheckpointBinding = {slot: "profile.lists", schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT, checkpointFormatVersion: 6};
+    const store = createStore(factory, digest, undefined, binding).store;
+    try {
+      const initial = await store.load(); if (!initial.ok) throw new Error(initial.error.code);
+      expect(await store.save(initial.token, "valid checkpoint")).toMatchObject({ok: true});
+      const prior = await rawSlot(factory, binding.slot);
+      if (typeof prior !== "object" || prior === null) throw new Error("missing stored record");
+      const database = await openDatabase(factory);
+      const transaction = database.transaction(SESSION_CHECKPOINT_OBJECT_STORE_NAME, "readwrite");
+      transaction.objectStore(SESSION_CHECKPOINT_OBJECT_STORE_NAME).put({...prior, checkpointSha256: "0".repeat(64)}, binding.slot);
+      await transactionComplete(transaction); database.close();
+      const corrupted = await rawSlot(factory, binding.slot);
+      expect(await store.load()).toMatchObject({ok: false, error: {code: "session_checkpoint.corrupt"}});
+      expect(await rawSlot(factory, binding.slot)).toEqual(corrupted);
+    } finally { store.close(); }
   });
 
   it("uses the exact bound key for every count, read, and write request", async () => {

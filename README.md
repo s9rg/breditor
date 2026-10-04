@@ -21,6 +21,10 @@ complete list editor owner and visible persistence still need integration. Clipb
 is selected text, not structural list/heading rich paste. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
+The underlying list adapter/autosave/IndexedDB assembly now supports explicit
+Session V6 bindings with exact history recovery and stale-writer protection;
+this is not yet wired into the high-level list demo's persistence UI.
+
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
 end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
 later. The list toolbar/controller scenarios pass in Chromium, Firefox and

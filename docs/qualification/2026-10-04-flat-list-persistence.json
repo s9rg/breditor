@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "346a2b2",
+  "status": "Explicit Session V6 storage binding and real-browser list autosave/reopen verified; high-level editor owner integration remains open",
+  "contracts": {
+    "admission": "Explicit checkpointFormatVersion 6 in the existing profile binding and stored-record header; legacy/default behavior is unchanged",
+    "storage": "Same database version 1, outer record version 2, slot/fingerprint/version correlation, 16 MiB UTF-8 limit, SHA-256 and atomic compare-and-swap",
+    "authority": "Storage retains opaque bounded bytes; matching Rust V6 decoding remains authoritative for document, selection and retained history",
+    "conflict": "Store-bound tokens cannot cross owners; stale observations conflict; autosave pauses dirty and retry does not refresh or overwrite a newer winner",
+    "migration": "None; no slot fallback, new database version or checkpoint rewrite"
+  },
+  "verification": {
+    "newTests": 3,
+    "browserTests": 1818,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Native IndexedDB and crypto.subtle SHA-256 in isolated Playwright browser contexts; production V6 Wasm adapter, queue, validated checkpoint read port and autosave. Backward emoji replacement with multiline list content, undo, save, close/reopen, restore fresh profile owner, exact selection redo, save again, fresh-owner exact undo. Foreign token and wrong binding rejection. Competing real editor autosave pauses dirty on stale CAS and explicit retry leaves winner unchanged. Existing list router/clipboard/composition/toolbar suites also rerun.",
+    "developmentEvidence": [
+      "All three new V6 tests failed before the production change with session checkpoint storage options are invalid, confirming missing explicit binding admission.",
+      "Strict typecheck caught spreading the unknown raw-record fixture; added an object/null guard before tampering with the stored digest.",
+      "Final browser qualification includes a real competing editor's redo commit and paused autosave conflict/retry, not merely a direct store.save rejection."
+    ],
+    "commands": [
+      "npm test --workspace @breditor/browser -- src/indexeddb_session_checkpoint.test.ts -t 'V6|generation 6'",
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Complete shared high-level list editor owner startup, teardown and API integration",
+    "Visible demo reload/backup/autosave UI",
+    "Physical native input/clipboard, accessibility, packed-consumer and size/performance gates"
+  ],
+  "evidenceBoundary": "Real native browser persistence with API-driven list edits, not high-level editor startup, visible persistence UI or physical user input. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

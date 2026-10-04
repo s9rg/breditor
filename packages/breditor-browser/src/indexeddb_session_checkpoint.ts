@@ -92,7 +92,8 @@ export type IndexedDbSessionCheckpointSaveResult =
 export interface IndexedDbSessionCheckpointBinding {
   readonly slot: string;
   readonly schemaFingerprint: string;
-  readonly checkpointFormatVersion: 1 | 2 | 3 | 5;
+  /** V6 explicitly selects flat-list sessions; it never migrates another binding. */
+  readonly checkpointFormatVersion: 1 | 2 | 3 | 5 | 6;
 }
 
 export interface IndexedDbSessionCheckpointStoreOptions {
@@ -122,7 +123,7 @@ interface ProfileStoredRecord {
   readonly formatVersion: typeof PROFILE_RECORD_FORMAT_VERSION;
   readonly slot: string;
   readonly schemaFingerprint: string;
-  readonly checkpointFormatVersion: 1 | 2 | 3 | 5;
+  readonly checkpointFormatVersion: 1 | 2 | 3 | 5 | 6;
   readonly generation: string;
   readonly checkpointUtf8Bytes: number;
   readonly checkpointSha256: string;
@@ -146,7 +147,7 @@ interface ProfileStoredRecordHeader {
   readonly formatVersion: typeof PROFILE_RECORD_FORMAT_VERSION;
   readonly slot: string;
   readonly schemaFingerprint: string;
-  readonly checkpointFormatVersion: 1 | 2 | 3 | 5;
+  readonly checkpointFormatVersion: 1 | 2 | 3 | 5 | 6;
   readonly generation: unknown;
   readonly checkpointUtf8Bytes: unknown;
   readonly checkpointSha256: unknown;
@@ -665,7 +666,8 @@ function resolveBinding(value: unknown): ResolvedBinding | undefined {
     (checkpointFormatVersion !== 1 &&
       checkpointFormatVersion !== 2 &&
       checkpointFormatVersion !== 3 &&
-      checkpointFormatVersion !== 5) ||
+      checkpointFormatVersion !== 5 &&
+      checkpointFormatVersion !== 6) ||
     (checkpointFormatVersion === 1 &&
       schemaFingerprint !== BASE_SCHEMA_FINGERPRINT)
   ) {
@@ -785,7 +787,8 @@ function parseRecordHeader(value: unknown): StoredRecordHeader | undefined {
     (checkpointFormatVersion !== 1 &&
       checkpointFormatVersion !== 2 &&
       checkpointFormatVersion !== 3 &&
-      checkpointFormatVersion !== 5)
+      checkpointFormatVersion !== 5 &&
+      checkpointFormatVersion !== 6)
   ) {
     return undefined;
   }
@@ -794,7 +797,7 @@ function parseRecordHeader(value: unknown): StoredRecordHeader | undefined {
     formatVersion: PROFILE_RECORD_FORMAT_VERSION,
     slot,
     schemaFingerprint,
-    checkpointFormatVersion: checkpointFormatVersion as 1 | 2 | 3 | 5,
+    checkpointFormatVersion: checkpointFormatVersion as 1 | 2 | 3 | 5 | 6,
     generation,
     checkpointUtf8Bytes,
     checkpointSha256,

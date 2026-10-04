@@ -38,10 +38,15 @@ try {
         const project = checkProjection
           ? (await import("/scripts/flat-list-browser-projection-scenario.mjs")).runFlatListBrowserProjectionScenario : undefined;
         const verifyDom = checkDom ? (await import("/scripts/flat-list-dom-scenario.mjs")).verifyFlatListDom : undefined;
-        return Array.from({length: 5}, () => {
+        const persistence = checkDom ? (await import("/scripts/flat-list-persistence-scenario.mjs")).verifyFlatListPersistence : undefined;
+        const results = [];
+        for (let iteration = 0; iteration < 5; iteration += 1) {
           const result = runFlatListWasmScenario(api);
-          return project === undefined ? result : project(api, verifyDom);
-        });
+          const projected = project === undefined ? result : project(api, verifyDom);
+          if (persistence !== undefined) await persistence(api, iteration);
+          results.push(persistence === undefined ? projected : {...projected, scope: `${projected.scope}; native IndexedDB/SHA-256 autosave and fresh-owner V6 recovery`});
+        }
+        return results;
       }, {bindingUrl, checkProjection, checkDom});
       assert.equal(results.length, 5);
       console.log(JSON.stringify({browser: name, version: browser.version(), status: "passed", runs: results.length, scope: results[0].scope}));

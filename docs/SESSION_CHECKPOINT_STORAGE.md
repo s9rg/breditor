@@ -8,6 +8,24 @@ the existing Bootstrap-V2 path to store Session Checkpoint V3 in that unchanged
 outer-V2 record. Direct store/
 autosave assembly remains an advanced integration surface.
 
+The experimental flat-list beta additionally admits an **explicit**
+`checkpointFormatVersion: 6` binding. It uses the same database, outer-V2 record,
+16 MiB byte ceiling, digest and atomic compare-and-swap transaction. Defaults do
+not select V6, and it does not migrate or overwrite a V1/V2/V3/V5 binding. The
+store treats checkpoint JSON as opaque bounded bytes: exact Rust V6 decoding and
+history/selection validation remain the responsibility of the matching compiled
+profile at restore. An integrity-checked record alone is not proof of a valid
+editor session.
+
+The production adapter/autosave/store assembly has been checked with native
+IndexedDB and SHA-256 in Chromium, Firefox and WebKit. Tests save an unapplied
+redo branch, close/reopen the store, restore a fresh compiled-profile owner,
+redo, save again, and restore undo with exact list structure and directional
+selection. A stale second editor pauses autosave on conflict; retrying with the
+same stale observation cannot replace the winner. The high-level list editor's
+startup/persistence UI is still being integrated. See
+[V6 persistence qualification](qualification/2026-10-04-flat-list-persistence.json).
+
 Profile identifier: `breditor/indexeddb-session-checkpoint`
 
 Physical storage-profile version: `1` (record envelopes are explicitly versioned

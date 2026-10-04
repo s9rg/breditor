@@ -6,6 +6,13 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Admit explicit Session V6 bindings in the existing IndexedDB checkpoint store
+  for experimental flat lists. Keep the same record envelope, default slots,
+  limits, digest and CAS rules. Verify real list autosave/reopen with exact undo
+  and redo selection recovery in all three browser engines; stale writers pause
+  without overwriting the winner. High-level list startup integration remains
+  pending.
+
 - Connect the experimental flat-list controllers through the shared native event
   router. Preserve single-host ownership, composition/clipboard/ordinary routing
   priority, exact adapter-bound queues, deferred canonical repair, one-time

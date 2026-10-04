@@ -1277,3 +1277,26 @@ autosave, then physical native-input/accessibility and packaging/size/performanc
 gates. The router is internal; the shipping entry point and artifacts remain
 unchanged. Nothing was pushed or published. See
 [qualification](qualification/2026-10-04-flat-list-event-router.json).
+
+## Flat-list persistence prerequisite — 2026-10-04
+
+High-level owner integration exposed a concrete gap: IndexedDB binding admission
+and stored-record parsing accepted session versions 1/2/3/5 but not list Session
+V6. Three new regressions reproduced that failure before the change. Explicit
+V6 bindings now use the existing outer-V2 envelope, slot/fingerprint isolation,
+16 MiB limits, digest and atomic CAS path. No database version, default slot,
+history format or automatic migration changed.
+
+The real-Wasm browser harness now also awaits native IndexedDB/SHA-256 autosave
+checks. It saves an undone list edit, reopens storage, restores a fresh profile
+owner, verifies the exact directional selection, redoes and persists, then
+restores another owner and undoes. Wrong profile/session bindings and foreign
+tokens reject. A stale competing editor's real autosave pauses on conflict and
+cannot overwrite the saved winner even on explicit retry. This is real browser
+storage, not a fake IndexedDB implementation, though native typing remains a
+separate gate.
+
+Next remains the shared high-level list editor owner and visible persistence
+UI, now with its storage prerequisite available. Source declarations explicitly
+admit V6; packaged artifacts are unchanged. Nothing was pushed or published. See
+[qualification](qualification/2026-10-04-flat-list-persistence.json).
