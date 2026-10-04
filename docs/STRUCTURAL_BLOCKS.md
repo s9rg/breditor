@@ -1113,3 +1113,49 @@ typed extensions, partial numbered conversion, exact recovery, maximum extension
 counts and failed checkpoint admission. These are Rust profile/engine tests, not
 Wasm factories, browser list rendering, native input or a shipping-profile change.
 See [profile qualification](qualification/2026-10-04-flat-list-profile.json).
+
+### Opt-in flat-list Wasm bridge
+
+The `breditor-wasm` feature `experimental-flat-lists` adds the list boundary while
+retaining the heading APIs. It includes `experimental-text-blocks`, but neither
+is enabled by default. A heading-only build does not gain the new list APIs.
+
+- `BreditorCompiledProfile.fromBootstrapJsonV4` uses the same bounded, closed
+  typed extension declarations as V2/V3, selecting the compiled flat-list profile
+  explicitly. Older bootstrap entry points reject V4. This is configuration,
+  not an implicit migration of persisted data.
+- `createEngineFromDocumentJsonV6` admits matching Document V2 with empty selection
+  and history; `createEngineFromSessionCheckpointJsonV6` proves complete Session
+  V6, including redo. Both return existing one-shot engine/error result handles.
+  Invalid configuration, lineage, capacity, schema, nested items or checkpoints
+  return errors without consuming the profile or an existing engine.
+- V6 engines export Document V2, Editor State V3, Session V6 and Commit V6.
+  Commands still require an exact observation; restored owners reject observations
+  from a previous owner. Old owner versions never upgrade implicitly.
+- String input explicitly admits only the flat-list typing/plain-text IDs with
+  their exact existing input contracts. Other action IDs and mismatched contracts
+  remain rejected. No browser-provided operation planner is added.
+- `projection.listKind(index)` returns `"bullet"`, `"ordered"` or `undefined`.
+  `projection.orderedListStart(index)` returns an ordered container's checked
+  positive start or `undefined`. Neither exposes an item override. Both use
+  explicit JavaScript values rather than optional-number sentinel transport.
+  Held projections remain immutable, with snapshot-local preorder coordinates.
+- Structural list edits use the existing proved `rootSplice` impact where possible.
+  List-item typing currently falls back to a full-root update. The old
+  `textContainers` record carries direct-root indices and is not reinterpreted as
+  nested coordinates. Browser incremental rendering remains a later integration
+  concern; this checkpoint makes no DOM identity or composition guarantee.
+
+Run `node scripts/build-experimental-flat-list.mjs` with the pinned Cargo,
+wasm-bindgen and rolldown tools. The harness keeps a separate Cargo cache and
+retained candidate directory beneath `target`, compares the exact additive ABI
+against the shipping declaration, checks TypeScript including negative cases,
+checks host-path remapping, runs Node and five raw-Wasm scenarios in each of
+Chromium/Firefox/WebKit, and hashes shipping Wasm/browser artifacts before/after.
+It never writes package dist. All owned scenario handles are released.
+
+The qualified candidate is 2,044,484 raw Wasm bytes / 568,550 gzip-9 bytes; this is
+not approval of a new release budget. Browser DOM/selection integration, real
+keyboard/clipboard/composition, autosave/backup recovery and size/performance
+gates remain outstanding. The raw-WebKit pass does not prove all historical
+WebKit faults resolved. See [Wasm qualification](qualification/2026-10-04-flat-list-wasm.json).

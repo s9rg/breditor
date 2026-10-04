@@ -867,3 +867,24 @@ do not establish browser/native readiness or clear the outstanding size gates.
 
 See [compiled profile contract](STRUCTURAL_BLOCKS.md#compiled-flat-list-profile-and-checkpointed-owner)
 and [verification](qualification/2026-10-04-flat-list-profile.json).
+
+## Flat-list Wasm boundary checkpoint
+
+An isolated `experimental-flat-lists` candidate now exposes Bootstrap V4, V6
+document/session engine factories, version-correct exports and immutable list
+kind/start projection metadata. The generated API is checked as an exact additive
+extension; default and heading-only profile behavior remain separate.
+
+Real-Wasm checks pass in Node and five runs each of Chromium, Firefox and WebKit.
+They exercise commands, list metadata, session restoration and stale-owner
+rejection, not the editor DOM or native input. The candidate is 2,044,484 raw bytes
+and 568,550 gzip-9 bytes; no size ceiling was changed or release approved. Existing
+shipping Wasm and browser dist hashes were unchanged.
+
+Next: browser profile admission and list projection/rendering, followed by command
+routing, toolbar/keyboard, selection/composition and session/backup recovery. List
+typing currently uses a conservative full-root impact; the direct-paragraph
+incremental record is not silently widened to nested paths.
+
+See [Wasm contract](STRUCTURAL_BLOCKS.md#opt-in-flat-list-wasm-bridge) and
+[verification](qualification/2026-10-04-flat-list-wasm.json).

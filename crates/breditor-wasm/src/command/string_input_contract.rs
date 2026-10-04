@@ -7,6 +7,19 @@ use breditor_core::action::{
 };
 
 pub(super) fn supports_string_input(action: &ActionId, contract: &ActionInputContract) -> bool {
+    #[cfg(feature = "experimental-flat-lists")]
+    {
+        use breditor_core::action::builtins::{
+            insert_flat_list_plain_text_action_id, insert_flat_list_text_action_id,
+        };
+        if (action == &insert_flat_list_text_action_id()
+            && contract == &insert_text_input_contract())
+            || (action == &insert_flat_list_plain_text_action_id()
+                && contract == &insert_plain_text_input_contract())
+        {
+            return true;
+        }
+    }
     #[cfg(feature = "experimental-text-blocks")]
     {
         use breditor_core::action::builtins::{
@@ -27,6 +40,16 @@ pub(super) fn supports_string_input(action: &ActionId, contract: &ActionInputCon
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "experimental-flat-lists")]
+    #[test]
+    fn list_strings_require_the_exact_registered_contract() {
+        let text = insert_flat_list_text_action_id();
+        let plain = insert_flat_list_plain_text_action_id();
+        assert!(supports_string_input(&text, &insert_text_input_contract()));
+        assert!(supports_string_input(&plain, &insert_plain_text_input_contract()));
+        assert!(!supports_string_input(&text, &insert_plain_text_input_contract()));
+        assert!(!supports_string_input(&plain, &insert_text_input_contract()));
+    }
     use std::error::Error;
 
     use breditor_core::{

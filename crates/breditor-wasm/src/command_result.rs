@@ -191,7 +191,7 @@ impl BreditorCommandResult {
     /// Encoding is intentionally not part of command publication. `absent`
     /// means the outcome is disabled/unchanged or its effective event is a
     /// history-only control. `error` means publication succeeded but the
-    /// mode-selected Commit V1, V2, or V3 could not be represented within the
+    /// mode-selected commit (including opt-in V5/V6) could not be represented within the
     /// active codec budget.
     #[must_use]
     #[wasm_bindgen(js_name = commitJson)]
@@ -203,6 +203,18 @@ impl BreditorCommandResult {
             return BreditorStringResult::absent();
         };
         match self.checkpoint_format_version {
+            #[cfg(feature = "experimental-flat-lists")]
+            6 => {
+                match breditor_core::codec::CommitJsonCodecV6::new(commit.after().context().clone())
+                    .encode(commit)
+                {
+                    Ok(json) => BreditorStringResult::from_value(json),
+                    Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                        error.code(),
+                        "the published flat-list commit could not be encoded",
+                    )),
+                }
+            }
             #[cfg(feature = "experimental-text-blocks")]
             5 => {
                 match breditor_core::codec::CommitJsonCodecV5::new(commit.after().context().clone())

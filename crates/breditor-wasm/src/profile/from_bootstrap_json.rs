@@ -9,6 +9,21 @@ use super::{
 
 #[wasm_bindgen]
 impl BreditorCompiledProfile {
+    /// Compiles an opt-in flat-list profile from strict bootstrap V4 declarations.
+    ///
+    /// Only available in the experimental flat-list build. V1/V2 remain paragraph
+    /// profiles and V3 remains heading-only. Use V6 engine factories for complete
+    /// list edit history; this does not silently migrate any older checkpoint.
+    #[cfg(feature = "experimental-flat-lists")]
+    #[must_use]
+    #[wasm_bindgen(js_name = fromBootstrapJsonV4)]
+    pub fn from_bootstrap_json_v4(json: &str) -> BreditorCompiledProfileResult {
+        match super::bootstrap_json_v2::decode_flat_list_profile(json) {
+            Ok(profile) => BreditorCompiledProfileResult::success(Self::new(profile)),
+            Err(error) => BreditorCompiledProfileResult::from_error(error),
+        }
+    }
+
     /// Compiles an opt-in heading profile from strict bootstrap V3 declarations.
     ///
     /// Available only in the experimental text-block build. V3 explicitly

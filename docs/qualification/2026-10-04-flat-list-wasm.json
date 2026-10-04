@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "911ce20",
+  "status": "Experimental flat-list Wasm boundary qualified; browser editor integration remains incomplete",
+  "feature": "experimental-flat-lists",
+  "contracts": {
+    "bootstrap": 4, "document": 2, "state": 3, "session": 6, "commit": 6,
+    "factories": ["fromBootstrapJsonV4", "createEngineFromDocumentJsonV6", "createEngineFromSessionCheckpointJsonV6"],
+    "metadata": {"listKind": "bullet | ordered | undefined", "orderedListStart": "positive integer | undefined"},
+    "transport": "Explicit JsValue metadata, not optional-number sentinels; immutable snapshot-local projections",
+    "impact": "Proved structural rootSplice where available; nested typing conservatively falls back to root rather than reinterpreting direct-paragraph indices",
+    "isolation": "Separate feature, Cargo target and retained candidate output; no package dist or shipping declaration edits"
+  },
+  "verification": {
+    "focusedListBoundaryTests": 5,
+    "exactListStringInputContractTests": 1,
+    "allFeatureWorkspaceUnitTests": {"core": 1117, "wasm": 57},
+    "defaultWasmUnitTests": 43,
+    "headingOnlyWasmUnitTests": 49,
+    "declarationCheckerTests": 14,
+    "generatedTypeScript": "passed, including optional values and shipping-API negative cases",
+    "node": "passed list scenario and retained heading scenario",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Raw generated Wasm commands, 1000 repeated metadata read loops per scenario, held snapshot immutability, fresh-profile restore, redo and stale-owner rejection; no DOM or native input",
+    "staticChecks": ["strict workspace clippy", "all-feature Wasm rustdoc with warnings denied", "cargo fmt check", "git diff check", "host path leak check"],
+    "developmentCorrections": ["Corrected new Rust tests to use the existing projection/selection APIs and separate mutable undo from immutable result checking"],
+    "commands": [
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-wasm --lib --quiet",
+      "cargo test -p breditor-wasm --features experimental-text-blocks --lib --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-wasm --all-features --no-deps --quiet",
+      "CARGO_BIN=/Users/s/.cargo/bin/cargo WASM_BINDGEN_BIN=/Users/s/.cargo/bin/wasm-bindgen node scripts/build-experimental-flat-list.mjs"
+    ]
+  },
+  "candidate": {
+    "directory": "target/flat-list-candidate-omNw3K",
+    "wasmBytes": 2044484,
+    "wasmGzip9Bytes": 568550,
+    "wasmSha256": "0f93899d6788bd76a9a3402ad641e91e1ad0c33d46889a8f72d74a17ce8f42fa",
+    "declarationsSha256": "b0bc19f07e305569a42a7c3c1f3246f718315df4e324d4c443bcdf7acc2a9d3b",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactTreesUnchanged": true,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Browser bootstrap/profile admission and semantic list projection",
+    "List DOM rendering, selection and incremental update integration",
+    "Toolbar, keyboard, composition and clipboard behavior",
+    "Browser autosave and backup recovery",
+    "Cross-browser editor and native qualification, plus size/performance and packed-consumer gates"
+  ],
+  "evidenceBoundary": "This does not prove browser-editor list readiness or resolution of every historical WebKit fault",
+  "pushed": false,
+  "published": false
+}

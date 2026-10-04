@@ -152,6 +152,14 @@ pub(crate) fn decode_text_block_profile(
         .map_err(|_| profile_compilation())
 }
 
+/// V4 retains bounded typed declarations and explicitly selects flat-list semantics.
+#[cfg(feature = "experimental-flat-lists")]
+pub(crate) fn decode_flat_list_profile(json: &str) -> Result<CompiledEditorProfile, BreditorError> {
+    let (schema, extensions) = decode_configuration(json, 4)?;
+    CompiledEditorProfile::try_compile_flat_list_profile(schema, extensions)
+        .map_err(|_| profile_compilation())
+}
+
 fn decode_configuration(
     json: &str,
     version: u32,

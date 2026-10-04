@@ -3,6 +3,8 @@ mod format_count_diagnostics;
 #[cfg(feature = "experimental-text-blocks")]
 mod heading;
 mod impact;
+#[cfg(feature = "experimental-flat-lists")]
+mod list;
 mod node_record;
 mod read_projection;
 mod snapshot;

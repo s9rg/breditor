@@ -22,6 +22,8 @@ diagnostic-projection-format-count = []
 candidate-rust-selection-tokens = []
 # Opt-in heading profile/Session V5 bridge. Never enabled by default packaging.
 experimental-text-blocks = ["breditor-core/experimental-structural-properties"]
+# Opt-in flat-list profile/Session V6 bridge; also retains the heading APIs.
+experimental-flat-lists = ["experimental-text-blocks"]
 
 [dependencies]
 breditor-core = { path = "../breditor-core", version = "=0.3.0-alpha.22" }
