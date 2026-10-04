@@ -16,6 +16,7 @@
     "test:demo:lists": "playwright test --config playwright.lists.config.ts",
     "typecheck:demo:lists": "tsc -p examples/lists/tsconfig.json && tsc -p tests/lists/tsconfig.json",
     "test:lists:experimental": "node scripts/build-experimental-flat-list.mjs",
+    "test:lists:packages": "node scripts/check-experimental-flat-list-packages.mjs",
     "demo:headings": "vite --config vite.headings.config.ts --port 4186 --strictPort",
     "build:demo:headings": "vite build --config vite.headings.config.ts",
     "test:demo:headings": "playwright test --config playwright.headings.config.ts",

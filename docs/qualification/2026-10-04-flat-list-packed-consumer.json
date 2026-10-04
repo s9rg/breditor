@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "41f8957",
+  "status": "passed",
+  "repeatedQualification": {
+    "staging": "target/flat-list-packages-a5hxJB",
+    "status": "passed in a second fresh external consumer",
+    "tarballsByteIdentical": true,
+    "allFourShippingArtifactTreesUnchanged": true
+  },
+  "publishable": false,
+  "candidate": "/Users/s/code/breditor/target/flat-list-candidate-omNw3K",
+  "staging": "/Users/s/code/breditor/target/flat-list-packages-LebyWE",
+  "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-6wCxKZ",
+  "browserRuns": [
+    {
+      "browser": "chromium",
+      "version": "151.0.7922.34",
+      "status": "passed"
+    },
+    {
+      "browser": "firefox",
+      "version": "153.0",
+      "status": "passed"
+    },
+    {
+      "browser": "webkit",
+      "version": "26.5",
+      "status": "passed"
+    }
+  ],
+  "browserPackage": {
+    "path": "/Users/s/code/breditor/target/flat-list-packages-LebyWE/tarballs/breditor-browser-0.3.0-alpha.22.tgz",
+    "bytes": 298780,
+    "unpackedBytes": 1597302,
+    "fileCount": 161
+  },
+  "wasmPackage": {
+    "path": "/Users/s/code/breditor/target/flat-list-packages-LebyWE/tarballs/breditor-wasm-0.3.0-alpha.22.tgz",
+    "bytes": 641145,
+    "unpackedBytes": 3751967,
+    "fileCount": 17
+  },
+  "browserJavaScriptBytes": 1198207,
+  "browserDeclarationsBytes": 320017,
+  "tarballSha256": {
+    "browser": "64dbecef20e32b4bd5101c9be83ef905e8fb48c4df0cff08112453af5598f765",
+    "wasm": "b882f2faacbbdd9506261384ec7946356f78b6f4d3d73edfd8c120f91742d59b"
+  },
+  "baseConsumer": "Existing Node import, strict TypeScript and Chromium initialization/format/content/teardown smoke passed against these same installed experimental artifacts",
+  "defaultCeilingComparisons": [
+    {
+      "label": "browser JavaScript",
+      "actual": 1198207,
+      "maximum": 1085000,
+      "withinDefaultCeiling": false
+    },
+    {
+      "label": "browser declarations",
+      "actual": 320017,
+      "maximum": 276000,
+      "withinDefaultCeiling": false
+    },
+    {
+      "label": "browser tarball",
+      "actual": 298780,
+      "maximum": 270000,
+      "withinDefaultCeiling": false
+    },
+    {
+      "label": "Wasm tarball",
+      "actual": 641145,
+      "maximum": 525000,
+      "withinDefaultCeiling": false
+    }
+  ],
+  "consumerJavaScriptBytes": 679773,
+  "consumerJavaScriptGzip9Bytes": 169145,
+  "sizeBudgetQualified": false,
+  "shippingArtifactsWritten": false,
+  "shippingArtifactTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  },
+  "boundary": "Private staged tarballs of current source and experimental Wasm, external offline consumer, no repository imports or aliases. Not an approved optional shipping package, native-input qualification or complete release gate.",
+  "developmentEvidence": [
+    "Initial artifact guard incorrectly applied Breditor's declaration-map prohibition to third-party entities; corrected it to apply only to the two Breditor tarballs.",
+    "Consumer TypeScript rejected passing potentially present persistence through backup restore. The fixture now explicitly omits both startup-source fields and persistence before adding its V6 backup.",
+    "Existing base smoke requires its own local node_modules. Installed the same tarballs independently there instead of weakening its no-ancestor-resolution assertion."
+  ],
+  "commands": [
+    "npm run test:lists:packages -- target/flat-list-candidate-omNw3K",
+    "node --check scripts/check-experimental-flat-list-packages.mjs",
+    "git diff --check"
+  ],
+  "nativeInput": {
+    "status": "not run",
+    "reason": "Computer-use inventory reports Mac locked; user unlock requested. No permissions or browser protections were changed."
+  },
+  "remaining": [
+    "Physical native keyboard/clipboard/IME and assistive-technology qualification",
+    "Explicit optional package/load and size-budget decision; defaults remain unchanged",
+    "Representative performance and complete release gates"
+  ],
+  "pushed": false,
+  "published": false
+}

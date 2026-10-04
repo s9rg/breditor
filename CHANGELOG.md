@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add a non-publishing flat-list packed-consumer check: stage private tarballs,
+  install offline outside the workspace, verify strict package-root imports and
+  V6 toolbar/history recovery in three browsers, and run the existing base
+  consumer against the same artifacts. Report size overruns explicitly without
+  raising default ceilings or replacing shipping artifacts.
+
 - Add a separate experimental flat-list React preview with headings, typed inline
   controls, V6 autosave/reload and independent backup recovery. Keep standard and
   heading demo slots and package artifacts unchanged. Bind each demo profile to

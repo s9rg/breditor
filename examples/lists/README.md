@@ -40,6 +40,21 @@ backup recovery, browser keyboard input, automated accessibility and narrow
 layout. Browser automation is not physical OS clipboard/IME or screen-reader
 qualification.
 
+For a separate, offline packed-consumer check:
+
+```sh
+npm run test:lists:packages -- target/flat-list-candidate-EXACT_ID
+```
+
+This stages private browser/Wasm tarballs under `target`, installs them with
+locally packed dependencies into a fresh external temporary consumer, and checks
+strict types plus real Chromium/Firefox/WebKit startup, toolbar and V6 history
+recovery. It also runs the existing paragraph-only Node/types/Chromium smoke
+against the same tarballs. There are no source aliases or workspace symlinks in
+the consumer. Exact tarballs and consumer artifacts are retained for inspection.
+The report compares sizes against unchanged default ceilings; a functional
+pass is not a size-budget pass or approval of an optional shipping package.
+
 ## Boundaries
 
 - One paragraph or heading per list item; no nesting, indent/outdent, tables,

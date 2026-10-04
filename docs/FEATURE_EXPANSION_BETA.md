@@ -1369,3 +1369,37 @@ Next: physical desktop input/clipboard/IME and assistive-technology qualificatio
 then source/package load, size/performance and release gates. Nested lists remain
 deferred. This fixes a reproduced target-alias defect, not the historical
 intermittent WebKit fault. Nothing was pushed or published.
+
+## Isolated flat-list package consumer checkpoint — 2026-10-04
+
+The source-alias demo is now backed by an independent delivery proof.
+`npm run test:lists:packages -- <qualified-candidate>` emits current browser
+source and stages experimental Wasm in private, non-publishable package copies.
+It packs and installs both offline into a fresh external consumer alongside
+locally packed parse5/entities dependencies. Package hooks are disabled, no
+workspace symlinks or repository imports are used, and shipping browser/Wasm,
+reference and standard-demo artifact trees are hash-checked before and after.
+
+Strict consumer types preserve the ordinary/list startup distinction and require
+backup restoration to omit persistence. All three browser engines pass installed
+package startup, list toolbar conversion, undo, exact V6 backup restoration and
+redo. The existing paragraph-only Node import, TypeScript and Chromium runtime
+smoke also passes against the same experimental tarballs. This verifies a
+functional package boundary, not a final supported package naming/load contract.
+A second fresh external-consumer run passes and produces byte-identical Breditor
+tarballs; all four shipping artifact trees remain unchanged.
+
+Measured current-source output exceeds unchanged default ceilings: browser JS
+1,198,207 bytes versus 1,085,000; declarations 320,017 versus 276,000; browser
+tarball 298,780 versus 270,000; Wasm tarball 641,145 versus 525,000. The minimal
+list consumer bundles to 679,773 JS bytes / 169,145 gzip-9 bytes, excluding Wasm;
+it is not comparable to the full React showcase as an application budget.
+No budget was raised and no shipping artifact was replaced. An optional delivery
+and size decision remains required before release.
+
+Native app control was unavailable because the Mac was locked; an unlock request
+is pending. That does not block package/performance work and is not evidence of
+native-input failure or success. Physical clipboard/IME and assistive-technology,
+performance and complete release qualification remain open. See
+[qualification](qualification/2026-10-04-flat-list-packed-consumer.json).
+Nothing was pushed or published.
