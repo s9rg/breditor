@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "d1a11e0",
+  "status": "input-menu-access-inconclusive-settings-restored",
+  "imeQualified": false,
+  "screenReaderQualified": false,
+  "editorTestPerformed": false,
+  "method": "CUA native System Settings controls under the user's existing approval for temporary Japanese-Romaji input and restoration. Attempted direct input-menu access instead of repeating unverified global input-source shortcuts. No shell-driven system changes or browser injection.",
+  "initialObservations": {
+    "voiceOver": "off, freshly observed AX_VOICEOVER_ENABLED switch",
+    "inputSources": ["Canadian"],
+    "inputMenuVisible": false,
+    "globeKeyAction": "Show Emoji & Symbols",
+    "keyboardNavigation": false,
+    "dictationEnabled": false,
+    "dictationLanguages": ["English (Canada)"]
+  },
+  "attempt": [
+    "Keyboard-settings row click initially returned AXError.cannotComplete. A screenshot-grounded click opened Keyboard successfully.",
+    "Picker clicks and typeText did not reliably focus/filter the search field. Raising the sheet and setting its native search value filtered to Japanese.",
+    "Clicking the Romaji row did not change the selected Kana row. Shift-Tab followed by Down visibly selected Japanese-Romaji, including the corresponding keyboard preview, before Add was pressed.",
+    "The source list and Keyboard summary confirmed Canadian plus Japanese-Romaji. macOS also enabled the input menu, changed the Globe action to Change Input Source, and added Japanese (Japan) to dictation languages while dictation stayed off.",
+    "App inventory reported SystemUIServer not running. Binding com.apple.systemuiserver to inspect the input menu returned timeoutReached. This is not proof of process termination, absence of an input menu, or an OS defect.",
+    "No actual active Japanese input mode, candidate window or composition was established. No typing was performed in Breditor or a scratch control; the attempt was stopped and settings restored."
+  ],
+  "restoration": {
+    "temporaryInputSourceRemoved": "Selected Japanese-Romaji via the source list's keyboard navigation, verified the selection, then pressed Remove. Reopened settings confirmed Canadian alone.",
+    "inputMenuVisible": "Explicitly switched back off and observed off.",
+    "globeKeyAction": "Show Emoji & Symbols, observed after source removal and again at final Keyboard snapshot.",
+    "dictationLanguages": "Unchecked Japanese (Japan), observed checkbox 0, accepted OK; final Keyboard snapshot showed English (Canada) only.",
+    "dictationEnabled": "off at final snapshot",
+    "keyboardNavigation": "off at final snapshot",
+    "voiceOver": "Observed off at start and not toggled during this attempt.",
+    "otherPreferences": "No shortcut, VoiceOver Utility or spelling/prediction preferences changed. SystemUIServer binding timed out; no new menu-bar process setting was observed or changed."
+  },
+  "interpretation": "This follow-up closes the prior lack of a fresh VoiceOver-off settings observation and verifies restoration of all observed input-setting side effects. It does not qualify IME, VoiceOver, native browser behavior or the historical WebKit fault. Native control delivery remains uncertain outside the editor.",
+  "nextNativeAction": "Use the existing human checklist: visibly activate Japanese input and establish preedit/commit in a plain textarea first; establish audible VoiceOver navigation outside the editor first. Only then test headings, bullet/numbered items, cancellation, exact undo/redo and focus return. Do not repeat failed activation shortcuts as product tests.",
+  "runtimeChanges": false,
+  "pushedOrPublished": false
+}
