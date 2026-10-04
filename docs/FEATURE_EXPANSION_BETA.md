@@ -294,3 +294,39 @@ See [V5 qualification](qualification/2026-10-03-heading-edit-v5.json).
 The next gate is the optional browser load/profile boundary, semantic heading
 rendering and toolbar/keyboard integration, followed by real reload/recovery
 tests. Flat lists remain the subsequent feature slice; nesting is deferred.
+
+## Live heading-engine checkpoint admission
+
+`CheckpointedEditorEngine::try_new_v5` now selects the V5 codec explicitly,
+behind the same experimental structural feature. It retains the existing
+candidate-before-publication mechanism: every effective command, selection
+change, undo/redo, merge boundary and history clear must encode the complete
+candidate session before the live owner changes. It does not install a schema
+or action registry, and never upgrades a V1–V3 owner implicitly.
+
+Black-box tests exercise all three heading primitive families through real
+registered actions, restore every retained cursor in an independent context,
+and check exact checkpoint bytes after publication. Rejected retained-operation,
+retained-text and JSON-output budgets leave document, selection, history,
+checkpoint and observation unchanged. In particular, an unsuccessful new edit
+after Undo cannot discard the saved redo branch. Old engine observations cannot
+cross restore, and stale observations are rejected before candidate admission.
+
+This is the core ownership prerequisite, **not browser integration**. The
+remaining integration gates found in the current code are concrete:
+
+1. Compile a complete text-block semantic profile, including extension format
+   actions, observable toolbar state and routes. Existing compiled profiles still
+   register paragraph-only editing actions; heading-aware multiline plain-text
+   insertion also needs an explicit contract before clipboard/IME exposure.
+2. Add an opt-in Wasm build/load path and explicit V5 factories. State/document
+   exports can retain State V3 / Document V2, but the current Wasm dispatch only
+   selects session versions 1–3. Commit export still uses older operation
+   payloads and must gain heading support rather than report misleading success.
+3. Extend the browser projection/renderer, selection mapping, toolbar and input
+   integration for semantic headings. The renderer currently assumes paragraph
+   DOM nodes. Qualify reload/recovery and cross-browser behavior before exposure.
+4. Measure optional and unchanged default packages separately, then run the
+   release gates. No size ceiling is raised by this core checkpoint.
+
+See [live-engine qualification](qualification/2026-10-03-heading-engine-v5.json).

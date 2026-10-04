@@ -98,6 +98,27 @@ impl CheckpointedEditorEngine {
         Self::try_new_with_codec(engine, codec)
     }
 
+    /// Constrains an engine to heading-aware Session Checkpoint V5.
+    ///
+    /// This opt-in experimental boundary admits text-block kind changes,
+    /// splices and replacements, including typed inline properties and both
+    /// retained history branches. It does not register actions, change the
+    /// engine's schema, or upgrade a V1–V3 owner implicitly. Every mutation
+    /// uses the same candidate-before-publication gate as older policies.
+    ///
+    /// # Errors
+    ///
+    /// Returns a payload-redacting representation error if the complete initial
+    /// session cannot be encoded under `limits`. Nothing is published on failure.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_new_v5(
+        engine: EditorEngine,
+        limits: SessionCheckpointLimits,
+    ) -> Result<Self, CheckpointedEditorEngineError> {
+        let codec = CheckpointCodec::v5(engine.state().context().clone(), limits);
+        Self::try_new_with_codec(engine, codec)
+    }
+
     fn try_new_with_codec(
         engine: EditorEngine,
         codec: CheckpointCodec,
@@ -146,8 +167,9 @@ impl CheckpointedEditorEngine {
     /// Returns the selected session-checkpoint wire format version.
     ///
     /// [`Self::try_new`] selects V1, [`Self::try_new_v2`] selects V2, and
-    /// [`Self::try_new_v3`] selects V3. The selection is retained for every
-    /// later candidate mutation.
+    /// [`Self::try_new_v3`] selects V3. With experimental structural properties,
+    /// `try_new_v5` explicitly selects V5. The selection is retained for every
+    /// later candidate mutation; schema shape never upgrades it implicitly.
     #[must_use]
     pub const fn session_checkpoint_format_version(&self) -> u32 {
         self.codec.format_version()

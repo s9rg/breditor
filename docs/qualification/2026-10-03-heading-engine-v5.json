@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "62cad7627042bf695e281eccf9d740f02e241756",
+  "status": "Opt-in live heading-engine checkpoint admission verified; beta goal remains active",
+  "scope": "CheckpointedEditorEngine V5 policy; no Wasm or browser exposure",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "constructor": "CheckpointedEditorEngine::try_new_v5",
+    "publication": "Complete candidate Session V5 encoding precedes authoritative owner replacement and event return",
+    "failure": "Document, selection, history, cached checkpoint and observation remain unchanged; failed new edits preserve future redo",
+    "compatibility": "No implicit upgrades; V1-V3 policies unchanged; schema and action registration remain explicit",
+    "remaining": "Complete text-block profile and heading-aware plain-text insertion, opt-in Wasm package/factories/exports, browser rendering/input/toolbar/recovery, flat lists and desktop qualification"
+  },
+  "verification": {
+    "newV5ContractTestsPassed": 10,
+    "legacyEngineContractTestsPassed": 15,
+    "randomizedHeadingCommandSequences": 1000,
+    "randomSeed": 20261003,
+    "commandsPerSequence": "1 to 31",
+    "command": "PROPTEST_CASES=1000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --locked --test checkpointed_editor_engine_v5_contracts --test checkpointed_editor_engine_v3_contracts --test checkpointed_editor_engine_contracts",
+    "coverage": [
+      "Real heading kind-change, splice and replacement actions through live checkpointed engine",
+      "Independent-context restore at every cursor of a three-event history and exact redo results",
+      "Retained-operation, retained-text, initial retained-node and exact output-byte admission limits",
+      "Failed boundary-plus-action publication preserves original open merge state and observation",
+      "Failed edit after undo preserves future redo",
+      "Selection-only updates preserve redo; exact echoes and repeated history controls are no-ops",
+      "Undo/redo, close-group and clear-history refresh exact cached V5 bytes",
+      "Fresh engine observations on restore; stale observation admission precedes checkpoint policy",
+      "Older V3 engine rejects new heading operations without implicit upgrade"
+    ],
+    "defaultCoreUnitTestsPassed": 697,
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustdoc": "Core all-feature no-dependency API documentation passed with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "developmentCorrections": "Test fixtures initially used private internal constructors; switched to public checked constructors. Explicitly discarded unused engine events and replaced expect_err to satisfy repository lint rules.",
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "freshFullReleaseRun": false,
+    "pushed": false,
+    "published": false
+  },
+  "evidence": [
+    {"path":"crates/breditor-core/src/engine/checkpoint_codec.rs","sha256":"e6597ca487045f4b798039f8fc635684cfbaba63bee9d8126a82c9d45de480ff"},
+    {"path":"crates/breditor-core/src/engine/checkpointed_editor_engine.rs","sha256":"cb4b76819b381a8ef4287ae08ebd79cd6d83a5c44b7aa61df2fb9cb1e4a2e27a"},
+    {"path":"crates/breditor-core/tests/checkpointed_editor_engine_v5_contracts.rs","sha256":"5fd5e7543627f90afa0ff98f79261768bb0fb0828538dfe3f20679fb6dd52ac7"},
+    {"path":"/private/tmp/breditor-heading-engine-v5-regression-final.log","sha256":"d92811226e735d458fa703bdcf883abac353cd9546497e54a6ec4554ebdfad4e"},
+    {"path":"/private/tmp/breditor-heading-engine-v5-clippy-pass.log","sha256":"c44f1de114abb563a64d95d99de1de03f84261e9debf05ccf445c8f995709b44"},
+    {"path":"/private/tmp/breditor-heading-engine-v5-doc.log","sha256":"469b3f4a74085c75a54af6eb918f9fa573caca1147b2607931bb3e1130bc7e2a"}
+  ]
+}
