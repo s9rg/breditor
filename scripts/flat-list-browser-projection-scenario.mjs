@@ -6,7 +6,7 @@ const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`projection mismatch: ${JSON.stringify(actual)}`);
 };
 
-export function runFlatListBrowserProjectionScenario(api) {
+export function runFlatListBrowserProjectionScenario(api, verifyDom) {
   const handles = [];
   const own = value => { if (!value) throw new Error("missing handle"); handles.push(value); return value; };
   const observation = engine => own(engine.observation());
@@ -63,7 +63,10 @@ export function runFlatListBrowserProjectionScenario(api) {
     // Held JS projections are immutable values, not borrowed Wasm memory.
     equal(before.blocks[1].items.length, 2);
     equal(before.matchesProfile(freshOwner.generation, freshOwner.descriptor), false);
-    return {status: "passed", scope: "real Wasm to hierarchical browser projection, list paste/undo and fresh-owner redo; no DOM/native input"};
+    if (verifyDom !== undefined) verifyDom(before, after, owner);
+    return {status: "passed", scope: verifyDom === undefined
+      ? "real Wasm to hierarchical browser projection, list paste/undo and fresh-owner redo; no DOM/native input"
+      : "real Wasm list projection and recovery plus semantic DOM, directional native Selection endpoints and drift rejection; no keyboard/IME/clipboard"};
   } finally {
     for (const handle of handles.reverse()) handle.free();
   }

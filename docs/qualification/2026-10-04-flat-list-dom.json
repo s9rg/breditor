@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "08b1bd3",
+  "status": "Isolated list DOM rendering and bidirectional point mapping qualified; editor integration incomplete",
+  "contracts": {
+    "renderer": "Explicit flat-list entry points reuse common host ownership, construction, installation, rollback and drift guards",
+    "dom": "ul/ol with explicit start; exactly one paragraph or heading per li; existing inline recipes and empty br placeholders",
+    "maps": "Real root/list/item/block/text coordinates, at most four indices; no synthetic wrapper or placeholder nodes",
+    "selection": "Distinct immutable snapshot-bound range with exact anchor/focus affinities and scalar UTF-16 boundaries",
+    "normalization": "Outer root/list and item edges normalize to text blocks; interior root/list boundaries remain ambiguous",
+    "updates": "Full list render only; no reinterpretation of legacy incremental/composition handles"
+  },
+  "verification": {
+    "newDomAndSelectionTests": 22,
+    "browserTests": 1579,
+    "browserTestFiles": 52,
+    "typecheck": "passed, source and tests",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Raw Wasm + projection recovery scenarios; real list DOM, native Selection backward/empty-item endpoints, emoji rejection, superseded mappings and numbering drift",
+    "testScope": "List paths/tags, isolated profile admission, all scalar/block boundaries, directional and equivalent endpoints, malformed paths/getters, synchronous drift, cross-renderer host ownership, construction failure and reentrancy",
+    "developmentCorrections": ["Kept legacy composition lease records explicitly base-projection typed", "Used the existing foreign-or-stale-render and DOM-drift error codes"],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Full selection bridge, exact echo receipts and Wasm selection/update admission",
+    "List owner/controller integration and explicit browser profile mode",
+    "Toolbar, keyboard, composition and clipboard integration",
+    "Visible demo, reload and backup recovery",
+    "Native-input qualification, packed-consumer and size/performance gates"
+  ],
+  "evidenceBoundary": "Native Selection endpoints are tested, not native editing commands, OS clipboard or IME; historical WebKit faults are not broadly declared fixed",
+  "pushed": false,
+  "published": false
+}

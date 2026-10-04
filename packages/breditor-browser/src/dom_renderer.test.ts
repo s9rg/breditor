@@ -28,8 +28,224 @@ import { browserInputActionIds, issueEditorDeliveryToken, noInputActionRequest, 
 import { translateBeforeInput } from "./beforeinput.js";
 import { cutDeleteRequest, pasteInsertRequest } from "./clipboard_command.js";
 import { translateKeyDown } from "./keyboard.js";
+import { FlatListDocumentProjection } from "./flat_list_projection.js";
+import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
+import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "./flat_list_dom_point_mapping.js";
+import { isOwnedFlatListRenderedProjection, isOwnedRenderedProjection } from "./dom_renderer.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
+
+describe("hierarchical flat-list DOM and points", () => {
+  function fixture() {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, ["breditor/strong"]);
+    const presentation = compileBrowserPresentation(generation, descriptor,
+      createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]}));
+    const block = (text: string, headingLevel: number | null = null, strong = false) => ({headingLevel,
+      runs: text === "" ? [] : [{text, formatDetails: propertyFreeFormats(strong ? ["breditor/strong"] : [])}]});
+    const make = (revision = 0) => valueOf(FlatListDocumentProjection.create({schema: descriptor.schema,
+      snapshot: {lineage: "flat-list-dom", revision: String(revision)}, blocks: [
+        {kind: "orderedList", start: 8, items: [block("a🙂b", 2, true), block("")]},
+        {kind: "textBlock", block: block("tail")},
+        {kind: "bulletList", items: [block("bullet")]},
+      ]}, generation, descriptor));
+    const renderer = new BreditorDomRenderer(presentation);
+    const host = document.createElement("div");
+    const projection = make();
+    const rendered = valueOf(renderer.renderFlatList(host, projection)).rendered;
+    return {renderer, host, projection, rendered, make};
+  }
+  const textPoint = (textPath: number[], utf16Offset: number, affinity = "after") => ({kind: "text", textPath, utf16Offset, affinity});
+
+  it("renders semantic list containers with real text and wrapper AST paths", () => {
+    const {renderer, host, projection, rendered} = fixture();
+    expect(host.innerHTML).toBe('<ol start="8"><li><h2><strong>a🙂b</strong></h2></li><li><p><br></p></li></ol><p>tail</p><ul><li><p>bullet</p></li></ul>');
+    expect(renderer.ownsFlatList(rendered)).toBe(true);
+    expect(renderer.owns(rendered)).toBe(false);
+    expect(isOwnedFlatListRenderedProjection(rendered)).toBe(true);
+    expect(isOwnedRenderedProjection(rendered)).toBe(false);
+    expect(rendered.projection).toBe(projection);
+    for (const path of [[], [0], [0, 0], [0, 0, 0], [0, 0, 0, 0], [0, 1, 0], [1], [1, 0], [2, 0, 0, 0]]) {
+      const node = rendered.nodeForAstPath(path);
+      expect(node).not.toBeNull();
+      expect(rendered.astPathForDomNode(node!)).toEqual(path);
+    }
+    expect(rendered.astPathForDomNode(host.querySelector("strong")!)).toBeNull();
+    expect(rendered.astPathForDomNode(host.querySelector("br")!)).toBeNull();
+    expect(rendered.nodeForAstPath([0, 0, 0, 0, 0])).toBeNull();
+    expect(renderer.releaseFlatList(rendered)).toBe(true);
+    expect(rendered.current).toBe(false);
+    expect(rendered.nodeForAstPath([0])).toBeNull();
+    expect(renderer.releaseFlatList(rendered)).toBe(false);
+  });
+
+  it("rejects implicit legacy list renders and missing/foreign presentations without mutation", () => {
+    const {renderer, host, projection, rendered} = fixture();
+    const before = host.innerHTML;
+    // @ts-expect-error Lists are not paragraph documents.
+    expect(renderer.render(host, projection).ok).toBe(false);
+    expect(new BreditorDomRenderer().renderFlatList(host, projection).ok).toBe(false);
+    const foreign = fixture();
+    expect(foreign.renderer.renderFlatList(host, projection).ok).toBe(false);
+    expect(host.innerHTML).toBe(before);
+    expect(renderer.ownsFlatList(rendered)).toBe(true);
+  });
+
+  it("maps Unicode text, inline wrappers, empty placeholders and item edges", () => {
+    const {host, rendered} = fixture();
+    const text = rendered.nodeForAstPath([0, 0, 0, 0])!;
+    expect(mapDomPointToFlatListSelectionPoint(rendered, text, 3)).toMatchObject({ok: true, value: textPoint([0, 0, 0, 0], 3)});
+    expect(mapDomPointToFlatListSelectionPoint(rendered, text, 2)).toMatchObject({ok: false, error: {code: "selection.invalid_utf16_boundary"}});
+    for (const offset of [-1, 5, NaN, 0.5]) expect(mapDomPointToFlatListSelectionPoint(rendered, text, offset).ok).toBe(false);
+    expect(mapDomPointToFlatListSelectionPoint(rendered, host.querySelector("strong")!, 1)).toMatchObject({ok: true, value: textPoint([0, 0, 0, 0], 4, "before")});
+    const empty = rendered.nodeForAstPath([0, 1, 0])!;
+    for (const [node, offset] of [[empty, 0], [empty, 1], [host.querySelector("br")!, 0]] as const) {
+      expect(mapDomPointToFlatListSelectionPoint(rendered, node, offset)).toMatchObject({ok: true, value: {kind: "children", parentPath: [0, 1, 0], childIndex: 0, affinity: "after"}});
+    }
+    expect(mapDomPointToFlatListSelectionPoint(rendered, empty, 2).ok).toBe(false);
+    const item = rendered.nodeForAstPath([0, 0])!;
+    expect(mapDomPointToFlatListSelectionPoint(rendered, item, 1)).toMatchObject({ok: true, value: {parentPath: [0, 0, 0], childIndex: 1, affinity: "before"}});
+  });
+
+  it("normalizes only outer root/list edges and rejects ambiguous interior gaps", () => {
+    const {host, rendered} = fixture();
+    expect(mapDomPointToFlatListSelectionPoint(rendered, host, 0)).toMatchObject({ok: true, value: {parentPath: [0, 0, 0], childIndex: 0}});
+    expect(mapDomPointToFlatListSelectionPoint(rendered, host, 3)).toMatchObject({ok: true, value: {parentPath: [2, 0, 0], childIndex: 1}});
+    for (const offset of [1, 2, 4]) expect(mapDomPointToFlatListSelectionPoint(rendered, host, offset).ok).toBe(false);
+    const list = rendered.nodeForAstPath([0])!;
+    expect(mapDomPointToFlatListSelectionPoint(rendered, list, 1).ok).toBe(false);
+    expect(mapDomPointToFlatListSelectionPoint(rendered, list, 2)).toMatchObject({ok: true, value: {parentPath: [0, 1, 0], childIndex: 0}});
+    expect(mapDomPointToFlatListSelectionPoint(rendered, document.createTextNode("outside"), 0).ok).toBe(false);
+  });
+
+  it("round-trips semantic endpoints to DOM while retaining exact directional selection", () => {
+    const {projection, rendered} = fixture();
+    const anchor = textPoint([1, 0], 3, "before");
+    const focus = textPoint([0, 0, 0, 0], 1);
+    const selection = valueOf(FlatListRangeSelection.create(projection, {kind: "range", anchor, focus}));
+    expect(selection.order).toBe("backward");
+    expect(selection.anchor).toEqual(anchor);
+    expect(selection.focus).toEqual(focus);
+    expect(isOwnedFlatListRangeSelection(selection)).toBe(true);
+    anchor.textPath[0] = 99;
+    expect(selection.anchor).toMatchObject({textPath: [1, 0]});
+    for (const point of [selection.anchor, selection.focus]) {
+      const dom = valueOf(mapFlatListSelectionPointToDomPoint(rendered, point));
+      const roundtrip = valueOf(mapDomPointToFlatListSelectionPoint(rendered, dom.node, dom.offset));
+      expect(roundtrip).toMatchObject({kind: "text", textPath: point.kind === "text" ? point.textPath : [], utf16Offset: point.kind === "text" ? point.utf16Offset : 0});
+    }
+    const equivalent = valueOf(FlatListRangeSelection.create(projection, {kind: "range",
+      anchor: textPoint([0, 0, 0, 0], 4, "before"), focus: {kind: "children", parentPath: [0, 0, 0], childIndex: 1, affinity: "after"}}));
+    expect(equivalent.order).toBe("collapsed");
+    expect(equivalent.anchor.affinity).toBe("before");
+    expect(equivalent.focus.affinity).toBe("after");
+    expect(() => Reflect.construct(FlatListRangeSelection, [Symbol("forged")])).toThrow(TypeError);
+  });
+
+  it.each([[0], [0, 0], [0, 0, 1], [0, 0, 0, 5], [3, 0], [0, 0, 0, 0, 0]])("rejects invalid text path %j", (...path) => {
+    const {projection, rendered} = fixture();
+    const point = textPoint(path, 0);
+    expect(FlatListRangeSelection.create(projection, {kind: "range", anchor: point, focus: point}).ok).toBe(false);
+    expect(mapFlatListSelectionPointToDomPoint(rendered, point).ok).toBe(false);
+  });
+
+  it.each(["numbering", "list-attribute", "item-attribute", "tag", "extra-item", "placeholder"])("invalidates %s drift synchronously before selection mapping", fault => {
+    const {host, rendered} = fixture();
+    const text = rendered.nodeForAstPath([0, 0, 0, 0])!;
+    if (fault === "numbering") host.querySelector("ol")!.setAttribute("start", "08");
+    if (fault === "list-attribute") host.querySelector("ul")!.setAttribute("class", "extra");
+    if (fault === "item-attribute") host.querySelector("li")!.setAttribute("value", "20");
+    if (fault === "tag") host.querySelector("h2")!.replaceWith(document.createElement("p"));
+    if (fault === "extra-item") host.querySelector("ol")!.append(document.createElement("li"));
+    if (fault === "placeholder") host.querySelector("br")!.remove();
+    expect(mapDomPointToFlatListSelectionPoint(rendered, text, 0)).toMatchObject({ok: false, error: {code: "selection.dom_drift"}});
+    expect(rendered.current).toBe(false);
+    expect(rendered.nodeForAstPath([0])).toBeNull();
+  });
+
+  it("invalidates prior generations and arbitrates the host with legacy renderers", () => {
+    const {host, renderer, rendered, make} = fixture();
+    const next = valueOf(renderer.renderFlatList(host, make(1))).rendered;
+    expect(rendered.current).toBe(false);
+    expect(mapFlatListSelectionPointToDomPoint(rendered, textPoint([1, 0], 0)).ok).toBe(false);
+    const legacy = new BreditorDomRenderer();
+    const plain = valueOf(legacy.render(host, projection(0, [[{text: "legacy", strong: false}]]))).rendered;
+    expect(next.current).toBe(false);
+    expect(renderer.releaseFlatList(next)).toBe(false);
+    expect(legacy.owns(plain)).toBe(true);
+  });
+
+  it("preserves current DOM when detached list construction fails", () => {
+    const {host, renderer, rendered, make} = fixture();
+    const before = host.innerHTML;
+    const original = document.createElementNS.bind(document);
+    const spy = vi.spyOn(document, "createElementNS").mockImplementation((namespace, name, options) => {
+      if (name === "li") throw new Error("fixture failure");
+      return original(namespace, name, options);
+    });
+    try { expect(renderer.renderFlatList(host, make(1))).toMatchObject({ok: false, error: {code: "renderer.dom_write_failed"}}); }
+    finally { spy.mockRestore(); }
+    expect(host.innerHTML).toBe(before);
+    expect(renderer.ownsFlatList(rendered)).toBe(true);
+  });
+
+  it("blocks reentrant installation and refuses to overwrite constructor-time DOM drift", () => {
+    const {host, renderer, rendered, make} = fixture();
+    const next = make(1);
+    const original = document.createElementNS.bind(document);
+    let entered = false;
+    let nested: unknown;
+    const spy = vi.spyOn(document, "createElementNS").mockImplementation((namespace, name, options) => {
+      if (!entered && name === "ol") {
+        entered = true;
+        nested = renderer.renderFlatList(host, next);
+        host.querySelector("ol")!.setAttribute("start", "9");
+      }
+      return original(namespace, name, options);
+    });
+    try { expect(renderer.renderFlatList(host, next)).toMatchObject({ok: false, error: {code: "renderer.dom_write_failed"}}); }
+    finally { spy.mockRestore(); }
+    expect(nested).toMatchObject({ok: false, error: {code: "renderer.dom_write_failed"}});
+    expect(host.querySelector("ol")!.getAttribute("start")).toBe("9");
+    expect(rendered.current).toBe(false);
+  });
+
+  it("rejects own-data selection getters, invalid affinities and forged ranges", () => {
+    const {projection, rendered} = fixture();
+    const getter = vi.fn(() => 0);
+    const point = {kind: "text", textPath: [0, 0, 0, 0], get utf16Offset() { return getter(); }, affinity: "after"};
+    expect(FlatListRangeSelection.create(projection, {kind: "range", anchor: point, focus: point}).ok).toBe(false);
+    expect(mapFlatListSelectionPointToDomPoint(rendered, point).ok).toBe(false);
+    expect(getter).not.toHaveBeenCalled();
+    expect(isOwnedFlatListRangeSelection(Object.create(FlatListRangeSelection.prototype))).toBe(false);
+    const badAffinity = textPoint([0, 0, 0, 0], 0, "forward");
+    expect(FlatListRangeSelection.create(projection, {kind: "range", anchor: badAffinity, focus: badAffinity}).ok).toBe(false);
+    const sparse = textPoint(new Array(4), 0);
+    expect(FlatListRangeSelection.create(projection, {kind: "range", anchor: sparse, focus: sparse}).ok).toBe(false);
+  });
+
+  it("round-trips every scalar and text-container boundary in a mixed tree", () => {
+    const {projection, rendered} = fixture();
+    for (const {path, block} of projection.textBlocks) {
+      const points: unknown[] = [];
+      for (let childIndex = 0; childIndex <= block.runs.length; childIndex += 1) points.push({kind: "children", parentPath: path, childIndex, affinity: "after"});
+      block.runs.forEach((run, runIndex) => {
+        let offset = 0;
+        points.push(textPoint([...path, runIndex], 0));
+        for (const scalar of run.text) {
+          offset += scalar.length;
+          points.push(textPoint([...path, runIndex], offset));
+        }
+      });
+      for (const point of points) {
+        const dom = valueOf(mapFlatListSelectionPointToDomPoint(rendered, point));
+        const back = valueOf(mapDomPointToFlatListSelectionPoint(rendered, dom.node, dom.offset));
+        const range = valueOf(FlatListRangeSelection.create(projection, {kind: "range", anchor: point, focus: back}));
+        expect(range.order).toBe("collapsed");
+      }
+    }
+  });
+});
 
 function valueOf<T>(result:
   | Readonly<{ ok: true; value: T }>

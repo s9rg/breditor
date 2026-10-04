@@ -911,3 +911,25 @@ Flat lists remain first; nesting and indent/outdent follow separately.
 
 See [contract](STRUCTURAL_BLOCKS.md#hierarchical-flat-list-browser-projection) and
 [verification](qualification/2026-10-04-flat-list-browser-projection.json).
+
+## Flat-list rendering and coordinate checkpoint
+
+The isolated list renderer now creates semantic bullet/numbered-list DOM with
+actual list/item/text paths, using the existing host ownership, rollback and
+mutation checks. A separately owned list selection validates directional
+endpoints and affinities; explicit point helpers map scalar-safe coordinates in
+both directions, including empty items and inline wrappers.
+
+All 1,579 browser tests and strict TypeScript pass. The real-Wasm candidate passes
+five runs each in Chromium, Firefox and WebKit with list DOM and native Selection
+endpoints, alongside the earlier editing/recovery checks. Shipping artifacts are
+unchanged. The implementation currently full-renders lists; list incremental
+updates and composition leases are not silently enabled.
+
+Next: integrate the list selection bridge and Wasm selection/update admission,
+then controller/profile mode, toolbar/keyboard and visible demo recovery. Native
+keyboard/clipboard/IME and release-size/performance gates remain open. The editor
+beta goal is not complete.
+
+See [contract](STRUCTURAL_BLOCKS.md#flat-list-dom-and-selection-coordinates) and
+[verification](qualification/2026-10-04-flat-list-dom.json).

@@ -13,6 +13,7 @@ import {
   isOwnedProjection,
   projectionPresentation,
 } from "./projection.js";
+import { bindFlatListProjectionPresentation, isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import {
   browserPresentationRecipesForFormatDetails,
   isOwnedBrowserCompiledPresentation,
@@ -60,9 +61,11 @@ export const MAX_RENDERED_PROJECTION_DOM_NODES = 262_144;
  * Mapping calls return `null` after this handle is superseded, released, or
  * invalidated by observed DOM drift.
  */
-export interface RenderedProjection {
+type RenderableProjection = BaseDocumentProjection | FlatListDocumentProjection;
+
+export interface RenderedProjection<P extends RenderableProjection = BaseDocumentProjection> {
   /** Exact semantic projection represented by this generation. */
-  readonly projection: BaseDocumentProjection;
+  readonly projection: P;
   /** Monotonic generation within the owning renderer. */
   readonly rendererGeneration: bigint;
   /** Exact light-DOM host represented by this handle. */
@@ -83,9 +86,9 @@ export interface RenderedProjection {
 }
 
 /** Metadata returned with a successfully installed projection generation. */
-export interface ProjectionRenderOutcome {
+export interface ProjectionRenderOutcome<P extends RenderableProjection = BaseDocumentProjection> {
   /** New current projection handle. */
-  readonly rendered: RenderedProjection;
+  readonly rendered: RenderedProjection<P>;
   /** Whether paragraph DOM identities were reused. */
   readonly mode: ProjectionRenderMode;
   /** Present only when a safe full-render fallback was selected. */
@@ -124,7 +127,7 @@ interface HostOwnership {
 
 interface DomCompositionLeaseRecord {
   readonly rendererToken: symbol;
-  readonly handle: RenderedProjectionHandle;
+  readonly handle: RenderedProjectionHandle<BaseDocumentProjection>;
   active: boolean;
 }
 
@@ -136,8 +139,8 @@ const ACTIVE_HOST_OPERATIONS = new WeakSet<HTMLElement>();
 
 type RenderedProjectionState = "canonical" | "composition" | "inactive";
 
-class RenderedProjectionHandle implements RenderedProjection {
-  readonly projection: BaseDocumentProjection;
+class RenderedProjectionHandle<P extends RenderableProjection = RenderableProjection> implements RenderedProjection<P> {
+  readonly projection: P;
   readonly rendererGeneration: bigint;
   readonly host: HTMLElement;
   readonly #astToDom: Map<string, Node>;
@@ -148,7 +151,7 @@ class RenderedProjectionHandle implements RenderedProjection {
 
   constructor(
     host: HTMLElement,
-    projection: BaseDocumentProjection,
+    projection: P,
     rendererGeneration: bigint,
     maps: ProjectionMaps,
     presentation: BrowserCompiledPresentation | undefined,
@@ -204,7 +207,7 @@ class RenderedProjectionHandle implements RenderedProjection {
       return null;
     }
     try {
-      const key = astPathKey(path);
+      const key = astPathKey(path, isOwnedFlatListProjection(this.projection) ? 4 : 2);
       return key === null ? null : (this.#astToDom.get(key) ?? null);
     } catch {
       return null;
@@ -259,6 +262,10 @@ class RenderedProjectionHandle implements RenderedProjection {
   }
 
   #canonicalDomAndMapsMatch(): boolean {
+    if (isOwnedFlatListProjection(this.projection)) {
+      return flatListDomAndMapsMatch(this.host, this.projection, {astToDom: this.#astToDom, domToAst: this.#domToAst}, this.#presentation);
+    }
+    if (!isOwnedProjection(this.projection)) return false;
     const hostChildren = nativeChildNodes(this.host);
     if (
       this.#astToDom.size !==
@@ -416,6 +423,13 @@ export class BreditorDomRenderer {
     } catch {
       return false;
     }
+  }
+
+  /** Explicit list ownership; legacy selection/update consumers stay closed. @internal */
+  ownsFlatList(rendered: unknown): rendered is RenderedProjection<FlatListDocumentProjection> {
+    if (!isOwnedFlatListRenderedProjection(rendered)) return false;
+    const ownership = HOST_OWNERS.get(rendered.host);
+    return ownership?.rendererToken === this.#rendererToken && ownership.handle === rendered && rendered.validateCanonicalDom();
   }
 
   /**
@@ -589,6 +603,15 @@ export class BreditorDomRenderer {
     host: HTMLElement,
     projection: BaseDocumentProjection,
   ): BrowserProjectionResult<ProjectionRenderOutcome> {
+    return this.#render(host, projection, false);
+  }
+
+  /** Full hierarchical list render with the same host/rollback/ownership guards. @internal */
+  renderFlatList(host: HTMLElement, projection: FlatListDocumentProjection): BrowserProjectionResult<ProjectionRenderOutcome<FlatListDocumentProjection>> {
+    return this.#render(host, projection, true);
+  }
+
+  #render<P extends RenderableProjection>(host: HTMLElement, projection: P, flatLists: boolean): BrowserProjectionResult<ProjectionRenderOutcome<P>> {
     if (typeof host !== "object" || host === null) {
       return projectionFailure("renderer.invalid_host");
     }
@@ -603,7 +626,7 @@ export class BreditorDomRenderer {
       if (!isUsableHost(host)) {
         return projectionFailure("renderer.invalid_host");
       }
-      if (!isOwnedProjection(projection)) {
+      if (flatLists ? !isOwnedFlatListProjection(projection) : !isOwnedProjection(projection)) {
         return projectionFailure("projection.invalid_shape");
       }
       if (!this.#bindProjectionPresentation(projection)) {
@@ -739,6 +762,15 @@ export class BreditorDomRenderer {
     if (!isOwnedRenderedProjection(rendered)) {
       return false;
     }
+    return this.#release(rendered);
+  }
+
+  /** Releases a list generation without widening legacy handle admission. @internal */
+  releaseFlatList(rendered: RenderedProjection<FlatListDocumentProjection>): boolean {
+    return isOwnedFlatListRenderedProjection(rendered) && this.#release(rendered);
+  }
+
+  #release(rendered: RenderedProjectionHandle): boolean {
     if (ACTIVE_HOST_OPERATIONS.has(rendered.host)) {
       return false;
     }
@@ -755,7 +787,10 @@ export class BreditorDomRenderer {
     return true;
   }
 
-  #bindProjectionPresentation(projection: BaseDocumentProjection): boolean {
+  #bindProjectionPresentation(projection: RenderableProjection): boolean {
+    if (isOwnedFlatListProjection(projection)) {
+      return this.#presentation !== undefined && bindFlatListProjectionPresentation(projection, this.#presentation);
+    }
     const associated = projectionPresentation(projection);
     if (this.#presentation === undefined) {
       return associated === undefined && projection.schema.fingerprint === undefined;
@@ -813,14 +848,14 @@ export class BreditorDomRenderer {
     }
   }
 
-  #install(
+  #install<P extends RenderableProjection>(
     host: HTMLElement,
-    projection: BaseDocumentProjection,
+    projection: P,
     prepared: PreparedDom,
     mode: ProjectionRenderMode,
     fallbackReason?: ProjectionFallbackReason,
     installGuard?: () => boolean,
-  ): BrowserProjectionResult<ProjectionRenderOutcome> {
+  ): BrowserProjectionResult<ProjectionRenderOutcome<P>> {
     const prior = HOST_OWNERS.get(host)?.handle;
     let priorHostChildren: readonly ChildNode[];
     let priorChildren: Array<{
@@ -878,7 +913,7 @@ export class BreditorDomRenderer {
     }
 
     prior?.invalidate();
-    let handle: RenderedProjectionHandle | undefined;
+    let handle: RenderedProjectionHandle<P> | undefined;
     try {
       this.#generation += 1n;
       handle = new RenderedProjectionHandle(
@@ -904,7 +939,7 @@ export class BreditorDomRenderer {
         );
         return projectionFailure("renderer.dom_write_failed");
       }
-      const outcome: ProjectionRenderOutcome =
+      const outcome: ProjectionRenderOutcome<P> =
         fallbackReason === undefined
           ? Object.freeze({ rendered: handle, mode })
           : Object.freeze({ rendered: handle, mode, fallbackReason });
@@ -929,12 +964,20 @@ export class BreditorDomRenderer {
 /** @internal */
 export function isOwnedRenderedProjection(
   rendered: unknown,
-): rendered is RenderedProjectionHandle {
+): rendered is RenderedProjectionHandle<BaseDocumentProjection> {
   return (
     typeof rendered === "object" &&
     rendered !== null &&
-    RENDERED_HANDLES.has(rendered as RenderedProjectionHandle)
+    RENDERED_HANDLES.has(rendered as RenderedProjectionHandle) &&
+    isOwnedProjection((rendered as RenderedProjectionHandle).projection)
   );
+}
+
+/** @internal */
+export function isOwnedFlatListRenderedProjection(rendered: unknown): rendered is RenderedProjectionHandle<FlatListDocumentProjection> {
+  return typeof rendered === "object" && rendered !== null &&
+    RENDERED_HANDLES.has(rendered as RenderedProjectionHandle) &&
+    isOwnedFlatListProjection((rendered as RenderedProjectionHandle).projection);
 }
 
 function isUsableHost(host: HTMLElement): boolean {
@@ -963,7 +1006,7 @@ function endHostOperation(host: HTMLElement): void {
 
 function buildFullProjection(
   host: HTMLElement,
-  projection: BaseDocumentProjection,
+  projection: RenderableProjection,
   presentation: BrowserCompiledPresentation | undefined,
 ): PreparedDom {
   const ownerDocument = nativeOwnerDocument(host);
@@ -971,6 +1014,7 @@ function buildFullProjection(
     throw new TypeError("The render host has no owner document.");
   }
   const maps = createMaps(host);
+  if (isOwnedFlatListProjection(projection)) return buildFlatListProjection(ownerDocument, projection, maps, presentation);
   const paragraphs = projection.paragraphs.map((paragraph, paragraphIndex) =>
     buildParagraph(ownerDocument, paragraph, paragraphIndex, maps, presentation),
   );
@@ -981,8 +1025,82 @@ function buildFullProjection(
   };
 }
 
+function buildFlatListProjection(
+  document: Document,
+  projection: FlatListDocumentProjection,
+  maps: ProjectionMaps,
+  presentation: BrowserCompiledPresentation | undefined,
+): PreparedDom {
+  const roots = projection.blocks.map((root, rootIndex) => {
+    if (root.kind === "textBlock") return buildParagraph(document, root.block, rootIndex, maps, presentation);
+    const tag = root.kind === "bulletList" ? "ul" : "ol";
+    const list = createHtmlElement(document, tag, tag);
+    mapNode(list, Object.freeze([rootIndex]), maps.astToDom, maps.domToAst, true);
+    if (root.kind === "orderedList") nativeSetAttribute(list, "start", String(root.start));
+    for (const [itemIndex, block] of root.items.entries()) {
+      const item = createHtmlElement(document, "li", "li");
+      mapNode(item, Object.freeze([rootIndex, itemIndex]), maps.astToDom, maps.domToAst, true);
+      item.append(buildParagraph(document, block, Object.freeze([rootIndex, itemIndex, 0]), maps, presentation));
+      list.append(item);
+    }
+    return list;
+  });
+  return {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze([])};
+}
+
+/** Full shape and private-map proof, including unmapped placeholders/wrappers. */
+function flatListDomAndMapsMatch(
+  host: HTMLElement,
+  projection: FlatListDocumentProjection,
+  maps: ProjectionMaps,
+  presentation: BrowserCompiledPresentation | undefined,
+): boolean {
+  const matchesMap = (node: Node | undefined, path: AstPath): node is Node => {
+    const key = astPathKey(path, 4);
+    return node !== undefined && key !== null && maps.astToDom.get(key) === node &&
+      astPathKey(maps.domToAst.get(node) ?? [-1], 4) === key;
+  };
+  const children = nativeChildNodes(host);
+  if (children.length !== projection.blocks.length || !matchesMap(host, [])) return false;
+  let mappedNodes = 1;
+  const blockMatches = (node: Node | undefined, block: BaseParagraphProjection, path: AstPath): boolean => {
+    if (!paragraphDomMatches(node, block, presentation) || !matchesMap(node, path)) return false;
+    mappedNodes += 1 + block.runs.length;
+    const runs = nativeChildNodes(node);
+    if (block.runs.length === 0) return runs[0] !== undefined && maps.domToAst.get(runs[0]) === undefined;
+    return block.runs.every((run, index) => {
+      const outer = runs[index];
+      if (outer === undefined) return false;
+      const text = textNodeForRunDom(outer, run, presentation);
+      return matchesMap(text, [...path, index]) && wrappersAreUnmapped(outer, text, maps.domToAst);
+    });
+  };
+  for (const [rootIndex, root] of projection.blocks.entries()) {
+    const node = children[rootIndex];
+    if (root.kind === "textBlock") {
+      if (!blockMatches(node, root.block, [rootIndex])) return false;
+      continue;
+    }
+    if (!isHtmlElementNamed(node, root.kind === "bulletList" ? "ul" : "ol") || !matchesMap(node, [rootIndex])) return false;
+    const attrs = nativeAttributeNames(node);
+    if (root.kind === "bulletList" ? attrs.length !== 0 :
+      attrs.length !== 1 || attrs[0] !== "start" || nativeGetAttribute(node, "start") !== String(root.start)) return false;
+    const items = nativeChildNodes(node);
+    if (items.length !== root.items.length) return false;
+    mappedNodes += 1 + items.length;
+    for (const [itemIndex, block] of root.items.entries()) {
+      const item = items[itemIndex];
+      if (!isHtmlElementNamed(item, "li") || nativeAttributeNames(item).length !== 0 ||
+          !matchesMap(item, [rootIndex, itemIndex])) return false;
+      const blocks = nativeChildNodes(item);
+      if (blocks.length !== 1 || !blockMatches(blocks[0], block, [rootIndex, itemIndex, 0])) return false;
+    }
+  }
+  return maps.astToDom.size === mappedNodes;
+}
+
 function buildIncrementalProjection(
-  rendered: RenderedProjectionHandle,
+  rendered: RenderedProjectionHandle<BaseDocumentProjection>,
   result: BaseDocumentProjection,
   reuse: readonly Readonly<{
     oldIndex: number;
@@ -1072,13 +1190,13 @@ function createMaps(host: HTMLElement): ProjectionMaps {
 function buildParagraph(
   document: Document,
   paragraph: BaseParagraphProjection,
-  paragraphIndex: number,
+  paragraphIndex: number | AstPath,
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): HTMLElement {
   const tag = textBlockTag(paragraph);
   const element = createHtmlElement(document, tag, tag.toUpperCase());
-  const paragraphPath = paragraphAstPath(paragraphIndex);
+  const paragraphPath = typeof paragraphIndex === "number" ? paragraphAstPath(paragraphIndex) : paragraphIndex;
   mapNode(element, paragraphPath, maps.astToDom, maps.domToAst, true);
   element.append(
     ...buildParagraphChildren(
@@ -1095,7 +1213,7 @@ function buildParagraph(
 function buildParagraphChildren(
   document: Document,
   paragraph: BaseParagraphProjection,
-  paragraphIndex: number,
+  paragraphIndex: number | AstPath,
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): readonly Node[] {
@@ -1104,7 +1222,7 @@ function buildParagraphChildren(
     return Object.freeze([placeholder]);
   }
   const children = paragraph.runs.map((run, runIndex): Node => {
-    const path = textRunAstPath(paragraphIndex, runIndex);
+    const path = typeof paragraphIndex === "number" ? textRunAstPath(paragraphIndex, runIndex) : Object.freeze([...paragraphIndex, runIndex]);
     const text = createTextNode(document, run.text);
     mapNode(text, path, maps.astToDom, maps.domToAst, true);
     const recipes = recipesForRun(run, presentation);
@@ -1340,9 +1458,11 @@ function wrappersAreUnmapped(
   return true;
 }
 
-function renderFitsDomBudget(projection: BaseDocumentProjection): boolean {
-  let nodes = 1 + projection.paragraphs.length;
-  for (const paragraph of projection.paragraphs) {
+function renderFitsDomBudget(projection: RenderableProjection): boolean {
+  const flat = isOwnedFlatListProjection(projection);
+  const paragraphs = flat ? projection.textBlocks.map(entry => entry.block) : projection.paragraphs;
+  let nodes = 1 + paragraphs.length + (flat ? projection.blocks.reduce((count, root) => count + (root.kind === "textBlock" ? 0 : 1 + root.items.length), 0) : 0);
+  for (const paragraph of paragraphs) {
     if (paragraph.runs.length === 0) {
       nodes += 1;
     } else {
@@ -1362,7 +1482,7 @@ function mapNode(
   domToAst: WeakMap<Node, AstPath>,
   canonical: boolean,
 ): void {
-  const key = astPathKey(path);
+  const key = astPathKey(path, 4);
   if (key === null) {
     throw new TypeError("Renderer constructed an invalid AST path.");
   }

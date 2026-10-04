@@ -1195,3 +1195,42 @@ Reproduce the source-to-real-Wasm checks with
 This runs the existing raw-Wasm scenario and five projection/edit/recovery
 scenarios in each browser. It does not exercise editor DOM, native selection,
 clipboard or IME. See [projection qualification](qualification/2026-10-04-flat-list-browser-projection.json).
+
+### Flat-list DOM and selection coordinates
+
+The source-level renderer has explicit `renderFlatList`, `ownsFlatList` and
+`releaseFlatList` methods. They share the established host registry, synchronous
+install guards, detached construction, rollback, mutation observation and private
+mapping machinery. The existing `render`, incremental update and composition
+lease entry points still reject list handles rather than reinterpreting them as
+paragraph documents. Flat-list rendering currently installs a full tree.
+
+Canonical DOM is `ul > li > p/h1..h6` or `ol[start] > li > p/h1..h6`, alongside
+bare root text blocks. Ordered starts are explicit, including start 1; item value
+overrides and extra list/item attributes reject. Empty text blocks retain an
+unmapped `br` placeholder. Inline wrappers use the same exact-owner compiled
+presentation and typed-property recipes as other text blocks. Root, list, item,
+text-block and text-leaf mappings retain their real AST coordinates, with a
+maximum depth of four; wrappers/placeholders are not synthetic AST nodes.
+
+`FlatListRangeSelection` validates directional endpoints against one exact
+projection. It preserves affinity and anchor/focus order, accepts child boundaries
+only in actual text blocks, rejects non-scalar UTF-16 boundaries, and recognizes
+equivalent text/child endpoints as spatially collapsed. It is a separately
+runtime-branded selection; legacy selection APIs are not widened.
+
+The explicit list DOM point helpers revalidate canonical DOM before mapping in
+either direction. Outer root/list edges normalize to the first/last text block;
+interior root/list gaps reject as ambiguous. Item edges normalize to the sole
+text block, and empty-block/placeholder points normalize to child boundary zero.
+DOM-derived affinities use the existing boundary policy. Exact programmatic
+affinity echo, full range ownership, outside-host handling and native selection
+write receipts still need integration through the editor's selection bridge;
+point mapping alone does not implement that bridge.
+
+Run the candidate harness with `--browser-dom` for actual browser DOM and native
+Selection endpoint tests, in addition to the retained raw-Wasm and projection
+recovery scenarios. These checks cover backward endpoints, emoji boundaries,
+empty items, replacement generations and changed numbering. They do not qualify
+keyboard input, OS clipboard or IME, or resolve every historical WebKit issue.
+See [DOM qualification](qualification/2026-10-04-flat-list-dom.json).

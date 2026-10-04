@@ -30,8 +30,8 @@ export function textRunAstPath(paragraphIndex: number, runIndex: number): AstPat
 }
 
 /** @internal */
-export function astPathKey(path: AstPath): string | null {
-  if (!Array.isArray(path) || path.length > 2) {
+export function astPathKey(path: AstPath, maximumDepth = 2): string | null {
+  if (!Array.isArray(path) || path.length > maximumDepth) {
     return null;
   }
   let key = "root";

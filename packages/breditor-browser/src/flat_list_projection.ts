@@ -1,8 +1,10 @@
 import {
   createStructuralTextProjection, exactDataRecord, readExactBoundedArray,
+  bindProjectionPresentation,
   type BaseDocumentProjection, type BaseParagraphProjection,
   type ProjectionSchema, type ProjectionSnapshot,
 } from "./projection.js";
+import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
 import { projectionFailure, projectionSuccess, type BrowserProjectionResult } from "./result.js";
 import { browserCompiledProfileDescriptorMatchesGeneration, wasmProfileGenerationIsLive,
   type BrowserCompiledProfileDescriptor, type WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
@@ -24,6 +26,7 @@ export type FlatListRootShape =
   | Readonly<{ kind: "bulletList"; items: number }>
   | Readonly<{ kind: "orderedList"; start: number; items: number }>;
 const OWNED = new WeakSet<FlatListDocumentProjection>();
+const TEXT_PROOFS = new WeakMap<FlatListDocumentProjection, BaseDocumentProjection>();
 const CONSTRUCTION_TOKEN = Symbol("FlatListDocumentProjection construction");
 const VALIDATED = new WeakMap<BaseDocumentProjection, Readonly<{
   shapes: readonly FlatListRootShape[];
@@ -69,6 +72,7 @@ export class FlatListDocumentProjection {
     this.blocks = Object.freeze(blocks);
     this.textBlocks = Object.freeze(directory);
     OWNED.add(this);
+    TEXT_PROOFS.set(this, text);
     Object.freeze(this);
   }
 
@@ -96,6 +100,12 @@ export class FlatListDocumentProjection {
 /** @internal */
 export function isOwnedFlatListProjection(value: unknown): value is FlatListDocumentProjection {
   return typeof value === "object" && value !== null && OWNED.has(value as FlatListDocumentProjection);
+}
+
+/** Shares exact-owner presentation admission without exposing the internal proof. @internal */
+export function bindFlatListProjectionPresentation(projection: FlatListDocumentProjection, presentation: BrowserCompiledPresentation): boolean {
+  const text = TEXT_PROOFS.get(projection);
+  return text !== undefined && bindProjectionPresentation(text, presentation);
 }
 
 /** Internal adapter bridge; the temporary flat text proof is never a renderer result. @internal */
