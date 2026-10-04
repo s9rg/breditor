@@ -15,7 +15,7 @@ use crate::{
         PropertyPresenceV1,
     },
     identity::{EntityId, QualifiedName},
-    position::{MAX_PATH_DEPTH, NodePath},
+    position::{MAX_PATH_DEPTH, NodePath, NodePathCursor},
     schema::{
         CompiledSchema, DocumentLimits, child_count_fits_point_protocol,
         point_protocol_child_count_maximum,
@@ -459,8 +459,8 @@ impl CompiledSchema {
         limits: &DocumentLimits,
     ) -> Result<DocumentSummary, ValidationReport> {
         let mut state = ValidationState::new(self, limits);
-        let root_path = NodePath::root();
-        state.visit_node(root, &root_path);
+        let mut root_path = NodePathCursor::default();
+        state.visit_node(root, &mut root_path);
         state.validate_root_kind(root, &root_path);
         state.finish()
     }
@@ -478,7 +478,7 @@ impl CompiledSchema {
         format: &Format,
     ) -> Result<InlineFormatInstanceSummary, ValidationReport> {
         let mut state = ValidationState::new(self, limits);
-        state.visit_inline_format(format, &NodePath::root(), 0);
+        state.visit_inline_format(format, &NodePathCursor::default(), 0);
         state.finish_inline_format()
     }
 }
@@ -559,7 +559,7 @@ impl<'a> ValidationState<'a> {
     fn issue(
         &mut self,
         code: ValidationCode,
-        path: &NodePath,
+        path: &NodePathCursor,
         subject: ValidationSubject,
         detail: ValidationDetail,
         message: String,
@@ -569,7 +569,7 @@ impl<'a> ValidationState<'a> {
         }
         self.issue_count = self.issue_count.saturating_add(1);
         if self.issues.len() < MAX_DETAILED_VALIDATION_ISSUES {
-            self.issues.push(ValidationIssue::new(code, path.clone(), subject, detail, message));
+            self.issues.push(ValidationIssue::new(code, path.snapshot(), subject, detail, message));
         } else {
             self.report_truncated = true;
         }
@@ -579,7 +579,13 @@ impl<'a> ValidationState<'a> {
         self.report_truncated
     }
 
-    fn limit_issue(&mut self, path: &NodePath, kind: LimitKind, actual: usize, maximum: usize) {
+    fn limit_issue(
+        &mut self,
+        path: &NodePathCursor,
+        kind: LimitKind,
+        actual: usize,
+        maximum: usize,
+    ) {
         self.issue(
             ValidationCode::LimitExceeded,
             path,
@@ -589,7 +595,7 @@ impl<'a> ValidationState<'a> {
         );
     }
 
-    fn counter_overflow_issue(&mut self, path: &NodePath, kind: LimitKind) {
+    fn counter_overflow_issue(&mut self, path: &NodePathCursor, kind: LimitKind) {
         self.issue(
             ValidationCode::LimitExceeded,
             path,
@@ -599,7 +605,7 @@ impl<'a> ValidationState<'a> {
         );
     }
 
-    fn validate_root_kind(&mut self, root: &NodeRef, path: &NodePath) {
+    fn validate_root_kind(&mut self, root: &NodeRef, path: &NodePathCursor) {
         let Some(element) = root.as_element() else {
             self.issue(
                 ValidationCode::InvalidRoot,
@@ -625,7 +631,7 @@ impl<'a> ValidationState<'a> {
         }
     }
 
-    fn visit_node(&mut self, node: &NodeRef, path: &NodePath) {
+    fn visit_node(&mut self, node: &NodeRef, path: &mut NodePathCursor) {
         if self.report_is_saturated() {
             return;
         }
@@ -660,7 +666,7 @@ impl<'a> ValidationState<'a> {
         }
     }
 
-    fn visit_element(&mut self, element: &crate::document::ElementNode, path: &NodePath) {
+    fn visit_element(&mut self, element: &crate::document::ElementNode, path: &mut NodePathCursor) {
         // Reuse only immutable schema rules within this visit, never a node's
         // validation result. Unknown kinds still undergo every remaining check.
         let definition = self.schema.element_definition(element.kind());
@@ -740,18 +746,21 @@ impl<'a> ValidationState<'a> {
                 self.limit_issue(path, LimitKind::ChildIndex, index, maximum);
                 break;
             };
-            let Ok(child_path) = path.try_child(index_u32) else {
+            let Ok(()) = path.try_push(index_u32) else {
                 self.limit_issue(path, LimitKind::NodeDepth, path.len() + 1, MAX_PATH_DEPTH);
                 break;
             };
-            self.visit_node(child, &child_path);
+            // Every return from the recursive visit (including resource/report
+            // cutoffs) restores this cursor before visiting the next sibling.
+            self.visit_node(child, path);
+            path.pop();
         }
     }
 
     fn visit_entity_id(
         &mut self,
         element: &crate::document::ElementNode,
-        path: &NodePath,
+        path: &NodePathCursor,
         allows_entity_id: bool,
     ) {
         let Some(identity) = element.entity_id() else {
@@ -760,7 +769,7 @@ impl<'a> ValidationState<'a> {
         if self.schema.global_constraints().requires_globally_unique_entity_ids() {
             match self.entity_ids.entry(identity.clone()) {
                 Entry::Vacant(entry) => {
-                    entry.insert(path.clone());
+                    entry.insert(path.snapshot());
                 }
                 Entry::Occupied(entry) => {
                     let first_path = entry.get().clone();
@@ -788,7 +797,7 @@ impl<'a> ValidationState<'a> {
     fn validate_child_shape(
         &mut self,
         element: &crate::document::ElementNode,
-        path: &NodePath,
+        path: &NodePathCursor,
         constraint: Option<&ChildConstraint>,
     ) {
         let Some(constraint) = constraint else { return };
@@ -866,7 +875,7 @@ impl<'a> ValidationState<'a> {
     fn validate_grouped_child_shape(
         &mut self,
         element: &crate::document::ElementNode,
-        path: &NodePath,
+        path: &NodePathCursor,
         constraint: &ChildConstraint,
     ) {
         let mut sequence = ChildSequence::new(constraint);
@@ -904,7 +913,11 @@ impl<'a> ValidationState<'a> {
         }
     }
 
-    fn validate_adjacent_text(&mut self, element: &crate::document::ElementNode, path: &NodePath) {
+    fn validate_adjacent_text(
+        &mut self,
+        element: &crate::document::ElementNode,
+        path: &NodePathCursor,
+    ) {
         if !self.schema.global_constraints().requires_merged_adjacent_equal_text() {
             return;
         }
@@ -935,7 +948,7 @@ impl<'a> ValidationState<'a> {
         }
     }
 
-    fn visit_text(&mut self, text: &crate::document::TextNode, path: &NodePath) {
+    fn visit_text(&mut self, text: &crate::document::TextNode, path: &NodePathCursor) {
         if text.text().is_empty() && self.schema.global_constraints().requires_non_empty_text() {
             self.issue(
                 ValidationCode::EmptyText,
@@ -1012,7 +1025,7 @@ impl<'a> ValidationState<'a> {
         }
     }
 
-    fn visit_inline_format(&mut self, format: &Format, path: &NodePath, index: usize) {
+    fn visit_inline_format(&mut self, format: &Format, path: &NodePathCursor, index: usize) {
         if !self.schema.allows_text_format(format.kind()) {
             self.issue(
                 ValidationCode::UnknownFormat,
@@ -1045,7 +1058,7 @@ impl<'a> ValidationState<'a> {
         &mut self,
         contract: &InlineFormatPropertyContractV1,
         properties: &PropertyMap,
-        path: &NodePath,
+        path: &NodePathCursor,
         format_index: usize,
     ) {
         for property in contract.properties() {
@@ -1097,7 +1110,7 @@ impl<'a> ValidationState<'a> {
         contract: &InlineFormatPropertyContractV1,
         property: &InlineFormatPropertySpecV1,
         value: &PropertyValue,
-        path: &NodePath,
+        path: &NodePathCursor,
         format_index: usize,
     ) {
         match property.value_type() {
@@ -1189,7 +1202,7 @@ impl<'a> ValidationState<'a> {
         contract: &InlineFormatPropertyContractV1,
         property: &InlineFormatPropertySpecV1,
         actual: PropertyValueKind,
-        path: &NodePath,
+        path: &NodePathCursor,
         format_index: usize,
         expected: PropertyValueKind,
     ) {
@@ -1210,7 +1223,7 @@ impl<'a> ValidationState<'a> {
     fn format_property_issue(
         &mut self,
         code: ValidationCode,
-        path: &NodePath,
+        path: &NodePathCursor,
         format_index: usize,
         name: &QualifiedName,
         detail: ValidationDetail,
@@ -1232,7 +1245,7 @@ impl<'a> ValidationState<'a> {
     fn visit_properties(
         &mut self,
         properties: &PropertyMap,
-        path: &NodePath,
+        path: &NodePathCursor,
         format_index: Option<usize>,
     ) {
         if properties.len() > self.limits.max_properties_per_owner {
@@ -1255,7 +1268,7 @@ impl<'a> ValidationState<'a> {
     fn visit_property_value(
         &mut self,
         value: &PropertyValue,
-        node_path: &NodePath,
+        node_path: &NodePathCursor,
         format_index: Option<usize>,
         name: &QualifiedName,
         value_path: &mut Vec<PropertyPathSegment>,
@@ -1350,7 +1363,7 @@ impl<'a> ValidationState<'a> {
     #[allow(clippy::too_many_arguments)]
     fn property_limit_issue(
         &mut self,
-        node_path: &NodePath,
+        node_path: &NodePathCursor,
         format_index: Option<usize>,
         name: &QualifiedName,
         value_path: &[PropertyPathSegment],

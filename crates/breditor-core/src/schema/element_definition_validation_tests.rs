@@ -72,3 +72,65 @@ fn unknown_element_still_checks_its_properties_identity_and_descendants()
     );
     Ok(())
 }
+
+#[test]
+fn retained_paths_survive_sibling_visits_and_depth_cutoffs() -> Result<(), Box<dyn Error>> {
+    let schema = CompiledSchema::breditor_base();
+    let identity = EntityId::try_new("shared-sibling-identity")?;
+    let paragraph = |children| {
+        ElementNode::try_new(
+            schema.paragraph_kind().clone(),
+            Some(identity.clone()),
+            PropertyMap::default(),
+            children,
+        )
+        .map(NodeRef::element)
+    };
+    let root = NodeRef::element(ElementNode::try_new(
+        schema.root_kind().clone(),
+        None,
+        PropertyMap::default(),
+        vec![
+            paragraph(vec![paragraph(vec![paragraph(vec![])?])?])?,
+            paragraph(vec![])?,
+            paragraph(vec![])?,
+        ],
+    )?);
+    let limits = DocumentLimits { max_node_depth: 1, ..DocumentLimits::default() };
+    let report = schema.validate_root(&root, &limits).err().ok_or("invalid tree admitted")?;
+    let duplicates: Vec<_> = report
+        .iter()
+        .filter(|issue| issue.code() == ValidationCode::DuplicateEntityId)
+        .map(|issue| (issue.path().to_vec(), issue.detail().clone()))
+        .collect();
+    assert_eq!(
+        duplicates,
+        vec![
+            (
+                vec![1],
+                ValidationDetail::DuplicateEntityId {
+                    first_path: NodePath::try_from_indices(vec![0])?
+                }
+            ),
+            (
+                vec![2],
+                ValidationDetail::DuplicateEntityId {
+                    first_path: NodePath::try_from_indices(vec![0])?
+                }
+            ),
+        ]
+    );
+    let depth_issues: Vec<_> = report
+        .iter()
+        .filter(|issue| {
+            matches!(
+                issue.detail(),
+                ValidationDetail::Limit { kind: crate::schema::LimitKind::NodeDepth, .. }
+            )
+        })
+        .map(|issue| issue.path().to_vec())
+        .collect();
+    assert_eq!(depth_issues, vec![vec![0, 0]]);
+    assert!(report.iter().all(|issue| issue.path().len() <= 2));
+    Ok(())
+}

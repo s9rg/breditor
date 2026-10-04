@@ -1869,3 +1869,32 @@ structural-history route, not every native persistence scenario. Chrome-native
 structural authoring/reload, broader selection cases, OS IME/screen-reader checks
 and the existing release gates remain open. No runtime or shipping change was
 needed, and nothing was pushed or published.
+
+## Reuse the validator's traversal path — 2026-10-04
+
+Full document validation now traverses with one private bounded path cursor,
+rather than allocating a new owned path at every node. Retained issues and
+entity-ID records receive independent immutable snapshots. Every recursive
+return, including depth/resource/report cutoffs, restores the parent cursor.
+All schema checks, depth limits, diagnostics and wire formats remain unchanged.
+
+The new retained-path regression passed before and after the change. All 1,124
+all-feature and 701 default core library tests passed, alongside strict Clippy,
+formatting, generated ABI/TypeScript/Node checks, five raw and five full DOM
+list/recovery runs per browser, and private packed consumers in all three engines.
+The isolated Wasm is 57 raw bytes and 192 gzip-9 bytes smaller; shipping bundles
+and existing size ceilings are unchanged.
+
+Old/new/old/new core measurements passed 108 correctness cases. At 500 items,
+post-edit action-state medians were 16/12.9/16.1/12.5 ms in Chromium,
+137/107/136/110 ms in Firefox and 14/11/14/12 ms in WebKit. A further full-editor
+old/new pair passed 54 cases, with edit medians 76.3/68.6, 240/204 and 122/118 ms
+respectively. This supports a local preparation improvement, not a completed
+responsiveness gate: samples are small, WebKit's full-editor ranges overlap,
+background load was not controlled, and large Firefox lists remain slow.
+
+Exact artifacts, report hashes and remaining limits are recorded in
+[cursor qualification](qualification/2026-10-04-validation-path-cursor.json).
+Earlier native evidence retains its original artifact identity. This candidate
+does not close IME, screen-reader, size/delivery, prior intermittent fault or full
+release gates. Nothing was pushed or published.

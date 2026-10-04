@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "602a696",
+  "status": "qualified-isolated-candidate-local-performance-improvement",
+  "releasePerformanceQualified": false,
+  "change": "Document validation reuses one private bounded NodePathCursor. Only retained validation issues and first entity-ID occurrences snapshot an immutable NodePath. Every recursive return pops its index before the next sibling. No node validation, schema rule, limit, error ordering or wire contract is skipped or changed.",
+  "baseline": {
+    "candidate": "target/flat-list-candidate-3ln0Nh",
+    "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+    "packageRecord": "target/flat-list-packages-D4gWtu/qualification.json",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-5SxlfD"
+  },
+  "candidate": {
+    "directory": "target/flat-list-candidate-Rq6C5V",
+    "qualificationSha256": "61a4e556599d35d22667d650d86c83ca327eb83c4e80c116976050f7b04490b5",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64",
+    "wasmBytes": 2044734,
+    "wasmGzip9Bytes": 568462,
+    "rawByteDelta": -57,
+    "gzip9ByteDelta": -192,
+    "packageRecord": "target/flat-list-packages-rjdsim/qualification.json",
+    "packageRecordSha256": "ed7588da2c971690288b5920fe60041d62fd7cd6834295f4c0ee4006dfdc053b",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-E5BqVV",
+    "browserTarballSha256": "deed032ff49856f8b51b817982bcebfbb75aa21ad85a15597c1476421474d67b",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d",
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "tests": [
+    "New retained-path sibling/depth-cutoff regression passed before the runtime change (1122 other library tests filtered). It checks duplicate-identity first paths and exact cutoff paths after traversal returns to later siblings.",
+    "All-feature core library: 1124 passed, including cursor snapshots across all 256 depths, failed extension preserving the cursor, root pop and reuse without modifying retained snapshots.",
+    "Default-feature core library: 701 passed.",
+    "Strict all-feature/all-target core Clippy and cargo fmt --check passed.",
+    "14 generated ABI/declaration tests, strict TypeScript, Node heading compatibility and Node list command/projection/recovery checks passed.",
+    "Five raw-Wasm runs each in Chromium, Firefox and WebKit passed.",
+    "Five full DOM/router/controller/toolbar/queue/adapter/IndexedDB/recovery runs each in Chromium, Firefox and WebKit passed.",
+    "Private installed consumers passed in all three engines; unchanged base Node/TypeScript/Chromium consumer smoke passed. Shipping trees verified unchanged by the pack checker."
+  ],
+  "measurements": {
+    "method": "Unchanged installed-package fixtures, sequential old/new/old/new core measurements followed by old/new full-browser measurements. Three independent cases at each of 10/100/500 items in each engine. No timeout or assertion was relaxed. All six reports reached measured after their correctness checks: 162 cases total.",
+    "coreRuns": [
+      {"artifact": "baseline", "report": "performance-mk7iEV/measurement.json", "sha256": "16c886b9bf1872d4557fba86ab3a04349044ee50d14c7270e4f6759400a4800b", "afterEdit500MediansMs": {"chromium": 16, "firefox": 137, "webkit": 14}},
+      {"artifact": "candidate", "report": "performance-9RJYpH/measurement.json", "sha256": "b21871e0e6f08d30c2e7110400dbdc3a6bdeeb133ddb0c7cfa3198df0aa71373", "afterEdit500MediansMs": {"chromium": 12.9, "firefox": 107, "webkit": 11}},
+      {"artifact": "baseline", "report": "performance-6lMHrP/measurement.json", "sha256": "2cffacc99593481d5d3dd932307f7d71a9fb0df865800317c0fedec33df76b12", "afterEdit500MediansMs": {"chromium": 16.1, "firefox": 136, "webkit": 14}},
+      {"artifact": "candidate", "report": "performance-vEwpIi/measurement.json", "sha256": "f0898461d8c99344b7efe63dbfdec7960b27f805f3402ac41dd885792f972efb", "afterEdit500MediansMs": {"chromium": 12.5, "firefox": 110, "webkit": 12}}
+    ],
+    "browserRuns": [
+      {"artifact": "baseline", "report": "performance-UhxEEW/measurement.json", "sha256": "5dc8930015c84ee90f0ac7f2c41a4659d84310aac0a2be4b3384d0b2bf5d9688", "edit500MediansMs": {"chromium": 76.3, "firefox": 240, "webkit": 122}},
+      {"artifact": "candidate", "report": "performance-gHuuLR/measurement.json", "sha256": "7967524227a708458253eb66cff6f5232264f52f9ac7f23cb27e4a9c019b56f1", "edit500MediansMs": {"chromium": 68.6, "firefox": 204, "webkit": 118}}
+    ],
+    "reportResolution": "Report paths are relative to the corresponding artifact consumer directory above.",
+    "interpretation": "Repeatable local reduction in core post-edit preparation across both alternating pairs. Full-editor medians also decreased in this single pair; WebKit ranges overlap. Not a p95, human input, multi-device or release-latency claim. Firefox 500-item edits remain slow."
+  },
+  "limits": [
+    "The initial cargo command was unavailable on PATH; the installed /Users/s/.cargo/bin/cargo was used. Its unscoped filtered baseline command continued launching unrelated zero-test integration binaries; those are not claimed as integration coverage or a quiet-machine baseline.",
+    "A read-only host CPU snapshot was denied by the sandbox. No background processes were stopped; an idle machine is not claimed.",
+    "Native Safari/Chrome evidence from earlier checkpoints belongs to the previous Wasm hash; it is not silently relabeled as native qualification of this candidate.",
+    "Size ceilings, optional delivery policy, IME, screen-reader qualification, prior intermittent faults/timeouts and the full release gate remain open."
+  ],
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}

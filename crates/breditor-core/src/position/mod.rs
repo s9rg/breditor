@@ -7,6 +7,7 @@ mod point_order;
 mod text_offset;
 
 pub use affinity::Affinity;
+pub(crate) use node_path::NodePathCursor;
 pub use node_path::{MAX_PATH_DEPTH, NodePath, NodePathError};
 pub use point::{Point, PointError, ResolvedPoint};
 pub use point_order::{PointComparisonError, PointOperand, compare_points};

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     document::{ElementNode, PropertyValueKind},
     identity::QualifiedName,
-    position::NodePath,
+    position::NodePathCursor,
     schema::element_property_contract::RequiredIntegerProperty,
 };
 
@@ -17,7 +17,7 @@ impl ValidationState<'_> {
     pub(super) fn validate_element_property_contract(
         &mut self,
         element: &ElementNode,
-        path: &NodePath,
+        path: &NodePathCursor,
         contract: Option<&RequiredIntegerProperty>,
     ) {
         let Some(contract) = contract else { return };
@@ -98,7 +98,7 @@ impl ValidationState<'_> {
     fn element_property_issue(
         &mut self,
         code: ValidationCode,
-        path: &NodePath,
+        path: &NodePathCursor,
         name: &QualifiedName,
         detail: ValidationDetail,
         message: &str,

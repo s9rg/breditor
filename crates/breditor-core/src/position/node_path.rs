@@ -2,6 +2,10 @@ use std::{fmt, sync::Arc};
 
 use thiserror::Error;
 
+#[path = "node_path_cursor.rs"]
+mod cursor;
+pub(crate) use cursor::NodePathCursor;
+
 /// Maximum number of child indexes in a structural path.
 pub const MAX_PATH_DEPTH: usize = 256;
 
