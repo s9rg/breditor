@@ -1484,3 +1484,37 @@ separate recheck with unchanged fixture, assertions and timeout passed. The runn
 now records DOM fixture status/output on failure as well. This improves the next
 diagnostic; it does not establish why the original profiling timeout occurred.
 Ordinary production A/B/A and DOM checks above passed independently.
+
+## Narrow heading replacement payloads — 2026-10-04
+
+The first beta remains flat bullet/numbered lists; nested lists follow later,
+as explicitly selected by the user. Paragraph/heading actions now replace only
+the touched block span. Complete intersected root children remain source guards,
+and the full list layout, numbering and final-document validation are unchanged.
+This is not a constant-time edit: guards are still traversed and list containers
+are rebuilt. No new operation tag, durable generation or public API was added.
+
+Two strengthened regressions first failed on the old action: a one-item edit
+inserted three blocks instead of one, and an end-at-zero selection included an
+excluded item in its replacement payload. Both now pass, with all 1,118 Rust
+library tests, strict Clippy and formatting checks. Tests retain exact selection,
+pending formats and undo/redo checks across all heading levels, empty/Unicode
+items, reverse selections and mixed root families, and add V6 recipe round trips.
+
+The isolated Wasm candidate passes ABI/Node checks and five raw-Wasm plus five
+full list DOM/recovery runs per engine. Fresh private installed-package consumers
+pass in Chromium, Firefox and WebKit, including the ordinary base consumer.
+Shipping outputs remain unchanged. See the retained
+[qualification record](qualification/2026-10-04-flat-list-heading-span.json).
+
+All 81 production A/B/A correctness cases passed. The 500-item edit medians
+(old/new/old) were Chromium 118/93/86 ms, Firefox 493/456/518 ms and WebKit
+175/167/165 ms. This does not establish an overall speedup: old-build results
+also drifted, and large-list latency remains open. The verified reduction is in
+the replacement span/payload, not a release-performance claim.
+
+Next: isolate the remaining action-state and DOM-validation costs before choosing
+another optimization. Native clipboard/IME/accessibility evidence, package-size
+and delivery qualification, broader historical WebKit investigation and the
+unexplained profiling timeout remain open. Nothing was pushed or published; the
+feature-expansion goal is still active.

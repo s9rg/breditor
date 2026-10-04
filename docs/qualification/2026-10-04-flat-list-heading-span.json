@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "f68f246",
+  "status": "narrow-heading-payload-correctness-passed-latency-open",
+  "releaseQualified": false,
+  "scope": "Flat bullet/numbered lists first; nesting deferred by explicit user choice",
+  "change": {
+    "file": "crates/breditor-core/src/action/builtins/set_flat_list_block_kind.rs",
+    "before": "Every block in the guarded roots was included in the replacement range and inserted fragments",
+    "after": "Only touched blocks form the range and inserted fragments; the operation preserves unselected prefix/suffix blocks",
+    "preserved": ["complete root guards", "list layout and numbering", "source/result and final-document validation", "exact selection and pending formats", "atomic history and inverse", "durable versions and ABI"],
+    "limitation": "Guard traversal, text checks and container reconstruction remain; this is not a constant-time edit"
+  },
+  "verification": {
+    "red": "Before the implementation change, kind_change_ selected 22 tests: 20 passed and two strengthened tests failed with inserted counts 3 vs 1 and 4 vs 3",
+    "green": "All 1118 experimental Rust library tests passed after the change",
+    "commands": [
+      "cargo test --locked -p breditor-core --features experimental-structural-properties --lib kind_change_ --quiet",
+      "cargo test --locked -p breditor-core --features experimental-structural-properties --lib --quiet",
+      "cargo clippy --locked -p breditor-core --features experimental-structural-properties --lib --tests -- -D warnings",
+      "cargo fmt --all -- --check",
+      "CARGO_BIN=/Users/s/.cargo/bin/cargo WASM_BINDGEN_BIN=/Users/s/.cargo/bin/wasm-bindgen node scripts/build-experimental-flat-list.mjs",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-KFh9lV --browser-dom",
+      "node scripts/check-experimental-flat-list-packages.mjs target/flat-list-candidate-KFh9lV"
+    ],
+    "clippyAndFormat": "passed",
+    "abiTestsPassed": 14,
+    "node": "List commands/recovery and retained heading compatibility passed",
+    "engines": ["Chromium 151.0.7922.34", "Firefox 153.0", "WebKit 26.5"],
+    "rawWasmRunsPerEngine": 5,
+    "domRunsPerEngine": 5,
+    "domScope": "Production list router/listeners, controllers, toolbar/queue/adapter, synthetic clipboard/composition, exact history, V6 recovery, native IndexedDB/SHA-256 autosave, high-level startup/rollback and backup recovery; not physical OS input",
+    "packedConsumers": "All three engines passed; base Node import, strict TypeScript and Chromium smoke passed against the same private installed artifacts"
+  },
+  "candidate": {
+    "directory": "target/flat-list-candidate-KFh9lV",
+    "wasmBytes": 2044380,
+    "wasmGzip9Bytes": 568550,
+    "wasmSha256": "9812ce42f74df2973fd1bfdf32dbe6619ff3f5f20a9983fb5b0c515b6281ab43",
+    "declarationsSha256": "b0bc19f07e305569a42a7c3c1f3246f718315df4e324d4c443bcdf7acc2a9d3b",
+    "packageRecord": "target/flat-list-packages-9M9jgg/qualification.json",
+    "browserTarballSha256": "8f11d2a64c8b37a09a307db1224da7d25e26d9fc3a39658e361dcb2a987aeba3",
+    "wasmTarballSha256": "620902eecf211cd1f027e73479e3949b00f70f12ebb853769215014806b25b7c",
+    "shippingArtifactsWritten": false,
+    "sizeBudgetQualified": false
+  },
+  "productionTiming": {
+    "method": "Sequential old/new/old qualified private installed-package runs; identical production-minified fixture and browser JS, no profiling or compilation overlap; three independent owners at each size per engine",
+    "fixtureSha256": "ef57f64044a4d3a8df69d17a080ac6018b1898d723d6be79013c60cac4a91171",
+    "sizes": [10, 100, 500],
+    "runs": [
+      {
+        "variant": "old-before",
+        "packageRecord": "target/flat-list-packages-kgarKa/qualification.json",
+        "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-GfGe8y/performance-SE7utJ/measurement.json",
+        "sha256": "118b003a44ed0ff2f1bb4103b3b8a41fc708908225534b929b02869156c8a0a5",
+        "status": "measured",
+        "editMedianMs": {"chromium": [4.4, 19.4, 117.8], "firefox": [17, 116, 493], "webkit": [7, 36, 175]}
+      },
+      {
+        "variant": "new",
+        "packageRecord": "target/flat-list-packages-9M9jgg/qualification.json",
+        "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-hG9PnA/performance-KTFGSf/measurement.json",
+        "sha256": "95586d70b5f7ee1b42e0fbb11880c58fd753824f6605d62d643fc5165fab8e2e",
+        "status": "measured",
+        "editMedianMs": {"chromium": [3.2, 17.8, 92.6], "firefox": [18, 113, 456], "webkit": [8, 37, 167]}
+      },
+      {
+        "variant": "old-after",
+        "packageRecord": "target/flat-list-packages-kgarKa/qualification.json",
+        "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-GfGe8y/performance-R0AKof/measurement.json",
+        "sha256": "cea1bb9ca5bffa62edcd2560f05584f8360b305b2ca91038857f0f498a5052fc",
+        "status": "measured",
+        "editMedianMs": {"chromium": [3.7, 19.1, 86.2], "firefox": [12, 101, 518], "webkit": [8, 37, 165]}
+      }
+    ],
+    "passedCorrectnessCases": 81,
+    "conclusion": "Narrower payloads are verified, but baseline drift prevents claiming an overall speedup. Large-list latency remains open."
+  },
+  "remaining": ["Large-list latency", "Optional delivery and size budget", "Native OS clipboard, IME and accessibility qualification", "Full release qualification and broader historical WebKit evidence", "Unexplained diagnostic profiling timeout"],
+  "pushedOrPublished": false
+}

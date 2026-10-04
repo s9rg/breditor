@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Restrict flat-list paragraph/heading replacement payloads to touched blocks,
+  while retaining complete list guards, layout and final-document validation.
+  Regression checks cover narrow ranges, empty and Unicode items, excluded end
+  boundaries, V6 round trips and exact selection/pending-format/history recovery.
+  Nested lists remain deferred; shipping artifacts and wire versions are unchanged.
+
 - Reuse a flat-list text replacement's validated derivation within one Rust
   application instead of reconstructing it twice. Keep full source/result and
   final-document checks; add a repeated-application budget regression. Add

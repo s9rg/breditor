@@ -438,6 +438,25 @@ fn kind_change_covers_all_ranks_and_preserves_exact_selection_and_pending() -> T
                 )?])
             };
             let before = state(&context, roots(source)?, selected.clone(), Some(formats()?))?;
+            let evaluated = SetFlatListBlockKindAction::new(target).evaluate(&before, &())?;
+            let ActionDecision::Enabled(plan) = evaluated.decision() else {
+                return Err("expected heading conversion plan".into());
+            };
+            let [crate::operation::Operation::FlatListTextReplace(op)] = plan.operations() else {
+                return Err("expected one list replacement".into());
+            };
+            // A complete list remains guarded, but only the selected item is
+            // replaced, including a collapsed empty paragraph and UTF-16 text.
+            assert_eq!(op.guard_start(), 0);
+            assert_eq!(op.expected(), roots(source)?);
+            assert_eq!(op.inserted().len(), 1);
+            assert_eq!(op.range().start_path().as_slice(), &[0, 1, 0]);
+            assert_eq!(op.range().end_path().as_slice(), &[0, 1, 0]);
+            assert_eq!(op.range().start_offset().get(), 0);
+            assert_eq!(op.range().end_offset().get(), if empty { 0 } else { 2 });
+            let codec = crate::codec::OperationJsonCodecV6::new(context.clone());
+            let operation = &plan.operations()[0];
+            assert_eq!(codec.decode(&codec.encode(operation)?)?, *operation);
             let mut session = EditorSession::new(before.clone());
             let registry = kind_registry(target)?;
             let prepared = registry.prepare(&before, &invocation("test/kind")?)?;
@@ -476,6 +495,18 @@ fn kind_change_excludes_end_zero_and_reports_mixed_across_root_families() -> Tes
             ])
         };
         let before = state(&context, roots(TextBlockKind::Paragraph)?, selection.clone(), None)?;
+        let evaluated = SetFlatListBlockKindAction::new(heading(3)?).evaluate(&before, &())?;
+        let ActionDecision::Enabled(plan) = evaluated.decision() else {
+            return Err("expected mixed heading conversion plan".into());
+        };
+        let [crate::operation::Operation::FlatListTextReplace(op)] = plan.operations() else {
+            return Err("expected one list replacement".into());
+        };
+        assert_eq!(op.expected(), roots(TextBlockKind::Paragraph)?);
+        assert_eq!(op.inserted().len(), 3);
+        assert_eq!(op.range().start_path().as_slice(), &[0]);
+        assert_eq!(op.range().end_path().as_slice(), &[2, 0, 0]);
+        assert_eq!(op.range().end_offset().get(), 1);
         let mut session = EditorSession::new(before.clone());
         let registry = kind_registry(heading(3)?)?;
         let prepared = registry.prepare(&before, &invocation("test/kind")?)?;

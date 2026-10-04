@@ -63,27 +63,27 @@ fn evaluate(state: &EditorState, target: TextBlockKind) -> Result<ActionEvaluati
     let source = FormatSource::capture(state, &range)?;
     let exclude_end = !range.is_same_paragraph() && range.end().offset() == TextOffset::ZERO;
     let mut replacement = Vec::new();
-    let mut selected = 0;
+    let mut first = None;
+    let mut last = None;
     let mut matched = 0;
     for block in &source.blocks {
         let touched = block.path >= *range.start().paragraph_path()
             && (block.path < *range.end().paragraph_path()
                 || (!exclude_end && block.path == *range.end().paragraph_path()));
-        replacement.push(if touched {
-            selected += 1;
+        if touched {
+            first.get_or_insert(block);
+            last = Some(block);
             matched += usize::from(
                 block_kind(&block.node)
                     .map_err(|_| fault("breditor/list-block-kind-source-fault"))?
                     == target,
             );
-            retype(&block.node, target)?
-        } else {
-            block.node.clone()
-        });
+            replacement.push(retype(&block.node, target)?);
+        }
     }
     let activation = if matched == 0 {
         ActionActivation::Inactive
-    } else if matched == selected {
+    } else if matched == replacement.len() {
         ActionActivation::Active
     } else {
         ActionActivation::Mixed
@@ -94,8 +94,11 @@ fn evaluate(state: &EditorState, target: TextBlockKind) -> Result<ActionEvaluati
     if let Some(decision) = require_operation_budget(state, 1) {
         return Ok(evaluation(decision, activation));
     }
-    let first = source.blocks.first().ok_or_else(|| fault("breditor/list-format-source-fault"))?;
-    let last = source.blocks.last().ok_or_else(|| fault("breditor/list-format-source-fault"))?;
+    let first = first.ok_or_else(|| fault("breditor/list-format-source-fault"))?;
+    let last = last.ok_or_else(|| fault("breditor/list-format-source-fault"))?;
+    // Keep complete root guards and layout, but replace only touched blocks.
+    // The operation preserves unselected prefixes/suffixes itself; including
+    // them here would unnecessarily reconstruct every item in a large list.
     let range = FlatListTextRange::try_new(
         first.path.clone(),
         TextOffset::ZERO,
