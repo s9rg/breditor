@@ -15,8 +15,9 @@ The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
 Experimental headings have a separately built browser demo. Flat lists now have
 gated Rust editing, exact retained undo/redo, explicit Session V6 recovery, and
 internal browser projection, ordinary-input and toolbar integration. The default
-packaged demo remains paragraph-only; the complete list editor owner/router,
-composition, clipboard and visible persistence still need integration. See
+packaged demo remains paragraph-only; ordinary/composition controllers and the
+toolbar are integrated internally, while the complete list editor owner/router,
+clipboard and visible persistence still need integration. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is

@@ -574,3 +574,28 @@ The release tests establish at least:
 23. the unchanged Enter/paste/Backspace routes can preserve one exact safe Link
     through structural edits, undo, checkpoint reload with both history
     directions, and redo without a browser-side operation or wire protocol.
+
+## Experimental flat-list composition controller
+
+`BreditorFlatListCompositionController` shares the private composition state
+machine with the existing controller while requiring list-mode queue, render,
+selection bridge and exact adapter executor. It retains task-bound settlement,
+single-use queue reservation, evidence conflict handling, quarantine/recovery and
+late-input receipt expiry. Lists use actual hierarchical target paths and list
+plain-text/delete actions; no browser-side operation protocol is introduced.
+
+Target ranges are spatially ordered and do not encode direction or affinity. If
+their validated span matches the captured semantic selection in the same text
+block, both controllers preserve that exact captured selection. If the native
+target genuinely changes, refinement adopts its newly validated range. A target
+crossing list items is rejected before native mutation, just as the base lease is
+limited to a single text block. Cancellation preserves the existing history-close
+policy and does not become text deletion merely because terminal data is empty.
+
+The real-Wasm list harness covers explicit and implicit starts, exact undo/redo
+and session restore, deletion, multiline text, empty items, structural cancellation
+and one-time late echoes. Its input is synthetic and its provisional DOM is
+scripted; WebKit requires a temporary target-range method fixture because its
+synthetic constructor drops those ranges. Full editor routing, OS IME and physical
+clipboard qualification remain separate gates. See
+[composition controller qualification](qualification/2026-10-04-flat-list-composition-controller.json).

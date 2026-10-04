@@ -5,6 +5,8 @@ import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "
 import { FlatListDocumentProjection } from "./flat_list_projection.js";
 import { FlatListRangeSelection } from "./flat_list_selection.js";
 import { reconcileFlatListCompositionDom } from "./dom_composition_reconcile.js";
+import { BreditorCompositionController, BreditorFlatListCompositionController,
+  type CompositionControllerNotification, type CompositionControllerOptions } from "./composition_controller.js";
 import { compileBrowserPresentation } from "./compiled_browser_presentation.js";
 import { createInlineFormatRenderManifest } from "./inline_format_render_manifest.js";
 import { issueCompositionDeliveryToken } from "./composition_delivery_token.js";
@@ -182,10 +184,11 @@ beforeEach(() => {
 });
 
 describe("explicit flat-list command adapter", () => {
-  function fixture() {
+  function fixture(extraItem = false) {
     const projection = FlatListDocumentProjection.create({schema: TEST_PROFILE_DESCRIPTOR.schema,
       snapshot: {lineage: "adapter-tests", revision: "0"}, blocks: [
-        {kind: "orderedList", start: 8, items: [{headingLevel: 2, runs: [{text: "A🙂", formatDetails: []}]}]},
+        {kind: "orderedList", start: 8, items: [{headingLevel: 2, runs: [{text: "A🙂", formatDetails: []}]},
+          ...(extraItem ? [{headingLevel: null, runs: [{text: "B", formatDetails: []}]}] : [])]},
       ]}, TEST_PROFILE_GENERATION, TEST_PROFILE_DESCRIPTOR);
     if (!projection.ok) throw new Error(projection.error.code);
     const renderer = new BreditorDomRenderer(compileBrowserPresentation(TEST_PROFILE_GENERATION, TEST_PROFILE_DESCRIPTOR,
@@ -202,17 +205,142 @@ describe("explicit flat-list command adapter", () => {
     preserveSelectionSync(), {kind: "api", detail: "lists"},
     {kind: "action", actionId: "breditor/toggle-flat-list-strong", input: {kind: "none"}});
 
-  function compositionAdapterFixture() {
-    const f = fixture(); const initial = observation(0); const engine = engineQueues({});
+  function compositionAdapterFixture(input: Parameters<typeof engineQueues>[0] = {}, extraItem = false) {
+    const f = fixture(extraItem); const initial = observation(0); const engine = engineQueues(input);
     const action = vi.spyOn(engine, "executeStringAction");
+    const selectionSync = vi.spyOn(engine, "setRangeSelection");
+    const closeHistory = vi.spyOn(engine, "closeHistoryGroup");
     const adapter = new BreditorFlatListWasmCommandAdapter(engine, initial, f.options);
     const selected = FlatListRangeSelection.create(adapter.rendered.projection, {kind: "range",
       anchor: {kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 3, affinity: "before"},
       focus: {kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 1, affinity: "after"}});
     if (!selected.ok) throw new Error(selected.error.code);
-    return {...f, initial, engine, action, adapter, selected: selected.value,
+    return {...f, initial, engine, action, selectionSync, closeHistory, adapter, selected: selected.value,
       dispose() { adapter.dispose(); f.bridge.dispose(); f.host.remove(); }};
   }
+
+  function compositionControllerFixture(options: CompositionControllerOptions<FlatListDocumentProjection> = {},
+    input: Parameters<typeof engineQueues>[0] = {}, extraItem = false) {
+    const f = compositionAdapterFixture(input, extraItem);
+    if (!f.bridge.write(f.adapter.rendered, f.selected).ok) throw new Error("initial selection write failed");
+    const queue = new BreditorFlatListCommandQueue(f.adapter.commandExecutor);
+    const tasks: Array<() => void> = [];
+    const notices: CompositionControllerNotification<FlatListDocumentProjection>[] = [];
+    const controller = new BreditorFlatListCompositionController(queue, f.adapter, {
+      scheduleTask: task => { tasks.push(task); }, onSettlement: notice => { notices.push(notice); }, ...options,
+    });
+    const text = f.adapter.rendered.nodeForAstPath([0, 0, 0, 0])!;
+    const range = document.createRange(); range.setStart(text, 1); range.setEnd(text, 3);
+    const composition = (type: string, data = "") => controller.handleCompositionEvent({type, data, target: f.host,
+      cancelable: false, defaultPrevented: false});
+    const before = (ranges: AbstractRange[] = [range]) => {
+      const event = {type: "beforeinput", inputType: "insertCompositionText", data: "漢", isComposing: true,
+        target: f.host, cancelable: true, defaultPrevented: false, getTargetRanges: () => ranges,
+        preventDefault() { this.defaultPrevented = true; }};
+      return {result: controller.handleBeforeInput(event), event};
+    };
+    const runNext = () => { const task = tasks.shift(); if (!task) throw new Error("missing task"); task(); };
+    return {...f, queue, controller, tasks, notices, range, text, composition, before, runNext,
+      dispose() { controller.dispose(); queue.dispose(); f.dispose(); }};
+  }
+
+  it("list composition controller rejects base mode and foreign executor wiring", () => {
+    const f = compositionControllerFixture();
+    try {
+      // @ts-expect-error The base facade cannot receive list dependencies.
+      expect(() => new BreditorCompositionController(f.queue, f.adapter)).toThrow("queue");
+      const foreign = new BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>(() => { throw new Error("unused"); });
+      expect(() => new BreditorFlatListCompositionController(foreign, f.adapter)).toThrow("executor");
+      foreign.dispose();
+    } finally { f.dispose(); }
+  });
+
+  it.each([false, true])("list composition opens with implicit=%s and preserves exact backward refinement", implicit => {
+    const f = compositionControllerFixture(); const refine = vi.spyOn(f.adapter, "refineCompositionLease");
+    try {
+      Object.defineProperty(f.controller, "flatLists", {value: false});
+      if (!implicit) expect(f.composition("compositionstart")).toMatchObject({kind: "native"});
+      expect(f.before().result).toEqual({kind: "native", phase: "mutating"});
+      if (implicit) expect(f.composition("compositionstart").kind).toBe("native");
+      expect(refine).toHaveBeenCalledOnce(); expect(refine.mock.calls[0]![1]).toBe(f.selected);
+      const port = openFlatListCommandQueueLeasePort(f.queue, f.adapter.commandExecutor)!;
+      expect(port.acquireLease()).toBeUndefined();
+      expect(f.controller.dispose().kind).toBe("disposed");
+      const lease = port.acquireLease(); expect(lease).toBeDefined(); if (lease) port.releaseLease(lease);
+      expect(f.bridge.read(f.adapter.rendered)).toMatchObject({ok: true, value: {selection: f.selected}});
+    } finally { refine.mockRestore(); f.dispose(); }
+  });
+
+  it.each(["missing", "scalar", "cross-item"])("list composition refuses %s targets and recovers without a command", fault => {
+    const f = compositionControllerFixture({}, {}, true);
+    try {
+      f.composition("compositionstart");
+      const range = document.createRange(); range.setStart(f.text, fault === "scalar" ? 2 : 1);
+      const end = fault === "cross-item" ? f.adapter.rendered.nodeForAstPath([0, 1, 0, 0])! : f.text;
+      range.setEnd(end, fault === "cross-item" ? 1 : 3);
+      const result = f.before(fault === "missing" ? [] : [range]);
+      expect(result.result).toMatchObject({kind: "recoveryRequired", reason: fault === "missing" ? "targetUnavailable" : "targetInvalid"});
+      expect(result.event.defaultPrevented).toBe(true); expect(f.controller.phase).toBe("quarantined");
+      f.runNext(); expect(f.notices[0]?.kind).toBe("recovered");
+      expect(f.controller.phase).toBe("idle"); expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it("list composition still refines a genuinely different native target", () => {
+    const f = compositionControllerFixture(); const refine = vi.spyOn(f.adapter, "refineCompositionLease");
+    try {
+      f.composition("compositionstart");
+      const range = document.createRange(); range.setStart(f.text, 0); range.setEnd(f.text, 1);
+      expect(f.before([range]).result).toEqual({kind: "native", phase: "mutating"});
+      const selected = refine.mock.calls[0]![1];
+      expect(selected).not.toBe(f.selected); expect(selected.order).toBe("forward");
+      expect(selected.anchor).toMatchObject({textPath: [0, 0, 0, 0], utf16Offset: 0});
+      expect(selected.focus).toMatchObject({textPath: [0, 0, 0, 0], utf16Offset: 1});
+    } finally { refine.mockRestore(); f.dispose(); }
+  });
+
+  it("list composition quarantines structural drift and schedules exact cancellation recovery", () => {
+    const f = compositionControllerFixture();
+    try {
+      f.composition("compositionstart"); f.before();
+      f.host.querySelector("h2")!.textContent = "A漢"; f.host.querySelector("ol")!.start = 99;
+      expect(f.composition("compositionend", "漢").kind).toBe("scheduled");
+      f.runNext(); expect(f.notices[0]).toEqual({kind: "recoveryRequired", reason: "domReconcileFailed"});
+      f.runNext(); expect(f.notices[1]?.kind).toBe("recovered");
+      expect(f.host.querySelector("h2")!.textContent).toBe("A🙂"); expect(f.host.querySelector("ol")!.start).toBe(8);
+      expect(f.bridge.read(f.adapter.rendered)).toMatchObject({ok: true, value: {selection: f.selected}});
+      expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it("list composition cancellation retains selection and emits only the explicit history boundary", () => {
+    const f = compositionControllerFixture({}, {
+      setSelection: [commandResult({status: "unchanged", successor: observation(0)}).view],
+      closeHistory: [commandResult({status: "unchanged", successor: observation(0)}).view],
+    });
+    try {
+      f.composition("compositionstart"); f.before(); f.composition("compositionend");
+      f.runNext(); expect(f.notices[0]).toMatchObject({kind: "settled", settlement: {kind: "cancelled"}});
+      expect(f.controller.phase).toBe("idle"); expect(f.closeHistory).toHaveBeenCalledOnce(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.bridge.read(f.adapter.rendered)).toMatchObject({ok: true, value: {selection: f.selected}});
+    } finally { f.dispose(); }
+  });
+
+  it("list composition never retries a generated command after uncertainty", () => {
+    const f = compositionControllerFixture();
+    try {
+      f.composition("compositionstart"); f.before(); f.host.querySelector("h2")!.textContent = "A漢";
+      f.composition("compositionend", "漢"); f.runNext();
+      expect(f.notices[0]).toEqual({kind: "recoveryRequired", reason: "uncertain"});
+      expect(f.controller.phase).toBe("quarantined"); f.runNext();
+      expect(f.notices[1]).toEqual({kind: "recoveryRequired", reason: "uncertain"});
+      expect(f.queue.failure).toBeDefined(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.selectionSync).toHaveBeenCalledOnce();
+      // Selection synchronization is the first generated step; it throws in
+      // this empty engine fixture, so no content action is ever attempted.
+      expect(f.adapter.state).toBe("faulted");
+    } finally { f.dispose(); }
+  });
 
   it("owns a one-use list composition lease and restores exact selection without a Rust edit", () => {
     const f = compositionAdapterFixture();

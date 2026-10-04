@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "d97f213",
+  "status": "List composition event scheduling and delivery integrated; full editor routing and OS IME qualification remain open",
+  "contracts": {
+    "implementation": "Shared private generic controller with explicit base/list facades; fixed private mode and exact adapter-executor queue lease",
+    "target": "Full hierarchical text-block paths, scalar UTF-16 endpoints and same-block refinement; crossing items rejects before native mutation",
+    "selectionFix": "Preserve captured direction, affinities and endpoint representation when ordered native target spans the same text; genuinely different targets still refine",
+    "delivery": "List plain-text/delete actions through the existing leased command path; cancellation retains explicit closeHistoryGroup with preserve requirements",
+    "lifecycle": "Shared explicit/implicit starts, terminal evidence, task settlement, quarantine/recovery, disposal and one-use epoch/render-bound late-input receipts",
+    "legacy": "Default public types retain base projection parameters; no shipping exports or wire-format change"
+  },
+  "verification": {
+    "newTests": 11,
+    "browserTests": 1799,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Real list controller/queue/adapter/Wasm, native-branded synthetic composition/input events and scripted provisional DOM. Explicit/implicit starts, insertion/deletion/multiline/empty-item composition, queue exclusion, one-time late echoes, exact backward/child-point selection undo, fresh-owner Session V6 redo, cancellation and structural-drift recovery.",
+    "syntheticConstructorProbe": [
+      {"browser": "chromium", "insertFromCompositionInputType": "", "insertCompositionTextInputType": "insertCompositionText", "targetRangeCount": 1},
+      {"browser": "firefox", "insertFromCompositionInputType": "insertFromComposition", "insertCompositionTextInputType": "insertCompositionText", "targetRangeCount": 1},
+      {"browser": "webkit", "insertFromCompositionInputType": "insertFromComposition", "insertCompositionTextInputType": "insertCompositionText", "targetRangeCount": 0}
+    ],
+    "developmentCorrections": [
+      "A new base-controller regression first failed: backward offsets 3->1 became forward 1->3 and anchor affinity changed. Shared same-span preservation fixes it; list browser undo proves exact original endpoints/affinities.",
+      "Initial controller browser run passed Firefox but failed Chromium late-echo assumptions and WebKit synthetic target-range construction. A separate constructor probe verified the recorded differences. The harness uses standard terminal insertCompositionText and a temporary specific-event platform-method target fixture when the constructor omits ranges. Production event admission was not weakened.",
+      "Four focused unit failures were fixture errors: three omitted explicit null headingLevel on an additional paragraph item; one installed a spy after the adapter captured the generated method. Fixed the fixtures before the passing full run.",
+      "Typecheck caught missing narrowing for base/list queue ports. Explicit mode and instance checks preserve private queue ownership. Review also retained the existing cancellation history policy."
+    ],
+    "commands": [
+      "npm test --workspace @breditor/browser -- src/composition_controller.test.ts -t 'preserves exact backward selection'",
+      "npm test --workspace @breditor/browser -- src/composition_controller.test.ts src/wasm_command_adapter.test.ts",
+      "npm test --workspace @breditor/browser",
+      "npm run typecheck --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Supported list clipboard and full editor owner/router integration",
+    "Visible reload/backup and physical native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Synthetic event and target-range fixtures, not a physical OS IME or complete visible list editor. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

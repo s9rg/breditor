@@ -1197,3 +1197,32 @@ or OS IME certification. Next is list composition-controller routing, followed b
 clipboard and full editor owner/router integration, visible reload/backup and
 native/release gates. Shipping artifacts remain unchanged; nothing was pushed or
 published. See [verification](qualification/2026-10-04-flat-list-composition-lease.json).
+
+## Flat-list composition event controller checkpoint
+
+`BreditorFlatListCompositionController` now shares the existing private event,
+evidence, scheduling, lease, quarantine/recovery and echo state machine with the
+base controller. Its fixed list mode requires the list queue, bridge, render and
+exact adapter executor. Target refinement compares real text-block paths; settled
+insert/delete commands select list actions through the shared command builder.
+Cancellation retains the existing explicit close-history command policy.
+
+A new failing regression identified a pre-existing shared refinement bug: an
+ordered native target covering a backward range replaced its exact direction and
+affinities. Refinement now retains the captured selection when both spans match
+within the same block; a genuinely different target still receives a newly
+validated selection. Base and list tests prove both behaviors.
+
+All 1,799 browser tests (11 new), strict TypeScript and temporary declaration
+emission pass. Five runs each in Chromium, Firefox and WebKit drive real
+controllers with synthetic composition/input events through insertion, deletion,
+multiline replacement and empty-item insertion. Exact undo/redo, saved redo in a
+fresh Session V6 owner, queue exclusion, cancellation, structural recovery and
+one-use late echoes pass. WebKit's synthetic constructor omits target ranges, so
+the isolated harness supplies that platform method for the specific fixture
+event and restores it immediately; this is not OS-input evidence.
+
+Next: supported list clipboard flows and the full editor owner/router, then
+visible persistence and physical native-input/accessibility/release gates.
+Shipping artifacts are unchanged. Nothing was pushed or published. See
+[verification](qualification/2026-10-04-flat-list-composition-controller.json).

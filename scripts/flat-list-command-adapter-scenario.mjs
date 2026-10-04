@@ -3,6 +3,7 @@ import { bootstrapFlatListWasmEngine } from "../packages/breditor-browser/src/wa
 import { BreditorFlatListWasmCommandAdapter, contentReadPortsForAdapter } from "../packages/breditor-browser/src/wasm_command_adapter.ts";
 import { BreditorFlatListCommandQueue, openFlatListCommandQueueLeasePort } from "../packages/breditor-browser/src/command_queue.ts";
 import { reconcileFlatListCompositionDom } from "../packages/breditor-browser/src/dom_composition_reconcile.ts";
+import { verifyFlatListCompositionController } from "./flat-list-composition-controller-scenario.mjs";
 import { BreditorActionStateStore } from "../packages/breditor-browser/src/action_state_store.ts";
 import { BreditorToolbar } from "../packages/breditor-browser/src/toolbar.ts";
 import { FLAT_LIST_TOOLBAR_MANIFEST } from "../packages/breditor-browser/src/flat_list_toolbar_manifest.ts";
@@ -289,6 +290,8 @@ export function verifyFlatListCommandAdapter(api, semanticProfile, documentJson)
     const resumedComposition = boot({kind: "sessionCheckpoint", checkpointJson: compositionCheckpoint.checkpoint.checkpointJson});
     resumedComposition.send({kind: "history", operation: "redo"});
     equal(resumedComposition.documentRoot(), composedRoot); equal(resumedComposition.selection(), composedSelection);
+
+    verifyFlatListCompositionController(boot, documentJson);
 
     const controls = boot({kind: "document", lineageId: "list-toolbar", documentJson, historyCapacity: 20});
     const selected = value(FlatListRangeSelection.create(controls.adapter.rendered.projection, {kind: "range",

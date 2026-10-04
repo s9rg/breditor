@@ -328,6 +328,16 @@ beforeEach(() => {
 });
 
 describe("BreditorCompositionController", () => {
+  it("preserves exact backward selection when the ordered native target covers the same span", () => {
+    const original = selection(3, 1);
+    const fixture = setup(original);
+    try {
+      start(fixture);
+      beforeInput(fixture, "insertCompositionText", "x", targetRange(fixture, 1, 3));
+      expect(fixture.adapter.lease?.selection).toBe(original);
+    } finally { fixture.controller.dispose(); }
+  });
+
   it.each([
     ["beforeinput", false], ["beforeinput", true], ["beforeinput", "throw"],
     ["input", false], ["input", true], ["input", "throw"],

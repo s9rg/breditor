@@ -1,5 +1,7 @@
 import {
   BreditorCommandQueue,
+  BreditorFlatListCommandQueue,
+  openFlatListCommandQueueLeasePort,
   openCommandQueueLeasePort,
   type CommandQueueLease,
   type CommandQueueLeasePort,
@@ -29,7 +31,7 @@ import {
   type CompositionSignal,
   type CompositionState,
 } from "./composition_state.js";
-import { reconcileCompositionDom } from "./dom_composition_reconcile.js";
+import { reconcileCompositionDom, reconcileFlatListCompositionDom } from "./dom_composition_reconcile.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
   preventDomEventDefault,
@@ -40,18 +42,19 @@ import {
 import { nativeHtmlHostFacts } from "./html_host.js";
 import {
   isOwnedRenderedProjection,
+  isOwnedFlatListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
-import { BreditorDomSelectionBridge } from "./dom_selection.js";
-import { mapDomTargetRange } from "./dom_target_range.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
+import { mapDomTargetRange, mapDomFlatListTargetRange } from "./dom_target_range.js";
 import {
-  browserInputActionIds,
-  closeHistoryGroupRequest,
+  flatListRangeSelectionSync,
   isEditorDeliveryAuthority,
-  noInputActionRequest,
   rangeSelectionSync,
-  stringActionRequest,
   type EditorDeliveryToken,
+  type FlatListEditorDeliveryToken,
+  type EditorCommandRequest,
+  type FlatListEditorCommandRequest,
   type EditorDeliveryAuthority,
 } from "./editor_command.js";
 import {
@@ -60,22 +63,35 @@ import {
 } from "./selection.js";
 import {
   type BreditorWasmCommandAdapter,
+  type BreditorFlatListWasmCommandAdapter,
+  type WasmRenderReconciliationOutcome,
   type WasmCommandSequenceOutcome,
   type WasmCompositionLeaseRestoreOutcome,
 } from "./wasm_command_adapter.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
+import { astPathsEqual } from "./ast_path.js";
+import type { BaseDocumentProjection } from "./projection.js";
+import type { FlatListDocumentProjection } from "./flat_list_projection.js";
+import { FlatListRangeSelection, isOwnedFlatListRangeSelection, flatListSpatialPositionForPoint } from "./flat_list_selection.js";
+import { nativeCommandBuilder } from "./native_command_builder.js";
+
+type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type Delivery<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListEditorDeliveryToken : EditorDeliveryToken;
+type Selection<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
+type Request<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListEditorCommandRequest : EditorCommandRequest;
+
 /** A completed, non-queued Rust composition delivery. */
-export interface CompositionCommandSubmission {
+export interface CompositionCommandSubmission<P extends CompositionProjection = BaseDocumentProjection> {
   readonly status: "completed";
   readonly sequence: bigint;
-  readonly result: WasmCommandSequenceOutcome;
+  readonly result: WasmCommandSequenceOutcome<P>;
 }
 
 /** A fresh canonical browser base from which the caller may resume routing. */
-export interface CompositionControllerResume {
-  readonly rendered: RenderedProjection;
-  readonly delivery: EditorDeliveryToken;
+export interface CompositionControllerResume<P extends CompositionProjection = BaseDocumentProjection> {
+  readonly rendered: RenderedProjection<P>;
+  readonly delivery: Delivery<P>;
 }
 
 /** Stable inert reasons which never expose event or composition payloads. */
@@ -87,11 +103,11 @@ export type CompositionControllerIgnoreReason =
   | "alreadyDefaultPrevented";
 
 /** Terminal result of one synchronous or task-boundary settlement. */
-export type CompositionControllerTerminal =
+export type CompositionControllerTerminal<P extends CompositionProjection = BaseDocumentProjection> =
   | Readonly<{
       kind: "settled";
-      settlement: CompositionSettlement<CompositionCommandSubmission>;
-      resume: CompositionControllerResume;
+      settlement: CompositionSettlement<CompositionCommandSubmission<P>>;
+      resume: CompositionControllerResume<P>;
     }>
   | Readonly<{
       kind: "recoveryRequired";
@@ -99,78 +115,76 @@ export type CompositionControllerTerminal =
     }>;
 
 /** Successful canonical recovery reported after an earlier quarantine. */
-export interface CompositionControllerRecovery {
+export interface CompositionControllerRecovery<P extends CompositionProjection = BaseDocumentProjection> {
   readonly kind: "recovered";
-  readonly resume: CompositionControllerResume;
+  readonly resume: CompositionControllerResume<P>;
 }
 
 /** Task-boundary lifecycle notifications emitted by the controller. */
-export type CompositionControllerNotification =
-  | CompositionControllerTerminal
-  | CompositionControllerRecovery;
+export type CompositionControllerNotification<P extends CompositionProjection = BaseDocumentProjection> =
+  | CompositionControllerTerminal<P>
+  | CompositionControllerRecovery<P>;
 
 /** Payload-redacted result of front-routing one native composition signal. */
-export type CompositionControllerDisposition =
+export type CompositionControllerDisposition<P extends CompositionProjection = BaseDocumentProjection> =
   | Readonly<{ kind: "native"; phase: CompositionPhase }>
   | Readonly<{ kind: "scheduled"; phase: "ending" }>
   | Readonly<{ kind: "lateInputEcho" }>
   | Readonly<{ kind: "ignored"; reason: CompositionControllerIgnoreReason }>
-  | CompositionControllerRecovery
+  | CompositionControllerRecovery<P>
   | Readonly<{ kind: "disposed" }>
-  | CompositionControllerTerminal;
+  | CompositionControllerTerminal<P>;
 
 /** Scheduling and observation hooks; neither receives native event payloads. */
-export interface CompositionControllerOptions {
+export interface CompositionControllerOptions<P extends CompositionProjection = BaseDocumentProjection> {
   /** Enqueue a later task synchronously; promise/thenable returns are invalid. */
   readonly scheduleTask?: (callback: () => void) => void;
   /** Observational only; thrown errors and async rejections are contained. */
-  readonly onSettlement?: (result: CompositionControllerNotification) => void;
+  readonly onSettlement?: (result: CompositionControllerNotification<P>) => void;
 }
 
-interface AdapterSurface {
+interface AdapterSurface<P extends CompositionProjection> {
   readonly commandExecutor: (
-    request: Parameters<BreditorWasmCommandAdapter["execute"]>[0],
-  ) => WasmCommandSequenceOutcome;
-  readonly rendered: RenderedProjection;
+    request: Request<P>,
+  ) => WasmCommandSequenceOutcome<P>;
+  readonly rendered: RenderedProjection<P>;
   readonly state: BreditorWasmCommandAdapter["state"];
-  readonly selectionBridge: BreditorWasmCommandAdapter["selectionBridge"];
+  readonly selectionBridge: BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
   readonly deliveryAuthority: EditorDeliveryAuthority;
-  acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken;
-  deliveryToken(): EditorDeliveryToken;
+  acceptsDeliveryToken(token: unknown): token is Delivery<P>;
+  deliveryToken(): Delivery<P>;
   beginCompositionLease(
-    delivery: EditorDeliveryToken,
-    selection: BaseRangeSelection,
+    delivery: Delivery<P>,
+    selection: Selection<P>,
     sessionId: bigint,
-  ): CompositionDeliveryToken;
+  ): CompositionDeliveryToken<P>;
   refineCompositionLease(
-    token: CompositionDeliveryToken,
-    selection: BaseRangeSelection,
-  ): CompositionDeliveryToken;
-  openCompositionDomLease(token: CompositionDeliveryToken): boolean;
+    token: CompositionDeliveryToken<P>,
+    selection: Selection<P>,
+  ): CompositionDeliveryToken<P>;
+  openCompositionDomLease(token: CompositionDeliveryToken<P>): boolean;
   restoreCompositionLease(
-    token: CompositionDeliveryToken,
-  ): WasmCompositionLeaseRestoreOutcome;
+    token: CompositionDeliveryToken<P>,
+  ): WasmCompositionLeaseRestoreOutcome<P>;
   recoverCompositionLease(
-    token: CompositionDeliveryToken,
-  ): WasmCompositionLeaseRestoreOutcome;
-  restoreCanonicalRender(): ReturnType<
-    BreditorWasmCommandAdapter["restoreCanonicalRender"]
-  >;
+    token: CompositionDeliveryToken<P>,
+  ): WasmCompositionLeaseRestoreOutcome<P>;
+  restoreCanonicalRender(): WasmRenderReconciliationOutcome<P>;
 }
 
-interface ActiveSession {
+interface ActiveSession<P extends CompositionProjection> {
   readonly sessionId: bigint;
   readonly queueLease: CommandQueueLease;
-  token: CompositionDeliveryToken;
-  selection: BaseRangeSelection;
-  restored: CompositionControllerResume | undefined;
+  token: CompositionDeliveryToken<P>;
+  selection: Selection<P>;
+  restored: CompositionControllerResume<P> | undefined;
 }
 
-interface LateInputReceipt {
+interface LateInputReceipt<P extends CompositionProjection> {
   readonly sessionId: bigint;
   readonly text: string;
-  readonly rendered: RenderedProjection;
-  readonly delivery: EditorDeliveryToken;
+  readonly rendered: RenderedProjection<P>;
+  readonly delivery: Delivery<P>;
 }
 
 type TargetRangeSnapshot =
@@ -195,36 +209,38 @@ const defaultScheduleTask = (callback: () => void): void => {
  * exact Rust command delivery. Native events and target ranges are reduced to
  * immutable semantic values synchronously and are never retained.
  */
-export class BreditorCompositionController {
-  readonly #queuePort: CommandQueueLeasePort<WasmCommandSequenceOutcome>;
-  readonly #adapter: AdapterSurface;
+class CompositionControllerCore<P extends CompositionProjection> {
+  readonly #queuePort: CommandQueueLeasePort<WasmCommandSequenceOutcome<P>, Request<P>>;
+  readonly #adapter: AdapterSurface<P>;
+  readonly #flatLists: boolean;
   readonly #scheduleTask: (callback: () => void) => void;
   readonly #onSettlement:
-    | ((result: CompositionControllerNotification) => void)
+    | ((result: CompositionControllerNotification<P>) => void)
     | undefined;
   #state: CompositionState = initialCompositionState();
-  #active: ActiveSession | undefined;
-  #lateInput: LateInputReceipt | undefined;
+  #active: ActiveSession<P> | undefined;
+  #lateInput: LateInputReceipt<P> | undefined;
 
   constructor(
-    queue: BreditorCommandQueue<WasmCommandSequenceOutcome>,
-    adapter: BreditorWasmCommandAdapter,
-    options: CompositionControllerOptions = {},
+    queue: BreditorCommandQueue<WasmCommandSequenceOutcome<P>> | BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<P>>,
+    adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter,
+    options: CompositionControllerOptions<P>,
+    flatLists: boolean,
   ) {
-    if (!(queue instanceof BreditorCommandQueue)) {
+    if (!(flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("composition queue is invalid");
     }
-    const surface = adapter as AdapterSurface;
+    const surface = adapter as unknown as AdapterSurface<P>;
     let adapterValid = false;
-    let executor: AdapterSurface["commandExecutor"] | undefined;
+    let executor: AdapterSurface<P>["commandExecutor"] | undefined;
     try {
       executor = surface.commandExecutor;
       adapterValid =
         typeof executor === "function" &&
         surface.commandExecutor === executor &&
-        surface.selectionBridge instanceof BreditorDomSelectionBridge &&
+        (flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
         isEditorDeliveryAuthority(surface.deliveryAuthority) &&
-        isOwnedRenderedProjection(surface.rendered) &&
+        (flatLists ? isOwnedFlatListRenderedProjection(surface.rendered) : isOwnedRenderedProjection(surface.rendered)) &&
         typeof surface.deliveryToken === "function" &&
         typeof surface.acceptsDeliveryToken === "function" &&
         typeof surface.beginCompositionLease === "function" &&
@@ -239,7 +255,11 @@ export class BreditorCompositionController {
     if (!adapterValid || executor === undefined) {
       throw new TypeError("composition adapter is invalid");
     }
-    const queuePort = openCommandQueueLeasePort(queue, executor);
+    const queuePort = (flatLists && queue instanceof BreditorFlatListCommandQueue
+      ? openFlatListCommandQueueLeasePort(queue, executor as (request: FlatListEditorCommandRequest) => WasmCommandSequenceOutcome<P>)
+      : !flatLists && queue instanceof BreditorCommandQueue
+        ? openCommandQueueLeasePort(queue, executor as (request: EditorCommandRequest) => WasmCommandSequenceOutcome<P>) : undefined
+    ) as CommandQueueLeasePort<WasmCommandSequenceOutcome<P>, Request<P>> | undefined;
     if (queuePort === undefined) {
       throw new TypeError("composition queue must own the adapter executor");
     }
@@ -255,6 +275,7 @@ export class BreditorCompositionController {
     ) {
       throw new TypeError("composition settlement observer is invalid");
     }
+    this.#flatLists = flatLists;
     this.#queuePort = queuePort;
     this.#adapter = surface;
     this.#scheduleTask = scheduleTask;
@@ -276,7 +297,7 @@ export class BreditorCompositionController {
   }
 
   /** Front-routes compositionstart, compositionupdate, and compositionend. */
-  handleCompositionEvent(event: unknown): CompositionControllerDisposition {
+  handleCompositionEvent(event: unknown): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") {
       return recovery("disposed");
     }
@@ -346,7 +367,7 @@ export class BreditorCompositionController {
   }
 
   /** Front-routes only composition-related beforeinput before native mutation. */
-  handleBeforeInput(event: unknown): CompositionControllerDisposition {
+  handleBeforeInput(event: unknown): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") return recovery("disposed");
     const base = readDomEventBase(event);
     if (base === null || base.type !== "beforeinput") {
@@ -412,7 +433,7 @@ export class BreditorCompositionController {
   }
 
   /** Front-routes composition input and consumes at most one late terminal echo. */
-  handleInput(event: unknown): CompositionControllerDisposition {
+  handleInput(event: unknown): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") return recovery("disposed");
     const base = readDomEventBase(event);
     if (base === null || base.type !== "input") return this.#invalidEvent(false);
@@ -468,7 +489,7 @@ export class BreditorCompositionController {
   }
 
   /** An owned keydown after terminal evidence may synchronously settle first. */
-  handleKeyDown(event: unknown): CompositionControllerDisposition {
+  handleKeyDown(event: unknown): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") return recovery("disposed");
     const key = snapshotKeyDown(event);
     if (key === null) return this.#invalidEvent(false);
@@ -489,7 +510,7 @@ export class BreditorCompositionController {
   }
 
   /** Blur ends a lease, but changed DOM without final evidence cannot commit. */
-  handleBlur(event: unknown): CompositionControllerDisposition {
+  handleBlur(event: unknown): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") return recovery("disposed");
     const basic = snapshotBasicEvent(event, "blur");
     if (basic === null) return this.#invalidEvent(false);
@@ -501,12 +522,12 @@ export class BreditorCompositionController {
   }
 
   /** Attempts canonical restoration, releases the exact queue lease, and exits quarantine. */
-  recover(): CompositionControllerDisposition {
+  recover(): CompositionControllerDisposition<P> {
     return this.#recover();
   }
 
   /** Scheduled recovery must use the same implementation, not a public override. */
-  #recover(): CompositionControllerDisposition {
+  #recover(): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") return recovery("disposed");
     if (this.#state.phase !== "quarantined") return ignored("inactive");
     const active = this.#active;
@@ -524,7 +545,7 @@ export class BreditorCompositionController {
   }
 
   /** Restores or reconciles owned DOM, releases its queue lease, and becomes inert. */
-  dispose(): CompositionControllerDisposition {
+  dispose(): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") return Object.freeze({ kind: "disposed" });
     const active = this.#active;
     if (active !== undefined) {
@@ -541,19 +562,19 @@ export class BreditorCompositionController {
     return Object.freeze({ kind: "disposed" });
   }
 
-  #start(kind: "start" | "implicitStart"): CompositionControllerDisposition | null {
+  #start(kind: "start" | "implicitStart"): CompositionControllerDisposition<P> | null {
     const rendered = this.#adapter.rendered;
-    let selected: BaseRangeSelection;
-    let delivery: EditorDeliveryToken;
+    let selected: Selection<P>;
+    let delivery: Delivery<P>;
     try {
       if (!hostConnected(rendered.host) || !rendered.current || !rendered.validateCanonicalDom()) {
         return recovery("staleBase");
       }
-      const observed = this.#adapter.selectionBridge.read(rendered);
-      if (!observed.ok || observed.value.kind !== "range") {
+      const observed = this.#readSelection(rendered);
+      if (observed === null) {
         return recovery("targetUnavailable");
       }
-      selected = observed.value.selection;
+      selected = observed;
       delivery = this.#adapter.deliveryToken();
     } catch {
       return recovery("staleBase");
@@ -565,7 +586,7 @@ export class BreditorCompositionController {
     }
     const queueLease = this.#queuePort.acquireLease();
     if (queueLease === undefined) return recovery("queueRejected");
-    let token: CompositionDeliveryToken;
+    let token: CompositionDeliveryToken<P>;
     try {
       token = this.#adapter.beginCompositionLease(
         delivery,
@@ -598,42 +619,74 @@ export class BreditorCompositionController {
     return null;
   }
 
-  #refineAndOpen(event: unknown): CompositionControllerDisposition | null {
+  #readSelection(rendered: RenderedProjection<P>): Selection<P> | null {
+    const bridge = this.#adapter.selectionBridge;
+    const observed = this.#flatLists && isOwnedFlatListRenderedProjection(rendered) && bridge instanceof BreditorFlatListDomSelectionBridge
+      ? bridge.read(rendered)
+      : !this.#flatLists && isOwnedRenderedProjection(rendered) && bridge instanceof BreditorDomSelectionBridge
+        ? bridge.read(rendered) : null;
+    return observed?.ok && observed.value.kind === "range" ? observed.value.selection as Selection<P> : null;
+  }
+
+  #refinedTargetSelection(range: AbstractRange, captured: Selection<P>): Selection<P> | null {
+    const rendered = this.#adapter.rendered;
+    if (this.#flatLists && isOwnedFlatListRenderedProjection(rendered)) {
+      const mapped = mapDomFlatListTargetRange(rendered, range);
+      if (!mapped.ok) return null;
+      const refined = FlatListRangeSelection.create(rendered.projection, {
+        kind: "range", anchor: mapped.value.start, focus: mapped.value.end,
+      });
+      if (!refined.ok) return null;
+      const anchor = flatListSpatialPositionForPoint(rendered.projection, refined.value.anchor);
+      const focus = flatListSpatialPositionForPoint(rendered.projection, refined.value.focus);
+      if (anchor === null || focus === null || !astPathsEqual(anchor.textBlockPath, focus.textBlockPath)) return null;
+      const originalAnchor = flatListSpatialPositionForPoint(rendered.projection, captured.anchor);
+      const originalFocus = flatListSpatialPositionForPoint(rendered.projection, captured.focus);
+      if (captured.projection === rendered.projection && originalAnchor !== null && originalFocus !== null &&
+        astPathsEqual(originalAnchor.textBlockPath, anchor.textBlockPath) &&
+        astPathsEqual(originalFocus.textBlockPath, anchor.textBlockPath) &&
+        sameCompositionSpan(originalAnchor.utf16Offset, originalFocus.utf16Offset, anchor.utf16Offset, focus.utf16Offset)) {
+        return captured;
+      }
+      return refined.value as Selection<P>;
+    }
+    if (!this.#flatLists && isOwnedRenderedProjection(rendered)) {
+      const mapped = mapDomTargetRange(rendered, range);
+      if (!mapped.ok) return null;
+      const refined = BaseRangeSelection.create(rendered.projection, {
+        kind: "range", anchor: mapped.value.start, focus: mapped.value.end,
+      });
+      if (!refined.ok) return null;
+      const anchor = spatialPositionForPoint(rendered.projection, refined.value.anchor);
+      const focus = spatialPositionForPoint(rendered.projection, refined.value.focus);
+      if (anchor === null || focus === null || anchor.paragraphIndex !== focus.paragraphIndex) return null;
+      const originalAnchor = spatialPositionForPoint(rendered.projection, captured.anchor);
+      const originalFocus = spatialPositionForPoint(rendered.projection, captured.focus);
+      if (captured.projection === rendered.projection && originalAnchor !== null && originalFocus !== null &&
+        originalAnchor.paragraphIndex === anchor.paragraphIndex && originalFocus.paragraphIndex === anchor.paragraphIndex &&
+        sameCompositionSpan(originalAnchor.utf16Offset, originalFocus.utf16Offset, anchor.utf16Offset, focus.utf16Offset)) {
+        return captured;
+      }
+      return refined.value as Selection<P>;
+    }
+    return null;
+  }
+
+  #refineAndOpen(event: unknown): CompositionControllerDisposition<P> | null {
     const active = this.#active;
     if (active === undefined || this.#state.phase !== "leased") {
       return this.#quarantine("invalidTransition");
     }
     const target = snapshotSingleTargetRange(event);
     if (!target.ok) return this.#quarantine("targetUnavailable");
-    const mapped = mapDomTargetRange(this.#adapter.rendered, target.range);
-    if (!mapped.ok) return this.#quarantine("targetInvalid");
-    const refined = BaseRangeSelection.create(this.#adapter.rendered.projection, {
-      kind: "range",
-      anchor: mapped.value.start,
-      focus: mapped.value.end,
-    });
-    if (!refined.ok) return this.#quarantine("targetInvalid");
-    const anchor = spatialPositionForPoint(
-      refined.value.projection,
-      refined.value.anchor,
-    );
-    const focus = spatialPositionForPoint(
-      refined.value.projection,
-      refined.value.focus,
-    );
-    if (
-      anchor === null ||
-      focus === null ||
-      anchor.paragraphIndex !== focus.paragraphIndex
-    ) {
-      return this.#quarantine("targetInvalid");
-    }
+    const refined = this.#refinedTargetSelection(target.range, active.selection);
+    if (refined === null) return this.#quarantine("targetInvalid");
     try {
       active.token = this.#adapter.refineCompositionLease(
         active.token,
-        refined.value,
+        refined,
       );
-      active.selection = refined.value;
+      active.selection = refined;
       if (!this.#adapter.openCompositionDomLease(active.token)) {
         return this.#quarantine("staleBase");
       }
@@ -658,7 +711,7 @@ export class BreditorCompositionController {
     return true;
   }
 
-  #end(kind: "end" | "definitiveEnd" | "blur"): CompositionControllerDisposition {
+  #end(kind: "end" | "definitiveEnd" | "blur"): CompositionControllerDisposition<P> {
     const signal: CompositionSignal = { kind };
     const transition = reduceCompositionState(this.#state, signal);
     if (!transition.ok) return this.#quarantine("invalidTransition");
@@ -698,13 +751,13 @@ export class BreditorCompositionController {
     });
   }
 
-  #settle(): CompositionControllerTerminal {
+  #settle(): CompositionControllerTerminal<P> {
     const active = this.#active;
     if (active === undefined || this.#state.phase !== "settling") {
       return this.#quarantine("invalidTransition");
     }
     if (!hostConnected(active.token.host)) return this.#quarantine("staleBase");
-    const reconciled = reconcileCompositionDom(
+    const reconciled = (this.#flatLists ? reconcileFlatListCompositionDom : reconcileCompositionDom)(
       active.token.host,
       active.token.projection,
       active.selection,
@@ -721,7 +774,7 @@ export class BreditorCompositionController {
           : "domReconcileFailed",
       );
     }
-    let restored: WasmCompositionLeaseRestoreOutcome;
+    let restored: WasmCompositionLeaseRestoreOutcome<P>;
     try {
       restored = this.#adapter.restoreCompositionLease(active.token);
     } catch {
@@ -732,29 +785,16 @@ export class BreditorCompositionController {
 
     let request;
     try {
-      const selection = rangeSelectionSync(restored.selection);
-      request = candidate.value.kind === "cancel"
-        ? closeHistoryGroupRequest(
-            restored.delivery,
-            selection,
-            { kind: "beforeinput", detail: "composition-cancel" },
-          )
+      const selection = isOwnedFlatListRangeSelection(restored.selection)
+        ? flatListRangeSelectionSync(restored.selection) : rangeSelectionSync(restored.selection);
+      const builder = nativeCommandBuilder(this.#flatLists, restored.delivery, selection);
+      const source = {kind: "beforeinput" as const, detail: candidate.value.kind === "cancel" ? "composition-cancel" : "composition"};
+      request = builder.request(source, candidate.value.kind === "cancel"
+        ? {kind: "control", operation: "closeHistoryGroup"}
         : candidate.value.kind === "insert"
-          ? stringActionRequest(
-              restored.delivery,
-              selection,
-              { kind: "beforeinput", detail: "composition" },
-              browserInputActionIds(restored.delivery).insertPlainText,
-              candidate.value.text,
-              "closeBefore",
-            )
-          : noInputActionRequest(
-              restored.delivery,
-              selection,
-              { kind: "beforeinput", detail: "composition" },
-              browserInputActionIds(restored.delivery).deleteSelection,
-              "closeBefore",
-            );
+          ? {kind: "action", actionId: builder.actionIds().insertPlainText, input: {kind: "string", value: candidate.value.text}}
+          : {kind: "action", actionId: builder.actionIds().deleteSelection, input: {kind: "none"}},
+        candidate.value.kind === "cancel" ? "preserve" : "closeBefore") as Request<P>;
     } catch {
       return this.#quarantine("uncertain");
     }
@@ -763,7 +803,7 @@ export class BreditorCompositionController {
     // observer reports failure. The pre-command resume must never authorize
     // recovery after this point.
     active.restored = undefined;
-    let submission: CommandQueueLeasedSubmission<WasmCommandSequenceOutcome>;
+    let submission: CommandQueueLeasedSubmission<WasmCommandSequenceOutcome<P>>;
     try {
       submission = this.#queuePort.submitLeased(
         active.queueLease,
@@ -787,7 +827,7 @@ export class BreditorCompositionController {
       return this.#quarantine("uncertain");
     }
 
-    let resume: CompositionControllerResume;
+    let resume: CompositionControllerResume<P>;
     try {
       resume = freezeResume(this.#adapter.rendered, this.#adapter.deliveryToken());
     } catch {
@@ -806,11 +846,11 @@ export class BreditorCompositionController {
   }
 
   #finish(
-    settlement: CompositionSettlement<CompositionCommandSubmission>,
-    resume: CompositionControllerResume,
-    active: ActiveSession,
+    settlement: CompositionSettlement<CompositionCommandSubmission<P>>,
+    resume: CompositionControllerResume<P>,
+    active: ActiveSession<P>,
     finalText: string,
-  ): CompositionControllerTerminal {
+  ): CompositionControllerTerminal<P> {
     if (!this.#queuePort.releaseLease(active.queueLease)) {
       return this.#quarantine("uncertain");
     }
@@ -828,13 +868,13 @@ export class BreditorCompositionController {
     return Object.freeze({ kind: "settled", settlement, resume });
   }
 
-  #invalidEvent(invalidText: boolean): CompositionControllerDisposition {
+  #invalidEvent(invalidText: boolean): CompositionControllerDisposition<P> {
     return this.#isActive()
       ? this.#quarantine(invalidText ? "invalidText" : "invalidEvent")
       : recovery(invalidText ? "invalidText" : "invalidEvent");
   }
 
-  #admitIdleTarget(target: EventTarget | null): CompositionControllerDisposition | null {
+  #admitIdleTarget(target: EventTarget | null): CompositionControllerDisposition<P> | null {
     const rendered = this.#adapter.rendered;
     if (!hostConnected(rendered.host)) return ignored("outsideHost");
     const ownership = classifyDomEventOwnership(rendered.host, target);
@@ -843,7 +883,7 @@ export class BreditorCompositionController {
       : ownershipDisposition(ownership);
   }
 
-  #admitActiveTarget(target: EventTarget | null): CompositionControllerDisposition | null {
+  #admitActiveTarget(target: EventTarget | null): CompositionControllerDisposition<P> | null {
     const active = this.#active;
     if (active === undefined) return recovery("orphanInput");
     if (!hostConnected(active.token.host)) return this.#quarantine("staleBase");
@@ -853,7 +893,7 @@ export class BreditorCompositionController {
       : ownershipDisposition(ownership);
   }
 
-  #quarantine(reason: CompositionAbortReason): CompositionControllerTerminal {
+  #quarantine(reason: CompositionAbortReason): CompositionControllerTerminal<P> {
     let newlyQuarantined = false;
     if (
       this.#state.phase !== "idle" &&
@@ -898,7 +938,7 @@ export class BreditorCompositionController {
     }
   }
 
-  #matchesLateInputBase(receipt: LateInputReceipt): boolean {
+  #matchesLateInputBase(receipt: LateInputReceipt<P>): boolean {
     return this.#resumeIsCurrent(receipt);
   }
 
@@ -917,7 +957,7 @@ export class BreditorCompositionController {
     }
   }
 
-  #resumeIsCurrent(resume: CompositionControllerResume): boolean {
+  #resumeIsCurrent(resume: CompositionControllerResume<P>): boolean {
     try {
       return (
         this.#adapter.rendered === resume.rendered &&
@@ -961,7 +1001,7 @@ export class BreditorCompositionController {
     return !synchronous;
   }
 
-  #notify(result: CompositionControllerNotification): void {
+  #notify(result: CompositionControllerNotification<P>): void {
     try {
       containAsyncRejection(this.#onSettlement?.(result));
     } catch {
@@ -982,14 +1022,14 @@ export class BreditorCompositionController {
     preventDomEventDefault(event);
   }
 
-  #restoreForRecovery(active: ActiveSession): CompositionControllerResume | undefined {
+  #restoreForRecovery(active: ActiveSession<P>): CompositionControllerResume<P> | undefined {
     if (active.restored !== undefined) {
       if (this.#resumeIsCurrent(active.restored)) return active.restored;
       active.restored = undefined;
     }
     try {
       if (this.#adapter.state === "composition") {
-        let restored: WasmCompositionLeaseRestoreOutcome;
+        let restored: WasmCompositionLeaseRestoreOutcome<P>;
         try {
           restored = this.#adapter.restoreCompositionLease(active.token);
         } catch {
@@ -1016,12 +1056,33 @@ export class BreditorCompositionController {
   }
 }
 
+/** Paragraph/heading composition; preserves the existing base-only contract. */
+export class BreditorCompositionController extends CompositionControllerCore<BaseDocumentProjection> {
+  constructor(queue: BreditorCommandQueue<WasmCommandSequenceOutcome>, adapter: BreditorWasmCommandAdapter,
+    options: CompositionControllerOptions = {}) { super(queue, adapter, options, false); }
+}
+
+/** Explicit list-mode event scheduling over the shared composition state machine. @internal */
+export class BreditorFlatListCompositionController extends CompositionControllerCore<FlatListDocumentProjection> {
+  constructor(queue: BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
+    adapter: BreditorFlatListWasmCommandAdapter, options: CompositionControllerOptions<FlatListDocumentProjection> = {}) {
+    super(queue, adapter, options, true);
+  }
+}
+
 function isCompositionInputQuirk(inputType: string): boolean {
   return (
     inputType === "insertText" ||
     inputType === "deleteContentBackward" ||
     inputType === "deleteContentForward"
   );
+}
+
+/** Native target ranges have no direction or affinity. Keep both when the
+ * captured semantic range names the same spatial span; a genuinely different
+ * IME target still replaces the range through normal checked refinement. */
+function sameCompositionSpan(anchor: number, focus: number, start: number, end: number): boolean {
+  return Math.min(anchor, focus) === Math.min(start, end) && Math.max(anchor, focus) === Math.max(start, end);
 }
 
 function compositionInputEvidence(
@@ -1083,7 +1144,7 @@ function snapshotBasicEvent(
 
 function ownershipDisposition(
   ownership: ReturnType<typeof classifyDomEventOwnership>,
-): CompositionControllerDisposition | null {
+): ReturnType<typeof ignored> | null {
   if (ownership === "owned") return null;
   return ownership === "nestedControl"
     ? ignored("nestedControl")
@@ -1098,23 +1159,23 @@ function hostConnected(host: HTMLElement): boolean {
   }
 }
 
-function freezeResume(
-  rendered: RenderedProjection,
-  delivery: EditorDeliveryToken,
-): CompositionControllerResume {
+function freezeResume<P extends CompositionProjection>(
+  rendered: RenderedProjection<P>,
+  delivery: Delivery<P>,
+): CompositionControllerResume<P> {
   return Object.freeze({ rendered, delivery });
 }
 
-function native(phase: CompositionPhase): CompositionControllerDisposition {
+function native(phase: CompositionPhase): Readonly<{kind: "native"; phase: CompositionPhase}> {
   return Object.freeze({ kind: "native", phase });
 }
 
 function ignored(
   reason: CompositionControllerIgnoreReason,
-): CompositionControllerDisposition {
+): Readonly<{kind: "ignored"; reason: CompositionControllerIgnoreReason}> {
   return Object.freeze({ kind: "ignored", reason });
 }
 
-function recovery(reason: CompositionAbortReason): CompositionControllerTerminal {
+function recovery(reason: CompositionAbortReason): Readonly<{kind: "recoveryRequired"; reason: CompositionAbortReason}> {
   return Object.freeze({ kind: "recoveryRequired", reason });
 }

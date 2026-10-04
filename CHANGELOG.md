@@ -6,6 +6,13 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Connect experimental list composition events to the shared controller, queue
+  lease, strict DOM reconciliation and Rust command path. Cover explicit/implicit
+  starts, cancellation, recovery and one-time late-input echoes. Fix shared
+  target refinement losing backward selection direction and affinities when
+  the native ordered range covers exactly the captured semantic span. Genuine
+  target changes still refine normally. OS IME qualification remains pending.
+
 - Extend experimental list composition ownership through the shared renderer
   and production Wasm adapter. Reconcile provisional text by its exact list-item
   path; reject structural, numbering and neighboring-text drift. Restore or
