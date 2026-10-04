@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "8d7f0ee",
+  "status": "typing-group-affinity-fix-qualified-locally",
+  "releaseQualified": false,
+  "rootCause": "A successful DOM selection write stores the Rust selection's exact affinity, which native Selection cannot represent. The bridge previously deleted that record after its first matching read. A subsequent read of the unchanged interior caret derived after affinity instead of the original before affinity. Rust correctly treated the changed semantic selection as a state-only change and closed the typing merge group. End-of-text carets derive before affinity already and did not reproduce the failure.",
+  "reproduction": {
+    "command": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-3ln0Nh BREDITOR_LIST_TEST_PORT=4188 npm run test:demo:lists -- tests/lists/typing-history.spec.ts --project=chromium",
+    "scenario": "Type ABC at offset 0, 5, or the end of Write a first draft in the first numbered item. Undo once must restore the original document.",
+    "before": {"failed": 2, "passed": 1, "failedPositions": ["start", "middle"], "passingPosition": "end"},
+    "retainedDirectory": "target/list-typing-history-before-20261004",
+    "startTraceSha256": "ebbe4176f1eb44f64a00949f479df225e06c0c1278cd08b76f7f89477d4f6e4b",
+    "middleTraceSha256": "d4510a666bb954e0201a8d6baf5350231dc34583d54beeeedf241a1e35e8e93a"
+  },
+  "fix": "Keep exact semantic affinity for a still-current, canonical render and exactly matching directional DOM endpoint signature. Consume only echoPending on the first read. Subsequent reads have origin dom but retain the exact semantic range. Nonmatching/absent/outside selection, failed reads, generation changes, explicit clear and disposal still invalidate the sidecar. No equality relaxation in Rust, skipped validation or wire change.",
+  "compatibility": "Shared base/list bridge source behavior changes for repeated matching reads: origin remains dom after the first read, but exact semantic selection/affinity is retained instead of reconstructed. Current contracts updated. Shipping artifacts remain unchanged pending release qualification.",
+  "tests": {
+    "browserRuntimeUnitTests": 1838,
+    "selectionUnitTestsAfterLifecycleStrengthening": 68,
+    "initialFixedTypingMatrix": 9,
+    "fullListDemoMatrix": 45,
+    "baseEditorSourceMatrix": 78,
+    "listDomControllerRecoveryRunsPerEngine": 5,
+    "strictBrowserAndListDemoTypes": "passed",
+    "automaticRetries": 0
+  },
+  "extendedCoverage": [
+    "Start/middle/end list typing groups survive autosave/reload, one-step undo, saved redo and second reload",
+    "ArrowLeft then ArrowRight to the same offset separates a subsequent typing group; two undos/redos retain exact document history",
+    "Repeated caret/forward/backward reads retain exact affinity but suppress only one programmatic echo",
+    "Observed movement, explicit clear and disposal discard even a consumed affinity sidecar",
+    "Existing stale-generation, DOM-drift, alias, cross-host, directional selection, composition, clipboard and toolbar regressions remain green"
+  ],
+  "commands": [
+    "npm run test --workspace @breditor/browser",
+    "npm run typecheck --workspace @breditor/browser",
+    "npm run typecheck:demo:lists",
+    "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-3ln0Nh BREDITOR_LIST_TEST_PORT=4188 npm run test:demo:lists",
+    "npx playwright test --config target/typing-affinity-source.playwright.ts tests/browser/editor.spec.ts",
+    "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-3ln0Nh --browser-dom",
+    "node scripts/check-experimental-flat-list-packages.mjs target/flat-list-candidate-3ln0Nh"
+  ],
+  "baseSourceConfiguration": {
+    "scope": "Temporary Vite aliases point only browser root/advanced imports to current source; shipping Wasm/reference artifacts and existing editor.spec.ts remain unchanged. Full ordinary editor spec, original timeouts, one worker, zero retries.",
+    "vite": "target/typing-affinity-source.vite.ts",
+    "viteSha256": "6ae1cbbc31dad650b3449400b31ffb1ccc36d3ac0adedc83cc4aa085177c6f08",
+    "playwright": "target/typing-affinity-source.playwright.ts",
+    "playwrightSha256": "ce76ac57043796a2795e824bb4aa1f0f17ad5289c48573846028d919c3a20884",
+    "initialSetupFailure": "Server initially resolved target/target/config because Playwright used the temporary config directory as cwd. Set explicit repository cwd; no tests had run and no product source was changed for this correction."
+  },
+  "candidate": "target/flat-list-candidate-3ln0Nh",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "packageRecord": "target/flat-list-packages-D4gWtu/qualification.json",
+  "packageRecordSha256": "2ba72eed479c2c5f17aedd46cedb2286c5883fc1e86f07d407c4e25063970563",
+  "browserTarballSha256": "deed032ff49856f8b51b817982bcebfbb75aa21ad85a15597c1476421474d67b",
+  "wasmTarballSha256": "73b0a2836603a6159ce79d1216fdacdabc03d91365b2d1382fc4d462cc4effe3",
+  "packedConsumers": "All three list browser engines and existing base Node/strict TypeScript/Chromium smoke passed against the same private installed tarballs.",
+  "shippingUnchanged": true,
+  "sizeBudgetQualified": false,
+  "priorTimeoutsResolved": false,
+  "limitations": ["Native endpoint observations cannot distinguish an unchanged range from a move away and back that was never observed", "Physical clipboard/IME/screen-reader gates remain open", "Earlier intermittent browser faults/timeouts are not resolved by this fix", "Delivery policy, size ceilings, large-list responsiveness and full release qualification remain open"],
+  "pushedOrPublished": false
+}

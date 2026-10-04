@@ -6,6 +6,11 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Preserve exact selection affinity across repeated reads of an unchanged DOM
+  range while keeping programmatic-echo suppression one-use. This fixes typing
+  undo groups splitting at interior list carets. Real movement, changed render,
+  DOM drift, clear and disposal still invalidate the selection sidecar.
+
 - Cover scripted composition in the production list demo, including formatted
   heading replacement, deferred autosave, exact directional selection/history
   after V6 reload, cancellation and invalid-structure recovery. Construct native

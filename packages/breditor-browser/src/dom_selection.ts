@@ -103,6 +103,8 @@ interface SuppressionReceipt {
   readonly rendererGeneration: bigint;
   readonly signature: string;
   readonly selection: AnyRangeSelection | null;
+  /** Suppression is one-use; exact affinity lasts while this DOM range matches. */
+  readonly echoPending: boolean;
 }
 
 type RenderPreflight =
@@ -260,9 +262,17 @@ class DomSelectionBridgeCore {
       }
       const exact = this.#matchingReceiptSelection(rendered, signature);
       if (exact !== null) {
-        this.#receipt = undefined;
+        const receipt = this.#receipt!;
+        const origin = receipt.echoPending ? "programmaticEcho" : "dom";
+        // Reading a caret does not move it. Consuming echo suppression must not
+        // replace its exact affinity with a boundary-derived guess: that would
+        // publish a fictitious selection change and split a typing undo group.
+        // Every read still validates the current render, DOM and exact endpoints.
+        if (receipt.echoPending) {
+          this.#receipt = Object.freeze({ ...receipt, echoPending: false });
+        }
         return selectionSuccess(
-          Object.freeze({ kind: "range", selection: exact, origin: "programmaticEcho" }),
+          Object.freeze({ kind: "range", selection: exact, origin }),
         );
       }
       this.#receipt = undefined;
@@ -386,6 +396,7 @@ class DomSelectionBridgeCore {
           rendererGeneration: rendered.rendererGeneration,
           signature: "none",
           selection: null,
+          echoPending: true,
         });
         return selectionSuccess(
           Object.freeze({ kind: "none", rendererGeneration: rendered.rendererGeneration }),
@@ -474,6 +485,7 @@ class DomSelectionBridgeCore {
         rendererGeneration: rendered.rendererGeneration,
         signature,
         selection,
+        echoPending: true,
       });
       return selectionSuccess(
         Object.freeze({ kind: "range", rendererGeneration: rendered.rendererGeneration }),
@@ -523,7 +535,7 @@ class DomSelectionBridgeCore {
     }
   }
 
-  /** Explicitly forgets the generation-bound programmatic echo receipt. */
+  /** Forgets both the generation-bound echo and exact-affinity sidecar. */
   clearSuppression(): void {
     this.#receipt = undefined;
   }
@@ -581,7 +593,7 @@ export class BreditorDomSelectionBridge {
 
 /**
  * Explicit hierarchical-list bridge. Shares native selection ownership, rollback,
- * document-wide write exclusion and one-use exact affinity receipts with the
+ * document-wide write exclusion, one-use echoes and exact-affinity sidecars with the
  * legacy bridge, but never admits legacy handles or ranges. @internal
  */
 export class BreditorFlatListDomSelectionBridge {

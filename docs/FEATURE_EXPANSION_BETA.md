@@ -1742,3 +1742,32 @@ recovery without assuming grouping semantics. Native input is still unqualified:
 a fresh desktop inventory reports the Mac locked. Shipping trees and runtime
 code are unchanged, and nothing was pushed or published. Delivery policy, size,
 responsiveness, timeout investigation and full release gates remain open.
+
+## Fix typing undo-group fragmentation — 2026-10-04
+
+The prior checkpoint's typing-history follow-up is now reproduced and fixed in
+the browser selection bridge. Before the fix, typing `ABC` at the start or
+middle of a numbered item failed one-step undo; typing at its end passed.
+Consuming the one-use programmatic echo also discarded exact Rust affinity.
+A later read of the unchanged interior caret derived a different affinity,
+causing Rust to correctly publish a selection change and close the merge group.
+
+Echo suppression is still one-use, but an exact-affinity sidecar now survives
+repeated reads of the same canonical render and directional DOM signature.
+Actual observed movement, wrapper aliases, stale generations, invalid DOM,
+missing/outside selections, explicit clear and disposal still discard it.
+No Rust equality, selection validation, wire format or shipping artifact changed.
+The current selection contracts document the new repeated-read behavior and
+the inherent inability to observe a move away/back that leaves no observation.
+
+All 1,838 browser-runtime unit tests pass; the strengthened selection suite has
+68 tests. All 45 list-demo cases pass in three engines, including grouped typing
+through two reloads and distinct groups after ArrowLeft/ArrowRight returns to
+the same offset. The ordinary paragraph editor passes 78 source-based browser
+cases; the list DOM/controller/recovery harness passes five runs per engine.
+Private installed packages pass the list matrix and existing base consumer.
+Strict TypeScript passes. See [evidence](qualification/2026-10-04-typing-affinity.json).
+
+This is a selection-bookkeeping fix, not a general WebKit or performance fix.
+Native qualification, earlier timeouts, size/delivery decisions and full release
+gates remain open. No push or publication was performed.

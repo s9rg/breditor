@@ -118,7 +118,7 @@ describe("flat-list selection bridge and Wasm coordinates", () => {
     return {generation, host, projection, rendered, renderer, bridge, point, range, view, make};
   }
 
-  it.each(["caret", "forward", "backward"])("preserves %s direction and one-use exact affinity receipt", direction => {
+  it.each(["caret", "forward", "backward"])("preserves %s affinity across repeated reads while suppressing only one echo", direction => {
     const {host, rendered, bridge, range, point} = fixture();
     const start = point([0, 0, 0, 0], 1, "before");
     const end = point([1, 0], 2, "before");
@@ -128,7 +128,11 @@ describe("flat-list selection bridge and Wasm coordinates", () => {
     const echo = selectionValue(bridge.read(rendered));
     expect(echo).toMatchObject({kind: "range", origin: "programmaticEcho", selection: {order: direction === "caret" ? "collapsed" : direction}});
     if (echo.kind === "range") expect(echo.selection).toBe(requested);
-    expect(selectionValue(bridge.read(rendered))).toMatchObject({kind: "range", origin: "dom"});
+    for (let index = 0; index < 3; index++) {
+      const repeated = selectionValue(bridge.read(rendered));
+      expect(repeated).toMatchObject({kind: "range", origin: "dom"});
+      if (repeated.kind === "range") expect(repeated.selection).toBe(requested);
+    }
     expect(bridge.write(rendered, requested).ok).toBe(true);
     expect(domSelection(host).getRangeAt(0)).toBe(installed);
   });
@@ -145,6 +149,19 @@ describe("flat-list selection bridge and Wasm coordinates", () => {
     expect(bridge.write(rendered, null).ok).toBe(true);
     expect(selectionValue(bridge.read(rendered))).toEqual({kind: "unavailable", reason: "noDomRange", origin: "programmaticEcho"});
     expect(selectionValue(bridge.read(rendered))).toEqual({kind: "unavailable", reason: "noDomRange", origin: "dom"});
+  });
+
+  it("forgets consumed list affinity after observed movement, even if the caret returns", () => {
+    const {host, rendered, bridge, range, point} = fixture();
+    const requested = range(point([0, 0, 0, 0], 1, "before"), point([0, 0, 0, 0], 1, "before"));
+    expect(bridge.write(rendered, requested).ok).toBe(true);
+    selectionValue(bridge.read(rendered));
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom", selection: {anchor: {affinity: "before"}}});
+    const text = rendered.nodeForAstPath([0, 0, 0, 0])!;
+    domSelection(host).setBaseAndExtent(text, 0, text, 0);
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom", selection: {anchor: {utf16Offset: 0}}});
+    domSelection(host).setBaseAndExtent(text, 1, text, 1);
+    expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom", selection: {anchor: {affinity: "after"}}});
   });
 
   it("preserves outside-host selection and rejects ranges crossing the host", () => {
@@ -188,11 +205,15 @@ describe("flat-list selection bridge and Wasm coordinates", () => {
   });
 
   it("discards receipts on lifecycle reset and synchronously invalidates changed list DOM", () => {
-    const {rendered, bridge, range, host} = fixture();
-    expect(bridge.write(rendered, range()).ok).toBe(true); bridge.clearSuppression();
-    expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom"});
-    expect(bridge.write(rendered, range()).ok).toBe(true); bridge.dispose();
-    expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom"});
+    const {rendered, bridge, range, point, host} = fixture();
+    const caret = range(point([0, 0, 0, 0], 1, "before"), point([0, 0, 0, 0], 1, "before"));
+    for (const clear of [() => bridge.clearSuppression(), () => bridge.dispose()]) {
+      expect(bridge.write(rendered, caret).ok).toBe(true);
+      selectionValue(bridge.read(rendered));
+      expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom", selection: {anchor: {affinity: "before"}}});
+      clear();
+      expect(selectionValue(bridge.read(rendered))).toMatchObject({origin: "dom", selection: {anchor: {affinity: "after"}}});
+    }
     host.querySelector("ol")!.setAttribute("start", "9");
     expect(bridge.read(rendered)).toMatchObject({ok: false, error: {code: "selection.dom_drift"}});
   });
@@ -275,7 +296,7 @@ describe("flat-list selection bridge and Wasm coordinates", () => {
 
 describe("BreditorDomSelectionBridge", () => {
   it.each(["caret", "forward", "backward"] as const)(
-    "preserves an exact native %s range and refreshes its one-use affinity receipt",
+    "preserves an exact native %s range and refreshes its one-use echo receipt",
     (direction) => {
       const host = document.createElement("div");
       document.body.append(host);
@@ -377,8 +398,8 @@ describe("BreditorDomSelectionBridge", () => {
     expect(repeated.kind).toBe("range");
     if (repeated.kind === "range") {
       expect(repeated.origin).toBe("dom");
-      expect(repeated.selection).not.toBe(semantic);
-      expect(repeated.selection.anchor.affinity).toBe("after");
+      expect(repeated.selection).toBe(semantic);
+      expect(repeated.selection.anchor.affinity).toBe("before");
     }
   });
 

@@ -115,8 +115,8 @@ shadows. Writes are serialized per owner document and preserve anchor/focus
 direction. If the existing coherent range already has exactly the requested
 directional DOM nodes and offsets, installation preserves that native Range
 without calling a selection setter. Spatially equivalent seam aliases do not
-qualify. Canonical-DOM validation, capability checks, and the one-use exact
-affinity receipt still apply; this is not a bypass for incoherent or stale
+qualify. Canonical-DOM validation, capability checks, and the exact-affinity
+sidecar still apply; this is not a bypass for incoherent or stale
 selection state. When installation requires a native write, an exact caret
 whose DOM anchor and focus are the same container and offset is installed with
 `Range`, `removeAllRanges`, and `addRange`; this avoids WebKit transiently
@@ -132,6 +132,18 @@ pair maps inside the current canonical projection. A mixed pair, one endpoint,
 cross-host evidence, or an explicit null write is insufficient.
 
 ### DOM to AST
+
+A programmatic write records exact affinity for its render generation and
+directional DOM endpoint signature. Only the first matching read is labeled
+`programmaticEcho`; later matching reads are ordinary `dom` observations but
+retain that exact semantic selection. Merely consuming an echo must not invent
+a selection change, clear pending formats or close a typing history group.
+Every read still revalidates the canonical DOM and current render. A nonmatching
+selection (including wrapper/text aliases), absent/outside selection, failed
+read, new generation, explicit clear or disposal drops the sidecar. Returning
+after an observed move therefore uses the normal boundary-derived affinity,
+not the former selection's affinity. A move away and back that is never observed
+cannot be distinguished from an unchanged selection by DOM endpoints alone.
 
 The mapper accepts exactly one DOM Range whose anchor and focus both belong to
 the current rendered host. It normalizes only the following canonical browser

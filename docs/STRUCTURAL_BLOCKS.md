@@ -1239,7 +1239,7 @@ See [DOM qualification](qualification/2026-10-04-flat-list-dom.json).
 ### Flat-list DOM selection bridge and Wasm coordinates
 
 `BreditorFlatListDomSelectionBridge` now supplies read/write/focus observation and
-one-use exact affinity receipts for list render handles. It shares the native
+one-use echo suppression and exact-affinity sidecars for list render handles. It shares the native
 selection transaction implementation with the legacy bridge: connected light-DOM
 and canonical-shape preflight, directional endpoint verification, whole-document
 write exclusion, rollback, outside/cross-host handling, and the existing
@@ -1250,7 +1250,9 @@ rejects legacy handles and mismatched projection snapshots.
 A successful programmatic write retains the exact owned selection, including
 affinities that native DOM does not represent. Only the next matching read on
 the same render generation and exact DOM endpoint signature returns that value
-as `programmaticEcho`. Different wrapper/text aliases, another snapshot, clear,
+as `programmaticEcho`; further exact matching reads retain its affinity with
+origin `dom`. Echo suppression is consumed, not the unchanged caret's semantic
+identity. Different wrapper/text aliases, another snapshot, clear,
 disposal or a nonmatching read invalidate the receipt. Outside-host browser
 selection remains unavailable rather than semantic None, and clearing this
 editor does not clear an outside selection. No bridge operation focuses the host.
