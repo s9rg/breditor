@@ -10,6 +10,8 @@ use crate::{
 
 #[cfg(feature = "experimental-structural-properties")]
 use crate::codec::{SESSION_CHECKPOINT_V5_FORMAT_VERSION, SessionCheckpointJsonCodecV5};
+#[cfg(feature = "experimental-structural-properties")]
+use crate::codec::{SESSION_CHECKPOINT_V6_FORMAT_VERSION, SessionCheckpointJsonCodecV6};
 
 /// Selected session-checkpoint codec retained by one checkpointed engine.
 #[derive(Debug)]
@@ -23,6 +25,9 @@ pub(super) enum CheckpointCodec {
     /// Explicit heading-aware Session Checkpoint V5 policy.
     #[cfg(feature = "experimental-structural-properties")]
     V5(Box<SessionCheckpointJsonCodecV5>),
+    /// Explicit flat-list Session Checkpoint V6 policy.
+    #[cfg(feature = "experimental-structural-properties")]
+    V6(Box<SessionCheckpointJsonCodecV6>),
 }
 
 impl CheckpointCodec {
@@ -43,6 +48,11 @@ impl CheckpointCodec {
         Self::V5(Box::new(SessionCheckpointJsonCodecV5::new(context).with_limits(limits)))
     }
 
+    #[cfg(feature = "experimental-structural-properties")]
+    pub(super) fn v6(context: EditorContext, limits: SessionCheckpointLimits) -> Self {
+        Self::V6(Box::new(SessionCheckpointJsonCodecV6::new(context).with_limits(limits)))
+    }
+
     pub(super) const fn limits(&self) -> &SessionCheckpointLimits {
         match self {
             Self::V1(codec) => codec.limits(),
@@ -50,6 +60,8 @@ impl CheckpointCodec {
             Self::V3(codec) => codec.limits(),
             #[cfg(feature = "experimental-structural-properties")]
             Self::V5(codec) => codec.limits(),
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::V6(codec) => codec.limits(),
         }
     }
 
@@ -60,6 +72,8 @@ impl CheckpointCodec {
             Self::V3(_) => SESSION_CHECKPOINT_V3_FORMAT_VERSION,
             #[cfg(feature = "experimental-structural-properties")]
             Self::V5(_) => SESSION_CHECKPOINT_V5_FORMAT_VERSION,
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::V6(_) => SESSION_CHECKPOINT_V6_FORMAT_VERSION,
         }
     }
 
@@ -70,6 +84,8 @@ impl CheckpointCodec {
             Self::V3(codec) => codec.encode(session).map_err(|error| error.code()),
             #[cfg(feature = "experimental-structural-properties")]
             Self::V5(codec) => codec.encode(session).map_err(|error| error.code()),
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::V6(codec) => codec.encode(session).map_err(|error| error.code()),
         }
     }
 }

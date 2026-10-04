@@ -10,7 +10,8 @@ use super::{
 };
 use crate::{
     action::{
-        Action, ActionDecision, ActionEvaluation, ActionFault, ActionPlan, ActionStateSpec,
+        Action, ActionDecision, ActionEvaluation, ActionFault, ActionId, ActionPlan,
+        ActionStateSpec,
         text_position::{normalize_flat_list_range_selection, point_at_flat_list_fragment_offset},
     },
     identity::QualifiedName,
@@ -41,6 +42,15 @@ use crate::{
 /// There is no implicit adjacent-list merge or numbered-list restart.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertFlatListTextAction;
+
+/// Returns the opt-in flat-list typing action identity.
+#[must_use]
+pub fn insert_flat_list_text_action_id() -> ActionId {
+    ActionId::from_qualified_name(QualifiedName::from_known_static(
+        "breditor/insert-flat-list-text",
+    ))
+}
+
 impl Action for InsertFlatListTextAction {
     type Input = InsertTextInput;
     fn state_spec() -> ActionStateSpec {

@@ -1065,3 +1065,51 @@ typed formats, state-only commits, malformed records, budget boundaries and
 complete-session interoperability. This closes the Rust wire layer for flat
 lists; it does not expose those lists through the shipping Wasm/browser profile.
 See [request/commit V6 qualification](qualification/2026-10-04-flat-list-transaction-v6.json).
+
+### Compiled flat-list profile and checkpointed owner
+
+`CompiledEditorProfile::try_compile_flat_list_profile` now builds the sealed
+list schema, list-aware action registry, intent graph, observable control catalog
+and process-local profile generation as one immutable unit. This remains opt-in;
+the paragraph and heading profile factories are unchanged.
+
+- The base graph contains 18 actions, 12 priority-zero blocking intent routes and
+  14 observable controls. It includes list-aware typing, normalized plain-text
+  insertion, Enter, backward/forward/selection deletion, Bold, Clear, seven
+  paragraph/heading targets and three list controls. Each action implementation
+  remains in its own named file. The typing identity is
+  `breditor/insert-flat-list-text`.
+- `breditor/format-bullet-list` routes to `breditor/wrap-bullet-list`;
+  `breditor/format-ordered-list` routes to `breditor/wrap-ordered-list` with start
+  one for newly created numbered sections. `breditor/remove-list` routes to
+  `breditor/unwrap-list`. Their bindings append `-binding` to the intent name;
+  controls are `breditor/control-bullet-list`, `breditor/control-ordered-list`
+  and `breditor/control-remove-list`.
+- These are explicit set/remove commands, not second-click toggles. Matching
+  list families are active but blocked as unchanged; numbering an existing
+  ordered list preserves its explicit start. Partial conversions preserve
+  unselected numbered prefixes/suffixes and their ordinals. A selection ending
+  at the next block's start excludes that block.
+- Existing Bold, Clear and block-kind intent/control identities remain stable,
+  but this profile routes them to flat-list-capable handlers. Extension toggles
+  and typed setters use the same declaration contracts, ownership checks and
+  reserved namespaces, now operating within items as well as bare blocks.
+  Uniform/mixed/unset formatting values remain Rust-derived. The unchanged
+  255-extension-format limit permits at most 269 total controls; the catalog
+  ceiling is not increased.
+- `CheckpointedEditorEngine::try_new_v6` selects complete Session V6 admission.
+  Each command runs on a private candidate; its complete checkpoint must encode
+  before publishing the state or event. Resource rejection preserves exact
+  state, observation, cached bytes and redo. Older owners never upgrade based
+  on schema shape: a V5 owner rejects an otherwise valid list edit before
+  publication.
+- Fresh matching profile compilation can restore V6 history with exact selection
+  and formatting. Prior runtime observations and state caches reject against the
+  newly compiled generation. Undo/redo advances revisions; equal saved bytes are
+  expected only at equal histories, cursors and revisions.
+
+Tests exercise the compiled graph, controls/cache updates, real list item edits,
+typed extensions, partial numbered conversion, exact recovery, maximum extension
+counts and failed checkpoint admission. These are Rust profile/engine tests, not
+Wasm factories, browser list rendering, native input or a shipping-profile change.
+See [profile qualification](qualification/2026-10-04-flat-list-profile.json).

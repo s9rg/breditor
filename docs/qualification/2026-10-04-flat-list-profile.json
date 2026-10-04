@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "5341708",
+  "status": "Opt-in compiled flat-list profile and V6 checkpointed engine qualified in Rust",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "profile": "CompiledEditorProfile::try_compile_flat_list_profile",
+    "owner": "CheckpointedEditorEngine::try_new_v6",
+    "baseCounts": {"actions": 18, "intents": 12, "bindings": 12, "controls": 14},
+    "extensionLimits": {"combinedFormatTypes": 255, "maximumTotalControls": 269, "unchangedCatalogCeiling": 514},
+    "listCommands": [
+      {"intent": "breditor/format-bullet-list", "action": "breditor/wrap-bullet-list", "state": "breditor/control-bullet-list"},
+      {"intent": "breditor/format-ordered-list", "action": "breditor/wrap-ordered-list", "state": "breditor/control-ordered-list"},
+      {"intent": "breditor/remove-list", "action": "breditor/unwrap-list", "state": "breditor/control-remove-list"}
+    ],
+    "numbering": "New ordered sections start at one; existing ordered starts and unselected suffix ordinals are preserved; no implicit restart or second-click toggle",
+    "formatting": "Stable heading, Bold, Clear and extension intents route to flat-list-aware actions; typed setter properties and observable values retain existing contracts",
+    "publication": "Every candidate mutation must encode as a complete bounded Session V6 before state or event publication; failed admission preserves observations, cached bytes and redo",
+    "compatibility": "Existing paragraph/heading factories and old owner policies remain unchanged; a V5 owner rejects list operations rather than upgrading itself",
+    "scope": "Flat bullet/ordered lists with one paragraph or heading per item; no nesting, multi-block items or indent/outdent"
+  },
+  "verification": {
+    "focusedProfileTests": 14,
+    "combinedSchemaAndProfileFilterTests": 27,
+    "allFeatureWorkspaceUnitTests": {"core": 1117, "wasm": 51},
+    "defaultCoreUnitTests": 697,
+    "coverage": [
+      "Complete distinct command graph, all heading targets, tracked state and delta-cache equality",
+      "Bullets, numbering and removal preserve exact backward selection through path reparenting and one-event history",
+      "Active-but-blocked matching markers, missing selection refusal and exclusion of a later block at offset zero",
+      "Partial numbered conversion preserves untouched prefix and suffix starts",
+      "List item headings, typing, multiline insertion, Enter, backward/forward deletion, Bold and extension toggle/set/clear",
+      "Typed extension property roundtrip and uniform/mixed/unset toolbar values",
+      "Fresh-profile Session V6 restore, exact undo/redo and rejection of stale observations/caches",
+      "Checkpoint retained-node rejection preserves state, observation, saved bytes and reusable redo",
+      "V5 owner refuses list publication without implicit upgrade",
+      "Reserved identity refusal, unchanged paragraph profile and exact maximum extension counts"
+    ],
+    "developmentCorrections": [
+      "Added the missing public identity helper for the existing flat-list typing action",
+      "Corrected a new test comparing checkpoint bytes after advancing only the restored engine: undo/redo legitimately advances revisions, so both engines now advance in lockstep",
+      "Extracted typed-link test input construction to satisfy the existing strict function-size lint without suppression"
+    ],
+    "commands": [
+      "cargo test -p breditor-core --all-features --lib profile::flat_list_profile_tests --quiet",
+      "cargo test -p breditor-core --all-features --lib flat_list_profile_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Opt-in Wasm/bootstrap profile factories and semantic list projection",
+    "Browser list rendering, controls, keyboard and selection integration",
+    "Browser session reload and backup recovery",
+    "Cross-browser/native input and clipboard qualification",
+    "Release size and packed-consumer gates"
+  ],
+  "evidenceBoundary": "Rust compiled-profile and checkpointed-engine integration; no shipping Wasm rebuild or browser/native list qualification",
+  "pushed": false,
+  "published": false
+}

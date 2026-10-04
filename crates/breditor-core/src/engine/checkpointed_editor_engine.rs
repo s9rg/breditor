@@ -119,6 +119,25 @@ impl CheckpointedEditorEngine {
         Self::try_new_with_codec(engine, codec)
     }
 
+    /// Constrains an engine to explicit flat-list Session Checkpoint V6.
+    ///
+    /// Every candidate mutation must remain fully checkpoint-representable,
+    /// including both history branches, before its state or event is published.
+    /// This does not register actions, change the schema, or upgrade older owners.
+    ///
+    /// # Errors
+    ///
+    /// Returns a payload-redacting representation error when the initial session
+    /// cannot be encoded under `limits`. No partial owner is returned.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_new_v6(
+        engine: EditorEngine,
+        limits: SessionCheckpointLimits,
+    ) -> Result<Self, CheckpointedEditorEngineError> {
+        let codec = CheckpointCodec::v6(engine.state().context().clone(), limits);
+        Self::try_new_with_codec(engine, codec)
+    }
+
     fn try_new_with_codec(
         engine: EditorEngine,
         codec: CheckpointCodec,
@@ -168,7 +187,7 @@ impl CheckpointedEditorEngine {
     ///
     /// [`Self::try_new`] selects V1, [`Self::try_new_v2`] selects V2, and
     /// [`Self::try_new_v3`] selects V3. With experimental structural properties,
-    /// `try_new_v5` explicitly selects V5. The selection is retained for every
+    /// `try_new_v5` selects V5 and `try_new_v6` selects V6. The selection is retained for every
     /// later candidate mutation; schema shape never upgrades it implicitly.
     #[must_use]
     pub const fn session_checkpoint_format_version(&self) -> u32 {

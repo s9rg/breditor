@@ -848,3 +848,22 @@ Flat lists remain first; nested lists and indent/outdent are deferred.
 
 See [boundary contract](STRUCTURAL_BLOCKS.md#flat-list-transaction-and-commit-boundaries-v6)
 and [verification](qualification/2026-10-04-flat-list-transaction-v6.json).
+
+## Compiled flat-list editor checkpoint
+
+The opt-in compiled list profile now joins the sealed schema, all list-aware
+editing actions, heading/list controls and extension formatting into one command
+graph. A V6 checkpointed engine executes that graph with complete session admission
+before publishing any edit. Toolbar states and action dispatch share the same
+Rust-owned handlers; restored engines reject stale runtime observations/caches.
+
+Bullets and numbering are explicit set commands with a separate Remove List
+control. Existing numbering is preserved. Nested lists and indent/outdent remain
+out of scope for this beta. Existing paragraph/heading factories remain unchanged.
+
+Next is the opt-in Wasm/bootstrap profile and projection, followed by browser
+rendering, controls, keyboard and reload/backup recovery. Rust integration tests
+do not establish browser/native readiness or clear the outstanding size gates.
+
+See [compiled profile contract](STRUCTURAL_BLOCKS.md#compiled-flat-list-profile-and-checkpointed-owner)
+and [verification](qualification/2026-10-04-flat-list-profile.json).

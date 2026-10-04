@@ -42,7 +42,7 @@ mod insert_flat_list_structure;
 #[cfg(feature = "experimental-structural-properties")]
 mod insert_flat_list_text;
 #[cfg(feature = "experimental-structural-properties")]
-pub use insert_flat_list_text::InsertFlatListTextAction;
+pub use insert_flat_list_text::{InsertFlatListTextAction, insert_flat_list_text_action_id};
 #[cfg(feature = "experimental-structural-properties")]
 mod unwrap_list;
 #[cfg(feature = "experimental-structural-properties")]

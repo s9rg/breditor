@@ -29,6 +29,37 @@ pub struct CompiledEditorProfile {
 }
 
 impl CompiledEditorProfile {
+    /// Compiles an opt-in flat-list editor with bare paragraphs/headings and
+    /// bullet/ordered lists whose items contain exactly one paragraph or heading.
+    ///
+    /// Typing, plain-text insertion, Enter, deletion and inline formatting use
+    /// flat-list-aware actions. Existing Bold, Clear, paragraph/heading and
+    /// extension intent identities are retained. Three additional tracked routes
+    /// set bullets (`breditor/format-bullet-list`), set numbering starting at one
+    /// (`breditor/format-ordered-list`) and lift selected items
+    /// (`breditor/remove-list`). Matching marker families are active but blocked;
+    /// removal is an explicit command, not a second-click toggle. Existing
+    /// ordered starts are preserved, not restarted. Each route has a matching
+    /// `breditor/control-...` state and priority-zero blocking binding.
+    ///
+    /// Fourteen built-in controls plus at most 255 combined extension controls
+    /// fit the unchanged catalog ceiling. Nested lists, multi-block items and
+    /// indent/outdent are not admitted. The profile does not change existing
+    /// factories; hosts must explicitly select Session V6 for durable list edits.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProfileCompilationError`] for invalid declarations, reserved or
+    /// conflicting identities, resource limits, or invalid generated registries.
+    /// Compilation publishes no partial schema, command graph or state catalog.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_compile_flat_list_profile(
+        schema_id: SchemaId,
+        extensions: ExtensionSet,
+    ) -> Result<Self, ProfileCompilationError> {
+        super::flat_list_compiler::compile(schema_id, extensions)
+    }
+
     /// Compiles an opt-in direct-root paragraph/heading editor profile.
     ///
     /// Registers heading-aware typing, normalized plain-text insertion, Enter,
