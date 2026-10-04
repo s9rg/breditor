@@ -1,5 +1,5 @@
 import {
-  BASE_ACTION_IDS,
+  browserInputActionIds,
   BASE_INTENT_IDS,
   browserCommandTextIsAdmissible,
   historyRequest,
@@ -75,7 +75,7 @@ function translateSafeBeforeInput(
           delivery,
           selection,
           source(snapshot.inputType),
-          BASE_ACTION_IDS.insertParagraphBreak,
+          browserInputActionIds(delivery).insertParagraphBreak,
           "closeBefore",
         ),
       );
@@ -85,7 +85,7 @@ function translateSafeBeforeInput(
           delivery,
           selection,
           source(snapshot.inputType),
-          BASE_ACTION_IDS.deleteBackward,
+          browserInputActionIds(delivery).deleteBackward,
         ),
       );
     case "deleteContentForward":
@@ -94,7 +94,7 @@ function translateSafeBeforeInput(
           delivery,
           selection,
           source(snapshot.inputType),
-          BASE_ACTION_IDS.deleteForward,
+          browserInputActionIds(delivery).deleteForward,
         ),
       );
     case "deleteContent":
@@ -103,7 +103,7 @@ function translateSafeBeforeInput(
           delivery,
           selection,
           source(snapshot.inputType),
-          BASE_ACTION_IDS.deleteSelection,
+          browserInputActionIds(delivery).deleteSelection,
           "closeBefore",
         ),
       );
@@ -165,7 +165,7 @@ function textRequest(
     delivery,
     selection,
     source(inputType),
-    structural ? BASE_ACTION_IDS.insertPlainText : BASE_ACTION_IDS.insertText,
+    structural ? browserInputActionIds(delivery).insertPlainText : browserInputActionIds(delivery).insertText,
     data,
     structural ? "closeBefore" : "preserve",
   );

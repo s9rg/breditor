@@ -301,6 +301,11 @@ export function projectionProfileDescriptor(
     : undefined;
 }
 
+/** Explicit profile mode, independent of the current block kinds. @internal */
+export function projectionUsesTextBlockActions(projection: BaseDocumentProjection): boolean {
+  return PROFILE_BINDINGS.get(projection)?.textBlocks === true;
+}
+
 /** Checks one projection against its exact process-local profile generation. @internal */
 export function projectionMatchesProfileGeneration(
   projection: BaseDocumentProjection,

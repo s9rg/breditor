@@ -724,6 +724,132 @@ const SEMANTIC_CHECKPOINT_JSON = JSON.stringify({
   openMergeGroup: null,
 });
 
+function headingBootstrapFixture(restore = false, heading = true) {
+  const token = {};
+  const generation = new FakeGeneration(token);
+  const fixture = engineFixture(restore ? "restored" : "bootstrap-tests", restore ? "42" : "0",
+    new FakeGeneration(token), true, undefined, []);
+  const headingLevel = vi.fn((index: number): number | undefined => heading && index === 1 ? 2 : undefined);
+  Object.defineProperty(fixture.projection, "headingLevel", { value: headingLevel, configurable: true });
+  if (heading) fixture.projection.elementType = (index) => index === 0 ? "breditor/document" : index === 1 ? "breditor/heading" : undefined;
+  const construction = new FakeConstructionResult("engine", fixture.engine);
+  const profile = Object.assign(new FakeCompiledProfile(generation, new FakeSemanticDescriptor(generation), construction, construction), {
+    createEngineFromDocumentJsonV5: vi.fn(() => construction),
+    createEngineFromSessionCheckpointJsonV5: vi.fn(() => construction),
+  });
+  const compilation = new FakeCompiledProfileResult("profile", profile);
+  const compiled = compiledFactoryReturning(compilation);
+  const fromBootstrapJsonV3 = vi.fn(() => compilation);
+  const compiledFactory = { ...compiled.factory, fromBootstrapJsonV3 };
+  const legacy = factoryReturning(new FakeConstructionResult("error", undefined, new FakeError()));
+  const module = moduleFor(legacy.factory, compiledFactory);
+  const document: Record<string, any> = JSON.parse(TYPED_SEMANTIC_DOCUMENT_JSON);
+  if (heading) {
+    document["root"]["children"][0]["type"] = "breditor/heading";
+    document["root"]["children"][0]["properties"] = { "breditor/level": 2 };
+  }
+  const checkpoint: Record<string, any> = JSON.parse(SEMANTIC_CHECKPOINT_JSON);
+  checkpoint["formatVersion"] = 5;
+  checkpoint["historyBase"]["formatVersion"] = 3;
+  checkpoint["historyBase"]["document"] = document;
+  const semanticProfile = { bootstrapJson: '{"format":"breditor/profile-bootstrap","formatVersion":3}', formatVersion: 3 as const };
+  const source = restore
+    ? { kind: "sessionCheckpoint" as const, checkpointJson: JSON.stringify(checkpoint), semanticProfile }
+    : { ...TYPED_SEMANTIC_DOCUMENT_SOURCE, documentJson: JSON.stringify(document), semanticProfile };
+  return { fixture, profile, generation, compilation, compiled, compiledFactory, fromBootstrapJsonV3, module, source, headingLevel };
+}
+
+describe("explicit heading startup and restore", () => {
+  it.each([false, true])("selects only Bootstrap V3 / engine V5 (restore=%s)", (restore) => {
+    const f = headingBootstrapFixture(restore);
+    const result = bootstrapWasmEngine(f.module, f.source);
+    expect(result.ok, result.ok ? undefined : result.error.code).toBe(true);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v5");
+    expect(result.projection.paragraphs[0]?.headingLevel).toBe(2);
+    expect(result.profileGeneration).toBe(f.generation);
+    expect(f.fromBootstrapJsonV3).toHaveBeenCalledExactlyOnceWith(f.source.semanticProfile.bootstrapJson);
+    expect(restore ? f.profile.createEngineFromSessionCheckpointJsonV5 : f.profile.createEngineFromDocumentJsonV5).toHaveBeenCalledOnce();
+    expect(f.compiled.fromBootstrapJson).not.toHaveBeenCalled();
+    expect(f.compiled.fromBootstrapJsonV2).not.toHaveBeenCalled();
+    expect(f.profile.createEngineFromDocumentJsonV3).not.toHaveBeenCalled();
+    expect(f.profile.createEngineFromSessionCheckpointJsonV3).not.toHaveBeenCalled();
+    expect(f.profile.freeCalls).toBe(1);
+    expect(f.fixture.projection.freeCalls).toBe(1);
+    result.observation.free(); result.profileGeneration.free(); result.engine.free();
+    expect(f.generation.freeCalls).toBe(1);
+    expect(f.fixture.engineFree).toHaveBeenCalledOnce();
+  });
+
+  it("preflights heading metadata without retaining generated owners", () => {
+    const f = headingBootstrapFixture();
+    expect(preflightWasmSemanticProfile(f.module, f.source.semanticProfile).ok).toBe(true);
+    expect(f.fromBootstrapJsonV3).toHaveBeenCalledOnce();
+    expect(f.profile.freeCalls).toBe(1);
+    expect(f.generation.freeCalls).toBe(1);
+    expect(f.profile.createEngineFromDocumentJsonV5).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, () => Promise.resolve(undefined)])("rejects missing/asynchronous V3 compilation without legacy fallback", (factory) => {
+    const f = headingBootstrapFixture();
+    Object.defineProperty(f.compiledFactory, "fromBootstrapJsonV3", { value: factory });
+    expect(bootstrapWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(f.compiled.fromBootstrapJson).not.toHaveBeenCalled();
+    expect(f.compiled.fromBootstrapJsonV2).not.toHaveBeenCalled();
+  });
+
+  it.each(["createEngineFromDocumentJsonV5", "createEngineFromSessionCheckpointJsonV5"] as const)("requires %s before construction and releases the profile", (key) => {
+    const f = headingBootstrapFixture();
+    Object.defineProperty(f.profile, key, { value: undefined });
+    expect(bootstrapWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(f.profile.freeCalls).toBe(1);
+    expect(f.compilation.freeCalls).toBe(1);
+    expect(f.profile.createEngineFromDocumentJsonV3).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing", "throwing getter", "invalid rank", "async rank", "async absence", "rank on root", "cleanup throws"])("rejects %s projection and releases every acquired owner", (fault) => {
+    const f = headingBootstrapFixture(false, fault !== "async absence");
+    if (fault === "missing") Object.defineProperty(f.fixture.projection, "headingLevel", { value: undefined });
+    if (fault === "throwing getter") Object.defineProperty(f.fixture.projection, "headingLevel", { get() { throw new Error("rank getter"); } });
+    if (fault === "invalid rank") f.headingLevel.mockImplementation((i) => i === 1 ? 7 : undefined);
+    if (fault === "async rank" || fault === "async absence") Object.defineProperty(f.fixture.projection, "headingLevel", {
+      value: (i: number) => i === 1 ? Promise.resolve(fault === "async rank" ? 2 : undefined) : undefined,
+    });
+    if (fault === "rank on root") f.headingLevel.mockReturnValue(2);
+    if (fault === "cleanup throws") f.fixture.projection.free = () => { f.fixture.projection.freeCalls += 1; throw new Error("cleanup"); };
+    expect(bootstrapWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(f.fixture.projection.freeCalls).toBe(1);
+    expect(f.fixture.engineFree).toHaveBeenCalledOnce();
+    expect(f.fixture.observationFree).toHaveBeenCalledOnce();
+    expect(f.generation.freeCalls).toBe(1);
+    expect(f.profile.freeCalls).toBe(1);
+  });
+
+  it("rejects relabeled session state before invoking the V5 engine factory", () => {
+    const f = headingBootstrapFixture(true);
+    if (f.source.kind !== "sessionCheckpoint") throw new Error("fixture");
+    const value: Record<string, any> = JSON.parse(f.source.checkpointJson);
+    value["historyBase"]["formatVersion"] = 5;
+    expect(bootstrapWasmEngine(f.module, { ...f.source, checkpointJson: JSON.stringify(value) }).ok).toBe(false);
+    expect(f.profile.createEngineFromSessionCheckpointJsonV5).not.toHaveBeenCalled();
+    expect(f.profile.freeCalls).toBe(1);
+  });
+
+  it("legacy startup never probes optional heading factories or rank getters", () => {
+    const f = headingBootstrapFixture(false, false);
+    const unexpected = () => { throw new Error("legacy path probed heading API"); };
+    Object.defineProperty(f.compiledFactory, "fromBootstrapJsonV3", { get: unexpected });
+    Object.defineProperty(f.profile, "createEngineFromDocumentJsonV5", { get: unexpected });
+    Object.defineProperty(f.profile, "createEngineFromSessionCheckpointJsonV5", { get: unexpected });
+    Object.defineProperty(f.fixture.projection, "headingLevel", { get: unexpected });
+    const result = bootstrapWasmEngine(f.module, { ...f.source, semanticProfile: TYPED_SEMANTIC_PROFILE });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v3");
+    result.observation.free(); result.profileGeneration.free(); result.engine.free();
+  });
+});
+
 const SEMANTIC_CHECKPOINT_SOURCE = Object.freeze({
   kind: "sessionCheckpoint" as const,
   checkpointJson: SEMANTIC_CHECKPOINT_JSON,

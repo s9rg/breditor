@@ -548,30 +548,31 @@ describe("IndexedDbSessionCheckpointStore", () => {
     comment.close();
   });
 
-  it("round-trips checkpoint generation 3 as an exact retained binding", async () => {
+  it.each([3, 5] as const)("round-trips checkpoint generation %i as an exact retained binding", async (checkpointFormatVersion) => {
     const factory = new IDBFactory();
     const digest = digestFixture();
     const binding: IndexedDbSessionCheckpointBinding = Object.freeze({
-      slot: "profile.typed-v3",
+      slot: "profile.typed",
       schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT,
-      checkpointFormatVersion: 3,
+      checkpointFormatVersion,
     });
     const store = createStore(factory, digest, undefined, binding).store;
     const empty = await store.load();
     if (!empty.ok) throw new Error(empty.error.code);
-    expect((await store.save(empty.token, '{"formatVersion":3}')).ok).toBe(true);
+    const checkpointJson = JSON.stringify({ formatVersion: checkpointFormatVersion });
+    expect((await store.save(empty.token, checkpointJson)).ok).toBe(true);
     expect(await rawSlot(factory, binding.slot)).toMatchObject({
       formatVersion: 2,
       slot: binding.slot,
       schemaFingerprint: binding.schemaFingerprint,
-      checkpointFormatVersion: 3,
-      checkpointJson: '{"formatVersion":3}',
+      checkpointFormatVersion,
+      checkpointJson,
     });
     store.close();
 
     const wrongGeneration = createStore(factory, digest, undefined, {
       ...binding,
-      checkpointFormatVersion: 2,
+      checkpointFormatVersion: checkpointFormatVersion === 3 ? 5 : 3,
     }).store;
     await expect(wrongGeneration.load()).resolves.toMatchObject({
       ok: false,

@@ -157,7 +157,7 @@ export interface BreditorBrowserWasmModule {
 /** Strict compiled-profile bootstrap selected before any document is decoded. */
 export type BreditorBrowserSemanticProfileOptions =
   | Readonly<{ bootstrapJson: string }>
-  | Readonly<{ bootstrapJson: string; formatVersion: 2 }>;
+  | Readonly<{ bootstrapJson: string; formatVersion: 2 | 3 }>;
 
 /** Stable choice of the IndexedDB key used by one editor profile. */
 export type BreditorBrowserEditorPersistenceScope =
@@ -188,7 +188,7 @@ interface BrowserEditorCommonOptions {
    * Initialized, exactly version-paired official Wasm module namespace.
    */
   readonly wasm: BreditorBrowserWasmModule;
-  /** Optional custom semantic profile; V2 bootstrap selects durable Session V3. */
+  /** Explicit profile bootstrap: V2 selects Session V3; experimental V3 selects V5. */
   readonly semanticProfile?: BreditorBrowserSemanticProfileOptions;
   /** Exact callback-free render coverage for the selected semantic profile. */
   readonly rendering?: InlineFormatRenderManifest;
@@ -1257,7 +1257,7 @@ export class BreditorBrowserEditor {
    * record selected at bootstrap. `plainText` joins semantic paragraphs with
    * LF and strips formatting; it never reads mutable DOM text. Busy
    * composition/delivery/read leases fail benignly.
-   * `sessionCheckpointJson` explicitly exports the bounded V1/V2/V3 session
+   * `sessionCheckpointJson` exports the explicitly selected V1/V2/V3/V5 session
    * selected at bootstrap, including selection, pending formats, Undo/Redo,
    * and deleted historical text. Treat backups as sensitive. It does not save,
    * change CAS tokens, resolve a pending write, or resume paused persistence.
@@ -2081,13 +2081,13 @@ function snapshotSemanticProfileOptions(
     if (
       formatVersion === undefined ||
       !("value" in formatVersion) ||
-      formatVersion.value !== 2
+      (formatVersion.value !== 2 && formatVersion.value !== 3)
     ) {
       return null;
     }
     return Object.freeze({
       bootstrapJson: bootstrap.value,
-      formatVersion: 2 as const,
+      formatVersion: formatVersion.value as 2 | 3,
     });
   } catch {
     return null;
@@ -2259,7 +2259,9 @@ function persistenceBinding(
     checkpointFormatVersion:
       profileDescriptor === undefined
         ? 1
-        : semanticProfileDurableMode(semanticProfile) === "v3"
+        : semanticProfileDurableMode(semanticProfile) === "v5"
+          ? 5
+          : semanticProfileDurableMode(semanticProfile) === "v3"
           ? 3
           : 2,
   });
@@ -2300,8 +2302,9 @@ function profileDurableBindingsEqual(
 
 function semanticProfileDurableMode(
   profile: BreditorBrowserSemanticProfileOptions | undefined,
-): "v2" | "v3" {
-  return profile !== undefined && "formatVersion" in profile ? "v3" : "v2";
+): "v2" | "v3" | "v5" {
+  return profile !== undefined && "formatVersion" in profile
+    ? profile.formatVersion === 3 ? "v5" : "v3" : "v2";
 }
 
 function formatPropertyTypesEqual(
@@ -2509,7 +2512,9 @@ function snapshotRenderedHostChildren(
     ) {
       const child = rendered.nodeForAstPath(Object.freeze([index]));
       const facts = nativeHtmlHostFacts(child);
-      if (facts === undefined || facts.tagName !== "P") return null;
+      const rank = rendered.projection.paragraphs[index]?.headingLevel;
+      const expectedTag = rank === undefined ? "P" : `H${rank}`;
+      if (facts === undefined || facts.tagName !== expectedTag) return null;
       elements.push(facts.element);
     }
     return Object.freeze(elements);
@@ -2742,6 +2747,10 @@ function quiesceFaultedHost(host: HTMLElement): void {
 }
 
 function clearOwnedHost(host: HTMLElement): void {
+  // Clear only a wholly owned native range before detaching its endpoints.
+  // Otherwise WebKit can retain incoherent BODY endpoints that poison the next
+  // editor startup. Foreign/cross-host selections remain untouched.
+  clearOwnedNativeSelection(host);
   try {
     nativeReplaceChildren(host);
   } catch {

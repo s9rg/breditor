@@ -3083,6 +3083,33 @@ describe("BreditorBrowserEditor", () => {
     opened.editor.dispose();
   });
 
+  it.each(["owned", "foreign", "cross-host"] as const)("disposal clears only wholly owned native selection (%s)", async (ownership) => {
+    const host = mountHost();
+    const outside = mountHost();
+    outside.textContent = "outside";
+    const fixture = moduleFixture({ text: "inside" });
+    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    if (!opened.ok) throw new Error(opened.error.code);
+    const insideText = host.firstElementChild!.firstChild!;
+    const outsideText = outside.firstChild!;
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.setStart(ownership === "foreign" ? outsideText : insideText, 1);
+    range.setEnd(ownership === "owned" ? insideText : outsideText, 2);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    opened.editor.dispose();
+    expect(host.childNodes).toHaveLength(0);
+    expect(selection.rangeCount).toBe(ownership === "owned" ? 0 : 1);
+    if (ownership === "foreign") {
+      expect(selection.anchorNode).toBe(outsideText);
+      expect(selection.anchorOffset).toBe(1);
+      expect(selection.focusNode).toBe(outsideText);
+      expect(selection.focusOffset).toBe(2);
+    }
+    selection.removeAllRanges();
+  });
+
   it("benignly rejects toolbar activation while an IME composition owns delivery", async () => {
     const host = mountHost();
     const toolbarHost = mountHost();

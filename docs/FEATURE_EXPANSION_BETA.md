@@ -530,3 +530,46 @@ input routing, reload UI and flat lists remain pending. The existing default siz
 gate is also currently red for browser declarations and compressed demo JS; no
 ceiling was raised. Resolve the measured packaging/footprint gate before release
 qualification, without weakening validation or silently upgrading old formats.
+
+## Public heading editor startup, input and session lifecycle
+
+Explicit `semanticProfile: { bootstrapJson, formatVersion: 3 }` now selects the
+experimental Bootstrap V3 / Session V5 route in `BreditorBrowserEditor.open`.
+The normal toolbar, queue, input controllers and IndexedDB autosave work with
+this profile. Legacy selectors never inspect the optional heading factories or
+projection getter; there is no inferred generation, aliasing or fallback.
+
+Native-input action IDs are selected from the validated projection's explicit
+profile mode, including when it currently contains **only paragraphs**. Typing,
+structural keyboard fallback, cut/paste command construction and composition
+settlement use the separately named text-block actions. Explicit caller-supplied
+action IDs remain exact. Storage retains checkpoint version 5 as an exact binding
+inside the existing V2 record envelope; version 4 remains unsupported.
+
+The public-editor browser scenario starts with a paragraph, applies Heading 2
+through a declared toolbar control, inserts text, deletes a Unicode grapheme,
+splits a heading, undoes, exits at its end into a paragraph, deletes/undoes text,
+saves a redo branch, disposes, reopens from IndexedDB and redoes. The saved and
+restored session bytes match exactly. Both keyboard policies are exercised.
+
+This vertical slice exposed two implementation defects, now regression-tested:
+
+- Public startup's installed-node check required `P` even for a validated
+  heading projection. It now checks the exact expected paragraph/heading tag.
+- Disposal removed editor-owned selection endpoints before clearing the native
+  selection. WebKit could then report inconsistent BODY endpoints and reject a
+  subsequent editor startup. Disposal now uses the existing ownership-aware
+  cleanup before removing the subtree. Foreign and cross-host selections are
+  not cleared; startup validation was not relaxed.
+
+Firefox's Playwright text insertion uses a composition-style event sequence.
+The test now waits for the public content-export boundary to become available
+before sending another edit, rather than treating visible DOM text as a settled
+commit. This is not OS IME qualification.
+
+See [qualification](qualification/2026-10-03-heading-public-editor.json) for the
+fresh isolated build, tests, earlier failures and measured limits. The feature
+is still experimental: the default Wasm stays unchanged, the normal demo does
+not load headings yet, and bundle budgets remain red. Next: the optional
+demo/load boundary and size decision, then flat bullet/numbered lists. Nested
+lists remain deferred. Nothing has been pushed or published.

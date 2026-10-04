@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "995ac6e",
+  "status": "Development checkpoint; explicit public heading editor works, release size gate still fails",
+  "contracts": {
+    "selector": "Explicit profile formatVersion 3 selects Bootstrap V3 and durable mode v5",
+    "legacy": "No optional heading factory/getter access on legacy startup; no fallback or action aliases",
+    "input": "Profile-bound native action selection, even for all-paragraph text-block documents",
+    "storage": "Checkpoint generation 5 in existing V2 IndexedDB record envelope; exact binding equality",
+    "disposal": "Clear only wholly editor-owned native selection before removing its DOM"
+  },
+  "verification": {
+    "browserUnitTests": 1511,
+    "browserUnitFiles": 52,
+    "newTests": 22,
+    "typecheck": "Production and test types passed",
+    "experimentalCandidateCommand": "PATH=/Users/s/.cargo/bin:/Users/s/code/breditor/node_modules/.bin:$PATH npm run test:headings:experimental",
+    "generatedAbiRegressions": 11,
+    "nodeWireSmoke": "Passed",
+    "jsdom": "Adapter and bootstrap scenarios passed",
+    "browserVersions": { "chromium": "151.0.7922.34", "firefox": "153.0", "webkit": "26.5" },
+    "adapterAndBootstrapRunsPerEngine": 5,
+    "publicEditorRunsPerEngine": 5,
+    "keyboardPolicies": ["beforeinputPrimary", "structuralFallback"],
+    "publicScenario": "Paragraph-only startup, toolbar heading conversion, typing, emoji Delete, undo, middle/end Enter, paragraph Backspace, undo, IndexedDB flush/dispose/reopen, exact session bytes, redo",
+    "legacyBrowserTests": 90,
+    "legacyBrowserCommand": "PATH=/Users/s/code/breditor/node_modules/.bin:$PATH node_modules/.bin/playwright test tests/browser/editor.spec.ts tests/browser/profile-descriptor.spec.ts tests/browser/action-state-restore.spec.ts tests/browser/link-history-lifecycle.spec.ts",
+    "legacyBrowserResult": "Passed in 1.6 minutes across Chromium, Firefox and WebKit",
+    "browserRetries": 0
+  },
+  "artifact": {
+    "candidate": "target/heading-candidate-vJD5gX",
+    "wasmSha256": "0a8ee8b2e96326016bd4f78219caacf41dbc9d1d7ccde6ab6d49ca9e125c787e",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "shippingWasmUnchanged": true,
+    "publishable": false
+  },
+  "failuresFoundAndResolved": [
+    "Public restored heading startup rejected by hard-coded P tag guard; now validates the actual projected kind",
+    "WebKit fresh startup after dispose/remove reported selection.dom_read_failed with BODY endpoints; owned selection is now cleared before DOM removal",
+    "Firefox test pressed Enter before Playwright composition-style text insertion settled; waits for public export availability now",
+    "Harness expected a nonexistent saved/clean autosave result; corrected to the documented committed result"
+  ],
+  "sizeGate": {
+    "status": "FAILED; no budgets increased",
+    "browserJavaScript": { "actual": 1083366, "maximum": 1085000 },
+    "browserDeclarations": { "actual": 277229, "maximum": 276000 },
+    "demoJavaScript": { "actual": 862375, "maximum": 865000 },
+    "demoJavaScriptGzip9": { "actual": 225536, "maximum": 225000 },
+    "defaultWasm": { "actual": 1609338, "maximum": 1610000 },
+    "defaultWasmGzip9": { "actual": 451499, "maximum": 452000 },
+    "experimentalWasmBytes": 1806332,
+    "experimentalWasmGzip9Bytes": 505554
+  },
+  "remaining": [
+    "Optional shipping/load boundary and bundle-size gate",
+    "Heading-enabled demo and recovery UI",
+    "Flat bullet/numbered lists; nested lists deferred",
+    "Native Safari/Chrome OS clipboard, OS IME and assistive technology qualification",
+    "Full release gate; no claim that all historical WebKit faults are resolved"
+  ],
+  "pushed": false,
+  "published": false
+}

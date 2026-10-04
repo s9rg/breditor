@@ -1,5 +1,5 @@
 import {
-  BASE_ACTION_IDS,
+  browserInputActionIds,
   historyRequest,
   noInputActionRequest,
   noInputIntentRequest,
@@ -167,12 +167,12 @@ function translateSafeKeyDown(
   const source = keyboardSource(snapshot, "none");
   if (snapshot.key === "Backspace") {
     return command(
-      noInputActionRequest(delivery, selection, source, BASE_ACTION_IDS.deleteBackward),
+      noInputActionRequest(delivery, selection, source, browserInputActionIds(delivery).deleteBackward),
     );
   }
   if (snapshot.key === "Delete") {
     return command(
-      noInputActionRequest(delivery, selection, source, BASE_ACTION_IDS.deleteForward),
+      noInputActionRequest(delivery, selection, source, browserInputActionIds(delivery).deleteForward),
     );
   }
   if (snapshot.key === "Enter") {
@@ -183,7 +183,7 @@ function translateSafeKeyDown(
             delivery,
             selection,
             source,
-            BASE_ACTION_IDS.insertParagraphBreak,
+            browserInputActionIds(delivery).insertParagraphBreak,
             "closeBefore",
           ),
         );

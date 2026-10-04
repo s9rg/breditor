@@ -998,18 +998,22 @@ function keyboardEchoInputTypes(
   }
   switch (command.actionId) {
     case "breditor/toggle-strong":
+    case "breditor/toggle-text-block-strong":
       return code === "KeyB" && !keyboard.shiftKey
         ? Object.freeze(["formatBold"])
         : Object.freeze([]);
     case "breditor/delete-backward":
+    case "breditor/delete-text-block-backward":
       return keyboard.key === "Backspace"
         ? Object.freeze(["deleteContentBackward"])
         : Object.freeze([]);
     case "breditor/delete-forward":
+    case "breditor/delete-text-block-forward":
       return keyboard.key === "Delete"
         ? Object.freeze(["deleteContentForward"])
         : Object.freeze([]);
     case "breditor/insert-paragraph-break":
+    case "breditor/insert-text-block-break":
       return keyboard.key === "Enter" && !keyboard.shiftKey
         ? Object.freeze(["insertParagraph"])
         : Object.freeze([]);

@@ -1,4 +1,4 @@
-// Real-engine check of the opt-in heading projection slice, not native-input qualification.
+// Real-engine heading checks plus Playwright-driven input. Not native Safari/IME qualification.
 // Prerequisites: built browser package and an explicit generated binding directory.
 import assert from "node:assert/strict";
 import { realpath } from "node:fs/promises";
@@ -40,15 +40,79 @@ try {
         const api = await import(`${bindingUrl}/breditor_wasm.js`);
         api.initSync({ module: await (await fetch(`${bindingUrl}/breditor_wasm_bg.wasm`)).arrayBuffer() });
         const { runHeadingDomScenario } = await import("/scripts/heading-dom-scenario.mjs");
+        const { runHeadingStartupScenario } = await import("/scripts/heading-startup-scenario.mjs");
         const results = [];
         for (let attempt = 0; attempt < 5; attempt += 1) {
           const host = document.createElement("div");
           document.body.append(host);
-          try { results.push(runHeadingDomScenario(api, host)); } finally { host.remove(); }
+          try {
+            results.push({ ...runHeadingDomScenario(api, host), startup: runHeadingStartupScenario(api, host) });
+          } finally { host.remove(); }
         }
         return results;
       }, bindingUrl);
-      console.log(JSON.stringify({ browser: name, version: browser.version(), status: "passed", runs: results.length, result: results[0] }));
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await page.evaluate(async ({ bindingUrl, slot, editing }) => {
+          const api = await import(`${bindingUrl}/breditor_wasm.js`);
+          const { openHeadingEditorFixture } = await import("/scripts/heading-editor-fixture.mjs");
+          window.headingFixture = await openHeadingEditorFixture(api, slot, editing);
+          window.headingFixture.caret(1);
+          window.headingEvents = [];
+          window.headingListener = (event) => window.headingEvents.push({ type: event.type, key: event.key,
+            inputType: event.inputType, target: event.target.id || event.target.tagName, prevented: event.defaultPrevented });
+          for (const type of ["keydown", "beforeinput", "input"]) document.addEventListener(type, window.headingListener);
+        }, { bindingUrl, slot: `heading-public-${name}-${attempt}`,
+          editing: attempt % 2 === 0 ? "beforeinputPrimary" : "structuralFallback" });
+        const host = page.locator("#heading-editor");
+        const html = async (expected) => {
+          const actual = await host.innerHTML();
+          if (actual !== expected) console.log(JSON.stringify(await page.evaluate(() => ({
+            diagnostic: "heading-input", events: window.headingEvents, activeElement: document.activeElement.outerHTML,
+            snapshot: window.headingFixture.snapshot(), selection: document.getSelection()?.toString(),
+          }))));
+          assert.equal(actual, expected);
+        };
+        const state = async () => assert.equal(await page.evaluate(() => window.headingFixture.snapshot().status.phase), "live");
+        await page.getByRole("button", { name: "Heading 2", exact: true }).click();
+        await html("<h2>a🙂b</h2>");
+        assert.equal(await page.getByRole("button", { name: "Heading 2", exact: true }).getAttribute("aria-pressed"), "true");
+        await page.keyboard.insertText("X");
+        await page.waitForFunction(() => window.headingFixture.ready());
+        await html("<h2>aX🙂b</h2>");
+        await page.keyboard.press("Delete");
+        await html("<h2>aXb</h2>");
+        await page.getByRole("button", { name: "undo", exact: true }).click();
+        await html("<h2>aX🙂b</h2>");
+        await page.keyboard.press("Enter");
+        await html("<h2>aX</h2><h2>🙂b</h2>");
+        await page.getByRole("button", { name: "undo", exact: true }).click();
+        await html("<h2>aX🙂b</h2>");
+        await page.evaluate(() => window.headingFixture.caret(5));
+        await page.keyboard.press("Enter");
+        assert.equal(await host.locator("p").count(), 1);
+        await page.keyboard.insertText("Tail");
+        await page.waitForFunction(() => window.headingFixture.ready());
+        await html("<h2>aX🙂b</h2><p>Tail</p>");
+        await page.keyboard.press("Backspace");
+        await html("<h2>aX🙂b</h2><p>Tai</p>");
+        await page.getByRole("button", { name: "undo", exact: true }).click();
+        await html("<h2>aX🙂b</h2><p>Tail</p>");
+        await page.getByRole("button", { name: "undo", exact: true }).click();
+        const saved = await page.evaluate(() => window.headingFixture.export("sessionCheckpointJson"));
+        assert.equal(JSON.parse(saved).formatVersion, 5);
+        await page.evaluate(() => window.headingFixture.reload());
+        assert.equal(await page.evaluate(() => window.headingFixture.export("sessionCheckpointJson")), saved);
+        await page.getByRole("button", { name: "redo", exact: true }).click();
+        await html("<h2>aX🙂b</h2><p>Tail</p>");
+        await state();
+        await page.evaluate(() => {
+          window.headingFixture.dispose();
+          for (const type of ["keydown", "beforeinput", "input"]) document.removeEventListener(type, window.headingListener);
+        });
+      }
+      console.log(JSON.stringify({ browser: name, version: browser.version(), status: "passed", runs: results.length,
+        publicEditorRuns: 5, keyboardPolicies: ["beforeinputPrimary", "structuralFallback"],
+        toolbar: true, indexedDbRestore: true, result: results[0] }));
     } catch (error) {
       process.exitCode = 1;
       console.log(JSON.stringify({ browser: name, version: browser.version(), status: "failed", error: String(error) }));

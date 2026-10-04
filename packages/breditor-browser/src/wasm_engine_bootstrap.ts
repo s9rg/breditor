@@ -11,7 +11,9 @@ import type {
 } from "./wasm_command_adapter.js";
 import {
   consumeSemanticProjection,
+  consumeTextBlockSemanticProjection,
   type SemanticProjectionView,
+  type TextBlockSemanticProjectionView,
 } from "./wasm_projection_adapter.js";
 import {
   sessionCheckpointJsonUtf8Bytes,
@@ -107,6 +109,11 @@ export interface WasmCompiledProfileBootstrapView
   createEngineFromSessionCheckpointJsonV3(
     checkpointJson: string,
   ): WasmEngineBootstrapResultView;
+  /** Present only in the explicitly selected experimental text-block build. */
+  createEngineFromDocumentJsonV5?(
+    lineageId: string, documentJson: string, historyCapacity: number,
+  ): WasmEngineBootstrapResultView;
+  createEngineFromSessionCheckpointJsonV5?(checkpointJson: string): WasmEngineBootstrapResultView;
   generation(): WasmProfileGenerationView;
   descriptor(): WasmCompiledProfileDescriptorView;
   matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
@@ -129,6 +136,8 @@ export interface WasmCompiledProfileBootstrapFactoryView {
   fromBootstrapJsonV2(
     bootstrapJson: string,
   ): WasmCompiledProfileBootstrapResultView;
+  /** Never inspected for a legacy bootstrap request. */
+  fromBootstrapJsonV3?(bootstrapJson: string): WasmCompiledProfileBootstrapResultView;
 }
 
 /** Structural generated module namespace with explicit compatibility probes. */
@@ -142,7 +151,7 @@ export interface WasmEngineBootstrapModuleView {
 /** Strict opt-in selector for one exact compiled-profile bootstrap generation. */
 export type WasmSemanticProfileBootstrapSource =
   | Readonly<{ bootstrapJson: string }>
-  | Readonly<{ bootstrapJson: string; formatVersion: 2 }>;
+  | Readonly<{ bootstrapJson: string; formatVersion: 2 | 3 }>;
 
 /** Strict request for a history-free Document V1 engine. */
 export interface WasmDocumentBootstrapSource {
@@ -263,7 +272,7 @@ type ResolvedFactory =
       protectedHandles: ReadonlySet<object>;
     }>
   | Readonly<{
-      durableMode: "v2" | "v3";
+      durableMode: "v2" | "v3" | "v5";
       factory: WasmCompiledProfileBootstrapFactoryView;
       compileProfile: WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"];
       protectedHandles: ReadonlySet<object>;
@@ -482,7 +491,7 @@ export function isOwnedBrowserWasmEngineBootstrapResult(
 
 function consumeCompiledProfile(
   bootstrapJson: unknown,
-  resolved: Extract<ResolvedFactory, { durableMode: "v2" | "v3" }>,
+  resolved: Extract<ResolvedFactory, { durableMode: "v2" | "v3" | "v5" }>,
   registry: GeneratedHandleRegistry,
 ):
   | Readonly<{ ok: true; value: CompiledProfileExpectation }>
@@ -540,12 +549,9 @@ function consumeCompiledProfile(
     rawProfile,
     "matchesProfileGeneration",
   );
-  const documentFactoryName = resolved.durableMode === "v3"
-    ? "createEngineFromDocumentJsonV3"
-    : "createEngineFromDocumentJson";
-  const checkpointFactoryName = resolved.durableMode === "v3"
-    ? "createEngineFromSessionCheckpointJsonV3"
-    : "createEngineFromSessionCheckpointJson";
+  const suffix = resolved.durableMode === "v2" ? "" : resolved.durableMode.toUpperCase();
+  const documentFactoryName = `createEngineFromDocumentJson${suffix}`;
+  const checkpointFactoryName = `createEngineFromSessionCheckpointJson${suffix}`;
   const createEngineFromDocumentJson = readMethod(rawProfile, documentFactoryName);
   const createEngineFromSessionCheckpointJson = readMethod(
     rawProfile,
@@ -764,6 +770,7 @@ function consumeConstructionResult(
       : activeDescriptor,
     registry,
     protectedHandles,
+    compiledProfile?.durableContract.mode === "v5",
   );
   if (!projectionResult.ok) return failure(projectionResult.error);
 
@@ -797,6 +804,7 @@ function consumeProjectionRead(
   profile: string | BrowserCompiledProfileDescriptor,
   registry: GeneratedHandleRegistry,
   protectedHandles: ReadonlySet<object>,
+  textBlocks: boolean,
 ):
   | Readonly<{ ok: true; projection: BaseDocumentProjection }>
   | Readonly<{ ok: false; error: BrowserWasmEngineBootstrapError }> {
@@ -848,15 +856,14 @@ function consumeProjectionRead(
     return Object.freeze({ ok: false, error: INVALID_VIEW });
   }
 
-  const facade = snapshotProjectionFacade(rawProjection, registry);
+  const facade = snapshotProjectionFacade(rawProjection, registry, textBlocks);
   if (facade === null) {
     return Object.freeze({ ok: false, error: INVALID_VIEW });
   }
-  const consumed = consumeSemanticProjection(
-    facade,
-    rawGeneration,
-    profile,
-  );
+  // A heading mode always has a compiled descriptor, never a base fingerprint.
+  const consumed = textBlocks && typeof profile !== "string"
+    ? consumeTextBlockSemanticProjection(facade as TextBlockSemanticProjectionView, rawGeneration, profile)
+    : consumeSemanticProjection(facade, rawGeneration, profile);
   if (!consumed.ok) {
     return Object.freeze({ ok: false, error: INVALID_PROJECTION });
   }
@@ -872,6 +879,7 @@ function consumeProjectionRead(
 function snapshotProjectionFacade(
   raw: object,
   registry: GeneratedHandleRegistry,
+  textBlocks: boolean,
 ): SemanticProjectionView | null {
   const cleanup = takeGeneratedCleanup(registry, raw);
   if (cleanup === undefined) return null;
@@ -898,6 +906,7 @@ function snapshotProjectionFacade(
     const formatPropertyInteger = view.formatPropertyInteger;
     const formatPropertyString = view.formatPropertyString;
     const matchesProfileGeneration = view.matchesProfileGeneration;
+    const headingLevel = textBlocks ? (raw as TextBlockSemanticProjectionView).headingLevel : undefined;
     const scalars = [
       schemaName,
       schemaVersion,
@@ -925,6 +934,7 @@ function snapshotProjectionFacade(
     ];
     if (
       typeof schemaFingerprint !== "string" ||
+      (textBlocks && (typeof headingLevel !== "function" || valueIsThenable(headingLevel))) ||
       scalars.some(valueIsThenable) ||
       methods.some((method) =>
         typeof method !== "function" || valueIsThenable(method)
@@ -996,6 +1006,10 @@ function snapshotProjectionFacade(
       ) as ReturnType<SemanticProjectionView["formatPropertyString"]>,
       matchesProfileGeneration: (generation: WasmProfileGenerationView) =>
         invoke(matchesProfileGeneration as Function, [generation]) as boolean,
+      // Preserve the raw return value so the consumer rejects thenables even
+      // at paragraph/root/absence probes, where undefined itself is valid.
+      ...(textBlocks ? { headingLevel: (index: number) =>
+        Reflect.apply(headingLevel as Function, raw, [index]) as number | undefined } : {}),
       free: (() => cleanup()) as () => void,
     });
   } catch {
@@ -1314,13 +1328,19 @@ function resolveFactory(
       ) {
         return Object.freeze({ ok: false, error: INVALID_MODULE });
       }
-      const v2 = "formatVersion" in semanticProfile;
+      const formatVersion = "formatVersion" in semanticProfile ? semanticProfile.formatVersion : 1;
+      const fromBootstrapJsonV3 = formatVersion === 3 ? structural.fromBootstrapJsonV3 : undefined;
+      if (formatVersion === 3 && (typeof fromBootstrapJsonV3 !== "function" || valueIsThenable(fromBootstrapJsonV3))) {
+        return Object.freeze({ ok: false, error: INVALID_MODULE });
+      }
       return Object.freeze({
         ok: true,
         value: Object.freeze({
-          durableMode: v2 ? "v3" as const : "v2" as const,
+          durableMode: formatVersion === 3 ? "v5" as const : formatVersion === 2 ? "v3" as const : "v2" as const,
           factory: structural,
-          compileProfile: v2 ? fromBootstrapJsonV2 : fromBootstrapJson,
+          compileProfile: formatVersion === 3
+            ? fromBootstrapJsonV3 as WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"]
+            : formatVersion === 2 ? fromBootstrapJsonV2 : fromBootstrapJson,
           protectedHandles,
         }),
       });
@@ -1442,7 +1462,7 @@ function readSemanticProfile(
   const v2 = exactRecord(value, ["bootstrapJson", "formatVersion"]);
   const record = v1 ?? v2;
   if (record === null) return null;
-  if (v2 !== null && v2["formatVersion"] !== 2) return null;
+  if (v2 !== null && v2["formatVersion"] !== 2 && v2["formatVersion"] !== 3) return null;
   const bootstrapJson = record["bootstrapJson"];
   if (
     typeof bootstrapJson !== "string" ||
@@ -1457,7 +1477,7 @@ function readSemanticProfile(
   }
   return v2 === null
     ? Object.freeze({ bootstrapJson })
-    : Object.freeze({ bootstrapJson, formatVersion: 2 as const });
+    : Object.freeze({ bootstrapJson, formatVersion: v2["formatVersion"] as 2 | 3 });
 }
 
 function exactRecord(

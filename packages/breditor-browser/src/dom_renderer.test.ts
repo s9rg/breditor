@@ -24,6 +24,10 @@ import {
   nativeParentNode,
 } from "./html_host.js";
 import { createProfiledDocumentProjection, createTextBlockDocumentProjection } from "./projection.js";
+import { browserInputActionIds, issueEditorDeliveryToken, noInputActionRequest, preserveSelectionSync } from "./editor_command.js";
+import { translateBeforeInput } from "./beforeinput.js";
+import { cutDeleteRequest, pasteInsertRequest } from "./clipboard_command.js";
+import { translateKeyDown } from "./keyboard.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
@@ -75,6 +79,36 @@ describe("BreditorDomRenderer", () => {
       createTextBlockDocumentProjection(input(revision, levels), generation, descriptor));
     return { generation, descriptor, input, make, renderer: new BreditorDomRenderer(presentation) };
   }
+
+  it.each([null, 2] as const)("routes native input through explicit text-block mode at rank %s", (rank) => {
+    const { make, renderer } = headingFixture();
+    const projection = make(0, [rank]);
+    const rendered = valueOf(renderer.render(document.createElement("div"), projection)).rendered;
+    try {
+      const delivery = issueEditorDeliveryToken(projection, rendered, 0n, Symbol("heading-input"));
+      const selection = preserveSelectionSync();
+      for (const [inputType, actionId] of [
+        ["insertText", "breditor/insert-text-block-text"],
+        ["insertParagraph", "breditor/insert-text-block-break"],
+        ["deleteContentBackward", "breditor/delete-text-block-backward"],
+        ["deleteContentForward", "breditor/delete-text-block-forward"],
+        ["deleteContent", "breditor/delete-text-block-selection"],
+      ]) {
+        expect(translateBeforeInput({ inputType: inputType!, data: "x", isComposing: false }, false, delivery, selection))
+          .toMatchObject({ kind: "command", request: { command: { actionId } } });
+      }
+      expect(cutDeleteRequest(delivery, selection).command).toMatchObject({ actionId: "breditor/delete-text-block-selection" });
+      expect(pasteInsertRequest(delivery, selection, "a\nb").command).toMatchObject({ actionId: "breditor/insert-text-block-plain-text" });
+      expect(translateKeyDown({ key: "Enter", code: "Enter", altKey: false, ctrlKey: false, metaKey: false,
+        shiftKey: false, repeat: false, isComposing: false, keyCode: 13, altGraph: false },
+      { editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled" }, false, delivery, selection))
+        .toMatchObject({ kind: "command", request: { command: { actionId: "breditor/insert-text-block-break" } } });
+      // Explicit API calls remain exact IDs, never aliases for a new protocol.
+      expect(noInputActionRequest(delivery, selection, { kind: "api", detail: "test" }, "breditor/delete-backward").command)
+        .toMatchObject({ actionId: "breditor/delete-backward" });
+      expect(() => browserInputActionIds(Object.create(delivery))).toThrow();
+    } finally { renderer.release(rendered); }
+  });
 
   it("renders all heading ranks as semantic tags with exact scalar selection maps", () => {
     const { make, renderer } = headingFixture();

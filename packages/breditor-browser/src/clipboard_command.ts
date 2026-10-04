@@ -1,5 +1,5 @@
 import {
-  BASE_ACTION_IDS,
+  browserInputActionIds,
   noInputActionRequest,
   stringActionRequest,
   type EditorDeliveryToken,
@@ -22,7 +22,7 @@ export function cutDeleteRequest(
     delivery,
     selection,
     Object.freeze({ kind: "clipboard", detail: "cut" }),
-    BASE_ACTION_IDS.deleteSelection,
+    browserInputActionIds(delivery).deleteSelection,
     "closeBefore",
   );
 }
@@ -44,7 +44,7 @@ export function pasteInsertRequest(
     delivery,
     selection,
     Object.freeze({ kind: "clipboard", detail: "paste" }),
-    BASE_ACTION_IDS.insertPlainText,
+    browserInputActionIds(delivery).insertPlainText,
     text,
     "closeBefore",
   );

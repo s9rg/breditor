@@ -45,7 +45,7 @@ import {
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
 import { mapDomTargetRange } from "./dom_target_range.js";
 import {
-  BASE_ACTION_IDS,
+  browserInputActionIds,
   closeHistoryGroupRequest,
   isEditorDeliveryAuthority,
   noInputActionRequest,
@@ -744,7 +744,7 @@ export class BreditorCompositionController {
               restored.delivery,
               selection,
               { kind: "beforeinput", detail: "composition" },
-              BASE_ACTION_IDS.insertPlainText,
+              browserInputActionIds(restored.delivery).insertPlainText,
               candidate.value.text,
               "closeBefore",
             )
@@ -752,7 +752,7 @@ export class BreditorCompositionController {
               restored.delivery,
               selection,
               { kind: "beforeinput", detail: "composition" },
-              BASE_ACTION_IDS.deleteSelection,
+              browserInputActionIds(restored.delivery).deleteSelection,
               "closeBefore",
             );
     } catch {

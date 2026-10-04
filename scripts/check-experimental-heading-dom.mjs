@@ -6,6 +6,7 @@ import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
 import { runHeadingDomScenario } from "./heading-dom-scenario.mjs";
+import { runHeadingStartupScenario } from "./heading-startup-scenario.mjs";
 
 assert.equal(process.argv.length, 3, "provide experimental binding directory");
 const directory = resolve(process.argv[2]);
@@ -16,7 +17,8 @@ for (const name of ["Node", "NodeList", "Element", "HTMLElement", "Document", "W
   globalThis[name] = dom.window[name];
 try {
   const result = runHeadingDomScenario(api, dom.window.document.getElementById("editor"));
-  console.log(JSON.stringify({ status: "passed", environment: "jsdom", ...result }));
+  const startup = runHeadingStartupScenario(api, dom.window.document.getElementById("editor"));
+  console.log(JSON.stringify({ status: "passed", environment: "jsdom", ...result, startup }));
 } finally {
   dom.window.close();
 }

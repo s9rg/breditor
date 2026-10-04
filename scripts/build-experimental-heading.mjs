@@ -86,6 +86,6 @@ const manifest = { status: "passed", publishable: false, feature: "experimental-
   wasmSha256: hash(wasm), shippingWasmSha256: shippingBefore,
   declarationsSha256: hash(declarations),
   browserDistTreeSha256: hash(JSON.stringify(browserTreeBefore)),
-  qualification: "Generated ABI, Node, jsdom, and five heading-scenario runs per Chromium/Firefox/WebKit; not native input or public browser startup." };
+  qualification: "Generated ABI, Node, jsdom; five adapter/bootstrap and five public-editor keyboard/toolbar/IndexedDB lifecycle runs per Chromium/Firefox/WebKit. Not native Safari, OS clipboard, or OS IME qualification." };
 await writeFile(join(directory, "qualification.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(JSON.stringify({ directory, ...manifest }, null, 2));

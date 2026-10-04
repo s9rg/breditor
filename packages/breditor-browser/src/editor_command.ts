@@ -2,7 +2,7 @@ import {
   isOwnedRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
-import type { BaseDocumentProjection } from "./projection.js";
+import { projectionUsesTextBlockActions, type BaseDocumentProjection } from "./projection.js";
 import {
   isOwnedBaseRangeSelection,
   type BaseRangeSelection,
@@ -290,6 +290,23 @@ export const BASE_ACTION_IDS = Object.freeze({
   insertText: "breditor/insert-text",
   toggleStrong: "breditor/toggle-strong",
 } as const);
+
+const TEXT_BLOCK_ACTION_IDS = Object.freeze({
+  clearInlineFormats: "breditor/clear-text-block-inline-formats",
+  deleteBackward: "breditor/delete-text-block-backward",
+  deleteForward: "breditor/delete-text-block-forward",
+  deleteSelection: "breditor/delete-text-block-selection",
+  insertParagraphBreak: "breditor/insert-text-block-break",
+  insertPlainText: "breditor/insert-text-block-plain-text",
+  insertText: "breditor/insert-text-block-text",
+  toggleStrong: "breditor/toggle-text-block-strong",
+});
+
+/** Selects native-input handlers from a validated profile-bound delivery. @internal */
+export function browserInputActionIds(delivery: EditorDeliveryToken): Readonly<Record<keyof typeof BASE_ACTION_IDS, string>> {
+  return projectionUsesTextBlockActions(requireDelivery(delivery).projection)
+    ? TEXT_BLOCK_ACTION_IDS : BASE_ACTION_IDS;
+}
 
 /** Fixed built-in semantic intent IDs used by supported browser controls. */
 export const BASE_INTENT_IDS = Object.freeze({
