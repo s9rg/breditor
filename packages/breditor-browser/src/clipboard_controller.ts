@@ -1,5 +1,7 @@
 import {
   BreditorCommandQueue,
+  BreditorFlatListCommandQueue,
+  openFlatListCommandQueueLeasePort,
   openCommandQueueLeasePort,
   type CommandQueueLease,
   type CommandQueueLeasePort,
@@ -11,7 +13,9 @@ import {
 } from "./clipboard_command.js";
 import {
   serializeClipboardSelection,
+  serializeFlatListClipboardSelection,
 } from "./clipboard_fragment.js";
+import { flatListCutDeleteRequest, flatListPasteInsertRequest } from "./flat_list_clipboard_command.js";
 import { parseClipboardHtmlToPlainText } from "./clipboard_html.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
@@ -30,11 +34,17 @@ import {
 import { nativeHtmlHostFacts } from "./html_host.js";
 import {
   isOwnedRenderedProjection,
+  isOwnedFlatListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
-import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
 import {
   rangeSelectionSync,
+  flatListRangeSelectionSync,
+  type FlatListEditorDeliveryToken,
+  type FlatListEditorSelectionSync,
+  type EditorCommandRequest,
+  type FlatListEditorCommandRequest,
   type EditorDeliveryToken,
   type EditorSelectionSync,
 } from "./editor_command.js";
@@ -43,13 +53,17 @@ import {
   type BaseRangeSelection,
 } from "./selection.js";
 import {
+  type BaseDocumentProjection,
   projectionMatchesBrowserPresentation,
   projectionPresentation,
   projectionProfileDescriptor,
 } from "./projection.js";
+import { flatListProjectionPresentation, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
 import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
 import type {
   BreditorWasmCommandAdapter,
+  BreditorFlatListWasmCommandAdapter,
   WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
@@ -157,20 +171,29 @@ export type ClipboardControllerDisposition =
     }>
   | Readonly<{ kind: "disposed" }>;
 
+// Only private plumbing is shared. Public constructors and all owned values
+// remain mode-specific; the immutable mode cannot be switched by caller data.
+type ClipboardProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type ClipboardDelivery = EditorDeliveryToken | FlatListEditorDeliveryToken;
+type ClipboardSelectionSync = EditorSelectionSync | FlatListEditorSelectionSync;
+type ClipboardRequest = EditorCommandRequest | FlatListEditorCommandRequest;
+type ClipboardOutcome = WasmCommandSequenceOutcome<ClipboardProjection>;
+type ClipboardRendered = RenderedProjection<ClipboardProjection>;
+
 interface AdapterSurface {
   readonly commandExecutor: (
-    request: Parameters<BreditorWasmCommandAdapter["execute"]>[0],
-  ) => WasmCommandSequenceOutcome;
-  readonly rendered: RenderedProjection;
+    request: ClipboardRequest,
+  ) => ClipboardOutcome;
+  readonly rendered: ClipboardRendered;
   readonly state: BreditorWasmCommandAdapter["state"];
-  readonly selectionBridge: BreditorDomSelectionBridge;
-  acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken;
-  deliveryToken(): EditorDeliveryToken;
+  readonly selectionBridge: BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
+  acceptsDeliveryToken(token: unknown): token is ClipboardDelivery;
+  deliveryToken(): ClipboardDelivery;
 }
 
 interface CanonicalBase {
-  readonly rendered: RenderedProjection;
-  readonly delivery: EditorDeliveryToken;
+  readonly rendered: ClipboardRendered;
+  readonly delivery: ClipboardDelivery;
   readonly presentation: BrowserCompiledPresentation | undefined;
 }
 
@@ -198,14 +221,14 @@ interface EchoReceipt {
   readonly operation: "cut" | "paste";
   readonly phase: "beforeinput" | "input";
   readonly inputType?: string;
-  readonly rendered: RenderedProjection;
-  readonly delivery: EditorDeliveryToken;
+  readonly rendered: ClipboardRendered;
+  readonly delivery: ClipboardDelivery;
 }
 
 interface ReceiptCandidate {
   readonly operation: "cut" | "paste";
-  readonly rendered: RenderedProjection;
-  readonly delivery: EditorDeliveryToken;
+  readonly rendered: ClipboardRendered;
+  readonly delivery: ClipboardDelivery;
 }
 
 interface LeasedOutcome {
@@ -239,21 +262,24 @@ const HTML_MIME = "text/html";
  * string before submitting exactly one engine request. Native Event and
  * DataTransfer objects never escape or enter a receipt.
  */
-export class BreditorClipboardController {
-  readonly #queuePort: CommandQueueLeasePort<WasmCommandSequenceOutcome>;
+class ClipboardControllerCore {
+  readonly #flatLists: boolean;
+  readonly #queuePort: CommandQueueLeasePort<ClipboardOutcome, ClipboardRequest>;
   readonly #adapter: AdapterSurface;
   #receipt: EchoReceipt | undefined;
   #activeLease: CommandQueueLease | undefined;
   #disposed = false;
 
   constructor(
-    queue: BreditorCommandQueue<WasmCommandSequenceOutcome>,
-    adapter: BreditorWasmCommandAdapter,
+    queue: BreditorCommandQueue<WasmCommandSequenceOutcome> | BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
+    adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter,
+    flatLists: boolean,
   ) {
-    if (!(queue instanceof BreditorCommandQueue)) {
+    this.#flatLists = flatLists;
+    if (!(flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("clipboard queue is invalid");
     }
-    const surface = adapter as AdapterSurface;
+    const surface = adapter as unknown as AdapterSurface;
     let valid = false;
     let executor: AdapterSurface["commandExecutor"] | undefined;
     try {
@@ -261,7 +287,7 @@ export class BreditorClipboardController {
       valid =
         typeof executor === "function" &&
         surface.commandExecutor === executor &&
-        surface.selectionBridge instanceof BreditorDomSelectionBridge &&
+        (flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
         typeof surface.deliveryToken === "function" &&
         typeof surface.acceptsDeliveryToken === "function";
     } catch {
@@ -270,7 +296,11 @@ export class BreditorClipboardController {
     if (!valid || executor === undefined) {
       throw new TypeError("clipboard adapter is invalid");
     }
-    const queuePort = openCommandQueueLeasePort(queue, executor);
+    const queuePort = (flatLists && queue instanceof BreditorFlatListCommandQueue
+      ? openFlatListCommandQueueLeasePort(queue, executor)
+      : !flatLists && queue instanceof BreditorCommandQueue
+        ? openCommandQueueLeasePort(queue, executor) : undefined
+    ) as CommandQueueLeasePort<ClipboardOutcome, ClipboardRequest> | undefined;
     if (queuePort === undefined) {
       throw new TypeError("clipboard queue must own the adapter executor");
     }
@@ -526,7 +556,7 @@ export class BreditorClipboardController {
       );
     }
 
-    const serialized = serializeClipboardSelection(
+    const serialized = (this.#flatLists ? serializeFlatListClipboardSelection : serializeClipboardSelection)(
       selection,
       base.presentation,
     );
@@ -588,7 +618,9 @@ export class BreditorClipboardController {
 
     let request;
     try {
-      request = cutDeleteRequest(base.delivery, selectionSync);
+      request = this.#flatLists
+        ? flatListCutDeleteRequest(base.delivery as FlatListEditorDeliveryToken, selectionSync as FlatListEditorSelectionSync)
+        : cutDeleteRequest(base.delivery as EditorDeliveryToken, selectionSync as EditorSelectionSync);
     } catch {
       return simpleOutcome(
         blocked("cut", "invalidSelection", true, freezeProgress(mutable)),
@@ -602,7 +634,7 @@ export class BreditorClipboardController {
     lease: CommandQueueLease,
     cancelable: CancelableEventSnapshot,
     base: CanonicalBase,
-    selection: EditorSelectionSync,
+    selection: ClipboardSelectionSync,
     mutable: MutableProgress,
   ): LeasedOutcome {
     const clipboardData = readClipboardData(event, cancelable.source);
@@ -629,7 +661,9 @@ export class BreditorClipboardController {
     }
     let request;
     try {
-      request = pasteInsertRequest(base.delivery, selection, payload.text);
+      request = this.#flatLists
+        ? flatListPasteInsertRequest(base.delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync, payload.text)
+        : pasteInsertRequest(base.delivery as EditorDeliveryToken, selection as EditorSelectionSync, payload.text);
     } catch {
       return this.#cancelFailure(
         "paste",
@@ -751,11 +785,11 @@ export class BreditorClipboardController {
 
   #submitMutation(
     operation: "cut" | "paste",
-    request: Parameters<CommandQueueLeasePort<WasmCommandSequenceOutcome>["submitLeased"]>[1],
+    request: ClipboardRequest,
     lease: CommandQueueLease,
     mutable: MutableProgress,
   ): LeasedOutcome {
-    let submission: CommandQueueLeasedSubmission<WasmCommandSequenceOutcome>;
+    let submission: CommandQueueLeasedSubmission<ClipboardOutcome>;
     mutable.command = "uncertain";
     try {
       submission = this.#queuePort.submitLeased(lease, request);
@@ -1084,16 +1118,18 @@ export class BreditorClipboardController {
       if (this.#disposed || this.#adapter.state !== "live") return null;
       const rendered = this.#adapter.rendered;
       if (
-        !isOwnedRenderedProjection(rendered) ||
+        !(this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
         !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
       ) {
         return null;
       }
-      const presentation = projectionPresentation(rendered.projection);
+      const presentation = this.#flatLists
+        ? flatListProjectionPresentation(rendered.projection as FlatListDocumentProjection)
+        : projectionPresentation(rendered.projection as BaseDocumentProjection);
       if (
-        projectionProfileDescriptor(rendered.projection) !== undefined &&
+        (this.#flatLists || projectionProfileDescriptor(rendered.projection as BaseDocumentProjection) !== undefined) &&
         presentation === undefined
       ) {
         return null;
@@ -1110,21 +1146,25 @@ export class BreditorClipboardController {
   #captureSelection(
     base: CanonicalBase,
   ): Readonly<{
-    selection: BaseRangeSelection;
-    selectionSync: EditorSelectionSync;
+    selection: BaseRangeSelection | FlatListRangeSelection;
+    selectionSync: ClipboardSelectionSync;
   }> | null {
     try {
-      const observed = this.#adapter.selectionBridge.read(base.rendered);
+      const observed = this.#flatLists
+        ? (this.#adapter.selectionBridge as BreditorFlatListDomSelectionBridge).read(base.rendered as RenderedProjection<FlatListDocumentProjection>)
+        : (this.#adapter.selectionBridge as BreditorDomSelectionBridge).read(base.rendered as RenderedProjection);
       if (
         !observed.ok ||
         observed.value.kind !== "range" ||
-        !isOwnedBaseRangeSelection(observed.value.selection) ||
+        !(this.#flatLists ? isOwnedFlatListRangeSelection(observed.value.selection) : isOwnedBaseRangeSelection(observed.value.selection)) ||
         observed.value.selection.projection !== base.rendered.projection
       ) {
         return null;
       }
       const selection = observed.value.selection;
-      const selectionSync = rangeSelectionSync(selection);
+      const selectionSync = this.#flatLists
+        ? flatListRangeSelectionSync(selection as FlatListRangeSelection)
+        : rangeSelectionSync(selection as BaseRangeSelection);
       return this.#baseIsCurrent(base)
         ? Object.freeze({ selection, selectionSync })
         : null;
@@ -1151,7 +1191,9 @@ export class BreditorClipboardController {
   }
 
   #basePresentationIsCurrent(base: CanonicalBase): boolean {
-    const projection = base.rendered.projection;
+    if (this.#flatLists) return base.presentation !== undefined &&
+      flatListProjectionPresentation(base.rendered.projection as FlatListDocumentProjection) === base.presentation;
+    const projection = base.rendered.projection as BaseDocumentProjection;
     return base.presentation === undefined
       ? projectionProfileDescriptor(projection) === undefined &&
           projectionPresentation(projection) === undefined
@@ -1160,13 +1202,13 @@ export class BreditorClipboardController {
 
   #freshReceiptCandidate(
     operation: "cut" | "paste",
-    result: WasmCommandSequenceOutcome,
+    result: ClipboardOutcome,
   ): ReceiptCandidate | null {
     try {
       const rendered = this.#adapter.rendered;
       if (
         result.rendered !== rendered ||
-        !isOwnedRenderedProjection(rendered) ||
+        !(this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
         !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
@@ -1198,6 +1240,21 @@ export class BreditorClipboardController {
     } catch {
       return false;
     }
+  }
+}
+
+/** Existing paragraph/heading clipboard mode; list dependencies remain rejected. */
+export class BreditorClipboardController extends ClipboardControllerCore {
+  constructor(queue: BreditorCommandQueue<WasmCommandSequenceOutcome>, adapter: BreditorWasmCommandAdapter) {
+    super(queue, adapter, false);
+  }
+}
+
+/** Explicit hierarchical list clipboard controller. Not part of the shipping entry point. @internal */
+export class BreditorFlatListClipboardController extends ClipboardControllerCore {
+  constructor(queue: BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
+    adapter: BreditorFlatListWasmCommandAdapter) {
+    super(queue, adapter, true);
   }
 }
 
@@ -1299,7 +1356,7 @@ function clipboardOperationForInputType(
     : null;
 }
 
-function acceptedMutationOutcome(result: WasmCommandSequenceOutcome): boolean {
+function acceptedMutationOutcome(result: ClipboardOutcome): boolean {
   try {
     return (
       result.status === "delivered" &&

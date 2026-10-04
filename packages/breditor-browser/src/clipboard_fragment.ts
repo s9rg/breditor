@@ -1,5 +1,6 @@
 import type {
   BaseDocumentProjection,
+  BaseParagraphProjection,
   BaseTextRunProjection,
 } from "./projection.js";
 import {
@@ -19,15 +20,18 @@ import {
   type BaseRangeSelection,
   type BaseSelectionPoint,
 } from "./selection.js";
+import { astPathsEqual } from "./ast_path.js";
+import { flatListProjectionPresentation, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedFlatListRangeSelection, flatListSpatialPositionForPoint } from "./flat_list_selection.js";
 
-/** Largest plain clipboard serialization admitted from one base projection. */
+/** Plain clipboard ceiling, shared unchanged by base and experimental list selections. */
 export const MAX_CLIPBOARD_FRAGMENT_TEXT_UTF16 = 8 * 1024 * 1024 + 9_999;
 
 /** UTF-8 companion to {@link MAX_CLIPBOARD_FRAGMENT_TEXT_UTF16}. */
 export const MAX_CLIPBOARD_FRAGMENT_TEXT_UTF8 = 8 * 1024 * 1024 + 9_999;
 
 /**
- * Fixed ceiling for escaped HTML copied from one bounded base projection.
+ * Fixed ceiling for escaped HTML copied from one bounded semantic projection.
  *
  * The source projection admits at most 8 MiB of text and 100,000 nodes. This
  * independent ceiling bounds worst-case five-character text escaping and
@@ -57,7 +61,7 @@ export interface ClipboardFragmentError {
 
 /** Both interoperable clipboard representations of one semantic selection. */
 export interface ClipboardFragmentSerialization {
-  /** Selected paragraph text joined with LF separators. */
+  /** Selected text-block slices joined with LF separators (without list markers). */
   readonly plainText: string;
   /** Escaped `<p>`/`<br>` HTML with only checked inline recipe wrappers. */
   readonly html: string;
@@ -165,6 +169,38 @@ export function serializeClipboardSelection(
   }
 }
 
+/**
+ * Copies selected flat-list text through the existing bounded clipboard format.
+ * List markers and heading ranks are deliberately not exported: each selected
+ * text block becomes one LF-separated paragraph, with checked inline wrappers.
+ * This is text interchange, not structural rich paste. The document, actual AST
+ * paths, direction and affinities are never rewritten into a base projection.
+ * An exact renderer-bound presentation is mandatory for this profiled mode.
+ * @internal
+ */
+export function serializeFlatListClipboardSelection(
+  selection: unknown,
+  presentation?: BrowserCompiledPresentation,
+): ClipboardFragmentSerializationResult {
+  if (!isOwnedFlatListRangeSelection(selection)) return failure("clipboard.fragment.invalid_selection");
+  if (selection.order === "collapsed") return failure("clipboard.fragment.empty_selection");
+  try {
+    if (presentation === undefined || flatListProjectionPresentation(selection.projection) !== presentation) {
+      return failure("clipboard.fragment.invalid_selection");
+    }
+    const start = flatListSpatialPoint(selection.projection, selection.order === "backward" ? selection.focus : selection.anchor);
+    const end = flatListSpatialPoint(selection.projection, selection.order === "backward" ? selection.anchor : selection.focus);
+    return serializeTextBlocks(selection.projection.textBlocks.map(entry => entry.block), start, end, presentation);
+  } catch { return failure("clipboard.fragment.invalid_selection"); }
+}
+
+function flatListSpatialPoint(projection: FlatListDocumentProjection, point: BaseSelectionPoint): SpatialPoint | null {
+  const position = flatListSpatialPositionForPoint(projection, point);
+  if (position === null) return null;
+  const paragraphIndex = projection.textBlocks.findIndex(entry => astPathsEqual(entry.path, position.textBlockPath));
+  return paragraphIndex < 0 ? null : {paragraphIndex, utf16Offset: position.utf16Offset};
+}
+
 function serializeOwnedSelection(
   selection: BaseRangeSelection,
   candidatePresentation: BrowserCompiledPresentation | undefined,
@@ -173,6 +209,18 @@ function serializeOwnedSelection(
   const endPoint = selection.order === "backward" ? selection.anchor : selection.focus;
   const start = spatialPoint(selection.projection, startPoint);
   const end = spatialPoint(selection.projection, endPoint);
+  const presentation = resolveProjectionPresentation(selection.projection, candidatePresentation);
+  if (presentation === null) return failure("clipboard.fragment.invalid_selection");
+  return serializeTextBlocks(selection.projection.paragraphs, start, end, presentation);
+}
+
+/** Shared encoding only; ownership and spatial topology are proved by callers. */
+function serializeTextBlocks(
+  paragraphs: readonly BaseParagraphProjection[],
+  start: SpatialPoint | null,
+  end: SpatialPoint | null,
+  presentation: BrowserCompiledPresentation | undefined,
+): ClipboardFragmentSerializationResult {
   if (
     start === null ||
     end === null ||
@@ -180,13 +228,6 @@ function serializeOwnedSelection(
     (start.paragraphIndex === end.paragraphIndex &&
       start.utf16Offset >= end.utf16Offset)
   ) {
-    return failure("clipboard.fragment.invalid_selection");
-  }
-  const presentation = resolveProjectionPresentation(
-    selection.projection,
-    candidatePresentation,
-  );
-  if (presentation === null) {
     return failure("clipboard.fragment.invalid_selection");
   }
 
@@ -205,7 +246,7 @@ function serializeOwnedSelection(
     paragraphIndex <= end.paragraphIndex;
     paragraphIndex += 1
   ) {
-    const paragraph = selection.projection.paragraphs[paragraphIndex];
+    const paragraph = paragraphs[paragraphIndex];
     if (paragraph === undefined) {
       return failure("clipboard.fragment.invalid_selection");
     }

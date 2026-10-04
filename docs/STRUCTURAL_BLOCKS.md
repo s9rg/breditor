@@ -2,7 +2,7 @@
 
 Current status: headings have a separately built experimental browser demo;
 flat lists now have gated Rust structural editing, exact history/recovery and
-internal browser projection, ordinary-input and toolbar integration, but **no
+internal browser projection, ordinary/composition/clipboard controllers and toolbar integration, but **no
 complete list-enabled browser editor yet**. The historical checkpoints below explain the route
 to these features. The default paragraph-only schema and existing fingerprints
 remain unchanged. Links remain typed inline formatting inside structural blocks.

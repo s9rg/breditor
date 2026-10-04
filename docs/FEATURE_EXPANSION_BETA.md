@@ -1226,3 +1226,30 @@ Next: supported list clipboard flows and the full editor owner/router, then
 visible persistence and physical native-input/accessibility/release gates.
 Shipping artifacts are unchanged. Nothing was pushed or published. See
 [verification](qualification/2026-10-04-flat-list-composition-controller.json).
+
+## Flat-list clipboard checkpoint — 2026-10-04
+
+The explicit list clipboard controller now shares the existing private clipboard
+flow. It requires the list-mode queue/bridge and exact adapter executor, reads
+owned hierarchical selections, and uses list-aware cut/plain-text insertion
+requests. Cut still cannot delete until both clipboard representations and native
+cancellation succeed. Reentrancy, stale DOM, write/cancellation failure,
+authoritative plain text, bounded HTML-only admission and uncertainty retain the
+same guarded behavior. One committed cut/paste authorizes at most one input echo.
+
+Serialization visits actual text-block paths, retaining partial/empty slices and
+Unicode boundaries without rewriting the document or exact selection. Clipboard
+plain text and safe paragraph HTML deliberately omit list markers/heading ranks;
+paste imports text, not structure or inline formatting. This beta boundary and
+the unchanged resource limits are explicit in the event-pipeline contract.
+
+Verification: 1,809 tests in 52 files, strict implementation/test types and
+temporary declaration emission pass. The real-Wasm browser harness adds mixed-root
+copy, backward emoji and cross-item cut, multiline plain/HTML-only paste, empty
+bullet-item paste, one-use echoes, exact undo and saved redo in a fresh Session V6
+owner. Browser results and fixture corrections are recorded in
+[qualification](qualification/2026-10-04-flat-list-clipboard.json).
+
+Next: wire these controllers into the complete list editor owner/router, then
+visible persistence and physical native-input/accessibility/release gates.
+Shipping artifacts remain unchanged. Nothing was pushed or published.

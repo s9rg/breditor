@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "fa1a12f",
+  "status": "Flat-list clipboard controller integrated internally; full editor owner/router and physical clipboard qualification remain open",
+  "contracts": {
+    "implementation": "Shared private clipboard controller with explicit base/list facades, fixed private mode and exact adapter-executor queue lease",
+    "selection": "Owned hierarchical range and exact bound presentation; actual AST text-block paths, scalar offsets, partial and empty boundary slices",
+    "interchange": "Selected plain text separated by LF and escaped paragraph HTML with checked inline wrappers; no list markers, heading ranks or structural rich paste",
+    "cut": "Write both representations, confirm cancellation, then submit one list-aware deletion",
+    "paste": "Advertised plain text is authoritative; HTML-only uses the unchanged closed paragraph/inline allowlist and reduces to plain text; Rust handles destination list structure",
+    "lifecycle": "Queue exclusion, stale-base checks, partial-progress diagnostics, one-use cut/paste echoes and uncertainty without retry are shared with the existing controller",
+    "limits": "Existing serialization, HTML admission and command-text/source-paragraph budgets remain unchanged; valid larger list selections can exceed clipboard limits",
+    "legacy": "No new shipping exports, package version, durable format or Wasm change"
+  },
+  "verification": {
+    "newTests": 10,
+    "browserTests": 1809,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Real list clipboard controller/queue/adapter/Wasm with native-branded synthetic events and in-memory DataTransfer. Mixed-root copy, backward emoji and cross-item cut, plain/HTML-only multiline paste, empty bullet-item paste, one-use beforeinput/input echoes, unsupported HTML rejection, exact undo and fresh-owner Session V6 redo. Earlier ordinary/composition/toolbar scenarios also rerun.",
+    "syntheticConstructorProbe": [
+      {"browser": "chromium", "adoptsSuppliedTransfer": true},
+      {"browser": "firefox", "adoptsSuppliedTransfer": false, "eventTransferInitiallyEmptyForCopyAndPaste": true, "eventTransferWritable": true},
+      {"browser": "webkit", "adoptsSuppliedTransfer": true}
+    ],
+    "developmentCorrections": [
+      "One initial unit expectation used adapterUnavailable for a second attempted paste after uncertain generated selection synchronization. The shared queue correctly fails closed first with queueUnavailable; corrected the expectation and retained the one-call/no-retry assertion.",
+      "First browser run passed Chromium/WebKit but Firefox copy left the fixture's supplied transfer empty. Independent constructor probes proved Firefox creates a separate empty event transfer and ignores supplied initial entries. A second run, reading the actual event transfer, passed copy/cut but blocked empty paste. The fixture now seeds and reads the actual event-local transfer. No production event getters or admission were weakened. Final five-run suites pass all three browsers."
+    ],
+    "commands": [
+      "npm test --workspace @breditor/browser -- --run src/wasm_command_adapter.test.ts src/clipboard_controller.test.ts src/clipboard_fragment.test.ts src/clipboard_command.test.ts",
+      "npm test --workspace @breditor/browser",
+      "npm run typecheck --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Complete list editor owner/router integration",
+    "Visible reload/backup and physical native-input/OS clipboard qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Synthetic clipboard events and in-memory transfers, not OS clipboard, physical keyboard shortcuts or a complete visible list editor. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

@@ -6,6 +6,14 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Connect experimental flat-list copy/cut/paste to the shared leased clipboard
+  controller and list-aware Rust commands. Serialize exact hierarchical text
+  selections without changing the document model; preserve item-boundary slices,
+  cut write-before-delete, authoritative plain-text paste, one-use input echoes,
+  exact undo/redo and Session V6 recovery. Clipboard output intentionally omits
+  list markers and heading ranks; structural rich paste and OS clipboard
+  qualification remain outside this checkpoint.
+
 - Connect experimental list composition events to the shared controller, queue
   lease, strict DOM reconciliation and Rust command path. Cover explicit/implicit
   starts, cancellation, recovery and one-time late-input echoes. Fix shared

@@ -4,6 +4,11 @@ import { BreditorDomRenderer, type RenderedProjection } from "./dom_renderer.js"
 import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
 import { FlatListDocumentProjection } from "./flat_list_projection.js";
 import { FlatListRangeSelection } from "./flat_list_selection.js";
+import { flatListProjectionPresentation } from "./flat_list_projection.js";
+import { serializeClipboardSelection, serializeFlatListClipboardSelection } from "./clipboard_fragment.js";
+import { parseClipboardHtmlToPlainText } from "./clipboard_html.js";
+import { flatListCutDeleteRequest, flatListPasteInsertRequest } from "./flat_list_clipboard_command.js";
+import { BreditorClipboardController, BreditorFlatListClipboardController } from "./clipboard_controller.js";
 import { reconcileFlatListCompositionDom } from "./dom_composition_reconcile.js";
 import { BreditorCompositionController, BreditorFlatListCompositionController,
   type CompositionControllerNotification, type CompositionControllerOptions } from "./composition_controller.js";
@@ -13,6 +18,8 @@ import { issueCompositionDeliveryToken } from "./composition_delivery_token.js";
 import {
   closeHistoryGroupRequest,
   flatListCommandRequest,
+  flatListRangeSelectionSync,
+  MAX_BROWSER_COMMAND_TEXT_UTF16,
   flatListEditorDeliveryAuthorityAccepts,
   editorDeliveryAuthorityAccepts,
   historyRequest,
@@ -243,6 +250,154 @@ describe("explicit flat-list command adapter", () => {
     return {...f, queue, controller, tasks, notices, range, text, composition, before, runNext,
       dispose() { controller.dispose(); queue.dispose(); f.dispose(); }};
   }
+
+  function clipboardFixture(extraItem = false) {
+    const f = compositionAdapterFixture({}, extraItem);
+    if (!f.bridge.write(f.adapter.rendered, f.selected).ok) throw new Error("initial selection write failed");
+    const queue = new BreditorFlatListCommandQueue(f.adapter.commandExecutor);
+    const controller = new BreditorFlatListClipboardController(queue, f.adapter);
+    const values = new Map<string, string>();
+    const transfer = {get types() { return [...values.keys()]; },
+      clearData: vi.fn(() => { values.clear(); }),
+      setData: vi.fn((type: string, value: string) => { values.set(type, value); }),
+      getData: vi.fn((type: string) => values.get(type) ?? "")};
+    const event = (type: string) => ({type, target: f.host, cancelable: true, defaultPrevented: false,
+      clipboardData: transfer, preventDefault() { this.defaultPrevented = true; }});
+    return {...f, queue, controller, values, transfer, event,
+      dispose() { controller.dispose(); queue.dispose(); f.dispose(); }};
+  }
+
+  it("list clipboard slices exact backward emoji text without changing hierarchical selection", () => {
+    const f = clipboardFixture();
+    try {
+      const before = JSON.stringify(f.selected);
+      const presentation = flatListProjectionPresentation(f.adapter.rendered.projection)!;
+      const fragment = serializeFlatListClipboardSelection(f.selected, presentation);
+      expect(fragment).toEqual({ok: true, value: {plainText: "🙂", html: "<p>🙂</p>"}});
+      expect(JSON.stringify(f.selected)).toBe(before);
+      expect(serializeClipboardSelection(f.selected, presentation).ok).toBe(false);
+      expect(serializeFlatListClipboardSelection({...f.selected}, presentation).ok).toBe(false);
+      expect(serializeFlatListClipboardSelection(f.selected).ok).toBe(false);
+      expect(serializeFlatListClipboardSelection(f.selected, {...presentation}).ok).toBe(false);
+      if (!fragment.ok) throw new Error(fragment.error.code);
+      expect(parseClipboardHtmlToPlainText(fragment.value.html, presentation)).toEqual({ok: true, value: "🙂"});
+    } finally { f.dispose(); }
+  });
+
+  it("list clipboard retains item-boundary-only slices as two empty paragraphs", () => {
+    const f = clipboardFixture(true);
+    try {
+      const selected = FlatListRangeSelection.create(f.adapter.rendered.projection, {kind: "range",
+        anchor: {kind: "children", parentPath: [0, 1, 0], childIndex: 0, affinity: "before"},
+        focus: {kind: "children", parentPath: [0, 0, 0], childIndex: 1, affinity: "after"}});
+      if (!selected.ok) throw new Error(selected.error.code);
+      expect(serializeFlatListClipboardSelection(selected.value, flatListProjectionPresentation(f.adapter.rendered.projection)))
+        .toEqual({ok: true, value: {plainText: "\n", html: "<p><br></p><p><br></p>"}});
+      const collapsed = FlatListRangeSelection.create(f.adapter.rendered.projection,
+        {kind: "range", anchor: selected.value.anchor, focus: selected.value.anchor});
+      if (!collapsed.ok) throw new Error(collapsed.error.code);
+      expect(serializeFlatListClipboardSelection(collapsed.value).ok).toBe(false);
+    } finally { f.dispose(); }
+  });
+
+  it("list clipboard factories preserve exact paths, mode and paste limits", () => {
+    const f = clipboardFixture();
+    try {
+      const token = f.adapter.deliveryToken(), sync = flatListRangeSelectionSync(f.selected);
+      const cut = flatListCutDeleteRequest(token, sync);
+      expect(cut.selection).toEqual(sync);
+      expect(cut.command).toEqual({kind: "action", actionId: "breditor/delete-flat-list-selection", input: {kind: "none"}});
+      expect(cut.requirements).toEqual({selection: "synchronize", history: "closeBefore"});
+      for (const separator of ["\r", "\n", "\r\n"]) {
+        const text = separator.repeat(9_999);
+        expect(flatListPasteInsertRequest(token, sync, text).command).toMatchObject({
+          actionId: "breditor/insert-flat-list-plain-text", input: {kind: "string", value: text}});
+        expect(() => flatListPasteInsertRequest(token, sync, separator.repeat(10_000))).toThrow("source paragraph limit");
+      }
+      for (const text of ["", "\ud800", "a".repeat(MAX_BROWSER_COMMAND_TEXT_UTF16 + 1)]) {
+        expect(() => flatListPasteInsertRequest(token, sync, text)).toThrow();
+      }
+      const read = vi.fn(); const foreign = {get length() { read(); return 0; }};
+      expect(() => flatListPasteInsertRequest(token, sync, foreign as unknown as string)).toThrow();
+      expect(read).not.toHaveBeenCalled();
+      expect(() => flatListCutDeleteRequest({...token}, sync)).toThrow();
+    } finally { f.dispose(); }
+  });
+
+  it("list clipboard rejects base queues and mismatched captured executors", () => {
+    const f = clipboardFixture();
+    const foreign = new BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>(() => { throw new Error("unused"); });
+    try {
+      // @ts-expect-error The legacy facade cannot accept list dependencies.
+      expect(() => new BreditorClipboardController(f.queue, f.adapter)).toThrow("queue");
+      expect(() => new BreditorFlatListClipboardController(foreign, f.adapter)).toThrow("executor");
+    } finally { foreign.dispose(); f.dispose(); }
+  });
+
+  it("list copy writes exact paired representations without executing any Rust selection/action", () => {
+    const f = clipboardFixture();
+    try {
+      Object.defineProperty(f.controller, "flatLists", {value: false});
+      const event = f.event("copy");
+      expect(f.controller.handleCopy(event)).toMatchObject({kind: "handled", operation: "copy",
+        partial: {clipboard: "representationsWritten", command: "notApplicable"}});
+      expect(event.defaultPrevented).toBe(true);
+      expect([...f.values]).toEqual([["text/plain", "🙂"], ["text/html", "<p>🙂</p>"]]);
+      expect(f.selectionSync).not.toHaveBeenCalled(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.adapter.state).toBe("live");
+    } finally { f.dispose(); }
+  });
+
+  it.each(["write", "cancel"])("list cut never deletes after %s failure", failure => {
+    const f = clipboardFixture();
+    try {
+      const event = f.event("cut");
+      if (failure === "write") f.transfer.setData.mockImplementation(type => { if (type === "text/html") throw new Error("write failed"); });
+      else event.preventDefault = () => {};
+      expect(f.controller.handleCut(event)).toMatchObject(failure === "write"
+        ? {kind: "blocked", reason: "clipboardWriteFailed"} : {kind: "reconcileRequired", reason: "cancellationFailed"});
+      expect(f.selectionSync).not.toHaveBeenCalled(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.adapter.state).toBe("live");
+    } finally { f.dispose(); }
+  });
+
+  it("list clipboard holds the queue through transfer callbacks and blocks stale DOM cut", () => {
+    const f = clipboardFixture();
+    try {
+      const queued = request(f.adapter);
+      f.transfer.clearData.mockImplementation(() => {
+        expect(f.queue.submit(queued)).toEqual({status: "rejected", reason: "leased"});
+        f.host.querySelector("ol")!.start = 9;
+      });
+      expect(f.controller.handleCut(f.event("cut"))).toMatchObject({kind: "reconcileRequired", reason: "staleBase"});
+      expect(f.transfer.setData).not.toHaveBeenCalled(); expect(f.selectionSync).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it("list paste prefers authoritative plain text and never falls back after invalid input", () => {
+    const f = clipboardFixture();
+    try {
+      f.values.set("text/plain", "\ud800"); f.values.set("text/html", "<p>valid</p>");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "blocked", reason: "invalidPlainText"});
+      expect(f.transfer.getData.mock.calls).toEqual([["text/plain"]]);
+      expect(f.selectionSync).not.toHaveBeenCalled();
+      f.values.delete("text/plain"); f.values.set("text/html", "<ul><li>unsupported</li></ul>");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "blocked", reason: "invalidHtml"});
+      expect(f.selectionSync).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it("list clipboard reports uncertain selection synchronization once without retrying", () => {
+    const f = clipboardFixture();
+    try {
+      f.values.set("text/plain", "pasted");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "reconcileRequired"});
+      expect(f.selectionSync).toHaveBeenCalledTimes(1); expect(f.action).not.toHaveBeenCalled();
+      expect(f.adapter.state).toBe("faulted");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "reconcileRequired", reason: "queueUnavailable"});
+      expect(f.selectionSync).toHaveBeenCalledTimes(1);
+    } finally { f.dispose(); }
+  });
 
   it("list composition controller rejects base mode and foreign executor wiring", () => {
     const f = compositionControllerFixture();

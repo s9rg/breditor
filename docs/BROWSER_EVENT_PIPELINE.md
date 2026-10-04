@@ -599,3 +599,35 @@ scripted; WebKit requires a temporary target-range method fixture because its
 synthetic constructor drops those ranges. Full editor routing, OS IME and physical
 clipboard qualification remain separate gates. See
 [composition controller qualification](qualification/2026-10-04-flat-list-composition-controller.json).
+
+## Experimental flat-list clipboard controller
+
+`BreditorFlatListClipboardController` shares the clipboard lease, cancellation,
+partial-progress, receipt and failure paths with the base controller. Its explicit
+constructor requires the list queue and selection bridge, bound to the exact
+captured adapter executor. Private mode selects owned list renders/selections and
+list command factories; the base facade still rejects list dependencies.
+
+Copy slices immutable text blocks by actual AST paths in document order, using
+the exact bound inline presentation and existing encoding budgets. Leading,
+trailing and interior empty slices remain meaningful. Plain output separates
+text blocks with LF; safe HTML emits paragraphs and checked inline wrappers.
+Neither output includes list markers or heading ranks. This does not convert the
+editor document to paragraphs and is not a structural rich-paste protocol.
+The existing clipboard text/HTML limits are not raised for larger list documents;
+an otherwise valid selection can still exceed clipboard serialization limits.
+
+Cut writes both representations and confirms cancellation before submitting one
+list-aware deletion. Paste prefers advertised plain text (no fallback if it is
+invalid); HTML-only paste retains the existing closed paragraph/inline allowlist
+and reduces it to plain text. HTML lists are not accepted. Rust handles destination
+list splitting/joining and exact directional history. Command text/paragraph
+limits and fail-stop behavior are unchanged. Native event/DataTransfer objects
+never enter a semantic command or echo receipt.
+
+Cross-browser coverage uses native-branded synthetic ClipboardEvent/InputEvent
+objects and in-memory transfers, not the OS clipboard. Firefox does not adopt
+the supplied transfer in its synthetic constructor; the harness seeds and reads
+the event's actual native transfer instead, without replacing native getters.
+Physical clipboard actions and the complete editor owner/router remain separate
+gates. See [clipboard qualification](qualification/2026-10-04-flat-list-clipboard.json).
