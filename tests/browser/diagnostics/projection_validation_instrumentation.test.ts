@@ -70,8 +70,46 @@ it.each([[false, true], [true, true], [true, false]])("round-trips the emitted p
   for (const edit of edits.sort((a, b) => b.start - a.start)) restored = restored.slice(0, edit.start) + edit.original + restored.slice(edit.end);
   expect(restored).toBe(source);
   expect(edits.length).toBe(output.sites.length);
-  for (const name of ["createProfiledDocumentProjection", "validateProfiledProjection", "validateFormatDetails", "validateSnapshot", "exactDataRecord", "readExactBoundedArray"]) {
+  // The public paragraph/text-block factories delegate to the shared owner
+  // validator. Their returns may succeed and must not be labeled rejections.
+  for (const name of ["createOwnedProfiledProjection", "validateProfiledProjection", "validateFormatDetails", "validateSnapshot", "exactDataRecord", "readExactBoundedArray"]) {
     expect(output.sites.some(site => site.function === name), name).toBe(true);
+  }
+  for (const name of ["createProfiledDocumentProjection", "createTextBlockDocumentProjection"]) {
+    expect(output.sites.some(site => site.function === name), name).toBe(false);
+  }
+});
+
+it("observes the shared owner's rejection once without labeling delegation or success", () => {
+  const source = `function createProfiledDocumentProjection(input) { return createOwnedProfiledProjection(input, false); }
+    function createTextBlockDocumentProjection(input) { return createOwnedProfiledProjection(input, true); }
+    function createOwnedProfiledProjection(input, textBlocks) {
+      if (!check(input, textBlocks)) return projectionFailure();
+      return input;
+    }`;
+  const output = instrumentProjectionValidation(source, id, "/recorder.js")!;
+  expect(output.sites).toHaveLength(1);
+  expect(output.sites[0]?.function).toBe("createOwnedProfiledProjection");
+  const observe = vi.fn((_stage, result) => result);
+  const check = vi.fn(() => true);
+  const rejected = Object.freeze({ok: false});
+  const fail = vi.fn(() => rejected);
+  const run = new Function("__breditorProjectionReject", "check", "projectionFailure", "input", "textBlocks",
+    output.code.split("\n").slice(1).join("\n") +
+    "\nreturn textBlocks ? createTextBlockDocumentProjection(input) : createProfiledDocumentProjection(input);");
+  const accepted = Object.freeze({ok: true});
+  for (const textBlocks of [false, true]) {
+    check.mockReturnValue(true);
+    observe.mockClear(); check.mockClear(); fail.mockClear();
+    expect(run(observe, check, fail, accepted, textBlocks)).toBe(accepted);
+    expect(check).toHaveBeenCalledExactlyOnceWith(accepted, textBlocks);
+    expect(observe).not.toHaveBeenCalled();
+    expect(fail).not.toHaveBeenCalled();
+    check.mockReturnValue(false); check.mockClear();
+    expect(run(observe, check, fail, accepted, textBlocks)).toBe(rejected);
+    expect(check).toHaveBeenCalledExactlyOnceWith(accepted, textBlocks);
+    expect(fail).toHaveBeenCalledOnce();
+    expect(observe).toHaveBeenCalledExactlyOnceWith(output.sites[0]!.stage, rejected);
   }
 });
 

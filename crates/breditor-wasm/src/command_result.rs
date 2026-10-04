@@ -191,7 +191,14 @@ impl BreditorCommandResult {
     /// Encoding is intentionally not part of command publication. `absent`
     /// means the outcome is disabled/unchanged or its effective event is a
     /// history-only control. `error` means publication succeeded but the
-    /// mode-selected commit (including opt-in V5/V6) could not be represented within the
+    #[cfg_attr(
+        feature = "experimental-text-blocks",
+        doc = " mode-selected commit (including opt-in V5/V6) could not be represented within the"
+    )]
+    #[cfg_attr(
+        not(feature = "experimental-text-blocks"),
+        doc = " mode-selected Commit V1, V2, or V3 could not be represented within the"
+    )]
     /// active codec budget.
     #[must_use]
     #[wasm_bindgen(js_name = commitJson)]

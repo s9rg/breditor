@@ -2110,3 +2110,39 @@ for package/output/report hashes and reproducible commands. All shipping trees
 remain unchanged. Delivery/size policy, native input, performance and complete
 release qualification remain open; historical WebKit faults remain unresolved.
 Nothing was pushed or published.
+
+## Workspace verification failures repaired — 2026-10-04
+
+Running the non-shipping release checks exposed two reproducible verification
+failures that focused browser suites did not cover:
+
+- Three diagnostic round-trip tests still expected rejection returns in
+  `createProfiledDocumentProjection`, now a delegation wrapper. They now require
+  sites in `createOwnedProfiledProjection` and forbid rejection labels on the
+  public wrappers. A new executable regression verifies exactly-once predicate,
+  failure construction and observation, unchanged result identity, and no event
+  on successful delegation.
+- Default Wasm declaration generation inherited a Rust documentation line for
+  opt-in V5/V6, differing from the frozen reviewed ABI 5 declaration. An attempted
+  reviewed-comment update correctly failed the byte-lock guard and was reverted.
+  Conditional Rust documentation now preserves both default and opt-in wording;
+  neither the reviewed declaration nor the baseline hash was relaxed.
+
+The full TypeScript run passes **2,286 tests**, plus nine release-runner tests;
+workspace, browser-harness, React-demo and list-demo types pass. Rust formatting,
+all-target/all-feature Clippy, the full all-feature workspace tests (including
+1,124 core unit tests and 136 doctests), strict Rust docs, wasm32 check/lint and
+**25 real wasm32 boundary tests** pass. Native Wasm tests and Clippy were rechecked
+after the documentation-only Rust edit. The default ABI/glue check passes with
+all 227 signatures and the frozen declaration preserved.
+
+The regenerated opt-in candidate `target/flat-list-candidate-ZxeIdg` passes
+generated types/declaration checks, Node heading/list checks and five raw-Wasm
+runs per browser engine. Its Wasm, JavaScript glue and both declaration files are
+byte-identical to the earlier qualified `Rq6C5V` candidate. Shipping trees remain
+unchanged. These fixes change no executable editor behavior.
+
+See [workspace verification evidence](qualification/2026-10-04-workspace-release-checks.json).
+These are selected verified release checks, not a completed release: size/delivery
+approval, native-input evidence and responsiveness remain open, as do historical
+WebKit faults. Nothing was pushed or published.
