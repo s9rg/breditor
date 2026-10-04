@@ -183,7 +183,7 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(bootAfter.blocks, final.blocks); equal(endpoints(bootAfter), endpoints(final));
     return {status: "passed", scope: verifyDom === undefined
       ? "real Wasm list projection/selection/document and Session V6 recipes, explicit bootstrap and redo recovery; no DOM/native input"
-      : "production list ordinary/composition/clipboard controllers, toolbar/queue/adapter, synthetic events with target-range and in-memory transfer fixtures, exact undo/redo and Session V6 recovery; no physical input/OS IME/clipboard"};
+      : "production list router/listeners, ordinary/composition/clipboard controllers, toolbar/queue/adapter, synthetic events with target-range and in-memory transfer fixtures, exact undo/redo and Session V6 recovery; no physical input/OS IME/clipboard"};
   } finally {
     for (const handle of handles.reverse()) handle.free();
   }

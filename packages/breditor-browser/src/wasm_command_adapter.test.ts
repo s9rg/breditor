@@ -9,6 +9,8 @@ import { serializeClipboardSelection, serializeFlatListClipboardSelection } from
 import { parseClipboardHtmlToPlainText } from "./clipboard_html.js";
 import { flatListCutDeleteRequest, flatListPasteInsertRequest } from "./flat_list_clipboard_command.js";
 import { BreditorClipboardController, BreditorFlatListClipboardController } from "./clipboard_controller.js";
+import { BreditorBrowserEventRouter, BreditorFlatListBrowserEventRouter, type BrowserEventRouterOptions } from "./browser_event_router.js";
+import { BreditorFlatListBrowserEventController } from "./browser_event_controller.js";
 import { reconcileFlatListCompositionDom } from "./dom_composition_reconcile.js";
 import { BreditorCompositionController, BreditorFlatListCompositionController,
   type CompositionControllerNotification, type CompositionControllerOptions } from "./composition_controller.js";
@@ -266,6 +268,110 @@ describe("explicit flat-list command adapter", () => {
     return {...f, queue, controller, values, transfer, event,
       dispose() { controller.dispose(); queue.dispose(); f.dispose(); }};
   }
+
+  function routerFixture() {
+    const f = clipboardFixture();
+    const tasks: Array<() => void> = [];
+    const options: BrowserEventRouterOptions = {keyboard: {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"},
+      scheduleTask: task => { tasks.push(task); }};
+    const router = new BreditorFlatListBrowserEventRouter(f.queue, f.adapter, options);
+    return {...f, tasks, options, router,
+      dispose() { router.dispose(); f.dispose(); }};
+  }
+
+  it("list router keeps base mode closed and reserves one owner across both facades", () => {
+    const f = routerFixture();
+    try {
+      // @ts-expect-error Legacy constructor cannot accept a list queue/adapter.
+      expect(() => new BreditorBrowserEventRouter(f.queue, f.adapter, f.options)).toThrow("queue");
+      expect(() => new BreditorFlatListBrowserEventRouter(f.queue, f.adapter, f.options)).toThrow("already has an owner");
+      const baseQueue = new BreditorCommandQueue<WasmCommandSequenceOutcome>(() => { throw new Error("unused"); });
+      try {
+        // @ts-expect-error Deliberately invalid cross-mode adapter, on the same host.
+        expect(() => new BreditorBrowserEventRouter(baseQueue, f.adapter, f.options)).toThrow("already has an owner");
+      } finally { baseQueue.dispose(); }
+      f.router.dispose();
+      const successor = new BreditorFlatListBrowserEventRouter(f.queue, f.adapter, f.options);
+      expect(successor.status).toEqual({kind: "live"}); successor.dispose();
+    } finally { f.dispose(); }
+  });
+
+  it("list router rolls back failed construction and reserves before option callbacks", () => {
+    const f = clipboardFixture();
+    const foreign = new BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>(() => { throw new Error("unused"); });
+    const keyboard = {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"} as const;
+    try {
+      expect(() => new BreditorFlatListBrowserEventRouter(foreign, f.adapter, {keyboard})).toThrow("executor");
+      let reads = 0;
+      const router = new BreditorFlatListBrowserEventRouter(f.queue, f.adapter, {get keyboard() {
+        reads++;
+        expect(() => new BreditorFlatListBrowserEventRouter(f.queue, f.adapter, {keyboard})).toThrow("already has an owner");
+        return keyboard;
+      }});
+      expect(reads).toBe(1); router.dispose();
+    } finally { foreign.dispose(); f.dispose(); }
+  });
+
+  it("list router gives composition then clipboard exclusive input ownership", () => {
+    const f = routerFixture();
+    const composition = vi.spyOn(BreditorFlatListCompositionController.prototype, "handleBeforeInput");
+    const clipboard = vi.spyOn(BreditorFlatListClipboardController.prototype, "handleBeforeInput");
+    const ordinary = vi.spyOn(BreditorFlatListBrowserEventController.prototype, "handleBeforeInput");
+    try {
+      // A cancelled composition event must never enter clipboard or ordinary translation.
+      composition.mockReturnValue({kind: "ignored", reason: "alreadyDefaultPrevented"});
+      f.host.dispatchEvent(new InputEvent("beforeinput", {inputType: "insertText", data: "x", cancelable: true}));
+      expect(composition).toHaveBeenCalledTimes(1); expect(clipboard).not.toHaveBeenCalled(); expect(ordinary).not.toHaveBeenCalled();
+      composition.mockReturnValue({kind: "ignored", reason: "notComposition"});
+      clipboard.mockReturnValue({kind: "beforeinputEcho", operation: "paste", defaultPrevented: true});
+      f.host.dispatchEvent(new InputEvent("beforeinput", {inputType: "insertFromPaste", cancelable: true}));
+      expect(clipboard).toHaveBeenCalledTimes(1); expect(ordinary).not.toHaveBeenCalled();
+      expect(f.router.status).toEqual({kind: "live"});
+    } finally { f.dispose(); }
+  });
+
+  it("list router routes clipboard and document selection events to their sole owners", () => {
+    const f = routerFixture();
+    const copy = vi.spyOn(BreditorFlatListClipboardController.prototype, "handleCopy")
+      .mockReturnValue({kind: "ignored", operation: "copy", defaultPrevented: false, reason: "outsideHost"});
+    const selection = vi.spyOn(BreditorFlatListBrowserEventController.prototype, "handleSelectionChange")
+      .mockReturnValue({kind: "ignored", reason: "programmaticEcho"});
+    try {
+      f.host.dispatchEvent(new Event("copy")); document.dispatchEvent(new Event("selectionchange"));
+      expect(copy).toHaveBeenCalledTimes(1); expect(selection).toHaveBeenCalledTimes(1);
+      expect(f.selectionSync).not.toHaveBeenCalled();
+      f.router.dispose(); f.host.dispatchEvent(new Event("copy")); document.dispatchEvent(new Event("selectionchange"));
+      expect(copy).toHaveBeenCalledTimes(1); expect(selection).toHaveBeenCalledTimes(1);
+    } finally { f.dispose(); }
+  });
+
+  it("list router defers uncancelled native repair, consumes its input, and ignores the stale task", () => {
+    const f = routerFixture();
+    vi.spyOn(BreditorFlatListBrowserEventController.prototype, "handleBeforeInput")
+      .mockReturnValue({kind: "reconcileRequired", defaultPrevented: false, reason: "noncancelableMutation"});
+    const restore = vi.spyOn(f.adapter, "restoreCanonicalRender").mockReturnValue({ok: true, rendered: f.adapter.rendered});
+    const input = vi.spyOn(BreditorFlatListBrowserEventController.prototype, "handleInput");
+    try {
+      f.host.dispatchEvent(new InputEvent("beforeinput", {inputType: "insertText", data: "x", cancelable: false}));
+      expect(restore).not.toHaveBeenCalled(); expect(f.tasks).toHaveLength(1);
+      f.host.dispatchEvent(new InputEvent("input", {inputType: "insertText", data: "x"}));
+      expect(restore).toHaveBeenCalledTimes(1); expect(input).not.toHaveBeenCalled();
+      f.tasks.shift()!(); expect(restore).toHaveBeenCalledTimes(1);
+      expect(f.router.status).toEqual({kind: "live"});
+    } finally { f.dispose(); }
+  });
+
+  it("list router faults once on uncertain delivery and leaves late events inert", () => {
+    const f = routerFixture(); const statuses = vi.fn(); f.router.subscribe(statuses);
+    try {
+      f.host.dispatchEvent(new KeyboardEvent("keydown", {key: "Backspace", code: "Backspace", cancelable: true}));
+      expect(f.selectionSync).toHaveBeenCalledTimes(1);
+      expect(f.router.status).toEqual({kind: "faulted", reason: "queueUncertain"});
+      f.host.dispatchEvent(new KeyboardEvent("keydown", {key: "Backspace", code: "Backspace", cancelable: true}));
+      document.dispatchEvent(new Event("selectionchange")); f.router.dispose();
+      expect(f.selectionSync).toHaveBeenCalledTimes(1); expect(statuses).toHaveBeenCalledTimes(1);
+    } finally { f.dispose(); }
+  });
 
   it("list clipboard slices exact backward emoji text without changing hierarchical selection", () => {
     const f = clipboardFixture();

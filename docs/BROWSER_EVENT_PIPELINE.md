@@ -631,3 +631,32 @@ the supplied transfer in its synthetic constructor; the harness seeds and reads
 the event's actual native transfer instead, without replacing native getters.
 Physical clipboard actions and the complete editor owner/router remain separate
 gates. See [clipboard qualification](qualification/2026-10-04-flat-list-clipboard.json).
+
+## Experimental flat-list native event router
+
+`BreditorFlatListBrowserEventRouter` now installs the list-mode controller set
+through the same private lifecycle implementation as `BreditorBrowserEventRouter`.
+Mode is selected only during construction; each public constructor still requires
+its corresponding queue/adapter. Both modes share the host ownership registry, so
+even cross-mode or reentrant construction cannot attach a second router. Failed
+construction rolls back listeners and releases that reservation.
+
+Composition owns relevant input first; clipboard receives only exact
+non-composition fallthrough; ordinary editing receives only exact non-clipboard
+fallthrough. Selection observations during composition remain inert until an
+ordinary delivery base exists again. Shortcut tables are compiled against the
+adapter's exact descriptor. The router does not introduce an independent input
+translation table or a browser-side operation format.
+
+Uncancelled mutation requests defer canonical repair until native mutation has
+finished. The following input consumes that repair without creating another one;
+stale scheduled tasks become inert. Uncertain queue execution is terminal and
+never replayed. Disposal/fault removes listeners and publishes the terminal
+lifecycle once, before retained callbacks can do further work.
+
+Real-Wasm scenarios now use installed listeners for typing, keyboard undo and its
+echoes, cut/paste, composition settlement and its late echo, transient composition
+selectionchange, deferred DOM repair and disposed late callbacks. Saved undo/redo
+state is checked through a fresh Session V6 owner. These remain synthetic-event
+tests, not physical input or the complete high-level editor owner. See
+[router qualification](qualification/2026-10-04-flat-list-event-router.json).

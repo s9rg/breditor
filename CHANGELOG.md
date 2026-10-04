@@ -6,6 +6,14 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Connect the experimental flat-list controllers through the shared native event
+  router. Preserve single-host ownership, composition/clipboard/ordinary routing
+  priority, exact adapter-bound queues, deferred canonical repair, one-time
+  lifecycle notification and inert callbacks after disposal/fault. Real-Wasm
+  cross-browser tests now dispatch through installed listeners and verify exact
+  history/reload behavior. The full list editor owner and physical native-input
+  qualification remain pending.
+
 - Connect experimental flat-list copy/cut/paste to the shared leased clipboard
   controller and list-aware Rust commands. Serialize exact hierarchical text
   selections without changing the document model; preserve item-boundary slices,

@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "eb6b5e8",
+  "status": "Flat-list controllers integrated through installed native event listeners; high-level editor owner and physical input qualification remain open",
+  "contracts": {
+    "implementation": "Shared private event-router lifecycle with explicit base/list facades; controller mode selected once during construction",
+    "ownership": "One host registry across both modes, reservation before caller options, exact captured adapter-executor queue binding, constructor rollback",
+    "routing": "Composition first, clipboard only on exact non-composition fallthrough, ordinary only on exact non-clipboard fallthrough; no duplicate input translation table",
+    "selection": "Transient document selectionchange during composition is inert until a fresh ordinary delivery base exists",
+    "repair": "Uncancelled native mutation defers repair; following input consumes it once; stale scheduled tasks are inert",
+    "lifecycle": "Uncertain queue execution faults once without replay; terminal state invalidates listeners before teardown and subscriber callbacks",
+    "legacy": "Existing base router constructor remains closed to list dependencies; no shipping export, durable-format or Wasm change"
+  },
+  "verification": {
+    "newTests": 6,
+    "browserTests": 1815,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Real list router installed host/document listeners, controllers, queue, adapter and Wasm. Synthetic ordinary insertion, keyboard undo with beforeinput/input echoes, cut/paste, composition with transient selectionchange, exact original selection undo and saved redo in a fresh Session V6 owner. Uncancelled native edit followed by scripted DOM mutation repairs canonically; stale repair tasks and disposed late events remain inert. A valid late composition echo retains exact render identity, proving no extra repair. Prior list toolbar/controller/clipboard suites also rerun.",
+    "developmentCorrections": [
+      "Strict test typecheck rejected two mock ignored-composition dispositions with an extra phase field; removed it to match the existing closed result type.",
+      "One initial uncertainty test never reached its generated selection method because jsdom does not supply native InputEvent.getTargetRanges. Changed that unit fixture to supported native Backspace keydown so it exercises actual selection synchronization and one-time fail-stop behavior. Browser beforeinput coverage continues to use real browser capabilities.",
+      "Strengthened browser composition verification to deliver the late input before draining its expiration task and assert identical render identity afterward. Shared the existing narrowly scoped synthetic target-range helper across controller and router scenarios; no product event admission changed."
+    ],
+    "commands": [
+      "npm test --workspace @breditor/browser -- src/browser_event_router.test.ts",
+      "npm test --workspace @breditor/browser -- src/wasm_command_adapter.test.ts -t 'list router'",
+      "npm test --workspace @breditor/browser",
+      "npm run typecheck --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Complete high-level list editor owner integration",
+    "Visible reload/backup and autosave",
+    "Physical native-input/OS clipboard, accessibility, packed-consumer and size/performance gates"
+  ],
+  "evidenceBoundary": "Installed listeners with native-branded synthetic events, in-memory clipboard and scripted provisional DOM; not physical OS input or a complete visible list editor. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

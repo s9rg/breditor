@@ -1,9 +1,10 @@
-import { BreditorBrowserEventController } from "./browser_event_controller.js";
+import { BreditorBrowserEventController, BreditorFlatListBrowserEventController } from "./browser_event_controller.js";
 import { containAsyncRejection } from "./contain_async_rejection.js";
-import { BreditorClipboardController } from "./clipboard_controller.js";
-import { BreditorCommandQueue } from "./command_queue.js";
+import { BreditorClipboardController, BreditorFlatListClipboardController } from "./clipboard_controller.js";
+import { BreditorCommandQueue, BreditorFlatListCommandQueue } from "./command_queue.js";
 import {
   BreditorCompositionController,
+  BreditorFlatListCompositionController,
   type CompositionControllerDisposition,
   type CompositionControllerNotification,
 } from "./composition_controller.js";
@@ -23,8 +24,29 @@ import {
 import {
   profileDescriptorForAdapter,
   type BreditorWasmCommandAdapter,
+  type BreditorFlatListWasmCommandAdapter,
   type WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
+
+import type { BaseDocumentProjection } from "./projection.js";
+import type { FlatListDocumentProjection } from "./flat_list_projection.js";
+import type { NativeDeliveryToken } from "./native_command_builder.js";
+
+type RouterProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type RouterOutcome = WasmCommandSequenceOutcome<RouterProjection>;
+type RouterAdapter = BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter;
+type RouterQueue = BreditorCommandQueue<WasmCommandSequenceOutcome> |
+  BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>;
+type RouterComposition = BreditorCompositionController | BreditorFlatListCompositionController;
+
+/** Private routing port only; mode-specific controllers still validate every owned input. */
+interface OrdinaryRoutePort {
+  forgetEchoReceipts(): void;
+  handleBeforeInput(event: InputEvent, rendered: RenderedProjection<RouterProjection>, delivery: NativeDeliveryToken): BrowserEventDisposition<RouterOutcome>;
+  handleInput(event: InputEvent, rendered: RenderedProjection<RouterProjection>): BrowserEventDisposition<RouterOutcome>;
+  handleKeyDown(event: KeyboardEvent, rendered: RenderedProjection<RouterProjection>, delivery: NativeDeliveryToken): BrowserEventDisposition<RouterOutcome>;
+  handleSelectionChange(event: Event, rendered: RenderedProjection<RouterProjection>, delivery: NativeDeliveryToken): BrowserSelectionChangeDisposition<RouterOutcome>;
+}
 
 /** Maximum distinct lifecycle subscribers retained by one native router. */
 export const MAX_BROWSER_EVENT_ROUTER_SUBSCRIBERS = 64;
@@ -107,17 +129,17 @@ const defaultScheduleTask = (callback: () => void): void => {
  * ordinary controller sees only the exact non-clipboard fallthrough. The
  * router never duplicates either controller's input-type translation table.
  */
-export class BreditorBrowserEventRouter {
+class BrowserEventRouterCore {
   readonly #ownership = Object.freeze({});
-  readonly #queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
-  readonly #adapter: BreditorWasmCommandAdapter;
+  readonly #queue: RouterQueue;
+  readonly #adapter: RouterAdapter;
   readonly #host: HTMLElement;
   readonly #document: Document;
   readonly #listenerIntrinsics: ListenerIntrinsics;
   readonly #scheduleTask: (callback: () => void) => void;
-  readonly #ordinary: BreditorBrowserEventController<WasmCommandSequenceOutcome>;
-  readonly #clipboard: BreditorClipboardController;
-  readonly #composition: BreditorCompositionController;
+  readonly #ordinary: OrdinaryRoutePort;
+  readonly #clipboard: BreditorClipboardController | BreditorFlatListClipboardController;
+  readonly #composition: RouterComposition;
   readonly #registrations: ListenerRegistration[] = [];
   readonly #subscribers: SubscriberSlot[] = [];
   #status: BrowserEventRouterStatus = LIVE_STATUS;
@@ -154,10 +176,14 @@ export class BreditorBrowserEventRouter {
   };
 
   constructor(
-    queue: BreditorCommandQueue<WasmCommandSequenceOutcome>,
-    adapter: BreditorWasmCommandAdapter,
+    queue: RouterQueue,
+    adapter: RouterAdapter,
     options: BrowserEventRouterOptions,
+    flatLists: boolean,
   ) {
+    if (!(flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
+      throw new TypeError("browser event router queue is invalid");
+    }
     const rendered = readInitialRender(adapter);
     if (rendered === null) {
       throw new TypeError("browser event router adapter is invalid");
@@ -183,8 +209,8 @@ export class BreditorBrowserEventRouter {
     this.#host = host;
     this.#document = ownerDocument;
     this.#listenerIntrinsics = listenerIntrinsics;
-    let composition: BreditorCompositionController | undefined;
-    let clipboard: BreditorClipboardController | undefined;
+    let composition: RouterComposition | undefined;
+    let clipboard: BreditorClipboardController | BreditorFlatListClipboardController | undefined;
     try {
       const snapshot = snapshotOptions(
         options,
@@ -194,23 +220,29 @@ export class BreditorBrowserEventRouter {
         throw new TypeError("browser event router options are invalid");
       }
       this.#scheduleTask = snapshot.scheduleTask ?? defaultScheduleTask;
-      composition = new BreditorCompositionController(queue, adapter, {
-        ...(snapshot.scheduleTask === undefined
-          ? {}
-          : { scheduleTask: snapshot.scheduleTask }),
-        onSettlement: (result) => this.#handleCompositionNotification(result),
-      });
-      clipboard = new BreditorClipboardController(queue, adapter);
-      const ordinary = new BreditorBrowserEventController(queue, {
-        keyboard: snapshot.keyboard,
-        keyboardShortcuts: snapshot.keyboardShortcuts,
-        selectionBridge: adapter.selectionBridge,
-        deliveryAuthority: adapter.deliveryAuthority,
-        compositionActive: () => composition?.active === true,
-        ...(snapshot.scheduleTask === undefined
-          ? {}
-          : { scheduleTask: snapshot.scheduleTask }),
-      });
+      const scheduled = snapshot.scheduleTask === undefined ? {} : {scheduleTask: snapshot.scheduleTask};
+      const compositionOptions = {...scheduled,
+        onSettlement: (result: CompositionControllerNotification<RouterProjection>) => this.#handleCompositionNotification(result)};
+      const ordinaryOptions = {...scheduled, keyboard: snapshot.keyboard,
+        keyboardShortcuts: snapshot.keyboardShortcuts, deliveryAuthority: adapter.deliveryAuthority,
+        compositionActive: () => composition?.active === true};
+      let ordinary: OrdinaryRoutePort;
+      // Select mode exactly once, before listeners can run. Do not infer it
+      // from a later event, mutable public property or incoming projection.
+      if (flatLists && queue instanceof BreditorFlatListCommandQueue) {
+        const listAdapter = adapter as BreditorFlatListWasmCommandAdapter;
+        composition = new BreditorFlatListCompositionController(queue, listAdapter, compositionOptions);
+        clipboard = new BreditorFlatListClipboardController(queue, listAdapter);
+        ordinary = new BreditorFlatListBrowserEventController(queue,
+          {...ordinaryOptions, selectionBridge: listAdapter.selectionBridge}) as unknown as OrdinaryRoutePort;
+      } else {
+        const baseQueue = queue as BreditorCommandQueue<WasmCommandSequenceOutcome>;
+        const baseAdapter = adapter as BreditorWasmCommandAdapter;
+        composition = new BreditorCompositionController(baseQueue, baseAdapter, compositionOptions);
+        clipboard = new BreditorClipboardController(baseQueue, baseAdapter);
+        ordinary = new BreditorBrowserEventController(baseQueue,
+          {...ordinaryOptions, selectionBridge: baseAdapter.selectionBridge}) as unknown as OrdinaryRoutePort;
+      }
 
       this.#composition = composition;
       this.#clipboard = clipboard;
@@ -490,14 +522,14 @@ export class BreditorBrowserEventRouter {
     );
   }
 
-  #ordinaryRender(): RenderedProjection | null {
+  #ordinaryRender(): RenderedProjection<RouterProjection> | null {
     const base = this.#ordinaryBase();
     return base?.rendered ?? null;
   }
 
   #ordinaryBase(): Readonly<{
-    rendered: BreditorWasmCommandAdapter["rendered"];
-    delivery: ReturnType<BreditorWasmCommandAdapter["deliveryToken"]>;
+    rendered: RouterAdapter["rendered"];
+    delivery: ReturnType<RouterAdapter["deliveryToken"]>;
   }> | null {
     if (this.#status.kind !== "live") return null;
     if (this.#queueIsUncertain()) {
@@ -527,8 +559,8 @@ export class BreditorBrowserEventRouter {
   }
 
   #readOrdinaryBase(): Readonly<{
-    rendered: BreditorWasmCommandAdapter["rendered"];
-    delivery: ReturnType<BreditorWasmCommandAdapter["deliveryToken"]>;
+    rendered: RouterAdapter["rendered"];
+    delivery: ReturnType<RouterAdapter["deliveryToken"]>;
   }> {
     const rendered = this.#adapter.rendered;
     const delivery = this.#adapter.deliveryToken();
@@ -541,7 +573,7 @@ export class BreditorBrowserEventRouter {
   }
 
   #afterOrdinary(
-    disposition: BrowserEventDisposition<WasmCommandSequenceOutcome>,
+    disposition: BrowserEventDisposition<RouterOutcome>,
     route: "beforeinput" | "input" | "keydown",
   ): void {
     if (disposition.kind === "reconcileRequired") {
@@ -560,7 +592,7 @@ export class BreditorBrowserEventRouter {
   }
 
   #afterSelection(
-    disposition: BrowserSelectionChangeDisposition<WasmCommandSequenceOutcome>,
+    disposition: BrowserSelectionChangeDisposition<RouterOutcome>,
   ): void {
     if (disposition.kind === "reconcileRequired") {
       if (disposition.reason === "queueFailure" || this.#queueIsUncertain()) {
@@ -600,13 +632,13 @@ export class BreditorBrowserEventRouter {
     this.#verifyAdapterState(false);
   }
 
-  #afterComposition(disposition: CompositionControllerDisposition): void {
+  #afterComposition(disposition: CompositionControllerDisposition<RouterProjection>): void {
     if (disposition.kind === "recoveryRequired") {
       if (disposition.reason === "uncertain" || this.#queueIsUncertain()) {
         this.#fault("queueUncertain");
         return;
       }
-      let recovered: CompositionControllerDisposition;
+      let recovered: CompositionControllerDisposition<RouterProjection>;
       try {
         recovered = this.#composition.recover();
       } catch {
@@ -649,7 +681,7 @@ export class BreditorBrowserEventRouter {
   }
 
   #handleCompositionNotification(
-    notification: CompositionControllerNotification,
+    notification: CompositionControllerNotification<RouterProjection>,
   ): void {
     if (this.#status.kind !== "live") return;
     try {
@@ -804,9 +836,25 @@ export class BreditorBrowserEventRouter {
   }
 }
 
+/** Existing paragraph/heading event router. List dependencies remain closed. */
+export class BreditorBrowserEventRouter extends BrowserEventRouterCore {
+  constructor(queue: BreditorCommandQueue<WasmCommandSequenceOutcome>,
+    adapter: BreditorWasmCommandAdapter, options: BrowserEventRouterOptions) {
+    super(queue, adapter, options, false);
+  }
+}
+
+/** Complete native-listener boundary for the experimental hierarchical list mode. @internal */
+export class BreditorFlatListBrowserEventRouter extends BrowserEventRouterCore {
+  constructor(queue: BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
+    adapter: BreditorFlatListWasmCommandAdapter, options: BrowserEventRouterOptions) {
+    super(queue, adapter, options, true);
+  }
+}
+
 function readInitialRender(
-  adapter: BreditorWasmCommandAdapter,
-): BreditorWasmCommandAdapter["rendered"] | null {
+  adapter: RouterAdapter,
+): RouterAdapter["rendered"] | null {
   try {
     const rendered = adapter.rendered;
     return rendered !== null &&
@@ -907,13 +955,13 @@ function snapshotOptions(
 }
 
 function isNonCompositionDisposition(
-  disposition: CompositionControllerDisposition,
+  disposition: CompositionControllerDisposition<RouterProjection>,
 ): boolean {
   return disposition.kind === "ignored" && disposition.reason === "notComposition";
 }
 
 function isInactiveCompositionDisposition(
-  disposition: CompositionControllerDisposition,
+  disposition: CompositionControllerDisposition<RouterProjection>,
 ): boolean {
   return disposition.kind === "ignored" && disposition.reason === "inactive";
 }

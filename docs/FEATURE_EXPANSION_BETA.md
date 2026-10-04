@@ -1253,3 +1253,27 @@ owner. Browser results and fixture corrections are recorded in
 Next: wire these controllers into the complete list editor owner/router, then
 visible persistence and physical native-input/accessibility/release gates.
 Shipping artifacts remain unchanged. Nothing was pushed or published.
+
+## Flat-list event-router checkpoint — 2026-10-04
+
+The list ordinary-input, composition and clipboard controllers now share one
+installed native-listener boundary. `BreditorFlatListBrowserEventRouter` and the
+existing base router use the same private lifecycle implementation. Mode remains
+explicit, host ownership is shared across modes, and the controller constructors
+retain exact queue/executor/bridge binding. No second input translation table was
+added.
+
+New unit coverage checks wrong-mode queues, duplicate/reentrant host ownership,
+construction rollback, exclusive routing priority, clipboard/document listeners,
+deferred repair and stale tasks, disposal and fail-stop behavior. Browser scenarios
+dispatch actual native-branded synthetic events through installed listeners and
+the real list Wasm engine. They prove text insertion, cut/paste, composition,
+keyboard undo echoes, exact saved-redo recovery, inert composition-time selection
+observations, and canonical repair after uncancelled native mutation. A valid
+late composition echo also proves render identity remains unchanged.
+
+Next: integrate the high-level list editor owner, visible reload/backup and
+autosave, then physical native-input/accessibility and packaging/size/performance
+gates. The router is internal; the shipping entry point and artifacts remain
+unchanged. Nothing was pushed or published. See
+[qualification](qualification/2026-10-04-flat-list-event-router.json).

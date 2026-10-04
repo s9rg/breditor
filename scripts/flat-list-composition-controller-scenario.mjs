@@ -3,6 +3,7 @@
 import { BreditorFlatListCompositionController } from "../packages/breditor-browser/src/composition_controller.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
 import { flatListRangeSelectionSync, flatListCommandRequest, preserveSelectionSync } from "../packages/breditor-browser/src/editor_command.ts";
+import { withSyntheticTargetRanges } from "./synthetic-target-range-fixture.mjs";
 
 const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -37,24 +38,12 @@ export function verifyFlatListCompositionController(boot, documentJson) {
       const event = type.startsWith("composition")
         ? new CompositionEvent(type, {bubbles: true, data: "", ...init})
         : new InputEvent(type, {bubbles: true, cancelable: type === "beforeinput", ...init});
-      let restoreTargetRanges = () => {};
-      if (init.targetRanges && event.getTargetRanges().length !== init.targetRanges.length) {
-        // WebKit's synthetic InputEvent constructor omits targetRanges. Model
-        // that platform method only for this event, like the existing browser
-        // harness. Product code still ignores event-local method shadows.
-        const descriptor = Object.getOwnPropertyDescriptor(InputEvent.prototype, "getTargetRanges");
-        if (!descriptor?.configurable || typeof descriptor.value !== "function") throw new Error("target-range fixture unavailable");
-        Object.defineProperty(InputEvent.prototype, "getTargetRanges", {...descriptor, value() {
-          return this === event ? init.targetRanges : Reflect.apply(descriptor.value, this, []);
-        }});
-        restoreTargetRanges = () => Object.defineProperty(InputEvent.prototype, "getTargetRanges", descriptor);
-      }
       let result;
       f.host.addEventListener(type, incoming => {
         result = type.startsWith("composition") ? controller.handleCompositionEvent(incoming)
           : type === "beforeinput" ? controller.handleBeforeInput(incoming) : controller.handleInput(incoming);
       }, {once: true});
-      try { f.host.dispatchEvent(event); } finally { restoreTargetRanges(); }
+      withSyntheticTargetRanges(event, init.targetRanges, () => f.host.dispatchEvent(event));
       return {event, result};
     };
     const runNext = () => { const task = tasks.shift(); if (!task) throw new Error("missing composition task"); task(); };
