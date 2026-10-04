@@ -1,12 +1,36 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
 
+#[cfg(feature = "experimental-structural-properties")]
+mod clear_flat_list_inline_formats;
 mod clear_inline_formats;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod flat_list_action_tests;
 #[cfg(feature = "experimental-structural-properties")]
+mod flat_list_format;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_format_source;
+#[cfg(feature = "experimental-structural-properties")]
 mod flat_list_support;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_text_support;
+#[cfg(feature = "experimental-structural-properties")]
+mod set_flat_list_block_kind;
+#[cfg(feature = "experimental-structural-properties")]
+mod set_flat_list_inline_format;
+#[cfg(feature = "experimental-structural-properties")]
+mod toggle_flat_list_inline_format;
+#[cfg(feature = "experimental-structural-properties")]
+pub use clear_flat_list_inline_formats::{
+    ClearFlatListInlineFormatsAction, clear_flat_list_inline_formats_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use set_flat_list_block_kind::SetFlatListBlockKindAction;
+#[cfg(feature = "experimental-structural-properties")]
+pub use set_flat_list_inline_format::SetFlatListInlineFormatAction;
+#[cfg(feature = "experimental-structural-properties")]
+pub use toggle_flat_list_inline_format::ToggleFlatListInlineFormatAction;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_format_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod insert_flat_list_break;
 #[cfg(feature = "experimental-structural-properties")]

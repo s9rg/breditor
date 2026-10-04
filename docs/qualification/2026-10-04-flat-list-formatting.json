@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "8905641",
+  "status": "Experimental Rust flat-list formatting actions qualified; multiline input, durable lists and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "actions": ["ToggleFlatListInlineFormatAction", "SetFlatListInlineFormatAction", "ClearFlatListInlineFormatsAction", "SetFlatListBlockKindAction"],
+    "registration": "Explicit Rust registration, separately named files; configured toggle/kind targets, existing typed set/remove input, clear identity breditor/clear-flat-list-inline-formats",
+    "inline": "Shared pure format policy over real flat-list paths; mixed toggles add everywhere; typed set replaces a complete format property map while preserving peers; clear/remove do not alter text, block kind, list layout or starts",
+    "toolbar": "Tracked activation and typed uniform/mixed/unset values; invalid requested properties disable with inactive activation but preserve the observed value; clear is stateless",
+    "collapsed": "Pending override then focus-affinity context; pending-only edit with no document undo entry, including empty items and zero operation budget; subsequent typing consumes override and undo restores it",
+    "blockKind": "Paragraph and heading ranks 1-6 within bare/list blocks; exclude a later endpoint at logical start, include empty collapsed blocks; preserve exact selection encoding and pending formats",
+    "history": "Extended formatting is one atomic record; logical positions, direction and affinities survive run changes; undo restores exact original selections/runs/properties/layout and redo restores the result",
+    "admission": "Complete-result validation including unguarded roots; no transient per-item state; node, property, merged-leaf and operation limits disable; stale and disabled preparations preserve state and redo",
+    "wire": "Existing default/heading-only registrations and operation/session encodings remain closed; no rebuilt shipping Wasm or browser list claim"
+  },
+  "verification": {
+    "focusedFormattingTests": 14,
+    "allFeatureWorkspaceUnitTests": {"core": 1034, "wasm": 51},
+    "defaultCoreUnitTests": 697,
+    "propertyCases": 10000,
+    "propertySeed": 20261004,
+    "propertyOracle": "Independent Unicode scalar substring formatting over mixed bare/numbered/bullet roots, randomized rank, partial endpoints and direction; checks expected runs, actual paths, logical offsets, affinities and exact undo/redo",
+    "coverage": [
+      "Mixed inline selection across all root families; untouched prefix/suffix items and ordinal starts",
+      "Typed property replacement/removal with peer formats and uniform/mixed/unset toolbar state",
+      "Backward partial clear with child-gap selection and canonical merged runs",
+      "Caret affinity, pending overrides, empty items and zero operation budget",
+      "Typing consumes explicit plain pending formats and undo restores them",
+      "Paragraph and all heading ranks, exact empty/nonempty selection encodings and pending preservation",
+      "Kind selection excludes end-zero item; mixed activation; maximum valid numbered suffix",
+      "Node/property/merged-leaf limits and full-document property use outside guarded span",
+      "Atomic split/merge at exact resource budgets without over-budget intermediate state",
+      "Text-empty ranges, invalid properties, no selection, no-op and schema isolation",
+      "Rejected formatting preserves existing redo after selection change; stale inline/kind preparations reject"
+    ],
+    "developmentCorrections": [
+      "Initial test compilation caught a nonexistent convenience action ID and u32 versus u64 oracle offsets; corrected to explicit registration ID and matching aggregate offset type",
+      "Initial strict lint caught a similar test-local name and unseparated ordinal literal; corrected without lint suppression"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib flat_list_format_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "List-aware multiline plain-text insertion",
+    "Explicit durable operation/session admission and reload/recovery",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native-input qualification and existing release size gates",
+    "Nested lists and indent/outdent remain deferred beyond the flat-list beta"
+  ],
+  "evidenceBoundary": "Rust action/session and static checks only; no list browser/native qualification, rebuilt shipping Wasm, or performance claim",
+  "pushed": false,
+  "published": false
+}

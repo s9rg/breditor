@@ -840,8 +840,56 @@ dependencies and do not change default/browser registrations or durable wires.
   prepared actions reject. No transient split/delete intermediate is required.
 
 This is Rust action/session qualification, not a browser or durable-list release.
-List-aware inline and block-kind formats, multiline plain-text insertion,
+List-aware formatting is qualified below. Multiline plain-text insertion,
 explicit durable list admission, browser controls and native/recovery tests
-remain outstanding. The heading-only formatting and multiline actions do not
-automatically gain flat-list capability.
+remain outstanding. Heading-only actions do not automatically gain flat-list
+capability.
 See [deletion qualification](qualification/2026-10-04-flat-list-deletion.json).
+
+### Flat-list formatting actions
+
+Four separately named actions are available for explicit experimental Rust
+registration: `ToggleFlatListInlineFormatAction`, `SetFlatListInlineFormatAction`,
+`ClearFlatListInlineFormatsAction` and `SetFlatListBlockKindAction`. Toggle and
+block-kind targets are fixed at registration; set/remove accepts the existing
+typed inline-format input contract. Clear uses the identity
+`breditor/clear-flat-list-inline-formats`. Existing default/heading-only actions
+and durable formats remain unchanged.
+
+- Inline formatting spans real bare-block and list-item paths, in either
+  selection direction. Text, paragraph/heading kinds, list boundaries and
+  numbered starts remain unchanged. Unselected prefix/suffix items are guarded
+  but preserved. Empty blocks and a later endpoint at offset zero do not
+  contribute selected inline text.
+- Mixed toggles add the property-free format everywhere; uniformly active
+  toggles remove it. Typed set replaces one format's complete property map and
+  retains peer formats; removal removes only that format. Toolbar indicators
+  report active/mixed/inactive and typed uniform/mixed/unset values. Invalid
+  requested properties disable with inactive activation while retaining the
+  observed value. Text-empty structural ranges and exact no-ops disable.
+- Carets use pending formats first, otherwise the focus affinity at a format
+  seam. They change pending formats only, even at empty items and with a zero
+  document-operation budget. They add no document undo event. Subsequent typing
+  consumes the override; undo restores the exact pre-typing pending formats.
+- Extended inline edits are one atomic history record. Their logical offsets,
+  direction and affinities survive run splitting/merging; leaf/gap encodings may
+  canonicalize. Undo restores the exact original encoding, and redo the result.
+- Block-kind conversion supports paragraphs and headings 1–6, inside or outside
+  lists. A later endpoint at its logical start is excluded; an empty collapsed
+  item is included. Text runs, numbering, exact selection encoding and pending
+  formats survive. The action reports active/mixed/inactive and disables when
+  all touched blocks already match. This action explicitly keeps the original
+  selection because kind-only edits do not change any paths or text runs.
+- Both extended inline and block-kind edits preview the complete result,
+  including resource use outside guarded roots. There is no transient per-item
+  intermediate: a split in one item may be balanced by a merge in another.
+  Merged-leaf byte limits, node/property limits and operation budgets disable
+  before publication. Disabled or stale preparations preserve state and redo.
+
+The implementation shares the established pure inline-format policy, with a
+separate flat-list capture/planning scope. It reuses guarded structural replacement
+rather than inventing a new persistence tag. This is Rust-only qualification:
+multiline plain-text input, durable lists, Wasm/browser controls and native/recovery
+qualification remain ahead. No list browser or performance claim follows from
+these tests.
+See [formatting qualification](qualification/2026-10-04-flat-list-formatting.json).

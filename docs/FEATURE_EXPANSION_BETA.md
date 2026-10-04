@@ -751,3 +751,25 @@ heading demo or widen existing shipping wire formats.
 
 See [deletion contract](STRUCTURAL_BLOCKS.md#flat-list-deletion-actions) and
 [verification](qualification/2026-10-04-flat-list-deletion.json).
+
+## Flat-list formatting checkpoint
+
+Explicit Rust actions now toggle, set/remove and clear inline formats across bare,
+bullet and numbered blocks. Paragraph/heading conversion also works inside lists,
+with active/mixed/inactive toolbar state. Ordered starts and untouched items stay
+exact; formatting ranges retain logical positions through run splits/merges, while
+kind-only changes preserve the original selection encoding and pending formats.
+Collapsed formatting updates pending formats without a document history event.
+
+Regression coverage includes typed-format values, Unicode selections, direction
+and affinities, exact undo/redo, full-document resource limits, atomic edits at
+exact budgets, and redo preservation on rejection. All four actions remain
+explicitly registered and experimental; the heading-only demo is unchanged.
+
+Next: multiline plain-text insertion, then explicit durable operation/session
+admission and the list browser/demo vertical slice, followed by reload/recovery,
+cross-browser/native-input and release-size qualification. Nested lists and
+indent/outdent remain deferred. This checkpoint does not complete the beta goal.
+
+See [formatting contract](STRUCTURAL_BLOCKS.md#flat-list-formatting-actions) and
+[verification](qualification/2026-10-04-flat-list-formatting.json).
