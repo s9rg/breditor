@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "de543f7",
+  "status": "Experimental Rust flat-list deletion actions qualified; inline formatting, durable lists and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "actions": ["DeleteFlatListBackwardAction", "DeleteFlatListForwardAction", "DeleteFlatListSelectionAction"],
+    "identities": ["breditor/delete-flat-list-backward", "breditor/delete-flat-list-forward", "breditor/delete-flat-list-selection"],
+    "registration": "Explicit, no-input Rust actions with existing deletion dependency contracts; separate named implementation files",
+    "insideText": "Pinned extended-grapheme segmentation across run seams; interior-cluster directional carets disabled; newly formed seams snap forward for Backspace and backward for Delete",
+    "firstItemBackspace": "Lift first item as a bare block preserving kind/text/formats, including at document start; retained suffix keeps original ordinal; separate history record",
+    "joins": "Later-item Backspace joins predecessor; bare-block Backspace joins prior bare block or last prior list item; Delete joins next block/item across roots",
+    "retention": "Spatial left kind and family retained; untouched suffix in another list remains separate at its original start; no implicit list merge/restart",
+    "selectedRange": "All three actions delete identical exact scalar-aligned extended selection; no grapheme snapping; collapsed selection-deletion disabled",
+    "emptyResult": "Retain one empty spatial-start-kind block and its container instead of resetting to a plain paragraph",
+    "history": "Pending formats preserved; directional text deletion/joins group; selected deletion and first-item lifting record independently; exact original direction/affinities/ranks/formats/numbering restored on undo",
+    "admission": "Complete atomic result preview, including root-slot growth for lifting and merged-leaf byte budgets; disabled edits preserve state and redo; stale preparations reject",
+    "wire": "No default/browser registration or existing durable operation/session widening"
+  },
+  "verification": {
+    "focusedDeletionTests": 14,
+    "allFeatureWorkspaceUnitTests": { "core": 1020, "wasm": 51 },
+    "defaultCoreUnitTests": 697,
+    "propertyCases": 10000,
+    "propertySeed": 20261004,
+    "propertyOracle": "Independent Unicode scalar slicing and expected joined strings with randomized rank, empty endpoints, direction and exact undo/redo",
+    "coverage": [
+      "Paragraph and all heading ranks in bare/bullet/numbered families with emoji, combining sequences, ZWJ emoji and flags",
+      "First-item lift with empty/nonempty content, optional prefix root and suffix items, preserved kind and ordinal starts",
+      "New grapheme formation across formatting seams during item joins, directional snapping and grouped follow-up deletion",
+      "Forward boundary joins across every pair of bare/bullet/numbered families with preserved outside roots and suffix numbering",
+      "Backward bare-block join to last prior list item; independent lift/join history events",
+      "All deletion actions on forward/backward cross-container selections",
+      "Interior-cluster directional rejection versus exact selected scalar deletion",
+      "Document edges, collapsed selection, unsupported schema, no selection and operation-budget rejection",
+      "Complete-root budget rejection for lift and merged text-leaf budget rejection for join",
+      "Deleting all content leaves one empty start-kind block/container",
+      "Existing redo survives rejected join after selection change; stale prepared deletion rejects"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib delete_flat_list_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "List-aware inline-format and block-kind actions",
+    "List-aware multiline plain-text insertion",
+    "Explicit durable operation/session admission and reload/recovery",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native-input qualification and existing release size gates",
+    "Nested lists and indent/outdent remain deferred beyond the flat-list beta"
+  ],
+  "evidenceBoundary": "Rust action/session and static checks only; no list browser/native qualification, rebuilt shipping Wasm, or performance claim",
+  "pushed": false,
+  "published": false
+}

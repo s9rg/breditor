@@ -49,8 +49,32 @@ pub use set_text_block_inline_format::SetTextBlockInlineFormatAction;
 pub use toggle_text_block_inline_format::ToggleTextBlockInlineFormatAction;
 mod clear_inline_formatting;
 mod delete_backward;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_flat_list_backward;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_flat_list_forward;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_flat_list_selection;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_flat_list_structure;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_flat_list_support;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod delete_flat_list_tests;
 mod delete_forward;
 mod delete_selection;
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_flat_list_backward::{
+    DeleteFlatListBackwardAction, delete_flat_list_backward_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_flat_list_forward::{
+    DeleteFlatListForwardAction, delete_flat_list_forward_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_flat_list_selection::{
+    DeleteFlatListSelectionAction, delete_flat_list_selection_action_id,
+};
 #[cfg(feature = "experimental-structural-properties")]
 mod delete_text_block_backward;
 #[cfg(feature = "experimental-structural-properties")]

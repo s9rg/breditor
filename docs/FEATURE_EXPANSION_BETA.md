@@ -728,3 +728,26 @@ shipping/default and heading-demo paths remain unchanged.
 
 See [typing contract](STRUCTURAL_BLOCKS.md#cross-block-flat-list-typing) and
 [verification](qualification/2026-10-04-flat-list-cross-typing.json).
+
+## Flat-list deletion checkpoint
+
+Explicit backward, forward and selection-deletion actions now cover the flat-list
+profile. They reuse pinned grapheme semantics inside blocks and perform boundary
+joins/cross-block deletion atomically. Backspace at the first item's start lifts
+it into a bare block, retaining kind/text and suffix numbering; another Backspace
+can join it to the predecessor as a separate undo event. Delete joins the next
+block while preserving untouched list suffixes and their starts.
+
+Directional joins snap newly formed grapheme seams consistently with the existing
+heading profile. Exact selections remain scalar-aligned rather than being silently
+expanded. Pending formats, exact directional undo, normal deletion grouping,
+stale-preparation rejection and failure preservation of existing redo are tested.
+
+Next: list-aware inline and block-kind formatting and multiline plain-text input,
+followed by explicit durable operation/session admission, Wasm/browser controls,
+reload/recovery and cross-browser/native-input
+qualification. These Rust actions do not yet enable list editing in the running
+heading demo or widen existing shipping wire formats.
+
+See [deletion contract](STRUCTURAL_BLOCKS.md#flat-list-deletion-actions) and
+[verification](qualification/2026-10-04-flat-list-deletion.json).

@@ -670,8 +670,8 @@ reject nested block paths.
 At the initial single-block checkpoint, cross-block typing returned
 `breditor/list-cross-block-edit-not-supported`; the later cross-block action
 integration is described below. Enter and empty-item exit are also separately
-qualified below. Boundary deletion and list-aware formatting remain separate
-work. Operation V1–V5 and history containing the new splice in
+qualified below, as are the subsequent deletion actions. List-aware formatting
+remains separate work. Operation V1–V5 and history containing the new splice in
 Session V5 reject it. This is not a browser or session-reload qualification.
 
 See [text/typing qualification](qualification/2026-10-04-flat-list-text.json).
@@ -755,7 +755,7 @@ are unchanged.
   Numbering overflow has the explicit `breditor/list-ordinal-overflow` reason.
 
 This action is not yet exposed through Wasm/browser keyboard controls or durable
-list sessions. Cross-block typing is qualified below. Boundary deletion, inline
+list sessions. Cross-block typing and deletion are qualified below. Inline
 formatting and native qualification remain next work; nested lists/indent-outdent
 remain deferred.
 See [Enter qualification](qualification/2026-10-04-flat-list-enter.json).
@@ -792,6 +792,56 @@ uses one `FlatListTextReplace`, without a transient delete/insert document.
 
 Shared list-text capture remains a separate explicit scope; direct-root-only
 callers are not widened. Existing operation/session wires and browser registries
-are unchanged. List-aware deletion/formatting, durable sessions, browser controls
+are unchanged. List-aware deletion is qualified below; formatting, durable sessions, browser controls
 and native qualification remain outstanding.
 See [cross-block typing qualification](qualification/2026-10-04-flat-list-cross-typing.json).
+
+### Flat-list deletion actions
+
+Three separately named Rust actions are available for explicit experimental
+registration: `DeleteFlatListBackwardAction`, `DeleteFlatListForwardAction` and
+`DeleteFlatListSelectionAction`. Their identities are respectively
+`breditor/delete-flat-list-backward`, `breditor/delete-flat-list-forward` and
+`breditor/delete-flat-list-selection`. They retain the existing deletion state
+dependencies and do not change default/browser registrations or durable wires.
+
+- Within a text block, directional deletion removes one extended grapheme
+  cluster using the existing pinned Unicode segmentation implementation, across
+  formatting-run seams. A caller-supplied caret inside a cluster is explicitly
+  disabled. If deletion creates a new cluster across the seam, backward deletion
+  snaps the caret forward and forward deletion snaps it backward.
+- Backspace at the logical start of the **first item** lifts that item into a
+  bare block, even at document start or after a preceding bare block. Its text,
+  inline properties and paragraph/heading kind are unchanged. An ordered suffix
+  retains its original next ordinal. This is a separate record-history event.
+  A second Backspace may then join the lifted block to its predecessor.
+- Backspace at a later item's start joins the previous item. Backspace at a bare
+  block's start joins the preceding bare block or previous list's last item.
+  At a bare document start it is disabled.
+- Delete at a block's end joins the next item, next bare block or next list's
+  first item. At document end it is disabled. Joins keep the spatial left block
+  kind and container family. Unselected suffix items in a different list remain
+  separate with their original numbering; adjacent lists are not auto-merged.
+- An extended selection uses identical exact scalar-aligned deletion for all
+  three actions, regardless of direction. It keeps the spatial start kind and
+  family, removes selected middle roots/items and retains untouched suffix
+  numbering. Explicit selections do not snap to grapheme boundaries. A collapsed
+  selection is disabled for `DeleteFlatListSelectionAction`.
+- Deleting all selected content retains one empty start-kind block and its start
+  container, rather than resetting the entire document to a plain paragraph.
+  Empty list items can subsequently exit through Enter or first-item Backspace.
+- Pending formats survive. Directional deletion and joins use the established
+  backward/forward history groups; selected-range deletion and first-item lifting
+  use independent records. Undo restores exact directional selections, ranks,
+  typed formats, containers and ordinal starts.
+- Every edit previews the complete atomic result. Lifting may need an extra root
+  slot; joining can exceed a text-leaf budget even though total text decreases.
+  These cases disable before publication and leave state/redo untouched. Stale
+  prepared actions reject. No transient split/delete intermediate is required.
+
+This is Rust action/session qualification, not a browser or durable-list release.
+List-aware inline and block-kind formats, multiline plain-text insertion,
+explicit durable list admission, browser controls and native/recovery tests
+remain outstanding. The heading-only formatting and multiline actions do not
+automatically gain flat-list capability.
+See [deletion qualification](qualification/2026-10-04-flat-list-deletion.json).
