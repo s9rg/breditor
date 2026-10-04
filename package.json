@@ -11,6 +11,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "demo:headings": "vite --config vite.headings.config.ts --port 4186 --strictPort",
+    "build:demo:headings": "vite build --config vite.headings.config.ts",
+    "test:demo:headings": "playwright test --config playwright.headings.config.ts",
     "test:headings:experimental": "node scripts/build-experimental-heading.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "clean": "npm run clean --workspaces --if-present",

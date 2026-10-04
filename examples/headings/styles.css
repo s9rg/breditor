@@ -1,0 +1,13 @@
+/* Only the experimental page changes block typography. */
+[data-breditor-editor-root] :is(h1, h2, h3, h4, h5, h6) {
+  color: #19392d;
+  line-height: 1.25;
+  margin: 1em 0 0.5em;
+}
+[data-breditor-editor-root] > :first-child { margin-top: 0; }
+[data-breditor-editor-root] h1 { font-size: 2em; }
+[data-breditor-editor-root] h2 { font-size: 1.65em; }
+[data-breditor-editor-root] h3 { font-size: 1.4em; }
+[data-breditor-editor-root] h4 { font-size: 1.2em; }
+[data-breditor-editor-root] h5 { font-size: 1.1em; }
+[data-breditor-editor-root] h6 { font-size: 1em; }

@@ -573,3 +573,30 @@ is still experimental: the default Wasm stays unchanged, the normal demo does
 not load headings yet, and bundle budgets remain red. Next: the optional
 demo/load boundary and size decision, then flat bullet/numbered lists. Nested
 lists remain deferred. Nothing has been pushed or published.
+
+## Separate heading-enabled React demo
+
+The experimental feature now has a visible React demo with all six heading
+levels, paragraph conversion, the existing eleven inline/history controls,
+autosave, backup download and separate non-persistent recovery. It reuses the
+standard React ownership/retirement lifecycle through a build-time profile
+factory; the default profile, Wasm import and storage slot remain unchanged.
+
+`vite.headings.config.ts` explicitly selects a qualified experimental candidate.
+It builds to `target/heading-demo`, not the default demo's `dist`. The new
+`example/heading-showcase` schema composes the existing typed inline extensions
+with the Rust text-block compiler. Sample-document fingerprints come from Rust
+preflight. No saved document/checkpoint is relabeled or silently migrated.
+
+Production-built tests cover all ranks with composed inline formats, typed
+Link/size values, exact undo, reload with a redo branch, byte-identical backup
+recovery and independent editing of the recovered copy. Automatic accessibility
+and narrow-overflow checks pass, without claiming screen-reader/mobile support.
+
+See [run instructions](../examples/headings/README.md) and
+[verification](qualification/2026-10-03-heading-react-demo.json).
+The optional demo/load boundary is demonstrated, not a published optional
+package. Default declarations and compressed demo JS still exceed their original
+budgets, which have not been increased. Next feature work is the flat-list Rust
+contract and its wrap/unwrap/split/exit operations, followed by the same durable,
+browser and recovery path. Lists remain unimplemented at this checkpoint.

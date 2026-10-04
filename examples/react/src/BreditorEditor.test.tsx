@@ -174,6 +174,23 @@ afterEach(async () => {
 });
 
 describe("BreditorEditor lifecycle", () => {
+  it("offers healthy-session backup explicitly without reopening the editor", async () => {
+    const editor = fakeEditor();
+    mocks.openEditor.mockResolvedValue(successful(editor));
+    const mounted = await render(<BreditorEditor label="Backup option" primaryModifier="control" />);
+    await settle();
+    expect(mounted.container.textContent).not.toContain("Download session backup");
+    await act(async () => mounted.root.render(<BreditorEditor label="Backup option" primaryModifier="control" offerSessionBackup />));
+    await settle();
+    const button = Array.from(mounted.container.querySelectorAll("button"))
+      .find((item) => item.textContent === "Download session backup");
+    expect(button).toBeDefined();
+    await act(async () => button?.click());
+    expect(editor.exportContent).toHaveBeenCalledWith("sessionCheckpointJson");
+    expect(mocks.openEditor).toHaveBeenCalledOnce();
+    expect(editor.dispose).not.toHaveBeenCalled();
+  });
+
   it("opens backups without storage and retires the owner when the backup changes", async () => {
     const first = fakeEditor();
     const second = fakeEditor();

@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "9b6952e",
+  "status": "Experimental heading React demo verified; not a release",
+  "implementation": {
+    "entry": "examples/headings/main.tsx",
+    "profile": "example/heading-showcase",
+    "bootstrap": 3,
+    "session": 5,
+    "storageSlot": "breditor.experimental-heading-showcase.v1",
+    "loadBoundary": "Explicit qualified-candidate Vite alias, separate target/heading-demo output; default Wasm/demo configuration unchanged",
+    "sharedLifecycle": "React initialization, retirement, autosave and independent backup recovery reused through a build-time profile factory",
+    "backupButton": "Opt-in healthy-session download; standard demo defaults unchanged"
+  },
+  "verification": {
+    "types": "Default React, heading React and heading browser-test TypeScript passed",
+    "reactUnitTests": 34,
+    "productionHeadingBrowserTests": 9,
+    "headingEngines": ["chromium", "firefox", "webkit"],
+    "headingCommand": "BREDITOR_HEADING_BINDINGS=target/heading-candidate-vJD5gX npm run test:demo:headings",
+    "coverage": [
+      "Paragraph and h1-h6 toolbar commands retain document text",
+      "Bold and Highlight survive paragraph conversion and exact undo",
+      "Typed Link and text-size properties survive heading conversion and reload",
+      "Redo branch survives autosave, real navigation and Rust session restore",
+      "Downloaded Session V5 restores byte-identically in a separate non-persistent editor",
+      "Recovered edits do not mutate the primary editor",
+      "Automatic axe accessibility checks and 390px viewport overflow"
+    ],
+    "defaultDemoBrowserTests": 39,
+    "defaultDemoBrowserResult": "Passed in 1.5 minutes across Chromium, Firefox and WebKit",
+    "retries": 0,
+    "screenshot": "target/review-evidence/heading-demo-2026-10-03.png",
+    "visualReview": "Rendered desktop screenshot inspected; controls, editable heading and recovery UI are visible and unclipped"
+  },
+  "sizes": {
+    "defaultGate": "FAILED; existing ceilings unchanged",
+    "browserJavaScript": { "bytes": 1083366, "maximum": 1085000 },
+    "browserDeclarations": { "bytes": 277229, "maximum": 276000 },
+    "defaultDemoJavaScript": { "bytes": 862627, "maximum": 865000 },
+    "defaultDemoJavaScriptGzip9": { "bytes": 225623, "maximum": 225000 },
+    "experimentalDemoJavaScript": 852387,
+    "experimentalDemoJavaScriptGzip9": 223808,
+    "experimentalWasm": 1806332,
+    "experimentalWasmGzip9": 505554,
+    "experimentalBudget": "Measured developer artifact only; no optional shipping budget has been approved"
+  },
+  "remaining": [
+    "Flat bullet and numbered lists, then nested lists in a later milestone",
+    "Default size gate and optional shipping package/load contract",
+    "Native OS clipboard, IME and assistive-technology qualification",
+    "Full release and packed-consumer qualification"
+  ],
+  "pushed": false,
+  "published": false
+}

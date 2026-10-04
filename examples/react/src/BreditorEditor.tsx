@@ -17,18 +17,9 @@ import {
   type BreditorBrowserEditorPersistenceStatus,
   type BreditorBrowserEditorSnapshot,
 } from "@breditor/browser";
-import {
-  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
-  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
-  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
-  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
-  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
-  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
-} from "@breditor/reference-highlight";
+import { createDemoProfile } from "./demoProfile.js";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 import { downloadSessionBackup } from "./downloadSessionBackup";
-
-const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-size-showcase.v1";
 
 let wasmInitialization: Promise<unknown> | undefined;
 
@@ -61,6 +52,8 @@ export interface BreditorEditorProps {
   readonly primaryModifier: "control" | "meta";
   /** Explicit recovery source. This editor never attaches to autosave. */
   readonly initialSessionCheckpointJson?: string;
+  /** Offer a backup during healthy editing as well as fault/recovery states. */
+  readonly offerSessionBackup?: boolean;
 }
 
 export type BreditorNavigationFlushOutcome =
@@ -232,7 +225,7 @@ export const BreditorEditor = forwardRef<
   BreditorEditorHandle,
   BreditorEditorProps
 >(function BreditorEditor(
-  { label, primaryModifier, initialSessionCheckpointJson }: BreditorEditorProps,
+  { label, primaryModifier, initialSessionCheckpointJson, offerSessionBackup = false }: BreditorEditorProps,
   ref,
 ): ReactElement {
   const [editorHost, setEditorHost] = useState<HTMLDivElement | null>(null);
@@ -373,6 +366,7 @@ export const BreditorEditor = forwardRef<
           return;
         }
         setMountsRetiring(editorHost, toolbarHost, false);
+        const profile = createDemoProfile(breditorWasm);
         const result = await openBreditorBrowserEditor({
           host: editorHost,
           label,
@@ -380,24 +374,20 @@ export const BreditorEditor = forwardRef<
           ...(initialSessionCheckpointJson === undefined
             ? {
                 initialDocument: {
-                  lineageId: REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
-                  documentJson: REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+                  lineageId: profile.lineageId,
+                  documentJson: profile.documentJson,
                   historyCapacity: 100,
                 },
                 persistence: {
                   indexedDB: window.indexedDB,
                   crypto: window.crypto.subtle,
-                  scope: { kind: "slot" as const, name: DEMO_PERSISTENCE_SLOT },
+                  scope: { kind: "slot" as const, name: profile.persistenceSlot },
                 },
               }
             : { initialSessionCheckpointJson }),
-          semanticProfile: {
-            bootstrapJson: REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
-            formatVersion: 2,
-          },
-          rendering: REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
-          keyboardShortcuts:
-            REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+          semanticProfile: profile.semanticProfile,
+          rendering: profile.rendering,
+          keyboardShortcuts: profile.keyboardShortcuts,
           keyboard: {
             editing: "beforeinputPrimary",
             primaryModifier,
@@ -405,7 +395,7 @@ export const BreditorEditor = forwardRef<
           },
           toolbar: {
             host: toolbarHost,
-            manifest: REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
+            manifest: profile.toolbar,
           },
           signal: abort.signal,
         });
@@ -585,7 +575,7 @@ export const BreditorEditor = forwardRef<
           </dl>
         </details>
       ) : null}
-      {runtimeFaulted || pausedPersistence !== undefined || (initialSessionCheckpointJson !== undefined && editor !== undefined) ? (
+      {runtimeFaulted || pausedPersistence !== undefined || ((initialSessionCheckpointJson !== undefined || offerSessionBackup) && editor !== undefined) ? (
         <div className="editor-details editor-details--warning">
           {runtimeFaulted ? <p>Editing stopped. Download a backup before reloading,
             then use Recover a session backup to continue in a separate editor.</p> : null}
