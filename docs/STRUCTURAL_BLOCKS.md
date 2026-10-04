@@ -978,7 +978,52 @@ unchanged; relabelling a new operation as V1–V5 does not make it admissible.
 
 V5 transactions and V5 sessions still reject list operation history. Editor State
 V3 can already preserve the flat-list document/selection snapshot when bound to
-its explicit schema; new session admission must additionally prove chronological
-forward and inverse history. That integration, reload/recovery and Wasm/browser
-qualification remain outstanding. No existing shipping format is widened.
+its explicit schema; session admission must additionally prove chronological
+forward and inverse history. V6 session qualification follows below. Browser
+reload/recovery and Wasm integration remain outstanding. No existing shipping
+format is widened.
 See [operation V6 qualification](qualification/2026-10-04-flat-list-operation-v6.json).
+
+### Complete flat-list sessions (V6)
+
+`SessionCheckpointJsonCodecV6` stores complete bounded list histories under an
+explicit outer version 6. It retains Editor State V3, Document V2 and typed
+editor-value records, admitting Operation V6 payloads through a separate bounded
+sequence. V1–V5 session behavior is unchanged; V5 still rejects histories with
+list operations, even when a V6 file's outer version is relabelled.
+
+- The checkpoint stores a normalized revision-zero history base, chronological
+  forward recipes, each boundary's result selection and pending formats, the
+  current revision, cursor, history capacity and optional open merge group.
+  Serialized inverse recipes are not accepted. Each inverse is derived locally.
+- Decode checks binding, capacity/cursor/group topology, entry and aggregate
+  operation counts, and editor-value preflight before owned history replay.
+  It reconstructs every forward boundary, including the future redo branch,
+  derives and applies each inverse, and verifies exact semantic restoration.
+  A stale guard, invalid future selection/format, noncanonical no-op event or
+  failed inverse rejects the entire checkpoint before a session is returned.
+- Retained-node, text, property-value and property-string budgets cover all
+  reconstructed boundaries, not merely the current document. Per-entry operation
+  limits, JSON bytes, whole-document limits, bounded initial reservations and
+  maximum revisions retain the existing explicit failure contracts.
+- A matching independently compiled context can restore exact document,
+  directional selection, affinities, pending formats, snapshot lineage/revision,
+  history capacity and both history branches. Runtime preparation stamps remain
+  intentionally nonportable. Encoding requires the exact installed runtime
+  context; it does not silently adopt another host policy.
+- Open typing groups continue after reload. Editing after undo replaces the redo
+  branch. State-only selection/pending-format updates preserve the nearest redo
+  boundary. Capacity eviction preserves the correct oldest retained base, and
+  zero-capacity/empty-item sessions restore without inventing history.
+- Deterministic re-encoding preserves the accepted checkpoint bytes. Existing
+  heading/paragraph payloads retain their semantics under explicit V6 sessions;
+  old codecs do not implicitly migrate or reinterpret V6 records.
+
+Qualification uses actual list actions across every cursor: typing, ordered/bullet
+wrapping, Enter, multiline paste, backward/forward and selection deletion,
+paragraph/heading conversion, inline clear/set/toggle, unwrapping and first-item
+lifting. Randomized mixed-list histories and the general session admission matrix
+exercise complete undo/redo after reload. These are in-memory Rust codec tests,
+not browser autosave, native clipboard, host backup-file recovery or release
+qualification. Request/commit V6 and the Wasm/browser bridge remain next.
+See [session V6 qualification](qualification/2026-10-04-flat-list-session-v6.json).

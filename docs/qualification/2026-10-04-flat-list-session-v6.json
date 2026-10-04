@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "9c8243f",
+  "status": "Experimental complete V6 flat-list sessions qualified in Rust; Wasm and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "codec": "SessionCheckpointJsonCodecV6",
+    "versions": {"session": 6, "operation": 6, "state": 3, "document": 2},
+    "history": "Chronological forward recipes only; inverses are derived and replay-proved, including the future redo branch",
+    "restoration": "Exact document, selection, pending formats, revision, cursor, capacity and open merge group; independent matching context receives new runtime lineage",
+    "admission": "Binding, bounded history and operation counts, editor values and retained-resource budgets are checked before complete restoration",
+    "compatibility": "Existing codecs remain unchanged; V5 continues to reject flat-list history"
+  },
+  "verification": {
+    "focusedFlatListTests": 9,
+    "genericSessionTests": 21,
+    "boundedPreflightCapacityTests": 1,
+    "allFeatureWorkspaceUnitTests": {"core": 1088, "wasm": 51},
+    "defaultCoreUnitTests": 697,
+    "propertyCases": {"flatListHistory": 10000, "genericHeadingHistory": 10000, "total": 20000},
+    "propertySeed": 20261004,
+    "coverage": [
+      "Every history cursor, deterministic bytes and exact undo/redo after restoration in a separately compiled matching context",
+      "Typing, Enter, multiline insertion, deletion, list wrap/unwrap, headings and typed inline formatting in one real-action history",
+      "Open typing-group continuation, replacement of a redo branch, state-only changes and zero-capacity sessions",
+      "Capacity eviction, empty headings and pending formats",
+      "Malformed future guards, selection, pending formats, typed properties and ordinal overflow with indexed errors",
+      "Exact JSON byte boundaries, aggregate operation preflight and retained-resource budget rejection",
+      "Earlier payload compatibility, malformed topology and versions, schema binding and revision overflow"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib flat_list_session_v6_tests --quiet",
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib session_checkpoint_json_v6_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Explicit V6 transaction request and commit integration",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Browser session reload and backup recovery",
+    "Cross-browser/native input and clipboard qualification, plus release size gates",
+    "Nested lists and indent/outdent follow the flat-list beta"
+  ],
+  "evidenceBoundary": "Rust in-memory session persistence and restoration only; not browser autosave, backup recovery, native qualification or shipping Wasm",
+  "pushed": false,
+  "published": false
+}

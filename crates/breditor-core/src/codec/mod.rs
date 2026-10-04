@@ -45,6 +45,8 @@ mod editor_value_preflight_v2;
 mod error;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod flat_list_operation_v6_tests;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_session_v6_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_wire;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
@@ -436,6 +438,8 @@ mod operation_sequence_v2;
 mod operation_sequence_v3;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_sequence_v4;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_sequence_v5;
 mod operation_v2_error;
 mod operation_v3_error;
 #[cfg(feature = "experimental-structural-properties")]
@@ -454,12 +458,16 @@ mod session_checkpoint_encoding_v3;
 mod session_checkpoint_encoding_v4;
 #[cfg(feature = "experimental-structural-properties")]
 mod session_checkpoint_encoding_v5;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_encoding_v6;
 mod session_checkpoint_entries_v1;
 mod session_checkpoint_entries_v2;
 #[cfg(feature = "experimental-structural-properties")]
 mod session_checkpoint_entries_v3;
 #[cfg(feature = "experimental-structural-properties")]
 mod session_checkpoint_entries_v4;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_entries_v5;
 mod session_checkpoint_error;
 mod session_checkpoint_json;
 mod session_checkpoint_json_v2;
@@ -474,6 +482,10 @@ mod session_checkpoint_json_v4_tests;
 mod session_checkpoint_json_v5;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod session_checkpoint_json_v5_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_json_v6;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod session_checkpoint_json_v6_tests;
 mod session_checkpoint_limits;
 mod session_checkpoint_v2_error;
 mod session_checkpoint_v3_error;
@@ -481,6 +493,8 @@ mod session_checkpoint_v3_error;
 mod session_checkpoint_v4_error;
 #[cfg(feature = "experimental-structural-properties")]
 mod session_checkpoint_v5_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_v6_error;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 pub(crate) mod structural_codec_test_support;
 mod transaction_error;
@@ -942,6 +956,10 @@ pub use session_checkpoint_json_v4::{
 pub use session_checkpoint_json_v5::{
     SESSION_CHECKPOINT_V5_FORMAT_VERSION, SessionCheckpointJsonCodecV5,
 };
+#[cfg(feature = "experimental-structural-properties")]
+pub use session_checkpoint_json_v6::{
+    SESSION_CHECKPOINT_V6_FORMAT_VERSION, SessionCheckpointJsonCodecV6,
+};
 pub use session_checkpoint_limits::{
     DEFAULT_SESSION_CHECKPOINT_MAX_AGGREGATE_FORWARD_OPERATIONS,
     DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY, DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_NODES,
@@ -955,6 +973,8 @@ pub use session_checkpoint_v3_error::SessionCheckpointV3CodecError;
 pub use session_checkpoint_v4_error::SessionCheckpointV4CodecError;
 #[cfg(feature = "experimental-structural-properties")]
 pub use session_checkpoint_v5_error::SessionCheckpointV5CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+pub use session_checkpoint_v6_error::SessionCheckpointV6CodecError;
 pub use transaction_error::{
     TransactionCodecError, TransactionRecordError, TransactionRecordErrorCode,
     TransactionRecordLocation,

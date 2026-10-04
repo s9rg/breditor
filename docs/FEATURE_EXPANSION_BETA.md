@@ -813,3 +813,22 @@ then the Wasm/browser/demo path. The beta goal remains incomplete.
 
 See [V6 contract](STRUCTURAL_BLOCKS.md#flat-list-operation-persistence-v6) and
 [verification](qualification/2026-10-04-flat-list-operation-v6.json).
+
+## Complete list-session persistence checkpoint
+
+Session Checkpoint V6 now preserves flat-list editing history, including both undo
+and redo branches, exact selections/pending formats and continued typing groups.
+Reload reconstructs and proves every forward and inverse boundary before returning
+a session; invalid future redo entries reject the entire checkpoint. History and
+resource limits remain host-authoritative, and older formats remain unchanged.
+
+Tests reload the real list-action sequence at every cursor in fresh contexts,
+exercise history eviction/state-only changes, and stress randomized list and
+legacy-compatible sessions. This closes the Rust saved-history layer, not the
+browser persistence experience: request/commit V6, Wasm/browser projection,
+toolbar/keyboard and the demo's autosave/backup recovery remain to integrate.
+Cross-browser/native-input and existing size gates are still required before beta
+readiness. No publish, push or shipping-profile change is implied.
+
+See [session contract](STRUCTURAL_BLOCKS.md#complete-flat-list-sessions-v6) and
+[verification](qualification/2026-10-04-flat-list-session-v6.json).
