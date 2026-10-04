@@ -1,0 +1,10 @@
+.manual-page { width: min(64rem, calc(100% - 2rem)); margin: 2rem auto; }
+.manual-page h1 { font-size: clamp(1.7rem, 5vw, 2.5rem); }
+.manual-page #toolbar > [role="toolbar"] { display: flex; flex-wrap: wrap; gap: .4rem; }
+.manual-page #editor { min-height: 15rem; padding: 1rem; border: 1px solid #777; background: white; }
+.manual-page label { display: block; margin: .75rem 0; }
+.manual-page textarea { width: 100%; min-height: 6rem; padding: .75rem; font: inherit; }
+.manual-page #report { min-height: 15rem; font-family: monospace; font-size: .85rem; }
+.manual-page fieldset { margin: 1.5rem 0; }
+.manual-page li { margin-block: .5rem; }
+.manual-page button { min-height: 2.75rem; }

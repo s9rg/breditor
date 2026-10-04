@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add a disposable headings-and-flat-lists clipboard qualification page using
+  the real editor and a bounded, content-redacted recorder. Bind reports to the
+  candidate Wasm hash; keep autosave and Clipboard API calls out of this fixture.
+  Cover cross-item plain-text transfer, numbered-list history, empty-item exit,
+  reset-on-reload and accessibility without treating automation as native input.
+
 - Borrow each element's immutable schema definition once per validation visit,
   reusing its property, identity and child rules without caching validation
   results or skipping checks. Add an exact unknown-element diagnostic regression

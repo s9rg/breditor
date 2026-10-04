@@ -40,6 +40,35 @@ backup recovery, browser keyboard input, automated accessibility and narrow
 layout. Browser automation is not physical OS clipboard/IME or screen-reader
 qualification.
 
+If port 4187 is occupied by your preview, set `BREDITOR_LIST_TEST_PORT=4188`
+(or another free port) for `test:demo:lists`. The test server never reuses an
+existing server. This does not change the interactive preview's port.
+
+## Disposable native clipboard check
+
+Open `/manual-clipboard.html` on the same list preview. This separate entry point
+uses the real flat-list editor, seed document and 21-control toolbar, but does
+not enable autosave or read the main demo's IndexedDB slot. Reload resets it.
+Use non-sensitive test text: native Copy and Cut replace the system clipboard.
+The page never calls the Clipboard API itself.
+
+Follow its Safari/Chrome checklist for single-item and cross-item copy/cut/paste,
+caret movement, heading/list conversion, formatting and exact undo/redo. Capture
+the report even if a check fails. It contains at most 256 event records, owner
+status/revision, browser details and the qualified candidate's Wasm SHA-256;
+it excludes document, clipboard, scratch and input contents. Review it before
+sharing. Truncation, pending events, faults or missing observations prevent a
+complete result. Reload starts a new recording.
+
+An `operator-confirmed` result is self-reported, not automatic certification:
+browser automation can also produce trusted events. The automated suite verifies
+the fixture, synthetic cross-item transfer, numbered-list history, empty-item
+exit, report redaction and reload isolation in all three engines. Those checks
+do not qualify physical OS clipboard, IME or a screen reader. Use the main demo
+for separate OS composition, accessibility, autosave and V6 recovery checks.
+
+## Private packed-consumer check
+
 For a separate, offline packed-consumer check:
 
 ```sh

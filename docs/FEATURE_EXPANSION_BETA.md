@@ -1689,3 +1689,30 @@ The earlier package-navigation and Firefox completion timeouts remain open;
 neither occurred in this checkpoint's runs. Default shipping trees are unchanged.
 Optional delivery/size policy, native clipboard/IME/accessibility and the full
 release gate remain pending. No push or publication was performed.
+
+## Disposable headings/list clipboard qualification — 2026-10-04
+
+The list demo now includes `/manual-clipboard.html`, a disposable real list
+editor using the same profile and toolbar with no autosave. Its shared bounded
+recorder excludes document, clipboard, scratch and input contents and adds the
+qualified candidate's Wasm hash. The page provides native copy/cut/paste,
+cross-item newline, numbering, caret, conversion and history instructions;
+reports remain explicitly self-reported, not automatic certification.
+
+All 24 production-demo checks passed across Chromium, Firefox and WebKit with
+zero retries, plus strict demo/test TypeScript. New checks cover backward
+cross-item synthetic clipboard transfer, exact DOM history, plaintext-only
+paste, empty-middle-item exit, recording reset, API isolation, accessibility
+and narrow layout. Physical input, OS IME and screen-reader gates remain open.
+
+The initial run had one Firefox axe serialization failure and 20 passes. A
+controlled comparison isolated it to the test's IndexedDB getter trap: no-guard
+and clipboard-only scans passed, IndexedDB-only failed, then no-guard passed.
+API-isolation checks and the unmodified-page accessibility scan are now separate;
+no scanner rules, assertions or deadlines were relaxed. The original trace is
+retained. This does not establish the lower-level scanner/engine cause or
+resolve earlier qualification timeouts. See [evidence](qualification/2026-10-04-list-manual-clipboard.json).
+
+Tests can use a separate validated port without reusing or stopping an existing
+preview. Shipping artifact trees remain unchanged; no push or publication.
+Flat bullet/numbered lists remain first, with nesting and indent/outdent deferred.

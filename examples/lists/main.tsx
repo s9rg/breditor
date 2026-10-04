@@ -25,5 +25,6 @@ createRoot(root).render(<StrictMode><main className="page-shell">
     </aside>
   </section>
   <SessionBackupImporter primaryModifier={primaryModifier} />
-  <footer className="architecture-note">Developer preview, not a published release. Physical clipboard, OS input methods and screen-reader qualification remain in progress.</footer>
+  <footer className="architecture-note">Developer preview, not a published release. Physical clipboard, OS input methods and screen-reader qualification remain in progress.
+    {" "}<a href="./manual-clipboard.html">Open the disposable clipboard check.</a></footer>
 </main></StrictMode>);

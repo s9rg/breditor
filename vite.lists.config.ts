@@ -20,6 +20,7 @@ if (qualification.status !== "passed" || qualification.feature !== "experimental
 export default defineConfig({
   root: resolve(repository, "examples/lists"),
   plugins: [react()],
+  define: { __BREDITOR_FLAT_LIST_WASM_SHA256__: JSON.stringify(hash) },
   resolve: { alias: [
     { find: /^@breditor\/browser$/, replacement: resolve(repository, "packages/breditor-browser/src/index.ts") },
     { find: "@breditor/browser/advanced", replacement: resolve(repository, "packages/breditor-browser/src/advanced.ts") },
@@ -28,5 +29,9 @@ export default defineConfig({
   ] },
   server: { host: "127.0.0.1", fs: { allow: [repository] } },
   build: { outDir: resolve(repository, "target/list-demo"), emptyOutDir: true,
+    rolldownOptions: { input: {
+      demo: resolve(repository, "examples/lists/index.html"),
+      clipboard: resolve(repository, "examples/lists/manual-clipboard.html"),
+    } },
     modulePreload: { polyfill: false }, target: "es2022" },
 });

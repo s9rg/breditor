@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "e6dc061",
+  "status": "disposable-list-fixture-qualified-by-automation",
+  "releaseQualified": false,
+  "nativeInputQualified": false,
+  "scope": "Headings and flat bullet/numbered lists; nesting and indent/outdent deferred by user choice.",
+  "candidate": "target/flat-list-candidate-3ln0Nh",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "entry": "examples/lists/manual-clipboard.html",
+  "buildOutput": "target/list-demo",
+  "fixture": "Real openFlatLists editor with the showcase profile and shared bounded redacted recorder. No autosave, IndexedDB access or Clipboard API invocation. Reports include the exact candidate hash and explicit self-reported-evidence caveats.",
+  "commands": [
+    "npm run typecheck:demo:lists",
+    "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-3ln0Nh BREDITOR_LIST_TEST_PORT=4188 npm run test:demo:lists"
+  ],
+  "finalRun": {"passed": 24, "failed": 0, "engines": ["chromium", "firefox", "webkit"], "retries": 0},
+  "coverage": [
+    "Existing main-demo heading ranks, inline formats, list conversion, autosave/reload and independent V6 backup recovery",
+    "Manual fixture startup, complete toolbar and exact candidate hash",
+    "Backward cross-item synthetic copy/cut/paste with exact text, numbered start and DOM undo/redo",
+    "Plain-text paste ignores accompanying rich HTML",
+    "Browser keyboard typing, item split, middle empty-item exit and three-step undo/redo",
+    "Clipboard/document/scratch sentinels absent from reports; synthetic events cannot satisfy native observations",
+    "Reload resets the document and recording; API getter traps verify no IndexedDB or Clipboard API access",
+    "Unmodified page with populated report passes axe and 390px layout checks"
+  ],
+  "initialRun": {
+    "passed": 20,
+    "failed": 1,
+    "failure": "Firefox axe result serialization encountered a null node while API-isolation getter traps were installed. Editing/history checks passed in all engines.",
+    "retainedDirectory": "target/list-clipboard-initial-results-20261004",
+    "trace": "manual-clipboard-manual-li-cfddf-tifact-bound-and-accessible-firefox/trace.zip",
+    "traceSha256": "bb818143768cd350be12e5bfa3a562f051e06cb9a5fa0a2aa09e5cb7c2143791",
+    "diagnosis": "Controlled Firefox contexts passed without guards, passed with clipboard-only guard, failed with IndexedDB-only guard, then passed without guards. A combined-guard diagnostic failed with no observed DOM mutation or forbidden API access on the tested page. This establishes test-instrumentation interference, not its underlying engine/scanner cause.",
+    "repair": "Separate full API-isolation tests from an unmodified-page accessibility test. No axe rules disabled, retries added or deadlines increased. All 24 resulting tests passed. Initial exploratory diagnostic required an explicit browser context and was rerun with one."
+  },
+  "shippingArtifactTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  },
+  "shippingUnchanged": true,
+  "priorTimeoutsResolved": false,
+  "remaining": ["Physical Safari/Chrome clipboard, OS IME and screen-reader qualification", "Large-list responsiveness and controlled release measurements", "Structural delivery choice and size ceilings", "Earlier qualification timeouts and full release gate"],
+  "pushedOrPublished": false
+}

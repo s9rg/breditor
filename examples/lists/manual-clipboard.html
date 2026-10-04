@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Breditor · manual list clipboard qualification</title></head>
+<body><main class="manual-page">
+  <h1>Headings and lists: desktop clipboard check</h1>
+  <p>Disposable real Rust/Wasm editor. Nothing is saved; reload resets the sample.
+    Use non-sensitive test text. Your Copy and Cut commands replace the system clipboard.
+    This page never calls clipboard APIs on its own.</p>
+  <p>Reports contain bounded event metadata, owner status/revision, browser details
+    and the candidate Wasm hash—not document, clipboard, scratch or input contents.
+    Inspect the report before sharing it.</p>
+  <p id="status" role="status">Starting editor…</p>
+  <section aria-label="Disposable list editor"><div id="toolbar"></div><div id="editor"></div></section>
+  <h2>Manual checks in Safari and Chrome</h2>
+  <ol>
+    <li>Select “Collect your ideas” in the first bullet. Use native Copy and paste
+      into the scratch area. Confirm the exact text, without a bullet marker.</li>
+    <li>Select the same text and use native Cut. Confirm one deletion, then paste
+      outside the editor. Undo once to restore the bullet text exactly.</li>
+    <li>Move the caret to the end of the numbered item “Write a first draft”. Type
+      “!” immediately; Undo and Redo once. Confirm the caret and numbering remain correct.</li>
+    <li>Native Paste at that caret should insert the copied text once, without
+      importing list structure. Undo once. Repeat Copy/Cut across both numbered
+      items: plain text should contain a newline, and Undo must restore both
+      items with numbering starting at 3. Try both selection directions.</li>
+    <li>Select the first heading. Apply a different heading rank, Bullet list,
+      Numbered list and Remove list. Undo/Redo each operation and confirm its
+      text and heading rank survive. Apply a Link, then Undo/Redo its value.</li>
+    <li>Confirm each check below only after observing it. Composition events alone
+      do not qualify an OS input method, and automated accessibility checks do
+      not qualify a screen reader. Test those separately in the main demo.</li>
+  </ol>
+  <label for="scratch">Scratch area — excluded from the report</label>
+  <textarea id="scratch" autocomplete="off" spellcheck="false"></textarea>
+  <fieldset id="checks" disabled><legend>Your observations (manual, not inferred)</legend>
+    <label><input type="checkbox" data-check="copy" /> Copy produced exact text outside the editor, including cross-item newlines.</label>
+    <label><input type="checkbox" data-check="cut" /> Cut deleted exactly once and produced exact text outside the editor.</label>
+    <label><input type="checkbox" data-check="paste" /> Native Paste inserted text once, without importing structure.</label>
+    <label><input type="checkbox" data-check="caret" /> Immediate caret movement and typing remained usable.</label>
+    <label><input type="checkbox" data-check="history" /> Undo/Redo restored text, item structure and numbering exactly.</label>
+    <label><input type="checkbox" data-check="formatting" /> Heading/list conversion and Link Undo/Redo retained their values.</label>
+  </fieldset>
+  <p>“Operator-confirmed” requires every check plus browser-dispatched Copy, Cut
+    and Paste, without faults or truncated recording. Browser automation can also
+    dispatch trusted events: this is self-reported evidence, not certification.</p>
+  <p id="counts">No events recorded.</p>
+  <button id="capture-report" type="button">Capture redacted report</button>
+  <label for="report">Report snapshot — capture again after further testing</label>
+  <textarea id="report" readonly spellcheck="false"></textarea>
+  <p>Incomplete and failed runs can be captured too. This page does not read or
+    replace the main demo’s autosave slot. Use <a href="./">the main list demo</a>
+    for V6 backup/reload, OS composition and screen-reader checks.</p>
+</main><script type="module" src="./manual-clipboard.ts"></script></body></html>
