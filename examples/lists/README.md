@@ -119,3 +119,13 @@ than free work. These phase measurements are diagnostic, not quantities to
 subtract directly from the browser-owner timings. `--core-only` and
 `--diagnose-export` are mutually exclusive; optional Chromium CPU profiling also
 works in core-only mode. Neither mode relaxes shipping behavior or release gates.
+
+To investigate Rust call stacks, run
+`node scripts/build-experimental-flat-list.mjs --diagnostic-names`, then qualify
+that candidate with `scripts/check-experimental-flat-list-packages.mjs` and pass
+the new package record to the CPU measurement command above. This uses a separate
+Cargo cache and keeps function names while retaining existing ABI checks. Its
+packages and measurement reports are explicitly marked as diagnostic. The named
+binary differs from the ordinary binary: collect a new profile, never use its
+function indices to relabel an older stripped profile. These larger artifacts
+are not a delivery candidate, and their timings are not release measurements.

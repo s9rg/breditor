@@ -1582,3 +1582,36 @@ directly before changing readiness validation. The current production Wasm has
 stripped function names, so a numeric profiler label is not a source-level
 diagnosis. Packaging, native input/accessibility and full release gates remain
 open; nothing was pushed or published.
+
+## Source-named core profiling — 2026-10-04
+
+An isolated `--diagnostic-names` build now retains Rust function names. It uses
+the existing release optimization settings, a separate Cargo cache and all
+existing ABI checks. Initial attempts failed ABI checks: retained target-feature
+metadata changed bindgen transforms, then allocator names changed generated
+exports. The diagnostic input now retains bindgen metadata and filtered function
+names only; a byte comparison verifies that this metadata preparation itself
+does not change executable sections. No ABI checks were loosened.
+
+The final named build still has different executable bytes from the ordinary
+build. Consequently, it was independently qualified and profiled, not used to
+relabel the previous trace. All 14 ABI tests, strict TypeScript, Node checks,
+five raw runs per engine, private packed consumers in Chromium/Firefox/WebKit,
+and the ordinary base consumer passed. The fresh Chromium core profile passed
+all nine cases. The ordinary build also passed its unchanged checks and retained
+the exact previous Wasm hash. Eight metadata-helper tests cover malformed input
+and preservation of executable sections.
+
+The 555 ms whole-fixture diagnostic trace attributes sampled self time to
+`memcmp` (73.1 ms), allocation, schema element lookup (25.0 ms),
+`ValidationState::visit_element` (23.0 ms), `NodePath::try_child` (19.3 ms), and
+JSON byte counting (16.2 ms). Caller stacks connect some comparisons and path
+allocation to schema validation, including flat-list root validation. These are
+optimization targets, not an exclusive action-state cost breakdown: the trace
+also contains untimed correctness and recovery work, and optimized stacks may
+be incomplete. See [evidence](qualification/2026-10-04-flat-list-named-profile.json).
+
+Next: reduce avoidable allocation or repeated work within these validated paths,
+with unchanged errors, resource limits and exact history behavior, then measure
+the ordinary stripped build. No runtime behavior or shipping files changed in
+this checkpoint. Flat lists remain the beta scope; nesting follows later.

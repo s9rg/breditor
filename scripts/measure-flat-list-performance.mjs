@@ -92,6 +92,7 @@ const server = await preview({configFile: false, root: fixture, logLevel: "warn"
 const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport, releasePerformanceQualified: false,
+  diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   deepDiagnostics, browserName, runCount, cpuProfileEnabled, profileBuild: cpuProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),

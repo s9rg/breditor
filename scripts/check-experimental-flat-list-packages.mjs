@@ -113,6 +113,7 @@ try {
   const browserJavaScriptBytes = await sums(join(browserStage, "dist"), ".js");
   const browserDeclarationsBytes = await sums(join(browserStage, "dist"), ".d.ts");
   const report = {status: "passed", publishable: false, candidate, staging, consumer, browserRuns,
+    diagnosticNames: qualification.diagnosticNames === true,
     browserPackage, wasmPackage, browserJavaScriptBytes, browserDeclarationsBytes,
     tarballSha256: {browser: hash(await readFile(browserPackage.path)), wasm: hash(await readFile(wasmPackage.path))},
     baseConsumer: "Existing Node import, strict TypeScript and Chromium initialization/format/content/teardown smoke passed against these same installed experimental artifacts",

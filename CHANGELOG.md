@@ -6,6 +6,10 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add an isolated named-Wasm profiling build with unchanged ABI checks and
+  explicitly labeled package/measurement reports. Collect a fresh source-named
+  profile; never relabel stripped profiles using a different executable.
+
 - Add a separate installed-Wasm `--core-only` performance diagnostic for fresh
   action-state preparation, exact cache hits, editing, projection-handle reads
   and recovery. Keep the full-browser fixture unchanged; record measurement
