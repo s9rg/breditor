@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "4fabb46",
+  "status": "qualified-private-consumers",
+  "change": "Renderer descendant tag checks use captured native nodeType, HTML namespace and exact localName instead of collecting a frozen full host-facts object and then reading localName. Host admission still uses nativeHtmlHostFacts. Fresh-element checks still prove owner document, parentlessness, attributes and children. Canonical validation still walks topology, checks shape/text and both mapping directions. No DOM-validation cache, skipped subtree, Rust, wire or selection-write change.",
+  "motivation": "The previous whole-fixture Chromium profile (selection-range-read-experiment baseline) attributed 55.254 ms sampled self time to nativeHtmlHostFacts. Code inspection found the descendant identity predicate discarded the returned ownerDocument, tagName, isConnected and hasChildren facts. The new helper is explicitly not a host-admission API.",
+  "baseline": {
+    "packageRecord": "target/flat-list-packages-MjzA5N/qualification.json",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-HjgHjP"
+  },
+  "candidate": {
+    "packageRecord": "target/flat-list-packages-0o7wkE/qualification.json",
+    "packageRecordSha256": "585a58f9754881ad796bac3e53997a916c4479770b4dc551b75e6a16bf804da9",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-aLkLwM",
+    "wasmCandidate": "target/flat-list-candidate-Rq6C5V",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64",
+    "browserTarballSha256": "955541e58d89b8ff72ba08d7b48c5fabc00055eef955ef6d319455cc0a2ef713",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d",
+    "consumerJavaScriptByteDelta": 170,
+    "consumerGzip9ByteDelta": 45,
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "tests": [
+    "Strict browser source/test TypeScript passed; all 1863 unit tests across 52 files passed.",
+    "Six new identity-helper cases cover own-property shadows, wrong SVG/MathML/null namespaces, non-elements/native-looking plain objects, exact case, foreign/adopted nodes and XML-owned HTML.",
+    "Private packed consumers passed in all three engines; base Node, strict TypeScript and Chromium smoke passed against the same installed packages. Shipping artifact trees were verified unchanged.",
+    "Five complete DOM/controller/composition/clipboard/toolbar/queue/history/native IndexedDB V6 autosave/recovery runs passed in each of Chromium, Firefox and WebKit."
+  ],
+  "listDemo": {
+    "report": "target/list-identity-demo-20261004.json",
+    "sha256": "1ecd2b21ef02a237a67bc308bc98599fef03b6b3691f656a9fa2cff35689b981",
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0
+  },
+  "existingBrowserMatrix": {
+    "report": "target/list-identity-base-matrix-20261004.json",
+    "sha256": "cc90c1b1540bbdf07dfbb5839d1b3feff645943734c6eeb08e488ba2fc48ad5c",
+    "passed": 165,
+    "perEngine": 55,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "retries": 0
+  },
+  "runs": [
+    {"artifact": "baseline", "report": "performance-sULPL4/measurement.json", "sha256": "c3367051fca0651e3989a926eee10c4e8148949a4b42e7af7121df92a8de900c", "edit500MediansMs": {"chromium": 62, "firefox": 191, "webkit": 98}, "edit500RangesMs": {"chromium": [59.8, 62.3], "firefox": [188, 195], "webkit": [97, 100]}},
+    {"artifact": "candidate", "report": "performance-UXImjP/measurement.json", "sha256": "54bb8141ed7145b0dd49a54ce884e2176428fb071d3a2eed348c78e51440b703", "edit500MediansMs": {"chromium": 58.3, "firefox": 183, "webkit": 94}, "edit500RangesMs": {"chromium": [58, 60.7], "firefox": [182, 184], "webkit": [90, 103]}},
+    {"artifact": "baseline", "report": "performance-YdQVet/measurement.json", "sha256": "500d29cbb39f422e6b570ed0954716fcb33975573e0027686fc92e9a16c3b302", "edit500MediansMs": {"chromium": 62.4, "firefox": 194, "webkit": 103}, "edit500RangesMs": {"chromium": [60.7, 64.2], "firefox": [193, 200], "webkit": [98, 112]}},
+    {"artifact": "candidate", "report": "performance-rmAJhf/measurement.json", "sha256": "9f9689a5da4644012b70c8c2d6c3cfe363544e2cc53b9f191b36a2fab717c54e", "edit500MediansMs": {"chromium": 59.3, "firefox": 184, "webkit": 100}, "edit500RangesMs": {"chromium": [58.1, 60.4], "firefox": [184, 193], "webkit": [92, 105]}}
+  ],
+  "measurementMethod": "Sequential old/new/old/new, unchanged production minified installed-package full-editor fixture, no concurrent Breditor build/test. All 108 correctness cases passed. Reports are relative to their artifact consumer; values rounded to one decimal millisecond. No diagnostic instrumentation or JIT changes. Background host load was not controlled and there are only three samples per size/engine/run.",
+  "interpretation": "Medians decreased in each pair and engine, with approximately 8-10 ms reduction for Firefox 500-item edits. Several ranges overlap, especially WebKit. This is a modest local improvement, not statistical evidence, a latency guarantee, or completed large-document qualification.",
+  "reproduction": [
+    "npm run typecheck --workspace @breditor/browser && npm test --workspace @breditor/browser",
+    "node scripts/check-experimental-flat-list-packages.mjs target/flat-list-candidate-Rq6C5V",
+    "node scripts/measure-flat-list-performance.mjs <packageRecord> (alternate baseline/candidate twice)",
+    "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-Rq6C5V --browser-dom",
+    "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-Rq6C5V BREDITOR_LIST_TEST_PORT=4193 PLAYWRIGHT_JSON_OUTPUT_NAME=target/list-identity-demo-20261004.json npx playwright test -c playwright.lists.config.ts --reporter=line,json --output target/list-identity-demo-20261004",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-0o7wkE/qualification.json PLAYWRIGHT_JSON_OUTPUT_NAME=target/list-identity-base-matrix-20261004.json npx playwright test -c playwright.browser-candidate.config.ts --max-failures=1 --reporter=line,json --output target/list-identity-base-matrix-20261004"
+  ],
+  "openGates": "Native IME/VoiceOver evidence, native checks on this newer artifact, larger-document responsiveness, explicit optional delivery/size policy and complete release qualification remain open. Historical intermittent WebKit faults are not resolved by finite clean runs.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}

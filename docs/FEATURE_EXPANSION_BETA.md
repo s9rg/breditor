@@ -2054,3 +2054,33 @@ Next investigate document-sized rendering/validation work or obtain a rendering
 trace before changing selection reads again. No shipping artifact changed and
 no native-input or historical WebKit gate was cleared. Nothing was pushed or
 published.
+
+## Renderer descendant identity checkpoint — 2026-10-04
+
+The renderer no longer collects full host facts for every descendant just to
+check its HTML tag. A dedicated native identity predicate checks node kind,
+HTML namespace and exact local name without allocating a host-facts object or
+reading unused connection/child/document facts. This predicate is not host
+admission: the host path is unchanged, fresh elements still prove their owner
+document and parentlessness, and canonical validation still checks topology,
+attributes, text and both mapping directions. No subtree or validation result is
+cached. Rust, wire formats and selection writes are unchanged.
+
+Six new tests cover namespace, object/element identity, exact case, own-property
+shadows, foreign/adopted nodes and XML-owned HTML. All **1,863 unit tests** and
+strict source/test TypeScript pass. Private packed consumers, five complete
+DOM/recovery runs per engine, **54 list-demo cases** and **165 existing browser
+cases** also pass; the Playwright suites have no retries, skips or failures.
+
+Two sequential old/new pairs show local 500-item edit medians changing from
+62/62.4 to 58.3/59.3 ms in Chromium, 191/194 to 183/184 ms in Firefox, and 98/103
+to 94/100 ms in WebKit. All 108 measurement correctness cases pass. Samples are
+small and several ranges overlap; these are not general latency guarantees.
+The consumer adds 170 raw JS bytes and 45 gzip-9 bytes. Default ceilings remain
+unchanged and the package is still private/non-publishable.
+
+See [descendant identity evidence](qualification/2026-10-04-renderer-descendant-identity.json)
+for artifact hashes, commands and limitations. Shipping artifact trees remain
+unchanged. Native-input qualification, delivery policy, larger-list
+responsiveness, historical WebKit issues and complete release qualification
+remain open. Nothing was pushed or published.

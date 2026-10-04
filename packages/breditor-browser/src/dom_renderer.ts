@@ -27,8 +27,8 @@ import {
   nativeAttributeNames,
   nativeChildNodes,
   nativeDocumentDefaultView,
-  nativeElementLocalName,
   nativeGetAttribute,
+  nativeHtmlElementIsNamed,
   nativeHtmlHostFacts,
   nativeNodeType,
   nativeNodeValue,
@@ -1611,10 +1611,7 @@ function textBlockTag(paragraph: BaseParagraphProjection): "p" | "h1" | "h2" | "
 }
 
 function isHtmlElementNamed(node: Node | undefined, tagName: string): node is HTMLElement {
-  if (node === undefined) return false;
-  const facts = nativeHtmlHostFacts(node);
-  return facts !== undefined &&
-    nativeElementLocalName(facts.element) === tagName.toLowerCase();
+  return nativeHtmlElementIsNamed(node, tagName.toLowerCase());
 }
 
 function createHtmlElement<K extends keyof HTMLElementTagNameMap>(

@@ -202,6 +202,25 @@ export function isSafeFlowContainerHost(value: unknown): value is HTMLElement {
   return facts !== undefined && SAFE_FLOW_CONTAINER_TAGS.has(facts.tagName);
 }
 
+/**
+ * Checks only a descendant's native HTML identity and exact local name.
+ * This is not host admission: callers still prove document, topology, ownership
+ * and child/attribute shape where required. Avoid collecting unused host facts
+ * for every descendant visited by the renderer.
+ */
+export function nativeHtmlElementIsNamed(value: unknown, localName: string): value is HTMLElement {
+  if (typeof value !== "object" || value === null) return false;
+  const intrinsics = domIntrinsics();
+  if (intrinsics === undefined) return false;
+  try {
+    return Reflect.apply(intrinsics.nodeType, value, []) === 1 &&
+      Reflect.apply(intrinsics.namespaceUri, value, []) === HTML_NAMESPACE &&
+      Reflect.apply(intrinsics.localName, value, []) === localName;
+  } catch {
+    return false;
+  }
+}
+
 /** Reads an attribute through the captured, brand-checked Element method. */
 export function nativeGetAttribute(
   element: HTMLElement,

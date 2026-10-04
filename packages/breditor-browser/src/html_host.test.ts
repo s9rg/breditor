@@ -9,6 +9,7 @@ import {
   nativeDocumentGetElementById,
   nativeDocumentSelection,
   nativeInputChecked,
+  nativeHtmlElementIsNamed,
   nativeInputIndeterminate,
   nativeInputValue,
   nativeOptionValue,
@@ -25,6 +26,44 @@ beforeEach(() => {
 });
 
 describe("trusted platform intrinsics", () => {
+  it("checks descendant HTML identity without consulting own properties", () => {
+    const element = document.createElement("p");
+    const trap = vi.fn(() => { throw new Error("own property read"); });
+    for (const name of ["nodeType", "namespaceURI", "localName", "tagName", "ownerDocument", "isConnected", "hasChildNodes"]) {
+      Object.defineProperty(element, name, {configurable: true, get: trap});
+    }
+    expect(nativeHtmlElementIsNamed(element, "p")).toBe(true);
+    expect(nativeHtmlElementIsNamed(element, "div")).toBe(false);
+    expect(nativeHtmlElementIsNamed(element, "P")).toBe(false);
+    expect(trap).not.toHaveBeenCalled();
+  });
+
+  it.each(["http://www.w3.org/2000/svg", "http://www.w3.org/1998/Math/MathML", null])(
+    "rejects matching descendant names in namespace %s", namespace => {
+      const node = document.createElementNS(namespace, "p");
+      Object.defineProperty(node, "namespaceURI", {get: () => "http://www.w3.org/1999/xhtml"});
+      expect(nativeHtmlElementIsNamed(node, "p")).toBe(false);
+    });
+
+  it("rejects non-elements and native-looking plain objects", () => {
+    for (const value of [undefined, null, {}, document, document.createTextNode("p"),
+      {nodeType: 1, namespaceURI: "http://www.w3.org/1999/xhtml", localName: "p"}]) {
+      expect(nativeHtmlElementIsNamed(value, "p")).toBe(false);
+    }
+  });
+
+  it("accepts foreign, adopted and XML-owned HTML descendants with exact names", () => {
+    const iframe = document.createElement("iframe"); document.body.append(iframe);
+    const foreign = iframe.contentDocument!.createElement("p");
+    expect(nativeHtmlElementIsNamed(foreign, "p")).toBe(true);
+    document.adoptNode(foreign);
+    expect(nativeHtmlElementIsNamed(foreign, "p")).toBe(true);
+    const xml = document.implementation.createDocument(null, "root");
+    expect(nativeHtmlElementIsNamed(xml.createElementNS("http://www.w3.org/1999/xhtml", "p"), "p")).toBe(true);
+    expect(nativeHtmlElementIsNamed(xml.createElementNS("http://www.w3.org/1999/xhtml", "P"), "p")).toBe(false);
+    iframe.remove();
+  });
+
   it("ignores a chain-severing Document prototype for reads and factories", () => {
     const focused = document.createElement("input");
     const expected = document.createElement("div");
