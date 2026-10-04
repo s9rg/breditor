@@ -6,7 +6,9 @@ import {
   isOwnedProjection,
   isHeadingProjectionLevel,
   type BaseDocumentProjection,
+  type BaseParagraphProjection,
 } from "./projection.js";
+import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
@@ -15,7 +17,7 @@ import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
 export const MAX_BROWSER_DOCUMENT_JSON_BYTES = 16_777_216;
 
 /** Explicit durable codec selected before any document payload is inspected. */
-export type WasmDurableMode = "v1" | "v2" | "v3" | "v5";
+export type WasmDurableMode = "v1" | "v2" | "v3" | "v5" | "v6";
 
 /** Exact schema selector and fingerprint required by a compiled durable codec. */
 export interface WasmDurableSchemaBinding {
@@ -52,14 +54,14 @@ export interface WasmDurableFormatBinding {
  * Browser-side durable contract selected independently of payload contents.
  *
  * V1 is built-in. Compiled modes require the exact schema/format catalog.
- * V2/V3 are paragraph-only; explicit V5 admits headings. All use Document V2.
- * V5 sessions retain State V3, not a relabeled State V5.
+ * V2/V3 are paragraph-only; V5 admits headings; explicit V6 admits flat lists.
+ * Compiled modes use Document V2. V5/V6 sessions retain State V3.
  * @internal
  */
 export type WasmDurableJsonContract =
   | Readonly<{ readonly mode: "v1" }>
   | Readonly<{
-      readonly mode: "v2" | "v3" | "v5";
+      readonly mode: "v2" | "v3" | "v5" | "v6";
       readonly schema: WasmDurableSchemaBinding;
       readonly formats: readonly WasmDurableFormatBinding[];
     }>;
@@ -287,54 +289,95 @@ export function documentJsonMatchesProjection(
     if (documentParagraphs.length !== projection.paragraphs.length) return false;
     for (let paragraphIndex = 0; paragraphIndex < documentParagraphs.length; paragraphIndex += 1) {
       const paragraph = documentParagraphs[paragraphIndex] as Record<string, unknown>;
-      const level = paragraph["type"] === "breditor/heading"
-        ? (paragraph["properties"] as Record<string, unknown>)["breditor/level"]
-        : undefined;
-      if (level !== projection.paragraphs[paragraphIndex]?.headingLevel) return false;
-      const documentRuns = paragraph["children"] as unknown[];
-      const projectionRuns = projection.paragraphs[paragraphIndex]?.runs;
-      if (projectionRuns === undefined || documentRuns.length !== projectionRuns.length) {
-        return false;
-      }
-      for (let runIndex = 0; runIndex < documentRuns.length; runIndex += 1) {
-        const run = documentRuns[runIndex] as Record<string, unknown>;
-        const formats = run["formats"] as Array<Record<string, unknown>>;
-        const projected = projectionRuns[runIndex];
-        if (
-          projected === undefined ||
-          run["text"] !== projected.text ||
-          formats.length !== projected.formatDetails.length ||
-          !formats.every((format, formatIndex) => {
-            const projectedFormat = projected.formatDetails[formatIndex];
-            const properties = format["properties"] as Record<string, unknown>;
-            if (
-              projectedFormat === undefined ||
-              format["type"] !== projectedFormat.kind
-            ) {
-              return false;
-            }
-            const propertyNames = Reflect.apply(
-              OBJECT_KEYS,
-              Object,
-              [properties],
-            ) as string[];
-            return propertyNames.length === projectedFormat.properties.length &&
-              propertyNames.every((name, propertyIndex) => {
-                const projectedProperty = projectedFormat.properties[propertyIndex];
-                return projectedProperty !== undefined &&
-                  name === projectedProperty.name &&
-                  properties[name] === projectedProperty.value;
-              });
-          })
-        ) {
-          return false;
-        }
-      }
+      if (!documentTextBlockMatches(paragraph, projection.paragraphs[paragraphIndex])) return false;
     }
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Correlates an explicit V6 document with an owned hierarchical projection.
+ * Root grouping, list family, start, item order, ranks and typed formats all
+ * participate; equal flattened text is insufficient. @internal
+ */
+export function documentJsonMatchesFlatListProjection(
+  value: unknown,
+  projection: FlatListDocumentProjection,
+  contract: WasmDurableJsonContract,
+): boolean {
+  const resolved = resolveWasmDurableJsonContract(contract);
+  if (!isOwnedFlatListProjection(projection) || resolved?.mode !== "v6" ||
+    documentJsonUtf8Bytes(value, contract) === null ||
+    projection.schema.name !== resolved.schema.name || projection.schema.version !== resolved.schema.version ||
+    projection.schema.fingerprint !== resolved.schema.fingerprint) return false;
+  try {
+    const parsed = Reflect.apply(JSON_PARSE, JSON, [value]) as Record<string, unknown>;
+    const roots = (parsed["root"] as Record<string, unknown>)["children"] as Array<Record<string, unknown>>;
+    if (roots.length !== projection.blocks.length) return false;
+    return roots.every((root, index) => {
+      const projected = projection.blocks[index]!;
+      if (projected.kind === "textBlock") {
+        return (root["type"] === "breditor/paragraph" || root["type"] === "breditor/heading") &&
+          documentTextBlockMatches(root, projected.block);
+      }
+      if (root["type"] !== (projected.kind === "bulletList" ? "breditor/bullet-list" : "breditor/ordered-list")) return false;
+      if (projected.kind === "orderedList" &&
+        (root["properties"] as Record<string, unknown>)["breditor/start"] !== projected.start) return false;
+      const items = root["children"] as Array<Record<string, unknown>>;
+      return items.length === projected.items.length && items.every((item, itemIndex) =>
+        documentTextBlockMatches((item["children"] as Array<Record<string, unknown>>)[0]!, projected.items[itemIndex]));
+    });
+  } catch { return false; }
+}
+
+/** Compare a previously validated text block, including complete typed formats. */
+function documentTextBlockMatches(paragraph: Record<string, unknown>, projectedBlock: BaseParagraphProjection | undefined): boolean {
+  const level = paragraph["type"] === "breditor/heading"
+    ? (paragraph["properties"] as Record<string, unknown>)["breditor/level"]
+    : undefined;
+  if (level !== projectedBlock?.headingLevel) return false;
+  const documentRuns = paragraph["children"] as unknown[];
+  const projectionRuns = projectedBlock?.runs;
+  if (projectionRuns === undefined || documentRuns.length !== projectionRuns.length) {
+    return false;
+  }
+  for (let runIndex = 0; runIndex < documentRuns.length; runIndex += 1) {
+    const run = documentRuns[runIndex] as Record<string, unknown>;
+    const formats = run["formats"] as Array<Record<string, unknown>>;
+    const projected = projectionRuns[runIndex];
+    if (
+      projected === undefined ||
+      run["text"] !== projected.text ||
+      formats.length !== projected.formatDetails.length ||
+      !formats.every((format, formatIndex) => {
+        const projectedFormat = projected.formatDetails[formatIndex];
+        const properties = format["properties"] as Record<string, unknown>;
+        if (
+          projectedFormat === undefined ||
+          format["type"] !== projectedFormat.kind
+        ) {
+          return false;
+        }
+        const propertyNames = Reflect.apply(
+          OBJECT_KEYS,
+          Object,
+          [properties],
+        ) as string[];
+        return propertyNames.length === projectedFormat.properties.length &&
+          propertyNames.every((name, propertyIndex) => {
+            const projectedProperty = projectedFormat.properties[propertyIndex];
+            return projectedProperty !== undefined &&
+              name === projectedProperty.name &&
+              properties[name] === projectedProperty.value;
+          });
+      })
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function readDocument(
@@ -473,7 +516,7 @@ export function resolveWasmDurableJsonContract(
     const compiled = exactJsonRecord(value, ["mode", "schema", "formats"]);
     if (
       compiled === null ||
-      (compiled["mode"] !== "v2" && compiled["mode"] !== "v3" && compiled["mode"] !== "v5")
+      (compiled["mode"] !== "v2" && compiled["mode"] !== "v3" && compiled["mode"] !== "v5" && compiled["mode"] !== "v6")
     ) return null;
     const schema = exactJsonRecord(compiled["schema"], ["name", "version", "fingerprint"]);
     const formats = snapshotOwnDataArray(compiled["formats"], MAX_PROFILE_FORMATS);
@@ -598,7 +641,7 @@ function validFormatProperties(
   mode: WasmDurableMode,
 ): FormatPropertySummary | null {
   // V1 and V2 are deliberately frozen at the original property-free payload
-  // generation. Document V2 is shared by compiled modes, but only V3/V5 may
+  // generation. Document V2 is shared by compiled modes, but only V3/V5/V6 may
   // use the descriptor's scalar property contracts.
   if (mode === "v1" || mode === "v2") {
     return emptyJsonRecord(value) ? EMPTY_FORMAT_PROPERTY_SUMMARY : null;
@@ -702,11 +745,44 @@ export function durableDocumentRootMatchesContract(
     return false;
   }
 
-  let nodes = 1 + root["children"].length;
-  let totalTextBytes = 0;
+  // Collect only the supported, bounded depth. Never recursively flatten an
+  // arbitrary tree: list/item wrappers are semantic nodes with their own limits.
+  let nodes = 1;
   let totalPropertyValues = 0;
+  const paragraphs: unknown[] = [];
+  for (const rawBlock of root["children"]) {
+    nodes += 1;
+    if (nodes > MAX_NODES) return false;
+    const block = exactJsonRecord(rawBlock, ["kind", "type", "entityId", "properties", "children"]);
+    if (block === null) return false;
+    if (block["type"] !== "breditor/bullet-list" && block["type"] !== "breditor/ordered-list") {
+      paragraphs.push(block);
+      continue;
+    }
+    if (contract.mode !== "v6" || block["kind"] !== "element" || block["entityId"] !== null ||
+      !Array.isArray(block["children"]) || block["children"].length === 0 ||
+      block["children"].length > MAX_PARAGRAPHS) return false;
+    if (block["type"] === "breditor/ordered-list") {
+      const properties = exactJsonRecord(block["properties"], ["breditor/start"]);
+      const start = properties?.["breditor/start"];
+      if (typeof start !== "number" || !Number.isSafeInteger(start) || start < 1 ||
+        start + block["children"].length - 1 > 2_147_483_647) return false;
+      totalPropertyValues += 1;
+      if (totalPropertyValues > MAX_PROPERTY_VALUES) return false;
+    } else if (!emptyJsonRecord(block["properties"])) return false;
+    nodes += 2 * block["children"].length; // Each item and its sole text block.
+    if (nodes > MAX_NODES) return false;
+    for (const rawItem of block["children"]) {
+      const item = exactJsonRecord(rawItem, ["kind", "type", "entityId", "properties", "children"]);
+      if (item === null || item["kind"] !== "element" || item["type"] !== "breditor/list-item" ||
+        item["entityId"] !== null || !emptyJsonRecord(item["properties"]) ||
+        !Array.isArray(item["children"]) || item["children"].length !== 1) return false;
+      paragraphs.push(item["children"][0]);
+    }
+  }
+  let totalTextBytes = 0;
   let totalPropertyStringUtf8Bytes = 0;
-  for (const rawParagraph of root["children"]) {
+  for (const rawParagraph of paragraphs) {
     const paragraph = exactJsonRecord(rawParagraph, [
       "kind",
       "type",
@@ -727,7 +803,7 @@ export function durableDocumentRootMatchesContract(
       if (!emptyJsonRecord(paragraph["properties"])) return false;
     } else {
       const properties = exactJsonRecord(paragraph["properties"], ["breditor/level"]);
-      if (contract.mode !== "v5" || paragraph["type"] !== "breditor/heading" ||
+      if ((contract.mode !== "v5" && contract.mode !== "v6") || paragraph["type"] !== "breditor/heading" ||
         properties === null || !isHeadingProjectionLevel(properties["breditor/level"])) return false;
       totalPropertyValues += 1;
       if (totalPropertyValues > MAX_PROPERTY_VALUES) return false;

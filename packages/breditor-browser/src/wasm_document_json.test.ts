@@ -6,6 +6,7 @@ import {
   consumeWasmDocumentJson,
   documentJsonUtf8Bytes,
   documentJsonMatchesProjection,
+  documentJsonMatchesFlatListProjection,
   isOwnedBrowserDocumentJsonReadResult,
   type WasmDurableJsonContract,
   type WasmDocumentJsonErrorView,
@@ -16,6 +17,7 @@ import {
   createProfiledDocumentProjection,
   createTextBlockDocumentProjection,
 } from "./projection.js";
+import { FlatListDocumentProjection } from "./flat_list_projection.js";
 import {
   consumeWasmCompiledProfileDescriptor,
   type WasmCompiledProfileDescriptorView,
@@ -1138,6 +1140,113 @@ function propertyBudgetRun(value: string): unknown {
     properties: { "example/value": value },
   }]);
 }
+
+describe("explicit V6 flat-list document contract", () => {
+  const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v6" };
+  const element = (type: string, children: unknown[], properties: Record<string, unknown> = {}) => ({
+    kind: "element", type: `breditor/${type}`, entityId: null, properties, children,
+  });
+  const heading = (level: number, children: unknown[] = []) => element("heading", children, { "breditor/level": level });
+  const item = (block: unknown = paragraph([])) => element("list-item", [block]);
+  const list = (items: unknown[], start?: unknown) => start === undefined
+    ? element("bullet-list", items) : element("ordered-list", items, { "breditor/start": start });
+  const accepts = (roots: unknown[]) => documentJsonUtf8Bytes(documentV2Json(roots), contract);
+
+  it("admits mixed roots, empty items, headings and typed inline properties only explicitly", () => {
+    const value = documentV2Json([paragraph([run("intro", false)]), list([item(heading(3, [
+      formattedRunWithProperties("🙂", [linkFormat("a")]),
+    ])), item()], 8), list([item()])]);
+    expect(documentJsonUtf8Bytes(value, contract)).toBe(new TextEncoder().encode(value).length);
+    for (const legacy of [undefined, V2_CONTRACT, V3_CONTRACT, { ...V3_CONTRACT, mode: "v5" } as const]) {
+      expect(documentJsonUtf8Bytes(value, legacy)).toBeNull();
+    }
+    const view = new FakeStringResult("value", value);
+    expect(consumeWasmDocumentJson(EXPECTED, view, [], contract).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it.each([0, -1, 1.5, "1", null, true, 2_147_483_648, Number.MAX_SAFE_INTEGER])("rejects ordered start %j", start => {
+    expect(accepts([list([item()], start)])).toBeNull();
+  });
+
+  it("rejects overflowing final ordinals but accepts the exact maximum", () => {
+    expect(accepts([list([item(), item()], 2_147_483_646)])).not.toBeNull();
+    expect(accepts([list([item(), item()], 2_147_483_647)])).toBeNull();
+  });
+
+  it("rejects empty/nested lists, multi-block items, loose items and wrapper metadata", () => {
+    for (const root of [list([]), item(), list([paragraph([])]), list([item(list([item()]))]),
+      list([element("list-item", [])]), list([element("list-item", [paragraph([]), paragraph([])])]),
+      list([element("list-item", [paragraph([])], { "example/extra": 1 })]),
+      list([{ ...item(), entityId: "example/entity" }]),
+      { ...list([item()]), entityId: "example/entity" },
+      { ...list([item()]), kind: "text" },
+      { ...list([item()]), properties: { "breditor/start": 1 } },
+      { ...list([item()], 1), properties: {} },
+      { ...list([item()], 1), properties: { "breditor/start": 1, "example/extra": 1 } },
+      { ...list([item()]), extra: true }, list([item(heading(7))]),
+    ]) expect(accepts([root])).toBeNull();
+  });
+
+  it("applies child limits per container, not to the flattened block count", () => {
+    const items = Array.from({ length: 6_000 }, () => item());
+    expect(accepts([list(items), list(items)])).not.toBeNull();
+    expect(accepts([list(Array.from({ length: 10_001 }, () => item()))])).toBeNull();
+    expect(accepts(Array.from({ length: 10_001 }, () => paragraph([])))).toBeNull();
+  });
+
+  it("counts list and item wrappers in the exact 100,000-node limit", () => {
+    const roots = [...Array.from({ length: 5 }, () => list(Array.from({ length: 9_999 }, () => item()))),
+      ...Array.from({ length: 4 }, () => paragraph([]))];
+    expect(accepts(roots)).not.toBeNull();
+    roots[8] = paragraph([run("one node too many", false)]);
+    expect(accepts(roots)).toBeNull();
+  });
+
+  it("shares the 10,000-property budget across ordered starts, ranks and inline values", () => {
+    const budget: WasmDurableJsonContract = { ...PROPERTY_BUDGET_CONTRACT, mode: "v6" };
+    const items = Array.from({ length: 9_999 }, () => item(heading(2)));
+    expect(documentJsonUtf8Bytes(documentV2Json([list(items, 1)]), budget)).not.toBeNull();
+    items[0] = item(heading(2, [propertyBudgetRun("a")]));
+    expect(documentJsonUtf8Bytes(documentV2Json([list(items, 1)]), budget)).toBeNull();
+  });
+
+  it("enforces Unicode, canonical runs and typed format contracts inside items", () => {
+    for (const runs of [[run("\ud800", false)], [run("", false)], [run("a", false), run("b", false)],
+      [formattedRunWithProperties("a", [{ type: "example/link", properties: {} }])]]) {
+      expect(accepts([list([item(paragraph(runs))])])).toBeNull();
+    }
+  });
+
+  it("matches exact hierarchy, start, item order, rank, text and typed properties", () => {
+    const generation = new FakeProfileGeneration();
+    const descriptor = consumeWasmCompiledProfileDescriptor(generation, new FakeTypedProfileDescriptor(generation));
+    if (!descriptor.ok) throw new Error(descriptor.error.code);
+    const a = { headingLevel: 2, runs: [{ text: "a🙂", formatDetails: [] }] };
+    const b = { headingLevel: null, runs: [{ text: "b", formatDetails: [{ kind: "example/link", properties: [
+      { name: "example/enabled", value: true }, { name: "example/href", value: "a" },
+    ] }] }] };
+    const projected = FlatListDocumentProjection.create({ schema: contract.schema, snapshot: EXPECTED,
+      blocks: [{ kind: "orderedList", start: 8, items: [a, b] }, { kind: "bulletList", items: [{ headingLevel: null, runs: [] }] }],
+    }, generation, descriptor.descriptor);
+    if (!projected.ok) throw new Error(projected.error.code);
+    const first = item(heading(2, [run("a🙂", false)]));
+    const second = item(paragraph([formattedRunWithProperties("b", [linkFormat("a")])]));
+    const original = [list([first, second], 8), list([item()])];
+    const matches = (roots: unknown[]) => documentJsonMatchesFlatListProjection(documentV2Json(roots), projected.value, contract);
+    expect(matches(original)).toBe(true);
+    for (const roots of [
+      [list([first, second], 9), original[1]], [list([first, second]), original[1]],
+      [list([second, first], 8), original[1]], [list([first], 8), list([second], 9), original[1]],
+      [list([item(heading(3, [run("a🙂", false)])), second], 8), original[1]],
+      [list([first, item(paragraph([formattedRunWithProperties("b", [linkFormat("c")])]))], 8), original[1]],
+      [list([first, item(paragraph([formattedRunWithProperties("c", [linkFormat("a")])]))], 8), original[1]],
+    ]) expect(matches(roots)).toBe(false);
+    expect(documentJsonMatchesFlatListProjection(documentV2Json(original), projected.value, V3_CONTRACT)).toBe(false);
+    expect(documentJsonMatchesFlatListProjection(documentV2Json(original), projected.value, { ...contract, schema: { ...contract.schema, fingerprint: `sha256:${"f".repeat(64)}` } })).toBe(false);
+    expect(documentJsonMatchesFlatListProjection(documentV2Json(original), { ...projected.value } as FlatListDocumentProjection, contract)).toBe(false);
+  });
+});
 
 describe("explicit V5 heading document contract", () => {
   const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v5" };

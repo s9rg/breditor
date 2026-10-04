@@ -972,3 +972,22 @@ Next: browser owner/controller profile mode, toolbar/keyboard and visible demo
 reload/backup behavior, followed by native-input and release qualification.
 See [contract](STRUCTURAL_BLOCKS.md#flat-list-projection-updates-and-subtree-reuse)
 and [verification](qualification/2026-10-04-flat-list-updates.json).
+
+## Flat-list browser document checkpoint
+
+The browser now validates explicitly selected list Document V2 payloads and
+correlates them with owned hierarchical projections without flattening structure.
+Tests cover malformed wrappers, nesting rejection, numbering overflow, exact
+node/property budgets, Unicode, typed formats and unchanged legacy admission.
+The real Wasm harness checks exported documents before/after edits and recovery.
+
+All 1,636 browser tests and strict TypeScript pass; five runs each in Chromium,
+Firefox and WebKit pass. Shipping artifacts remain unchanged. One initial test
+fixture omitted required null paragraph heading fields; correcting that fixture
+made the new projection comparison case exercise the intended boundary.
+
+Next prerequisite for the controller: browser Session V6 operation preflight and
+bootstrap V4. Session V6 is explicitly rejected at the browser boundary until that
+work is complete. Toolbar/native editing, visible reload/recovery and release
+qualification remain outstanding; no end-to-end list editor claim is made.
+See [verification](qualification/2026-10-04-flat-list-browser-document.json).

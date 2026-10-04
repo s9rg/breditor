@@ -64,6 +64,15 @@ const V3_CONTRACT: WasmDurableJsonContract = Object.freeze({
 const V5_CONTRACT: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v5" };
 
 describe("explicit heading Session V5 preflight", () => {
+  it("keeps V6 sessions closed while only V6 document preflight is connected", () => {
+    const value = checkpointV5Value();
+    value["formatVersion"] = 6;
+    const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v6" };
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
+    // Never fall through as an unvalidated hypothetical State V6 either.
+    value["historyBase"]["formatVersion"] = 6;
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
+  });
   const accepts = (value: unknown) => sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), V5_CONTRACT);
   it("accepts State V3, Document V2 and each full-guard V5 operation without relabeling", () => {
     const value = checkpointV5Value();

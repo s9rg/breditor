@@ -1302,3 +1302,24 @@ and undo updates consecutively, installs each result, and restores its exact
 semantic selection through the list bridge. Browser owner/controller dispatch,
 composition leases and input integrations remain outstanding. See
 [update qualification](qualification/2026-10-04-flat-list-updates.json).
+
+### Flat-list browser document preflight
+
+Explicit durable mode V6 admits the existing Document V2 envelope with flat
+bullet/ordered roots and exactly one paragraph or heading per list item. Earlier
+modes still reject lists. Numbering is positive and bounded through the final
+item; nested/empty lists, loose or multi-block items, entities and extra wrapper
+properties reject. Node counts include list/item wrappers. Child limits apply
+per container, not to the flattened text-block count. Ordered starts, heading
+ranks and inline values share the document property budget.
+
+`documentJsonMatchesFlatListProjection` requires an owned hierarchical projection
+and exact schema binding, then compares root grouping, family, numbering, item
+order, heading rank, text and complete typed formats. It does not equate documents
+merely because their flattened text matches. Existing generated string-result
+ownership and cleanup apply to V6 document capture.
+
+This checkpoint deliberately keeps browser Session V6 admission closed: document
+support alone must not bypass history/operation validation. Rust already supports
+Session V6; the browser replay preflight and bootstrap V4 integration are next.
+See [document qualification](qualification/2026-10-04-flat-list-browser-document.json).

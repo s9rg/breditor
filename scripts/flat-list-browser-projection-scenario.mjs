@@ -3,6 +3,7 @@ import { consumeFlatListSemanticProjection, consumeFlatListSemanticProjectionUpd
 import { consumeWasmCompiledProfileDescriptor } from "../packages/breditor-browser/src/wasm_profile_descriptor.ts";
 import { consumeFlatListSemanticSelection, flatListSemanticRangeSelectionScalars } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
+import { consumeWasmDocumentJson, documentJsonMatchesFlatListProjection } from "../packages/breditor-browser/src/wasm_document_json.ts";
 
 const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`projection mismatch: ${JSON.stringify(actual)}`);
@@ -37,6 +38,12 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     const selection = consumeFlatListSemanticSelection(projected.value, selected.takeSelection(), owner.generation);
     if (!selection.ok) throw new Error(`selection rejected: ${selection.error.code}`);
     selections.set(projected.value, selection.value);
+    const contract = {mode: "v6", schema: owner.descriptor.schema, formats: owner.descriptor.formats};
+    const captured = consumeWasmDocumentJson(projected.value.snapshot, engine.documentJson(observation(engine)),
+      [engine, owner.profile], contract);
+    if (!captured.ok || !documentJsonMatchesFlatListProjection(captured.document.documentJson, projected.value, contract)) {
+      throw new Error("exported list document does not match its browser projection");
+    }
     return projected.value;
   };
   const transition = (base, command, engine, owner) => {
@@ -97,8 +104,8 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(before.matchesProfile(freshOwner.generation, freshOwner.descriptor), false);
     if (verifyDom !== undefined) verifyDom(before, after, owner, transitions);
     return {status: "passed", scope: verifyDom === undefined
-      ? "real Wasm hierarchical projection/selection conversion, list paste/undo and fresh-owner redo; no DOM/native input"
-      : "real Wasm list projection/selection and recovery plus semantic DOM, directional selection bridge, affinity echo and drift rejection; no keyboard/IME/clipboard"};
+      ? "real Wasm hierarchical projection/selection/document correlation, list paste/undo and fresh-owner redo; no DOM/native input"
+      : "real Wasm list projection/selection/document correlation and recovery plus semantic DOM, directional selection bridge, affinity echo and drift rejection; no keyboard/IME/clipboard"};
   } finally {
     for (const handle of handles.reverse()) handle.free();
   }

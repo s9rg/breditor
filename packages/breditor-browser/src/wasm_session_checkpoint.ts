@@ -344,7 +344,9 @@ function validateCheckpointEnvelope(
     return null;
   }
   const binding = resolveWasmDurableJsonContract(contract);
-  if (binding === null) return null;
+  // V6 document support must not accidentally admit unchecked V6 replay recipes.
+  // Keep sessions closed until their explicit operation preflight is connected.
+  if (binding === null || binding.mode === "v6") return null;
 
   const envelopeKeys = binding.mode === "v1"
     ? [
