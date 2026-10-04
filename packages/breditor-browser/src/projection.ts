@@ -265,6 +265,7 @@ function createOwnedProfiledProjection(
   generation: WasmProfileGenerationView,
   descriptor: BrowserCompiledProfileDescriptor,
   textBlocks: boolean,
+  structure?: Readonly<{ nodes: number; properties: number }>,
 ): BrowserProjectionResult<BaseDocumentProjection> {
   try {
     if (
@@ -272,7 +273,7 @@ function createOwnedProfiledProjection(
     ) {
       return projectionFailure("projection.invalid_shape");
     }
-    const validation = validateProfiledProjection(input, descriptor, textBlocks);
+    const validation = validateProfiledProjection(input, descriptor, textBlocks, structure);
     if (!validation.ok) return projectionFailure(validation.code);
     const binding = Object.freeze({ generation, descriptor, textBlocks });
     const projection = new OwnedProfiledDocumentProjection(
@@ -285,6 +286,20 @@ function createOwnedProfiledProjection(
   } catch {
     return projectionFailure("projection.invalid_shape");
   }
+}
+
+/** Validates flattened text with separately counted list/item structure. @internal */
+export function createStructuralTextProjection(
+  input: unknown,
+  generation: WasmProfileGenerationView,
+  descriptor: BrowserCompiledProfileDescriptor,
+  structure: Readonly<{ nodes: number; properties: number }>,
+): BrowserProjectionResult<BaseDocumentProjection> {
+  if (!Number.isSafeInteger(structure.nodes) || structure.nodes < 0 || structure.nodes > MAX_NODES ||
+      !Number.isSafeInteger(structure.properties) || structure.properties < 0 || structure.properties > MAX_TOTAL_PROPERTY_VALUES) {
+    return projectionFailure("projection.resource_limit");
+  }
+  return createOwnedProfiledProjection(input, generation, descriptor, true, structure);
 }
 
 /** @internal */
@@ -520,6 +535,7 @@ function validateProfiledProjection(
   input: unknown,
   descriptor: BrowserCompiledProfileDescriptor,
   textBlocks: boolean,
+  structure?: Readonly<{ nodes: number; properties: number }>,
 ): ValidationResult {
   const projection = exactDataRecord(input, ["schema", "snapshot", "paragraphs"]);
   if (projection === null) return validationFailure("projection.invalid_shape");
@@ -536,7 +552,7 @@ function validateProfiledProjection(
   if (snapshot === null) return validationFailure("projection.invalid_snapshot");
   const paragraphArray = readExactBoundedArray(
     projection["paragraphs"],
-    MAX_PARAGRAPHS,
+    structure === undefined ? MAX_PARAGRAPHS : MAX_NODES - 1,
   );
   if (!paragraphArray.ok) {
     return validationFailure(
@@ -553,9 +569,10 @@ function validateProfiledProjection(
   const admittedFormats = new Map(
     descriptor.formats.map((format) => [format.kind, format] as const),
   );
-  let nodeCount = 1 + paragraphInputs.length;
+  let nodeCount = 1 + paragraphInputs.length + (structure?.nodes ?? 0);
+  if (nodeCount > MAX_NODES) return validationFailure("projection.resource_limit");
   let totalTextBytes = 0;
-  let totalPropertyValues = 0;
+  let totalPropertyValues = structure?.properties ?? 0;
   let totalPropertyStringBytes = 0;
   const paragraphs: BaseParagraphProjection[] = [];
   for (let paragraphIndex = 0; paragraphIndex < paragraphInputs.length; paragraphIndex += 1) {
@@ -889,7 +906,8 @@ function validationFailure(code: BrowserProjectionErrorCode): ValidationResult {
   return { ok: false, code };
 }
 
-function exactDataRecord(
+/** Reads only closed own data fields; accessor inputs are rejected. @internal */
+export function exactDataRecord(
   input: unknown,
   expectedKeys: readonly string[],
 ): Readonly<Record<string, unknown>> | null {
@@ -915,7 +933,8 @@ function exactDataRecord(
   return owned;
 }
 
-function readExactBoundedArray(
+/** Copies a dense own-data array only after its length has been bounded. @internal */
+export function readExactBoundedArray(
   input: unknown,
   maximum: number,
 ): ExactArrayResult {

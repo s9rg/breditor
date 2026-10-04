@@ -888,3 +888,26 @@ incremental record is not silently widened to nested paths.
 
 See [Wasm contract](STRUCTURAL_BLOCKS.md#opt-in-flat-list-wasm-bridge) and
 [verification](qualification/2026-10-04-flat-list-wasm.json).
+
+## Hierarchical list projection checkpoint
+
+The browser now has an isolated immutable flat-list projection and explicit Wasm
+consumer. Bullet/ordered containers, starts, heading items, empty items and typed
+inline formatting retain their structure; the text-block directory carries real
+AST paths. Existing paragraph/heading consumers remain closed to lists. Shared
+document budgets include structural nodes/properties, and consumed handles retain
+the existing generation and cleanup protections.
+
+Strict TypeScript and all 1,557 browser tests pass. Real Rust/Wasm-to-browser
+projection checks pass five times each in Chromium, Firefox and WebKit, including
+multiline list editing, undo and redo after fresh-owner session restoration.
+Shipping Wasm and browser dist hashes remain unchanged; no package release or
+size-budget approval is implied.
+
+Next: explicit hierarchical DOM rendering and selection mapping, then list update
+admission and controller/toolbar/keyboard integration. This is not yet the visible
+list demo and is not native-input or general historical-WebKit qualification.
+Flat lists remain first; nesting and indent/outdent follow separately.
+
+See [contract](STRUCTURAL_BLOCKS.md#hierarchical-flat-list-browser-projection) and
+[verification](qualification/2026-10-04-flat-list-browser-projection.json).

@@ -1159,3 +1159,39 @@ not approval of a new release budget. Browser DOM/selection integration, real
 keyboard/clipboard/composition, autosave/backup recovery and size/performance
 gates remain outstanding. The raw-WebKit pass does not prove all historical
 WebKit faults resolved. See [Wasm qualification](qualification/2026-10-04-flat-list-wasm.json).
+
+### Hierarchical flat-list browser projection
+
+The experimental source-level `FlatListDocumentProjection` is a distinct owned
+value, not a subtype of the old direct-paragraph projection. Its `blocks` retain
+bare text blocks, bullet lists, and ordered lists with explicit starts. Every item
+contains exactly one paragraph or heading. Its `textBlocks` directory stores real
+AST block paths (`[root]` or `[root, item, 0]`), never synthetic paragraph indices.
+Text runs and typed inline properties reuse the existing immutable validation.
+
+`consumeFlatListSemanticProjection` explicitly consumes a list-capable Wasm view.
+It shares the existing synchronous getter capture, reentrancy protection,
+generation binding and exactly-once cleanup machinery. A structural preorder pass
+proves all list/item edges, rejects aliases, gaps, unreachable nodes, nesting and
+multi-block items; the common text reader then validates the text blocks. List
+metadata must match the container type and be absent on other nodes. Cleanup
+failure or generation retirement prevents admission of the result.
+
+The shared text validator temporarily owns flattened text internally; that proof
+is not returned as a renderable paragraph document. The resulting list projection
+is deeply immutable and runtime-branded, with a private construction token. The
+whole-document node/property budgets include list wrappers, item wrappers,
+ordered starts and heading levels. The 10,000-child ceiling applies separately
+to root/list/text-block containers, not to total flattened text blocks; the
+100,000-node and existing UTF-8/property budgets still apply globally.
+
+This checkpoint adds no public package entry-point export and does not widen the
+old renderer, incremental update or selection contracts. The next integration
+must explicitly render `ul`/`ol`/`li` and map actual paths; passing list-root
+coordinates to the old paragraph update API is not supported.
+
+Reproduce the source-to-real-Wasm checks with
+`node scripts/check-experimental-flat-list-browsers.mjs <candidate-directory> --browser-projection`.
+This runs the existing raw-Wasm scenario and five projection/edit/recovery
+scenarios in each browser. It does not exercise editor DOM, native selection,
+clipboard or IME. See [projection qualification](qualification/2026-10-04-flat-list-browser-projection.json).

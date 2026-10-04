@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { consumeSemanticProjectionUpdateWithCleanup, consumeTextBlockSemanticProjection } from "./wasm_projection_adapter.js";
+import { consumeSemanticProjectionUpdateWithCleanup, consumeTextBlockSemanticProjection, consumeFlatListSemanticProjection, type FlatListSemanticProjectionView } from "./wasm_projection_adapter.js";
+import { FlatListDocumentProjection, isOwnedFlatListProjection } from "./flat_list_projection.js";
+import { isOwnedProjection } from "./projection.js";
 
 import {
   type BrowserCompiledProfileDescriptor,
@@ -22,6 +24,222 @@ const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
   },
   free: vi.fn(),
 };
+
+/** A mixed preorder tree, including a numbered heading and an empty bullet item. */
+function flatListView(): FakeProjectionView & FlatListSemanticProjectionView {
+  const view = new FakeProjectionView("7", [], {name: "example/document", version: 1, fingerprint: TEST_SCHEMA_FINGERPRINT});
+  const element = (elementType: string, children: number[]): FlatNode => ({kind: "element", elementType, children});
+  const text = (value: string): FlatNode => ({kind: "text", text: value, formats: []});
+  Object.defineProperty(view, "nodes", {value: [
+    element("breditor/document", [1, 3, 10]),
+    element("breditor/paragraph", [2]), text("Intro"),
+    element("breditor/ordered-list", [4, 7]),
+    element("breditor/list-item", [5]), element("breditor/heading", [6]), text("A🙂"),
+    element("breditor/list-item", [8]), element("breditor/paragraph", [9]), text("B"),
+    element("breditor/bullet-list", [11]),
+    element("breditor/list-item", [12]), element("breditor/paragraph", []),
+  ], configurable: true});
+  return Object.assign(view, {
+    headingLevel: (index: number) => index === 5 ? 2 : undefined,
+    listKind: (index: number): "ordered" | "bullet" | undefined => index === 3 ? "ordered" : index === 10 ? "bullet" : undefined,
+    orderedListStart: (index: number) => index === 3 ? 8 : undefined,
+  });
+}
+
+describe("opt-in flat-list projection", () => {
+  const empty = () => ({headingLevel: null, runs: []});
+  const input = (blocks: unknown[]) => ({schema: {name: "example/document", version: 1, fingerprint: TEST_SCHEMA_FINGERPRINT},
+    snapshot: {lineage: "lists", revision: "0"}, blocks});
+  const create = (blocks: unknown[]) => FlatListDocumentProjection.create(input(blocks), TEST_PROFILE_GENERATION, ownedProfileDescriptor([]));
+
+  it("preserves hierarchy, starts, headings, empty items and actual AST paths", () => {
+    const view = flatListView();
+    const descriptor = ownedProfileDescriptor([]);
+    const result = consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor);
+    expect(view.freeCalls).toBe(1);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(isOwnedFlatListProjection(result.value)).toBe(true);
+    expect(isOwnedProjection(result.value)).toBe(false);
+    expect(result.value.blocks.map(block => block.kind)).toEqual(["textBlock", "orderedList", "bulletList"]);
+    expect(result.value.blocks[1]).toMatchObject({start: 8, items: [{headingLevel: 2}, {runs: [{text: "B"}]}]});
+    expect(result.value.textBlocks[2]?.block.headingLevel).toBeUndefined();
+    expect(result.value.textBlocks.map(entry => entry.path)).toEqual([[0], [1, 0, 0], [1, 1, 0], [2, 0, 0]]);
+    expect(result.value.textBlocks.map(entry => entry.block.runs.map(run => run.text).join(""))).toEqual(["Intro", "A🙂", "B", ""]);
+    expect(result.value.matchesProfile(TEST_PROFILE_GENERATION, descriptor)).toBe(true);
+    expect(result.value.matchesProfile(TEST_PROFILE_GENERATION, ownedProfileDescriptor([]))).toBe(false);
+    expect(Object.isFrozen(result.value)).toBe(true);
+    expect(Object.isFrozen(result.value.textBlocks[1]?.path)).toBe(true);
+  });
+
+  it("copies caller-owned roots/items and shares only immutable validated blocks", () => {
+    const block = {headingLevel: null, runs: [{text: "before", formatDetails: []}]};
+    const root = {kind: "orderedList", start: 3, items: [block]};
+    const result = create([root]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    root.start = 90; block.runs[0]!.text = "after"; root.items.length = 0;
+    expect(result.value.blocks[0]).toMatchObject({start: 3, items: [{runs: [{text: "before"}]}]});
+    const projected = result.value.blocks[0];
+    if (projected?.kind === "orderedList") {
+      expect(projected.items[0]).toBe(result.value.textBlocks[0]?.block);
+      expect(Object.isFrozen(projected.items)).toBe(true);
+      expect(Object.isFrozen(projected.items[0]?.runs[0])).toBe(true);
+    }
+  });
+
+  it("cannot acquire ownership by bypassing the TypeScript-private constructor", () => {
+    expect(() => Reflect.construct(FlatListDocumentProjection, [Symbol("forged"), {}, {}])).toThrow(TypeError);
+    expect(isOwnedFlatListProjection(Object.create(FlatListDocumentProjection.prototype))).toBe(false);
+  });
+
+  it("preserves typed inline properties inside list items", () => {
+    const view = flatListView();
+    const nodes = [...view.nodes];
+    nodes[6] = {kind: "text", text: "A🙂", formats: [{kind: "example/metadata", properties: [
+      {name: "example/enabled", kind: "boolean", value: true},
+      {name: "example/title", kind: "string", value: "label"},
+    ]}]};
+    Object.defineProperty(view, "nodes", {value: nodes});
+    const result = consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([TYPED_FORMAT]));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.textBlocks[1]?.block.runs[0]?.formatDetails).toEqual([
+      {kind: "example/metadata", properties: [
+        {name: "example/enabled", value: true},
+        {name: "example/title", value: "label"},
+      ]},
+    ]);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it.each(["kind", "start", "bullet-start", "heading", "item-heading", "wrapper-text", "after-list"])("rejects inconsistent %s metadata", fault => {
+    const view = flatListView();
+    if (fault === "kind") view.listKind = index => index === 3 || index === 10 ? "bullet" : undefined;
+    if (fault === "start") view.orderedListStart = index => index === 3 ? 2_147_483_647 : undefined;
+    if (fault === "bullet-start") view.orderedListStart = index => index === 3 ? 8 : index === 10 ? 1 : undefined;
+    if (fault === "heading") view.headingLevel = index => index === 5 ? 7 : undefined;
+    if (fault === "item-heading") view.headingLevel = index => index === 5 || index === 4 ? 2 : undefined;
+    if (fault === "wrapper-text") view.text = index => index === 3 ? "unexpected" : FakeProjectionView.prototype.text.call(view, index);
+    if (fault === "after-list") view.childAt = (index, ordinal) => index === 3 && ordinal === 2 ? 10 : FakeProjectionView.prototype.childAt.call(view, index, ordinal);
+    expect(consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it.each([
+    [], [{kind: "bulletList", items: []}], [{kind: "orderedList", items: [empty()]}],
+    [{kind: "bulletList", start: 1, items: [empty()]}],
+    [{kind: "bulletList", items: [{kind: "bulletList", items: [empty()]}]}],
+    [{kind: "bulletList", items: [{blocks: [empty(), empty()]}]}],
+    [{kind: "textBlock", block: empty(), extra: true}],
+    [{kind: "textBlock", block: {headingLevel: 7, runs: []}}],
+    [{kind: "textBlock", block: {headingLevel: null, runs: [{text: "\ud800", formatDetails: []}]}}],
+  ])("rejects non-flat or noncanonical input %j", (...blocks) => {
+    expect(create(blocks).ok).toBe(false);
+  });
+
+  it.each([0, -1, 1.5, NaN, Infinity, 2_147_483_648])("rejects invalid numbered start %s", start => {
+    expect(create([{kind: "orderedList", start, items: [empty()]}]).ok).toBe(false);
+  });
+
+  it("bounds the final ordinal as well as the start", () => {
+    expect(create([{kind: "orderedList", start: 2_147_483_647, items: [empty()]}]).ok).toBe(true);
+    expect(create([{kind: "orderedList", start: 2_147_483_647, items: [empty(), empty()]}]).ok).toBe(false);
+  });
+
+  it("rejects getters and sparse arrays without executing the getter", () => {
+    const getter = vi.fn(() => [empty()]);
+    expect(create([{kind: "bulletList", get items() { return getter(); }}]).ok).toBe(false);
+    expect(getter).not.toHaveBeenCalled();
+    expect(create([{kind: "bulletList", items: new Array(2)}]).ok).toBe(false);
+  });
+
+  it("bounds each container, not an invented total of 10,000 text blocks", () => {
+    const items = Array.from({length: 10_000}, empty);
+    expect(create([{kind: "bulletList", items}, {kind: "bulletList", items: [empty()]}]).ok).toBe(true);
+    expect(create([{kind: "bulletList", items: [...items, empty()]}])).toMatchObject({ok: false, error: {code: "projection.resource_limit"}});
+    expect(create(Array.from({length: 10_001}, () => ({kind: "textBlock", block: empty()}))).ok).toBe(false);
+  });
+
+  it("counts list and item nodes in the whole-document budget", () => {
+    const list = {kind: "bulletList", items: Array.from({length: 10_000}, empty)};
+    // Four lists = 80,005 nodes; a fifth would exceed 100,000.
+    expect(create([list, list, list, list]).ok).toBe(true);
+    const last = {kind: "bulletList", items: Array.from({length: 9_997}, empty)};
+    expect(create([list, list, list, list, last]).ok).toBe(true); // Exactly 100,000.
+    last.items.push(empty());
+    expect(create([list, list, list, list, last]).ok).toBe(false);
+    expect(create([list, list, list, list, list]).ok).toBe(false);
+  });
+
+  it("counts ordered starts and heading levels in the shared property budget", () => {
+    const items = Array.from({length: 10_000}, () => ({headingLevel: 2, runs: []}));
+    expect(create([{kind: "bulletList", items}]).ok).toBe(true);
+    expect(create([{kind: "orderedList", start: 1, items}]).ok).toBe(false);
+  });
+
+  it("keeps legacy paragraph/heading consumers closed to lists", () => {
+    for (const consumer of [consumeSemanticProjectionRaw, consumeTextBlockSemanticProjection]) {
+      const view = flatListView();
+      expect(consumer(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
+  });
+
+  it.each(["nested", "multiple-item-blocks", "alias", "gap", "unreachable", "empty-list"])("rejects structural %s", fault => {
+    const view = flatListView();
+    const original = view.childAt.bind(view);
+    if (fault === "nested") view.elementType = index => index === 5 ? "breditor/bullet-list" : FakeProjectionView.prototype.elementType.call(view, index);
+    if (fault === "multiple-item-blocks") view.childCount = index => index === 4 ? 2 : FakeProjectionView.prototype.childCount.call(view, index);
+    if (fault === "alias") view.childAt = (index, ordinal) => index === 3 && ordinal === 1 ? 4 : original(index, ordinal);
+    if (fault === "gap") view.childAt = (index, ordinal) => index === 4 && ordinal === 0 ? 6 : original(index, ordinal);
+    if (fault === "unreachable") Object.defineProperty(view, "nodeCount", {value: 14});
+    if (fault === "empty-list") view.childCount = index => index === 3 ? 0 : FakeProjectionView.prototype.childCount.call(view, index);
+    expect(consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it.each([0, 2, 4, 5, 13])("rejects list metadata on unrelated node %s", index => {
+    const view = flatListView();
+    const original = view.listKind;
+    view.listKind = i => i === index ? "bullet" : original(i);
+    expect(consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("rejects missing and asynchronous list methods, containing cleanup exactly once", async () => {
+    for (const replacement of [undefined, () => Promise.reject(new Error("foreign failure")), () => { throw new Error("foreign failure"); }]) {
+      const view = flatListView();
+      Object.defineProperty(view, "listKind", {value: replacement});
+      expect(consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
+    await Promise.resolve();
+  });
+
+  it("uses the shared consumption guard across list and legacy entry points", () => {
+    const view = flatListView();
+    const descriptor = ownedProfileDescriptor([]);
+    let nested: unknown;
+    view.free = () => {
+      view.freeCalls += 1;
+      nested = consumeTextBlockSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor);
+    };
+    expect(consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor).ok).toBe(true);
+    expect(nested).toMatchObject({ok: false});
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("rejects a result if cleanup retires its generation", () => {
+    let live = true;
+    const generation: WasmProfileGenerationView = {matches: other => live && other === generation, free: () => { live = false; }};
+    const descriptor = ownedProfileDescriptor([], generation);
+    const view = flatListView();
+    view.matchesProfileGeneration = candidate => candidate === generation;
+    view.free = () => { view.freeCalls += 1; generation.free(); };
+    expect(consumeFlatListSemanticProjection(view, generation, descriptor).ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+  });
+});
 
 type FlatNode =
   | { readonly kind: "element"; readonly elementType: string; readonly children: readonly number[] }

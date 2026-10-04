@@ -5,7 +5,8 @@ import { relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, firefox, webkit } from "playwright-core";
 import { createServer } from "vite";
-assert.equal(process.argv.length, 3, "provide the candidate binding directory");
+assert.ok(process.argv.length === 3 || (process.argv.length === 4 && process.argv[3] === "--browser-projection"), "provide the candidate binding directory and optional --browser-projection");
+const checkProjection = process.argv[3] === "--browser-projection";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const directory = await realpath(resolve(process.argv[2]));
 const path = relative(await realpath(root), directory);
@@ -29,12 +30,17 @@ try {
     try {
       const page = await browser.newPage();
       await page.goto(url);
-      const results = await page.evaluate(async bindingUrl => {
+      const results = await page.evaluate(async ({bindingUrl, checkProjection}) => {
         const api = await import(`${bindingUrl}/breditor_wasm.js`);
         api.initSync({module: await (await fetch(`${bindingUrl}/breditor_wasm_bg.wasm`)).arrayBuffer()});
         const {runFlatListWasmScenario} = await import("/scripts/flat-list-wasm-scenario.mjs");
-        return Array.from({length: 5}, () => runFlatListWasmScenario(api));
-      }, bindingUrl);
+        const project = checkProjection
+          ? (await import("/scripts/flat-list-browser-projection-scenario.mjs")).runFlatListBrowserProjectionScenario : undefined;
+        return Array.from({length: 5}, () => {
+          const result = runFlatListWasmScenario(api);
+          return project === undefined ? result : project(api);
+        });
+      }, {bindingUrl, checkProjection});
       assert.equal(results.length, 5);
       console.log(JSON.stringify({browser: name, version: browser.version(), status: "passed", runs: results.length, scope: results[0].scope}));
     } catch (error) {

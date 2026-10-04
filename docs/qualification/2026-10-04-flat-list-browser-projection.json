@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "5465a46",
+  "status": "Isolated hierarchical browser projection qualified; DOM/editor integration remains incomplete",
+  "contracts": {
+    "roots": "textBlock | bulletList | orderedList with explicit start",
+    "items": "exactly one paragraph or heading; no nesting",
+    "textBlockPaths": "[root] or [root,item,0]",
+    "ownership": "runtime construction token, immutable owned values, exact profile generation/descriptor binding",
+    "wasmConsumption": "shared reentrancy and cleanup guards; validated preorder; explicit metadata absence",
+    "budgets": "per-container 10000 children, global 100000 nodes including structural wrappers, existing shared text/property budgets",
+    "isolation": "No new public package entry point and no widening of existing renderer/selection/update contracts"
+  },
+  "verification": {
+    "newProjectionTests": 46,
+    "browserTests": 1557,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Existing raw Wasm scenario plus hierarchical projection, actual AST paths, heading/empty items, multiline list edits, undo and fresh-owner restored redo",
+    "developmentCorrections": [
+      "Aligned new test expectations with existing absent paragraph headingLevel and scalar inline-property representation",
+      "Added a runtime construction token and regression so TypeScript-private construction cannot forge ownership from JavaScript"
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-projection",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "wasmSha256": "0f93899d6788bd76a9a3402ad641e91e1ad0c33d46889a8f72d74a17ce8f42fa",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Hierarchical DOM rendering and exact native selection mapping",
+    "List update admission and browser owner/controller/profile integration",
+    "Toolbar, keyboard, composition and clipboard behavior",
+    "Browser reload and backup recovery",
+    "Native-input qualification, packed-consumer and size/performance gates"
+  ],
+  "evidenceBoundary": "No editor DOM or native-input claim; not proof that every historical WebKit issue is fixed",
+  "pushed": false,
+  "published": false
+}

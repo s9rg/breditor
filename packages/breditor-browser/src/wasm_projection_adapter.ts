@@ -13,6 +13,7 @@ import {
   type ProfiledDocumentProjectionInput,
 } from "./projection.js";
 import { BaseProjectionUpdate, type BaseProjectionImpact } from "./projection_update.js";
+import { createFlatListTextProjection, FlatListDocumentProjection, type FlatListRootShape } from "./flat_list_projection.js";
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
@@ -117,6 +118,12 @@ export interface TextBlockSemanticProjectionView extends SemanticProjectionView 
   headingLevel(index: number): number | undefined;
 }
 
+/** Opt-in flat-list surface; metadata is absent on every unrelated node. */
+export interface FlatListSemanticProjectionView extends TextBlockSemanticProjectionView {
+  listKind(index: number): "bullet" | "ordered" | undefined;
+  orderedListStart(index: number): number | undefined;
+}
+
 /** Semantic invalidation kinds exposed by the Wasm projection update. */
 export type SemanticProjectionImpact = "none" | "textContainers" | "rootSplice" | "root";
 
@@ -157,6 +164,8 @@ export interface SemanticProjectionUpdateView extends WasmProfileCorrelatedView 
 }
 
 interface SemanticProjectionMethods {
+  readonly listKind: FlatListSemanticProjectionView["listKind"] | undefined;
+  readonly orderedListStart: FlatListSemanticProjectionView["orderedListStart"] | undefined;
   readonly headingLevel: TextBlockSemanticProjectionView["headingLevel"] | undefined;
   readonly nodeKind: SemanticProjectionView["nodeKind"];
   readonly elementType: SemanticProjectionView["elementType"];
@@ -227,6 +236,16 @@ export function consumeTextBlockSemanticProjection(
   expectedProfile: BrowserCompiledProfileDescriptor,
 ): BrowserProjectionResult<BaseDocumentProjection> {
   return consumeProjection(view, generation, expectedProfile, createTextBlockDocumentProjection);
+}
+
+/** Consumes and frees one list-capable handle, returning real hierarchical AST paths. */
+export function consumeFlatListSemanticProjection(
+  view: FlatListSemanticProjectionView,
+  generation: WasmProfileGenerationView,
+  expectedProfile: BrowserCompiledProfileDescriptor,
+): BrowserProjectionResult<FlatListDocumentProjection> {
+  const text = consumeProjection(view, generation, expectedProfile, createFlatListTextProjection);
+  return text.ok ? FlatListDocumentProjection.fromValidatedText(text.value) : text;
 }
 
 function consumeProjection(
@@ -553,7 +572,7 @@ function readProfiledSemanticProjection(
   ) {
     return projectionFailure("projection.invalid_shape");
   }
-  const snapshot = snapshotSemanticProjection(view, textBlockFactory !== undefined);
+  const snapshot = snapshotSemanticProjection(view, textBlockFactory !== undefined, textBlockFactory === createFlatListTextProjection);
   if (
     snapshot === null ||
     snapshot.schemaFingerprint !== expectedSchemaFingerprint
@@ -601,6 +620,7 @@ function readSemanticProjection(
     nodeCount < 2 ||
     nodeCount > 100_000 ||
     rootIndex !== 0 ||
+    !listMetadataIsAbsent(view, methods, 0) ||
     !headingLevelIsAbsent(view, methods, 0) ||
     invokeGenerated(methods.nodeKind, view, 0) !== "element" ||
     invokeGenerated(methods.elementType, view, 0) !== "breditor/document" ||
@@ -611,16 +631,21 @@ function readSemanticProjection(
   ) {
     return projectionFailure("projection.invalid_shape");
   }
-  const paragraphCount = invokeGenerated(methods.childCount, view, 0);
+  const rootChildCount = invokeGenerated(methods.childCount, view, 0);
   if (
-    paragraphCount === undefined ||
-    !isIndex(paragraphCount) ||
-    paragraphCount === 0 ||
-    paragraphCount > 10_000 ||
-    paragraphCount > nodeCount - 1
+    rootChildCount === undefined ||
+    !isIndex(rootChildCount) ||
+    rootChildCount === 0 ||
+    rootChildCount > 10_000 ||
+    rootChildCount > nodeCount - 1
   ) {
     return projectionFailure("projection.invalid_shape");
   }
+
+  const layout = textBlockFactory === createFlatListTextProjection
+    ? readFlatListLayout(view, methods, rootChildCount, nodeCount) : undefined;
+  if (layout === null) return projectionFailure("projection.invalid_shape");
+  const paragraphCount = layout?.textBlocks.length ?? rootChildCount;
 
   const admittedFormats = typeof expectedProfile === "string"
     ? new Set(["breditor/strong"])
@@ -641,7 +666,9 @@ function readSemanticProjection(
     if (expectedIndex >= nodeCount) {
       return projectionFailure("projection.invalid_shape");
     }
-    const paragraphIndex = invokeGenerated(
+    const plannedBlock = layout?.textBlocks[paragraphOrdinal];
+    if (plannedBlock !== undefined) expectedIndex = plannedBlock.index;
+    const paragraphIndex = plannedBlock?.index ?? invokeGenerated(
       methods.childAt,
       view,
       0,
@@ -653,6 +680,7 @@ function readSemanticProjection(
       ? invokeGenerated(methods.headingLevel, view, paragraphIndex) : undefined;
     if (
       paragraphIndex !== expectedIndex ||
+      !listMetadataIsAbsent(view, methods, paragraphIndex) ||
       invokeGenerated(methods.nodeKind, view, paragraphIndex) !== "element" ||
       (blockType === "breditor/heading"
         ? !isHeadingProjectionLevel(headingLevel)
@@ -669,6 +697,7 @@ function readSemanticProjection(
     if (
       runCount === undefined ||
       !isIndex(runCount) ||
+      (plannedBlock !== undefined && runCount !== plannedBlock.runs) ||
       runCount > 10_000 ||
       runCount > nodeCount - expectedIndex
     ) {
@@ -689,6 +718,7 @@ function readSemanticProjection(
       );
       if (
         runIndex !== expectedIndex ||
+        !listMetadataIsAbsent(view, methods, runIndex) ||
         invokeGenerated(methods.nodeKind, view, runIndex) !== "text" ||
         !headingLevelIsAbsent(view, methods, runIndex) ||
         invokeGenerated(methods.elementType, view, runIndex) !== undefined ||
@@ -802,8 +832,9 @@ function readSemanticProjection(
   }
   if (
     expectedIndex !== nodeCount ||
+    !listMetadataIsAbsent(view, methods, nodeCount) ||
     !headingLevelIsAbsent(view, methods, nodeCount) ||
-    invokeGenerated(methods.childAt, view, 0, paragraphCount) !== undefined ||
+    invokeGenerated(methods.childAt, view, 0, rootChildCount) !== undefined ||
     invokeGenerated(methods.nodeKind, view, nodeCount) !== undefined ||
     invokeGenerated(methods.elementType, view, nodeCount) !== undefined ||
     invokeGenerated(methods.childCount, view, nodeCount) !== undefined ||
@@ -841,8 +872,89 @@ function readSemanticProjection(
       })),
     })),
   };
+  if (layout !== undefined) {
+    let offset = 0;
+    const blocks = layout.shapes.map((shape) => shape.kind === "textBlock"
+      ? {kind: "textBlock", block: input.paragraphs[offset++]}
+      : {...shape, items: input.paragraphs.slice(offset, offset += shape.items)});
+    return createFlatListTextProjection({schema: input.schema, snapshot: input.snapshot, blocks}, generation, expectedProfile);
+  }
   return (textBlockFactory ?? createProfiledDocumentProjection)(
     input, generation, expectedProfile);
+}
+
+/**
+ * Proves every structural edge before reading inline data. The returned directory
+ * skips list/item wrappers, but never invents flattened document coordinates.
+ * Exact preorder accounting rejects aliases, gaps, cycles and unreachable nodes.
+ */
+function readFlatListLayout(
+  view: SemanticProjectionView,
+  methods: SemanticProjectionMethods,
+  rootCount: number,
+  nodeCount: number,
+): Readonly<{
+  shapes: readonly FlatListRootShape[];
+  textBlocks: readonly Readonly<{ index: number; runs: number }>[];
+}> | null {
+  if (methods.listKind === undefined || methods.orderedListStart === undefined) return null;
+  const shapes: FlatListRootShape[] = [];
+  const textBlocks: Array<{index: number; runs: number}> = [];
+  let next = 1;
+  const readBlock = (index: number | undefined): boolean => {
+    if (index !== next || next >= nodeCount) return false;
+    const type = invokeGenerated(methods.elementType, view, index);
+    if (type !== "breditor/paragraph" && type !== "breditor/heading") return false;
+    const runs = invokeGenerated(methods.childCount, view, index);
+    if (runs === undefined || !isIndex(runs) || runs > 10_000 || runs > nodeCount - next - 1) return false;
+    textBlocks.push({index, runs});
+    next += 1 + runs;
+    return true;
+  };
+  const wrapperIsValid = (index: number, type: string): boolean =>
+    invokeGenerated(methods.nodeKind, view, index) === "element" &&
+    invokeGenerated(methods.elementType, view, index) === type &&
+    headingLevelIsAbsent(view, methods, index) &&
+    invokeGenerated(methods.text, view, index) === undefined &&
+    invokeGenerated(methods.formatCount, view, index) === undefined &&
+    invokeGenerated(methods.formatType, view, index, 0) === undefined &&
+    formatPropertyProbeIsAbsent(view, methods, index, 0, 0);
+  for (let root = 0; root < rootCount; root += 1) {
+    const index = invokeGenerated(methods.childAt, view, 0, root);
+    if (index !== next || next >= nodeCount) return null;
+    const type = invokeGenerated(methods.elementType, view, index);
+    if (type === "breditor/paragraph" || type === "breditor/heading") {
+      if (!readBlock(index)) return null;
+      shapes.push({kind: "textBlock"});
+      continue;
+    }
+    const kind = type === "breditor/bullet-list" ? "bullet" : type === "breditor/ordered-list" ? "ordered" : null;
+    if (kind === null || !wrapperIsValid(index, type as string) ||
+        invokeGenerated(methods.listKind, view, index) !== kind) return null;
+    const start = invokeGenerated(methods.orderedListStart, view, index);
+    const items = invokeGenerated(methods.childCount, view, index);
+    if (items === undefined || !isIndex(items) || items < 1 || items > 10_000 ||
+        items > Math.floor((nodeCount - next - 1) / 2) ||
+        (kind === "bullet" ? start !== undefined :
+          typeof start !== "number" || !Number.isSafeInteger(start) || start < 1 || start + items - 1 > 2_147_483_647)) return null;
+    shapes.push(kind === "bullet" ? {kind: "bulletList", items} : {kind: "orderedList", start: start as number, items});
+    next += 1;
+    for (let ordinal = 0; ordinal < items; ordinal += 1) {
+      const item = invokeGenerated(methods.childAt, view, index, ordinal);
+      if (item !== next || next >= nodeCount || !wrapperIsValid(item, "breditor/list-item") ||
+          !listMetadataIsAbsent(view, methods, item) || invokeGenerated(methods.childCount, view, item) !== 1 ||
+          invokeGenerated(methods.childAt, view, item, 1) !== undefined) return null;
+      next += 1;
+      if (!readBlock(invokeGenerated(methods.childAt, view, item, 0))) return null;
+    }
+    if (invokeGenerated(methods.childAt, view, index, items) !== undefined) return null;
+  }
+  return next === nodeCount ? {shapes, textBlocks} : null;
+}
+
+function listMetadataIsAbsent(view: SemanticProjectionView, methods: SemanticProjectionMethods, index: number): boolean {
+  return (methods.listKind === undefined || invokeGenerated(methods.listKind, view, index) === undefined) &&
+    (methods.orderedListStart === undefined || invokeGenerated(methods.orderedListStart, view, index) === undefined);
 }
 
 function headingLevelIsAbsent(
@@ -1155,10 +1267,14 @@ function schemaMatchesExpectedProfile(
 function snapshotSemanticProjection(
   view: SemanticProjectionView,
   textBlocks: boolean,
+  flatLists: boolean,
 ): SemanticProjectionSnapshot | null {
   try {
     const headingLevel = textBlocks ? readGeneratedScalar(view, "headingLevel") : undefined;
     if (textBlocks && typeof headingLevel !== "function") return null;
+    const listKind = flatLists ? readGeneratedScalar(view, "listKind") : undefined;
+    const orderedListStart = flatLists ? readGeneratedScalar(view, "orderedListStart") : undefined;
+    if (flatLists && (typeof listKind !== "function" || typeof orderedListStart !== "function")) return null;
     const names = [
       "nodeKind", "elementType", "childCount", "childAt", "text", "formatCount",
       "formatType", "formatPropertyCount", "formatPropertyName", "formatPropertyValueKind",
@@ -1173,6 +1289,8 @@ function snapshotSemanticProjection(
     }
     if (!valid) return null;
     methods["headingLevel"] = headingLevel;
+    methods["listKind"] = listKind;
+    methods["orderedListStart"] = orderedListStart;
     return {
       ...readGeneratedScalars(view, [
         "schemaName", "schemaVersion", "schemaFingerprint", "snapshotLineage",
