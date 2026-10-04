@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { releaseChecks, repository, runReleaseChecks } from "./verify-release.mjs";
+
+test("standard workspace tests include standalone script contracts", () => {
+  const {scripts} = JSON.parse(readFileSync(join(repository, "package.json"), "utf8"));
+  assert.equal(scripts["test:scripts"], "node --test scripts/*.test.mjs");
+  assert.ok(scripts.test.split(" && ").includes("npm run test:scripts"));
+  assert.ok(releaseChecks({}).some(check => check.id === "typescript-tests" && check.args.join(" ") === "test"));
+});
 
 test("the plan covers each release boundary in a safe build order", () => {
   const checks = releaseChecks({});

@@ -1,0 +1,43 @@
+{
+  "baseCommit": "59b7340",
+  "status": "selected-regressions-passed",
+  "releaseQualified": false,
+  "testGateRepair": {
+    "problem": "The standard npm test command omitted all standalone scripts/*.test.mjs contracts, including declaration admission and diagnostic instrumentation helpers.",
+    "before": "New integration assertion failed because test:scripts was undefined; nine existing release-runner cases passed.",
+    "change": "Add npm run test:scripts to npm test, document it, and assert that both the standard command and existing release runner reach it.",
+    "after": "Full npm test exited zero: 2293 workspace/diagnostic tests and 67 standalone script tests passed. The single opt-in WebKit positive control was explicitly skipped; its separate passing verification remains in the prior checkpoint.",
+    "workspaceCounts": {"browser": 1870, "reference": 57, "react": 34, "diagnostics": 332},
+    "standaloneCounts": {"passed": 67, "failed": 0, "skipped": 1}
+  },
+  "typeChecks": ["npm run typecheck", "npm run typecheck:browser", "npm run typecheck:demo", "npm run typecheck:demo:lists"],
+  "typeCheckResult": "all passed",
+  "reactMatrix": {
+    "command": "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-KklioP/qualification.json PLAYWRIGHT_JSON_OUTPUT_NAME=target/react-latest-candidate-20261004.json caffeinate -is -t600 npx playwright test -c playwright.demo-candidate.config.ts --max-failures=1 --reporter=line,json --output target/react-latest-candidate-20261004",
+    "candidateRecord": "target/flat-list-packages-KklioP/qualification.json",
+    "candidateRecordSha256": "63137133fecfe6cb30d00a2c34d73b87d23f0392b6e82d15b5b480cc9057f317",
+    "report": "target/react-latest-candidate-20261004.json",
+    "reportSha256": "14e5022c54748587c7d78b5333abaf2e8004d220455321d8d94360c329ccfc0f",
+    "expected": 39,
+    "unexpected": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "retries": 0,
+    "scope": "13 existing React paragraph-profile application/helper cases per engine, Chromium/Firefox/WebKit; not list UI coverage or native Safari qualification."
+  },
+  "currentReferencedAssets": [
+    {"name": "index-gA14RJNi.js", "bytes": 907550, "gzip9Bytes": 236057, "sha256": "58fa46ae48716b2f8acde0621ba393579bafe7d2bbe67ecb3e36240bc9c09595"},
+    {"name": "index-CKRF8HDk.css", "bytes": 8086, "gzip9Bytes": 2414, "sha256": "55066d184c457f2850abb8d13f4650a77271f7a596dc1cdd286a8a46dccf2f72"},
+    {"name": "breditor_wasm_bg-CF6WXnmp.wasm", "bytes": 2045100, "gzip9Bytes": 568877, "sha256": "870ec13e74dd9c3526c577cd4662f8ddde39771de0886d078daa4e28c6205323"}
+  ],
+  "assetNote": "The shared target/react-demo-candidate directory retains older unreferenced assets because emptyOutDir is false. These measurements identify only the current HTML/JavaScript-referenced assets, not the entire retained directory. Current JavaScript references the recorded candidate Wasm and not the older DLAD4I5P Wasm.",
+  "sizeGate": "Still fails unchanged React JavaScript raw/gzip and Wasm raw/gzip ceilings. No ceiling was raised.",
+  "limits": [
+    "The original intermittent WebKit queueUncertain failure remains unresolved and retained.",
+    "Native Safari comparison still needs an unlocked Mac; no system settings changed.",
+    "Physical IME/VoiceOver, delivery approval, larger-list responsiveness and complete release qualification remain open.",
+    "This checkpoint changes test orchestration, not editor runtime or wire formats."
+  ],
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}

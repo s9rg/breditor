@@ -65,6 +65,13 @@ npm run smoke:packages
 ./scripts/check-wasm-api.sh
 ```
 
+`npm test` also runs the standalone declaration, diagnostic, profiling-summary
+and release-runner contracts in `scripts/*.test.mjs`. Use `npm run test:scripts`
+for just those fast checks. The queue diagnostic's bundled-WebKit positive
+control is opt-in: run
+`BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1 npm run test:scripts` with the locked
+Playwright browsers installed. Its normal skip is not native Safari coverage.
+
 Run `npm run check:size` before TypeScript and JavaScript validation: the size
 gate first builds every workspace and then measures the generated package
 artifacts and production React reference build. The `test:browser` command also
