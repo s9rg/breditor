@@ -16,6 +16,10 @@ use crate::{
 use std::sync::Arc;
 use thiserror::Error;
 
+#[cfg(test)]
+#[path = "flat_list_source_proof_tests.rs"]
+mod source_proof_tests;
+
 /// Replaces a range across bare/list text blocks and rebuilds only its root span.
 ///
 /// Complete intersected root children are source guards. `inserted` contains a
@@ -121,17 +125,20 @@ impl FlatListTextReplace {
     }
 
     pub(crate) fn validate(&self, context: &EditorContext) -> Result<(), FlatListTextReplaceError> {
-        self.validate_and_derive(context).map(|_| ())
+        self.validate_and_derive(context, None).map(|_| ())
     }
 
     /// Retains the exact replacement already reconstructed for result validation.
-    /// No proof is cached across operations or contexts. Source and result roots
-    /// are validated on every application. Retain the result document too: if
+    /// No proof is cached across operations or contexts. A source document may
+    /// prove only an exactly equal reconstructed source root under the same
+    /// compiled schema and limits. Otherwise validate that root afresh. Retain
+    /// the independently validated result document too: if
     /// the final root is exactly equal, it already has the complete proof for
     /// this call's context and limits; otherwise validate the final root afresh.
     fn validate_and_derive(
         &self,
         context: &EditorContext,
+        source: Option<&Document>,
     ) -> Result<(Derived, Document), FlatListTextReplaceError> {
         require_schema(context)?;
         let maximum =
@@ -139,9 +146,9 @@ impl FlatListTextReplace {
         if u64::from(self.guard_end()?) > maximum || u64::from(self.result_end()?) > maximum {
             return Err(FlatListTextReplaceError::RootChildLimit);
         }
-        validate_roots(context, self.expected.to_vec())?;
+        validate_roots(context, self.expected.to_vec(), source)?;
         let derived = self.derive()?;
-        let validated_result = validate_roots(context, derived.roots.clone())?;
+        let validated_result = validate_roots(context, derived.roots.clone(), None)?;
         Ok((derived, validated_result))
     }
     pub(crate) fn apply(
@@ -150,7 +157,7 @@ impl FlatListTextReplace {
         document: &Document,
     ) -> Result<AppliedOperation, FlatListTextReplaceError> {
         require_document(context, document)?;
-        let (derived, validated_result) = self.validate_and_derive(context)?;
+        let (derived, validated_result) = self.validate_and_derive(context, Some(document))?;
         let start = usize::try_from(self.guard_start)
             .map_err(|_| FlatListTextReplaceError::InvalidTarget)?;
         let end = usize::try_from(self.guard_end()?)
@@ -433,6 +440,7 @@ fn require_document(
 fn validate_roots(
     context: &EditorContext,
     roots: Vec<NodeRef>,
+    source: Option<&Document>,
 ) -> Result<Document, FlatListTextReplaceError> {
     let root = ElementNode::try_new(
         context.schema().root_kind().clone(),
@@ -441,7 +449,14 @@ fn validate_roots(
         roots,
     )
     .map_err(|_| FlatListTextReplaceError::InvalidTarget)?;
-    Ok(Document::try_new(context.schema(), NodeRef::element(root), context.limits())?)
+    let root = NodeRef::element(root);
+    if let Some(source) = source
+        && source.is_proven_for(context.schema(), context.limits())
+        && source.root() == &root
+    {
+        return Ok(source.clone());
+    }
+    Ok(Document::try_new(context.schema(), root, context.limits())?)
 }
 /// Invalid flat-list structural replacement recipe or publication.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]

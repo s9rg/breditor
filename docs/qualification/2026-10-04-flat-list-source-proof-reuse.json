@@ -1,0 +1,59 @@
+{
+  "baseCommit": "58fac5a",
+  "status": "private-source-proof-reuse-regressions-passed",
+  "releaseQualified": false,
+  "change": "FlatListTextReplace may reuse the incoming immutable document's proof for source validation only when the complete reconstructed source root is semantically equal and the compiled-schema authority and runtime limits match. Standalone validation has no source proof. Result-root validation, source-guard matching, inverse derivation and complete-result limits are unchanged. No cross-operation cache, wire change or public API change.",
+  "newRegressions": [
+    "Equal independently allocated children reuse the exact current source root and summary; standalone admission and changed text use fresh validation.",
+    "Partial guarded roots cannot inherit whole-document measurements.",
+    "Equal roots under independently compiled schemas or changed limits fall back to full validation, including strict-limit rejection."
+  ],
+  "verification": {
+    "coreAllFeatureTests": 1135,
+    "rustFormat": "passed",
+    "workspaceAllTargetsAllFeaturesClippy": "passed with -D warnings",
+    "privateWasm": "Generated types/declarations, 14 declaration checker cases, Node heading/list/recovery checks and five raw-Wasm runs each in Chromium, Firefox and WebKit passed.",
+    "privatePackages": "Installed private consumer types, base compatibility and three-engine list smoke passed.",
+    "browserMatrix": {"path": "target/list-source-proof-browser-space-recheck-20261004.json", "sha256": "334a9162fa5ee276181c5a5d76a3a9fa856b3912e764f47b0d5f80fee57fb136", "passed": 165, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0},
+    "listDemoMatrix": {"path": "target/list-source-proof-demo-space-recheck-20261004.json", "sha256": "eb37d7a19e93f2d666e9973c99c42ec635a62a0ed4029ff0f9ce0eabd242c0cb", "passed": 54, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0}
+  },
+  "retainedInitialFailures": {
+    "classification": "Infrastructure-contaminated runs; not qualified. Playwright explicitly reported ENOSPC writing artifacts and a truncated ZIP. Both Firefox pages reported persistence_load_failed; the list test then timed out waiting for its missing editor. Disk inspection showed only about 2.5 GiB available. The same candidate passed both complete suites after cache cleanup. This is not evidence of a source-proof defect, nor an explanation of historical WebKit faults.",
+    "browserReport": {"path": "target/list-source-proof-browser-20261004.json", "sha256": "d174b2d8a775e3831212f4b6a4497a3728c1659c88065965de50d670b7bfccef", "passed": 94, "failed": 1, "notRun": 70},
+    "listReport": {"path": "target/list-source-proof-demo-20261004.json", "sha256": "eeec1c6fe90b99dd03ec962d6f86ca13b58922dfa92bec428f3b9ad09f98d131", "passed": 30, "failed": 1, "notRun": 23},
+    "cleanup": "Removed only /Users/s/code/breditor/target/debug/incremental after verifying its real path, ignored/untracked status, absence of symlink and absence of running compilers. It measured 17 GiB; rebuildable compiler cache is not source or retained failure evidence. Available disk rose to about 18 GiB, with about 17 GiB remaining after the matrix. Source, binaries, candidate packages, original failure fixtures and reports were preserved."
+  },
+  "performance": {
+    "baselinePackage": "target/flat-list-packages-KklioP/qualification.json",
+    "candidatePackage": "target/flat-list-packages-Ckczkl/qualification.json",
+    "order": ["baseline", "candidate", "candidate", "baseline"],
+    "correctnessCasesPassed": 108,
+    "edit500MedianMsInRunOrder": {"chromium": [46, 45.9, 45.4, 45.9], "firefox": [147, 136, 136, 144], "webkit": [73, 67, 67, 74]},
+    "selection500MedianMsInRunOrder": {"chromium": [30.2, 30.3, 29.5, 30.1], "firefox": [111, 100, 102, 110], "webkit": [41, 39, 39, 44]},
+    "method": "Uninstrumented production fixture; 10/100/500 items, three independent owners per size/engine, exact document/selection/history assertions outside timed spans. Sequential ABBA, bounded caffeinate, no concurrent task builds/tests during timings. Host background load was not controlled. Values rounded to 0.1ms where applicable; small local samples, not a general latency guarantee.",
+    "reportRoot": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T",
+    "reports": [
+      {"path": "breditor-flat-list-consumer-c55C4E/performance-gOqDdS/measurement.json", "sha256": "9d4fbf76d9ff56082bda67a96fd946553a54e5c2cb57ec3ba07383d579b22c9c"},
+      {"path": "breditor-flat-list-consumer-Tnzk4J/performance-NYXPbU/measurement.json", "sha256": "72ae279b287f398c8264f6a6c512c1c9a17ae51b0da8c55ae568a95881d1bc8c"},
+      {"path": "breditor-flat-list-consumer-Tnzk4J/performance-fOBaCo/measurement.json", "sha256": "3210d59bad69eb43c594a8a44f0a8e1c9d561103bbaba0e24f20707ecdf7ced0"},
+      {"path": "breditor-flat-list-consumer-c55C4E/performance-9hrLjt/measurement.json", "sha256": "7e9462a3cfa54d0cdec2909deade547a8dbbd60b8058c903dc5d0255f21637f4"}
+    ],
+    "decision": "Retain the private source change: repeated local Firefox and WebKit improvement, Chromium broadly unchanged. Large-list responsiveness remains open; this does not promote the package or clear the original intermittent fault."
+  },
+  "candidate": {
+    "wasmDirectory": "target/flat-list-candidate-bfniW0",
+    "wasmQualificationSha256": "19a9850945e6a701c381ae06c7e175f713c97f60f75cb8c52967a26eff897e95",
+    "wasmSha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671",
+    "wasmBytes": 2045432,
+    "wasmGzip9Bytes": 569060,
+    "packageRecord": "target/flat-list-packages-Ckczkl/qualification.json",
+    "packageRecordSha256": "71772510007e62d3cc62660d29632c2c7feca5def54c299e4fe4a07fe9e73220",
+    "browserTarballSha256": "702c79c0e1a659b12daffdb19edf35d10adfc6e5c657cf0def969b3adae7fcda",
+    "wasmTarballSha256": "7bad1afc947a2277c962414ed8777185e1e311611e2c42276ae86640afcf6e74",
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "limits": "Native Safari could not be attached this turn; no native-input evidence is claimed. Historical WebKit faults, physical IME/VoiceOver, current-artifact native qualification, size/delivery decision and complete release qualification remain open. The original ldkYaY failure report was rechecked and retains SHA256 4db4fd776488a37890b8012947d547d29ddafdc0008961df42e784be9669715a.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}
