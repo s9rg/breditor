@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "9468057",
+  "status": "core-allocation-improved-browser-timeouts-open",
+  "releaseQualified": false,
+  "change": "Reserve len+1 before copying and appending a child index. Preserve Arc representation, all validation, errors, depth limits and wire formats.",
+  "regression": "Every extendable depth 0..255, indices 0/1/u32::MAX, exact expected path, parent recovery, last index, length and shared-source immutability; passes before and after. Existing depth-overflow rejection retained.",
+  "candidate": "target/flat-list-candidate-sEa678",
+  "candidateRecordSha256": "fec7ac21a105ca0b4ceb84e7cf326c51219606d81fc13580ae625c53cf53666c",
+  "wasmSha256": "3b05db232dd9d0de65200d66b8c304140b2f3b2fd60ad7c7bf1b76acc033cbc4",
+  "wasmBytes": 2044808,
+  "wasmGzip9Bytes": 568611,
+  "sizeDelta": {"rawBytes": 91, "gzip9Bytes": 47},
+  "oldPackageRecord": "target/flat-list-packages-wZ8mSb/qualification.json",
+  "newPackageRecord": "target/flat-list-packages-GoFbBU/qualification.json",
+  "newPackageRecordSha256": "90411e48ff6b6eb7a0cb3a9a60238f61204a6810995565608383c3f7f472fa1e",
+  "method": "Ordinary stripped artifacts, no CPU profiling or named diagnostic build. Four sequential old/new/old/new --core-only measurements after our compilation and other browser checks stopped. Three independent engines per 10/100/500 items in each browser. Phase timings are not additive browser costs or a release guarantee.",
+  "coreRuns": [
+    {"name": "old1", "consumer": "breditor-flat-list-consumer-ulnxLR", "measurement": "performance-xHUbm7/measurement.json", "sha256": "dc9c23ed0e61cb8b8ba509893d4f29003b0bc8afe8bcc2ddefe028491ce243b2", "casesPassed": 27},
+    {"name": "new1", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-Uu9orB/measurement.json", "sha256": "f47c4933fa4b86da96f3c96047adea13ec120184f0427a12635e305f5f04092f", "casesPassed": 27},
+    {"name": "old2", "consumer": "breditor-flat-list-consumer-ulnxLR", "measurement": "performance-AInypv/measurement.json", "sha256": "6a197a036f86dd5e6a331840016fe1177e9f2e34f9e09855e11927b0759866aa", "casesPassed": 27},
+    {"name": "new2", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-2A0OAE/measurement.json", "sha256": "e27dc7045993f1f634ddceed921e7e20fe30c4abd8cc56296c03a670f3cf3cee", "casesPassed": 27}
+  ],
+  "consumerRoot": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T",
+  "core500ItemMedianMsOldNewOldNew": {
+    "chromium": {"coldStates": [21.3, 19.2, 21.3, 19.2], "postEditStates": [22.1, 19.8, 21.9, 20], "insert": [4.6, 4.2, 4.5, 4.1]},
+    "firefox": {"coldStates": [195, 185, 198, 186], "postEditStates": [203, 191, 204, 192], "insert": [41, 39, 41, 38]},
+    "webkit": {"coldStates": [19, 17, 18, 17], "postEditStates": [19, 18, 19, 18], "insert": [4, 3, 4, 4]}
+  },
+  "excludedPreliminaryBaseline": {"consumer": "breditor-flat-list-consumer-ulnxLR", "measurement": "performance-EfCSR7/measurement.json", "sha256": "4ee16767a677a50dd0f9ea3417e7eac0854d32804b6e6407e18b8abfb78bcf8a", "casesPassed": 27, "reason": "Overlapped Rust compilation; not used for the alternating timing comparison."},
+  "fullBrowserRuns": [
+    {"name": "new1", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-2PQQVn/measurement.json", "sha256": "080b5a85a7f7495a9bf1ca131b16c8ad4abbe72ff599fa9f526e1a0fff68b2bb", "casesPassed": 27, "edit500MedianMs": {"chromium": 75, "firefox": 307, "webkit": 130}},
+    {"name": "old1", "consumer": "breditor-flat-list-consumer-ulnxLR", "measurement": "performance-KdlnPH/measurement.json", "sha256": "116e60634ec97d66448d2cac7329ed175b5511ccbfebe94699ed4434bfb66996", "casesPassed": 27, "edit500MedianMs": {"chromium": 76.4, "firefox": 318, "webkit": 117}},
+    {"name": "new2-failed", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-aKswob/measurement.json", "sha256": "f7c0e9ad18dfa271984ba075141a06de34a5d860e29b4de8b50f2f861dac83f3", "status": "failed", "browser": "firefox", "error": "page.waitForFunction exceeded 180000 ms", "detail": "Chromium passed nine cases. Firefox failure snapshot has null status and JSON containing nine cases; fields were captured separately, so their apparent inconsistency is not a proven engine fault or completed run. No page/console errors. WebKit not attempted in this run."}
+  ],
+  "initialPackageFailure": {"staging": "target/flat-list-packages-nmoLgC", "consumer": "breditor-flat-list-consumer-6uk4ov", "error": "page.goto exceeded 30000 ms navigating http://127.0.0.1:52006/ waiting until load", "browser": "not captured", "resolved": false, "note": "Occurred while separate DOM qualification was running. Concurrency is context, not a proven cause. Original checker lacked a failure report; this record retains the observed error. Later instrumented package qualification passed."},
+  "diagnostics": ["Package checker now preserves failed-browser.json with exact engine, errors, fixture state and completed browser runs", "Performance failure status/payload/visibility/readyState read in a single evaluation", "No changed timeout, assertion or polling semantics"],
+  "firefoxFollowup": {"consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-3JcHpx/measurement.json", "sha256": "494684879d88f8d8e7570e7f45b0ed2289ba13af79630d6206dced2210c28898", "freshProcesses": 3, "casesPassed": 27, "timeoutUnchanged": true, "earlierFailureResolved": false},
+  "controlledFailureDiagnosticTest": {"staging": "target/flat-list-packages-ZQ57qY", "method": "Evaluate an in-memory copy of the package checker with a controlled exception at page.goto. No source or fixture mutation. Assert nonzero exit, retained Chromium identity, controlled error, empty completed-runs list and missing-result snapshot error.", "status": "passed", "productFailure": false},
+  "defaultCoreLibraryTestsPassed": 698,
+  "webkitFollowup": [
+    {"name": "new", "consumer": "breditor-flat-list-consumer-YH3MJI", "measurement": "performance-RzX96m/measurement.json", "sha256": "81a4f47d1ebabff3d6f1c0ab2647153ea228708f9395b20f250db8537836d0cb", "freshProcesses": 3, "casesPassed": 27, "edit500MedianMs": [123, 119, 117]},
+    {"name": "old", "consumer": "breditor-flat-list-consumer-ulnxLR", "measurement": "performance-Gq6QvT/measurement.json", "sha256": "8b92c50b308d255b9f0a0a3d5bdbd23e7dcb106aaba6e16f0035166e543323bb", "freshProcesses": 3, "casesPassed": 27, "edit500MedianMs": [119, 118, 121]}
+  ],
+  "webkitInterpretation": "Overlapping ranges; the first 130 ms candidate observation did not repeat. Neither an end-to-end WebKit speedup nor a persistent regression is established.",
+  "initialFailedAndSubsequentPassedPackageHashesIdentical": {"browser": "8f11d2a64c8b37a09a307db1224da7d25e26d9fc3a39658e361dcb2a987aeba3", "wasm": "ca763124480ed85374556e6ea94928170478d48d14d69e8cea1746bf963c45da"},
+  "verification": ["1121 all-feature Rust library tests passed", "Strict all-feature Clippy including tests passed", "cargo fmt --check passed", "14 ABI checks and strict generated TypeScript passed", "Node heading/list checks passed", "Five raw and five DOM/recovery runs per engine passed", "Private installed consumers and base Node/TypeScript/Chromium consumer passed on subsequent instrumented run", "Shipping artifact trees unchanged"],
+  "remaining": ["Firefox completion timeout and unidentified package-navigation timeout", "Full-browser performance, including WebKit timing variance/regression investigation", "Optional structural delivery choice and size budgets", "Native OS input/accessibility; Mac rechecked and locked", "Broader release qualification"],
+  "pushedOrPublished": false
+}

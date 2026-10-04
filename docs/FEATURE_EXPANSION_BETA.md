@@ -1615,3 +1615,44 @@ Next: reduce avoidable allocation or repeated work within these validated paths,
 with unchanged errors, resource limits and exact history behavior, then measure
 the ordinary stripped build. No runtime behavior or shipping files changed in
 this checkpoint. Flat lists remain the beta scope; nesting follows later.
+
+## Avoid temporary path-vector growth — 2026-10-04
+
+`NodePath::try_child` now reserves its final vector length before copying and
+appending, rather than copying into a full vector and then growing it. Its Arc
+representation, complete validation, depth ceiling, errors and wire formats are
+unchanged. A regression covers all 256 extendable depths, indices 0/1/u32::MAX,
+exact parent recovery and shared-source immutability. It passed on both the old
+and new implementations. All 1,121 all-feature core tests, strict Clippy and
+format checks passed, along with 698 default-feature core tests. The ordinary stripped candidate passed ABI/TypeScript,
+Node, five raw-Wasm and five full DOM/recovery runs per engine.
+
+Four sequential old/new/old/new core measurements passed 108 correctness cases.
+At 500 items, post-edit action-state medians were 22.1/19.8/21.9/20.0 ms in
+Chromium, 203/191/204/192 ms in Firefox and 19/18/19/18 ms in WebKit. This is a
+repeatable local improvement in that phase, not a completed responsiveness gate.
+One preliminary baseline overlapped compilation and is retained but excluded
+from this comparison. The candidate adds 91 raw Wasm bytes and 47 gzip-9 bytes;
+existing delivery ceilings remain unchanged.
+
+Qualification also exposed two unresolved timeouts. The first private package
+run timed out at navigation without recording which engine; the checker now
+preserves the browser, error, page snapshot and completed engines before teardown.
+The subsequent package run passed, but does not resolve the original timeout.
+A new/old/new full-editor comparison passed its first two runs, then timed out
+in Firefox in the third. That failure contains nine case results but no status,
+read in separate protocol calls. Failure status/payload are now captured in one
+evaluation to avoid mixed-time evidence. Three further fresh Firefox runs passed
+27 cases with the original deadline; the failure remains unexplained. No timeout
+was increased, assertion removed or polling behavior changed.
+
+The full-editor results do not justify a broad speedup claim: initial new/old
+500-item edit medians were 75/76.4 ms Chromium, 307/318 ms Firefox and 130/117 ms
+WebKit. Browser-level variance/regression investigation remains necessary.
+Three additional fresh WebKit candidate runs measured 123/119/117 ms; three
+baseline runs measured 119/118/121 ms, with all 54 cases passing. The original
+130 ms observation did not repeat, and these overlapping ranges do not establish
+an end-to-end WebKit improvement or persistent regression.
+See [evidence](qualification/2026-10-04-node-path-allocation.json).
+The Mac remains locked, so native input/accessibility gates remain open.
+Shipping files are unchanged and nothing was pushed/published.

@@ -174,8 +174,12 @@ try {
       try { await captureCpuProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
       let fixtureState;
       try {
-        fixtureState = {status: await page?.locator("#result").getAttribute("data-status", {timeout: 5000}),
-          output: await page?.locator("#result").textContent({timeout: 5000})};
+        // Read completion and payload in one evaluation: separate protocol calls
+        // can straddle completion and produce a misleading mixed-time snapshot.
+        fixtureState = await page?.locator("#result").evaluate(element => ({
+          status: element.getAttribute("data-status"), output: element.textContent,
+          visibility: document.visibilityState, readyState: document.readyState,
+        }), undefined, {timeout: 5000});
       } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
       measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, fixtureState});
       await save("failed"); throw error;

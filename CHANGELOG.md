@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Reserve the appended slot when constructing child paths, avoiding temporary
+  vector growth during validation and editing. Cover every supported path depth,
+  shared sources and extreme child indices without changing path limits or wire
+  formats. Preserve engine-specific package failures and atomic measurement
+  failure snapshots for investigating intermittent qualification timeouts.
+
 - Add an isolated named-Wasm profiling build with unchanged ABI checks and
   explicitly labeled package/measurement reports. Collect a fresh source-named
   profile; never relabel stripped profiles using a different executable.

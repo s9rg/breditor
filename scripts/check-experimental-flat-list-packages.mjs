@@ -88,13 +88,27 @@ try {
   const browserRuns = [];
   for (const [name, type] of Object.entries({chromium, firefox, webkit})) {
     const browser = await type.launch();
+    let page;
+    const errors = [];
     try {
-      const page = await browser.newPage(); const errors = []; page.on("pageerror", error => errors.push(error.message));
+      page = await browser.newPage(); page.on("pageerror", error => errors.push(error.message));
       await page.goto(`http://127.0.0.1:${address.port}/`);
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 15000});
       const result = await page.locator("#result").getAttribute("data-status");
       assert.equal(result, "passed", await page.locator("#result").textContent()); assert.deepEqual(errors, []);
       browserRuns.push({browser: name, version: browser.version(), status: result});
+    } catch (error) {
+      // Preserve the failing engine and page state before teardown. A later
+      // successful run must not erase or stand in for this failed qualification.
+      let fixtureState;
+      try {
+        fixtureState = {url: page?.url(), result: await page?.locator("#result").textContent({timeout: 1000})};
+      } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
+      const failure = {status: "failed", candidate, staging, consumer, browser: name,
+        version: browser.version(), error: String(error), errors, fixtureState, completedBrowserRuns: browserRuns};
+      await writeFile(join(staging, "failed-browser.json"), JSON.stringify(failure, null, 2) + "\n");
+      console.error(JSON.stringify(failure));
+      throw error;
     } finally { await browser.close(); }
   }
   const sums = async (directory, suffix) => (await Promise.all((await files(directory)).filter(file => file.endsWith(suffix)).map(async file => (await readFile(join(directory, file))).length))).reduce((a,b) => a+b, 0);

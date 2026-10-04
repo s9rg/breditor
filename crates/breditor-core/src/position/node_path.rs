@@ -91,7 +91,10 @@ impl NodePath {
         if self.len() >= MAX_PATH_DEPTH {
             return Err(NodePathError::TooDeep { actual: self.len() + 1, maximum: MAX_PATH_DEPTH });
         }
-        let mut indices = self.to_vec();
+        // Reserve the appended index too: copying into an exact-length vector
+        // and then pushing would grow the temporary allocation before Arc conversion.
+        let mut indices = Vec::with_capacity(self.len() + 1);
+        indices.extend_from_slice(&self.0);
         indices.push(index);
         Ok(Self(Arc::from(indices)))
     }
@@ -125,6 +128,28 @@ mod tests {
         let root = NodePath::root();
         assert!(root.is_root());
         assert_eq!(root.iter().count(), 0);
+    }
+
+    #[test]
+    fn child_extension_preserves_shared_sources_at_every_depth() -> Result<(), NodePathError> {
+        for depth in 0..MAX_PATH_DEPTH {
+            let indices: Vec<u32> = (0..=u32::MAX).rev().take(depth).collect();
+            let source = NodePath::try_from_indices(indices.clone())?;
+            let shared = source.clone();
+            for index in [0, 1, u32::MAX] {
+                let child = source.try_child(index)?;
+                let mut expected = indices.clone();
+                expected.push(index);
+                assert_eq!(child.to_vec(), expected);
+                assert_eq!(child, NodePath::try_from_indices(expected)?);
+                assert_eq!(child.parent().as_ref(), Some(&source));
+                assert_eq!(child.last_index(), Some(index));
+                assert_eq!(child.len(), depth + 1);
+                assert_eq!(source.to_vec(), indices);
+                assert_eq!(shared, source);
+            }
+        }
+        Ok(())
     }
 
     #[test]
