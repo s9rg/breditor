@@ -12,6 +12,7 @@ import { consumeFlatListSemanticSelection } from "../packages/breditor-browser/s
 import { flatListCommandRequest, flatListRangeSelectionSync, preserveSelectionSync } from "../packages/breditor-browser/src/editor_command.ts";
 import { IndexedDbSessionCheckpointStore } from "../packages/breditor-browser/src/indexeddb_session_checkpoint.ts";
 import { BreditorSessionCheckpointAutosave } from "../packages/breditor-browser/src/session_checkpoint_autosave.ts";
+import { verifyFlatListEditorOwner } from "./flat-list-editor-owner-scenario.mjs";
 
 const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`list persistence: ${JSON.stringify(actual)}; expected ${JSON.stringify(expected)}`);
@@ -120,6 +121,7 @@ export async function verifyFlatListPersistence(api, iteration) {
     equal(third.documentRoot(), edited); equal(third.selection(), editedSelection);
     third.send({kind: "history", operation: "undo"});
     equal(third.documentRoot(), original); equal(third.selection(), originalSelection);
+    await verifyFlatListEditorOwner(api, semanticProfile, documentJson, iteration);
   } finally {
     for (const release of releases.reverse()) release();
     for (const autosave of autosaves.reverse()) autosave.dispose();

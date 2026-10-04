@@ -1300,3 +1300,35 @@ Next remains the shared high-level list editor owner and visible persistence
 UI, now with its storage prerequisite available. Source declarations explicitly
 admit V6; packaged artifacts are unchanged. Nothing was pushed or published. See
 [qualification](qualification/2026-10-04-flat-list-persistence.json).
+
+## Flat-list high-level owner checkpoint — 2026-10-04
+
+The explicit experimental `BreditorBrowserEditor.openFlatLists` factory now owns
+the complete list startup lifecycle: V4 profile bootstrap, list rendering and
+selection, exact adapter-bound queue, native controllers, 14-control default
+toolbar, intent API and V6 persistence. It shares the ordinary owner's lifecycle,
+host reservation, action-state publication, autosave and disposal implementation.
+There is no implicit mode detection or fallback to the base engine. Source API
+is extended, but packaged JavaScript, declarations and Wasm remain unchanged.
+
+Ordinary startup rejects V4 options both at runtime and in TypeScript. A new
+compile-time regression exposed structural assignability through the legacy
+unversioned profile branch; an optional-never version field closes that hole.
+Missing/wrong list profiles, aborted startup, unsupported Wasm and backup plus
+persistence reject before fallback or unwanted storage access.
+
+The real-browser scenario uses only the high-level API and installed listeners.
+It preserves a backward emoji selection, edits multiline list text, undoes,
+flushes, disposes and reopens the saved slot, then redoes exactly. A V6 backup
+restores independently with autosave disabled. Toolbar/API operations remain
+coherent. Injected partial listener installation proves failed startup removes
+its list roots and toolbar, restores host attributes, preserves application-owned
+content and releases the host for a successful retry.
+
+Verification: 1,826 tests in 52 files, strict implementation/test types, temporary
+declarations and five runs each in Chromium, Firefox and WebKit pass. See
+[qualification](qualification/2026-10-04-flat-list-editor-owner.json).
+Next is the visible list demo with reload/backup/autosave UI, followed by physical
+input/clipboard/IME, accessibility and release size/performance gates. This does
+not establish physical-input support or resolve the historical WebKit fault.
+Nothing was pushed or published.

@@ -6,20 +6,26 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add explicit experimental `BreditorBrowserEditor.openFlatLists` startup through
+  the shared high-level owner. Integrate the list renderer, controllers, toolbar,
+  intent API, Session V6 autosave and backup restore with all-or-nothing teardown.
+  Reject list profiles from ordinary startup at runtime and in TypeScript.
+  Real-browser tests verify exact undo/redo after reopen and failed-startup cleanup
+  that preserves application-owned content. Visible demo and physical input
+  qualification remain pending; packaged artifacts are unchanged.
+
 - Admit explicit Session V6 bindings in the existing IndexedDB checkpoint store
   for experimental flat lists. Keep the same record envelope, default slots,
   limits, digest and CAS rules. Verify real list autosave/reopen with exact undo
   and redo selection recovery in all three browser engines; stale writers pause
-  without overwriting the winner. High-level list startup integration remains
-  pending.
+  without overwriting the winner.
 
 - Connect the experimental flat-list controllers through the shared native event
   router. Preserve single-host ownership, composition/clipboard/ordinary routing
   priority, exact adapter-bound queues, deferred canonical repair, one-time
   lifecycle notification and inert callbacks after disposal/fault. Real-Wasm
   cross-browser tests now dispatch through installed listeners and verify exact
-  history/reload behavior. The full list editor owner and physical native-input
-  qualification remain pending.
+  history/reload behavior. Physical native-input qualification remains pending.
 
 - Connect experimental flat-list copy/cut/paste to the shared leased clipboard
   controller and list-aware Rust commands. Serialize exact hierarchical text

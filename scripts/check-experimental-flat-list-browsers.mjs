@@ -44,7 +44,7 @@ try {
           const result = runFlatListWasmScenario(api);
           const projected = project === undefined ? result : project(api, verifyDom);
           if (persistence !== undefined) await persistence(api, iteration);
-          results.push(persistence === undefined ? projected : {...projected, scope: `${projected.scope}; native IndexedDB/SHA-256 autosave and fresh-owner V6 recovery`});
+          results.push(persistence === undefined ? projected : {...projected, scope: `${projected.scope}; native IndexedDB/SHA-256 autosave, high-level list owner startup/rollback, toolbar/API and reopen/backup recovery`});
         }
         return results;
       }, {bindingUrl, checkProjection, checkDom});

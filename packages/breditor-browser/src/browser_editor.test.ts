@@ -6,6 +6,7 @@ import {
   MAX_BROWSER_EDITOR_SUBSCRIBERS,
   openBreditorBrowserEditor,
   type BreditorBrowserEditorOptions,
+  type BreditorFlatListBrowserEditorOptions,
 } from "./browser_editor.js";
 import { BreditorActionStateStore } from "./action_state_store.js";
 import { BreditorDomRenderer } from "./dom_renderer.js";
@@ -361,6 +362,55 @@ describe("BreditorBrowserEditor", () => {
       if (opened.ok) opened.editor.dispose();
     },
   );
+
+  it.each([undefined, {bootstrapJson: "{}"}, {bootstrapJson: "{}", formatVersion: 2},
+    {bootstrapJson: "{}", formatVersion: 3}])("list owner rejects non-V4 profile %j before Wasm", async semanticProfile => {
+    const fixture = moduleFixture(), host = mountHost();
+    const result = await BreditorBrowserEditor.openFlatLists({...options(host, fixture.module), semanticProfile} as unknown as BreditorFlatListBrowserEditorOptions);
+    expect(result).toMatchObject({ok: false, error: {code: "browser_editor.invalid_options"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled(); expect(host.childNodes).toHaveLength(0);
+  });
+
+  it("ordinary owner rejects explicit V4 options without changing its public contract", async () => {
+    const fixture = moduleFixture(), host = mountHost();
+    const listOptions: BreditorFlatListBrowserEditorOptions = {...options(host, fixture.module),
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 4}};
+    // @ts-expect-error The ordinary startup facade remains closed to list profiles.
+    expect(await BreditorBrowserEditor.open(listOptions)).toMatchObject({ok: false, error: {code: "browser_editor.invalid_options"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+  });
+
+  it("aborted list startup releases the shared host reservation for an ordinary owner", async () => {
+    const fixture = moduleFixture(), host = mountHost();
+    const abort = new AbortController(); abort.abort();
+    expect(await BreditorBrowserEditor.openFlatLists({...options(host, fixture.module),
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 4}, signal: abort.signal}))
+      .toMatchObject({ok: false, error: {code: "browser_editor.aborted"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled(); expect(host.childNodes).toHaveLength(0);
+    const ordinary = await BreditorBrowserEditor.open(options(host, fixture.module));
+    expect(ordinary.ok).toBe(true); if (ordinary.ok) ordinary.editor.dispose();
+  });
+
+  it("unsupported list Wasm startup rolls back and never falls back to the base engine", async () => {
+    const fixture = moduleFixture(), host = mountHost();
+    expect(await BreditorBrowserEditor.openFlatLists({...options(host, fixture.module),
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 4}}))
+      .toMatchObject({ok: false, error: {code: "browser_editor.engine_bootstrap_failed"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled(); expect(host.childNodes).toHaveLength(0);
+    const ordinary = await BreditorBrowserEditor.open(options(host, fixture.module));
+    expect(ordinary.ok).toBe(true); if (ordinary.ok) ordinary.editor.dispose();
+  });
+
+  it("list backup startup rejects simultaneous persistence before touching storage", async () => {
+    const fixture = moduleFixture(), host = mountHost(), factory = new IDBFactory();
+    const open = vi.spyOn(factory, "open");
+    const candidate = {host, label: "List editor", wasm: fixture.module, keyboard: KEYBOARD,
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 4}, initialSessionCheckpointJson: "{}",
+      persistence: {indexedDB: factory, crypto: {digest: vi.fn()}}};
+    expect(await BreditorBrowserEditor.openFlatLists(candidate as unknown as BreditorFlatListBrowserEditorOptions))
+      .toMatchObject({ok: false, error: {code: "browser_editor.invalid_options"}});
+    expect(open).not.toHaveBeenCalled(); expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+  });
 
   it("rejects an editor host inside a ShadowRoot before Wasm startup", async () => {
     const container = document.createElement("div");

@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "0ab4b3c",
+  "status": "Experimental high-level list owner integrated and cross-browser verified; visible demo and native-input qualification remain open",
+  "contracts": {
+    "startup": "Explicit openFlatLists with V4 profile and V6 session; ordinary open remains closed to V4 at runtime and in TypeScript; no fallback or implicit mode",
+    "ownership": "Shared host reservation, startup validation, action-state publication, autosave, fault and disposal lifecycle; exact list adapter/queue/bridge/router bindings",
+    "content": "Existing high-level intent, export, focus, status and persistence APIs; no generated handle, adapter, renderer or queue escapes",
+    "rollback": "Actual list root nodes are tracked; partial listener installation removes owned resources, restores host attributes and preserves application-owned content",
+    "persistence": "Explicit V6 IndexedDB autosave/reopen and independent backup restoration; stored session wins over fresh fallback; backup startup forbids persistence"
+  },
+  "verification": {
+    "newTests": 8,
+    "browserTests": 1826,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "High-level owner with real V6 Wasm and native IndexedDB/SHA-256. Installed-listener synthetic beforeinput over a backward emoji selection; multiline replacement, toolbar undo, flush, dispose, reopen, exact redo; independent backup restore and exact undo; list intent and wrong-input rejection; duplicate ownership, ordinary V4 rejection and injected partial-listener-startup rollback preserving a foreign child. Existing list projection/controller/router/persistence scenarios also rerun.",
+    "developmentEvidence": [
+      "The new @ts-expect-error regression initially failed because the legacy unversioned profile type structurally admitted V4 options. Adding formatVersion?: never closes that TypeScript contract without admitting new runtime inputs.",
+      "Startup rollback uses actual UL/OL/text-block root paths, not a flattened paragraph directory.",
+      "List selection-bridge disposal uses its own captured intrinsic because its facade has distinct private ownership from the base bridge."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Visible list demo reload/backup/autosave UI",
+    "Physical native input/clipboard/IME and accessibility qualification",
+    "Packed-consumer and size/performance gates"
+  ],
+  "evidenceBoundary": "Real browser engine, Wasm and storage with synthetic input, not physical user input or OS clipboard/IME. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

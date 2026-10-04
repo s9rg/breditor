@@ -6,17 +6,23 @@ import {
 } from "./action_state_store.js";
 import {
   BreditorBrowserEventRouter,
+  BreditorFlatListBrowserEventRouter,
   type BrowserEventRouterFaultReason,
   type BrowserEventRouterStatus,
 } from "./browser_event_router.js";
 import {
   BreditorCommandQueue,
+  BreditorFlatListCommandQueue,
+  openFlatListCommandQueueLeasePort,
   openCommandQueueLeasePort,
   type CommandQueueLeasePort,
   type CommandQueueLeasedSubmission,
 } from "./command_queue.js";
 import {
   browserCommandJsonIsAdmissible,
+  flatListCommandRequest,
+  type EditorDeliveryToken,
+  type FlatListEditorDeliveryToken,
   jsonIntentRequest,
   noInputIntentRequest,
   preserveSelectionSync,
@@ -34,7 +40,7 @@ import {
   isOwnedInlineFormatRenderManifest,
   type InlineFormatRenderManifest,
 } from "./inline_format_render_manifest.js";
-import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
 import { clearOwnedNativeSelection } from "./dom_selection_cleanup.js";
 import {
   IndexedDbSessionCheckpointStore,
@@ -79,6 +85,7 @@ import {
   isSafeToolbarHost,
   toolbarCommandDispatchResult,
   toolbarCommandRequest,
+  flatListToolbarCommandRequest,
   type ToolbarCommandDispatchResult,
   type ToolbarCommandInvocation,
 } from "./toolbar.js";
@@ -92,6 +99,7 @@ import type { BrowserProjectionPlainTextResult } from "./projection_plain_text.j
 import type { BrowserSessionCheckpointReadResult } from "./wasm_session_checkpoint.js";
 import {
   BreditorWasmCommandAdapter,
+  BreditorFlatListWasmCommandAdapter,
   contentReadPortsForAdapter,
   type WasmContentReadPorts,
   type WasmCommandSequenceOutcome,
@@ -99,6 +107,10 @@ import {
 import {
   BREDITOR_BASE_SCHEMA_FINGERPRINT,
   bootstrapWasmEngine,
+  bootstrapFlatListWasmEngine,
+  preflightFlatListWasmSemanticProfile,
+  type WasmFlatListEngineBootstrapSource,
+  type WasmFlatListProfileBootstrapSource,
   preflightWasmSemanticProfile,
   type WasmBootstrappedEngineView,
   type WasmCompiledProfileBootstrapFactoryView,
@@ -110,6 +122,20 @@ import type {
   BrowserCompiledProfileDescriptor,
   WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
+
+import type { BaseDocumentProjection } from "./projection.js";
+import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { FLAT_LIST_TOOLBAR_MANIFEST } from "./flat_list_toolbar_manifest.js";
+import type { NativeCommandRequest } from "./native_command_builder.js";
+
+type OwnerProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type OwnerAdapter = BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter;
+type OwnerBridge = BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
+type OwnerOutcome = WasmCommandSequenceOutcome<OwnerProjection>;
+type OwnerQueue = BreditorCommandQueue<WasmCommandSequenceOutcome> |
+  BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>;
+type OwnerQueuePort = CommandQueueLeasePort<OwnerOutcome, NativeCommandRequest>;
+type OwnerProfile = BreditorBrowserSemanticProfileOptions | WasmFlatListProfileBootstrapSource;
 
 /** Maximum independent subscribers retained by one high-level editor. */
 export const MAX_BROWSER_EDITOR_SUBSCRIBERS = 64;
@@ -157,7 +183,7 @@ export interface BreditorBrowserWasmModule {
 
 /** Strict compiled-profile bootstrap selected before any document is decoded. */
 export type BreditorBrowserSemanticProfileOptions =
-  | Readonly<{ bootstrapJson: string }>
+  | Readonly<{ bootstrapJson: string; formatVersion?: never }>
   | Readonly<{ bootstrapJson: string; formatVersion: 2 | 3 }>;
 
 /** Stable choice of the IndexedDB key used by one editor profile. */
@@ -209,7 +235,7 @@ interface BrowserEditorCommonOptions {
  * Exactly one startup source. A backup is restored through the explicitly
  * selected profile/generation, with no document fallback or storage access.
  */
-export type BreditorBrowserEditorOptions = BrowserEditorCommonOptions & (
+type BrowserEditorStartupSource = (
   | Readonly<{
       /** Fresh fallback, used only if the selected persistence slot is empty. */
       initialDocument: BreditorBrowserInitialDocument;
@@ -223,6 +249,14 @@ export type BreditorBrowserEditorOptions = BrowserEditorCommonOptions & (
       persistence?: never;
     }>
 );
+
+/** Existing closed base/heading owner options. */
+export type BreditorBrowserEditorOptions = BrowserEditorCommonOptions & BrowserEditorStartupSource;
+
+/** Explicit V4-profile / V6-session list owner; no implicit mode detection. @internal */
+export type BreditorFlatListBrowserEditorOptions =
+  Omit<BrowserEditorCommonOptions, "semanticProfile"> &
+  Readonly<{semanticProfile: WasmFlatListProfileBootstrapSource}> & BrowserEditorStartupSource;
 
 /** Stable payload-redacted runtime failure. */
 export type BreditorBrowserEditorFaultReason =
@@ -404,11 +438,12 @@ interface AbortSignalIntrinsics {
 }
 
 interface NormalizedOptions {
+  readonly flatLists: boolean;
   readonly host: HTMLElement;
   readonly label: string;
   readonly wasm: WasmEngineBootstrapModuleView;
-  readonly initialSource: WasmEngineBootstrapSource;
-  readonly semanticProfile: BreditorBrowserSemanticProfileOptions | undefined;
+  readonly initialSource: WasmEngineBootstrapSource | WasmFlatListEngineBootstrapSource;
+  readonly semanticProfile: OwnerProfile | undefined;
   readonly rendering: InlineFormatRenderManifest;
   readonly keyboardShortcuts: KeyboardShortcutManifest | undefined;
   readonly keyboard: KeyboardTranslationPolicy;
@@ -435,18 +470,19 @@ interface SubscriberSlot {
 }
 
 interface RuntimeResources {
+  readonly flatLists: boolean;
   readonly host: HTMLElement;
   readonly hostAttributes: readonly HostAttributeSnapshot[];
   readonly installedHostAttributes: readonly HostAttributeSnapshot[];
   readonly installedHostChildren: readonly HTMLElement[];
   readonly engine: WasmBootstrappedEngineView;
-  readonly adapter: BreditorWasmCommandAdapter;
+  readonly adapter: OwnerAdapter;
   readonly profileDescriptor: BrowserCompiledProfileDescriptor;
   readonly contentReadPorts: Readonly<WasmContentReadPorts>;
-  readonly selectionBridge: BreditorDomSelectionBridge;
+  readonly selectionBridge: OwnerBridge;
   readonly actionStore: BreditorActionStateStore;
-  readonly queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
-  readonly queueLeasePort: CommandQueueLeasePort<WasmCommandSequenceOutcome>;
+  readonly queue: OwnerQueue;
+  readonly queueLeasePort: OwnerQueuePort;
   readonly storage: IndexedDbSessionCheckpointStore | undefined;
   readonly autosave:
     | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
@@ -457,7 +493,7 @@ type ImmediateQueueDelivery =
   | Readonly<{
       status: "completed";
       submission: Extract<
-        CommandQueueLeasedSubmission<WasmCommandSequenceOutcome>,
+        CommandQueueLeasedSubmission<OwnerOutcome>,
         Readonly<{ status: "completed" }>
       >;
     }>
@@ -532,6 +568,7 @@ const IGNORE_SETTLEMENT = (): undefined => undefined;
 const ACTION_STORE_DISPOSE = BreditorActionStateStore.prototype.dispose;
 const ROUTER_DISPOSE = BreditorBrowserEventRouter.prototype.dispose;
 const QUEUE_DISPOSE = BreditorCommandQueue.prototype.dispose;
+const LIST_SELECTION_BRIDGE_DISPOSE = BreditorFlatListDomSelectionBridge.prototype.dispose;
 const SELECTION_BRIDGE_DISPOSE = BreditorDomSelectionBridge.prototype.dispose;
 const STORAGE_CLOSE = IndexedDbSessionCheckpointStore.prototype.close;
 const AUTOSAVE_DISPOSE = BreditorSessionCheckpointAutosave.prototype.dispose;
@@ -549,21 +586,22 @@ const ADAPTER_DISPOSE = BreditorWasmCommandAdapter.prototype.dispose;
  * renderer, or delivery tokens from a successful runtime.
  */
 export class BreditorBrowserEditor {
+  readonly #flatLists: boolean;
   readonly #ownership = Object.freeze({});
   readonly #host: HTMLElement;
   readonly #hostAttributes: readonly HostAttributeSnapshot[];
   readonly #installedHostAttributes: readonly HostAttributeSnapshot[];
   readonly #installedHostChildren: readonly HTMLElement[];
   readonly #engine: WasmBootstrappedEngineView;
-  readonly #adapter: BreditorWasmCommandAdapter;
+  readonly #adapter: OwnerAdapter;
   readonly #profileDescriptor: BrowserCompiledProfileDescriptor;
   readonly #readDocumentJson: BreditorWasmCommandAdapter["documentJsonReadPort"]["read"];
   readonly #readPlainText: BreditorWasmCommandAdapter["plainTextReadPort"]["read"];
   readonly #readSessionCheckpoint: WasmContentReadPorts["sessionCheckpointJson"]["read"];
-  readonly #selectionBridge: BreditorDomSelectionBridge;
+  readonly #selectionBridge: OwnerBridge;
   readonly #actionStore: BreditorActionStateStore;
-  readonly #queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
-  readonly #queueLeasePort: CommandQueueLeasePort<WasmCommandSequenceOutcome>;
+  readonly #queue: OwnerQueue;
+  readonly #queueLeasePort: OwnerQueuePort;
   readonly #storage: IndexedDbSessionCheckpointStore | undefined;
   readonly #autosave:
     | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
@@ -571,7 +609,7 @@ export class BreditorBrowserEditor {
   readonly #subscribers: SubscriberSlot[] = [];
 
   #toolbar: BreditorToolbar | undefined;
-  #router: BreditorBrowserEventRouter | undefined;
+  #router: BreditorBrowserEventRouter | BreditorFlatListBrowserEventRouter | undefined;
   #releaseToolbarStatus: (() => void) | undefined;
   #releaseRouterStatus: (() => void) | undefined;
   #releaseActionState: (() => void) | undefined;
@@ -594,6 +632,7 @@ export class BreditorBrowserEditor {
         "BreditorBrowserEditor must be opened through its factory",
       );
     }
+    this.#flatLists = resources.flatLists;
     this.#host = resources.host;
     this.#hostAttributes = resources.hostAttributes;
     this.#installedHostAttributes = resources.installedHostAttributes;
@@ -614,13 +653,21 @@ export class BreditorBrowserEditor {
   }
 
   /** All-or-nothing startup. No event listener survives a failed result. */
-  static async open(
-    options: BreditorBrowserEditorOptions,
-  ): Promise<BreditorBrowserEditorOpenResult> {
+  static open(options: BreditorBrowserEditorOptions): Promise<BreditorBrowserEditorOpenResult> {
+    return BreditorBrowserEditor.#open(options, false);
+  }
+
+  /** Explicit experimental list owner. The ordinary open() contract remains closed. @internal */
+  static openFlatLists(options: BreditorFlatListBrowserEditorOptions): Promise<BreditorBrowserEditorOpenResult> {
+    return BreditorBrowserEditor.#open(options, true);
+  }
+
+  static async #open(options: BreditorBrowserEditorOptions | BreditorFlatListBrowserEditorOptions,
+    flatLists: boolean): Promise<BreditorBrowserEditorOpenResult> {
     if (optionNamesOwnedHost(options)) {
       return openFailure("browser_editor.host_in_use");
     }
-    const normalized = normalizeOptions(options);
+    const normalized = normalizeOptions(options, flatLists);
     if (normalized === null)
       return openFailure("browser_editor.invalid_options");
     if (EDITOR_HOSTS.has(normalized.host)) {
@@ -639,13 +686,13 @@ export class BreditorBrowserEditor {
       ReturnType<WasmBootstrappedEngineView["observation"]> | undefined;
     let renderer: BreditorDomRenderer | undefined;
     let presentation: BrowserCompiledPresentation | undefined;
-    let rendered: RenderedProjection | undefined;
-    let selectionBridge: BreditorDomSelectionBridge | undefined;
-    let adapter: BreditorWasmCommandAdapter | undefined;
+    let rendered: RenderedProjection<OwnerProjection> | undefined;
+    let selectionBridge: OwnerBridge | undefined;
+    let adapter: OwnerAdapter | undefined;
     let actionStore: BreditorActionStateStore | undefined;
-    let queue: BreditorCommandQueue<WasmCommandSequenceOutcome> | undefined;
+    let queue: OwnerQueue | undefined;
     let queueLeasePort:
-      CommandQueueLeasePort<WasmCommandSequenceOutcome> | undefined;
+      OwnerQueuePort | undefined;
     let autosave:
       | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
       | undefined;
@@ -663,10 +710,9 @@ export class BreditorBrowserEditor {
       let loaded: IndexedDbSessionCheckpointLoadResult | undefined;
       if (normalized.persistence !== undefined) {
         if (normalized.semanticProfile !== undefined) {
-          const preflight = preflightWasmSemanticProfile(
-            normalized.wasm,
-            normalized.semanticProfile,
-          );
+          const preflight = flatLists
+            ? preflightFlatListWasmSemanticProfile(normalized.wasm, normalized.semanticProfile as WasmFlatListProfileBootstrapSource)
+            : preflightWasmSemanticProfile(normalized.wasm, normalized.semanticProfile as BreditorBrowserSemanticProfileOptions);
           if (!preflight.ok) {
             return openFailure(
               "browser_editor.engine_bootstrap_failed",
@@ -721,9 +767,7 @@ export class BreditorBrowserEditor {
         return openFailure("browser_editor.setup_failed");
       }
 
-      const bootstrap = bootstrapWasmEngine(
-        normalized.wasm,
-        loaded?.ok === true && loaded.status === "loaded"
+      const source = loaded?.ok === true && loaded.status === "loaded"
           ? Object.freeze({
               kind: "sessionCheckpoint" as const,
               checkpointJson: loaded.checkpointJson,
@@ -731,8 +775,10 @@ export class BreditorBrowserEditor {
                 ? {}
                 : { semanticProfile: normalized.semanticProfile }),
             })
-          : normalized.initialSource,
-      );
+          : normalized.initialSource;
+      const bootstrap = flatLists
+        ? bootstrapFlatListWasmEngine(normalized.wasm, source as WasmFlatListEngineBootstrapSource)
+        : bootstrapWasmEngine(normalized.wasm, source as WasmEngineBootstrapSource);
       if (!bootstrap.ok) {
         return openFailure(
           "browser_editor.engine_bootstrap_failed",
@@ -825,10 +871,9 @@ export class BreditorBrowserEditor {
       }
 
       renderer = new BreditorDomRenderer(presentation);
-      const initialRender = renderer.render(
-        normalized.host,
-        bootstrap.projection,
-      );
+      const initialRender = flatLists
+        ? renderer.renderFlatList(normalized.host, bootstrap.projection as FlatListDocumentProjection)
+        : renderer.render(normalized.host, bootstrap.projection as BaseDocumentProjection);
       if (!initialRender.ok) {
         return openFailure(
           "browser_editor.initial_render_failed",
@@ -841,15 +886,17 @@ export class BreditorBrowserEditor {
       if (installedHostChildren === undefined) {
         return openFailure("browser_editor.setup_failed");
       }
-      selectionBridge = new BreditorDomSelectionBridge();
-      adapter = new BreditorWasmCommandAdapter(engine, observation, {
-        durableMode: bootstrap.durableMode,
-        profileGeneration,
-        profileDescriptor: bootstrap.profileDescriptor,
-        renderer,
-        rendered,
-        selectionBridge,
-      });
+      const adapterOptions = {profileGeneration, profileDescriptor: bootstrap.profileDescriptor, renderer};
+      if (flatLists) {
+        selectionBridge = new BreditorFlatListDomSelectionBridge();
+        adapter = new BreditorFlatListWasmCommandAdapter(engine, observation, {
+          ...adapterOptions, durableMode: "v6", rendered: rendered as RenderedProjection<FlatListDocumentProjection>, selectionBridge});
+      } else {
+        selectionBridge = new BreditorDomSelectionBridge();
+        adapter = new BreditorWasmCommandAdapter(engine, observation, {
+          ...adapterOptions, durableMode: bootstrap.durableMode as "v1" | "v2" | "v3" | "v5",
+          rendered: rendered as RenderedProjection, selectionBridge});
+      }
       observation = undefined;
       profileGeneration = undefined;
       rendered = undefined;
@@ -906,14 +953,16 @@ export class BreditorBrowserEditor {
         return openFailure("browser_editor.setup_failed");
       }
 
-      const commandExecutor = adapter.commandExecutor;
-      queue = new BreditorCommandQueue(commandExecutor, {
-        // A completed delivery must make action state revision-coherent before
-        // submit() returns. The core-commit microtask below remains the fallback
-        // for a commit which publishes before a later adapter/render failure.
-        observer: actionStore.queueObserver,
-      });
-      queueLeasePort = openCommandQueueLeasePort(queue, commandExecutor);
+      // Publish coherent action states before submit returns in either mode.
+      if (flatLists) {
+        const executor = (adapter as BreditorFlatListWasmCommandAdapter).commandExecutor;
+        queue = new BreditorFlatListCommandQueue(executor, {observer: actionStore.queueObserver});
+        queueLeasePort = openFlatListCommandQueueLeasePort(queue, executor) as OwnerQueuePort | undefined;
+      } else {
+        const executor = (adapter as BreditorWasmCommandAdapter).commandExecutor;
+        queue = new BreditorCommandQueue(executor, {observer: actionStore.queueObserver});
+        queueLeasePort = openCommandQueueLeasePort(queue, executor) as OwnerQueuePort | undefined;
+      }
       if (queueLeasePort === undefined) {
         return openFailure("browser_editor.setup_failed");
       }
@@ -927,6 +976,7 @@ export class BreditorBrowserEditor {
       }
 
       editor = new BreditorBrowserEditor(BROWSER_EDITOR_CONSTRUCTION, {
+        flatLists,
         host: normalized.host,
         hostAttributes,
         installedHostAttributes,
@@ -1020,12 +1070,13 @@ export class BreditorBrowserEditor {
             renderer !== undefined
           ) {
             try {
-              renderer.release(rendered);
+              if (flatLists) renderer.releaseFlatList(rendered as RenderedProjection<FlatListDocumentProjection>);
+              else renderer.release(rendered as RenderedProjection);
             } catch {
               // Startup failure remains authoritative.
             }
           }
-          bestEffortIntrinsic(selectionBridge, SELECTION_BRIDGE_DISPOSE);
+          bestEffortIntrinsic(selectionBridge, flatLists ? LIST_SELECTION_BRIDGE_DISPOSE : SELECTION_BRIDGE_DISPOSE);
           if (observation !== undefined) bestEffortFree(observation);
           if (profileGeneration !== undefined)
             bestEffortFree(profileGeneration);
@@ -1090,8 +1141,10 @@ export class BreditorBrowserEditor {
     }
 
     const delivery = this.#submitImmediate(() =>
-      noInputIntentRequest(
-        this.#adapter.deliveryToken(),
+      this.#flatLists ? flatListCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken,
+        preserveSelectionSync(), {kind: "api", detail: intentId},
+        {kind: "intent", intentId, input: {kind: "none"}}, "closeBefore") : noInputIntentRequest(
+        this.#adapter.deliveryToken() as EditorDeliveryToken,
         preserveSelectionSync(),
         Object.freeze({ kind: "api" as const, detail: intentId }),
         intentId,
@@ -1181,8 +1234,10 @@ export class BreditorBrowserEditor {
     }
 
     const delivery = this.#submitImmediate(() =>
-      jsonIntentRequest(
-        this.#adapter.deliveryToken(),
+      this.#flatLists ? flatListCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken,
+        preserveSelectionSync(), {kind: "api", detail: intentId},
+        {kind: "intent", intentId, input: {kind: "json", value: inputJson}}, "closeBefore") : jsonIntentRequest(
+        this.#adapter.deliveryToken() as EditorDeliveryToken,
         preserveSelectionSync(),
         Object.freeze({ kind: "api" as const, detail: intentId }),
         intentId,
@@ -1255,10 +1310,10 @@ export class BreditorBrowserEditor {
    * Copies authoritative data without exposing live engine owners or Wasm handles.
    *
    * `documentJson` is the lossless canonical Document V1 or profile-bound V2
-   * record selected at bootstrap. `plainText` joins semantic paragraphs with
+   * record selected at bootstrap. `plainText` joins semantic text blocks with
    * LF and strips formatting; it never reads mutable DOM text. Busy
    * composition/delivery/read leases fail benignly.
-   * `sessionCheckpointJson` exports the explicitly selected V1/V2/V3/V5 session
+   * `sessionCheckpointJson` exports the explicitly selected V1/V2/V3/V5/V6 session
    * selected at bootstrap, including selection, pending formats, Undo/Redo,
    * and deleted historical text. Treat backups as sensitive. It does not save,
    * change CAS tokens, resolve a pending write, or resume paused persistence.
@@ -1483,7 +1538,7 @@ export class BreditorBrowserEditor {
     // than freeing it beneath an owner which could still hold observations.
     const adapterDisposed = adapterIsDisposed(this.#adapter);
     if (adapterDisposed) {
-      bestEffortIntrinsic(this.#selectionBridge, SELECTION_BRIDGE_DISPOSE);
+      bestEffortIntrinsic(this.#selectionBridge, this.#flatLists ? LIST_SELECTION_BRIDGE_DISPOSE : SELECTION_BRIDGE_DISPOSE);
       bestEffortFree(this.#engine);
     }
     bestEffortIntrinsic(this.#storage, STORAGE_CLOSE);
@@ -1561,11 +1616,12 @@ export class BreditorBrowserEditor {
     keyboardShortcuts: BrowserCompiledKeyboardShortcuts,
     scheduleTask: ((callback: () => void) => void) | undefined,
   ): void {
-    const router = new BreditorBrowserEventRouter(this.#queue, this.#adapter, {
-      keyboard,
-      keyboardShortcuts,
-      ...(scheduleTask === undefined ? {} : { scheduleTask }),
-    });
+    const options = {keyboard, keyboardShortcuts, ...(scheduleTask === undefined ? {} : {scheduleTask})};
+    const router = this.#flatLists
+      ? new BreditorFlatListBrowserEventRouter(this.#queue as BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
+        this.#adapter as BreditorFlatListWasmCommandAdapter, options)
+      : new BreditorBrowserEventRouter(this.#queue as BreditorCommandQueue<WasmCommandSequenceOutcome>,
+        this.#adapter as BreditorWasmCommandAdapter, options);
     this.#router = router;
     this.#releaseRouterStatus = router.subscribe((status) =>
       this.#observeRouterStatus(status),
@@ -1575,7 +1631,7 @@ export class BreditorBrowserEditor {
 
   #submitImmediate(
     buildRequest: () => Parameters<
-      CommandQueueLeasePort<WasmCommandSequenceOutcome>["submitLeased"]
+      OwnerQueuePort["submitLeased"]
     >[1],
   ): ImmediateQueueDelivery {
     if (this.#status.phase !== "live") {
@@ -1606,7 +1662,7 @@ export class BreditorBrowserEditor {
     }
 
     let lease: ReturnType<
-      CommandQueueLeasePort<WasmCommandSequenceOutcome>["acquireLease"]
+      OwnerQueuePort["acquireLease"]
     >;
     try {
       lease = this.#queueLeasePort.acquireLease();
@@ -1624,7 +1680,7 @@ export class BreditorBrowserEditor {
     }
 
     let submission:
-      CommandQueueLeasedSubmission<WasmCommandSequenceOutcome> | undefined;
+      CommandQueueLeasedSubmission<OwnerOutcome> | undefined;
     let released = false;
     try {
       const request = buildRequest();
@@ -1717,7 +1773,9 @@ export class BreditorBrowserEditor {
       return toolbarCommandDispatchResult("rejected");
     }
     const delivery = this.#submitImmediate(() =>
-      toolbarCommandRequest(this.#adapter.deliveryToken(), invocation),
+      this.#flatLists
+        ? flatListToolbarCommandRequest(this.#adapter.deliveryToken() as FlatListEditorDeliveryToken, invocation)
+        : toolbarCommandRequest(this.#adapter.deliveryToken() as EditorDeliveryToken, invocation),
     );
     if (delivery.status === "busy" || delivery.status === "unavailable") {
       return toolbarCommandDispatchResult("rejected");
@@ -2000,7 +2058,8 @@ function adapterStateIsContentBusy(
 /** Copies the profile selector from one immutable own-data snapshot. */
 function snapshotSemanticProfileOptions(
   value: unknown,
-): BreditorBrowserSemanticProfileOptions | null {
+  flatLists: boolean,
+): OwnerProfile | null {
   try {
     if (!objectLike(value)) return null;
     const keys = Reflect.ownKeys(value);
@@ -2021,6 +2080,7 @@ function snapshotSemanticProfileOptions(
       return null;
     }
     if (keys.length === 1) {
+      if (flatLists) return null;
       return Object.freeze({ bootstrapJson: bootstrap.value });
     }
     const formatVersion = Reflect.getOwnPropertyDescriptor(
@@ -2030,23 +2090,23 @@ function snapshotSemanticProfileOptions(
     if (
       formatVersion === undefined ||
       !("value" in formatVersion) ||
-      (formatVersion.value !== 2 && formatVersion.value !== 3)
+      (flatLists ? formatVersion.value !== 4 : formatVersion.value !== 2 && formatVersion.value !== 3)
     ) {
       return null;
     }
     return Object.freeze({
       bootstrapJson: bootstrap.value,
-      formatVersion: formatVersion.value as 2 | 3,
+      formatVersion: formatVersion.value as 2 | 3 | 4,
     });
   } catch {
     return null;
   }
 }
 
-function normalizeOptions(value: unknown): NormalizedOptions | null {
+function normalizeOptions(value: unknown, flatLists: boolean): NormalizedOptions | null {
   try {
     if (!objectLike(value)) return null;
-    const options = value as unknown as BreditorBrowserEditorOptions;
+    const options = value as unknown as BreditorBrowserEditorOptions | BreditorFlatListBrowserEditorOptions;
     const host = options.host;
     const label = options.label;
     const wasm = options.wasm;
@@ -2056,8 +2116,8 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     const normalizedSemanticProfile =
       semanticProfile === undefined
         ? undefined
-        : snapshotSemanticProfileOptions(semanticProfile);
-    if (normalizedSemanticProfile === null) return null;
+        : snapshotSemanticProfileOptions(semanticProfile, flatLists);
+    if (normalizedSemanticProfile === null || (flatLists && normalizedSemanticProfile === undefined)) return null;
     const rendering = options.rendering;
     const keyboardShortcuts = options.keyboardShortcuts;
     const keyboard = options.keyboard;
@@ -2094,13 +2154,13 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       normalizedSemanticProfile === undefined
         ? {}
         : { semanticProfile: normalizedSemanticProfile };
-    let initialSource: WasmEngineBootstrapSource;
+    let initialSource: WasmEngineBootstrapSource | WasmFlatListEngineBootstrapSource;
     if (checkpointJson !== undefined) {
       initialSource = Object.freeze({
         kind: "sessionCheckpoint",
         checkpointJson,
         ...profileSource,
-      });
+      }) as WasmEngineBootstrapSource | WasmFlatListEngineBootstrapSource;
     } else {
       if (initial === undefined) return null;
       initialSource = Object.freeze({
@@ -2109,7 +2169,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
         documentJson: initial.documentJson,
         historyCapacity: initial.historyCapacity,
         ...profileSource,
-      });
+      }) as WasmEngineBootstrapSource | WasmFlatListEngineBootstrapSource;
     }
     let normalizedToolbar: NormalizedOptions["toolbar"];
     if (toolbar !== undefined) {
@@ -2122,7 +2182,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       }
       normalizedToolbar = Object.freeze({
         host: toolbar.host,
-        manifest: toolbar.manifest ?? DEFAULT_TOOLBAR_MANIFEST,
+        manifest: toolbar.manifest ?? (flatLists ? FLAT_LIST_TOOLBAR_MANIFEST : DEFAULT_TOOLBAR_MANIFEST),
       });
     }
     let normalizedPersistence:
@@ -2146,6 +2206,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     const normalizedSignal = normalizeAbortSignal(signal);
     if (signal !== undefined && normalizedSignal === null) return null;
     return Object.freeze({
+      flatLists,
       host,
       label,
       // The public high-level shape deliberately returns `unknown`; the
@@ -2196,7 +2257,7 @@ function normalizePersistenceScope(
 function persistenceBinding(
   scope: BreditorBrowserEditorPersistenceScope | undefined,
   profileDescriptor: BrowserCompiledProfileDescriptor | undefined,
-  semanticProfile: BreditorBrowserSemanticProfileOptions | undefined,
+  semanticProfile: OwnerProfile | undefined,
 ): IndexedDbSessionCheckpointBinding | undefined {
   if (scope === undefined && profileDescriptor === undefined) return undefined;
   const schemaFingerprint =
@@ -2208,7 +2269,9 @@ function persistenceBinding(
     checkpointFormatVersion:
       profileDescriptor === undefined
         ? 1
-        : semanticProfileDurableMode(semanticProfile) === "v5"
+        : semanticProfileDurableMode(semanticProfile) === "v6"
+          ? 6
+          : semanticProfileDurableMode(semanticProfile) === "v5"
           ? 5
           : semanticProfileDurableMode(semanticProfile) === "v3"
           ? 3
@@ -2250,10 +2313,10 @@ function profileDurableBindingsEqual(
 }
 
 function semanticProfileDurableMode(
-  profile: BreditorBrowserSemanticProfileOptions | undefined,
-): "v2" | "v3" | "v5" {
+  profile: OwnerProfile | undefined,
+): "v2" | "v3" | "v5" | "v6" {
   return profile !== undefined && "formatVersion" in profile
-    ? profile.formatVersion === 3 ? "v5" : "v3" : "v2";
+    ? profile.formatVersion === 4 ? "v6" : profile.formatVersion === 3 ? "v5" : "v3" : "v2";
 }
 
 function formatPropertyTypesEqual(
@@ -2450,19 +2513,19 @@ function usableEmptyToolbarHost(value: unknown): value is HTMLElement {
 }
 
 function snapshotRenderedHostChildren(
-  rendered: RenderedProjection,
+  rendered: RenderedProjection<OwnerProjection>,
 ): readonly HTMLElement[] | null {
   try {
     const elements: HTMLElement[] = [];
-    for (
-      let index = 0;
-      index < rendered.projection.paragraphs.length;
-      index += 1
-    ) {
+    const projection = rendered.projection;
+    const tags = isOwnedFlatListProjection(projection)
+      ? projection.blocks.map(root => root.kind === "bulletList" ? "UL" : root.kind === "orderedList" ? "OL"
+        : root.block.headingLevel === undefined ? "P" : `H${root.block.headingLevel}`)
+      : projection.paragraphs.map(block => block.headingLevel === undefined ? "P" : `H${block.headingLevel}`);
+    for (let index = 0; index < tags.length; index += 1) {
       const child = rendered.nodeForAstPath(Object.freeze([index]));
       const facts = nativeHtmlHostFacts(child);
-      const rank = rendered.projection.paragraphs[index]?.headingLevel;
-      const expectedTag = rank === undefined ? "P" : `H${rank}`;
+      const expectedTag = tags[index];
       if (facts === undefined || facts.tagName !== expectedTag) return null;
       elements.push(facts.element);
     }
@@ -2489,7 +2552,7 @@ function startupRenderIsCanonical(
   options: NormalizedOptions,
   owner: object,
   renderer: BreditorDomRenderer,
-  adapter: BreditorWasmCommandAdapter,
+  adapter: OwnerAdapter,
   requireEmptyToolbar: boolean,
   toolbar?: BreditorToolbar,
 ): boolean {
@@ -2502,7 +2565,7 @@ function startupRenderIsCanonical(
       isSafeFlowContainerHost(options.host) &&
       nativeTreeRoot(facts.element) === facts.ownerDocument &&
       installedHostAttributesMatch(options) &&
-      renderer.owns(adapter.rendered) &&
+      (options.flatLists ? renderer.ownsFlatList(adapter.rendered) : renderer.owns(adapter.rendered)) &&
       (requireEmptyToolbar
         ? options.toolbar === undefined ||
           usableEmptyToolbarHost(options.toolbar.host)
@@ -2518,7 +2581,7 @@ function startupRenderIsCanonical(
 
 function liveCommandHostIsCanonical(
   host: HTMLElement,
-  rendered: RenderedProjection,
+  rendered: RenderedProjection<OwnerProjection>,
 ): boolean {
   try {
     const facts = nativeHtmlHostFacts(host);
@@ -2744,7 +2807,7 @@ function containAsyncRejection(value: unknown): void {
   }
 }
 
-function adapterIsBusy(adapter: BreditorWasmCommandAdapter): boolean {
+function adapterIsBusy(adapter: OwnerAdapter): boolean {
   try {
     return (
       adapter.state === "executing" ||
@@ -2758,7 +2821,7 @@ function adapterIsBusy(adapter: BreditorWasmCommandAdapter): boolean {
   }
 }
 
-function adapterIsDisposed(adapter: BreditorWasmCommandAdapter): boolean {
+function adapterIsDisposed(adapter: OwnerAdapter): boolean {
   try {
     return adapter.state === "disposed";
   } catch {
