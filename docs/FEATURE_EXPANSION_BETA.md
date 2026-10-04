@@ -991,3 +991,21 @@ bootstrap V4. Session V6 is explicitly rejected at the browser boundary until th
 work is complete. Toolbar/native editing, visible reload/recovery and release
 qualification remain outstanding; no end-to-end list editor claim is made.
 See [verification](qualification/2026-10-04-flat-list-browser-document.json).
+
+## Flat-list browser session checkpoint
+
+Explicit Session V6 now has bounded browser preflight for all three list recipes,
+history topology, actual block paths, scalar boundaries, list result layouts and
+retained serialized property accounting. Old modes and old text-block tags keep
+their previous admission boundaries. Rust remains the authoritative replay gate;
+browser shape acceptance is never treated as successful restoration.
+
+All 1,668 browser tests and strict TypeScript pass. Five runs each in Chromium,
+Firefox and WebKit cover all generated list recipe types, fresh-owner restore of
+an unapplied redo branch, exact document and selection recovery, and rejection by
+Rust of a shape-valid but inconsistent source guard. Shipping artifacts are
+unchanged; nothing is pushed or published.
+
+Next: explicit browser bootstrap V4 and list owner/controller integration, then
+toolbar/keyboard, visible reload/backup and native-input/release qualification.
+See [verification](qualification/2026-10-04-flat-list-browser-session.json).

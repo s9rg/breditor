@@ -63,16 +63,143 @@ const V3_CONTRACT: WasmDurableJsonContract = Object.freeze({
 });
 const V5_CONTRACT: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v5" };
 
-describe("explicit heading Session V5 preflight", () => {
-  it("keeps V6 sessions closed while only V6 document preflight is connected", () => {
-    const value = checkpointV5Value();
-    value["formatVersion"] = 6;
-    const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v6" };
-    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
-    // Never fall through as an unvalidated hypothetical State V6 either.
+describe("explicit flat-list Session V6 preflight", () => {
+  const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v6" };
+  const accepts = (value: unknown) => sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract);
+  it("admits all three list recipes with State V3 and Document V2, not an inferred mode", () => {
+    const value = checkpointV6Value();
+    expect(accepts(value)).not.toBeNull();
+    for (const legacy of [V2_CONTRACT, V3_CONTRACT, V5_CONTRACT]) {
+      expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), legacy)).toBeNull();
+    }
+    const view = new FakeStringResult("value", JSON.stringify(value));
+    expect(consumeWasmSessionCheckpoint(EXPECTED, view, [], contract).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
     value["historyBase"]["formatVersion"] = 6;
+    expect(accepts(value)).toBeNull();
+  });
+
+  it("retains older operations without admitting list guards to old text-block tags", () => {
+    const old = checkpointV5Value(); old["formatVersion"] = 6;
+    expect(accepts(old)).not.toBeNull();
+    old["entries"][0]["forwardOperations"][0]["expected"] = checkpointV6Value()["entries"][0]["forwardOperations"][0]["expected"];
+    expect(accepts(old)).toBeNull();
+  });
+
+  it.each([
+    [0, "root span overflow", (op: Record<string, any>) => { op["start"] = 10_000; }],
+    [0, "reframe content changed", (op: Record<string, any>) => { op["replacement"]["children"][0]["children"][0]["children"][0]["properties"]["breditor/level"] = 3; }],
+    [0, "empty guard", (op: Record<string, any>) => { op["expected"]["children"] = []; }],
+    [0, "extra field", (op: Record<string, any>) => { op["extra"] = 1; }],
+    [1, "invalid path depth", (op: Record<string, any>) => { op["block"] = [0, 0]; }],
+    [1, "nonzero block slot", (op: Record<string, any>) => { op["block"] = [0, 0, 1]; }],
+    [1, "wrapper rather than block", (op: Record<string, any>) => { op["block"] = [0]; }],
+    [1, "missing guarded item", (op: Record<string, any>) => { op["block"] = [0, 1, 0]; }],
+    [1, "path index limit", (op: Record<string, any>) => { op["block"] = [10_000, 0, 0]; }],
+    [1, "surrogate split", (op: Record<string, any>) => { op["start"] = 2; }],
+    [1, "offset beyond text", (op: Record<string, any>) => { op["end"] = 4; }],
+    [1, "backward offsets", (op: Record<string, any>) => { op["start"] = 3; op["end"] = 1; }],
+    [1, "unsafe offset", (op: Record<string, any>) => { op["start"] = Number.MAX_SAFE_INTEGER + 1; }],
+    [1, "multiple root guard", (op: Record<string, any>) => { op["expected"]["children"].push(structuredClone(op["expected"]["children"][0])); }],
+    [1, "unknown format", (op: Record<string, any>) => { op["replacement"]["runs"][0]["formats"] = [{ type: "example/unknown", properties: {} }]; }],
+    [2, "guard does not contain start", (op: Record<string, any>) => { op["guardStart"] = 1; }],
+    [2, "missing end block", (op: Record<string, any>) => { op["end"]["block"] = [2]; }],
+    [2, "backward block order", (op: Record<string, any>) => { [op["start"], op["end"]] = [op["end"], op["start"]]; }],
+    [2, "inserting wrappers", (op: Record<string, any>) => { op["inserted"] = structuredClone(op["expected"]); }],
+    [2, "empty layout", (op: Record<string, any>) => { op["layout"] = []; }],
+    [2, "wrong layout count", (op: Record<string, any>) => { op["layout"] = [{ kind: "bullet", items: 2 }]; }],
+    [2, "zero items", (op: Record<string, any>) => { op["layout"] = [{ kind: "bullet", items: 0 }]; }],
+    [2, "too many items", (op: Record<string, any>) => { op["layout"] = [{ kind: "bullet", items: 10_001 }]; }],
+    [2, "numbering overflow", (op: Record<string, any>) => { op["layout"] = [{ kind: "ordered", items: 2, start: 2_147_483_647 }]; }],
+    [2, "missing ordered start", (op: Record<string, any>) => { op["layout"] = [{ kind: "ordered", items: 1 }]; }],
+    [2, "bullet has start", (op: Record<string, any>) => { op["layout"] = [{ kind: "bullet", items: 1, start: 1 }]; }],
+    [2, "block has extra", (op: Record<string, any>) => { op["layout"] = [{ kind: "block", items: 1 }]; }],
+    [2, "unknown layout kind", (op: Record<string, any>) => { op["layout"] = [{ kind: "nested", items: 1 }]; }],
+  ] as const)("rejects operation %i: %s", (index, _label, mutate) => {
+    const value = checkpointV6Value(); mutate(value["entries"][index]["forwardOperations"][0]);
+    expect(accepts(value)).toBeNull();
+  });
+
+  it("accepts bare/ordered layouts and shifted guards while retaining canonical object-key order", () => {
+    for (const layout of [[{ kind: "block" }], [{ kind: "ordered", start: 2_147_483_647, items: 1 }]]) {
+      const value = checkpointV6Value(); value["entries"][2]["forwardOperations"][0]["layout"] = layout;
+      expect(accepts(value)).not.toBeNull();
+    }
+    const value = checkpointV6Value();
+    const op = value["entries"][2]["forwardOperations"][0];
+    op["guardStart"] = 4; op["start"]["block"][0] = 4; op["end"]["block"][0] = 5;
+    // Static preflight intentionally does not claim these guards exist live.
+    expect(accepts(value)).not.toBeNull();
+    const reframe = value["entries"][0]["forwardOperations"][0];
+    const block = reframe["replacement"]["children"][0]["children"][0]["children"][0];
+    block["children"][0] = { formats: block["children"][0]["formats"], text: "A🙂", kind: "text" };
+    expect(accepts(value)).toBeNull();
+  });
+
+  it("counts ordered starts and nested heading/format properties in retained lower bounds", () => {
+    const retained = retainedPropertyBudgetCheckpoint(99);
+    const value = retained.value;
+    value["formatVersion"] = 6;
+    const contract: WasmDurableJsonContract = { ...retained.contract, mode: "v6" } as WasmDurableJsonContract;
+    const root = value["historyBase"]["document"]["root"];
+    const block = root["children"][0];
+    root["children"] = [listElement("bullet-list", [listElement("list-item", [block])])];
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).not.toBeNull();
+    root["children"][0]["type"] = "breditor/ordered-list";
+    root["children"][0]["properties"] = { "breditor/start": 8 };
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
+    root["children"][0]["type"] = "breditor/bullet-list"; root["children"][0]["properties"] = {};
+    block["type"] = "breditor/heading"; block["properties"] = { "breditor/level": 2 };
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
+    block["type"] = "breditor/paragraph"; block["properties"] = {};
+    block["children"][0]["formats"] = value["historyBase"]["pendingFormats"];
     expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
   });
+
+  it("rejects invalid redo topology, selections and result pending properties", () => {
+    const value = checkpointV6Value(); value["cursor"] = 1; value["openMergeGroup"] = null;
+    expect(accepts(value)).not.toBeNull();
+    value["openMergeGroup"] = "example/typing";
+    expect(accepts(value)).toBeNull();
+    value["openMergeGroup"] = null;
+    value["entries"][2]["resultSelection"]["focus"]["textPath"] = [-1];
+    expect(accepts(value)).toBeNull();
+    value["entries"][2]["resultSelection"] = null;
+    value["entries"][2]["resultPendingFormats"] = [{ type: "example/link", properties: {} }];
+    expect(accepts(value)).toBeNull();
+  });
+});
+
+function listElement(type: string, children: unknown[], properties: Record<string, unknown> = {}): Record<string, any> {
+  return { kind: "element", type: `breditor/${type}`, entityId: null, properties, children };
+}
+
+/** Static recipe fixture; live bidirectional replay is separately exercised with real Wasm. */
+function checkpointV6Value(): Record<string, any> {
+  const value = checkpointV3Value(); value["formatVersion"] = 6;
+  const block = value["historyBase"]["document"]["root"]["children"][0];
+  block["type"] = "breditor/heading"; block["properties"] = { "breditor/level": 2 };
+  block["children"][0]["text"] = "A🙂";
+  const ordered = listElement("ordered-list", [listElement("list-item", [block])], { "breditor/start": 8 });
+  const bullet = listElement("bullet-list", [listElement("list-item", [structuredClone(block)])]);
+  const tail = listElement("paragraph", [{ kind: "text", text: "B", formats: [] }]);
+  const root = (...children: unknown[]) => listElement("document", children);
+  value["historyBase"]["document"]["root"] = root(ordered, tail);
+  const point = { kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 1, affinity: "before" };
+  const selection = { kind: "range", anchor: point, focus: { ...point } };
+  value["historyBase"]["selection"] = selection;
+  value["entries"] = [
+    { kind: "flatListReframe", start: 0, expected: root(ordered), replacement: root(bullet) },
+    { kind: "flatListTextSplice", block: [0, 0, 0], start: 1, end: 3, expected: root(bullet), replacement: { runs: [{ text: "z", formats: [] }] } },
+    { kind: "flatListTextReplace", guardStart: 0, start: { block: [0, 0, 0], offset: 1 }, end: { block: [1], offset: 1 },
+      expected: root(bullet, tail), inserted: root(listElement("paragraph", [{ kind: "text", text: "XY", formats: [] }])),
+      layout: [{ kind: "bullet", items: 1 }] },
+  ].map(operation => ({ forwardOperations: [operation], resultSelection: selection, resultPendingFormats: null }));
+  value["cursor"] = 3; value["historyCapacity"] = 20; value["openMergeGroup"] = null;
+  return value;
+}
+
+describe("explicit heading Session V5 preflight", () => {
   const accepts = (value: unknown) => sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), V5_CONTRACT);
   it("accepts State V3, Document V2 and each full-guard V5 operation without relabeling", () => {
     const value = checkpointV5Value();

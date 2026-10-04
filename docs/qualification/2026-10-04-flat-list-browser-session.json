@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "00b7c9e",
+  "status": "Browser Session V6 static preflight and real-Wasm restore qualified; bootstrap/editor integration incomplete",
+  "contracts": {
+    "envelope": "Explicit Session V6, State V3, Document V2; exact schema binding, canonical keys and mode selection",
+    "recipes": [
+      "flatListReframe: bounded guarded roots and complete unchanged text-block sequence",
+      "flatListTextSplice: actual bare/list block path, full root guard and scalar-aligned aggregate UTF-16 offsets",
+      "flatListTextReplace: bounded guarded endpoints, bare inserted blocks, explicit flat layout and final ordinals"
+    ],
+    "legacy": "Earlier modes reject V6; direct-root text-block operations never accept list guards",
+    "budgets": "Existing operation/history bounds plus history-base ordered starts, nested ranks/formats and serialized pending-set retained lower bounds",
+    "authority": "Rust proves live guard matches, derived result/inverse correctness, complete retained budgets and bidirectional replay"
+  },
+  "verification": {
+    "newSessionTests": 33,
+    "replacedTemporaryClosedAdmissionTest": 1,
+    "browserTests": 1668,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "firefox",
+        "version": "153.0",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "runs": 5,
+        "status": "passed"
+      }
+    ],
+    "browserScope": "All three generated list recipe types through browser capture/preflight, unapplied redo branch restored under fresh owner, exact document/selection endpoints, retained DOM/update scenarios, shape-valid mismatching source guard rejected by Rust without an engine",
+    "developmentCorrections": [
+      "Initial focused run: 94 passed, 1 failed because a new test expected reordered JSON record keys to pass; existing canonical wire contract requires their original order. Test corrected without relaxing admission."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "Browser bootstrap V4 and list owner/controller",
+    "Toolbar, keyboard, composition and clipboard",
+    "Visible reload/recovery and native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Not native keyboard/clipboard/IME, normal browser controller restore or broad historical WebKit resolution.",
+  "pushed": false,
+  "published": false
+}

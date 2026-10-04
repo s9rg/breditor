@@ -4,6 +4,7 @@ import { consumeWasmCompiledProfileDescriptor } from "../packages/breditor-brows
 import { consumeFlatListSemanticSelection, flatListSemanticRangeSelectionScalars } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
 import { consumeWasmDocumentJson, documentJsonMatchesFlatListProjection } from "../packages/breditor-browser/src/wasm_document_json.ts";
+import { consumeWasmSessionCheckpoint, sessionCheckpointJsonMatchesDurableContract } from "../packages/breditor-browser/src/wasm_session_checkpoint.ts";
 
 const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`projection mismatch: ${JSON.stringify(actual)}`);
@@ -44,6 +45,9 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     if (!captured.ok || !documentJsonMatchesFlatListProjection(captured.document.documentJson, projected.value, contract)) {
       throw new Error("exported list document does not match its browser projection");
     }
+    const checkpoint = consumeWasmSessionCheckpoint(projected.value.snapshot, engine.sessionCheckpointJson(),
+      [engine, owner.profile], contract);
+    if (!checkpoint.ok) throw new Error(`list checkpoint rejected: ${checkpoint.error.code}`);
     return projected.value;
   };
   const transition = (base, command, engine, owner) => {
@@ -103,9 +107,45 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(before.blocks[1].items.length, 2);
     equal(before.matchesProfile(freshOwner.generation, freshOwner.descriptor), false);
     if (verifyDom !== undefined) verifyDom(before, after, owner, transitions);
+    // Exercise every new recipe through browser preflight and then authoritative
+    // Rust restore, including an unapplied redo branch in the saved history.
+    committed(restored.executeStringAction(observation(restored), "breditor/insert-flat-list-text", "!", false));
+    project(restored, freshOwner);
+    committed(restored.executeNoInputAction(observation(restored), "breditor/wrap-bullet-list", false));
+    const final = project(restored, freshOwner);
+    const allRecipes = json(restored.sessionCheckpointJson());
+    const kinds = new Set(JSON.parse(allRecipes).entries.flatMap(entry => entry.forwardOperations.map(op => op.kind)));
+    for (const kind of ["flatListReframe", "flatListTextSplice", "flatListTextReplace"]) {
+      if (!kinds.has(kind)) throw new Error(`missing generated recipe coverage: ${kind}`);
+    }
+    committed(restored.undo(observation(restored), false));
+    const withRedo = json(restored.sessionCheckpointJson());
+    const restoreOwner = compile();
+    const durableContract = {mode: "v6", schema: restoreOwner.descriptor.schema, formats: restoreOwner.descriptor.formats};
+    if (sessionCheckpointJsonMatchesDurableContract(withRedo, durableContract) === null) throw new Error("redo checkpoint rejected");
+    const mismatch = JSON.parse(withRedo);
+    mismatch.historyBase.document.root.children[1].children[0].children[0].children[0].text = "guard mismatch";
+    const mismatchJson = JSON.stringify(mismatch);
+    // Static shape admission is deliberately not a claim of replay success.
+    if (sessionCheckpointJsonMatchesDurableContract(mismatchJson, durableContract) === null) throw new Error("static mismatch fixture rejected too early");
+    const rejected = own(restoreOwner.profile.createEngineFromSessionCheckpointJsonV6(mismatchJson));
+    equal(rejected.status, "error"); equal(rejected.takeEngine(), undefined);
+    const recoveredResult = own(restoreOwner.profile.createEngineFromSessionCheckpointJsonV6(withRedo));
+    equal(recoveredResult.status, "engine"); const recovered = own(recoveredResult.takeEngine());
+    const recoveredBefore = project(recovered, restoreOwner), originalBefore = project(restored, freshOwner);
+    equal(recoveredBefore.blocks, originalBefore.blocks);
+    const endpoints = projected => {
+      const selection = selections.get(projected);
+      return selection === null ? null : {anchor: selection.anchor, focus: selection.focus};
+    };
+    equal(endpoints(recoveredBefore), endpoints(originalBefore));
+    committed(recovered.redo(observation(recovered), false));
+    const recoveredAfter = project(recovered, restoreOwner);
+    equal(recoveredAfter.blocks, final.blocks);
+    equal(endpoints(recoveredAfter), endpoints(final));
     return {status: "passed", scope: verifyDom === undefined
-      ? "real Wasm hierarchical projection/selection/document correlation, list paste/undo and fresh-owner redo; no DOM/native input"
-      : "real Wasm list projection/selection/document correlation and recovery plus semantic DOM, directional selection bridge, affinity echo and drift rejection; no keyboard/IME/clipboard"};
+      ? "real Wasm projection/selection/document correlation, all list Session V6 recipes and fresh-owner redo; no DOM/native input"
+      : "real Wasm list projection/selection/document correlation, all Session V6 recipes and redo recovery plus semantic DOM/selection/update checks; no keyboard/IME/clipboard"};
   } finally {
     for (const handle of handles.reverse()) handle.free();
   }

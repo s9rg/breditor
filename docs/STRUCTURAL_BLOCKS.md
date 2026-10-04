@@ -1319,7 +1319,36 @@ order, heading rank, text and complete typed formats. It does not equate documen
 merely because their flattened text matches. Existing generated string-result
 ownership and cleanup apply to V6 document capture.
 
-This checkpoint deliberately keeps browser Session V6 admission closed: document
-support alone must not bypass history/operation validation. Rust already supports
-Session V6; the browser replay preflight and bootstrap V4 integration are next.
+The document-only checkpoint kept browser Session V6 admission closed until the
+separate operation preflight below was connected. Bootstrap V4 integration is
+still required before this becomes the normal editor restore path.
 See [document qualification](qualification/2026-10-04-flat-list-browser-document.json).
+
+### Flat-list browser session preflight
+
+Explicit Session V6 retains State V3 and Document V2. The browser checks the
+canonical envelope, schema binding, history topology, operation counts, selections
+and pending formats through the established checkpoint consumption path. Earlier
+modes remain closed to list recipes. Older direct-root text-block operation tags
+do not gain permission to use list roots as guards inside Session V6.
+
+`flat_list_operation_preflight.ts` owns the three new recipe checks. Reframe
+requires an unchanged complete text-block sequence. Splice resolves its actual
+`[root]` or `[root, item, 0]` path against the containing-root guard and checks
+aggregate UTF-16 scalar boundaries. Replace checks both guarded endpoints, bare
+inserted blocks, root-span bounds and an explicit layout whose block count and
+ordered numbering fit. Nested layouts and extra fields reject. These are static
+checks, not a second editor engine or replay implementation.
+
+History-base property accounting now descends into list items and includes ordered
+starts and heading ranks alongside inline values. Serialized pending sets share
+the retained-property lower bound. Rust still derives result documents/inverses,
+checks complete retained budgets, and proves both replay directions before exposing
+a restored engine. The real-browser test deliberately changes a history-base text
+guard: static preflight admits its shape, but Rust rejects it without an engine.
+
+Five runs each in Chromium, Firefox and WebKit exercise all three generated list
+recipes, a saved redo branch, fresh-owner restore and exact document/selection
+recovery. Controller scheduling, keyboard/clipboard/IME and the visible demo remain
+outside this checkpoint. See
+[session qualification](qualification/2026-10-04-flat-list-browser-session.json).

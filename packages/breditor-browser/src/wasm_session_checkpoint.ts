@@ -15,6 +15,7 @@ import {
 import { isHeadingProjectionLevel } from "./projection.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
+import { flatListOperationPreflight } from "./flat_list_operation_preflight.js";
 
 /** Maximum UTF-8 bytes admitted by the browser checkpoint boundary. */
 export const MAX_BROWSER_SESSION_CHECKPOINT_JSON_BYTES = 16_777_216;
@@ -344,9 +345,7 @@ function validateCheckpointEnvelope(
     return null;
   }
   const binding = resolveWasmDurableJsonContract(contract);
-  // V6 document support must not accidentally admit unchecked V6 replay recipes.
-  // Keep sessions closed until their explicit operation preflight is connected.
-  if (binding === null || binding.mode === "v6") return null;
+  if (binding === null) return null;
 
   const envelopeKeys = binding.mode === "v1"
     ? [
@@ -387,7 +386,7 @@ function validateCheckpointEnvelope(
   if (
     historyBase === null ||
     historyBase["format"] !== "breditor/editor-state" ||
-    historyBase["formatVersion"] !== (binding.mode === "v5" ? 3 : expectedFormatVersion)
+    historyBase["formatVersion"] !== (binding.mode === "v5" || binding.mode === "v6" ? 3 : expectedFormatVersion)
   ) {
     return null;
   }
@@ -450,7 +449,7 @@ function validateCheckpointEnvelope(
   ) {
     return null;
   }
-  if (binding.mode === "v3" || binding.mode === "v5") {
+  if (binding.mode === "v3" || binding.mode === "v5" || binding.mode === "v6") {
     const retainedProperties: RetainedPropertyLowerBound = {
       propertyValues: 0,
       propertyStringUtf8Bytes: 0,
@@ -561,7 +560,9 @@ function validSessionV3History(
     aggregateOperations += operations.length;
     if (aggregateOperations > MAX_V3_AGGREGATE_OPERATIONS) return false;
     for (const operation of operations) {
-      if (!(contract.mode === "v5"
+      if (!(contract.mode === "v6"
+        ? validOperationV6Payload(operation, contract)
+        : contract.mode === "v5"
         ? validOperationV5Payload(operation, contract)
         : validOperationV3Payload(operation, contract))) return false;
     }
@@ -601,8 +602,24 @@ function observeHistoryBaseDocumentProperties(
 ): boolean {
   const document = jsonRecord(value);
   const root = jsonRecord(document?.["root"]);
-  const paragraphs = root?.["children"];
-  if (!Array.isArray(paragraphs)) return false;
+  const roots = root?.["children"];
+  if (!Array.isArray(roots)) return false;
+  // The document has already passed complete structural validation. Account
+  // for list starts and nested block properties, not just direct-root runs.
+  const paragraphs: unknown[] = [];
+  for (const rawRoot of roots) {
+    const block = jsonRecord(rawRoot);
+    if (block?.["type"] === "breditor/bullet-list" || block?.["type"] === "breditor/ordered-list") {
+      if (contract.mode !== "v6" || !Array.isArray(block["children"])) return false;
+      if (block["type"] === "breditor/ordered-list") retainedProperties.propertyValues += 1;
+      if (retainedProperties.propertyValues > MAX_V3_RETAINED_PROPERTY_VALUES) return false;
+      for (const rawItem of block["children"]) {
+        const children = jsonRecord(rawItem)?.["children"];
+        if (!Array.isArray(children) || children.length !== 1) return false;
+        paragraphs.push(children[0]);
+      }
+    } else paragraphs.push(rawRoot);
+  }
   for (const rawParagraph of paragraphs) {
     const paragraph = jsonRecord(rawParagraph);
     if (paragraph?.["type"] === "breditor/heading") {
@@ -805,9 +822,19 @@ function validOperationV5Payload(
   }
 }
 
+/** V6 adds explicit list tags without widening the older text-block recipes. */
+function validOperationV6Payload(value: unknown, contract: ResolvedWasmDurableJsonContract): boolean {
+  const record = jsonRecord(value);
+  return record !== null && (flatListOperationPreflight(record, contract, fragment => validTextFragment(fragment, contract)) ??
+    validOperationV5Payload(value, contract));
+}
+
 function guardedBlockCount(value: unknown, contract: ResolvedWasmDurableJsonContract): number | null {
-  return durableDocumentRootMatchesContract(value, contract)
-    ? ((value as Record<string, unknown>)["children"] as unknown[]).length : null;
+  if (!durableDocumentRootMatchesContract(value, contract)) return null;
+  const children = (value as Record<string, unknown>)["children"] as Array<Record<string, unknown>>;
+  // These are direct-root heading/paragraph operations even inside Session V6.
+  return children.every(child => child["type"] === "breditor/paragraph" || child["type"] === "breditor/heading")
+    ? children.length : null;
 }
 
 function textBlockBoundary(value: unknown): { block: number; offset: number } | null {
