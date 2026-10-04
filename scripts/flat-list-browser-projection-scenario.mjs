@@ -4,6 +4,7 @@ import { consumeWasmCompiledProfileDescriptor } from "../packages/breditor-brows
 import { consumeFlatListSemanticSelectionWithCleanup, flatListSemanticRangeSelectionScalars } from "../packages/breditor-browser/src/wasm_selection_adapter.ts";
 import { projectFlatListPlainText } from "../packages/breditor-browser/src/projection_plain_text.ts";
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
+import { verifyFlatListCommandAdapter } from "./flat-list-command-adapter-scenario.mjs";
 import { consumeWasmDocumentJson, documentJsonMatchesFlatListProjection } from "../packages/breditor-browser/src/wasm_document_json.ts";
 import { consumeWasmSessionCheckpoint, sessionCheckpointJsonMatchesDurableContract } from "../packages/breditor-browser/src/wasm_session_checkpoint.ts";
 import { bootstrapFlatListWasmEngine, preflightFlatListWasmSemanticProfile,
@@ -158,6 +159,7 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(recoveredAfter.blocks, final.blocks);
     equal(endpoints(recoveredAfter), endpoints(final));
     const semanticProfile = {bootstrapJson: JSON.stringify(bootstrap), formatVersion: 4};
+    if (verifyDom !== undefined) verifyFlatListCommandAdapter(api, semanticProfile, JSON.stringify(initial));
     const metadata = preflightFlatListWasmSemanticProfile(api, semanticProfile);
     if (!metadata.ok) throw new Error(`list metadata preflight rejected: ${metadata.error.code}`);
     equal(metadata.profileDescriptor, owner.descriptor);
@@ -181,7 +183,7 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     equal(bootAfter.blocks, final.blocks); equal(endpoints(bootAfter), endpoints(final));
     return {status: "passed", scope: verifyDom === undefined
       ? "real Wasm list projection/selection/document and Session V6 recipes, explicit bootstrap and redo recovery; no DOM/native input"
-      : "real Wasm list bootstrap/Session V6 recovery and exact documents/selections plus semantic DOM/update checks; no keyboard/IME/clipboard"};
+      : "production list queue/adapter editing, exact undo/redo, content and Session V6 recovery, semantic DOM/update checks; no keyboard/IME/clipboard"};
   } finally {
     for (const handle of handles.reverse()) handle.free();
   }

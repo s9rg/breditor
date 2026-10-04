@@ -1084,3 +1084,33 @@ and exact list text export, alongside the retained recovery and DOM scenarios.
 Shipping hashes are unchanged. Next is the shared production Wasm command adapter;
 this checkpoint does not claim toolbar, native typing, IME or clipboard integration.
 See [verification](qualification/2026-10-04-flat-list-adapter-content.json).
+
+## Flat-list production command adapter checkpoint
+
+`BreditorFlatListWasmCommandAdapter` now delivers list requests through the same
+private ownership/publication state machine as paragraph/heading commands.
+Construction requires the explicit V6 durable contract, an owned hierarchical
+render and list selection bridge. Existing adapter construction, request types
+and package entry points remain unchanged. The fixed mode selects request/token
+admission, selection conversion, update consumption, rendering and content
+correlation; it does not flatten lists into legacy projections.
+
+Real-Wasm browser scenarios now use the production queue and adapter to insert
+multiline text inside an ordered heading item, undo/redo with exact document and
+selection restoration, save an unapplied redo branch and recover it in a fresh
+adapter. They also prove stale-token rejection, DOM-drift reconciliation and a
+post-commit renderer failure: the Rust edit remains authoritative, content and
+checkpoint reads remain available, recovery does not repeat the edit, and undo
+reverses it exactly once. Generated cleanup failures remain permanently faulted.
+
+All 1,731 browser tests, strict TypeScript and temporary declaration emission
+pass. Five runs each in Chromium, Firefox and WebKit pass the expanded scenario.
+Shipping hashes remain unchanged. No push, publish, size qualification or broad
+historical WebKit resolution is claimed.
+
+Next: high-level list owner/controller, toolbar and keyboard integration. Native
+list composition leases deliberately reject before mutation until their own
+integration is complete; this is an unfinished beta requirement, not a reduced
+product scope. Clipboard, visible persistence, native-input/accessibility and
+release gates also remain open.
+See [verification](qualification/2026-10-04-flat-list-command-adapter.json).

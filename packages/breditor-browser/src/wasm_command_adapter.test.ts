@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BreditorDomRenderer, type RenderedProjection } from "./dom_renderer.js";
-import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
+import { FlatListDocumentProjection } from "./flat_list_projection.js";
+import { compileBrowserPresentation } from "./compiled_browser_presentation.js";
+import { createInlineFormatRenderManifest } from "./inline_format_render_manifest.js";
 import { issueCompositionDeliveryToken } from "./composition_delivery_token.js";
 import {
   closeHistoryGroupRequest,
+  flatListCommandRequest,
+  flatListEditorDeliveryAuthorityAccepts,
   editorDeliveryAuthorityAccepts,
   historyRequest,
   jsonActionRequest,
@@ -46,6 +51,7 @@ import {
 } from "./wasm_action_state_adapter.js";
 import {
   BreditorWasmCommandAdapter as RawBreditorWasmCommandAdapter,
+  BreditorFlatListWasmCommandAdapter,
   MAX_WASM_CORE_COMMIT_OBSERVERS,
   type BreditorWasmCommandAdapterOptions,
   type WasmCommandEngineView,
@@ -169,6 +175,96 @@ interface TrackedIntentResult {
 beforeEach(() => {
   document.body.replaceChildren();
   window.getSelection()?.removeAllRanges();
+});
+
+describe("explicit flat-list command adapter", () => {
+  function fixture() {
+    const projection = FlatListDocumentProjection.create({schema: TEST_PROFILE_DESCRIPTOR.schema,
+      snapshot: {lineage: "adapter-tests", revision: "0"}, blocks: [
+        {kind: "orderedList", start: 8, items: [{headingLevel: 2, runs: [{text: "A🙂", formatDetails: []}]}]},
+      ]}, TEST_PROFILE_GENERATION, TEST_PROFILE_DESCRIPTOR);
+    if (!projection.ok) throw new Error(projection.error.code);
+    const renderer = new BreditorDomRenderer(compileBrowserPresentation(TEST_PROFILE_GENERATION, TEST_PROFILE_DESCRIPTOR,
+      createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]})));
+    const host = document.createElement("div"); document.body.append(host);
+    const rendered = renderer.renderFlatList(host, projection.value);
+    if (!rendered.ok) throw new Error(rendered.error.code);
+    const bridge = new BreditorFlatListDomSelectionBridge();
+    return {host, renderer, bridge, options: {durableMode: "v6" as const,
+      profileGeneration: TEST_PROFILE_GENERATION, profileDescriptor: TEST_PROFILE_DESCRIPTOR,
+      renderer, rendered: rendered.value.rendered, selectionBridge: bridge}};
+  }
+  const request = (adapter: BreditorFlatListWasmCommandAdapter) => flatListCommandRequest(adapter.deliveryToken(),
+    preserveSelectionSync(), {kind: "api", detail: "lists"},
+    {kind: "action", actionId: "breditor/toggle-flat-list-strong", input: {kind: "none"}});
+
+  it.each(["v6 legacy", "v5 list", "base bridge", "base render"])("rejects mismatched %s dependencies", fault => {
+    const f = fixture(); const initial = observation(0); const engine = engineQueues({});
+    if (fault === "v6 legacy") {
+      // @ts-expect-error List dependencies are deliberately not legacy dependencies.
+      expect(() => new RawBreditorWasmCommandAdapter(engine, initial, f.options)).toThrow();
+    } else {
+      const options = fault === "v5 list" ? {...f.options, durableMode: "v5"}
+        : fault === "base bridge" ? {...f.options, selectionBridge: new BreditorDomSelectionBridge()}
+          : {...f.options, rendered: projectionFixture(0, "base").rendered};
+      expect(() => new BreditorFlatListWasmCommandAdapter(engine, initial, options as never)).toThrow();
+    }
+    f.renderer.releaseFlatList(f.options.rendered); f.bridge.dispose();
+  });
+
+  it("spends disabled deliveries, keeps exact private authority, and frees each owner once", () => {
+    const f = fixture(); const initial = observation(0); const next = observation(0);
+    const result = commandResult({status: "disabled", successor: next, disabledActionId: "breditor/toggle-flat-list-strong",
+      disabledReasonCode: "breditor/no-selection", activation: "inactive"});
+    const engine = engineQueues({noInputAction: [result.view]}); const action = vi.spyOn(engine, "executeNoInputAction");
+    const adapter = new BreditorFlatListWasmCommandAdapter(engine, initial, f.options);
+    const captured = request(adapter); const execute = adapter.commandExecutor;
+    const override = vi.fn(() => { throw new Error("public override"); });
+    Object.defineProperty(adapter, "execute", {value: override});
+    Object.defineProperty(adapter, "acceptsDeliveryToken", {value: () => true});
+    expect(flatListEditorDeliveryAuthorityAccepts(adapter.deliveryAuthority, captured.delivery)).toBe(true);
+    expect(editorDeliveryAuthorityAccepts(adapter.deliveryAuthority, captured.delivery)).toBe(false);
+    expect(execute(captured).command.status).toBe("disabled");
+    expect(flatListEditorDeliveryAuthorityAccepts(adapter.deliveryAuthority, captured.delivery)).toBe(false);
+    expect(() => execute(captured)).toThrow("stale"); expect(action).toHaveBeenCalledOnce(); expect(override).not.toHaveBeenCalled();
+    expect(result.free).toHaveBeenCalledOnce(); expect(initial.free).toHaveBeenCalledOnce();
+    expect(adapter.plainTextReadPort.read()).toMatchObject({ok: true, content: {text: "A🙂", utf8Bytes: 5}});
+    adapter.dispose(); adapter.dispose(); expect(next.free).toHaveBeenCalledOnce(); f.bridge.dispose();
+    expect(adapter.plainTextReadPort.read()).toMatchObject({ok: false});
+  });
+
+  it.each(["missing update", "cleanup throw", "cleanup thenable"])("faults on %s without retrying the generated command", fault => {
+    const f = fixture(); const initial = observation(0); const next = observation(fault === "missing update" ? 1 : 0);
+    const result = commandResult(fault === "missing update"
+      ? {status: "committed", eventKind: "action", successor: next}
+      : {status: "disabled", successor: next, disabledActionId: "breditor/toggle-flat-list-strong",
+          disabledReasonCode: "breditor/no-selection", activation: "inactive",
+          ...(fault === "cleanup throw" ? {freeThrows: true} : {freeResult: Promise.resolve(undefined)})});
+    const engine = engineQueues({noInputAction: [result.view]}); const action = vi.spyOn(engine, "executeNoInputAction");
+    const adapter = new BreditorFlatListWasmCommandAdapter(engine, initial, f.options); const captured = request(adapter);
+    expect(() => adapter.execute(captured)).toThrow(); expect(adapter.state).toBe("faulted");
+    expect(adapter.restoreCanonicalRender()).toEqual({ok: false, reason: "adapterUnavailable"});
+    expect(() => adapter.execute(captured)).toThrow(); expect(action).toHaveBeenCalledOnce();
+    expect(result.free).toHaveBeenCalledOnce();
+    adapter.dispose(); f.bridge.dispose(); expect(initial.free).toHaveBeenCalledOnce(); expect(next.free).toHaveBeenCalledOnce();
+  });
+
+  it("rejects foreign owners and base requests before generated mutation", () => {
+    const f = fixture(); const engine = engineQueues({}); const action = vi.spyOn(engine, "executeNoInputAction");
+    const adapter = new BreditorFlatListWasmCommandAdapter(engine, observation(0), f.options);
+    const second = fixture(); const other = new BreditorFlatListWasmCommandAdapter(engineQueues({}), observation(0), second.options);
+    expect(() => adapter.execute(request(other))).toThrow("stale");
+    const base = projectionFixture(0, "base");
+    const legacy = new BreditorWasmCommandAdapter(engineQueues({}), observation(0), {
+      renderer: base.renderer, rendered: base.rendered, selectionBridge: new BreditorDomSelectionBridge()});
+    const baseRequest = noInputActionRequest(legacy.deliveryToken(), preserveSelectionSync(), {kind: "api", detail: "base"}, "breditor/toggle-strong");
+    // @ts-expect-error The explicit list adapter cannot receive base requests.
+    expect(() => adapter.execute(baseRequest)).toThrow("exact executable");
+    // @ts-expect-error The base adapter cannot receive list requests.
+    expect(() => legacy.commandExecutor(request(adapter))).toThrow("exact executable");
+    expect(action).not.toHaveBeenCalled(); expect(adapter.state).toBe("live");
+    adapter.dispose(); other.dispose(); legacy.dispose(); f.bridge.dispose(); second.bridge.dispose();
+  });
 });
 
 describe("BreditorWasmCommandAdapter", () => {

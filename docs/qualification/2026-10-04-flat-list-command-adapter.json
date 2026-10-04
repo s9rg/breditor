@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "419d0f4",
+  "status": "Production flat-list command adapter integrated and qualified; high-level controller and native input remain unfinished",
+  "contracts": {
+    "implementation": "One private command adapter core with constructor-fixed base/list facades; no duplicated publication, observation or generated-handle state machine",
+    "admission": "Explicit V6, exact owned list render/profile generation and list bridge; base and foreign-owner requests reject before mutation",
+    "delivery": "Private executor and live-token authority; selection prestage, atomic history/command publication, exact update/selection consumption and DOM restoration",
+    "content": "Mode-specific exact Document JSON correlation, Session V6 checkpoint reader and bounded plain text",
+    "failure": "Malformed generated results/cleanup failure fault permanently; post-publication DOM failure retains authoritative content and requires explicit render reconciliation",
+    "composition": "Existing paragraph/heading behavior retained; list composition leases explicitly reject before mutation pending native-input integration",
+    "legacy": "Base facade retains base request/result signatures and rejects list mode; shipping entry points unchanged"
+  },
+  "verification": {
+    "newUnitTests": 9,
+    "browserTests": 1731,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed in /private/tmp/breditor-adapter-declarations.NKF7LT, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Real production list queue/adapter multiline insertion, exact undo/redo and selections, fresh Session V6 redo recovery, content readers, spent tokens, DOM-drift recovery, post-commit render failure and nonduplicating recovery/undo, idempotent disposal",
+    "developmentCorrections": [
+      "The in-progress union refactor exposed TypeScript narrowing errors; fixed them with owned-render predicates and explicit base-only composition dependencies. Existing 1722 tests then passed, followed by all 1731 with new regressions."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser -- src/wasm_command_adapter.test.ts",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "List owner/controller, toolbar and keyboard integration",
+    "List composition and supported clipboard flows",
+    "Visible reload/backup and native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Production adapter API delivery with real Wasm and DOM; no native keyboard, IME or clipboard claim. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

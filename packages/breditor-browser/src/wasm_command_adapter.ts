@@ -1,4 +1,10 @@
 import {
+  canonicalFlatListEditorCommandRequest,
+  flatListEditorDeliveryTokenMatches,
+  issueFlatListEditorDeliveryToken,
+  type FlatListEditorCommandRequest,
+  type FlatListEditorDeliveryToken,
+  type FlatListEditorSelectionSync,
   canonicalEditorCommandRequest,
   editorDeliveryTokenMatches,
   issueEditorDeliveryAuthority,
@@ -19,12 +25,17 @@ import {
 } from "./composition_delivery_token.js";
 import {
   BreditorDomRenderer,
+  isOwnedFlatListRenderedProjection,
+  isOwnedRenderedProjection,
   type DomCompositionLease,
   type ProjectionFallbackReason,
   type ProjectionRenderOutcome,
   type RenderedProjection,
 } from "./dom_renderer.js";
-import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
+import { isOwnedFlatListProjection, flatListProjectionDescriptor, flatListProjectionMatchesProfileGeneration, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
+import { isOwnedFlatListProjectionUpdate } from "./flat_list_projection_update.js";
 import {
   nativeDocumentDefaultView,
   nativeHtmlHostFacts,
@@ -37,6 +48,7 @@ import {
 import {
   invalidProjectionPlainTextResult,
   projectPlainText,
+  projectFlatListPlainText,
   unavailableProjectionPlainTextResult,
   type BrowserProjectionPlainTextResult,
   type ProjectionPlainTextReadPort,
@@ -48,11 +60,14 @@ import {
 } from "./selection.js";
 import {
   consumeSemanticProjectionUpdateWithCleanup,
+  consumeFlatListSemanticProjectionUpdateWithCleanup,
   projectionMatchesProfileGeneration,
   type SemanticProjectionUpdateView,
 } from "./wasm_projection_adapter.js";
 import {
   consumeSemanticSelectionWithCleanup,
+  consumeFlatListSemanticSelectionWithCleanup,
+  flatListSemanticRangeSelectionScalars,
   semanticRangeSelectionScalars,
   type SemanticRangeSelectionScalars,
   type SemanticSelectionView,
@@ -77,6 +92,7 @@ import {
 import {
   consumeWasmDocumentJson,
   documentJsonMatchesProjection,
+  documentJsonMatchesFlatListProjection,
   invalidWasmDocumentJsonReadResult,
   unavailableWasmDocumentJsonReadResult,
   type BrowserDocumentJsonReadResult,
@@ -273,11 +289,11 @@ export interface WasmContentReadPorts {
 }
 
 const CONTENT_READ_PORTS = new WeakMap<
-  BreditorWasmCommandAdapter,
+  object,
   Readonly<WasmContentReadPorts>
 >();
 const PROFILE_DESCRIPTORS = new WeakMap<
-  BreditorWasmCommandAdapter,
+  object,
   BrowserCompiledProfileDescriptor
 >();
 
@@ -287,14 +303,14 @@ const PROFILE_DESCRIPTORS = new WeakMap<
  * @internal
  */
 export function contentReadPortsForAdapter(
-  adapter: BreditorWasmCommandAdapter,
+  adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter,
 ): Readonly<WasmContentReadPorts> | undefined {
   return CONTENT_READ_PORTS.get(adapter);
 }
 
 /** Retrieves the exact descriptor retained by one constructor-minted adapter. @internal */
 export function profileDescriptorForAdapter(
-  adapter: BreditorWasmCommandAdapter,
+  adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter,
 ): BrowserCompiledProfileDescriptor | undefined {
   return PROFILE_DESCRIPTORS.get(adapter);
 }
@@ -382,18 +398,18 @@ export type WasmCommandSelectionOutcome =
   | Readonly<{ status: "preserved"; snapshot: WasmCommandSnapshot }>;
 
 /** One request is delivered as selection policy, optional boundary, then command. */
-export interface WasmCommandSequenceOutcome {
+export interface WasmCommandSequenceOutcome<P extends CommandProjection = BaseDocumentProjection> {
   readonly status: "delivered";
   readonly selection: WasmCommandSelectionOutcome;
   readonly boundary: WasmCommandOutcome | undefined;
   /** Equals `selection` for a selection-synchronization-only request. */
   readonly command: WasmCommandOutcome;
-  readonly rendered: RenderedProjection;
+  readonly rendered: RenderedProjection<P>;
 }
 
 /** Result of an explicit full-render reconciliation attempt. */
-export type WasmRenderReconciliationOutcome =
-  | Readonly<{ ok: true; rendered: RenderedProjection }>
+export type WasmRenderReconciliationOutcome<P extends CommandProjection = BaseDocumentProjection> =
+  | Readonly<{ ok: true; rendered: RenderedProjection<P> }>
   | Readonly<{
       ok: false;
       reason: "adapterUnavailable" | "renderFailed" | "selectionWriteFailed";
@@ -429,8 +445,26 @@ export interface BreditorWasmCommandAdapterOptions {
   readonly selectionBridge: BreditorDomSelectionBridge;
 }
 
+/** Explicit list adapter dependencies; legacy construction never enables this mode. @internal */
+export interface BreditorFlatListWasmCommandAdapterOptions
+  extends Omit<BreditorWasmCommandAdapterOptions, "durableMode" | "rendered" | "selectionBridge"> {
+  readonly durableMode: "v6";
+  readonly rendered: RenderedProjection<FlatListDocumentProjection>;
+  readonly selectionBridge: BreditorFlatListDomSelectionBridge;
+}
+
+type CommandProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type CommandRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
+type CommandRequest = EditorCommandRequest | FlatListEditorCommandRequest;
+type CommandToken = EditorDeliveryToken | FlatListEditorDeliveryToken;
+type CommandSelectionSync = EditorSelectionSync | FlatListEditorSelectionSync;
+type CommandSelection = BaseEditorSelection | FlatListRangeSelection;
+type CommandBridge = BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
+
 interface ResolvedWasmCommandAdapterOptions
-  extends Omit<BreditorWasmCommandAdapterOptions, "durableMode"> {
+  extends Omit<BreditorWasmCommandAdapterOptions, "durableMode" | "rendered" | "selectionBridge"> {
+  readonly rendered: CommandRender;
+  readonly selectionBridge: CommandBridge;
   readonly durableMode: WasmDurableMode;
   readonly durableContract: WasmDurableJsonContract;
 }
@@ -463,8 +497,8 @@ interface PreparedSelection {
 }
 
 interface AppliedTransition {
-  readonly projection: BaseDocumentProjection;
-  readonly rendered: RenderedProjection;
+  readonly projection: CommandProjection;
+  readonly rendered: CommandRender;
   readonly metadata: WasmCommandRenderMetadata | undefined;
   readonly domFailure: boolean;
 }
@@ -487,7 +521,8 @@ interface ActiveCompositionLease {
  * handle-free outcome is returned. Raw projection updates never enter the
  * queue observer or caller.
  */
-export class BreditorWasmCommandAdapter {
+class WasmCommandAdapterCore<R extends CommandRequest> {
+  readonly #flatLists: boolean;
   readonly #engine: WasmCommandEngineView;
   readonly #engineOwner: WasmCommandEngineView;
   readonly #profileGeneration: WasmProfileGenerationView;
@@ -496,11 +531,11 @@ export class BreditorWasmCommandAdapter {
   readonly #projectionProfile: string | BrowserCompiledProfileDescriptor;
   readonly #durableContract: WasmDurableJsonContract;
   readonly #renderer: BreditorDomRenderer;
-  readonly #selectionBridge: BreditorDomSelectionBridge;
+  readonly #selectionBridge: CommandBridge;
   readonly #host: HTMLElement;
   readonly #authority = Symbol("breditor-command-adapter");
   readonly #deliveryAuthority: EditorDeliveryAuthority;
-  readonly #commandExecutor = (request: EditorCommandRequest) =>
+  readonly #commandExecutor = (request: R) =>
     this.#execute(request);
   readonly #actionStateReadPort: WasmActionStateReadPort;
   readonly #sessionCheckpointReadPort: WasmSessionCheckpointReadPort;
@@ -510,8 +545,8 @@ export class BreditorWasmCommandAdapter {
   #observation: WasmCommandObservationView | undefined;
   #observationCleanup: GeneratedHandleCleanup | undefined;
   #snapshot: WasmCommandSnapshot;
-  #projection: BaseDocumentProjection;
-  #rendered: RenderedProjection;
+  #projection: CommandProjection;
+  #rendered: CommandRender;
   #deliveryEpoch = 0n;
   #state: AdapterState = "live";
   #compositionLease: ActiveCompositionLease | undefined;
@@ -519,8 +554,10 @@ export class BreditorWasmCommandAdapter {
   constructor(
     engine: WasmCommandEngineView,
     observation: WasmCommandObservationView,
-    options: BreditorWasmCommandAdapterOptions,
+    options: BreditorWasmCommandAdapterOptions | BreditorFlatListWasmCommandAdapterOptions,
+    flatLists: boolean,
   ) {
+    this.#flatLists = flatLists;
     const profileGeneration = options.profileGeneration;
     if (
       (engine as unknown) === observation ||
@@ -554,7 +591,7 @@ export class BreditorWasmCommandAdapter {
       throw new TypeError("Wasm command engine is invalid");
     }
     const snapshot = readObservationSnapshot(observation);
-    const dependencies = snapshotAdapterOptions(options);
+    const dependencies = snapshotAdapterOptions(options, flatLists);
     if (
       snapshot === null ||
       dependencies === null ||
@@ -565,7 +602,8 @@ export class BreditorWasmCommandAdapter {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
     const initialProjection = dependencies.rendered.projection;
-    const boundProjectionDescriptor = projectionProfileDescriptor(initialProjection);
+    const boundProjectionDescriptor = isOwnedFlatListProjection(initialProjection)
+      ? flatListProjectionDescriptor(initialProjection) : projectionProfileDescriptor(initialProjection);
     const projectionProfile = boundProjectionDescriptor === dependencies.profileDescriptor
       ? dependencies.profileDescriptor
       : boundProjectionDescriptor === undefined && dependencies.durableMode === "v1"
@@ -573,8 +611,8 @@ export class BreditorWasmCommandAdapter {
         : undefined;
     if (
       projectionProfile === undefined ||
-      !dependencies.renderer.owns(dependencies.rendered) ||
-      !projectionMatchesProfileGeneration(
+      !(flatLists ? dependencies.renderer.ownsFlatList(dependencies.rendered) : dependencies.renderer.owns(dependencies.rendered)) ||
+      !commandProjectionMatchesGeneration(
         dependencies.rendered.projection,
         profileGeneration,
       ) ||
@@ -627,7 +665,7 @@ export class BreditorWasmCommandAdapter {
   }
 
   /** Exact bridge which event admission must share with this adapter. */
-  get selectionBridge(): BreditorDomSelectionBridge {
+  get selectionBridge(): CommandBridge {
     return this.#selectionBridge;
   }
 
@@ -638,8 +676,8 @@ export class BreditorWasmCommandAdapter {
 
   /** Stable adapter-bound executor for a shared browser command queue. */
   get commandExecutor(): (
-    request: EditorCommandRequest,
-  ) => WasmCommandSequenceOutcome {
+    request: R,
+  ) => WasmCommandSequenceOutcome<CommandProjection> {
     return this.#commandExecutor;
   }
 
@@ -699,20 +737,20 @@ export class BreditorWasmCommandAdapter {
   }
 
   /** Current render handle; it may be noncanonical while state is `reconcile`. */
-  get rendered(): RenderedProjection {
+  get rendered(): CommandRender {
     return this.#rendered;
   }
 
   /** Issues one opaque, one-use token for the exact current canonical render. */
-  deliveryToken(): EditorDeliveryToken {
+  deliveryToken(): CommandToken {
     return this.#deliveryToken();
   }
 
-  #deliveryToken(): EditorDeliveryToken {
+  #deliveryToken(): CommandToken {
     this.#requireState("live");
     this.#requireObservation();
     if (
-      !this.#renderer.owns(this.#rendered) ||
+      !this.#ownsRender(this.#rendered) ||
       this.#rendered.projection !== this.#projection ||
       this.#projection.snapshot.lineage !== this.#snapshot.lineage ||
       this.#projection.snapshot.revision !== this.#snapshot.revision
@@ -721,20 +759,24 @@ export class BreditorWasmCommandAdapter {
         "current render must be restored before token issuance",
       );
     }
+    if (isOwnedFlatListProjection(this.#projection) && isOwnedFlatListRenderedProjection(this.#rendered)) {
+      return issueFlatListEditorDeliveryToken(this.#projection, this.#rendered, this.#deliveryEpoch, this.#authority);
+    }
+    const {projection, rendered} = this.#baseCompositionDependencies();
     return issueEditorDeliveryToken(
-      this.#projection,
-      this.#rendered,
+      projection,
+      rendered,
       this.#deliveryEpoch,
       this.#authority,
     );
   }
 
   /** Checks a queued token without refreshing, invoking Wasm, or rebasing it. */
-  acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken {
+  acceptsDeliveryToken(token: unknown): token is CommandToken {
     return this.#acceptsDeliveryToken(token);
   }
 
-  #acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken {
+  #acceptsDeliveryToken(token: unknown): token is CommandToken {
     if (this.#state !== "live" || this.#observation === undefined) {
       return false;
     }
@@ -745,19 +787,14 @@ export class BreditorWasmCommandAdapter {
         this.#observation,
         this.#profileGeneration,
       ) &&
-      projectionMatchesProfileGeneration(
+      commandProjectionMatchesGeneration(
         this.#projection,
         this.#profileGeneration,
       ) &&
-      editorDeliveryTokenMatches(
-        token,
-        this.#rendered,
-        this.#deliveryEpoch,
-        this.#authority,
-      ) &&
+      this.#tokenMatchesCurrentRender(token) &&
       token.snapshotLineage === this.#snapshot.lineage &&
       token.snapshotRevision === this.#snapshot.revision &&
-      this.#renderer.owns(this.#rendered)
+      this.#ownsRender(this.#rendered)
     );
   }
 
@@ -862,11 +899,9 @@ export class BreditorWasmCommandAdapter {
         this.#profileGeneration,
       ], this.#durableContract);
       return consumed.ok &&
-        !documentJsonMatchesProjection(
-          consumed.document.documentJson,
-          this.#projection,
-          this.#durableContract,
-        )
+        !(isOwnedFlatListProjection(this.#projection)
+          ? documentJsonMatchesFlatListProjection(consumed.document.documentJson, this.#projection, this.#durableContract)
+          : documentJsonMatchesProjection(consumed.document.documentJson, this.#projection, this.#durableContract))
         ? invalidWasmDocumentJsonReadResult()
         : consumed;
     } catch {
@@ -889,7 +924,7 @@ export class BreditorWasmCommandAdapter {
         this.#observation,
         this.#profileGeneration,
       ) ||
-      !projectionMatchesProfileGeneration(
+      !commandProjectionMatchesGeneration(
         this.#projection,
         this.#profileGeneration,
       )
@@ -902,7 +937,8 @@ export class BreditorWasmCommandAdapter {
     const resumeState = this.#state;
     this.#state = "readingContent";
     try {
-      return projectPlainText(this.#projection);
+      return isOwnedFlatListProjection(this.#projection)
+        ? projectFlatListPlainText(this.#projection) : projectPlainText(this.#projection);
     } catch {
       return invalidProjectionPlainTextResult();
     } finally {
@@ -926,6 +962,7 @@ export class BreditorWasmCommandAdapter {
     selection: BaseRangeSelection,
     sessionId: bigint,
   ): CompositionDeliveryToken {
+    const {projection, rendered} = this.#baseCompositionDependencies();
     this.#requireState("live");
     this.#requireObservation();
     if (
@@ -940,8 +977,8 @@ export class BreditorWasmCommandAdapter {
 
     const leaseEpoch = this.#deliveryEpoch + 1n;
     const token = issueCompositionDeliveryToken(
-      this.#projection,
-      this.#rendered,
+      projection,
+      rendered,
       selection,
       leaseEpoch,
       sessionId,
@@ -970,6 +1007,7 @@ export class BreditorWasmCommandAdapter {
     token: CompositionDeliveryToken,
     selection: BaseRangeSelection,
   ): CompositionDeliveryToken {
+    const {projection, rendered} = this.#baseCompositionDependencies();
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
@@ -990,8 +1028,8 @@ export class BreditorWasmCommandAdapter {
     }
 
     const replacement = issueCompositionDeliveryToken(
-      this.#projection,
-      this.#rendered,
+      projection,
+      rendered,
       selection,
       this.#deliveryEpoch,
       lease.sessionId,
@@ -1016,6 +1054,7 @@ export class BreditorWasmCommandAdapter {
    * @internal
    */
   openCompositionDomLease(token: CompositionDeliveryToken): boolean {
+    const {rendered} = this.#baseCompositionDependencies();
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
@@ -1036,10 +1075,10 @@ export class BreditorWasmCommandAdapter {
     let domLease: DomCompositionLease | null = null;
     let ownsDomLease = false;
     try {
-      domLease = this.#renderer.beginCompositionDomLease(this.#rendered);
+      domLease = this.#renderer.beginCompositionDomLease(rendered);
       ownsDomLease =
         domLease !== null &&
-        this.#renderer.ownsCompositionDomLease(domLease, this.#rendered);
+        this.#renderer.ownsCompositionDomLease(domLease, rendered);
     } catch {
       ownsDomLease = false;
     }
@@ -1151,6 +1190,7 @@ export class BreditorWasmCommandAdapter {
     lease: ActiveCompositionLease,
     strategy: "canonicalFull" | "rendererLease" | "recoveryFull",
   ): WasmCompositionLeaseRestoreOutcome {
+    const {projection, bridge} = this.#baseCompositionDependencies();
     // Spend identity and epoch before the first DOM effect. A failed restore is
     // recovered through the ordinary reconciliation path, never token replay.
     this.#compositionLease = undefined;
@@ -1166,9 +1206,9 @@ export class BreditorWasmCommandAdapter {
         strategy === "rendererLease" && lease.domLease !== undefined
           ? this.#renderer.restoreCompositionDomLease(
               lease.domLease,
-              this.#projection,
+              projection,
             )
-          : this.#renderer.render(this.#host, this.#projection);
+          : this.#renderer.render(this.#host, projection);
     } catch {
       this.#discardCompositionDomLease(lease);
       this.#state = "reconcile";
@@ -1183,7 +1223,7 @@ export class BreditorWasmCommandAdapter {
 
     let selectionWritten = false;
     try {
-      selectionWritten = this.#selectionBridge.write(
+      selectionWritten = bridge.write(
         this.#rendered,
         lease.selection,
       ).ok;
@@ -1198,7 +1238,7 @@ export class BreditorWasmCommandAdapter {
     this.#state = "live";
     let delivery: EditorDeliveryToken;
     try {
-      delivery = this.#deliveryToken();
+      delivery = this.#deliveryToken() as EditorDeliveryToken;
     } catch {
       this.#state = "reconcile";
       return compositionRestoreFailure("renderFailed");
@@ -1218,17 +1258,17 @@ export class BreditorWasmCommandAdapter {
    * requested history close and the following action, intent, undo, or redo
    * are checkpoint-admitted and published together by Rust.
    */
-  execute(request: EditorCommandRequest): WasmCommandSequenceOutcome {
+  execute(request: R): WasmCommandSequenceOutcome<CommandProjection> {
     return this.#execute(request);
   }
 
-  #execute(request: EditorCommandRequest): WasmCommandSequenceOutcome {
+  #execute(request: CommandRequest): WasmCommandSequenceOutcome<CommandProjection> {
     this.#requireState("live");
-    const canonical = canonicalEditorCommandRequest(request);
+    const canonical = this.#flatLists ? canonicalFlatListEditorCommandRequest(request) : canonicalEditorCommandRequest(request);
     if (canonical === null || !isEngineCommand(canonical.command)) {
       throw new TypeError("request is not an exact executable engine command");
     }
-    const engineRequest = canonical as EngineCommandRequest;
+    const engineRequest = canonical;
     if (!this.#acceptsDeliveryToken(engineRequest.delivery)) {
       throw new TypeError("command delivery token is stale or foreign");
     }
@@ -1332,14 +1372,16 @@ export class BreditorWasmCommandAdapter {
    * and for intentionally invalidated composition DOM. Malformed/uncertain
    * command results remain permanently faulted and cannot use this path.
    */
-  restoreCanonicalRender(): WasmRenderReconciliationOutcome {
+  restoreCanonicalRender(): WasmRenderReconciliationOutcome<CommandProjection> {
     if (this.#state !== "live" && this.#state !== "reconcile") {
       return Object.freeze({ ok: false, reason: "adapterUnavailable" });
     }
     const observation = this.#requireObservation();
     this.#state = "executing";
     try {
-      const rendered = this.#renderer.render(this.#host, this.#projection);
+      const rendered = isOwnedFlatListProjection(this.#projection)
+        ? this.#renderer.renderFlatList(this.#host, this.#projection)
+        : this.#renderer.render(this.#host, this.#projection);
       if (!rendered.ok) {
         this.#state = "reconcile";
         return Object.freeze({ ok: false, reason: "renderFailed" });
@@ -1403,8 +1445,8 @@ export class BreditorWasmCommandAdapter {
     this.#state = "disposed";
     this.#coreCommitObservers.clear();
     try {
-      if (this.#renderer.owns(this.#rendered)) {
-        this.#renderer.release(this.#rendered);
+      if (this.#ownsRender(this.#rendered)) {
+        this.#releaseRender(this.#rendered);
       }
     } catch (error) {
       if (!failed) {
@@ -2155,7 +2197,10 @@ export class BreditorWasmCommandAdapter {
     nextSnapshot: WasmCommandSnapshot,
     protectedHandles: readonly unknown[],
   ): AppliedTransition {
-    const converted = consumeSemanticProjectionUpdateWithCleanup(
+    const converted = isOwnedFlatListProjection(this.#projection)
+      ? consumeFlatListSemanticProjectionUpdateWithCleanup(this.#projection, updateView, updateCleanup,
+          this.#profileGeneration, this.#profileDescriptor, protectedHandles)
+      : consumeSemanticProjectionUpdateWithCleanup(
       this.#projection,
       updateView,
       updateCleanup,
@@ -2175,9 +2220,15 @@ export class BreditorWasmCommandAdapter {
         "projection update and successor observation disagree",
       );
     }
-    let rendered: ReturnType<BreditorDomRenderer["update"]>;
+    let rendered: ReturnType<BreditorDomRenderer["update"] | BreditorDomRenderer["updateFlatList"]>;
     try {
-      rendered = this.#renderer.update(this.#rendered, update);
+      if (isOwnedFlatListProjectionUpdate(update)) {
+        if (!isOwnedFlatListRenderedProjection(this.#rendered)) throw new TypeError("list update requires list render");
+        rendered = this.#renderer.updateFlatList(this.#rendered, update);
+      } else {
+        if (!isOwnedRenderedProjection(this.#rendered)) throw new TypeError("base update requires base render");
+        rendered = this.#renderer.update(this.#rendered, update);
+      }
     } catch {
       return Object.freeze({
         projection: update.result,
@@ -2205,7 +2256,7 @@ export class BreditorWasmCommandAdapter {
       // The update already installed this handle, but a malformed semantic
       // selection result makes the adapter permanently faulted. Release the
       // otherwise unreachable renderer authority before propagating.
-      this.#renderer.release(rendered.value.rendered);
+      this.#releaseRender(rendered.value.rendered);
       throw error;
     }
     const snapshot: AppliedTransition = {
@@ -2219,7 +2270,7 @@ export class BreditorWasmCommandAdapter {
 
   #readAndWriteCurrentSelection(
     observation: WasmCommandObservationView,
-    rendered: RenderedProjection,
+    rendered: CommandRender,
     protectedHandles: readonly unknown[] = [],
   ): boolean {
     const selection = this.#readCurrentSelection(
@@ -2228,7 +2279,7 @@ export class BreditorWasmCommandAdapter {
       protectedHandles,
     );
     try {
-      return this.#selectionBridge.write(rendered, selection).ok;
+      return this.#writeSelection(rendered, selection);
     } catch {
       return false;
     }
@@ -2236,9 +2287,9 @@ export class BreditorWasmCommandAdapter {
 
   #readCurrentSelection(
     observation: WasmCommandObservationView,
-    projection: BaseDocumentProjection,
+    projection: CommandProjection,
     protectedHandles: readonly unknown[] = [],
-  ): BaseEditorSelection {
+  ): CommandSelection {
     const owned = createGeneratedHandleRegistry();
     const allProtectedHandles = [
       observation,
@@ -2306,7 +2357,9 @@ export class BreditorWasmCommandAdapter {
         throw new TypeError("Wasm semantic selection ownership is unavailable");
       }
       selectionView = undefined;
-      const consumed = consumeSemanticSelectionWithCleanup(
+      const consumed = isOwnedFlatListProjection(projection)
+        ? consumeFlatListSemanticSelectionWithCleanup(projection, ownedSelection, selectionCleanup, this.#profileGeneration)
+        : consumeSemanticSelectionWithCleanup(
         projection,
         ownedSelection,
         selectionCleanup,
@@ -2324,12 +2377,12 @@ export class BreditorWasmCommandAdapter {
     }
   }
 
-  #installRequestedSelection(selection: EditorSelectionSync): void {
+  #installRequestedSelection(selection: CommandSelectionSync): void {
     if (selection.kind === "preserve") {
       throw new TypeError("preserved selection cannot be installed into DOM");
     }
     const value = selection.kind === "range" ? selection.selection : null;
-    if (!this.#selectionBridge.write(this.#rendered, value).ok) {
+    if (!this.#writeSelection(this.#rendered, value)) {
       this.#state = "reconcile";
       throw new DomReconciliationRequired();
     }
@@ -2387,7 +2440,7 @@ export class BreditorWasmCommandAdapter {
 
   #ownsCompositionDomLease(lease: DomCompositionLease): boolean {
     try {
-      return this.#renderer.ownsCompositionDomLease(lease, this.#rendered);
+      return this.#renderer.ownsCompositionDomLease(lease, this.#baseCompositionDependencies().rendered);
     } catch {
       return false;
     }
@@ -2398,11 +2451,91 @@ export class BreditorWasmCommandAdapter {
       throw new TypeError(`Wasm command adapter is ${this.#state}`);
     }
   }
+
+  #ownsRender(rendered: CommandRender): boolean {
+    return this.#flatLists ? this.#renderer.ownsFlatList(rendered) : this.#renderer.owns(rendered);
+  }
+
+  #tokenMatchesCurrentRender(token: unknown): token is CommandToken {
+    if (isOwnedFlatListRenderedProjection(this.#rendered)) {
+      return this.#flatLists && flatListEditorDeliveryTokenMatches(token, this.#rendered, this.#deliveryEpoch, this.#authority);
+    }
+    return !this.#flatLists && isOwnedRenderedProjection(this.#rendered) &&
+      editorDeliveryTokenMatches(token, this.#rendered, this.#deliveryEpoch, this.#authority);
+  }
+
+  #releaseRender(rendered: CommandRender): boolean {
+    return isOwnedFlatListRenderedProjection(rendered)
+      ? this.#renderer.releaseFlatList(rendered) : isOwnedRenderedProjection(rendered) && this.#renderer.release(rendered);
+  }
+
+  #writeSelection(rendered: CommandRender, selection: CommandSelection): boolean {
+    if (isOwnedFlatListRenderedProjection(rendered)) {
+      return this.#selectionBridge instanceof BreditorFlatListDomSelectionBridge &&
+        (selection === null || isOwnedFlatListRangeSelection(selection)) &&
+        this.#selectionBridge.write(rendered, selection).ok;
+    }
+    return isOwnedRenderedProjection(rendered) && this.#selectionBridge instanceof BreditorDomSelectionBridge &&
+      (selection === null || isOwnedBaseRangeSelection(selection)) &&
+      this.#selectionBridge.write(rendered, selection).ok;
+  }
+
+  /** Composition stays base-only until list native-input leases are qualified. */
+  #baseCompositionDependencies(): {projection: BaseDocumentProjection; rendered: RenderedProjection; bridge: BreditorDomSelectionBridge} {
+    if (this.#flatLists || !isOwnedProjection(this.#projection) || !isOwnedRenderedProjection(this.#rendered) ||
+        !(this.#selectionBridge instanceof BreditorDomSelectionBridge)) {
+      throw new TypeError("flat-list composition leases are not supported yet");
+    }
+    return {projection: this.#projection, rendered: this.#rendered, bridge: this.#selectionBridge};
+  }
 }
 
 // This class owns generated handles and private adapter authority. Do not let
 // application code replace methods after construction.
+Object.freeze(WasmCommandAdapterCore.prototype);
+
+/** Existing paragraph/heading command adapter, with unchanged admission. */
+export class BreditorWasmCommandAdapter extends WasmCommandAdapterCore<EditorCommandRequest> {
+  constructor(engine: WasmCommandEngineView, observation: WasmCommandObservationView, options: BreditorWasmCommandAdapterOptions) {
+    super(engine, observation, options, false);
+  }
+  override get selectionBridge(): BreditorDomSelectionBridge { return super.selectionBridge as BreditorDomSelectionBridge; }
+  override get rendered(): RenderedProjection { return super.rendered as RenderedProjection; }
+  override get commandExecutor(): (request: EditorCommandRequest) => WasmCommandSequenceOutcome {
+    return super.commandExecutor as (request: EditorCommandRequest) => WasmCommandSequenceOutcome;
+  }
+  override deliveryToken(): EditorDeliveryToken { return super.deliveryToken() as EditorDeliveryToken; }
+  override acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken { return super.acceptsDeliveryToken(token); }
+  override execute(request: EditorCommandRequest): WasmCommandSequenceOutcome { return super.execute(request) as WasmCommandSequenceOutcome; }
+  override restoreCanonicalRender(): WasmRenderReconciliationOutcome { return super.restoreCanonicalRender() as WasmRenderReconciliationOutcome; }
+}
+
+/** Explicit list delivery through the shared ownership/publication state machine. @internal */
+export class BreditorFlatListWasmCommandAdapter extends WasmCommandAdapterCore<FlatListEditorCommandRequest> {
+  constructor(engine: WasmCommandEngineView, observation: WasmCommandObservationView, options: BreditorFlatListWasmCommandAdapterOptions) {
+    super(engine, observation, options, true);
+  }
+  override get selectionBridge(): BreditorFlatListDomSelectionBridge { return super.selectionBridge as BreditorFlatListDomSelectionBridge; }
+  override get rendered(): RenderedProjection<FlatListDocumentProjection> { return super.rendered as RenderedProjection<FlatListDocumentProjection>; }
+  override get commandExecutor(): (request: FlatListEditorCommandRequest) => WasmCommandSequenceOutcome<FlatListDocumentProjection> {
+    return super.commandExecutor as (request: FlatListEditorCommandRequest) => WasmCommandSequenceOutcome<FlatListDocumentProjection>;
+  }
+  override deliveryToken(): FlatListEditorDeliveryToken { return super.deliveryToken() as FlatListEditorDeliveryToken; }
+  override acceptsDeliveryToken(token: unknown): token is FlatListEditorDeliveryToken { return super.acceptsDeliveryToken(token); }
+  override execute(request: FlatListEditorCommandRequest): WasmCommandSequenceOutcome<FlatListDocumentProjection> {
+    return super.execute(request) as WasmCommandSequenceOutcome<FlatListDocumentProjection>;
+  }
+  override restoreCanonicalRender(): WasmRenderReconciliationOutcome<FlatListDocumentProjection> {
+    return super.restoreCanonicalRender() as WasmRenderReconciliationOutcome<FlatListDocumentProjection>;
+  }
+}
 Object.freeze(BreditorWasmCommandAdapter.prototype);
+Object.freeze(BreditorFlatListWasmCommandAdapter.prototype);
+
+function commandProjectionMatchesGeneration(projection: CommandProjection, generation: WasmProfileGenerationView): boolean {
+  return isOwnedFlatListProjection(projection) ? flatListProjectionMatchesProfileGeneration(projection, generation)
+    : projectionMatchesProfileGeneration(projection, generation);
+}
 
 /**
  * @deprecated Every admitted editor request is executable as of 0.0.55; use
@@ -2415,7 +2548,7 @@ export function isEngineCommandRequest(
 }
 
 function prepareSelection(
-  selection: EditorSelectionSync,
+  selection: CommandSelectionSync,
 ): PreparedSelection | null {
   if (selection.kind === "none") {
     return Object.freeze({ kind: "none" });
@@ -2423,7 +2556,8 @@ function prepareSelection(
   if (selection.kind === "preserve") {
     return Object.freeze({ kind: "preserve" });
   }
-  const scalars = semanticRangeSelectionScalars(selection.selection);
+  const scalars = isOwnedFlatListRangeSelection(selection.selection)
+    ? flatListSemanticRangeSelectionScalars(selection.selection) : semanticRangeSelectionScalars(selection.selection);
   return scalars.ok
     ? Object.freeze({ kind: "range", scalars: scalars.value })
     : null;
@@ -2524,6 +2658,7 @@ function declaredIntent(
 
 function snapshotAdapterOptions(
   value: unknown,
+  flatLists: boolean,
 ): ResolvedWasmCommandAdapterOptions | null {
   const legacyKeys = [
     "profileGeneration",
@@ -2540,7 +2675,8 @@ function snapshotAdapterOptions(
     record["durableMode"] === "v1" ||
     record["durableMode"] === "v2" ||
     record["durableMode"] === "v3" ||
-    record["durableMode"] === "v5"
+    record["durableMode"] === "v5" ||
+    (flatLists && record["durableMode"] === "v6")
   ) {
     durableMode = record["durableMode"];
   } else {
@@ -2548,6 +2684,7 @@ function snapshotAdapterOptions(
   }
   if (
     record === null ||
+    (flatLists && durableMode !== "v6") ||
     !wasmProfileGenerationIsLive(record["profileGeneration"]) ||
     !isAdapterProfileDescriptor(record["profileDescriptor"]) ||
     !browserCompiledProfileDescriptorMatchesGeneration(
@@ -2555,7 +2692,7 @@ function snapshotAdapterOptions(
       record["profileGeneration"],
     ) ||
     !(record["renderer"] instanceof BreditorDomRenderer) ||
-    !(record["selectionBridge"] instanceof BreditorDomSelectionBridge)
+    !(flatLists ? record["selectionBridge"] instanceof BreditorFlatListDomSelectionBridge : record["selectionBridge"] instanceof BreditorDomSelectionBridge)
   ) {
     return null;
   }
@@ -2570,8 +2707,8 @@ function snapshotAdapterOptions(
     profileGeneration: record["profileGeneration"],
     profileDescriptor: record["profileDescriptor"],
     renderer: record["renderer"],
-    rendered: record["rendered"] as RenderedProjection,
-    selectionBridge: record["selectionBridge"],
+    rendered: record["rendered"] as CommandRender,
+    selectionBridge: record["selectionBridge"] as CommandBridge,
   });
 }
 
@@ -2909,7 +3046,7 @@ function snapshotsEqual(
 }
 
 function renderMetadata(
-  outcome: ProjectionRenderOutcome,
+  outcome: ProjectionRenderOutcome<CommandProjection>,
 ): WasmCommandRenderMetadata {
   return outcome.fallbackReason === undefined
     ? Object.freeze({
