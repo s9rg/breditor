@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "e5ad3fc",
+  "runtimeCommit": "43ddc3a",
+  "status": "native-interior-typing-reload-and-backup-recovery-observed",
+  "releaseQualified": false,
+  "physicalHumanInputQualified": false,
+  "method": "CUA native Safari and Chrome app controls. Three separate pressKey calls for a, b and c; browser reload, tab close/reopen, download and native file pickers. No page JavaScript injection or synthetic composition events.",
+  "candidate": "target/flat-list-candidate-3ln0Nh",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "assetRecord": "docs/qualification/2026-10-04-list-native-desktop.json",
+  "demoJsSha256": "3442327a242a4df7bbbbc0ff697b9cfdd891b1234b11e9998121860e2fe5cab0",
+  "browserVersions": {"safariUserAgentVersion": "26.6.2", "chromeUserAgentVersion": "152.0.0.0"},
+  "urls": {"chrome": "http://127.0.0.1:4188/", "safari": "http://127.0.0.1:4188/?native-persistence=1"},
+  "initialState": "Both main demos showed the original list showcase seed with Undo and Redo disabled. Existing user text was not replaced.",
+  "observedInBoth": [
+    "Click first numbered item, Cmd+Left, five Right keys, then separate a/b/c keys. Item becomes Writeabc a first draft; ordered markers remain 3 and 4.",
+    "All changes saved was observed before reload. Cmd+R retains typed text.",
+    "One Cmd+Z after reload removes all three characters together, leaves Undo disabled and Redo enabled.",
+    "Wait for All changes saved, Cmd+W to close the test tab, Cmd+Shift+T to reopen it. Original item and enabled Redo survive.",
+    "Cmd+Shift+Z restores all three characters together at the same interior position.",
+    "Recover the Chrome-downloaded backup through the native file picker. A separate recovered editor contains typed text and reports Autosave is off.",
+    "Recovered-editor Undo removes all three characters, leaving the main editor's typed text unchanged. Recovered Redo restores all three characters.",
+    "Undo again in the recovered editor, then reload. The recovered editor is gone; the main editor still contains the saved typed text. Recovery did not overwrite main autosave."
+  ],
+  "backup": {
+    "producer": "Native Chrome Download session backup button",
+    "consumers": ["Native Chrome file picker and recovered editor", "Native Safari file picker and recovered editor"],
+    "path": "/Users/s/Downloads/breditor-session-backup.json",
+    "bytes": 5586,
+    "sha256": "43d0a7351f29d81b3500e3dce664f584c1406fe0cb851a247804f216b12c247a",
+    "format": "breditor/session-checkpoint",
+    "formatVersion": 6,
+    "schema": {"name": "example/flat-list-showcase", "version": 1},
+    "cursor": 1,
+    "historyEntries": 1,
+    "forwardOperationsInEntry": 3,
+    "insertedRunsInOrder": ["a", "b", "c"],
+    "resultAnchorAndFocus": {"kind": "text", "textPath": [3, 0, 0, 0], "utf16Offset": 8, "affinity": "before"},
+    "verification": "Read-only JSON assertions against the actual downloaded file verified V6, list schema, one history entry with exactly three inserted runs and result offset/affinity. File bytes were hashed without modification.",
+    "retention": "Download retained; contains only the disposable seed and test input. It is not a backup of user-authored content."
+  },
+  "uiInterruptions": [
+    "Chrome address autocomplete initially opened the disposable clipboard route instead of the requested root. The explicit main-demo link navigated correctly before any persistence test began.",
+    "Safari native control pipe closed after a new tab and URL entry, before navigation. Rebinding showed the same tab on Start Page with the exact URL in the address field; Return completed navigation. No browser restart or repeated edit was performed."
+  ],
+  "inputSourceInspection": {
+    "method": "Read-only native System Settings Keyboard / Text Input / Edit inspection",
+    "installed": ["Canadian"],
+    "inputMenuVisible": false,
+    "settingsChanged": false,
+    "next": "User subsequently approved temporary IME and VoiceOver testing. Attempts and verified restoration are recorded separately in 2026-10-04-list-native-assistive-input.json; this object describes the initial read-only inspection."
+  },
+  "limits": [
+    "One observed run per browser; not statistical reliability, crash recovery or physical-human certification.",
+    "This native persistence scenario covers interior typing in a numbered paragraph. Structural and formatted-history persistence have separate automated coverage; no additional native coverage is inferred.",
+    "Chrome export was imported by both browsers. Native Safari export and Safari-to-Chrome transfer were not exercised here.",
+    "OS IME and screen-reader qualification remain open.",
+    "Earlier intermittent WebKit fault, timeouts, performance, delivery/size decisions and full release gates remain open."
+  ],
+  "runtimeChanges": false,
+  "pushedOrPublished": false
+}

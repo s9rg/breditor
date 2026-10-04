@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "e5ad3fc",
+  "runtimeCommit": "43ddc3a",
+  "status": "inconclusive-native-control-attempts-settings-restored",
+  "releaseQualified": false,
+  "imeQualified": false,
+  "screenReaderQualified": false,
+  "method": "CUA native app controls only; user explicitly approved temporary Japanese-Romaji input and VoiceOver enablement with restoration.",
+  "assetRecord": "docs/qualification/2026-10-04-list-native-desktop.json",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "ime": {
+    "url": "http://127.0.0.1:4188/manual-clipboard.html",
+    "browser": "Safari",
+    "setup": [
+      "Original input sources: Canadian only; input menu hidden; Globe action Show Emoji & Symbols; dictation off with English (Canada) only.",
+      "Initial chooser click did not select Romaji; Japanese-Kana was added, immediately observed and removed before any input test.",
+      "Keyboard navigation selected Japanese-Romaji explicitly; sidebar and Keyboard summary confirmed Canadian plus Japanese-Romaji.",
+      "macOS automatically enabled the input menu, changed the Globe action and added Japanese (Japan) to dictation languages; these were tracked for restoration."
+    ],
+    "attempts": [
+      "In a new disposable Safari fixture, click first numbered item and move to its end. Ctrl+Space followed by separate k/a keys produced literal ka.",
+      "Undo, Ctrl+Space, k/a again produced literal ka.",
+      "Keyboard Shortcuts confirmed previous source Ctrl+Space and next source Ctrl+Alt+Space were enabled. Undo, Ctrl+Alt+Space, k/a again produced literal ka.",
+      "The fixture showed six recorded ordinary input events. No Japanese candidate window, committed Japanese text or actual IME composition was established."
+    ],
+    "restorationObserved": {
+      "inputSources": ["Canadian"],
+      "showInputMenu": false,
+      "globeAction": "Show Emoji & Symbols",
+      "dictationEnabled": false,
+      "dictationLanguages": ["English (Canada)"],
+      "keyboardNavigationEnabled": false
+    }
+  },
+  "voiceOver": {
+    "url": "http://127.0.0.1:4188/?native-persistence=1",
+    "browser": "Safari",
+    "originalEnabled": false,
+    "enabledSwitchObserved": true,
+    "captionPanelPreference": "Already checked in VoiceOver Utility; left unchanged. No utility preferences were changed.",
+    "attempts": [
+      "Ctrl+Alt+Right in Safari did not establish observable VoiceOver cursor navigation or spoken output; editor caret moved while content remained unchanged.",
+      "Selecting the VoiceOver app through native control timed out. A timeout is not proof that the process exited or failed to start.",
+      "Ctrl+Alt+U did not display an observable rotor. Instead U+0015 appeared in the numbered item; Cmd+Z removed it and restored Writeabc a first draft. The editor then reported All changes saved."
+    ],
+    "finalEnabled": false,
+    "restorationVerification": "System Settings AX_VOICEOVER_ENABLED switch visibly off after the test.",
+    "testDocumentNote": "Main demo content restored, but its history now contains the undone control-character test as a redo entry. The earlier downloaded persistence backup remains unchanged."
+  },
+  "toolingLimits": [
+    "Settings row clicks sometimes selected unexpected rows; subsequent setup used observed keyboard selection before adding or removing sources.",
+    "System Settings and SystemUIServer native control timed out during IME setup. Existing state was inspected before recovery; no timeout was treated as proof of cancellation.",
+    "App-bound shortcut delivery did not establish system-level IME switching or VoiceOver command interception. Cause remains unproven: no product, browser or OS defect is inferred.",
+    "Accessible headings, list markers and toolbar names alone do not qualify spoken announcements, rotor behavior or screen-reader editing.",
+    "No Chrome IME or VoiceOver qualification is claimed. A follow-up needs demonstrable OS input-source activation and observable VoiceOver output, or a human-assisted native pass."
+  ],
+  "runtimeChanges": false,
+  "pushedOrPublished": false
+}

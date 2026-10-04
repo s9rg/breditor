@@ -1820,3 +1820,31 @@ reload/recovery, large-list responsiveness, delivery/size or full release gates.
 The previous intermittent WebKit fault and timeouts remain unresolved; a passing
 native scenario is not their reproduction or fix. No runtime change, push or
 publication was made.
+
+## Native typing, reload and cross-browser backup recovery — 2026-10-04
+
+Safari and Chrome now both demonstrate a three-keystroke native typing group at
+an interior numbered-list caret surviving reload. One Undo removes the whole
+group; after saving, closing and reopening the test tab, one Redo restores it.
+This directly exercises the recent affinity fix through real desktop input,
+not only the scripted browser suite.
+
+Chrome's downloaded V6 backup opens through the native file picker in both
+Chrome and Safari. Each recovered editor independently undoes/redoes the group
+with autosave off. Undoing the recovered copy and reloading leaves the main
+autosave unchanged. Read-only assertions against the downloaded file confirm
+one history entry containing three splice operations and the exact final caret
+offset/affinity. See [native persistence evidence](qualification/2026-10-04-list-native-persistence.json).
+
+With explicit user approval, Japanese–Romaji was temporarily installed and
+VoiceOver temporarily enabled. Neither attempt qualified its gate: input-source
+shortcuts produced Latin text rather than observed IME composition; VoiceOver
+navigation/rotor and speech could not be observed through native app controls.
+The rotor shortcut instead inserted a control character, which was undone.
+No editor or OS cause is established by these observations. Canadian-only input,
+the hidden input menu, original Globe action and English-only dictation language
+were restored; VoiceOver was verified off again. Full observations and limits
+are in [assistive-input evidence](qualification/2026-10-04-list-native-assistive-input.json).
+These gates remain open. Native structural/formatted-history persistence and Safari export still
+need distinct coverage; this run does not generalize beyond its tested route.
+Performance, delivery/size decisions and full release qualification remain open.
