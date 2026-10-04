@@ -500,3 +500,33 @@ preflight for Session V5 / State V3 / Document V2, followed by heading-aware
 input actions and toolbar integration. Existing V1–V3 validators must stay closed;
 the different wire versions must not be relabeled to pass old validators. Flat
 bullet/numbered lists follow that end-to-end heading slice; nesting stays deferred.
+
+## Heading browser persistence and command-adapter checkpoint
+
+Explicit browser durable mode `v5` now admits paragraph/heading Document V2,
+typed inline properties, and heading Session V5 with a State V3 history base.
+It validates full block guards for kind changes, text splices and text-block
+replacements, including rank/count/range and document resource limits. Structural
+ranks count toward document and retained-base property budgets. V1–V3 remain
+closed to headings; neither capture nor restore preflight retries a different
+format. Rust still proves live indexes, scalar boundaries, complete retained
+result budgets and bidirectional replay; browser preflight is not a replay engine.
+
+The normal command adapter accepts explicit `durableMode: "v5"` and preserves the
+exact projection-bound generation. Its document/checkpoint read ports validate
+real Rust exports. Document correlation now compares semantic heading kind/rank
+as well as text and typed inline values. A shared string-handle registry removes
+duplicate lifecycle code while preserving reentrancy reservations, receiver-bound
+cleanup, protected owners, thenable rejection and distinct error-reporting policies.
+
+The generated-Wasm scenario now exercises 13 command/render transitions,
+including normal browser-adapter typing, paragraph intent, undo, validated save,
+fresh restore and redo with exact document/selection/pending-format equality.
+It passes five runs per Chromium, Firefox and WebKit, alongside the 90 existing
+paragraph editor/profile/history browser regressions and 1,489 browser unit tests.
+
+This remains a **development checkpoint**. Public heading startup, toolbar/native
+input routing, reload UI and flat lists remain pending. The existing default size
+gate is also currently red for browser declarations and compressed demo JS; no
+ceiling was raised. Resolve the measured packaging/footprint gate before release
+qualification, without weakening validation or silently upgrading old formats.

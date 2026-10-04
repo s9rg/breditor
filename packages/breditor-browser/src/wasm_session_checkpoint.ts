@@ -1,12 +1,18 @@
 import {
+  captureHandle, freeHandles, objectSet, valueIsThenable,
+  objectLike, type HandleRegistry,
+} from "./wasm_string_handle_registry.js";
+import {
   documentJsonUtf8Bytes,
+  readExpectedSnapshot, exactJsonRecord, canonicalU64, isStableCode,
+  durableDocumentRootMatchesContract,
   durableFormatRecordsMatchContract,
   resolveWasmDurableJsonContract,
   type ResolvedWasmDurableJsonContract,
   type WasmDurableJsonContract,
   type WasmDurableMode,
 } from "./wasm_document_json.js";
-import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
+import { isHeadingProjectionLevel } from "./projection.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
 
@@ -66,30 +72,6 @@ export function sessionCheckpointJsonMatchesDurableContract(
 ): number | null {
   if (typeof value !== "string") return null;
   return validateCheckpointEnvelope(value, contract)?.utf8Bytes ?? null;
-}
-
-function readExpectedSnapshot(
-  value: WasmSessionCheckpointExpectedSnapshot,
-): Readonly<{ lineage: string; revision: string }> | null {
-  try {
-    const lineage = value.lineage;
-    if (valueIsThenable(lineage)) return null;
-    const revision = value.revision;
-    if (valueIsThenable(revision)) return null;
-    if (
-      typeof lineage !== "string" ||
-      lineage.length === 0 ||
-      lineage.length > 128 ||
-      !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(lineage) ||
-      typeof revision !== "string" ||
-      !canonicalU64(revision)
-    ) {
-      return null;
-    }
-    return Object.freeze({ lineage, revision });
-  } catch {
-    return null;
-  }
 }
 
 function readOwnedError(
@@ -216,9 +198,6 @@ const ADAPTER_UNAVAILABLE: BrowserSessionCheckpointReadError = Object.freeze({
 const OWNED_READ_RESULTS = new WeakSet<object>();
 const JSON_PARSE = JSON.parse;
 const JSON_STRINGIFY = JSON.stringify;
-const PROMISE_RESOLVE = Promise.resolve.bind(Promise);
-const PROMISE_CATCH = Promise.prototype.catch;
-const IGNORE_SETTLEMENT = (): undefined => undefined;
 const MAX_V3_HISTORY_CAPACITY = 100;
 const MAX_V3_OPERATIONS_PER_ENTRY = 1_024;
 const MAX_V3_AGGREGATE_OPERATIONS = 16_384;
@@ -229,36 +208,16 @@ const MAX_OPERATION_RUNS = 10_000;
 const MAX_OPERATION_PARAGRAPHS = 10_000;
 const MAX_OPERATION_TEXT_UTF8_BYTES = 1024 * 1024;
 
-interface OwnedHandle {
-  readonly value: object;
-  readonly free: () => unknown;
-}
-
-interface HandleRegistry {
-  readonly root: object;
-  readonly handles: OwnedHandle[];
-  readonly seen: Set<object>;
-  invalid: boolean;
-}
-
 interface RetainedPropertyLowerBound {
   propertyValues: number;
   propertyStringUtf8Bytes: number;
 }
 
 /**
- * Consumes one generated string result into exact bounded checkpoint bytes.
- *
- * Once the protected-owner list is successfully snapshotted, this function
- * accepts the outer result and frees it plus any cloned error exactly once on
- * every path. If that caller-owned list cannot be captured as a bounded dense
- * own-data array, ownership of `view` remains with the caller because a
- * protected alias cannot be ruled out.
- * Overlapping document/checkpoint reads cannot acquire an already-active result
- * or error handle, including during cleanup. Independent nested results remain
- * valid. This reservation is not permission to reuse an already-freed handle.
- * Raw generated objects are hostile: accessors may throw, nested handles may
- * alias protected owners, and synchronous methods may return thenables.
+ * Consumes bounded checkpoint bytes with the same ownership and rejection
+ * rules as consumeWasmDocumentJson. If protected-owner capture fails, ownership
+ * remains with the caller. Active handles cannot be reacquired during cleanup;
+ * independent nested reads are allowed, reuse of freed handles is not.
  */
 export function consumeWasmSessionCheckpoint(
   expected: WasmSessionCheckpointExpectedSnapshot,
@@ -362,75 +321,6 @@ function readCheckpoint(
   return ownedResult(Object.freeze({ ok: true, checkpoint }));
 }
 
-function captureHandle(
-  registry: HandleRegistry,
-  value: unknown,
-  protectedHandles: ReadonlySet<object>,
-): value is object {
-  if (
-    !objectLike(value) || protectedHandles.has(value) || registry.seen.has(value) ||
-    (value !== registry.root && ACTIVE_WASM_STRING_HANDLES.has(value))
-  ) {
-    registry.invalid = true;
-    return false;
-  }
-  // Reserve before reading cleanup, since the getter can start another read.
-  registry.seen.add(value);
-  ACTIVE_WASM_STRING_HANDLES.add(value);
-  let free: unknown;
-  try {
-    free = (value as { free?: unknown }).free;
-  } catch {
-    containThenable(value);
-    registry.invalid = true;
-    return false;
-  }
-  if (typeof free !== "function") {
-    valueIsThenable(free);
-    containThenable(value);
-    registry.invalid = true;
-    return false;
-  }
-  registry.handles.push({
-    value,
-    free: () => Reflect.apply(free, value, []),
-  });
-  const freeIsThenable = valueIsThenable(free);
-  const handleIsThenable = containThenable(value);
-  if (freeIsThenable || handleIsThenable) {
-    registry.invalid = true;
-    return false;
-  }
-  return true;
-}
-
-function freeHandles(registry: HandleRegistry): boolean {
-  let failed = registry.invalid;
-  for (let index = registry.handles.length - 1; index >= 0; index -= 1) {
-    const handle = registry.handles[index];
-    if (handle === undefined) {
-      failed = true;
-      continue;
-    }
-    try {
-      const returned = Reflect.apply(handle.free, handle.value, []) as unknown;
-      if (returned !== undefined) {
-        if (objectLike(returned)) containThenable(returned);
-        failed = true;
-      }
-    } catch {
-      failed = true;
-    }
-  }
-  return failed;
-}
-
-function objectSet(values: readonly unknown[]): ReadonlySet<object> {
-  const result = snapshotProtectedHandleArray(values);
-  if (result === null) throw new TypeError("invalid protected-handle list");
-  return result;
-}
-
 function ownedResult<T extends BrowserSessionCheckpointReadResult>(value: T): T {
   OWNED_READ_RESULTS.add(value);
   return value;
@@ -495,7 +385,7 @@ function validateCheckpointEnvelope(
   if (
     historyBase === null ||
     historyBase["format"] !== "breditor/editor-state" ||
-    historyBase["formatVersion"] !== expectedFormatVersion
+    historyBase["formatVersion"] !== (binding.mode === "v5" ? 3 : expectedFormatVersion)
   ) {
     return null;
   }
@@ -558,7 +448,7 @@ function validateCheckpointEnvelope(
   ) {
     return null;
   }
-  if (binding.mode === "v3") {
+  if (binding.mode === "v3" || binding.mode === "v5") {
     const retainedProperties: RetainedPropertyLowerBound = {
       propertyValues: 0,
       propertyStringUtf8Bytes: 0,
@@ -583,7 +473,7 @@ function validateCheckpointEnvelope(
 }
 
 function durableFormatVersion(mode: WasmDurableMode): number {
-  return mode === "v1" ? 1 : mode === "v2" ? 2 : 3;
+  return Number(mode.slice(1));
 }
 
 function schemaBindingMatches(
@@ -669,7 +559,9 @@ function validSessionV3History(
     aggregateOperations += operations.length;
     if (aggregateOperations > MAX_V3_AGGREGATE_OPERATIONS) return false;
     for (const operation of operations) {
-      if (!validOperationV3Payload(operation, contract)) return false;
+      if (!(contract.mode === "v5"
+        ? validOperationV5Payload(operation, contract)
+        : validOperationV3Payload(operation, contract))) return false;
     }
     if (
       !validSelection(entry["resultSelection"]) ||
@@ -711,6 +603,10 @@ function observeHistoryBaseDocumentProperties(
   if (!Array.isArray(paragraphs)) return false;
   for (const rawParagraph of paragraphs) {
     const paragraph = jsonRecord(rawParagraph);
+    if (paragraph?.["type"] === "breditor/heading") {
+      retainedProperties.propertyValues += 1;
+      if (retainedProperties.propertyValues > MAX_V3_RETAINED_PROPERTY_VALUES) return false;
+    }
     const runs = paragraph?.["children"];
     if (!Array.isArray(runs)) return false;
     for (const rawRun of runs) {
@@ -862,6 +758,63 @@ function validOperationV3Payload(
   }
 }
 
+/** V5 adds full-source text-block guards. Rust still proves live-state replay. */
+function validOperationV5Payload(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+): boolean {
+  const record = jsonRecord(value);
+  if (record === null) return false;
+  switch (record["kind"]) {
+    case "textBlockKindChange": {
+      const operation = exactJsonRecord(record, ["kind", "start", "expected", "replacement"]);
+      const count = guardedBlockCount(operation?.["expected"], contract);
+      const replacement = operation?.["replacement"];
+      return operation !== null && isU32(operation["start"]) && count !== null &&
+        operation["start"] + count <= MAX_OPERATION_PARAGRAPHS &&
+        Array.isArray(replacement) && replacement.length === count && replacement.every((value) => {
+          const paragraph = exactJsonRecord(value, ["kind"]);
+          if (paragraph !== null) return paragraph["kind"] === "paragraph";
+          const heading = exactJsonRecord(value, ["kind", "level"]);
+          return heading !== null && heading["kind"] === "heading" && isHeadingProjectionLevel(heading["level"]);
+        });
+    }
+    case "textBlockSplice": {
+      const operation = exactJsonRecord(record, ["kind", "block", "start", "end", "expected", "replacement"]);
+      return operation !== null && isU32(operation["block"]) &&
+        operation["block"] < MAX_OPERATION_PARAGRAPHS &&
+        isSafeUnsignedInteger(operation["start"]) && isSafeUnsignedInteger(operation["end"]) &&
+        operation["start"] <= operation["end"] &&
+        guardedBlockCount(operation["expected"], contract) === 1 &&
+        validTextFragment(operation["replacement"], contract);
+    }
+    case "textBlockReplace": {
+      const operation = exactJsonRecord(record, ["kind", "start", "end", "expected", "replacement"]);
+      const start = textBlockBoundary(operation?.["start"]);
+      const end = textBlockBoundary(operation?.["end"]);
+      const replacementCount = guardedBlockCount(operation?.["replacement"], contract);
+      return operation !== null && start !== null && end !== null &&
+        (start.block < end.block || (start.block === end.block && start.offset <= end.offset)) &&
+        guardedBlockCount(operation["expected"], contract) === end.block - start.block + 1 &&
+        replacementCount !== null && start.block + replacementCount <= MAX_OPERATION_PARAGRAPHS;
+    }
+    default:
+      return validOperationV3Payload(value, contract);
+  }
+}
+
+function guardedBlockCount(value: unknown, contract: ResolvedWasmDurableJsonContract): number | null {
+  return durableDocumentRootMatchesContract(value, contract)
+    ? ((value as Record<string, unknown>)["children"] as unknown[]).length : null;
+}
+
+function textBlockBoundary(value: unknown): { block: number; offset: number } | null {
+  const record = exactJsonRecord(value, ["block", "offset"]);
+  return record !== null && isU32(record["block"]) && record["block"] < MAX_OPERATION_PARAGRAPHS &&
+    isSafeUnsignedInteger(record["offset"])
+    ? { block: record["block"], offset: record["offset"] } : null;
+}
+
 function validTextRange(value: unknown): boolean {
   const range = exactJsonRecord(value, ["containerPath", "start", "end"]);
   return range !== null &&
@@ -961,70 +914,8 @@ function isQualifiedName(value: unknown): value is string {
     /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
 }
 
-function exactJsonRecord(
-  value: unknown,
-  expectedKeys: readonly string[],
-): Record<string, unknown> | null {
-  const record = jsonRecord(value);
-  if (record === null) return null;
-  const keys = Object.keys(record);
-  if (keys.length !== expectedKeys.length) return null;
-  for (let index = 0; index < expectedKeys.length; index += 1) {
-    const expected = expectedKeys[index];
-    if (
-      expected === undefined ||
-      keys[index] !== expected ||
-      !Object.hasOwn(record, expected)
-    ) {
-      return null;
-    }
-  }
-  return record;
-}
-
 function jsonRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
-}
-
-function containThenable(value: object): boolean {
-  let then: unknown;
-  try {
-    then = (value as { then?: unknown }).then;
-  } catch {
-    return true;
-  }
-  if (then === undefined) return false;
-  try {
-    const assimilated = PROMISE_RESOLVE(value);
-    Reflect.apply(PROMISE_CATCH, assimilated, [IGNORE_SETTLEMENT]);
-  } catch {
-    // The value remains invalid even if rejection containment itself fails.
-  }
-  return true;
-}
-
-function valueIsThenable(value: unknown): boolean {
-  return objectLike(value) && containThenable(value);
-}
-
-function objectLike(value: unknown): value is object {
-  return (typeof value === "object" && value !== null) || typeof value === "function";
-}
-
-function canonicalU64(value: string): boolean {
-  if (!/^(?:0|[1-9][0-9]{0,19})$/u.test(value)) return false;
-  try {
-    return BigInt(value) <= 18_446_744_073_709_551_615n;
-  } catch {
-    return false;
-  }
-}
-
-function isStableCode(value: string): boolean {
-  return (
-    value.length <= 128 &&
-    /^[a-z][a-z0-9._-]*(?:\/[a-z][a-z0-9._-]*)?$/u.test(value)
-  );
 }

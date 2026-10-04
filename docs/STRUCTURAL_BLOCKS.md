@@ -484,6 +484,28 @@ exercise the same real-Wasm scenario, including restore/undo/redo; neither
 asserts native keyboard, clipboard, IME, Safari-app or mobile qualification.
 The ordinary demo has not switched to the heading profile.
 
+### Browser V5 persistence and command delivery
+
+`WasmDurableJsonContract` and the command adapter accept explicit `v5`. This
+selects Session V5 with State V3 and Document V2; it is not inferred from JSON.
+Document checks admit only direct-root paragraphs and checked `breditor/heading`
+ranks 1–6, including empty blocks, and count ranks in the property-value budget.
+Projection correlation includes exact rank. Legacy modes remain paragraph-only.
+
+Session preflight admits the three new guarded text-block payloads plus the
+inherited payload language, enforcing canonical keys, full synthetic-root guards,
+typed fragments, static spans and resource ceilings. Source text/selection
+validity and complete retained-result accounting remain Rust restore's job.
+Passing preflight alone does not prove that a recipe applies to its live source.
+
+The shared real-Wasm scenario uses both direct engine commands and the regular
+browser adapter. The latter owns the exact generation already bound to the
+projection, not an interchangeable clone. It exercises normal selection writes,
+validated save reads, typing, kind intent, undo and save/restore/redo; after redo
+the document, selection and pending formats must match the saved editing state.
+The test harness supplies native Selection/Range constructors under jsdom.
+Public startup and native event/toolbar wiring remain separate acceptance gates.
+
 ### Normalized plain-text paste
 
 The experimental `InsertTextBlockPlainTextAction` accepts the existing bounded

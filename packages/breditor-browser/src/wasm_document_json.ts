@@ -1,11 +1,13 @@
 import {
+  captureHandle, freeHandles, objectSet, valueIsThenable,
+  objectLike, type HandleRegistry,
+} from "./wasm_string_handle_registry.js";
+import {
   isOwnedProjection,
+  isHeadingProjectionLevel,
   type BaseDocumentProjection,
 } from "./projection.js";
-import {
-  snapshotOwnDataArray,
-  snapshotProtectedHandleArray,
-} from "./protected_handle_snapshot.js";
+import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
 
@@ -13,7 +15,7 @@ import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
 export const MAX_BROWSER_DOCUMENT_JSON_BYTES = 16_777_216;
 
 /** Explicit durable codec selected before any document payload is inspected. */
-export type WasmDurableMode = "v1" | "v2" | "v3";
+export type WasmDurableMode = "v1" | "v2" | "v3" | "v5";
 
 /** Exact schema selector and fingerprint required by a compiled durable codec. */
 export interface WasmDurableSchemaBinding {
@@ -49,16 +51,15 @@ export interface WasmDurableFormatBinding {
 /**
  * Browser-side durable contract selected independently of payload contents.
  *
- * V1 is the exact built-in base contract. V2 and V3 require the complete
- * selector, fingerprint, and canonical format/property catalog copied from one
- * compiled profile. Both use Document V2; the mode distinguishes session,
- * state, commit, and operation generations.
+ * V1 is built-in. Compiled modes require the exact schema/format catalog.
+ * V2/V3 are paragraph-only; explicit V5 admits headings. All use Document V2.
+ * V5 sessions retain State V3, not a relabeled State V5.
  * @internal
  */
 export type WasmDurableJsonContract =
   | Readonly<{ readonly mode: "v1" }>
   | Readonly<{
-      readonly mode: "v2" | "v3";
+      readonly mode: "v2" | "v3" | "v5";
       readonly schema: WasmDurableSchemaBinding;
       readonly formats: readonly WasmDurableFormatBinding[];
     }>;
@@ -150,9 +151,6 @@ const JSON_PARSE = JSON.parse;
 const JSON_STRINGIFY = JSON.stringify;
 const OBJECT_KEYS = Object.keys;
 const OBJECT_HAS_OWN = Object.hasOwn;
-const PROMISE_RESOLVE = Promise.resolve.bind(Promise);
-const PROMISE_CATCH = Promise.prototype.catch;
-const IGNORE_SETTLEMENT = (): undefined => undefined;
 const MAX_U64 = 18_446_744_073_709_551_615n;
 const MAX_PARAGRAPHS = 10_000;
 const MAX_RUNS_PER_PARAGRAPH = 10_000;
@@ -177,28 +175,10 @@ export interface ResolvedWasmDurableJsonContract {
   readonly formatsByKind: ReadonlyMap<string, WasmDurableFormatBinding>;
 }
 
-interface OwnedHandle {
-  readonly value: object;
-  readonly free: () => unknown;
-}
-
-interface HandleRegistry {
-  readonly root: object;
-  readonly handles: OwnedHandle[];
-  readonly seen: Set<object>;
-  invalid: boolean;
-}
-
 /**
- * Consumes one generated string result into exact, bounded Document bytes.
- *
- * The outer result and every cloned error are freed exactly once after their
- * cleanup methods have been captured. Generated values are hostile: accessors
- * may throw, handles may alias protected owners, and sync methods may return
- * thenables. No generated handle or unvalidated payload crosses this edge.
- * Overlapping document/checkpoint reads cannot acquire an already-active result
- * or cloned error, including during cleanup. Independent nested reads remain
- * valid. This does not permit callers to reuse an already-freed handle.
+ * Consumes bounded document bytes; owns handles only after protected-owner
+ * capture. Rejects aliases, reentrant ownership, throwing accessors and async
+ * values; releases captured handles once, including on failed validation.
  */
 export function consumeWasmDocumentJson(
   expected: WasmDocumentJsonExpectedSnapshot,
@@ -279,9 +259,8 @@ export function documentJsonUtf8Bytes(
 }
 
 /**
- * Proves that validated Document V1 bytes describe exactly the current base
- * semantic projection. Document V1 intentionally has no snapshot field, so
- * this comparison closes the content-correlation edge for structural engines.
+ * Correlates document content, including heading rank and typed formats, with
+ * the owned projection. Durable documents have no snapshot field.
  * @internal
  */
 export function documentJsonMatchesProjection(
@@ -308,6 +287,10 @@ export function documentJsonMatchesProjection(
     if (documentParagraphs.length !== projection.paragraphs.length) return false;
     for (let paragraphIndex = 0; paragraphIndex < documentParagraphs.length; paragraphIndex += 1) {
       const paragraph = documentParagraphs[paragraphIndex] as Record<string, unknown>;
+      const level = paragraph["type"] === "breditor/heading"
+        ? (paragraph["properties"] as Record<string, unknown>)["breditor/level"]
+        : undefined;
+      if (level !== projection.paragraphs[paragraphIndex]?.headingLevel) return false;
       const documentRuns = paragraph["children"] as unknown[];
       const projectionRuns = projection.paragraphs[paragraphIndex]?.runs;
       if (projectionRuns === undefined || documentRuns.length !== projectionRuns.length) {
@@ -400,7 +383,8 @@ function readDocument(
   return ownedResult(Object.freeze({ ok: true, document }));
 }
 
-function readExpectedSnapshot(
+/** Shared strict durable-boundary primitive. @internal */
+export function readExpectedSnapshot(
   value: WasmDocumentJsonExpectedSnapshot,
 ): Readonly<{ lineage: string; revision: string }> | null {
   try {
@@ -489,7 +473,7 @@ export function resolveWasmDurableJsonContract(
     const compiled = exactJsonRecord(value, ["mode", "schema", "formats"]);
     if (
       compiled === null ||
-      (compiled["mode"] !== "v2" && compiled["mode"] !== "v3")
+      (compiled["mode"] !== "v2" && compiled["mode"] !== "v3" && compiled["mode"] !== "v5")
     ) return null;
     const schema = exactJsonRecord(compiled["schema"], ["name", "version", "fingerprint"]);
     const formats = snapshotOwnDataArray(compiled["formats"], MAX_PROFILE_FORMATS);
@@ -614,9 +598,9 @@ function validFormatProperties(
   mode: WasmDurableMode,
 ): FormatPropertySummary | null {
   // V1 and V2 are deliberately frozen at the original property-free payload
-  // generation. Document V2 is shared by both compiled modes, but only V3 may
+  // generation. Document V2 is shared by compiled modes, but only V3/V5 may
   // use the descriptor's scalar property contracts.
-  if (mode !== "v3") {
+  if (mode === "v1" || mode === "v2") {
     return emptyJsonRecord(value) ? EMPTY_FORMAT_PROPERTY_SUMMARY : null;
   }
   const record = jsonRecord(value);
@@ -690,7 +674,15 @@ function validDocument(
   ) {
     return false;
   }
-  const root = exactJsonRecord(envelope["root"], [
+  return durableDocumentRootMatchesContract(envelope["root"], contract);
+}
+
+/** Validates a complete document or operation-guard root. @internal */
+export function durableDocumentRootMatchesContract(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+): boolean {
+  const root = exactJsonRecord(value, [
     "kind",
     "type",
     "entityId",
@@ -725,13 +717,20 @@ function validDocument(
     if (
       paragraph === null ||
       paragraph["kind"] !== "element" ||
-      paragraph["type"] !== "breditor/paragraph" ||
       paragraph["entityId"] !== null ||
-      !emptyJsonRecord(paragraph["properties"]) ||
       !Array.isArray(paragraph["children"]) ||
       paragraph["children"].length > MAX_RUNS_PER_PARAGRAPH
     ) {
       return false;
+    }
+    if (paragraph["type"] === "breditor/paragraph") {
+      if (!emptyJsonRecord(paragraph["properties"])) return false;
+    } else {
+      const properties = exactJsonRecord(paragraph["properties"], ["breditor/level"]);
+      if (contract.mode !== "v5" || paragraph["type"] !== "breditor/heading" ||
+        properties === null || !isHeadingProjectionLevel(properties["breditor/level"])) return false;
+      totalPropertyValues += 1;
+      if (totalPropertyValues > MAX_PROPERTY_VALUES) return false;
     }
     nodes += paragraph["children"].length;
     if (nodes > MAX_NODES) return false;
@@ -871,7 +870,8 @@ function isSchemaFingerprint(value: unknown): value is string {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/u.test(value);
 }
 
-function exactJsonRecord(
+/** Shared strict durable-boundary primitive. @internal */
+export function exactJsonRecord(
   value: unknown,
   expectedKeys: readonly string[],
 ): Record<string, unknown> | null {
@@ -906,72 +906,6 @@ function jsonRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function captureHandle(
-  registry: HandleRegistry,
-  value: unknown,
-  protectedHandles: ReadonlySet<object>,
-): value is object {
-  if (
-    !objectLike(value) || protectedHandles.has(value) || registry.seen.has(value) ||
-    (value !== registry.root && ACTIVE_WASM_STRING_HANDLES.has(value))
-  ) {
-    registry.invalid = true;
-    return false;
-  }
-  // Reserve before reading cleanup, since a getter can start another read.
-  registry.seen.add(value);
-  ACTIVE_WASM_STRING_HANDLES.add(value);
-  let free: unknown;
-  try {
-    free = (value as { free?: unknown }).free;
-  } catch {
-    containThenable(value);
-    registry.invalid = true;
-    return false;
-  }
-  if (typeof free !== "function") {
-    valueIsThenable(free);
-    containThenable(value);
-    registry.invalid = true;
-    return false;
-  }
-  registry.handles.push({ value, free: () => Reflect.apply(free, value, []) });
-  const freeIsThenable = valueIsThenable(free);
-  const handleIsThenable = containThenable(value);
-  if (freeIsThenable || handleIsThenable) {
-    registry.invalid = true;
-    return false;
-  }
-  return true;
-}
-
-function freeHandles(registry: HandleRegistry): boolean {
-  let failed = registry.invalid;
-  for (let index = registry.handles.length - 1; index >= 0; index -= 1) {
-    const handle = registry.handles[index];
-    if (handle === undefined) {
-      failed = true;
-      continue;
-    }
-    try {
-      const returned = Reflect.apply(handle.free, handle.value, []) as unknown;
-      if (returned !== undefined) {
-        if (objectLike(returned)) containThenable(returned);
-        failed = true;
-      }
-    } catch {
-      failed = true;
-    }
-  }
-  return failed;
-}
-
-function objectSet(values: readonly unknown[]): ReadonlySet<object> {
-  const result = snapshotProtectedHandleArray(values);
-  if (result === null) throw new TypeError("invalid protected-handle list");
-  return result;
-}
-
 function ownedResult<T extends BrowserDocumentJsonReadResult>(value: T): T {
   OWNED_READ_RESULTS.add(value);
   return value;
@@ -981,32 +915,8 @@ function boundaryFailure(): BrowserDocumentJsonReadResult {
   return ownedResult(Object.freeze({ ok: false, error: INVALID_VIEW }));
 }
 
-function containThenable(value: object): boolean {
-  let then: unknown;
-  try {
-    then = (value as { then?: unknown }).then;
-  } catch {
-    return true;
-  }
-  if (then === undefined) return false;
-  try {
-    const assimilated = PROMISE_RESOLVE(value);
-    Reflect.apply(PROMISE_CATCH, assimilated, [IGNORE_SETTLEMENT]);
-  } catch {
-    // The value remains invalid even if rejection containment fails.
-  }
-  return true;
-}
-
-function valueIsThenable(value: unknown): boolean {
-  return objectLike(value) && containThenable(value);
-}
-
-function objectLike(value: unknown): value is object {
-  return (typeof value === "object" && value !== null) || typeof value === "function";
-}
-
-function canonicalU64(value: string): boolean {
+/** Shared strict durable-boundary primitive. @internal */
+export function canonicalU64(value: string): boolean {
   if (!/^(?:0|[1-9][0-9]{0,19})$/u.test(value)) return false;
   try {
     return BigInt(value) <= MAX_U64;
@@ -1015,7 +925,8 @@ function canonicalU64(value: string): boolean {
   }
 }
 
-function isStableCode(value: string): boolean {
+/** Shared strict durable-boundary primitive. @internal */
+export function isStableCode(value: string): boolean {
   return (
     value.length <= 128 &&
     /^[a-z][a-z0-9._-]*(?:\/[a-z][a-z0-9._-]*)?$/u.test(value)

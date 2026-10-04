@@ -61,6 +61,111 @@ const V3_CONTRACT: WasmDurableJsonContract = Object.freeze({
     }),
   ]),
 });
+const V5_CONTRACT: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v5" };
+
+describe("explicit heading Session V5 preflight", () => {
+  const accepts = (value: unknown) => sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), V5_CONTRACT);
+  it("accepts State V3, Document V2 and each full-guard V5 operation without relabeling", () => {
+    const value = checkpointV5Value();
+    expect(accepts(value)).not.toBeNull();
+    const view = new FakeStringResult("value", JSON.stringify(value));
+    expect(consumeWasmSessionCheckpoint(EXPECTED, view, [], V5_CONTRACT).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), V3_CONTRACT)).toBeNull();
+    expect(sessionCheckpointJsonMatchesDurableContract(checkpointV3Json(), V5_CONTRACT)).toBeNull();
+  });
+
+  it.each([
+    ["session V3", (v: Record<string, any>) => { v["formatVersion"] = 3; }],
+    ["State V5", (v: Record<string, any>) => { v["historyBase"]["formatVersion"] = 5; }],
+    ["Document V5", (v: Record<string, any>) => { v["historyBase"]["document"]["formatVersion"] = 5; }],
+    ["foreign fingerprint", (v: Record<string, any>) => { v["schemaFingerprint"] = `sha256:${"f".repeat(64)}`; }],
+    ["invalid base rank", (v: Record<string, any>) => { v["historyBase"]["document"]["root"]["children"][0]["properties"]["breditor/level"] = 7; }],
+    ["cursor beyond history", (v: Record<string, any>) => { v["cursor"] = 4; }],
+  ] as const)("rejects %s", (_label, mutate) => {
+    const value = checkpointV5Value(); mutate(value); expect(accepts(value)).toBeNull();
+  });
+
+  it.each([
+    [0, "multiple splice guards", (op: Record<string, any>) => { op["expected"]["children"].push(op["expected"]["children"][0]); }],
+    [0, "backward splice", (op: Record<string, any>) => { op["start"] = 2; }],
+    [0, "unsafe offset", (op: Record<string, any>) => { op["end"] = Number.MAX_SAFE_INTEGER + 1; }],
+    [0, "out-of-bounds block", (op: Record<string, any>) => { op["block"] = 10_000; }],
+    [0, "invalid replacement format", (op: Record<string, any>) => { op["replacement"]["runs"][0]["formats"][0]["properties"]["example/enabled"] = "true"; }],
+    [0, "nested guard", (op: Record<string, any>) => { op["expected"]["children"][0]["children"] = [{ kind: "element", type: "breditor/paragraph", entityId: null, properties: {}, children: [] }]; }],
+    [1, "replacement count", (op: Record<string, any>) => { op["replacement"] = []; }],
+    [1, "invalid replacement rank", (op: Record<string, any>) => { op["replacement"][0]["level"] = "4"; }],
+    [1, "extra replacement key", (op: Record<string, any>) => { op["replacement"][0]["extra"] = true; }],
+    [1, "overflowing kind span", (op: Record<string, any>) => { op["start"] = 4_294_967_295; }],
+    [2, "mismatched range count", (op: Record<string, any>) => { op["end"]["block"] = 1; }],
+    [2, "backward range", (op: Record<string, any>) => { op["start"]["offset"] = 2; }],
+    [2, "empty replacement root", (op: Record<string, any>) => { op["replacement"]["children"] = []; }],
+    [2, "foreign replacement node", (op: Record<string, any>) => { op["replacement"]["children"][0]["type"] = "example/unknown"; }],
+  ] as const)("rejects operation %i %s", (index, _label, mutate) => {
+    const value = checkpointV5Value();
+    const operation = value["entries"][index]["forwardOperations"][0];
+    mutate(operation);
+    expect(accepts(value)).toBeNull();
+  });
+
+  it("rejects unknown payload fields/tags and duplicate or noncanonical JSON", () => {
+    for (const index of [0, 1, 2]) {
+      const value = checkpointV5Value();
+      value["entries"][index]["forwardOperations"][0]["extra"] = true;
+      expect(accepts(value)).toBeNull();
+      delete value["entries"][index]["forwardOperations"][0]["extra"];
+      value["entries"][index]["forwardOperations"][0]["kind"] = "unknown";
+      expect(accepts(value)).toBeNull();
+    }
+    const json = JSON.stringify(checkpointV5Value());
+    expect(sessionCheckpointJsonMatchesDurableContract(` ${json}`, V5_CONTRACT)).toBeNull();
+    expect(sessionCheckpointJsonMatchesDurableContract(json.replace('"formatVersion":5', '"formatVersion":5,"formatVersion":5'), V5_CONTRACT)).toBeNull();
+  });
+
+  it("bounds the result span and counts heading ranks in retained property totals", () => {
+    const value = checkpointV5Value();
+    const operation = value["entries"][2]["forwardOperations"][0];
+    operation["start"]["block"] = 9_999;
+    operation["end"]["block"] = 9_999;
+    expect(accepts(value)).not.toBeNull(); // Static shape only; Rust proves live indexes.
+    operation["replacement"]["children"].push(structuredClone(operation["replacement"]["children"][0]));
+    expect(accepts(value)).toBeNull();
+
+    const retained = retainedPropertyBudgetCheckpoint(99);
+    retained.value["formatVersion"] = 5;
+    if (retained.contract.mode === "v1") throw new Error("expected compiled contract");
+    const contract: WasmDurableJsonContract = { ...retained.contract, mode: "v5" };
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(retained.value), contract)).not.toBeNull();
+    const block = retained.value["historyBase"]["document"]["root"]["children"][0];
+    block["type"] = "breditor/heading";
+    block["properties"] = { "breditor/level": 2 };
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(retained.value), contract)).toBeNull();
+  });
+});
+
+function checkpointV5Value(): Record<string, any> {
+  const value = checkpointV3Value();
+  value["formatVersion"] = 5;
+  const root = value["historyBase"]["document"]["root"];
+  root["children"][0]["type"] = "breditor/heading";
+  root["children"][0]["properties"] = { "breditor/level": 2 };
+  const changed = structuredClone(root);
+  changed["children"][0]["children"][0]["text"] = "B";
+  const ranked = structuredClone(changed);
+  ranked["children"][0]["properties"]["breditor/level"] = 4;
+  const replacement = structuredClone(ranked);
+  replacement["children"][0]["type"] = "breditor/paragraph";
+  replacement["children"][0]["properties"] = {};
+  const previous = value["entries"][0];
+  value["entries"] = [
+    { kind: "textBlockSplice", block: 0, start: 0, end: 1, expected: structuredClone(root),
+      replacement: { runs: [{ text: "B", formats: changed["children"][0]["children"][0]["formats"] }] } },
+    { kind: "textBlockKindChange", start: 0, expected: changed, replacement: [{ kind: "heading", level: 4 }] },
+    { kind: "textBlockReplace", start: { block: 0, offset: 0 }, end: { block: 0, offset: 1 }, expected: ranked, replacement },
+  ].map((operation) => ({ ...previous, forwardOperations: [operation] }));
+  value["cursor"] = 3;
+  return value;
+}
 
 class FakeError implements WasmSessionCheckpointErrorView {
   freeCalls = 0;

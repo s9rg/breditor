@@ -653,7 +653,7 @@ export class BreditorWasmCommandAdapter {
     return this.#sessionCheckpointReadPort;
   }
 
-  /** Exact lossless Document V1 reader bound to the current observation. */
+  /** Exact lossless mode-selected document reader for the current observation. */
   get documentJsonReadPort(): WasmDocumentJsonReadPort {
     return this.#documentJsonReadPort;
   }
@@ -2539,7 +2539,8 @@ function snapshotAdapterOptions(
   } else if (
     record["durableMode"] === "v1" ||
     record["durableMode"] === "v2" ||
-    record["durableMode"] === "v3"
+    record["durableMode"] === "v3" ||
+    record["durableMode"] === "v5"
   ) {
     durableMode = record["durableMode"];
   } else {

@@ -14,6 +14,7 @@ import {
 import {
   BaseDocumentProjection,
   createProfiledDocumentProjection,
+  createTextBlockDocumentProjection,
 } from "./projection.js";
 import {
   consumeWasmCompiledProfileDescriptor,
@@ -1137,3 +1138,60 @@ function propertyBudgetRun(value: string): unknown {
     properties: { "example/value": value },
   }]);
 }
+
+describe("explicit V5 heading document contract", () => {
+  const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v5" };
+  const heading = (level: unknown, children: unknown[] = [run("a🙂b", false)]) => ({
+    kind: "element", type: "breditor/heading", entityId: null,
+    properties: { "breditor/level": level }, children,
+  });
+
+  it.each([1, 2, 3, 4, 5, 6])("admits rank %i, empty headings and typed inline properties only in V5", (level) => {
+    const value = documentV2Json([heading(level), heading(level, []), paragraph([
+      formattedRunWithProperties("link", [linkFormat("a")]),
+    ])]);
+    expect(documentJsonUtf8Bytes(value, contract)).toBe(new TextEncoder().encode(value).length);
+    for (const legacy of [V2_CONTRACT, V3_CONTRACT]) expect(documentJsonUtf8Bytes(value, legacy)).toBeNull();
+    const view = new FakeStringResult("value", value);
+    expect(consumeWasmDocumentJson(EXPECTED, view, [], contract).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it.each([0, 7, -1, 1.5, "2", null, true, {}, []])("rejects invalid rank %j", (level) => {
+    expect(documentJsonUtf8Bytes(documentV2Json([heading(level)]), contract)).toBeNull();
+  });
+
+  it("rejects rank on paragraphs, extra properties, nesting and unknown block kinds", () => {
+    for (const block of [
+      { ...heading(2), type: "breditor/paragraph" },
+      { ...heading(2), properties: { "breditor/level": 2, "example/extra": true } },
+      { ...heading(2), properties: {} },
+      { ...heading(2), entityId: "example/entity" },
+      { ...heading(2), type: "breditor/list" },
+      heading(2, [heading(3)]),
+    ]) expect(documentJsonUtf8Bytes(documentV2Json([block]), contract)).toBeNull();
+  });
+
+  it("counts structural ranks in the same document property budget as inline values", () => {
+    const blocks = Array.from({ length: 10_000 }, () => heading(2, []));
+    const budgetContract: WasmDurableJsonContract = { ...PROPERTY_BUDGET_CONTRACT, mode: "v5" };
+    expect(documentJsonUtf8Bytes(documentV2Json(blocks), budgetContract)).not.toBeNull();
+    blocks[0] = heading(2, [propertyBudgetRun("a")]);
+    expect(documentJsonUtf8Bytes(documentV2Json(blocks), budgetContract)).toBeNull();
+  });
+
+  it("matches exact heading kind and rank, not just equal text", () => {
+    const generation = new FakeProfileGeneration();
+    const descriptor = consumeWasmCompiledProfileDescriptor(generation, new FakeTypedProfileDescriptor(generation));
+    if (!descriptor.ok) throw new Error(descriptor.error.code);
+    const projected = createTextBlockDocumentProjection({
+      schema: contract.schema, snapshot: EXPECTED,
+      paragraphs: [{ headingLevel: 2, runs: [{ text: "a🙂b", formatDetails: [] }] }],
+    }, generation, descriptor.descriptor);
+    if (!projected.ok) throw new Error(projected.error.code);
+    expect(documentJsonMatchesProjection(documentV2Json([heading(2)]), projected.value, contract)).toBe(true);
+    expect(documentJsonMatchesProjection(documentV2Json([heading(3)]), projected.value, contract)).toBe(false);
+    expect(documentJsonMatchesProjection(documentV2Json([paragraph([run("a🙂b", false)])]), projected.value, contract)).toBe(false);
+    expect(documentJsonMatchesProjection(documentV2Json([heading(2)]), projected.value, V3_CONTRACT)).toBe(false);
+  });
+});

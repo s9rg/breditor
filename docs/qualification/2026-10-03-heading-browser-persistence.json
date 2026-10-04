@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "7340752",
+  "status": "Development checkpoint: heading durable preflight and command adapter verified; release size gate remains failing",
+  "contracts": {
+    "explicitBrowserMode": "v5",
+    "document": 2,
+    "state": 3,
+    "session": 5,
+    "legacyModes": "Remain closed; no inferred generation or fallback",
+    "headingOperations": ["textBlockKindChange", "textBlockSplice", "textBlockReplace"],
+    "preflight": "Canonical shapes, full guards, typed formats, checked ranks, static spans and bounded resources. Rust remains authoritative for live application, scalar boundaries, complete retained-result accounting and replay.",
+    "ownership": "Shared string-result lifecycle, captured cleanup receivers, protected-owner and reentrancy checks; document and session error policies remain distinct"
+  },
+  "verification": {
+    "browserUnitTests": 1489,
+    "browserUnitFiles": 52,
+    "newTests": 41,
+    "typecheck": "Production and tests passed",
+    "legacyBrowserTests": 90,
+    "legacyBrowserEngines": ["chromium", "firefox", "webkit"],
+    "experimentalScenario": "13 command/render transitions including browser-adapter typing, paragraph intent, undo, guarded document/session reads, fresh restore and redo; exact document/selection/pending-format equality",
+    "experimentalBrowserRuns": { "chromium": 5, "firefox": 5, "webkit": 5 },
+    "browserVersions": { "chromium": "151.0.7922.34", "firefox": "153.0", "webkit": "26.5" },
+    "browserRetries": 0,
+    "generatedAbiRegressions": 11,
+    "nodeWireSmoke": "Passed",
+    "jsdom": "Passed",
+    "diffCheck": "Passed"
+  },
+  "artifact": {
+    "candidate": "target/heading-candidate-1erI67",
+    "wasmSha256": "0a8ee8b2e96326016bd4f78219caacf41dbc9d1d7ccde6ab6d49ca9e125c787e",
+    "browserDistTreeSha256": "9847ec5543763b5e4d0a4da0f68f1a26a69159358dce355e11d2da294c2be9e3",
+    "shippingWasmUnchanged": true
+  },
+  "sizeGate": {
+    "status": "FAILED; ceilings unchanged",
+    "browserJavaScript": { "actual": 1080499, "maximum": 1085000 },
+    "browserDeclarations": { "actual": 276341, "maximum": 276000 },
+    "demoJavaScript": { "actual": 861058, "maximum": 865000 },
+    "demoJavaScriptGzip9": { "actual": 225207, "maximum": 225000 },
+    "otherExistingBudgets": "Passed"
+  },
+  "resolvedHarnessFailures": [
+    "Adapter setup initially supplied a new generation clone; corrected to transfer the exact projection-bound owner without relaxing identity checks",
+    "jsdom lacked Selection/Range constructors; supplied the real jsdom constructors, with no application fallback",
+    "Diagnostic JSON serialization encountered BigInt; report bounded command status instead",
+    "Legacy browser server first resolved an unrelated system Vite shim; reran with repository node_modules/.bin on PATH before any tests had started"
+  ],
+  "remaining": [
+    "Default size gate: declarations and compressed demo JavaScript",
+    "Explicit heading browser startup/load boundary",
+    "Toolbar and native event routing, reload/recovery UI",
+    "Flat bullet/numbered lists",
+    "Native desktop input qualification and full release gate"
+  ],
+  "pushed": false,
+  "published": false
+}

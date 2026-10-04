@@ -12,7 +12,7 @@ const directory = resolve(process.argv[2]);
 const api = await import(pathToFileURL(join(directory, "breditor_wasm.js")).href);
 api.initSync({ module: await readFile(join(directory, "breditor_wasm_bg.wasm")) });
 const dom = new JSDOM("<!doctype html><div id='editor'></div>");
-for (const name of ["Node", "NodeList", "Element", "HTMLElement", "Document", "Window"])
+for (const name of ["Node", "NodeList", "Element", "HTMLElement", "Document", "Window", "Selection", "Range", "AbstractRange"])
   globalThis[name] = dom.window[name];
 try {
   const result = runHeadingDomScenario(api, dom.window.document.getElementById("editor"));
