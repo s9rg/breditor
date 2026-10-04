@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "99681fa",
+  "status": "diagnostic-tools-qualified-original-webkit-fault-unresolved",
+  "originalFailure": {
+    "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-ldkYaY/measurement.json",
+    "sha256": "4db4fd776488a37890b8012947d547d29ddafdc0008961df42e784be9669715a",
+    "stage": "500 items, repetition 1: selectionMs",
+    "reason": "queueUncertain followed by content_export.unavailable",
+    "resolved": false
+  },
+  "changes": [
+    "Optional BREDITOR_PERF_OWNER_REPETITIONS=3..100 changes only the disposable performance fixture owner-loop bound. Nondefault values require queue diagnostics. Exact correctness assertions, disposal and between-owner task yields remain. Expected case counts and odd/even medians now derive from the configured count; the default remains three.",
+    "Optional BREDITOR_PERF_EXCEPTION_PROBE=1 installs a page-only init script for WebKit full-editor mode, mutually exclusive with catch-site/profiling/export diagnostics. It wraps construction through global Error, TypeError and RangeError while leaving application bundle bytes unchanged. Retains at most 32 records, 1024-character messages and 4096-character stacks, plus a dropped count. No document snapshots, engine handles or arbitrary thrown payload serialization.",
+    "Probe capture copies application records before a constructed-and-caught TypeError positive control after fixture completion/failure. Control success is mandatory and recorded separately. It does not inject a command, alter failure recovery or clear the original fault."
+  ],
+  "limits": [
+    "The constructor probe changes the page environment and constructor identities even though application bundle bytes remain identical. It is diagnostic evidence, not a performance benchmark.",
+    "It observes global constructor calls with new, not every engine-originated exception, arbitrary thrown value or Error call without new. Empty records do not prove that no exception was caught.",
+    "Same-page owner churn is a distinct hypothesis from repeated fresh browsers and not a reliable reproducer yet. The 300-case pass does not rule out warm-up/allocation-sensitive behavior.",
+    "All retained stacks are local synthetic-fixture diagnostics; inspect before sharing. No production logging or browser settings were changed."
+  ],
+  "candidate": {
+    "packageRecord": "target/flat-list-packages-KklioP/qualification.json",
+    "packageRecordSha256": "63137133fecfe6cb30d00a2c34d73b87d23f0392b6e82d15b5b480cc9057f317",
+    "wasmSha256": "870ec13e74dd9c3526c577cd4662f8ddde39771de0886d078daa4e28c6205323",
+    "promoted": false
+  },
+  "verification": [
+    "21 tests pass: five queue/owner-loop diagnostic tests, three isolated-realm constructor-probe tests, seven Gecko-profile summary tests and six rendering-trace summary tests.",
+    "Six invalid diagnostic/count combinations reject before artifact reads or fixture staging.",
+    "Source syntax and git diff checks pass.",
+    "Same-page stress completed 100 owners per size (300 exact-state cases); every recorded metric median was independently recomputed from its 100 sorted samples.",
+    "Ten constructor-probed browser runs completed 90 exact-state cases with zero constructor records or drops. The final positive-control implementation completed another nine cases and verified the expected caught TypeError.",
+    "Both constructor-probe JS/Wasm bundle asset maps exactly match the original failed uninstrumented artifact. The positive control is after capture, so it is excluded from application exception records.",
+    "Default, uninstrumented, three-owner mode completed 27 cases across Chromium, Firefox and WebKit after the runner changes. This qualifies the default runner path, not resolution of the original fault."
+  ],
+  "reports": [
+    {
+      "kind": "fresh-browser-queue-diagnostics",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-7Q7buy/measurement.json",
+      "sha256": "5e3525a7636128c7ed7586a6f1c3f1b25dcb4985c7d127ac46dfcdf047459cf5",
+      "completeCases": 90
+    },
+    {
+      "kind": "same-page-100-owners-per-size",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-kn4FbD/measurement.json",
+      "sha256": "3c18e78ac2254d26d2f388b9a9301b56a54b102f2d7b03d9960421c1d389b724",
+      "completeCases": 300
+    },
+    {
+      "kind": "unchanged-bundle-constructor-probe",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-HECbOm/measurement.json",
+      "sha256": "5c84f28c02c42737b233dfe3a22c08049236fbd714e27e9ec79265f58ad2a0f7",
+      "completeCases": 90
+    },
+    {
+      "kind": "constructor-probe-with-post-capture-positive-control",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-KbiyZH/measurement.json",
+      "sha256": "78e2935b8c01f70c8dcdcec05944eb1c2a02daf1e008fab4f9c05a6632a4087e",
+      "completeCases": 9
+    },
+    {
+      "kind": "default-runner-three-engine-control-on-prior-baseline",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-tciy3E/performance-m2oXa5/measurement.json",
+      "sha256": "9ac6d86b14af615eb82fdecfb94cdd608d9e4c937110f70c9b265bf23b82f624",
+      "completeCases": 27
+    }
+  ],
+  "conclusion": "No recurrence in these runs and no captured underlying exception. The original fault remains unresolved and the Rust candidate remains private/unpromoted. New tools make longer same-page testing and exact-bundle exception capture reproducible; they do not establish a WebKit or Rust root cause. A useful next comparison is the retained uninstrumented fixture in native Safari versus bundled WebKit, without changing Mac input or accessibility settings.",
+  "shippingArtifactsChanged": false,
+  "remaining": "Full beta goal stays active: responsiveness, intermittent WebKit failure, native IME/VoiceOver evidence, delivery/size policy and full release qualification remain open. No version change, shipping rebuild, push or publish."
+}

@@ -9,6 +9,12 @@
 // Optional WebKit queue failure diagnosis: BREDITOR_PERF_BROWSER=webkit
 // BREDITOR_PERF_QUEUE_DIAGNOSTICS=1. Logs bounded caught exceptions only in the
 // disposable synthetic fixture; never shipping code or a normal timing result.
+// BREDITOR_PERF_OWNER_REPETITIONS=3..100 adds same-page owner churn only with
+// queue diagnostics; default ordinary/profiling fixtures stay at three per size.
+// BREDITOR_PERF_EXCEPTION_PROBE=1 instead probes global new Error/TypeError/
+// RangeError calls through a page init script while leaving bundle bytes intact.
+// It cannot observe every engine-thrown exception or calls without new. Bounded
+// messages/stacks are local diagnostic data, not a normal timing result.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -20,7 +26,8 @@ import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
-import {instrumentQueueFailures} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, repeatPerformanceOwners} from "./queue-failure-diagnostics.mjs";
+import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 
 assert.ok(process.argv.length === 3 || (process.argv.length === 4 && ["--diagnose-export", "--core-only"].includes(process.argv[3])), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export|--core-only]");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -40,8 +47,14 @@ assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BR
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
 const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
+const constructorProbeEnabled = process.env["BREDITOR_PERF_EXCEPTION_PROBE"] === "1";
 assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
   "queue diagnostics require WebKit full-editor mode without other instrumentation");
+assert.ok(!constructorProbeEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled && !queueDiagnosticsEnabled),
+  "exception constructor probe requires WebKit full-editor mode without other instrumentation");
+const ownerRepetitions = Number(process.env["BREDITOR_PERF_OWNER_REPETITIONS"] ?? "3");
+assert.ok(Number.isSafeInteger(ownerRepetitions) && ownerRepetitions >= 3 && ownerRepetitions <= 100 && (ownerRepetitions === 3 || queueDiagnosticsEnabled),
+  "owner repetitions must be 3..100 and nondefault counts require queue diagnostics");
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const recordPath = await realpath(resolve(repository, process.argv[2]));
 const local = relative(join(repository, "target"), recordPath);
@@ -109,27 +122,33 @@ const diagnosticPlugin = {name: "document-export-rejection-sites", transform(cod
   }
 }};
 let queueDiagnosticModules = 0;
+let stressFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", transform(code, id) {
   if (id === join(consumer, "node_modules/@breditor/browser/dist/command_queue.js")) {
     queueDiagnosticModules++;
     return instrumentQueueFailures(code);
   }
+  if (ownerRepetitions !== 3 && id === join(fixture, "main.ts")) {
+    stressFixtureModules++;
+    return repeatPerformanceOwners(code, ownerRepetitions);
+  }
 }};
 await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
 assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
+assert.equal(stressFixtureModules, ownerRepetitions === 3 ? 0 : 1, "stress fixture was not transformed exactly once");
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
 const measurements = [];
 const output = join(fixture, "measurement.json");
-const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled, queueDiagnosticsEnabled, releasePerformanceQualified: false,
+const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
-  deepDiagnostics, browserName, runCount, cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
+  deepDiagnostics, browserName, runCount, ownerRepetitions, cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
   packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
   methodology: coreOnly
     ? "One 5-item warm-up followed by three independent raw engines at each of 10/100/500 ordered items, every tenth item a heading, identical text to the DOM fixture. Installed packed Wasm, production bundle, headless browser, no editor DOM or browser owner. Raw synchronous calls include observation acquisition/disposal but exclude returned-handle inspection/disposal, except JSON exports which include takeValue and disposal. Action-state cold, exact-hit and post-edit refresh measured separately with full status/revision assertions. Commands pass false for history-group closure and do not call the result's projectionUpdate() readback; projection handle acquisition is a separate span, not full node readback or DOM rendering. Profile compilation once per process, no autosave/layout. Exact document/selection and undo/reload/redo assertions outside spans. Diagnostic decomposition, not an additive subtraction from browser timings or release performance qualification."
-    : "One 5-item warm-up followed by three independent editor owners at each of 10/100/500 ordered items, every tenth item a heading, about 75 UTF-16 units per item. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock synchronous spans include a forced layout read. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Not OS input, statistical p95, memory or multi-device performance qualification.",
+    : `One 5-item warm-up followed by ${ownerRepetitions} independent editor owners at each of 10/100/500 ordered items, every tenth item a heading, about 75 UTF-16 units per item. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock synchronous spans include a forced layout read. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Nondefault owner count is diagnostic same-page churn, not normal timing. Not OS input, statistical p95, memory or multi-device performance qualification.`,
 }, null, 2)+"\n");
 console.log(JSON.stringify({output}));
 await save("running");
@@ -145,6 +164,21 @@ try {
     let cpuSession;
     let cpuProfile;
     let geckoProfile;
+    let exceptionProbe;
+    const captureExceptionProbe = async () => {
+      if (!constructorProbeEnabled || exceptionProbe) return;
+      exceptionProbe = await page.evaluate(() => {
+        const snapshot = globalThis.__breditorExceptionProbeSnapshot();
+        // Only after completion/failure, and after copying application evidence:
+        // verify this browser really observes constructed-and-caught errors.
+        let controlCaught = false;
+        try { throw new TypeError("breditor-exception-probe-control"); }
+        catch (error) { controlCaught = error instanceof TypeError; }
+        const control = globalThis.__breditorExceptionProbeSnapshot().records.at(-1);
+        return {...snapshot, controlPassed: controlCaught && control?.constructor === "TypeError" && control?.message === "breditor-exception-probe-control"};
+      });
+      assert.equal(exceptionProbe.controlPassed, true, "exception probe positive control failed");
+    };
     const geckoProfilePath = join(fixture, `${name}-${run}.gecko-profile.json`);
     const captureGeckoProfile = async () => {
       if (!geckoProfileEnabled || geckoProfile) return;
@@ -203,6 +237,7 @@ try {
         MOZ_PROFILER_SHUTDOWN: geckoProfilePath,
       }} : {});
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
+      if (constructorProbeEnabled) await page.addInitScript(installExceptionConstructorProbe);
       if (renderingTraceEnabled) {
         await browser.startTracing(page, {screenshots: false,
           categories: ["devtools.timeline", "blink.user_timing"]});
@@ -220,27 +255,31 @@ try {
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
       await captureCpuProfile();
       await captureRenderingTrace();
+      await captureExceptionProbe();
       const output = page.locator("#result"), status = await output.getAttribute("data-status");
       assert.equal(status, "passed", await output.textContent());
       assert.deepEqual(pageErrors, [], "uncaught browser errors");
-      const results = JSON.parse(await output.textContent()); assert.equal(results.cases.length, 9);
+      const results = JSON.parse(await output.textContent()); assert.equal(results.cases.length, 3 * ownerRepetitions);
       const summary = [10, 100, 500].map(items => {
         const samples = results.cases.filter(sample => sample.items === items);
-        assert.equal(samples.length, 3);
+        assert.equal(samples.length, ownerRepetitions);
         return {items, metrics: Object.fromEntries(Object.keys(samples[0].metrics).map(metric => {
           const values = samples.map(sample => sample.metrics[metric]).sort((a,b) => a-b);
           assert.ok(values.every(value => Number.isFinite(value) && value >= 0), `invalid ${metric} samples`);
-          return [metric, {min: values[0], median: values[1], max: values[2]}];
+          const middle = Math.floor(values.length / 2);
+          const median = values.length % 2 === 0 ? (values[middle - 1] + values[middle]) / 2 : values[middle];
+          return [metric, {min: values[0], median, max: values.at(-1)}];
         }))};
       });
       if (renderingTraceEnabled) assert.equal(renderingTrace.spans.length, 60, "six measured spans for warm-up plus nine cases");
       await captureGeckoProfile();
-      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile, geckoProfile, renderingTrace};
+      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile, geckoProfile, renderingTrace, exceptionProbe};
       measurements.push(measured); console.log(JSON.stringify({browser: name, summary}));
       await save("running");
     } catch (error) {
       try { await captureCpuProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
       try { await captureRenderingTrace(); } catch (traceError) { diagnostics.push(String(traceError)); }
+      try { await captureExceptionProbe(); } catch (probeError) { diagnostics.push(String(probeError)); }
       let fixtureState;
       try {
         // Read completion and payload in one evaluation: separate protocol calls
@@ -251,7 +290,7 @@ try {
         }), undefined, {timeout: 5000});
       } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
       try { await captureGeckoProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
-      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, fixtureState});
+      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, exceptionProbe, fixtureState});
       await save("failed"); throw error;
     } finally {await browser?.close();}
     }

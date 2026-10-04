@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {instrumentQueueFailures} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, repeatPerformanceOwners} from "./queue-failure-diagnostics.mjs";
 
 const fixture = `class Queue {
   #fail(code, sequence) { return {code, sequence}; }
@@ -63,4 +63,11 @@ test("caught exception text is bounded without changing the failed result", () =
   const queue = new Queue();
   assert.deepEqual(queue.executor(() => {throw "x".repeat(4096);}, 7n), {code: "command_queue.executor_threw", sequence: 7n});
   assert.equal(messages[0][1], "x".repeat(1024));
+});
+test("owner stress changes only the bounded loop and rejects drift", () => {
+  const code = "for(let repetition = 0; repetition < 3; repetition++) { verify(); dispose(); yieldTask(); }";
+  assert.equal(repeatPerformanceOwners(code, 3), code);
+  assert.equal(repeatPerformanceOwners(code, 100), code.replace("< 3", "< 100"));
+  for(const count of [0, 2, 101, -1, 3.5, NaN, Infinity, "10"]) assert.throws(() => repeatPerformanceOwners(code, count), /owner repetitions/u);
+  for(const source of ["", code+code]) assert.throws(() => repeatPerformanceOwners(source, 10), /owner loop changed/u);
 });

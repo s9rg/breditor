@@ -12,3 +12,12 @@ export function instrumentQueueFailures(code) {
   assert.deepEqual(sites.sort(), ["executor", "executor", "observer", "observer"], "queue diagnostic catch sites changed");
   return transformed;
 }
+
+// Stress only the disposable fixture's owner loop. Keep all correctness
+// assertions, disposal and the yield between owners exactly as written.
+export function repeatPerformanceOwners(code, repetitions) {
+  assert.ok(Number.isSafeInteger(repetitions) && repetitions >= 3 && repetitions <= 100, "owner repetitions must be 3..100");
+  const anchor = "repetition < 3";
+  assert.equal(code.split(anchor).length, 2, "performance owner loop changed");
+  return code.replace(anchor, `repetition < ${repetitions}`);
+}
