@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "29fe108",
+  "status": "scripted-composition-persistence-qualified",
+  "releaseQualified": false,
+  "nativeInputQualified": false,
+  "candidate": "target/flat-list-candidate-3ln0Nh",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "testFile": "tests/lists/composition.spec.ts",
+  "commands": [
+    "npm run typecheck:demo:lists",
+    "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-3ln0Nh BREDITOR_LIST_TEST_PORT=4188 npm run test:demo:lists -- tests/lists/composition.spec.ts",
+    "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-3ln0Nh BREDITOR_LIST_TEST_PORT=4188 npm run test:demo:lists"
+  ],
+  "targetedRun": {"passed": 9, "failed": 0, "retries": 0},
+  "fullDemoRun": {"passed": 33, "failed": 0, "retries": 0, "engines": ["chromium", "firefox", "webkit"]},
+  "coverage": [
+    "Backward selection replaced with CJK and supplementary-plane text in a bold heading inside a numbered list",
+    "A second page reads only the pre-composition durable document while provisional DOM remains leased",
+    "Single committed composition restores exact document HTML and directional DOM selection on undo",
+    "Byte-identical Session V6 backup after reload, retained redo branch and exact redo selection",
+    "One late composition input echo does not duplicate the edit",
+    "Cancelled composition and invalid ordered-list start restore original structure/selection without adding undo entries",
+    "Same owner accepts ordinary typing after cancellation/recovery, followed by exact undo, backup/reload and redo"
+  ],
+  "fixtureLimitations": "Constructed CompositionEvent/InputEvent objects, a temporarily overridden target-range intrinsic for one fixture event, and scripted provisional DOM. No fake application timers, mocked Rust, disabled validation, timeout increases or automatic retries. This is production-owner/persistence integration evidence, not OS IME or physical input qualification.",
+  "initialRun": {
+    "passed": 0,
+    "failed": 9,
+    "retainedDirectory": "target/list-composition-initial-results-20261004",
+    "causes": [
+      "The save helper initially waited for saved status while composition still held a lease. Observation now starts before the lease and includes settlement.",
+      "The fixture assumed nine keyboard characters formed one undo entry. It now sends one character to test recovery without assuming typing grouping; the multi-character observation remains a follow-up.",
+      "Firefox timed out creating a test page before test execution; this remains unexplained, not attributed to editor behavior."
+    ],
+    "qualificationCaveat": "The new test file was edited during this exploratory run, so workers may have loaded different fixture revisions. This failed run is retained for diagnosis only, never qualification.",
+    "firefoxStartupTrace": "composition-scripted-list--98dc6-t-history-through-V6-reload-firefox/trace.zip",
+    "firefoxStartupTraceSha256": "9fdb5444bc6556a7108f0362e9bc5343939527a22169d829747a5ec24a160ee9"
+  },
+  "secondRun": {
+    "passed": 6,
+    "failed": 3,
+    "retainedDirectory": "target/list-composition-event-fixture-results-20261004",
+    "cause": "Playwright locator.dispatchEvent for compositionend constructs Event, not CompositionEvent. The owner's native data getter rejects that malformed signal and recovers rather than committing. A blank-page diagnostic verified constructor Event/composition=false versus explicit CompositionEvent/composition=true with the expected data.",
+    "repair": "Use explicit CompositionEvent for compositionend and InputEvent for the late input echo. Cancellation/recovery passes from this malformed-event run are not counted as composition qualification.",
+    "chromiumTraceSha256": "3992254d1f2ca74f16566b4e790ca03723e8ba1b1eb406c424647323af1a99c6",
+    "firefoxTraceSha256": "901face1401fb17f865813b46d227cd1968b0d03d48ecfa7b014c04216a3d219",
+    "webkitTraceSha256": "d3d733fa01579153e020aeed08765fc8977936fa6d1e3769c8cd1293459f3d3b"
+  },
+  "shippingArtifactTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  },
+  "runtimeChanged": false,
+  "shippingUnchanged": true,
+  "priorTimeoutsResolved": false,
+  "nativeCheck": "Fresh computer-use inventory reports the Mac locked; native apps unavailable. No settings or user processes changed.",
+  "remaining": ["Investigate multi-character typing undo-group fragmentation", "Physical Safari/Chrome clipboard, OS IME and screen reader", "Intermittent qualification timeouts, including Firefox page startup", "Large-list responsiveness", "Delivery policy, size ceilings and full release gate"],
+  "pushedOrPublished": false
+}

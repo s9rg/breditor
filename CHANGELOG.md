@@ -6,6 +6,11 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Cover scripted composition in the production list demo, including formatted
+  heading replacement, deferred autosave, exact directional selection/history
+  after V6 reload, cancellation and invalid-structure recovery. Construct native
+  event classes explicitly; these tests do not claim physical IME qualification.
+
 - Add a disposable headings-and-flat-lists clipboard qualification page using
   the real editor and a bounded, content-redacted recorder. Bind reports to the
   candidate Wasm hash; keep autosave and Clipboard API calls out of this fixture.

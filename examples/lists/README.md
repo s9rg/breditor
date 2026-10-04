@@ -40,6 +40,14 @@ backup recovery, browser keyboard input, automated accessibility and narrow
 layout. Browser automation is not physical OS clipboard/IME or screen-reader
 qualification.
 
+Scripted composition cases additionally replace a backward selection inside a
+bold numbered-list heading, verify provisional text is absent from a second
+view's durable document, and check single-edit undo with exact directional
+selection, V6 reload and redo. Cancellation and invalid numbering recover the
+original document without adding history; the same editor must accept ordinary
+typing afterward. These explicitly constructed events and provisional DOM
+mutations are controller/persistence regressions, not real OS IME evidence.
+
 If port 4187 is occupied by your preview, set `BREDITOR_LIST_TEST_PORT=4188`
 (or another free port) for `test:demo:lists`. The test server never reuses an
 existing server. This does not change the interactive preview's port.

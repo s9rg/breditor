@@ -1716,3 +1716,29 @@ resolve earlier qualification timeouts. See [evidence](qualification/2026-10-04-
 Tests can use a separate validated port without reusing or stopping an existing
 preview. Shipping artifact trees remain unchanged; no push or publication.
 Flat bullet/numbered lists remain first, with nesting and indent/outdent deferred.
+
+## Composition across the real list owner and autosave — 2026-10-04
+
+Nine new scripted composition regressions pass across Chromium, Firefox and
+WebKit, and the complete 33-case list-demo suite passes with zero retries.
+Strict demo/test TypeScript also passes. A backward selection in a bold numbered
+heading is replaced with CJK/emoji text; a second page must still see the durable
+pre-composition document while the first owns provisional DOM. Settlement is one
+edit, with exact document/selection undo, byte-identical V6 backup after reload,
+and retained redo. Cancelled and invalid-structure compositions restore the base
+without adding undo entries; the same owner accepts ordinary input afterward.
+
+Exploratory failures caught fixture mistakes: waiting for autosave while holding
+the composition lease, assuming a multi-character keyboard sequence was one undo
+step, and using Playwright's generic `Event` for `compositionend`. Explicit native
+event constructors now test the intended route. A blank-page diagnostic verified
+the event-class mismatch; no product admission or validation was weakened.
+Failed runs and the independent Firefox page-creation timeout remain recorded
+in [evidence](qualification/2026-10-04-list-composition-persistence.json).
+
+The multi-character typing observation warrants a separate undo-grouping
+investigation; these composition tests use one ordinary keystroke to verify
+recovery without assuming grouping semantics. Native input is still unqualified:
+a fresh desktop inventory reports the Mac locked. Shipping trees and runtime
+code are unchanged, and nothing was pushed or published. Delivery policy, size,
+responsiveness, timeout investigation and full release gates remain open.
