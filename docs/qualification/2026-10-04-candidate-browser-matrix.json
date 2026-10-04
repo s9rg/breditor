@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "6de876f",
+  "status": "browser-matrix-and-focused-followup-passed-historical-fault-unresolved",
+  "historicalWebKitFaultFixed": false,
+  "packageRecord": "target/flat-list-packages-bW21G2/qualification.json",
+  "packageRecordSha256": "6fc3c492cc12bd4fe99da68f3f1f5b9a31f461e457cf4dc524443daef9430e9e",
+  "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64",
+  "configuration": {
+    "playwright": "playwright.browser-candidate.config.ts",
+    "vite": "vite.browser-candidate.config.ts",
+    "scope": "Serve the existing browser harness against qualified private installed packages, without rebuilding shipping dist. Check record location/status, archive hashes, and installed package trees against staging. Alias public and internal harness imports to one package copy; exclude those entry points from dependency prebundling. Retain original test bodies, order, deadlines, one worker and zero retries.",
+    "typecheck": "npx tsc -p tests/browser/tsconfig.json passed",
+    "invalidInputs": "loadConfigFromFile rejects missing environment, outside-target package.json and a Wasm-only qualification record with their expected error messages."
+  },
+  "runs": [
+    {
+      "name": "initial-focused-webkit",
+      "report": "target/current-candidate-formatted-webkit-20261004.json",
+      "sha256": "570e807b43d74023784b6797781854877606c86ec2518ee5c93a04a5166cc87f",
+      "passed": 20, "failed": 0, "cyclesPerCase": 60,
+      "limit": "Initial configuration prebundled public entry points. This is not the final module-consistent configuration. No historical clipboard fault reproduced."
+    },
+    {
+      "name": "initial-full-matrix",
+      "report": "target/current-candidate-browser-matrix-20261004.json",
+      "sha256": "27d5d70be5cf61fad7626e86d803aed0b4054b5a232371a56f037d9d7c96e34c",
+      "passed": 54, "failed": 1, "notRun": 110,
+      "failure": "Chromium selection-u32-production-oracle: projection profile association is invalid. The new candidate harness prebundled advanced.js while directly loading wasm_projection_adapter.js; private ownership maps therefore differed. This is a test configuration error, not the historical WebKit fault.",
+      "trace": "target/current-candidate-browser-matrix-20261004/selection-u32-production-o-fc2d4-its-exactly-raw-u32-offsets-chromium/trace.zip",
+      "traceSha256": "702483d0f339309338c01671a831137c2d2e38423679391c7f2faa46e507d545"
+    },
+    {
+      "name": "module-identity-correction",
+      "report": "target/current-candidate-module-identity-20261004.json",
+      "sha256": "32ddd8c026de71a684d851787cdcbf3bb0b96945b017b0898e0dcb0770cc46ed",
+      "passed": 3, "failed": 0,
+      "evidence": "All three retained network traces contain direct advanced.js and wasm_projection_adapter.js URLs under the same installed candidate, and no prebundled @breditor_browser_advanced.js. Existing per-value selection assertions passed without runtime changes.",
+      "traceSha256": {
+        "chromium": "dafa30540699fd6743644b7d9f65151e5886c0f8d9a3a219c3639ac23983dc22",
+        "firefox": "182124c1b507095a9c8215ecee6601274d6194751308a12374046cba1997189f",
+        "webkit": "7e87245d19bab96ac2edb02fdadc504f206923fe21a9ff10faec3e6f40257709"
+      }
+    },
+    {
+      "name": "final-full-matrix",
+      "command": "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-bW21G2/qualification.json PLAYWRIGHT_JSON_OUTPUT_NAME=target/current-candidate-browser-matrix-final-20261004.json npx playwright test -c playwright.browser-candidate.config.ts --max-failures=1 --output target/current-candidate-browser-matrix-final-20261004 --reporter=line,json",
+      "report": "target/current-candidate-browser-matrix-final-20261004.json",
+      "sha256": "c1d294c2b83ab58c9a807d57932e17db5cfbf74f0336f891705ca8ab85e514b4",
+      "passed": 165, "perEngine": 55, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+      "durationMs": 201662.924
+    },
+    {
+      "name": "final-focused-webkit",
+      "command": "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-bW21G2/qualification.json PLAYWRIGHT_JSON_OUTPUT_NAME=target/current-candidate-formatted-webkit-final-20261004.json npx playwright test -c playwright.browser-candidate.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=1 --output target/current-candidate-formatted-webkit-final-20261004 --reporter=line,json",
+      "report": "target/current-candidate-formatted-webkit-final-20261004.json",
+      "sha256": "d9d860ae0a1901437f9052e6397671e0f3fd1d59815a5ea280a1baee88c68922",
+      "passed": 20, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+      "cyclesPerCase": 60, "totalCycles": 1200, "durationMs": 114812.322,
+      "limit": "Fresh Playwright workers and browsers, final module-consistent configuration, unchanged 30-second per-test deadline. No targeted runtime-fault instrumentation or retry. Finite clean runs cannot establish elimination of the earlier intermittent fault."
+    }
+  ],
+  "historicalEvidenceRecheck": {
+    "failure": "October 2, cycle 4 Link apply, queueUncertain then missing Apply Link control. Cause remains unproved.",
+    "log": "/tmp/breditor-element-release-20261002.log",
+    "logSha256": "62aa33b7db410c399e0590031bbdd817525dc3dacba2c90446c57e96f5f2ea3b",
+    "originalTracePathExists": false,
+    "originalTracePath": "target/playwright-results/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit/trace.zip",
+    "previousTraceSha256": "eb5ac98cfcc40be66acde5199033427f869c6cb781729981edea42bdfbe5b25e",
+    "search": "At recheck time, none of 39 formatted-clipboard ZIP files found under target matched the previously recorded trace SHA. The surviving log matches its recorded SHA. Do not claim the original trace is currently retained; when/how it became unavailable is unproved."
+  },
+  "shippingArtifactsChanged": false,
+  "shippingVerification": "All four flat-path tree hashes match target/flat-list-packages-bW21G2/qualification.json: browser dist, Wasm dist, reference-highlight dist and standard React demo.",
+  "limits": "This qualifies existing browser workflows on the private feature candidate, not the complete release gate, native IME/VoiceOver, package size/delivery policy or elimination of an intermittent fault. No editor runtime, wire format, validation rule or timeout was changed.",
+  "pushedOrPublished": false
+}

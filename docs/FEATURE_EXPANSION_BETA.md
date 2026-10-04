@@ -1949,3 +1949,32 @@ setup does not qualify native input or screen readers. Earlier intermittent
 WebKit faults, responsiveness, delivery/size and full release gates remain open.
 No runtime change was required for these new cases. Nothing was pushed or
 published.
+
+## Existing browser matrix on the private feature candidate — 2026-10-04
+
+The full existing browser harness now has an isolated candidate configuration:
+`playwright.browser-candidate.config.ts`, selected with
+`BREDITOR_BROWSER_PACKAGE_RECORD`. It checks the private qualification record,
+archive hashes and installed/staged package equality, then runs the existing
+tests without rebuilding shipping bundles. Both public and internal harness
+imports resolve to the same candidate package copy.
+
+The first matrix attempt exposed a configuration error: dependency prebundling
+created a second copy of private ownership maps for an internal selection probe.
+The failure and trace remain retained. Excluding Breditor entry points from
+prebundling fixes that harness mismatch; the unchanged probe passes in all three
+engines, and network traces verify the consistent module paths.
+
+The final full matrix passes **165 tests (55 per engine)** with no retries,
+skips or failures. A separate final WebKit batch passes 20 fresh formatted
+clipboard/history cases, totaling 1,200 cycles. This adds existing browser-workflow compatibility
+evidence for the latest private feature candidate, alongside the separate list
+demo suite. It does not run the other release gates or approve package delivery.
+Shipping artifact trees remain unchanged; no runtime validation was weakened.
+
+Rechecking the October 2 WebKit failure found that its original trace is absent
+from the documented path and no scanned formatted-clipboard ZIP matches its
+recorded hash. The original failure log is still present and hash-verified.
+Historical preservation claims must not be interpreted as current availability.
+See [candidate browser evidence](qualification/2026-10-04-candidate-browser-matrix.json)
+for retained results and limits. No push or publication was performed.

@@ -3587,3 +3587,30 @@ This is a **targeted compatibility fix**, not a declaration that every WebKit
 numeric fault is resolved. Other browser validators remain unchanged, and
 native Safari system-clipboard and iOS Simulator qualification are still
 separate work.
+
+### 2026-10-04: feature candidate and retained-evidence recheck
+
+The latest private flat-list candidate was exercised with the existing formatted
+clipboard/Link/history workload, not only the new list demo. The complete
+165-case browser matrix passes across Chromium, Firefox and WebKit using an
+isolated installed-package configuration. A final focused batch passes 20 fresh
+WebKit cases (1,200 cycles) with no retries. These finite passes do not establish
+the cause or elimination of the October 2 cycle-4 Link-apply `queueUncertain`
+failure.
+
+The candidate harness initially prebundled a public entry point while loading an
+internal adapter directly. That produced a reproducible Chromium ownership-map
+mismatch in the existing selection oracle. Its trace contains both module paths.
+Excluding the Breditor entry points from dependency prebundling restores one
+module identity; the unchanged oracle passes in all three engines, with verified
+network traces. This was a new harness error, not a reproduction of the historical
+WebKit fault, and no editor runtime change was made.
+
+The original October 2 trace is no longer at its recorded `target/playwright-results`
+path. At recheck time, none of 39 formatted-clipboard ZIP files under `target`
+matched its saved SHA-256. The original release log still matches
+`62aa33b7db410c399e0590031bbdd817525dc3dacba2c90446c57e96f5f2ea3b`
+and records the failure. The timing/cause of the trace becoming unavailable is
+unknown; do not continue claiming that exact trace is currently preserved.
+New attempts use distinct output/report paths. See the
+[candidate browser qualification record](qualification/2026-10-04-candidate-browser-matrix.json).
