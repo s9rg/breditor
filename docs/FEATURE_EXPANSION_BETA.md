@@ -18,7 +18,7 @@ authorized by this plan.
    separate named file. Reject unsupported combinations atomically.
 2. **Headings in the demo.** Explicit structural profile, semantic h1–h6
    projection, generic block-kind toolbar state and declared commands. Finish
-   the required durable recipes and Session V4 browser bridge. Demonstrate:
+   the required durable recipes and explicitly versioned session browser bridge. Demonstrate:
    convert to heading, type, format, press Enter, undo/redo, reload with a redo
    branch, export and recover a backup. No local-log expansion merely to add
    another persistence path.
@@ -92,8 +92,8 @@ the whole edited block; unchanged siblings are not guarded.
 
 This is **in-memory only**: all current codecs reject this new primitive.
 Its explicit durable recipe and browser exposure remain unfinished. Later
-checkpoints below add typing, Enter, deletion and structural action behavior;
-formatting commands still keep the first milestone in progress.
+checkpoints below add typing, Enter, deletion, structural action behavior and
+formatting. Durable text-edit replay and browser integration remain unfinished.
 No fresh browser, bundle-size or full release qualification is claimed for
 this isolated core checkpoint.
 
@@ -152,7 +152,7 @@ The new shared text-block source/preview helper is also used by heading typing;
 its behavior is covered by the whole-core regression suite. Existing paragraph
 actions, base registration and all durable formats remain unchanged.
 
-**Still unfinished:** formatting commands, durable text-edit sessions, browser
+**Still unfinished:** durable text-edit sessions, browser
 integration, flat lists and desktop/native qualification. Start/end of the entire
 document return their normal disabled states; internal boundaries now join through
 the structural primitive. This is not a finished editing profile and must not be
@@ -192,7 +192,7 @@ existing durable languages, including V4, explicitly continue rejecting it.
 
 Join mechanics have operation-level coverage across all 49 paragraph/heading
 kind pairs and are now connected to boundary/cross-block editing actions below.
-Formatting and durable session replay remain next. This does not enable headings
+Formatting is covered below; durable session replay remains next. This does not enable headings
 in the browser or qualify a beta release.
 
 See [structural-break qualification](qualification/2026-10-03-heading-structural-break.json).
@@ -222,3 +222,48 @@ cases each. Exact retained-kind and selection recovery is still **in-memory**;
 this does not yet claim durable text-block history or browser support.
 
 See [cross-edit qualification](qualification/2026-10-03-heading-cross-edit.json).
+
+## Heading formatting checkpoint
+
+Three separate opt-in actions now support same-block and cross-block formatting:
+`ToggleTextBlockInlineFormatAction`, `SetTextBlockInlineFormatAction`, and
+`ClearTextBlockInlineFormatsAction`. Their shared engine uses one guarded,
+same-count `TextBlockReplace`, preserves every block kind/rank and validates the
+complete final tree. Pure format rewriting and typed-property observation reuse
+the established paragraph helpers; the legacy actions and base registry have
+not changed behavior.
+
+- Property-free toggles remove a uniformly active format, otherwise add it to
+  all selected text. Empty blocks do not distort active/mixed/inactive state.
+- Typed Set replaces the configured format's complete property map; Remove
+  removes it regardless of properties. Peer formats survive. Toolbar state
+  reports uniform/mixed/unset properties through the existing typed contract.
+- Clear removes all selected formats. Text-empty structural ranges and
+  unchanged results are disabled; unsupported schema/format requests and
+  invalid properties are rejected before publication.
+- Caret commands use pending formats, then the focus affinity at a text seam.
+  They update only typing state and, matching existing session policy, create
+  **no independent undo entry**. The subsequent text edit consumes the override;
+  undoing that edit restores the exact pre-typing selection and pending formats.
+- Extended formatting records one independent undo event. Direction, aggregate
+  scalar offsets and affinities survive text-run merging/splitting. Undo restores
+  the original point encodings as well as the exact tree.
+- Resource checks admit the whole final result: a run split in one block can
+  be offset by a merge in another without an invalid intermediate publication.
+
+An independently reproduced relocation defect was fixed as a prerequisite:
+`TextBlockReplace` previously treated interior points as deleted even when only
+formatting changed. A same-count span now preserves offsets only when **each
+corresponding block has identical logical text**, ignoring format-run layout.
+Equal lengths, equal flattened text redistributed between blocks, and changed
+block counts are not sufficient. Root boundaries and untouched siblings keep
+their exact encodings; affected points are canonicalized in the result runs.
+The legacy `RootTextReplace` relocation contract is unchanged.
+
+This finishes the planned in-memory heading editing commands, not the demo or
+beta release. The next integration dependency is a new explicit durable recipe
+generation covering `TextBlockSplice` and `TextBlockReplace` together. Existing
+V1–V4 formats remain closed. Then connect the optional structural browser profile
+and qualify heading editing/reload before implementing flat lists.
+
+See [formatting qualification](qualification/2026-10-03-heading-formatting.json).

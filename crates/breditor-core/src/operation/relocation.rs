@@ -262,6 +262,12 @@ impl RelocationStep {
 pub(crate) enum RelocationStepMap {
     #[cfg(feature = "experimental-structural-properties")]
     TextBlockKindIdentity,
+    /// Same-count blocks whose logical text is unchanged, regardless of run layout.
+    #[cfg(feature = "experimental-structural-properties")]
+    TextBlockTextIdentity {
+        start: u32,
+        end: u32,
+    },
     TextSplice(TextSpliceMap),
     ParagraphSplit(ParagraphSplitMap),
     ParagraphJoin(ParagraphJoinMap),
@@ -278,12 +284,35 @@ impl RelocationStepMap {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockKindIdentity => Ok(PointRelocation::Exact(point.clone())),
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockTextIdentity { start, end } => {
+                relocate_text_block_identity(before, after, point, *start, *end)
+            }
             Self::TextSplice(map) => map.relocate(before, after, point),
             Self::ParagraphSplit(map) => map.relocate(before, after, point),
             Self::ParagraphJoin(map) => map.relocate(before, after, point),
             Self::RootTextReplace(map) => map.relocate(before, after, point),
         }
     }
+}
+
+/// Preserve aggregate offsets, not leaf indexes: a format rewrite can split or
+/// merge runs. Root boundaries and points outside the guarded span stay exact.
+#[cfg(feature = "experimental-structural-properties")]
+fn relocate_text_block_identity(
+    before: &Document,
+    after: &Document,
+    point: &Point,
+    start: u32,
+    end: u32,
+) -> Result<PointRelocation, RelocationError> {
+    point.resolve(before).map_err(RelocationError::InvalidSourcePoint)?;
+    let path = point_container(point).ok_or(RelocationError::CoordinateOverflow)?;
+    if path.len() != 1 || !path.last_index().is_some_and(|index| start <= index && index < end) {
+        return exact_result_point(after, point.clone());
+    }
+    let offset = point_offset_in_container(before, &path, point)?;
+    point_at_offset(after, &path, offset, point.affinity()).map(PointRelocation::Exact)
 }
 
 impl From<TextSpliceMap> for RelocationStepMap {

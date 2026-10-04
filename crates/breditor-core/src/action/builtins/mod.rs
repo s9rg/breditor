@@ -1,6 +1,26 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
 
 mod clear_inline_formats;
+#[cfg(feature = "experimental-structural-properties")]
+mod clear_text_block_inline_formats;
+#[cfg(feature = "experimental-structural-properties")]
+mod set_text_block_inline_format;
+#[cfg(feature = "experimental-structural-properties")]
+mod text_block_format;
+#[cfg(feature = "experimental-structural-properties")]
+mod text_block_format_request;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod text_block_format_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod toggle_text_block_inline_format;
+#[cfg(feature = "experimental-structural-properties")]
+pub use clear_text_block_inline_formats::{
+    ClearTextBlockInlineFormatsAction, clear_text_block_inline_formats_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use set_text_block_inline_format::SetTextBlockInlineFormatAction;
+#[cfg(feature = "experimental-structural-properties")]
+pub use toggle_text_block_inline_format::ToggleTextBlockInlineFormatAction;
 mod clear_inline_formatting;
 mod delete_backward;
 mod delete_forward;

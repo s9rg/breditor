@@ -43,6 +43,47 @@ fn exact(actual: &EditorState, expected: &EditorState) {
 }
 
 #[test]
+fn format_only_cross_block_replace_preserves_interior_selection() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let before = state(
+        &context,
+        vec![
+            block(heading(1)?, "a🙂b", formats()?)?,
+            block(heading(2)?, "e\u{301}z", formats()?)?,
+            block(TextBlockKind::Paragraph, "tail", formats()?)?,
+        ],
+        Selection::Range(RangeSelection::new(
+            point(1, 2, Affinity::Before)?,
+            point(0, 3, Affinity::After)?,
+        )),
+        None,
+    )?;
+    let operation = TextBlockReplace::capture(
+        &context,
+        before.document(),
+        range(0, 0, 2, 4)?,
+        vec![
+            block(heading(1)?, "a🙂b", FormatSet::default())?,
+            block(heading(2)?, "e\u{301}z", FormatSet::default())?,
+            block(TextBlockKind::Paragraph, "tail", FormatSet::default())?,
+        ],
+    )?;
+    let mut session = EditorSession::new(before.clone());
+    session.apply_transaction(&Transaction::new(
+        &before,
+        vec![Operation::TextBlockReplace(operation)],
+    ))?;
+    assert_eq!(session.state().selection(), before.selection());
+    assert_eq!(session.state().pending_formats(), before.pending_formats());
+    let after = session.state().clone();
+    session.undo()?.ok_or("undo")?;
+    exact(session.state(), &before);
+    session.redo()?.ok_or("redo")?;
+    exact(session.state(), &after);
+    Ok(())
+}
+
+#[test]
 fn join_all_rank_pairs_restores_individual_kinds_and_directional_selection() -> TestResult {
     let context = context(DocumentLimits::default())?;
     for left in 0..=6 {

@@ -389,7 +389,7 @@ fn evaluation(decision: ActionDecision, indicator: ActionStateIndicator) -> Acti
     ActionEvaluation::new(decision, indicator)
 }
 
-fn unavailable_indicator() -> ActionStateIndicator {
+pub(super) fn unavailable_indicator() -> ActionStateIndicator {
     ActionStateIndicator::new(
         ActionActivation::Inactive,
         ActionStateValue::unset(inline_format_properties_state_contract()),
@@ -406,7 +406,7 @@ fn indicator_for_fragment(
     scan.finish()
 }
 
-fn indicator_for_formats(
+pub(super) fn indicator_for_formats(
     formats: &FormatSet,
     format_kind: &QualifiedName,
     desired: Option<&Format>,
@@ -419,14 +419,14 @@ fn indicator_for_formats(
 }
 
 #[derive(Default)]
-struct SetInlineFormatScan {
+pub(super) struct SetInlineFormatScan {
     matching: bool,
     other: bool,
     properties: InlineFormatPropertiesScan,
 }
 
 impl SetInlineFormatScan {
-    fn observe_fragment(
+    pub(super) fn observe_fragment(
         &mut self,
         fragment: &TextFragment,
         format_kind: &QualifiedName,
@@ -444,7 +444,7 @@ impl SetInlineFormatScan {
         }
     }
 
-    fn finish(self) -> Result<ActionStateIndicator, ActionFault> {
+    pub(super) fn finish(self) -> Result<ActionStateIndicator, ActionFault> {
         let activation = self.activation();
         let value = self
             .properties
@@ -520,7 +520,7 @@ fn activation_for_formats(
     if active { ActionActivation::Active } else { ActionActivation::Inactive }
 }
 
-fn replace_fragment_format(
+pub(super) fn replace_fragment_format(
     fragment: &TextFragment,
     format_kind: &QualifiedName,
     desired: Option<&Format>,
@@ -578,7 +578,7 @@ fn push_group(
     Ok(())
 }
 
-fn replace_format(
+pub(super) fn replace_format(
     formats: &FormatSet,
     format_kind: &QualifiedName,
     desired: Option<&Format>,

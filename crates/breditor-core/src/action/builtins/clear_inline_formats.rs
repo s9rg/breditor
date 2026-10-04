@@ -252,7 +252,7 @@ fn evaluate_cross_paragraph(
     ))))
 }
 
-fn clear_fragment(
+pub(super) fn clear_fragment(
     fragment: &TextFragment,
     maximum_text_bytes: usize,
 ) -> Result<Option<TextFragment>, ActionFault> {

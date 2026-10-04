@@ -15,6 +15,8 @@ pub use text_block_replace::{TextBlockReplace, TextBlockReplaceError};
 #[cfg(feature = "experimental-structural-properties")]
 mod text_block_kind_change;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
+mod text_block_replace_relocation_tests;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
 mod text_block_replace_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod text_block_splice;

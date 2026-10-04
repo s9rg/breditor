@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "82d0e125c11fe60e1636b83a46cdf9a004d4cafa",
+  "status": "Heading formatting checkpoint; beta goal remains active",
+  "scope": "Experimental Rust core only; no browser, shipping profile or durable format changes",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "enabledByDefault": false,
+    "actions": ["ToggleTextBlockInlineFormatAction", "SetTextBlockInlineFormatAction", "ClearTextBlockInlineFormatsAction"],
+    "extended": "One same-count guarded TextBlockReplace preserves kinds, text, directional selection offsets and affinities; one independent content undo event",
+    "collapsed": "Pending formats then focus affinity; state-only commits do not create an independent undo entry under existing session policy; subsequent typing undo restores the pending override",
+    "toolbar": "Tracked activation for toggle/set; typed uniform/mixed/unset property state for set/remove; clear is stateless",
+    "budgets": "Full final-tree admission, including unchanged siblings, heading ranks and format properties; no transient sequential per-block budget requirement",
+    "relocation": "Same block count and identical logical text in every corresponding block preserve positions through canonical run reshaping; root boundaries and untouched siblings remain exactly encoded",
+    "remaining": "Explicit durable recipe generation for TextBlockSplice/TextBlockReplace, browser profile and reload/recovery integration, flat lists, desktop qualification"
+  },
+  "reproduction": {
+    "test": "operation::text_block_replace_tests::format_only_cross_block_replace_preserves_interior_selection",
+    "beforeFix": "SelectionRelocation(DeletedEndpoint { endpoint: Anchor }) on a format-only three-block rewrite with an interior backward selection",
+    "afterFix": "Passes with strict endpoint relocation and exact undo/redo",
+    "negativeControls": "Equal-length changed text, equal flattened text redistributed between blocks and changed block count retain replacement/deletion mapping; legacy RootTextReplace is unchanged"
+  },
+  "verification": {
+    "focusedTestsPassed": 83,
+    "newActionTests": 10,
+    "newOperationTests": 4,
+    "propertyTests": 9,
+    "casesPerProperty": 10000,
+    "propertySeed": 20261003,
+    "focusedCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib --locked text_block",
+    "coreAllFeatureUnitTestsPassed": 850,
+    "coreDefaultUnitTestsPassed": 697,
+    "legacyFormattingIntegrationTestsPassed": 59,
+    "legacyCommand": "cargo test -p breditor-core --all-features --locked --test set_inline_format_action_contracts --test set_inline_format_cross_paragraph_contracts --test set_inline_format_history_contracts --test clear_inline_formats_action_contracts --test clear_inline_formats_history_contracts --test toggle_inline_format_action_contracts --test toggle_inline_format_typed_properties_contracts --test toggle_strong_cross_paragraph_contracts",
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "developmentCorrections": "Corrected test fixtures that initially assumed state-only changes create undo entries and that typing encodes a seam in the left leaf. Existing contracts use no state-only undo entry and right-leaf typing seam encoding. Also corrected a moved test limit value and removed a test panic rejected by strict lint. The reproduced production relocation error was fixed separately.",
+    "freshFullReleaseRun": false,
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "published": false
+  },
+  "evidence": [
+    { "path": "crates/breditor-core/src/action/builtins/text_block_format.rs", "sha256": "6cecab386e4f3e1ba7879a4515376e63f4d2e8ddbcafc6ebd4d74b997bd09157" },
+    { "path": "crates/breditor-core/src/action/builtins/text_block_format_request.rs", "sha256": "c811539583baab9cfb3501a8285b7f643a2761df094c893120c5e4244cd6bd71" },
+    { "path": "crates/breditor-core/src/action/builtins/text_block_format_tests.rs", "sha256": "e1abad79e569098016cd9107a03fd43d62547daf3a24ff559a149c20c7ec8efc" },
+    { "path": "crates/breditor-core/src/operation/relocation.rs", "sha256": "2aecb9ae51871d38f380a7f832cb3e254577263d5d299c3d79aaeb2c691d98da" },
+    { "path": "crates/breditor-core/src/operation/text_block_replace.rs", "sha256": "b2e31fdad9ce6e6ebb540d49cf504b76bd303b21a89ef1fbcd42e7106781ce50" },
+    { "path": "crates/breditor-core/src/operation/text_block_replace_relocation_tests.rs", "sha256": "a7b4ec5c76010bc3a3c28d705b8505d27f6eddff7589bd59bf4601fec575d7d1" },
+    { "path": "/private/tmp/breditor-heading-format-focused-pass.log", "sha256": "7459fcd474c727679a98eeeb58f0539961c5d5bef065ac7bbfe2956d7eb24263" },
+    { "path": "/private/tmp/breditor-heading-format-core-pass.log", "sha256": "6054f995fdef6491a73fdc2caaaf5381b016a7d0f78657f3ab322e74cabd79ab" },
+    { "path": "/private/tmp/breditor-heading-format-default.log", "sha256": "6ab352c2ab580fc8385e990f246ec40cbb083084e52825df2446871e347c8e9e" },
+    { "path": "/private/tmp/breditor-heading-format-legacy.log", "sha256": "341557fc43a1f923d815c428b89a05611e12142629a47b6bafabd3e2993f3027" },
+    { "path": "/private/tmp/breditor-heading-format-clippy-pass.log", "sha256": "5fd784a5e1c7f285c8542a9764ac9cdd6d57ffadbf065dbd6d17f093c17755c3" },
+    { "path": "/private/tmp/breditor-heading-format-core.log", "sha256": "783104bf7a19d3bd49934bd5f361c8575d53639c7ece93b3313666cd1b642eab", "note": "Preserved failed typing seam fixture run" },
+    { "path": "/private/tmp/breditor-heading-format-focused.log", "sha256": "67237ea569ebd609798d9a3004320863f99bf89b56c0d9972b65c788642cd6c4", "note": "Preserved failed typing seam fixture stress run" }
+  ]
+}

@@ -1,8 +1,9 @@
 //! Atomic structural text replacement across direct-root paragraphs/headings.
 use super::{
-    AppliedChange, AppliedOperation, ChildRange, ChildrenChange, Operation, RootTextRange,
-    RootTextReplaceError, RootTextReplaceMap, block_kind,
+    AppliedChange, AppliedOperation, ChildRange, ChildrenChange, Operation, RelocationStepMap,
+    RootTextRange, RootTextReplaceError, RootTextReplaceMap, block_kind,
     root_text_replace::{DerivedReplacement, derive_replacement},
+    text_splice::fragments_have_identical_text,
 };
 use crate::{
     document::{
@@ -22,6 +23,8 @@ use thiserror::Error;
 /// source prefix joins the first node and the suffix joins the last. Thus split,
 /// join and cross-block replacement need no invalid intermediate publication.
 /// The inverse restores every source kind, not just the retained left kind.
+/// When block count and each block's logical text are unchanged, relocation
+/// preserves aggregate offsets and affinities through any text-run reshaping.
 /// Experimental only; no existing durable codec admits this operation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TextBlockReplace {
@@ -145,6 +148,12 @@ impl TextBlockReplace {
         if result.as_slice() == self.expected.as_ref() {
             return Ok(AppliedOperation::Unchanged);
         }
+        let source = fragments(&self.expected)?;
+        let preserves_text = source.len() == derived.result.len()
+            && source
+                .iter()
+                .zip(&derived.result)
+                .all(|(old, new)| fragments_have_identical_text(old, new));
         let inverse = Self::try_new(
             derived.inverse_range,
             result.clone(),
@@ -171,7 +180,11 @@ impl TextBlockReplace {
         Ok(AppliedOperation::Changed(Box::new(AppliedChange {
             document,
             inverse: Operation::TextBlockReplace(inverse),
-            relocation: RootTextReplaceMap::new(self.range.clone(), count, first, last).into(),
+            relocation: if preserves_text {
+                RelocationStepMap::TextBlockTextIdentity { start, end: old_end }
+            } else {
+                RootTextReplaceMap::new(self.range.clone(), count, first, last).into()
+            },
             change: ChildrenChange::new(
                 NodePath::root(),
                 ChildRange::new(start, old_end),
