@@ -1,6 +1,18 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
 
 mod clear_inline_formats;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_action_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_support;
+#[cfg(feature = "experimental-structural-properties")]
+mod unwrap_list;
+#[cfg(feature = "experimental-structural-properties")]
+mod wrap_list;
+#[cfg(feature = "experimental-structural-properties")]
+pub use unwrap_list::UnwrapListAction;
+#[cfg(feature = "experimental-structural-properties")]
+pub use wrap_list::WrapListAction;
 #[cfg(feature = "experimental-structural-properties")]
 mod clear_text_block_inline_formats;
 #[cfg(feature = "experimental-structural-properties")]

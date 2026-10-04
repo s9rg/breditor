@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "31c0c59",
+  "status": "Opt-in Rust wrap/unwrap actions verified; full list editing, durable list history and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "actions": ["WrapListAction::new(ListKind)", "UnwrapListAction"],
+    "registration": "Explicit host registration with no runtime input; no default or heading profile registration",
+    "selection": "Whole touched blocks in spatial order; exclude a later block only at its logical start, retain direction/affinity/point encoding; empty-block caret selects that block",
+    "wrap": "Consecutive bare blocks form one list; selected items of a different marker family are converted without changing block content/kind",
+    "numbering": "Configured start applies to newly created numbered sections only; already-numbered containers retain their starts; partial suffixes preserve original ordinals",
+    "merging": "Existing containers remain distinct; no automatic adjacent-list coalescing",
+    "unwrap": "Only selected item blocks move to root; unselected prefixes/suffixes stay lists and bare blocks remain unchanged",
+    "state": "Tracked active/mixed/inactive coverage with explicit document/selection/context/snapshot reads and document/selection/history/snapshot writes",
+    "history": "One guarded reframe and one history event; exact undo/redo and preserved pending formats",
+    "disabled": "Missing selection, unsupported schema, unchanged target, operation budget or complete-result limits disable without publication; disabled execution rejects without changing redo",
+    "stale": "Prepared actions bind to the exact source state and cannot overwrite a later marker choice",
+    "wire": "Existing operation/session unions unchanged; list recipes still lack a durable codec"
+  },
+  "verification": {
+    "focusedActionTests": 15,
+    "allFeatureWorkspaceUnitTests": { "core": 956, "wasm": 51 },
+    "defaultCoreUnitTests": 697,
+    "randomizedProperties": 2,
+    "casesPerProperty": 10000,
+    "seed": 20261003,
+    "propertyOracles": [
+      "Partial unwrap against independently built block slices and suffix ordinals, both selection directions, exact history",
+      "Partial bullet/numbered marker conversion against independent block slices and original ordinal preservation, both directions, exact history"
+    ],
+    "deterministicCoverage": [
+      "Both point encodings at an excluded next-block start, including first item of a following list",
+      "Later text-run offset zero is not a block start",
+      "Empty item and empty root heading carets, all six ranks, pending formats",
+      "Mixed bare/list selections and partial marker conversion with typed inline values",
+      "Multiple explicit numbered restarts retained; matching partial containers remain whole",
+      "Active/mixed availability, no-op state/revision/redo, stale prepared action rejection",
+      "Operation budget, ordered final ordinal, full-result node limit and root-child limit"
+    ],
+    "clippy": "All workspace features and targets, warnings denied, passed",
+    "rustdoc": "Core all features, warnings denied, passed",
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib flat_list_action_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "List-aware text and inline-format edits",
+    "Enter/split, empty-item exit and boundary deletion",
+    "Explicit durable list operation/session admission and reload/recovery",
+    "Wasm/browser projection, toolbar and keyboard integration",
+    "Cross-browser and native-input qualification, plus existing release size gates"
+  ],
+  "evidenceBoundary": "Rust unit/property tests only; no list browser/native evidence or rebuilt shipping Wasm claimed",
+  "pushed": false,
+  "published": false
+}

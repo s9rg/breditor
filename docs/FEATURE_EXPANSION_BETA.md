@@ -635,3 +635,22 @@ shipping build and running heading demo remain unchanged.
 
 See [runtime contract](STRUCTURAL_BLOCKS.md#next-operation-and-action-contracts)
 and [verification](qualification/2026-10-03-flat-list-reframe.json).
+
+## Selection-driven flat-list actions
+
+The Rust feature now exposes separately implemented `WrapListAction` and
+`UnwrapListAction`. They support bare blocks, list items and mixed ranges with
+tracked toolbar activation, exact directional selection/pending formats, one
+undo event, stale-preparation rejection and full-result budget previews.
+Partial conversions and unwraps preserve unselected items and their original
+numbering. Applying numbered formatting to an already-numbered section does
+not reset its start; existing adjacent lists are not automatically merged.
+
+These actions remain explicitly registered Rust APIs. The next slice is normal
+editing inside list items: text/format edits, Enter split and empty-item exit,
+and boundary deletion. Durable history, Wasm/browser exposure, session reload/
+recovery and native qualification still need to follow. No existing shipping
+profile, wire union or bundle budget changed in this checkpoint.
+
+See [action contract](STRUCTURAL_BLOCKS.md#selection-driven-wrapunwrap-actions)
+and [verification](qualification/2026-10-03-flat-list-actions.json).

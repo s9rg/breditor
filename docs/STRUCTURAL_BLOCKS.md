@@ -1,8 +1,9 @@
 # Structural blocks: heading and list contract
 
 Current status: headings have a separately built experimental browser demo;
-flat lists now have a gated Rust schema and container-reframing operation, but **no list editing actions
-or browser support yet**. The historical checkpoints below explain the route
+flat lists now have a gated Rust schema, container-reframing operation and
+selection-driven wrap/unwrap actions, but **no list typing or browser support
+yet**. The historical checkpoints below explain the route
 to these features. The default paragraph-only schema and existing fingerprints
 remain unchanged. Links remain typed inline formatting inside structural blocks.
 
@@ -557,7 +558,7 @@ List/container boundaries are not admitted as range-selection endpoints.
 
 This is **not an editable profile yet**. Existing paragraph and
 heading operations deliberately do not gain a list-schema capability. There
-is no list action registry, Wasm bootstrap, projection, toolbar, or list-history
+is no compiled list action profile, Wasm bootstrap, projection, toolbar, or list-history
 wire route at this checkpoint. The running heading demo still uses the prior
 qualified heading-only artifact.
 
@@ -587,7 +588,7 @@ final-ordinal rule; changing that rule does not grant editing permission.
 Operation codecs V1–V5 reject this new runtime kind, and Session V5 refuses
 history containing it. This checkpoint adds no durable list tag or browser route.
 
-Separate `wrap_list` and `unwrap_list` action files will prepare those edits
+Separate `wrap_list` and `unwrap_list` action files now prepare those edits
 against the exact current state and publish one atomic history event. The
 selection's spatial span, not anchor direction, chooses targets; an end at the
 next text block's start excludes that block. Partial list-item spans retain
@@ -605,3 +606,37 @@ items, reversed numbering and per-item number overrides remain deferred.
 See [schema qualification](qualification/2026-10-03-flat-list-schema.json).
 Runtime operation evidence is recorded separately in
 [reframing qualification](qualification/2026-10-03-flat-list-reframe.json).
+
+### Selection-driven wrap/unwrap actions
+
+`WrapListAction::new(ListKind)` and `UnwrapListAction` are public, no-input Rust
+actions behind the experimental feature. Hosts explicitly register them under
+their chosen action identities; neither the default nor heading profile adds
+them automatically. Their tracked state exposes active/mixed/inactive selection
+coverage and declares selection-dependent reads and selection-changing writes.
+
+- Wrapping selects whole touched text blocks without changing their content or
+  kind. A collapsed empty-block caret selects that block. Only a later block's
+  logical start is excluded, not a later text run's offset zero.
+- Consecutive selected bare blocks become one list. Existing source containers
+  remain distinct. A partially converted list keeps its unselected prefix and
+  suffix in the original marker family and with original ordinal starts.
+- Wrapping is a **set-marker action, not a toggle or restart**. Already matching
+  containers remain whole, even when only part is selected. The numbered target's
+  explicit start applies only to newly created sections; already-numbered lists
+  retain their individual starts. Adjacent containers are not automatically
+  coalesced, so explicit restarts are not silently lost.
+- Unwrap lifts only selected items into bare paragraph/heading blocks. Bare
+  blocks stay untouched; numbered suffixes retain their old first ordinal.
+- The same marker on every touched block is active/disabled for wrap. No list
+  item in the selection is inactive/disabled for unwrap. Mixed coverage remains
+  observable even when an operation or result budget prevents execution.
+- One enabled action emits one guarded reframe/history event, relocates selection
+  strictly and preserves pending formats. Disabled execution rejects without
+  changing state, revision or redo. A stale prepared action cannot overwrite a
+  later marker choice. Full-tree result limits and final ordinals are previewed
+  before offering an enabled command.
+
+This milestone does not implement a numbered-list restart action, Enter/exit,
+list typing/deletion/formatting, durable history or browser controls. See
+[action qualification](qualification/2026-10-03-flat-list-actions.json).
