@@ -4,6 +4,9 @@ import {
   BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   bootstrapWasmEngine,
+  bootstrapFlatListWasmEngine,
+  preflightFlatListWasmSemanticProfile,
+  isOwnedBrowserFlatListWasmEngineBootstrapResult,
   isOwnedBrowserWasmEngineBootstrapResult,
   preflightWasmSemanticProfile,
   type WasmBootstrappedEngineView,
@@ -758,6 +761,134 @@ function headingBootstrapFixture(restore = false, heading = true) {
     : { ...TYPED_SEMANTIC_DOCUMENT_SOURCE, documentJson: JSON.stringify(document), semanticProfile };
   return { fixture, profile, generation, compilation, compiled, compiledFactory, fromBootstrapJsonV3, module, source, headingLevel };
 }
+
+function flatListBootstrapFixture(restore = false) {
+  const f = headingBootstrapFixture(restore);
+  const p = f.fixture.projection;
+  Object.defineProperty(p, "nodeCount", { value: 5 });
+  p.nodeKind = index => index >= 0 && index < 4 ? "element" : index === 4 ? "text" : undefined;
+  p.elementType = index => ["breditor/document", "breditor/ordered-list", "breditor/list-item", "breditor/heading"][index];
+  p.childCount = index => index >= 0 && index < 4 ? 1 : undefined;
+  p.childAt = (index, ordinal) => index >= 0 && index < 4 && ordinal === 0 ? index + 1 : undefined;
+  p.text = index => index === 4 ? p.contents : undefined;
+  p.formatCount = index => index === 4 ? 0 : undefined;
+  p.formatPropertyCount = () => undefined;
+  f.headingLevel.mockImplementation(index => index === 3 ? 2 : undefined);
+  const listKind = vi.fn((index: number) => index === 1 ? "ordered" : undefined);
+  const orderedListStart = vi.fn((index: number): number | undefined => index === 1 ? 8 : undefined);
+  Object.defineProperties(p, { listKind: { value: listKind, configurable: true }, orderedListStart: { value: orderedListStart, configurable: true } });
+  const profile = Object.assign(f.profile, {
+    createEngineFromDocumentJsonV6: vi.fn(f.profile.createEngineFromDocumentJsonV5),
+    createEngineFromSessionCheckpointJsonV6: vi.fn(f.profile.createEngineFromSessionCheckpointJsonV5),
+  });
+  const fromBootstrapJsonV4 = vi.fn(() => f.compilation);
+  const factory = Object.assign(f.compiledFactory, { fromBootstrapJsonV4 });
+  const semanticProfile = { bootstrapJson: '{"format":"breditor/profile-bootstrap","formatVersion":4}', formatVersion: 4 as const };
+  const value: Record<string, any> = JSON.parse(f.source.kind === "document" ? f.source.documentJson : f.source.checkpointJson);
+  const document = f.source.kind === "document" ? value : value["historyBase"]["document"];
+  const element = (type: string, children: unknown[], properties = {}) => ({ kind: "element", type: `breditor/${type}`, entityId: null, properties, children });
+  document["root"]["children"] = [element("ordered-list", [element("list-item", document["root"]["children"])], { "breditor/start": 8 })];
+  const source = f.source.kind === "document"
+    ? { ...f.source, documentJson: JSON.stringify(value), semanticProfile }
+    : { ...f.source, checkpointJson: JSON.stringify({ ...value, formatVersion: 6 }), semanticProfile };
+  return { ...f, profile, factory, fromBootstrapJsonV4, source, listKind, orderedListStart };
+}
+
+describe("explicit flat-list startup and restore", () => {
+  it.each([false, true])("transfers exactly the list engine/generation/observation owners (restore=%s)", restore => {
+    const f = flatListBootstrapFixture(restore);
+    const result = bootstrapFlatListWasmEngine(f.module, f.source);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v6");
+    expect(result.projection.blocks[0]?.kind).toBe("orderedList");
+    expect(result.projection.textBlocks[0]?.path).toEqual([0, 0, 0]);
+    expect(result.projection.textBlocks[0]?.block.headingLevel).toBe(2);
+    expect(isOwnedBrowserFlatListWasmEngineBootstrapResult(result)).toBe(true);
+    expect(isOwnedBrowserWasmEngineBootstrapResult(result)).toBe(false);
+    expect(isOwnedBrowserFlatListWasmEngineBootstrapResult({ ...result })).toBe(false);
+    expect(f.fromBootstrapJsonV4).toHaveBeenCalledOnce();
+    expect(f.fromBootstrapJsonV3).not.toHaveBeenCalled();
+    expect(restore ? f.profile.createEngineFromSessionCheckpointJsonV6 : f.profile.createEngineFromDocumentJsonV6).toHaveBeenCalledOnce();
+    expect(f.profile.freeCalls).toBe(1); expect(f.fixture.projection.freeCalls).toBe(1);
+    expect(f.generation.freeCalls).toBe(0); expect(f.fixture.engineFree).not.toHaveBeenCalled();
+    result.observation.free(); result.profileGeneration.free(); result.engine.free();
+    expect(f.generation.freeCalls).toBe(1); expect(f.fixture.engineFree).toHaveBeenCalledOnce();
+  });
+
+  it("preflights list metadata and releases all generated owners", () => {
+    const f = flatListBootstrapFixture();
+    expect(preflightFlatListWasmSemanticProfile(f.module, f.source.semanticProfile).ok).toBe(true);
+    expect(f.fromBootstrapJsonV4).toHaveBeenCalledOnce();
+    expect(f.profile.freeCalls).toBe(1); expect(f.generation.freeCalls).toBe(1);
+    expect(f.profile.createEngineFromDocumentJsonV6).not.toHaveBeenCalled();
+  });
+
+  it("keeps both entry points closed to the other mode before touching module factories", () => {
+    const f = flatListBootstrapFixture();
+    expect(bootstrapWasmEngine(f.module, f.source as never).ok).toBe(false);
+    expect(preflightWasmSemanticProfile(f.module, f.source.semanticProfile as never).ok).toBe(false);
+    expect(bootstrapFlatListWasmEngine(f.module, DOCUMENT_SOURCE as never).ok).toBe(false);
+    expect(preflightFlatListWasmSemanticProfile(f.module, TYPED_SEMANTIC_PROFILE as never).ok).toBe(false);
+    expect(f.fromBootstrapJsonV4).not.toHaveBeenCalled();
+    expect(f.fromBootstrapJsonV3).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, () => Promise.resolve(undefined)])("requires a synchronous V4 compiler without fallback (%s)", compiler => {
+    const f = flatListBootstrapFixture();
+    Object.defineProperty(f.factory, "fromBootstrapJsonV4", { value: compiler });
+    expect(bootstrapFlatListWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(f.fromBootstrapJsonV3).not.toHaveBeenCalled();
+    expect(f.compiled.fromBootstrapJsonV2).not.toHaveBeenCalled();
+  });
+
+  it.each(["createEngineFromDocumentJsonV6", "createEngineFromSessionCheckpointJsonV6"] as const)("requires %s and cleans up before construction", key => {
+    const f = flatListBootstrapFixture(); Object.defineProperty(f.profile, key, { value: undefined });
+    expect(bootstrapFlatListWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(f.profile.freeCalls).toBe(1); expect(f.compilation.freeCalls).toBe(1);
+    expect(f.fixture.engineFree).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing kind", "missing start", "throwing getter", "async kind", "async absence", "invalid start", "nested", "projection cleanup", "profile cleanup", "generation freed during cleanup"])("rejects %s and releases acquired owners", fault => {
+    const f = flatListBootstrapFixture(); const p = f.fixture.projection;
+    if (fault === "missing kind") Object.defineProperty(p, "listKind", { value: undefined });
+    if (fault === "missing start") Object.defineProperty(p, "orderedListStart", { value: undefined });
+    if (fault === "throwing getter") Object.defineProperty(p, "listKind", { get() { throw new Error("kind getter"); } });
+    if (fault === "async kind") Object.defineProperty(p, "listKind", { value: () => Promise.resolve("ordered") });
+    if (fault === "async absence") Object.defineProperty(p, "orderedListStart", { value: (i: number) => i === 1 ? 8 : Promise.resolve(undefined) });
+    if (fault === "invalid start") f.orderedListStart.mockImplementation(index => index === 1 ? 0 : undefined);
+    if (fault === "nested") p.elementType = index => index === 3 ? "breditor/bullet-list" : ["breditor/document", "breditor/ordered-list", "breditor/list-item"][index];
+    if (fault === "projection cleanup") p.free = () => { p.freeCalls += 1; throw new Error("cleanup"); };
+    if (fault === "profile cleanup") f.profile.free = () => { f.profile.freeCalls += 1; throw new Error("cleanup"); };
+    if (fault === "generation freed during cleanup") f.profile.free = () => { f.profile.freeCalls += 1; f.generation.free(); };
+    expect(bootstrapFlatListWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(p.freeCalls).toBe(1); expect(f.profile.freeCalls).toBe(1);
+    expect(f.fixture.engineFree).toHaveBeenCalledOnce(); expect(f.fixture.observationFree).toHaveBeenCalledOnce();
+    expect(f.generation.freeCalls).toBe(1);
+  });
+
+  it.each([false, true])("rejects malformed durable input before the V6 engine factory (restore=%s)", restore => {
+    const f = flatListBootstrapFixture(restore);
+    const source = f.source.kind === "document" ? { ...f.source, documentJson: "{}" } : { ...f.source, checkpointJson: "{}" };
+    expect(bootstrapFlatListWasmEngine(f.module, source).ok).toBe(false);
+    expect(f.profile.createEngineFromDocumentJsonV6).not.toHaveBeenCalled();
+    expect(f.profile.createEngineFromSessionCheckpointJsonV6).not.toHaveBeenCalled();
+    expect(f.profile.freeCalls).toBe(1); expect(f.generation.freeCalls).toBe(1);
+  });
+
+  it("heading startup does not inspect any optional list API", () => {
+    const f = headingBootstrapFixture(); const unexpected = () => { throw new Error("list API touched"); };
+    Object.defineProperty(f.compiledFactory, "fromBootstrapJsonV4", { get: unexpected });
+    Object.defineProperty(f.profile, "createEngineFromDocumentJsonV6", { get: unexpected });
+    Object.defineProperty(f.profile, "createEngineFromSessionCheckpointJsonV6", { get: unexpected });
+    Object.defineProperty(f.fixture.projection, "listKind", { get: unexpected });
+    Object.defineProperty(f.fixture.projection, "orderedListStart", { get: unexpected });
+    const result = bootstrapWasmEngine(f.module, f.source);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(isOwnedBrowserWasmEngineBootstrapResult(result)).toBe(true);
+    expect(isOwnedBrowserFlatListWasmEngineBootstrapResult(result)).toBe(false);
+    result.observation.free(); result.profileGeneration.free(); result.engine.free();
+  });
+});
 
 describe("explicit heading startup and restore", () => {
   it.each([false, true])("selects only Bootstrap V3 / engine V5 (restore=%s)", (restore) => {

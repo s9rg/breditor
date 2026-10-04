@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "52829a3",
+  "status": "Explicit list browser bootstrap and restore qualified; normal controller integration incomplete",
+  "contracts": {
+    "selector": "Separate list source requires formatVersion 4; selects Bootstrap V4 and engine V6 factories",
+    "durable": "Document/session preflight before engine construction; no fallback or payload-based mode inference",
+    "ownership": "Shared registry/ABI/package/descriptor/generation/cleanup checks; exactly three owners transferred on success",
+    "projection": "Hierarchical list projection; captured synchronous heading/list metadata, including absence probes",
+    "legacy": "Base/heading startup rejects selector V4, does not probe list APIs, and rejects list result brands",
+    "exports": "New list entry points are internal source APIs; shipping entry points unchanged"
+  },
+  "verification": {
+    "newTests": 21,
+    "browserTests": 1689,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "firefox",
+        "version": "153.0",
+        "runs": 5,
+        "status": "passed"
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "runs": 5,
+        "status": "passed"
+      }
+    ],
+    "browserScope": "Real Wasm metadata preflight, explicit fresh document bootstrap, Session V6 bootstrap with redo history and exact document/selection recovery after redo; retains previous raw/projection/DOM/update checks",
+    "developmentCorrections": [
+      "Initial typecheck identified discriminated-union access requiring explicit narrowing; corrected without weakening public legacy result types.",
+      "Test typecheck identified an overly narrow literal return type on the numbered-start mock; annotated number | undefined so malformed-start tests typecheck."
+    ],
+    "commands": [
+      "npm run typecheck --workspace @breditor/browser",
+      "npm test --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "List command tokens and owner/controller integration",
+    "Toolbar, keyboard, composition and clipboard",
+    "Visible reload/backup and native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Explicit low-level bootstrap/restore only; no normal editor input or broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

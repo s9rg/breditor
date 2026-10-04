@@ -1009,3 +1009,22 @@ unchanged; nothing is pushed or published.
 Next: explicit browser bootstrap V4 and list owner/controller integration, then
 toolbar/keyboard, visible reload/backup and native-input/release qualification.
 See [verification](qualification/2026-10-04-flat-list-browser-session.json).
+
+## Flat-list browser bootstrap checkpoint
+
+Explicit list startup/restore now uses the shared browser bootstrap ownership
+machinery: Bootstrap V4 selects V6 factories, durable preflight runs before engine
+construction, and the initial projection retains the hierarchy. Legacy startup
+remains closed to this selector and never inspects optional list APIs. Metadata
+preflight releases all generated owners; successful construction transfers exactly
+three owners and checks that cleanup has not invalidated them.
+
+All 1,689 browser tests and strict TypeScript pass. Five runs each in Chromium,
+Firefox and WebKit cover fresh document bootstrap, session bootstrap with an
+unapplied redo branch, and exact document/selection recovery after redo. Shipping
+artifact hashes are unchanged; nothing is pushed or published.
+
+Next: list command tokens and owner/controller integration, toolbar/keyboard,
+visible reload/backup and native-input/release qualification. The low-level list
+startup/restore path is verified; the user-facing list editor is not yet complete.
+See [verification](qualification/2026-10-04-flat-list-browser-bootstrap.json).

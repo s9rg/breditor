@@ -5,6 +5,8 @@ import { consumeFlatListSemanticSelection, flatListSemanticRangeSelectionScalars
 import { FlatListRangeSelection } from "../packages/breditor-browser/src/flat_list_selection.ts";
 import { consumeWasmDocumentJson, documentJsonMatchesFlatListProjection } from "../packages/breditor-browser/src/wasm_document_json.ts";
 import { consumeWasmSessionCheckpoint, sessionCheckpointJsonMatchesDurableContract } from "../packages/breditor-browser/src/wasm_session_checkpoint.ts";
+import { bootstrapFlatListWasmEngine, preflightFlatListWasmSemanticProfile,
+  isOwnedBrowserFlatListWasmEngineBootstrapResult, isOwnedBrowserWasmEngineBootstrapResult } from "../packages/breditor-browser/src/wasm_engine_bootstrap.ts";
 
 const equal = (actual, expected) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`projection mismatch: ${JSON.stringify(actual)}`);
@@ -143,9 +145,31 @@ export function runFlatListBrowserProjectionScenario(api, verifyDom) {
     const recoveredAfter = project(recovered, restoreOwner);
     equal(recoveredAfter.blocks, final.blocks);
     equal(endpoints(recoveredAfter), endpoints(final));
+    const semanticProfile = {bootstrapJson: JSON.stringify(bootstrap), formatVersion: 4};
+    const metadata = preflightFlatListWasmSemanticProfile(api, semanticProfile);
+    if (!metadata.ok) throw new Error(`list metadata preflight rejected: ${metadata.error.code}`);
+    equal(metadata.profileDescriptor, owner.descriptor);
+    const boot = source => {
+      const result = bootstrapFlatListWasmEngine(api, {...source, semanticProfile});
+      if (!result.ok) throw new Error(`list bootstrap rejected: ${result.error.code}`);
+      own(result.engine); own(result.profileGeneration); own(result.observation);
+      equal(result.durableMode, "v6");
+      equal(isOwnedBrowserFlatListWasmEngineBootstrapResult(result), true);
+      equal(isOwnedBrowserWasmEngineBootstrapResult(result), false);
+      return {result, owner: {generation: result.profileGeneration, descriptor: result.profileDescriptor}};
+    };
+    const freshBoot = boot({kind: "document", lineageId: "list-bootstrap", documentJson: JSON.stringify(initial), historyCapacity: 20});
+    equal(freshBoot.result.projection.blocks, before.blocks);
+    equal(project(freshBoot.result.engine, freshBoot.owner).blocks, before.blocks);
+    const restoredBoot = boot({kind: "sessionCheckpoint", checkpointJson: withRedo});
+    equal(restoredBoot.result.projection.blocks, originalBefore.blocks);
+    equal(endpoints(project(restoredBoot.result.engine, restoredBoot.owner)), endpoints(originalBefore));
+    committed(restoredBoot.result.engine.redo(observation(restoredBoot.result.engine), false));
+    const bootAfter = project(restoredBoot.result.engine, restoredBoot.owner);
+    equal(bootAfter.blocks, final.blocks); equal(endpoints(bootAfter), endpoints(final));
     return {status: "passed", scope: verifyDom === undefined
-      ? "real Wasm projection/selection/document correlation, all list Session V6 recipes and fresh-owner redo; no DOM/native input"
-      : "real Wasm list projection/selection/document correlation, all Session V6 recipes and redo recovery plus semantic DOM/selection/update checks; no keyboard/IME/clipboard"};
+      ? "real Wasm list projection/selection/document and Session V6 recipes, explicit bootstrap and redo recovery; no DOM/native input"
+      : "real Wasm list bootstrap/Session V6 recovery and exact documents/selections plus semantic DOM/update checks; no keyboard/IME/clipboard"};
   } finally {
     for (const handle of handles.reverse()) handle.free();
   }

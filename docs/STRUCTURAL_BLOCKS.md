@@ -1352,3 +1352,30 @@ recipes, a saved redo branch, fresh-owner restore and exact document/selection
 recovery. Controller scheduling, keyboard/clipboard/IME and the visible demo remain
 outside this checkpoint. See
 [session qualification](qualification/2026-10-04-flat-list-browser-session.json).
+
+### Explicit flat-list browser bootstrap
+
+`bootstrapFlatListWasmEngine` requires an explicit profile selector with
+`formatVersion: 4`. It selects the generated V4 profile compiler and V6 document
+or session factory, validates durable input before construction, and returns an
+owned hierarchical initial projection. `preflightFlatListWasmSemanticProfile`
+provides handle-free metadata for the eventual asynchronous persistence load.
+Both reuse the existing ABI/package probes, descriptor/generation correlation,
+generated-handle claims, captured methods, cleanup and final owner-liveness checks.
+
+Success transfers exactly the engine forwarding owner, profile generation and
+observation; temporary profile, result, descriptor and projection handles are
+consumed. Missing/throwing/asynchronous list metadata rejects, including promises
+returned where an absent optional node value would otherwise be valid. Cleanup
+failure or disposal of a transferred generation during cleanup rejects success.
+
+The legacy bootstrap entry point still rejects selector V4 and never probes list
+factories or metadata methods. Successful list bootstrap results have a separate
+brand check and do not satisfy the base-result brand. The new entry points remain
+internal source APIs, not additions to the shipping package entry points.
+
+The real-browser harness now creates a fresh list engine and restores a redo
+checkpoint through this bootstrap, then checks exact document and selection
+recovery after redo. Normal owner/controller scheduling, toolbar and input routing
+remain separate integration work. See
+[bootstrap qualification](qualification/2026-10-04-flat-list-browser-bootstrap.json).
