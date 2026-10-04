@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "ffed7f2",
+  "runtimeCommit": "43ddc3a",
+  "status": "safari-structural-reload-and-chrome-backup-recovery-observed",
+  "releaseQualified": false,
+  "method": "CUA native Safari and Chrome app controls; observed UI after each structural undo and redo. Downloaded file independently inspected with read-only JSON assertions. No page injection.",
+  "assetRecord": "docs/qualification/2026-10-04-list-native-desktop.json",
+  "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+  "safari": {
+    "url": "http://127.0.0.1:4188/?native-persistence=1",
+    "initial": "Seed heading rank 2 and prior Writeabc a first draft typing checkpoint. An undone control-character test existed on the redo branch; the new heading change intentionally superseded that test-only redo branch.",
+    "steps": [
+      "Click heading text, Cmd+Left then Cmd+Shift+Right. AX selected text confirms Make room for your ideas.",
+      "Apply Heading 3, Bullet list, Numbered list, then Link https://example.com/breditor-persistence with new-window unchecked. Observe each intermediate structure.",
+      "Close Link popover; saved status remains All changes saved. Reload. Rank 3, numbered marker 1, Link and selected heading text are restored.",
+      "Click Undo four times with an observation after each: remove Link; restore bullet marker; remove wrapper; restore rank 2. Selected heading text and all unrelated content remain intact.",
+      "Reload with this redo branch. Selected heading text, rank 2 and available Redo are restored.",
+      "Click Redo four times with an observation after each: rank 3; bullet wrapper; numbered wrapper; Link. Link popover confirms exact URL and unchecked new-window option.",
+      "Download session backup. Accept local 127.0.0.1 download prompt; Safari Downloads shows breditor-session-backup-2.json, 10 KB."
+    ]
+  },
+  "chrome": {
+    "url": "http://127.0.0.1:4188/",
+    "steps": [
+      "Open the exact Safari-exported backup with the native file picker. Separate Recovered Breditor session appears with numbered heading, Link and Autosave is off. Main editor remains its earlier unwrapped heading and Writeabc a first draft.",
+      "Click recovered Undo four times, observing Link removal, numbered-to-bullet conversion, unwrap, and Heading 2 becoming the active disabled toolbar control. Main editor is unchanged.",
+      "Click recovered Redo four times, observing Heading 3, bullet wrapper, numbered wrapper and Link restoration. Selected heading text is retained during history traversal.",
+      "Open recovered Link popover: exact https://example.com/breditor-persistence URL and unchecked new-window option. Main editor remains unchanged; recovered autosave stays off."
+    ],
+    "uiInterruptions": [
+      "First Go To path entry remained slash; setValue did not alter it. Rebinding and explicit typing produced a double-leading-slash absolute path, which the native picker resolved to the exact file. The filename and JSON preview were observed before Open.",
+      "After Open, native AX temporarily exposed a Find bar containing vin. Escape closed it; a fresh observation confirmed successful recovery. No editor error or cause for the Find bar is inferred."
+    ]
+  },
+  "backup": {
+    "path": "/Users/s/Downloads/breditor-session-backup-2.json",
+    "bytes": 10055,
+    "sha256": "14923034403f027fc27c832ab1d150b68c356124ba927586c8296b52c6c2bad2",
+    "formatVersion": 6,
+    "currentRevision": "31",
+    "cursor": 5,
+    "entries": 5,
+    "newEntryKinds": ["flatListTextReplace", "flatListReframe", "flatListReframe", "flatListTextReplace"],
+    "resultSelection": {
+      "kind": "range",
+      "anchor": {"kind": "text", "textPath": [0, 0, 0, 0], "utf16Offset": 0, "affinity": "after"},
+      "focus": {"kind": "text", "textPath": [0, 0, 0, 0], "utf16Offset": 24, "affinity": "before"}
+    },
+    "verification": "Read-only assertions verified V6, cursor/entry count, all four new operation kinds, final heading rank 3, ordered layout start 1/items 1, exact Link URL and both serialized selection endpoints/affinities.",
+    "retention": "Downloaded test-only backup retained. No user-authored document data was used."
+  },
+  "limits": [
+    "One observed forward-selection workflow, not exhaustive structural selection, all ranks, backward-selection or crash-recovery coverage.",
+    "Safari native main-demo persistence and Safari-to-Chrome transfer are covered here. Chrome-native structural authoring/reload and Safari self-import are not inferred.",
+    "AX selected text proves the visible range, not DOM affinity independently. Exact logical endpoints/affinities are supported separately by the downloaded checkpoint assertions.",
+    "Native controls are not physical-human certification. IME, screen-reader qualification, intermittent WebKit fault, performance, size/delivery and full release gates remain open."
+  ],
+  "runtimeChanges": false,
+  "pushedOrPublished": false
+}

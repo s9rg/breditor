@@ -1848,3 +1848,24 @@ are in [assistive-input evidence](qualification/2026-10-04-list-native-assistive
 These gates remain open. Native structural/formatted-history persistence and Safari export still
 need distinct coverage; this run does not generalize beyond its tested route.
 Performance, delivery/size decisions and full release qualification remain open.
+
+## Native structural history and Safari export — 2026-10-04
+
+Safari now has a native main-demo persistence observation for a selected heading
+changed from rank 2 to 3, wrapped as a bullet, converted to numbered, and given a
+typed Link. Reload retained the structure and selection; four separate Undos
+reversed those edits. Reload with the redo branch then restored all four edits
+individually, including the exact Link URL. Unrelated list contents and numbering
+remained unchanged.
+
+Safari exported the resulting V6 checkpoint, and Chrome imported that exact file
+into an independent recovered editor with autosave off. All four Undo/Redo steps
+worked there without changing Chrome's main document. Read-only assertions on the
+download verify operation kinds, final rank/list layout, URL and exact logical
+selection endpoints/affinities. See [native structural persistence evidence](qualification/2026-10-04-list-native-structural-persistence.json).
+
+This closes the previously missing Safari export and this Safari-to-Chrome
+structural-history route, not every native persistence scenario. Chrome-native
+structural authoring/reload, broader selection cases, OS IME/screen-reader checks
+and the existing release gates remain open. No runtime or shipping change was
+needed, and nothing was pushed or published.
