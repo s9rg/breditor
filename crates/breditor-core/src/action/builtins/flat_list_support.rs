@@ -156,7 +156,7 @@ fn at_block_start(point: &Point) -> bool {
         Point::Children { child_index, .. } => *child_index == 0,
     }
 }
-fn list_kind(node: &NodeRef) -> Result<Option<ListKind>, ActionFault> {
+pub(super) fn list_kind(node: &NodeRef) -> Result<Option<ListKind>, ActionFault> {
     let element = node.as_element().ok_or_else(|| fault("breditor/list-source-fault"))?;
     match element.kind().as_str() {
         "breditor/paragraph" | "breditor/heading" => Ok(None),

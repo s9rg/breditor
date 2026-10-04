@@ -712,10 +712,50 @@ format runs, all paragraph/heading ranks, exact selection/pending-format history
 all valid text and structural points in representative forward/inverse edits,
 stale-batch rollback, resource limits and independent Unicode/layout oracles.
 
-This is a runtime operation checkpoint, **not an enabled Enter or cross-block
-typing action**. `InsertFlatListTextAction` still rejects cross-block selection.
+This primitive checkpoint alone does not enable Enter or cross-block typing.
+The separately qualified Enter action is described below;
+`InsertFlatListTextAction` still rejects cross-block selection.
 Operation V1–V5 and Session V5 history remain closed to the new operation.
 Durable list admission, Wasm/browser controls, reload/recovery and native testing
 remain separate gates. Nested lists are deferred by the user's explicit choice.
 
 See [structural text qualification](qualification/2026-10-04-flat-list-replace.json).
+
+### Flat-list Enter action
+
+`InsertFlatListBreakAction` is a separately named, no-input Rust action with the
+opt-in identity `breditor/insert-flat-list-break`. It uses one guarded structural
+replacement with full-result preview, explicit resulting caret, preserved pending
+formats and a record-history intent. Its state dependencies include document,
+selection, pending formats, context and snapshot. Existing/default registrations
+are unchanged.
+
+- A nonempty item splits within its current list. The left block keeps its kind;
+  the right keeps its endpoint kind when suffix text survives, otherwise becomes
+  a paragraph. This matches the existing bare-heading Enter policy.
+- A collapsed empty item exits as a bare paragraph, including an empty heading
+  item. Unselected prefix/suffix items stay in their original marker family.
+  Numbered suffixes keep their original first displayed ordinal. First, middle,
+  last and only-item exit are supported; no empty list container is retained.
+- Bare paragraphs split. A collapsed empty bare heading becomes one paragraph.
+  Nonempty bare headings split at the start/middle and create a following
+  paragraph at the end, matching the heading-only profile.
+- Extended ranges replace the exact selected text and structural breaks. Within
+  one list, its original start remains and subsequent ordinals follow the changed
+  item count. Across containers, the left and right endpoint families remain
+  separate, middle roots are removed, and the right ordered container begins at
+  the original endpoint item's ordinal. Surviving prefix/suffix blocks remain
+  intact. Adjacent lists are not automatically merged or restarted.
+- The caret becomes an After-affinity child boundary at the right block start,
+  or at the exited/converted paragraph. A document-changing Enter records one
+  undo event with exact original direction, affinities and pending formats.
+  Replacing only an existing break without changing the document moves selection
+  without adding an undo entry, following the established history contract.
+- Node/item/root budgets are checked on the final atomic result. Disabled edits
+  preserve state and existing redo; stale prepared Enter actions reject.
+  Numbering overflow has the explicit `breditor/list-ordinal-overflow` reason.
+
+This action is not yet exposed through Wasm/browser keyboard controls or durable
+list sessions. Cross-block typing, boundary deletion, inline formatting and
+native qualification remain next work; nested lists/indent-outdent remain deferred.
+See [Enter qualification](qualification/2026-10-04-flat-list-enter.json).

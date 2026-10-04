@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "65f911a",
+  "status": "Experimental Rust flat-list Enter action qualified; browser and durable list integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "action": "InsertFlatListBreakAction",
+    "identity": "breditor/insert-flat-list-break",
+    "input": "No input; explicit host registration only",
+    "operation": "One FlatListTextReplace with exact root guards and authoritative full-result preview",
+    "split": "Nonempty items stay in their list; left block retains kind, right retains endpoint kind unless suffix empty, which becomes a paragraph",
+    "emptyItemExit": "Collapsed empty item becomes a bare paragraph; retained prefix/suffix lists keep marker families and original ordinal starts",
+    "bareBlocks": "Existing heading policy: start/middle preserve rank, end creates a paragraph, empty heading converts to one paragraph; bare paragraphs split",
+    "crossContainer": "Retain left/right endpoint families separately; remove selected middle roots; right ordered section starts at original endpoint item ordinal; no automatic list merge or restart",
+    "sameContainer": "Original list start retained; later ordinals follow resulting item count",
+    "selection": "After-affinity child boundary at right block start or exited paragraph; pending formats retained; exact directional undo for recorded edits",
+    "history": "One record-history event for document changes; structurally unchanged existing-break replacement is selection-only with no new undo entry",
+    "limits": "Final-result node/item/root budgets; numbering overflow explicitly disabled; no transient delete/split intermediate required",
+    "state": "Document, selection, pending formats, context and snapshot dependencies; stale prepared actions reject; disabled execution preserves existing redo",
+    "wire": "No default/browser registry change and no operation/session wire widening"
+  },
+  "verification": {
+    "focusedActionTests": 11,
+    "allFeatureWorkspaceUnitTests": { "core": 997, "wasm": 51 },
+    "defaultCoreUnitTests": 697,
+    "propertyCases": 10000,
+    "propertySeed": 20261004,
+    "propertyOracle": "Independent Unicode scalar slicing and expected string/list construction, randomized rank/ordered start, exact selection/pending-format undo and redo",
+    "coverage": [
+      "Paragraph and all six heading ranks, bare/bullet/numbered families, every scalar boundary in a Unicode fixture",
+      "Empty-item exit at first, middle, last and only item, including heading items and outside root siblings",
+      "Empty bare heading conversion versus empty bare paragraph split",
+      "Forward/backward selections across items and every pair of bare/bullet/numbered endpoint families",
+      "Retained prefix/suffix content and original right-container numbering",
+      "Missing selection, unsupported schema, operation/item budgets and final-ordinal overflow disabled without mutation",
+      "Atomic extended-range replacement at exact node and item budgets",
+      "Selection-only replacement of an existing break adds no undo entry",
+      "Disabled Enter preserves an existing redo branch after selection changes",
+      "Stale preparation rejection and separate undo events for successive Enter actions"
+    ],
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib insert_flat_list_break_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Cross-block typing and backward/forward boundary deletion policy",
+    "List-aware inline-format actions",
+    "Explicit durable operation/session admission and reload/recovery",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native-input qualification and existing release size gates",
+    "Nested lists and indent/outdent remain deferred beyond the flat-list beta"
+  ],
+  "evidenceBoundary": "Rust action/session tests and static checks only; no list browser/native qualification, rebuilt shipping Wasm, or performance claim",
+  "pushed": false,
+  "published": false
+}

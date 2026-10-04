@@ -691,3 +691,21 @@ unchanged. Flat lists remain the first beta scope; nested lists follow later.
 
 See [contract](STRUCTURAL_BLOCKS.md#structural-flat-list-text-replacement) and
 [verification](qualification/2026-10-04-flat-list-replace.json).
+
+## Flat-list Enter checkpoint
+
+The experimental Rust profile now exposes `InsertFlatListBreakAction`: nonempty
+items split; empty items exit as bare paragraphs; unselected numbered suffixes
+retain their original starts. Bare headings follow the existing heading Enter
+policy. Forward/backward selections can cross items and different root/container
+families in one atomic replacement. The action preserves pending formats and
+exact undo boundaries, previews full-result limits and rejects stale preparations.
+Existing-break replacements that change only selection do not add undo entries.
+
+This is an explicitly registered core action, not a browser feature yet. Next:
+cross-block typing, boundary deletion and inline-format actions, followed by
+durable operation/session admission, Wasm/browser controls and reload/recovery.
+The existing shipping and heading-only demo paths remain unchanged.
+
+See [Enter contract](STRUCTURAL_BLOCKS.md#flat-list-enter-action) and
+[verification](qualification/2026-10-04-flat-list-enter.json).
