@@ -1,10 +1,19 @@
 // Real-engine check of the opt-in heading projection slice, not native-input qualification.
-// Prerequisites: built browser package and target/heading-bridge-smoke bindings.
+// Prerequisites: built browser package and an explicit generated binding directory.
+import assert from "node:assert/strict";
+import { realpath } from "node:fs/promises";
+import { relative, resolve, sep } from "node:path";
 import { chromium, firefox, webkit } from "playwright-core";
 import { createServer } from "vite";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+assert.equal(process.argv.length, 3, "provide experimental binding directory");
+const directory = await realpath(resolve(process.argv[2]));
+const bindingPath = relative(await realpath(root), directory);
+assert.ok(bindingPath.startsWith(`target${sep}`) && !bindingPath.split(sep).includes(".."),
+  "bindings must be generated beneath this repository's target directory");
+const bindingUrl = `/${bindingPath.split(sep).map(encodeURIComponent).join("/")}`;
 const server = await createServer({ configFile: false, root,
   plugins: [{ name: "heading-harness", configureServer(instance) {
     instance.middlewares.use((request, response, next) => {
@@ -14,7 +23,7 @@ const server = await createServer({ configFile: false, root,
     });
   } }],
   optimizeDeps: { noDiscovery: true, entries: [] },
-  server: { host: "127.0.0.1", port: 0 },
+  server: { host: "127.0.0.1", port: 0, watch: { ignored: ["**/target/**"] } },
 });
 try {
   await server.listen();
@@ -27,9 +36,9 @@ try {
       const health = await fetch(url);
       if (!health.ok) throw new Error(`local harness returned ${health.status}`);
       await page.goto(url);
-      const results = await page.evaluate(async () => {
-        const api = await import("/target/heading-bridge-smoke/breditor_wasm.js");
-        api.initSync({ module: await (await fetch("/target/heading-bridge-smoke/breditor_wasm_bg.wasm")).arrayBuffer() });
+      const results = await page.evaluate(async (bindingUrl) => {
+        const api = await import(`${bindingUrl}/breditor_wasm.js`);
+        api.initSync({ module: await (await fetch(`${bindingUrl}/breditor_wasm_bg.wasm`)).arrayBuffer() });
         const { runHeadingDomScenario } = await import("/scripts/heading-dom-scenario.mjs");
         const results = [];
         for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -38,7 +47,7 @@ try {
           try { results.push(runHeadingDomScenario(api, host)); } finally { host.remove(); }
         }
         return results;
-      });
+      }, bindingUrl);
       console.log(JSON.stringify({ browser: name, version: browser.version(), status: "passed", runs: results.length, result: results[0] }));
     } catch (error) {
       process.exitCode = 1;

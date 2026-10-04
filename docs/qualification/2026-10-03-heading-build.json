@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "16c3c88",
+  "status": "Developer-only isolated heading build qualified; feature-expansion goal remains active",
+  "command": "PATH=\"/Users/s/.cargo/bin:$PATH\" npm run test:headings:experimental",
+  "candidate": "target/heading-candidate-NnGspU",
+  "isolation": {
+    "cargoTarget": "target/heading-cargo",
+    "freshCandidatePerRun": true,
+    "shippingWasmDistUnchanged": true,
+    "browserDistUnchanged": true,
+    "published": false,
+    "pushed": false
+  },
+  "verification": {
+    "declarationRegressionTests": 11,
+    "declarationDelta": "Exactly four high-level additions and four matching low-level exports; legacy declaration content unchanged apart from documentation",
+    "typeScriptConsumer": "Passed: experimental factories/rank, negative shipping imports, optional rank and numeric history capacity",
+    "nodeWireSmoke": "Passed",
+    "jsdomScenario": "Passed",
+    "chromium": { "version": "151.0.7922.34", "runs": 5, "passed": 5 },
+    "firefox": { "version": "153.0", "runs": 5, "passed": 5 },
+    "webkit": { "version": "26.5", "runs": 5, "passed": 5 },
+    "browserRetries": 0,
+    "pathLeakCheck": "Passed",
+    "defaultSizeChecks": "Passed; ceilings unchanged",
+    "diffCheck": "Passed"
+  },
+  "artifacts": {
+    "wasmBytes": 1806332,
+    "wasmGzip9Bytes": 505554,
+    "wasmSha256": "0a8ee8b2e96326016bd4f78219caacf41dbc9d1d7ccde6ab6d49ca9e125c787e",
+    "declarationsSha256": "9a77f0194dfebe3ffd22bd92acf4454ad25ec2b99a9e55cbdf799e23aa6020f5",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "c3cbc17ef6b6caa027a5596a92a48040b1b63976c7b80bfb28c8cedd766b3221"
+  },
+  "limitations": [
+    "Not a public optional npm package or a release-size baseline",
+    "Requires current regular package build artifacts and installed browser engines",
+    "Public browser bootstrap, durable V5 preflight and input/toolbar integration remain pending",
+    "No native Safari app, clipboard, keyboard, IME or mobile qualification in this checkpoint",
+    "Flat lists follow end-to-end headings; nesting remains deferred"
+  ]
+}

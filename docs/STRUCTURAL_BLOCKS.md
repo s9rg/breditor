@@ -430,21 +430,27 @@ This is an opt-in developer boundary, not an addition to the default npm package
 Generated bindings can be checked with
 `node scripts/check-experimental-heading-wasm.mjs <wasm-bindgen-output-dir>`.
 That check exercises actual Wasm under Node, not browser DOM/native-input behavior.
-The isolated build/load/package contract, heading projection/renderer, browser
-toolbar/selection/input, and desktop qualification remain separate work.
+The public optional package/startup contract, browser toolbar/input, and desktop
+qualification remain separate work. Projection/rendering are covered below.
 
-Reproduce the developer smoke from the repository root with the locked Rust
-toolchain and wasm-bindgen CLI 0.2.127:
+Reproduce the complete developer heading check from the repository root with the
+locked Rust toolchain, wasm-bindgen CLI 0.2.127 and installed Playwright engines.
+Build the regular packages first so the browser modules and shipping comparison
+artifacts are current:
 
 ```sh
-cargo build -p breditor-wasm --features experimental-text-blocks --profile wasm-release --target wasm32-unknown-unknown --locked
-wasm-bindgen target/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm --target web --typescript --remove-name-section --remove-producers-section --out-dir target/heading-bridge-smoke --out-name breditor_wasm
-node scripts/check-experimental-heading-wasm.mjs target/heading-bridge-smoke
+npm run build
+npm run test:headings:experimental
 ```
 
-This keeps generated bindings under ignored `target/`; it does not overwrite
-`packages/breditor-wasm/dist` or establish a reproducible release-size baseline.
-Run the ordinary package build separately to validate the default reviewed ABI.
+The second command compiles only in `target/heading-cargo`, never the default
+Cargo output tree. It generates a fresh `target/heading-candidate-*`, minifies
+the glue with pinned Rolldown, checks the exact additive declaration delta and
+TypeScript consumer expectations, checks path remapping, and runs Node/jsdom and
+three-browser scenarios. It verifies that every shipping Wasm and browser dist
+file remained unchanged. Only a completely passing run writes qualification.json,
+including content hashes and measured size; failed candidates remain inspectable.
+No candidate is a publishable npm package or default release-size baseline.
 
 ### Experimental heading browser projection
 
@@ -464,11 +470,12 @@ are paragraphs. Optional immutable `headingLevel` metadata controls semantic
 incremental replacement and composition structure checks. Native DOM selection
 points keep the same AST paths and scalar-aligned UTF-16 rules.
 
-After building the browser package and the experimental bindings above, run:
+The aggregate command includes both following checks. To inspect an existing
+candidate separately, substitute its printed directory for `<candidate>`:
 
 ```sh
-node scripts/check-experimental-heading-dom.mjs target/heading-bridge-smoke
-node scripts/check-experimental-heading-browsers.mjs
+node scripts/check-experimental-heading-dom.mjs <candidate>
+node scripts/check-experimental-heading-browsers.mjs <candidate>
 ```
 
 The first check uses jsdom. The second serves a local harness and runs five

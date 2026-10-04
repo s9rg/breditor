@@ -478,3 +478,25 @@ routing, toolbar/keyboard, recovery integration and native desktop qualification
 flat bullet/numbered lists still follow.
 
 See [heading projection qualification](qualification/2026-10-03-heading-projection.json).
+
+## Isolated experimental build checkpoint
+
+`npm run test:headings:experimental` now builds the heading candidate in its own
+Cargo target and fresh generated-output directory. It cannot overwrite the
+default compiler artifact or package dist; it compares all Wasm/browser dist
+files before and after qualification. The generated declarations must equal the
+reviewed shipping API plus exactly four high-level methods and four corresponding
+low-level exports. TypeScript consumer checks also prove that shipping imports
+do not expose heading APIs and that an absent heading rank remains optional.
+
+The pinned, path-remapped and minified candidate passes the existing generated
+Wasm, jsdom and five-run-per-engine Chromium/Firefox/WebKit heading scenarios.
+Eleven declaration-contract regressions pass. Default size ceilings are unchanged
+and pass. This is a developer-only reproducible check, not the public optional
+package, native-input qualification, or a heading-enabled demo.
+
+Next implementation boundary: explicitly selected browser startup and durable
+preflight for Session V5 / State V3 / Document V2, followed by heading-aware
+input actions and toolbar integration. Existing V1–V3 validators must stay closed;
+the different wire versions must not be relabeled to pass old validators. Flat
+bullet/numbered lists follow that end-to-end heading slice; nesting stays deferred.
