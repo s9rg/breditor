@@ -28,6 +28,7 @@ import {
   nativeChildNodes,
   nativeDocumentDefaultView,
   nativeGetAttribute,
+  nativeHasAttributes,
   nativeHtmlElementIsNamed,
   nativeHtmlHostFacts,
   nativeNodeType,
@@ -1145,7 +1146,7 @@ function mapExistingFlatListRoot(node: Node, root: FlatListRootProjection, rootI
   mapNode(node, Object.freeze([rootIndex]), maps.astToDom, maps.domToAst, true);
   for (const [index, block] of root.items.entries()) {
     const item = items[index];
-    if (!isHtmlElementNamed(item, "li") || nativeAttributeNames(item).length !== 0) return false;
+    if (!isHtmlElementNamed(item, "li") || nativeHasAttributes(item)) return false;
     const children = nativeChildNodes(item), paragraph = children[0];
     if (children.length !== 1 || !isHtmlElementNamed(paragraph, textBlockTag(block)) ||
       !mapExistingParagraph(paragraph, block, Object.freeze([rootIndex, index, 0]), maps, presentation)) return false;
@@ -1199,7 +1200,7 @@ function flatListDomAndMapsMatch(
     mappedNodes += 1 + items.length;
     for (const [itemIndex, block] of root.items.entries()) {
       const item = items[itemIndex];
-      if (!isHtmlElementNamed(item, "li") || nativeAttributeNames(item).length !== 0 ||
+      if (!isHtmlElementNamed(item, "li") || nativeHasAttributes(item) ||
           !matchesMap(item, [rootIndex, itemIndex])) return false;
       const blocks = nativeChildNodes(item);
       if (blocks.length !== 1 || !blockMatches(blocks[0], block, [rootIndex, itemIndex, 0])) return false;
@@ -1358,7 +1359,7 @@ function paragraphDomMatches(
 ): paragraphNode is HTMLElement {
   if (
     !isHtmlElementNamed(paragraphNode, textBlockTag(paragraph)) ||
-    nativeAttributeNames(paragraphNode).length !== 0
+    nativeHasAttributes(paragraphNode)
   ) {
     return false;
   }
@@ -1368,7 +1369,7 @@ function paragraphDomMatches(
     return (
       children.length === 1 &&
       isHtmlElementNamed(child, "BR") &&
-      nativeAttributeNames(child).length === 0 &&
+      !nativeHasAttributes(child) &&
       nativeChildNodes(child).length === 0
     );
   }
@@ -1648,7 +1649,7 @@ function isFreshHtmlElement(
   return isHtmlElementNamed(node, tagName) &&
     nativeOwnerDocument(node) === document &&
     nativeParentNode(node) === null &&
-    nativeAttributeNames(node).length === 0 &&
+    !nativeHasAttributes(node) &&
     nativeChildNodes(node).length === 0;
 }
 

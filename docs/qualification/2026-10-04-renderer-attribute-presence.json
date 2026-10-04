@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "e6931f3",
+  "status": "private-candidate-tested-selection-observation-still-open",
+  "change": "Renderer checks for an empty attribute set use captured native Element.hasAttributes instead of allocating, copying and freezing an attribute-name snapshot. Exact attribute names/values remain checked for ordered lists and inline recipes. Full canonical topology, text and bidirectional maps remain mandatory. No cache, skipped subtree, Rust, wire, selection-write or history behavior change.",
+  "motivation": {
+    "cpuProfile": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-aLkLwM/performance-u66X2g/chromium-0.cpuprofile",
+    "sha256": "0c124a9c650d5669ed0cceca1af1e21cec99c6cfe75e6d3d2b7429dd43f75261",
+    "scope": "Whole-fixture unminified Chromium diagnostic; nativeAttributeNames had 55.410 ms sampled self time. This is not per-edit attribution or Firefox evidence. Source inspection identified callers that only ask whether any attribute exists."
+  },
+  "candidate": {
+    "packageRecord": "target/flat-list-packages-MP7DW1/qualification.json",
+    "packageRecordSha256": "5ea65746827ee24a1f95694db17e82490511875cdf197847a8b8264c911ca85d",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-C7sUZJ",
+    "browserTarballSha256": "2c0652abab0d087970f6b0f1d014f0e03cde6eea0f2f615bcde652e6406faed6",
+    "wasmTarballSha256": "f63875010ae7d104a0722e50d2b60ec09e48ec3df1c95dcd22ac017c49c0d13d",
+    "wasmCandidate": "target/flat-list-candidate-ZxeIdg",
+    "consumerJavaScriptByteDelta": 207,
+    "consumerGzip9ByteDelta": 45,
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "verification": [
+    "Strict browser source/test types and all 1869 unit tests pass.",
+    "Four new native attribute-presence unit tests cover fresh observations, own shadows, namespaced attributes, non-elements and foreign/adopted nodes. Two new flat-list drift regressions reject a namespaced block attribute and a list-item attribute hidden behind own method shadows before observer delivery.",
+    "Private packed Node/types/Chromium base consumer and all three flat-list browser consumers pass. Shipping trees remained unchanged.",
+    "The list demo passes 54 cases across three engines with zero failures, retries or skips. Browser-harness types also pass after the stronger selection assertion."
+  ],
+  "listDemo": {"report": "target/list-attribute-presence-demo-20261004.json", "sha256": "d8d3f419b26c48b7b5f533baef6ae0cca468daf24e93d2de2326fb05a90018d5", "passed": 54},
+  "performance": {
+    "method": "Sequential baseline/candidate/baseline/candidate, production minified packages, unchanged fixture, no concurrent Breditor build/test. All 108 measurement correctness cases passed. Three samples per size/engine/run, uncontrolled host load; not a statistical latency guarantee.",
+    "baselinePackageRecord": "target/flat-list-packages-0o7wkE/qualification.json",
+    "runs": [
+      {"artifact": "baseline", "directory": "performance-FJjela", "sha256": "9ccd467bbdff58d409a24c23fe46dfe7475d9d6fae4a2e7769c09b3fd9bfb072", "edit500MedianMs": {"chromium": 65.6, "firefox": 188, "webkit": 114}},
+      {"artifact": "candidate", "directory": "performance-79UFh0", "sha256": "10d19ff8c5f0f7dc4adaf8264ea46d92de0d6a434c96218fc2cbac222cb70615", "edit500MedianMs": {"chromium": 54.8, "firefox": 184, "webkit": 97}},
+      {"artifact": "baseline", "directory": "performance-mWO2ua", "sha256": "c1052a7d052b0fb2101c411344064cb5b8a0acd74783ca2df63189a2a1f96319", "edit500MedianMs": {"chromium": 61, "firefox": 190, "webkit": 105}},
+      {"artifact": "candidate", "directory": "performance-35nP97", "sha256": "b620cd7b66af75e67203fdcda8d596e1f131e6a55ca82b42ebc74606bb8934ab", "edit500MedianMs": {"chromium": 54.7, "firefox": 181, "webkit": 95}}
+    ],
+    "interpretation": "Medians decrease in each pair, with overlapping ranges in some engines. Firefox large-list response is still around 181-184 ms and remains a concern. This is a modest allocation improvement, not completion of the responsiveness gate."
+  },
+  "retainedFailure": {
+    "report": "target/list-attribute-presence-browser-20261004.json",
+    "reportSha256": "a68a77a74dec3e5a8b01bf3e06e68e102b26880891059f126b206a628231cc93",
+    "passed": 153, "failed": 1, "notRun": 11, "retries": 0,
+    "case": "WebKit: 250 Unicode paragraphs retain backward selection and redo history across reload",
+    "observation": "Initial harness selection() result arrived with anchorOffset 28250, focusOffset NaN and backward direction. After Bold, the result arrived as 28250, 0, backward and failed equality to that initial baseline. The protocol trace records the initial NaN special-value tag. No original page object was retained by this first run, so this does not prove whether the source, engine or transfer produced it, or whether it relates to the attribute optimization.",
+    "trace": "target/list-attribute-presence-browser-20261004/long-document-250-Unicode--01176--redo-history-across-reload-webkit/trace.zip",
+    "traceSha256": "bde28640aeb08d2f8ab56997a7ed50e7ceab46d554b86ea645086099ff45001a",
+    "concurrency": "The broad browser matrix and separate list demo ran concurrently on distinct ports. Performance pairs were completed before either started.",
+    "baselineControl": {"report": "target/list-attribute-presence-long-baseline-20261004.json", "sha256": "b6c3207fce9ee7d0d555c2ea58f8f4ac6b888da89cda36097214d937c2a35f28", "passed": 10, "failed": 0},
+    "testImprovement": "Long-document test now asserts independently known exact initial coordinates, not only direction. It retains the original frozen selection result with evaluateHandle and, on failure only, attaches decimal/JSON/binary64 representations of that same object. It still fails on invalid direct numeric transfer and never reruns selection acquisition or normalizes bad numbers into a pass.",
+    "retainedSnapshotBatch": {"report": "target/list-attribute-presence-long-retained-20261004.json", "sha256": "27941371e432c9df13bc0cc15691625463a883579b766e3f315d0d2f83b0194c", "passed": 40, "failed": 0},
+    "limitation": "These later finite passes do not resolve the observed disagreement. Retaining a handle changes observation timing. Earlier counter-transfer evidence is suggestive only, not a diagnosis of this failure."
+  },
+  "sleepInterruptedMatrix": {
+    "report": "target/list-attribute-presence-final-browser-20261004.json",
+    "reportSha256": "287e41505f847e35b7745dfcb569b8a0ef2ba3e73e5489473742f87692b0e5f6",
+    "passed": 120, "notRun": 45, "suiteErrors": 2,
+    "errors": ["Timed out waiting 480s for the test suite to run", "Timed out waiting 480s for the teardown for test suite to run"],
+    "trace": "target/list-attribute-presence-final-browser-20261004/clipboard-lifecycle-clipbo-8b5bf--history-and-caret-liveness-webkit/trace.zip",
+    "traceSha256": "b112991b4b06a9866e61bede38eeeebc4a0d6fd009525fffe7931c0acc30c02d",
+    "traceObservation": "call@188 waited for harness readiness with a 5000 ms deadline. Its trace timestamps span 131967.590 to 1031894.089 ms (about 900 seconds); later snapshot showed live revision 0. The clipboard operation itself had not started.",
+    "powerLogReadCommand": "pmset -g log | rg '^2026-10-04 13:(25:41.*Sleep +|40:41.*DarkWake +)'",
+    "powerLogEvidence": [
+      "2026-10-04 13:25:41 -0400 Sleep: Entering Sleep state due to Maintenance Sleep; Using AC; 900 secs",
+      "2026-10-04 13:40:41 -0400 DarkWake: DarkWake from Deep Idle due to rtc/Maintenance; Using AC"
+    ],
+    "interpretation": "The macOS sleep interval coincides with and accounts for the roughly 900-second observation gap. This is an interrupted qualification run, not evidence establishing a browser/editor stall. It does not explain the separate initial NaN snapshot failure.",
+    "followup": "Repeat with caffeinate -is -t 600 scoped to the test command. No persistent power preference changes, no longer test deadlines and no retries."
+  },
+  "awakeBrowserMatrix": {
+    "report": "target/list-attribute-presence-awake-browser-20261004.json",
+    "reportSha256": "04b2e89755f440a25b0ff11b93a02a42a3551287ff10a2ff34f27d0889915004",
+    "passed": 165, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+    "durationSeconds": 173.952,
+    "sleepAssertion": "pmset -g assertions confirmed the temporary caffeinate assertions were on behalf of this npx test process. After successful process exit, no caffeinate assertion was listed and PreventSystemSleep/PreventUserIdleSystemSleep were both 0.",
+    "boundary": "Complete current browser matrix with the stronger long-document initial-selection assertion. No concurrent Breditor build/test. Does not erase either earlier failed run or resolve the numeric snapshot anomaly."
+  },
+  "reproduction": [
+    "npm run typecheck --workspace @breditor/browser && npm test --workspace @breditor/browser",
+    "node scripts/check-experimental-flat-list-packages.mjs target/flat-list-candidate-ZxeIdg",
+    "node scripts/measure-flat-list-performance.mjs <packageRecord> (alternate baseline/candidate twice)",
+    "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-ZxeIdg BREDITOR_LIST_TEST_PORT=4193 npx playwright test -c playwright.lists.config.ts",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-MP7DW1/qualification.json caffeinate -is -t 600 npx playwright test -c playwright.browser-candidate.config.ts --max-failures=1",
+    "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-MP7DW1/qualification.json npx playwright test -c playwright.browser-candidate.config.ts tests/browser/long-document.spec.ts --project=webkit --repeat-each=40 --max-failures=1"
+  ],
+  "openGates": "Native IME/VoiceOver, current-candidate native qualification, explicit delivery/size policy, large-list responsiveness, full release qualification and historical WebKit faults remain open. The newly observed selection-snapshot disagreement is not marked fixed.",
+  "shippingArtifactsChanged": false,
+  "pushedOrPublished": false
+}

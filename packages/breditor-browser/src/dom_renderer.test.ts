@@ -709,7 +709,7 @@ describe("hierarchical flat-list DOM and points", () => {
     expect(rendered.current).toBe(false);
   });
 
-  it.each(["block-attribute", "wrapper-attribute", "wrapper-tag", "wrapper-child", "wrapper-comment",
+  it.each(["block-attribute", "item-attribute-shadow", "block-namespaced-attribute", "wrapper-attribute", "wrapper-tag", "wrapper-child", "wrapper-comment",
     "nested-wrapper", "text-value", "text-identity", "extra-run", "placeholder-attribute",
     "placeholder-child", "placeholder-text", "extra-placeholder"])("rejects flat-list %s drift before observer delivery", fault => {
     const {host, rendered} = fixture();
@@ -718,6 +718,13 @@ describe("hierarchical flat-list DOM and points", () => {
     const wrapper = host.querySelector("strong")!;
     const placeholder = host.querySelector("br")!;
     if (fault === "block-attribute") block.setAttribute("class", "foreign");
+    if (fault === "item-attribute-shadow") {
+      const item = host.querySelector("li")!;
+      item.setAttribute("data-foreign", "");
+      Object.defineProperty(item, "hasAttributes", {value: () => false});
+      Object.defineProperty(item, "getAttributeNames", {value: () => []});
+    }
+    if (fault === "block-namespaced-attribute") block.setAttributeNS("urn:breditor-test", "test:value", "");
     if (fault === "wrapper-attribute") wrapper.setAttribute("title", "foreign");
     if (fault === "wrapper-tag") {
       const replacement = document.createElement("em");

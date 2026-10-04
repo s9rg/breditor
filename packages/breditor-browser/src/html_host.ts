@@ -37,6 +37,7 @@ interface DomIntrinsics {
   readonly getAttributeNames: NativeMethod;
   readonly getAttribute: NativeMethod;
   readonly hasAttribute: NativeMethod;
+  readonly hasAttributes: NativeMethod;
   readonly setAttribute: NativeMethod;
   readonly removeAttribute: NativeMethod;
   readonly removeElement: NativeMethod;
@@ -253,6 +254,15 @@ export function nativeAttributeNames(element: HTMLElement): readonly string[] {
     safe.push(name);
   }
   return Object.freeze(safe);
+}
+
+/** Checks native attribute presence without allocating a names snapshot. */
+export function nativeHasAttributes(element: Element): boolean {
+  const intrinsics = domIntrinsics();
+  if (intrinsics === undefined) throw new TypeError("DOM is unavailable");
+  const value = Reflect.apply(intrinsics.hasAttributes, element, []) as unknown;
+  if (typeof value !== "boolean") throw new TypeError("DOM attribute presence is invalid");
+  return value;
 }
 
 /** Reads an element's native local name without consulting an own shadow. */
@@ -955,6 +965,7 @@ function domIntrinsics(): DomIntrinsics | undefined {
   const getAttributeNames = method(elementPrototype, "getAttributeNames");
   const getAttribute = method(elementPrototype, "getAttribute");
   const hasAttribute = method(elementPrototype, "hasAttribute");
+  const hasAttributes = method(elementPrototype, "hasAttributes");
   const setAttribute = method(elementPrototype, "setAttribute");
   const removeAttribute = method(elementPrototype, "removeAttribute");
   const removeElement = method(elementPrototype, "remove");
@@ -981,6 +992,7 @@ function domIntrinsics(): DomIntrinsics | undefined {
     getAttributeNames === undefined ||
     getAttribute === undefined ||
     hasAttribute === undefined ||
+    hasAttributes === undefined ||
     setAttribute === undefined ||
     removeAttribute === undefined ||
     removeElement === undefined ||
@@ -1010,6 +1022,7 @@ function domIntrinsics(): DomIntrinsics | undefined {
     getAttributeNames,
     getAttribute,
     hasAttribute,
+    hasAttributes,
     setAttribute,
     removeAttribute,
     removeElement,

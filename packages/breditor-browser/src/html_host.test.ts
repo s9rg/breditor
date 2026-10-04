@@ -10,6 +10,7 @@ import {
   nativeDocumentSelection,
   nativeInputChecked,
   nativeHtmlElementIsNamed,
+  nativeHasAttributes,
   nativeInputIndeterminate,
   nativeInputValue,
   nativeOptionValue,
@@ -26,6 +27,48 @@ beforeEach(() => {
 });
 
 describe("trusted platform intrinsics", () => {
+  it("checks attribute presence afresh without consulting own attribute shadows", () => {
+    const element = document.createElement("p");
+    const trap = vi.fn(() => { throw new Error("own attribute property read"); });
+    for (const name of ["attributes", "hasAttributes", "getAttributeNames"]) {
+      Object.defineProperty(element, name, {configurable: true, get: trap});
+    }
+    expect(nativeHasAttributes(element)).toBe(false);
+    element.setAttribute("data-unexpected", "");
+    expect(nativeHasAttributes(element)).toBe(true);
+    element.removeAttribute("data-unexpected");
+    expect(nativeHasAttributes(element)).toBe(false);
+    expect(trap).not.toHaveBeenCalled();
+  });
+
+  it("checks namespaced attributes and does not confuse children with attributes", () => {
+    const element = document.createElement("div");
+    element.append(document.createTextNode("text"));
+    expect(nativeHasAttributes(element)).toBe(false);
+    element.setAttributeNS("urn:breditor-test", "test:value", "");
+    expect(nativeHasAttributes(element)).toBe(true);
+    element.removeAttributeNS("urn:breditor-test", "value");
+    expect(nativeHasAttributes(element)).toBe(false);
+  });
+
+  it("rejects non-element attribute receivers rather than treating them as empty", () => {
+    for (const value of [{hasAttributes: () => false}, document, document.createTextNode("text")]) {
+      expect(() => nativeHasAttributes(value as unknown as Element)).toThrow();
+    }
+  });
+
+  it("reads attributes on foreign and adopted elements through the captured native method", () => {
+    const iframe = document.createElement("iframe"); document.body.append(iframe);
+    const element = iframe.contentDocument!.createElement("p");
+    expect(nativeHasAttributes(element)).toBe(false);
+    element.setAttribute("title", "");
+    expect(nativeHasAttributes(element)).toBe(true);
+    document.adoptNode(element);
+    expect(nativeHasAttributes(element)).toBe(true);
+    element.removeAttribute("title");
+    expect(nativeHasAttributes(element)).toBe(false);
+  });
+
   it("checks descendant HTML identity without consulting own properties", () => {
     const element = document.createElement("p");
     const trap = vi.fn(() => { throw new Error("own property read"); });

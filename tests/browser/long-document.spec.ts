@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /** Bounded correctness qualification, not a latency benchmark or native paste test. */
-test("250 Unicode paragraphs retain backward selection and redo history across reload", async ({ page }) => {
+test("250 Unicode paragraphs retain backward selection and redo history across reload", async ({ page }, testInfo) => {
   const paragraphs = Array.from({ length: 250 }, (_, index) =>
     `Block ${String(index).padStart(3, "0")}: 🙂 e\u0301 ${"stable text ".repeat(8)}`);
   const plainText = paragraphs.join("\n");
@@ -34,8 +34,30 @@ test("250 Unicode paragraphs retain backward selection and redo history across r
     document.getSelection()!.setBaseAndExtent(last, last.length, first, 0);
     document.dispatchEvent(new Event("selectionchange"));
   });
-  const backwards = await page.evaluate(() => window.__breditorHarness!.selection());
-  expect(backwards.direction).toBe("backward");
+  // Assert independent known coordinates, not just direction: an invalid
+  // numeric baseline must never become the expected result for later steps.
+  // Retain the original frozen object for failure-only transport diagnostics;
+  // do not rerun selection acquisition or normalize a bad value into a pass.
+  const selectionHandle = await page.evaluateHandle(() => window.__breditorHarness!.selection());
+  const backwards = {anchorOffset: paragraphs.reduce((sum, text) => sum + text.length, 0),
+    focusOffset: 0, direction: "backward" as const};
+  try {
+    expect(await selectionHandle.jsonValue()).toEqual(backwards);
+  } catch (error) {
+    const encoded = await selectionHandle.evaluate(snapshot => {
+      const fields = Object.fromEntries((["anchorOffset", "focusOffset"] as const).map(key => {
+        const value = snapshot[key], bits = new DataView(new ArrayBuffer(8));
+        bits.setFloat64(0, value, false);
+        return [key, {type: typeof value, decimal: String(value), json: JSON.stringify(value),
+          bits: bits.getBigUint64(0, false).toString(16).padStart(16, "0")}];
+      }));
+      return JSON.stringify({frozen: Object.isFrozen(snapshot), direction: snapshot.direction, fields});
+    });
+    await testInfo.attach("original-selection-snapshot", {body: encoded, contentType: "application/json"});
+    throw error;
+  } finally {
+    await selectionHandle.dispose();
+  }
   await page.getByRole("button", { name: "Bold", exact: true }).click();
   await expect(editor.locator("strong")).toHaveCount(paragraphs.length);
   expect(await page.evaluate(() => window.__breditorHarness!.selection())).toEqual(backwards);
