@@ -27,7 +27,9 @@ import {
 } from "./editor_command.js";
 import { BaseDocumentProjection } from "./projection.js";
 import { BaseRangeSelection, type BaseEditorSelection } from "./selection.js";
-import { BreditorCommandQueue } from "./command_queue.js";
+import { BreditorCommandQueue, BreditorFlatListCommandQueue, openFlatListCommandQueueLeasePort } from "./command_queue.js";
+import { createFlatListToolbarDispatcher, type FlatListToolbarDispatcher } from "./flat_list_toolbar_dispatcher.js";
+import { flatListToolbarCommandRequest, type ToolbarCommandInvocation } from "./toolbar.js";
 import type { BrowserSelectionResult } from "./selection_result.js";
 import type {
   SemanticProjectionUpdateView,
@@ -197,6 +199,124 @@ describe("explicit flat-list command adapter", () => {
   const request = (adapter: BreditorFlatListWasmCommandAdapter) => flatListCommandRequest(adapter.deliveryToken(),
     preserveSelectionSync(), {kind: "api", detail: "lists"},
     {kind: "action", actionId: "breditor/toggle-flat-list-strong", input: {kind: "none"}});
+
+  function toolbarFixture(observer?: () => void, malformed = false) {
+    const f = fixture();
+    const result = commandResult(malformed
+      ? {status: "committed", successor: observation(1), eventKind: "action"}
+      : {status: "disabled", successor: observation(0), disabledActionId: "breditor/toggle-flat-list-strong",
+          disabledReasonCode: "breditor/no-selection", activation: "inactive"});
+    const engine = engineQueues({noInputAction: [result.view]});
+    const action = vi.spyOn(engine, "executeNoInputAction");
+    const adapter = new BreditorFlatListWasmCommandAdapter(engine, observation(0), f.options);
+    const queue = new BreditorFlatListCommandQueue(adapter.commandExecutor, observer === undefined ? {} : {observer});
+    const dispatcher = createFlatListToolbarDispatcher(queue, adapter);
+    const invocation: ToolbarCommandInvocation = {stateId: "breditor/control-bold", selection: "preserve",
+      command: {kind: "action", actionId: "breditor/toggle-flat-list-strong", input: {kind: "none"}, history: "preserve"}};
+    return {...f, adapter, queue, dispatcher, invocation, action, result,
+      dispose() { dispatcher.dispose(); queue.dispose(); adapter.dispose(); f.bridge.dispose(); f.host.remove(); }};
+  }
+
+  it("toolbar rejects a busy lease without queueing or spending its token", () => {
+    const f = toolbarFixture();
+    try {
+      const port = openFlatListCommandQueueLeasePort(f.queue, f.adapter.commandExecutor)!;
+      const token = f.adapter.deliveryToken(); const lease = port.acquireLease()!;
+      expect(f.dispatcher.dispatch(f.invocation).status).toBe("rejected");
+      expect(f.action).not.toHaveBeenCalled(); expect(f.adapter.acceptsDeliveryToken(token)).toBe(true);
+      expect(port.releaseLease(lease)).toBe(true);
+      expect(f.dispatcher.dispatch(f.invocation).status).toBe("completed");
+      expect(f.action).toHaveBeenCalledOnce(); expect(f.result.free).toHaveBeenCalledOnce();
+    } finally { f.dispose(); }
+  });
+
+  it("toolbar keeps its lease through observers and correlates a captured invocation", () => {
+    let f: ReturnType<typeof toolbarFixture>;
+    f = toolbarFixture(() => {
+      expect(f.dispatcher.dispatch(f.invocation).status).toBe("rejected");
+      // Mutation during notification cannot change the admitted target.
+      Object.assign(f.invocation.command, {actionId: "breditor/other-action"});
+    });
+    try {
+      expect(f.dispatcher.dispatch(f.invocation).status).toBe("completed");
+      expect(f.action).toHaveBeenCalledOnce();
+    } finally { f.dispose(); }
+  });
+
+  it("toolbar uses private queue and adapter capabilities despite public overrides", () => {
+    const f = toolbarFixture(); const override = vi.fn(() => { throw new Error("public override"); });
+    try {
+      Object.defineProperty(f.adapter, "deliveryToken", {value: override});
+      Object.defineProperty(f.adapter, "commandExecutor", {get: override});
+      Object.defineProperty(f.queue, "submit", {value: override});
+      const dispatcher = createFlatListToolbarDispatcher(f.queue, f.adapter);
+      expect(dispatcher.dispatch(f.invocation).status).toBe("completed");
+      expect(override).not.toHaveBeenCalled(); dispatcher.dispose();
+    } finally { f.dispose(); }
+  });
+
+  it("toolbar rejects a queue from a different adapter", () => {
+    const f = toolbarFixture(); const foreign = toolbarFixture();
+    try { expect(() => createFlatListToolbarDispatcher(f.queue, foreign.adapter)).toThrow("different owners"); }
+    finally { f.dispose(); foreign.dispose(); }
+  });
+
+  it("toolbar rejects accessor invocations without reading them or poisoning the lease", () => {
+    const f = toolbarFixture(); const getter = vi.fn(() => f.invocation.command);
+    try {
+      const invalid = {...f.invocation}; Object.defineProperty(invalid, "command", {get: getter});
+      expect(f.dispatcher.dispatch(invalid).status).toBe("rejected"); expect(getter).not.toHaveBeenCalled();
+      expect(f.action).not.toHaveBeenCalled();
+      expect(f.dispatcher.dispatch(f.invocation).status).toBe("completed");
+    } finally { f.dispose(); }
+  });
+
+  it("toolbar rechecks disposal after invocation capture before delivering", () => {
+    const f = toolbarFixture();
+    try {
+      const invocation = new Proxy(f.invocation, {ownKeys(target) {
+        f.dispatcher.dispose(); return Reflect.ownKeys(target);
+      }});
+      expect(f.dispatcher.dispatch(invocation).status).toBe("rejected");
+      expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it.each(["generated result", "observer"])("toolbar fails closed after an uncertain %s and never retries", fault => {
+    const f = toolbarFixture(fault === "observer" ? () => { throw new Error("observer failed"); } : undefined,
+      fault === "generated result");
+    try {
+      expect(f.dispatcher.dispatch(f.invocation).status).toBe("failed");
+      expect(f.dispatcher.dispatch(f.invocation).status).toBe("failed"); expect(f.action).toHaveBeenCalledOnce();
+      f.dispatcher.dispose(); expect(f.dispatcher.dispatch(f.invocation).status).toBe("rejected");
+    } finally { f.dispose(); }
+  });
+
+  it("toolbar preserves known completion when its owner is disposed by an observer", () => {
+    let dispatcher: FlatListToolbarDispatcher;
+    const f = toolbarFixture(() => { dispatcher.dispose(); f.queue.dispose(); }); dispatcher = f.dispatcher;
+    try {
+      expect(dispatcher.dispatch(f.invocation).status).toBe("completed");
+      expect(dispatcher.dispatch(f.invocation).status).toBe("rejected"); expect(f.action).toHaveBeenCalledOnce();
+    } finally { f.dispose(); }
+  });
+
+  it("list toolbar construction preserves selection and explicit command boundaries", () => {
+    const f = toolbarFixture();
+    try {
+      const token = f.adapter.deliveryToken();
+      const intent = flatListToolbarCommandRequest(token, {...f.invocation,
+        command: {kind: "intent", intentId: "breditor/format-bullet-list"}});
+      expect(intent).toMatchObject({selection: {kind: "preserve"}, requirements: {history: "closeBefore"},
+        command: {kind: "intent", intentId: "breditor/format-bullet-list", input: {kind: "none"}}});
+      const typed = flatListToolbarCommandRequest(token, {...f.invocation,
+        command: {kind: "intentJson", intentId: "breditor/format-example", inputJson: "{}"}});
+      expect(typed).toMatchObject({requirements: {history: "closeBefore"}, command: {input: {kind: "json", value: "{}"}}});
+      expect(flatListToolbarCommandRequest(token, {...f.invocation, command: {kind: "history", operation: "undo"}}))
+        .toMatchObject({requirements: {history: "closeBefore"}, selection: {kind: "preserve"}});
+      expect(flatListToolbarCommandRequest(token, f.invocation)).toMatchObject({requirements: {history: "preserve"}});
+    } finally { f.dispose(); }
+  });
 
   it.each(["v6 legacy", "v5 list", "base bridge", "base render"])("rejects mismatched %s dependencies", fault => {
     const f = fixture(); const initial = observation(0); const engine = engineQueues({});

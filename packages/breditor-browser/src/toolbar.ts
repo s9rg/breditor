@@ -8,15 +8,13 @@ import {
 } from "./toolbar_manifest.js";
 import {
   browserCommandJsonIsAdmissible,
-  historyRequest,
-  jsonIntentRequest,
-  noInputActionRequest,
-  noInputIntentRequest,
   preserveSelectionSync,
-  stringActionRequest,
   type EditorDeliveryToken,
   type EngineCommandRequest,
+  type FlatListEditorDeliveryToken,
+  type FlatListEditorCommandRequest,
 } from "./editor_command.js";
+import { nativeCommandBuilder, type NativeDeliveryToken, type NativeCommandRequest } from "./native_command_builder.js";
 import {
   isSafeFlowContainerHost,
   nativeAddEventListener,
@@ -166,6 +164,17 @@ export function toolbarCommandRequest(
   delivery: EditorDeliveryToken,
   invocation: ToolbarCommandInvocation,
 ): EngineCommandRequest {
+  return buildToolbarCommand(delivery, invocation, false) as EngineCommandRequest;
+}
+
+/** Explicit list toolbar delivery, retaining the core's exact semantic selection. @internal */
+export function flatListToolbarCommandRequest(delivery: FlatListEditorDeliveryToken,
+  invocation: ToolbarCommandInvocation): FlatListEditorCommandRequest {
+  return buildToolbarCommand(delivery, invocation, true) as FlatListEditorCommandRequest;
+}
+
+function buildToolbarCommand(delivery: NativeDeliveryToken, invocation: ToolbarCommandInvocation,
+  flatLists: boolean): NativeCommandRequest {
   const safeInvocation = snapshotToolbarInvocation(invocation);
   const stateId = safeInvocation?.stateId;
   const selection = safeInvocation?.selection;
@@ -182,54 +191,30 @@ export function toolbarCommandRequest(
   }
   const source = Object.freeze({ kind: "toolbar" as const, detail: stateId });
   const preserved = preserveSelectionSync();
+  const builder = nativeCommandBuilder(flatLists, delivery, preserved);
   if (command.kind === "intent") {
-    return noInputIntentRequest(
-      delivery,
-      preserved,
-      source,
-      command.intentId,
-      "closeBefore",
-    );
+    return builder.request(source, {kind: "intent", intentId: command.intentId, input: {kind: "none"}}, "closeBefore");
   }
   if (command.kind === "intentJson") {
-    return jsonIntentRequest(
-      delivery,
-      preserved,
-      source,
-      command.intentId,
-      command.inputJson,
-      "closeBefore",
-    );
+    return builder.request(source, {kind: "intent", intentId: command.intentId, input: {kind: "json", value: command.inputJson}}, "closeBefore");
   }
   if (command.kind === "history") {
-    return historyRequest(delivery, preserved, source, command.operation);
+    return builder.request(source, {kind: "history", operation: command.operation});
   }
   if (command.kind !== "action") {
     throw new TypeError("toolbar command is invalid");
   }
   if (command.input.kind === "none") {
-    return noInputActionRequest(
-      delivery,
-      preserved,
-      source,
-      command.actionId,
-      command.history,
-    );
+    return builder.request(source, {kind: "action", actionId: command.actionId, input: {kind: "none"}}, command.history);
   }
   if (command.input.kind === "string") {
-    return stringActionRequest(
-      delivery,
-      preserved,
-      source,
-      command.actionId,
-      command.input.value,
-      command.history,
-    );
+    return builder.request(source, {kind: "action", actionId: command.actionId, input: {kind: "string", value: command.input.value}}, command.history);
   }
   throw new TypeError("toolbar command is invalid");
 }
 
-function snapshotToolbarInvocation(
+/** Copies one invocation before any queued command or application callback. @internal */
+export function snapshotToolbarInvocation(
   value: unknown,
 ): ToolbarCommandInvocation | null {
   try {

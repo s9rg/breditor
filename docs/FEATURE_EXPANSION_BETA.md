@@ -1143,3 +1143,25 @@ clipboard. These controller checks do not qualify physical typing, OS input
 methods or the complete visible editor. Shipping artifacts remain unchanged;
 nothing is pushed or published.
 See [verification](qualification/2026-10-04-flat-list-event-controller.json).
+
+## Flat-list toolbar checkpoint
+
+The existing native toolbar now has an internal 14-control list manifest and an
+exact-owner immediate dispatcher. Headings, paragraph conversion, bullet/numbered
+lists and Remove list use profile-owned intents; formatting and undo/redo share
+the same queue/adapter path. Busy queues reject instead of retaining a toolbar
+action for later. Invocation snapshots, private capabilities, terminal uncertainty
+and disposal behavior are covered by ten additional unit tests.
+
+All 1,758 browser tests, strict TypeScript and temporary declaration emission
+pass. Five runs each in Chromium, Firefox and WebKit prove rank conversion,
+partial unwrapping with following ordinal preservation, bullet/number conversion,
+state publication and exact undo/redo of a backward emoji selection. WebKit clears
+the visible range when keyboard focus returns to a toolbar button; the checks
+separately prove the installed native range, retained Rust selection and explicit
+return-to-editor restoration. No production focus workaround was introduced.
+
+Next: high-level list editor owner/router, then composition and supported
+clipboard integration, visible persistence and native-input/release gates.
+Nested lists remain deferred. Shipping hashes are unchanged; nothing was pushed
+or published. See [verification](qualification/2026-10-04-flat-list-toolbar.json).

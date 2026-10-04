@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "83b1701",
+  "status": "Internal flat-list toolbar integrated; complete editor owner/router and native-input qualification remain open",
+  "contracts": {
+    "manifest": "Separate 14-control manifest, validated against the compiled profile; structural controls use named intents",
+    "delivery": "Exact list queue/adapter pair, captured capabilities, immediate lease held through observers; busy work rejects without queueing",
+    "selection": "Preserve exact semantic selection while keyboard focus is in the toolbar",
+    "history": "Structural intents and undo/redo close the prior group; declared action policy preserved",
+    "uncertainty": "No retry after executor/observer uncertainty; disposal prevents future delivery without rewriting a known completion",
+    "legacy": "Shared toolbar request construction and outcome correlation; default package exports and shipping artifacts unchanged"
+  },
+  "verification": {
+    "newTests": 10,
+    "browserTests": 1758,
+    "browserTestFiles": 52,
+    "typecheck": "passed, implementation and tests",
+    "declarationEmission": "passed into temporary directory, not shipping dist",
+    "diffCheck": "passed",
+    "browserRuns": [
+      {"browser": "chromium", "version": "151.0.7922.34", "runs": 5, "status": "passed"},
+      {"browser": "firefox", "version": "153.0", "runs": 5, "status": "passed"},
+      {"browser": "webkit", "version": "26.5", "runs": 5, "status": "passed"}
+    ],
+    "browserScope": "Real native toolbar buttons with synthetic clicks; named intents change a numbered heading rank, unwrap one item preserving the following ordinal, wrap bullets, convert to numbering, and exactly undo/redo backward emoji selections. Includes prior controller, checkpoint and post-commit render recovery scenarios.",
+    "developmentCorrections": [
+      "Initial browser attempts passed Chromium/Firefox but failed WebKit on an absent native range. Instrumentation proved one exact native range at dispatcher return and zero after toolbar focus restoration. The harness now separates native selection publication, retained Rust selection and toolbar focus; explicit editor refocus/reconciliation restores the range. No production focus workaround was added.",
+      "Disposal during observer notification can invalidate a lease after known completion. The new dispatcher retains that completed result when its owner was disposed, matching the existing editor behavior.",
+      "Initial focused unit run had 273 passes and one failure from a test expecting history at request root instead of requirements.history. Strict types also caught an undefined optional observer in the new fixture. Both fixture/assertion errors were corrected before the passing full run."
+    ],
+    "commands": [
+      "npm test --workspace @breditor/browser -- src/wasm_command_adapter.test.ts src/toolbar.test.ts src/browser_editor.test.ts",
+      "npm test --workspace @breditor/browser",
+      "npm run typecheck --workspace @breditor/browser",
+      "node scripts/check-experimental-flat-list-browsers.mjs target/flat-list-candidate-omNw3K --browser-dom",
+      "node node_modules/typescript/bin/tsc -p packages/breditor-browser/tsconfig.json --emitDeclarationOnly --outDir /private/tmp/breditor-adapter-declarations.NKF7LT",
+      "git diff --check"
+    ]
+  },
+  "artifacts": {
+    "candidate": "target/flat-list-candidate-omNw3K",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "hashesMatchPreviousCheckpoint": true,
+    "shippingArtifactsWritten": false,
+    "releaseSizeQualified": false
+  },
+  "remaining": [
+    "High-level list editor owner/router",
+    "List composition and supported clipboard flows",
+    "Visible reload/backup and physical native-input qualification",
+    "Packed-consumer, accessibility and size/performance gates"
+  ],
+  "evidenceBoundary": "Synthetic toolbar/input integration, not physical keyboard/OS IME or a complete visible editor qualification. No broad historical WebKit resolution claim.",
+  "pushed": false,
+  "published": false
+}

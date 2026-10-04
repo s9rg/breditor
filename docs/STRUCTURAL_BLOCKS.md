@@ -1,9 +1,9 @@
 # Structural blocks: heading and list contract
 
 Current status: headings have a separately built experimental browser demo;
-flat lists now have a gated Rust schema, container-reframing operation and
-selection-driven wrap/unwrap actions and single-block typing, but **no complete
-list structural editing or browser support yet**. The historical checkpoints below explain the route
+flat lists now have gated Rust structural editing, exact history/recovery and
+internal browser projection, ordinary-input and toolbar integration, but **no
+complete list-enabled browser editor yet**. The historical checkpoints below explain the route
 to these features. The default paragraph-only schema and existing fingerprints
 remain unchanged. Links remain typed inline formatting inside structural blocks.
 
@@ -1428,3 +1428,56 @@ delivered serially and rejected as stale without applying it twice. The harness
 uses a queue-state executor, not a substitute production Wasm adapter. Connecting
 the normal list Wasm adapter/controller remains next. See
 [queue qualification](qualification/2026-10-04-flat-list-command-queue.json).
+
+### Flat-list adapter, ordinary input and toolbar integration
+
+The explicit list queue now executes through `BreditorFlatListWasmCommandAdapter`,
+using the same private production adapter core as paragraph/heading mode. The
+adapter owns exact observation/render authority, generated-handle cleanup,
+projection and semantic-selection publication, action-state reads, bounded plain
+text export, Document V6 reads and Session V6 checkpoints. A post-commit DOM
+failure retains the authoritative Rust state for explicit render reconciliation;
+it never replays the command. See the
+[adapter](qualification/2026-10-04-flat-list-command-adapter.json) and
+[content](qualification/2026-10-04-flat-list-adapter-content.json) checkpoints.
+
+`BreditorFlatListBrowserEventController` shares ordinary native-event processing
+with the base controller while requiring list queue, bridge, render and delivery
+capabilities. Mode-specific text/break/delete actions keep list paths intact;
+formatting uses named intents. Keyboard echo suppression and selection-only
+history behavior remain shared. The explicit list target-range mapper validates
+complete AST paths and scalar UTF-16 boundaries. See
+[ordinary-event qualification](qualification/2026-10-04-flat-list-event-controller.json).
+
+`FLAT_LIST_TOOLBAR_MANIFEST` is a separate, opt-in 14-control manifest: Bold,
+Clear formatting, Paragraph, Heading 1–6, Bullet list, Numbered list, Remove list,
+Undo and Redo. Structural controls target profile-owned named intents; the
+manifest is checked against the compiled action-state and intent descriptor
+before mounting. The existing `BreditorToolbar` and `BreditorActionStateStore`
+provide native buttons, keyboard focus and current activation/availability.
+
+`createFlatListToolbarDispatcher` binds that toolbar to an exact queue/adapter
+pair. It acquires an immediate lease before snapshotting the invocation, uses
+captured private capabilities rather than public overrides, and holds the lease
+through observer publication. Busy delivery rejects without queueing. Malformed
+invocations reject before mutation. Uncertain execution or observer failure is
+terminal and never retried. Owner disposal prevents future delivery but does not
+rewrite a known completed result during teardown. Toolbar commands preserve the
+core's exact selection; structural intents and history close the prior group.
+
+Real-browser checks exercise a backward emoji selection in a numbered heading:
+change rank, undo/redo, unwrap one item while retaining the next ordinal, wrap as
+bullets, convert to numbering, and undo back through every exact document and
+selection. WebKit installs the native range during dispatch, then clears its
+visible highlight when the toolbar restores keyboard focus. The check proves
+native endpoints before that focus restoration, retained exact Rust selection
+afterward, and native range recovery on returning to the editor. This is not a
+reason to steal toolbar focus or erase semantic selection.
+
+These APIs remain internal and do not change shipping entry points, binaries or
+durable formats. The browser scenario uses synthetic clicks and native-branded
+input events, not physical input. High-level list owner/router integration,
+composition, supported clipboard flows, visible reload/backup, native input and
+release size/accessibility qualification remain open. Flat lists come first;
+nested lists and indent/outdent follow in a later feature phase. See
+[toolbar qualification](qualification/2026-10-04-flat-list-toolbar.json).

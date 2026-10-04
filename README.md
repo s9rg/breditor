@@ -12,20 +12,18 @@ support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
 The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
-Experimental Rust work now includes guarded paragraph/heading conversion with
-exact selection preservation and undo/redo. It is behind
-`experimental-structural-properties`; the browser demo remains paragraph-only.
-Experimental V4 codecs can persist heading-kind operations, atomic transaction
-requests and complete retained undo/redo sessions. Commit/local-log integration
-and browser heading support remain pending. See
+Experimental headings have a separately built browser demo. Flat lists now have
+gated Rust editing, exact retained undo/redo, explicit Session V6 recovery, and
+internal browser projection, ordinary-input and toolbar integration. The default
+packaged demo remains paragraph-only; the complete list editor owner/router,
+composition, clipboard and visible persistence still need integration. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
 end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
-later. Guarded text-block editing and opt-in heading typing, deletion and Enter
-actions now support boundary joins and cross-block selections in experimental
-Rust. They still have no durable-format or browser support; heading formatting
-commands and the end-to-end profile remain unfinished.
+later. The list toolbar/controller scenarios pass in Chromium, Firefox and
+WebKit with real Wasm and synthetic input. These checks do not qualify physical
+typing, OS input methods, accessibility or a finished list-enabled beta.
 
 ## Run the browser demo
 

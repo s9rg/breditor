@@ -6,6 +6,14 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Connect the experimental flat-list toolbar to the production list queue and
+  Wasm adapter. Add named-intent controls for paragraph, headings 1–6, bullet
+  lists, numbered lists and Remove list alongside formatting and undo/redo.
+  Preserve exact backward selections and history across toolbar focus changes;
+  reject busy delivery without queueing and never retry uncertain outcomes.
+  This is internal integration, not a shipping list editor or native-input
+  qualification. Nested lists remain deferred.
+
 - Connect experimental heading deletion to boundary joins and cross-block
   selected deletion. Add cross-block type-over with spatial format inheritance.
   Both retain the left/start kind; undo restores all original kinds and exact
