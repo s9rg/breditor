@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "d232f07",
+  "status": "passed-isolated-demo-integration",
+  "publishable": false,
+  "change": "Playwright builds and previews the list demo in qualification mode, using target/list-demo-qualification rather than replacing target/list-demo served by existing native test tabs. Default manual builds retain their previous output directory. No editor runtime, wire format or shipping build changed.",
+  "regression": {
+    "file": "tests/lists/structural-history.spec.ts",
+    "cases": ["forward selection", "backward selection"],
+    "contract": "A range from the heading start to the next paragraph start excludes that paragraph from heading and list formatting. Heading rank change, bullet wrapping and numbered conversion preserve both text endpoints, offsets and direction. Reload retains the result; three separate Undos restore original HTML. Reload and byte-exact V6 export retain the redo branch. Three Redos reconstruct changed HTML. Independent backup import has autosave off, exports identical bytes, replays the three changes, owns the restored selection and leaves the main document unchanged.",
+    "inputLimit": "Selection setup uses DOM setBaseAndExtent and scripted selectionchange. This is integrated browser/controller/Rust/history coverage, not physical mouse, OS IME or screen-reader qualification. DOM assertions do not independently expose logical selection affinity."
+  },
+  "verification": {
+    "initialExistingSuite": {"passed": 45, "output": "target/list-demo-integration-20261004-cursor-map", "exitCode": 0},
+    "initialDirectionalSuite": {"passed": 6, "output": "target/list-structural-directional-initial-20261004", "exitCode": 0, "note": "Before strengthening selection assertions with editor ownership and text-node type."},
+    "finalSuite": {
+      "command": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-Rq6C5V BREDITOR_LIST_TEST_PORT=4193 PLAYWRIGHT_JSON_OUTPUT_NAME=target/list-demo-integration-final-20261004.json npx playwright test --config playwright.lists.config.ts --reporter=line,json --output target/list-demo-integration-final-20261004",
+      "report": "target/list-demo-integration-final-20261004.json",
+      "reportSha256": "80dd9ea4694b1730034a9c0fa7a0dd40b423105b6e30c79ec2873cb0731c5560",
+      "playwrightVersion": "1.62.1",
+      "passed": 51, "perEngine": 17,
+      "engines": ["chromium", "firefox", "webkit"],
+      "skipped": 0, "unexpected": 0, "flaky": 0, "retries": 0,
+      "durationMs": 155542.103, "exitCode": 0
+    },
+    "typecheck": "npm run typecheck:demo:lists passed before the final suite"
+  },
+  "testedArtifacts": {
+    "candidate": "target/flat-list-candidate-Rq6C5V",
+    "demo": "target/list-demo-qualification/assets/demo-C0oOpWk0.js",
+    "demoSha256": "1eb55963bc8e17c97ffd6bfe94a320ded9072a8c410996f29b0fd15183688801",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64"
+  },
+  "nativePreviewPreserved": {
+    "directory": "target/list-demo",
+    "demoSha256": "3442327a242a4df7bbbbc0ff697b9cfdd891b1234b11e9998121860e2fe5cab0",
+    "wasmSha256": "1c554bf107b6b9b1991d1d1664cb453cc85db020257e083e87d8fef1ddff91df",
+    "note": "Both hashes match before and after qualification. Existing native evidence remains attached to this older artifact, not the new candidate."
+  },
+  "shippingArtifactTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  },
+  "shippingHashMethod": "SHA-256 of JSON flat relative-path to file-SHA map, recursively visiting localeCompare-sorted directory entries, matching check-experimental-flat-list-packages.mjs. All four match the previous private package record.",
+  "remainingLimits": [
+    "Earlier intermittent WebKit formatted-clipboard lifecycle fault remains unresolved; these passes do not reproduce or fix it.",
+    "Real OS IME and VoiceOver qualification remain open; temporary settings from prior attempts were restored.",
+    "Large-list responsiveness, optional delivery/size policy and full release qualification remain open.",
+    "Concurrent qualification builds still share one test-only output directory; this change isolates them from the native preview, not from each other."
+  ],
+  "pushedOrPublished": false
+}

@@ -17,7 +17,7 @@ if (qualification.status !== "passed" || qualification.feature !== "experimental
   throw new Error("List candidate has not passed experimental qualification or has changed.");
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: resolve(repository, "examples/lists"),
   plugins: [react()],
   define: { __BREDITOR_FLAT_LIST_WASM_SHA256__: JSON.stringify(hash) },
@@ -28,10 +28,12 @@ export default defineConfig({
     { find: "./demoProfile.js", replacement: resolve(repository, "examples/lists/profile.ts") },
   ] },
   server: { host: "127.0.0.1", fs: { allow: [repository] } },
-  build: { outDir: resolve(repository, "target/list-demo"), emptyOutDir: true,
+  // Native qualification may keep the ordinary preview open while Playwright
+  // builds a newer candidate. Never replace that preview's artifact in place.
+  build: { outDir: resolve(repository, mode === "qualification" ? "target/list-demo-qualification" : "target/list-demo"), emptyOutDir: true,
     rolldownOptions: { input: {
       demo: resolve(repository, "examples/lists/index.html"),
       clipboard: resolve(repository, "examples/lists/manual-clipboard.html"),
     } },
     modulePreload: { polyfill: false }, target: "es2022" },
-});
+}));

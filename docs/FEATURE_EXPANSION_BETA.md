@@ -1922,3 +1922,30 @@ shipping bundles, native-input qualification and release limits remain unchanged
 See [map comparison evidence](qualification/2026-10-04-flat-list-map-comparison.json)
 for exact artifacts, profile limitations and measurements. Nothing was published
 or pushed.
+
+## Integrated directional history and isolated demo tests — 2026-10-04
+
+The latest Rust cursor and browser map-comparison candidate passes the complete
+51-case list demo suite: 17 cases each in Chromium, Firefox and WebKit, with no
+retries, skips or failures. Strict demo/test TypeScript also passes.
+
+Two new directional-selection cases cover a range ending at the next paragraph's
+start. Heading conversion and bullet/numbered wrapping exclude that paragraph,
+preserve selection direction, and survive reload. Undo restores the original
+HTML; a reload with the redo branch preserves byte-exact V6 backup contents.
+Independent recovery replays all three changes, restores selection inside the
+recovered editor, and leaves the main editor unchanged.
+
+The test harness previously rebuilt the same directory served by native preview
+tabs. Playwright now builds and previews in Vite `qualification` mode under
+`target/list-demo-qualification`; ordinary builds still use `target/list-demo`.
+The existing native preview's asset hashes and all shipping artifact trees are
+unchanged. Concurrent qualification runs still need separate scheduling because
+they share the test-only output directory.
+
+See [integrated directional evidence](qualification/2026-10-04-list-directional-integration.json)
+for the exact candidate, report hash and reproducible command. Scripted selection
+setup does not qualify native input or screen readers. Earlier intermittent
+WebKit faults, responsiveness, delivery/size and full release gates remain open.
+No runtime change was required for these new cases. Nothing was pushed or
+published.

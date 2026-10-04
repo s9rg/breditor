@@ -20,7 +20,7 @@ export default defineConfig({
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
   webServer: {
-    command: `npm run build:demo:lists && vite preview --config vite.lists.config.ts --host 127.0.0.1 --port ${port} --strictPort`,
+    command: `npm run build:demo:lists -- --mode qualification && vite preview --config vite.lists.config.ts --mode qualification --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL, reuseExistingServer: false, timeout: 30_000,
   },
 });
