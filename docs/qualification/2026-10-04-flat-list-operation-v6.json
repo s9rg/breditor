@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-04",
+  "baseCommit": "1fb080e",
+  "status": "Experimental Operation V6 flat-list persistence qualified; complete session admission and browser integration remain incomplete",
+  "contracts": {
+    "feature": "experimental-structural-properties",
+    "codec": "OperationJsonCodecV6",
+    "wireVersion": 6,
+    "operations": ["flatListReframe", "flatListTextSplice", "flatListTextReplace"],
+    "reframe": "Root start plus complete expected/replacement roots; constructor proves exact flattened block equality",
+    "splice": "Actual flat block path, aggregate UTF-16 start/end, one complete expected root and typed replacement text fragment",
+    "replace": "Independent guardStart, actual start/end block paths and offsets, complete expected roots, inserted block fragments and explicit block/bullet/ordered result layout",
+    "bounds": "At most three allocated path indices; layout count bounded by context root-child limit; borrowed trees/fragments allocation-preflighted before owned reconstruction; checked schema, property, coordinate, scalar, count and ordinal contracts",
+    "binding": "Schema identity and semantic fingerprint checked before payload reconstruction; deterministic output counted against the same JSON input byte budget",
+    "replay": "Static decode does not bypass live source guards or full-document limits; derived inverses roundtrip; fresh matching contexts replay identically; no-op records create no history",
+    "compatibility": "V1-V5 reject list operations, including relabelled old envelopes; earlier payload bytes/admission unchanged; V5 transactions/sessions remain closed to list history"
+  },
+  "verification": {
+    "focusedOperationTests": 11,
+    "allFeatureWorkspaceUnitTests": {"core": 1057, "wasm": 51},
+    "defaultCoreUnitTests": 697,
+    "propertyCases": 10000,
+    "propertySeed": 20261004,
+    "propertyOracle": "Randomized Unicode splices and cross-item structural replacements: deterministic encode/decode equality, direct versus decoded result equality, inverse equality and replay, exact session undo/redo, including canonical no-ops",
+    "coverage": [
+      "Exact distinct record shapes for all three list primitives and nonzero root coordinates",
+      "Derived inverse encoding and replay, all bare/bullet/ordered layout families and wider inverse guards",
+      "Legacy encoder rejection and old-version relabelling rejection; unchanged earlier heading payload bytes",
+      "Malformed/oversized paths, scalar splits, invalid offsets, guards, properties, duplicate/unknown fields and noncanonical runs",
+      "Empty/mismatched layouts, invalid item counts, ordinal overflow, unknown layout kinds and bounded layout decoding",
+      "Reframe rejects changed content; decoded stale source guards reject without changing state/history",
+      "Exact JSON input/output byte boundaries, schema-binding precedence and final merged-leaf limits",
+      "Fresh-context state decoding and operation replay; V5 transaction/session refusal of list history",
+      "Content-identical splice roundtrips without revision/history changes"
+    ],
+    "developmentCorrections": [
+      "Initial property run exposed a test assumption that every valid splice changes content; text=emoji identical to the source correctly produced no commit. The oracle now verifies no-op preservation, a named regression was added, and the generated seed is retained",
+      "Removed an unused test import and tightened the leaf-budget fixture so its source fits while its merged result exceeds the limit"
+    ],
+    "retainedRegression": "crates/breditor-core/proptest-regressions/codec/flat_list_operation_v6_tests.txt",
+    "commands": [
+      "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261004 cargo test -p breditor-core --all-features --lib flat_list_operation_v6_tests --quiet",
+      "cargo test --workspace --all-features --lib --quiet",
+      "cargo test -p breditor-core --lib --no-default-features --quiet",
+      "cargo clippy --workspace --all-features --all-targets -- -D warnings",
+      "RUSTDOCFLAGS='-D warnings' cargo doc -p breditor-core --all-features --no-deps --quiet",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ]
+  },
+  "remaining": [
+    "Explicit V6 session/request/commit integration with complete forward/inverse history proof",
+    "List session reload/recovery and retained redo branches",
+    "Wasm/bootstrap projection, browser toolbar and keyboard integration",
+    "Cross-browser/native input and clipboard qualification, plus release size gates",
+    "Nested lists and indent/outdent remain deferred beyond the flat-list beta"
+  ],
+  "evidenceBoundary": "Singular Rust operation persistence and static checks only; not complete saved-list sessions, browser/native qualification, or a shipping Wasm rebuild",
+  "pushed": false,
+  "published": false
+}

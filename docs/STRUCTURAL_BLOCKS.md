@@ -939,3 +939,46 @@ supplying a flat-list-specific middle-run scan and layout. Qualification is Rust
 action/session only, not native clipboard or browser paste support. Durable
 operation/session admission and browser integration are the next vertical slice.
 See [plain-text qualification](qualification/2026-10-04-flat-list-plain-text.json).
+
+### Flat-list operation persistence (V6)
+
+The experimental `OperationJsonCodecV6` explicitly admits all three flat-list
+primitives under wire version 6. This is a singular-operation checkpoint, not
+complete session persistence. Earlier envelopes and payload languages remain
+unchanged; relabelling a new operation as V1–V5 does not make it admissible.
+
+- `flatListReframe` stores `start`, a synthetic-root `expected` tree and a
+  synthetic-root `replacement` tree. Checked reconstruction proves that the
+  contained block sequence is unchanged before a record can be replayed.
+- `flatListTextSplice` stores the actual `block` path, aggregate UTF-16 `start`
+  and `end`, a synthetic-root `expected` tree containing exactly one complete
+  guarded root, and a typed text-fragment `replacement`.
+- `flatListTextReplace` stores `guardStart`, `start`/`end` boundaries (each with
+  actual `block` path and UTF-16 `offset`), synthetic-root `expected` and
+  `inserted` trees, and explicit result `layout`. Layout entries are `block`,
+  `bullet` with `items`, or `ordered` with `start` and `items`. Wider inverse
+  guards retain the exact source container boundaries, including around exited
+  items; no flattened coordinate or implicit numbering policy is serialized.
+- Path decoding admits only `[root]` or `[root, item, 0]`, allocating at most
+  three indices. Layout decoding is bounded by the context's root-child limit.
+  Raw trees and typed fragments are allocation-preflighted before owned record
+  reconstruction. Empty/mismatched layouts, impossible counts, ordinal overflow,
+  scalar splits, invalid properties, unknown/duplicate fields and invalid numeric
+  representations reject. Full source/result static validation still applies.
+- The envelope binds both schema identity and semantic fingerprint. Binding is
+  checked before payload reconstruction. Deterministic output is counted against
+  the same JSON byte limit used by decoding; exact-boundary output roundtrips.
+  Earlier operation payloads retain their existing bytes and admission rules
+  beneath the new envelope version.
+- Decoding does not authorize an edit against an arbitrary live document.
+  Applying a decoded operation still checks complete source guards and full
+  document limits. Tests replay decoded recipes and locally derived inverses,
+  preserve exact logical selection behavior, and admit a matching independently
+  compiled context. No-op recipes roundtrip without creating document history.
+
+V5 transactions and V5 sessions still reject list operation history. Editor State
+V3 can already preserve the flat-list document/selection snapshot when bound to
+its explicit schema; new session admission must additionally prove chronological
+forward and inverse history. That integration, reload/recovery and Wasm/browser
+qualification remain outstanding. No existing shipping format is widened.
+See [operation V6 qualification](qualification/2026-10-04-flat-list-operation-v6.json).

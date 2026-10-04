@@ -23,7 +23,8 @@ use crate::{
 ///
 /// Selection endpoints follow their preserved block, retaining their exact leaf
 /// index, offset and affinity. The inverse exchanges source and result roots.
-/// This experimental runtime operation has no durable encoding yet.
+/// Durable encoding is explicit in Operation V6; earlier operation/session
+/// formats remain closed to this experimental kind.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FlatListReframe {
     start: u32,

@@ -25,7 +25,8 @@ use thiserror::Error;
 /// item/list wrappers, and publication validates the complete result document.
 ///
 /// This is a separate experimental runtime operation, not a widening of the
-/// direct-root heading or paragraph operations. It has no durable encoding yet.
+/// direct-root heading or paragraph operations. Operation V6 explicitly admits
+/// it; earlier operation/session formats remain unchanged.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FlatListTextSplice {
     range: TextRange,

@@ -24,7 +24,8 @@ use thiserror::Error;
 /// those guarded roots remain exactly equal and in order. The explicit layout
 /// consumes the resulting block sequence once, without hiding list numbering or
 /// merge policy in the operation. Every source kind and wrapper is recoverable
-/// through the same-type inverse. Runtime only; no existing wire tag is widened.
+/// through the same-type inverse. Operation V6 explicitly admits this recipe;
+/// no existing wire tag is widened.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FlatListTextReplace {
     guard_start: u32,

@@ -44,6 +44,10 @@ mod editor_value_payload_v2;
 mod editor_value_preflight_v2;
 mod error;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
+mod flat_list_operation_v6_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod flat_list_wire;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
 mod heading_edit_v5_tests;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod heading_session_v5_tests;
@@ -412,6 +416,8 @@ mod operation_json_v4;
 mod operation_json_v4_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_json_v5;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_json_v6;
 mod operation_payload_v1;
 mod operation_payload_v2;
 #[cfg(test)]
@@ -420,6 +426,8 @@ mod operation_payload_v2_tests;
 mod operation_payload_v3;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_payload_v4;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_payload_v5;
 mod operation_preflight;
 mod operation_preflight_v2;
 mod operation_sequence_v1;
@@ -434,6 +442,8 @@ mod operation_v3_error;
 mod operation_v4_error;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_v5_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_v6_error;
 mod property_payload;
 #[cfg(test)]
 mod runtime_codec_v2_tests;
@@ -898,12 +908,16 @@ pub use operation_json_v3::{OPERATION_V3_FORMAT_VERSION, OperationJsonCodecV3};
 pub use operation_json_v4::{OPERATION_V4_FORMAT_VERSION, OperationJsonCodecV4};
 #[cfg(feature = "experimental-structural-properties")]
 pub use operation_json_v5::{OPERATION_V5_FORMAT_VERSION, OperationJsonCodecV5};
+#[cfg(feature = "experimental-structural-properties")]
+pub use operation_json_v6::{OPERATION_V6_FORMAT_VERSION, OperationJsonCodecV6};
 pub use operation_v2_error::OperationV2CodecError;
 pub use operation_v3_error::OperationV3CodecError;
 #[cfg(feature = "experimental-structural-properties")]
 pub use operation_v4_error::OperationV4CodecError;
 #[cfg(feature = "experimental-structural-properties")]
 pub use operation_v5_error::OperationV5CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+pub use operation_v6_error::OperationV6CodecError;
 pub use session_checkpoint_error::{
     RetainedResourceKind, SessionCheckpointApplicationError, SessionCheckpointApplicationErrorCode,
     SessionCheckpointCodecError, SessionCheckpointRecordError, SessionCheckpointRecordErrorCode,

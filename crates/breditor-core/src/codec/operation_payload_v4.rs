@@ -221,7 +221,7 @@ impl Serialize for OperationPayloadEncodingV4<'_> {
     }
 }
 
-struct FragmentEncoding<'a>(&'a TextFragment);
+pub(super) struct FragmentEncoding<'a>(pub(super) &'a TextFragment);
 impl Serialize for FragmentEncoding<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut record = serializer.serialize_struct("TextFragmentV2", 1)?;

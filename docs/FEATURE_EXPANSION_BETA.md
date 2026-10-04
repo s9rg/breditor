@@ -795,3 +795,21 @@ these Rust tests do not establish that lists are browser-ready.
 
 See [plain-text contract](STRUCTURAL_BLOCKS.md#flat-list-plain-text-insertion) and
 [verification](qualification/2026-10-04-flat-list-plain-text.json).
+
+## Flat-list operation persistence checkpoint
+
+Operation V6 now explicitly serializes flat-list reframe, text-splice and
+structural-replacement recipes, including complete guards, actual paths, typed
+formats and numbered result layout. Decoding validates bounded records and exact
+schema binding; applying still verifies live guards. Deterministic roundtrips,
+locally derived inverse replay, fresh-context replay, malformed-input rejection,
+resource limits and no-op history behavior are covered.
+
+This is the operation foundation for saved list sessions, not a replacement for
+session/recovery qualification. Older codecs still reject list operations even
+under relabelled envelopes; V5 transactions and sessions remain closed. The next
+step is explicit V6 session admission with full forward/inverse history proof,
+then the Wasm/browser/demo path. The beta goal remains incomplete.
+
+See [V6 contract](STRUCTURAL_BLOCKS.md#flat-list-operation-persistence-v6) and
+[verification](qualification/2026-10-04-flat-list-operation-v6.json).
