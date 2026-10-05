@@ -475,6 +475,8 @@ mod operation_payload_v7;
 #[cfg(feature = "experimental-structural-properties")]
 mod nested_text_wire;
 #[cfg(feature = "experimental-structural-properties")]
+mod nested_format_wire;
+#[cfg(feature = "experimental-structural-properties")]
 mod operation_v7_error;
 #[cfg(feature = "experimental-structural-properties")]
 pub use operation_json_v7::{OPERATION_V7_FORMAT_VERSION, OperationJsonCodecV7};

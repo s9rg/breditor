@@ -1,9 +1,7 @@
 //! Atomic format rewrites across the depth-first text sequence of nested lists.
 //!
-//! Each splice is captured against the preceding preview, because sibling blocks
-//! can share a complete root guard. No structural node is removed or reparented.
-//! Logical endpoints are rebuilt explicitly: generic replacement relocation would
-//! collapse positions inside a rewritten run even though formatting retains text.
+//! One guarded root-span operation validates only the complete result. Its
+//! relocation law preserves aggregate offsets through text-run reshaping.
 use super::{
     flat_list_format::{collapsed_fragment, invalid_properties},
     support::{disabled, fault, fragment_range_parts, require_operation_budget, strict_relocation},
@@ -12,15 +10,11 @@ use super::{
 use crate::{
     action::{
         ActionDecision, ActionEvaluation, ActionFault, ActionPlan,
-        text_position::{
-            TextRangeSelection, normalize_nested_list_range_selection,
-            point_at_nested_list_fragment_offset,
-        },
+        text_position::{TextRangeSelection, normalize_nested_list_range_selection},
     },
     document::{Document, NodeRef, TextFragment, TextRun},
-    operation::{AppliedOperation, NestedListTextSplice, Operation, TextRange},
+    operation::{NestedListFormatRewrite, NestedListFormatRewriteError, Operation, TextRange},
     position::{NodePath, TextOffset},
-    selection::{RangeOrder, RangeSelection, Selection},
     state::EditorState,
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
 };
@@ -136,8 +130,7 @@ pub(super) fn evaluate(
         return Ok(disabled_result("breditor/no-selected-text"));
     }
     let rewrite = request.rewrite(indicator.activation());
-    let mut operations = Vec::new();
-    let mut document = state.document().clone();
+    let mut replacements = std::collections::BTreeMap::new();
     for (span, source) in spans.into_iter().zip(selected) {
         let Some(replacement) = rewrite.fragment(state, &source)? else {
             return Ok(disabled_result("breditor/result-limit-exceeded"));
@@ -145,63 +138,114 @@ pub(super) fn evaluate(
         if replacement == source {
             continue;
         }
-        if let Some(decision) = require_operation_budget(state, operations.len() + 1) {
-            return Ok(ActionEvaluation::new(decision, indicator));
-        }
-        let op = match NestedListTextSplice::capture(state.context(), &document, span, replacement)
-        {
-            Ok(op) => op,
-            Err(error) if super::insert_nested_list_text::is_limit(&error) => {
-                return Ok(disabled_result("breditor/result-limit-exceeded"));
-            }
-            Err(_) => return Err(fault("breditor/nested-format-capture-fault")),
+        let path = span.container_path();
+        let whole = at(state.document(), path)?;
+        let (prefix, _, suffix) = fragment_range_parts(&whole, span.start(), span.end())?;
+        let Some(result) = super::insert_text::concat_result(&prefix, &replacement, &suffix)?
+        else {
+            return Ok(disabled_result("breditor/result-limit-exceeded"));
         };
-        match op.apply(state.context(), &document) {
-            Ok(AppliedOperation::Changed(change)) => document = change.document,
-            Ok(AppliedOperation::Unchanged) => continue,
-            Err(error) if super::insert_nested_list_text::is_limit(&error) => {
-                return Ok(disabled_result("breditor/result-limit-exceeded"));
-            }
-            Err(_) => return Err(fault("breditor/nested-format-preview-fault")),
-        }
-        operations.push(Operation::NestedListTextSplice(op));
+        let node = state
+            .document()
+            .node_at(path)
+            .map_err(|_| fault("breditor/nested-format-path-fault"))?
+            .as_element()
+            .ok_or_else(|| fault("breditor/nested-format-block-fault"))?;
+        let children =
+            result.iter().cloned().map(|run| NodeRef::text(run.into_text_node())).collect();
+        replacements.insert(
+            path.clone(),
+            NodeRef::element(
+                node.try_with_children(children)
+                    .map_err(|_| fault("breditor/nested-format-block-fault"))?,
+            ),
+        );
     }
-    if operations.is_empty() {
+    if replacements.is_empty() {
         return Ok(disabled_result("breditor/inline-format-unchanged"));
     }
-    let Some(Selection::Range(original)) = state.selection() else {
-        return Err(fault("breditor/nested-format-selection-fault"));
+    let decision = plan(state, start.as_slice()[0], end.as_slice()[0], &replacements)?;
+    Ok(ActionEvaluation::new(decision, indicator))
+}
+
+/// Admit a complete root-span rewrite only after all selected blocks are rebuilt.
+fn plan(
+    state: &EditorState,
+    first: u32,
+    last: u32,
+    replacements: &std::collections::BTreeMap<NodePath, NodeRef>,
+) -> Result<ActionDecision, ActionFault> {
+    if let Some(decision) = require_operation_budget(state, 1) {
+        return Ok(decision);
+    }
+    let mut roots = Vec::new();
+    for index in first..=last {
+        let path = NodePath::try_from_indices(vec![index])
+            .map_err(|_| fault("breditor/nested-format-path-fault"))?;
+        roots.push(rebuild(
+            state
+                .document()
+                .node_at(&path)
+                .map_err(|_| fault("breditor/nested-format-path-fault"))?,
+            &path,
+            replacements,
+        )?);
+    }
+    let count =
+        u32::try_from(roots.len()).map_err(|_| fault("breditor/nested-format-path-fault"))?;
+    let operation =
+        NestedListFormatRewrite::capture(state.context(), state.document(), first, count, roots)
+            .and_then(|op| {
+                op.apply(state.context(), state.document())?;
+                Ok(op)
+            });
+    let operation = match operation {
+        Ok(op) => op,
+        Err(
+            NestedListFormatRewriteError::Validation(_)
+            | NestedListFormatRewriteError::RootChildLimit,
+        ) => {
+            return Ok(disabled("breditor/result-limit-exceeded"));
+        }
+        Err(_) => return Err(fault("breditor/nested-format-plan-fault")),
     };
-    let backward = range.order() == RangeOrder::Backward;
-    let (start_affinity, end_affinity) = if backward {
-        (original.focus().affinity(), original.anchor().affinity())
-    } else {
-        (original.anchor().affinity(), original.focus().affinity())
-    };
-    let first = point_at_nested_list_fragment_offset(
-        start,
-        &at(&document, start)?,
-        range.start().offset(),
-        start_affinity,
-    )
-    .map_err(|_| fault("breditor/nested-format-selection-fault"))?;
-    let last = point_at_nested_list_fragment_offset(
-        end,
-        &at(&document, end)?,
-        range.end().offset(),
-        end_affinity,
-    )
-    .map_err(|_| fault("breditor/nested-format-selection-fault"))?;
-    let selection =
-        if backward { RangeSelection::new(last, first) } else { RangeSelection::new(first, last) };
-    Ok(ActionEvaluation::new(
-        ActionDecision::Enabled(ActionPlan::new(
-            operations,
-            strict_relocation(),
-            SelectionUpdate::Set(Some(selection.into())),
-            PendingFormatsUpdate::Set(None),
-            HistoryIntent::Record,
-        )),
-        indicator,
-    ))
+    Ok(ActionDecision::Enabled(ActionPlan::new(
+        vec![Operation::NestedListFormatRewrite(operation)],
+        strict_relocation(),
+        SelectionUpdate::Relocate,
+        PendingFormatsUpdate::Set(None),
+        HistoryIntent::Record,
+    )))
+}
+
+/// Rebuild each selected ancestor once; paths come from a validated document and
+/// are bounded by `NodePath`'s maximum depth. Unselected text blocks are shared.
+fn rebuild(
+    node: &NodeRef,
+    path: &NodePath,
+    replacements: &std::collections::BTreeMap<NodePath, NodeRef>,
+) -> Result<NodeRef, ActionFault> {
+    if let Some(replacement) = replacements.get(path) {
+        return Ok(replacement.clone());
+    }
+    let element = node.as_element().ok_or_else(|| fault("breditor/nested-format-block-fault"))?;
+    if matches!(element.kind().as_str(), "breditor/paragraph" | "breditor/heading") {
+        return Ok(node.clone());
+    }
+    let children = element
+        .children()
+        .iter()
+        .enumerate()
+        .map(|(index, child)| {
+            let index =
+                u32::try_from(index).map_err(|_| fault("breditor/nested-format-path-fault"))?;
+            let path =
+                path.try_child(index).map_err(|_| fault("breditor/nested-format-path-fault"))?;
+            rebuild(child, &path, replacements)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    element
+        .try_with_children(children)
+        .map(NodeRef::element)
+        .map_err(|_| fault("breditor/nested-format-block-fault"))
 }

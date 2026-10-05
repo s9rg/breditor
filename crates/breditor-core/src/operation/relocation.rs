@@ -261,6 +261,11 @@ impl RelocationStep {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum RelocationStepMap {
     #[cfg(feature = "experimental-structural-properties")]
+    NestedListTextIdentity {
+        start: u32,
+        end: u32,
+    },
+    #[cfg(feature = "experimental-structural-properties")]
     FlatListTextReplace(super::flat_list_text_replace_map::FlatListTextReplaceMap),
     #[cfg(feature = "experimental-structural-properties")]
     FlatListReframe(super::flat_list_reframe_map::FlatListReframeMap),
@@ -279,13 +284,27 @@ pub(crate) enum RelocationStepMap {
 }
 
 impl RelocationStepMap {
-    fn relocate(
+    pub(crate) fn relocate(
         &self,
         before: &Document,
         after: &Document,
         point: &Point,
     ) -> Result<PointRelocation, RelocationError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListTextIdentity { start, end } => {
+                point.resolve(before).map_err(RelocationError::InvalidSourcePoint)?;
+                let path = point_container(point).ok_or(RelocationError::CoordinateOverflow)?;
+                if path.as_slice().first().is_some_and(|index| start <= index && index < end)
+                    && before.node_at(&path).is_ok_and(|node| super::block_kind(node).is_ok())
+                {
+                    let offset = point_offset_in_container(before, &path, point)?;
+                    point_at_offset(after, &path, offset, point.affinity())
+                        .map(PointRelocation::Exact)
+                } else {
+                    exact_result_point(after, point.clone())
+                }
+            }
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe(map) => map.relocate(before, after, point),
             #[cfg(feature = "experimental-structural-properties")]

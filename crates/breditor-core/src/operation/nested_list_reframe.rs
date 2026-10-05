@@ -215,7 +215,9 @@ fn end(start: u32, count: usize) -> Result<u32, NestedListReframeError> {
 }
 
 /// Bounded iterative traversal: no recursion on untrusted candidate fragments.
-fn blocks(roots: &[NodeRef]) -> Result<Vec<(NodePath, &NodeRef)>, NestedListReframeError> {
+pub(super) fn blocks(
+    roots: &[NodeRef],
+) -> Result<Vec<(NodePath, &NodeRef)>, NestedListReframeError> {
     let mut result = Vec::new();
     let mut pending = Vec::new();
     for (index, node) in roots.iter().enumerate().rev() {

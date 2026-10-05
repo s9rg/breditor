@@ -122,6 +122,7 @@ pub(crate) fn encode_operation_payload_v1(
         | Operation::TextBlockReplace(_)
         | Operation::FlatListReframe(_)
         | Operation::NestedListReframe(_)
+        | Operation::NestedListFormatRewrite(_)
         | Operation::NestedListTextSplice(_)
         | Operation::FlatListTextSplice(_)
         | Operation::FlatListTextReplace(_) => {

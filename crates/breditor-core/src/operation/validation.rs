@@ -106,6 +106,10 @@ pub enum OperationRootChildSpanRole {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationValidationError {
+    /// Nested inline-format rewrite failed validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    NestedListFormatRewrite(#[from] super::NestedListFormatRewriteError),
     /// A nested text edit failed validation.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]
@@ -576,7 +580,13 @@ pub(crate) fn validate_operation(
         #[cfg(feature = "experimental-structural-properties")]
         Operation::NestedListReframe(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]
-        Operation::NestedListTextSplice(operation) => operation.validate(context).map_err(Into::into),
+        Operation::NestedListFormatRewrite(operation) => {
+            operation.validate(context).map_err(Into::into)
+        }
+        #[cfg(feature = "experimental-structural-properties")]
+        Operation::NestedListTextSplice(operation) => {
+            operation.validate(context).map_err(Into::into)
+        }
         #[cfg(feature = "experimental-structural-properties")]
         Operation::FlatListTextSplice(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]
