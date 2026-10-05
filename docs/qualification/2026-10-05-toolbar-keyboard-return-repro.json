@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-05",
+  "sourceHead": "0af5a00",
+  "status": "reproduced-unfixed",
+  "scope": "Bundled-browser keyboard navigation and activation of the installed opt-in list toolbar",
+  "artifacts": {
+    "consumerRecord": "target/flat-list-opt-in-lHoc14/consumer-qualification.json",
+    "archiveSha256": "43b94544f681880ab42a1e76293a38fd75b95cf414a0f2453689527d40767f6b",
+    "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+    "runtimeProofSha256": "65230d376bbde74c1229381d4ed7d93e76c409b6d6904b126d1b225bc3e6829e",
+    "workspaceEditorModules": 0
+  },
+  "command": "npm run typecheck:demo:lists && BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-lHoc14/consumer-qualification.json npx playwright test -c playwright.lists-opt-in.config.ts tests/lists/toolbar-keyboard.spec.ts",
+  "typecheck": "passed",
+  "runs": [
+    {
+      "report": "target/list-opt-in-demo-jIQ8Xe/report.json",
+      "reportSha256": "e44ae76e0c9fb94afbef2ddef54be7812db5ab06d1549e2258517a27515c17bf",
+      "passed": 7,
+      "failed": 2,
+      "skipped": 0,
+      "flaky": 0,
+      "retries": 0,
+      "interpretation": "Initial assertion expected a visible native range while the toolbar button had focus. WebKit returned no native range for both Enter and Space. This alone is the previously documented focus behavior, not proof of semantic selection loss."
+    },
+    {
+      "report": "target/list-opt-in-demo-puIElW/report.json",
+      "reportSha256": "1c875cfc70a85a98aa85fc27287b61cd1478af3e4589970ed9c98b275ca6cfa9",
+      "passed": 10,
+      "failed": 2,
+      "skipped": 0,
+      "flaky": 0,
+      "retries": 0,
+      "interpretation": "Added actual End/Tab return to editor before asserting the range, plus an extension-shortcut regression. WebKit now has an owned native range, but it is collapsed at offset 0. Both structural activation variants fail; Chromium/Firefox pass."
+    }
+  ],
+  "reproduction": [
+    "Open a fresh list-demo session. Script initial full backward selection of Make room for your ideas: anchor text offset 24, focus offset 0.",
+    "Focus Heading 3 toolbar button. Send browser keyboard Enter or Space. Confirm autosave and that the toolbar button regains focus.",
+    "Send End to move focus to the last toolbar control, then Tab to return to the contenteditable host. Confirm the host is focused.",
+    "Inspect native Selection endpoints without replacing the selection. Expected anchor 24/focus 0 in the heading text. WebKit returns anchor 0/focus 0 in the same owned text."
+  ],
+  "passingCoverage": [
+    "All three engines: all 21 controls reachable via cyclic arrows, one tabindex=0, Home/End, vertical arrows, disabled Redo Enter/Space inert, Tab leaves toolbar and Shift-Tab returns to its active control.",
+    "Chromium and Firefox: Heading 3, bullet wrapper, numbered conversion, remove-list using Enter and Space; exact backward selection after keyboard return and all four undo/redo steps.",
+    "All three engines: advertised extension Italic shortcut on a bullet-wrapped heading, exact backward selection, keyboard Undo, autosave reload and keyboard Redo."
+  ],
+  "sourceFindings": [
+    "toolbar.ts intentionally restores keyboard focus to the activated button after synchronous dispatch.",
+    "browser_editor.ts focus() invokes native focus without restoring semantic selection; browser_event_router.ts has blur/composition/selection routes but no keyboard focus-return route.",
+    "The earlier flat-list-command-adapter-scenario.mjs explicitly called restoreCanonicalRender() after host.focus(). That lower-level success did not cover ordinary keyboard Tab return."
+  ],
+  "nextFixRequirements": [
+    "Restore the authoritative semantic selection on keyboard return without recreating it from the already-collapsed DOM range.",
+    "Do not override pointer positioning, input composition, unrelated focus changes, busy queues or stale/disposed ownership.",
+    "Keep both regression failures active until a new isolated candidate passes; then run broader integration coverage and native Safari confirmation."
+  ],
+  "limits": [
+    "Reproduced integration bug, not yet fixed. Current new test file intentionally has two failing WebKit cases; no expected-failure annotation or skip.",
+    "Initial focus/selection is scripted. Keyboard actions use Playwright keyboard dispatch, not physical input or screen-reader qualification.",
+    "This deterministic caret-collapse issue is not established as the cause of historical intermittent queueUncertain or other retained faults.",
+    "No runtime source, shipping bundle, wire format or system settings changed. No push or publication."
+  ]
+}

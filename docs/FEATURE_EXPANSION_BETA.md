@@ -51,6 +51,14 @@ reload/recovery checkpoint below; earlier evidence remains artifact-specific.
 
 The beta is **not release-qualified**. The remaining gates are:
 
+- **Reproducible WebKit keyboard-return selection loss:** keyboard-activate a
+  heading toolbar control, then End/Tab back to the editing host. The backward
+  selection collapses to offset 0 instead of being restored. Both Enter and
+  Space activation reproduce this on the latest opt-in package; Chromium and
+  Firefox pass. The new end-to-end regression tests deliberately remain failing
+  in WebKit until the behavior is fixed, with no skip or expected-failure waiver.
+  This is separate from the retained intermittent `queueUncertain` fault.
+  See [keyboard-return reproduction](qualification/2026-10-05-toolbar-keyboard-return-repro.json).
 - Native Safari/Chrome qualification on the final candidate, plus real Japanese
   IME and spoken VoiceOver evidence. Earlier native passes apply only to their
   recorded artifacts. Safari is accessible again; earlier-candidate typing and
@@ -2458,3 +2466,29 @@ checks, not human attestation or proof of native anchor/focus direction from AX
 text alone. Physical IME cancellation, spoken VoiceOver, the historical WebKit
 fault, reviewed size budgets and the full release gate remain open. No runtime,
 wire format, shipping artifact or system setting changed.
+
+## Keyboard-return regression identified — 2026-10-05
+
+The combined 21-control toolbar now has end-to-end tests for cyclic arrow
+navigation, Home/End, one roving tab stop, disabled Enter/Space activation, and
+Tab/Shift-Tab traversal. These pass in all three bundled engines. The extension
+Italic shortcut also passes on a list heading, including exact backward
+selection, undo, reload and keyboard Redo.
+
+The structural Enter/Space tests exposed an actual integration gap. WebKit
+clears the visible range when toolbar focus is restored (already known), but
+ordinary End/Tab back into the editor then creates a collapsed range at the
+start of the heading. It does not restore the original backward range. Both
+activation keys fail this assertion; Chromium and Firefox pass the complete
+four-action undo/redo sequence. The older lower-level toolbar test explicitly
+called `restoreCanonicalRender()` after refocusing; that did not prove normal
+user Tab return. The high-level `focus()` method only invokes native focus, and
+the event router currently has no focus-return route.
+
+The retained current run is **10 passed, 2 failed**, no retries/skips/flakiness,
+against the unchanged installed `lHoc14` package. The failures are not waived:
+`tests/lists/toolbar-keyboard.spec.ts` is a red regression checkpoint. Next fix
+must restore the authoritative semantic selection on keyboard return without
+overriding pointer placement, input composition, or unrelated focus transitions.
+No fix or native Safari confirmation is claimed here; the historical intermittent
+fault remains separate. See [exact reports and reproduction](qualification/2026-10-05-toolbar-keyboard-return-repro.json).
