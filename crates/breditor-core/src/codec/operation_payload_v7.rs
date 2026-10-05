@@ -51,6 +51,9 @@ pub(super) fn decode_operation_payload_v7(
     context: &EditorContext,
 ) -> Result<Operation, OperationV7CodecError> {
     let header: Header<'_> = serde_json::from_str(json).map_err(|error| json_error(&error))?;
+    if header.kind == "nestedListTextSplice" {
+        return super::nested_text_wire::decode(json, context);
+    }
     if header.kind != "nestedListReframe" {
         return decode_operation_payload_v5(json, context).map_err(Into::into);
     }
@@ -104,6 +107,7 @@ fn root(context: &EditorContext, nodes: &[NodeRef]) -> Result<NodeRef, Operation
     .map_err(|_| invalid(NestedListReframeError::InvalidTarget))
 }
 pub(super) enum OperationPayloadEncodingV7<'a> {
+    Splice { operation: &'a crate::operation::NestedListTextSplice, expected: NodeRef },
     Earlier(OperationPayloadEncodingV5<'a>),
     Nested { operation: &'a NestedListReframe, expected: NodeRef, replacement: NodeRef },
 }
@@ -114,6 +118,10 @@ impl<'a> OperationPayloadEncodingV7<'a> {
     ) -> Result<Self, OperationV7CodecError> {
         operation.validate(context)?;
         match operation {
+            Operation::NestedListTextSplice(operation) => Ok(Self::Splice {
+                operation,
+                expected: root(context, std::slice::from_ref(operation.expected_root()))?,
+            }),
             Operation::NestedListReframe(operation) => Ok(Self::Nested {
                 operation,
                 expected: root(context, operation.expected())?,
@@ -126,6 +134,19 @@ impl<'a> OperationPayloadEncodingV7<'a> {
 impl Serialize for OperationPayloadEncodingV7<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
+            Self::Splice { operation, expected } => {
+                let mut record = serializer.serialize_struct("NestedListTextSpliceV1", 6)?;
+                record.serialize_field("kind", "nestedListTextSplice")?;
+                record.serialize_field("block", operation.range().container_path().as_slice())?;
+                record.serialize_field("start", &operation.range().start().get())?;
+                record.serialize_field("end", &operation.range().end().get())?;
+                record.serialize_field("expected", &NodeEncoding(expected))?;
+                record.serialize_field(
+                    "replacement",
+                    &super::operation_payload_v4::FragmentEncoding(operation.replacement()),
+                )?;
+                record.end()
+            }
             Self::Earlier(value) => value.serialize(serializer),
             Self::Nested { operation, expected, replacement } => {
                 let mut record = serializer.serialize_struct("NestedListReframeV1", 4)?;

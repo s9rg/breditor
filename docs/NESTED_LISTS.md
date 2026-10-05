@@ -82,9 +82,9 @@ green bounded reruns alone do not close it. No push or publication is authorized
 
 Nested text work in progress: `NestedListTextSplice` supports scalar-aligned
 replacement under arbitrary admitted item nesting while guarding the containing
-root and preserving wrappers. Its V7 payload and public typing/formatting action
-integration are not yet implemented; histories containing this new primitive
-must not be presented as checkpoint-supported until that follow-up is qualified.
+root and preserving wrappers. V7 operation and session persistence support this
+primitive; mixed indent/text/outdent histories are tested at every cursor.
+Public typing/formatting actions and browser integration remain outstanding.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

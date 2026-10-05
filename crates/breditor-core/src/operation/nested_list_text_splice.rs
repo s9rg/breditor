@@ -25,8 +25,8 @@ use thiserror::Error;
 /// item/list wrappers, and publication validates the complete result document.
 ///
 /// This is a separate experimental runtime operation, not a widening of the
-/// flat-list, heading or paragraph operations. Durable support is separately
-/// gated; existing operation/session formats remain unchanged.
+/// flat-list, heading or paragraph operations. V7 admits this payload; earlier
+/// operation/session formats remain unchanged.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NestedListTextSplice {
     range: TextRange,

@@ -91,6 +91,8 @@ pub enum OperationOffsetField {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum OperationFragmentField {
+    /// Replacement fragment in a nested-list text splice.
+    NestedListTextSpliceReplacement,
     /// `textSplice.expectedRemoved`.
     TextSpliceExpectedRemoved,
     /// `textSplice.replacement`.

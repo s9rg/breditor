@@ -68,10 +68,50 @@ fn nested_session_v7_recovers_every_cursor_and_retains_exact_undo_redo() -> Test
             .prepare(session.state(), &ActionInvocation::without_input(ActionId::try_new(id)?))?;
         session.execute_prepared_action(prepared)?;
         boundaries.push(session.state().clone());
+        if id == "test/indent" {
+            use crate::{
+                document::{TextFragment, TextRun},
+                operation::{NestedListTextSplice, Operation, TextRange},
+                position::TextOffset,
+                transaction::Transaction,
+            };
+            let range = TextRange::try_new(
+                NodePath::try_from_indices(vec![0, 0, 1, 0, 0])?,
+                TextOffset::try_new(1)?,
+                TextOffset::try_new(3)?,
+            )?;
+            let operation = Operation::NestedListTextSplice(NestedListTextSplice::capture(
+                &context,
+                session.state().document(),
+                range,
+                TextFragment::try_from_runs(vec![TextRun::try_new("日本", formats()?)?])?,
+            )?);
+            let operation_codec = super::OperationJsonCodecV7::new(context.clone());
+            let json = operation_codec.encode(&operation)?;
+            assert_eq!(operation_codec.decode(&json)?, operation);
+            assert!(super::OperationJsonCodecV6::new(context.clone()).decode(&json).is_err());
+            let original: serde_json::Value = serde_json::from_str(&json)?;
+            for path in [vec![], vec![0, 0, 0, 0, 0], vec![0; 257]] {
+                let mut invalid = original.clone();
+                invalid["operation"]["block"] = serde_json::json!(path);
+                assert!(operation_codec.decode(&serde_json::to_string(&invalid)?).is_err());
+            }
+            let mut invalid = original;
+            invalid["operation"]["start"] = 2.into();
+            assert!(operation_codec.decode(&serde_json::to_string(&invalid)?).is_err());
+            session
+                .apply_transaction(&Transaction::new(
+                    session.state(),
+                    vec![operation_codec.decode(&json)?],
+                ))?
+                .into_commit()
+                .ok_or("missing nested text commit")?;
+            boundaries.push(session.state().clone());
+        }
     }
-    assert_eq!(session.undo_depth(), 2);
+    assert_eq!(session.undo_depth(), 3);
     let codec = SessionCheckpointJsonCodecV7::new(context.clone());
-    for cursor in (0..=2).rev() {
+    for cursor in (0..=3).rev() {
         let json = codec.encode(&session)?;
         // New compiler proof models a new process; no in-memory schema identity
         // or operation handles are reused by the decoder.
@@ -80,7 +120,7 @@ fn nested_session_v7_recovers_every_cursor_and_retains_exact_undo_redo() -> Test
         assert_eq!(fresh.encode(&restored)?, json);
         exact(restored.state(), &boundaries[cursor]);
         assert_eq!(restored.undo_depth(), u32::try_from(cursor)?);
-        assert_eq!(restored.redo_depth(), u32::try_from(2 - cursor)?);
+        assert_eq!(restored.redo_depth(), u32::try_from(3 - cursor)?);
         for index in (0..cursor).rev() {
             restored.undo()?.ok_or("missing recovered undo")?;
             exact(restored.state(), &boundaries[index]);
