@@ -11,10 +11,10 @@ authorized by this plan.
 
 ## Current readiness — October 5, 2026
 
-The current Rust implementation checkpoint is `62b2e90`. Headings, flat lists,
+The current Rust implementation checkpoint is `cc8f1d7`. Headings, flat lists,
 directional selection, toolbar actions, undo/redo and V6 reload/recovery are
 implemented in the **private experimental profile**, not the default shipping
-bundle. The most recent qualification passed 1,135 core tests, strict workspace
+bundle. The earlier `62b2e90` qualification passed 1,135 core tests, strict workspace
 Clippy, private Wasm/package checks, 165 existing browser cases and 54 list-demo
 cases. A subsequent run passed all 39 React cases on the same candidate, without
 retries. See [exact-source proof qualification](qualification/2026-10-04-flat-list-source-proof-reuse.json)
@@ -33,16 +33,22 @@ from the fixed browser source, without diagnostic instrumentation. See
 [packaged IME integration evidence](qualification/2026-10-05-ime-packaged-integration.json)
 for exact artifacts, retained failed test-observation experiments and results.
 
+The current path-reuse candidate passes 1,137 core unit tests, strict core
+all-target/all-feature Clippy, raw Wasm and installed-package checks in three
+engines, and all 63 cases of the full installed opt-in demo. These focused checks
+do not re-run every older workspace gate. See
+[path reuse qualification](qualification/2026-10-05-flat-list-path-reuse.json).
+
 The beta is **not release-qualified**. The remaining gates are:
 
 - Native Safari/Chrome qualification on the final candidate, plus real Japanese
   IME and spoken VoiceOver evidence. Earlier native passes apply only to their
-  recorded artifacts. Safari is accessible again; latest-candidate typing and
-  heading/list Undo/Redo checks passed. Latest-candidate native Safari and Chrome
+  recorded artifacts. Safari is accessible again; earlier-candidate typing and
+  heading/list Undo/Redo checks passed. Earlier-candidate native Safari and Chrome
   clipboard checks also passed: single-item copy/cut/paste and cross-item
   copy/cut in both directions, including exact payloads and one-step undo.
   See [native clipboard/control evidence](qualification/2026-10-04-latest-native-clipboard-and-selection-control.json).
-  Latest-candidate native reload retained pending Redo in both browsers. Chrome
+  Earlier-candidate native reload retained pending Redo in both browsers. Chrome
   backup export/import and Chrome-to-Safari recovery passed, including all five
   heading/list/Link history steps and recovery isolation from main autosave.
   See [native reload/recovery evidence](qualification/2026-10-04-native-reload-and-cross-browser-recovery.json)
@@ -66,13 +72,19 @@ The beta is **not release-qualified**. The remaining gates are:
   and three-browser consumer checks. It bundles its paired browser/Wasm runtime
   without replacing the default packages. All 63 full feature-demo cases now
   pass against the installed package, with a checked module graph and retained
-  runtime identities. Native qualification of this delivery layout remains
-  open; functional checks do not approve larger budgets or a release. See
+  runtime identities. Current opt-in artifact `ktXUh6` now also passes bounded
+  agent-operated native Safari copy/cut/paste, typing, heading/list conversion
+  and Link Undo/Redo checks. Its captured owner is live at revision 56 with no
+  faults, pending events or drops. Human attestation, current-artifact Chrome,
+  native persistence and IME/VoiceOver qualification remain open; functional
+  checks do not approve larger budgets or a release. See
+  [native opt-in Safari evidence](qualification/2026-10-05-opt-in-native-safari.json),
   [opt-in delivery evidence](qualification/2026-10-05-opt-in-flat-list-package.json)
   and [installed-demo evidence](qualification/2026-10-05-opt-in-full-demo.json).
 - Large-list responsiveness and the complete final release gate. Current local
-  500-item edit medians are roughly 45–46 ms Chromium, 136 ms Firefox and 67 ms
-  WebKit; these small synthetic samples are not native-input latency guarantees
+  repeated 500-item edit medians on the path-reuse candidate are 50.4 ms
+  Chromium, 134 ms Firefox and 79 ms WebKit; these small synthetic samples are
+  not native-input latency guarantees
   or a supported maximum document size.
 
 The first source-proof browser runs encountered disk exhaustion and are retained,

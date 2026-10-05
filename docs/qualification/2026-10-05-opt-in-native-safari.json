@@ -1,0 +1,231 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "cc8f1d7",
+  "status": "bounded-native-safari-ui-checks-passed",
+  "method": "Native Safari app operated through CUA; macOS keyboard shortcuts for copy/cut/paste; results read from native accessibility text and the fixture's redacted report. No JavaScript event dispatch, clipboard injection or programmatic DOM mutation used for editor clipboard cases.",
+  "fixtureUrl": "http://127.0.0.1:4311/manual-clipboard.html",
+  "bundle": "target/list-opt-in-demo-SOvaTZ/bundle",
+  "proof": {
+    "path": "target/list-opt-in-demo-SOvaTZ/bundle/opt-in-runtime-proof.json",
+    "sha256": "49766c85dc1013eba116819e79812d1d8404771739eb00902e3054fa54bb2586",
+    "archiveSha256": "f0dc5eb06aa1ea57a28aec91fadc0e76a1e4dd5f946acea37550606d85529dae",
+    "wasmSha256": "1f50aeae05b2f8ac0030e2b157d515f3f279adf4971e90081a85daece196eb46",
+    "workspaceEditorModules": 0,
+    "installedModules": 77
+  },
+  "observations": [
+    "Single-bullet Copy pasted exactly Collect your ideas into the scratch textarea, with no bullet marker.",
+    "Single-bullet Cut removed only Collect your ideas, kept its empty list item and copied the exact text to scratch. One toolbar Undo restored the original text and selected range.",
+    "Clicked numbered item 3, used Command-Right then exclamation key. Write a first draft! appeared immediately. Command-Z restored Write a first draft and Command-Shift-Z restored the exclamation without changing numbering.",
+    "Native Command-V at the restored caret inserted Collect your ideas exactly once after the exclamation, with no imported bullet structure. One Undo removed only the paste; another removed the exclamation.",
+    "Forward range: Command-Left, Shift-Down, Command-Shift-Right from item 3. Native Copy and Cut each pasted exactly Write a first draft\\nReview and refine into scratch. Cut left one empty item numbered 3. One Undo restored both items numbered 3 and 4 and their selected text.",
+    "Backward range: Command-Right, Shift-Up, Command-Shift-Left from item 4. Native Copy and Cut produced the same document-order text and newline. One Undo restored both items and their selected text. AX exposes selected text, not anchor/focus direction after restoration.",
+    "Selected heading text with native caret keys. Heading 2→3; bullet wrapper; numbered wrapper starting at 1; removal of wrapper. Each separate action was undone and redone, retaining observed heading rank, text and selected text.",
+    "Applied https://example.test/breditor-native-check through the Link form without navigating. Undo removed the link while retaining heading rank 3; Redo restored it. Reopening the form showed the exact original URL."
+  ],
+  "manualReport": {
+    "format": "breditor/manual-clipboard-evidence",
+    "formatVersion": 1,
+    "outcome": "incomplete",
+    "qualification": "Not automatic certification. Trusted events can also originate from browser automation; checklist observations are self-reported.",
+    "owner": {
+      "phase": "live",
+      "reason": null,
+      "revision": "56"
+    },
+    "firstFault": null,
+    "observedEvents": 8,
+    "pendingEvents": 0,
+    "droppedEvents": 0,
+    "trustedClipboardEvents": {
+      "copy": 3,
+      "cut": 3,
+      "paste": 1
+    },
+    "operatorChecks": {
+      "copy": false,
+      "cut": false,
+      "paste": false,
+      "caret": false,
+      "history": false,
+      "formatting": false
+    },
+    "events": [
+      {
+        "sequence": 1,
+        "kind": "copy",
+        "trusted": true,
+        "inputType": null,
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "5"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "5"
+        }
+      },
+      {
+        "sequence": 2,
+        "kind": "cut",
+        "trusted": true,
+        "inputType": null,
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "8"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "9"
+        }
+      },
+      {
+        "sequence": 3,
+        "kind": "beforeinput",
+        "trusted": true,
+        "inputType": "insertText",
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "12"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "13"
+        }
+      },
+      {
+        "sequence": 4,
+        "kind": "paste",
+        "trusted": true,
+        "inputType": null,
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "15"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "16"
+        }
+      },
+      {
+        "sequence": 5,
+        "kind": "copy",
+        "trusted": true,
+        "inputType": null,
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "22"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "22"
+        }
+      },
+      {
+        "sequence": 6,
+        "kind": "cut",
+        "trusted": true,
+        "inputType": null,
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "26"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "27"
+        }
+      },
+      {
+        "sequence": 7,
+        "kind": "copy",
+        "trusted": true,
+        "inputType": null,
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "32"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "32"
+        }
+      },
+      {
+        "sequence": 8,
+        "kind": "cut",
+        "trusted": true,
+        "inputType": null,
+        "defaultPrevented": true,
+        "settled": true,
+        "before": {
+          "phase": "live",
+          "reason": null,
+          "revision": "36"
+        },
+        "after": {
+          "phase": "live",
+          "reason": null,
+          "revision": "37"
+        }
+      }
+    ],
+    "fixture": {
+      "name": "flat-list-showcase",
+      "schema": "example/flat-list-showcase",
+      "sessionFormatVersion": 6,
+      "wasmSha256": "1f50aeae05b2f8ac0030e2b157d515f3f279adf4971e90081a85daece196eb46"
+    },
+    "environment": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+      "platform": "MacIntel"
+    }
+  },
+  "imeAttempt": {
+    "qualified": false,
+    "baseline": "Canadian only, input menu hidden, Globe Emoji & Symbols, keyboard navigation off, Dictation off / English (Canada) only.",
+    "actions": "Temporarily added Japanese–Romaji via System Settings. Control-Space then n/i/h/o/n key commands in the plain scratch textarea produced nihon. Control-Shift-J followed by n/i produced nihonni. No Japanese conversion or composition established; do not infer an editor bug or a proven active input-source selection.",
+    "uiLimit": "Input-menu apps timed out. Source-picker row clicks did not select; keyboard navigation selected Romaji successfully. These are automation observations, not Breditor failures.",
+    "restorationVerified": [
+      "Removed Japanese–Romaji; Canadian sole remaining source",
+      "Input menu off",
+      "Globe Show Emoji & Symbols",
+      "Keyboard navigation off",
+      "Dictation off, removed automatically added Japanese (Japan), English (Canada) only"
+    ],
+    "voiceOver": "Not enabled or tested in this turn"
+  },
+  "limits": [
+    "Agent-operated native-app evidence, not a human operator attestation; all manual checkboxes deliberately left false.",
+    "Current-artifact native Chrome and persistence/backup checks not performed in this turn.",
+    "Physical Japanese Escape cancellation and spoken VoiceOver still require human input.",
+    "No claim that the historical intermittent WebKit fault is fixed.",
+    "No release or size-budget qualification; shipping artifacts unchanged; nothing pushed or published."
+  ]
+}
