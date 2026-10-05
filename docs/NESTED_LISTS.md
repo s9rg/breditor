@@ -55,8 +55,9 @@ claim until end-to-end support is qualified.
   full durable session/replay integration remains required before browser exposure.
 - `OperationJsonCodecV7` explicitly admits nested reframes, with schema-fingerprint
   binding, bounded raw-tree preflight and canonical encoding. Older formats stay
-  closed. Transaction, commit and session checkpoint V7 codecs remain outstanding;
-  an operation round-trip alone is not a reload/recovery qualification.
+  closed. V7 transaction requests and replay-proved commits now use this payload
+  language. Session checkpoint V7 remains outstanding; request/commit round-trips
+  alone are not a reload/recovery qualification.
 - Rust `IndentListItemsAction` moves a sibling run with descendants, preserves
   ordered starts, merges compatible trailing child sections, and previews the
   complete result against limits before preparing one history unit.

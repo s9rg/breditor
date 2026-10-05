@@ -127,13 +127,32 @@ fn nested_list_reframe_inverse_and_point_mapping_are_exact_and_guarded() -> Test
             None,
         )?;
         let mut session = EditorSession::new(before.clone());
-        session
-            .apply_transaction(&Transaction::new(
-                &before,
-                vec![Operation::NestedListReframe(operation.clone())],
-            ))?
-            .into_commit()
-            .ok_or("missing nested commit")?;
+        let request =
+            Transaction::new(&before, vec![Operation::NestedListReframe(operation.clone())]);
+        let requests = crate::codec::TransactionJsonCodecV7::new(context.clone());
+        let request_json = requests.encode(&request)?;
+        let decoded = requests.decode(&request_json, &before)?;
+        assert_eq!(requests.encode(&decoded)?, request_json);
+        assert!(
+            crate::codec::TransactionJsonCodecV6::new(context.clone())
+                .decode(&request_json, &before)
+                .is_err()
+        );
+        let commit =
+            session.apply_transaction(&decoded)?.into_commit().ok_or("missing nested commit")?;
+        let commits = crate::codec::CommitJsonCodecV7::new(context.clone());
+        let commit_json = commits.encode(&commit)?;
+        let restored = commits.decode(&commit_json)?;
+        assert_eq!(commits.encode(&restored)?, commit_json);
+        assert!(
+            crate::codec::CommitJsonCodecV6::new(context.clone()).decode(&commit_json).is_err()
+        );
+        let mut corrupted: serde_json::Value = serde_json::from_str(&commit_json)?;
+        corrupted["forwardOperations"] = serde_json::json!([]);
+        assert!(commits.decode(&serde_json::to_string(&corrupted)?).is_err());
+        let mut corrupted: serde_json::Value = serde_json::from_str(&request_json)?;
+        corrupted["operations"][0]["start"] = (-1).into();
+        assert!(requests.decode(&serde_json::to_string(&corrupted)?, &before).is_err());
         let after = session.state().clone();
         assert_eq!(after.document(), edit.document());
         let mapped = |offset| -> Result<Point, Box<dyn std::error::Error>> {
