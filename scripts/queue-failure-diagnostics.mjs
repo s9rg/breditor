@@ -2,6 +2,27 @@
 // or production logging. Retain normal terminal queue semantics after logging.
 import assert from "node:assert/strict";
 
+// Capture the terminal router boundary too: queueUncertain does not imply an
+// executor exception. Read each scalar independently before teardown destroys
+// the useful state. This is only injected into disposable synthetic bundles.
+export function instrumentRouterFailures(code) {
+  const anchor = /(#fault\(reason\)\s*\{\s*if \(this\.#status\.kind !== "live"\)\s*return;)/gu;
+  let sites = 0;
+  const result = code.replace(anchor, match => {
+    sites++;
+    return `${match}
+    const routerDiagnostic = {reason};
+    try { routerDiagnostic.adapterState = this.#adapter.state; } catch {}
+    try { routerDiagnostic.queueCode = this.#queue.failure?.code; } catch {}
+    try { routerDiagnostic.queueDisposed = this.#queue.disposed; } catch {}
+    try { routerDiagnostic.stack = new Error("router fault boundary").stack?.slice(0, 4096); } catch {}
+    try { console.error("breditor router failure", JSON.stringify(routerDiagnostic)); } catch {}
+    `;
+  });
+  assert.equal(sites, 1, "router diagnostic fault site changed");
+  return result;
+}
+
 export function instrumentQueueFailures(code) {
   const sites = [];
   const transformed = code.replace(/\}\s+catch \{\n(\s+)((?:const failure = )?this\.#fail\("command_queue\.(executor|observer)_threw", (?:sequence|pending\.sequence)\);)/gu,

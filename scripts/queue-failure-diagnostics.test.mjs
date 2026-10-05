@@ -2,7 +2,38 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
-import {instrumentQueueFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+
+test("router diagnostics distinguish adapter faults from queue faults and survive hostile logging", () => {
+  const source = `class Router {
+    #status = {kind: "live"}; #adapter; #queue;
+    constructor(adapter, queue) {this.#adapter = adapter; this.#queue = queue;}
+    #fault(reason) {
+      if (this.#status.kind !== "live") return;
+      this.#status = {kind: "faulted", reason};
+    }
+    fail() {this.#fault("queueUncertain"); return this.#status;}
+  }`;
+  for (const hostile of [false, true]) {
+    const logs = [];
+    const Router = new Function("console", `${instrumentRouterFailures(source)}; return Router;`)({error(...args) {
+      logs.push(args); if (hostile) throw new Error("logger failed");
+    }});
+    for (const queue of [{disposed: false}, {disposed: true, failure: {code: "command_queue.executor_threw"}}]) {
+      const router = new Router({state: "faulted"}, queue);
+      assert.deepEqual(router.fail(), {kind: "faulted", reason: "queueUncertain"});
+      const count = logs.length; router.fail(); assert.equal(logs.length, count);
+      const diagnostic = JSON.parse(logs.at(-1)[1]);
+      assert.equal(diagnostic.adapterState, "faulted");
+      assert.equal(diagnostic.queueDisposed, queue.disposed);
+      assert.equal(diagnostic.queueCode, queue.failure?.code);
+      assert.ok(diagnostic.stack.length <= 4096);
+    }
+    const router = new Router({get state() {throw 1;}}, {get failure() {throw 2;}, get disposed() {throw 3;}});
+    assert.equal(router.fail().kind, "faulted");
+  }
+  for (const code of ["", source + source]) assert.throws(() => instrumentRouterFailures(code), /fault site changed/u);
+});
 
 const fixture = `class Queue {
   #fail(code, sequence) { return {code, sequence}; }

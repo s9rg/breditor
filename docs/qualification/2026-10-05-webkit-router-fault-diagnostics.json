@@ -1,0 +1,37 @@
+{
+  "status": "original intermittent fault unresolved; not reproduced in these runs",
+  "scope": "Disposable fixture instrumentation only; no shipping runtime or Wasm changes",
+  "originalFailure": {
+    "reportSha256": "4db4fd776488a37890b8012947d547d29ddafdc0008961df42e784be9669715a",
+    "progress": "500 items, repetition 1: selectionMs",
+    "reason": "queueUncertain"
+  },
+  "diagnosticChange": "Capture router fault reason, adapter state, queue failure code, queue disposal and bounded call stack before teardown. Each read and logging failure is contained. Existing queue exception capture retained. The router reason alone does not identify a queue executor exception.",
+  "packageRecord": "target/flat-list-packages-KklioP/qualification.json",
+  "runs": [
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-G7hnzr/measurement.json",
+      "sha256": "48b61c935468ba7c37558dfad5e8c59e507fcfcb1576496696bb9af49d372f38",
+      "mode": "queue and router diagnostics, synchronous selection, 30 repetitions per size",
+      "result": "90 cycles passed in WebKit 26.5; diagnostics empty",
+      "note": "This run began before the explicit routerDiagnosticsEnabled report field was added; the transformed router was verified by the build assertion. Diagnostic JS SHA c800c08f7b0a58ce6eb58c13e882f822c2eeb91516b974193cece25420d666d5."
+    },
+    {
+      "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-oz8dr9/measurement.json",
+      "sha256": "d4007b98753f20aba23e7b2ef6d21b68a9c0e12c2a5145064ac9d96df151f457",
+      "mode": "original uninstrumented browser order Chromium, Firefox, WebKit",
+      "result": "9 cycles per engine passed; diagnostics empty; versions match original failure",
+      "javascriptSha256": "1494085dca97df537e98687464457ae353f2461dbcebe6228f94b9a53fe34532",
+      "wasmSha256": "870ec13e74dd9c3526c577cd4662f8ddde39771de0886d078daa4e28c6205323",
+      "note": "Both assets match the original failed run byte-for-byte. Browser order alone did not reproduce the fault."
+    }
+  ],
+  "tests": {
+    "command": "BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1 node --test --test-reporter=dot scripts/*.test.mjs",
+    "result": "101 tests passed, exit 0",
+    "coverage": "Router synthetic positive controls distinguish adapter and queue failures, preserve terminal behavior, tolerate hostile getters/logger and reject transform drift. Existing real WebKit positive control captures engine-created queue exceptions.",
+    "sandboxAttempt": "Initial non-escalated full suite had two EPERM temporary-directory failures in size-audit tests; authorized rerun passed."
+  },
+  "limitations": "No original failure captured with new diagnostics; no causal fix established. Not physical input, memory-leak proof, or release-performance qualification. Separate keyboard-return selection fix remains unrelated unless further evidence connects them.",
+  "next": "Capture a failing execution at the new router boundary before choosing a runtime change; avoid speculative selection delays or treating repeated green runs as proof of a fix."
+}
