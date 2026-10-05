@@ -34,3 +34,47 @@ export function repeatPerformanceOwners(code, repetitions) {
   assert.equal(code.split(anchor).length, 2, "performance owner loop changed");
   return code.replace(anchor, `repetition < ${repetitions}`);
 }
+
+// Separate focus-triggered native notifications from the synthetic selection
+// delivery in the original reproducer. Only rewrite the disposable fixture;
+// these wall-clock spans include task waits and are not performance samples.
+export function schedulePerformanceSelection(code, mode) {
+  assert.ok(["focus-task", "native-selection"].includes(mode), "invalid selection scheduling mode");
+  const anchor = `    measured("selectionMs", () => {
+      owner!.focus(); const block = host.querySelectorAll("li")[middle]!.firstElementChild!;
+      const range = document.createRange(); range.selectNodeContents(block); range.collapse(false);
+      const selection = getSelection()!; selection.removeAllRanges(); selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });`;
+  assert.equal(code.split(anchor).length, 2, "performance selection scheduling anchor changed");
+  const delivery = mode === "focus-task"
+    ? `      document.dispatchEvent(new Event("selectionchange"));`
+    : `      await nativeSelection;`;
+  const nativeWait = mode === "native-selection" ? `
+      // Register before changing the range. Ignore synthetic events, and fail
+      // rather than silently falling back to synthetic delivery on timeout.
+      const nativeSelection = new Promise<void>((resolve, reject) => {
+        const listener = (event: Event) => {
+          if (!event.isTrusted) return;
+          clearTimeout(timer); document.removeEventListener("selectionchange", listener); resolve();
+        };
+        const timer = setTimeout(() => {
+          document.removeEventListener("selectionchange", listener);
+          reject(new Error("Native selectionchange did not arrive"));
+        }, 5000);
+        document.addEventListener("selectionchange", listener);
+      });` : "";
+  return code.replace(anchor, `    progress = \`\${items} items, repetition \${repetition}: selectionMs (${mode})\`;
+    {
+      const selectionStart = performance.now();
+      owner!.focus();
+      await new Promise<void>(resolve => setTimeout(resolve, 0));
+      equal(owner!.getStatus().phase, "live");
+      const block = host.querySelectorAll("li")[middle]!.firstElementChild!;
+      const range = document.createRange(); range.selectNodeContents(block); range.collapse(false);${nativeWait}
+      const selection = getSelection()!; selection.removeAllRanges(); selection.addRange(range);
+${delivery}
+      equal(owner!.getStatus().phase, "live");
+      host.getBoundingClientRect(); metrics["selectionMs"] = performance.now() - selectionStart;
+    }`);
+}

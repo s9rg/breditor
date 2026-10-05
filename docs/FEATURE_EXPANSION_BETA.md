@@ -2376,3 +2376,22 @@ measurements into release approval. Standard package ceilings remain unchanged.
 Five focused measurement/identity tests pass; the broader script suite passes
 97 tests with one existing skip. No editor executable, package artifact, wire
 format or browser setting changed in this tooling checkpoint.
+
+## WebKit selection-ordering diagnosis — 2026-10-05
+
+The retained failure occurs during selection synchronization before typing.
+Two opt-in diagnostic modes now separate focus from range installation with a
+timer task, then use either synthetic delivery (`focus-task`) or await a trusted
+browser event (`native-selection`). They transform only the disposable fixture,
+retain document/selection/history assertions, and fail on a missing native event
+without falling back to synthetic delivery. Select them with
+`BREDITOR_PERF_SELECTION_SCHEDULING` alongside WebKit queue diagnostics.
+
+Both variants and the original synchronous control pass nine cases each against
+the exact package implicated in the historical failure. The synchronous control
+emits byte-identical assets to the earlier catch-instrumented control. All 100
+script tests pass, including the optional WebKit exception-capture positive
+control. This comparison does **not** reproduce or fix the intermittent fault,
+justify shipping a delay, or qualify physical input. A timer yield is not proof
+that all pending notifications drained, and the diagnostic timings include waits.
+See [selection-ordering evidence](qualification/2026-10-05-webkit-selection-scheduling.json).

@@ -11,6 +11,9 @@
 // disposable synthetic fixture; never shipping code or a normal timing result.
 // BREDITOR_PERF_OWNER_REPETITIONS=3..100 adds same-page owner churn only with
 // queue diagnostics; default ordinary/profiling fixtures stay at three per size.
+// BREDITOR_PERF_SELECTION_SCHEDULING=focus-task|native-selection separates focus
+// from range installation, optionally awaiting a trusted native selectionchange.
+// Requires queue diagnostics; these timings include waits and are not comparable.
 // BREDITOR_PERF_EXCEPTION_PROBE=1 instead probes global new Error/TypeError/
 // RangeError calls through a page init script while leaving bundle bytes intact.
 // It cannot observe every engine-thrown exception or calls without new. Bounded
@@ -26,7 +29,7 @@ import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
-import {instrumentQueueFailures, repeatPerformanceOwners} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 
 assert.ok(process.argv.length === 3 || (process.argv.length === 4 && ["--diagnose-export", "--core-only"].includes(process.argv[3])), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export|--core-only]");
@@ -55,6 +58,11 @@ assert.ok(!constructorProbeEnabled || (browserName === "webkit" && !coreOnly && 
 const ownerRepetitions = Number(process.env["BREDITOR_PERF_OWNER_REPETITIONS"] ?? "3");
 assert.ok(Number.isSafeInteger(ownerRepetitions) && ownerRepetitions >= 3 && ownerRepetitions <= 100 && (ownerRepetitions === 3 || queueDiagnosticsEnabled),
   "owner repetitions must be 3..100 and nondefault counts require queue diagnostics");
+// Diagnostic task ordering, not a normal selection latency measurement.
+const selectionScheduling = process.env["BREDITOR_PERF_SELECTION_SCHEDULING"] ?? "synchronous";
+assert.ok(["synchronous", "focus-task", "native-selection"].includes(selectionScheduling) &&
+  (selectionScheduling === "synchronous" || queueDiagnosticsEnabled),
+  "selection scheduling requires queue diagnostics and a known mode");
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const recordPath = await realpath(resolve(repository, process.argv[2]));
 const local = relative(join(repository, "target"), recordPath);
@@ -123,32 +131,43 @@ const diagnosticPlugin = {name: "document-export-rejection-sites", transform(cod
 }};
 let queueDiagnosticModules = 0;
 let stressFixtureModules = 0;
-const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", transform(code, id) {
+let selectionFixtureModules = 0;
+const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
   if (id === join(consumer, "node_modules/@breditor/browser/dist/command_queue.js")) {
     queueDiagnosticModules++;
     return instrumentQueueFailures(code);
   }
-  if (ownerRepetitions !== 3 && id === join(fixture, "main.ts")) {
-    stressFixtureModules++;
-    return repeatPerformanceOwners(code, ownerRepetitions);
+  if (id === join(fixture, "main.ts")) {
+    if (ownerRepetitions !== 3) {
+      stressFixtureModules++;
+      code = repeatPerformanceOwners(code, ownerRepetitions);
+    }
+    if (selectionScheduling !== "synchronous") {
+      selectionFixtureModules++;
+      code = schedulePerformanceSelection(code, selectionScheduling);
+    }
+    return code;
   }
 }};
 await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
 assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
 assert.equal(stressFixtureModules, ownerRepetitions === 3 ? 0 : 1, "stress fixture was not transformed exactly once");
+assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 : 1, "selection fixture was not transformed exactly once");
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
 const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
-  deepDiagnostics, browserName, runCount, ownerRepetitions, cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
+  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling,
+  selectionTimingIncludesTaskWaits: selectionScheduling !== "synchronous",
+  cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
   packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
   methodology: coreOnly
     ? "One 5-item warm-up followed by three independent raw engines at each of 10/100/500 ordered items, every tenth item a heading, identical text to the DOM fixture. Installed packed Wasm, production bundle, headless browser, no editor DOM or browser owner. Raw synchronous calls include observation acquisition/disposal but exclude returned-handle inspection/disposal, except JSON exports which include takeValue and disposal. Action-state cold, exact-hit and post-edit refresh measured separately with full status/revision assertions. Commands pass false for history-group closure and do not call the result's projectionUpdate() readback; projection handle acquisition is a separate span, not full node readback or DOM rendering. Profile compilation once per process, no autosave/layout. Exact document/selection and undo/reload/redo assertions outside spans. Diagnostic decomposition, not an additive subtraction from browser timings or release performance qualification."
-    : `One 5-item warm-up followed by ${ownerRepetitions} independent editor owners at each of 10/100/500 ordered items, every tenth item a heading, about 75 UTF-16 units per item. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock synchronous spans include a forced layout read. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Nondefault owner count is diagnostic same-page churn, not normal timing. Not OS input, statistical p95, memory or multi-device performance qualification.`,
+    : `One 5-item warm-up followed by ${ownerRepetitions} independent editor owners at each of 10/100/500 ordered items, every tenth item a heading, about 75 UTF-16 units per item. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock spans include a forced layout read. Selection scheduling: ${selectionScheduling}; nondefault selection spans include task waits and are not comparable latency measurements. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Nondefault owner count is diagnostic same-page churn, not normal timing. Not OS input, statistical p95, memory or multi-device performance qualification.`,
 }, null, 2)+"\n");
 console.log(JSON.stringify({output}));
 await save("running");

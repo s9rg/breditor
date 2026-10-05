@@ -1,0 +1,66 @@
+{
+  "status": "ordering-diagnostics-passed-original-fault-unresolved",
+  "scope": "Disposable fixture transformations against the exact retained private package from the original failure; no shipping runtime changes",
+  "hypothesis": "The original same-task focus, DOM range installation and synthetic selectionchange may interact with pending native selection notifications.",
+  "packageRecord": "target/flat-list-packages-KklioP/qualification.json",
+  "wasmSha256": "870ec13e74dd9c3526c577cd4662f8ddde39771de0886d078daa4e28c6205323",
+  "browser": "bundled WebKit 26.5",
+  "reproductionCommand": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 BREDITOR_PERF_SELECTION_SCHEDULING=<mode> node scripts/measure-flat-list-performance.mjs target/flat-list-packages-KklioP/qualification.json",
+  "runs": [
+    {
+      "mode": "focus-task",
+      "behavior": "Yield one timer task after focus, then install the range and synchronously dispatch selectionchange.",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-TITNL5/measurement.json",
+      "sha256": "e0bfd8ce67bb54f3cac5ce09403217cfd23f92043a936423c87538b9d7a12d86",
+      "correctnessCasesPassed": 9,
+      "diagnostics": []
+    },
+    {
+      "mode": "native-selection",
+      "behavior": "Yield after focus; install the range and await a trusted browser selectionchange with a five-second failure timeout and no synthetic fallback.",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-pRgsP8/measurement.json",
+      "sha256": "913fdfc3a413402f1e427b3c6c2e0ec0b1e6f08cdaea229c4e5b283cd3a0570b",
+      "correctnessCasesPassed": 9,
+      "diagnostics": []
+    },
+    {
+      "mode": "synchronous",
+      "behavior": "Original same-task focus, range installation and synthetic event. Diagnostic bundle assets are byte-identical to the earlier performance-EuE2o8 catch-instrumented control.",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-KR89DK/measurement.json",
+      "sha256": "36e90dd1c57489bf58477b5e28a7cc170dc4b00ab6a23240051c265785551f40",
+      "correctnessCasesPassed": 9,
+      "diagnostics": []
+    }
+  ],
+  "toolingTests": {
+    "command": "BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1 node --test scripts/*.test.mjs",
+    "passed": 100,
+    "failed": 0,
+    "skipped": 0,
+    "coverage": [
+      "Exact source anchor required; unknown modes and source drift rejected.",
+      "All correctness assertions outside the selection block are unchanged.",
+      "Task ordering and synthetic-event rejection verified with a controlled event target.",
+      "Missing native event fails and removes the diagnostic listener without synthetic fallback.",
+      "Bundled WebKit positive control captures engine-created exceptions at all four queue catch sites."
+    ]
+  },
+  "originalFailure": {
+    "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-ldkYaY/measurement.json",
+    "sha256": "4db4fd776488a37890b8012947d547d29ddafdc0008961df42e784be9669715a",
+    "progress": "500 items, repetition 1: selectionMs",
+    "ownerReason": "queueUncertain",
+    "rootCauseIdentified": false,
+    "superseded": false
+  },
+  "conclusion": "Neither explicit ordering variant nor the original ordering failed in this bounded comparison. There is no deterministic reproduction or justified runtime fix from these results. Do not repeat identical runs indefinitely or add a shipping delay based on this evidence.",
+  "limits": [
+    "One zero-delay task does not prove all pending native notifications have drained.",
+    "A trusted selectionchange is browser-dispatched, not proof of physical keyboard input or OS IME.",
+    "The native event may be coalesced; this test checks the resulting edit and history, not one event per range mutation.",
+    "Diagnostic transforms alter scheduling and may hide an intermittent failure.",
+    "Nondefault selection timings include task waits; no performance comparison or qualification is claimed.",
+    "No native Safari, physical Japanese cancellation or spoken VoiceOver qualification was performed here.",
+    "No version change, push, publication or shipping artifact rebuild."
+  ]
+}
