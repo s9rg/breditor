@@ -45,8 +45,65 @@ fn nested_list_reframe_inverse_and_point_mapping_are_exact_and_guarded() -> Test
     let document = Document::try_new(context.schema(), root.clone(), context.limits())?;
     let operation = NestedListReframe::capture(&context, &document, 0, 1, vec![replacement])?;
     let edit = operation.apply(&context, &document)?.ok_or("missing edit")?;
-    assert!(crate::codec::OperationJsonCodecV6::new(context.clone())
-        .encode(&crate::operation::Operation::NestedListReframe(operation.clone())).is_err());
+    {
+        use crate::{
+            codec::{OperationJsonCodecV6, OperationJsonCodecV7},
+            operation::Operation,
+        };
+        let codec = OperationJsonCodecV7::new(context.clone());
+        let wrapped = Operation::NestedListReframe(operation.clone());
+        let json = codec.encode(&wrapped)?;
+        assert_eq!(codec.decode(&json)?, wrapped);
+        assert_eq!(codec.encode(&codec.decode(&json)?)?, json);
+        assert!(OperationJsonCodecV6::new(context.clone()).decode(&json).is_err());
+        let inverse = Operation::NestedListReframe(edit.inverse().clone());
+        assert_eq!(codec.decode(&codec.encode(&inverse)?)?, inverse);
+        let value: serde_json::Value = serde_json::from_str(&json)?;
+        for changed in [
+            {
+                let mut v = value.clone();
+                v["formatVersion"] = 6.into();
+                v
+            },
+            {
+                let mut v = value.clone();
+                v["unexpected"] = true.into();
+                v
+            },
+            {
+                let mut v = value.clone();
+                v["schemaFingerprint"] =
+                    "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+                        .into();
+                v
+            },
+            {
+                let mut v = value.clone();
+                v["operation"]["start"] = (-1).into();
+                v
+            },
+            {
+                let mut v = value.clone();
+                v["operation"]["unexpected"] = true.into();
+                v
+            },
+            {
+                let mut v = value.clone();
+                v["operation"]["replacement"]["children"] = serde_json::json!([]);
+                v
+            },
+        ] {
+            assert!(codec.decode(&serde_json::to_string(&changed)?).is_err());
+        }
+        let duplicate = json.replace("\"start\":0", "\"start\":0,\"start\":0");
+        assert_ne!(duplicate, json);
+        assert!(codec.decode(&duplicate).is_err());
+    }
+    assert!(
+        crate::codec::OperationJsonCodecV6::new(context.clone())
+            .encode(&crate::operation::Operation::NestedListReframe(operation.clone()))
+            .is_err()
+    );
     {
         use crate::{
             operation::Operation,

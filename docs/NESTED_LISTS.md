@@ -52,7 +52,11 @@ claim until end-to-end support is qualified.
 - Experimental `NestedListReframe` primitive with complete root-subtree guards,
   exact depth-first block preservation, schema/limit validation, inverse and
   point relocation. Session transactions and undo/redo support the operation;
-  durable codec/replay integration remains required before action exposure.
+  full durable session/replay integration remains required before browser exposure.
+- `OperationJsonCodecV7` explicitly admits nested reframes, with schema-fingerprint
+  binding, bounded raw-tree preflight and canonical encoding. Older formats stay
+  closed. Transaction, commit and session checkpoint V7 codecs remain outstanding;
+  an operation round-trip alone is not a reload/recovery qualification.
 - Rust `IndentListItemsAction` moves a sibling run with descendants, preserves
   ordered starts, merges compatible trailing child sections, and previews the
   complete result against limits before preparing one history unit.

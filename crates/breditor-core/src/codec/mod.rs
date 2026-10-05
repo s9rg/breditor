@@ -434,6 +434,16 @@ mod operation_json_v4_tests;
 mod operation_json_v5;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_json_v6;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_json_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_payload_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_v7_error;
+#[cfg(feature = "experimental-structural-properties")]
+pub use operation_json_v7::{OPERATION_V7_FORMAT_VERSION, OperationJsonCodecV7};
+#[cfg(feature = "experimental-structural-properties")]
+pub use operation_v7_error::OperationV7CodecError;
 mod operation_payload_v1;
 mod operation_payload_v2;
 #[cfg(test)]

@@ -19,7 +19,7 @@ use super::OperationValidationError;
 /// structural kinds have no V1–V3 wire tag; operation V4 admits block-kind
 /// changes only and V5 admits text-block splices and replacements. Flat-list
 /// reframing and flat-list text edits are admitted by V6. Nested-list reframing
-/// has no durable encoding yet.
+/// is admitted separately by V7.
 /// Adding a runtime kind is an
 /// additive Rust API change, but does not silently extend the closed V1 wire
 /// union; admitting a new tag requires an explicit format-version decision.
@@ -27,7 +27,7 @@ use super::OperationValidationError;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationKind {
-    /// Experimental nested container edit; not admitted by existing wire versions.
+    /// Experimental nested container edit, admitted only by V7 and later formats.
     #[cfg(feature = "experimental-structural-properties")]
     NestedListReframe,
     /// Experimental text replacement with explicit flat-list result structure.

@@ -14,8 +14,8 @@ use crate::{
 /// Reframes a nonempty root-child span without changing any contained text block.
 ///
 /// Preserves the exact depth-first text-block sequence while changing containers.
-/// Transactions support this operation, but existing durable operation codecs do
-/// not. Complete source guards and final document limits are checked.
+/// Transactions and operation V7 support this operation; earlier codecs do not.
+/// Complete source guards and final document limits are checked.
 /// Each returned edit contains its exact inverse and snapshot-local point mapping.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NestedListReframe {
