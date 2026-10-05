@@ -1,0 +1,65 @@
+{
+  "status": "native-reload-and-recovery-scenarios-passed",
+  "runtimeCheckpoint": "62b2e90",
+  "artifact": "target/list-demo-qualification",
+  "wasmSha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671",
+  "origin": "http://127.0.0.1:4298",
+  "method": "Native Safari and Chrome through CUA, native toolbar/keyboard actions, reload, download and OS file chooser. No injected DOM events or direct storage writes. Observations retained in task tool history; backup identity independently read from the downloaded file.",
+  "chrome": {
+    "versionFamily": "152",
+    "initialState": "Fresh sample on this test origin: Heading 2, two bullet items, numbered items starting at 3, no undo/redo.",
+    "actions": [
+      "Select the heading using click, Command-Left and Command-Shift-Right. Apply Heading 3, Bullet list, Numbered list and Remove list. Observe unchanged selected text and heading rank through each transition.",
+      "Undo and redo Remove list; observe numbered heading and unwrapped Heading 3 respectively.",
+      "Apply Link https://example.com/breditor-latest to the selected heading. Close Link panel and use toolbar Undo; text remains selected, link is absent, Redo enabled.",
+      "After All changes saved, reload. Heading 3, selected text and Redo survive. Redo restores the Link. Reopen Link panel and verify exact URL.",
+      "Undo the Link again, download a session backup. Browser reports Done; filesystem confirms the new 8153-byte JSON.",
+      "Import that exact downloaded file using the native file chooser. Recovered editor opens with autosave off, Heading 3 and pending Redo; main editor remains unchanged.",
+      "Redo in recovered editor and verify exact Link URL. Close recovery and reload the page: main editor still has Heading 3 without a link and with its pending Redo. Recovered changes did not overwrite main autosave."
+    ],
+    "inputCaveats": [
+      "Command-Z while focus was on the Link toolbar button did not mutate history; toolbar Undo was used explicitly. This is not reported as an editor-focused shortcut failure.",
+      "Native Go-to-file input produced transient stale/incorrect path observations and one paste timeout. Import was performed only after the normal chooser showed the exact current filename and matching preview. No historical backup was imported."
+    ]
+  },
+  "backup": {
+    "path": "/Users/s/Downloads/breditor-session-backup (1).json",
+    "bytes": 8153,
+    "sha256": "01acf3c9e79202e20c41691e94dd7dc6e6a6d15774a463370480a1a42df6fa62",
+    "formatVersion": 6,
+    "cursor": 4,
+    "entries": 5,
+    "currentRevision": "14",
+    "history": ["Heading 2 to Heading 3", "Wrap bullet", "Convert numbered", "Remove list", "Apply Link"],
+    "selection": {"anchorPath": [0, 0], "anchorUtf16Offset": 0, "focusPath": [0, 0], "focusUtf16Offset": 24},
+    "content": "Only the disposable demonstration text and test Link; retained locally, not uploaded to an external service."
+  },
+  "safari": {
+    "version": "26.6.2",
+    "crossBrowserRecovery": [
+      "Open the fresh main sample on the same test origin in Safari: Heading 2 and no undo/redo.",
+      "Import the Chrome-downloaded file through the native picker after verifying its exact filename and preview. Recovered editor shows Heading 3, original list text/numbering, selection and pending Redo. Main remains Heading 2. Recovery autosave is off.",
+      "Redo restores Link; reopen the panel and verify https://example.com/breditor-latest.",
+      "Undo all five imported actions individually. Observe Link removal, numbered Heading 3, bullet Heading 3, unwrapped Heading 3, original Heading 2 with Undo disabled. Selected heading text persists.",
+      "Redo all five individually. Observe Heading 3, bullet, numbered, unwrapped Heading 3, exact Link with Redo disabled. Other list content and numbering remain unchanged.",
+      "Close recovered session, acknowledge discarding only these disposable recovery edits. Main remains untouched Heading 2."
+    ],
+    "nativeAutosave": [
+      "Click Write a first draft, Command-Right, type !; numbered item 3 changes once, item 4 is unchanged. Undo restores the original text and enables Redo.",
+      "Reload the saved main editor. Original text and pending Redo survive; Redo restores Write a first draft! with correct surrounding text and numbering.",
+      "Undo restores the sample text again. All changes saved; no recovered-session content leaked into main autosave."
+    ]
+  },
+  "sideEffects": {
+    "downloadRetained": "/Users/s/Downloads/breditor-session-backup (1).json",
+    "testOriginStorage": "Only the test origin 127.0.0.1:4298 now has these synthetic saved histories in the two native browsers. Existing demo origins were not modified.",
+    "systemSettingsChanged": false,
+    "shippingArtifactsChanged": false
+  },
+  "limits": [
+    "Native visible selection and replay checked; exact UTF-16 backup endpoints independently inspected. This is not exhaustive coverage of every direction, format combination or document size.",
+    "No physical Japanese IME or spoken VoiceOver qualification. Prior permissions remain, but actual input/speech participation is still required.",
+    "The independent intermittent queueUncertain fault did not reproduce and is not declared fixed.",
+    "Delivery choice, reviewed package budgets, responsiveness boundaries and final release qualification remain open. Nothing pushed or published."
+  ]
+}

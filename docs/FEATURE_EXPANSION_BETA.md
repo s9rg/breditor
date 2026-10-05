@@ -31,8 +31,12 @@ The beta is **not release-qualified**. The remaining gates are:
   clipboard checks also passed: single-item copy/cut/paste and cross-item
   copy/cut in both directions, including exact payloads and one-step undo.
   See [native clipboard/control evidence](qualification/2026-10-04-latest-native-clipboard-and-selection-control.json).
-  Native persistence/recovery and complete Chrome formatting checks remain;
-  automation has not established reliable IME/VoiceOver control.
+  Latest-candidate native reload retained pending Redo in both browsers. Chrome
+  backup export/import and Chrome-to-Safari recovery passed, including all five
+  heading/list/Link history steps and recovery isolation from main autosave.
+  See [native reload/recovery evidence](qualification/2026-10-04-native-reload-and-cross-browser-recovery.json)
+  for exact scenarios and limits. Physical IME and spoken VoiceOver remain open;
+  automation has not established reliable control of either.
 - The retained intermittent WebKit `queueUncertain` fault. Passing reruns and
   improved diagnostics have not identified its cause or demonstrated a fix.
   The original unchanged failing bundle completed three native Safari runs and
