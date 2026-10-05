@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "cc8f1d7",
+  "status": "bounded-native-safari-reload-and-bidirectional-recovery-passed",
+  "method": "Native Safari and Chrome apps operated through CUA. Toolbar edits, Command-R, browser downloads and native file pickers; observations from native accessibility trees. Backup metadata and SHA-256 independently checked from downloaded files. No DOM mutation or synthetic browser-event dispatch.",
+  "fixtureUrl": "http://127.0.0.1:4311/",
+  "bundle": "target/list-opt-in-demo-SOvaTZ/bundle",
+  "proof": {
+    "sha256": "49766c85dc1013eba116819e79812d1d8404771739eb00902e3054fa54bb2586",
+    "archiveSha256": "f0dc5eb06aa1ea57a28aec91fadc0e76a1e4dd5f946acea37550606d85529dae",
+    "wasmSha256": "1f50aeae05b2f8ac0030e2b157d515f3f279adf4971e90081a85daece196eb46",
+    "workspaceEditorModules": 0,
+    "installedModules": 77
+  },
+  "browsers": {"safari": "26.6.2", "chrome": "152.0.0.0"},
+  "safariReload": [
+    "Fresh main demo selected Make room for your ideas using native caret keys, changed Heading 2 to 4, wrapped it in a numbered list starting at 1, then Undo removed only the wrapper.",
+    "Command-R restored heading 4, selected heading text, enabled Undo and pending Redo, and All changes saved. Redo restored the numbered wrapper with rank 4 and marker 1; Undo removed it again."
+  ],
+  "chromeToSafari": [
+    "Imported exact Chrome download breditor-session-backup (2).json through the native picker. Recovery showed heading 3, selected heading text, pending Redo and Autosave is off. Primary Safari document remained heading 4 with its own numbered-list Redo.",
+    "Recovered Redo restored bullet-wrapped heading 3. Undo removed the wrapper; another Undo restored heading 2 and disabled Undo. Two Redos restored heading 3 then its bullet wrapper. All cases retained the selected heading text and other sample items.",
+    "Command-R removed transient recovery and restored primary Safari heading 4, selected heading text, pending numbered-list Redo and All changes saved. Imported history did not overwrite Safari autosave."
+  ],
+  "safariToChrome": [
+    "Downloaded primary Safari session; Safari Downloads showed breditor-session-backup-3.json, 5 KB. This is a different session from the imported Chrome backup: heading 4 with pending numbered wrapper, not heading 3 with pending bullet wrapper.",
+    "Imported exact Safari download into existing Chrome demo. Recovered heading 4, selected heading text, pending Redo and Autosave is off appeared separately from primary Chrome heading 3 and its own bullet-wrapper Redo.",
+    "Recovered Redo restored numbered heading 4 with marker 1. Undo removed wrapper; another Undo restored heading 2 and disabled Undo. Selected heading text remained visible throughout.",
+    "Command-R removed transient recovery and restored primary Chrome heading 3, selected heading text, enabled Undo/Redo and All changes saved. Safari history did not overwrite Chrome autosave."
+  ],
+  "backups": [
+    {"createdIn": "Chrome", "fileName": "breditor-session-backup (2).json", "sha256": "a0459e9990ba9d282a1a5b769a1622dc7ea41247de20d069cb1c8737333c1d48", "bytes": 4839, "formatVersion": 6, "currentRevision": "9", "cursor": 1, "entries": 2},
+    {"createdIn": "Safari", "fileName": "breditor-session-backup-3.json", "sha256": "de813e33e7d67e751eee9d9865fec3b4efda5d775ac3ea2cbad9ecf7632af36f", "bytes": 4858, "formatVersion": 6, "currentRevision": "9", "cursor": 1, "entries": 2}
+  ],
+  "serializedSelection": {"kind": "range", "anchor": {"kind": "text", "textPath": [0, 0], "utf16Offset": 0, "affinity": "after"}, "focus": {"kind": "text", "textPath": [0, 0], "utf16Offset": 24, "affinity": "before"}},
+  "limits": [
+    "Bounded agent-operated native checks, not human attestation or broad browser certification. AX selected text alone does not prove native anchor/focus direction.",
+    "Current cross-browser cases cover two-entry heading/list histories, not every formatting property or session shape. Earlier richer five-step history evidence remains separate.",
+    "No input-source settings changed; no new physical IME or spoken VoiceOver evidence.",
+    "No historical intermittent WebKit queueUncertain fault reproduced or fixed here; size budgets and the complete release gate remain open.",
+    "No executable code, wire format or shipping artifacts changed. No push or publication."
+  ]
+}

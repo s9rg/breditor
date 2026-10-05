@@ -79,11 +79,15 @@ The beta is **not release-qualified**. The remaining gates are:
   clipboard, typing, structural formatting and Link history checks (live owner
   revision 54, no faults/pending events/drops), plus autosave reload with pending
   Redo and native backup export/import. Recovered history remains isolated from
-  primary autosave. Human attestation, current-artifact native Safari persistence,
-  cross-browser backup recovery and IME/VoiceOver qualification remain open; functional
+  primary autosave. Native Safari now also retains heading/list history and
+  pending Redo across reload. Backups exported by Chrome and Safari recover in
+  the other browser, with both history steps replayed and original autosaves
+  unchanged after recovery edits and reload. Human attestation and IME/VoiceOver
+  qualification remain open; these are bounded cases, not broad browser certification. Functional
   checks do not approve larger budgets or a release. See
   [native opt-in Safari evidence](qualification/2026-10-05-opt-in-native-safari.json),
   [native opt-in Chrome and recovery evidence](qualification/2026-10-05-opt-in-native-chrome.json),
+  [bidirectional native recovery evidence](qualification/2026-10-05-opt-in-native-cross-browser-recovery.json),
   [opt-in delivery evidence](qualification/2026-10-05-opt-in-flat-list-package.json)
   and [installed-demo evidence](qualification/2026-10-05-opt-in-full-demo.json).
 - Large-list responsiveness and the complete final release gate. Current local
