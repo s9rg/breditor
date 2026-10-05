@@ -18,6 +18,13 @@ required for the agreed experimental beta scope: headings and flat lists, not
 nested lists, tables, images, collaboration or general rich paste. The checkpoint
 does not authorize publication or claim production/release qualification.
 
+Subsequent user direction resumed reliability testing. The current opt-in
+candidate passes a clean 78-case integration run, three new two-tab conflict
+cases, 27 repeated WebKit keyboard/history cases and 90 diagnostic lifecycle
+cycles. See the reliability checkpoint below. Size review, Japanese-input and
+final release checks remain deferred; the older intermittent WebKit fault is
+not considered fixed by these passing runs.
+
 The latest Rust change reuses canonical immutable list-item wrappers during
 flat-list layout construction (see the October 5 wrapper-reuse checkpoint below).
 The prior path-reuse implementation checkpoint is `cc8f1d7`. Headings, flat lists,
@@ -2532,3 +2539,32 @@ reviewed budgets and the complete release gate remain open. Native qualification
 of other behaviors on older packages is not automatically transferred. Exact
 artifacts and verification are in
 [keyboard-return fix evidence](qualification/2026-10-05-toolbar-keyboard-return-fix.json).
+
+## Reliability baseline and stale-tab recovery — 2026-10-05
+
+The retained `sBVY1Q` installed opt-in candidate passes all **78 existing demo
+cases in one uninterrupted run** across Chromium, Firefox and WebKit. This run
+uses a command-line 600-second overall allowance, not longer individual test
+timeouts, changed assertions or retries. The older 240-second timeout record
+remains retained. No test configuration or runtime was changed for this run.
+
+A new `persistence-conflict.spec.ts` adds the flat-list profile's own two-tab
+conflict/recovery regression. In all three engines, a stale tab cannot replace
+the winner's saved heading; its unsaved bullet conversion can be undone,
+exported with pending Redo, recovered independently and replayed. Retrying the
+conflicted save stays paused, and reload still restores the winner's document.
+These **three additional cases** pass separately from the 78-case baseline.
+
+The nine WebKit toolbar/typing-history cases also pass three deliberate rounds:
+**27 passes, no failures, skips, flakiness or retries**. Separately, bounded
+diagnostic instrumentation on the paired private package passes **90 cycles**
+(30 each at 10/100/500 items), covering edit, exact Undo, backup, teardown,
+reopening and Redo with no recorded queue diagnostics. That same-page synthetic
+exercise is not a memory-leak proof, native-input test or latency qualification.
+
+This pass found no new runtime failure. The historical intermittent
+`queueUncertain` fault remains unresolved, and these bounded results do not
+establish release-wide reliability. Runtime source, shipping artifacts and
+system settings are unchanged. Only tests and qualification documentation were
+added; nothing was pushed or published. Exact reports, commands and limits are
+recorded in [reliability evidence](qualification/2026-10-05-reliability-baseline.json).

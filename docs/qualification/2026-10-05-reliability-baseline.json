@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-05",
+  "sourceHead": "b35d877",
+  "status": "bounded-reliability-checks-passed",
+  "artifacts": {
+    "consumerRecord": "target/flat-list-opt-in-sBVY1Q/consumer-qualification.json",
+    "archiveSha256": "48993d70baeff0cfedc96338a5f679bdaa4b7635e0a1f42da6448bdf1a6a09e2",
+    "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+    "runtimeProofSha256": "4a2514e08984be47ede751eb504c0ecb50f2bc6f92ad662781331a6e4fbcea91",
+    "workspaceEditorModules": 0
+  },
+  "typecheck": "npm run typecheck:demo:lists passed",
+  "runs": [
+    {
+      "kind": "complete-existing-integration-suite",
+      "command": "BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-sBVY1Q/consumer-qualification.json npx playwright test -c playwright.lists-opt-in.config.ts --global-timeout=600000",
+      "report": "target/list-opt-in-demo-RXGDEw/report.json",
+      "sha256": "72aba125409361ed3ffb6d24475709380ba5abc5450530d49339827cdd3b3856",
+      "passed": 78, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+      "note": "All pre-existing cases completed in one run. Only the overall timeout was overridden; individual case timeouts and assertions were unchanged. Does not include the subsequently added conflict test."
+    },
+    {
+      "kind": "new-flat-list-stale-tab-conflict",
+      "command": "BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-sBVY1Q/consumer-qualification.json npx playwright test -c playwright.lists-opt-in.config.ts tests/lists/persistence-conflict.spec.ts --global-timeout=180000",
+      "report": "target/list-opt-in-demo-6UzxMo/report.json",
+      "sha256": "46e33699b7bff761cef0365596bb471f4345fbb676973597b077bfc4e4d7c4b2",
+      "passed": 3, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+      "note": "One new scenario in Chromium, Firefox and WebKit; independently collected after the baseline."
+    },
+    {
+      "kind": "repeated-webkit-keyboard-and-history",
+      "command": "BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-sBVY1Q/consumer-qualification.json npx playwright test -c playwright.lists-opt-in.config.ts tests/lists/toolbar-keyboard.spec.ts tests/lists/typing-history.spec.ts --project=webkit --repeat-each=3 --global-timeout=600000",
+      "report": "target/list-opt-in-demo-fWOmY2/report.json",
+      "sha256": "257a15e0ad37ca193fb38e9d7897d967f25a2954c7e36fa8f3ea9feb6002cc08",
+      "passed": 27, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+      "note": "Three planned rounds of nine cases, not retries of failed tests. Includes roving focus, Enter/Space activation, directional selection, pointer return, shortcuts, reload, grouping and history."
+    }
+  ],
+  "conflictScenario": [
+    "Two tabs load the same initial slot; the winner changes heading rank and completes autosave.",
+    "The stale tab converts the selected heading to a bullet list; autosave pauses with session_checkpoint.conflict.",
+    "Undo and export retain one V6 entry with cursor zero and pending Redo.",
+    "Import into independent recovery with autosave off; Redo exactly restores the stale tab's list HTML without changing the winner.",
+    "Retrying the stale tab's save remains paused; reloading the winner restores its exact saved HTML and removes transient recovery."
+  ],
+  "webkitLifecycleStress": {
+    "command": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 BREDITOR_PERF_OWNER_REPETITIONS=30 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-scetuS/qualification.json",
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-7rKBeS/performance-DSOgdw/measurement.json",
+    "sha256": "82ea9a6cdfa646a7000289000a24873684d4befaf677a353b0fc70e2554f6252",
+    "version": "26.5",
+    "cycles": 90,
+    "itemCounts": [10, 100, 500],
+    "cyclesPerSize": 30,
+    "diagnostics": [],
+    "selectionScheduling": "synchronous",
+    "instrumented": true,
+    "checks": "Exact document and selection after edit/Undo, checkpoint export, disposal, reopening and Redo; editor/toolbar children removed on teardown.",
+    "note": "Synthetic same-page owner churn on the paired private package, not the React demo. No autosave. Timings are not used as performance qualification."
+  },
+  "limits": [
+    "No new runtime failure found in these bounded runs. This does not identify or fix the historical intermittent WebKit queueUncertain fault.",
+    "No memory-leak proof, physical IME, spoken VoiceOver, multi-device or sustained real-user workload qualification.",
+    "Full release checks, package-size approval and Japanese-input qualification remain deferred. Reliability testing was resumed by the user.",
+    "No runtime source, wire format, shipping artifact or system setting changed; no push or publication."
+  ]
+}
