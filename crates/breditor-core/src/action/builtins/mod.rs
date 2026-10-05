@@ -1,6 +1,25 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
 
 #[cfg(feature = "experimental-structural-properties")]
+mod clear_nested_list_inline_formats;
+#[cfg(feature = "experimental-structural-properties")]
+mod nested_list_format;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod nested_list_format_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod set_nested_list_inline_format;
+#[cfg(feature = "experimental-structural-properties")]
+mod toggle_nested_list_inline_format;
+#[cfg(feature = "experimental-structural-properties")]
+pub use clear_nested_list_inline_formats::{
+    ClearNestedListInlineFormatsAction, clear_nested_list_inline_formats_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use set_nested_list_inline_format::SetNestedListInlineFormatAction;
+#[cfg(feature = "experimental-structural-properties")]
+pub use toggle_nested_list_inline_format::ToggleNestedListInlineFormatAction;
+
+#[cfg(feature = "experimental-structural-properties")]
 mod clear_flat_list_inline_formats;
 mod clear_inline_formats;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
@@ -44,13 +63,13 @@ mod insert_flat_list_text;
 #[cfg(feature = "experimental-structural-properties")]
 pub use insert_flat_list_text::{InsertFlatListTextAction, insert_flat_list_text_action_id};
 #[cfg(feature = "experimental-structural-properties")]
-mod unwrap_list;
-#[cfg(feature = "experimental-structural-properties")]
-mod wrap_list;
-#[cfg(feature = "experimental-structural-properties")]
 mod indent_list_items;
 #[cfg(feature = "experimental-structural-properties")]
 mod insert_nested_list_text;
+#[cfg(feature = "experimental-structural-properties")]
+mod unwrap_list;
+#[cfg(feature = "experimental-structural-properties")]
+mod wrap_list;
 #[cfg(feature = "experimental-structural-properties")]
 pub use insert_nested_list_text::{InsertNestedListTextAction, insert_nested_list_text_action_id};
 #[cfg(feature = "experimental-structural-properties")]

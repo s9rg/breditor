@@ -139,7 +139,7 @@ fn plan(
         HistoryIntent::Record,
     )))
 }
-fn invalid_properties(indicator: &ActionStateIndicator) -> ActionEvaluation {
+pub(super) fn invalid_properties(indicator: &ActionStateIndicator) -> ActionEvaluation {
     ActionEvaluation::new(
         disabled("breditor/invalid-inline-format-properties"),
         ActionStateIndicator::new(ActionActivation::Inactive, indicator.value().clone()),
@@ -151,10 +151,20 @@ fn collapsed(
     request: &FormatRequest<'_>,
 ) -> Result<ActionEvaluation, ActionFault> {
     let source = capture(state, range.start().paragraph_path())?;
+    collapsed_fragment(state, range, request, &source.text)
+}
+
+/// Shared format policy only; callers independently admit their structural scope.
+pub(super) fn collapsed_fragment(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    request: &FormatRequest<'_>,
+    source: &TextFragment,
+) -> Result<ActionEvaluation, ActionFault> {
     let affinity = format_rewrite_source_range(state, "breditor/list-format-selection-fault")?
         .focus()
         .affinity();
-    let formats = effective_typing_formats(state, &source.text, range.start().offset(), affinity)?;
+    let formats = effective_typing_formats(state, source, range.start().offset(), affinity)?;
     let indicator = request.collapsed_indicator(&formats)?;
     if !request.valid(state) {
         return Ok(invalid_properties(&indicator));

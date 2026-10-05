@@ -85,8 +85,15 @@ replacement under arbitrary admitted item nesting while guarding the containing
 root and preserving wrappers. V7 operation and session persistence support this
 primitive; mixed indent/text/outdent histories are tested at every cursor.
 `InsertNestedListTextAction` now supports same-block typing with format inheritance,
-exact caret placement and merged typing history. Cross-block typing, formatting
-actions, structural text edits and browser integration remain outstanding.
+exact caret placement and merged typing history. Nested toggle/set/clear inline
+formatting now traverses selected blocks in depth-first order, retains directional
+logical endpoints, and supports pending formats at carets. Multi-block edits use
+one guarded splice per changed block in a single history event, with V7 recovery.
+This initial implementation is bounded by the transaction operation budget and
+validates intermediate previews: replacing it with final-state-only batch
+validation remains necessary to avoid rejecting a valid final document near
+aggregate limits. Cross-block typing, structural text edits and browser integration
+remain outstanding.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

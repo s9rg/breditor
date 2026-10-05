@@ -145,7 +145,7 @@ fn evaluate(state: &EditorState, input: &InsertTextInput) -> Result<ActionDecisi
         },
     )))
 }
-fn is_limit(error: &NestedListTextSpliceError) -> bool {
+pub(super) fn is_limit(error: &NestedListTextSpliceError) -> bool {
     matches!(
         error,
         NestedListTextSpliceError::Validation(_)
