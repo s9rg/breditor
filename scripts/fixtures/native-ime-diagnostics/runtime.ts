@@ -1,6 +1,11 @@
 /** Bounded local-only diagnostics for disposable synthetic input. No persistence. */
-const entries: unknown[] = [];
+const entries: {site: string; timeMs: number; message?: string; stack?: string; details?: unknown}[] = [];
 let dropped = 0;
+// Put exceptions first so native accessibility readers do not truncate the
+// actual failure behind hundreds of earlier event/DOM snapshots.
+function diagnosticSnapshot(): string {
+  return JSON.stringify({failures: entries.filter(entry => !entry.site.startsWith("event:")), dropped, entries}, null, 2);
+}
 export function recordImeDiagnostic(site: string, error?: unknown, details?: unknown): void {
   try {
     if (entries.length >= 1024) { dropped++; return; }
@@ -12,12 +17,12 @@ export function recordImeDiagnostic(site: string, error?: unknown, details?: unk
     entries.push({site, timeMs: performance.now(), message, stack, details});
     if (!site.startsWith("event:")) {
       const output = document.querySelector<HTMLTextAreaElement>('[aria-label="Local IME diagnostics"]');
-      if (output) output.value = JSON.stringify({dropped, entries}, null, 2);
+      if (output) output.value = diagnosticSnapshot();
     }
   } catch { /* Diagnostics cannot affect queue or recovery semantics. */ }
 }
 
-function shape(host: Element) {
+function shape(host: Element, event: Event) {
   let count = 0;
   const walk = (node: Node): unknown => {
     if (++count > 200) return "<truncated>";
@@ -35,7 +40,17 @@ function shape(host: Element) {
     return {path, offset};
   };
   const selection = document.getSelection();
-  return {dom: walk(host), selection: selection && {
+  let targetRanges: unknown;
+  if (event instanceof InputEvent) {
+    try {
+      targetRanges = Array.from(event.getTargetRanges()).slice(0, 4).map(range => ({
+        start: point(range.startContainer, range.startOffset),
+        end: point(range.endContainer, range.endOffset),
+      }));
+    } catch { targetRanges = "<unavailable>"; }
+  }
+  return {targetRanges, focusedTag: document.activeElement?.localName,
+    dom: walk(host), selection: selection && {
     anchor: point(selection.anchorNode, selection.anchorOffset),
     focus: point(selection.focusNode, selection.focusOffset),
   }};
@@ -51,7 +66,7 @@ for (const type of ["compositionstart", "compositionupdate", "compositionend", "
       inputType: event instanceof InputEvent ? event.inputType : undefined,
       composing: event instanceof InputEvent ? event.isComposing : undefined,
       dataLength: event instanceof InputEvent || event instanceof CompositionEvent ? event.data?.length : undefined,
-      ...shape(host)});
+      ...shape(host, event)});
   }, true);
 }
 window.addEventListener("DOMContentLoaded", () => {
@@ -61,7 +76,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const button = document.createElement("button"); button.textContent = "Capture IME diagnostics";
   const output = document.createElement("textarea"); output.readOnly = true;
   output.setAttribute("aria-label", "Local IME diagnostics");
-  button.addEventListener("click", () => { output.value = JSON.stringify({dropped, entries}, null, 2); });
+  button.addEventListener("click", () => { output.value = diagnosticSnapshot(); });
   document.querySelector("main")?.append(button, output);
   const replay = document.createElement("button"); replay.textContent = "Run scripted composition matrix";
   const results = document.createElement("textarea"); results.readOnly = true;
@@ -83,7 +98,7 @@ window.addEventListener("DOMContentLoaded", () => {
       results.value = JSON.stringify({status: "failed", nativeImeQualified: false, rows, error: String(error)}, null, 2);
     }
     // One run per disposable page preserves failure evidence and bounded logs.
-    output.value = JSON.stringify({dropped, entries}, null, 2);
+    output.value = diagnosticSnapshot();
   });
   document.querySelector("main")?.append(replay, results);
 });

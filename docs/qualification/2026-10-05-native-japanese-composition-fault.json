@@ -63,6 +63,24 @@
     "nativeImeQualified": false,
     "nextRequiredEvidence": "A physical Japanese IME failure on the instrumented fixture, including its automatically captured Local IME diagnostics. Synthetic sequences do not reproduce the original fault."
   },
+  "minifiedFollowup": {
+    "status": "original-fault-still-not-reproduced",
+    "firstArtifact": "target/native-ime-diagnostic-G1OyRC",
+    "firstArtifactResults": "30 synthetic cases passed in each of Chromium, Firefox, bundled WebKit and native Safari (120 total)",
+    "captureArtifact": "target/native-ime-diagnostic-bQENb4",
+    "captureUrl": "http://127.0.0.1:4307/manual-clipboard.html",
+    "buildCommand": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-bfniW0 node scripts/build-native-ime-diagnostic.mjs --minify",
+    "checkCommand": "node scripts/check-native-ime-diagnostic.mjs target/native-ime-diagnostic-bQENb4",
+    "captureArtifactResults": "Two complete runs in Chromium, Firefox and bundled WebKit: 180 synthetic cases passed, no uncaught page errors, no diagnostic errors/drops. All 180 beforeinput target ranges per browser run captured.",
+    "runtimeUnitTests": "6 passed, including failure-first output and hostile error handling; strict runtime typecheck passed",
+    "bundleSha256": "414307c9933a1e20cf8b7d20a32f90d4e8aa681c1a77866348a0eb412d590161",
+    "runtimeSha256": "2d7a04b210388ad83e32d1deac7ed1ce7b9fdaef6e2859c6dcf5722fd42edabc",
+    "runnerSha256": "0f872f9ba7d4d9edd1d67c139a5c1da06046add4065379ddea5fa486bc3481a6",
+    "captureImprovements": ["exceptions appear before long event logs to avoid native accessibility truncation hiding failures", "input target-range paths/offsets and focused element tag are recorded without text content"],
+    "nativeImeQualified": false,
+    "productionFix": false,
+    "next": "Fresh capture fixture open in native Safari with editor focused. Physical Japanese-input reproduction still required; input-source settings unchanged in this followup."
+  },
   "limitations": [
     "Capture occurred after the user's interaction; exact keystrokes, insertion position, DOM mutations and event.data were not recorded.",
     "compositionupdate is not among this recorder's observed event kinds.",

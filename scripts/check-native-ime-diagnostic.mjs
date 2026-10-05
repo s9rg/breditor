@@ -37,6 +37,10 @@ try {
       const diagnostics = JSON.parse(await page.getByRole("textbox", {name: "Local IME diagnostics"}).inputValue());
       assert.equal(diagnostics.dropped, 0);
       assert.equal(diagnostics.entries.filter(entry => !entry.site.startsWith("event:")).length, 0);
+      assert.deepEqual(diagnostics.failures, []);
+      const beforeInputs = diagnostics.entries.filter(entry => entry.site === "event:beforeinput");
+      assert.equal(beforeInputs.length, 180);
+      assert.ok(beforeInputs.every(entry => entry.details.targetRanges.length === 1));
       assert.deepEqual(errors, []);
     } catch (error) {
       process.exitCode = 1;
