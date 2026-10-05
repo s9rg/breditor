@@ -33,9 +33,13 @@ async function selectPrefix(editor: Locator): Promise<void> {
 }
 
 /** DOM-path observations distinguish selection direction, not just range text. */
-async function selection(editor: Locator) {
-  return editor.evaluate(host => {
+async function selection(editor: Locator, allowPendingRestoration = false) {
+  return editor.evaluate((host, allowPendingRestoration) => {
     const selected = document.getSelection()!;
+    // A blur can clear native selection before the controller's deferred
+    // restoration. Only polling callers may observe that intermediate state;
+    // final snapshots still reject selection outside the editor.
+    if (allowPendingRestoration && (!host.contains(selected.anchorNode) || !host.contains(selected.focusNode))) return null;
     const path = (node: Node | null) => {
       const indices: number[] = [];
       while (node !== host) {
@@ -47,7 +51,7 @@ async function selection(editor: Locator) {
     };
     return {anchor: path(selected.anchorNode), anchorOffset: selected.anchorOffset,
       focus: path(selected.focusNode), focusOffset: selected.focusOffset};
-  });
+  }, allowPendingRestoration);
 }
 
 async function begin(editor: Locator, mode: "commit" | "cancel" | "invalid"): Promise<void> {
@@ -83,76 +87,84 @@ async function end(editor: Locator, data: string): Promise<void> {
   }, data);
 }
 
-test("scripted list-heading composition commits once and retains exact history through V6 reload", async ({page}) => {
-  let {shell, editor, status} = await open(page);
-  await selectPrefix(editor);
-  await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Heading 3", exact: true}).click());
-  await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Bold", exact: true}).click());
-  await selectPrefix(editor);
-  await expect(status).toHaveText("All changes saved.");
-  const original = await editor.innerHTML(), originalSelection = await selection(editor);
-  // Observe before opening the lease: composition admission may itself dirty
-  // the checkpoint, whose save must remain deferred until settlement.
-  await expectAutosavedAction(status, async () => {
-    await begin(editor, "commit");
-    await expect(editor.locator("ol li h3 strong")).toHaveText("漢字🙂");
-    await expect(editor.locator("ol")).toHaveAttribute("start", "3");
-
-    // A second view reads the durable slot while provisional DOM remains leased.
-    // No provisional composition text or structural state may become durable.
-    const peer = await page.context().newPage();
-    try {
-      const durable = await open(peer);
-      expect(await durable.editor.innerHTML()).toBe(original);
-    } finally { await peer.close(); }
-    await end(editor, "漢字🙂");
-  });
-  const committed = await editor.innerHTML(), committedSelection = await selection(editor);
-  await editor.evaluate(host => host.dispatchEvent(new InputEvent("input", {
-    bubbles: true, inputType: "insertCompositionText", data: "漢字🙂", isComposing: false,
-  })));
-  expect(await editor.innerHTML()).toBe(committed);
-  const committedBackup = await backup(page, shell);
-  expect(JSON.parse(committedBackup).formatVersion).toBe(6);
-  ({shell, editor, status} = await open(page));
-  expect(await backup(page, shell)).toBe(committedBackup);
-  expect(await editor.innerHTML()).toBe(committed);
-  await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Undo", exact: true}).click());
-  expect(await editor.innerHTML()).toBe(original);
-  expect(await selection(editor)).toEqual(originalSelection);
-  const undoneBackup = await backup(page, shell);
-  ({shell, editor, status} = await open(page));
-  expect(await backup(page, shell)).toBe(undoneBackup);
-  await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Redo", exact: true}).click());
-  expect(await editor.innerHTML()).toBe(committed);
-  expect(await selection(editor)).toEqual(committedSelection);
-});
-
-for (const mode of ["cancel", "invalid"] as const) {
-  test(`scripted list composition ${mode} restores the base without adding history`, async ({page}) => {
+for (const termination of ["compositionend", "blur"] as const) {
+  test(`scripted list-heading composition via ${termination} commits once and retains exact history through V6 reload`, async ({page}) => {
     let {shell, editor, status} = await open(page);
     await selectPrefix(editor);
-    const original = await editor.innerHTML(), originalSelection = await selection(editor);
-    await begin(editor, mode);
-    await end(editor, mode === "cancel" ? "" : "漢字🙂");
-    await expect.poll(() => editor.innerHTML()).toBe(original);
-    await expect.poll(() => selection(editor)).toEqual(originalSelection);
-    await expect(shell.getByRole("button", {name: "Undo", exact: true})).toBeDisabled();
-    await expect(status).toHaveText("All changes saved.");
-    // Continue in this owner before reload: a fresh owner could hide a lease
-    // that failed to release after cancellation or canonical DOM recovery.
+    await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Heading 3", exact: true}).click());
+    await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Bold", exact: true}).click());
     await selectPrefix(editor);
-    await expectAutosavedAction(status, () => page.keyboard.type("R"));
-    await expect(editor.locator("ol li p").first()).toHaveText("R a first draft");
+    await expect(status).toHaveText("All changes saved.");
+    const original = await editor.innerHTML(), originalSelection = await selection(editor);
+    // Observe before opening the lease: composition admission may itself dirty
+    // the checkpoint, whose save must remain deferred until settlement.
+    await expectAutosavedAction(status, async () => {
+      await begin(editor, "commit");
+      await expect(editor.locator("ol li h3 strong")).toHaveText("漢字🙂");
+      await expect(editor.locator("ol")).toHaveAttribute("start", "3");
+
+      // A second view reads the durable slot while provisional DOM remains leased.
+      // No provisional composition text or structural state may become durable.
+      const peer = await page.context().newPage();
+      try {
+        const durable = await open(peer);
+        expect(await durable.editor.innerHTML()).toBe(original);
+      } finally { await peer.close(); }
+      if (termination === "blur") await editor.evaluate(host => host.blur());
+      else await end(editor, "漢字🙂");
+    });
+    await expect(editor.locator("ol li h3 strong")).toHaveText("漢字🙂");
+    await expect(editor.locator("ol")).toHaveAttribute("start", "3");
+    const committed = await editor.innerHTML(), committedSelection = await selection(editor);
+    await editor.evaluate(host => host.dispatchEvent(new InputEvent("input", {
+      bubbles: true, inputType: "insertCompositionText", data: "漢字🙂", isComposing: false,
+    })));
+    expect(await editor.innerHTML()).toBe(committed);
+    const committedBackup = await backup(page, shell);
+    expect(JSON.parse(committedBackup).formatVersion).toBe(6);
+    ({shell, editor, status} = await open(page));
+    expect(await backup(page, shell)).toBe(committedBackup);
+    expect(await editor.innerHTML()).toBe(committed);
     await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Undo", exact: true}).click());
     expect(await editor.innerHTML()).toBe(original);
-    await expect(shell.getByRole("button", {name: "Undo", exact: true})).toBeDisabled();
-    const saved = await backup(page, shell);
+    expect(await selection(editor)).toEqual(originalSelection);
+    const undoneBackup = await backup(page, shell);
     ({shell, editor, status} = await open(page));
-    expect(await backup(page, shell)).toBe(saved);
-    expect(await editor.innerHTML()).toBe(original);
-    await expect(shell.getByRole("button", {name: "Undo", exact: true})).toBeDisabled();
+    expect(await backup(page, shell)).toBe(undoneBackup);
     await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Redo", exact: true}).click());
-    await expect(editor.locator("ol li p").first()).toHaveText("R a first draft");
+    expect(await editor.innerHTML()).toBe(committed);
+    expect(await selection(editor)).toEqual(committedSelection);
   });
+  for (const mode of ["cancel", "invalid"] as const) {
+    test(`scripted list composition ${mode} via ${termination} restores the base without adding history`, async ({page}) => {
+      let {shell, editor, status} = await open(page);
+      await selectPrefix(editor);
+      const original = await editor.innerHTML(), originalSelection = await selection(editor);
+      await begin(editor, mode);
+      if (termination === "blur") await editor.evaluate(host => host.blur());
+      else await end(editor, mode === "cancel" ? "" : "漢字🙂");
+      await expect.poll(() => editor.innerHTML()).toBe(original);
+      // Cancellation may leave both DOM and saved status unchanged. Wait for
+      // exact selection restoration without treating temporary absence as an
+      // exception that aborts polling before the controller can settle.
+      await expect.poll(() => selection(editor, true)).toEqual(originalSelection);
+      await expect(shell.getByRole("button", {name: "Undo", exact: true})).toBeDisabled();
+      await expect(status).toHaveText("All changes saved.");
+      // Continue in this owner before reload: a fresh owner could hide a lease
+      // that failed to release after cancellation or canonical DOM recovery.
+      await selectPrefix(editor);
+      await expectAutosavedAction(status, () => page.keyboard.type("R"));
+      await expect(editor.locator("ol li p").first()).toHaveText("R a first draft");
+      await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Undo", exact: true}).click());
+      expect(await editor.innerHTML()).toBe(original);
+      await expect(shell.getByRole("button", {name: "Undo", exact: true})).toBeDisabled();
+      const saved = await backup(page, shell);
+      ({shell, editor, status} = await open(page));
+      expect(await backup(page, shell)).toBe(saved);
+      expect(await editor.innerHTML()).toBe(original);
+      await expect(shell.getByRole("button", {name: "Undo", exact: true})).toBeDisabled();
+      await expectAutosavedAction(status, () => shell.getByRole("button", {name: "Redo", exact: true}).click());
+      await expect(editor.locator("ol li p").first()).toHaveText("R a first draft");
+    });
+  }
 }

@@ -9,7 +9,7 @@ Additional storage machinery is not a prerequisite unless the chosen browser
 session-backup/autosave path actually requires it. No publishing or pushing is
 authorized by this plan.
 
-## Current readiness — October 4, 2026
+## Current readiness — October 5, 2026
 
 The current Rust implementation checkpoint is `62b2e90`. Headings, flat lists,
 directional selection, toolbar actions, undo/redo and V6 reload/recovery are
@@ -27,6 +27,12 @@ JavaScript workspace/diagnostic tests; all 68 script tests; TypeScript checks;
 strict Rust documentation; real wasm32 checks; and the unchanged default ABI.
 These checks preserve shipping bundles and do not constitute the full release gate.
 
+The October 5 IME follow-up adds blur termination to the list composition,
+cancellation and invalid-DOM recovery tests. It also refreshes private packages
+from the fixed browser source, without diagnostic instrumentation. See
+[packaged IME integration evidence](qualification/2026-10-05-ime-packaged-integration.json)
+for exact artifacts, retained failed test-observation experiments and results.
+
 The beta is **not release-qualified**. The remaining gates are:
 
 - Native Safari/Chrome qualification on the final candidate, plus real Japanese
@@ -40,8 +46,12 @@ The beta is **not release-qualified**. The remaining gates are:
   backup export/import and Chrome-to-Safari recovery passed, including all five
   heading/list/Link history steps and recovery isolation from main autosave.
   See [native reload/recovery evidence](qualification/2026-10-04-native-reload-and-cross-browser-recovery.json)
-  for exact scenarios and limits. Physical IME and spoken VoiceOver remain open;
-  automation has not established reliable control of either.
+  for exact scenarios and limits. Physical Japanese–Romaji insertion and selected
+  text replacement now pass in native Safari, including blur settlement and
+  one-step Undo/Redo after the composition fix. These are bounded checks on the
+  recorded diagnostic artifacts, not general IME certification. Physical Escape
+  cancellation, broader input-method qualification and spoken VoiceOver remain
+  open. See [physical Japanese evidence](qualification/2026-10-05-native-japanese-composition-fault.json).
 - The retained intermittent WebKit `queueUncertain` fault. Passing reruns and
   improved diagnostics have not identified its cause or demonstrated a fix.
   The original unchanged failing bundle completed three native Safari runs and
@@ -50,9 +60,11 @@ The beta is **not release-qualified**. The remaining gates are:
   native click/keyboard positioning worked. That discrepancy now reproduces on
   plain contenteditable HTML with no JavaScript or Wasm: it does not require
   Breditor, but Safari accessibility versus automation attribution remains open.
-- An explicit delivery decision and reviewed budgets. Private feature packages
-  exceed unchanged default ceilings; functional consumer tests do not approve
-  larger budgets or a shipping package. No delivery choice is assumed.
+- Implementation of the approved **separate opt-in package** delivery path and
+  reviewed budgets. The user accepted a separate package, with possible merging
+  later. Current private feature tarballs are qualification artifacts, not that
+  completed shipping package. They exceed unchanged default ceilings; functional
+  consumer tests do not approve larger budgets or a release.
 - Large-list responsiveness and the complete final release gate. Current local
   500-item edit medians are roughly 45–46 ms Chromium, 136 ms Firefox and 67 ms
   WebKit; these small synthetic samples are not native-input latency guarantees

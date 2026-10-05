@@ -1,0 +1,103 @@
+{
+  "status": "passed-bounded-integration-not-release-qualified",
+  "sourceCheckpoint": "80e96e8b8649a1e795613159bde00c5d885c6af6",
+  "productionChangesThisCheckpoint": false,
+  "regressionSource": {
+    "path": "tests/lists/composition.spec.ts",
+    "sha256": "f9e47a29791f803a6e576d71be51750b8b5c580843ee38546d409ed93a2d1fb1",
+    "addedCasesPerEngine": 3,
+    "coverage": [
+      "Blur commits a validated replacement inside bold text in a numbered Heading 3 once; provisional DOM is not durable in a second view.",
+      "Exact V6 backup, canonical DOM, selection and Undo/Redo survive reload after composition settlement.",
+      "Blur cancellation and invalid structural mutation restore original DOM and backward selection without creating history; the same owner remains editable and later history survives reload."
+    ]
+  },
+  "privatePackages": {
+    "command": "node scripts/check-experimental-flat-list-packages.mjs target/flat-list-candidate-bfniW0",
+    "status": "passed",
+    "record": "target/flat-list-packages-LRESXR/qualification.json",
+    "recordSha256": "5e48e348cc59b51d6c08b0cd973862220ce56af2c0f7c0e1dd284466c667f2e0",
+    "tarballSha256": {
+      "browser": "c86e41a06dcee099efc12daed33ed68970ed45b773aff04836489bdebfb04232",
+      "wasm": "7bad1afc947a2277c962414ed8777185e1e311611e2c42276ae86640afcf6e74"
+    },
+    "wasmSha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671",
+    "diagnosticInstrumentation": false,
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-0l1fof",
+    "consumerSmoke": "Offline external installation, strict types, three browser engines, and existing base Node/Chromium consumer passed; no workspace aliases.",
+    "consumerJavaScriptBytes": 680890,
+    "consumerJavaScriptGzip9Bytes": 169456,
+    "defaultCeilingsExceeded": ["browser JavaScript", "browser declarations", "browser tarball", "Wasm tarball"],
+    "sizeBudgetQualified": false,
+    "publishable": false
+  },
+  "existingBrowserSuite": {
+    "command": "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-LRESXR/qualification.json npm exec -- playwright test -c playwright.browser-candidate.config.ts",
+    "passed": 165,
+    "failed": 0,
+    "retries": 0,
+    "engines": ["chromium", "firefox", "webkit"],
+    "evidence": "Terminal completion: 165 passed (3.0m); target/playwright-browser-candidate-results/.last-run.json status passed with no failedTests."
+  },
+  "reactSuite": {
+    "command": "BREDITOR_BROWSER_PACKAGE_RECORD=target/flat-list-packages-LRESXR/qualification.json npm exec -- playwright test -c playwright.demo-candidate.config.ts",
+    "passed": 39,
+    "failed": 0,
+    "retries": 0,
+    "engines": ["chromium", "firefox", "webkit"],
+    "evidence": "Terminal completion: 39 passed (1.4m); target/playwright-demo-candidate-results/.last-run.json status passed with no failedTests.",
+    "entrySha256": "67eca0f803771e092003405b637c8c8bb1107f99554c5fab34638fb799ccd0df",
+    "activeJavaScript": "target/react-demo-candidate/assets/index-CwMfsjXs.js",
+    "activeJavaScriptSha256": "414dc54f01c146f57618cc253149189c6f0885ac5306528147a4a50fd03c0064",
+    "artifactNote": "The output directory retains older assets by design. The current HTML references this JS asset, which references the qualified CNRxpFZH Wasm, not the retained older Wasm assets."
+  },
+  "listSuite": {
+    "status": "passed",
+    "passed": 63,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "retries": 0,
+    "engines": ["chromium", "firefox", "webkit"],
+    "report": "target/list-ime-poll-nJsAr0/report.json",
+    "reportSha256": "3483d915004035842f9757bb7915eaaf0f8740c37ffe606f11a9b421359247cd",
+    "command": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-bfniW0 BREDITOR_LIST_TEST_PORT=4197 npm exec -- playwright test -c target/list-ime-poll-nJsAr0/playwright.config.ts",
+    "configSha256": "c15700f053ef9909785275ea9f16242cce65c9199d5f2d2d08e7102989935291",
+    "isolation": "Extends playwright.lists.config.ts with unchanged test deadlines, workers and retries; overrides absolute test/output paths, line plus JSON reporting, and build/preview --outDir target/list-ime-integration-ou4yhI/bundle on port 4197. Preserves the older native fixture still served on port 4298.",
+    "bundleTreeSha256": "09e6b7ae0ccd6027f7c12fb1c407d0bcb2660d6f4c3f3545863a8446172368ad",
+    "boundary": "List production preview uses current browser source and qualified experimental Wasm through the existing list config; unlike the existing browser and React suites above, it is not an external installed-package consumer.",
+    "retainedAttempts": [
+      {
+        "report": "target/list-ime-integration-ou4yhI/report.json",
+        "sha256": "bd4dfc4aca415df7b802b4b01d08f659d1c1985709efe460af4b0f8462b9a0bf",
+        "passed": 62,
+        "failed": 1,
+        "failure": "WebKit cancel-via-blur selection observation threw Selection escaped the editor before deferred settlement. Unchanged DOM passed immediately and did not establish settlement; the thrown callback aborted expect.poll.",
+        "trace": "target/list-ime-integration-ou4yhI/results/composition-scripted-list--15e0e-base-without-adding-history-webkit/trace.zip",
+        "timing": "Trace test calls: blur began at 135157.118 ms, selection poll began at 135165.518 ms; production defaultScheduleTask defers settlement by 20 ms."
+      },
+      {
+        "report": "target/list-ime-settlement-0fbCKH/report.json",
+        "sha256": "1398fad785f12f9694c5e52eb52596d445de021fc4e7f442bf01df7d9c93a636",
+        "passed": 2,
+        "failed": 2,
+        "interrupted": 1,
+        "notRun": 58,
+        "rejectedApproach": "Requiring a dirty-to-saved autosave edge was incorrect for cancellation/recovery, which may not dirty persisted state. Chromium cancel and invalid compositionend cases timed out with dirty=false/saved=false. Stopped this test-only experiment; retained reports and traces."
+      }
+    ],
+    "observationCorrection": "Only the polling selection probe returns null while endpoints are outside the host, so it can wait for exact original paths and direction within the unchanged timeout. Strict final snapshots still throw. No sleeps, timeout increases or production changes. All 63 cases passed on the exact original bundle without rebuilding; its tree hash was verified unchanged after completion."
+  },
+  "typecheck": "npm run typecheck:demo:lists passed; git diff --check passed",
+  "retainedInvocationFailure": "The initial direct node invocation of Playwright failed before tests because Vite was absent from PATH (rbenv: vite: command not found). npm exec supplied the normal package binary PATH; no editor test failure was discarded or retried.",
+  "shippingArtifactsUnchanged": true,
+  "limits": [
+    "Scripted composition tests do not certify physical OS IME behavior or spoken VoiceOver.",
+    "Physical Japanese insertion and selected-text replacement evidence is recorded separately; physical Escape cancellation remains open.",
+    "Passing suites do not prove the historical intermittent WebKit queueUncertain fault fixed.",
+    "The separate opt-in delivery path is approved by the user, but these private tarballs are not its completed shipping implementation or approved size budgets."
+  ],
+  "releaseQualified": false,
+  "pushed": false,
+  "published": false
+}
