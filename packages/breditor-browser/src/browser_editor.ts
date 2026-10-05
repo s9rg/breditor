@@ -1,4 +1,5 @@
 import { toolbarSequenceOutcomeDispatchStatus } from "./toolbar_dispatch_outcome.js";
+import {installToolbarKeyboardReturn} from "./toolbar_keyboard_return.js";
 import {
   BreditorActionStateStore,
   type ActionStateStoreError,
@@ -611,6 +612,7 @@ export class BreditorBrowserEditor {
   #toolbar: BreditorToolbar | undefined;
   #router: BreditorBrowserEventRouter | BreditorFlatListBrowserEventRouter | undefined;
   #releaseToolbarStatus: (() => void) | undefined;
+  #releaseToolbarKeyboardReturn: (() => void) | undefined;
   #releaseRouterStatus: (() => void) | undefined;
   #releaseActionState: (() => void) | undefined;
   #releaseActionCommit: (() => void) | undefined;
@@ -1485,6 +1487,8 @@ export class BreditorBrowserEditor {
   #dispose(): void {
     if (this.#status.phase === "disposed") return;
     this.#status = DISPOSED_STATUS;
+    bestEffortCall(this.#releaseToolbarKeyboardReturn);
+    this.#releaseToolbarKeyboardReturn = undefined;
     this.#terminalSubscribers = Object.freeze(this.#subscribers.slice());
     this.#subscribers.length = 0;
 
@@ -1599,6 +1603,12 @@ export class BreditorBrowserEditor {
       throw new TypeError("toolbar faulted during installation");
     }
     this.#toolbar = toolbar;
+    // Qualify the new focus policy in the opt-in list owner first. The default
+    // paragraph owner's focus behavior and wire contracts remain unchanged.
+    if (this.#flatLists) {
+      this.#releaseToolbarKeyboardReturn = installToolbarKeyboardReturn(this.#host, toolbar.element,
+        () => this.#restoreToolbarKeyboardSelection(), () => this.#fault("toolbarDispatchFailed"));
+    }
     this.#releaseToolbarStatus = toolbar.subscribe((state) =>
       this.#observeToolbarStatus(state),
     );
@@ -1627,6 +1637,19 @@ export class BreditorBrowserEditor {
       this.#observeRouterStatus(status),
     );
     this.#observeRouterStatus(router.status);
+  }
+
+  #restoreToolbarKeyboardSelection(): void {
+    if (this.#status.phase !== "live" || this.#adapter.state !== "live") return;
+    // Share the command queue's immediate exclusion with toolbar dispatch.
+    // Never restore across composition, queued work, or a reentrant delivery.
+    const lease = this.#queueLeasePort.acquireLease();
+    if (lease === undefined) return;
+    let restored = false;
+    let released = false;
+    try { restored = this.#adapter.restoreCanonicalSelection(); }
+    finally { released = this.#queueLeasePort.releaseLease(lease); }
+    if ((!restored || !released) && this.#status.phase === "live") this.#fault("toolbarDispatchFailed");
   }
 
   #submitImmediate(
@@ -1806,6 +1829,8 @@ export class BreditorBrowserEditor {
   #fault(reason: BreditorBrowserEditorFaultReason): void {
     if (this.#status.phase !== "live") return;
     this.#status = Object.freeze({ phase: "faulted", reason });
+    bestEffortCall(this.#releaseToolbarKeyboardReturn);
+    this.#releaseToolbarKeyboardReturn = undefined;
     bestEffortCall(this.#releaseToolbarStatus);
     this.#releaseToolbarStatus = undefined;
     bestEffortIntrinsic(this.#toolbar, TOOLBAR_DISPOSE);

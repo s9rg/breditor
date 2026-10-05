@@ -11,6 +11,13 @@ authorized by this plan.
 
 ## Current readiness — October 5, 2026
 
+User checkpoint decision: finish the small keyboard-fix checks and commit locally;
+defer file-size review, Japanese input, release checks and broader reliability
+work. These remain open rather than waived. No additional feature expansion is
+required for the agreed experimental beta scope: headings and flat lists, not
+nested lists, tables, images, collaboration or general rich paste. The checkpoint
+does not authorize publication or claim production/release qualification.
+
 The latest Rust change reuses canonical immutable list-item wrappers during
 flat-list layout construction (see the October 5 wrapper-reuse checkpoint below).
 The prior path-reuse implementation checkpoint is `cc8f1d7`. Headings, flat lists,
@@ -51,14 +58,6 @@ reload/recovery checkpoint below; earlier evidence remains artifact-specific.
 
 The beta is **not release-qualified**. The remaining gates are:
 
-- **Reproducible WebKit keyboard-return selection loss:** keyboard-activate a
-  heading toolbar control, then End/Tab back to the editing host. The backward
-  selection collapses to offset 0 instead of being restored. Both Enter and
-  Space activation reproduce this on the latest opt-in package; Chromium and
-  Firefox pass. The new end-to-end regression tests deliberately remain failing
-  in WebKit until the behavior is fixed, with no skip or expected-failure waiver.
-  This is separate from the retained intermittent `queueUncertain` fault.
-  See [keyboard-return reproduction](qualification/2026-10-05-toolbar-keyboard-return-repro.json).
 - Native Safari/Chrome qualification on the final candidate, plus real Japanese
   IME and spoken VoiceOver evidence. Earlier native passes apply only to their
   recorded artifacts. Safari is accessible again; earlier-candidate typing and
@@ -2469,6 +2468,8 @@ wire format, shipping artifact or system setting changed.
 
 ## Keyboard-return regression identified — 2026-10-05
 
+Historical reproduction checkpoint; the focused fix and verification follow below.
+
 The combined 21-control toolbar now has end-to-end tests for cyclic arrow
 navigation, Home/End, one roving tab stop, disabled Enter/Space activation, and
 Tab/Shift-Tab traversal. These pass in all three bundled engines. The extension
@@ -2492,3 +2493,42 @@ must restore the authoritative semantic selection on keyboard return without
 overriding pointer placement, input composition, or unrelated focus transitions.
 No fix or native Safari confirmation is claimed here; the historical intermittent
 fault remains separate. See [exact reports and reproduction](qualification/2026-10-05-toolbar-keyboard-return-repro.json).
+
+## Keyboard-return selection fix — 2026-10-05
+
+The opt-in list owner now restores the authoritative Rust selection on a direct
+keyboard Tab transition from its toolbar back to the editor. A separate
+`toolbar_keyboard_return.ts` module tracks that one transition, spends it before
+the callback, and cancels it on other focus, keys, pointer input, composition or
+disposal. It never chooses the next focus target or prevents Tab. The owner
+uses the existing queue lease and rejects restoration while its adapter is busy
+or composing. The adapter validates canonical DOM and reinstalls only selection;
+it does not rebuild nodes, mutate the document, add history or change revision.
+The policy is enabled only in the experimental list owner; default paragraph
+focus policy, shipping bundles and wire formats remain unchanged.
+
+All 1,903 browser unit tests and strict browser/demo types pass, including new
+focus-return, cancellation, ownership, disposal, DOM identity and composition
+checks. The formerly failing 12 keyboard cases pass on the new installed opt-in
+package in Chromium, Firefox and WebKit, without skips or retries. An additional
+pointer-return regression checks that clicking another paragraph after toolbar
+activation keeps the clicked caret rather than restoring the old heading range.
+The complete demo attempt passed 77 of 78 cases before its 240-second global
+timeout prevented the last WebKit typing-history case from running. That exact
+case subsequently passed in isolation on the same installed package. This is
+77-plus-1 coverage, not a clean uninterrupted full-suite result; the timed-out
+run is retained and the final release checks are deferred by the user.
+
+Native Safari provides a before/after control: the unchanged bundle on port 4314
+inserts `x` at the start of the heading after Enter/End/Tab; the fixed candidate
+on port 4313 replaces the selected heading with `x`, and one Undo restores it.
+Space activation also restores the visible range on Tab return. Its downloaded
+V6 backup retains the backward anchor-24/focus-0 selection. The temporary control
+tab/server were closed; earlier demos and system settings were not changed.
+
+This fixes the deterministic keyboard-return bug, **not** the historical
+intermittent `queueUncertain` fault. Physical IME cancellation, spoken VoiceOver,
+reviewed budgets and the complete release gate remain open. Native qualification
+of other behaviors on older packages is not automatically transferred. Exact
+artifacts and verification are in
+[keyboard-return fix evidence](qualification/2026-10-05-toolbar-keyboard-return-fix.json).

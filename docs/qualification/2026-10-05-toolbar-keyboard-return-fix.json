@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-05",
+  "sourceBase": "93613fd",
+  "status": "focused-keyboard-return-fix-verified-not-release-qualified",
+  "reproduction": "2026-10-05-toolbar-keyboard-return-repro.json",
+  "fix": {
+    "scope": "Opt-in flat-list owner only; default paragraph focus policy unchanged",
+    "behavior": "Track direct Tab from the owned toolbar to its editor, cancel on intervening keys/focus/pointer/composition or disposal, acquire queue exclusion and reinstall authoritative core selection into validated existing DOM.",
+    "notChanged": ["Rust/Wasm binary", "wire formats", "document/history/revision during selection restoration", "shipping bundles"],
+    "files": ["packages/breditor-browser/src/toolbar_keyboard_return.ts", "packages/breditor-browser/src/browser_editor.ts", "packages/breditor-browser/src/wasm_command_adapter.ts"]
+  },
+  "artifacts": {
+    "privatePair": "target/flat-list-packages-scetuS/qualification.json",
+    "assembly": "target/flat-list-opt-in-sBVY1Q/assembly.json",
+    "consumerRecord": "target/flat-list-opt-in-sBVY1Q/consumer-qualification.json",
+    "archiveSha256": "48993d70baeff0cfedc96338a5f679bdaa4b7635e0a1f42da6448bdf1a6a09e2",
+    "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+    "runtimeProofSha256": "4a2514e08984be47ede751eb504c0ecb50f2bc6f92ad662781331a6e4fbcea91",
+    "workspaceEditorModules": 0,
+    "installedModules": 78
+  },
+  "checks": {
+    "browserTypecheck": "passed",
+    "listDemoTypecheck": "passed",
+    "browserUnitSuite": {"files": 53, "passed": 1903, "failed": 0},
+    "focusedFocusReturnUnitSuite": {"passed": 18, "failed": 0},
+    "privatePairAndOptInConsumers": "Node, TypeScript, Chromium, Firefox and WebKit passed",
+    "keyboardRegression": {
+      "report": "target/list-opt-in-demo-jvExe9/report.json",
+      "sha256": "732fcc137b48acde8f08119713ad11aa27d173fba937b49ad03874938f3b8594",
+      "passed": 12, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0
+    },
+    "fullDemoAttempt": {
+      "report": "target/list-opt-in-demo-tNfhiS/report.json",
+      "sha256": "c08e1f619e02f14b217a3135afa04eef7c29c729a18f36c45c97b3fdb2b4d57b",
+      "passed": 77, "failedAssertions": 0, "didNotRun": 1, "flaky": 0, "retries": 0,
+      "exitCode": 1,
+      "limitation": "240-second global timeout and teardown timeout; this was not a successful full-suite run. Includes passing new pointer-return controls in all three engines."
+    },
+    "remainingCase": {
+      "command": "BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-sBVY1Q/consumer-qualification.json npx playwright test -c playwright.lists-opt-in.config.ts tests/lists/typing-history.spec.ts --project=webkit --grep 'real caret movement separates'",
+      "report": "target/list-opt-in-demo-jCJkWw/report.json",
+      "sha256": "c139e118cc7960aecb48d4d589a71cd5e6da69b9ae605124a1c3e924edac0b13",
+      "passed": 1, "failed": 0, "skipped": 0, "flaky": 0, "retries": 0,
+      "interpretation": "The one case missed by the global timeout passed separately against the same installed package and runtime proof. Combined coverage, not an uninterrupted 78-case pass."
+    }
+  },
+  "nativeSafari": {
+    "version": "26.6.2",
+    "method": "Native CUA app keyboard/click operations, inspected via accessibility state; no DOM event injection. Agent-operated, not human attestation.",
+    "before": {
+      "url": "http://127.0.0.1:4314/",
+      "bundle": "target/list-opt-in-demo-puIElW/bundle",
+      "result": "Backward heading selection, Shift-Tab to toolbar, three Right keys to Heading 3, Return, End, Tab, then x produced xMake room for your ideas. One Undo removed x. Control tab closed and temporary server stopped."
+    },
+    "after": {
+      "url": "http://127.0.0.1:4313/",
+      "bundle": "target/list-opt-in-demo-jvExe9/bundle",
+      "result": "Same selection and Enter/End/Tab sequence restored the full selected heading; x replaced it entirely. One Undo restored the heading and selection. Heading 4 via Space followed by End/Tab also restored selected heading text."
+    },
+    "backup": {
+      "fileName": "breditor-session-backup-5.json",
+      "sha256": "86d62b7c85581a35f663429188efb5a6664efeaa0130fdd5fc0d84a482847a29",
+      "bytes": 4744, "formatVersion": 6, "currentRevision": "8", "cursor": 2, "entries": 2,
+      "selection": {"kind": "range", "anchor": {"kind": "text", "textPath": [0, 0], "utf16Offset": 24, "affinity": "before"}, "focus": {"kind": "text", "textPath": [0, 0], "utf16Offset": 0, "affinity": "after"}}
+    }
+  },
+  "developmentFailures": [
+    "Initial helper compilation incorrectly passed a capture argument to three-argument intrinsic listener wrappers. Changed to bubbling focusin; no intrinsic listener API change.",
+    "An initial adapter test referenced a fixture outside its scope. Moved the active-composition assertion into the existing scoped test before successful typecheck/unit verification."
+  ],
+  "limits": [
+    "Fixes deterministic toolbar keyboard-return selection loss, not the historical intermittent queueUncertain fault.",
+    "No new physical IME or spoken VoiceOver evidence; no system settings changed.",
+    "User deferred file-size review, Japanese-input checks, release checks and broader reliability work. They remain open, not waived.",
+    "No new feature expansion required for agreed experimental beta scope. Not production/release qualification. No push or publication."
+  ]
+}

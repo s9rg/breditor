@@ -522,6 +522,8 @@ describe("explicit flat-list command adapter", () => {
       Object.defineProperty(f.controller, "flatLists", {value: false});
       if (!implicit) expect(f.composition("compositionstart")).toMatchObject({kind: "native"});
       expect(f.before().result).toEqual({kind: "native", phase: "mutating"});
+      expect(f.adapter.restoreCanonicalSelection()).toBe(false);
+      expect(f.adapter.state).toBe("composition");
       if (implicit) expect(f.composition("compositionstart").kind).toBe("native");
       expect(refine).toHaveBeenCalledOnce(); expect(refine.mock.calls[0]![1]).toBe(f.selected);
       const port = openFlatListCommandQueueLeasePort(f.queue, f.adapter.commandExecutor)!;
@@ -1829,6 +1831,48 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(committed.free).toHaveBeenCalledOnce();
     expect(adapter.state).toBe("faulted");
     await Promise.resolve();
+    adapter.dispose();
+  });
+
+  it("restores authoritative selection without replacing DOM, changing revision or publishing a commit", () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new BreditorDomSelectionBridge();
+    const semantic = selectionResult(selectionView(0, 2));
+    const initial = observation(0);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({selection: [semantic.view]}), initial, {
+      renderer: base.renderer, rendered: base.rendered, selectionBridge: bridge,
+    });
+    const commits = vi.fn(); adapter.observeCoreCommits(commits);
+    const nodes = Array.from(base.host.childNodes);
+    const render = vi.spyOn(base.renderer, "render");
+    document.getSelection()!.removeAllRanges();
+    expect(adapter.restoreCanonicalSelection()).toBe(true);
+    expect(adapter.state).toBe("live");
+    expect(adapter.rendered).toBe(base.rendered);
+    expect(Array.from(base.host.childNodes)).toEqual(nodes);
+    expect(render).not.toHaveBeenCalled();
+    expect(adapter.snapshot.revision).toBe("0");
+    expect(commits).not.toHaveBeenCalled();
+    expect(document.getSelection()!.anchorOffset).toBe(2);
+    expect(document.getSelection()!.focusOffset).toBe(2);
+    expect(semantic.free).toHaveBeenCalledOnce();
+    expect(semantic.selectionFree).toHaveBeenCalledOnce();
+    adapter.dispose();
+    expect(adapter.restoreCanonicalSelection()).toBe(false);
+  });
+
+  it("refuses selection-only restoration over drifted DOM without reading Wasm", () => {
+    const base = projectionFixture(0, "abc");
+    const engine = engineQueues({});
+    const read = vi.spyOn(engine, "selection");
+    const adapter = new BreditorWasmCommandAdapter(engine, observation(0), {
+      renderer: base.renderer, rendered: base.rendered, selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    base.host.textContent = "foreign";
+    expect(adapter.restoreCanonicalSelection()).toBe(false);
+    expect(adapter.state).toBe("reconcile");
+    expect(read).not.toHaveBeenCalled();
+    expect(base.host.textContent).toBe("foreign");
     adapter.dispose();
   });
 

@@ -1358,6 +1358,28 @@ class WasmCommandAdapterCore<R extends CommandRequest> {
     }
   }
 
+  /** Reinstalls the current core selection without replacing canonical DOM or mutating history. @internal */
+  restoreCanonicalSelection(): boolean {
+    if (this.#state !== "live") return false;
+    const observation = this.#requireObservation();
+    this.#state = "executing";
+    try {
+      if (!this.#ownsRender(this.#rendered) || !this.#rendered.validateCanonicalDom()) {
+        this.#state = "reconcile";
+        return false;
+      }
+      if (!this.#readAndWriteCurrentSelection(observation, this.#rendered)) {
+        this.#state = "reconcile";
+        return false;
+      }
+      this.#state = "live";
+      return true;
+    } catch (error) {
+      this.#state = "faulted";
+      throw error;
+    }
+  }
+
   /**
    * Full-renders the retained authoritative projection and restores core selection.
    *

@@ -158,3 +158,22 @@ test("declared extension shortcuts edit a list heading and retain their redo bra
   await expectBackward(editor);
   await expect(shell.locator("details code")).toHaveCount(0);
 });
+
+test("pointer return from a keyboard-activated toolbar keeps the newly clicked paragraph caret", async ({page}) => {
+  const {editor, toolbar, status} = await open(page);
+  await selectBackward(editor);
+  await toolbar.getByRole("button", {name: "Heading 3", exact: true}).focus();
+  await expectAutosavedAction(status, () => page.keyboard.press("Enter"));
+  const paragraph = editor.locator(":scope > p").first();
+  const before = await paragraph.textContent();
+  await paragraph.click({position: {x: 24, y: 10}});
+  await expect.poll(() => paragraph.evaluate(node => {
+    const selection = document.getSelection()!;
+    return selection.isCollapsed && node.contains(selection.anchorNode) && node.contains(selection.focusNode);
+  })).toBe(true);
+  await expectAutosavedAction(status, () => page.keyboard.type("X"));
+  await expect(editor.locator("h3")).toHaveText(heading);
+  const after = await paragraph.textContent();
+  expect(after?.length).toBe(before!.length + 1);
+  expect(after?.replace("X", "")).toBe(before);
+});
