@@ -1,0 +1,412 @@
+{
+  "status": "bounded-agent-operated-native-checks-passed",
+  "scope": "Latest opt-in candidate native Safari and Chrome clipboard, typing and formatting/history; not human attestation or full beta qualification",
+  "sourceHead": "24b6645",
+  "artifacts": {
+    "assembly": "target/flat-list-opt-in-lHoc14/assembly.json",
+    "archiveSha256": "43b94544f681880ab42a1e76293a38fd75b95cf414a0f2453689527d40767f6b",
+    "bundle": "target/list-opt-in-demo-s4Qsgg/bundle",
+    "runtimeProofSha256": "65230d376bbde74c1229381d4ed7d93e76c409b6d6904b126d1b225bc3e6829e",
+    "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+    "workspaceEditorModules": 0
+  },
+  "url": "http://127.0.0.1:4312/manual-clipboard.html",
+  "method": "Native browser applications controlled through accessibility clicks and keyboard shortcuts; not Playwright dispatchEvent. Each changed state was inspected through the native accessibility tree. Reports copied from the visible read-only report field; no checkbox was set.",
+  "checksBothBrowsers": [
+    "Copy selected first bullet text; native paste into scratch yields exactly Collect your ideas with no marker.",
+    "Cut that bullet once; scratch receives exactly Collect your ideas and one Undo restores the bullet.",
+    "Click numbered item text, Command-Right, type ! immediately; one Undo/Redo removes/restores ! with numbering 3/4 unchanged.",
+    "Native Paste inserts Collect your ideas once after ! without importing structure; one Undo restores the pre-paste text.",
+    "Forward keyboard selection across numbered items: Copy and Cut yield Write a first draft!\\nReview and refine in scratch. Cut leaves one empty item numbered 3; one Undo restores both items numbered 3/4.",
+    "Repeat cross-item Copy/Cut using backwards keyboard selection with the same payload and one-step Undo.",
+    "Select full first heading; Heading 2 to Heading 3, bullet wrapping, numbered conversion starting 1, and Remove list each pass Undo/Redo. Text selection and heading rank survive the structural conversions.",
+    "Apply https://example.com/breditor-latest to the selected heading. Undo removes Link and clears its form; Redo restores the exact URL in the Link form."
+  ],
+  "reports": {
+    "safari": {
+      "format": "breditor/manual-clipboard-evidence",
+      "formatVersion": 1,
+      "outcome": "incomplete",
+      "qualification": "Not automatic certification. Trusted events can also originate from browser automation; checklist observations are self-reported.",
+      "owner": {
+        "phase": "live",
+        "reason": null,
+        "revision": "53"
+      },
+      "firstFault": null,
+      "observedEvents": 8,
+      "pendingEvents": 0,
+      "droppedEvents": 0,
+      "trustedClipboardEvents": {
+        "copy": 3,
+        "cut": 3,
+        "paste": 1
+      },
+      "operatorChecks": {
+        "copy": false,
+        "cut": false,
+        "paste": false,
+        "caret": false,
+        "history": false,
+        "formatting": false
+      },
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "copy",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "3"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "3"
+          }
+        },
+        {
+          "sequence": 2,
+          "kind": "cut",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "6"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "7"
+          }
+        },
+        {
+          "sequence": 3,
+          "kind": "beforeinput",
+          "trusted": true,
+          "inputType": "insertText",
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "10"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "11"
+          }
+        },
+        {
+          "sequence": 4,
+          "kind": "paste",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "13"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "14"
+          }
+        },
+        {
+          "sequence": 5,
+          "kind": "copy",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "19"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "19"
+          }
+        },
+        {
+          "sequence": 6,
+          "kind": "cut",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "23"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "24"
+          }
+        },
+        {
+          "sequence": 7,
+          "kind": "copy",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "29"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "29"
+          }
+        },
+        {
+          "sequence": 8,
+          "kind": "cut",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "33"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "34"
+          }
+        }
+      ],
+      "fixture": {
+        "name": "flat-list-showcase",
+        "schema": "example/flat-list-showcase",
+        "sessionFormatVersion": 6,
+        "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef"
+      },
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+        "platform": "MacIntel"
+      }
+    },
+    "chrome": {
+      "format": "breditor/manual-clipboard-evidence",
+      "formatVersion": 1,
+      "outcome": "incomplete",
+      "qualification": "Not automatic certification. Trusted events can also originate from browser automation; checklist observations are self-reported.",
+      "owner": {
+        "phase": "live",
+        "reason": null,
+        "revision": "51"
+      },
+      "firstFault": null,
+      "observedEvents": 8,
+      "pendingEvents": 0,
+      "droppedEvents": 0,
+      "trustedClipboardEvents": {
+        "copy": 3,
+        "cut": 3,
+        "paste": 1
+      },
+      "operatorChecks": {
+        "copy": false,
+        "cut": false,
+        "paste": false,
+        "caret": false,
+        "history": false,
+        "formatting": false
+      },
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "copy",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "3"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "3"
+          }
+        },
+        {
+          "sequence": 2,
+          "kind": "cut",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "5"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "7"
+          }
+        },
+        {
+          "sequence": 3,
+          "kind": "beforeinput",
+          "trusted": true,
+          "inputType": "insertText",
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "10"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "11"
+          }
+        },
+        {
+          "sequence": 4,
+          "kind": "paste",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "13"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "14"
+          }
+        },
+        {
+          "sequence": 5,
+          "kind": "copy",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "19"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "19"
+          }
+        },
+        {
+          "sequence": 6,
+          "kind": "cut",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "22"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "23"
+          }
+        },
+        {
+          "sequence": 7,
+          "kind": "copy",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "27"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "27"
+          }
+        },
+        {
+          "sequence": 8,
+          "kind": "cut",
+          "trusted": true,
+          "inputType": null,
+          "defaultPrevented": true,
+          "settled": true,
+          "before": {
+            "phase": "live",
+            "reason": null,
+            "revision": "31"
+          },
+          "after": {
+            "phase": "live",
+            "reason": null,
+            "revision": "32"
+          }
+        }
+      ],
+      "fixture": {
+        "name": "flat-list-showcase",
+        "schema": "example/flat-list-showcase",
+        "sessionFormatVersion": 6,
+        "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef"
+      },
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+        "platform": "MacIntel"
+      }
+    }
+  },
+  "preservation": {
+    "shippingArtifactsRebuilt": false,
+    "browserSettingsChanged": false,
+    "unrelatedTabsModified": false,
+    "earlierBundlesOverwritten": false,
+    "pushed": false,
+    "published": false
+  },
+  "limitations": [
+    "The report outcome stays incomplete because human operator checkboxes remain false. This record documents agent-observed bounded cases only.",
+    "Trusted clipboard events do not prove human input, IME behavior or spoken screen-reader accessibility.",
+    "Keyboard sequence establishes intended selection direction; the accessibility selected-text string alone does not prove anchor/focus coordinates. Chrome includes list markers in that string, while the actual scratch payload is marker-free.",
+    "No latest-candidate native reload/backup recovery, Japanese Escape cancellation or spoken VoiceOver was tested in this checkpoint.",
+    "No claim that the historical intermittent WebKit fault is fixed or absent.",
+    "Size approval, broad performance qualification and the complete release gate remain open.",
+    "Native Copy/Cut left synthetic test text on the system clipboard. The disposable fixture did not alter main-demo autosave."
+  ]
+}

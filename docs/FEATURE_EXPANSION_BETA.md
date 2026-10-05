@@ -42,9 +42,10 @@ do not re-run every older workspace gate. See
 [path reuse qualification](qualification/2026-10-05-flat-list-path-reuse.json).
 The subsequent wrapper-reuse candidate passes 1,140 core unit tests, strict core
 Clippy, raw Wasm, private installed-package checks and all 63 full opt-in demo
-cases without failures, skips or retries. Native evidence below
-still applies to the prior `ktXUh6` opt-in artifact; it is not automatically
-transferred to the new `lHoc14` candidate.
+cases without failures, skips or retries. The latest `lHoc14` candidate now also
+passes bounded agent-operated native Safari/Chrome clipboard, typing and
+heading/list/Link history checks. Native reload/recovery evidence below still
+applies to the prior `ktXUh6` artifact; it is not automatically transferred.
 
 The beta is **not release-qualified**. The remaining gates are:
 
@@ -2409,3 +2410,25 @@ This closes the integration/doctest gap left by the earlier unit-only run after
 wrapper reuse. It does not rerun other workspace crates or finish the full beta
 release gate. Exact command, toolchain and per-suite results are recorded in
 [full core regression evidence](qualification/2026-10-05-core-full-regression.json).
+
+## Latest opt-in native clipboard and formatting — 2026-10-05
+
+The retained `s4Qsgg` installed-package bundle is served separately on loopback
+port 4312, without replacing the prior port-4311 bundle. Native Safari 26.6.2
+and Chrome 152.0.0.0 both report the latest `CcQwkF` Wasm hash. Each passes
+single-bullet Copy/Cut, native Paste exactly once, immediate caret-end typing,
+cross-item Copy/Cut in both keyboard directions, and one-step Undo restoring
+numbered items 3/4. Heading 2→3, bullet wrapping, numbered conversion and list
+removal retain the selected text and heading rank through Undo/Redo. Link
+Undo clears the value and Redo restores the exact test URL in the form.
+
+Safari finishes live at revision 53; Chrome at revision 51. Each records eight
+events, including three Copy, three Cut and one Paste, with no first fault,
+pending events or dropped events. Human-attestation boxes remain unchecked, so
+the fixture's own outcome correctly remains `incomplete`. This is bounded
+agent-operated native evidence, not human, physical IME or spoken VoiceOver
+certification. Native reload/recovery on this latest artifact remains open.
+See [latest native evidence](qualification/2026-10-05-latest-native-clipboard-formatting.json)
+for both redacted reports, exact artifact identities, observed scenarios and
+limitations. No shipping bundle, system setting or unrelated tab changed;
+nothing was pushed or published.
