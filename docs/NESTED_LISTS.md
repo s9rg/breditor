@@ -53,6 +53,10 @@ claim until end-to-end support is qualified.
   exact depth-first block preservation, schema/limit validation, inverse and
   point relocation. Session transactions and undo/redo support the operation;
   durable codec/replay integration remains required before action exposure.
+- Rust `IndentListItemsAction` moves a sibling run with descendants, preserves
+  ordered starts, merges compatible trailing child sections, and previews the
+  complete result against limits before preparing one history unit. Browser
+  registration and outdent are still outstanding.
 
 ## Release gate
 

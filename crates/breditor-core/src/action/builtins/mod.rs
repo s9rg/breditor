@@ -48,6 +48,12 @@ mod unwrap_list;
 #[cfg(feature = "experimental-structural-properties")]
 mod wrap_list;
 #[cfg(feature = "experimental-structural-properties")]
+mod indent_list_items;
+#[cfg(feature = "experimental-structural-properties")]
+pub use indent_list_items::IndentListItemsAction;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod indent_list_items_tests;
+#[cfg(feature = "experimental-structural-properties")]
 pub use unwrap_list::UnwrapListAction;
 #[cfg(feature = "experimental-structural-properties")]
 pub use wrap_list::WrapListAction;
