@@ -142,6 +142,23 @@ impl CompiledSchema {
         super::compiler::compile_flat_list_profile(schema_id, extensions)
     }
 
+    /// Compiles experimental nested-list document admission.
+    ///
+    /// Each item has one paragraph or heading followed by zero or more child
+    /// lists. This does not grant flat-list editing capabilities or browser,
+    /// history/replay, or session-codec support. Existing profiles are unchanged.
+    ///
+    /// # Errors
+    /// Returns [`SchemaCompilationError`] for reserved identities, invalid
+    /// extension declarations or compiler limits.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_compile_nested_list_profile(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        super::compiler::compile_nested_list_profile(schema_id, extensions)
+    }
+
     /// Returns a test-only schema with the base selector and different content meaning.
     ///
     /// This narrow factory exists only so crate tests can prove that a matching
