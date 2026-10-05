@@ -14,7 +14,7 @@ use crate::{
     state::EditorContext,
 };
 use std::error::Error;
-fn item(children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>> {
+pub(super) fn item(children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>> {
     Ok(NodeRef::element(ElementNode::try_new(
         name("breditor/list-item")?,
         None,
@@ -22,7 +22,7 @@ fn item(children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>> {
         children,
     )?))
 }
-fn list(items: Vec<NodeRef>, start: Option<i64>) -> Result<NodeRef, Box<dyn Error>> {
+pub(super) fn list(items: Vec<NodeRef>, start: Option<i64>) -> Result<NodeRef, Box<dyn Error>> {
     let props = if let Some(start) = start {
         PropertyMap::try_from_sorted(vec![(
             name("breditor/start")?,

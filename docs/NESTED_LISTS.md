@@ -55,8 +55,12 @@ claim until end-to-end support is qualified.
   durable codec/replay integration remains required before action exposure.
 - Rust `IndentListItemsAction` moves a sibling run with descendants, preserves
   ordered starts, merges compatible trailing child sections, and previews the
-  complete result against limits before preparing one history unit. Browser
-  registration and outdent are still outstanding.
+  complete result against limits before preparing one history unit.
+- Rust `OutdentListItemsAction` lifts sibling runs one level and attaches trailing
+  siblings and later child-list sections beneath the last lifted item, preserving
+  reading order. Promoted items inherit destination markers; retained numbered
+  sections preserve explicit starts. Root outdent is disabled. Both actions share
+  guarded atomic planning; browser registration remains outstanding.
 
 ## Release gate
 

@@ -50,6 +50,14 @@ mod wrap_list;
 #[cfg(feature = "experimental-structural-properties")]
 mod indent_list_items;
 #[cfg(feature = "experimental-structural-properties")]
+mod nested_list_support;
+#[cfg(feature = "experimental-structural-properties")]
+mod outdent_list_items;
+#[cfg(feature = "experimental-structural-properties")]
+pub use outdent_list_items::OutdentListItemsAction;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod outdent_list_items_tests;
+#[cfg(feature = "experimental-structural-properties")]
 pub use indent_list_items::IndentListItemsAction;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod indent_list_items_tests;
