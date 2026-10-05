@@ -32,6 +32,16 @@
       "diagnostics": []
     }
   ],
+  "latestCandidateCheck": {
+    "packageRecord": "target/flat-list-packages-3d7urb/qualification.json",
+    "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+    "mode": "native-selection",
+    "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-bpYClg/performance-FZz1gZ/measurement.json",
+    "sha256": "3c6f3ef5d067ded45dfd8536320da72ef15689aeb2210dc7fe6bb873c71bcc77",
+    "correctnessCasesPassed": 9,
+    "diagnostics": [],
+    "limits": "Bundled WebKit correctness check only, run alongside Rust qualification; not a native Safari, physical IME or performance result."
+  },
   "toolingTests": {
     "command": "BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1 node --test scripts/*.test.mjs",
     "passed": 100,

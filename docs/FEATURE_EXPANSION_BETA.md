@@ -2395,3 +2395,17 @@ control. This comparison does **not** reproduce or fix the intermittent fault,
 justify shipping a delay, or qualify physical input. A timer yield is not proof
 that all pending notifications drained, and the diagnostic timings include waits.
 See [selection-ordering evidence](qualification/2026-10-05-webkit-selection-scheduling.json).
+
+The same native-selection diagnostic also passes nine cases on the latest
+`3d7urb` private pair, retaining the `CcQwkF` Wasm identity. This remains
+bundled-WebKit correctness evidence, not native Safari or physical input.
+
+## Full core regression after wrapper reuse — 2026-10-05
+
+`cargo test -p breditor-core --all-features` completes successfully on the latest
+core: **1,140 unit tests, 692 integration tests across 108 suites, and 137
+documentation tests**. No failures, ignored tests or filtered tests were reported.
+This closes the integration/doctest gap left by the earlier unit-only run after
+wrapper reuse. It does not rerun other workspace crates or finish the full beta
+release gate. Exact command, toolchain and per-suite results are recorded in
+[full core regression evidence](qualification/2026-10-05-core-full-regression.json).

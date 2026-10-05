@@ -1,0 +1,910 @@
+{
+  "status": "passed",
+  "scope": "Complete breditor-core all-feature unit, integration and documentation test command; not a full workspace or release gate",
+  "testedHead": "df336a6ca95a25872e36c98818e58022ee2eac48",
+  "latestCoreChange": "86942cc",
+  "command": "/Users/s/.cargo/bin/cargo test -p breditor-core --all-features",
+  "exitCode": 0,
+  "rustc": "1.98.0 (88d9e12ae 2026-08-18)",
+  "groups": 111,
+  "totalPassed": 1969,
+  "unitPassed": 1140,
+  "integrationPassed": 692,
+  "integrationSuites": 108,
+  "docPassed": 137,
+  "suites": [
+    {
+      "suite": "unit",
+      "passed": 1140,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "action_registry_contracts.rs",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "action_state_cache_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "action_state_catalog_contracts.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "builtin_action_contracts.rs",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "checkpointed_editor_engine_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "checkpointed_editor_engine_v3_contracts.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "checkpointed_editor_engine_v5_contracts.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "clear_inline_formats_action_contracts.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "clear_inline_formats_history_contracts.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "color_showcase_rgb24_contracts.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "commit_json_properties.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "commit_json_roundtrips.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "commit_json_security.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "compiled_editor_profile_runtime_contracts.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "delete_backward_cross_paragraph_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "delete_forward_selection_contracts.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "delete_typed_format_contracts.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "document_invariants.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "document_json_v2.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "document_summary_contracts.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "editor_engine_contracts.rs",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "editor_state_json_properties.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "editor_state_json_roundtrips.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "editor_state_json_security.rs",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "history_relocation_contracts.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "history_status_contracts.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "inline_format_profile_operation_contracts.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "inline_format_profile_replay_contracts.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "inline_format_property_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "inline_format_set_profile_contracts.rs",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "insert_paragraph_break_cross_paragraph_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "insert_plain_text_contracts.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "insert_text_action_contracts.rs",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "insert_text_cross_paragraph_contracts.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "insert_text_typed_pending_contracts.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "intent_router_contracts.rs",
+      "passed": 23,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_contracts.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_json_properties.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_json_roundtrips.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_json_security.rs",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_json_v2.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_json_v3.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_properties.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_replay_security.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_checkpoint_security.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_entry_json_properties.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_entry_json_roundtrips.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_entry_json_security.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_entry_json_v2.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_entry_json_v3.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_frame_properties.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_frame_roundtrips.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_frame_security.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_identity_contracts.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_incremental_observation_contracts.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_incremental_observation_properties.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_incremental_observation_security.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_recovery_contracts.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_recovery_properties.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_recovery_security.rs",
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_repeated_compaction_contracts.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_repeated_compaction_properties.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_repeated_compaction_security.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_storage_writer_epoch_contracts.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_tail_compaction_contracts.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_tail_compaction_properties.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_tail_compaction_security.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_tail_cursor_contracts.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_tail_cursor_properties.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "local_log_tail_cursor_security.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "operation_json_properties.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "operation_json_roundtrips.rs",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "paragraph_relocation_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "paragraph_structure_contracts.rs",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "paragraph_structure_properties.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "point_invariants.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "profiled_editor_engine_contracts.rs",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "root_text_replace_contracts.rs",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "root_text_replace_properties.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "root_text_replace_relocation_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "schema_extension_contracts.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "selection_order_contracts.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "session_checkpoint_json_properties.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "session_checkpoint_json_roundtrips.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "session_checkpoint_json_security.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "session_history_contracts.rs",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "set_inline_format_action_contracts.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "set_inline_format_cross_paragraph_contracts.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "set_inline_format_history_contracts.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "size_showcase_integer_contracts.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "strict_json_roundtrips.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "structural_block_values.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "text_fragment_algebra.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "text_splice_fast_path_contracts.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "text_splice_properties.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "text_transaction_contracts.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "toggle_inline_format_action_contracts.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "toggle_inline_format_typed_properties_contracts.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "toggle_strong_action_contracts.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "toggle_strong_cross_paragraph_contracts.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "transaction_json_properties.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "transaction_json_roundtrips.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "transaction_json_security.rs",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "transaction_state_update_contracts.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "typed_inline_format_safety_contracts.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "typed_paragraph_structure_contracts.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "typed_structural_action_contracts.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "unicode_boundaries.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "documentation-1",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    },
+    {
+      "suite": "documentation-2",
+      "passed": 136,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filteredOut": 0
+    }
+  ],
+  "limits": [
+    "No other workspace crate, release packaging, native browser or physical input gate is implied.",
+    "No shipping package rebuild, version bump, push or publication.",
+    "Historical intermittent WebKit queueUncertain remains unresolved."
+  ]
+}
