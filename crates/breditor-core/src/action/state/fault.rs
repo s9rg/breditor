@@ -211,6 +211,26 @@ pub enum ActionStateOperationFault {
     #[cfg(feature = "experimental-structural-properties")]
     #[error("flat-list text splice schema or resource validation failed")]
     FlatListTextSpliceValidation,
+    /// Nested-list text schema is unsupported.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text splice schema is unsupported")]
+    NestedListTextSpliceUnsupportedSchema,
+    /// Invalid root/item/block path or shape.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text splice target is invalid")]
+    NestedListTextSpliceInvalidTarget,
+    /// The containing-root guard is stale.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text splice source guard is stale")]
+    NestedListTextSpliceExpectedMismatch,
+    /// Document proof differs from the active context.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text splice document proof differs")]
+    NestedListTextSpliceDocumentProof,
+    /// Fragment or result admission failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text splice schema or resource validation failed")]
+    NestedListTextSpliceValidation,
     /// Flat-list schema capability was not granted.
     #[cfg(feature = "experimental-structural-properties")]
     #[error("flat-list reframe schema is unsupported")]
@@ -911,6 +931,22 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
                 }
                 E::DocumentProof(_) => ActionStateOperationFault::FlatListTextSpliceDocumentProof,
                 E::Validation(_) => ActionStateOperationFault::FlatListTextSpliceValidation,
+                E::Text(error) => project_operation_error(OperationApplyError::TextSplice(error)),
+            }
+        }
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::NestedListTextSplice(source) => {
+            use crate::operation::NestedListTextSpliceError as E;
+            match source {
+                E::UnsupportedSchema => {
+                    ActionStateOperationFault::NestedListTextSpliceUnsupportedSchema
+                }
+                E::InvalidTarget => ActionStateOperationFault::NestedListTextSpliceInvalidTarget,
+                E::ExpectedMismatch => {
+                    ActionStateOperationFault::NestedListTextSpliceExpectedMismatch
+                }
+                E::DocumentProof(_) => ActionStateOperationFault::NestedListTextSpliceDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::NestedListTextSpliceValidation,
                 E::Text(error) => project_operation_error(OperationApplyError::TextSplice(error)),
             }
         }

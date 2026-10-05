@@ -80,5 +80,11 @@ green bounded reruns alone do not close it. No push or publication is authorized
 
 ## Deferred
 
+Nested text work in progress: `NestedListTextSplice` supports scalar-aligned
+replacement under arbitrary admitted item nesting while guarding the containing
+root and preserving wrappers. Its V7 payload and public typing/formatting action
+integration are not yet implemented; histories containing this new primitive
+must not be presented as checkpoint-supported until that follow-up is qualified.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

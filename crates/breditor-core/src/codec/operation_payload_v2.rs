@@ -113,6 +113,7 @@ pub(crate) fn encode_operation_payload_v2(
         | Operation::TextBlockReplace(_)
         | Operation::FlatListReframe(_)
         | Operation::NestedListReframe(_)
+        | Operation::NestedListTextSplice(_)
         | Operation::FlatListTextSplice(_)
         | Operation::FlatListTextReplace(_) => {
             return Err(operation.kind());

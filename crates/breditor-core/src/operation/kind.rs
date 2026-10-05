@@ -27,6 +27,9 @@ use super::OperationValidationError;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationKind {
+    /// Experimental text edit inside a nested list document.
+    #[cfg(feature = "experimental-structural-properties")]
+    NestedListTextSplice,
     /// Experimental nested container edit, admitted only by V7 and later formats.
     #[cfg(feature = "experimental-structural-properties")]
     NestedListReframe,
@@ -64,6 +67,8 @@ impl OperationKind {
     pub const fn as_str(self) -> &'static str {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListTextSplice => "nestedListTextSplice",
+            #[cfg(feature = "experimental-structural-properties")]
             Self::NestedListReframe => "nestedListReframe",
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace => "flatListTextReplace",
@@ -92,6 +97,9 @@ impl OperationKind {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operation {
+    /// Experimental nested text edit with a complete root guard.
+    #[cfg(feature = "experimental-structural-properties")]
+    NestedListTextSplice(super::NestedListTextSplice),
     /// Experimental nested container edit preserving depth-first block order.
     #[cfg(feature = "experimental-structural-properties")]
     NestedListReframe(super::NestedListReframe),
@@ -153,6 +161,8 @@ impl Operation {
     pub const fn kind(&self) -> OperationKind {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListTextSplice(_) => OperationKind::NestedListTextSplice,
+            #[cfg(feature = "experimental-structural-properties")]
             Self::NestedListReframe(_) => OperationKind::NestedListReframe,
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace(_) => OperationKind::FlatListTextReplace,
@@ -199,6 +209,10 @@ impl Operation {
         document: &Document,
     ) -> Result<AppliedOperation, OperationApplyError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListTextSplice(operation) => {
+                operation.apply(context, document).map_err(Into::into)
+            }
             #[cfg(feature = "experimental-structural-properties")]
             Self::NestedListReframe(operation) => {
                 operation.apply_operation(context, document).map_err(Into::into)
@@ -257,6 +271,10 @@ pub(crate) struct AppliedChange {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationApplyError {
+    /// A nested text edit failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    NestedListTextSplice(#[from] super::NestedListTextSpliceError),
     /// A nested list container edit failed.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]

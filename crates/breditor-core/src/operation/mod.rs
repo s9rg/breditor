@@ -2,6 +2,12 @@
 
 mod change_set;
 #[cfg(feature = "experimental-structural-properties")]
+mod nested_list_text_splice;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod nested_list_text_splice_tests;
+#[cfg(feature = "experimental-structural-properties")]
+pub use nested_list_text_splice::{NestedListTextSplice, NestedListTextSpliceError};
+#[cfg(feature = "experimental-structural-properties")]
 mod nested_list_reframe;
 #[cfg(feature = "experimental-structural-properties")]
 pub use nested_list_reframe::{NestedListReframe, NestedListReframeEdit, NestedListReframeError};
