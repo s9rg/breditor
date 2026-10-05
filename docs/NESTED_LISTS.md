@@ -1,6 +1,6 @@
 # Nested lists: experimental implementation contract
 
-Status: first Rust admission checkpoint. Not enabled in the browser or current
+Status: Rust editing and persistence implementation in progress. Not enabled in the browser or current
 opt-in flat-list package. This work does not resolve the intermittent WebKit fault.
 
 ## Document shape
@@ -84,7 +84,9 @@ Nested text work in progress: `NestedListTextSplice` supports scalar-aligned
 replacement under arbitrary admitted item nesting while guarding the containing
 root and preserving wrappers. V7 operation and session persistence support this
 primitive; mixed indent/text/outdent histories are tested at every cursor.
-Public typing/formatting actions and browser integration remain outstanding.
+`InsertNestedListTextAction` now supports same-block typing with format inheritance,
+exact caret placement and merged typing history. Cross-block typing, formatting
+actions, structural text edits and browser integration remain outstanding.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

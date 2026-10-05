@@ -78,6 +78,8 @@ enum TextContainerScope {
     DirectRoot,
     #[cfg(feature = "experimental-structural-properties")]
     FlatList,
+    #[cfg(feature = "experimental-structural-properties")]
+    NestedList,
 }
 
 impl TextContainerScope {
@@ -86,6 +88,15 @@ impl TextContainerScope {
             Self::DirectRoot => path.len() == 1,
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatList => matches!(path.as_slice(), [_] | [_, _, 0]),
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedList => {
+                let indexes = path.as_slice();
+                indexes.len() == 1
+                    || (indexes.len() >= 3
+                        && indexes.len() % 2 == 1
+                        && indexes.last() == Some(&0)
+                        && indexes[2..indexes.len() - 1].iter().step_by(2).all(|index| *index > 0))
+            }
         }
     }
 }
@@ -127,6 +138,28 @@ fn normalize_range_in_scope(
         end: normalize_point(state.document(), end, end_endpoint, scope)?,
         order,
     })
+}
+
+/// Explicit nested scope; callers must require the nested schema capability.
+#[cfg(feature = "experimental-structural-properties")]
+pub(crate) fn normalize_nested_list_range_selection(
+    state: &EditorState,
+) -> Result<TextRangeSelection, TextPositionError> {
+    normalize_range_in_scope(state, TextContainerScope::NestedList)
+}
+
+/// Canonical point construction at an admitted nested block path.
+#[cfg(feature = "experimental-structural-properties")]
+pub(crate) fn point_at_nested_list_fragment_offset(
+    path: &NodePath,
+    fragment: &TextFragment,
+    offset: TextOffset,
+    affinity: Affinity,
+) -> Result<Point, TextPositionError> {
+    if !TextContainerScope::NestedList.admits(path) {
+        return Err(TextPositionError::NotDirectRootParagraph { path: path.clone() });
+    }
+    point_at_block_offset(path, fragment, offset, affinity)
 }
 
 /// Builds the canonical point encoding for an aggregate offset in a predicted fragment.

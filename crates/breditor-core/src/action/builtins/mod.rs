@@ -50,6 +50,10 @@ mod wrap_list;
 #[cfg(feature = "experimental-structural-properties")]
 mod indent_list_items;
 #[cfg(feature = "experimental-structural-properties")]
+mod insert_nested_list_text;
+#[cfg(feature = "experimental-structural-properties")]
+pub use insert_nested_list_text::{InsertNestedListTextAction, insert_nested_list_text_action_id};
+#[cfg(feature = "experimental-structural-properties")]
 mod nested_list_support;
 #[cfg(feature = "experimental-structural-properties")]
 mod outdent_list_items;

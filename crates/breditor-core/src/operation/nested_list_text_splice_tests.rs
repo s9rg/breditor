@@ -56,6 +56,52 @@ fn nested_text_splice_preserves_wrappers_and_exact_history() -> TestResult {
         None,
     )?;
     let range = TextRange::try_new(path.clone(), TextOffset::try_new(1)?, TextOffset::try_new(3)?)?;
+    {
+        use crate::action::{
+            ActionId, ActionInput, ActionInvocation, ActionRegistration, ActionRegistry,
+            ActionValue,
+            builtins::{InsertNestedListTextAction, insert_text_input_contract},
+        };
+        let id = ActionId::try_new("test/nested-type")?;
+        let registry = ActionRegistry::try_new(vec![ActionRegistration::with_input(
+            id.clone(),
+            insert_text_input_contract(),
+            InsertNestedListTextAction,
+        )])?;
+        let mut typing = EditorSession::new(before.clone());
+        for text in ["X", "Y"] {
+            let invocation = ActionInvocation::new(
+                id.clone(),
+                ActionInput::typed(
+                    insert_text_input_contract(),
+                    ActionValue::try_from_string(text)?,
+                ),
+            );
+            typing.execute_prepared_action(registry.prepare(typing.state(), &invocation)?)?;
+        }
+        assert_eq!(
+            typing.state().document().node_at(&path)?,
+            &block(TextBlockKind::Paragraph, "a🙂XYb", formats()?)?
+        );
+        let caret = Point::Text {
+            text_path: path.try_child(0)?,
+            utf16_offset: 5,
+            affinity: Affinity::Before,
+        };
+        assert_eq!(
+            typing.state().selection(),
+            Some(&Selection::Range(RangeSelection::new(caret.clone(), caret)))
+        );
+        assert_eq!(typing.undo_depth(), 1);
+        let codec = crate::codec::SessionCheckpointJsonCodecV7::new(context.clone());
+        let mut restored = codec.decode(&codec.encode(&typing)?)?;
+        restored.undo()?.ok_or("typing undo")?;
+        assert_eq!(restored.state().document(), before.document());
+        assert_eq!(restored.state().selection(), before.selection());
+        restored.redo()?.ok_or("typing redo")?;
+        assert_eq!(restored.state().document(), typing.state().document());
+        assert_eq!(restored.state().selection(), typing.state().selection());
+    }
     let replacement = TextFragment::try_from_runs(vec![TextRun::try_new("日本", formats()?)?])?;
     let operation =
         NestedListTextSplice::capture(&context, before.document(), range, replacement.clone())?;
