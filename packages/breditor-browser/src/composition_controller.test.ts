@@ -673,6 +673,46 @@ describe("BreditorCompositionController", () => {
     });
   });
 
+  it.each([
+    {name: "matching final input", dom: "a日本c", final: "日本", result: "committed"},
+    {name: "cancelled replacement", dom: "abc", final: "", result: "cancelled"},
+    {name: "conflicting final input", dom: "a日本c", final: "別", result: "rejected"},
+    {name: "empty final with retained provisional DOM", dom: "a日本c", final: "", result: "rejected"},
+  ])("honors $name arriving after blur but before settlement", ({dom, final, result}) => {
+    const fixture = setup(selection(2, 1));
+    start(fixture);
+    beforeInput(fixture, "insertCompositionText", "日本", targetRange(fixture, 1, 2));
+    fixture.paragraph.textContent = "a日本c";
+    input(fixture, "insertCompositionText", "日本", true);
+    fixture.controller.handleBlur(basicEvent("blur", fixture.adapter.host));
+    fixture.paragraph.textContent = dom;
+    end(fixture, final);
+    fixture.scheduler.runAll();
+    if (result === "rejected") {
+      expect(fixture.terminals[0]).toEqual({kind: "recoveryRequired", reason: "unexpectedMutation"});
+      expect(fixture.adapter.requests).toHaveLength(0);
+    } else {
+      expect(fixture.terminals[0]).toMatchObject({kind: "settled", settlement: {kind: result}});
+      expect(fixture.adapter.requests).toHaveLength(1);
+      expect(fixture.adapter.requests[0]?.command).toMatchObject(result === "cancelled"
+        ? {kind: "control", operation: "closeHistoryGroup"}
+        : {kind: "action", actionId: "breditor/insert-plain-text", input: {kind: "string", value: final}});
+    }
+  });
+
+  it.each(["axc", "changed日本c"])("rejects DOM drift after the last input before blur: %s", (dom) => {
+    const fixture = setup(selection(1, 2));
+    start(fixture);
+    beforeInput(fixture, "insertCompositionText", "日本", targetRange(fixture, 1, 2));
+    fixture.paragraph.textContent = "a日本c";
+    input(fixture, "insertCompositionText", "日本", true);
+    fixture.paragraph.textContent = dom;
+    fixture.controller.handleBlur(basicEvent("blur", fixture.adapter.host));
+    fixture.scheduler.runAll();
+    expect(fixture.terminals[0]).toMatchObject({kind: "recoveryRequired"});
+    expect(fixture.adapter.requests).toHaveLength(0);
+  });
+
   it("keeps orphan, foreign, nested, and disconnected events inert or recoverable", () => {
     const fixture = setup(selection(1));
     expect(input(fixture, "insertFromComposition", "x", false)).toEqual({

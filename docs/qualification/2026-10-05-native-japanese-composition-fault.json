@@ -158,6 +158,32 @@
     "settingsRestored": ["Canadian is the only input source", "input menu hidden", "Globe action Show Emoji & Symbols", "keyboard navigation off", "dictation off with English Canada only"],
     "voiceOver": "Not enabled or tested"
   },
+  "replacementCancellationFollowup": {
+    "artifact": "target/native-ime-diagnostic-ufIBDv",
+    "url": "http://127.0.0.1:4310/manual-clipboard.html",
+    "bundleSha256": "03542ffda205ba07303155ef54f506dcb93630fb2b06038a624da919ced7e6ad",
+    "runtimeSha256": "f3903ac95742b2b1bfdb8a4385d7cf574e92b4b38b6d62ce4fb08cca8c9080ac",
+    "runnerSha256": "1b544268b211e449a05b640f815f660b2c8ad81d8f7e662adf29595e9207ae41",
+    "testHarnessImprovements": [
+      "Check exact replacement text instead of substring inclusion.",
+      "Run cancellation first with empty history; unchanged cancellation must preserve prior Undo/Redo availability, not require Undo to be enabled.",
+      "Exercise forward/backward selected-text cancellation and blur replacement/deletion on headings, bullet items and numbered items.",
+      "Verify cancellation restores the original directional selection, not just text."
+    ],
+    "runs": [
+      {"browser": "Chromium 151.0.7922.34", "passed": 60},
+      {"browser": "Firefox 153.0", "passed": 60},
+      {"browser": "bundled WebKit 26.5", "passed": 60},
+      {"browser": "native Safari 26.6.2", "passed": 60}
+    ],
+    "automatedAssertions": "Each automated engine completed all 60 rows, 360 beforeinput target ranges, zero uncaught page errors, zero diagnostic failures and zero dropped diagnostics.",
+    "nativeSafariObservation": "Accessibility output reports status passed, all 60 rows passed, failures [] and dropped 0. Full diagnostic entries exceed native accessibility value length; the complete entry list was not extracted.",
+    "unitTests": "52 files / 1883 tests passed, including six new delayed-terminal and DOM-drift cases. Browser source/test typechecks, strict fixture typecheck and 6 diagnostic-unit tests passed.",
+    "newProductionDefect": "None reproduced in this round; changes strengthen tests only.",
+    "physicalReplacementAndCancellation": "Not yet qualified; synthetic replacement/cancellation must not be conflated with the prior physical insertion pass.",
+    "settings": "No keyboard or accessibility settings changed during this followup.",
+    "shipping": "Shipping artifacts untouched; previous physical-test page at port 4309 preserved. Nothing pushed or published."
+  },
   "limitations": [
     "Capture occurred after the user's interaction; exact keystrokes, insertion position, DOM mutations and event.data were not recorded.",
     "compositionupdate is not among this recorder's observed event kinds.",

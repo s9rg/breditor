@@ -89,7 +89,9 @@ window.addEventListener("DOMContentLoaded", () => {
     const rows: unknown[] = [];
     try {
       for (const selector of ["h2", "ul li p", "ol li p"]) {
-        for (const variant of ["append", "same-text", "split-node", "replace", "backward-replace", "unsynchronized", "retargeted", "element-selection", "cancel", "delete", "blur-append", "blur-replace", "blur-cancel", "blur-delete"]) {
+        // Cancellation goes first to exercise an empty history as well as the
+        // redo branch retained by subsequent replacement cases.
+        for (const variant of ["cancel", "cancel-replace", "backward-cancel-replace", "blur-cancel-replace", "blur-backward-cancel-replace", "append", "same-text", "split-node", "replace", "backward-replace", "unsynchronized", "retargeted", "element-selection", "delete", "blur-append", "blur-replace", "blur-backward-replace", "blur-cancel", "blur-delete", "blur-backward-delete"]) {
           await replayComposition(selector, variant);
           rows.push({selector, variant, result: "pass"});
           results.value = JSON.stringify({status: "running", rows}, null, 2);
@@ -112,15 +114,20 @@ async function replayComposition(selector: string, variant: string): Promise<voi
   const original = host.innerHTML;
   const block = host.querySelector(selector)!;
   const text = document.createTreeWalker(block, NodeFilter.SHOW_TEXT).nextNode() as Text;
+  const originalText = block.textContent;
+  const action = (name: string) => Array.from(document.querySelectorAll<HTMLButtonElement>("#toolbar button")).find(button => button.textContent?.trim() === name);
   const blurring = variant.startsWith("blur-");
-  const replacing = ["same-text", "replace", "backward-replace", "retargeted", "delete", "blur-replace", "blur-delete"].includes(variant);
+  const cancelling = variant.includes("cancel");
+  const replacing = variant.includes("replace") || variant.includes("delete") || ["same-text", "retargeted"].includes(variant);
   const start = replacing ? 0 : text.length;
   const end = replacing ? 5 : text.length;
-  const final = variant === "same-text" ? text.data.slice(start, end)
-    : ["cancel", "delete", "blur-cancel", "blur-delete"].includes(variant) ? "" : "日本";
+  const originalRange = text.data.slice(start, end);
+  const final = variant === "same-text" || cancelling ? originalRange
+    : variant.includes("delete") ? "" : "日本";
+  const expectedText = text.data.slice(0, start) + final + text.data.slice(end);
   host.focus();
   const selection = document.getSelection()!;
-  if (variant === "backward-replace") selection.setBaseAndExtent(text, end, text, start);
+  if (variant.includes("backward")) selection.setBaseAndExtent(text, end, text, start);
   else if (variant === "retargeted") selection.setBaseAndExtent(text, end, text, end);
   else if (variant === "element-selection") selection.setBaseAndExtent(block, block.childNodes.length, block, block.childNodes.length);
   else selection.setBaseAndExtent(text, start, text, end);
@@ -128,6 +135,7 @@ async function replayComposition(selector: string, variant: string): Promise<voi
     document.dispatchEvent(new Event("selectionchange"));
     await nextTask();
   }
+  const historyBefore = {undo: action("Undo")?.disabled, redo: action("Redo")?.disabled};
   host.dispatchEvent(new CompositionEvent("compositionstart", {bubbles: true, data: ""}));
   let previousLength = end - start;
   for (const value of ["n", "に", "にh", "にほ", "にほん", final]) {
@@ -144,21 +152,27 @@ async function replayComposition(selector: string, variant: string): Promise<voi
   }
   if (variant === "split-node") text.splitText(start);
   if (blurring) host.blur();
-  else host.dispatchEvent(new CompositionEvent("compositionend", {bubbles: true, data: final}));
+  else host.dispatchEvent(new CompositionEvent("compositionend", {bubbles: true, data: cancelling ? "" : final}));
   // Production composition settlement deliberately waits 20 ms. A pair of
   // zero-delay tasks can still see provisional DOM and a leased command queue.
   // This bounded synthetic probe waits beyond that window; it is not a timing
   // guarantee for background tabs or a replacement for native IME observation.
   await new Promise<void>(resolve => setTimeout(resolve, 100));
-  const action = (name: string) => Array.from(document.querySelectorAll<HTMLButtonElement>("#toolbar button")).find(button => button.textContent?.trim() === name);
   const undo = action("Undo");
-  if (!host.isConnected || !undo || undo.disabled) throw new Error(`${selector}/${variant}: no committed action`);
+  if (!host.isConnected || host.getAttribute("contenteditable") !== "true" || !undo) throw new Error(`${selector}/${variant}: editor unavailable`);
   const committed = host.innerHTML;
-  if (!host.querySelector(selector)?.textContent?.includes(final)) throw new Error("missing committed text");
-  if (variant === "cancel" || variant === "blur-cancel") {
-    if (committed !== original) throw new Error("Cancelled insertion changed the document");
+  if (host.querySelector(selector)?.textContent !== expectedText) throw new Error(`${selector}/${variant}: replacement text mismatch`);
+  if (cancelling) {
+    if (committed !== original || host.querySelector(selector)?.textContent !== originalText) throw new Error("Cancellation changed the document");
+    if (undo.disabled !== historyBefore.undo || action("Redo")?.disabled !== historyBefore.redo) throw new Error("Cancellation changed history availability");
+    const restored = document.getSelection();
+    if (!restored || restored.anchorOffset !== (variant.includes("backward") ? end : start) ||
+        restored.focusOffset !== (variant.includes("backward") ? start : end) ||
+        !host.querySelector(selector)?.contains(restored.anchorNode) ||
+        !host.querySelector(selector)?.contains(restored.focusNode)) throw new Error("Cancellation did not restore directional selection");
     return;
   }
+  if (undo.disabled) throw new Error(`${selector}/${variant}: no committed action`);
   if (variant === "same-text") {
     // An identical replacement collapses the selection but has no forward
     // document operations. Rust retains the existing redo branch; replaying

@@ -33,13 +33,13 @@ try {
       const result = JSON.parse(await page.getByRole("textbox", {name: "Scripted composition results"}).inputValue());
       console.log(JSON.stringify({browser: name, version: browser.version(), ...result}));
       assert.equal(result.status, "passed");
-      assert.equal(result.rows.length, 42);
+      assert.equal(result.rows.length, 60);
       const diagnostics = JSON.parse(await page.getByRole("textbox", {name: "Local IME diagnostics"}).inputValue());
       assert.equal(diagnostics.dropped, 0);
       assert.equal(diagnostics.entries.filter(entry => !entry.site.startsWith("event:")).length, 0);
       assert.deepEqual(diagnostics.failures, []);
       const beforeInputs = diagnostics.entries.filter(entry => entry.site === "event:beforeinput");
-      assert.equal(beforeInputs.length, 252);
+      assert.equal(beforeInputs.length, 360);
       assert.ok(beforeInputs.every(entry => entry.details.targetRanges.length === 1));
       assert.deepEqual(errors, []);
     } catch (error) {
