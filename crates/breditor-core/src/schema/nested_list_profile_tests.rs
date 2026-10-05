@@ -45,6 +45,58 @@ fn nested_list_reframe_inverse_and_point_mapping_are_exact_and_guarded() -> Test
     let document = Document::try_new(context.schema(), root.clone(), context.limits())?;
     let operation = NestedListReframe::capture(&context, &document, 0, 1, vec![replacement])?;
     let edit = operation.apply(&context, &document)?.ok_or("missing edit")?;
+    assert!(crate::codec::OperationJsonCodecV6::new(context.clone())
+        .encode(&crate::operation::Operation::NestedListReframe(operation.clone())).is_err());
+    {
+        use crate::{
+            operation::Operation,
+            selection::{RangeSelection, Selection},
+            session::EditorSession,
+            state::{EditorState, LineageId},
+            transaction::Transaction,
+        };
+        let point = |offset| -> Result<Point, Box<dyn std::error::Error>> {
+            Ok(Point::Text {
+                text_path: NodePath::try_from_indices(vec![0, 1, 0, 0])?,
+                utf16_offset: offset,
+                affinity: Affinity::After,
+            })
+        };
+        let before = EditorState::try_new(
+            &context,
+            LineageId::try_new("nested-reframe-session")?,
+            document.clone(),
+            Some(Selection::Range(RangeSelection::new(point(4)?, point(1)?))),
+            None,
+        )?;
+        let mut session = EditorSession::new(before.clone());
+        session
+            .apply_transaction(&Transaction::new(
+                &before,
+                vec![Operation::NestedListReframe(operation.clone())],
+            ))?
+            .into_commit()
+            .ok_or("missing nested commit")?;
+        let after = session.state().clone();
+        assert_eq!(after.document(), edit.document());
+        let mapped = |offset| -> Result<Point, Box<dyn std::error::Error>> {
+            Ok(Point::Text {
+                text_path: NodePath::try_from_indices(vec![0, 0, 1, 0, 0, 0])?,
+                utf16_offset: offset,
+                affinity: Affinity::After,
+            })
+        };
+        assert_eq!(
+            after.selection(),
+            Some(&Selection::Range(RangeSelection::new(mapped(4)?, mapped(1)?)))
+        );
+        session.undo()?.ok_or("missing nested undo")?;
+        assert_eq!(session.state().document(), before.document());
+        assert_eq!(session.state().selection(), before.selection());
+        session.redo()?.ok_or("missing nested redo")?;
+        assert_eq!(session.state().document(), after.document());
+        assert_eq!(session.state().selection(), after.selection());
+    }
     for affinity in [Affinity::Before, Affinity::After] {
         for offset in [0, 1, 3, 4] {
             let point = Point::Text {

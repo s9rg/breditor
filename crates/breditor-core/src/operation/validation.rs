@@ -106,6 +106,10 @@ pub enum OperationRootChildSpanRole {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationValidationError {
+    /// A nested list container edit failed validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    NestedListReframe(#[from] super::NestedListReframeError),
     /// Experimental flat-list structural text replacement failed admission.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]
@@ -565,6 +569,8 @@ pub(crate) fn validate_operation(
         Operation::TextBlockReplace(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]
         Operation::FlatListReframe(operation) => operation.validate(context).map_err(Into::into),
+        #[cfg(feature = "experimental-structural-properties")]
+        Operation::NestedListReframe(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]
         Operation::FlatListTextSplice(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]

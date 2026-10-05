@@ -239,6 +239,34 @@ pub enum ActionStateOperationFault {
     #[cfg(feature = "experimental-structural-properties")]
     #[error("flat-list reframe schema or resource validation failed")]
     FlatListReframeValidation,
+    /// Nested-list schema capability was not granted.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list reframe schema is unsupported")]
+    NestedListReframeUnsupportedSchema,
+    /// Invalid nested-list source or result shape/coordinate.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list reframe target is invalid")]
+    NestedListReframeInvalidTarget,
+    /// Container edit attempted to change the text-block sequence.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list reframe changed the text-block sequence")]
+    NestedListReframeContentChanged,
+    /// Root-child span exceeded configured limits.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list reframe root child limit exceeded")]
+    NestedListReframeRootChildLimit,
+    /// Complete source guards differed from the live document.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list reframe source guard is stale")]
+    NestedListReframeExpectedMismatch,
+    /// Document proof belonged to a different context.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list reframe document proof differs")]
+    NestedListReframeDocumentProof,
+    /// Source, replacement or result failed document validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list reframe schema or resource validation failed")]
+    NestedListReframeValidation,
     /// Experimental structural replacement schema is unsupported.
     #[cfg(feature = "experimental-structural-properties")]
     #[error("text-block replacement schema is unsupported")]
@@ -897,6 +925,21 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
                 E::ExpectedMismatch => ActionStateOperationFault::FlatListReframeExpectedMismatch,
                 E::DocumentProof(_) => ActionStateOperationFault::FlatListReframeDocumentProof,
                 E::Validation(_) => ActionStateOperationFault::FlatListReframeValidation,
+            }
+        }
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::NestedListReframe(source) => {
+            use crate::operation::NestedListReframeError as E;
+            match source {
+                E::UnsupportedSchema => {
+                    ActionStateOperationFault::NestedListReframeUnsupportedSchema
+                }
+                E::InvalidTarget => ActionStateOperationFault::NestedListReframeInvalidTarget,
+                E::ContentChanged => ActionStateOperationFault::NestedListReframeContentChanged,
+                E::RootChildLimit => ActionStateOperationFault::NestedListReframeRootChildLimit,
+                E::ExpectedMismatch => ActionStateOperationFault::NestedListReframeExpectedMismatch,
+                E::DocumentProof(_) => ActionStateOperationFault::NestedListReframeDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::NestedListReframeValidation,
             }
         }
         #[cfg(feature = "experimental-structural-properties")]

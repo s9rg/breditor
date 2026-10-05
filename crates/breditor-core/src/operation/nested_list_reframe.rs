@@ -14,8 +14,8 @@ use crate::{
 /// Reframes a nonempty root-child span without changing any contained text block.
 ///
 /// Preserves the exact depth-first text-block sequence while changing containers.
-/// This experimental primitive is not yet integrated into transactions or durable
-/// operation codecs. Complete source guards and final document limits are checked.
+/// Transactions support this operation, but existing durable operation codecs do
+/// not. Complete source guards and final document limits are checked.
 /// Each returned edit contains its exact inverse and snapshot-local point mapping.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NestedListReframe {
@@ -25,6 +25,26 @@ pub struct NestedListReframe {
 }
 
 impl NestedListReframe {
+    pub(crate) fn apply_operation(
+        &self,
+        context: &EditorContext,
+        document: &Document,
+    ) -> Result<super::AppliedOperation, NestedListReframeError> {
+        let Some(edit) = self.apply(context, document)? else {
+            return Ok(super::AppliedOperation::Unchanged);
+        };
+        Ok(super::AppliedOperation::Changed(Box::new(super::AppliedChange {
+            document: edit.document,
+            inverse: super::Operation::NestedListReframe(edit.inverse),
+            relocation: super::RelocationStepMap::FlatListReframe(edit.relocation),
+            change: super::ChildrenChange::new(
+                NodePath::root(),
+                super::ChildRange::new(self.start, end(self.start, self.expected.len())?),
+                super::ChildRange::new(self.start, end(self.start, self.replacement.len())?),
+            )
+            .into(),
+        })))
+    }
     /// Creates a source-guarded container-only edit.
     ///
     /// # Errors

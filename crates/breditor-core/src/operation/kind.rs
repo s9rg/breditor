@@ -18,7 +18,8 @@ use super::OperationValidationError;
 /// four paragraph-operation variants, the operation V1 wire tag. The experimental
 /// structural kinds have no V1–V3 wire tag; operation V4 admits block-kind
 /// changes only and V5 admits text-block splices and replacements. Flat-list
-/// reframing and flat-list text splices have no durable encoding.
+/// reframing and flat-list text edits are admitted by V6. Nested-list reframing
+/// has no durable encoding yet.
 /// Adding a runtime kind is an
 /// additive Rust API change, but does not silently extend the closed V1 wire
 /// union; admitting a new tag requires an explicit format-version decision.
@@ -26,6 +27,9 @@ use super::OperationValidationError;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationKind {
+    /// Experimental nested container edit; not admitted by existing wire versions.
+    #[cfg(feature = "experimental-structural-properties")]
+    NestedListReframe,
     /// Experimental text replacement with explicit flat-list result structure.
     #[cfg(feature = "experimental-structural-properties")]
     FlatListTextReplace,
@@ -60,6 +64,8 @@ impl OperationKind {
     pub const fn as_str(self) -> &'static str {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListReframe => "nestedListReframe",
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace => "flatListTextReplace",
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextSplice => "flatListTextSplice",
@@ -86,6 +92,9 @@ impl OperationKind {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operation {
+    /// Experimental nested container edit preserving depth-first block order.
+    #[cfg(feature = "experimental-structural-properties")]
+    NestedListReframe(super::NestedListReframe),
     /// Experimental cross-block text edit and flat-list layout change.
     #[cfg(feature = "experimental-structural-properties")]
     FlatListTextReplace(super::FlatListTextReplace),
@@ -144,6 +153,8 @@ impl Operation {
     pub const fn kind(&self) -> OperationKind {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListReframe(_) => OperationKind::NestedListReframe,
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace(_) => OperationKind::FlatListTextReplace,
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextSplice(_) => OperationKind::FlatListTextSplice,
@@ -188,6 +199,10 @@ impl Operation {
         document: &Document,
     ) -> Result<AppliedOperation, OperationApplyError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListReframe(operation) => {
+                operation.apply_operation(context, document).map_err(Into::into)
+            }
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace(operation) => {
                 operation.apply(context, document).map_err(Into::into)
@@ -242,6 +257,10 @@ pub(crate) struct AppliedChange {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationApplyError {
+    /// A nested list container edit failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    NestedListReframe(#[from] super::NestedListReframeError),
     /// An experimental structural flat-list text edit failed.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]
