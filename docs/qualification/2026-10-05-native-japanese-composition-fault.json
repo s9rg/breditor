@@ -180,9 +180,32 @@
     "nativeSafariObservation": "Accessibility output reports status passed, all 60 rows passed, failures [] and dropped 0. Full diagnostic entries exceed native accessibility value length; the complete entry list was not extracted.",
     "unitTests": "52 files / 1883 tests passed, including six new delayed-terminal and DOM-drift cases. Browser source/test typechecks, strict fixture typecheck and 6 diagnostic-unit tests passed.",
     "newProductionDefect": "None reproduced in this round; changes strengthen tests only.",
-    "physicalReplacementAndCancellation": "Not yet qualified; synthetic replacement/cancellation must not be conflated with the prior physical insertion pass.",
+    "physicalReplacementAndCancellation": "At this automated checkpoint neither was qualified. A later physical replacement pass is recorded below; physical Escape-cancellation remains pending.",
     "settings": "No keyboard or accessibility settings changed during this followup.",
     "shipping": "Shipping artifacts untouched; previous physical-test page at port 4309 preserved. Nothing pushed or published."
+  },
+  "physicalReplacementVerification": {
+    "sourceCommit": "5c823b1",
+    "artifact": "target/native-ime-diagnostic-ufIBDv",
+    "url": "http://127.0.0.1:4310/manual-clipboard.html",
+    "method": "User physically replaced the selected word Write using Japanese-Romaji in native Safari. Assistant captured diagnostics and verified one toolbar Undo and Redo. Fixture was reset before this physical interaction; no synthetic composition replay followed the reset.",
+    "selectionAtCompositionStart": {"path": [3, 0, 0, 0], "anchorOffset": 0, "focusOffset": 5},
+    "trace": [
+      {"event": "compositionstart", "timeMs": 55415, "dataLength": 5, "trusted": true},
+      {"event": "six provisional input updates", "dataLengths": [1, 1, 2, 2, 3, 3], "isComposing": true, "trusted": true},
+      {"event": "keydown", "timeMs": 65292, "key": "Space", "isComposing": true, "trusted": true},
+      {"event": "keydown", "timeMs": 66113, "key": "Enter", "isComposing": true, "trusted": true},
+      {"event": "blur", "timeMs": 72042, "trusted": true},
+      {"event": "compositionend", "timeMs": 72066, "dataLength": 0, "trusted": true}
+    ],
+    "diagnostics": {"entries": 30, "failures": [], "dropped": 0},
+    "beforeUndo": {"phase": "live", "revision": "3", "text": "にほん a first draft", "undoEnabled": true, "redoEnabled": false},
+    "afterOneUndo": {"text": "Write a first draft", "undoEnabled": false, "redoEnabled": true},
+    "afterOneRedo": {"phase": "live", "revision": "5", "text": "にほん a first draft", "undoEnabled": true, "redoEnabled": false},
+    "report": {"observedEvents": 14, "pendingEventsBeforeHistory": 0, "droppedEvents": 0, "firstFault": null},
+    "scope": "Forward-selected word replacement in numbered item 3, retained suffix and numbering, focus loss and exact visible-text Undo/Redo. No physical Escape-cancellation or backward selection qualification claimed.",
+    "settingsRestored": ["Canadian is the only input source", "input menu hidden", "Globe action Show Emoji & Symbols", "keyboard navigation off", "dictation off with English Canada only"],
+    "voiceOver": "Not enabled or tested"
   },
   "limitations": [
     "Capture occurred after the user's interaction; exact keystrokes, insertion position, DOM mutations and event.data were not recorded.",

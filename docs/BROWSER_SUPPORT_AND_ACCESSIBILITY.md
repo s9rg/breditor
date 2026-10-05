@@ -38,6 +38,13 @@ cancellation, other IMEs and the separate historical WebKit engine fault remain
 outside this physical check. See the
 [native Japanese fix verification](qualification/2026-10-05-native-japanese-composition-fault.json).
 
+A subsequent physical check on the same runtime, with the expanded `5c823b1`
+diagnostic fixture, also passes forward-selected word replacement: `Write`
+becomes `にほん`, the suffix and numbered-list structure remain intact, and one
+Undo/Redo restores each exact visible-text state. No fault or dropped diagnostic
+was recorded. Physical Escape-cancellation and backward-selection checks remain
+pending; this does not expand the published support boundary.
+
 A [later simulator follow-up](qualification/2026-10-01-structural-foundation.json)
 independently verifies whole-sample Copy/Cut, native typing history and single
 Paste using explicit focus checks and simulated hardware keys. It remains a
