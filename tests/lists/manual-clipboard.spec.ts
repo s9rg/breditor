@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { MANUAL_CHECKS, type ManualClipboardRecorder } from "../browser/harness/manual_clipboard_recorder.js";
 
 type Report = ReturnType<ManualClipboardRecorder["report"]> & {
@@ -52,11 +53,28 @@ test("manual list page is disposable and artifact-bound", async ({page}) => {
   await expect(editor.locator("ul li")).toHaveCount(2);
   await expect(editor.locator("ol")).toHaveAttribute("start", "3");
   await expect(page.locator('#toolbar [role="toolbar"] button')).toHaveCount(21);
-  const candidate = process.env["BREDITOR_FLAT_LIST_BINDINGS"];
-  if (!candidate) throw new Error("Missing qualified candidate");
-  const qualification = JSON.parse(await readFile(resolve(candidate, "qualification.json"), "utf8"));
+  let wasmSha256: string;
+  const optIn = process.env["BREDITOR_OPT_IN_CONSUMER_RECORD"];
+  if (optIn) {
+    const qualification = JSON.parse(await readFile(resolve(optIn), "utf8"));
+    expect(qualification.status).toBe("passed");
+    const bytes = await readFile(resolve(qualification.consumer, "node_modules/@breditor/experimental-flat-lists/dist/wasm/breditor_wasm_bg.wasm"));
+    wasmSha256 = createHash("sha256").update(bytes).digest("hex");
+    const response = await page.request.get("/opt-in-runtime-proof.json");
+    expect(response.ok()).toBe(true);
+    const proof = await response.json();
+    expect(proof).toMatchObject({archiveSha256: qualification.archiveSha256, wasmSha256, workspaceEditorModules: 0});
+    expect(proof.installedModules).toEqual(expect.arrayContaining([
+      "index.js", "dist/browser/browser_editor.js", "dist/browser/flat_list_toolbar_manifest.js", "dist/wasm/breditor_wasm.js",
+    ]));
+  } else {
+    const candidate = process.env["BREDITOR_FLAT_LIST_BINDINGS"];
+    if (!candidate) throw new Error("Missing qualified candidate");
+    const qualification = JSON.parse(await readFile(resolve(candidate, "qualification.json"), "utf8"));
+    wasmSha256 = qualification.wasmSha256;
+  }
   expect((await report(page)).fixture).toEqual({name: "flat-list-showcase", schema: "example/flat-list-showcase",
-    sessionFormatVersion: 6, wasmSha256: qualification.wasmSha256});
+    sessionFormatVersion: 6, wasmSha256});
   await expect(page.locator("html")).not.toHaveAttribute("data-forbidden-api");
 });
 

@@ -102,6 +102,39 @@ the consumer. Exact tarballs and consumer artifacts are retained for inspection.
 The report compares sizes against unchanged default ceilings; a functional
 pass is not a size-budget pass or approval of an optional shipping package.
 
+## Installed opt-in package demo
+
+The approved separate-package path is `@breditor/experimental-flat-lists`.
+It bundles the browser runtime and its matching experimental Wasm engine in one
+private archive; it does not replace the default packages. Starting from the
+private pair qualification above:
+
+```sh
+npm run build:lists:opt-in -- target/flat-list-packages-EXACT_ID/qualification.json
+npm run test:lists:opt-in -- target/flat-list-opt-in-EXACT_ID/assembly.json
+BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-EXACT_ID/consumer-qualification.json npm run demo:lists:opt-in
+```
+
+Use each command's actual output directory. The installed-package preview uses
+port 4198. Its UI and reference format declarations remain repository demo code,
+but its editor and engine come from the qualified external installation. The
+three older internal demo imports map to the opt-in package's public root.
+No editor runtime source alias is admitted.
+
+Run the full production demo suite on that same installed package:
+
+```sh
+BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-EXACT_ID/consumer-qualification.json npm run test:demo:lists:opt-in
+```
+
+Stop the interactive port-4198 preview first. Each test invocation allocates a
+fresh `target/list-opt-in-demo-*` output directory, preserving prior builds,
+reports and failure traces. The build rejects workspace editor modules or a
+second browser owner/engine and writes `opt-in-runtime-proof.json`. The fixture
+checks that record against the installed Wasm and qualified archive. It uses the
+same 63 cases, deadlines and zero-retry policy as the source demo; it does not
+certify native input, approve size budgets or publish the package.
+
 ## Boundaries
 
 - One paragraph or heading per list item; no nesting, indent/outdent, tables,

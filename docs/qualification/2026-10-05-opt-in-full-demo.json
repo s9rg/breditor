@@ -1,0 +1,61 @@
+{
+  "status": "installed-opt-in-demo-qualified-not-release-qualified",
+  "sourceCheckpoint": "40c6aab",
+  "archiveSha256": "4409ec2603695c21dbefdac3102a4f05dd68b851147d97f049f58a4a59509c66",
+  "consumerRecord": "target/flat-list-opt-in-la5Uu0/consumer-qualification.json",
+  "command": "BREDITOR_OPT_IN_CONSUMER_RECORD=target/flat-list-opt-in-la5Uu0/consumer-qualification.json npm run test:demo:lists:opt-in",
+  "suite": {
+    "report": "target/list-opt-in-demo-6ksBWM/report.json",
+    "reportSha256": "f4a641b8e6eb9309c81df468aa8b0ba2e03df920bfad2a1252bfb3605d05178b",
+    "passed": 63,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "retries": 0,
+    "engines": ["chromium", "firefox", "webkit"],
+    "scope": "Unchanged feature cases for heading/list conversion, typed inline formatting, keyboard editing, selection direction, grouped history, autosave/reload, V6 backup/recovery, composition/blur/cancellation, controlled clipboard, automated accessibility and narrow layout. Only artifact admission assertions were extended for the new delivery layout.",
+    "deadlines": "Original 40-second case, 8-second expect and four-minute suite limits retained; one worker."
+  },
+  "runtimeProof": {
+    "path": "target/list-opt-in-demo-6ksBWM/bundle/opt-in-runtime-proof.json",
+    "sha256": "4d6e4f059e9fc507153bc80ffa2f0cf651f50b3eba60e54cdb9e95169cb0c115",
+    "installedModules": 77,
+    "workspaceEditorModules": 0,
+    "method": "Verify qualified archive and installed tree; map demo imports to installed public entries; reject workspace editor modules and a second browser owner/engine during bundle generation. The browser fixture compares the emitted proof to the installed Wasm and qualified archive.",
+    "boundary": "Application UI and reference-format declarations remain repository demo code. Editor runtime and Wasm are the external installed opt-in package. This is not a fully external application installation."
+  },
+  "runtimeAssets": {
+    "wasm": {"bytes": 2045432, "gzip9": 569060, "sha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671"},
+    "sharedJavaScript": {"bytes": 694800, "gzip9": 171544, "sha256": "627eb17ad4737c0dec8c75b7110ce1bf85be9b4fcf585c9fb677a7bbb440dc14"},
+    "demoJavaScript": {"bytes": 201428, "gzip9": 62730, "sha256": "15e12a4e92b67e789b8e454ec7833638a00fac54d8cd35354e26a1cf09a5e04d"},
+    "clipboardJavaScript": {"bytes": 3978, "gzip9": 1814, "sha256": "882ef210faa3d1195a6c03d422ac0a112b8af1690a0748463b9b3ef60de0e52d"},
+    "comparison": "All four emitted JS/Wasm assets are byte-identical to the retained source demo at target/list-ime-integration-ou4yhI/bundle/assets. The added build-proof JSON is not runtime code. This is not approval of size budgets."
+  },
+  "retainedFirstAttempt": {
+    "report": "target/list-opt-in-demo-kx6B7v/report.json",
+    "sha256": "bab5a81d99b1ad11da3eed8f9c42cece0f09ecb8bfd480be6186666e8d60cd8c",
+    "passed": 33,
+    "failed": 2,
+    "interrupted": 1,
+    "notRun": 27,
+    "failure": "Artifact-bound manual fixture required BREDITOR_FLAT_LIST_BINDINGS, which does not identify the new installed-package layout. Chromium and Firefox failed Missing qualified candidate after the editor had started; stopped this run and retained reports/traces.",
+    "correction": "The opt-in branch now compares the actual installed binary hash and emitted package provenance. The original candidate branch is preserved.",
+    "outputCorrection": "Playwright re-evaluates configuration in workers. The final config allocates one parent directory and inherits it in workers, rather than scattering attachments into per-worker directories. Old directories and attachments remain retained."
+  },
+  "sourceFixtureCompatibility": {
+    "command": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-bfniW0 BREDITOR_LIST_TEST_PORT=4197 npm exec -- playwright test -c target/list-ime-poll-nJsAr0/playwright.config.ts --grep 'manual list page is disposable and artifact-bound' --reporter=line --output target/list-source-identity-oe4BRy/results",
+    "passed": 3,
+    "failed": 0,
+    "engines": ["chromium", "firefox", "webkit"],
+    "method": "Retained source bundle, no rebuild; original artifact-identity branch remains valid."
+  },
+  "typecheck": "npm run typecheck:demo:lists passed",
+  "moduleGuardUnitTests": {"passed": 10, "failed": 0, "scope": "Owned graph, workspace fallback, alternate owner/engine, missing modules, missing record and Windows separator normalization. Not native Windows qualification."},
+  "allScriptTests": {"passed": 92, "failed": 0, "skipped": 1, "skipReason": "Existing browser diagnostic requires BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1."},
+  "shippingArtifactsUnchanged": true,
+  "wireFormatsChanged": false,
+  "remaining": ["Final native-input/clipboard qualification", "Physical IME Escape-cancellation", "Spoken VoiceOver", "Historical intermittent WebKit fault", "Size/performance and complete release gate"],
+  "releaseQualified": false,
+  "pushed": false,
+  "published": false
+}

@@ -19,6 +19,8 @@
     "test:lists:packages": "node scripts/check-experimental-flat-list-packages.mjs",
     "build:lists:opt-in": "node scripts/build-opt-in-flat-list-package.mjs",
     "test:lists:opt-in": "node scripts/check-opt-in-flat-list-package.mjs",
+    "demo:lists:opt-in": "vite --config vite.lists-opt-in.config.mjs --port 4198 --strictPort",
+    "test:demo:lists:opt-in": "playwright test -c playwright.lists-opt-in.config.ts",
     "test:lists:performance": "node scripts/measure-flat-list-performance.mjs",
     "demo:headings": "vite --config vite.headings.config.ts --port 4186 --strictPort",
     "build:demo:headings": "vite build --config vite.headings.config.ts",

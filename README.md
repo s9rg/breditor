@@ -26,6 +26,12 @@ Its shared lifecycle preserves host ownership and startup rollback; the ordinary
 [list demo](examples/lists/README.md) now includes autosave, download and
 independent backup recovery. It is not qualified as a packaged release.
 
+A private, self-contained `@breditor/experimental-flat-lists` package now pairs
+that browser runtime with its experimental Wasm engine. The
+[installed-package demo workflow](examples/lists/README.md#installed-opt-in-package-demo)
+tests the actual installed archive while leaving the default packages unchanged.
+This opt-in path is not a registry publication or a completed beta release gate.
+
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
 end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
 later. The list toolbar/controller scenarios pass in Chromium, Firefox and
