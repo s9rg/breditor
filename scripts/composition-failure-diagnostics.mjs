@@ -19,6 +19,7 @@ export function instrumentCompositionModule(source, name) {
     replace("#quarantine(reason: CompositionAbortReason): CompositionControllerTerminal<P> {",
       "#quarantine(reason: CompositionAbortReason): CompositionControllerTerminal<P> {\ntry { recordImeDiagnostic('composition:quarantine', undefined, {reason, phase: this.#state.phase}); } catch {}");
     replace("if (!commandAccepted) {", "if (!commandAccepted) {\ntry { recordImeDiagnostic('composition:commandNotAccepted', undefined, {candidate: candidate.value.kind, status: submission.result.command.status}); } catch {}");
+    replace("if (!candidate.ok) {", "if (!candidate.ok) {\ntry { recordImeDiagnostic('composition:candidateRejected', undefined, {code: candidate.error.code, termination: this.#state.termination, provisionalSource: this.#state.latestProvisional?.source, finalSource: this.#state.latestFinal?.source}); } catch {}");
     replace('if (submission.status !== "completed") {', 'if (submission.status !== "completed") {\ntry { recordImeDiagnostic("composition:submissionNotCompleted", undefined, {status: submission.status, code: submission.status === "failed" ? submission.failure.code : submission.reason}); } catch {}');
     replace("if (!reconciled.ok) return this.#quarantine(\"domReconcileFailed\");",
       "if (!reconciled.ok) { try { recordImeDiagnostic('composition:domReconcileFailed', undefined, {code: reconciled.error.code}); } catch {} return this.#quarantine(\"domReconcileFailed\"); }");

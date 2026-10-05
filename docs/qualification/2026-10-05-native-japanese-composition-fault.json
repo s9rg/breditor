@@ -1,5 +1,5 @@
 {
-  "status": "observed-not-fixed",
+  "status": "reproduced-paths-fixed-physical-retest-pending",
   "source": "Native Safari accessibility read of Capture redacted report; original tab retained",
   "fixtureUrl": "http://127.0.0.1:4298/manual-clipboard.html#scratch",
   "wasmSha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671",
@@ -80,6 +80,59 @@
     "nativeImeQualified": false,
     "productionFix": false,
     "next": "Fresh capture fixture open in native Safari with editor focused. Physical Japanese-input reproduction still required; input-source settings unchanged in this followup."
+  },
+  "jointPhysicalCapture": {
+    "artifact": "target/native-ime-diagnostic-bQENb4",
+    "url": "http://127.0.0.1:4307/manual-clipboard.html",
+    "inputSource": "Japanese – Romaji temporarily added; Canadian retained; restore input menu, Globe action and auto-added Japanese dictation language after retest",
+    "userObservation": "Japanese appeared after physical typing",
+    "owner": {"phase": "faulted", "reason": "queueUncertain", "revision": "3"},
+    "observedEvents": 26,
+    "droppedEvents": 0,
+    "firstComposition": "Trusted six-update insertion at numbered item 3 text path [3,0,0,0], offset 19. Composition end data length 0 while provisional node length was 21 (base 19). Candidate conflict quarantined as unexpectedMutation at 268873ms, followed by successful canonical recovery.",
+    "secondComposition": "Trusted five-update insertion at the same base. Provisional node grew from 19 to 22. At 285528ms composition quarantined as domReconcileFailed while settling. At 285531ms a trusted compositionend (data length 0) was observed with canonical node length 19 and selection at host child offset 3, followed by unexpectedMutation while quarantined and uncertain at 285532ms.",
+    "exceptions": "No caught exception reported; failure entries were quarantine reasons only",
+    "regression": "A synthetic compositionend dispatched from inside renderer restoration reproduces a second restoration call. The regression failed before the guard; focused tests pass after it.",
+    "candidateFix": "Ignore only owned empty compositionend notifications during the composition controller's synchronous DOM restoration window. Other events and events outside that window retain ordinary routing.",
+    "candidateArtifact": "target/native-ime-diagnostic-9Sgwra",
+    "candidateUrl": "http://127.0.0.1:4308/manual-clipboard.html",
+    "physicalRetest": {
+      "status": "editor-live-but-edit-rolled-back",
+      "userObservation": "User reported that it worked; subsequent native accessibility inspection found original text and disabled Undo/Redo.",
+      "owner": {"phase": "live", "reason": null, "revision": "1"},
+      "firstFault": null,
+      "observedEvents": 14,
+      "pendingEvents": 0,
+      "droppedEvents": 0,
+      "diagnosticEntries": 21,
+      "droppedDiagnostics": 0,
+      "trace": "Trusted composition began at 221133ms. Six updates grew numbered item 3 from 19 to 21 characters (maximum 22). At 238209ms, domReconcileFailed quarantined the settling composition. At 238212ms, an empty trusted compositionend arrived after canonical restoration, with text length 19 and host selection offset 3. No subsequent recursive quarantine or uncertain fault was recorded.",
+      "history": "Undo and Redo both disabled; no committed Japanese edit verified",
+      "nativeImeQualified": false,
+      "remainingIssue": "Provisional input is discarded during settlement. Final key and blur events are not logged, so the initiating termination event is not established by this capture."
+    },
+    "settingsRestoredAfterRetest": {
+      "verified": ["Canadian is the only input source", "input menu hidden", "Globe action Show Emoji & Symbols", "keyboard navigation off", "dictation off with English Canada only"],
+      "removedTemporarySources": ["Japanese – Romaji", "Japanese (Japan) dictation language"],
+      "voiceOver": "Not enabled or tested in this joint retest"
+    },
+    "caveat": "Exact keystrokes and a native call stack were not captured. The guard addresses recursive recovery; empty-end text cancellation semantics and normal physical conversion still require retesting."
+  },
+  "blurCommitFix": {
+    "artifact": "target/native-ime-diagnostic-NNQEI1",
+    "url": "http://127.0.0.1:4309/manual-clipboard.html",
+    "bundleSha256": "204478d79dcde5affb1e56be63526556a610baf799ff433c347e0f304e82ccd5",
+    "rootCause": "The blur candidate policy unconditionally rejected changed DOM without final evidence, including a completed provisional input matching the strictly reconciled replacement. Restoration could then emit an empty compositionend and recursively spend the same lease.",
+    "fix": "On blur, allow changed replacement only when latest provisional source is input and text matches reconciled DOM; retain final-conflict, DOM, range and Unicode checks. Ignore owned empty compositionend only during synchronous restoration.",
+    "redBeforeFix": "Three focused state/controller/router regressions failed because candidate was unavailable, controller requested recovery, and no command was submitted.",
+    "browserPackageTests": "52 files / 1877 tests passed; browser source and test TypeScript checks passed",
+    "automatedEvidence": "42 synthetic cases each in Chromium 151.0.7922.34, Firefox 153.0 and bundled WebKit 26.5 passed (126 total), with no page errors, diagnostic failures or dropped diagnostics. Each run captured 252 beforeinput target ranges.",
+    "nativeSafariScriptedEvidence": "Native Safari 26.6.2 UI reports passed with all 42 rows, including blur append, replacement, cancellation and deletion on headings, bullets and numbered items. Changing cases check exact Undo/Redo HTML.",
+    "diagnosticUnitTests": "6 passed; strict runtime TypeScript check passed",
+    "diagnosticAdditions": "Lifecycle key classification (not arbitrary key text), blur metadata, and candidate rejection code/termination/source are now recorded in the isolated fixture.",
+    "physicalRetest": "Pending; native Safari scripted events are not a physical Japanese IME qualification",
+    "shipping": "Source changes and isolated candidate only; shipping artifacts not rebuilt, nothing published",
+    "nativeImeQualified": false
   },
   "limitations": [
     "Capture occurred after the user's interaction; exact keystrokes, insertion position, DOM mutations and event.data were not recorded.",

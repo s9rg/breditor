@@ -100,6 +100,7 @@ export type CompositionControllerIgnoreReason =
   | "notComposition"
   | "outsideHost"
   | "nestedControl"
+  | "domRestorationEcho"
   | "alreadyDefaultPrevented";
 
 /** Terminal result of one synchronous or task-boundary settlement. */
@@ -220,6 +221,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
   #state: CompositionState = initialCompositionState();
   #active: ActiveSession<P> | undefined;
   #lateInput: LateInputReceipt<P> | undefined;
+  #restoringDom = false;
 
   constructor(
     queue: BreditorCommandQueue<WasmCommandSequenceOutcome<P>> | BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<P>>,
@@ -292,12 +294,34 @@ class CompositionControllerCore<P extends CompositionProjection> {
     return this.#isActive();
   }
 
+  /**
+   * Safari may synchronously end native marked text when our restoration
+   * replaces its node. That empty terminal notification cannot start another
+   * recovery while the adapter is spending the original lease. @internal
+   */
+  isDomRestorationEcho(event: unknown): boolean {
+    if (!this.#restoringDom || this.#active === undefined) return false;
+    const base = readDomEventBase(event);
+    const snapshot = snapshotNativeCompositionEvent(event);
+    return base !== null && snapshot.ok && snapshot.value.type === "compositionend" &&
+      snapshot.value.data === "" &&
+      classifyDomEventOwnership(this.#active.token.host, base.target) === "owned";
+  }
+
+  #withDomRestoration<T>(restore: () => T): T {
+    const previous = this.#restoringDom;
+    this.#restoringDom = true;
+    try { return restore(); }
+    finally { this.#restoringDom = previous; }
+  }
+
   #isActive(): boolean {
     return this.#state.phase !== "idle" && this.#state.phase !== "disposed";
   }
 
   /** Front-routes compositionstart, compositionupdate, and compositionend. */
   handleCompositionEvent(event: unknown): CompositionControllerDisposition<P> {
+    if (this.isDomRestorationEcho(event)) return ignored("domRestorationEcho");
     if (this.#state.phase === "disposed") {
       return recovery("disposed");
     }
@@ -509,7 +533,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
       : native(this.#state.phase);
   }
 
-  /** Blur ends a lease, but changed DOM without final evidence cannot commit. */
+  /** Blur commits only final evidence or matching post-input, validated DOM. */
   handleBlur(event: unknown): CompositionControllerDisposition<P> {
     if (this.#state.phase === "disposed") return recovery("disposed");
     const basic = snapshotBasicEvent(event, "blur");
@@ -776,7 +800,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
     }
     let restored: WasmCompositionLeaseRestoreOutcome<P>;
     try {
-      restored = this.#adapter.restoreCompositionLease(active.token);
+      restored = this.#withDomRestoration(() => this.#adapter.restoreCompositionLease(active.token));
     } catch {
       return this.#quarantine("staleBase");
     }
@@ -1023,6 +1047,10 @@ class CompositionControllerCore<P extends CompositionProjection> {
   }
 
   #restoreForRecovery(active: ActiveSession<P>): CompositionControllerResume<P> | undefined {
+    return this.#withDomRestoration(() => this.#restoreForRecoveryUnderGuard(active));
+  }
+
+  #restoreForRecoveryUnderGuard(active: ActiveSession<P>): CompositionControllerResume<P> | undefined {
     if (active.restored !== undefined) {
       if (this.#resumeIsCurrent(active.restored)) return active.restored;
       active.restored = undefined;

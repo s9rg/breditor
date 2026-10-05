@@ -258,7 +258,7 @@ describe("composition state machine", () => {
     expect(step(state, { kind: "taskBoundary" }).effect).toBe("requestSettlement");
   });
 
-  it("never commits provisional DOM merely because focus blurred", () => {
+  it("never commits compositionupdate alone merely because focus blurred", () => {
     let state = leased();
     state = step(state, {
       kind: "evidence",
@@ -287,6 +287,36 @@ describe("composition state machine", () => {
       ),
     ).toEqual({ kind: "cancel", source: "domFallback" });
   });
+
+  it("commits a blur only when the latest post-mutation input agrees with validated DOM", () => {
+    let state = step(leased(), { kind: "openDom" }).state;
+    state = step(state, {
+      kind: "evidence", source: "input", grade: "provisional", text: "日本",
+    }).state;
+    state = step(state, { kind: "blur" }).state;
+    expect(valueOf(selectCompositionCandidate(state, {
+      originalText: "", replacementText: "日本",
+    }))).toEqual({ kind: "insert", text: "日本", source: "domFallback" });
+    expect(selectCompositionCandidate(state, {
+      originalText: "", replacementText: "unexpected",
+    })).toMatchObject({ ok: false });
+  });
+
+  it.each(["beforeinput", "compositionupdate"] as const)(
+    "does not reuse an input receipt after a newer %s on blur", (source) => {
+      let state = step(leased(), { kind: "openDom" }).state;
+      state = step(state, {
+        kind: "evidence", source: "input", grade: "provisional", text: "日本",
+      }).state;
+      state = step(state, {
+        kind: "evidence", source, grade: "provisional", text: "日本",
+      }).state;
+      state = step(state, { kind: "blur" }).state;
+      expect(selectCompositionCandidate(state, {
+        originalText: "", replacementText: "日本",
+      })).toMatchObject({ ok: false, error: { code: "composition.candidate_unavailable" } });
+    },
+  );
 
   it("allows a definitive input end and keeps duplicate terminal signals idempotent", () => {
     let state = leased("implicitStart");

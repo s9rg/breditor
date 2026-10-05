@@ -58,13 +58,16 @@ function shape(host: Element, event: Event) {
 
 // Registration precedes editor startup. DOM metadata records lengths and paths,
 // never actual input/document strings; exception messages may contain payloads.
-for (const type of ["compositionstart", "compositionupdate", "compositionend", "beforeinput", "input"]) {
+for (const type of ["compositionstart", "compositionupdate", "compositionend", "beforeinput", "input", "keydown", "blur"]) {
   document.addEventListener(type, event => {
     const host = document.querySelector("#editor [contenteditable=true]") ?? document.querySelector("#editor");
     if (!host || !(event.target instanceof Node) || !host.contains(event.target)) return;
     recordImeDiagnostic(`event:${type}`, undefined, {trusted: event.isTrusted,
       inputType: event instanceof InputEvent ? event.inputType : undefined,
-      composing: event instanceof InputEvent ? event.isComposing : undefined,
+      composing: event instanceof InputEvent || event instanceof KeyboardEvent ? event.isComposing : undefined,
+      // Never log arbitrary key text; only lifecycle-relevant control keys.
+      key: event instanceof KeyboardEvent
+        ? (["Enter", "Escape", "Tab", " ", "Process"].includes(event.key) ? event.key : "other") : undefined,
       dataLength: event instanceof InputEvent || event instanceof CompositionEvent ? event.data?.length : undefined,
       ...shape(host, event)});
   }, true);
@@ -86,7 +89,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const rows: unknown[] = [];
     try {
       for (const selector of ["h2", "ul li p", "ol li p"]) {
-        for (const variant of ["append", "same-text", "split-node", "replace", "backward-replace", "unsynchronized", "retargeted", "element-selection", "cancel", "delete"]) {
+        for (const variant of ["append", "same-text", "split-node", "replace", "backward-replace", "unsynchronized", "retargeted", "element-selection", "cancel", "delete", "blur-append", "blur-replace", "blur-cancel", "blur-delete"]) {
           await replayComposition(selector, variant);
           rows.push({selector, variant, result: "pass"});
           results.value = JSON.stringify({status: "running", rows}, null, 2);
@@ -109,11 +112,12 @@ async function replayComposition(selector: string, variant: string): Promise<voi
   const original = host.innerHTML;
   const block = host.querySelector(selector)!;
   const text = document.createTreeWalker(block, NodeFilter.SHOW_TEXT).nextNode() as Text;
-  const replacing = ["same-text", "replace", "backward-replace", "retargeted", "delete"].includes(variant);
+  const blurring = variant.startsWith("blur-");
+  const replacing = ["same-text", "replace", "backward-replace", "retargeted", "delete", "blur-replace", "blur-delete"].includes(variant);
   const start = replacing ? 0 : text.length;
   const end = replacing ? 5 : text.length;
   const final = variant === "same-text" ? text.data.slice(start, end)
-    : ["cancel", "delete"].includes(variant) ? "" : "日本";
+    : ["cancel", "delete", "blur-cancel", "blur-delete"].includes(variant) ? "" : "日本";
   host.focus();
   const selection = document.getSelection()!;
   if (variant === "backward-replace") selection.setBaseAndExtent(text, end, text, start);
@@ -134,12 +138,13 @@ async function replayComposition(selector: string, variant: string): Promise<voi
     try { host.dispatchEvent(input); } finally { Object.defineProperty(InputEvent.prototype, "getTargetRanges", descriptor); }
     if (input.defaultPrevented) throw new Error(`${selector}/${variant}: composition denied`);
     text.replaceData(start, previousLength, value); previousLength = value.length;
-    document.getSelection()!.setBaseAndExtent(text, start + value.length, text, start + value.length);
+    document.getSelection()!.setBaseAndExtent(text, blurring ? start : start + value.length, text, start + value.length);
     host.dispatchEvent(new InputEvent("input", {bubbles: true, inputType: "insertCompositionText", data: value, isComposing: true}));
     await nextTask();
   }
   if (variant === "split-node") text.splitText(start);
-  host.dispatchEvent(new CompositionEvent("compositionend", {bubbles: true, data: final}));
+  if (blurring) host.blur();
+  else host.dispatchEvent(new CompositionEvent("compositionend", {bubbles: true, data: final}));
   // Production composition settlement deliberately waits 20 ms. A pair of
   // zero-delay tasks can still see provisional DOM and a leased command queue.
   // This bounded synthetic probe waits beyond that window; it is not a timing
@@ -150,7 +155,7 @@ async function replayComposition(selector: string, variant: string): Promise<voi
   if (!host.isConnected || !undo || undo.disabled) throw new Error(`${selector}/${variant}: no committed action`);
   const committed = host.innerHTML;
   if (!host.querySelector(selector)?.textContent?.includes(final)) throw new Error("missing committed text");
-  if (variant === "cancel") {
+  if (variant === "cancel" || variant === "blur-cancel") {
     if (committed !== original) throw new Error("Cancelled insertion changed the document");
     return;
   }

@@ -562,6 +562,39 @@ describe("BreditorBrowserEventRouter", () => {
     fixture.router.dispose();
   });
 
+  it.each(["blur", "commit", "blur-without-input"])("does not recursively recover when %s restoration emits compositionend", (trigger) => {
+    const fixture = setup();
+    const {host} = fixture.adapter;
+    installDomSelection(host, 1);
+    const text = host.firstElementChild?.firstChild;
+    if (!(text instanceof Text)) throw new Error("missing composition text");
+    const range = document.createRange();
+    range.setStart(text, 1); range.collapse(true);
+    host.dispatchEvent(new CompositionEvent("compositionstart", {bubbles: true, data: ""}));
+    host.dispatchEvent(inputEvent("beforeinput", "insertCompositionText", "に", [range], true));
+    text.insertData(1, "に");
+    if (trigger !== "blur-without-input") {
+      host.dispatchEvent(inputEvent("input", "insertCompositionText", "に", [], true));
+    }
+    const restore = fixture.adapter.renderer.restoreCompositionDomLease.bind(fixture.adapter.renderer);
+    const restoring = vi.spyOn(fixture.adapter.renderer, "restoreCompositionDomLease")
+      .mockImplementationOnce((...args) => {
+        const result = restore(...args);
+        // Safari can end its native marked-text session synchronously when
+        // restoration replaces that text node, before our adapter resumes.
+        host.dispatchEvent(new CompositionEvent("compositionend", {bubbles: true, data: ""}));
+        return result;
+      });
+    host.dispatchEvent(trigger.startsWith("blur") ? new Event("blur")
+      : new CompositionEvent("compositionend", {bubbles: true, data: "に"}));
+    fixture.scheduler.runAll();
+    expect(restoring).toHaveBeenCalledTimes(1);
+    expect(fixture.router.status).toEqual({kind: "live"});
+    expect(fixture.adapter.rendered.validateCanonicalDom()).toBe(true);
+    expect(fixture.adapter.requests).toHaveLength(trigger === "blur-without-input" ? 0 : 1);
+    fixture.router.dispose();
+  });
+
   it("keeps transient document selectionchange inert while composition owns the base", () => {
     const selection = vi.spyOn(
       BreditorBrowserEventController.prototype,

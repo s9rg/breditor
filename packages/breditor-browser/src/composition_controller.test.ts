@@ -633,7 +633,7 @@ describe("BreditorCompositionController", () => {
     ))).toEqual({ kind: "ignored", reason: "notComposition" });
   });
 
-  it("recovers changed blur without committing and cancels an unchanged blur", () => {
+  it("recovers changed blur without post-mutation evidence and cancels an unchanged blur", () => {
     const changed = setup(selection(1, 2));
     start(changed);
     beforeInput(changed, "insertCompositionText", "x", targetRange(changed, 1, 2));
@@ -654,6 +654,22 @@ describe("BreditorCompositionController", () => {
     expect(unchanged.terminals[0]).toMatchObject({
       kind: "settled",
       settlement: { kind: "cancelled" },
+    });
+  });
+
+  it("commits matching post-mutation input once on blur without compositionend", () => {
+    const fixture = setup(selection(1, 2));
+    start(fixture);
+    beforeInput(fixture, "insertCompositionText", "日本", targetRange(fixture, 1, 2));
+    fixture.paragraph.textContent = "a日本c";
+    input(fixture, "insertCompositionText", "日本", true);
+    fixture.controller.handleBlur(basicEvent("blur", fixture.adapter.host));
+    fixture.controller.handleBlur(basicEvent("blur", fixture.adapter.host));
+    fixture.scheduler.runAll();
+    expect(fixture.terminals[0]).toMatchObject({ kind: "settled", settlement: { kind: "committed" } });
+    expect(fixture.adapter.requests).toHaveLength(1);
+    expect(fixture.adapter.requests[0]?.command).toMatchObject({
+      kind: "action", actionId: "breditor/insert-plain-text", input: { kind: "string", value: "日本" },
     });
   });
 

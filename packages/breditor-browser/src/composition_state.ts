@@ -407,9 +407,16 @@ export function selectCompositionCandidate(
   }
   const unchanged = dom.replacementText === dom.originalText;
   if (state.termination === "blur" && state.latestFinal === null) {
-    return unchanged
-      ? compositionSuccess(candidateFromDom(dom, "domFallback"))
-      : compositionFailure("composition.candidate_unavailable");
+    if (unchanged) return compositionSuccess(candidateFromDom(dom, "domFallback"));
+    // Some native IMEs leave marked text in the DOM when focus is lost and
+    // deliver compositionend only when that DOM is restored. A completed input
+    // observation may commit on blur, but update/beforeinput alone may not:
+    // those describe an intention, not a completed native mutation. The
+    // controller has already validated the entire leased DOM and replacement
+    // range; the provisional equality check below still rejects disagreement.
+    if (state.latestProvisional?.source !== "input") {
+      return compositionFailure("composition.candidate_unavailable");
+    }
   }
   if (state.latestFinal !== null) {
     const abortedSelectionRestore =

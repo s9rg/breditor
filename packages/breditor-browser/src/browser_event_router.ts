@@ -392,6 +392,10 @@ class BrowserEventRouterCore {
 
   #dispatch(route: NativeRoute, event: Event): void {
     if (this.#status.kind !== "live") return;
+    // Node replacement can synchronously terminate Safari's native IME. Only
+    // an owned empty compositionend inside our exact restoration window is
+    // inert; other reentrant commands still take the ordinary fault path.
+    if (route === "composition" && this.#composition.isDomRestorationEcho(event)) return;
     if (this.#dispatching) {
       this.#fault("eventDispatchFailed");
       return;

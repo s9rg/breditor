@@ -264,9 +264,15 @@ callback. After success, one exact matching late terminal `input` echo can be
 consumed; a different payload, render generation, delivery epoch, new
 composition, or next scheduled task invalidates that receipt.
 
-Blur schedules closure but is not final text evidence: unchanged DOM may cancel,
-while changed provisional DOM is discarded through recovery rather than
-committed.
+Blur schedules closure but is not itself text evidence. Unchanged DOM may
+cancel. Changed DOM may commit only when the latest provisional evidence is a
+post-mutation `input` and its text exactly agrees with the strictly reconciled
+replacement. `compositionupdate` or `beforeinput` alone is insufficient, even
+when it matches the DOM; a newer such observation supersedes an earlier input
+receipt. Final evidence, when present, retains precedence and conflict checks.
+This avoids discarding completed native input when an IME delays its terminal
+notification until the marked-text node is replaced. It does not admit generic
+DOM mutations, broaden replacement ranges, or bypass Rust validation.
 
 ### Settlement, cancellation, and recovery
 
@@ -308,6 +314,13 @@ queue lease on one request:
   `breditor/delete-selection` with `closeBefore`; and
 - cancellation submits an explicit `closeHistoryGroup` control, including when
   the visible document was unchanged.
+
+During the exact synchronous DOM-restoration window, an owned empty
+`compositionend` is treated as a restoration echo. Replacing native marked text
+can itself produce that notification; processing it recursively would try to
+restore an already-spending lease. The guard covers both normal settlement and
+recovery, is cleared in `finally`, and does not suppress other events or empty
+terminal events outside that window.
 
 Every successful insert, delete, or cancellation settlement therefore closes
 the prior typing history group; cancellation is a history boundary too. Abort
