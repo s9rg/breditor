@@ -1,0 +1,66 @@
+{
+  "status": "current-source-checks-passed-not-full-release-qualified",
+  "sourceCheckpoint": "9304622",
+  "runtimeCheckpoint": "62b2e90",
+  "rustWorkspace": {
+    "command": "CARGO_INCREMENTAL=0 caffeinate -is -t1200 /Users/s/.cargo/bin/cargo test --workspace --all-features --locked",
+    "exitCode": 0,
+    "report": "target/source-proof-workspace-20261004.log",
+    "sha256": "2f51841a29d59d631a17028fd02418923ff87f6ef659c8d92da739f721ea7a5c",
+    "unitPassed": 1192,
+    "integrationPassed": 714,
+    "documentationPassed": 137,
+    "failed": 0,
+    "ignored": 0,
+    "resultSummaries": 115,
+    "counting": "Sum Cargo test-result lines by Running unittests, Running tests/ and Doc-tests sections; includes both workspace crates and all enabled features."
+  },
+  "javascript": {
+    "command": "BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1 caffeinate -is -t600 npm test",
+    "exitCode": 0,
+    "report": "target/source-proof-npm-20261004.log",
+    "sha256": "2c8dade5da90549d3ad9ab9e2d4139b0658137d0d69bcff303e6c397e5e2f2c9",
+    "browserPassed": 1870,
+    "referenceHighlightPassed": 57,
+    "reactPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptPassed": 68,
+    "scriptSkipped": 0,
+    "note": "WebKit caught-exception diagnostic positive control enabled. This verifies diagnostics, not reproduction or repair of the intermittent editor fault."
+  },
+  "types": {
+    "passedCommands": ["npm run typecheck", "npm run typecheck:browser", "npm run typecheck:demo", "npm run typecheck:demo:lists"],
+    "evidence": "Successful chained process exit and command output retained in task history."
+  },
+  "boundaryAndDocumentationChecks": {
+    "exitCode": 0,
+    "report": "target/source-proof-boundaries-20261004.log",
+    "sha256": "866004e794f17e58860384b7780cf99529212b220501da81cf2f143354c2ca6a",
+    "passed": [
+      "cargo fmt --all -- --check",
+      "RUSTDOCFLAGS=-D warnings cargo doc --workspace --all-features --no-deps --locked",
+      "scripts/check-wasm-tests.sh: workspace all-feature real-target check, Wasm all-target/all-feature Clippy with -D warnings, 25 wasm32 tests",
+      "scripts/check-wasm-api.sh: ABI generation 5 and all 227 baseline signatures unchanged, generated declarations match, path-leak check, seven glue assertion-helper tests and generated minified JavaScript glue exercise"
+    ],
+    "environment": {
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+      "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+      "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner"
+    },
+    "artifactScope": "Cargo target and disposable generated ABI output only; no package build/prepack or shipping dist replacement."
+  },
+  "shippingTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  },
+  "limits": [
+    "These are selected current-source gates, not a successful invocation of verify-release. That command includes shipping builds and size gates that were intentionally not run.",
+    "Private candidate package and browser matrices retain their existing exact-artifact evidence; they were not rebuilt or rerun in this checkpoint.",
+    "Intermittent WebKit queueUncertain remains unresolved. Passing tests are not proof of its repair.",
+    "Physical IME/VoiceOver, delivery and size-budget decision, responsiveness boundaries and full release qualification remain open.",
+    "No runtime code change, version bump, push, publish, default budget change or shipping artifact change."
+  ]
+}

@@ -21,6 +21,11 @@ retries. See [exact-source proof qualification](qualification/2026-10-04-flat-li
 for the artifact identities, retained failed runs and complete limits.
 The [native comparison follow-up](qualification/2026-10-04-native-retained-bundle-and-latest-react.json)
 records the React run and partial native Safari checks on the latest candidate.
+The [current-source workspace gates](qualification/2026-10-04-current-source-workspace-gates.json)
+also passed 1,192 Rust unit, 714 integration and 137 documentation tests; 2,293
+JavaScript workspace/diagnostic tests; all 68 script tests; TypeScript checks;
+strict Rust documentation; real wasm32 checks; and the unchanged default ABI.
+These checks preserve shipping bundles and do not constitute the full release gate.
 
 The beta is **not release-qualified**. The remaining gates are:
 
