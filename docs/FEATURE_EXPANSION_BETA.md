@@ -2223,3 +2223,50 @@ See [workspace verification evidence](qualification/2026-10-04-workspace-release
 These are selected verified release checks, not a completed release: size/delivery
 approval, native-input evidence and responsiveness remain open, as do historical
 WebKit faults. Nothing was pushed or published.
+
+## Reuse admitted flat-list paths during preparation — 2026-10-05
+
+A fresh operation-scoped Firefox profile of the qualified private pair
+`LRESXR` put 93–95 of 178–190 sampled frames in the Wasm `actionStates` call
+for each 500-item edit. These are inclusive diagnostic samples, not production
+milliseconds or attribution to individual stripped Wasm functions.
+
+Source inspection found a redundant complete guarded-list traversal in
+`FlatListTextReplace::derive`: `blocks` had already admitted wrappers and block
+kinds and allocated relative paths, but `absolute_paths` repeated the same walk.
+The operation now reuses those admitted paths. Zero-origin paths share their
+immutable allocation; nonzero origins still check addition overflow. Result
+paths still come from independently admitted result roots. Text, schema, limits,
+source guards, exact inverse derivation and transaction preflight are unchanged.
+There is no cross-operation cache, new protocol or action-state shortcut.
+
+Two new focused tests cover independent coordinate expectations, unchanged
+source paths, root-index overflow, mixed root order and invalid list wrappers.
+All 1,137 core unit tests and all-target/all-feature core Clippy pass. Candidate
+`JAETVs` passes generated declarations, Node heading/list checks and five raw-Wasm
+runs per browser. Private pair `VcyDDe` and self-contained opt-in package
+`ktXUh6` pass external consumer checks in Chromium, Firefox and WebKit.
+The rebuilt installed-package demo passes all **63 cases**, with no failures,
+skips, flaky results or retries, including composition, structural selection,
+clipboard fixture, grouped typing and history/recovery coverage. This is still
+automated evidence, not OS IME or spoken screen-reader qualification.
+
+Both production timing comparisons preserve all document, selection, Undo,
+reload and Redo assertions (27 cases per comparison artifact). Initial 500-item
+edit medians were 55.4 → 48.1 ms Chromium, 151 → 132 ms Firefox and 84 → 80 ms
+WebKit. A sequential baseline/candidate repeat measured 49.6 → 50.4 ms Chromium,
+146 → 134 ms Firefox and 82 → 79 ms WebKit. Firefox Undo was 128 → 112 ms in
+both comparisons. The initial Chromium edit gain did **not** repeat; no stable
+Chromium edit improvement is claimed. Each median has only three samples on one
+machine, with uncontrolled background load. These are local observations, not
+a p95, device-wide guarantee or completed responsiveness gate.
+
+The browser archive is unchanged. Wasm grows by 446 raw / 250 gzip-9 bytes;
+the private opt-in archive grows by 245 bytes. Default ceilings are unchanged,
+still exceeded and not declared qualified. Shipping artifact trees remain
+unchanged. This optimization does not establish a fix for the historical
+intermittent WebKit fault or qualify physical IME/VoiceOver behavior.
+
+See [path reuse evidence](qualification/2026-10-05-flat-list-path-reuse.json)
+for source/artifact identities, all four timing reports and the full-demo report.
+Nothing was pushed or published.

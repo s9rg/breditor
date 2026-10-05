@@ -20,6 +20,10 @@ use thiserror::Error;
 #[path = "flat_list_source_proof_tests.rs"]
 mod source_proof_tests;
 
+#[cfg(test)]
+#[path = "flat_list_path_reuse_tests.rs"]
+mod path_reuse_tests;
+
 /// Replaces a range across bare/list text blocks and rebuilds only its root span.
 ///
 /// Complete intersected root children are source guards. `inserted` contains a
@@ -255,7 +259,10 @@ impl FlatListTextReplace {
         self.result_end()?;
         let source = flat_list_reframe::blocks(&self.expected)
             .map_err(|_| FlatListTextReplaceError::InvalidTarget)?;
-        let source_paths = absolute_paths(&self.expected, self.guard_start)?;
+        // `blocks` already admitted every wrapper and block kind. Reuse its
+        // paths instead of walking and allocating the complete guarded span a
+        // second time. No shape, text, schema or inverse check is skipped.
+        let source_paths = offset_paths(source.iter().map(|(path, _)| path), self.guard_start)?;
         let first = source_paths
             .iter()
             .position(|path| path == self.range.start_path())
@@ -359,10 +366,22 @@ fn absolute_paths(
     roots: &[NodeRef],
     start: u32,
 ) -> Result<Arc<[NodePath]>, FlatListTextReplaceError> {
-    flat_list_reframe::blocks(roots)
-        .map_err(|_| FlatListTextReplaceError::InvalidTarget)?
-        .into_iter()
-        .map(|(path, _)| {
+    let blocks =
+        flat_list_reframe::blocks(roots).map_err(|_| FlatListTextReplaceError::InvalidTarget)?;
+    offset_paths(blocks.iter().map(|(path, _)| path), start)
+}
+/// Converts already-admitted relative block paths to document coordinates.
+/// Zero-origin paths can retain their immutable allocation; nonzero origins
+/// still check root-index overflow and preserve every descendant index.
+fn offset_paths<'a>(
+    paths: impl Iterator<Item = &'a NodePath>,
+    start: u32,
+) -> Result<Arc<[NodePath]>, FlatListTextReplaceError> {
+    paths
+        .map(|path| {
+            if start == 0 {
+                return Ok(path.clone());
+            }
             let mut path = path.to_vec();
             path[0] = path[0].checked_add(start).ok_or(FlatListTextReplaceError::InvalidTarget)?;
             NodePath::try_from_indices(path).map_err(|_| FlatListTextReplaceError::InvalidTarget)
