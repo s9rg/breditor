@@ -92,6 +92,10 @@ The beta is **not release-qualified**. The remaining gates are:
   unchanged after recovery edits and reload. Human attestation and IME/VoiceOver
   qualification remain open; these are bounded cases, not broad browser certification. Functional
   checks do not approve larger budgets or a release. See
+  [read-only opt-in size audit](qualification/2026-10-05-opt-in-size-audit.json)
+  for exact archive/unpacked sizes and every emitted demo asset. Proposed
+  separate ceilings are awaiting the user's decision; no default limit changed.
+  Also see
   [native opt-in Safari evidence](qualification/2026-10-05-opt-in-native-safari.json),
   [native opt-in Chrome and recovery evidence](qualification/2026-10-05-opt-in-native-chrome.json),
   [bidirectional native recovery evidence](qualification/2026-10-05-opt-in-native-cross-browser-recovery.json),
@@ -2339,3 +2343,36 @@ Safari/Chrome checks recorded above remain bound to the earlier artifact.
 Physical IME/VoiceOver, historical intermittent WebKit failure and complete
 release qualification remain open. See
 [wrapper reuse evidence](qualification/2026-10-05-flat-list-wrapper-reuse.json).
+
+## Opt-in size measurement, not approval — 2026-10-05
+
+The existing default release runner measures the standard paragraph packages,
+not the separately assembled opt-in package. The read-only command below now
+measures a specific opt-in assembly and demo without rebuilding either:
+
+```sh
+npm run measure:lists:size -- target/flat-list-opt-in-lHoc14/assembly.json target/list-opt-in-demo-s4Qsgg/bundle/opt-in-runtime-proof.json
+```
+
+For future candidates, substitute the exact paths printed by assembly and
+full-demo qualification. The audit verifies archive/package-tree identity and
+recorded sizes, matches the demo's declared package and emitted Wasm to the
+assembly, rejects redirected inputs, and snapshots every emitted asset. It
+includes both demo and clipboard JavaScript entry points and shared chunks once.
+It does not independently prove JavaScript provenance, rerun behavioral checks,
+or measure a real network transfer. Gzip-9 is computed separately for each file.
+
+The `lHoc14` candidate measures 870,980 archive bytes and 3,753,908 unpacked
+bytes (excluding separately installed dependencies). The full demo emits
+900,206 JavaScript bytes / 236,085 gzip-9 and 2,046,937 Wasm bytes / 569,667
+gzip-9. Their gzip total is **805,752 bytes**. Other assets, currently CSS,
+are separate: 9,266 bytes / 2,975 gzip-9. All exact hashes are retained in
+[the size audit](qualification/2026-10-05-opt-in-size-audit.json).
+
+Proposed separate opt-in ceilings—950,000 archive bytes, 4,000,000 unpacked
+bytes and 850,000 gzip-9 JavaScript+Wasm bytes—are **awaiting user approval**.
+The tool deliberately returns `measured-not-budget-qualified` and never turns
+measurements into release approval. Standard package ceilings remain unchanged.
+Five focused measurement/identity tests pass; the broader script suite passes
+97 tests with one existing skip. No editor executable, package artifact, wire
+format or browser setting changed in this tooling checkpoint.

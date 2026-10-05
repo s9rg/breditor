@@ -1,0 +1,96 @@
+{
+  "format": "breditor/opt-in-size-measurement",
+  "formatVersion": 1,
+  "status": "measured-not-budget-qualified",
+  "publishable": false,
+  "sizeBudgetQualified": false,
+  "assemblyPath": "/Users/s/code/breditor/target/flat-list-opt-in-lHoc14/assembly.json",
+  "assemblySha256": "d73c4a9df3a85a45b1a6a4730713758fe552531ce96a8f0a9205ffb1cdf6ca51",
+  "proofPath": "/Users/s/code/breditor/target/list-opt-in-demo-s4Qsgg/bundle/opt-in-runtime-proof.json",
+  "proofSha256": "65230d376bbde74c1229381d4ed7d93e76c409b6d6904b126d1b225bc3e6829e",
+  "package": {
+    "archiveSha256": "43b94544f681880ab42a1e76293a38fd75b95cf414a0f2453689527d40767f6b",
+    "bytes": 870980,
+    "unpackedBytes": 3753908
+  },
+  "assets": {
+    "files": [
+      {
+        "name": "breditor_wasm_bg-BXhFOyxM.wasm",
+        "bytes": 2046937,
+        "gzip9Bytes": 569667,
+        "sha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+        "kind": "wasm"
+      },
+      {
+        "name": "clipboard-B8zZ_Yrn.js",
+        "bytes": 3978,
+        "gzip9Bytes": 1812,
+        "sha256": "c157a70297f2c7bd85c38146daab80cec6c86fc84ac17bea14dcd06e0e09c4bc",
+        "kind": "javascript"
+      },
+      {
+        "name": "clipboard-fVYWXMcS.css",
+        "bytes": 590,
+        "gzip9Bytes": 320,
+        "sha256": "7a58bee1eab6a2c1193082bb3a6b1c6d4235039a53648f1924698f4a88baf9b6",
+        "kind": "other"
+      },
+      {
+        "name": "demo-B43_II_v.css",
+        "bytes": 434,
+        "gzip9Bytes": 182,
+        "sha256": "9c01e3df32263b3c4b2466c73b9adb888e7caf040850bc23054027221fea70c3",
+        "kind": "other"
+      },
+      {
+        "name": "demo-DcOQnvNz.js",
+        "bytes": 201428,
+        "gzip9Bytes": 62729,
+        "sha256": "4280d815fe00a942d566e44a8702376764cdf10918443dcab253a7847588defe",
+        "kind": "javascript"
+      },
+      {
+        "name": "styles-C4soobIz.css",
+        "bytes": 8242,
+        "gzip9Bytes": 2473,
+        "sha256": "bd22db8c0af2d33c53d8a4c8d5efc26350796175e2e99dc31a7b4e67ec37cced",
+        "kind": "other"
+      },
+      {
+        "name": "styles-D9s8FkoC.js",
+        "bytes": 694800,
+        "gzip9Bytes": 171544,
+        "sha256": "75d3b5929290f83cd19984198a23aae3fe141b94d2b0dfc18ee0b29708ff5a46",
+        "kind": "javascript"
+      }
+    ],
+    "javascript": {
+      "bytes": 900206,
+      "gzip9Bytes": 236085
+    },
+    "wasm": {
+      "bytes": 2046937,
+      "gzip9Bytes": 569667
+    },
+    "other": {
+      "bytes": 9266,
+      "gzip9Bytes": 2975
+    },
+    "javascriptAndWasm": {
+      "bytes": 2947143,
+      "gzip9Bytes": 805752
+    }
+  },
+  "scope": "All emitted demo assets; JavaScript/Wasm aggregate includes both demo and clipboard entry points. Per-file gzip-9 estimates, not an actual network transfer. Package bytes exclude separately installed dependencies. Proof declares the matching archive and emitted Wasm; asset hashes snapshot current JS, not independent proof of its provenance or a functional test rerun. No ceiling approval or release qualification.",
+  "date": "2026-10-05",
+  "sourceBase": "86942cc",
+  "proposedCeilings": {
+    "status": "awaiting-user-decision",
+    "units": "decimal bytes",
+    "packageDownload": 950000,
+    "unpackedPackage": 4000000,
+    "allDemoJavaScriptAndWasmGzip9": 850000,
+    "defaultPackageCeilingsChanged": false
+  }
+}

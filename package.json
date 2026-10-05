@@ -22,6 +22,7 @@
     "demo:lists:opt-in": "vite --config vite.lists-opt-in.config.mjs --port 4198 --strictPort",
     "test:demo:lists:opt-in": "playwright test -c playwright.lists-opt-in.config.ts",
     "test:lists:performance": "node scripts/measure-flat-list-performance.mjs",
+    "measure:lists:size": "node scripts/measure-opt-in-flat-list-size.mjs",
     "demo:headings": "vite --config vite.headings.config.ts --port 4186 --strictPort",
     "build:demo:headings": "vite build --config vite.headings.config.ts",
     "test:demo:headings": "playwright test --config playwright.headings.config.ts",
