@@ -25,8 +25,18 @@ installed app metadata is 154.0.8037.93) pass fresh clipboard/caret/history/Link
 checklists on this build. Copy and Cut each replace a distinct scratch sentinel.
 The iOS 26.5 Simulator loads the editor and round-trips a selected prefix through
 Cut/Undo, but input automation did not reliably deliver the requested key
-sequences; no complete mobile pass is claimed. Native CJK IME, physical devices
-and a second computer remain unverified.
+sequences; no complete mobile pass is claimed. At that shipping checkpoint,
+native CJK IME, physical devices and a second computer remained unverified.
+
+October 5 isolated candidate `d0f75ee`: a physical Japanese–Romaji suffix
+insertion in native Safari now survives focus loss and exact visible-text
+Undo/Redo, with numbered items retained and no recorded fault. The trace
+includes the delayed empty `compositionend` previously associated with rollback
+and recursive recovery. This is a bounded pass for that reported regression,
+not complete CJK/IME certification or a new shipping qualification. Replacement,
+cancellation, other IMEs and the separate historical WebKit engine fault remain
+outside this physical check. See the
+[native Japanese fix verification](qualification/2026-10-05-native-japanese-composition-fault.json).
 
 A [later simulator follow-up](qualification/2026-10-01-structural-foundation.json)
 independently verifies whole-sample Copy/Cut, native typing history and single
