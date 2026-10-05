@@ -46,6 +46,19 @@ claim until end-to-end support is qualified.
 - Separate grammar module and tests for recursive admission, invalid shapes,
   document round-trip, resource limits, distinct fingerprints and rejection by
   existing flat-operation capability checks.
+- Snapshot-local sibling selection resolver, including backward/end-exclusive
+  ranges, empty items and scalar-boundary validation. It grants no editing
+  authority and rejects cross-container selections.
+
+## Release gate
+
+The goal is fully tested end-to-end nested lists, not schema admission alone.
+All six checkpoints above must be completed before a release-ready claim.
+Require atomic failure tests, inverse/replay and selection mapping properties,
+existing flat/default regression suites, packed-consumer tests, all three browser
+engines, recovery compatibility checks, and native keyboard/input/accessibility
+qualification. The unresolved intermittent WebKit fault remains an explicit risk;
+green bounded reruns alone do not close it. No push or publication is authorized.
 
 ## Deferred
 

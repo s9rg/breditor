@@ -11,6 +11,10 @@
 
 mod heading_level;
 mod list_kind;
+#[cfg(feature = "experimental-structural-properties")]
+mod nested_list_selection;
+#[cfg(feature = "experimental-structural-properties")]
+pub use nested_list_selection::{NestedListItemRange, NestedListSelectionError};
 mod ordered_list_start;
 mod text_block_kind;
 mod value_error;

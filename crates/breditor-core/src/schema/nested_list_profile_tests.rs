@@ -8,6 +8,87 @@ use crate::{
 };
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+#[test]
+fn nested_list_selection_resolves_siblings_without_flattening_scope() -> TestResult {
+    use crate::{
+        block::{NestedListItemRange, NestedListSelectionError},
+        document::{FormatSet, TextNode},
+        position::{Affinity, NodePath, Point},
+        selection::RangeSelection,
+    };
+    let schema = schema(true)?;
+    let block = element(
+        "breditor/paragraph",
+        vec![NodeRef::text(TextNode::try_new("a🙂b".to_owned(), FormatSet::default())?)],
+    )?;
+    let item = element("breditor/list-item", vec![block.clone()])?;
+    let nested = element(
+        "breditor/bullet-list",
+        vec![
+            item.clone(),
+            item.clone(),
+            element("breditor/list-item", vec![element("breditor/paragraph", vec![])?])?,
+        ],
+    )?;
+    let parent = element("breditor/list-item", vec![block, nested])?;
+    let root =
+        element("breditor/document", vec![element("breditor/bullet-list", vec![parent, item])?])?;
+    let document = Document::try_new(&schema, root, &DocumentLimits::default())?;
+    let point = |item, offset| -> Result<Point, Box<dyn std::error::Error>> {
+        Ok(Point::Text {
+            text_path: NodePath::try_from_indices(vec![0, 0, 1, item, 0, 0])?,
+            utf16_offset: offset,
+            affinity: Affinity::After,
+        })
+    };
+    for (start, end, expected) in [(1, 0, 0..1), (1, 3, 0..2)] {
+        let a = point(0, start)?;
+        let b = point(1, end)?;
+        for range in [RangeSelection::new(a.clone(), b.clone()), RangeSelection::new(b, a)] {
+            let run = NestedListItemRange::resolve(&schema, &document, &range)?;
+            assert_eq!(run.list_path().to_vec(), vec![0, 0, 1]);
+            assert_eq!(run.items(), expected);
+        }
+    }
+    let empty = Point::Children {
+        parent_path: NodePath::try_from_indices(vec![0, 0, 1, 2, 0])?,
+        child_index: 0,
+        affinity: Affinity::Before,
+    };
+    assert_eq!(
+        NestedListItemRange::resolve(
+            &schema,
+            &document,
+            &RangeSelection::new(empty.clone(), empty)
+        )?
+        .items(),
+        2..3
+    );
+    let parent_point = Point::Text {
+        text_path: NodePath::try_from_indices(vec![0, 0, 0, 0])?,
+        utf16_offset: 1,
+        affinity: Affinity::After,
+    };
+    assert_eq!(
+        NestedListItemRange::resolve(
+            &schema,
+            &document,
+            &RangeSelection::new(parent_point, point(1, 3)?)
+        ),
+        Err(NestedListSelectionError::DifferentLists)
+    );
+    let invalid = point(0, 2)?; // Inside the emoji's surrogate pair.
+    assert_eq!(
+        NestedListItemRange::resolve(
+            &schema,
+            &document,
+            &RangeSelection::new(invalid.clone(), invalid)
+        ),
+        Err(NestedListSelectionError::InvalidSelection)
+    );
+    Ok(())
+}
+
 fn element(kind: &str, children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn std::error::Error>> {
     Ok(NodeRef::element(ElementNode::try_new(
         QualifiedName::try_new(kind)?,
