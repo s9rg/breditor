@@ -1,0 +1,67 @@
+{
+  "status": "clipboard-scenarios-passed-accessibility-control-discrepancy-isolated",
+  "runtimeCheckpoint": "62b2e90",
+  "fixture": {
+    "artifact": "target/list-demo-qualification",
+    "url": "http://127.0.0.1:4298/manual-clipboard.html",
+    "wasmSha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671",
+    "source": "examples/lists/manual-clipboard.html"
+  },
+  "method": "Native Safari and Chrome controlled through CUA. Actual menu-key Copy/Cut/Paste, native clicks and keyboard selection; no synthesized DOM clipboard events or programmatic Selection changes. Payloads checked by pasting into the fixture scratch textarea. All content is disposable sample text. Trusted events alone are not considered proof; visible before/after text and structures were checked.",
+  "passedInBothBrowsers": [
+    "Click Collect your ideas, Command-Left, Command-Shift-Right, Command-C; paste into scratch: exactly Collect your ideas, no bullet marker.",
+    "Reselect identically and Command-X: one empty bullet remains, surrounding content unchanged. Paste into scratch: exact text. One toolbar Undo restores the bullet and selection.",
+    "Click Write a first draft, Command-Right, Command-V: appends Collect your ideas exactly once to item 3, without adding list structure. One Command-Z restores the original text and items 3/4.",
+    "From start of Write a first draft, Shift-Down then Command-Shift-Right selects through end of Review and refine. Copy and external paste produce Write a first draft followed by one newline and Review and refine, without numbered markers.",
+    "Reselect the forward range and Cut: leaves one empty item numbered 3. External paste matches the two-line payload. One Undo restores both items, their text, selection and numbering 3/4.",
+    "From end of Review and refine, Shift-Up then Command-Shift-Left selects backward through start of Write a first draft. Repeat Copy/external paste and Cut/external paste/one Undo: same exact payload and restored document structure."
+  ],
+  "capturedReports": {
+    "source": "Complete redacted report textarea read via native accessibility after Capture redacted report; selected-all report output retained in task tool history. Shared fields below are identical in both captures, not an assertion that their full reports have the same bytes.",
+    "safariUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+    "chromeUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "outcome": "incomplete",
+    "owner": {"phase": "live", "reason": null, "revision": "31"},
+    "firstFault": null,
+    "observedEvents": 7,
+    "pendingEvents": 0,
+    "droppedEvents": 0,
+    "trustedClipboardEvents": {"copy": 3, "cut": 3, "paste": 1},
+    "allEventsSettledAndDefaultPrevented": true,
+    "allEventBeforeAndAfterPhases": "live",
+    "eventRevisionTransitions": [
+      {"kind": "copy", "before": "3", "after": "3"},
+      {"kind": "cut", "before": "6", "after": "7"},
+      {"kind": "paste", "before": "10", "after": "11"},
+      {"kind": "copy", "before": "15", "after": "15"},
+      {"kind": "cut", "before": "19", "after": "20"},
+      {"kind": "copy", "before": "25", "after": "25"},
+      {"kind": "cut", "before": "29", "after": "30"}
+    ],
+    "operatorChecks": {"copy": false, "cut": false, "paste": false, "caret": false, "history": false, "formatting": false},
+    "note": "Checkboxes deliberately left unset: this session checks clipboard scenarios, not every item of the combined formatting/input checklist."
+  },
+  "accessibilitySelectionControl": {
+    "fixture": "scripts/fixtures/native-list-selection-control/index.html",
+    "testedCopy": "target/native-selection-control-20261004/index.html",
+    "url": "http://127.0.0.1:4299/",
+    "browser": "Safari 26.6.2",
+    "containsJavaScriptOrWasm": false,
+    "reproduce": [
+      "Serve the fixture directory unchanged and open its index.html in native Safari.",
+      "CUA selectText on Plain list control with text Write a first draft and selectionType cursor_after; typeText !.",
+      "Observed !Keep the details together in the preceding bullet, while Write a first draft was unchanged.",
+      "Undo; click the actual Write a first draft text, Command-Right, type !.",
+      "Observed Write a first draft! with the preceding bullet unchanged."
+    ],
+    "conclusion": "The accessibility-command mispositioning reproduces without any Breditor runtime. Rust/Wasm is not a necessary cause. This does not yet isolate Safari accessibility implementation versus CUA range translation. The plain page has different default spacing, and the wrong offset differs from the Breditor observation.",
+    "chromeSelectionDisplay": "Chrome's accessibility selected-text display included 4. in the cross-item selection, but the actual pasted payload excluded it and preserved the newline. Do not use AX selected-text formatting as a clipboard-content oracle.",
+    "relationshipToQueueFault": "No demonstrated relationship to the separate intermittent queueUncertain failure."
+  },
+  "limits": [
+    "No code fix is claimed: native clipboard scenarios passed, and a separate test-control discrepancy was isolated outside the editor.",
+    "Does not qualify physical IME, spoken VoiceOver, native persistence/recovery, or every Chrome formatting interaction.",
+    "No system settings, shipping bundles or main-demo saved data changed. Native Copy/Cut replaced the system clipboard with disposable test text.",
+    "Original intermittent WebKit fault remains unresolved. No push, publish, version bump or budget change."
+  ]
+}

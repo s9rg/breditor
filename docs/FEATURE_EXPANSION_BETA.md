@@ -27,15 +27,20 @@ The beta is **not release-qualified**. The remaining gates are:
 - Native Safari/Chrome qualification on the final candidate, plus real Japanese
   IME and spoken VoiceOver evidence. Earlier native passes apply only to their
   recorded artifacts. Safari is accessible again; latest-candidate typing and
-  heading/list Undo/Redo checks passed. Clipboard, persistence and Chrome still
-  need latest-candidate qualification. Automation has not established reliable
-  IME/VoiceOver control.
+  heading/list Undo/Redo checks passed. Latest-candidate native Safari and Chrome
+  clipboard checks also passed: single-item copy/cut/paste and cross-item
+  copy/cut in both directions, including exact payloads and one-step undo.
+  See [native clipboard/control evidence](qualification/2026-10-04-latest-native-clipboard-and-selection-control.json).
+  Native persistence/recovery and complete Chrome formatting checks remain;
+  automation has not established reliable IME/VoiceOver control.
 - The retained intermittent WebKit `queueUncertain` fault. Passing reruns and
   improved diagnostics have not identified its cause or demonstrated a fix.
   The original unchanged failing bundle completed three native Safari runs and
   three fresh bundled-WebKit runs; neither reproduced the fault. A separate
   accessibility select-text control placed a caret in the preceding item while
-  native click/keyboard positioning worked; attribution remains unresolved.
+  native click/keyboard positioning worked. That discrepancy now reproduces on
+  plain contenteditable HTML with no JavaScript or Wasm: it does not require
+  Breditor, but Safari accessibility versus automation attribution remains open.
 - An explicit delivery decision and reviewed budgets. Private feature packages
   exceed unchanged default ceilings; functional consumer tests do not approve
   larger budgets or a shipping package. No delivery choice is assumed.
