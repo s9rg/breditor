@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-05",
+  "sourceHead": "14b5721",
+  "status": "bounded-native-reload-and-bidirectional-recovery-passed",
+  "method": "Native Safari and Chrome controlled through CUA accessibility clicks, keyboard shortcuts, browser downloads and file pickers. UI states inspected after actions. Downloaded backup bytes independently inspected and hashed. No DOM mutation or synthetic event dispatch.",
+  "fixtureUrl": "http://127.0.0.1:4312/",
+  "artifacts": {
+    "assembly": "target/flat-list-opt-in-lHoc14/assembly.json",
+    "archiveSha256": "43b94544f681880ab42a1e76293a38fd75b95cf414a0f2453689527d40767f6b",
+    "bundle": "target/list-opt-in-demo-s4Qsgg/bundle",
+    "runtimeProofSha256": "65230d376bbde74c1229381d4ed7d93e76c409b6d6904b126d1b225bc3e6829e",
+    "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+    "workspaceEditorModules": 0,
+    "installedModules": 77
+  },
+  "browsers": {"safari": "26.6.2", "chrome": "152.0.0.0"},
+  "reload": {
+    "chrome": "Selected Make room for your ideas backward with native keyboard navigation. Changed heading 2 to 3, applied bullet wrapper, then Undo. Command-R restored heading 3, selected heading text, enabled Undo and pending Redo. Redo restored bullet-wrapped heading 3; Undo removed the wrapper.",
+    "safari": "Selected the same heading backward with native keyboard navigation. Changed heading 2 to 4, applied numbered wrapper starting at 1, then Undo. Command-R restored heading 4, selected heading text, enabled Undo and pending Redo. Redo restored numbered heading 4 with marker 1; Undo removed the wrapper."
+  },
+  "chromeToSafari": [
+    "Imported breditor-session-backup (3).json through native file picker. Separate recovery editor showed heading 3, selected heading text, pending Redo and Autosave is off. Safari primary remained heading 4.",
+    "Recovered Redo restored bullet-wrapped heading 3. Undo removed wrapper; second Undo restored heading 2 and disabled Undo.",
+    "Command-R removed recovery and restored Safari primary heading 4 with selected text, pending numbered Redo and All changes saved. Re-exported primary bytes matched independently recorded pre-recovery hash."
+  ],
+  "safariToChrome": [
+    "Imported breditor-session-backup-4.json through native file picker. Separate recovery editor showed heading 4, selected heading text, pending Redo and Autosave is off. Chrome primary remained heading 3.",
+    "Recovered Redo restored numbered heading 4 with marker 1. Undo removed wrapper; second Undo restored heading 2 and disabled Undo.",
+    "Command-R removed recovery and restored Chrome primary heading 3 with selected text, enabled Undo/Redo and All changes saved. Downloaded breditor-session-backup (4).json matched original (3).json byte for byte."
+  ],
+  "backups": [
+    {
+      "browser": "Chrome",
+      "beforeFileName": "breditor-session-backup (3).json",
+      "afterFileName": "breditor-session-backup (4).json",
+      "beforeSha256": "963603defc9cdcb2f3b50cffb426b1f5b20fac64eecf119dfeda4c30987efd5c",
+      "afterSha256": "963603defc9cdcb2f3b50cffb426b1f5b20fac64eecf119dfeda4c30987efd5c",
+      "bytes": 4839,
+      "formatVersion": 6,
+      "currentRevision": "9",
+      "cursor": 1,
+      "entries": 2
+    },
+    {
+      "browser": "Safari",
+      "beforeFileName": "breditor-session-backup-4.json",
+      "afterFileName": "breditor-session-backup-4.json",
+      "beforeSha256": "311cc337b7cd2f00bebc58d574fbc878f5f470eb014b24d5f38d7f43136f0929",
+      "afterSha256": "311cc337b7cd2f00bebc58d574fbc878f5f470eb014b24d5f38d7f43136f0929",
+      "bytes": 4858,
+      "formatVersion": 6,
+      "currentRevision": "9",
+      "cursor": 1,
+      "entries": 2,
+      "downloadObservation": "Safari Downloads showed two completed entries with the same filename after re-export. Compared the file read after re-export with the pre-recovery recorded hash; not two separately retained files."
+    }
+  ],
+  "serializedSelection": {
+    "kind": "range",
+    "anchor": {"kind": "text", "textPath": [0, 0], "utf16Offset": 24, "affinity": "before"},
+    "focus": {"kind": "text", "textPath": [0, 0], "utf16Offset": 0, "affinity": "after"}
+  },
+  "limits": [
+    "Bounded agent-operated native evidence, not human attestation or broad browser certification. AX selected text alone does not prove native anchor/focus direction; backward direction is established in the serialized selections.",
+    "Covers distinct two-entry heading/list histories and recovery isolation, not every session shape or formatting property.",
+    "No new physical Japanese IME or spoken VoiceOver evidence, and no input-source settings changed.",
+    "Historical intermittent WebKit queueUncertain fault remains unresolved. Reviewed budgets and the full release gate remain open.",
+    "No executable code, wire format or shipping artifact changed; no push or publication."
+  ]
+}

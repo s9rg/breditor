@@ -44,8 +44,10 @@ The subsequent wrapper-reuse candidate passes 1,140 core unit tests, strict core
 Clippy, raw Wasm, private installed-package checks and all 63 full opt-in demo
 cases without failures, skips or retries. The latest `lHoc14` candidate now also
 passes bounded agent-operated native Safari/Chrome clipboard, typing and
-heading/list/Link history checks. Native reload/recovery evidence below still
-applies to the prior `ktXUh6` artifact; it is not automatically transferred.
+heading/list/Link history checks. Fresh native reload and bidirectional backup
+recovery checks also pass on `lHoc14`, including persisted backward selections
+and byte-identical primary exports after recovery edits. See the latest native
+reload/recovery checkpoint below; earlier evidence remains artifact-specific.
 
 The beta is **not release-qualified**. The remaining gates are:
 
@@ -2427,8 +2429,32 @@ events, including three Copy, three Cut and one Paste, with no first fault,
 pending events or dropped events. Human-attestation boxes remain unchecked, so
 the fixture's own outcome correctly remains `incomplete`. This is bounded
 agent-operated native evidence, not human, physical IME or spoken VoiceOver
-certification. Native reload/recovery on this latest artifact remains open.
+certification. The subsequent checkpoint below covers native reload/recovery
+on this same artifact.
 See [latest native evidence](qualification/2026-10-05-latest-native-clipboard-formatting.json)
 for both redacted reports, exact artifact identities, observed scenarios and
 limitations. No shipping bundle, system setting or unrelated tab changed;
 nothing was pushed or published.
+
+## Latest opt-in native reload and recovery — 2026-10-05
+
+On the retained `lHoc14`/`s4Qsgg` candidate, native Chrome and Safari each retain
+their own heading rank, selected text and pending list-wrapper Redo across
+reload. Chrome's two-entry history uses heading 3 and a bullet wrapper; Safari's
+uses heading 4 and a numbered wrapper starting at 1. Their V6 exports record
+the backward selection exactly: anchor offset 24, focus offset 0.
+
+Each browser imports the other's backup into the separate recovery editor with
+autosave off. Recovered Redo restores the correct wrapper/rank; two Undos
+return to heading 2 and exhaust Undo. Reload removes transient recovery and
+restores the browser's own primary session. Post-recovery primary exports match
+the pre-recovery bytes in both browsers. Chrome produced a separate download;
+Safari reused its download filename, so its result compares the independently
+recorded pre-recovery hash with the file read after re-export.
+
+See [latest reload/recovery evidence](qualification/2026-10-05-latest-native-reload-recovery.json)
+for exact identities, hashes and scope. These are bounded agent-operated native
+checks, not human attestation or proof of native anchor/focus direction from AX
+text alone. Physical IME cancellation, spoken VoiceOver, the historical WebKit
+fault, reviewed size budgets and the full release gate remain open. No runtime,
+wire format, shipping artifact or system setting changed.
