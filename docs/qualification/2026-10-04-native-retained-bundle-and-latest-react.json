@@ -1,0 +1,81 @@
+{
+  "status": "partial-native-qualification-original-fault-unresolved",
+  "runtimeCheckpoint": "62b2e90",
+  "originalFailure": {
+    "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-ldkYaY/measurement.json",
+    "sha256": "4db4fd776488a37890b8012947d547d29ddafdc0008961df42e784be9669715a",
+    "rootCauseIdentified": false,
+    "fixed": false
+  },
+  "retainedBundleComparison": {
+    "method": "Serve the original performance-ldkYaY/bundle unchanged through Vite preview on 127.0.0.1:4297. No rebuild, constructor probes, or catch instrumentation.",
+    "assetSha256": {
+      "index.html": "55f01d76147d936800798f70cd533c853af843b9af7cb3c76f8ba3d717aff338",
+      "assets/index-Dseue0Jf.js": "1494085dca97df537e98687464457ae353f2461dbcebe6228f94b9a53fe34532",
+      "assets/breditor_wasm_bg-CF6WXnmp.wasm": "870ec13e74dd9c3526c577cd4662f8ddde39771de0886d078daa4e28c6205323"
+    },
+    "nativeSafari": {
+      "version": "26.6.2",
+      "bundleVersion": "21624.5.1.11.3",
+      "runs": 3,
+      "casesPerRun": 9,
+      "observation": "Native CUA navigation, then two reloads. Each run displayed the final initializationMs/cases result, which the retained fixture emits only after all assertions finish. First result was additionally inspected in a screenshot through the last 500-item repetition. Accessibility text truncates the result; no complete machine-readable native JSON was collected.",
+      "result": "completed-without-reproducing-fault"
+    },
+    "bundledWebKit": {
+      "version": "26.5",
+      "freshBrowserRuns": 3,
+      "passedCases": 27,
+      "pageErrors": [],
+      "observation": "Each fresh browser opened the same served bytes, waited for #result[data-status], then read status passed and all nine result cases. Complete results are retained in this task's command output, not a separate report file."
+    },
+    "limits": [
+      "Both native Safari and bundled WebKit passed this bounded comparison; this does not isolate the cause or prove the original intermittent failure fixed.",
+      "These engines differ in version and execution environment; this is not a controlled engine-version comparison.",
+      "Native and bundled runs may overlap. Timings are not used as performance evidence.",
+      "The retained bundle uses the previous Rust candidate, deliberately, to preserve the failed artifact."
+    ]
+  },
+  "latestCandidateNativeSafari": {
+    "url": "http://127.0.0.1:4298/manual-clipboard.html",
+    "artifact": "target/list-demo-qualification",
+    "wasmSha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671",
+    "clipboardEntrySha256": "d32e1767826ab4e834449d7763ca5e25e743b342602dd4190bf6628828d88af3",
+    "passedObservations": [
+      "Click Write a first draft, Command-Right, type !: only numbered item 3 changes. Command-Z removes ! and Command-Shift-Z restores it; item 4 and numbering remain unchanged.",
+      "Click the initial heading, choose Heading 3, Bullet list, Numbered list, Remove list: text remains unchanged and heading rank remains 3 through each container transition.",
+      "Undo each of the four structural changes individually: numbered heading, bullet heading, unwrapped Heading 3, original Heading 2. Redo each individually restores the same four states. Each state verified in the native accessibility tree."
+    ],
+    "testControlDiscrepancy": {
+      "action": "CUA selectText on the entire editable with text Write a first draft and selectionType cursor_after, followed by typeText !",
+      "actual": "Inserted ! at the end of the preceding bullet Keep the details together.",
+      "cleanup": "One native Undo restored the original text before the click-and-keyboard control.",
+      "control": "Clicking the actual numbered-item text and Command-Right inserted at the intended endpoint.",
+      "attribution": "Unresolved accessibility-range/control discrepancy, not established as a Breditor runtime bug or as the queueUncertain fault. Do not use this selectText result as proof of native selection correctness."
+    },
+    "notQualified": ["Native clipboard", "Link value editing", "Persistence/recovery", "Chrome on this candidate", "Physical Japanese IME", "Spoken VoiceOver"],
+    "operatorConfirmedCheckboxesSet": false,
+    "systemSettingsChanged": false,
+    "mainDemoDataChanged": false
+  },
+  "latestCandidateReact": {
+    "packageRecord": "target/flat-list-packages-Ckczkl/qualification.json",
+    "report": "target/react-source-proof-20261004.json",
+    "reportSha256": "a2ae9f8fbcaf5c8cb174f0fd586ba5ceed11a2701f59e661f957f160abe1389f",
+    "passed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "retries": 0,
+    "engines": ["chromium", "firefox", "webkit"]
+  },
+  "shippingTreeSha256": {
+    "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+    "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+    "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+  },
+  "shippingArtifactsUnchanged": true,
+  "releaseQualified": false,
+  "published": false
+}

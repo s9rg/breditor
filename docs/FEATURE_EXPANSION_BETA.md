@@ -16,17 +16,26 @@ directional selection, toolbar actions, undo/redo and V6 reload/recovery are
 implemented in the **private experimental profile**, not the default shipping
 bundle. The most recent qualification passed 1,135 core tests, strict workspace
 Clippy, private Wasm/package checks, 165 existing browser cases and 54 list-demo
-cases. See [exact-source proof qualification](qualification/2026-10-04-flat-list-source-proof-reuse.json)
+cases. A subsequent run passed all 39 React cases on the same candidate, without
+retries. See [exact-source proof qualification](qualification/2026-10-04-flat-list-source-proof-reuse.json)
 for the artifact identities, retained failed runs and complete limits.
+The [native comparison follow-up](qualification/2026-10-04-native-retained-bundle-and-latest-react.json)
+records the React run and partial native Safari checks on the latest candidate.
 
 The beta is **not release-qualified**. The remaining gates are:
 
 - Native Safari/Chrome qualification on the final candidate, plus real Japanese
   IME and spoken VoiceOver evidence. Earlier native passes apply only to their
-  recorded artifacts. Automation has not established reliable IME/VoiceOver
-  control, and the latest Safari attachment attempt was unavailable.
+  recorded artifacts. Safari is accessible again; latest-candidate typing and
+  heading/list Undo/Redo checks passed. Clipboard, persistence and Chrome still
+  need latest-candidate qualification. Automation has not established reliable
+  IME/VoiceOver control.
 - The retained intermittent WebKit `queueUncertain` fault. Passing reruns and
   improved diagnostics have not identified its cause or demonstrated a fix.
+  The original unchanged failing bundle completed three native Safari runs and
+  three fresh bundled-WebKit runs; neither reproduced the fault. A separate
+  accessibility select-text control placed a caret in the preceding item while
+  native click/keyboard positioning worked; attribution remains unresolved.
 - An explicit delivery decision and reviewed budgets. Private feature packages
   exceed unchanged default ceilings; functional consumer tests do not approve
   larger budgets or a shipping package. No delivery choice is assumed.
