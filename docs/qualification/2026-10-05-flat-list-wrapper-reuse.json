@@ -1,0 +1,953 @@
+{
+  "date": "2026-10-05",
+  "scope": "Immutable list-item wrapper reuse during flat-list layout construction; private candidate only",
+  "publishable": false,
+  "releaseQualified": false,
+  "nativeInputQualified": false,
+  "webkitFaultFixed": false,
+  "sourceBase": "5f5098a",
+  "change": "Reuse only a same-position source item exactly equal to the canonical wrapper: list-item kind, no entity identity, no properties, one child and full semantic block equality. Nonmatching/moved/edited items are rebuilt. Result/source validation, limits, text admission, exact inverse derivation and transaction preflight remain unchanged. No cross-call cache or public/wire change.",
+  "sourceSha256": {
+    "crates/breditor-core/src/operation/flat_list_layout.rs": "a6eed0f730afef3e72b5a7b7f2f52e72836a74f93f7994796925b7907b47f7b7",
+    "crates/breditor-core/src/operation/flat_list_layout_reuse_tests.rs": "3a239659a908df5ad146dc50c4dcd589e3e87836fb2e6f1b043df9c77c8d24ef",
+    "crates/breditor-core/src/operation/flat_list_text_replace.rs": "bd534a86268c2eec1f1558bf0dd94ccc18512661d5ec6a8729a1f64ad3868da0"
+  },
+  "rust": {
+    "status": "passed",
+    "unitTests": 1140,
+    "command": "/Users/s/.cargo/bin/cargo test --locked -p breditor-core --features experimental-structural-properties --lib --quiet",
+    "clippy": "All-target/all-feature core Clippy with -D warnings passed.",
+    "format": "cargo fmt --all --check passed",
+    "newTests": "Canonical output versus fresh construction; allocation sharing; changed/reordered blocks; split/join layouts; identity/property/kind/child-count rejection from reuse; equal separately allocated blocks; layout and ordinal overflow.",
+    "initialFailures": "Initial added overflow test incorrectly used u32::MAX, rejected by OrderedListStart before reaching layout. Replaced with MAX_ORDERED_LIST_ORDINAL plus two items. Initial nested-if lint fixed. Final unit and Clippy runs passed.",
+    "scopeLimit": "Not a rerun of every workspace/integration/doc test."
+  },
+  "candidate": {
+    "status": "passed",
+    "publishable": false,
+    "feature": "experimental-flat-lists",
+    "diagnosticNames": false,
+    "codecs": {
+      "bootstrap": 4,
+      "document": 2,
+      "state": 3,
+      "session": 6,
+      "commit": 6
+    },
+    "wasmBytes": 2046937,
+    "wasmGzip9Bytes": 569667,
+    "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+    "shippingWasmSha256": "0c54ae700b059fdee02d4b22e521dcdb069e2ac3ae73aa4adda4aecafe51dbfd",
+    "declarationsSha256": "b0bc19f07e305569a42a7c3c1f3246f718315df4e324d4c443bcdf7acc2a9d3b",
+    "browserDistTreeSha256": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+    "qualification": "Generated ABI and TypeScript, Node list commands/projection/recovery and retained heading compatibility; five raw-Wasm runs each in Chromium/Firefox/WebKit. No editor DOM, native clipboard or IME qualification."
+  },
+  "privatePair": {
+    "status": "passed",
+    "publishable": false,
+    "candidate": "/Users/s/code/breditor/target/flat-list-candidate-CcQwkF",
+    "staging": "/Users/s/code/breditor/target/flat-list-packages-3d7urb",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-bpYClg",
+    "browserRuns": [
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "status": "passed"
+      },
+      {
+        "browser": "firefox",
+        "version": "153.0",
+        "status": "passed"
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "status": "passed"
+      }
+    ],
+    "diagnosticNames": false,
+    "browserPackage": {
+      "path": "/Users/s/code/breditor/target/flat-list-packages-3d7urb/tarballs/breditor-browser-0.3.0-alpha.22.tgz",
+      "bytes": 299443,
+      "unpackedBytes": 1600890,
+      "fileCount": 161
+    },
+    "wasmPackage": {
+      "path": "/Users/s/code/breditor/target/flat-list-packages-3d7urb/tarballs/breditor-wasm-0.3.0-alpha.22.tgz",
+      "bytes": 642292,
+      "unpackedBytes": 3754420,
+      "fileCount": 17
+    },
+    "browserJavaScriptBytes": 1200919,
+    "browserDeclarationsBytes": 320893,
+    "tarballSha256": {
+      "browser": "c86e41a06dcee099efc12daed33ed68970ed45b773aff04836489bdebfb04232",
+      "wasm": "acc6e66149681581bf0b8f4ef5fe2811a682679da06ee1c54ff161c7d72d357b"
+    },
+    "baseConsumer": "Existing Node import, strict TypeScript and Chromium initialization/format/content/teardown smoke passed against these same installed experimental artifacts",
+    "defaultCeilingComparisons": [
+      {
+        "label": "browser JavaScript",
+        "actual": 1200919,
+        "maximum": 1085000,
+        "withinDefaultCeiling": false
+      },
+      {
+        "label": "browser declarations",
+        "actual": 320893,
+        "maximum": 276000,
+        "withinDefaultCeiling": false
+      },
+      {
+        "label": "browser tarball",
+        "actual": 299443,
+        "maximum": 270000,
+        "withinDefaultCeiling": false
+      },
+      {
+        "label": "Wasm tarball",
+        "actual": 642292,
+        "maximum": 525000,
+        "withinDefaultCeiling": false
+      }
+    ],
+    "consumerJavaScriptBytes": 680890,
+    "consumerJavaScriptGzip9Bytes": 169454,
+    "sizeBudgetQualified": false,
+    "shippingArtifactsWritten": false,
+    "shippingArtifactTreeSha256": {
+      "packages/breditor-browser/dist": "76c6c95eaf6b8f4000a679c888b02f2b8cd4dc8d957ac99397f38729b26dff64",
+      "packages/breditor-wasm/dist": "e2d69732c83710ac98c24aa0451d72e3fda60e5afc88a63e939f11c18b4cd54a",
+      "packages/breditor-reference-highlight/dist": "3f0a0725a00f6aeb2fdb78cc4d7308959dee03b3fd88a4c79ef57a7ce4decbcc",
+      "examples/react/dist": "757797bb3df5694627712ea85f194e322dd1c4eb662b3c995fd865c6b01a4c2e"
+    },
+    "boundary": "Private staged tarballs of current source and experimental Wasm, external offline consumer, no repository imports or aliases. Not an approved optional shipping package, native-input qualification or complete release gate."
+  },
+  "optIn": {
+    "assembly": {
+      "status": "assembled-not-consumer-qualified",
+      "publishable": false,
+      "name": "@breditor/experimental-flat-lists",
+      "version": "0.3.0-alpha.22",
+      "directory": "/Users/s/code/breditor/target/flat-list-opt-in-lHoc14",
+      "packageDirectory": "/Users/s/code/breditor/target/flat-list-opt-in-lHoc14/package",
+      "archive": "/Users/s/code/breditor/target/flat-list-opt-in-lHoc14/breditor-experimental-flat-lists-0.3.0-alpha.22.tgz",
+      "sha256": "43b94544f681880ab42a1e76293a38fd75b95cf414a0f2453689527d40767f6b",
+      "bytes": 870980,
+      "unpackedBytes": 3753908,
+      "packageTreeSha256": "21975aa648aa0eb407fe2e6d33f9a3b487c91fec1bde9759c2131aa7093605ab",
+      "inputRecord": "/Users/s/code/breditor/target/flat-list-packages-3d7urb/qualification.json",
+      "inputRecordSha256": "fbd8809f2fcf310ec24330738ce767872cf20d38530ac699404738259e7da11d",
+      "inputTarballSha256": {
+        "browser": "c86e41a06dcee099efc12daed33ed68970ed45b773aff04836489bdebfb04232",
+        "wasm": "acc6e66149681581bf0b8f4ef5fe2811a682679da06ee1c54ff161c7d72d357b"
+      },
+      "sizeBudgetQualified": false,
+      "shippingArtifactsWritten": false
+    },
+    "consumer": {
+      "status": "passed",
+      "assembly": "/Users/s/code/breditor/target/flat-list-opt-in-lHoc14/assembly.json",
+      "archiveSha256": "43b94544f681880ab42a1e76293a38fd75b95cf414a0f2453689527d40767f6b",
+      "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-opt-in-consumer-YLdbG2",
+      "nodeAndTypes": "passed",
+      "browserRuns": [
+        {
+          "browser": "chromium",
+          "version": "151.0.7922.34",
+          "status": "passed"
+        },
+        {
+          "browser": "firefox",
+          "version": "153.0",
+          "status": "passed"
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "status": "passed"
+        }
+      ],
+      "publishable": false,
+      "sizeBudgetQualified": false,
+      "boundary": "External installed single-package consumer; list conversion, Undo, V6 restore and Redo. Not native-input qualification or a complete release gate."
+    }
+  },
+  "measurements": [
+    {
+      "label": "baseline-first",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-IiggYD/performance-nVLuQI/measurement.json",
+      "sha256": "94e45b4770916fdfa7e19efa06f667a21acc4e4e1b43487f557c60d8d41ccb72",
+      "status": "measured",
+      "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+      "packageRecord": "/Users/s/code/breditor/target/flat-list-packages-VcyDDe/qualification.json",
+      "engines": [
+        {
+          "browser": "chromium",
+          "version": "151.0.7922.34",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 28.5,
+                  "median": 30.800000190734863,
+                  "max": 35.700000047683716
+                },
+                "selectionMs": {
+                  "min": 32.200000047683716,
+                  "median": 32.69999980926514,
+                  "max": 32.89999985694885
+                },
+                "editMs": {
+                  "min": 47.89999985694885,
+                  "median": 50,
+                  "max": 51.799999952316284
+                },
+                "undoMs": {
+                  "min": 32.5,
+                  "median": 33,
+                  "max": 33.200000047683716
+                },
+                "checkpointMs": {
+                  "min": 3.200000047683716,
+                  "median": 3.200000047683716,
+                  "max": 3.299999952316284
+                },
+                "disposeMs": {
+                  "min": 1.9000000953674316,
+                  "median": 2,
+                  "max": 2.700000047683716
+                },
+                "restoreMs": {
+                  "min": 51.69999980926514,
+                  "median": 52.40000009536743,
+                  "max": 52.80000019073486
+                },
+                "redoMs": {
+                  "min": 33.200000047683716,
+                  "median": 33.700000047683716,
+                  "max": 33.90000009536743
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "firefox",
+          "version": "153.0",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 52,
+                  "median": 52,
+                  "max": 55
+                },
+                "selectionMs": {
+                  "min": 96,
+                  "median": 96,
+                  "max": 97
+                },
+                "editMs": {
+                  "min": 130,
+                  "median": 135,
+                  "max": 141
+                },
+                "undoMs": {
+                  "min": 113,
+                  "median": 115,
+                  "max": 119
+                },
+                "checkpointMs": {
+                  "min": 5,
+                  "median": 5,
+                  "max": 5
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 3,
+                  "max": 4
+                },
+                "restoreMs": {
+                  "min": 170,
+                  "median": 172,
+                  "max": 174
+                },
+                "redoMs": {
+                  "min": 112,
+                  "median": 113,
+                  "max": 116
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 48,
+                  "median": 50,
+                  "max": 57
+                },
+                "selectionMs": {
+                  "min": 46,
+                  "median": 50,
+                  "max": 57
+                },
+                "editMs": {
+                  "min": 85,
+                  "median": 90,
+                  "max": 92
+                },
+                "undoMs": {
+                  "min": 50,
+                  "median": 54,
+                  "max": 61
+                },
+                "checkpointMs": {
+                  "min": 3,
+                  "median": 4,
+                  "max": 9
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 3,
+                  "max": 4
+                },
+                "restoreMs": {
+                  "min": 77,
+                  "median": 78,
+                  "max": 83
+                },
+                "redoMs": {
+                  "min": 51,
+                  "median": 54,
+                  "max": 58
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "candidate-second",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-bpYClg/performance-8MLCt0/measurement.json",
+      "sha256": "00644aeba34cf41cbf529712036abb49876ad0a4d5522b0a964623ac6df4a70d",
+      "status": "measured",
+      "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+      "packageRecord": "/Users/s/code/breditor/target/flat-list-packages-3d7urb/qualification.json",
+      "engines": [
+        {
+          "browser": "chromium",
+          "version": "151.0.7922.34",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 29.799999952316284,
+                  "median": 31.300000190734863,
+                  "max": 35.5
+                },
+                "selectionMs": {
+                  "min": 28.90000009536743,
+                  "median": 30.799999952316284,
+                  "max": 31.200000047683716
+                },
+                "editMs": {
+                  "min": 47.5,
+                  "median": 48.5,
+                  "max": 50.200000047683716
+                },
+                "undoMs": {
+                  "min": 31.799999952316284,
+                  "median": 32.40000009536743,
+                  "max": 32.700000047683716
+                },
+                "checkpointMs": {
+                  "min": 3.3000001907348633,
+                  "median": 3.4000000953674316,
+                  "max": 3.6000001430511475
+                },
+                "disposeMs": {
+                  "min": 2,
+                  "median": 2.0999999046325684,
+                  "max": 5.700000047683716
+                },
+                "restoreMs": {
+                  "min": 49.299999952316284,
+                  "median": 51,
+                  "max": 52.5
+                },
+                "redoMs": {
+                  "min": 31.299999952316284,
+                  "median": 32,
+                  "max": 33.09999990463257
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "firefox",
+          "version": "153.0",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 56,
+                  "median": 59,
+                  "max": 69
+                },
+                "selectionMs": {
+                  "min": 89,
+                  "median": 91,
+                  "max": 117
+                },
+                "editMs": {
+                  "min": 129,
+                  "median": 131,
+                  "max": 187
+                },
+                "undoMs": {
+                  "min": 100,
+                  "median": 102,
+                  "max": 121
+                },
+                "checkpointMs": {
+                  "min": 5,
+                  "median": 5,
+                  "max": 6
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 3,
+                  "max": 3
+                },
+                "restoreMs": {
+                  "min": 159,
+                  "median": 166,
+                  "max": 183
+                },
+                "redoMs": {
+                  "min": 100,
+                  "median": 109,
+                  "max": 136
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 44,
+                  "median": 46,
+                  "max": 53
+                },
+                "selectionMs": {
+                  "min": 43,
+                  "median": 43,
+                  "max": 47
+                },
+                "editMs": {
+                  "min": 78,
+                  "median": 82,
+                  "max": 83
+                },
+                "undoMs": {
+                  "min": 49,
+                  "median": 49,
+                  "max": 53
+                },
+                "checkpointMs": {
+                  "min": 3,
+                  "median": 4,
+                  "max": 8
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 4,
+                  "max": 4
+                },
+                "restoreMs": {
+                  "min": 68,
+                  "median": 68,
+                  "max": 75
+                },
+                "redoMs": {
+                  "min": 47,
+                  "median": 48,
+                  "max": 51
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "candidate-first-repeat",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-bpYClg/performance-XmtcuV/measurement.json",
+      "sha256": "f0b668bb6ad7bb3af047eeafed6b71f1bb838c37534605cc7a2dc03195b618e0",
+      "status": "measured",
+      "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+      "packageRecord": "/Users/s/code/breditor/target/flat-list-packages-3d7urb/qualification.json",
+      "engines": [
+        {
+          "browser": "chromium",
+          "version": "151.0.7922.34",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 29.100000143051147,
+                  "median": 32.200000047683716,
+                  "max": 36.5
+                },
+                "selectionMs": {
+                  "min": 29.199999809265137,
+                  "median": 31.100000143051147,
+                  "max": 32.09999990463257
+                },
+                "editMs": {
+                  "min": 47.799999952316284,
+                  "median": 48.90000009536743,
+                  "max": 51.39999985694885
+                },
+                "undoMs": {
+                  "min": 31.200000047683716,
+                  "median": 31.59999990463257,
+                  "max": 33.39999985694885
+                },
+                "checkpointMs": {
+                  "min": 3.3999998569488525,
+                  "median": 3.4000000953674316,
+                  "max": 3.5
+                },
+                "disposeMs": {
+                  "min": 2,
+                  "median": 2.0999999046325684,
+                  "max": 2.200000047683716
+                },
+                "restoreMs": {
+                  "min": 50.39999985694885,
+                  "median": 51.09999990463257,
+                  "max": 52.5
+                },
+                "redoMs": {
+                  "min": 32,
+                  "median": 32.799999952316284,
+                  "max": 34.90000009536743
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "firefox",
+          "version": "153.0",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 51,
+                  "median": 53,
+                  "max": 54
+                },
+                "selectionMs": {
+                  "min": 83,
+                  "median": 84,
+                  "max": 86
+                },
+                "editMs": {
+                  "min": 118,
+                  "median": 119,
+                  "max": 128
+                },
+                "undoMs": {
+                  "min": 98,
+                  "median": 99,
+                  "max": 99
+                },
+                "checkpointMs": {
+                  "min": 4,
+                  "median": 4,
+                  "max": 5
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 4,
+                  "max": 4
+                },
+                "restoreMs": {
+                  "min": 156,
+                  "median": 162,
+                  "max": 163
+                },
+                "redoMs": {
+                  "min": 99,
+                  "median": 102,
+                  "max": 102
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 45,
+                  "median": 45,
+                  "max": 53
+                },
+                "selectionMs": {
+                  "min": 40,
+                  "median": 41,
+                  "max": 46
+                },
+                "editMs": {
+                  "min": 78,
+                  "median": 78,
+                  "max": 86
+                },
+                "undoMs": {
+                  "min": 48,
+                  "median": 49,
+                  "max": 56
+                },
+                "checkpointMs": {
+                  "min": 4,
+                  "median": 4,
+                  "max": 7
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 4,
+                  "max": 4
+                },
+                "restoreMs": {
+                  "min": 69,
+                  "median": 71,
+                  "max": 74
+                },
+                "redoMs": {
+                  "min": 49,
+                  "median": 49,
+                  "max": 49
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "baseline-second-repeat",
+      "path": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-IiggYD/performance-GpZMUZ/measurement.json",
+      "sha256": "7e1835d79c9e07d6d271ab07b6f9d5336051b91fbe9c706305285f36898835a5",
+      "status": "measured",
+      "fixtureSha256": "bcde2a40d3a05ee6b05c028fa32b222962b10f87afb2aa9ceaa232ed8d9b5983",
+      "packageRecord": "/Users/s/code/breditor/target/flat-list-packages-VcyDDe/qualification.json",
+      "engines": [
+        {
+          "browser": "chromium",
+          "version": "151.0.7922.34",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 28.700000047683716,
+                  "median": 30.90000009536743,
+                  "max": 36.89999985694885
+                },
+                "selectionMs": {
+                  "min": 29.59999990463257,
+                  "median": 32.19999980926514,
+                  "max": 33
+                },
+                "editMs": {
+                  "min": 48.10000014305115,
+                  "median": 48.299999952316284,
+                  "max": 52
+                },
+                "undoMs": {
+                  "min": 33.700000047683716,
+                  "median": 34.89999985694885,
+                  "max": 35.5
+                },
+                "checkpointMs": {
+                  "min": 3.1999998092651367,
+                  "median": 3.200000047683716,
+                  "max": 3.4000000953674316
+                },
+                "disposeMs": {
+                  "min": 2.299999952316284,
+                  "median": 2.299999952316284,
+                  "max": 2.299999952316284
+                },
+                "restoreMs": {
+                  "min": 49.39999985694885,
+                  "median": 52.09999990463257,
+                  "max": 53.40000009536743
+                },
+                "redoMs": {
+                  "min": 33.10000014305115,
+                  "median": 33.30000019073486,
+                  "max": 35.09999990463257
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "firefox",
+          "version": "153.0",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 52,
+                  "median": 54,
+                  "max": 55
+                },
+                "selectionMs": {
+                  "min": 95,
+                  "median": 96,
+                  "max": 100
+                },
+                "editMs": {
+                  "min": 131,
+                  "median": 135,
+                  "max": 138
+                },
+                "undoMs": {
+                  "min": 109,
+                  "median": 110,
+                  "max": 111
+                },
+                "checkpointMs": {
+                  "min": 4,
+                  "median": 4,
+                  "max": 5
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 3,
+                  "max": 4
+                },
+                "restoreMs": {
+                  "min": 168,
+                  "median": 171,
+                  "max": 173
+                },
+                "redoMs": {
+                  "min": 111,
+                  "median": 111,
+                  "max": 113
+                }
+              }
+            }
+          ]
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "cases": 9,
+          "summary": [
+            {
+              "items": 500,
+              "metrics": {
+                "startupMs": {
+                  "min": 49,
+                  "median": 53,
+                  "max": 68
+                },
+                "selectionMs": {
+                  "min": 49,
+                  "median": 54,
+                  "max": 61
+                },
+                "editMs": {
+                  "min": 94,
+                  "median": 102,
+                  "max": 106
+                },
+                "undoMs": {
+                  "min": 55,
+                  "median": 62,
+                  "max": 69
+                },
+                "checkpointMs": {
+                  "min": 3,
+                  "median": 4,
+                  "max": 6
+                },
+                "disposeMs": {
+                  "min": 3,
+                  "median": 4,
+                  "max": 6
+                },
+                "restoreMs": {
+                  "min": 94,
+                  "median": 95,
+                  "max": 102
+                },
+                "redoMs": {
+                  "min": 60,
+                  "median": 65,
+                  "max": 65
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interpretation": "Each run has three independent owners per 10/100/500 items, one machine, production minified bundles and full document/selection/Undo/reload/Redo assertions. First order baseline→candidate, repeat candidate→baseline. Firefox/WebKit edit, selection, Undo and recovery medians were lower in both comparisons, with substantial uncontrolled timing variation. Chromium edit improvement did not repeat (50→48.5 ms first, 48.3→48.9 ms repeat); no stable Chromium edit gain claimed. Not p95, native-input latency, memory measurement or multi-device performance qualification.",
+  "fullDemo": {
+    "report": "target/list-opt-in-demo-s4Qsgg/report.json",
+    "reportSha256": "7383dd5ec49686bce1ee1210ccfe6f4612682ac413303b5f680a26fee1265ef1",
+    "stats": {
+      "startTime": "2026-10-05T18:01:59.075Z",
+      "duration": 186148.57,
+      "expected": 63,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "proof": {
+      "archiveSha256": "43b94544f681880ab42a1e76293a38fd75b95cf414a0f2453689527d40767f6b",
+      "wasmSha256": "41f20f180389ca5f113ee3df0a776541e97c07274721247ceb1e0145caf8e4ef",
+      "workspaceEditorModules": 0,
+      "installedModules": [
+        "dist/browser/action_state_store.js",
+        "dist/browser/active_wasm_string_handles.js",
+        "dist/browser/ast_path.js",
+        "dist/browser/beforeinput.js",
+        "dist/browser/browser_editor.js",
+        "dist/browser/browser_event_controller.js",
+        "dist/browser/browser_event_router.js",
+        "dist/browser/clipboard_command.js",
+        "dist/browser/clipboard_controller.js",
+        "dist/browser/clipboard_fragment.js",
+        "dist/browser/clipboard_html.js",
+        "dist/browser/command_queue.js",
+        "dist/browser/compiled_browser_presentation.js",
+        "dist/browser/composition_controller.js",
+        "dist/browser/composition_delivery_token.js",
+        "dist/browser/composition_event.js",
+        "dist/browser/composition_result.js",
+        "dist/browser/composition_state.js",
+        "dist/browser/contain_async_rejection.js",
+        "dist/browser/dom_composition_reconcile.js",
+        "dist/browser/dom_event_intrinsics.js",
+        "dist/browser/dom_event_ownership.js",
+        "dist/browser/dom_point_mapping.js",
+        "dist/browser/dom_renderer.js",
+        "dist/browser/dom_selection.js",
+        "dist/browser/dom_selection_cleanup.js",
+        "dist/browser/dom_target_range.js",
+        "dist/browser/editor_command.js",
+        "dist/browser/flat_list_clipboard_command.js",
+        "dist/browser/flat_list_dom_point_mapping.js",
+        "dist/browser/flat_list_operation_preflight.js",
+        "dist/browser/flat_list_projection.js",
+        "dist/browser/flat_list_projection_update.js",
+        "dist/browser/flat_list_selection.js",
+        "dist/browser/flat_list_target_range.js",
+        "dist/browser/flat_list_toolbar_manifest.js",
+        "dist/browser/html_host.js",
+        "dist/browser/index.js",
+        "dist/browser/indexeddb_session_checkpoint.js",
+        "dist/browser/inline_format_render_attributes.js",
+        "dist/browser/inline_format_render_manifest.js",
+        "dist/browser/keyboard.js",
+        "dist/browser/keyboard_shortcut_manifest.js",
+        "dist/browser/keyboard_shortcut_profile_contract.js",
+        "dist/browser/native_command_builder.js",
+        "dist/browser/normalize_wasm_boundary_number.js",
+        "dist/browser/plain_text_paragraph_count.js",
+        "dist/browser/projection.js",
+        "dist/browser/projection_plain_text.js",
+        "dist/browser/projection_update.js",
+        "dist/browser/protected_handle_snapshot.js",
+        "dist/browser/result.js",
+        "dist/browser/selection.js",
+        "dist/browser/selection_result.js",
+        "dist/browser/session_checkpoint_autosave.js",
+        "dist/browser/target_range.js",
+        "dist/browser/toolbar.js",
+        "dist/browser/toolbar_dispatch_outcome.js",
+        "dist/browser/toolbar_inline_format_form.js",
+        "dist/browser/toolbar_inline_format_form_input.js",
+        "dist/browser/toolbar_inline_format_form_state_value.js",
+        "dist/browser/toolbar_inline_format_integer_select.js",
+        "dist/browser/toolbar_inline_format_rgb24.js",
+        "dist/browser/toolbar_manifest.js",
+        "dist/browser/toolbar_profile_contract.js",
+        "dist/browser/wasm_action_state_adapter.js",
+        "dist/browser/wasm_command_adapter.js",
+        "dist/browser/wasm_document_json.js",
+        "dist/browser/wasm_engine_bootstrap.js",
+        "dist/browser/wasm_profile_descriptor.js",
+        "dist/browser/wasm_projection_adapter.js",
+        "dist/browser/wasm_selection_adapter.js",
+        "dist/browser/wasm_session_checkpoint.js",
+        "dist/browser/wasm_string_handle_registry.js",
+        "dist/browser/well_formed_utf8_length.js",
+        "dist/wasm/breditor_wasm.js",
+        "index.js"
+      ]
+    },
+    "proofPath": "target/list-opt-in-demo-s4Qsgg/bundle/opt-in-runtime-proof.json",
+    "proofSha256": "65230d376bbde74c1229381d4ed7d93e76c409b6d6904b126d1b225bc3e6829e"
+  },
+  "sizeDelta": {
+    "wasmBytes": 1059,
+    "wasmGzip9Bytes": 357,
+    "optInArchiveBytes": 343
+  },
+  "limits": [
+    "All four default package ceilings remain exceeded and unapproved.",
+    "Native Safari/Chrome evidence applies to the prior ktXUh6 artifact, not this new candidate.",
+    "Physical Japanese cancellation, broader IME and spoken VoiceOver remain open.",
+    "Historical intermittent WebKit queueUncertain fault is not reproduced or fixed by these passing checks.",
+    "Shipping artifacts unchanged; no version bump, push or publication."
+  ]
+}

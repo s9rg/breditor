@@ -11,7 +11,9 @@ authorized by this plan.
 
 ## Current readiness — October 5, 2026
 
-The current Rust implementation checkpoint is `cc8f1d7`. Headings, flat lists,
+The latest Rust change reuses canonical immutable list-item wrappers during
+flat-list layout construction (see the October 5 wrapper-reuse checkpoint below).
+The prior path-reuse implementation checkpoint is `cc8f1d7`. Headings, flat lists,
 directional selection, toolbar actions, undo/redo and V6 reload/recovery are
 implemented in the **private experimental profile**, not the default shipping
 bundle. The earlier `62b2e90` qualification passed 1,135 core tests, strict workspace
@@ -38,6 +40,11 @@ all-target/all-feature Clippy, raw Wasm and installed-package checks in three
 engines, and all 63 cases of the full installed opt-in demo. These focused checks
 do not re-run every older workspace gate. See
 [path reuse qualification](qualification/2026-10-05-flat-list-path-reuse.json).
+The subsequent wrapper-reuse candidate passes 1,140 core unit tests, strict core
+Clippy, raw Wasm, private installed-package checks and all 63 full opt-in demo
+cases without failures, skips or retries. Native evidence below
+still applies to the prior `ktXUh6` opt-in artifact; it is not automatically
+transferred to the new `lHoc14` candidate.
 
 The beta is **not release-qualified**. The remaining gates are:
 
@@ -72,10 +79,10 @@ The beta is **not release-qualified**. The remaining gates are:
   and three-browser consumer checks. It bundles its paired browser/Wasm runtime
   without replacing the default packages. All 63 full feature-demo cases now
   pass against the installed package, with a checked module graph and retained
-  runtime identities. Current opt-in artifact `ktXUh6` now also passes bounded
+  runtime identities. Native-tested opt-in artifact `ktXUh6` also passes bounded
   agent-operated native Safari copy/cut/paste, typing, heading/list conversion
   and Link Undo/Redo checks. Its captured owner is live at revision 56 with no
-  faults, pending events or drops. Current-artifact native Chrome also passes
+  faults, pending events or drops. That artifact's native Chrome also passes
   clipboard, typing, structural formatting and Link history checks (live owner
   revision 54, no faults/pending events/drops), plus autosave reload with pending
   Redo and native backup export/import. Recovered history remains isolated from
@@ -90,9 +97,10 @@ The beta is **not release-qualified**. The remaining gates are:
   [bidirectional native recovery evidence](qualification/2026-10-05-opt-in-native-cross-browser-recovery.json),
   [opt-in delivery evidence](qualification/2026-10-05-opt-in-flat-list-package.json)
   and [installed-demo evidence](qualification/2026-10-05-opt-in-full-demo.json).
-- Large-list responsiveness and the complete final release gate. Current local
-  repeated 500-item edit medians on the path-reuse candidate are 50.4 ms
-  Chromium, 134 ms Firefox and 79 ms WebKit; these small synthetic samples are
+- Large-list responsiveness and the complete final release gate. Latest local
+  repeated 500-item edit medians on the wrapper-reuse candidate are 48.9 ms
+  Chromium, 119 ms Firefox and 78 ms WebKit. The Chromium edit gain did not
+  repeat, and WebKit baselines varied substantially; these small synthetic samples are
   not native-input latency guarantees
   or a supported maximum document size.
 
@@ -2291,3 +2299,43 @@ intermittent WebKit fault or qualify physical IME/VoiceOver behavior.
 See [path reuse evidence](qualification/2026-10-05-flat-list-path-reuse.json)
 for source/artifact identities, all four timing reports and the full-demo report.
 Nothing was pushed or published.
+
+## Reuse canonical list-item wrappers — 2026-10-05
+
+Preparing a flat-list heading/format operation reconstructed every item wrapper,
+even for untouched immutable blocks. Layout construction now considers the
+same-position source item for reuse. It must exactly match the newly constructed
+canonical wrapper: list-item kind, no entity identity, no properties, one child,
+and semantically equal block content. Otherwise it is rebuilt. Changed layouts
+may move blocks; a source position is only a candidate, never proof of equality.
+Source/result schema checks, limits, scalar/text admission, exact inverse
+derivation and transaction validation remain unchanged. No public API, wire
+format, cross-call cache or default shipping artifact changes.
+
+Three new tests cover allocation sharing and canonical output versus fresh
+construction, edited/reordered blocks, split/join layouts, noncanonical wrapper
+metadata and layout/ordinal overflow. All **1,140 core unit tests** and strict
+all-target/all-feature core Clippy pass. Candidate `CcQwkF` passes generated
+declarations, Node checks and five raw-Wasm runs per engine. Private pair
+`3d7urb` and opt-in package `lHoc14` pass installed consumer checks in Chromium,
+Firefox and WebKit. The full installed opt-in demo passes **63 cases** across
+the same three engines, with no failures, skips, flaky results or retries.
+The retained module graph proves zero workspace editor modules and 77 installed
+runtime modules. This does not rerun every older workspace gate or qualify
+physical input on the new artifact.
+
+The first baseline→candidate 500-item edit medians were 50 → 48.5 ms Chromium,
+135 → 131 ms Firefox and 90 → 82 ms WebKit. Reversing the run order produced
+baseline→candidate values of 48.3 → 48.9 ms, 135 → 119 ms and 102 → 78 ms.
+Firefox Undo measured 115 → 102 ms first and 110 → 99 ms on repeat.
+All four reports retain full document, selection, Undo, reload and Redo
+assertions for 27 cases each. The Chromium edit gain did not repeat. WebKit
+timings varied substantially; three samples per median on one uncontrolled Mac
+are not a p95, native latency guarantee or approved responsiveness budget.
+
+Raw Wasm increases by 1,059 bytes (357 gzip-9); the opt-in archive grows by
+343 bytes. Default package ceilings remain unchanged and exceeded. The native
+Safari/Chrome checks recorded above remain bound to the earlier artifact.
+Physical IME/VoiceOver, historical intermittent WebKit failure and complete
+release qualification remain open. See
+[wrapper reuse evidence](qualification/2026-10-05-flat-list-wrapper-reuse.json).

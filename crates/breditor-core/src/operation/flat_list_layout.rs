@@ -6,6 +6,10 @@ use crate::{
     identity::QualifiedName,
 };
 
+#[cfg(test)]
+#[path = "flat_list_layout_reuse_tests.rs"]
+mod reuse_tests;
+
 /// One root in the result of an experimental flat-list structural replacement.
 ///
 /// Shapes consume the resulting text blocks in order exactly once. A bare root
@@ -28,13 +32,14 @@ pub enum FlatListRootShape {
 pub(super) fn build(
     layout: &[FlatListRootShape],
     blocks: &[NodeRef],
+    source_roots: &[NodeRef],
 ) -> Result<Vec<NodeRef>, FlatListTextReplaceError> {
     if layout.is_empty() {
         return Err(FlatListTextReplaceError::InvalidLayout);
     }
     let mut cursor = 0_usize;
     let mut roots = Vec::new();
-    for shape in layout {
+    for (root_index, shape) in layout.iter().enumerate() {
         let count = match shape {
             FlatListRootShape::TextBlock => 1,
             FlatListRootShape::List { items, .. } => {
@@ -48,7 +53,9 @@ pub(super) fn build(
         let chunk = blocks.get(cursor..end).ok_or(FlatListTextReplaceError::InvalidLayout)?;
         match shape {
             FlatListRootShape::TextBlock => roots.push(chunk[0].clone()),
-            FlatListRootShape::List { kind, .. } => roots.push(list(*kind, chunk)?),
+            FlatListRootShape::List { kind, .. } => {
+                roots.push(list(*kind, chunk, source_roots.get(root_index))?);
+            }
         }
         cursor = end;
     }
@@ -57,7 +64,11 @@ pub(super) fn build(
     }
     Ok(roots)
 }
-fn list(kind: ListKind, blocks: &[NodeRef]) -> Result<NodeRef, FlatListTextReplaceError> {
+fn list(
+    kind: ListKind,
+    blocks: &[NodeRef],
+    source: Option<&NodeRef>,
+) -> Result<NodeRef, FlatListTextReplaceError> {
     let (name, properties) = match kind {
         ListKind::Bullet => ("breditor/bullet-list", PropertyMap::default()),
         ListKind::Ordered(start) => {
@@ -77,11 +88,39 @@ fn list(kind: ListKind, blocks: &[NodeRef]) -> Result<NodeRef, FlatListTextRepla
             )
         }
     };
+    let source = source.and_then(NodeRef::as_element).filter(|node| {
+        matches!(node.kind().as_str(), "breditor/bullet-list" | "breditor/ordered-list")
+    });
     let children = blocks
         .iter()
-        .map(|block| element("breditor/list-item", PropertyMap::default(), vec![block.clone()]))
+        .enumerate()
+        .map(|(index, block)| list_item(block, source.and_then(|node| node.children().get(index))))
         .collect::<Result<Vec<_>, _>>()?;
     element(name, properties, children)
+}
+
+/// Reuse only an item semantically identical to the canonical wrapper we would
+/// construct. A same-position source is merely a candidate: split/join layouts
+/// may move blocks, and unvalidated input may carry forbidden metadata. Shape,
+/// identity, properties and the complete block must all match. Pointer identity
+/// never changes admission; result/source validation and inverse checks remain
+/// the caller's responsibility. There is no cache beyond this derivation.
+fn list_item(
+    block: &NodeRef,
+    source: Option<&NodeRef>,
+) -> Result<NodeRef, FlatListTextReplaceError> {
+    if let Some(source) = source
+        && source.as_element().is_some_and(|item| {
+            item.kind().as_str() == "breditor/list-item"
+                && item.entity_id().is_none()
+                && item.properties().is_empty()
+                && item.children().len() == 1
+                && item.children().get(0) == Some(block)
+        })
+    {
+        return Ok(source.clone());
+    }
+    element("breditor/list-item", PropertyMap::default(), vec![block.clone()])
 }
 fn element(
     name: &'static str,

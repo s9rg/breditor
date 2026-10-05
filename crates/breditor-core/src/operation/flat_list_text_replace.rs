@@ -304,7 +304,7 @@ impl FlatListTextReplace {
             .chain(edited)
             .chain(source[last + 1..].iter().map(|(_, node)| (*node).clone()))
             .collect::<Vec<_>>();
-        let roots = flat_list_layout::build(&self.layout, &nodes)?;
+        let roots = flat_list_layout::build(&self.layout, &nodes, &self.expected)?;
         let result_paths = absolute_paths(&roots, self.guard_start)?;
         let inverse_end = first
             .checked_add(self.inserted.len())
