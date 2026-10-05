@@ -9,6 +9,89 @@ use crate::{
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn nested_list_reframe_inverse_and_point_mapping_are_exact_and_guarded() -> TestResult {
+    use crate::{
+        document::{FormatSet, TextNode},
+        operation::{NestedListReframe, NestedListReframeError, PointRelocation},
+        position::{Affinity, NodePath, Point},
+        state::EditorContext,
+    };
+    let context = EditorContext::new(schema(true)?, DocumentLimits::default());
+    let block = |text: &str| {
+        element(
+            "breditor/paragraph",
+            vec![NodeRef::text(TextNode::try_new(text.to_owned(), FormatSet::default())?)],
+        )
+    };
+    let a = block("first")?;
+    let b = block("a🙂b")?;
+    let c = block("tail")?;
+    let item = |block| element("breditor/list-item", vec![block]);
+    let source = element(
+        "breditor/bullet-list",
+        vec![item(a.clone())?, item(b.clone())?, item(c.clone())?],
+    )?;
+    let replacement = element(
+        "breditor/bullet-list",
+        vec![
+            element(
+                "breditor/list-item",
+                vec![a, element("breditor/bullet-list", vec![item(b)?])?],
+            )?,
+            item(c)?,
+        ],
+    )?;
+    let root = element("breditor/document", vec![source.clone()])?;
+    let document = Document::try_new(context.schema(), root.clone(), context.limits())?;
+    let operation = NestedListReframe::capture(&context, &document, 0, 1, vec![replacement])?;
+    let edit = operation.apply(&context, &document)?.ok_or("missing edit")?;
+    for affinity in [Affinity::Before, Affinity::After] {
+        for offset in [0, 1, 3, 4] {
+            let point = Point::Text {
+                text_path: NodePath::try_from_indices(vec![0, 1, 0, 0])?,
+                utf16_offset: offset,
+                affinity,
+            };
+            let expected = Point::Text {
+                text_path: NodePath::try_from_indices(vec![0, 0, 1, 0, 0, 0])?,
+                utf16_offset: offset,
+                affinity,
+            };
+            assert_eq!(edit.relocate(&point)?, PointRelocation::Exact(expected.clone()));
+            let undo = edit.inverse().apply(&context, edit.document())?.ok_or("missing inverse")?;
+            assert_eq!(undo.document(), &document);
+            assert_eq!(undo.relocate(&expected)?, PointRelocation::Exact(point));
+            assert_eq!(undo.inverse(), &operation);
+        }
+    }
+    assert!(matches!(
+        operation.apply(&context, edit.document()),
+        Err(NestedListReframeError::ExpectedMismatch)
+    ));
+    let unchanged = NestedListReframe::capture(&context, &document, 0, 1, vec![source.clone()])?;
+    assert!(unchanged.apply(&context, &document)?.is_none());
+    let changed_text = element("breditor/bullet-list", vec![item(block("changed")?)?])?;
+    assert!(matches!(
+        NestedListReframe::try_new(0, vec![source], vec![changed_text]),
+        Err(NestedListReframeError::ContentChanged)
+    ));
+    let limited = EditorContext::new(
+        context.schema().clone(),
+        DocumentLimits::default().with_max_node_depth(4),
+    );
+    let limited_document = Document::try_new(limited.schema(), root, limited.limits())?;
+    assert!(operation.apply(&limited, &limited_document).is_err());
+    assert_eq!(limited_document.root(), document.root());
+    let flat = EditorContext::new(schema(false)?, DocumentLimits::default());
+    let flat_document = Document::try_new(flat.schema(), document.root().clone(), flat.limits())?;
+    assert!(matches!(
+        operation.apply(&flat, &flat_document),
+        Err(NestedListReframeError::UnsupportedSchema)
+    ));
+    Ok(())
+}
+
+#[test]
 fn nested_list_selection_resolves_siblings_without_flattening_scope() -> TestResult {
     use crate::{
         block::{NestedListItemRange, NestedListSelectionError},

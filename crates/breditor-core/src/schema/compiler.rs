@@ -392,7 +392,7 @@ mod flat_list_profile;
 #[path = "nested_list_profile.rs"]
 mod nested_list_profile;
 #[cfg(feature = "experimental-structural-properties")]
-pub(super) use nested_list_profile::compile_nested_list_profile;
+pub(super) use nested_list_profile::{compile_nested_list_profile, supports_nested_list_reframe};
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 #[path = "nested_list_profile_tests.rs"]
 mod nested_list_profile_tests;

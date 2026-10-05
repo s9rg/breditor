@@ -2,6 +2,10 @@
 
 mod change_set;
 #[cfg(feature = "experimental-structural-properties")]
+mod nested_list_reframe;
+#[cfg(feature = "experimental-structural-properties")]
+pub use nested_list_reframe::{NestedListReframe, NestedListReframeEdit, NestedListReframeError};
+#[cfg(feature = "experimental-structural-properties")]
 mod flat_list_layout;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_text_range;

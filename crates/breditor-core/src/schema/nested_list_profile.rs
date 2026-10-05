@@ -15,7 +15,12 @@ pub(in crate::schema) fn compile_nested_list_profile(
     schema_id: SchemaId,
     extensions: &ExtensionSet,
 ) -> Result<CompiledSchema, SchemaCompilationError> {
-    let mut spec = with_flat_lists(base_text_profile_spec(schema_id, extensions)?)?;
+    let spec = with_nested_lists(base_text_profile_spec(schema_id, extensions)?)?;
+    compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
+}
+
+fn with_nested_lists(spec: super::SchemaSpec) -> Result<super::SchemaSpec, SchemaCompilationError> {
+    let mut spec = with_flat_lists(spec)?;
     let item_kind = QualifiedName::from_known_static("breditor/list-item");
     let item = spec
         .elements
@@ -30,5 +35,13 @@ pub(in crate::schema) fn compile_nested_list_profile(
         minimum: 0,
         maximum: None,
     });
-    compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
+    Ok(spec)
+}
+
+pub(in crate::schema) fn supports_nested_list_reframe(
+    definition: &super::CompiledSchemaDefinition,
+) -> bool {
+    with_nested_lists(super::base_spec()).is_ok_and(|expected| {
+        super::text_block_profile::supports_structural_profile(definition, &expected)
+    })
 }

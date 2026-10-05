@@ -159,6 +159,12 @@ impl CompiledSchema {
         super::compiler::compile_nested_list_profile(schema_id, extensions)
     }
 
+    /// Recognizes the exact nested grammar for the experimental reframe primitive.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub(crate) fn supports_nested_list_reframe(&self) -> bool {
+        super::compiler::supports_nested_list_reframe(&self.definition)
+    }
+
     /// Returns a test-only schema with the base selector and different content meaning.
     ///
     /// This narrow factory exists only so crate tests can prove that a matching

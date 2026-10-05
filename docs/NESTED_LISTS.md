@@ -49,6 +49,10 @@ claim until end-to-end support is qualified.
 - Snapshot-local sibling selection resolver, including backward/end-exclusive
   ranges, empty items and scalar-boundary validation. It grants no editing
   authority and rejects cross-container selections.
+- Experimental `NestedListReframe` primitive with complete root-subtree guards,
+  exact depth-first block preservation, schema/limit validation, inverse and
+  point relocation. It is not yet a session operation or durable codec variant;
+  undo/redo/replay integration remains required before action exposure.
 
 ## Release gate
 
