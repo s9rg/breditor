@@ -437,6 +437,20 @@ mod operation_json_v6;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_json_v7;
 #[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_json_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_encoding_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_v7_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_entries_v7;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod nested_session_v7_tests;
+#[cfg(feature = "experimental-structural-properties")]
+pub use session_checkpoint_json_v7::{SESSION_CHECKPOINT_V7_FORMAT_VERSION, SessionCheckpointJsonCodecV7};
+#[cfg(feature = "experimental-structural-properties")]
+pub use session_checkpoint_v7_error::SessionCheckpointV7CodecError;
+#[cfg(feature = "experimental-structural-properties")]
 mod operation_sequence_v7;
 #[cfg(feature = "experimental-structural-properties")]
 mod transaction_json_v7;

@@ -56,8 +56,9 @@ claim until end-to-end support is qualified.
 - `OperationJsonCodecV7` explicitly admits nested reframes, with schema-fingerprint
   binding, bounded raw-tree preflight and canonical encoding. Older formats stay
   closed. V7 transaction requests and replay-proved commits now use this payload
-  language. Session checkpoint V7 remains outstanding; request/commit round-trips
-  alone are not a reload/recovery qualification.
+  language. Session checkpoint V7 reconstructs history and proves derived inverses.
+  Core recovery tests cover indent/outdent at every cursor using fresh schema
+  contexts. Packed Wasm/browser reload and recovery qualification remains open.
 - Rust `IndentListItemsAction` moves a sibling run with descendants, preserves
   ordered starts, merges compatible trailing child sections, and previews the
   complete result against limits before preparing one history unit.
