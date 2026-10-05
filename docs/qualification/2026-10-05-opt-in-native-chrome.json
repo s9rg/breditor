@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "cc8f1d7",
+  "status": "bounded-native-chrome-clipboard-and-recovery-checks-passed",
+  "method": "Native Chrome app operated through CUA with macOS keyboard shortcuts and toolbar controls. Observations from native accessibility text and the fixture report; no DOM mutation or synthetic browser-event dispatch.",
+  "fixtureUrl": "http://127.0.0.1:4311/manual-clipboard.html",
+  "recoveryUrl": "http://127.0.0.1:4311/",
+  "bundle": "target/list-opt-in-demo-SOvaTZ/bundle",
+  "proof": {
+    "sha256": "49766c85dc1013eba116819e79812d1d8404771739eb00902e3054fa54bb2586",
+    "archiveSha256": "f0dc5eb06aa1ea57a28aec91fadc0e76a1e4dd5f946acea37550606d85529dae",
+    "wasmSha256": "1f50aeae05b2f8ac0030e2b157d515f3f279adf4971e90081a85daece196eb46",
+    "workspaceEditorModules": 0,
+    "installedModules": 77
+  },
+  "clipboardObservations": [
+    "Single-bullet Copy and Cut each pasted exactly Collect your ideas into scratch without a marker. Cut kept the empty item; one Undo restored text and selected range.",
+    "Native typing appended ! to numbered item 3 immediately. Undo/Redo restored the text with numbering unchanged. Native Paste inserted Collect your ideas once, without list structure; Undo removed only the paste.",
+    "Forward and backward two-item selections each copied/cut exactly Write a first draft\nReview and refine into scratch. Cut left one empty item numbered 3; one Undo restored items 3 and 4 with their selected text. AX selected-text output included a marker, but the actual native paste payload did not.",
+    "Selected heading: Heading 2 to 3, bullet wrapper, numbered wrapper, removal of wrapper. Undo/Redo of each retained text and rank.",
+    "Link https://example.test/breditor-native-check applied, removed by Undo and restored by Redo; reopened form retained the exact URL. No navigation to the URL."
+  ],
+  "manualReport": {
+    "format": "breditor/manual-clipboard-evidence",
+    "formatVersion": 1,
+    "outcome": "incomplete",
+    "qualification": "Not automatic certification. Trusted events can also originate from browser automation; checklist observations are self-reported.",
+    "owner": {"phase": "live", "reason": null, "revision": "54"},
+    "firstFault": null,
+    "observedEvents": 8,
+    "pendingEvents": 0,
+    "droppedEvents": 0,
+    "trustedClipboardEvents": {"copy": 3, "cut": 3, "paste": 1},
+    "operatorChecks": {"copy": false, "cut": false, "paste": false, "caret": false, "history": false, "formatting": false},
+    "events": [
+      {"sequence": 1, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "3"}, "after": {"phase": "live", "reason": null, "revision": "3"}},
+      {"sequence": 2, "kind": "cut", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "6"}, "after": {"phase": "live", "reason": null, "revision": "7"}},
+      {"sequence": 3, "kind": "beforeinput", "trusted": true, "inputType": "insertText", "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "10"}, "after": {"phase": "live", "reason": null, "revision": "11"}},
+      {"sequence": 4, "kind": "paste", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "13"}, "after": {"phase": "live", "reason": null, "revision": "14"}},
+      {"sequence": 5, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "20"}, "after": {"phase": "live", "reason": null, "revision": "20"}},
+      {"sequence": 6, "kind": "cut", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "24"}, "after": {"phase": "live", "reason": null, "revision": "25"}},
+      {"sequence": 7, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "30"}, "after": {"phase": "live", "reason": null, "revision": "30"}},
+      {"sequence": 8, "kind": "cut", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": {"phase": "live", "reason": null, "revision": "34"}, "after": {"phase": "live", "reason": null, "revision": "35"}}
+    ],
+    "fixture": {"name": "flat-list-showcase", "schema": "example/flat-list-showcase", "sessionFormatVersion": 6, "wasmSha256": "1f50aeae05b2f8ac0030e2b157d515f3f279adf4971e90081a85daece196eb46"},
+    "environment": {"userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36", "platform": "MacIntel"}
+  },
+  "persistenceObservations": [
+    "Fresh main demo: selected heading with native caret keys, changed rank 2 to 3, wrapped in bullet list, then Undo left rank 3 and pending wrapper Redo.",
+    "Observed All changes saved before Command-R. Reload retained heading rank 3, selected heading text, enabled Undo and Redo. Redo restored the bullet wrapper and rank 3; Undo removed only the wrapper.",
+    "Downloaded breditor-session-backup (2).json. Native picker verified this exact new file before import; an initial path-paste attempt selected the older (1) file, which was not imported. Corrected path using native setValue.",
+    "Imported V6 checkpoint had currentRevision 9, cursor 1, two history entries and full selected heading range. Recovery opened separately with Autosave is off and pending Redo.",
+    "Recovered Redo restored bullet-wrapped heading 3. First Undo removed wrapper; second Undo restored heading 2 and disabled further Undo. Primary editor remained heading 3 with its own pending Redo.",
+    "Reload after recovered-editor edits removed the transient recovery editor and restored primary heading 3, selected text, enabled Undo/Redo and All changes saved. Recovery did not overwrite primary autosave."
+  ],
+  "backup": {
+    "fileName": "breditor-session-backup (2).json",
+    "sha256": "a0459e9990ba9d282a1a5b769a1622dc7ea41247de20d069cb1c8737333c1d48",
+    "formatVersion": 6,
+    "currentRevision": "9",
+    "cursor": 1,
+    "entries": 2
+  },
+  "limits": [
+    "Agent-operated native checks, not human attestation; operator checkboxes intentionally remain false.",
+    "AX selected text does not establish anchor/focus direction after restoration.",
+    "No new physical Japanese IME or spoken VoiceOver qualification; no input-source settings changed in this checkpoint.",
+    "Current-artifact native Safari persistence and cross-browser backup recovery not rerun here.",
+    "These passes do not identify or fix the historical intermittent WebKit queueUncertain fault, approve size budgets or complete the release gate."
+  ]
+}

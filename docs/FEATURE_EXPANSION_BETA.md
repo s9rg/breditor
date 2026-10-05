@@ -75,10 +75,15 @@ The beta is **not release-qualified**. The remaining gates are:
   runtime identities. Current opt-in artifact `ktXUh6` now also passes bounded
   agent-operated native Safari copy/cut/paste, typing, heading/list conversion
   and Link Undo/Redo checks. Its captured owner is live at revision 56 with no
-  faults, pending events or drops. Human attestation, current-artifact Chrome,
-  native persistence and IME/VoiceOver qualification remain open; functional
+  faults, pending events or drops. Current-artifact native Chrome also passes
+  clipboard, typing, structural formatting and Link history checks (live owner
+  revision 54, no faults/pending events/drops), plus autosave reload with pending
+  Redo and native backup export/import. Recovered history remains isolated from
+  primary autosave. Human attestation, current-artifact native Safari persistence,
+  cross-browser backup recovery and IME/VoiceOver qualification remain open; functional
   checks do not approve larger budgets or a release. See
   [native opt-in Safari evidence](qualification/2026-10-05-opt-in-native-safari.json),
+  [native opt-in Chrome and recovery evidence](qualification/2026-10-05-opt-in-native-chrome.json),
   [opt-in delivery evidence](qualification/2026-10-05-opt-in-flat-list-package.json)
   and [installed-demo evidence](qualification/2026-10-05-opt-in-full-demo.json).
 - Large-list responsiveness and the complete final release gate. Current local
