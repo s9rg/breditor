@@ -1,0 +1,74 @@
+{
+  "status": "observed-not-fixed",
+  "source": "Native Safari accessibility read of Capture redacted report; original tab retained",
+  "fixtureUrl": "http://127.0.0.1:4298/manual-clipboard.html#scratch",
+  "wasmSha256": "4d877e231c78b04dfdadc367bdcc7f1583251ec9c359a5b21b611cdf1ac4b671",
+  "browser": "Safari 26.6.2 / AppleWebKit 605.1.15 / MacIntel",
+  "owner": {"phase": "faulted", "reason": "queueUncertain", "revision": "1"},
+  "observedEvents": 14,
+  "pendingEvents": 0,
+  "droppedEvents": 0,
+  "eventSummary": [
+    {"sequence": 1, "kind": "compositionstart", "before": "live@1", "after": "live@1"},
+    {"sequences": [2, 4, 6, 8, 10, 12], "kind": "beforeinput", "inputType": "insertCompositionText", "before": "live@1", "after": "live@1"},
+    {"sequences": [3, 5, 7, 9, 11, 13], "kind": "input", "inputType": "insertCompositionText", "before": "live@1", "after": "live@1"},
+    {"sequence": 14, "kind": "compositionend", "before": "live@1", "after": "faulted:queueUncertain@1"}
+  ],
+  "allEvents": {"trusted": true, "defaultPrevented": false, "settled": true},
+  "trustedClipboardEvents": {"copy": 0, "cut": 0, "paste": 0},
+  "operatorChecks": "All false; no certification claimed",
+  "settingsRestoration": {
+    "verified": ["Canadian is the only input source", "input menu hidden", "Globe action Show Emoji & Symbols", "keyboard navigation off", "dictation off with English Canada only"],
+    "removedTemporarySources": ["Japanese – Kana", "Japanese – Romaji"],
+    "voiceOver": "Not enabled or tested during this session",
+    "accessibilityKeyboard": "Temporarily enabled to try on-screen physical IME input; no usable keys were exposed. Disabled again and verified off."
+  },
+  "plainControl": "User screenshot shows にほん and 日本 in scratch textarea before editor test",
+  "syntheticFollowup": {
+    "script": "target/replay-native-composition-20261005.mjs",
+    "scriptSha256": "3683817e82b2998bddc32b23c0309439df552c8683a89d16c2f21be2ac664e62",
+    "engines": ["chromium", "firefox", "webkit"],
+    "targets": ["h2", "ul li p", "ol li p"],
+    "passed": 9,
+    "failed": 0,
+    "assertions": ["owner remains live", "日本 inserted", "one Undo restores exact original innerHTML", "one Redo restores exact committed innerHTML", "no uncaught page errors"],
+    "scope": "Synthetic six-update suffix insertion with unchanged text-node identity; not captured native DOM or OS IME timing. No physical-input qualification.",
+    "reportCaveat": "Recorder snapshots may lag settlement (one Chromium owner report remained revision 1); subsequent successful Undo/Redo assertions establish a committed edit, not the report revision alone."
+  },
+  "diagnosticFollowup": {
+    "artifact": "target/native-ime-diagnostic-cLYY1g",
+    "url": "http://127.0.0.1:4305/manual-clipboard.html",
+    "buildCommand": "BREDITOR_FLAT_LIST_BINDINGS=target/flat-list-candidate-bfniW0 node scripts/build-native-ime-diagnostic.mjs",
+    "checkCommand": "node scripts/check-native-ime-diagnostic.mjs target/native-ime-diagnostic-cLYY1g",
+    "runnerSha256": "360d9b3f8c653891589d557d253219cd1608fe6b6b4ddba37defee69912abeb8",
+    "runtimeSha256": "52bf0992ef15a618192cde264a02ad91fd986d0433adebf5625a7c69aa9369ed",
+    "instrumentedBundleSha256": "1c2352d8759311afd95339d3db685d99b0687e0d3fce9cadc3c81564849ec22b",
+    "variants": ["append", "same-text", "split-node", "replace", "backward-replace", "unsynchronized", "retargeted", "element-selection", "cancel", "delete"],
+    "targets": ["h2", "ul li p", "ol li p"],
+    "runs": [
+      {"browser": "Chromium 151.0.7922.34", "passed": 30, "failed": 0, "droppedDiagnostics": 0, "pageErrors": 0},
+      {"browser": "Firefox 153.0", "passed": 30, "failed": 0, "droppedDiagnostics": 0, "pageErrors": 0},
+      {"browser": "bundled WebKit 26.5", "passed": 30, "failed": 0, "droppedDiagnostics": 0, "pageErrors": 0},
+      {"browser": "native Safari 26.6.2", "passed": 30, "failed": 0, "observation": "Native accessibility text of Scripted composition results, status passed with all 30 rows"}
+    ],
+    "assertions": ["editor remains connected and usable", "changing compositions undo and redo exact innerHTML", "same-text replacement leaves document unchanged and collapses caret at selection end", "cancelled insertion leaves document unchanged"],
+    "harnessCorrections": [
+      "Initial two zero-delay tasks did not wait for the production 20ms settlement window. Changed synthetic probe to a bounded 100ms wait, not a general background-tab timing guarantee.",
+      "Identical replacement has no forward document operations and does not create an undo entry. Removed invalid expectation that Redo would replay that replacement rather than the retained previous-case redo branch."
+    ],
+    "instrumentation": "Disposable source transforms only: 53 bare catch sites, composition rejection/quarantine/submission metadata, event lengths/DOM shape/selection paths. Exception messages/stacks can contain input. Local-only bounded memory, no persistence or transmission; use disposable text.",
+    "unitTests": {"passed": 5, "failed": 0},
+    "strictRuntimeTypecheck": "passed",
+    "shippingTrees": "All four shipping dist tree hashes match the pre-investigation baseline; no production source changes or workaround applied.",
+    "nativeImeQualified": false,
+    "nextRequiredEvidence": "A physical Japanese IME failure on the instrumented fixture, including its automatically captured Local IME diagnostics. Synthetic sequences do not reproduce the original fault."
+  },
+  "limitations": [
+    "Capture occurred after the user's interaction; exact keystrokes, insertion position, DOM mutations and event.data were not recorded.",
+    "compositionupdate is not among this recorder's observed event kinds.",
+    "Per-event after states are sampled in a deferred task, not synchronously at event return.",
+    "queueUncertain is a terminal classification, not an underlying exception or root cause.",
+    "No demonstrated relationship to the earlier intermittent WebKit performance fault.",
+    "Fresh-tab automated individual key events and typeText still produced literal Latin nihon in the plain control, so automated OS IME reproduction is not established."
+  ]
+}
