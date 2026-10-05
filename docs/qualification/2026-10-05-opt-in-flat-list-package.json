@@ -1,0 +1,58 @@
+{
+  "status": "private-opt-in-consumer-qualified-not-release-qualified",
+  "sourceCheckpoint": "1081848",
+  "deliveryDecision": "User approved a separate opt-in package, with possible merging later.",
+  "package": {
+    "name": "@breditor/experimental-flat-lists",
+    "version": "0.3.0-alpha.22",
+    "private": true,
+    "layout": "One archive owns dist/browser and dist/wasm; public and advanced exports share the same browser module graph. No default Breditor package dependency or peer engine.",
+    "exports": [".", "./advanced", "./wasm", "./wasm-binary", "./package.json"],
+    "listPublicHelpers": ["BreditorFlatListBrowserEditorOptions", "FLAT_LIST_TOOLBAR_MANIFEST", "preflightFlatListWasmSemanticProfile", "WasmFlatListProfileBootstrapSource"],
+    "archive": "target/flat-list-opt-in-la5Uu0/breditor-experimental-flat-lists-0.3.0-alpha.22.tgz",
+    "sha256": "4409ec2603695c21dbefdac3102a4f05dd68b851147d97f049f58a4a59509c66",
+    "bytes": 870392,
+    "unpackedBytes": 3752403,
+    "assembly": "target/flat-list-opt-in-la5Uu0/assembly.json",
+    "packageTreeSha256": "9d8814c3f1d0a33f356f6977845a3afe8ca537b17520b26c86c50c4caf4f5028",
+    "inputRecord": "target/flat-list-packages-LRESXR/qualification.json",
+    "inputRecordSha256": "5e48e348cc59b51d6c08b0cd973862220ce56af2c0f7c0e1dd284466c667f2e0"
+  },
+  "reproducibility": "A second assembly at target/flat-list-opt-in-TXcBcO produced the identical archive hash, package tree, raw size and unpacked size.",
+  "commands": [
+    "npm run build:lists:opt-in -- target/flat-list-packages-LRESXR/qualification.json",
+    "npm run test:lists:opt-in -- target/flat-list-opt-in-la5Uu0/assembly.json",
+    "node --test scripts/build-opt-in-flat-list-package.test.mjs",
+    "npm run test:scripts",
+    "npm pack --dry-run --workspace @breditor/experimental-flat-lists"
+  ],
+  "consumer": {
+    "directory": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-opt-in-consumer-Sg068o",
+    "report": "target/flat-list-opt-in-la5Uu0/consumer-qualification.json",
+    "reportSha256": "ba1ba1dbb8185f370e9199dd13bd70bfd5e37ce347c12e6f9df1e3fa9984804b",
+    "node": "Public/advanced constructor identity, adjacent binary resolution, actual Wasm initialization and version match, V4 profile factory and blocked private deep imports passed.",
+    "typescript": "Strict external compilation passes, including the named flat-list options type and rejection of list options by ordinary open().",
+    "browsers": ["Chromium 151.0.7922.34", "Firefox 153.0", "WebKit 26.5"],
+    "scenario": "Profile preflight fingerprint agrees with Rust; custom toolbar uses the public list manifest; heading converts to a bullet list; Undo restores exact document; V6 session restore preserves pending Redo; Redo restores exact converted document; disposal clears host.",
+    "browserFailures": 0,
+    "pageErrors": 0,
+    "workspaceAliases": false,
+    "installedTreeMatchesArchiveSource": true
+  },
+  "scriptTests": {"passed": 82, "failed": 0, "skipped": 1, "newPackageTests": 9, "skipReason": "Existing opt-in browser diagnostic test requires BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1."},
+  "unbuiltPackGuard": "Expected failure: direct workspace npm pack --dry-run exits 1 with instructions to use qualified assembly, instead of producing an incomplete archive.",
+  "shippingArtifactsUnchanged": true,
+  "wireFormatsChanged": false,
+  "defaultBuildBehaviorChanged": false,
+  "sizeBudgetQualified": false,
+  "remainingGates": [
+    "Run the full feature demo suite against this actual opt-in package layout, not only the external consumer scenario.",
+    "Final native browser/clipboard qualification and remaining physical IME cancellation and spoken VoiceOver evidence.",
+    "Historical intermittent WebKit queueUncertain fault remains unresolved.",
+    "Review opt-in size limits and large-list responsiveness; unchanged default ceilings are not waived.",
+    "Complete the final release gate before considering any release."
+  ],
+  "releaseQualified": false,
+  "pushed": false,
+  "published": false
+}

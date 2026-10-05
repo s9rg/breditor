@@ -60,11 +60,13 @@ The beta is **not release-qualified**. The remaining gates are:
   native click/keyboard positioning worked. That discrepancy now reproduces on
   plain contenteditable HTML with no JavaScript or Wasm: it does not require
   Breditor, but Safari accessibility versus automation attribution remains open.
-- Implementation of the approved **separate opt-in package** delivery path and
-  reviewed budgets. The user accepted a separate package, with possible merging
-  later. Current private feature tarballs are qualification artifacts, not that
-  completed shipping package. They exceed unchanged default ceilings; functional
-  consumer tests do not approve larger budgets or a release.
+- Full application qualification and reviewed budgets for the approved
+  **separate opt-in package**. The first self-contained
+  `@breditor/experimental-flat-lists` tarball now passes external Node, TypeScript
+  and three-browser consumer checks. It bundles its paired browser/Wasm runtime
+  without replacing the default packages. Full demo/native qualification of
+  this delivery layout remains open; functional consumer checks do not approve
+  larger budgets or a release. See [opt-in delivery evidence](qualification/2026-10-05-opt-in-flat-list-package.json).
 - Large-list responsiveness and the complete final release gate. Current local
   500-item edit medians are roughly 45–46 ms Chromium, 136 ms Firefox and 67 ms
   WebKit; these small synthetic samples are not native-input latency guarantees

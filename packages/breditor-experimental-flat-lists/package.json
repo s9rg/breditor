@@ -1,0 +1,21 @@
+{
+  "name": "@breditor/experimental-flat-lists",
+  "version": "0.3.0-alpha.22",
+  "private": true,
+  "description": "Opt-in Breditor heading and flat-list browser runtime with its paired experimental Wasm engine",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": ["dist", "index.js", "index.d.ts", "wasm.d.ts", "README.md", "LICENSE", "LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY_NOTICES.md", "third-party"],
+  "exports": {
+    ".": {"types": "./index.d.ts", "import": "./index.js", "default": "./index.js"},
+    "./advanced": {"types": "./dist/browser/advanced.d.ts", "import": "./dist/browser/advanced.js", "default": "./dist/browser/advanced.js"},
+    "./wasm": {"types": "./wasm.d.ts", "import": "./dist/wasm/breditor_wasm.js", "default": "./dist/wasm/breditor_wasm.js"},
+    "./wasm-binary": "./dist/wasm/breditor_wasm_bg.wasm",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {"parse5": "8.0.1"},
+  "scripts": {"prepack": "node ../../scripts/refuse-unassembled-flat-list-package.mjs"}
+}
