@@ -10,10 +10,18 @@
     "Native Command-V at the end produced Deep 🙂Deep 🙂 once. One Control-Z restored Deep 🙂."
   ],
   "fixtureShortcutCaveat": "The fixture explicitly configures primaryModifier control. Command-Z acted on the outside native input history and was not counted as editor Undo; the explicit editor Undo control and configured Control-Z were observed separately.",
+  "crossItemFollowup": {
+    "safari": "Backward selection from Deep end to First start; native cut left the heading and empty numbered item 3. One Control-Z restored First, Second, Deep and markers 3/4 with the selected text visible.",
+    "exactSafariClipboardReadThroughChrome": "First\nSecond\nDeep 🙂",
+    "chrome": "Browser-dispatched native cut tested both backward and forward across the same three blocks. Clipboard exactly First\\nSecond\\nDeep 🙂. One Control-Z in each case restored byte-identical editor innerHTML.",
+    "chromeBackwardSelectionRestored": {"anchorText": "Deep 🙂", "anchorOffset": 7, "focusText": "First", "focusOffset": 0},
+    "chromeForwardSelectionRestored": {"anchorText": "First", "anchorOffset": 0, "focusText": "Deep 🙂", "focusOffset": 7},
+    "physicalHumanInput": false
+  },
   "limits": [
     "Observed accessibility values and hierarchy, not exact exported Rust state or selection offsets",
     "No physical IME or VoiceOver claim",
-    "No cross-item clipboard qualification in this checkpoint",
+    "Safari exact selection offsets were not independently read; Chrome DOM endpoints were checked",
     "No saved screenshot artifact",
     "No claim that the historical WebKit fault is fixed"
   ],
