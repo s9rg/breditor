@@ -6,7 +6,7 @@ import { checkFlatListDeclarations } from "./check-flat-list-declarations.mjs";
 const base = await readFile(new URL("../crates/breditor-wasm/api/breditor_wasm.d.ts", import.meta.url), "utf8");
 // Independent fixture: the exact eighteen additions currently authorized for the
 // experimental build. Keep these explicit rather than importing the allowlist.
-const experimental = base
+export const experimental = base
   .replace("export class BreditorCompiledProfile {", `export class BreditorCompiledProfile {
     static fromBootstrapJsonV4(json: string): BreditorCompiledProfileResult;
     createEngineFromDocumentJsonV6(lineage: string, document_json: string, history_capacity: number): BreditorEngineResult;

@@ -478,5 +478,18 @@ static simulated startup fixture: real nested action execution, default toolbar
 descriptor compatibility and replay recovery still require packed generated-Wasm
 qualification. No running demo or shipping bundle has been rebuilt yet.
 
+The isolated nested Wasm candidate now passes generated ABI and TypeScript
+consumer checks, retained heading compatibility, and real nested command/recovery
+scenarios under Node and five runs each in Chromium, Firefox and WebKit. These
+exercise indent/outdent, deep Unicode typing/plain-text paste, V7 commit export,
+exact document/selection undo and redo, and a fresh profile restoring a checkpoint
+with redo available. V6 restoration rejects that checkpoint. Candidate
+`target/nested-list-candidate-5Um68E` has Wasm SHA-256
+`93d04f43c3b922e0faac254850900764794eb69d6ffc4d823e2499a94784829a`.
+The build verifies shipping Wasm/browser trees remain unchanged. This is raw-Wasm
+qualification, not editor DOM, toolbar, native clipboard or IME qualification;
+it does not resolve the older intermittent WebKit fault. Reproduce with
+`node scripts/build-experimental-nested-list.mjs` (Cargo and wasm-bindgen on PATH).
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
