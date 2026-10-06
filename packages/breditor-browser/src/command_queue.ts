@@ -1,8 +1,10 @@
 import {
   canonicalEditorCommandRequest,
   canonicalFlatListEditorCommandRequest,
+  canonicalNestedListEditorCommandRequest,
   type EditorCommandRequest,
   type FlatListEditorCommandRequest,
+  type NestedListEditorCommandRequest,
 } from "./editor_command.js";
 import { containAsyncRejection } from "./contain_async_rejection.js";
 
@@ -22,7 +24,7 @@ export interface CommandQueueFailure {
 }
 
 /** One successful executor return in exact FIFO order. */
-type QueueRequest = EditorCommandRequest | FlatListEditorCommandRequest;
+type QueueRequest = EditorCommandRequest | FlatListEditorCommandRequest | NestedListEditorCommandRequest;
 
 export interface CommandQueueDelivery<TResult, TRequest extends QueueRequest = EditorCommandRequest> {
   readonly sequence: bigint;
@@ -454,6 +456,13 @@ export class BreditorFlatListCommandQueue<TResult> extends CommandQueueCore<TRes
   }> = {}) { super(executor, options, canonicalFlatListEditorCommandRequest); }
 }
 
+/** Recursive-list FIFO with the shared bounded drain and terminal failure semantics. @internal */
+export class BreditorNestedListCommandQueue<TResult> extends CommandQueueCore<TResult, NestedListEditorCommandRequest> {
+  constructor(executor: EditorCommandExecutor<TResult, NestedListEditorCommandRequest>, options: Readonly<{
+    capacity?: number; observer?: CommandQueueObserver<TResult, NestedListEditorCommandRequest>;
+  }> = {}) { super(executor, options, canonicalNestedListEditorCommandRequest); }
+}
+
 /**
  * Opens the package-owned lease port only for the exact constructor executor.
  *
@@ -473,6 +482,12 @@ export function openCommandQueueLeasePort<TResult>(
 export function openFlatListCommandQueueLeasePort<TResult>(queue: BreditorFlatListCommandQueue<TResult>, executor: unknown):
   CommandQueueLeasePort<TResult, FlatListEditorCommandRequest> | undefined {
   return openCommandQueueLeasePortIntrinsic(queue, executor, canonicalFlatListEditorCommandRequest);
+}
+
+/** Requires both the exact executor and nested admission mode. @internal */
+export function openNestedListCommandQueueLeasePort<TResult>(queue: BreditorNestedListCommandQueue<TResult>, executor: unknown):
+  CommandQueueLeasePort<TResult, NestedListEditorCommandRequest> | undefined {
+  return openCommandQueueLeasePortIntrinsic(queue, executor, canonicalNestedListEditorCommandRequest);
 }
 
 function rejected<TResult>(

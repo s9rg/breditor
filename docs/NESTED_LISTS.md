@@ -314,5 +314,12 @@ base and flat request paths. Tests check foreign selections, forged tokens,
 wrong epochs/authorities and valid recursive text requests. Queue, generated
 command adapter and event-controller integration are not yet complete.
 
+`BreditorNestedListCommandQueue` now applies nested-only request admission to
+the shared bounded synchronous FIFO. Its composition lease port checks the exact
+captured executor and mode. Tests cover non-recursive reentrant ordering,
+terminal executor uncertainty without replay, exclusive single-use leased
+delivery and rejection through legacy queue admission. This does not yet wire
+the nested generated command adapter or live event controller.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

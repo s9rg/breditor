@@ -61,6 +61,7 @@ import { issueNestedListEditorDeliveryToken, nestedListEditorDeliveryTokenMatche
 import { NestedListTargetRange, isOwnedNestedListTargetRange } from "./nested_list_target_range.js";
 import { mapDomNestedListTargetRange } from "./dom_target_range.js";
 import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
+import { BreditorNestedListCommandQueue, openNestedListCommandQueueLeasePort } from "./command_queue.js";
 import { mapDomPointToNestedListSelectionPoint, mapNestedListSelectionPointToDomPoint } from "./nested_list_dom_point_mapping.js";
 import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
 
@@ -113,6 +114,41 @@ describe("recursive nested-list DOM", () => {
     const other = fixture();
     const foreign = valueOf(NestedListRangeSelection.create(other.projection, {kind: "range", anchor: point, focus: point}));
     expect(canonicalNestedListEditorCommandRequest({...request, selection: nestedListRangeSelectionSync(foreign)})).toBeNull();
+  });
+  function nestedRequest() {
+    const f = fixture();
+    const token = issueNestedListEditorDeliveryToken(f.projection, f.rendered, 0n, Symbol("queue"));
+    return nestedListCommandRequest(token, preserveSelectionSync(), {kind: "api", detail: "nested queue"},
+      {kind: "action", actionId: nestedListBrowserInputActionIds(token).insertText, input: {kind: "string", value: "x"}});
+  }
+  it("serializes reentrant nested requests and quarantines uncertain execution", () => {
+    const request = nestedRequest(), calls: string[] = [];
+    const queue: BreditorNestedListCommandQueue<string> = new BreditorNestedListCommandQueue(() => {
+      calls.push("enter");
+      if (calls.length === 1) expect(queue.submit(request).status).toBe("queued");
+      calls.push("exit");
+      return "done";
+    });
+    expect(queue.submit(request).status).toBe("completed");
+    expect(calls).toEqual(["enter", "exit", "enter", "exit"]);
+    const execute = vi.fn(() => {throw new Error("uncertain");});
+    const failing = new BreditorNestedListCommandQueue(execute);
+    expect(failing.submit(request).status).toBe("failed");
+    expect(failing.submit(request)).toEqual({status: "rejected", reason: "failed"});
+    expect(execute).toHaveBeenCalledOnce();
+  });
+  it("reserves nested queue delivery only for its captured executor and mode", () => {
+    const request = nestedRequest(), execute = vi.fn(() => "done"), queue = new BreditorNestedListCommandQueue(execute);
+    expect(openNestedListCommandQueueLeasePort(queue, () => "done")).toBeUndefined();
+    const port = openNestedListCommandQueueLeasePort(queue, execute)!;
+    const lease = port.acquireLease(); if (lease === undefined) throw new Error("lease");
+    expect(queue.submit(request)).toEqual({status: "rejected", reason: "leased"});
+    expect(port.submitLeased(lease, request).status).toBe("completed");
+    expect(port.submitLeased(lease, request).status).toBe("rejected");
+    expect(execute).toHaveBeenCalledOnce();
+    const legacy = new BreditorCommandQueue(execute);
+    expect(legacy.submit(request as never)).toEqual({status: "rejected", reason: "invalidRequest"});
+    expect(openNestedListCommandQueueLeasePort(legacy as never, execute)).toBeUndefined();
   });
   it.each(["text", "numbering", "extraChild", "attribute"])("invalidates deep %s drift", fault => {
     const {host, rendered} = fixture();
