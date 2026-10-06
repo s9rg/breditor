@@ -1,3 +1,7 @@
+import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
+import type { NestedListDocumentProjection } from "./nested_list_projection.js";
+import { NestedListRangeSelection, isOwnedNestedListRangeSelection } from "./nested_list_selection.js";
+import { mapDomPointToNestedListSelectionPoint, mapNestedListSelectionPointToDomPoint } from "./nested_list_dom_point_mapping.js";
 import {
   type RenderedProjection,
   isOwnedRenderedProjection,
@@ -48,8 +52,8 @@ import type { FlatListDocumentProjection } from "./flat_list_projection.js";
 import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
 import { mapDomPointToFlatListSelectionPoint, mapFlatListSelectionPointToDomPoint } from "./flat_list_dom_point_mapping.js";
 
-type AnyRangeSelection = BaseRangeSelection | FlatListRangeSelection;
-type AnyRenderedProjection = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
+type AnyRangeSelection = BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection;
+type AnyRenderedProjection = RenderedProjection | RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>;
 
 /**
  * Frozen affinity policy for DOM-originated points lacking an exact sidecar.
@@ -153,7 +157,7 @@ const ACTIVE_SELECTION_WRITE_DOCUMENTS = new WeakSet<Document>();
  * remain separate integration decisions.
  */
 class DomSelectionBridgeCore {
-  constructor(readonly flatLists: boolean) {}
+  constructor(readonly flatLists: boolean | "nested") {}
   /** Policy used only when no exact programmatic affinity sidecar is available. */
   get affinityPolicy(): DomSelectionAffinityPolicy {
     return "boundaryDerived";
@@ -306,7 +310,7 @@ class DomSelectionBridgeCore {
     }
     if (
       selection !== null &&
-      (!(this.flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) || selection.projection !== rendered.projection)
+      (!(this.flatLists === "nested" ? isOwnedNestedListRangeSelection(selection) : this.flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) || selection.projection !== rendered.projection)
     ) {
       this.#receipt = undefined;
       return selectionFailure("selection.snapshot_mismatch");
@@ -610,13 +614,33 @@ export class BreditorFlatListDomSelectionBridge {
   dispose(): void { this.#core.dispose(); }
 }
 
+/** Recursive-list bridge with explicit owner admission and shared native lifecycle. @internal */
+export class BreditorNestedListDomSelectionBridge {
+  readonly #core = new DomSelectionBridgeCore("nested");
+  get affinityPolicy(): DomSelectionAffinityPolicy { return this.#core.affinityPolicy; }
+  read(rendered: RenderedProjection<NestedListDocumentProjection>): BrowserSelectionResult<DomSelectionObservation<NestedListRangeSelection>> {
+    return this.#core.read(rendered) as BrowserSelectionResult<DomSelectionObservation<NestedListRangeSelection>>;
+  }
+  write(rendered: RenderedProjection<NestedListDocumentProjection>, selection: NestedListRangeSelection | null): BrowserSelectionResult<DomSelectionWriteOutcome> {
+    return this.#core.write(rendered, selection);
+  }
+  readFocus(rendered: RenderedProjection<NestedListDocumentProjection>): BrowserSelectionResult<DomFocusObservation> { return this.#core.readFocus(rendered); }
+  clearSuppression(): void { this.#core.clearSuppression(); }
+  dispose(): void { this.#core.dispose(); }
+}
+
 function createRange(rendered: AnyRenderedProjection, input: unknown): BrowserSelectionResult<AnyRangeSelection> {
+  if (isOwnedNestedListRenderedProjection(rendered)) return NestedListRangeSelection.create(rendered.projection, input);
   if (isOwnedFlatListRenderedProjection(rendered)) return FlatListRangeSelection.create(rendered.projection, input);
   return isOwnedRenderedProjection(rendered) ? BaseRangeSelection.create(rendered.projection, input) : selectionFailure("selection.foreign_or_stale_render");
 }
 
 function mapDomPoint(rendered: AnyRenderedProjection, node: Node, offset: number):
   {readonly ok: true; readonly value: BaseSelectionPoint} | {readonly ok: false; readonly code: BrowserSelectionErrorCode} {
+  if (isOwnedNestedListRenderedProjection(rendered)) {
+    const result = mapDomPointToNestedListSelectionPoint(rendered, node, offset);
+    return result.ok ? result : {ok: false, code: result.error.code};
+  }
   if (isOwnedFlatListRenderedProjection(rendered)) {
     const result = mapDomPointToFlatListSelectionPoint(rendered, node, offset);
     return result.ok ? result : {ok: false, code: result.error.code};
@@ -626,7 +650,7 @@ function mapDomPoint(rendered: AnyRenderedProjection, node: Node, offset: number
 }
 
 /** Snapshot-local signatures distinguish exact DOM aliases, not just positions. */
-function flatListDomContainerDescriptor(rendered: RenderedProjection<FlatListDocumentProjection>, node: Node): string | null {
+function flatListDomContainerDescriptor(rendered: RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>, node: Node): string | null {
   if (node === rendered.host) return "host";
   const path = rendered.astPathForDomNode(node);
   if (path !== null) return `ast:${path.join("/")}`;
@@ -648,8 +672,8 @@ function flatListDomContainerDescriptor(rendered: RenderedProjection<FlatListDoc
   return null;
 }
 
-function validateRenderedForSelection(rendered: AnyRenderedProjection, flatLists: boolean): RenderPreflight {
-  if (!(flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
+function validateRenderedForSelection(rendered: AnyRenderedProjection, flatLists: boolean | "nested"): RenderPreflight {
+  if (!(flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
     return { ok: false, code: "selection.foreign_or_stale_render" };
   }
   try {
@@ -822,9 +846,9 @@ function installedSemanticSelectionSignature(
     captured.value.focusOffset,
   );
   if (!actualAnchor.ok || !actualFocus.ok) return null;
-  if (isOwnedFlatListRenderedProjection(rendered)) {
-    const sameAnchor = FlatListRangeSelection.create(rendered.projection, {kind: "range", anchor: expected.anchor, focus: actualAnchor.value});
-    const sameFocus = FlatListRangeSelection.create(rendered.projection, {kind: "range", anchor: expected.focus, focus: actualFocus.value});
+  if (isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) {
+    const sameAnchor = createRange(rendered, {kind: "range", anchor: expected.anchor, focus: actualAnchor.value});
+    const sameFocus = createRange(rendered, {kind: "range", anchor: expected.focus, focus: actualFocus.value});
     return sameAnchor.ok && sameFocus.ok && sameAnchor.value.order === "collapsed" && sameFocus.value.order === "collapsed"
       ? domRangeSignature(rendered, captured.value.anchorNode, captured.value.anchorOffset, captured.value.focusNode, captured.value.focusOffset) : null;
   }
@@ -972,6 +996,10 @@ function domPointForSemantic(
   rendered: AnyRenderedProjection,
   point: BaseSelectionPoint,
 ): DomPoint | null {
+  if (isOwnedNestedListRenderedProjection(rendered)) {
+    const mapped = mapNestedListSelectionPointToDomPoint(rendered, point);
+    return mapped.ok ? mapped.value : null;
+  }
   if (isOwnedFlatListRenderedProjection(rendered)) {
     const mapped = mapFlatListSelectionPointToDomPoint(rendered, point);
     return mapped.ok ? mapped.value : null;
@@ -1031,7 +1059,7 @@ function domRangeSignature(
 }
 
 function domContainerDescriptor(rendered: AnyRenderedProjection, node: Node): string | null {
-  if (isOwnedFlatListRenderedProjection(rendered)) return flatListDomContainerDescriptor(rendered, node);
+  if (isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) return flatListDomContainerDescriptor(rendered, node);
   if (!isOwnedRenderedProjection(rendered)) return null;
   if (node === rendered.host) {
     return "host";

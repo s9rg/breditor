@@ -272,5 +272,14 @@ inside a scalar are rejected. Unit tests round-trip every scalar and text-block
 boundary in a recursive fixture. Native range direction, selection echoes,
 composition leases and public event-controller integration remain pending.
 
+An explicit `BreditorNestedListDomSelectionBridge` now shares the native
+selection transaction machinery without widening the base/flat bridge gates.
+It reads and writes nested ranges, preserves backward anchor/focus order and
+exact programmatic affinities, suppresses one matching programmatic echo, and
+rejects stale projection selections. Tests cover backward cross-level ranges,
+deep empty-block carets and clearing selection. These are jsdom integration
+checks, not native Safari/Chrome or physical IME qualification; event-controller
+and composition wiring still remain.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

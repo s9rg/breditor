@@ -54,6 +54,8 @@ type Run = Readonly<{ text: string; strong: boolean }>;
 
 import { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { NestedListProjectionUpdate } from "./nested_list_projection_update.js";
+import { NestedListRangeSelection } from "./nested_list_selection.js";
+import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
 import { mapDomPointToNestedListSelectionPoint, mapNestedListSelectionPointToDomPoint } from "./nested_list_dom_point_mapping.js";
 import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
 
@@ -165,6 +167,34 @@ describe("recursive nested-list DOM", () => {
         }
       });
     }
+  });
+  it("preserves backward nested selections and emits only one programmatic echo", () => {
+    const f = fixture(), bridge = new BreditorNestedListDomSelectionBridge();
+    document.body.append(f.host);
+    try {
+      const selection = valueOf(NestedListRangeSelection.create(f.projection, {kind: "range",
+        anchor: {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 7, affinity: "after"},
+        focus: {kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 2, affinity: "before"}}));
+      expect(bridge.write(f.rendered, selection).ok).toBe(true);
+      expect(valueOf(bridge.read(f.rendered))).toMatchObject({kind: "range", origin: "programmaticEcho", selection: {order: "backward", anchor: selection.anchor, focus: selection.focus}});
+      expect(valueOf(bridge.read(f.rendered))).toMatchObject({kind: "range", origin: "dom", selection: {order: "backward", anchor: selection.anchor, focus: selection.focus}});
+      expect(bridge.write(f.rendered, null).ok).toBe(true);
+      expect(valueOf(bridge.read(f.rendered))).toEqual({kind: "unavailable", reason: "noDomRange", origin: "programmaticEcho"});
+      expect(valueOf(bridge.read(f.rendered))).toEqual({kind: "unavailable", reason: "noDomRange", origin: "dom"});
+    } finally { bridge.dispose(); document.getSelection()?.removeAllRanges(); f.host.remove(); }
+  });
+  it("writes a caret into a deeply nested empty block and rejects stale snapshots", () => {
+    const f = fixture(), bridge = new BreditorNestedListDomSelectionBridge();
+    document.body.append(f.host);
+    try {
+      const point = {kind: "children", parentPath: [0, 0, 1, 0, 1, 0, 0], childIndex: 0, affinity: "before"};
+      const selection = valueOf(NestedListRangeSelection.create(f.projection, {kind: "range", anchor: point, focus: point}));
+      expect(bridge.write(f.rendered, selection).ok).toBe(true);
+      expect(valueOf(bridge.read(f.rendered))).toMatchObject({selection: {order: "collapsed", anchor: point}});
+      const next = valueOf(f.renderer.renderNestedList(f.host, f.make(f.blocks))).rendered;
+      expect(bridge.write(next, selection).ok).toBe(false);
+      expect(bridge.read(f.rendered).ok).toBe(false);
+    } finally { bridge.dispose(); document.getSelection()?.removeAllRanges(); f.host.remove(); }
   });
   it("normalizes wrapper edges across descendants but rejects interior item boundaries", () => {
     const {rendered, host} = fixture();
