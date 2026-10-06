@@ -4,6 +4,10 @@ use breditor_core::{
     document::Document, operation::Operation, position::NodePath, transaction::Commit,
 };
 
+#[cfg(all(test, feature = "experimental-nested-lists"))]
+#[path = "nested_impact_tests.rs"]
+mod nested_tests;
+
 pub(super) enum ProjectionImpact {
     None,
     TextContainers(Box<[u32]>),
@@ -51,7 +55,43 @@ pub(super) fn classify(commit: &Commit) -> ProjectionImpact {
         return ProjectionImpact::RootSplice { old_start, old_end, new_start, new_end };
     }
 
+    #[cfg(feature = "experimental-nested-lists")]
+    if let Some((start, end)) = nested_text_root_impact(commit) {
+        return ProjectionImpact::RootSplice {
+            old_start: start,
+            old_end: end,
+            new_start: start,
+            new_end: end,
+        };
+    }
+
     ProjectionImpact::Root
+}
+
+/// Nested text splices preserve root topology; report the containing root span.
+/// The browser independently proves equality outside this conservative span.
+#[cfg(feature = "experimental-nested-lists")]
+fn nested_text_root_impact(commit: &Commit) -> Option<(u32, u32)> {
+    let operations = commit.forward_operations();
+    let changes = commit.changes();
+    if operations.is_empty()
+        || operations.len() != changes.len()
+        || !operations
+            .iter()
+            .all(|operation| matches!(operation, Operation::NestedListTextSplice(_)))
+    {
+        return None;
+    }
+    let mut start = u32::MAX;
+    let mut end = 0;
+    for change in changes {
+        let root = change.as_text()?.container_path().iter().next()?;
+        start = start.min(root);
+        end = end.max(root.checked_add(1)?);
+    }
+    (valid_root_range(commit.before().document(), start, end)
+        && valid_root_range(commit.after().document(), start, end))
+    .then_some((start, end))
 }
 
 fn text_container_impact(commit: &Commit) -> Option<Box<[u32]>> {

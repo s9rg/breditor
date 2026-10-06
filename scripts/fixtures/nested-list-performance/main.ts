@@ -78,7 +78,10 @@ async function sample(items: number, fingerprint: string, repetition: number) {
   };
   const history = (operation: "undo" | "redo") => {
     const button = toolbar.querySelector<HTMLButtonElement>(`[data-breditor-state-id="breditor/control-${operation}"]`)!;
-    equal(button.getAttribute("aria-disabled"), "false"); button.click(); equal(owner!.getStatus().phase, "live");
+    equal(button.getAttribute("aria-disabled"), "false", `${operation} enabled`);
+    button.click();
+    const status = owner!.getStatus();
+    equal(status.phase, "live", `${operation} owner: ${JSON.stringify(status)}`);
   };
   try {
     let before = performance.now();

@@ -654,6 +654,22 @@ not recognized by the Wasm narrow text-impact classifier, so full-root fallback
 may bypass this renderer optimization; a classifier regression test is needed
 before widening its impact reporting.
 
+The diagnostic repeat reproduced a faulted owner during WebKit redo at
+`500 items, repetition 2: redoMs`, retained in
+`breditor-nested-list-consumer-RBqXwA/performance-u1PDnb/measurement.json`
+(SHA-256 `cc457c4c367757262bacab38273f1bcc7118c38dd9f85081929b2b3b1e8a0faf`).
+History failures now include the owner's status/reason in fixture diagnostics.
+This remains unresolved and is not assumed to share the heading-equality cause.
+
+A failing Rust regression confirmed nested text splices fell through to full-root
+impact. The opt-in Wasm classifier now reports a conservative containing-root
+span only when every operation is a nested text splice with a text change.
+Default builds and structural/mixed fallbacks remain unchanged. The browser still
+independently verifies the unaffected roots. Native tests cover deep targeting,
+untouched roots and exact inverse restoration. A freshly compiled Wasm candidate
+and browser/package requalification are required before claiming the renderer
+refresh path is exercised by actual editing or improves latency.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
