@@ -1053,3 +1053,15 @@ Its grandchild benchmark passes 27 correctness cycles:
 allocations but does not establish a statistically significant latency improvement
 or close performance qualification. Existing single-package/native evidence
 remains pinned to `WNID8x`, not this newer browser source.
+
+Refreshed opt-in archive `target/nested-list-opt-in-jheBQW` contains the empty
+snapshot optimization: SHA-256
+`2eb5d942d5a3fad2023ea83262c9e7548a320c044c910d76d3646f0ca715001d`,
+955,033 compressed / 4,159,508 unpacked bytes. All ten package-contract tests pass.
+External consumer `breditor-opt-in-consumer-2Rpu4N` passes Node/types and all three
+browsers, including deep formatting/recovery and trusted keyboard scenarios.
+The consumer qualification report now pins the exact adapted fixture and keyboard
+driver hashes, on failures as well as success, so newer fixture coverage cannot
+be inferred from an old archive-only report. This archive is still private and
+unpublished; size, physical/native qualification and WebKit-risk gates remain
+open. Prior Safari/Chrome observations remain specific to `WNID8x`.

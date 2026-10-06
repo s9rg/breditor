@@ -39,6 +39,10 @@ await writeFile(mainPath, original
   .replace('Parameters<typeof BreditorBrowserEditor.openNestedLists>[0]', 'BreditorNestedListBrowserEditorOptions')
   .replace('const text = (value: string)', 'const checked = preflightNestedListWasmSemanticProfile(wasm, semanticProfile);\n  if (!checked.ok) throw new Error(checked.error.code);\n  equal(checked.profileDescriptor.schema.fingerprint, fingerprint);\n  const text = (value: string)')
   .replace('toolbar: {host: document.getElementById("toolbar")!}', 'toolbar: {host: document.getElementById("toolbar")!, manifest: NESTED_LIST_TOOLBAR_MANIFEST}'));
+// Pin the exact external fixture and keyboard driver, not only the package.
+// Otherwise evolving coverage can be mistakenly attributed to an older report.
+const fixtureSha256 = sha256(await readFile(mainPath));
+const keyboardProbeSha256 = sha256(await readFile(join(repository, "scripts/nested-list-keyboard-probe.mjs")));
 const runs = [];
 let server;
 try {
@@ -91,12 +95,13 @@ console.log("Node opt-in imports, identity, engine and export boundaries passed"
     } finally { await browser.close(); }
   }
   const report = {status: "passed", assembly: assemblyPath, archiveSha256: assembly.sha256, consumer,
+    fixtureSha256, keyboardProbeSha256,
     nodeAndTypes: "passed", browserRuns: runs, publishable: false, sizeBudgetQualified: false,
-    boundary: "External installed single-package consumer; nested indent/outdent with descendants, list conversion, Undo, V7 restore and Redo. Not native-input qualification or a complete release gate."};
+    boundary: "External installed single-package consumer; nested indent/outdent with descendants, list conversion, deep formatting with backward selection, Undo, V7 restore and Redo. Not native-input qualification or a complete release gate."};
   await writeFile(join(assembly.directory, "consumer-qualification.json"), JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report, null, 2));
 } catch (error) {
-  await writeFile(join(assembly.directory, "consumer-failure.json"), JSON.stringify({status: "failed", consumer, runs, error: String(error)}, null, 2) + "\n");
+  await writeFile(join(assembly.directory, "consumer-failure.json"), JSON.stringify({status: "failed", consumer, fixtureSha256, keyboardProbeSha256, runs, error: String(error)}, null, 2) + "\n");
   throw error;
 } finally {
   if (server) await new Promise((done, fail) => server.httpServer.close(error => error ? fail(error) : done()));
