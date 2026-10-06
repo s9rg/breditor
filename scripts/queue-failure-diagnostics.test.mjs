@@ -2,7 +2,34 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+
+test("flat comparator logging preserves short circuit and equality results", () => {
+  const source = `export function flatListRootsEqual(a, b) {
+    if (a.kind === "textBlock" || b.kind === "textBlock")
+        return a.kind === "textBlock" && b.kind === "textBlock" && paragraphsEqual(a.block, b.block);
+    return a.kind === b.kind && (a.kind !== "orderedList" || (b.kind === "orderedList" && a.start === b.start)) &&
+        a.items.length === b.items.length && a.items.every((item, index) => b.items[index] !== undefined && paragraphsEqual(item, b.items[index]));
+}`;
+  const transformed = instrumentFlatRootComparison(source);
+  const a = {kind: "orderedList", start: 3, items: ["a", "b"]};
+  for (const b of [a, {...a, kind: "bulletList"}, {...a, start: 4}, {...a, items: []}, {...a, items: ["a", "c"]}, {...a, items: ["a", undefined]}]) {
+    for (const hostile of [false, true]) {
+      const outcomes = [];
+      for (const code of [source, transformed]) {
+        const calls = [], logs = [];
+        const compare = new Function("paragraphsEqual", "console", code.replace("export ", "") + "; return flatListRootsEqual;")(
+          (left, right) => {calls.push([left, right]); return left === right;},
+          {error(...args) {if (hostile) throw new Error("logger"); logs.push(args);}});
+        const result = compare(a, b);
+        outcomes.push({result, calls});
+        if (code === transformed && !hostile) assert.equal(logs.length, result ? 0 : 1);
+      }
+      assert.deepEqual(outcomes[0], outcomes[1]);
+    }
+  }
+  assert.throws(() => instrumentFlatRootComparison(""));
+});
 
 test("paragraph operand capture preserves single reads and short-circuit rejection", () => {
   const source = `const paragraphOrdinal = 0, paragraphIndex = 2, expectedIndex = 2;

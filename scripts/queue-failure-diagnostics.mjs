@@ -32,7 +32,7 @@ export function instrumentProjectionValidationSites(code, moduleName) {
   const anchor = 'if (a === undefined || b === undefined || !flatListRootsEqual(a, b))\n            return false;';
   if (!transformed.includes("function verifyImpact(")) return transformed;
   assert.equal(transformed.split(anchor).length, 2, "flat impact retain diagnostic site changed");
-  return transformed.replace(anchor, `if (a === undefined || b === undefined || !flatListRootsEqual(a, b)) {
+  const withSnapshots = transformed.replace(anchor, `if (a === undefined || b === undefined || !flatListRootsEqual(a, b)) {
             try {
                 const before = JSON.stringify(a) ?? "undefined", after = JSON.stringify(b) ?? "undefined";
                 let offset = 0;
@@ -44,6 +44,39 @@ export function instrumentProjectionValidationSites(code, moduleName) {
             } catch {}
             return false;
         }`);
+  return withSnapshots.includes("export function flatListRootsEqual(a, b)")
+    ? instrumentFlatRootComparison(withSnapshots) : withSnapshots;
+}
+
+/** Label false operands without replacing the equality algorithm or retrying it. */
+export function instrumentFlatRootComparison(code) {
+  const start = "export function flatListRootsEqual(a, b) {";
+  assert.equal(code.split(start).length, 2, "flat comparator start changed");
+  const from = code.indexOf(start), end = code.indexOf("\n}", from);
+  assert.ok(end > from, "flat comparator end changed");
+  let body = code.slice(from, end);
+  const checks = [
+    ["kind", "a.kind === b.kind"],
+    ["start", "a.start === b.start"],
+    ["length", "a.items.length === b.items.length"],
+    ["itemPresent", "b.items[index] !== undefined"],
+    ["paragraph", "paragraphsEqual(item, b.items[index])"],
+  ];
+  for (const [name, expression] of checks) {
+    assert.equal(body.split(expression).length, 2, `flat comparator operand changed: ${name}`);
+    const context = ["itemPresent", "paragraph"].includes(name) ? "index" : "null";
+    body = body.replace(expression, `flatComparisonDiagnostic(${JSON.stringify(name)}, ${expression}, ${context})`);
+  }
+  body = body.replace(start, start + `
+    const flatComparisonDiagnostic = (operand, value, index) => {
+        if (!value) {
+            try { console.error("breditor flat comparison false", JSON.stringify({operand, index,
+                left: index === null ? {kind: a.kind, start: a.start, length: a.items?.length} : a.items[index],
+                right: index === null ? {kind: b.kind, start: b.start, length: b.items?.length} : b.items[index]}).slice(0, 4096)); } catch {}
+        }
+        return value;
+    };`);
+  return code.slice(0, from) + body + code.slice(end);
 }
 
 /** Disposable fixture only: preserve short-circuit order and single reads. */

@@ -42,5 +42,14 @@
     "firstDifferenceOffset": 67282,
     "meaning": "flatListRootsEqual rejected snapshots with identical JSON serialization. This narrows investigation to comparison operands but does not prove an engine bug or establish a fix. Paragraph operand diagnostics were enabled; this run failed in impact comparison instead."
   },
-  "next": "Capture which comparison returns false for the equal-serialization snapshots, retaining single-read paragraph diagnostics. Sixteen diagnostic tests pass including WebKit. Do not alter production validation or insert timing workarounds."
+  "paragraphComparisonRun": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-zSeYr7/measurement.json",
+    "reportSha256": "5fe1d150dc29836cd7fc7675184869c9d99769386591085bf57d5dca654e2aed",
+    "progress": "500 items, repetition 89: selectionMs",
+    "operand": "paragraph",
+    "itemIndex": 410,
+    "leftAndRight": {"headingLevel": 2, "runs": [{"text": "Item 410: A🙂 with enough text to measure a representative short list entry.", "strong": false, "formatDetails": []}]},
+    "meaning": "paragraphsEqual returned false for this pair; root kind, start and length comparisons passed. The containing snapshots again serialized identically. This is narrower evidence, not a confirmed cause or fix."
+  },
+  "next": "Trace heading level, run count, text, strong and format comparisons inside paragraphsEqual. Seventeen diagnostic tests pass including WebKit. Do not alter production validation or insert timing workarounds."
 }
