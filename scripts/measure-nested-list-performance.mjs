@@ -1,23 +1,10 @@
 // Reproducible measurements of already-qualified installed experimental packages.
 // No hard timing threshold: correctness is mandatory, timing is machine-specific evidence.
-// Optional Chromium rendering diagnosis: BREDITOR_PERF_BROWSER=chromium
-// BREDITOR_PERF_RENDER_TRACE=1. Keeps minification; raw traces may include local
-// URLs and must be inspected before sharing. Not a Firefox performance oracle.
-// Optional Firefox native sampling: BREDITOR_PERF_BROWSER=firefox
-// BREDITOR_PERF_FIREFOX_PROFILE=1. Unminified disposable fixture, static operation
-// marks, local shutdown profile. Diagnostic sample counts, not normal latency.
-// Optional WebKit queue failure diagnosis: BREDITOR_PERF_BROWSER=webkit
-// BREDITOR_PERF_QUEUE_DIAGNOSTICS=1. Logs bounded caught exceptions only in the
-// disposable synthetic fixture; never shipping code or a normal timing result.
-// BREDITOR_PERF_OWNER_REPETITIONS=3..100 adds same-page owner churn only with
-// queue diagnostics; default ordinary/profiling fixtures stay at three per size.
-// BREDITOR_PERF_SELECTION_SCHEDULING=focus-task|native-selection separates focus
-// from range installation, optionally awaiting a trusted native selectionchange.
-// Requires queue diagnostics; these timings include waits and are not comparable.
-// BREDITOR_PERF_EXCEPTION_PROBE=1 instead probes global new Error/TypeError/
-// RangeError calls through a page init script while leaving bundle bytes intact.
-// It cannot observe every engine-thrown exception or calls without new. Bounded
-// messages/stacks are local diagnostic data, not a normal timing result.
+// BREDITOR_PERF_BROWSER selects all/Chromium/Firefox/WebKit (lowercase names).
+// BREDITOR_PERF_RUNS=1..10 repeats fresh browser sessions, three owners per size.
+// Only ordinary measurements are admitted. Copied diagnostic branches below
+// are guarded off: profiling, queue/exception probes, alternative scheduling
+// and nondefault owner repetition counts require separate nested qualification.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";

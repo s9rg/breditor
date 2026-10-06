@@ -614,6 +614,22 @@ Shipping artifacts are unchanged. The independent paragraph-shape rejection,
 native qualification, size and large-document performance remain open; this is
 not a claim that all WebKit faults or release requirements are resolved.
 
+The refreshed single-package archive is `target/nested-list-opt-in-Y46CEx`,
+SHA-256 `54a8d9c384888c7163342c38e108dfb92d8966f456542866622e05240128934b`,
+954,099 compressed bytes. Its external consumer passes Node/types and all three
+browsers, including trusted keyboard nesting, text input, split/join, history and
+disabled-indent focus navigation. It remains private and not release-qualified.
+
+The post-fix repeated nested baseline completed 81 owner cycles over nine fresh
+browser sessions without another agent-started test workload running alongside it.
+Exact document/selection/edit/history/recovery assertions passed. For 500 root
+items with nested descendants, the three per-session median edit times were
+109.2/112.3/113.5 ms Chromium, 362/363/361 ms Firefox and 250/234/259 ms WebKit.
+This confirms the large-document latency concern; it is not a performance pass.
+Report: `breditor-nested-list-consumer-kWZhAE/performance-ghGBbf/measurement.json`
+under the system temporary directory; SHA-256
+`c39e8663c73e772e79654f55b4eed68c98733711cf258425e453ee20622c5f9d`.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
