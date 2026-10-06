@@ -63,6 +63,41 @@ const V3_CONTRACT: WasmDurableJsonContract = Object.freeze({
 });
 const V5_CONTRACT: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v5" };
 
+describe("explicit nested Session V7 preflight", () => {
+  const contract: WasmDurableJsonContract = {...V3_CONTRACT, mode: "v7"};
+  function fixture() {
+    const value = checkpointV3Value(); value["formatVersion"] = 7;
+    const block = listElement("paragraph", [{kind: "text", text: "a🙂", formats: []}]);
+    const root = listElement("document", [listElement("bullet-list", [listElement("list-item", [
+      listElement("paragraph", []), listElement("ordered-list", [listElement("list-item", [block])], {"breditor/start": 8}),
+    ])])]);
+    value["historyBase"]["document"]["root"] = root;
+    const point = {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 1, affinity: "after"};
+    const selection = {kind: "range", anchor: point, focus: point};
+    value["historyBase"]["selection"] = selection;
+    value["entries"] = [{forwardOperations: [{kind: "nestedListTextSplice", block: [0, 0, 1, 0, 0], start: 1, end: 3,
+      expected: root, replacement: {runs: [{text: "z", formats: []}]}}], resultSelection: selection, resultPendingFormats: null}];
+    value["cursor"] = 1; value["historyCapacity"] = 20; value["openMergeGroup"] = null;
+    return value;
+  }
+  it("admits explicit V7 nested state and history in either cursor branch", () => {
+    for (const cursor of [0, 1]) {
+      const value = fixture(); value["cursor"] = cursor;
+      const json = JSON.stringify(value);
+      expect(sessionCheckpointJsonMatchesDurableContract(json, contract)).not.toBeNull();
+      expect(sessionCheckpointJsonMatchesDurableContract(json, {...contract, mode: "v6"})).toBeNull();
+    }
+  });
+  it.each(["state", "scalar", "legacyTag", "nullOperation"])("rejects malformed V7 %s", fault => {
+    const value = fixture();
+    if (fault === "state") value["historyBase"]["formatVersion"] = 7;
+    if (fault === "scalar") value["entries"][0]["forwardOperations"][0]["end"] = 2;
+    if (fault === "legacyTag") value["entries"][0]["forwardOperations"][0]["kind"] = "flatListTextSplice";
+    if (fault === "nullOperation") value["entries"][0]["forwardOperations"][0] = null;
+    expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
+  });
+});
+
 describe("explicit flat-list Session V6 preflight", () => {
   const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v6" };
   const accepts = (value: unknown) => sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract);

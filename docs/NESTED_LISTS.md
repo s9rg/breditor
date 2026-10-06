@@ -373,5 +373,15 @@ cover malformed/reversed replacements and fragment sequences above 10,000
 blocks, including aggregate-node rejection. All four nested tags now have static
 preflight, but session integration and Rust replay qualification remain pending.
 
+Browser Session V7 static admission now requires State V3/Document V2 and routes
+the four nested operation tags through their dedicated preflight (older V5 tags
+retain their existing checks; flat V6 tags are not added to V7). History-base
+property accounting traverses every nested list section. Tests cover nested
+selection paths and both undo/redo cursor branches, rejecting wrong state
+versions, null operations, flat tags and scalar-splitting splices. This validates
+wire structure and lower-bound budgets only; Rust replay/inverse proof remains
+mandatory before a restored engine can be published. Packed integration remains
+unfinished.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

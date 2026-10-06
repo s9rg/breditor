@@ -1,3 +1,4 @@
+import { nestedListOperationPreflight } from "./nested_list_operation_preflight.js";
 import {
   captureHandle, freeHandles, objectSet, valueIsThenable,
   objectLike, type HandleRegistry,
@@ -386,7 +387,7 @@ function validateCheckpointEnvelope(
   if (
     historyBase === null ||
     historyBase["format"] !== "breditor/editor-state" ||
-    historyBase["formatVersion"] !== (binding.mode === "v5" || binding.mode === "v6" ? 3 : expectedFormatVersion)
+    historyBase["formatVersion"] !== (binding.mode === "v5" || binding.mode === "v6" || binding.mode === "v7" ? 3 : expectedFormatVersion)
   ) {
     return null;
   }
@@ -449,7 +450,7 @@ function validateCheckpointEnvelope(
   ) {
     return null;
   }
-  if (binding.mode === "v3" || binding.mode === "v5" || binding.mode === "v6") {
+  if (binding.mode === "v3" || binding.mode === "v5" || binding.mode === "v6" || binding.mode === "v7") {
     const retainedProperties: RetainedPropertyLowerBound = {
       propertyValues: 0,
       propertyStringUtf8Bytes: 0,
@@ -560,7 +561,9 @@ function validSessionV3History(
     aggregateOperations += operations.length;
     if (aggregateOperations > MAX_V3_AGGREGATE_OPERATIONS) return false;
     for (const operation of operations) {
-      if (!(contract.mode === "v6"
+      if (!(contract.mode === "v7"
+        ? validOperationV7Payload(operation, contract)
+        : contract.mode === "v6"
         ? validOperationV6Payload(operation, contract)
         : contract.mode === "v5"
         ? validOperationV5Payload(operation, contract)
@@ -607,19 +610,22 @@ function observeHistoryBaseDocumentProperties(
   // The document has already passed complete structural validation. Account
   // for list starts and nested block properties, not just direct-root runs.
   const paragraphs: unknown[] = [];
-  for (const rawRoot of roots) {
+  const visit = (rawRoot: unknown): boolean => {
     const block = jsonRecord(rawRoot);
     if (block?.["type"] === "breditor/bullet-list" || block?.["type"] === "breditor/ordered-list") {
-      if (contract.mode !== "v6" || !Array.isArray(block["children"])) return false;
+      if ((contract.mode !== "v6" && contract.mode !== "v7") || !Array.isArray(block["children"])) return false;
       if (block["type"] === "breditor/ordered-list") retainedProperties.propertyValues += 1;
       if (retainedProperties.propertyValues > MAX_V3_RETAINED_PROPERTY_VALUES) return false;
       for (const rawItem of block["children"]) {
         const children = jsonRecord(rawItem)?.["children"];
-        if (!Array.isArray(children) || children.length !== 1) return false;
+        if (!Array.isArray(children) || children.length === 0 || (contract.mode !== "v7" && children.length !== 1)) return false;
         paragraphs.push(children[0]);
+        for (let section = 1; section < children.length; section++) if (!visit(children[section])) return false;
       }
     } else paragraphs.push(rawRoot);
-  }
+    return true;
+  };
+  for (const root of roots) if (!visit(root)) return false;
   for (const rawParagraph of paragraphs) {
     const paragraph = jsonRecord(rawParagraph);
     if (paragraph?.["type"] === "breditor/heading") {
@@ -823,6 +829,12 @@ function validOperationV5Payload(
 }
 
 /** V6 adds explicit list tags without widening the older text-block recipes. */
+function validOperationV7Payload(value: unknown, contract: ResolvedWasmDurableJsonContract): boolean {
+  const record = jsonRecord(value);
+  return record !== null && (nestedListOperationPreflight(record, contract, fragment => validTextFragment(fragment, contract)) ??
+    validOperationV5Payload(value, contract));
+}
+
 function validOperationV6Payload(value: unknown, contract: ResolvedWasmDurableJsonContract): boolean {
   const record = jsonRecord(value);
   return record !== null && (flatListOperationPreflight(record, contract, fragment => validTextFragment(fragment, contract)) ??
