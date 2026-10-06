@@ -2,7 +2,45 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+
+test("paragraph operand capture preserves single reads and short-circuit rejection", () => {
+  const source = `const paragraphOrdinal = 0, paragraphIndex = 2, expectedIndex = 2;
+    const blockType = "breditor/paragraph", headingLevel = undefined;
+        if (paragraphIndex !== expectedIndex ||
+            !listMetadataIsAbsent(view, methods, paragraphIndex) ||
+            invokeGenerated(methods.nodeKind, view, paragraphIndex) !== "element" ||
+            (blockType === "breditor/heading"
+                ? !isHeadingProjectionLevel(headingLevel)
+                : blockType !== "breditor/paragraph" || headingLevel !== undefined) ||
+            invokeGenerated(methods.text, view, paragraphIndex) !== undefined ||
+            invokeGenerated(methods.formatCount, view, paragraphIndex) !== undefined ||
+            invokeGenerated(methods.formatType, view, paragraphIndex, 0) !== undefined ||
+            !formatPropertyProbeIsAbsent(view, methods, paragraphIndex, 0, 0)) {
+            return false;
+        }
+        return true;`;
+  const transformed = instrumentParagraphShapeOperands(source);
+  for (const failing of [null, "nodeKind", "text", "formatCount", "formatType"]) {
+    for (const hostile of [false, true]) {
+      const outcomes = [];
+      for (const code of [source, transformed]) {
+        const calls = [], logs = [];
+        const result = new Function("view", "methods", "invokeGenerated", "listMetadataIsAbsent", "formatPropertyProbeIsAbsent", "console", code)(
+          {}, {nodeKind: "nodeKind", text: "text", formatCount: "formatCount", formatType: "formatType"},
+          name => {calls.push(name); return name === failing ? "bad" : name === "nodeKind" ? "element" : undefined;},
+          () => {calls.push("listMetadata"); return true;}, () => {calls.push("formatProperty"); return true;},
+          {error(...args) {if (hostile) throw new Error("logger"); logs.push(args);}});
+        outcomes.push({result, calls});
+        if (code === transformed && failing !== null && !hostile) {
+          assert.equal(JSON.parse(logs[0][1])[failing].value, "bad");
+        }
+      }
+      assert.deepEqual(outcomes[0], outcomes[1]);
+    }
+  }
+  assert.throws(() => instrumentParagraphShapeOperands(""));
+});
 
 test("flat impact diagnostics preserve rejection and bound mismatch context", () => {
   const source = `function verifyImpact(a, b, input) {

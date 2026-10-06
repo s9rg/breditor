@@ -23,6 +23,9 @@ export function instrumentProjectionValidationSites(code, moduleName) {
     return `((() => { try { console.error("breditor projection rejection site", ${label}); } catch {} })(), ${expression})`;
   });
   assert.ok(sites > 0, "projection rejection expressions changed");
+  if (moduleName === "wasm_projection_adapter" && transformed.includes("const plannedBlock = layout?.textBlocks[paragraphOrdinal];")) {
+    return instrumentParagraphShapeOperands(transformed);
+  }
   if (moduleName !== "flat_list_projection_update") return transformed;
   // Capture already-owned JS snapshots only after an equality rejection. Never
   // reread a Wasm handle, retry validation, or change the rejected result.
@@ -41,6 +44,38 @@ export function instrumentProjectionValidationSites(code, moduleName) {
             } catch {}
             return false;
         }`);
+}
+
+/** Disposable fixture only: preserve short-circuit order and single reads. */
+export function instrumentParagraphShapeOperands(code) {
+  const start = "        if (paragraphIndex !== expectedIndex ||";
+  const end = "!formatPropertyProbeIsAbsent(view, methods, paragraphIndex, 0, 0)) {";
+  assert.equal(code.split(start).length, 2, "paragraph diagnostic start changed");
+  assert.equal(code.split(end).length, 2, "paragraph diagnostic end changed");
+  const from = code.indexOf(start), to = code.indexOf(end, from) + end.length;
+  assert.ok(to > from);
+  let condition = code.slice(from, to);
+  const operands = [
+    ["listMetadata", "listMetadataIsAbsent(view, methods, paragraphIndex)"],
+    ["nodeKind", "invokeGenerated(methods.nodeKind, view, paragraphIndex)"],
+    ["text", "invokeGenerated(methods.text, view, paragraphIndex)"],
+    ["formatCount", "invokeGenerated(methods.formatCount, view, paragraphIndex)"],
+    ["formatType", "invokeGenerated(methods.formatType, view, paragraphIndex, 0)"],
+    ["formatPropertyAbsent", "formatPropertyProbeIsAbsent(view, methods, paragraphIndex, 0, 0)"],
+  ];
+  for (const [name, expression] of operands) {
+    assert.equal(condition.split(expression).length, 2, `paragraph operand changed: ${name}`);
+    condition = condition.replace(expression, `paragraphDiagnosticRead(${JSON.stringify(name)}, ${expression})`);
+  }
+  return code.slice(0, from) + `
+        const paragraphDiagnostic = {paragraphOrdinal, paragraphIndex, expectedIndex, blockType, headingLevel};
+        const paragraphDiagnosticRead = (name, value) => {
+            paragraphDiagnostic[name] = {type: typeof value, value: typeof value === "string" ? value.slice(0, 256) : value};
+            return value;
+        };
+` + condition + `
+            try { console.error("breditor paragraph shape operands", JSON.stringify(paragraphDiagnostic).slice(0, 4096)); } catch {}
+` + code.slice(to);
 }
 
 // Capture the terminal router boundary too: queueUncertain does not imply an

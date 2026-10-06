@@ -33,5 +33,14 @@
     "sites": ["wasm_projection_adapter:321:projection.invalid_shape", "wasm_projection_adapter:620:projection.invalid_update"],
     "meaning": "A different rejection: semantic paragraph shape validation failed before impact comparison. No equality mismatch log was expected on this path. This does not establish which scalar or absent-value probe failed."
   },
-  "next": "Capture the failing paragraph-shape operand without retrying handle reads, and retain failure-only equality snapshot diagnostics. Fifteen diagnostic tests pass including WebKit. Do not alter production validation or insert timing workarounds."
+  "equalSerializationRun": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-EIMHhu/measurement.json",
+    "progress": "500 items, repetition 49: selectionMs",
+    "impact": "none",
+    "beforeLength": 67282,
+    "afterLength": 67282,
+    "firstDifferenceOffset": 67282,
+    "meaning": "flatListRootsEqual rejected snapshots with identical JSON serialization. This narrows investigation to comparison operands but does not prove an engine bug or establish a fix. Paragraph operand diagnostics were enabled; this run failed in impact comparison instead."
+  },
+  "next": "Capture which comparison returns false for the equal-serialization snapshots, retaining single-read paragraph diagnostics. Sixteen diagnostic tests pass including WebKit. Do not alter production validation or insert timing workarounds."
 }
