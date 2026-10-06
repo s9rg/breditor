@@ -306,5 +306,13 @@ to recursive AST paths. Backward semantic targets, forged ownership and stale
 render handles are rejected. A cross-level native Range test verifies exact
 endpoints. Live beforeinput/event-controller delivery remains outstanding.
 
+Nested editor command requests now have separate issued delivery-token ownership,
+exact render/projection/epoch/authority correlation, owned selection snapshots
+and native action IDs matching the Rust nested profile. Canonical requests reuse
+the existing command/string/JSON bounds while rejecting nested tokens on legacy
+base and flat request paths. Tests check foreign selections, forged tokens,
+wrong epochs/authorities and valid recursive text requests. Queue, generated
+command adapter and event-controller integration are not yet complete.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

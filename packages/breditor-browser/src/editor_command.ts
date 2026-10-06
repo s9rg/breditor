@@ -1,3 +1,6 @@
+import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
+import { isOwnedNestedListProjection, type NestedListDocumentProjection } from "./nested_list_projection.js";
+import { isOwnedNestedListRangeSelection, type NestedListRangeSelection } from "./nested_list_selection.js";
 import {
   isOwnedRenderedProjection,
   isOwnedFlatListRenderedProjection,
@@ -79,8 +82,8 @@ export interface EditorCommandRequirements {
 }
 
 /** Exact semantic selection captured while deriving a command request. */
-type CommandProjection = BaseDocumentProjection | FlatListDocumentProjection;
-type CommandSelection = BaseRangeSelection | FlatListRangeSelection;
+type CommandProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
+type CommandSelection = BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection;
 export type EditorSelectionSync<S extends CommandSelection = BaseRangeSelection> =
   | Readonly<{ kind: "range"; selection: S }>
   | Readonly<{ kind: "none" }>
@@ -102,6 +105,7 @@ declare const EDITOR_DELIVERY_AUTHORITY_BRAND: unique symbol;
 
 const DELIVERY_TOKENS = new WeakSet<object>();
 const FLAT_LIST_DELIVERY_TOKENS = new WeakSet<object>();
+const NESTED_LIST_DELIVERY_TOKENS = new WeakSet<object>();
 const DELIVERY_TOKEN_AUTHORITIES = new WeakMap<object, symbol>();
 const DELIVERY_AUTHORITY_VALIDATORS = new WeakMap<
   object,
@@ -150,7 +154,7 @@ class OwnedEditorDeliveryToken<P extends CommandProjection> implements EditorDel
     rendered: RenderedProjection<P>,
     observationEpoch: bigint,
     authority: symbol,
-    flatLists = false,
+    flatLists: boolean | "nested" = false,
   ) {
     this.projection = projection;
     this.rendered = rendered;
@@ -159,7 +163,8 @@ class OwnedEditorDeliveryToken<P extends CommandProjection> implements EditorDel
     this.rendererGeneration = rendered.rendererGeneration;
     this.observationEpoch = observationEpoch;
     DELIVERY_TOKENS.add(this);
-    if (flatLists) FLAT_LIST_DELIVERY_TOKENS.add(this);
+    if (flatLists === "nested") NESTED_LIST_DELIVERY_TOKENS.add(this);
+    else if (flatLists) FLAT_LIST_DELIVERY_TOKENS.add(this);
     DELIVERY_TOKEN_AUTHORITIES.set(this, authority);
     Object.freeze(this);
   }
@@ -226,6 +231,47 @@ export function flatListRangeSelectionSync(selection: FlatListRangeSelection): F
 /** Consults the existing opaque authority, after explicit list token admission. @internal */
 export function flatListEditorDeliveryAuthorityAccepts(authority: unknown, token: unknown): token is FlatListEditorDeliveryToken {
   return isIssuedDeliveryToken(token, true) && deliveryAuthorityAccepts(authority, token);
+}
+
+/** Recursive-list command capabilities use a separate ownership registry. @internal */
+export type NestedListEditorCommandRequest = EditorCommandRequest<NestedListDocumentProjection, NestedListRangeSelection>;
+export type NestedListEditorDeliveryToken = EditorDeliveryToken<NestedListDocumentProjection>;
+export type NestedListEditorSelectionSync = EditorSelectionSync<NestedListRangeSelection>;
+
+/** Issues a list capability against one exact owned render, never flattened text. @internal */
+export function issueNestedListEditorDeliveryToken(projection: NestedListDocumentProjection,
+  rendered: RenderedProjection<NestedListDocumentProjection>, observationEpoch: bigint, authority: symbol): NestedListEditorDeliveryToken {
+  if (!isOwnedNestedListProjection(projection) || !isOwnedNestedListRenderedProjection(rendered) || rendered.projection !== projection ||
+    typeof observationEpoch !== "bigint" || observationEpoch < 0n || typeof authority !== "symbol") {
+    throw new TypeError("nested-list delivery base is invalid");
+  }
+  return new OwnedEditorDeliveryToken(projection, rendered, observationEpoch, authority, "nested");
+}
+
+/** Same epoch/authority checks as legacy delivery, with an explicit list render. @internal */
+export function nestedListEditorDeliveryTokenMatches(token: unknown, rendered: unknown, observationEpoch: bigint,
+  authority: symbol): token is NestedListEditorDeliveryToken {
+  return nestedListEditorDeliveryTokenMatchesRender(token, rendered) && DELIVERY_TOKEN_AUTHORITIES.get(token) === authority &&
+    token.observationEpoch === observationEpoch;
+}
+
+/** Visible list correlation alone is not adapter authorization. @internal */
+export function nestedListEditorDeliveryTokenMatchesRender(token: unknown, rendered: unknown): token is NestedListEditorDeliveryToken {
+  if (!isOwnedNestedListRenderedProjection(rendered) || !isIssuedDeliveryToken(token, "nested")) return false;
+  return token.rendered === rendered && token.projection === rendered.projection &&
+    token.rendererGeneration === rendered.rendererGeneration && token.snapshotLineage === rendered.projection.snapshot.lineage &&
+    token.snapshotRevision === rendered.projection.snapshot.revision;
+}
+
+/** Captures an exact owned list selection for later queue delivery. @internal */
+export function nestedListRangeSelectionSync(selection: NestedListRangeSelection): NestedListEditorSelectionSync {
+  if (!isOwnedNestedListRangeSelection(selection)) throw new TypeError("nested-list selection is foreign or invalid");
+  return Object.freeze({ kind: "range", selection });
+}
+
+/** Consults the existing opaque authority, after explicit list token admission. @internal */
+export function nestedListEditorDeliveryAuthorityAccepts(authority: unknown, token: unknown): token is NestedListEditorDeliveryToken {
+  return isIssuedDeliveryToken(token, "nested") && deliveryAuthorityAccepts(authority, token);
 }
 
 /** @internal Creates an opaque controller validator owned by one adapter. */
@@ -365,6 +411,23 @@ const FLAT_LIST_ACTION_IDS = Object.freeze({
   insertText: "breditor/insert-flat-list-text",
   toggleStrong: "breditor/toggle-flat-list-strong",
 });
+
+const NESTED_LIST_ACTION_IDS = Object.freeze({
+  clearInlineFormats: "breditor/clear-nested-list-inline-formats",
+  deleteBackward: "breditor/delete-nested-list-backward",
+  deleteForward: "breditor/delete-nested-list-forward",
+  deleteSelection: "breditor/delete-nested-list-selection",
+  insertParagraphBreak: "breditor/insert-nested-list-break",
+  insertPlainText: "breditor/insert-nested-list-plain-text",
+  insertText: "breditor/insert-nested-list-text",
+  toggleStrong: "breditor/toggle-nested-list-strong",
+});
+
+/** Recursive native-input routing requires an explicitly issued nested token. @internal */
+export function nestedListBrowserInputActionIds(delivery: NestedListEditorDeliveryToken): Readonly<Record<keyof typeof BASE_ACTION_IDS, string>> {
+  if (!isIssuedDeliveryToken(delivery, "nested")) throw new TypeError("nested-list delivery token is invalid");
+  return NESTED_LIST_ACTION_IDS;
+}
 
 /** Native-input IDs only for an explicitly issued list capability. @internal */
 export function flatListBrowserInputActionIds(delivery: FlatListEditorDeliveryToken): Readonly<Record<keyof typeof BASE_ACTION_IDS, string>> {
@@ -622,9 +685,29 @@ export function flatListCommandRequest(delivery: FlatListEditorDeliveryToken, se
   return result;
 }
 
+/** Recursive request admission preserves all shared command bounds. @internal */
+export function canonicalNestedListEditorCommandRequest(value: unknown): NestedListEditorCommandRequest | null {
+  return canonicalRequest(value, "nested");
+}
+
+/** All list actions, intents, selections and history share one request constructor. @internal */
+export function nestedListCommandRequest(delivery: NestedListEditorDeliveryToken, selection: NestedListEditorSelectionSync,
+  source: EditorCommandSource, command: EngineCommand,
+  history?: EditorCommandRequirements["history"]): NestedListEditorCommandRequest {
+  const safeCommand = snapshotEngineCommand(command);
+  const safeSelection = snapshotSelectionForMode(selection, isIssuedDeliveryToken(delivery, "nested") ? delivery : null, "nested");
+  if (safeCommand === null || safeSelection === null) throw new TypeError("nested-list command request is invalid");
+  const result = canonicalNestedListEditorCommandRequest({ delivery, selection: safeSelection, source,
+    requirements: { selection: safeSelection.kind === "preserve" ? "preserve" : "synchronize",
+      history: history === undefined ? (safeCommand.kind === "history" ? "closeBefore" : "preserve") : history }, command: safeCommand });
+  if (result === null) throw new TypeError("nested-list command request is invalid");
+  return result;
+}
+
 function canonicalRequest(value: unknown, flatLists: false): EditorCommandRequest | null;
 function canonicalRequest(value: unknown, flatLists: true): FlatListEditorCommandRequest | null;
-function canonicalRequest(value: unknown, flatLists: boolean): EditorCommandRequest<CommandProjection, CommandSelection> | null {
+function canonicalRequest(value: unknown, flatLists: "nested"): NestedListEditorCommandRequest | null;
+function canonicalRequest(value: unknown, flatLists: boolean | "nested"): EditorCommandRequest<CommandProjection, CommandSelection> | null {
   try {
     const outer = readExactDataRecord(value, [
       "delivery",
@@ -711,7 +794,7 @@ function snapshotSelection(
 }
 
 function snapshotSelectionForMode(value: unknown, delivery: EditorDeliveryToken<CommandProjection> | null,
-  flatLists: boolean): EditorSelectionSync<CommandSelection> | null {
+  flatLists: boolean | "nested"): EditorSelectionSync<CommandSelection> | null {
   if (delivery === null) {
     return null;
   }
@@ -725,7 +808,7 @@ function snapshotSelectionForMode(value: unknown, delivery: EditorDeliveryToken<
   }
   const range = readExactDataRecord(value, ["kind", "selection"]);
   const selection = range?.["selection"];
-  if (flatLists ? !isOwnedFlatListRangeSelection(selection) : !isOwnedBaseRangeSelection(selection)) return null;
+  if (flatLists === "nested" ? !isOwnedNestedListRangeSelection(selection) : flatLists ? !isOwnedFlatListRangeSelection(selection) : !isOwnedBaseRangeSelection(selection)) return null;
   // The explicit mode guard above proves this union; correlation is by identity.
   const owned = selection as CommandSelection;
   if (
@@ -754,14 +837,16 @@ function isIssuedEditorDeliveryToken(value: unknown): value is EditorDeliveryTok
   return isIssuedDeliveryToken(value, false);
 }
 
+function isIssuedDeliveryToken(value: unknown, flatLists: "nested"): value is NestedListEditorDeliveryToken;
 function isIssuedDeliveryToken(value: unknown, flatLists: true): value is FlatListEditorDeliveryToken;
 function isIssuedDeliveryToken(value: unknown, flatLists: false): value is EditorDeliveryToken;
-function isIssuedDeliveryToken(value: unknown, flatLists: boolean): value is EditorDeliveryToken<CommandProjection>;
-function isIssuedDeliveryToken(value: unknown, flatLists: boolean): value is EditorDeliveryToken<CommandProjection> {
+function isIssuedDeliveryToken(value: unknown, flatLists: boolean | "nested"): value is EditorDeliveryToken<CommandProjection>;
+function isIssuedDeliveryToken(value: unknown, flatLists: boolean | "nested"): value is EditorDeliveryToken<CommandProjection> {
   if (typeof value !== "object" || value === null || !DELIVERY_TOKENS.has(value)) return false;
-  if (FLAT_LIST_DELIVERY_TOKENS.has(value) !== flatLists) return false;
+  if (NESTED_LIST_DELIVERY_TOKENS.has(value) !== (flatLists === "nested") ||
+    FLAT_LIST_DELIVERY_TOKENS.has(value) !== (flatLists === true)) return false;
   const projection = (value as EditorDeliveryToken<CommandProjection>).projection;
-  return flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection);
+  return flatLists === "nested" ? isOwnedNestedListProjection(projection) : flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection);
 }
 
 function requirementsMatchCommand(

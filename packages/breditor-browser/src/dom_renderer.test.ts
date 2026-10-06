@@ -56,6 +56,8 @@ type Run = Readonly<{ text: string; strong: boolean }>;
 import { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { NestedListProjectionUpdate } from "./nested_list_projection_update.js";
 import { NestedListRangeSelection } from "./nested_list_selection.js";
+import { issueNestedListEditorDeliveryToken, nestedListEditorDeliveryTokenMatches, nestedListRangeSelectionSync,
+  nestedListCommandRequest, canonicalNestedListEditorCommandRequest, nestedListBrowserInputActionIds } from "./editor_command.js";
 import { NestedListTargetRange, isOwnedNestedListTargetRange } from "./nested_list_target_range.js";
 import { mapDomNestedListTargetRange } from "./dom_target_range.js";
 import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
@@ -93,6 +95,24 @@ describe("recursive nested-list DOM", () => {
     expect(isOwnedNestedListRenderedProjection(rendered)).toBe(true);
     expect(isOwnedFlatListRenderedProjection(rendered)).toBe(false);
     expect(isOwnedRenderedProjection(rendered)).toBe(false);
+  });
+  it("binds nested command requests to exact selections, epochs and authorities", () => {
+    const f = fixture(), authority = Symbol("nested owner");
+    const token = issueNestedListEditorDeliveryToken(f.projection, f.rendered, 3n, authority);
+    expect(nestedListEditorDeliveryTokenMatches(token, f.rendered, 3n, authority)).toBe(true);
+    expect(nestedListEditorDeliveryTokenMatches(token, f.rendered, 4n, authority)).toBe(false);
+    expect(nestedListEditorDeliveryTokenMatches(token, f.rendered, 3n, Symbol())).toBe(false);
+    const point = {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 0, affinity: "after"};
+    const selection = valueOf(NestedListRangeSelection.create(f.projection, {kind: "range", anchor: point, focus: point}));
+    const request = nestedListCommandRequest(token, nestedListRangeSelectionSync(selection), {kind: "beforeinput", detail: "insertText"},
+      {kind: "action", actionId: nestedListBrowserInputActionIds(token).insertText, input: {kind: "string", value: "日本"}});
+    expect(canonicalNestedListEditorCommandRequest(request)).toEqual(request);
+    expect(canonicalEditorCommandRequest(request)).toBeNull();
+    expect(canonicalFlatListEditorCommandRequest(request)).toBeNull();
+    expect(canonicalNestedListEditorCommandRequest({...request, delivery: {...token}})).toBeNull();
+    const other = fixture();
+    const foreign = valueOf(NestedListRangeSelection.create(other.projection, {kind: "range", anchor: point, focus: point}));
+    expect(canonicalNestedListEditorCommandRequest({...request, selection: nestedListRangeSelectionSync(foreign)})).toBeNull();
   });
   it.each(["text", "numbering", "extraChild", "attribute"])("invalidates deep %s drift", fault => {
     const {host, rendered} = fixture();
