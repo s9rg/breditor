@@ -1,4 +1,4 @@
-// Raw generated Wasm only: no DOM, clipboard or IME qualification claims.
+// Generated Wasm and real editor DOM; no native clipboard or IME claims.
 import assert from "node:assert/strict";
 import { realpath } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
@@ -34,10 +34,14 @@ try {
         const api = await import(`${bindingUrl}/breditor_wasm.js`);
         api.initSync({module: await (await fetch(`${bindingUrl}/breditor_wasm_bg.wasm`)).arrayBuffer()});
         const {runNestedListWasmScenario} = await import("/scripts/nested-list-wasm-scenario.mjs");
-        return Array.from({length: 5}, () => runNestedListWasmScenario(api));
+        const results = Array.from({length: 5}, () => runNestedListWasmScenario(api));
+        const {verifyNestedListEditorOwner} = await import("/scripts/nested-list-editor-owner-scenario.mjs");
+        results.push(await verifyNestedListEditorOwner(api));
+        return results;
       }, bindingUrl);
-      assert.equal(results.length, 5); assert.deepEqual(errors, []);
-      console.log(JSON.stringify({browser: name, version: browser.version(), status: "passed", runs: results.length, scope: results[0].scope}));
+      assert.equal(results.length, 6); assert.deepEqual(errors, []);
+      console.log(JSON.stringify({browser: name, editor: results[5]}));
+      console.log(JSON.stringify({browser: name, version: browser.version(), status: "passed", rawWasmRuns: 5, editorRuns: 1, scope: results[0].scope}));
     } catch (error) {
       process.exitCode = 1;
       console.log(JSON.stringify({browser: name, version: browser.version(), status: "failed", error: String(error)}));

@@ -491,5 +491,13 @@ qualification, not editor DOM, toolbar, native clipboard or IME qualification;
 it does not resolve the older intermittent WebKit fault. Reproduce with
 `node scripts/build-experimental-nested-list.mjs` (Cargo and wasm-bindgen on PATH).
 
+The real generated candidate also passes the integrated browser owner scenario
+in Chromium, Firefox and WebKit: default 16-button toolbar startup, DOM-driven
+selection, toolbar indent/outdent, deep emoji typing, exact document and selection
+undo/redo, and fresh-owner V7 checkpoint restoration with pending redo. Disposal
+clears owned DOM. These are source-integrated browser tests using synthetic
+selection/input/click events, not packed-consumer or physical input qualification.
+Run `node scripts/check-experimental-nested-list-browsers.mjs target/nested-list-candidate-5Um68E`.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

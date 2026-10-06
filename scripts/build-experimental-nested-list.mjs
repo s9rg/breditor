@@ -112,6 +112,6 @@ const manifest = { status: "passed", publishable: false, feature: "experimental-
   wasmSha256: hash(wasm), shippingWasmSha256: shippingBefore,
   declarationsSha256: hash(declarations),
   browserDistTreeSha256: hash(JSON.stringify(browserTreeBefore)),
-  qualification: "Generated ABI and TypeScript, Node nested commands/recovery and retained heading compatibility; five raw-Wasm runs each in Chromium/Firefox/WebKit. No editor DOM, native clipboard or IME qualification." };
+  qualification: "Generated ABI and TypeScript, Node nested commands/recovery and retained heading compatibility; five raw-Wasm runs and one integrated editor/default-toolbar/recovery scenario each in Chromium/Firefox/WebKit. Synthetic input only; no packed-consumer, native clipboard or IME qualification." };
 await writeFile(join(directory, "qualification.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(JSON.stringify({ directory, ...manifest }, null, 2));
