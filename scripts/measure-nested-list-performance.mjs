@@ -2,9 +2,10 @@
 // No hard timing threshold: correctness is mandatory, timing is machine-specific evidence.
 // BREDITOR_PERF_BROWSER selects all/Chromium/Firefox/WebKit (lowercase names).
 // BREDITOR_PERF_RUNS=1..10 repeats fresh browser sessions, three owners per size.
-// Only ordinary measurements are admitted. Copied diagnostic branches below
-// are guarded off: profiling, queue/exception probes, alternative scheduling
-// and nondefault owner repetition counts require separate nested qualification.
+// WebKit-only BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 captures terminal queue/router
+// failures in a disposable bundle. Diagnostic runs are not timing evidence.
+// Profiling, exception probes, alternative scheduling and nondefault owner
+// repetition counts remain guarded off pending separate nested qualification.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -16,7 +17,7 @@ import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
-import {instrumentQueueFailures, instrumentRouterFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
@@ -47,9 +48,9 @@ assert.ok(Number.isSafeInteger(ownerRepetitions) && ownerRepetitions >= 3 && own
   "owner repetitions must be 3..100 and nondefault counts require queue diagnostics");
 // Diagnostic task ordering, not a normal selection latency measurement.
 const selectionScheduling = process.env["BREDITOR_PERF_SELECTION_SCHEDULING"] ?? "synchronous";
-assert.ok(!cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled && !queueDiagnosticsEnabled &&
+assert.ok(!cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled &&
   !constructorProbeEnabled && ownerRepetitions === 3 && selectionScheduling === "synchronous",
-  "Nested baseline supports ordinary measurements only; diagnostic transforms need separate qualification");
+  "Nested runs support ordinary measurements or bounded WebKit queue diagnostics only");
 assert.ok(["synchronous", "focus-task", "native-selection"].includes(selectionScheduling) &&
   (selectionScheduling === "synchronous" || queueDiagnosticsEnabled),
   "selection scheduling requires queue diagnostics and a known mode");
@@ -120,10 +121,15 @@ const diagnosticPlugin = {name: "document-export-rejection-sites", transform(cod
   }
 }};
 let queueDiagnosticModules = 0;
+let projectionDiagnosticModules = 0;
 let routerDiagnosticModules = 0;
 let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
+  if (id === join(consumer, "node_modules/@breditor/browser/dist/wasm_command_adapter.js")) {
+    projectionDiagnosticModules++;
+    return instrumentProjectionUpdateFailures(code);
+  }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/browser_event_router.js")) {
     routerDiagnosticModules++;
     return instrumentRouterFailures(code);
@@ -146,6 +152,7 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
 }};
 await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
 assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
+assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "projection diagnostic module was not transformed exactly once");
 assert.equal(routerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "router diagnostic module was not transformed exactly once");
 assert.equal(stressFixtureModules, ownerRepetitions === 3 ? 0 : 1, "stress fixture was not transformed exactly once");
 assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 : 1, "selection fixture was not transformed exactly once");

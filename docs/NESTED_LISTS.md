@@ -696,6 +696,19 @@ including trusted keyboard nesting, split/join, typing and history, pass against
 this exact archive. It is private, not published, and not size/native/release
 qualified. The default shipping bundles remain unchanged.
 
+Two further current-package WebKit repeats each completed 90 correctness cycles
+over ten fresh browser sessions. The ordinary run is
+`breditor-nested-list-consumer-ibvkuR/performance-CH1ZI7/measurement.json`
+(SHA-256 `01baf8e6f72f9ced94d9b2556cbe33de955bd008cc6aed0a76dd8e5235c647ac`).
+The bounded queue/router/projection-rejection diagnostic run is
+`breditor-nested-list-consumer-ibvkuR/performance-9bnd85/measurement.json`
+(SHA-256 `fd7622855f374bff48ff77a237c237ce2b775879333b2766e5cc5f6a181f1086`).
+All 18 diagnostic regression tests passed, including the WebKit positive control.
+Diagnostic transforms apply only to a disposable bundle and are not release
+timing evidence. Profiling, alternate scheduling and larger owner counts remain
+guarded off in the nested runner. Neither clean repeat closes the previously
+captured intermittent faults; native, size and latency qualification remain open.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
