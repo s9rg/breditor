@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BreditorNestedListWasmCommandAdapter } from "./wasm_command_adapter.js";
+import { BreditorNestedListBrowserEventRouter } from "./browser_event_router.js";
+import { BreditorNestedListBrowserEventController } from "./browser_event_controller.js";
 import { BreditorNestedListCompositionController } from "./composition_controller.js";
 import { openNestedListCommandQueueLeasePort } from "./command_queue.js";
 import { BreditorNestedListClipboardController } from "./clipboard_controller.js";
@@ -204,6 +206,145 @@ beforeEach(() => {
 });
 
 describe("explicit nested-list command adapter", () => {
+  it("routes a DOM text event through nested selection synchronization and one content action", () => {
+    const synchronized = transition(1, "A🙂", "selection"), edited = transition(2, "Ax", "action");
+    const repairSelection = selectionResult({...selectionView(2, 2), anchorNodeIndex: 8, focusNodeIndex: 8});
+    const f = clipboardFixture(false, {setSelection: [synchronized.result.view], stringAction: [edited.result.view],
+      selection: [synchronized.selected.view, edited.selected.view, repairSelection.view]});
+    const router = new BreditorNestedListBrowserEventRouter(f.queue, f.adapter, {
+      keyboard: {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"}, scheduleTask: () => {},
+    });
+    const previous = Object.getOwnPropertyDescriptor(InputEvent.prototype, "getTargetRanges");
+    const text = f.adapter.rendered.nodeForAstPath([0, 0, 1, 0, 0, 0])!;
+    const range = document.createRange(); range.setStart(text, 1); range.setEnd(text, 3);
+    Object.defineProperty(InputEvent.prototype, "getTargetRanges", {configurable: true, value: () => [range]});
+    try {
+      const event = new InputEvent("beforeinput", {inputType: "insertText", data: "x", cancelable: true, bubbles: true});
+      f.host.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+      expect(f.selectionSync).toHaveBeenCalledWith(f.initial, "text", 8, 3, "before", "text", 8, 1, "after");
+      expect(f.action).toHaveBeenCalledWith(synchronized.successor, "breditor/insert-nested-list-text", "x", false);
+      expect(f.action).toHaveBeenCalledOnce();
+      expect(f.host.textContent).toBe("PAx");
+      expect(router.status).toEqual({kind: "live"});
+      // An unexpected native mutation after cancellation is repaired, never
+      // replayed as another semantic command.
+      f.host.querySelector("h2")!.textContent = "unexpected";
+      f.host.dispatchEvent(new InputEvent("input", {inputType: "insertText", data: "x", bubbles: true}));
+      expect(f.action).toHaveBeenCalledOnce();
+      expect(f.host.textContent).toBe("PAx");
+      expect(router.status).toEqual({kind: "live"});
+    } finally {
+      if (previous) Object.defineProperty(InputEvent.prototype, "getTargetRanges", previous);
+      else Reflect.deleteProperty(InputEvent.prototype, "getTargetRanges");
+      router.dispose(); f.dispose();
+    }
+  });
+
+  function routerFixture() {
+    const f = clipboardFixture();
+    const tasks: Array<() => void> = [];
+    const options: BrowserEventRouterOptions = {keyboard: {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"},
+      scheduleTask: task => { tasks.push(task); }};
+    const router = new BreditorNestedListBrowserEventRouter(f.queue, f.adapter, options);
+    return {...f, tasks, options, router,
+      dispose() { router.dispose(); f.dispose(); }};
+  }
+
+  it("nested list router keeps base mode closed and reserves one owner across both facades", () => {
+    const f = routerFixture();
+    try {
+      // @ts-expect-error Legacy constructor cannot accept a list queue/adapter.
+      expect(() => new BreditorBrowserEventRouter(f.queue, f.adapter, f.options)).toThrow("queue");
+      expect(() => new BreditorNestedListBrowserEventRouter(f.queue, f.adapter, f.options)).toThrow("already has an owner");
+      const baseQueue = new BreditorCommandQueue<WasmCommandSequenceOutcome>(() => { throw new Error("unused"); });
+      try {
+        // @ts-expect-error Deliberately invalid cross-mode adapter, on the same host.
+        expect(() => new BreditorBrowserEventRouter(baseQueue, f.adapter, f.options)).toThrow("already has an owner");
+      } finally { baseQueue.dispose(); }
+      f.router.dispose();
+      const successor = new BreditorNestedListBrowserEventRouter(f.queue, f.adapter, f.options);
+      expect(successor.status).toEqual({kind: "live"}); successor.dispose();
+    } finally { f.dispose(); }
+  });
+
+  it("nested list router rolls back failed construction and reserves before option callbacks", () => {
+    const f = clipboardFixture();
+    const foreign = new BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>(() => { throw new Error("unused"); });
+    const keyboard = {editing: "structuralFallback", primaryModifier: "control", shortcuts: "enabled"} as const;
+    try {
+      expect(() => new BreditorNestedListBrowserEventRouter(foreign, f.adapter, {keyboard})).toThrow("executor");
+      let reads = 0;
+      const router = new BreditorNestedListBrowserEventRouter(f.queue, f.adapter, {get keyboard() {
+        reads++;
+        expect(() => new BreditorNestedListBrowserEventRouter(f.queue, f.adapter, {keyboard})).toThrow("already has an owner");
+        return keyboard;
+      }});
+      expect(reads).toBe(1); router.dispose();
+    } finally { foreign.dispose(); f.dispose(); }
+  });
+
+  it("nested list router gives composition then clipboard exclusive input ownership", () => {
+    const f = routerFixture();
+    const composition = vi.spyOn(BreditorNestedListCompositionController.prototype, "handleBeforeInput");
+    const clipboard = vi.spyOn(BreditorNestedListClipboardController.prototype, "handleBeforeInput");
+    const ordinary = vi.spyOn(BreditorNestedListBrowserEventController.prototype, "handleBeforeInput");
+    try {
+      // A cancelled composition event must never enter clipboard or ordinary translation.
+      composition.mockReturnValue({kind: "ignored", reason: "alreadyDefaultPrevented"});
+      f.host.dispatchEvent(new InputEvent("beforeinput", {inputType: "insertText", data: "x", cancelable: true}));
+      expect(composition).toHaveBeenCalledTimes(1); expect(clipboard).not.toHaveBeenCalled(); expect(ordinary).not.toHaveBeenCalled();
+      composition.mockReturnValue({kind: "ignored", reason: "notComposition"});
+      clipboard.mockReturnValue({kind: "beforeinputEcho", operation: "paste", defaultPrevented: true});
+      f.host.dispatchEvent(new InputEvent("beforeinput", {inputType: "insertFromPaste", cancelable: true}));
+      expect(clipboard).toHaveBeenCalledTimes(1); expect(ordinary).not.toHaveBeenCalled();
+      expect(f.router.status).toEqual({kind: "live"});
+    } finally { f.dispose(); }
+  });
+
+  it("nested list router routes clipboard and document selection events to their sole owners", () => {
+    const f = routerFixture();
+    const copy = vi.spyOn(BreditorNestedListClipboardController.prototype, "handleCopy")
+      .mockReturnValue({kind: "ignored", operation: "copy", defaultPrevented: false, reason: "outsideHost"});
+    const selection = vi.spyOn(BreditorNestedListBrowserEventController.prototype, "handleSelectionChange")
+      .mockReturnValue({kind: "ignored", reason: "programmaticEcho"});
+    try {
+      f.host.dispatchEvent(new Event("copy")); document.dispatchEvent(new Event("selectionchange"));
+      expect(copy).toHaveBeenCalledTimes(1); expect(selection).toHaveBeenCalledTimes(1);
+      expect(f.selectionSync).not.toHaveBeenCalled();
+      f.router.dispose(); f.host.dispatchEvent(new Event("copy")); document.dispatchEvent(new Event("selectionchange"));
+      expect(copy).toHaveBeenCalledTimes(1); expect(selection).toHaveBeenCalledTimes(1);
+    } finally { f.dispose(); }
+  });
+
+  it("nested list router defers uncancelled native repair, consumes its input, and ignores the stale task", () => {
+    const f = routerFixture();
+    vi.spyOn(BreditorNestedListBrowserEventController.prototype, "handleBeforeInput")
+      .mockReturnValue({kind: "reconcileRequired", defaultPrevented: false, reason: "noncancelableMutation"});
+    const restore = vi.spyOn(f.adapter, "restoreCanonicalRender").mockReturnValue({ok: true, rendered: f.adapter.rendered});
+    const input = vi.spyOn(BreditorNestedListBrowserEventController.prototype, "handleInput");
+    try {
+      f.host.dispatchEvent(new InputEvent("beforeinput", {inputType: "insertText", data: "x", cancelable: false}));
+      expect(restore).not.toHaveBeenCalled(); expect(f.tasks).toHaveLength(1);
+      f.host.dispatchEvent(new InputEvent("input", {inputType: "insertText", data: "x"}));
+      expect(restore).toHaveBeenCalledTimes(1); expect(input).not.toHaveBeenCalled();
+      f.tasks.shift()!(); expect(restore).toHaveBeenCalledTimes(1);
+      expect(f.router.status).toEqual({kind: "live"});
+    } finally { f.dispose(); }
+  });
+
+  it("nested list router faults once on uncertain delivery and leaves late events inert", () => {
+    const f = routerFixture(); const statuses = vi.fn(); f.router.subscribe(statuses);
+    try {
+      f.host.dispatchEvent(new KeyboardEvent("keydown", {key: "Backspace", code: "Backspace", cancelable: true}));
+      expect(f.selectionSync).toHaveBeenCalledTimes(1);
+      expect(f.router.status).toEqual({kind: "faulted", reason: "queueUncertain"});
+      f.host.dispatchEvent(new KeyboardEvent("keydown", {key: "Backspace", code: "Backspace", cancelable: true}));
+      document.dispatchEvent(new Event("selectionchange")); f.router.dispose();
+      expect(f.selectionSync).toHaveBeenCalledTimes(1); expect(statuses).toHaveBeenCalledTimes(1);
+    } finally { f.dispose(); }
+  });
+
   it("commits one reconciled Japanese replacement in a nested item and releases the queue", () => {
     const synchronized = transition(1, "A🙂", "selection"), edited = transition(2, "A日本", "action");
     const f = compositionControllerFixture({}, {setSelection: [synchronized.result.view], stringAction: [edited.result.view],

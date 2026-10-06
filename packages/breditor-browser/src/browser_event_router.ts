@@ -1,10 +1,11 @@
-import { BreditorBrowserEventController, BreditorFlatListBrowserEventController } from "./browser_event_controller.js";
+import { BreditorBrowserEventController, BreditorFlatListBrowserEventController, BreditorNestedListBrowserEventController } from "./browser_event_controller.js";
 import { containAsyncRejection } from "./contain_async_rejection.js";
-import { BreditorClipboardController, BreditorFlatListClipboardController } from "./clipboard_controller.js";
-import { BreditorCommandQueue, BreditorFlatListCommandQueue } from "./command_queue.js";
+import { BreditorClipboardController, BreditorFlatListClipboardController, BreditorNestedListClipboardController } from "./clipboard_controller.js";
+import { BreditorCommandQueue, BreditorFlatListCommandQueue, BreditorNestedListCommandQueue } from "./command_queue.js";
 import {
   BreditorCompositionController,
   BreditorFlatListCompositionController,
+  BreditorNestedListCompositionController,
   type CompositionControllerDisposition,
   type CompositionControllerNotification,
 } from "./composition_controller.js";
@@ -25,19 +26,22 @@ import {
   profileDescriptorForAdapter,
   type BreditorWasmCommandAdapter,
   type BreditorFlatListWasmCommandAdapter,
+  type BreditorNestedListWasmCommandAdapter,
   type WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
 
 import type { BaseDocumentProjection } from "./projection.js";
 import type { FlatListDocumentProjection } from "./flat_list_projection.js";
+import type { NestedListDocumentProjection } from "./nested_list_projection.js";
 import type { NativeDeliveryToken } from "./native_command_builder.js";
 
-type RouterProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type RouterProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
 type RouterOutcome = WasmCommandSequenceOutcome<RouterProjection>;
-type RouterAdapter = BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter;
+type RouterAdapter = BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter | BreditorNestedListWasmCommandAdapter;
 type RouterQueue = BreditorCommandQueue<WasmCommandSequenceOutcome> |
-  BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>;
-type RouterComposition = BreditorCompositionController | BreditorFlatListCompositionController;
+  BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>> |
+  BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>;
+type RouterComposition = BreditorCompositionController | BreditorFlatListCompositionController | BreditorNestedListCompositionController;
 
 /** Private routing port only; mode-specific controllers still validate every owned input. */
 interface OrdinaryRoutePort {
@@ -138,7 +142,7 @@ class BrowserEventRouterCore {
   readonly #listenerIntrinsics: ListenerIntrinsics;
   readonly #scheduleTask: (callback: () => void) => void;
   readonly #ordinary: OrdinaryRoutePort;
-  readonly #clipboard: BreditorClipboardController | BreditorFlatListClipboardController;
+  readonly #clipboard: BreditorClipboardController | BreditorFlatListClipboardController | BreditorNestedListClipboardController;
   readonly #composition: RouterComposition;
   readonly #registrations: ListenerRegistration[] = [];
   readonly #subscribers: SubscriberSlot[] = [];
@@ -179,9 +183,9 @@ class BrowserEventRouterCore {
     queue: RouterQueue,
     adapter: RouterAdapter,
     options: BrowserEventRouterOptions,
-    flatLists: boolean,
+    flatLists: boolean | "nested",
   ) {
-    if (!(flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
+    if (!(flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("browser event router queue is invalid");
     }
     const rendered = readInitialRender(adapter);
@@ -210,7 +214,7 @@ class BrowserEventRouterCore {
     this.#document = ownerDocument;
     this.#listenerIntrinsics = listenerIntrinsics;
     let composition: RouterComposition | undefined;
-    let clipboard: BreditorClipboardController | BreditorFlatListClipboardController | undefined;
+    let clipboard: BreditorClipboardController | BreditorFlatListClipboardController | BreditorNestedListClipboardController | undefined;
     try {
       const snapshot = snapshotOptions(
         options,
@@ -229,7 +233,13 @@ class BrowserEventRouterCore {
       let ordinary: OrdinaryRoutePort;
       // Select mode exactly once, before listeners can run. Do not infer it
       // from a later event, mutable public property or incoming projection.
-      if (flatLists && queue instanceof BreditorFlatListCommandQueue) {
+      if (flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue) {
+        const listAdapter = adapter as BreditorNestedListWasmCommandAdapter;
+        composition = new BreditorNestedListCompositionController(queue, listAdapter, compositionOptions);
+        clipboard = new BreditorNestedListClipboardController(queue, listAdapter);
+        ordinary = new BreditorNestedListBrowserEventController(queue,
+          {...ordinaryOptions, selectionBridge: listAdapter.selectionBridge}) as unknown as OrdinaryRoutePort;
+      } else if (flatLists === true && queue instanceof BreditorFlatListCommandQueue) {
         const listAdapter = adapter as BreditorFlatListWasmCommandAdapter;
         composition = new BreditorFlatListCompositionController(queue, listAdapter, compositionOptions);
         clipboard = new BreditorFlatListClipboardController(queue, listAdapter);
@@ -853,6 +863,14 @@ export class BreditorFlatListBrowserEventRouter extends BrowserEventRouterCore {
   constructor(queue: BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
     adapter: BreditorFlatListWasmCommandAdapter, options: BrowserEventRouterOptions) {
     super(queue, adapter, options, true);
+  }
+}
+
+/** Complete native-listener boundary for recursive lists. @internal */
+export class BreditorNestedListBrowserEventRouter extends BrowserEventRouterCore {
+  constructor(queue: BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>,
+    adapter: BreditorNestedListWasmCommandAdapter, options: BrowserEventRouterOptions) {
+    super(queue, adapter, options, "nested");
   }
 }
 

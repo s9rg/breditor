@@ -1,16 +1,22 @@
-import { translateBeforeInput, translateFlatListBeforeInput } from "./beforeinput.js";
+import { translateBeforeInput, translateFlatListBeforeInput, translateNestedListBeforeInput } from "./beforeinput.js";
 import { containAsyncRejection } from "./contain_async_rejection.js";
-import { type CommandQueueSubmission, BreditorCommandQueue, BreditorFlatListCommandQueue } from "./command_queue.js";
-import { mapDomTargetRange, mapDomFlatListTargetRange } from "./dom_target_range.js";
-import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
+import { type CommandQueueSubmission, BreditorCommandQueue, BreditorFlatListCommandQueue, BreditorNestedListCommandQueue } from "./command_queue.js";
+import { mapDomTargetRange, mapDomFlatListTargetRange, mapDomNestedListTargetRange } from "./dom_target_range.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge, BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
   flatListEditorDeliveryAuthorityAccepts,
+  nestedListEditorDeliveryAuthorityAccepts,
   flatListEditorDeliveryTokenMatchesRender,
+  nestedListEditorDeliveryTokenMatchesRender,
   flatListRangeSelectionSync,
+  nestedListRangeSelectionSync,
   type FlatListEditorCommandRequest,
+  type NestedListEditorCommandRequest,
   type FlatListEditorDeliveryToken,
+  type NestedListEditorDeliveryToken,
   type FlatListEditorSelectionSync,
+  type NestedListEditorSelectionSync,
   editorDeliveryAuthorityAccepts,
   editorDeliveryTokenMatchesRender,
   isEditorDeliveryAuthority,
@@ -32,6 +38,7 @@ import type {
 import {
   translateKeyDown,
   translateFlatListKeyDown,
+  translateNestedListKeyDown,
   type KeyboardSnapshot,
   type KeyboardTranslationPolicy,
 } from "./keyboard.js";
@@ -44,6 +51,7 @@ import {
 import {
   isOwnedRenderedProjection,
   isOwnedFlatListRenderedProjection,
+  isOwnedNestedListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
 import {
@@ -63,16 +71,22 @@ import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
 import { nativeCommandBuilder, type NativeCommandRequest, type NativeDeliveryToken, type NativeSelectionSync } from "./native_command_builder.js";
 import { type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { flatListBlockAtPath, flatListSpatialPositionForPoint, isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
+import { nestedListBlockAtPath, nestedListSpatialPositionForPoint, isOwnedNestedListRangeSelection, type NestedListRangeSelection } from "./nested_list_selection.js";
 import { astPathsEqual } from "./ast_path.js";
 
-type NativeRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
-type NativeRange = BaseRangeSelection | FlatListRangeSelection;
-type NativeBridge = BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
+type NativeRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>;
+type NativeRange = BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection;
+type NativeBridge = BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge | BreditorNestedListDomSelectionBridge;
 
 /** Explicit list event admission dependencies. @internal */
 export interface FlatListBrowserEventControllerOptions extends Omit<BrowserEventControllerOptions, "selectionBridge"> {
   readonly selectionBridge: BreditorFlatListDomSelectionBridge;
+}
+
+export interface NestedListBrowserEventControllerOptions extends Omit<BrowserEventControllerOptions, "selectionBridge"> {
+  readonly selectionBridge: BreditorNestedListDomSelectionBridge;
 }
 
 interface KeyboardReceipt {
@@ -142,8 +156,8 @@ const defaultScheduleTask = (callback: () => void): void => {
  * retained. The semantic model remains the sole editing authority.
  */
 class BrowserEventControllerCore<TResult, R extends NativeRender, D extends NativeDeliveryToken> {
-  readonly #flatLists: boolean;
-  readonly #queue: BreditorCommandQueue<TResult> | BreditorFlatListCommandQueue<TResult>;
+  readonly #flatLists: boolean | "nested";
+  readonly #queue: BreditorCommandQueue<TResult> | BreditorFlatListCommandQueue<TResult> | BreditorNestedListCommandQueue<TResult>;
   readonly #keyboard: KeyboardTranslationPolicy;
   readonly #keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
   readonly #compositionActive: () => boolean;
@@ -153,14 +167,14 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
   #keyboardReceipt: KeyboardReceipt | undefined;
 
   constructor(
-    queue: BreditorCommandQueue<TResult> | BreditorFlatListCommandQueue<TResult>,
-    options: BrowserEventControllerOptions | FlatListBrowserEventControllerOptions,
-    flatLists: boolean,
+    queue: BreditorCommandQueue<TResult> | BreditorFlatListCommandQueue<TResult> | BreditorNestedListCommandQueue<TResult>,
+    options: BrowserEventControllerOptions | FlatListBrowserEventControllerOptions | NestedListBrowserEventControllerOptions,
+    flatLists: boolean | "nested",
   ) {
     this.#flatLists = flatLists;
     let validQueue = false;
     try {
-      validQueue = flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue;
+      validQueue = flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue;
     } catch {
       // Rejected below.
     }
@@ -227,7 +241,7 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
       return this.#cancelBlocked(event, base, "invalidEvent");
     }
 
-    let capturedSelection: EditorSelectionSync | FlatListEditorSelectionSync | undefined;
+    let capturedSelection: EditorSelectionSync | FlatListEditorSelectionSync | NestedListEditorSelectionSync | undefined;
     if (translation.kind === "command") {
       capturedSelection = this.#captureRangeSelection(admitted.rendered);
       if (capturedSelection === undefined) {
@@ -507,7 +521,7 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
       return selectionBlocked("compositionActive");
     }
 
-    let observed: ReturnType<BreditorDomSelectionBridge["read"] | BreditorFlatListDomSelectionBridge["read"]>;
+    let observed: ReturnType<BreditorDomSelectionBridge["read"] | BreditorFlatListDomSelectionBridge["read"] | BreditorNestedListDomSelectionBridge["read"]>;
     try {
       observed = this.#readSelection(rendered);
     } catch {
@@ -539,7 +553,8 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
         return selectionReconcile("domDrift");
       }
       const selection = observed.value.selection;
-      const sync = selection === null ? noSelectionSync() : isOwnedFlatListRangeSelection(selection)
+      const sync = selection === null ? noSelectionSync() : isOwnedNestedListRangeSelection(selection)
+        ? nestedListRangeSelectionSync(selection) : isOwnedFlatListRangeSelection(selection)
         ? flatListRangeSelectionSync(selection) : rangeSelectionSync(selection);
       const request = nativeCommandBuilder(this.#flatLists, delivery, sync).request(
         {kind: "selectionchange", detail: "document-selection"}, {kind: "selection", operation: "synchronize"}, "preserve");
@@ -641,13 +656,14 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
 
   #captureRangeSelection(
     rendered: NativeRender,
-  ): EditorSelectionSync | FlatListEditorSelectionSync | undefined {
+  ): EditorSelectionSync | FlatListEditorSelectionSync | NestedListEditorSelectionSync | undefined {
     try {
       const observed = this.#readSelection(rendered);
       if (!observed.ok || observed.value.kind !== "range") {
         return undefined;
       }
-      return isOwnedFlatListRangeSelection(observed.value.selection)
+      return isOwnedNestedListRangeSelection(observed.value.selection)
+        ? nestedListRangeSelectionSync(observed.value.selection) : isOwnedFlatListRangeSelection(observed.value.selection)
         ? flatListRangeSelectionSync(observed.value.selection) : rangeSelectionSync(observed.value.selection);
     } catch {
       return undefined;
@@ -679,7 +695,8 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
 
   #submit(request: NativeCommandRequest): CommandQueueSubmission<TResult> {
     try {
-      return this.#queue instanceof BreditorFlatListCommandQueue
+      return this.#queue instanceof BreditorNestedListCommandQueue
+        ? this.#queue.submit(request as NestedListEditorCommandRequest) : this.#queue instanceof BreditorFlatListCommandQueue
         ? this.#queue.submit(request as FlatListEditorCommandRequest)
         : this.#queue.submit(request as EditorCommandRequest);
     } catch {
@@ -694,34 +711,37 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
   }
 
   #ownsRender(rendered: NativeRender): boolean {
-    return this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered);
+    return this.#flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered);
   }
 
   #acceptsDelivery(delivery: NativeDeliveryToken): boolean {
-    return this.#flatLists ? flatListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)
+    return this.#flatLists === "nested" ? nestedListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery) : this.#flatLists ? flatListEditorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)
       : editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery);
   }
 
   #matchesRender(delivery: NativeDeliveryToken, rendered: NativeRender): boolean {
-    return this.#flatLists ? flatListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<FlatListDocumentProjection>)
+    return this.#flatLists === "nested" ? nestedListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<NestedListDocumentProjection>) : this.#flatLists ? flatListEditorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection<FlatListDocumentProjection>)
       : editorDeliveryTokenMatchesRender(delivery, rendered as RenderedProjection);
   }
 
   #readSelection(rendered: NativeRender): ReturnType<NativeBridge["read"]> {
-    return this.#selectionBridge instanceof BreditorFlatListDomSelectionBridge
+    return this.#selectionBridge instanceof BreditorNestedListDomSelectionBridge
+      ? this.#selectionBridge.read(rendered as RenderedProjection<NestedListDocumentProjection>) : this.#selectionBridge instanceof BreditorFlatListDomSelectionBridge
       ? this.#selectionBridge.read(rendered as RenderedProjection<FlatListDocumentProjection>)
       : this.#selectionBridge.read(rendered as RenderedProjection);
   }
 
   #translateBeforeInput(input: InputEventSnapshot, composing: boolean, delivery: NativeDeliveryToken, selection: NativeSelectionSync) {
-    return this.#flatLists
+    return this.#flatLists === "nested"
+      ? translateNestedListBeforeInput(input, composing, delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync) : this.#flatLists
       ? translateFlatListBeforeInput(input, composing, delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync)
       : translateBeforeInput(input, composing, delivery as EditorDeliveryToken, selection as EditorSelectionSync);
   }
 
   #translateKeyDown(input: KeyboardSnapshot, policy: KeyboardTranslationPolicy, composing: boolean,
     delivery: NativeDeliveryToken, selection: NativeSelectionSync, shortcuts: BrowserCompiledKeyboardShortcuts) {
-    return this.#flatLists
+    return this.#flatLists === "nested"
+      ? translateNestedListKeyDown(input, policy, composing, delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync, shortcuts) : this.#flatLists
       ? translateFlatListKeyDown(input, policy, composing, delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync, shortcuts)
       : translateKeyDown(input, policy, composing, delivery as EditorDeliveryToken, selection as EditorSelectionSync, shortcuts);
   }
@@ -781,6 +801,11 @@ export class BreditorFlatListBrowserEventController<TResult> extends BrowserEven
   constructor(queue: BreditorFlatListCommandQueue<TResult>, options: FlatListBrowserEventControllerOptions) { super(queue, options, true); }
 }
 
+/** Explicit recursive-list event delivery. @internal */
+export class BreditorNestedListBrowserEventController<TResult> extends BrowserEventControllerCore<TResult, RenderedProjection<NestedListDocumentProjection>, NestedListEditorDeliveryToken> {
+  constructor(queue: BreditorNestedListCommandQueue<TResult>, options: NestedListBrowserEventControllerOptions) { super(queue, options, "nested"); }
+}
+
 function validateTargetRangeForTranslation(
   rendered: NativeRender,
   inputType: string,
@@ -799,7 +824,8 @@ function validateTargetRangeForTranslation(
   if (targets.count === "multiple") {
     return "targetRangeCount";
   }
-  const target = isOwnedFlatListRenderedProjection(rendered) ? mapDomFlatListTargetRange(rendered, targets.range)
+  const target = isOwnedNestedListRenderedProjection(rendered) ? mapDomNestedListTargetRange(rendered, targets.range)
+    : isOwnedFlatListRenderedProjection(rendered) ? mapDomFlatListTargetRange(rendered, targets.range)
     : mapDomTargetRange(rendered as RenderedProjection, targets.range);
   if (!target.ok) {
     return "targetRangeInvalid";
@@ -879,7 +905,8 @@ function targetRangeMatchesSelection(
   const path = selectionStart.textPath;
   const paragraphIndex = path[0];
   const runIndex = path[path.length - 1];
-  const paragraph = isOwnedFlatListRenderedProjection(rendered)
+  const paragraph = isOwnedNestedListRenderedProjection(rendered)
+    ? nestedListBlockAtPath(rendered.projection, path.slice(0, -1)) : isOwnedFlatListRenderedProjection(rendered)
     ? flatListBlockAtPath(rendered.projection, path.slice(0, -1))
     : paragraphIndex === undefined ? undefined : (rendered as RenderedProjection).projection.paragraphs[paragraphIndex];
   const run = runIndex === undefined ? undefined : paragraph?.runs[runIndex];
@@ -905,6 +932,12 @@ function targetRangeMatchesSelection(
 function targetPointHasSamePosition(rendered: NativeRender,
   target: BaseRangeSelection["anchor"], selected: BaseRangeSelection["anchor"]): boolean {
   if (baseSelectionPointsEqual(target, selected)) return true;
+  if (isOwnedNestedListRenderedProjection(rendered)) {
+    const a = nestedListSpatialPositionForPoint(rendered.projection, target);
+    const b = nestedListSpatialPositionForPoint(rendered.projection, selected);
+    return a !== null && b !== null && a.utf16Offset === b.utf16Offset &&
+      astPathsEqual(a.textBlockPath, b.textBlockPath);
+  }
   if (isOwnedFlatListRenderedProjection(rendered)) {
     const a = flatListSpatialPositionForPoint(rendered.projection, target);
     const b = flatListSpatialPositionForPoint(rendered.projection, selected);
@@ -1134,7 +1167,7 @@ function commandFingerprint(request: NativeCommandRequest): string {
 
 function snapshotControllerOptions(
   value: unknown,
-  flatLists: boolean,
+  flatLists: boolean | "nested",
 ): Readonly<{
   keyboard: KeyboardTranslationPolicy;
   keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
@@ -1161,7 +1194,7 @@ function snapshotControllerOptions(
   if (
     keyboard === null ||
     !isOwnedBrowserCompiledKeyboardShortcuts(keyboardShortcuts) ||
-    !(flatLists ? selectionBridge instanceof BreditorFlatListDomSelectionBridge : selectionBridge instanceof BreditorDomSelectionBridge) ||
+    !(flatLists === "nested" ? selectionBridge instanceof BreditorNestedListDomSelectionBridge : flatLists ? selectionBridge instanceof BreditorFlatListDomSelectionBridge : selectionBridge instanceof BreditorDomSelectionBridge) ||
     !isEditorDeliveryAuthority(deliveryAuthority) ||
     typeof compositionActive !== "function" ||
     typeof scheduleTask !== "function"

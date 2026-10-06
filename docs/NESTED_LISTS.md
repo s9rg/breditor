@@ -449,5 +449,14 @@ These are synthetic-event/ABI tests, not physical Japanese IME qualification.
 Cross-block composition remains rejected; native router/editor attachment is
 still pending.
 
+Nested ordinary-event and router facades now connect keyboard/beforeinput,
+selection synchronization, clipboard and composition controllers to one host
+owner. Tests cover listener priority/disposal, constructor rollback, exclusive
+ownership, terminal queue failure and a dispatched DOM text event with deep
+target ranges. Unexpected native DOM mutation is restored without replaying the
+content command. These tests use jsdom and simulated generated results; public
+editor integration, nested toolbar/indent shortcuts and real-browser qualification
+remain incomplete.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
