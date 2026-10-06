@@ -227,7 +227,7 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
       return this.#cancelBlocked(event, base, "invalidEvent");
     }
 
-    let capturedSelection: NativeSelectionSync | undefined;
+    let capturedSelection: EditorSelectionSync | FlatListEditorSelectionSync | undefined;
     if (translation.kind === "command") {
       capturedSelection = this.#captureRangeSelection(admitted.rendered);
       if (capturedSelection === undefined) {
@@ -641,7 +641,7 @@ class BrowserEventControllerCore<TResult, R extends NativeRender, D extends Nati
 
   #captureRangeSelection(
     rendered: NativeRender,
-  ): NativeSelectionSync | undefined {
+  ): EditorSelectionSync | FlatListEditorSelectionSync | undefined {
     try {
       const observed = this.#readSelection(rendered);
       if (!observed.ok || observed.value.kind !== "range") {

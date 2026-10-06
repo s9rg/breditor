@@ -61,6 +61,8 @@ import { issueNestedListEditorDeliveryToken, nestedListEditorDeliveryTokenMatche
 import { NestedListTargetRange, isOwnedNestedListTargetRange } from "./nested_list_target_range.js";
 import { mapDomNestedListTargetRange } from "./dom_target_range.js";
 import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
+import { translateNestedListBeforeInput } from "./beforeinput.js";
+import { translateNestedListKeyDown } from "./keyboard.js";
 import { projectNestedListPlainText } from "./projection_plain_text.js";
 import { serializeNestedListClipboardSelection } from "./clipboard_fragment.js";
 import { nestedListProjectionPresentation } from "./nested_list_projection.js";
@@ -144,6 +146,19 @@ describe("recursive nested-list DOM", () => {
     return nestedListCommandRequest(token, preserveSelectionSync(), {kind: "api", detail: "nested queue"},
       {kind: "action", actionId: nestedListBrowserInputActionIds(token).insertText, input: {kind: "string", value: "x"}});
   }
+  it("routes nested input syntax without widening legacy translation", () => {
+    const request = nestedRequest(), delivery = request.delivery, selection = request.selection;
+    for (const [inputType, suffix] of [["insertText", "text"], ["insertParagraph", "break"], ["deleteContentBackward", "backward"], ["deleteContentForward", "forward"]]) {
+      const input = {inputType: inputType!, data: inputType === "insertText" ? "日本" : null, isComposing: false};
+      const translated = translateNestedListBeforeInput(input, false, delivery, selection);
+      expect(translated).toMatchObject({kind: "command", request: {command: {actionId: expect.stringContaining(`nested-list-${suffix}`)}}});
+      expect(translateBeforeInput(input, false, delivery as never, selection as never)).toEqual({kind: "invalid"});
+    }
+    expect(translateNestedListBeforeInput({inputType: "insertText", data: "a", isComposing: true}, false, delivery, selection)).toEqual({kind: "composition"});
+    const key = {key: "Enter", code: "Enter", altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, repeat: false, isComposing: false, keyCode: 13, altGraph: false};
+    expect(translateNestedListKeyDown(key, {editing: "structuralFallback", primaryModifier: "meta", shortcuts: "enabled"}, false, delivery, selection))
+      .toMatchObject({kind: "command", request: {command: {actionId: "breditor/insert-nested-list-break"}}});
+  });
   it("serializes reentrant nested requests and quarantines uncertain execution", () => {
     const request = nestedRequest(), calls: string[] = [];
     const queue: BreditorNestedListCommandQueue<string> = new BreditorNestedListCommandQueue(() => {

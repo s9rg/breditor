@@ -1,3 +1,4 @@
+import type { NestedListEditorCommandRequest, NestedListEditorDeliveryToken, NestedListEditorSelectionSync } from "./editor_command.js";
 import {
   BASE_INTENT_IDS,
   browserCommandTextIsAdmissible,
@@ -50,8 +51,14 @@ export function translateFlatListBeforeInput(snapshot: BeforeInputSnapshot, comp
   return translateInput(snapshot, compositionActive, delivery, selection, true) as BeforeInputTranslation<FlatListEditorCommandRequest>;
 }
 
+/** Explicit recursive-list translation using nested-only command admission. @internal */
+export function translateNestedListBeforeInput(snapshot: BeforeInputSnapshot, compositionActive: boolean,
+  delivery: NestedListEditorDeliveryToken, selection: NestedListEditorSelectionSync): BeforeInputTranslation<NestedListEditorCommandRequest> {
+  return translateInput(snapshot, compositionActive, delivery, selection, "nested") as BeforeInputTranslation<NestedListEditorCommandRequest>;
+}
+
 function translateInput(snapshot: BeforeInputSnapshot, compositionActive: boolean,
-  delivery: NativeDeliveryToken, selection: NativeSelectionSync, flatLists: boolean): BeforeInputTranslation<NativeCommandRequest> {
+  delivery: NativeDeliveryToken, selection: NativeSelectionSync, flatLists: boolean | "nested"): BeforeInputTranslation<NativeCommandRequest> {
   const safeSnapshot = snapshotBeforeInput(snapshot);
   if (safeSnapshot === null || typeof compositionActive !== "boolean") {
     return Object.freeze({ kind: "invalid" });
@@ -68,7 +75,7 @@ function translateSafeBeforeInput(
   compositionActive: boolean,
   delivery: NativeDeliveryToken,
   selection: NativeSelectionSync,
-  flatLists: boolean,
+  flatLists: boolean | "nested",
 ): BeforeInputTranslation<NativeCommandRequest> {
   if (compositionActive || snapshot.isComposing || isCompositionInputType(snapshot.inputType)) {
     return Object.freeze({ kind: "composition" });

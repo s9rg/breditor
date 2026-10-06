@@ -1,3 +1,4 @@
+import type { NestedListEditorCommandRequest, NestedListEditorDeliveryToken, NestedListEditorSelectionSync } from "./editor_command.js";
 import {
   type FlatListEditorCommandRequest,
   type FlatListEditorDeliveryToken,
@@ -74,9 +75,16 @@ export function translateFlatListKeyDown(snapshot: KeyboardSnapshot, policy: Key
   return translateKeyboard(snapshot, policy, compositionActive, delivery, selection, shortcuts, true) as KeyboardTranslation<FlatListEditorCommandRequest>;
 }
 
+/** Explicit recursive-list translation using nested-only command admission. @internal */
+export function translateNestedListKeyDown(snapshot: KeyboardSnapshot, policy: KeyboardTranslationPolicy,
+  compositionActive: boolean, delivery: NestedListEditorDeliveryToken, selection: NestedListEditorSelectionSync,
+  shortcuts: BrowserCompiledKeyboardShortcuts = DEFAULT_COMPILED_KEYBOARD_SHORTCUTS): KeyboardTranslation<NestedListEditorCommandRequest> {
+  return translateKeyboard(snapshot, policy, compositionActive, delivery, selection, shortcuts, "nested") as KeyboardTranslation<NestedListEditorCommandRequest>;
+}
+
 function translateKeyboard(snapshot: KeyboardSnapshot, policy: KeyboardTranslationPolicy, compositionActive: boolean,
   delivery: NativeDeliveryToken, selection: NativeSelectionSync, shortcuts: BrowserCompiledKeyboardShortcuts,
-  flatLists: boolean): KeyboardTranslation<NativeCommandRequest> {
+  flatLists: boolean | "nested"): KeyboardTranslation<NativeCommandRequest> {
   const safeSnapshot = snapshotKeyboard(snapshot);
   const safePolicy = snapshotPolicy(policy);
   if (
@@ -109,7 +117,7 @@ function translateSafeKeyDown(
   delivery: NativeDeliveryToken,
   selection: NativeSelectionSync,
   shortcuts: BrowserCompiledKeyboardShortcuts,
-  flatLists: boolean,
+  flatLists: boolean | "nested",
 ): KeyboardTranslation<NativeCommandRequest> {
   if (
     compositionActive ||

@@ -391,5 +391,12 @@ their retained bytes. This storage layer treats checkpoint text as opaque;
 semantic validation and Rust replay are still required by the adapter before
 engine restoration. This is not an end-to-end recovery qualification.
 
+Explicit nested beforeinput and keyboard translators now use nested-only command
+admission and Rust action IDs through the shared syntax mapper. Tests cover
+typing, backward/forward deletion, Enter fallback, composition routing and
+legacy translation rejection. Existing controller selection capture remains
+base/flat-only until nested controller wiring is implemented. Tab/Shift-Tab
+indent/outdent capability routing and live native delivery remain pending.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
