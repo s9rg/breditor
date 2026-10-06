@@ -458,5 +458,14 @@ content command. These tests use jsdom and simulated generated results; public
 editor integration, nested toolbar/indent shortcuts and real-browser qualification
 remain incomplete.
 
+Nested toolbar request/dispatcher capabilities now preserve the core selection
+and use the nested adapter's captured executor under an exclusive queue lease.
+Tests cover busy rejection, foreign owners, observer reentrancy, public-method
+overrides, disposal and terminal uncertainty. The separate nested manifest adds
+Indent/Outdent using the Rust profile's named intents and tracked-state contracts,
+with explicit history boundaries. The manifest still needs connection to the
+public editor and validation against a real generated nested profile; these are
+not yet working toolbar buttons in the running demo.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

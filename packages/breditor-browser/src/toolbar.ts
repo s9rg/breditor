@@ -13,6 +13,8 @@ import {
   type EngineCommandRequest,
   type FlatListEditorDeliveryToken,
   type FlatListEditorCommandRequest,
+  type NestedListEditorDeliveryToken,
+  type NestedListEditorCommandRequest,
 } from "./editor_command.js";
 import { nativeCommandBuilder, type NativeDeliveryToken, type NativeCommandRequest } from "./native_command_builder.js";
 import {
@@ -173,8 +175,14 @@ export function flatListToolbarCommandRequest(delivery: FlatListEditorDeliveryTo
   return buildToolbarCommand(delivery, invocation, true) as FlatListEditorCommandRequest;
 }
 
+/** Explicit recursive-list toolbar request with preserved editor selection. @internal */
+export function nestedListToolbarCommandRequest(delivery: NestedListEditorDeliveryToken,
+  invocation: ToolbarCommandInvocation): NestedListEditorCommandRequest {
+  return buildToolbarCommand(delivery, invocation, "nested") as NestedListEditorCommandRequest;
+}
+
 function buildToolbarCommand(delivery: NativeDeliveryToken, invocation: ToolbarCommandInvocation,
-  flatLists: boolean): NativeCommandRequest {
+  flatLists: boolean | "nested"): NativeCommandRequest {
   const safeInvocation = snapshotToolbarInvocation(invocation);
   const stateId = safeInvocation?.stateId;
   const selection = safeInvocation?.selection;
