@@ -745,6 +745,15 @@ redo failure. Native qualification remains separate from the consumer fixture's
 automated `keyboardProbe` mode, which keeps the editor alive for interaction but
 does not itself prove OS input, clipboard or spoken accessibility behavior.
 
+Installed Chrome UI check against the unchanged single-package consumer
+`breditor-opt-in-consumer-4uZyOP` (`nested-list-opt-in-k3OedF`): clicking Second
+then sending Tab nests it beneath First with Deep preserved; Shift+Tab restores
+the original hierarchy. Toolbar Undo restores nesting and Redo restores the
+outdented hierarchy. Clicking First disables Indent/Outdent; Tab moves focus to
+the After editor input without changing list structure. These were browser-tool
+key presses and UI observations, not physical-keyboard, clipboard, IME or spoken
+screen-reader qualification. No OS input/accessibility settings were changed.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
