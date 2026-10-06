@@ -29,7 +29,7 @@ impl BreditorEngine {
                     "the current editor state could not be encoded",
                 )),
             },
-            3 | 5 | 6 => match EditorStateJsonCodecV3::new(state.context().clone()).encode(state) {
+            3 | 5 | 6 | 7 => match EditorStateJsonCodecV3::new(state.context().clone()).encode(state) {
                 Ok(json) => BreditorStringResult::from_value(json),
                 Err(error) => BreditorStringResult::from_error(BreditorError::codec(
                     error.code(),

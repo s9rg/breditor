@@ -286,6 +286,18 @@ impl BreditorIntentResult {
             return BreditorStringResult::absent();
         };
         match self.checkpoint_format_version {
+            #[cfg(feature = "experimental-nested-lists")]
+            7 => {
+                match breditor_core::codec::CommitJsonCodecV7::new(commit.after().context().clone())
+                    .encode(commit)
+                {
+                    Ok(json) => BreditorStringResult::from_value(json),
+                    Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                        error.code(),
+                        "the published nested intent commit could not be encoded",
+                    )),
+                }
+            }
             1 | 2 => {
                 match CommitJsonCodecV2::new(commit.after().context().clone()).encode(commit) {
                     Ok(json) => BreditorStringResult::from_value(json),

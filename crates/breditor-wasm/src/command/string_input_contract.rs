@@ -7,6 +7,19 @@ use breditor_core::action::{
 };
 
 pub(super) fn supports_string_input(action: &ActionId, contract: &ActionInputContract) -> bool {
+    #[cfg(feature = "experimental-nested-lists")]
+    {
+        use breditor_core::action::builtins::{
+            insert_nested_list_plain_text_action_id, insert_nested_list_text_action_id,
+        };
+        if (action == &insert_nested_list_text_action_id()
+            && contract == &insert_text_input_contract())
+            || (action == &insert_nested_list_plain_text_action_id()
+                && contract == &insert_plain_text_input_contract())
+        {
+            return true;
+        }
+    }
     #[cfg(feature = "experimental-flat-lists")]
     {
         use breditor_core::action::builtins::{

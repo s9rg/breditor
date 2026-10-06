@@ -189,5 +189,14 @@ checks an over-budget paste leaves state, observation, cached checkpoint bytes
 and a reusable redo branch untouched. Wasm/browser profile integration remains
 outstanding.
 
+The Wasm crate now has an explicit `experimental-nested-lists` feature.
+`fromBootstrapJsonV5` selects the nested compiled profile, and the V7 document
+and session factories retain checkpoint-before-publication semantics. String
+input admits the nested typing/paste contracts; state/document exports retain
+their existing structural JSON versions and nested commands/intents export V7
+commits. Bridge tests cover a real child list, fresh-owner redo, old-bootstrap
+rejection and old-session-factory rejection. This does not rebuild or qualify
+the shipping bundles, and browser nested projection/rendering remains unfinished.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

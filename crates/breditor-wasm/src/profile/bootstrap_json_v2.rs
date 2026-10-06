@@ -160,6 +160,16 @@ pub(crate) fn decode_flat_list_profile(json: &str) -> Result<CompiledEditorProfi
         .map_err(|_| profile_compilation())
 }
 
+/// V5 explicitly selects nested commands; old bootstrap versions stay unchanged.
+#[cfg(feature = "experimental-nested-lists")]
+pub(crate) fn decode_nested_list_profile(
+    json: &str,
+) -> Result<CompiledEditorProfile, BreditorError> {
+    let (schema, extensions) = decode_configuration(json, 5)?;
+    CompiledEditorProfile::try_compile_nested_list_profile(schema, extensions)
+        .map_err(|_| profile_compilation())
+}
+
 fn decode_configuration(
     json: &str,
     version: u32,

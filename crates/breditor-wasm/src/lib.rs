@@ -20,6 +20,8 @@ mod compiled_profile_engine_v3;
 mod compiled_profile_engine_v5;
 #[cfg(feature = "experimental-flat-lists")]
 mod compiled_profile_engine_v6;
+#[cfg(feature = "experimental-nested-lists")]
+mod compiled_profile_engine_v7;
 mod document_json;
 mod engine;
 mod engine_result;
