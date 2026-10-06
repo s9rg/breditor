@@ -947,3 +947,24 @@ either side rejects the claimed impact. Targeted projection-adapter tests pass
 145 cases; the full browser suite passes 2,096 tests across 55 files and both
 production/test TypeScript checks pass. This adds deterministic validation
 coverage, not a reproduction or fix of the intermittent WebKit failure.
+
+### Current single-package native Safari checkpoint
+
+Served the already-built external consumer for `nested-list-opt-in-WNID8x`
+(archive SHA-256 `8c466298da0fc1c3c1ce3751f9bf46089df3b7d3e7c52941171dcbe2cd6e76fa`)
+at `127.0.0.1:4316/?keyboardProbe`. Native Safari application control observed:
+Tab nests `Second` beneath `First` while preserving `Deep 🙂`; Shift-Tab restores
+the original structure and ordered markers 3/4. Clicking the visible deep text
+and selecting with Command-Left / Command-Shift-Right copies exactly `Deep 🙂`
+into the ordinary outside input. Native Cut removes that paragraph's text once;
+one toolbar Undo restores it. Native Paste at its end produces `Deep 🙂Deep 🙂`,
+and one Undo restores `Deep 🙂` with its list structure intact.
+
+The initial accessibility `selectText` attempt targeted a different range and
+is not credited as the intended single-item test. After switching to visible
+text clicks and native keyboard selection, the outside input provided the exact
+copy observation. The first post-paste accessibility snapshot was transitional;
+the subsequent screenshot/tree showed the complete single insertion. These are
+OS-generated UI checks, not human physical IME, VoiceOver speech, exact serialized
+selection proof, cross-item clipboard qualification, or WebKit fault closure.
+No system input/VoiceOver settings were changed.
