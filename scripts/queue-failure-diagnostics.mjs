@@ -54,7 +54,7 @@ export function instrumentProjectionUpdateFailures(code) {
 
 /** Label existing rejection expressions without changing their returned value. */
 export function instrumentProjectionValidationSites(code, moduleName) {
-  assert.ok(["wasm_projection_adapter", "flat_list_projection_update"].includes(moduleName));
+  assert.ok(["wasm_projection_adapter", "flat_list_projection_update", "nested_list_projection_update"].includes(moduleName));
   let sites = 0;
   const transformed = code.replace(/projectionFailure\("(projection\.[a-z_]+)"\)/gu, (expression, errorCode, offset) => {
     // These are default result placeholders, not taken rejection branches.

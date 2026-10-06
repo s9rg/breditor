@@ -727,6 +727,15 @@ branch is not yet captured. Report:
 `ee3f6d89d49550d16c498063346179e97d86441375e77b782c88d3ab1025488e`.
 The current package's clean repeats do not establish resolution of this fault.
 
+The nested diagnostic runner now labels rejection expressions in both
+`wasm_projection_adapter` and `nested_list_projection_update`, requiring each
+module to be transformed exactly once. Failure identities and logger exceptions
+are regression-tested (18 tests pass; the opt-in browser positive control was
+not run in this invocation). The first branch-labeled retained-package repeat
+completed 90 cycles without a rejection; report
+`breditor-nested-list-consumer-RBqXwA/performance-ShGZVn/measurement.json`.
+This is additional instrumentation, not a fix or a closed intermittent issue.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.

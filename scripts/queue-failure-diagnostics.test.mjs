@@ -156,6 +156,20 @@ test("projection site labels preserve values and contain failing loggers", () =>
   assert.equal(labeled.split("breditor projection rejection site").length, 2);
 });
 
+test("nested update rejection labels preserve failure identity and tolerate logger failure", () => {
+  const source = 'return projectionFailure("projection.invalid_update");';
+  const transformed = instrumentProjectionValidationSites(source, "nested_list_projection_update");
+  const result = Object.freeze({ok: false});
+  for (const hostile of [false, true]) {
+    const logs = [];
+    assert.equal(new Function("projectionFailure", "console", transformed)(() => result, {error(...args) {
+      if (hostile) throw new Error("logger");
+      logs.push(args);
+    }}), result);
+    if (!hostile) assert.equal(logs[0][1], "nested_list_projection_update:1:projection.invalid_update");
+  }
+});
+
 test("projection rejection diagnostics preserve the thrown failure even when logging fails", () => {
   const source = 'if (!converted.ok) { throw new TypeError("Wasm projection update is invalid"); }';
   for (const hostile of [false, true]) {
