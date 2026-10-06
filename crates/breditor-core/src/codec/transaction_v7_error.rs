@@ -135,4 +135,3 @@ impl TransactionV7CodecError {
         }
     }
 }
-

@@ -35,6 +35,10 @@ fn exact(actual: &EditorState, expected: &EditorState) {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep the complete exact-state/history regression scenario together."
+)]
 fn nested_session_v7_recovers_every_cursor_and_retains_exact_undo_redo() -> TestResult {
     let context = context()?;
     let mut items = Vec::new();

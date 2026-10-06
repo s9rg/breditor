@@ -406,4 +406,3 @@ fn commit_record_error_from_editor_value_v2(error: &EditorValueRecordV2Error) ->
         });
     CommitRecordError::new(code, location, error.diagnostic_value().clone()).into()
 }
-

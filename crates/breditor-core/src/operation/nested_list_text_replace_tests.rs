@@ -47,6 +47,10 @@ fn range(
     )?)
 }
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep the complete exact-state/history regression scenario together."
+)]
 fn nested_structural_split_and_cross_descendant_replacement_restore_exactly() -> TestResult {
     let context = EditorContext::new(
         CompiledSchema::try_compile_nested_list_profile(

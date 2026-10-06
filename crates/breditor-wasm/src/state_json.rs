@@ -29,13 +29,15 @@ impl BreditorEngine {
                     "the current editor state could not be encoded",
                 )),
             },
-            3 | 5 | 6 | 7 => match EditorStateJsonCodecV3::new(state.context().clone()).encode(state) {
-                Ok(json) => BreditorStringResult::from_value(json),
-                Err(error) => BreditorStringResult::from_error(BreditorError::codec(
-                    error.code(),
-                    "the current editor state could not be encoded",
-                )),
-            },
+            3 | 5 | 6 | 7 => {
+                match EditorStateJsonCodecV3::new(state.context().clone()).encode(state) {
+                    Ok(json) => BreditorStringResult::from_value(json),
+                    Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                        error.code(),
+                        "the current editor state could not be encoded",
+                    )),
+                }
+            }
             _ => BreditorStringResult::from_error(BreditorError::new(
                 crate::error::UNSUPPORTED_CHECKPOINT_FORMAT_CODE,
                 "the engine checkpoint format is unsupported",

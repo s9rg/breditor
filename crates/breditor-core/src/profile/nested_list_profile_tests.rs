@@ -171,8 +171,8 @@ fn nested_profile_indent_and_outdent_route_real_nested_handlers() -> TestResult 
 
 #[test]
 fn nested_profile_reserved_ids_and_extension_capacity_are_enforced() -> TestResult {
-    let id =
-        || SchemaId::new(name("test/nested-limits").expect("static name"), SchemaVersion::one());
+    let schema_name = name("test/nested-limits")?;
+    let id = || SchemaId::new(schema_name.clone(), SchemaVersion::one());
     assert!(
         CompiledEditorProfile::try_compile_nested_list_profile(
             id(),

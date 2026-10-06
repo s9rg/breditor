@@ -44,4 +44,3 @@ where
         record.end()
     }
 }
-

@@ -418,6 +418,8 @@ mod local_log_tail_step_v3;
 mod local_log_tail_v2_tests;
 #[cfg(test)]
 mod local_log_tail_v3_tests;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod nested_session_v7_tests;
 mod operation_error;
 mod operation_json;
 mod operation_json_v2;
@@ -437,19 +439,25 @@ mod operation_json_v6;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_json_v7;
 #[cfg(feature = "experimental-structural-properties")]
-mod session_checkpoint_json_v7;
-#[cfg(feature = "experimental-structural-properties")]
 mod session_checkpoint_encoding_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_entries_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_json_v7;
 #[cfg(feature = "experimental-structural-properties")]
 mod session_checkpoint_v7_error;
 #[cfg(feature = "experimental-structural-properties")]
-mod session_checkpoint_entries_v7;
-#[cfg(all(test, feature = "experimental-structural-properties"))]
-mod nested_session_v7_tests;
-#[cfg(feature = "experimental-structural-properties")]
-pub use session_checkpoint_json_v7::{SESSION_CHECKPOINT_V7_FORMAT_VERSION, SessionCheckpointJsonCodecV7};
+pub use session_checkpoint_json_v7::{
+    SESSION_CHECKPOINT_V7_FORMAT_VERSION, SessionCheckpointJsonCodecV7,
+};
 #[cfg(feature = "experimental-structural-properties")]
 pub use session_checkpoint_v7_error::SessionCheckpointV7CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_encoding_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_json_v7;
+#[cfg(feature = "experimental-structural-properties")]
+mod commit_v7_error;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_sequence_v7;
 #[cfg(feature = "experimental-structural-properties")]
@@ -457,27 +465,21 @@ mod transaction_json_v7;
 #[cfg(feature = "experimental-structural-properties")]
 mod transaction_v7_error;
 #[cfg(feature = "experimental-structural-properties")]
-mod commit_json_v7;
+pub use commit_json_v7::{COMMIT_V7_FORMAT_VERSION, CommitJsonCodecV7};
 #[cfg(feature = "experimental-structural-properties")]
-mod commit_encoding_v7;
-#[cfg(feature = "experimental-structural-properties")]
-mod commit_v7_error;
+pub use commit_v7_error::CommitV7CodecError;
 #[cfg(feature = "experimental-structural-properties")]
 pub use transaction_json_v7::{TRANSACTION_REQUEST_V7_FORMAT_VERSION, TransactionJsonCodecV7};
 #[cfg(feature = "experimental-structural-properties")]
 pub use transaction_v7_error::TransactionV7CodecError;
 #[cfg(feature = "experimental-structural-properties")]
-pub use commit_json_v7::{COMMIT_V7_FORMAT_VERSION, CommitJsonCodecV7};
-#[cfg(feature = "experimental-structural-properties")]
-pub use commit_v7_error::CommitV7CodecError;
-#[cfg(feature = "experimental-structural-properties")]
-mod operation_payload_v7;
-#[cfg(feature = "experimental-structural-properties")]
-mod nested_text_wire;
-#[cfg(feature = "experimental-structural-properties")]
 mod nested_format_wire;
 #[cfg(feature = "experimental-structural-properties")]
 mod nested_replace_wire;
+#[cfg(feature = "experimental-structural-properties")]
+mod nested_text_wire;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_payload_v7;
 #[cfg(feature = "experimental-structural-properties")]
 mod operation_v7_error;
 #[cfg(feature = "experimental-structural-properties")]

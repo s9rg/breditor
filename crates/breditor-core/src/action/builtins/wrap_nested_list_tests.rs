@@ -20,7 +20,7 @@ pub(super) fn entries(
         "breditor/ordered-list" => Some(true),
         _ => marker,
     };
-    for child in element.children().iter() {
+    for child in element.children() {
         entries(child, marker, output)?;
     }
     Ok(())

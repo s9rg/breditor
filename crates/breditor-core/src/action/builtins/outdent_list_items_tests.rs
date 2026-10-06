@@ -18,6 +18,10 @@ use crate::{
 use std::error::Error;
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep the complete exact-state/history regression scenario together."
+)]
 fn outdent_middle_prefix_suffix_and_whole_runs_preserve_reading_order_and_history() -> TestResult {
     for numbered in [false, true] {
         for (first, end) in [(0_usize, 1_usize), (1, 2), (1, 3), (0, 3)] {

@@ -1,48 +1,58 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
 #[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_selection;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_structure;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_support;
+#[cfg(feature = "experimental-structural-properties")]
 mod insert_nested_list_break;
+#[cfg(feature = "experimental-structural-properties")]
+mod insert_nested_list_plain_text;
+#[cfg(feature = "experimental-structural-properties")]
+mod insert_nested_list_structure;
 #[cfg(feature = "experimental-structural-properties")]
 mod nested_list_range_layout;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod nested_list_range_tests;
 #[cfg(feature = "experimental-structural-properties")]
-mod insert_nested_list_structure;
-#[cfg(feature = "experimental-structural-properties")]
-mod delete_nested_list_selection;
-#[cfg(feature = "experimental-structural-properties")]
-mod delete_nested_list_support;
-#[cfg(feature = "experimental-structural-properties")]
-mod delete_nested_list_structure;
-#[cfg(feature = "experimental-structural-properties")]
-mod insert_nested_list_plain_text;
-#[cfg(feature = "experimental-structural-properties")]
 mod set_nested_list_block_kind;
+#[cfg(feature = "experimental-structural-properties")]
+mod unwrap_nested_list;
 #[cfg(feature = "experimental-structural-properties")]
 mod wrap_nested_list;
 #[cfg(feature = "experimental-structural-properties")]
-mod unwrap_nested_list;
+pub use insert_nested_list_plain_text::{
+    InsertNestedListPlainTextAction, insert_nested_list_plain_text_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use set_nested_list_block_kind::SetNestedListBlockKindAction;
 #[cfg(feature = "experimental-structural-properties")]
 pub use unwrap_nested_list::UnwrapNestedListAction;
 #[cfg(feature = "experimental-structural-properties")]
 pub use wrap_nested_list::WrapNestedListAction;
 #[cfg(feature = "experimental-structural-properties")]
-pub use set_nested_list_block_kind::SetNestedListBlockKindAction;
-#[cfg(feature = "experimental-structural-properties")]
-pub use insert_nested_list_plain_text::{InsertNestedListPlainTextAction, insert_nested_list_plain_text_action_id};
-#[cfg(feature = "experimental-structural-properties")]
 mod delete_nested_list_backward;
 #[cfg(feature = "experimental-structural-properties")]
 mod delete_nested_list_forward;
 #[cfg(feature = "experimental-structural-properties")]
-pub use delete_nested_list_backward::{DeleteNestedListBackwardAction, delete_nested_list_backward_action_id};
+pub use delete_nested_list_backward::{
+    DeleteNestedListBackwardAction, delete_nested_list_backward_action_id,
+};
 #[cfg(feature = "experimental-structural-properties")]
-pub use delete_nested_list_forward::{DeleteNestedListForwardAction, delete_nested_list_forward_action_id};
+pub use delete_nested_list_forward::{
+    DeleteNestedListForwardAction, delete_nested_list_forward_action_id,
+};
 #[cfg(feature = "experimental-structural-properties")]
-pub use delete_nested_list_selection::{DeleteNestedListSelectionAction, delete_nested_list_selection_action_id};
+pub use delete_nested_list_selection::{
+    DeleteNestedListSelectionAction, delete_nested_list_selection_action_id,
+};
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod insert_nested_list_break_tests;
 #[cfg(feature = "experimental-structural-properties")]
-pub use insert_nested_list_break::{InsertNestedListBreakAction, insert_nested_list_break_action_id};
+pub use insert_nested_list_break::{
+    InsertNestedListBreakAction, insert_nested_list_break_action_id,
+};
 
 #[cfg(feature = "experimental-structural-properties")]
 mod clear_nested_list_inline_formats;

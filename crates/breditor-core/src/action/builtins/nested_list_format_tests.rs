@@ -115,7 +115,7 @@ fn nested_format_cross_depth_preserves_logical_range_and_v7_history() -> TestRes
         let after = session.state().clone();
         assert_eq!(fragment(&after, &[0, 0, 0])?, fragment(&before, &[0, 0, 0])?);
         let target = fragment(&after, &[0, 0, 1, 0, 0])?;
-        assert_eq!(target.iter().map(|run| run.text()).collect::<String>(), "a🙂b");
+        assert_eq!(target.iter().map(crate::document::TextRun::text).collect::<String>(), "a🙂b");
         let runs = target.iter().collect::<Vec<_>>();
         assert_eq!(runs.len(), 2);
         assert_eq!(runs[0].formats(), &formats()?);

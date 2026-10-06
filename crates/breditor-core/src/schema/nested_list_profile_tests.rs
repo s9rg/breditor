@@ -9,6 +9,10 @@ use crate::{
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep the complete exact-state/history regression scenario together."
+)]
 fn nested_list_reframe_inverse_and_point_mapping_are_exact_and_guarded() -> TestResult {
     use crate::{
         document::{FormatSet, TextNode},

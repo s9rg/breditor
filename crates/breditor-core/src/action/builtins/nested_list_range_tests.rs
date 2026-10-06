@@ -1,10 +1,10 @@
 //! Cross-block typing/Enter/deletion against independent text and exact-tree oracles.
 #[path = "set_nested_list_block_kind_tests.rs"]
 mod block_kind_tests;
-#[path = "wrap_nested_list_tests.rs"]
-mod wrap_tests;
 #[path = "unwrap_nested_list_tests.rs"]
 mod unwrap_tests;
+#[path = "wrap_nested_list_tests.rs"]
+mod wrap_tests;
 use super::*;
 use crate::{
     action::{ActionInput, ActionInvocation, ActionRegistration, ActionRegistry, ActionValue},
@@ -56,7 +56,8 @@ fn nested_directional_deletion_removes_whole_graphemes_and_recovers() -> TestRes
     for cluster in ["🙂", "e\u{301}", "🇨🇦", "👨‍👩‍👧‍👦"] {
         for backward in [true, false] {
             let value = format!("a{cluster}b");
-            let offset = if backward { 1 + cluster.encode_utf16().count() as u32 } else { 1 };
+            let offset =
+                if backward { 1 + u32::try_from(cluster.encode_utf16().count())? } else { 1 };
             let point = Point::Text {
                 text_path: NodePath::try_from_indices(vec![0, 0, 1, 0, 0, 0])?,
                 utf16_offset: offset,
@@ -114,7 +115,7 @@ fn nested_directional_boundaries_keep_order_and_restore_exactly() -> TestResult 
                 continue;
             }
             // First items remove structure without deleting any text.
-            let lift = backward && matches!(index, 1 | 2 | 5);
+            let removes_structure = backward && matches!(index, 1 | 2 | 5);
             if backward && matches!(index, 2 | 5) {
                 assert_eq!(
                     decision.decision(),
@@ -122,7 +123,7 @@ fn nested_directional_boundaries_keep_order_and_restore_exactly() -> TestResult 
                 );
             }
             let mut expected = source.iter().map(|value| (*value).to_owned()).collect::<Vec<_>>();
-            if !lift {
+            if !removes_structure {
                 let left = if backward { index - 1 } else { index };
                 expected[left] = format!("{}{}", source[left], source[left + 1]);
                 expected.remove(left + 1);
@@ -596,11 +597,11 @@ fn blocks(node: &NodeRef, result: &mut Vec<String>) -> TestResult {
             element
                 .children()
                 .iter()
-                .map(|node| node.as_text().map(|text| text.text()).ok_or("text"))
+                .map(|node| node.as_text().map(crate::document::TextNode::text).ok_or("text"))
                 .collect::<Result<String, _>>()?,
         );
     } else {
-        for child in element.children().iter() {
+        for child in element.children() {
             blocks(child, result)?;
         }
     }

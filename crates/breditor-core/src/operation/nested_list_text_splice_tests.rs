@@ -16,6 +16,10 @@ fn element(kind: &str, children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>
     Ok(NodeRef::element(ElementNode::try_new(name(kind)?, None, PropertyMap::default(), children)?))
 }
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep the complete exact-state/history regression scenario together."
+)]
 fn nested_text_splice_preserves_wrappers_and_exact_history() -> TestResult {
     let context = EditorContext::new(
         CompiledSchema::try_compile_nested_list_profile(

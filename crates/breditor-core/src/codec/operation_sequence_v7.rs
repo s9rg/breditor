@@ -192,4 +192,3 @@ impl Serialize for OperationSequenceEncodingV7<'_> {
 fn json_error(error: &serde_json::Error) -> OperationSequenceErrorV7 {
     OperationSequenceErrorV7::Json(JsonFailure::from_serde(error))
 }
-

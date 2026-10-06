@@ -42,4 +42,3 @@ impl Serialize for CommitEncodingV7<'_> {
         record.end()
     }
 }
-

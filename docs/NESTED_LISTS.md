@@ -1,7 +1,16 @@
 # Nested lists: experimental implementation contract
 
-Status: Rust editing and persistence implementation in progress. Not enabled in the browser or current
-opt-in flat-list package. This work does not resolve the intermittent WebKit fault.
+Status: implemented behind experimental Rust/Wasm features and a separate private
+`@breditor/experimental-nested-lists` package. Generated-Wasm, integrated-browser
+and installed-package automated checks pass; this is not release readiness.
+Default shipping bundles and the existing flat-list package remain unchanged.
+The historical intermittent WebKit fault is unresolved.
+
+Remaining release gates: availability-aware Tab/Shift-Tab nesting; physical
+keyboard/IME, native clipboard and spoken screen-reader qualification; size and
+large-document performance qualification; resolution of the WebKit risk. The
+implementation log below is chronological: older pending notes are superseded
+only where a later checkpoint explicitly supplies matching evidence.
 
 ## Document shape
 
@@ -16,7 +25,7 @@ and editing capabilities remain unchanged; flat operations must reject nested
 schemas. Document JSON admission does not imply session/history compatibility.
 No silent migration or fallback to flat traversal is permitted.
 
-## Next checkpoints
+## Required behavior
 
 1. Add a nesting-aware item-path and selection resolver. Test mixed marker types,
    heading items, empty blocks, emoji, backward ranges and end-exclusive ranges.
@@ -522,6 +531,15 @@ from `target/nested-list-packages-uSbUD5/qualification.json`.
 It is 951,470 bytes compressed and 4,145,455 bytes unpacked. Default size ceilings
 are exceeded; size qualification remains false. Shipping artifact trees are
 unchanged, publication is disabled, and native-input/WebKit release gates remain.
+
+Post-package hygiene checks: browser source and test TypeScript pass, all 2,062
+browser tests (54 files) pass, and the nested feature's 1,187 core / 58 Wasm bridge
+unit tests pass. Strict all-targets Clippy found test-only issues (unchecked cast,
+panic-based static name construction, redundant closures/borrows and naming),
+which were corrected; five long exact-state/history scenarios carry narrowly
+scoped, explained length-lint exceptions. Strict Clippy now passes with warnings
+denied, and rustfmt check passes. This does not replace the outstanding release
+gates listed above.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

@@ -76,7 +76,7 @@ fn registry() -> Result<ActionRegistry, Box<dyn Error>> {
 fn run(before: &EditorState) -> Result<EditorSession, Box<dyn Error>> {
     let mut session = EditorSession::new(before.clone());
     session.execute_prepared_action(registry()?.prepare(
-        &before,
+        before,
         &ActionInvocation::without_input(insert_nested_list_break_action_id()),
     )?)?;
     Ok(session)
