@@ -1,0 +1,22 @@
+{
+  "archiveSha256": "4c00fa7bfff6956e68ab7a667399d188369034feb8e6b96ca6e637729a268464",
+  "assembly": "target/nested-list-opt-in-VqQ3UP/assembly.json",
+  "url": "http://127.0.0.1:4317/?keyboardProbe",
+  "surface": "Native macOS Safari controlled through accessibility and keyboard actions",
+  "observations": [
+    "Tab on Second nested it beneath First while retaining Deep as its descendant; Shift-Tab restored the original hierarchy and visible starts 3 and 4.",
+    "Native Command-C on Deep 🙂 and Command-V in the outside input produced exactly Deep 🙂.",
+    "Native Command-X removed Deep 🙂 once, leaving its empty list item. One explicit editor Undo restored the text and its selected range visibly.",
+    "Native Command-V at the end produced Deep 🙂Deep 🙂 once. One Control-Z restored Deep 🙂."
+  ],
+  "fixtureShortcutCaveat": "The fixture explicitly configures primaryModifier control. Command-Z acted on the outside native input history and was not counted as editor Undo; the explicit editor Undo control and configured Control-Z were observed separately.",
+  "limits": [
+    "Observed accessibility values and hierarchy, not exact exported Rust state or selection offsets",
+    "No physical IME or VoiceOver claim",
+    "No cross-item clipboard qualification in this checkpoint",
+    "No saved screenshot artifact",
+    "No claim that the historical WebKit fault is fixed"
+  ],
+  "systemSettingsChanged": false,
+  "releaseQualified": false
+}
