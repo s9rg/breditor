@@ -61,6 +61,9 @@ import { issueNestedListEditorDeliveryToken, nestedListEditorDeliveryTokenMatche
 import { NestedListTargetRange, isOwnedNestedListTargetRange } from "./nested_list_target_range.js";
 import { mapDomNestedListTargetRange } from "./dom_target_range.js";
 import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
+import { projectNestedListPlainText } from "./projection_plain_text.js";
+import { serializeNestedListClipboardSelection } from "./clipboard_fragment.js";
+import { nestedListProjectionPresentation } from "./nested_list_projection.js";
 import { issueNestedListCompositionDeliveryToken, nestedListCompositionDeliveryTokenMatchesOpeningBase,
   nestedListCompositionDeliveryTokenMatchesSettlement } from "./composition_delivery_token.js";
 import { BreditorNestedListCommandQueue, openNestedListCommandQueueLeasePort } from "./command_queue.js";
@@ -98,6 +101,24 @@ describe("recursive nested-list DOM", () => {
     expect(isOwnedNestedListRenderedProjection(rendered)).toBe(true);
     expect(isOwnedFlatListRenderedProjection(rendered)).toBe(false);
     expect(isOwnedRenderedProjection(rendered)).toBe(false);
+  });
+  it("exports nested text and clipboard fragments in reading order without markers", () => {
+    const f = fixture();
+    expect(projectNestedListPlainText(f.projection)).toEqual({ok: true, content: {
+      text: "parent\nchild🙂\n", utf8Bytes: 17, snapshot: f.projection.snapshot}});
+    const start = {kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 2, affinity: "after"};
+    const end = {kind: "children", parentPath: [0, 0, 1, 0, 1, 0, 0], childIndex: 0, affinity: "before"};
+    const presentation = nestedListProjectionPresentation(f.projection)!;
+    for (const backward of [false, true]) {
+      const selection = valueOf(NestedListRangeSelection.create(f.projection, {kind: "range",
+        anchor: backward ? end : start, focus: backward ? start : end}));
+      const fragment = valueOf(serializeNestedListClipboardSelection(selection, presentation));
+      expect(fragment.plainText).toBe("rent\nchild🙂\n");
+      expect(fragment.html).toContain("<strong>child🙂</strong>");
+      expect(fragment.html).not.toMatch(/<(?:ol|ul|li)[ >]/);
+      expect(serializeNestedListClipboardSelection(selection).ok).toBe(false);
+      expect(serializeNestedListClipboardSelection({...selection}, presentation).ok).toBe(false);
+    }
   });
   it("binds nested command requests to exact selections, epochs and authorities", () => {
     const f = fixture(), authority = Symbol("nested owner");

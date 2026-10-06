@@ -329,5 +329,15 @@ stale epochs and host disconnection. Settlement matching deliberately does not
 prove uninterrupted renderer ownership or spend a token; the adapter must pair
 it with the renderer lease and enforce single use when integration is wired.
 
+Nested plain-text export and clipboard serialization now use recursive reading
+order with one LF between text blocks, preserving empty blocks. Clipboard
+selection endpoints retain their actual AST coordinates and support either
+direction; exact renderer-bound presentation ownership is required for inline
+HTML. Existing Unicode/output budgets apply. Tests cover cross-level forward
+and backward fragments, empty descendants, emoji byte counts and forged or
+unbound selection rejection. Markers/indentation are intentionally absent:
+this is text interchange, not structural rich paste. Native copy/cut event
+delivery and the adapter's lossless document export remain separate work.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

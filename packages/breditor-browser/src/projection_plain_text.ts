@@ -5,6 +5,7 @@ import {
   type BaseParagraphProjection,
 } from "./projection.js";
 import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedNestedListProjection, type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { wellFormedUtf8Length as utf8Length } from "./well_formed_utf8_length.js";
 
 /** Maximum UTF-8 bytes in a plain-text projection, including paragraph LFs. */
@@ -74,6 +75,15 @@ export function projectPlainText(
  */
 export function projectFlatListPlainText(projection: FlatListDocumentProjection): BrowserProjectionPlainTextResult {
   if (!isOwnedFlatListProjection(projection)) return failure();
+  function* blocks(): Iterable<BaseParagraphProjection> {
+    for (const entry of projection.textBlocks) yield entry.block;
+  }
+  return projectTextBlocks(projection.snapshot, blocks());
+}
+
+/** Recursive reading-order text; empty blocks survive, markers and indentation do not. @internal */
+export function projectNestedListPlainText(projection: NestedListDocumentProjection): BrowserProjectionPlainTextResult {
+  if (!isOwnedNestedListProjection(projection)) return failure();
   function* blocks(): Iterable<BaseParagraphProjection> {
     for (const entry of projection.textBlocks) yield entry.block;
   }

@@ -1,3 +1,5 @@
+import { nestedListProjectionPresentation, type NestedListDocumentProjection } from "./nested_list_projection.js";
+import { isOwnedNestedListRangeSelection, nestedListSpatialPositionForPoint } from "./nested_list_selection.js";
 import type {
   BaseDocumentProjection,
   BaseParagraphProjection,
@@ -196,6 +198,30 @@ export function serializeFlatListClipboardSelection(
 
 function flatListSpatialPoint(projection: FlatListDocumentProjection, point: BaseSelectionPoint): SpatialPoint | null {
   const position = flatListSpatialPositionForPoint(projection, point);
+  if (position === null) return null;
+  const paragraphIndex = projection.textBlocks.findIndex(entry => astPathsEqual(entry.path, position.textBlockPath));
+  return paragraphIndex < 0 ? null : {paragraphIndex, utf16Offset: position.utf16Offset};
+}
+
+/** Bounded text interchange in recursive reading order; never exports list structure. @internal */
+export function serializeNestedListClipboardSelection(
+  selection: unknown,
+  presentation?: BrowserCompiledPresentation,
+): ClipboardFragmentSerializationResult {
+  if (!isOwnedNestedListRangeSelection(selection)) return failure("clipboard.fragment.invalid_selection");
+  if (selection.order === "collapsed") return failure("clipboard.fragment.empty_selection");
+  try {
+    if (presentation === undefined || nestedListProjectionPresentation(selection.projection) !== presentation) {
+      return failure("clipboard.fragment.invalid_selection");
+    }
+    const start = nestedListSpatialPoint(selection.projection, selection.order === "backward" ? selection.focus : selection.anchor);
+    const end = nestedListSpatialPoint(selection.projection, selection.order === "backward" ? selection.anchor : selection.focus);
+    return serializeTextBlocks(selection.projection.textBlocks.map(entry => entry.block), start, end, presentation);
+  } catch { return failure("clipboard.fragment.invalid_selection"); }
+}
+
+function nestedListSpatialPoint(projection: NestedListDocumentProjection, point: BaseSelectionPoint): SpatialPoint | null {
+  const position = nestedListSpatialPositionForPoint(projection, point);
   if (position === null) return null;
   const paragraphIndex = projection.textBlocks.findIndex(entry => astPathsEqual(entry.path, position.textBlockPath));
   return paragraphIndex < 0 ? null : {paragraphIndex, utf16Offset: position.utf16Offset};
