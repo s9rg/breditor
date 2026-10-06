@@ -62,11 +62,21 @@ pub(super) fn plan_roots(
     root_index: u32,
     replacement: Vec<NodeRef>,
 ) -> Result<ActionDecision, ActionFault> {
+    plan_span(state, root_index, 1, replacement)
+}
+
+/// Reframe a contiguous root span, validating the complete final document.
+pub(super) fn plan_span(
+    state: &EditorState,
+    root_index: u32,
+    count: u32,
+    replacement: Vec<NodeRef>,
+) -> Result<ActionDecision, ActionFault> {
     let operation = match NestedListReframe::capture(
         state.context(),
         state.document(),
         root_index,
-        1,
+        count,
         replacement,
     ) {
         Ok(operation) => operation,

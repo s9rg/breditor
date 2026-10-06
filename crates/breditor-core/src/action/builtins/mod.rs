@@ -18,6 +18,10 @@ mod insert_nested_list_plain_text;
 #[cfg(feature = "experimental-structural-properties")]
 mod set_nested_list_block_kind;
 #[cfg(feature = "experimental-structural-properties")]
+mod wrap_nested_list;
+#[cfg(feature = "experimental-structural-properties")]
+pub use wrap_nested_list::WrapNestedListAction;
+#[cfg(feature = "experimental-structural-properties")]
 pub use set_nested_list_block_kind::SetNestedListBlockKindAction;
 #[cfg(feature = "experimental-structural-properties")]
 pub use insert_nested_list_plain_text::{InsertNestedListPlainTextAction, insert_nested_list_plain_text_action_id};

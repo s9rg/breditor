@@ -153,7 +153,17 @@ Toolbar activation distinguishes active, mixed and inactive selections, and
 already-matching selections are disabled. An independent tree oracle covers
 all endpoint pairs, both directions and multiple heading targets, with session
 recovery and property-budget checks. The nested compiled command profile still
-needs marker conversion/removal before browser-facing integration.
+needs list removal before browser-facing integration.
+
+`WrapNestedListAction` wraps consecutive selected bare blocks and changes only
+selected items' marker families, rebuilding nested sections in source-path order.
+Matching numbered lists retain their starts; newly numbered sections use the
+configured start. Unselected split suffixes retain their original ordinals.
+Descendants keep their hierarchy and change markers only if their own leading
+blocks are selected. Cross-level/backward/end-exclusive selections, activation,
+exact text-block preservation and V7 recovery have matrix coverage; exact-tree
+fixtures check child-section splits and numbering. Final node/fanout failures
+leave the document, selection, pending formats and history untouched.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

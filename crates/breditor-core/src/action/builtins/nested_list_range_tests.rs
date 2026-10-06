@@ -1,6 +1,8 @@
 //! Cross-block typing/Enter/deletion against independent text and exact-tree oracles.
 #[path = "set_nested_list_block_kind_tests.rs"]
 mod block_kind_tests;
+#[path = "wrap_nested_list_tests.rs"]
+mod wrap_tests;
 use super::*;
 use crate::{
     action::{ActionInput, ActionInvocation, ActionRegistration, ActionRegistry, ActionValue},
