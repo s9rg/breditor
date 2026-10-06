@@ -62,6 +62,20 @@ impl NestedListTextReplace {
         inserted: Vec<NodeRef>,
         layout: Vec<NodeRef>,
     ) -> Result<Self, NestedListTextReplaceError> {
+        Self::try_new_with_derived(guard_start, range, expected, inserted, layout)
+            .map(|(operation, _)| operation)
+    }
+
+    // Return the checked reconstruction to capture within this call only. It
+    // is not a schema proof and is never stored on the operation or reused by
+    // apply under another document/context.
+    fn try_new_with_derived(
+        guard_start: u32,
+        range: NestedListTextRange,
+        expected: Vec<NodeRef>,
+        inserted: Vec<NodeRef>,
+        layout: Vec<NodeRef>,
+    ) -> Result<(Self, Derived), NestedListTextReplaceError> {
         let operation = Self {
             guard_start,
             range,
@@ -74,7 +88,7 @@ impl NestedListTextReplace {
         if inverse.derive()?.roots.as_slice() != operation.expected.as_ref() {
             return Err(NestedListTextReplaceError::InvalidTarget);
         }
-        Ok(operation)
+        Ok((operation, derived))
     }
     /// Captures every complete root child intersected by the real block paths.
     ///
@@ -97,8 +111,9 @@ impl NestedListTextReplace {
             return Err(NestedListTextReplaceError::InvalidTarget);
         }
         let expected = root.children().iter().skip(start).take(end - start).cloned().collect();
-        let operation = Self::try_new(range.root_start(), range, expected, inserted, layout)?;
-        operation.validate(context)?;
+        let (operation, derived) =
+            Self::try_new_with_derived(range.root_start(), range, expected, inserted, layout)?;
+        operation.validate_with_derived(context, None, Some(derived))?;
         Ok(operation)
     }
     /// Source range in real document block paths.
@@ -147,6 +162,17 @@ impl NestedListTextReplace {
         context: &EditorContext,
         source: Option<&Document>,
     ) -> Result<(Derived, Document), NestedListTextReplaceError> {
+        self.validate_with_derived(context, source, None)
+    }
+
+    /// Capture can retain its own freshly checked reconstruction. Both source
+    /// and result still receive the same context/limit validation, in order.
+    fn validate_with_derived(
+        &self,
+        context: &EditorContext,
+        source: Option<&Document>,
+        captured: Option<Derived>,
+    ) -> Result<(Derived, Document), NestedListTextReplaceError> {
         require_schema(context)?;
         let maximum =
             u64::try_from(context.limits().max_children_per_element()).unwrap_or(u64::MAX);
@@ -154,7 +180,10 @@ impl NestedListTextReplace {
             return Err(NestedListTextReplaceError::RootChildLimit);
         }
         validate_roots(context, self.expected.to_vec(), source)?;
-        let derived = self.derive()?;
+        let derived = match captured {
+            Some(derived) => derived,
+            None => self.derive()?,
+        };
         let validated_result = validate_roots(context, derived.roots.clone(), None)?;
         Ok((derived, validated_result))
     }

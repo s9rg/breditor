@@ -1,0 +1,32 @@
+{
+  "scope": "Diagnostic attribution of nested-list edit cost; not release qualification",
+  "sourceCommit": "ffa0280",
+  "candidate": "target/nested-list-symbols-qfuei1",
+  "packageQualification": "target/nested-list-packages-xjBivj/qualification.json",
+  "diagnosticWasmSha256": "c85dc56ee3376638bc38fee28ae4a6137d948e4dfd50403fa21c4c7c68ea2e3a",
+  "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-wFKMlu/performance-LGotnL/measurement.json",
+  "profileSha256": "ff5f6e469c67b01d8a47eef581ee806a38f4bfe80c411f5f7ed805589ae8c65d",
+  "browser": "Firefox 153.0",
+  "correctnessCyclesPassed": 9,
+  "userTimingSpans": 60,
+  "editTarget": "grandchild",
+  "rootCount": 500,
+  "editSamples": [
+    { "repetition": 0, "total": 403, "actionStateRefreshInclusive": 243, "setNestedListBlockKindEvaluateInclusive": 143 },
+    { "repetition": 1, "total": 421, "actionStateRefreshInclusive": 260, "setNestedListBlockKindEvaluateInclusive": 155 },
+    { "repetition": 2, "total": 427, "actionStateRefreshInclusive": 266, "setNestedListBlockKindEvaluateInclusive": 158 }
+  ],
+  "findings": [
+    "ActionStateCache::refresh is present in approximately 60-62 percent of sampled edit stacks.",
+    "SetNestedListBlockKindAction::evaluate is present in approximately 35-37 percent of sampled edit stacks.",
+    "Candidate preparation includes nested replacement derivation, block traversal and document validation. These inclusive stacks overlap and must not be added as independent costs.",
+    "The catalog prepares candidate actions to obtain exact availability; optimization must preserve action-state and disabled-versus-fault contracts. No validation was removed in this checkpoint."
+  ],
+  "limitations": [
+    "Diagnostic executable sections differ from the normal candidate. Names apply only to this fresh profile, not to indices in earlier profiles.",
+    "Instrumented timings are not release-performance evidence.",
+    "Passing these correctness cycles does not resolve the retained intermittent WebKit fault or qualify physical IME or VoiceOver behavior.",
+    "Raw profile and measurement paths are local temporary artifacts; this tracked record preserves attribution counts and artifact hashes."
+  ],
+  "releaseReady": false
+}

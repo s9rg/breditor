@@ -102,6 +102,17 @@ fn nested_structural_split_and_cross_descendant_replacement_restore_exactly() ->
             inserted,
             layout,
         )?;
+        // Capture's retained reconstruction must equal independent public
+        // construction and validation, including Unicode and descendant layout.
+        let independent = NestedListTextReplace::try_new(
+            operation.guard_start(),
+            operation.range().clone(),
+            operation.expected().to_vec(),
+            operation.inserted().to_vec(),
+            operation.layout().to_vec(),
+        )?;
+        independent.validate(&context)?;
+        assert_eq!(operation, independent);
         let operation = Operation::NestedListTextReplace(operation);
         let codec = OperationJsonCodecV7::new(context.clone());
         let encoded = codec.encode(&operation)?;
