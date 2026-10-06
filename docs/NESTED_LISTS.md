@@ -1008,3 +1008,13 @@ also completed 90 cycles (`performance-yCf9af/measurement.json`). Neither result
 invalidates the earlier recorded failure. Exact-byte replay is a control for
 instrumentation/build differences, not a reproduction, root-cause identification
 or fix. The historical WebKit gate remains unresolved.
+
+The installed single-package fixture now formats the descendant `Deep 🙂` via
+the Bold toolbar with a backward selection, undoes, exports a V7 checkpoint,
+disposes, opens a fresh owner, and redoes. It verifies exact checkpoint identity,
+formatted document JSON, nested `<strong>` output, and backward DOM endpoints
+(anchor 7 / focus 0); a following Undo restores the original document exactly.
+The unchanged `WNID8x` archive passes this extended fixture, Node/types and trusted
+keyboard checks in Chromium, Firefox and WebKit. Latest external consumer:
+`breditor-opt-in-consumer-1yZSa2`. This closes a packed-consumer formatting/recovery
+coverage gap without changing the archive or claiming native IME qualification.

@@ -71,6 +71,34 @@ async function start(): Promise<void> {
     const outdent = new KeyboardEvent("keydown", {key: "Tab", code: "Tab", shiftKey: true, bubbles: true, cancelable: true});
     options.host.dispatchEvent(outdent); equal(outdent.defaultPrevented, true);
     equal(exported("documentJson"), beforeIndent);
+    // Qualify formatting history inside a descendant using the installed
+    // package, including pending redo across a fresh owner (not just live Undo).
+    owner.focus();
+    const deep = [...options.host.querySelectorAll("p")].find(p => p.textContent === "Deep 🙂")!.firstChild!;
+    getSelection()!.setBaseAndExtent(deep, 7, deep, 0);
+    document.dispatchEvent(new Event("selectionchange"));
+    const bold = [...options.toolbar!.host.querySelectorAll("button")].find(button => button.textContent === "Bold")!;
+    equal(bold.disabled, false); bold.click();
+    equal(options.host.querySelector("ol > li > ul > li > p > strong")?.textContent, "Deep 🙂");
+    const formatted = exported("documentJson");
+    (options.toolbar!.host.querySelector('[data-breditor-state-id="breditor/control-undo"]') as HTMLButtonElement).click();
+    equal(exported("documentJson"), beforeIndent);
+    const formattingCheckpoint = exported("sessionCheckpointJson");
+    owner.dispose();
+    const {initialDocument: _formatFallback, persistence: _formatStorage,
+      initialSessionCheckpointJson: _formatCheckpoint, ...formatRecovery} = options;
+    const formattingRestored = await BreditorBrowserEditor.openNestedLists({...formatRecovery,
+      initialSessionCheckpointJson: formattingCheckpoint});
+    if (!formattingRestored.ok) throw new Error(formattingRestored.error.code);
+    owner = formattingRestored.editor;
+    equal(exported("sessionCheckpointJson"), formattingCheckpoint);
+    (options.toolbar!.host.querySelector('[data-breditor-state-id="breditor/control-redo"]') as HTMLButtonElement).click();
+    equal(exported("documentJson"), formatted);
+    equal(options.host.querySelector("ol > li > ul > li > p > strong")?.textContent, "Deep 🙂");
+    equal([getSelection()!.anchorNode?.textContent, getSelection()!.anchorOffset,
+      getSelection()!.focusNode?.textContent, getSelection()!.focusOffset], ["Deep 🙂", 7, "Deep 🙂", 0]);
+    (options.toolbar!.host.querySelector('[data-breditor-state-id="breditor/control-undo"]') as HTMLButtonElement).click();
+    equal(exported("documentJson"), beforeIndent);
     owner.focus();
     const heading = options.host.querySelector("h2")!;
     const range = document.createRange(); range.selectNodeContents(heading);
