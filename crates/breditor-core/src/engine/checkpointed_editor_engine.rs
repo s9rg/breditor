@@ -138,6 +138,24 @@ impl CheckpointedEditorEngine {
         Self::try_new_with_codec(engine, codec)
     }
 
+    /// Constrains an engine to explicit nested-list Session Checkpoint V7.
+    ///
+    /// The complete candidate, including undo and redo branches, must encode
+    /// within the configured limits before publication. No older owner is
+    /// upgraded implicitly and no action registry or schema is changed.
+    ///
+    /// # Errors
+    /// Returns a payload-redacting representation error if the initial session
+    /// cannot be encoded. No partial owner is returned.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_new_v7(
+        engine: EditorEngine,
+        limits: SessionCheckpointLimits,
+    ) -> Result<Self, CheckpointedEditorEngineError> {
+        let codec = CheckpointCodec::v7(engine.state().context().clone(), limits);
+        Self::try_new_with_codec(engine, codec)
+    }
+
     fn try_new_with_codec(
         engine: EditorEngine,
         codec: CheckpointCodec,
@@ -187,7 +205,8 @@ impl CheckpointedEditorEngine {
     ///
     /// [`Self::try_new`] selects V1, [`Self::try_new_v2`] selects V2, and
     /// [`Self::try_new_v3`] selects V3. With experimental structural properties,
-    /// `try_new_v5` selects V5 and `try_new_v6` selects V6. The selection is retained for every
+    /// `try_new_v5`, `try_new_v6`, and `try_new_v7` select V5, V6, and V7.
+    /// The selection is retained for every
     /// later candidate mutation; schema shape never upgrades it implicitly.
     #[must_use]
     pub const fn session_checkpoint_format_version(&self) -> u32 {

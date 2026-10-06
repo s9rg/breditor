@@ -181,8 +181,13 @@ format intent identities are preserved. New nesting intents are
 `breditor/control-...` state IDs and priority-zero blocking bindings.
 Sixteen built-in controls plus extension controls fit the unchanged ceilings.
 Tests exercise real engine routing, state derivation, V7 recovery, reserved IDs,
-maximum extension counts and flat-profile isolation. The checkpointed engine's
-V7 admission and the Wasm/browser profile are still outstanding.
+maximum extension counts and flat-profile isolation.
+`CheckpointedEditorEngine::try_new_v7` explicitly selects nested session
+admission: every candidate and both history branches must encode before
+publication. Earlier constructors retain their existing codecs. The regression
+checks an over-budget paste leaves state, observation, cached checkpoint bytes
+and a reusable redo branch untouched. Wasm/browser profile integration remains
+outstanding.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

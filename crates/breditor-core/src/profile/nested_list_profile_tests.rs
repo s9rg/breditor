@@ -195,3 +195,52 @@ fn nested_profile_reserved_ids_and_extension_capacity_are_enforced() -> TestResu
     );
     Ok(())
 }
+
+#[test]
+fn nested_checkpointed_v7_failure_preserves_redo_observation_and_bytes() -> TestResult {
+    use crate::{
+        action::{ActionInput, ActionInvocation, ActionValue},
+        codec::SessionCheckpointLimits,
+        engine::CheckpointedEditorEngine,
+    };
+    let p = profile()?;
+    let mut owner = CheckpointedEditorEngine::try_new_v7(
+        engine(&p, true)?,
+        SessionCheckpointLimits::default().with_max_retained_nodes(100),
+    )?;
+    assert_eq!(owner.session_checkpoint_format_version(), 7);
+    assert!(
+        owner
+            .execute_intent(&owner.observation(), &intent("breditor/format-heading-3")?)?
+            .is_committed()
+    );
+    let changed = owner.state().clone();
+    let _ = owner.undo(&owner.observation())?.ok_or("undo")?;
+    let before = owner.state().clone();
+    let observation = owner.observation();
+    let saved = owner.session_checkpoint_json().to_owned();
+    let paste = ActionInvocation::new(
+        insert_nested_list_plain_text_action_id(),
+        ActionInput::typed(
+            insert_plain_text_input_contract(),
+            ActionValue::try_from_string("X\n".repeat(100))?,
+        ),
+    );
+    assert!(matches!(
+        owner.execute_action_after_closing_history_group(&observation, &paste),
+        Err(crate::engine::CheckpointedEditorEngineError::SessionCheckpointRepresentation {
+            codec_code: crate::codec::CodecErrorCode::ResourceLimit
+        })
+    ));
+    assert_eq!(owner.state(), &before);
+    assert_eq!(owner.observation(), observation);
+    assert_eq!(owner.session_checkpoint_json(), saved);
+    assert_eq!(owner.session().redo_depth(), 1);
+    let _ = owner.redo(&observation)?.ok_or("redo remains usable")?;
+    assert_eq!(owner.state().document(), changed.document());
+    let codec = SessionCheckpointJsonCodecV7::new(p.editor_context(DocumentLimits::default()));
+    let restored = codec.decode(owner.session_checkpoint_json())?;
+    assert_eq!(restored.state().document(), owner.state().document());
+    assert_eq!(restored.state().selection(), owner.state().selection());
+    Ok(())
+}
