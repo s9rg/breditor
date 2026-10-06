@@ -642,6 +642,18 @@ browser consumers and default smoke checks. A post-change performance measuremen
 and refreshed single-package keyboard qualification are still required; no speedup
 or release readiness is claimed from these correctness tests.
 
+The follow-up baseline on `nested-list-packages-TpYaIw` did not establish a
+speedup and failed a WebKit correctness assertion at `100 items, repetition 0:
+editMs`. Retained report: `breditor-nested-list-consumer-RBqXwA/performance-0I9ZzF/measurement.json`,
+SHA-256 `c5a90cdad620592f040328075ea5d1b8355a6588a00f6f156582a9e1ed37994a`.
+The original assertion did not identify which value differed; bounded fixture
+diagnostics now include the assertion label, actual/expected values and selection
+context for an edited-block mismatch. This failure must be resolved before
+qualifying the refresh. Source inspection also shows nested text operations are
+not recognized by the Wasm narrow text-impact classifier, so full-root fallback
+may bypass this renderer optimization; a classifier regression test is needed
+before widening its impact reporting.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time

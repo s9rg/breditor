@@ -4,8 +4,9 @@ import initialize, * as wasm from "@breditor/wasm";
 const output = document.getElementById("result")!;
 const host = document.getElementById("editor")!;
 const toolbar = document.getElementById("toolbar")!;
-const equal = (actual: unknown, expected: unknown): void => {
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error("Performance fixture correctness mismatch");
+const equal = (actual: unknown, expected: unknown, label = "assertion"): void => {
+  const a = JSON.stringify(actual), b = JSON.stringify(expected);
+  if (a !== b) throw new Error(`Performance fixture correctness mismatch (${label}): actual=${a?.slice(0, 1024)} expected=${b?.slice(0, 1024)}`);
 };
 const element = (type: string, children: unknown[], properties = {}) => ({kind: "element", type: `breditor/${type}`, entityId: null, properties, children});
 const schema = {name: "example/list-performance", version: 1};
@@ -94,8 +95,16 @@ async function sample(items: number, fingerprint: string, repetition: number) {
     });
     const original = exported("documentJson"), originalSelection = selected();
     measured("editMs", () => host.dispatchEvent(new InputEvent("beforeinput", {bubbles: true, cancelable: true, inputType: "insertText", data: "X"})));
-    equal(owner.getStatus().phase, "live");
-    equal([...host.querySelectorAll("p,h2")].filter(block => block.textContent === `${text(middle)}X`).length, 1);
+    equal(owner.getStatus().phase, "live", "owner after edit");
+    const expectedText = `${text(middle)}X`;
+    const matches = [...host.querySelectorAll("p,h2")].filter(block => block.textContent === expectedText).length;
+    try { equal(matches, 1, "edited block count"); }
+    catch (error) {
+      throw new Error(`${String(error)}; context=${JSON.stringify({expectedText, originalSelection,
+        currentSelection: selected(), status: owner.getStatus(),
+        matchingPrefix: [...host.querySelectorAll("p,h2")].map(block => block.textContent).filter(value => value?.startsWith(text(middle).slice(0, 12))).slice(0, 4),
+      }).slice(0, 4096)}`);
+    }
     const edited = exported("documentJson"), editedSelection = selected();
     measured("undoMs", () => history("undo")); equal(exported("documentJson"), original); equal(selected(), originalSelection);
     const backup = measured("checkpointMs", () => exported("sessionCheckpointJson"));

@@ -98,5 +98,12 @@
     "shippingArtifactsWritten": false,
     "limitation": "The reproduced heading-comparison path has a tested compatibility mitigation. The separate paragraph-shape rejection is not proven fixed; the overall WebKit and release gates remain open."
   },
-  "next": "Refresh the single opt-in package, verify its consumer and stress current nested behavior. Continue isolating the independent paragraph-shape rejection."
+  "shapeFollowup": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-vwmO49/measurement.json",
+    "reportSha256": "2daecfa1920eeedbb16abcdee4e96766ad4508d9e98ef7d8fa40045a3787365f",
+    "variant": "same-value heading comparison with shape and comparison diagnostics enabled",
+    "result": "Five fresh WebKit sessions passed 1500 owner cycles without reproducing the shape rejection",
+    "limitation": "No shape-validation fix was made or established. These diagnostic cycles are not latency qualification."
+  },
+  "next": "Continue isolating the independent paragraph-shape rejection; qualify nested text-refresh performance and the refreshed opt-in package without treating green diagnostic runs as closure."
 }
