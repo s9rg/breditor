@@ -13,6 +13,7 @@ import {
   type BaseTextRunProjection,
   isOwnedProjection,
   projectionPresentation,
+  paragraphsEqual,
 } from "./projection.js";
 import { bindFlatListProjectionPresentation, isOwnedFlatListProjection, type FlatListDocumentProjection, type FlatListRootProjection } from "./flat_list_projection.js";
 import { flatListUpdatePlan, isOwnedFlatListProjectionUpdate, type FlatListProjectionUpdate } from "./flat_list_projection_update.js";
@@ -886,7 +887,7 @@ export class BreditorDomRenderer {
     } finally { endHostOperation(host); }
   }
 
-  /** Reuses only proved whole recursive subtrees and rebinds all moved paths. @internal */
+  /** Reuses proved subtrees; stable topology permits rollback-backed text refreshes. @internal */
   updateNestedList(rendered: RenderedProjection<NestedListDocumentProjection>, update: NestedListProjectionUpdate): BrowserProjectionResult<ProjectionRenderOutcome<NestedListDocumentProjection>> {
     if (!isOwnedNestedListProjectionUpdate(update)) return projectionFailure("projection.invalid_update");
     if (!isOwnedNestedListRenderedProjection(rendered)) return projectionFailure("renderer.foreign_or_stale_render");
@@ -907,14 +908,26 @@ export class BreditorDomRenderer {
         const document = nativeOwnerDocument(host);
         if (document === null) return projectionFailure("renderer.dom_write_failed");
         const maps = createMaps(host), reuse = new Map(plan.roots.map(pair => [pair.newIndex, pair.oldIndex]));
+        const refreshes: ParagraphRefresh[] = [];
+        const stableRoots = update.base.blocks.length === update.result.blocks.length &&
+          plan.roots.every(pair => pair.oldIndex === pair.newIndex);
         const roots = update.result.blocks.map((root, index) => {
           const oldIndex = reuse.get(index), path = Object.freeze([index]);
-          if (oldIndex === undefined) return buildNestedListRoot(document, root, path, maps, this.#presentation);
+          if (oldIndex === undefined) {
+            const previous = update.base.blocks[index];
+            if (stableRoots && previous !== undefined && nestedTopologyMatches(previous, root)) {
+              const node = rendered.nodeForAstPath(path);
+              if (node === null) throw new TypeError("Nested refresh lost its root.");
+              prepareNestedTextRefresh(document, node, previous, root, path, maps, refreshes, this.#presentation);
+              return node as HTMLElement;
+            }
+            return buildNestedListRoot(document, root, path, maps, this.#presentation);
+          }
           const node = rendered.nodeForAstPath([oldIndex]);
           if (node === null || !mapExistingNestedListRoot(node, root, path, maps, this.#presentation)) throw new TypeError("Nested reuse no longer matches canonical DOM.");
           return node as HTMLElement;
         });
-        return this.#install(host, update.result, {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze([])}, "incremental", undefined, guard);
+        return this.#install(host, update.result, {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze(refreshes)}, "incremental", undefined, guard);
       } catch { return projectionFailure("renderer.dom_write_failed"); }
     } finally { endHostOperation(host); }
   }
@@ -1203,6 +1216,50 @@ function buildFullProjection(
     paragraphs: Object.freeze(paragraphs),
     refreshes: Object.freeze([]),
   };
+}
+
+/** Text refreshes cannot change tags, list numbering or recursive topology. */
+function nestedTopologyMatches(a: NestedListRootProjection, b: NestedListRootProjection): boolean {
+  if (a.kind === "textBlock" || b.kind === "textBlock") return a.kind === "textBlock" && b.kind === "textBlock" && textBlockTag(a.block) === textBlockTag(b.block);
+  return a.kind === b.kind && (a.kind !== "orderedList" || (b.kind === "orderedList" && Object.is(a.start, b.start))) &&
+    a.items.length === b.items.length && a.items.every((item, index) => {
+      const next = b.items[index];
+      return next !== undefined && textBlockTag(item.block) === textBlockTag(next.block) &&
+        item.lists.length === next.lists.length && item.lists.every((list, section) =>
+          next.lists[section] !== undefined && nestedTopologyMatches(list, next.lists[section]!));
+    });
+}
+
+/** Prepare detached text children; live DOM writes use #install's rollback path. */
+function prepareNestedTextRefresh(document: Document, node: Node, before: NestedListRootProjection, after: NestedListRootProjection,
+  path: AstPath, maps: ProjectionMaps, refreshes: ParagraphRefresh[], presentation: BrowserCompiledPresentation | undefined): void {
+  const paragraph = (element: Node | undefined, a: BaseParagraphProjection, b: BaseParagraphProjection, blockPath: AstPath): void => {
+    if (!isHtmlElementNamed(element, textBlockTag(b))) throw new TypeError("Nested refresh block changed.");
+    if (paragraphsEqual(a, b)) {
+      if (!mapExistingParagraph(element, b, blockPath, maps, presentation)) throw new TypeError("Nested refresh block drifted.");
+    } else {
+      mapNode(element, blockPath, maps.astToDom, maps.domToAst, true);
+      refreshes.push(Object.freeze({paragraph: element, children: buildParagraphChildren(document, b, blockPath, maps, presentation)}));
+    }
+  };
+  if (before.kind === "textBlock" || after.kind === "textBlock") {
+    if (before.kind !== "textBlock" || after.kind !== "textBlock") throw new TypeError("Nested refresh topology changed.");
+    paragraph(node, before.block, after.block, path); return;
+  }
+  mapNode(node, path, maps.astToDom, maps.domToAst, true);
+  const items = nativeChildNodes(node);
+  after.items.forEach((entry, index) => {
+    const item = items[index], prior = before.items[index], itemPath = Object.freeze([...path, index]);
+    if (item === undefined || prior === undefined) throw new TypeError("Nested refresh item changed.");
+    mapNode(item, itemPath, maps.astToDom, maps.domToAst, true);
+    const children = nativeChildNodes(item);
+    paragraph(children[0], prior.block, entry.block, Object.freeze([...itemPath, 0]));
+    entry.lists.forEach((list, section) => {
+      const child = children[section + 1], old = prior.lists[section];
+      if (child === undefined || old === undefined) throw new TypeError("Nested refresh section changed.");
+      prepareNestedTextRefresh(document, child, old, list, Object.freeze([...itemPath, section + 1]), maps, refreshes, presentation);
+    });
+  });
 }
 
 /** Builds list sections at their real item-child indices (zero is the leading block). */

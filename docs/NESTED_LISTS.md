@@ -630,6 +630,18 @@ Report: `breditor-nested-list-consumer-kWZhAE/performance-ghGBbf/measurement.jso
 under the system temporary directory; SHA-256
 `c39e8663c73e772e79654f55b4eed68c98733711cf258425e453ee20622c5f9d`.
 
+A topology-preserving text refresh now retains nested list/item/block elements
+when root positions, tags, numbering and recursive item/section counts are
+unchanged. It prepares changed paragraph children off-DOM and uses the existing
+guarded install/rollback path; unchanged paragraphs and descendants retain their
+nodes with fresh snapshot-local maps. Structural/tag/numbering changes still
+rebuild, and drift/full-impact handling is unchanged. Type checks and 2,089 browser
+tests pass, including empty-block mapping and rollback after a write throws.
+The isolated package pair `target/nested-list-packages-TpYaIw` passes all three
+browser consumers and default smoke checks. A post-change performance measurement
+and refreshed single-package keyboard qualification are still required; no speedup
+or release readiness is claimed from these correctness tests.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time

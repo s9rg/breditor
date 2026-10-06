@@ -217,6 +217,59 @@ describe("recursive nested-list DOM", () => {
     expect(rendered.current).toBe(false);
     expect(renderer.releaseNestedList(rendered)).toBe(false);
   });
+  it("refreshes nested text without rebuilding unchanged list and descendant nodes", () => {
+    const f = fixture(), root = f.host.firstChild!, parent = f.host.querySelector("p")!;
+    const childText = f.rendered.nodeForAstPath([0, 0, 1, 0, 0, 0]);
+    const blocks = structuredClone(f.blocks);
+    blocks[0]!.items[0]!.block.runs[0]!.text = "edited parent";
+    const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result: f.make(blocks),
+      impact: {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 0, end: 1}}}));
+    const outcome = valueOf(f.renderer.updateNestedList(f.rendered, update));
+    expect(f.host.firstChild).toBe(root);
+    expect(f.host.querySelector("p")).toBe(parent);
+    expect(parent.textContent).toBe("edited parent");
+    expect(outcome.rendered.nodeForAstPath([0, 0, 1, 0, 0, 0])).toBe(childText);
+    expect(outcome.rendered.validateCanonicalDom()).toBe(true);
+    expect(f.rendered.current).toBe(false);
+  });
+  it("rebuilds rather than refreshing when nested numbering changes", () => {
+    const f = fixture(), root = f.host.firstChild!, blocks = structuredClone(f.blocks);
+    blocks[0]!.items[0]!.lists[0]!.start = 12;
+    const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result: f.make(blocks),
+      impact: {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 0, end: 1}}}));
+    const outcome = valueOf(f.renderer.updateNestedList(f.rendered, update));
+    expect(f.host.firstChild).not.toBe(root);
+    expect(f.host.querySelector("ol")!.getAttribute("start")).toBe("12");
+    expect(outcome.rendered.validateCanonicalDom()).toBe(true);
+  });
+  it("refreshes deep text to an empty placeholder with canonical selection mapping", () => {
+    const f = fixture(), root = f.host.firstChild!, blocks = structuredClone(f.blocks);
+    const path = [0, 0, 1, 0, 0], oldBlock = f.rendered.nodeForAstPath(path);
+    blocks[0]!.items[0]!.lists[0]!.items[0]!.block.runs = [];
+    const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result: f.make(blocks),
+      impact: {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 0, end: 1}}}));
+    const outcome = valueOf(f.renderer.updateNestedList(f.rendered, update));
+    expect(f.host.firstChild).toBe(root);
+    expect(outcome.rendered.nodeForAstPath(path)).toBe(oldBlock);
+    expect((oldBlock as Element).innerHTML).toBe("<br>");
+    expect(outcome.rendered.validateCanonicalDom()).toBe(true);
+    expect(mapNestedListSelectionPointToDomPoint(outcome.rendered, {kind: "children", parentPath: path, childIndex: 0, affinity: "after"})).toMatchObject({ok: true, value: {node: oldBlock, offset: 0}});
+  });
+  it("rolls back a nested paragraph refresh that throws after writing", () => {
+    const f = fixture(), root = f.host.firstChild!, parent = f.host.querySelector("p")!, originalText = parent.firstChild;
+    const before = f.host.innerHTML, blocks = structuredClone(f.blocks);
+    blocks[0]!.items[0]!.block.runs[0]!.text = "edited parent";
+    const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result: f.make(blocks),
+      impact: {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 0, end: 1}}}));
+    const replace = parent.replaceChildren.bind(parent);
+    const spy = vi.spyOn(parent, "replaceChildren").mockImplementationOnce((...nodes) => {replace(...nodes); throw new Error("after refresh");});
+    try { expect(f.renderer.updateNestedList(f.rendered, update).ok).toBe(false); }
+    finally { spy.mockRestore(); }
+    expect(f.host.firstChild).toBe(root);
+    expect(f.host.innerHTML).toBe(before);
+    expect(parent.firstChild).toBe(originalText);
+    expect(f.rendered.current).toBe(false);
+  });
   it("retains a moved recursive subtree and remaps every descendant", () => {
     const f = fixture(), root = f.host.firstChild!, text = f.rendered.nodeForAstPath([0, 0, 1, 0, 0, 0]);
     const result = f.make([{kind: "textBlock", block: {headingLevel: null, runs: []}}, ...f.blocks]);
