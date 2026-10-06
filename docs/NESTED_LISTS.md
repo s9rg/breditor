@@ -574,5 +574,17 @@ Tab/Shift-Tab. Current archive: `target/nested-list-opt-in-HwqlQN`, SHA-256
 954,091 compressed bytes, from `target/nested-list-packages-fwwKqY`.
 Shipping trees remain unchanged and size/publication qualification remains false.
 
+Installed-package keyboard qualification now additionally uses Playwright's
+browser-dispatched keys, asserting that observed key events are trusted rather
+than script-dispatched. Chromium/Firefox/WebKit pass Tab/Shift-Tab nesting, actual
+text input, undo/redo, Enter/Backspace split-and-join with exact descendant
+restoration, and disabled-indent focus navigation to a trailing text input.
+An initial trailing-button focus assertion failed only in WebKit (the event left
+the editor but did not focus that button); a text-input focus target passes in
+all engines. Button focus preference behavior remains outside this check. Exact
+artifact stays `nested-list-opt-in-HwqlQN`; the current consumer report identifies
+`breditor-opt-in-consumer-fMmjHw`. This is browser automation, not physical keyboard,
+OS IME, native clipboard, VoiceOver or resolution of the older WebKit fault.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

@@ -9,6 +9,7 @@ import {fileURLToPath} from "node:url";
 import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {readQualifiedPair, sha256, tree} from "./build-opt-in-nested-list-package.mjs";
+import {runNestedListKeyboardProbe} from "./nested-list-keyboard-probe.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/check-opt-in-nested-list-package.mjs <assembly.json>");
 const repository = fileURLToPath(new URL("../", import.meta.url));
@@ -81,8 +82,9 @@ console.log("Node opt-in imports, identity, engine and export boundaries passed"
       await page.goto(`http://127.0.0.1:${address.port}/`);
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 15000});
       assert.equal(await page.locator("#result").getAttribute("data-status"), "passed", await page.locator("#result").textContent());
+      const keyboard = await runNestedListKeyboardProbe(page, `http://127.0.0.1:${address.port}`);
       assert.deepEqual(errors, []);
-      runs.push({browser: name, version: browser.version(), status: "passed"});
+      runs.push({browser: name, version: browser.version(), status: "passed", keyboard});
     } catch (error) {
       runs.push({browser: name, version: browser.version(), status: "failed", error: String(error), errors});
       throw error;

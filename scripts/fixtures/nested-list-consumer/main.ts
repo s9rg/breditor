@@ -90,6 +90,34 @@ async function start(): Promise<void> {
     owner = restored.editor; equal(exported("sessionCheckpointJson"), checkpoint);
     (options.toolbar!.host.querySelector('[data-breditor-state-id="breditor/control-redo"]') as HTMLButtonElement).click();
     equal(exported("documentJson"), changed);
+    if (new URL(location.href).searchParams.has("keyboardProbe")) {
+      owner.dispose();
+      const fresh = await BreditorBrowserEditor.openNestedLists(options);
+      if (!fresh.ok) throw new Error(fresh.error.code);
+      owner = fresh.editor;
+      // Text inputs participate in Safari's default Tab navigation even when
+      // platform settings omit buttons from the focus cycle.
+      const after = document.createElement("input"); after.id = "after-editor"; after.setAttribute("aria-label", "After editor");
+      document.body.append(after);
+      const keys: Array<{key: string; trusted: boolean}> = [];
+      options.host.addEventListener("keydown", event => { keys.push({key: event.key, trusted: event.isTrusted}); });
+      try {
+        await new Promise<void>(finish => {
+          (globalThis as unknown as {nestedKeyboardProbe: unknown}).nestedKeyboardProbe = {
+            select(value: string, offset: number) {
+              owner.focus();
+              const node = [...options.host.querySelectorAll("p,h2")].find(node => node.textContent === value)?.firstChild;
+              if (!node) throw new Error("probe text missing");
+              getSelection()!.setBaseAndExtent(node, offset, node, offset);
+            },
+            read() { return {document: exported("documentJson"), text: exported("plainText"), status: owner.getStatus(),
+              active: document.activeElement?.id, keys: [...keys]}; },
+            finish,
+          };
+          output.setAttribute("data-status", "keyboard-ready");
+        });
+      } finally { after.remove(); delete (globalThis as unknown as {nestedKeyboardProbe?: unknown}).nestedKeyboardProbe; }
+    }
     output.textContent = "passed: packed imports, list toolbar, undo, V7 restore and redo";
     output.setAttribute("data-status", "passed");
   } finally { owner.dispose(); }
