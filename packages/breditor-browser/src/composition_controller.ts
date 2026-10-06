@@ -67,6 +67,7 @@ import {
   type WasmRenderReconciliationOutcome,
   type WasmCommandSequenceOutcome,
   type WasmCompositionLeaseRestoreOutcome,
+  type WasmCommandDeliveryToken,
 } from "./wasm_command_adapter.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
@@ -77,7 +78,7 @@ import { FlatListRangeSelection, isOwnedFlatListRangeSelection, flatListSpatialP
 import { nativeCommandBuilder } from "./native_command_builder.js";
 
 type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection;
-type Delivery<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListEditorDeliveryToken : EditorDeliveryToken;
+type Delivery<P extends CompositionProjection> = WasmCommandDeliveryToken<P>;
 type Selection<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
 type Request<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListEditorCommandRequest : EditorCommandRequest;
 

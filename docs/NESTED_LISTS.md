@@ -401,8 +401,24 @@ indent/outdent capability routing and live native delivery remain pending.
 Nested clipboard request builders now admit nested-only cut deletion and plain-text
 paste with a closed-before history boundary. Tests cover Japanese text, the source
 paragraph ceiling, invalid Unicode, forged delivery and rejection by legacy
-builders. Live clipboard-controller and Wasm-adapter integration remain pending;
+builders. Live clipboard-controller integration remains pending;
 these request tests are not native clipboard qualification.
+
+The explicit `BreditorNestedListWasmCommandAdapter` now uses the shared command
+ownership/publication state machine with nested-only delivery capabilities and
+V7 durable admission. It dispatches recursive projection updates, deep scalar
+selections, full render recovery, plain-text/document export and composition
+lease restoration through their nested implementations. Legacy and flat
+constructors do not enable this mode. The existing composition controller shares
+the result-capability type but is not yet wired for nested native events.
+
+Adapter tests exercise simulated generated selection/edit/undo/redo results,
+exactly-once handle cleanup, stale and foreign requests, disabled commands,
+fault quarantine, composition refinement/recovery/failure and recursive document
+export correlation (including rejection of same-text reparenting). These prove
+browser adapter dispatch and ownership, not Rust execution or native IME behavior.
+Generated bootstrap, public editor owner, native controllers, toolbar and packed
+consumer qualification still need integration before release readiness.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

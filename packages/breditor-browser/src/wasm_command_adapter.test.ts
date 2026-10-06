@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BreditorNestedListWasmCommandAdapter } from "./wasm_command_adapter.js";
+import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
+import { NestedListDocumentProjection } from "./nested_list_projection.js";
+import { NestedListRangeSelection } from "./nested_list_selection.js";
+import { nestedListCommandRequest, nestedListEditorDeliveryAuthorityAccepts, nestedListRangeSelectionSync } from "./editor_command.js";
+import { reconcileNestedListCompositionDom } from "./dom_composition_reconcile.js";
 
 import { BreditorDomRenderer, type RenderedProjection } from "./dom_renderer.js";
 import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
@@ -47,6 +53,7 @@ import type { BrowserSelectionResult } from "./selection_result.js";
 import type {
   SemanticProjectionUpdateView,
   SemanticProjectionView,
+  FlatListSemanticProjectionView,
 } from "./wasm_projection_adapter.js";
 import { associateProjectionWithProfileGeneration } from "./wasm_projection_adapter.js";
 import type { SemanticSelectionView } from "./wasm_selection_adapter.js";
@@ -190,6 +197,280 @@ interface TrackedIntentResult {
 beforeEach(() => {
   document.body.replaceChildren();
   window.getSelection()?.removeAllRanges();
+});
+
+describe("explicit nested-list command adapter", () => {
+  it.each([false, true])("correlates durable document export with exact nested topology (reparented=%s)", reparented => {
+    const element = (type: string, children: unknown[], properties = {}) => ({kind: "element", type: `breditor/${type}`, entityId: null, properties, children});
+    const parent = element("paragraph", [{kind: "text", text: "P", formats: []}]);
+    const child = element("ordered-list", [element("list-item", [element("heading", [{kind: "text", text: "A🙂", formats: []}], {"breditor/level": 2})])], {"breditor/start": 8});
+    const root = element("document", reparented
+      ? [element("bullet-list", [element("list-item", [parent])]), child]
+      : [element("bullet-list", [element("list-item", [parent, child])])]);
+    const json = JSON.stringify({format: "breditor/document", formatVersion: 2,
+      schema: {name: TEST_PROFILE_DESCRIPTOR.schema.name, version: TEST_PROFILE_DESCRIPTOR.schema.version},
+      schemaFingerprint: TEST_PROFILE_DESCRIPTOR.schema.fingerprint, root});
+    const free = vi.fn(), f = fixture();
+    const adapter = new BreditorNestedListWasmCommandAdapter(engineQueues({documents: [{status: "value", error: undefined, takeValue: () => json, free}]}), observation(0), f.options);
+    try {
+      expect(adapter.documentJsonReadPort.read()?.ok).toBe(!reparented);
+      expect(adapter.state).toBe("live");
+      expect(free).toHaveBeenCalledOnce();
+    } finally { adapter.dispose(); f.bridge.dispose(); f.host.remove(); }
+  });
+
+  function transition(revision: number, text: string, eventKind: "selection" | "action" | "undo" | "redo") {
+    const children: Record<number, number[]> = {0: [1], 1: [2], 2: [3, 5], 3: [4], 5: [6], 6: [7], 7: [8]};
+    const types: Record<number, string> = {0: "document", 1: "bullet-list", 2: "list-item", 3: "paragraph", 5: "ordered-list", 6: "list-item", 7: "heading"};
+    const child: FlatListSemanticProjectionView = {
+      ...projectionView(projection(revision, text)), nodeCount: 9,
+      nodeKind: index => index === 4 || index === 8 ? "text" : types[index] === undefined ? undefined : "element",
+      elementType: index => types[index] === undefined ? undefined : `breditor/${types[index]}`,
+      childCount: index => children[index]?.length,
+      childAt: (index, ordinal) => children[index]?.[ordinal],
+      text: index => index === 4 ? "P" : index === 8 ? text : undefined,
+      formatCount: index => index === 4 || index === 8 ? 0 : undefined,
+      headingLevel: index => index === 7 ? 2 : undefined,
+      listKind: index => index === 1 ? "bullet" : index === 5 ? "ordered" : undefined,
+      orderedListStart: index => index === 5 ? 8 : undefined,
+    };
+    let taken = false;
+    const update: SemanticProjectionUpdateView = {
+      baseLineage: "adapter-tests", baseRevision: String(revision - 1), resultLineage: "adapter-tests", resultRevision: String(revision),
+      impact: eventKind === "selection" ? "none" : "root", affectedParagraphCount: 0,
+      oldChildStart: undefined, oldChildEnd: undefined, newChildStart: undefined, newChildEnd: undefined,
+      affectedParagraphIndex: () => undefined, matchesProfileGeneration: matchesTestProfile,
+      takeProjection: () => { if (taken) return undefined; taken = true; return child; }, free: vi.fn(),
+    };
+    const successor = observation(revision);
+    const result = commandResult({status: "committed", eventKind, successor, update});
+    const selected = selectionResult({...selectionView(revision, text.length), anchorNodeIndex: 8, focusNodeIndex: 8});
+    return {child, update, successor, result, selected};
+  }
+
+  it("publishes recursive updates and deep selections through selection, edit, undo and redo", () => {
+    const f = fixture(), initial = observation(0);
+    const steps = [transition(1, "A🙂", "selection"), transition(2, "A🙂x", "action"), transition(3, "A🙂", "undo"), transition(4, "A🙂x", "redo")];
+    const engine = engineQueues({setSelection: [steps[0]!.result.view], stringAction: [steps[1]!.result.view],
+      undo: [steps[2]!.result.view], redo: [steps[3]!.result.view], selection: steps.map(step => step.selected.view)});
+    const sync = vi.spyOn(engine, "setRangeSelection");
+    const adapter = new BreditorNestedListWasmCommandAdapter(engine, initial, f.options);
+    try {
+      const point = {kind: "text" as const, textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 3, affinity: "before" as const};
+      const selection = NestedListRangeSelection.create(adapter.rendered.projection, {kind: "range", anchor: point, focus: point});
+      if (!selection.ok) throw new Error(selection.error.code);
+      const first = nestedListCommandRequest(adapter.deliveryToken(), nestedListRangeSelectionSync(selection.value), {kind: "api", detail: "select"}, {kind: "selection", operation: "synchronize"});
+      expect(adapter.execute(first).command.status).toBe("committed");
+      expect(sync).toHaveBeenCalledWith(initial, "text", 8, 3, "before", "text", 8, 3, "before");
+      expect(() => adapter.execute(first)).toThrow();
+      const command = nestedListCommandRequest(adapter.deliveryToken(), preserveSelectionSync(), {kind: "api", detail: "type"},
+        {kind: "action", actionId: "breditor/insert-nested-list-text", input: {kind: "string", value: "x"}});
+      expect(adapter.execute(command).command.status).toBe("committed");
+      expect(f.host.textContent).toBe("PA🙂x");
+      for (const operation of ["undo", "redo"] as const) {
+        expect(adapter.execute(nestedListCommandRequest(adapter.deliveryToken(), preserveSelectionSync(), {kind: "api", detail: operation}, {kind: "history", operation})).command.status).toBe("committed");
+        expect(f.host.querySelector("h2")!.textContent).toBe(operation === "undo" ? "A🙂" : "A🙂x");
+        expect(f.host.querySelector("ol")!.start).toBe(8);
+      }
+      expect(f.bridge.read(adapter.rendered)).toMatchObject({ok: true, value: {selection: {anchor: {textPath: point.textPath, utf16Offset: 4}}}});
+      expect(adapter.state).toBe("live");
+    } finally { adapter.dispose(); f.bridge.dispose(); f.host.remove(); }
+    expect(initial.free).toHaveBeenCalledOnce();
+    for (const step of steps) for (const free of [step.child.free, step.update.free, step.successor.free, step.result.free, step.selected.free, step.selected.selectionFree]) expect(free).toHaveBeenCalledOnce();
+  });
+
+  function fixture(extraItem = false) {
+    const projection = NestedListDocumentProjection.create({schema: TEST_PROFILE_DESCRIPTOR.schema,
+      snapshot: {lineage: "adapter-tests", revision: "0"}, blocks: [
+        {kind: "bulletList", items: [{block: {headingLevel: null, runs: [{text: "P", formatDetails: []}]}, lists: [
+          {kind: "orderedList", start: 8, items: [{block: {headingLevel: 2, runs: [{text: "A🙂", formatDetails: []}]}, lists: []},
+            ...(extraItem ? [{block: {headingLevel: null, runs: [{text: "B", formatDetails: []}]}, lists: []}] : [])]}
+        ]}]},
+      ]}, TEST_PROFILE_GENERATION, TEST_PROFILE_DESCRIPTOR);
+    if (!projection.ok) throw new Error(projection.error.code);
+    const renderer = new BreditorDomRenderer(compileBrowserPresentation(TEST_PROFILE_GENERATION, TEST_PROFILE_DESCRIPTOR,
+      createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]})));
+    const host = document.createElement("div"); document.body.append(host);
+    const rendered = renderer.renderNestedList(host, projection.value);
+    if (!rendered.ok) throw new Error(rendered.error.code);
+    const bridge = new BreditorNestedListDomSelectionBridge();
+    return {host, renderer, bridge, options: {durableMode: "v7" as const,
+      profileGeneration: TEST_PROFILE_GENERATION, profileDescriptor: TEST_PROFILE_DESCRIPTOR,
+      renderer, rendered: rendered.value.rendered, selectionBridge: bridge}};
+  }
+  const request = (adapter: BreditorNestedListWasmCommandAdapter) => nestedListCommandRequest(adapter.deliveryToken(),
+    preserveSelectionSync(), {kind: "api", detail: "lists"},
+    {kind: "action", actionId: "breditor/toggle-nested-list-strong", input: {kind: "none"}});
+
+  function compositionAdapterFixture(input: Parameters<typeof engineQueues>[0] = {}, extraItem = false) {
+    const f = fixture(extraItem); const initial = observation(0); const engine = engineQueues(input);
+    const action = vi.spyOn(engine, "executeStringAction");
+    const selectionSync = vi.spyOn(engine, "setRangeSelection");
+    const closeHistory = vi.spyOn(engine, "closeHistoryGroup");
+    const adapter = new BreditorNestedListWasmCommandAdapter(engine, initial, f.options);
+    const selected = NestedListRangeSelection.create(adapter.rendered.projection, {kind: "range",
+      anchor: {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 3, affinity: "before"},
+      focus: {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 1, affinity: "after"}});
+    if (!selected.ok) throw new Error(selected.error.code);
+    return {...f, initial, engine, action, selectionSync, closeHistory, adapter, selected: selected.value,
+      dispose() { adapter.dispose(); f.bridge.dispose(); f.host.remove(); }};
+  }
+
+  it("owns a one-use list composition lease and restores exact selection without a Rust edit", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const delivery = f.adapter.deliveryToken(); const before = f.adapter.rendered;
+      const lease = f.adapter.beginCompositionLease(delivery, f.selected, 1n);
+      expect(f.adapter.state).toBe("composition"); expect(f.adapter.acceptsDeliveryToken(delivery)).toBe(false);
+      expect(() => f.adapter.deliveryToken()).toThrow();
+      expect(f.adapter.openCompositionDomLease(lease)).toBe(true);
+      f.host.querySelector("h2")!.textContent = "A漢";
+      expect(reconcileNestedListCompositionDom(f.host, before.projection, f.selected)).toMatchObject({ok: true,
+        value: {textBlockPath: [0, 0, 1, 0, 0], originalText: "🙂", text: "漢"}});
+      const restored = f.adapter.restoreCompositionLease(lease);
+      expect(restored.ok).toBe(true);
+      if (!restored.ok) throw new Error(restored.reason);
+      expect(restored.selection).toBe(f.selected); expect(f.adapter.acceptsDeliveryToken(restored.delivery)).toBe(true);
+      expect(f.host.querySelector("h2")!.textContent).toBe("A🙂"); expect(f.host.querySelector("ol")!.start).toBe(8);
+      expect(f.bridge.read(restored.rendered)).toMatchObject({ok: true, value: {origin: "programmaticEcho", selection: f.selected}});
+      expect(() => f.adapter.restoreCompositionLease(lease)).toThrow(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.initial.free).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+    expect(f.initial.free).toHaveBeenCalledOnce();
+  });
+
+  it("refines a list composition range once, invalidating the previous exact token", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+      const refined = f.adapter.refineCompositionLease(lease, f.selected);
+      expect(() => f.adapter.openCompositionDomLease(lease)).toThrow("stale");
+      expect(() => f.adapter.refineCompositionLease(refined, f.selected)).toThrow();
+      expect(f.adapter.openCompositionDomLease(refined)).toBe(true);
+      expect(() => f.adapter.openCompositionDomLease(refined)).toThrow();
+      expect(f.adapter.restoreCompositionLease(refined).ok).toBe(true);
+    } finally { f.dispose(); }
+  });
+
+  it("rejects foreign list composition selections and tokens before changing state", () => {
+    const f = compositionAdapterFixture(); const other = compositionAdapterFixture();
+    try {
+      const delivery = f.adapter.deliveryToken();
+      expect(() => f.adapter.beginCompositionLease(delivery, other.selected, 1n)).toThrow();
+      expect(f.adapter.acceptsDeliveryToken(delivery)).toBe(true);
+      const lease = f.adapter.beginCompositionLease(delivery, f.selected, 1n);
+      expect(() => other.adapter.openCompositionDomLease(lease)).toThrow();
+      expect(() => f.adapter.restoreCompositionLease({...lease})).toThrow("stale");
+      expect(f.adapter.restoreCompositionLease(lease).ok).toBe(true);
+    } finally { f.dispose(); other.dispose(); }
+  });
+
+  it("recovers a list composition after its DOM lease is superseded", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+      expect(f.adapter.openCompositionDomLease(lease)).toBe(true);
+      f.host.querySelector("h2")!.textContent = "native";
+      expect(f.renderer.renderNestedList(f.host, lease.projection).ok).toBe(true);
+      expect(() => f.adapter.restoreCompositionLease(lease)).toThrow("stale");
+      expect(f.adapter.recoverCompositionLease(lease)).toMatchObject({ok: true, selection: f.selected});
+      expect(f.adapter.state).toBe("live"); expect(f.host.textContent).toBe("PA🙂");
+      expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it.each(["render", "selection"])("spends the list lease after a %s restoration failure", failure => {
+    const f = compositionAdapterFixture();
+    const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+    expect(f.adapter.openCompositionDomLease(lease)).toBe(true);
+    const override = failure === "render"
+      ? vi.spyOn(f.renderer, "restoreNestedListCompositionDomLease").mockImplementation(() => { throw new Error("render failure"); })
+      : vi.spyOn(f.bridge, "write").mockImplementation(() => { throw new Error("selection failure"); });
+    try {
+      expect(f.adapter.restoreCompositionLease(lease)).toEqual({ok: false, reason: failure === "render" ? "renderFailed" : "selectionWriteFailed"});
+      expect(f.adapter.state).toBe("reconcile"); expect(() => f.adapter.restoreCompositionLease(lease)).toThrow();
+      expect(f.action).not.toHaveBeenCalled();
+    } finally { override.mockRestore(); f.dispose(); }
+  });
+
+  it("disposal discards provisional list composition DOM and frees observation once", () => {
+    const f = compositionAdapterFixture();
+    try {
+      const lease = f.adapter.beginCompositionLease(f.adapter.deliveryToken(), f.selected, 1n);
+      expect(f.adapter.openCompositionDomLease(lease)).toBe(true); f.host.querySelector("h2")!.textContent = "native";
+      f.adapter.dispose(); f.adapter.dispose();
+      expect(f.host.textContent).toBe("PA🙂"); expect(f.initial.free).toHaveBeenCalledOnce();
+      expect(f.adapter.state).toBe("disposed"); expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it.each(["v7 legacy", "v6 list", "base bridge", "base render"])("rejects mismatched %s dependencies", fault => {
+    const f = fixture(); const initial = observation(0); const engine = engineQueues({});
+    if (fault === "v7 legacy") {
+      // @ts-expect-error List dependencies are deliberately not legacy dependencies.
+      expect(() => new RawBreditorWasmCommandAdapter(engine, initial, f.options)).toThrow();
+    } else {
+      const options = fault === "v6 list" ? {...f.options, durableMode: "v6"}
+        : fault === "base bridge" ? {...f.options, selectionBridge: new BreditorDomSelectionBridge()}
+          : {...f.options, rendered: projectionFixture(0, "base").rendered};
+      expect(() => new BreditorNestedListWasmCommandAdapter(engine, initial, options as never)).toThrow();
+    }
+    f.renderer.releaseNestedList(f.options.rendered); f.bridge.dispose();
+  });
+
+  it("spends disabled deliveries, keeps exact private authority, and frees each owner once", () => {
+    const f = fixture(); const initial = observation(0); const next = observation(0);
+    const result = commandResult({status: "disabled", successor: next, disabledActionId: "breditor/toggle-nested-list-strong",
+      disabledReasonCode: "breditor/no-selection", activation: "inactive"});
+    const engine = engineQueues({noInputAction: [result.view]}); const action = vi.spyOn(engine, "executeNoInputAction");
+    const adapter = new BreditorNestedListWasmCommandAdapter(engine, initial, f.options);
+    const captured = request(adapter); const execute = adapter.commandExecutor;
+    const override = vi.fn(() => { throw new Error("public override"); });
+    Object.defineProperty(adapter, "execute", {value: override});
+    Object.defineProperty(adapter, "acceptsDeliveryToken", {value: () => true});
+    expect(nestedListEditorDeliveryAuthorityAccepts(adapter.deliveryAuthority, captured.delivery)).toBe(true);
+    expect(editorDeliveryAuthorityAccepts(adapter.deliveryAuthority, captured.delivery)).toBe(false);
+    expect(execute(captured).command.status).toBe("disabled");
+    expect(nestedListEditorDeliveryAuthorityAccepts(adapter.deliveryAuthority, captured.delivery)).toBe(false);
+    expect(() => execute(captured)).toThrow("stale"); expect(action).toHaveBeenCalledOnce(); expect(override).not.toHaveBeenCalled();
+    expect(result.free).toHaveBeenCalledOnce(); expect(initial.free).toHaveBeenCalledOnce();
+    expect(adapter.plainTextReadPort.read()).toMatchObject({ok: true, content: {text: "P\nA🙂", utf8Bytes: 7}});
+    adapter.dispose(); adapter.dispose(); expect(next.free).toHaveBeenCalledOnce(); f.bridge.dispose();
+    expect(adapter.plainTextReadPort.read()).toMatchObject({ok: false});
+  });
+
+  it.each(["missing update", "cleanup throw", "cleanup thenable"])("faults on %s without retrying the generated command", fault => {
+    const f = fixture(); const initial = observation(0); const next = observation(fault === "missing update" ? 1 : 0);
+    const result = commandResult(fault === "missing update"
+      ? {status: "committed", eventKind: "action", successor: next}
+      : {status: "disabled", successor: next, disabledActionId: "breditor/toggle-nested-list-strong",
+          disabledReasonCode: "breditor/no-selection", activation: "inactive",
+          ...(fault === "cleanup throw" ? {freeThrows: true} : {freeResult: Promise.resolve(undefined)})});
+    const engine = engineQueues({noInputAction: [result.view]}); const action = vi.spyOn(engine, "executeNoInputAction");
+    const adapter = new BreditorNestedListWasmCommandAdapter(engine, initial, f.options); const captured = request(adapter);
+    expect(() => adapter.execute(captured)).toThrow(); expect(adapter.state).toBe("faulted");
+    expect(adapter.restoreCanonicalRender()).toEqual({ok: false, reason: "adapterUnavailable"});
+    expect(() => adapter.execute(captured)).toThrow(); expect(action).toHaveBeenCalledOnce();
+    expect(result.free).toHaveBeenCalledOnce();
+    adapter.dispose(); f.bridge.dispose(); expect(initial.free).toHaveBeenCalledOnce(); expect(next.free).toHaveBeenCalledOnce();
+  });
+
+  it("rejects foreign owners and base requests before generated mutation", () => {
+    const f = fixture(); const engine = engineQueues({}); const action = vi.spyOn(engine, "executeNoInputAction");
+    const adapter = new BreditorNestedListWasmCommandAdapter(engine, observation(0), f.options);
+    const second = fixture(); const other = new BreditorNestedListWasmCommandAdapter(engineQueues({}), observation(0), second.options);
+    expect(() => adapter.execute(request(other))).toThrow("stale");
+    const base = projectionFixture(0, "base");
+    const legacy = new BreditorWasmCommandAdapter(engineQueues({}), observation(0), {
+      renderer: base.renderer, rendered: base.rendered, selectionBridge: new BreditorDomSelectionBridge()});
+    const baseRequest = noInputActionRequest(legacy.deliveryToken(), preserveSelectionSync(), {kind: "api", detail: "base"}, "breditor/toggle-strong");
+    // @ts-expect-error The explicit list adapter cannot receive base requests.
+    expect(() => adapter.execute(baseRequest)).toThrow("exact executable");
+    // @ts-expect-error The base adapter cannot receive list requests.
+    expect(() => legacy.commandExecutor(request(adapter))).toThrow("exact executable");
+    expect(action).not.toHaveBeenCalled(); expect(adapter.state).toBe("live");
+    adapter.dispose(); other.dispose(); legacy.dispose(); f.bridge.dispose(); second.bridge.dispose();
+  });
 });
 
 describe("explicit flat-list command adapter", () => {
