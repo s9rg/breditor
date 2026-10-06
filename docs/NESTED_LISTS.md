@@ -290,5 +290,14 @@ cover deep provisional text, foreign renderer rejection, canonical restoration,
 construction failure and discard. This is ownership infrastructure only: nested
 composition reconciliation and event delivery are not yet wired or IME-qualified.
 
+`reconcileNestedListCompositionDom` now checks recursive list/item structure,
+ordered starts and every non-target block before recovering a bounded replacement
+from one selected text block. Prefix/suffix checks and the existing Unicode,
+text/node and dynamic-attribute budgets still apply. Tests recover a deep
+replacement and reject changed parent text, numbering, missing child sections
+and altered surrounding text. Cross-block composition remains rejected by the
+shared reconciliation contract; event delivery and physical IME qualification
+are still pending. Synthetic Japanese text in a test is not native IME evidence.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

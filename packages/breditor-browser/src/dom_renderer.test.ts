@@ -17,6 +17,7 @@ import {
   MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES,
   reconcileCompositionDom,
   reconcileFlatListCompositionDom,
+  reconcileNestedListCompositionDom,
 } from "./dom_composition_reconcile.js";
 import { MAX_COMPOSITION_TEXT_UTF16 } from "./composition_event.js";
 import { issueFlatListCompositionDeliveryToken, flatListCompositionDeliveryTokenMatchesOpeningBase,
@@ -212,6 +213,25 @@ describe("recursive nested-list DOM", () => {
     expect(f.renderer.ownsNestedList(restored)).toBe(true);
     expect(f.renderer.restoreNestedListCompositionDomLease(lease, f.projection).ok).toBe(false);
     expect(f.renderer.discardNestedListCompositionDomLease(lease)).toBe(false);
+  });
+  it.each(["valid", "sibling", "numbering", "section", "prefix"])("reconciles nested composition with %s DOM", fault => {
+    const f = fixture(); document.body.append(f.host);
+    try {
+      const point = (offset: number) => ({kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: offset, affinity: "after"});
+      const selection = valueOf(NestedListRangeSelection.create(f.projection, {kind: "range", anchor: point(5), focus: point(7)}));
+      const lease = f.renderer.beginNestedListCompositionDomLease(f.rendered);
+      if (lease === null) throw new Error("lease");
+      f.host.querySelector("ol strong")!.textContent = "child日本";
+      if (fault === "sibling") f.host.querySelector("strong")!.textContent = "changed parent";
+      if (fault === "numbering") f.host.querySelector("ol")!.setAttribute("start", "1");
+      if (fault === "section") f.host.querySelector("ol ul")!.remove();
+      if (fault === "prefix") f.host.querySelector("ol strong")!.textContent = "wrong日本";
+      const result = reconcileNestedListCompositionDom(f.host, f.projection, selection);
+      if (fault === "valid") expect(valueOf(result)).toEqual({textBlockPath: [0, 0, 1, 0, 0], replacementStartUtf16: 5,
+        replacementEndUtf16: 7, originalText: "🙂", text: "日本"});
+      else expect(result.ok).toBe(false);
+      expect(f.renderer.discardNestedListCompositionDomLease(lease)).toBe(true);
+    } finally { f.host.remove(); }
   });
   it("keeps a nested lease retryable after detached construction fails and allows discard", () => {
     const f = fixture(), lease = f.renderer.beginNestedListCompositionDomLease(f.rendered);

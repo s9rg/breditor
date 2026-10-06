@@ -1,4 +1,6 @@
 import { astPathsEqual, type AstPath } from "./ast_path.js";
+import { isOwnedNestedListProjection, nestedListProjectionPresentation, type NestedListRootProjection } from "./nested_list_projection.js";
+import { isOwnedNestedListRangeSelection, nestedListSpatialPositionForPoint, nestedListBlockAtPath } from "./nested_list_selection.js";
 import { isOwnedFlatListProjection, flatListProjectionPresentation, type FlatListRootProjection } from "./flat_list_projection.js";
 import { isOwnedFlatListRangeSelection, flatListSpatialPositionForPoint, flatListBlockAtPath } from "./flat_list_selection.js";
 import {
@@ -115,16 +117,33 @@ export function reconcileFlatListCompositionDom(host: unknown, projection: unkno
   return reconcileDom(host, projection, selection, true);
 }
 
-function reconcileDom(host: unknown, projection: unknown, selection: unknown, flatLists: boolean):
+/** Recovers a single-block replacement only after checking every recursive section. @internal */
+export function reconcileNestedListCompositionDom(host: unknown, projection: unknown, selection: unknown):
+  CompositionResult<FlatListDomCompositionReconciliation> {
+  return reconcileDom(host, projection, selection, "nested");
+}
+
+function reconcileDom(host: unknown, projection: unknown, selection: unknown, flatLists: boolean | "nested"):
   CompositionResult<FlatListDomCompositionReconciliation> {
   try {
     if (!isUsableConnectedHost(host)) return compositionFailure("composition.dom.invalid_input");
     let anchor: Readonly<{textBlockPath: AstPath; utf16Offset: number}>;
     let focus: Readonly<{textBlockPath: AstPath; utf16Offset: number}>;
     let baseParagraph: BaseParagraphProjection | undefined;
-    let roots: readonly FlatListRootProjection[];
+    let roots: readonly NestedListRootProjection[];
     let presentation: BrowserCompiledPresentation | undefined;
-    if (flatLists) {
+    if (flatLists === "nested") {
+      if (!isOwnedNestedListProjection(projection) || !isOwnedNestedListRangeSelection(selection) ||
+        selection.projection !== projection) return compositionFailure("composition.dom.invalid_input");
+      const a = nestedListSpatialPositionForPoint(projection, selection.anchor);
+      const f = nestedListSpatialPositionForPoint(projection, selection.focus);
+      if (a === null || f === null) return compositionFailure("composition.dom.invalid_input");
+      anchor = a; focus = f;
+      baseParagraph = nestedListBlockAtPath(projection, a.textBlockPath);
+      roots = projection.blocks;
+      presentation = nestedListProjectionPresentation(projection);
+      if (presentation === undefined) return compositionFailure("composition.dom.invalid_input");
+    } else if (flatLists) {
       if (!isOwnedFlatListProjection(projection) || !isOwnedFlatListRangeSelection(selection) ||
         selection.projection !== projection) return compositionFailure("composition.dom.invalid_input");
       const a = flatListSpatialPositionForPoint(projection, selection.anchor);
@@ -132,7 +151,8 @@ function reconcileDom(host: unknown, projection: unknown, selection: unknown, fl
       if (a === null || f === null) return compositionFailure("composition.dom.invalid_input");
       anchor = a; focus = f;
       baseParagraph = flatListBlockAtPath(projection, a.textBlockPath);
-      roots = projection.blocks;
+      roots = projection.blocks.map(root => root.kind === "textBlock" ? root :
+        {...root, items: root.items.map(block => ({block, lists: []}))});
       presentation = flatListProjectionPresentation(projection);
       if (presentation === undefined) return compositionFailure("composition.dom.invalid_input");
     } else {
@@ -171,29 +191,35 @@ function reconcileDom(host: unknown, projection: unknown, selection: unknown, fl
       }
       return validateCanonicalParagraph(node, block, budget, presentation);
     };
-    for (let index = 0; index < roots.length; index += 1) {
-      const root = roots[index]!;
-      const node = hostChildren[index];
+    const visitRoot = (node: Node | undefined, root: NestedListRootProjection, path: AstPath): DomScanFailure | null => {
       if (root.kind === "textBlock") {
-        const failure = visitBlock(node, root.block, [index]);
-        if (failure !== null) return compositionFailure(scanFailureCode(failure));
-        continue;
+        return visitBlock(node, root.block, path);
       }
       if (node === undefined || !consumeNode(budget) || !listElementMatches(node, root)) {
-        return compositionFailure(budgetExceeded(budget) ? "composition.dom.resource_limit" : "composition.dom.invalid_structure");
+        return budgetExceeded(budget) ? "resourceLimit" : "invalidStructure";
       }
       const items = nativeChildNodes(node);
-      if (items.length !== root.items.length) return compositionFailure("composition.dom.invalid_structure");
+      if (items.length !== root.items.length) return "invalidStructure";
       for (let itemIndex = 0; itemIndex < root.items.length; itemIndex += 1) {
         const item = items[itemIndex];
         if (item === undefined || !consumeNode(budget) || !isPropertyFreeHtmlElement(item, "li")) {
-          return compositionFailure(budgetExceeded(budget) ? "composition.dom.resource_limit" : "composition.dom.invalid_structure");
+          return budgetExceeded(budget) ? "resourceLimit" : "invalidStructure";
         }
         const children = nativeChildNodes(item);
-        if (children.length !== 1) return compositionFailure("composition.dom.invalid_structure");
-        const failure = visitBlock(children[0], root.items[itemIndex]!, [index, itemIndex, 0]);
-        if (failure !== null) return compositionFailure(scanFailureCode(failure));
+        const entry = root.items[itemIndex]!;
+        if (children.length !== 1 + entry.lists.length) return "invalidStructure";
+        const failure = visitBlock(children[0], entry.block, [...path, itemIndex, 0]);
+        if (failure !== null) return failure;
+        for (const [section, list] of entry.lists.entries()) {
+          const failure = visitRoot(children[section + 1], list, [...path, itemIndex, section + 1]);
+          if (failure !== null) return failure;
+        }
       }
+      return null;
+    };
+    for (const [index, root] of roots.entries()) {
+      const failure = visitRoot(hostChildren[index], root, [index]);
+      if (failure !== null) return compositionFailure(scanFailureCode(failure));
     }
     // TypeScript does not track assignments made by the bounded visitor.
     const targetText = observedTargetText as string | null;
@@ -242,7 +268,7 @@ function reconcileDom(host: unknown, projection: unknown, selection: unknown, fl
   }
 }
 
-function listElementMatches(node: Node, root: Exclude<FlatListRootProjection, {kind: "textBlock"}>): node is Element {
+function listElementMatches(node: Node, root: Exclude<FlatListRootProjection | NestedListRootProjection, {kind: "textBlock"}>): node is Element {
   if (root.kind === "bulletList") return isPropertyFreeHtmlElement(node, "ul");
   const facts = nativeHtmlHostFacts(node);
   if (facts === undefined || nativeElementLocalName(facts.element) !== "ol") return false;
