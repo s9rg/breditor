@@ -680,6 +680,22 @@ browser consumers and default smoke checks, with shipping artifacts unchanged.
 The repeated post-classifier timing run is in progress; real path activation is
 now established, but speedup and intermittent-fault resolution are not.
 
+The repeated post-classifier run completed all 81 owner correctness cycles over
+nine fresh browser sessions. At 500 root items, per-session median edits were
+97.4/101.6/98.1 ms Chromium, 347/352/363 ms Firefox, and 229/220/226 ms WebKit.
+Compared with the earlier baseline, this is a modest improvement in Chromium and
+WebKit, not a latency-budget pass; Firefox and selection costs remain substantial.
+Report: `breditor-nested-list-consumer-ibvkuR/performance-g8ik5d/measurement.json`,
+SHA-256 `090e391c8b8781904e5f1e6258a1bfd951fa358510ca0ace51e6edc1952c1310`.
+These passing cycles do not close the previously captured intermittent faults.
+
+Latest single-package candidate: `target/nested-list-opt-in-k3OedF`, archive
+SHA-256 `f3609a0e24b69a6c824b7950cc485e8b2630651674d8a38ce7ef7c2e50a41909`,
+955,008 compressed bytes. External Node/types and Chromium/Firefox/WebKit checks,
+including trusted keyboard nesting, split/join, typing and history, pass against
+this exact archive. It is private, not published, and not size/native/release
+qualified. The default shipping bundles remain unchanged.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
