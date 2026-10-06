@@ -2,6 +2,18 @@
 
 mod change_set;
 #[cfg(feature = "experimental-structural-properties")]
+mod nested_list_layout;
+#[cfg(feature = "experimental-structural-properties")]
+mod nested_list_text_range;
+#[cfg(feature = "experimental-structural-properties")]
+mod nested_list_text_replace;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod nested_list_text_replace_tests;
+#[cfg(feature = "experimental-structural-properties")]
+pub use nested_list_text_range::{NestedListTextRange, NestedListTextRangeError};
+#[cfg(feature = "experimental-structural-properties")]
+pub use nested_list_text_replace::{NestedListTextReplace, NestedListTextReplaceError};
+#[cfg(feature = "experimental-structural-properties")]
 mod nested_list_format_rewrite;
 #[cfg(feature = "experimental-structural-properties")]
 pub use nested_list_format_rewrite::{

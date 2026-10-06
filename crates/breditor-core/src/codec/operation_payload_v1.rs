@@ -125,7 +125,8 @@ pub(crate) fn encode_operation_payload_v1(
         | Operation::NestedListFormatRewrite(_)
         | Operation::NestedListTextSplice(_)
         | Operation::FlatListTextSplice(_)
-        | Operation::FlatListTextReplace(_) => {
+        | Operation::FlatListTextReplace(_)
+        | Operation::NestedListTextReplace(_) => {
             return Err(OperationValidationError::UnsupportedSchema {
                 kind: operation.kind(),
                 schema: context.schema().id().clone(),

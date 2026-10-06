@@ -161,6 +161,38 @@ pub enum ActionStateTransactionFault {
 pub enum ActionStateOperationFault {
     /// Flat-list structural text schema is unsupported.
     #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement schema is unsupported")]
+    NestedListTextReplaceUnsupportedSchema,
+    /// Source paths or shape are invalid.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement target is invalid")]
+    NestedListTextReplaceInvalidTarget,
+    /// Result partition is invalid.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement layout is invalid")]
+    NestedListTextReplaceInvalidLayout,
+    /// Result numbering exceeds the supported ordinal range.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement ordinal overflow")]
+    NestedListTextReplaceOrdinalOverflow,
+    /// Source roots no longer match.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement source guard is stale")]
+    NestedListTextReplaceExpectedMismatch,
+    /// Root span exceeds the resource budget.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement root child limit exceeded")]
+    NestedListTextReplaceRootChildLimit,
+    /// Document belongs to a different context.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement document proof differs")]
+    NestedListTextReplaceDocumentProof,
+    /// Source or result admission failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("nested-list text replacement schema or resource validation failed")]
+    NestedListTextReplaceValidation,
+    /// Flat-list structural text schema is unsupported.
+    #[cfg(feature = "experimental-structural-properties")]
     #[error("flat-list text replacement schema is unsupported")]
     FlatListTextReplaceUnsupportedSchema,
     /// Source paths or shape are invalid.
@@ -925,6 +957,31 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
 #[allow(clippy::too_many_lines)]
 fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFault {
     match error {
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::NestedListTextReplace(source) => {
+            use crate::operation::NestedListTextReplaceError as E;
+            match source {
+                E::UnsupportedSchema => {
+                    ActionStateOperationFault::NestedListTextReplaceUnsupportedSchema
+                }
+                E::InvalidTarget => ActionStateOperationFault::NestedListTextReplaceInvalidTarget,
+                E::InvalidLayout => ActionStateOperationFault::NestedListTextReplaceInvalidLayout,
+                E::OrdinalOverflow => {
+                    ActionStateOperationFault::NestedListTextReplaceOrdinalOverflow
+                }
+                E::RootChildLimit => ActionStateOperationFault::NestedListTextReplaceRootChildLimit,
+                E::ExpectedMismatch => {
+                    ActionStateOperationFault::NestedListTextReplaceExpectedMismatch
+                }
+                E::DocumentProof(_) => {
+                    ActionStateOperationFault::NestedListTextReplaceDocumentProof
+                }
+                E::Validation(_) => ActionStateOperationFault::NestedListTextReplaceValidation,
+                E::Text(error) => project_operation_error(OperationApplyError::RootTextReplace(
+                    RootTextReplaceApplyError::Contract(error),
+                )),
+            }
+        }
         #[cfg(feature = "experimental-structural-properties")]
         OperationApplyError::FlatListTextReplace(source) => {
             use crate::operation::FlatListTextReplaceError as E;

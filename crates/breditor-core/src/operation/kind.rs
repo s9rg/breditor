@@ -27,6 +27,9 @@ use super::OperationValidationError;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationKind {
+    /// Nested structural text replacement.
+    #[cfg(feature = "experimental-structural-properties")]
+    NestedListTextReplace,
     /// Atomic nested inline formatting.
     #[cfg(feature = "experimental-structural-properties")]
     NestedListFormatRewrite,
@@ -78,6 +81,8 @@ impl OperationKind {
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace => "flatListTextReplace",
             #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListTextReplace => "nestedListTextReplace",
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextSplice => "flatListTextSplice",
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe => "flatListReframe",
@@ -102,6 +107,9 @@ impl OperationKind {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operation {
+    /// Nested structural text replacement with explicit hierarchy.
+    #[cfg(feature = "experimental-structural-properties")]
+    NestedListTextReplace(super::NestedListTextReplace),
     /// Atomic nested inline formatting with complete root guards.
     #[cfg(feature = "experimental-structural-properties")]
     NestedListFormatRewrite(super::NestedListFormatRewrite),
@@ -177,6 +185,8 @@ impl Operation {
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace(_) => OperationKind::FlatListTextReplace,
             #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListTextReplace(_) => OperationKind::NestedListTextReplace,
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextSplice(_) => OperationKind::FlatListTextSplice,
             #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListReframe(_) => OperationKind::FlatListReframe,
@@ -232,6 +242,10 @@ impl Operation {
                 operation.apply_operation(context, document).map_err(Into::into)
             }
             #[cfg(feature = "experimental-structural-properties")]
+            Self::NestedListTextReplace(operation) => {
+                operation.apply(context, document).map_err(Into::into)
+            }
+            #[cfg(feature = "experimental-structural-properties")]
             Self::FlatListTextReplace(operation) => {
                 operation.apply(context, document).map_err(Into::into)
             }
@@ -285,6 +299,10 @@ pub(crate) struct AppliedChange {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationApplyError {
+    /// Nested structural text edit failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    NestedListTextReplace(#[from] super::NestedListTextReplaceError),
     /// Nested inline-format rewrite failed.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]

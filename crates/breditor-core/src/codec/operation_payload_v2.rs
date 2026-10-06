@@ -116,7 +116,8 @@ pub(crate) fn encode_operation_payload_v2(
         | Operation::NestedListFormatRewrite(_)
         | Operation::NestedListTextSplice(_)
         | Operation::FlatListTextSplice(_)
-        | Operation::FlatListTextReplace(_) => {
+        | Operation::FlatListTextReplace(_)
+        | Operation::NestedListTextReplace(_) => {
             return Err(operation.kind());
         }
         Operation::TextSplice(operation) => OperationRecordV2::TextSplice {

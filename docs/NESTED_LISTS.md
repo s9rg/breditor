@@ -93,7 +93,20 @@ validation, exact inverse, aggregate-offset relocation and V7 recovery. The
 near-node-limit regression proves a growing block and a shrinking block can be
 formatted together without requiring a larger intermediate document or one
 operation per block. V1–V6 remain closed to this operation. Cross-block typing,
-structural text edits and browser integration remain outstanding.
+structural editing actions and browser integration remain outstanding.
+
+`NestedListTextReplace` now supplies the structural primitive for those actions.
+It accepts real nested block paths, inserted text-block fragments and an explicit
+container template. Canonical empty paragraphs are template slots; all result
+blocks are consumed exactly once in depth-first order. List/item metadata is
+explicit, not inferred. Complete source roots are guarded, prefix/suffix text and
+unselected blocks are retained, and the same-type inverse must reconstruct the
+exact original roots. V7 persists this recipe; old codecs reject it. Tests cover
+nested splits retaining descendants, cross-descendant replacement, stale guards,
+scalar-boundary rejection, descendant caret relocation and session undo/redo.
+Fragment-sequence decoding is bounded by the total-node budget rather than a
+single container's fanout, while final document fanout remains strictly checked.
+This is a Rust primitive checkpoint, not yet a registered Enter/Delete action.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

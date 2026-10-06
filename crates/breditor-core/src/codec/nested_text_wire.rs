@@ -20,7 +20,12 @@ use serde::{
 };
 use serde_json::value::RawValue;
 
-struct BlockPath(NodePath);
+pub(super) struct BlockPath(pub(super) NodePath);
+impl serde::Serialize for BlockPath {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serde::Serialize::serialize(self.0.as_slice(), serializer)
+    }
+}
 impl<'de> Deserialize<'de> for BlockPath {
     fn deserialize<D: serde::Deserializer<'de>>(decoder: D) -> Result<Self, D::Error> {
         struct PathVisitor;

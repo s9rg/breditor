@@ -51,6 +51,9 @@ pub(super) fn decode_operation_payload_v7(
     context: &EditorContext,
 ) -> Result<Operation, OperationV7CodecError> {
     let header: Header<'_> = serde_json::from_str(json).map_err(|error| json_error(&error))?;
+    if header.kind == "nestedListTextReplace" {
+        return super::nested_replace_wire::decode(json, context);
+    }
     if header.kind == "nestedListFormatRewrite" {
         return super::nested_format_wire::decode(json, context);
     }
@@ -110,6 +113,7 @@ fn root(context: &EditorContext, nodes: &[NodeRef]) -> Result<NodeRef, Operation
     .map_err(|_| invalid(NestedListReframeError::InvalidTarget))
 }
 pub(super) enum OperationPayloadEncodingV7<'a> {
+    Replace(super::nested_replace_wire::Encoding<'a>),
     Format(super::nested_format_wire::Encoding<'a>),
     Splice { operation: &'a crate::operation::NestedListTextSplice, expected: NodeRef },
     Earlier(OperationPayloadEncodingV5<'a>),
@@ -122,6 +126,9 @@ impl<'a> OperationPayloadEncodingV7<'a> {
     ) -> Result<Self, OperationV7CodecError> {
         operation.validate(context)?;
         match operation {
+            Operation::NestedListTextReplace(operation) => {
+                Ok(Self::Replace(super::nested_replace_wire::Encoding::new(operation, context)?))
+            }
             Operation::NestedListFormatRewrite(operation) => {
                 Ok(Self::Format(super::nested_format_wire::Encoding::new(operation, context)?))
             }
@@ -141,6 +148,7 @@ impl<'a> OperationPayloadEncodingV7<'a> {
 impl Serialize for OperationPayloadEncodingV7<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
+            Self::Replace(value) => value.serialize(serializer),
             Self::Format(value) => value.serialize(serializer),
             Self::Splice { operation, expected } => {
                 let mut record = serializer.serialize_struct("NestedListTextSpliceV1", 6)?;
