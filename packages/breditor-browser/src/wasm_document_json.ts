@@ -17,7 +17,7 @@ import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
 export const MAX_BROWSER_DOCUMENT_JSON_BYTES = 16_777_216;
 
 /** Explicit durable codec selected before any document payload is inspected. */
-export type WasmDurableMode = "v1" | "v2" | "v3" | "v5" | "v6";
+export type WasmDurableMode = "v1" | "v2" | "v3" | "v5" | "v6" | "v7";
 
 /** Exact schema selector and fingerprint required by a compiled durable codec. */
 export interface WasmDurableSchemaBinding {
@@ -61,7 +61,7 @@ export interface WasmDurableFormatBinding {
 export type WasmDurableJsonContract =
   | Readonly<{ readonly mode: "v1" }>
   | Readonly<{
-      readonly mode: "v2" | "v3" | "v5" | "v6";
+      readonly mode: "v2" | "v3" | "v5" | "v6" | "v7";
       readonly schema: WasmDurableSchemaBinding;
       readonly formats: readonly WasmDurableFormatBinding[];
     }>;
@@ -523,7 +523,7 @@ export function resolveWasmDurableJsonContract(
     const compiled = exactJsonRecord(value, ["mode", "schema", "formats"]);
     if (
       compiled === null ||
-      (compiled["mode"] !== "v2" && compiled["mode"] !== "v3" && compiled["mode"] !== "v5" && compiled["mode"] !== "v6")
+      (compiled["mode"] !== "v2" && compiled["mode"] !== "v3" && compiled["mode"] !== "v5" && compiled["mode"] !== "v6" && compiled["mode"] !== "v7")
     ) return null;
     const schema = exactJsonRecord(compiled["schema"], ["name", "version", "fingerprint"]);
     const formats = snapshotOwnDataArray(compiled["formats"], MAX_PROFILE_FORMATS);
@@ -757,16 +757,17 @@ export function durableDocumentRootMatchesContract(
   let nodes = 1;
   let totalPropertyValues = 0;
   const paragraphs: unknown[] = [];
-  for (const rawBlock of root["children"]) {
-    nodes += 1;
-    if (nodes > MAX_NODES) return false;
+  const visit = (rawBlock: unknown, depth: number, listOnly = false): boolean => {
+    if (depth > 63 || ++nodes > MAX_NODES) return false;
     const block = exactJsonRecord(rawBlock, ["kind", "type", "entityId", "properties", "children"]);
     if (block === null) return false;
     if (block["type"] !== "breditor/bullet-list" && block["type"] !== "breditor/ordered-list") {
+      if (listOnly) return false;
       paragraphs.push(block);
-      continue;
+      return true;
     }
-    if (contract.mode !== "v6" || block["kind"] !== "element" || block["entityId"] !== null ||
+    if ((contract.mode !== "v6" && contract.mode !== "v7") || depth + 2 > 63 ||
+      block["kind"] !== "element" || block["entityId"] !== null ||
       !Array.isArray(block["children"]) || block["children"].length === 0 ||
       block["children"].length > MAX_PARAGRAPHS) return false;
     if (block["type"] === "breditor/ordered-list") {
@@ -774,19 +775,26 @@ export function durableDocumentRootMatchesContract(
       const start = properties?.["breditor/start"];
       if (typeof start !== "number" || !Number.isSafeInteger(start) || start < 1 ||
         start + block["children"].length - 1 > 2_147_483_647) return false;
-      totalPropertyValues += 1;
-      if (totalPropertyValues > MAX_PROPERTY_VALUES) return false;
+      if (++totalPropertyValues > MAX_PROPERTY_VALUES) return false;
     } else if (!emptyJsonRecord(block["properties"])) return false;
-    nodes += 2 * block["children"].length; // Each item and its sole text block.
-    if (nodes > MAX_NODES) return false;
     for (const rawItem of block["children"]) {
+      if (++nodes > MAX_NODES) return false;
       const item = exactJsonRecord(rawItem, ["kind", "type", "entityId", "properties", "children"]);
       if (item === null || item["kind"] !== "element" || item["type"] !== "breditor/list-item" ||
         item["entityId"] !== null || !emptyJsonRecord(item["properties"]) ||
-        !Array.isArray(item["children"]) || item["children"].length !== 1) return false;
-      paragraphs.push(item["children"][0]);
+        !Array.isArray(item["children"]) || item["children"].length === 0 ||
+        item["children"].length > MAX_PARAGRAPHS ||
+        (contract.mode !== "v7" && item["children"].length !== 1)) return false;
+      const leading = exactJsonRecord(item["children"][0], ["kind", "type", "entityId", "properties", "children"]);
+      if (leading === null || (leading["type"] !== "breditor/paragraph" && leading["type"] !== "breditor/heading") ||
+        !visit(leading, depth + 2)) return false;
+      for (let section = 1; section < item["children"].length; section++) {
+        if (!visit(item["children"][section], depth + 2, true)) return false;
+      }
     }
-  }
+    return true;
+  };
+  for (const block of root["children"]) if (!visit(block, 1)) return false;
   let totalTextBytes = 0;
   let totalPropertyStringUtf8Bytes = 0;
   for (const rawParagraph of paragraphs) {
@@ -810,7 +818,7 @@ export function durableDocumentRootMatchesContract(
       if (!emptyJsonRecord(paragraph["properties"])) return false;
     } else {
       const properties = exactJsonRecord(paragraph["properties"], ["breditor/level"]);
-      if ((contract.mode !== "v5" && contract.mode !== "v6") || paragraph["type"] !== "breditor/heading" ||
+      if ((contract.mode !== "v5" && contract.mode !== "v6" && contract.mode !== "v7") || paragraph["type"] !== "breditor/heading" ||
         properties === null || !isHeadingProjectionLevel(properties["breditor/level"])) return false;
       totalPropertyValues += 1;
       if (totalPropertyValues > MAX_PROPERTY_VALUES) return false;

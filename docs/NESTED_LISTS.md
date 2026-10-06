@@ -339,5 +339,13 @@ unbound selection rejection. Markers/indentation are intentionally absent:
 this is text interchange, not structural rich paste. Native copy/cut event
 delivery and the adapter's lossless document export remain separate work.
 
+The browser Document V2 payload validator now accepts recursive sections only
+under an explicit V7 durable contract. Item-leading block shape, list families,
+ordinal ranges, per-container fanout, depth and aggregate node/property/text
+budgets are checked before admission. V5/V6 remain closed to nested sections.
+Tests cover valid nesting, malformed items/starts and the exact depth boundary.
+This is document validation only; nested projection correlation, V7 browser
+session validation and generated command-adapter wiring remain unfinished.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

@@ -1141,6 +1141,33 @@ function propertyBudgetRun(value: string): unknown {
   }]);
 }
 
+describe("explicit V7 recursive document contract", () => {
+  const contract: WasmDurableJsonContract = {...V3_CONTRACT, mode: "v7"};
+  const element = (type: string, children: unknown[], properties: Record<string, unknown> = {}) => ({
+    kind: "element", type: `breditor/${type}`, entityId: null, properties, children,
+  });
+  const nest = (child: unknown) => element("bullet-list", [element("list-item", [paragraph([]), child])]);
+  const leaf = () => element("ordered-list", [element("list-item", [paragraph([run("child🙂", false)])])], {"breditor/start": 8});
+  it("admits nested sections only under explicit V7", () => {
+    const json = documentV2Json([nest(leaf())]);
+    expect(documentJsonUtf8Bytes(json, contract)).not.toBeNull();
+    expect(documentJsonUtf8Bytes(json, {...contract, mode: "v6"})).toBeNull();
+    expect(documentJsonUtf8Bytes(json, {...contract, mode: "v5"})).toBeNull();
+  });
+  it("rejects extra text blocks, missing leading blocks and malformed nested numbering", () => {
+    for (const root of [nest(paragraph([])), element("bullet-list", [element("list-item", [leaf()])]),
+      nest(element("ordered-list", [element("list-item", [paragraph([])])], {"breditor/start": 0}))]) {
+      expect(documentJsonUtf8Bytes(documentV2Json([root]), contract)).toBeNull();
+    }
+  });
+  it("enforces recursive depth before flattening text", () => {
+    let root: unknown = leaf();
+    for (let depth = 0; depth < 30; depth++) root = nest(root);
+    expect(documentJsonUtf8Bytes(documentV2Json([root]), contract)).not.toBeNull();
+    expect(documentJsonUtf8Bytes(documentV2Json([nest(root)]), contract)).toBeNull();
+  });
+});
+
 describe("explicit V6 flat-list document contract", () => {
   const contract: WasmDurableJsonContract = { ...V3_CONTRACT, mode: "v6" };
   const element = (type: string, children: unknown[], properties: Record<string, unknown> = {}) => ({
