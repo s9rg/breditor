@@ -29,7 +29,7 @@ import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 
 assert.ok(process.argv.length === 3 || (process.argv.length === 4 && ["--diagnose-export", "--core-only"].includes(process.argv[3])), "usage: node scripts/measure-flat-list-performance.mjs <packed-consumer-qualification.json> [--diagnose-export|--core-only]");
@@ -131,10 +131,17 @@ const diagnosticPlugin = {name: "document-export-rejection-sites", transform(cod
 }};
 let queueDiagnosticModules = 0;
 let projectionDiagnosticModules = 0;
+let validationDiagnosticModules = 0;
 let routerDiagnosticModules = 0;
 let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
+  for (const moduleName of ["wasm_projection_adapter", "flat_list_projection_update"]) {
+    if (id === join(consumer, `node_modules/@breditor/browser/dist/${moduleName}.js`)) {
+      validationDiagnosticModules++;
+      return instrumentProjectionValidationSites(code, moduleName);
+    }
+  }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/wasm_command_adapter.js")) {
     projectionDiagnosticModules++;
     return instrumentProjectionUpdateFailures(code);
@@ -162,6 +169,7 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
 await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
 assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
 assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "projection diagnostic module was not transformed exactly once");
+assert.equal(validationDiagnosticModules, queueDiagnosticsEnabled ? 2 : 0, "validation diagnostic modules were not transformed exactly once");
 assert.equal(routerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "router diagnostic module was not transformed exactly once");
 assert.equal(stressFixtureModules, ownerRepetitions === 3 ? 0 : 1, "stress fixture was not transformed exactly once");
 assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 : 1, "selection fixture was not transformed exactly once");

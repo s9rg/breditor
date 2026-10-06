@@ -10,6 +10,22 @@ export function instrumentProjectionUpdateFailures(code) {
   return code.replace(anchor, `try { console.error("breditor projection update rejection", JSON.stringify(converted.error).slice(0, 2048)); } catch {}\n${anchor}`);
 }
 
+/** Label existing rejection expressions without changing their returned value. */
+export function instrumentProjectionValidationSites(code, moduleName) {
+  assert.ok(["wasm_projection_adapter", "flat_list_projection_update"].includes(moduleName));
+  let sites = 0;
+  const transformed = code.replace(/projectionFailure\("(projection\.[a-z_]+)"\)/gu, (expression, errorCode, offset) => {
+    // These are default result placeholders, not taken rejection branches.
+    if (/let result\s*=\s*$/u.test(code.slice(Math.max(0, offset - 40), offset))) return expression;
+    sites++;
+    const line = code.slice(0, offset).split("\n").length;
+    const label = JSON.stringify(`${moduleName}:${line}:${errorCode}`);
+    return `((() => { try { console.error("breditor projection rejection site", ${label}); } catch {} })(), ${expression})`;
+  });
+  assert.ok(sites > 0, "projection rejection expressions changed");
+  return transformed;
+}
+
 // Capture the terminal router boundary too: queueUncertain does not imply an
 // executor exception. Read each scalar independently before teardown destroys
 // the useful state. This is only injected into disposable synthetic bundles.

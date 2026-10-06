@@ -2,7 +2,25 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+
+test("projection site labels preserve values and contain failing loggers", () => {
+  const source = 'return projectionFailure("projection.invalid_update");';
+  const transformed = instrumentProjectionValidationSites(source, "wasm_projection_adapter");
+  const result = Object.freeze({ok: false});
+  for (const hostile of [false, true]) {
+    const logs = [];
+    assert.equal(new Function("projectionFailure", "console", transformed)(() => result, {error(...args) {
+      if (hostile) throw new Error("logger"); logs.push(args);
+    }}), result);
+    if (!hostile) assert.equal(logs[0][1], "wasm_projection_adapter:1:projection.invalid_update");
+  }
+  assert.throws(() => instrumentProjectionValidationSites("", "wasm_projection_adapter"));
+  assert.throws(() => instrumentProjectionValidationSites(source, "unknown"));
+  const initialized = 'let result = projectionFailure("projection.invalid_shape");\n' + source;
+  const labeled = instrumentProjectionValidationSites(initialized, "wasm_projection_adapter");
+  assert.equal(labeled.split("breditor projection rejection site").length, 2);
+});
 
 test("projection rejection diagnostics preserve the thrown failure even when logging fails", () => {
   const source = 'if (!converted.ok) { throw new TypeError("Wasm projection update is invalid"); }';

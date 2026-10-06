@@ -13,5 +13,11 @@
     "validatorError": {"code": "projection.invalid_update", "message": "The projection update does not prove its claimed impact."}
   },
   "interpretation": "Two retained-original-package runs reproduce the selection-stage fault with captured validator rejection boundaries. This localizes the failure but does not identify the bad field, its source, or a causal fix.",
-  "next": "Log the converted projection-update error in the disposable adapter before the generic exception, then repeat the same stress workload. Do not alter production validation or insert timing workarounds."
+  "siteDiagnostics": {
+    "change": "Label actual projectionFailure expressions in the disposable wasm_projection_adapter and flat_list_projection_update modules; skip default result placeholders.",
+    "tests": "14 diagnostic tests pass including the real WebKit catch-site positive control.",
+    "noisyRun": "performance-gWvfWs completed 300 cycles without reproducing the fault, but logged default placeholders. It does not establish a fix.",
+    "correctedRun": "performance-zrKInh started with placeholder logging excluded; result pending at this checkpoint."
+  },
+  "next": "Read the corrected site-diagnostic run and map any rejection label to the retained installed source. Do not alter production validation or insert timing workarounds."
 }
