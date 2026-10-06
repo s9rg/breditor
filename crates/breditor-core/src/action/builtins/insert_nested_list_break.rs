@@ -153,7 +153,7 @@ fn right_block_path(path: &NodePath) -> Result<NodePath, ActionFault> {
         indexes[at].checked_add(1).ok_or_else(|| fault("breditor/nested-break-path-fault"))?;
     NodePath::try_from_indices(indexes).map_err(|_| fault("breditor/nested-break-path-fault"))
 }
-fn exit_root_item(
+pub(super) fn exit_root_item(
     state: &EditorState,
     path: &NodePath,
     paragraph: &NodeRef,

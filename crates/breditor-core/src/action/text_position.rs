@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::{
     document::{Document, TextFragment},
     position::{Affinity, NodePath, NodePathError, Point, TextOffset, TextOffsetError},
-    selection::{RangeEndpoint, RangeOrder, Selection, SelectionError},
+    selection::{RangeEndpoint, RangeOrder, RangeSelection, Selection, SelectionError},
     state::EditorState,
 };
 
@@ -120,6 +120,14 @@ fn normalize_range_in_scope(
         Selection::Range(range) => range,
         _ => return Err(TextPositionError::UnsupportedSelection),
     };
+    normalize_explicit_range(state, range, scope)
+}
+
+fn normalize_explicit_range(
+    state: &EditorState,
+    range: &RangeSelection,
+    scope: TextContainerScope,
+) -> Result<TextRangeSelection, TextPositionError> {
     let resolved = range
         .resolve(state.context().schema(), state.document())
         .map_err(TextPositionError::InvalidSelection)?;
@@ -146,6 +154,16 @@ pub(crate) fn normalize_nested_list_range_selection(
     state: &EditorState,
 ) -> Result<TextRangeSelection, TextPositionError> {
     normalize_range_in_scope(state, TextContainerScope::NestedList)
+}
+
+/// Validates an explicitly constructed nested range against the original state.
+/// Used for neighboring-block joins without replacing the state's user selection.
+#[cfg(feature = "experimental-structural-properties")]
+pub(crate) fn normalize_nested_list_explicit_range(
+    state: &EditorState,
+    range: &RangeSelection,
+) -> Result<TextRangeSelection, TextPositionError> {
+    normalize_explicit_range(state, range, TextContainerScope::NestedList)
 }
 
 /// Canonical point construction at an admitted nested block path.

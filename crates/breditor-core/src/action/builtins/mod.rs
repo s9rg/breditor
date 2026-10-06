@@ -10,6 +10,18 @@ mod insert_nested_list_structure;
 #[cfg(feature = "experimental-structural-properties")]
 mod delete_nested_list_selection;
 #[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_support;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_structure;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_backward;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_forward;
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_nested_list_backward::{DeleteNestedListBackwardAction, delete_nested_list_backward_action_id};
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_nested_list_forward::{DeleteNestedListForwardAction, delete_nested_list_forward_action_id};
+#[cfg(feature = "experimental-structural-properties")]
 pub use delete_nested_list_selection::{DeleteNestedListSelectionAction, delete_nested_list_selection_action_id};
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod insert_nested_list_break_tests;

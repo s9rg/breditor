@@ -38,7 +38,7 @@ impl Action for DeleteNestedListSelectionAction {
         evaluate(state).map(ActionEvaluation::stateless)
     }
 }
-fn evaluate(state: &EditorState) -> Result<ActionDecision, ActionFault> {
+pub(super) fn evaluate(state: &EditorState) -> Result<ActionDecision, ActionFault> {
     if !state.context().schema().supports_nested_list_reframe() {
         return Ok(disabled("breditor/unsupported-schema"));
     }

@@ -92,8 +92,8 @@ uses `NestedListFormatRewrite`: one guarded root-span operation with final-resul
 validation, exact inverse, aggregate-offset relocation and V7 recovery. The
 near-node-limit regression proves a growing block and a shrinking block can be
 formatted together without requiring a larger intermediate document or one
-operation per block. V1–V6 remain closed to this operation. Directional deletion
-actions and browser integration remain outstanding.
+operation per block. V1–V6 remain closed to this operation. Browser integration
+remains outstanding.
 
 `NestedListTextReplace` now supplies the structural primitive for those actions.
 It accepts real nested block paths, inserted text-block fragments and an explicit
@@ -120,6 +120,17 @@ separate sections. Marker families and starts remain explicit. Retained items
 within one list renumber naturally; a retained suffix starting a separate section
 keeps its original ordinal. Enter puts surviving descendants beneath its right
 item. The operation independently proves text-block order and exact inversion.
+
+Nested Backspace/forward Delete now share Unicode grapheme segmentation with
+existing text actions. Scalar-aligned extended selections remain exact; carets
+inside a grapheme are disabled. First-item Backspace outdents one level, or lifts
+a root item into its unchanged bare block with child sections promoted and the
+following ordered start preserved. Other boundaries join adjacent depth-first
+blocks using the retention policy above. Forward Delete does not outdent.
+Newly formed graphemes at joins snap the caret forward for Backspace and backward
+for Delete. Directional text edits merge by direction; structural outdents/lifts
+are independent undo events. Document boundaries are disabled. These are opt-in
+Rust actions; browser input bindings and native qualification remain open.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

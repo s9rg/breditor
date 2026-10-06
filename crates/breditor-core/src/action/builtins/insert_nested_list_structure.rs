@@ -92,6 +92,23 @@ pub(super) fn plan(
     history: HistoryIntent,
     pending: PendingFormatsUpdate,
 ) -> Result<ActionDecision, ActionFault> {
+    plan_with_policy(state, range, replacement, CaretPolicy::Fixed { affinity, history }, pending)
+}
+
+pub(super) enum CaretPolicy {
+    Fixed { affinity: Affinity, history: HistoryIntent },
+    Directional(super::delete_flat_list_support::Deletion),
+}
+
+/// Directional joins snap the resulting seam to a complete grapheme; explicit
+/// selected ranges and typing retain their exact scalar-aligned placement.
+pub(super) fn plan_with_policy(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    replacement: &TextFragment,
+    caret_policy: CaretPolicy,
+    pending: PendingFormatsUpdate,
+) -> Result<ActionDecision, ActionFault> {
     let (node, first) = capture(state, range.start().paragraph_path())?;
     let (_, last) = capture(state, range.end().paragraph_path())?;
     let (prefix, _) = first
@@ -146,6 +163,12 @@ pub(super) fn plan(
         .offset()
         .checked_add(inserted_length.get())
         .map_err(|_| fault("breditor/nested-text-caret-fault"))?;
+    let (offset, affinity, history) = match caret_policy {
+        CaretPolicy::Fixed { affinity, history } => (offset, affinity, history),
+        CaretPolicy::Directional(direction) => {
+            super::delete_flat_list_support::seam(&result, offset, direction)?
+        }
+    };
     let caret = point_at_nested_list_fragment_offset(
         range.start().paragraph_path(),
         &result,

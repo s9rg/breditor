@@ -44,6 +44,234 @@ fn list(items: Vec<NodeRef>, start: Option<u32>) -> Result<NodeRef, Box<dyn Erro
         items,
     )?))
 }
+#[test]
+fn nested_directional_deletion_removes_whole_graphemes_and_recovers() -> TestResult {
+    let context = context()?;
+    for cluster in ["🙂", "e\u{301}", "🇨🇦", "👨‍👩‍👧‍👦"] {
+        for backward in [true, false] {
+            let value = format!("a{cluster}b");
+            let offset = if backward { 1 + cluster.encode_utf16().count() as u32 } else { 1 };
+            let point = Point::Text {
+                text_path: NodePath::try_from_indices(vec![0, 0, 1, 0, 0, 0])?,
+                utf16_offset: offset,
+                affinity: Affinity::After,
+            };
+            let before = state(
+                &context,
+                vec![list(
+                    vec![item(vec![
+                        text("parent")?,
+                        list(vec![item(vec![text(&value)?])?], Some(9))?,
+                    ])?],
+                    None,
+                )?],
+                Selection::Range(RangeSelection::new(point.clone(), point)),
+                None,
+            )?;
+            let request = ActionInvocation::without_input(if backward {
+                delete_nested_list_backward_action_id()
+            } else {
+                delete_nested_list_forward_action_id()
+            });
+            let mut session = EditorSession::new(before.clone());
+            session.execute_prepared_action(registry()?.prepare(&before, &request)?)?;
+            let mut actual = Vec::new();
+            blocks(session.state().document().root(), &mut actual)?;
+            assert_eq!(actual, vec!["parent", "ab"]);
+            history(&session, &before)?;
+        }
+    }
+    Ok(())
+}
+#[test]
+fn nested_directional_boundaries_keep_order_and_restore_exactly() -> TestResult {
+    use crate::action::{Action, ActionDecision};
+    let context = context()?;
+    let registry = registry()?;
+    let source = ["op", "ab", "cd", "ef", "gh", "ij", "kl", "mn"];
+    for index in 0..source.len() {
+        for backward in [true, false] {
+            let offset = if backward { 0 } else { 2 };
+            let before = selected(&context, index, offset, index, offset, false)?;
+            let action = if backward {
+                delete_nested_list_backward_action_id()
+            } else {
+                delete_nested_list_forward_action_id()
+            };
+            let decision = if backward {
+                DeleteNestedListBackwardAction.evaluate(&before, &())?
+            } else {
+                DeleteNestedListForwardAction.evaluate(&before, &())?
+            };
+            if (backward && index == 0) || (!backward && index == 7) {
+                assert!(matches!(decision.decision(), ActionDecision::Disabled(_)));
+                continue;
+            }
+            // First items remove structure without deleting any text.
+            let lift = backward && matches!(index, 1 | 2 | 5);
+            if backward && matches!(index, 2 | 5) {
+                assert_eq!(
+                    decision.decision(),
+                    OutdentListItemsAction.evaluate(&before, &())?.decision()
+                );
+            }
+            let mut expected = source.iter().map(|value| (*value).to_owned()).collect::<Vec<_>>();
+            if !lift {
+                let left = if backward { index - 1 } else { index };
+                expected[left] = format!("{}{}", source[left], source[left + 1]);
+                expected.remove(left + 1);
+            }
+            let mut session = EditorSession::new(before.clone());
+            session.execute_prepared_action(
+                registry.prepare(&before, &ActionInvocation::without_input(action))?,
+            )?;
+            let mut actual = Vec::new();
+            blocks(session.state().document().root(), &mut actual)?;
+            assert_eq!(actual, expected, "index={index}, backward={backward}");
+            history(&session, &before)?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn nested_boundary_exact_root_lift_and_child_join() -> TestResult {
+    let context = context()?;
+    for backward in [true, false] {
+        let offset = if backward { 0 } else { 2 };
+        let before = selected(&context, 1, offset, 1, offset, false)?;
+        let expected = if backward {
+            vec![
+                text("op")?,
+                block(heading(2)?, "ab", formats()?)?,
+                list(vec![item(vec![text("cd")?])?, item(vec![text("ef")?])?], Some(20))?,
+                list(
+                    vec![
+                        item(vec![text("gh")?, list(vec![item(vec![text("ij")?])?], None)?])?,
+                        item(vec![text("kl")?])?,
+                    ],
+                    Some(8),
+                )?,
+                text("mn")?,
+            ]
+        } else {
+            vec![
+                text("op")?,
+                list(
+                    vec![
+                        item(vec![
+                            block(heading(2)?, "abcd", formats()?)?,
+                            list(vec![item(vec![text("ef")?])?], Some(21))?,
+                        ])?,
+                        item(vec![text("gh")?, list(vec![item(vec![text("ij")?])?], None)?])?,
+                        item(vec![text("kl")?])?,
+                    ],
+                    Some(7),
+                )?,
+                text("mn")?,
+            ]
+        };
+        let action = if backward {
+            delete_nested_list_backward_action_id()
+        } else {
+            delete_nested_list_forward_action_id()
+        };
+        let mut session = EditorSession::new(before.clone());
+        session.execute_prepared_action(
+            registry()?.prepare(&before, &ActionInvocation::without_input(action))?,
+        )?;
+        assert_eq!(
+            session
+                .state()
+                .document()
+                .root()
+                .as_element()
+                .ok_or("root")?
+                .children()
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>(),
+            expected
+        );
+        history(&session, &before)?;
+    }
+    Ok(())
+}
+#[test]
+fn nested_join_snaps_new_grapheme_by_direction() -> TestResult {
+    let context = context()?;
+    for backward in [true, false] {
+        let path = if backward { vec![0, 1, 0, 0] } else { vec![0, 0, 0, 0] };
+        let point = Point::Text {
+            text_path: NodePath::try_from_indices(path)?,
+            utf16_offset: u32::from(!backward),
+            affinity: Affinity::After,
+        };
+        let before = state(
+            &context,
+            vec![list(vec![item(vec![text("e")?])?, item(vec![text("\u{301}b")?])?], Some(8))?],
+            Selection::Range(RangeSelection::new(point.clone(), point)),
+            None,
+        )?;
+        let mut session = EditorSession::new(before.clone());
+        let action = if backward {
+            delete_nested_list_backward_action_id()
+        } else {
+            delete_nested_list_forward_action_id()
+        };
+        session.execute_prepared_action(
+            registry()?.prepare(&before, &ActionInvocation::without_input(action))?,
+        )?;
+        let range =
+            crate::action::text_position::normalize_nested_list_range_selection(session.state())?;
+        assert_eq!(range.start().offset().get(), if backward { 2 } else { 0 });
+        let mut actual = Vec::new();
+        blocks(session.state().document().root(), &mut actual)?;
+        assert_eq!(actual, vec!["e\u{301}b"]);
+        history(&session, &before)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn nested_deletion_rejects_interior_grapheme_carets_but_keeps_exact_ranges() -> TestResult {
+    use crate::action::{Action, ActionDecision};
+    let context = context()?;
+    let point = |offset| -> Result<Point, Box<dyn Error>> {
+        Ok(Point::Text {
+            text_path: NodePath::try_from_indices(vec![0, 0, 0, 0])?,
+            utf16_offset: offset,
+            affinity: Affinity::After,
+        })
+    };
+    let source = vec![list(vec![item(vec![text("e\u{301}")?])?], None)?];
+    let before = state(
+        &context,
+        source.clone(),
+        Selection::Range(RangeSelection::new(point(1)?, point(1)?)),
+        None,
+    )?;
+    for decision in [
+        DeleteNestedListBackwardAction.evaluate(&before, &())?,
+        DeleteNestedListForwardAction.evaluate(&before, &())?,
+    ] {
+        assert!(matches!(decision.decision(), ActionDecision::Disabled(_)));
+    }
+    let before =
+        state(&context, source, Selection::Range(RangeSelection::new(point(1)?, point(0)?)), None)?;
+    for action in [delete_nested_list_backward_action_id(), delete_nested_list_forward_action_id()]
+    {
+        let mut session = EditorSession::new(before.clone());
+        session.execute_prepared_action(
+            registry()?.prepare(&before, &ActionInvocation::without_input(action))?,
+        )?;
+        let mut actual = Vec::new();
+        blocks(session.state().document().root(), &mut actual)?;
+        assert_eq!(actual, vec!["\u{301}"]);
+        history(&session, &before)?;
+    }
+    Ok(())
+}
 fn roots() -> Result<Vec<NodeRef>, Box<dyn Error>> {
     Ok(vec![
         text("op")?,
@@ -115,6 +343,14 @@ fn selected(
 }
 fn registry() -> Result<ActionRegistry, Box<dyn Error>> {
     Ok(ActionRegistry::try_new(vec![
+        ActionRegistration::new(
+            delete_nested_list_backward_action_id(),
+            DeleteNestedListBackwardAction,
+        ),
+        ActionRegistration::new(
+            delete_nested_list_forward_action_id(),
+            DeleteNestedListForwardAction,
+        ),
         ActionRegistration::with_input(
             insert_nested_list_text_action_id(),
             insert_text_input_contract(),

@@ -53,12 +53,21 @@ fn plan_root(
     root_index: u32,
     replacement: NodeRef,
 ) -> Result<ActionDecision, ActionFault> {
+    plan_roots(state, root_index, vec![replacement])
+}
+
+/// Reframe one guarded root into any valid root sequence, preserving all blocks.
+pub(super) fn plan_roots(
+    state: &EditorState,
+    root_index: u32,
+    replacement: Vec<NodeRef>,
+) -> Result<ActionDecision, ActionFault> {
     let operation = match NestedListReframe::capture(
         state.context(),
         state.document(),
         root_index,
         1,
-        vec![replacement],
+        replacement,
     ) {
         Ok(operation) => operation,
         Err(NestedListReframeError::Validation(_) | NestedListReframeError::RootChildLimit) => {
