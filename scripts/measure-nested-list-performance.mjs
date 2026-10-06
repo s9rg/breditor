@@ -6,7 +6,7 @@
 // WebKit-only BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 captures terminal queue/router
 // failures in a disposable bundle. Diagnostic runs are not timing evidence.
 // Diagnostic owner churn is bounded to 30 owners per size; ordinary runs use 3.
-// Profiling, exception probes and alternative scheduling remain guarded off.
+// Chromium CPU profiling is diagnostic-only; other profilers and scheduling remain guarded off.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -51,9 +51,9 @@ assert.ok(Number.isSafeInteger(ownerRepetitions) && ownerRepetitions >= 3 && own
   "owner repetitions must be 3..100 and nondefault counts require queue diagnostics");
 // Diagnostic task ordering, not a normal selection latency measurement.
 const selectionScheduling = process.env["BREDITOR_PERF_SELECTION_SCHEDULING"] ?? "synchronous";
-assert.ok(!cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled &&
+assert.ok(!geckoProfileEnabled && !renderingTraceEnabled &&
   !constructorProbeEnabled && ownerRepetitions <= 30 && selectionScheduling === "synchronous",
-  "Nested runs support ordinary measurements or bounded WebKit queue diagnostics only");
+  "Nested runs support ordinary measurements, Chromium CPU profiles or bounded WebKit queue diagnostics only");
 assert.ok(["synchronous", "focus-task", "native-selection"].includes(selectionScheduling) &&
   (selectionScheduling === "synchronous" || queueDiagnosticsEnabled),
   "selection scheduling requires queue diagnostics and a known mode");
@@ -171,7 +171,7 @@ assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
 const measurements = [];
 const output = join(fixture, "measurement.json");
-const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
+const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",

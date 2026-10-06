@@ -833,6 +833,18 @@ The final runner passed 27 cycles across Chromium, Firefox and WebKit against
 Firefox and 214 ms WebKit. These remain measurements, not a latency-budget pass.
 All 19 non-opt-in diagnostic regression tests passed after the fixture change.
 
+Chromium CPU profiling is now admitted separately from ordinary measurements
+and WebKit queue diagnostics; reports explicitly mark profiling as diagnostic.
+The first grandchild-profile run passed all nine correctness cycles. Raw profile:
+`breditor-nested-list-consumer-ibvkuR/performance-CRj0aB/chromium-0.cpuprofile`,
+SHA-256 `55a3b5edb639f9e251d4bfdf6cb9072f86d1ae491d6a37e381b73b751d1209d9`.
+Across the complete 2.22-second fixture lifecycle, largest named JavaScript
+self-time samples included nativeChildNodes (175 ms), mapNode (148 ms),
+selectionIntrinsics (72 ms), and mapExistingNestedListRoot (72 ms). This is not
+an edit-only attribution, nor evidence that canonical DOM validation can be
+skipped. It directs the next optimization investigation toward repeated DOM
+enumeration/map construction while preserving mutation detection and rollback.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
