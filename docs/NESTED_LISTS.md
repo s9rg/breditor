@@ -882,5 +882,42 @@ under the system temporary directory. This run overlapped the old WebKit stress
 workload, so timings are diagnostic, not isolated release latency or a budget pass.
 Large-document performance remains open.
 
+### Isolated size-profile experiment
+
+The experimental builder accepts `BREDITOR_WASM_SIZE_OPT=s|z` (default `s`),
+records the choice on successful qualification and uses a separate Cargo cache
+for `z`. The production Cargo profile and shipping artifacts are unchanged.
+Invalid values fail before creating build directories.
+
+Candidate `target/nested-list-candidate-ExnSHs` (`z`) compiled successfully and
+passed the 24 declaration-checker unit tests, but the actual generated declaration
+comparison rejected reordered low-level exports (including count/history getters).
+Follow-up comparison proved that all declaration lines, including multiplicity,
+were identical to `ORMbAS`; only their ordering differed. The checker now sorts
+members only inside `InitOutput`, retaining exact signatures and duplicates.
+Regression tests accept reordered exports and reject a duplicate inherited export.
+
+Its Wasm measures 2,005,737 bytes / 546,065 gzip-9 bytes, versus the qualified
+`ORMbAS` candidate's 2,302,110 / 630,659 (about 13.4% less compressed). SHA-256:
+`e2c4d7932739aba43f4c0d420cc51ac144d827d7ca04ccc8c851313ed9389acb`.
+Rebuilt candidate `target/nested-list-candidate-fWc1zx` has the same Wasm hash and
+passes all 26 checker tests, generated TypeScript, Node command/history/recovery,
+and five raw-Wasm runs plus one integrated editor scenario each in Chromium,
+Firefox and WebKit. Shipping trees stayed unchanged. This does not establish
+native input or performance qualification; `s` remains the default build profile.
+Package-size and release gates remain open.
+
+Installed pair `target/nested-list-packages-fF7veD/qualification.json` also passes
+Node/types, three-browser nested checks and default-consumer smokes. All 29
+builder-configuration/declaration tests pass. Its grandchild benchmark passes
+all 27 exact document/selection/history/recovery cycles, recorded in
+`breditor-nested-list-consumer-LCApJ3/performance-wXYi2n/measurement.json`.
+500-root edit medians: Chromium 101.9 ms, Firefox 460 ms, WebKit 208 ms.
+An immediately following unchanged `s` Firefox control passes nine cycles with
+a 336 ms median at 500 roots (`breditor-nested-list-consumer-pTQSAR/performance-M7FA40`).
+These limited runs indicate a meaningful size/latency trade-off, not a free
+optimization; retain `s` as default. Neither run closes the intermittent WebKit
+fault, native-input checks or release performance gate.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

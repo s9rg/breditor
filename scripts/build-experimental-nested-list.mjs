@@ -14,9 +14,13 @@ import { nonCustomWasmBytes, retainWasmCustomSections, wasmFunctionNames, withWa
 
 assert.ok(process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === "--diagnostic-names"), "only optional --diagnostic-names is supported");
 const diagnosticNames = process.argv[2] === "--diagnostic-names";
+// Explicit experimental override: keep the production profile and its cache
+// untouched, and record the optimization choice in qualification evidence.
+const optLevel = process.env.BREDITOR_WASM_SIZE_OPT ?? "s";
+assert.ok(["s", "z"].includes(optLevel), "BREDITOR_WASM_SIZE_OPT must be s or z");
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const target = join(repository, "target");
-const cargoTarget = join(target, diagnosticNames ? "nested-list-symbols-cargo" : "nested-list-cargo");
+const cargoTarget = join(target, `${diagnosticNames ? "nested-list-symbols" : "nested-list"}${optLevel === "z" ? "-size-z" : ""}-cargo`);
 await mkdir(cargoTarget, { recursive: true });
 // A symlink must not redirect experimental compilation into the default cache.
 assert.equal(await realpath(cargoTarget), cargoTarget, "experimental Cargo target must be isolated");
@@ -52,6 +56,7 @@ const browserTreeBefore = await hashTree(browserDist);
 run(cargo, ["build", "--locked", "-p", "breditor-wasm", "--features", "experimental-nested-lists",
   "--profile", "wasm-release", "--target", "wasm32-unknown-unknown"], {
   env: { ...process.env, CARGO_TARGET_DIR: cargoTarget, CARGO_HOME: cargoHome,
+    CARGO_PROFILE_WASM_RELEASE_OPT_LEVEL: optLevel,
     ...(diagnosticNames ? {CARGO_PROFILE_WASM_RELEASE_STRIP: "debuginfo"} : {}),
     CARGO_INCREMENTAL: "0", RUSTFLAGS: "", SOURCE_DATE_EPOCH: "0",
     CARGO_ENCODED_RUSTFLAGS: [
@@ -106,7 +111,7 @@ assert.equal(hash(await readFile(shippingPath)), shippingBefore, "shipping Wasm 
 assert.deepEqual(await hashTree(shippingDist), shippingTreeBefore, "shipping artifacts changed during experimental qualification");
 assert.deepEqual(await hashTree(browserDist), browserTreeBefore, "browser artifacts changed during experimental qualification");
 const manifest = { status: "passed", publishable: false, feature: "experimental-nested-lists",
-  diagnosticNames,
+  diagnosticNames, optLevel,
   codecs: { bootstrap: 5, document: 2, state: 3, session: 7, commit: 7 },
   wasmBytes: wasm.length, wasmGzip9Bytes: gzipSync(wasm, { level: 9 }).length,
   wasmSha256: hash(wasm), shippingWasmSha256: shippingBefore,

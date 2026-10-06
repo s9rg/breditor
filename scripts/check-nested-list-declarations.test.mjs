@@ -16,6 +16,17 @@ const nested = flat.replace("export class BreditorCompiledProfile {", `export cl
     readonly breditorcompiledprofile_createEngineFromSessionCheckpointJsonV7: (a: number, b: number, c: number) => number;`);
 
 test("accepts exactly the nested additive API", () => checkNestedListDeclarations(base, nested));
+const reorderRaw = (source) => source.replace(/(export interface InitOutput \{\n)([\s\S]*?)(\n\})/u,
+  (_, open, members, close) => open + members.split("\n").reverse().join("\n") + close);
+test("accepts reordered raw exports without changing signatures", () => {
+  assert.notEqual(reorderRaw(nested), nested);
+  checkNestedListDeclarations(base, reorderRaw(nested));
+});
+test("rejects duplicate inherited raw export after reordering", () => {
+  const duplicate = nested.replace("export interface InitOutput {",
+    "export interface InitOutput {\n    readonly breditorWasmAbiVersion: (a: number) => void;");
+  assert.throws(() => checkNestedListDeclarations(base, reorderRaw(duplicate)));
+});
 for (const [label, source] of [
   ["missing nested API", flat],
   ["wrong version", nested.replace("static fromBootstrapJsonV5", "static fromBootstrapJsonV7")],

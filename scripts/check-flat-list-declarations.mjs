@@ -30,6 +30,20 @@ const additions = {
 const lines = (source) => source.replace(/^\s*\/\*\*[\s\S]*?\*\/\s*$/gm, "")
   .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 
+// LLVM can reorder equivalent Wasm exports between optimization profiles.
+// Interface member order is not ABI; retain every full signature (including
+// duplicates) and normalize only this generated raw-export interface.
+const canonicalExportOrder = (sourceLines) => {
+  const result = [...sourceLines];
+  const start = result.indexOf("export interface InitOutput {");
+  if (start < 0) return result;
+  const end = result.indexOf("}", start + 1);
+  if (end < 0) return result;
+  result.splice(start + 1, end - start - 1,
+    ...result.slice(start + 1, end).sort());
+  return result;
+};
+
 /** Fails on missing/extra experimental APIs, signature drift, or legacy changes. */
 export function checkFlatListDeclarations(baseSource, experimentalSource) {
   const expected = new Map(Object.entries(additions).map(([name, members]) => [name, new Set(members)]));
@@ -41,6 +55,6 @@ export function checkFlatListDeclarations(baseSource, experimentalSource) {
     return !expected.get(owner)?.delete(line);
   });
   for (const [name, members] of expected) assert.equal(members.size, 0, `missing or changed experimental API on ${name}`);
-  assert.deepEqual(actual, lines(baseSource),
+  assert.deepEqual(canonicalExportOrder(actual), canonicalExportOrder(lines(baseSource)),
     "experimental API changed the reviewed shipping surface");
 }
