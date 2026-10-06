@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BreditorNestedListWasmCommandAdapter } from "./wasm_command_adapter.js";
+import { BreditorNestedListClipboardController } from "./clipboard_controller.js";
+import { BreditorNestedListCommandQueue } from "./command_queue.js";
 import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
 import { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { NestedListRangeSelection } from "./nested_list_selection.js";
@@ -200,6 +202,149 @@ beforeEach(() => {
 });
 
 describe("explicit nested-list command adapter", () => {
+  it("copies across a parent/child list boundary in reading order", () => {
+    const f = clipboardFixture();
+    try {
+      const selected = NestedListRangeSelection.create(f.adapter.rendered.projection, {kind: "range",
+        anchor: {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 3, affinity: "before"},
+        focus: {kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 0, affinity: "after"}});
+      if (!selected.ok) throw new Error(selected.error.code);
+      expect(f.bridge.write(f.adapter.rendered, selected.value).ok).toBe(true);
+      expect(f.controller.handleCopy(f.event("copy"))).toMatchObject({kind: "handled", operation: "copy"});
+      expect([...f.values]).toEqual([["text/plain", "P\nA🙂"], ["text/html", "<p>P</p><p>A🙂</p>"]]);
+      expect(f.selectionSync).not.toHaveBeenCalled();
+      expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it.each(["cut", "paste"] as const)("delivers nested %s once after cancellation with the captured deep selection", operation => {
+    const synchronized = transition(1, "A🙂", "selection");
+    const edited = transition(2, operation === "cut" ? "A" : "A日本", "action");
+    const f = clipboardFixture(false, {setSelection: [synchronized.result.view],
+      selection: [synchronized.selected.view, edited.selected.view],
+      ...(operation === "cut" ? {noInputAction: [edited.result.view]} : {stringAction: [edited.result.view]})});
+    // The adapter captured this ABI method at construction; use its existing
+    // string-action spy to observe calls rather than replacing that capability.
+    try {
+      const event = f.event(operation);
+      if (operation === "paste") f.values.set("text/plain", "日本");
+      const result = operation === "cut" ? f.controller.handleCut(event) : f.controller.handlePaste(event);
+      expect(result).toMatchObject({kind: "handled", operation});
+      expect(event.defaultPrevented).toBe(true);
+      expect(f.selectionSync).toHaveBeenCalledWith(f.initial, "text", 8, 3, "before", "text", 8, 1, "after");
+      expect(f.selectionSync).toHaveBeenCalledOnce();
+      if (operation === "cut") {
+        expect([...f.values]).toEqual([["text/plain", "🙂"], ["text/html", "<p>🙂</p>"]]);
+        expect(f.action).not.toHaveBeenCalled();
+      } else {
+        expect(f.action).toHaveBeenCalledWith(synchronized.successor, "breditor/insert-nested-list-plain-text", "日本", true);
+        expect(f.action).toHaveBeenCalledOnce();
+      }
+      expect(f.host.querySelector("h2")!.textContent).toBe(operation === "cut" ? "A" : "A日本");
+      expect(f.host.querySelector("ol")!.start).toBe(8);
+      expect(f.adapter.state).toBe("live");
+      const echo = new InputEvent("beforeinput", {bubbles: true, cancelable: true,
+        inputType: operation === "cut" ? "deleteByCut" : "insertFromPaste"});
+      f.host.dispatchEvent(echo);
+      expect(f.controller.handleBeforeInput(echo)).toMatchObject({kind: "beforeinputEcho", operation});
+      expect(echo.defaultPrevented).toBe(true);
+      expect(f.selectionSync).toHaveBeenCalledOnce();
+      expect(f.queue.failure).toBeUndefined();
+    } finally { f.dispose(); }
+    for (const step of [synchronized, edited]) expect(step.result.free).toHaveBeenCalledOnce();
+  });
+
+  function clipboardFixture(extraItem = false, input: Parameters<typeof engineQueues>[0] = {}) {
+    const f = compositionAdapterFixture(input, extraItem);
+    if (!f.bridge.write(f.adapter.rendered, f.selected).ok) throw new Error("initial selection write failed");
+    const queue = new BreditorNestedListCommandQueue(f.adapter.commandExecutor);
+    const controller = new BreditorNestedListClipboardController(queue, f.adapter);
+    const values = new Map<string, string>();
+    const transfer = {get types() { return [...values.keys()]; },
+      clearData: vi.fn(() => { values.clear(); }),
+      setData: vi.fn((type: string, value: string) => { values.set(type, value); }),
+      getData: vi.fn((type: string) => values.get(type) ?? "")};
+    const event = (type: string) => ({type, target: f.host, cancelable: true, defaultPrevented: false,
+      clipboardData: transfer, preventDefault() { this.defaultPrevented = true; }});
+    return {...f, queue, controller, values, transfer, event,
+      dispose() { controller.dispose(); queue.dispose(); f.dispose(); }};
+  }
+
+  it("nested list clipboard rejects base queues and mismatched captured executors", () => {
+    const f = clipboardFixture();
+    const foreign = new BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>(() => { throw new Error("unused"); });
+    try {
+      // @ts-expect-error The legacy facade cannot accept list dependencies.
+      expect(() => new BreditorClipboardController(f.queue, f.adapter)).toThrow("queue");
+      expect(() => new BreditorNestedListClipboardController(foreign, f.adapter)).toThrow("executor");
+    } finally { foreign.dispose(); f.dispose(); }
+  });
+
+  it("nested list copy writes exact paired representations without executing any Rust selection/action", () => {
+    const f = clipboardFixture();
+    try {
+      Object.defineProperty(f.controller, "nestedLists", {value: false});
+      const event = f.event("copy");
+      expect(f.controller.handleCopy(event)).toMatchObject({kind: "handled", operation: "copy",
+        partial: {clipboard: "representationsWritten", command: "notApplicable"}});
+      expect(event.defaultPrevented).toBe(true);
+      expect([...f.values]).toEqual([["text/plain", "🙂"], ["text/html", "<p>🙂</p>"]]);
+      expect(f.selectionSync).not.toHaveBeenCalled(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.adapter.state).toBe("live");
+    } finally { f.dispose(); }
+  });
+
+  it.each(["write", "cancel"])("nested list cut never deletes after %s failure", failure => {
+    const f = clipboardFixture();
+    try {
+      const event = f.event("cut");
+      if (failure === "write") f.transfer.setData.mockImplementation(type => { if (type === "text/html") throw new Error("write failed"); });
+      else event.preventDefault = () => {};
+      expect(f.controller.handleCut(event)).toMatchObject(failure === "write"
+        ? {kind: "blocked", reason: "clipboardWriteFailed"} : {kind: "reconcileRequired", reason: "cancellationFailed"});
+      expect(f.selectionSync).not.toHaveBeenCalled(); expect(f.action).not.toHaveBeenCalled();
+      expect(f.adapter.state).toBe("live");
+    } finally { f.dispose(); }
+  });
+
+  it("nested list clipboard holds the queue through transfer callbacks and blocks stale DOM cut", () => {
+    const f = clipboardFixture();
+    try {
+      const queued = request(f.adapter);
+      f.transfer.clearData.mockImplementation(() => {
+        expect(f.queue.submit(queued)).toEqual({status: "rejected", reason: "leased"});
+        f.host.querySelector("ol")!.start = 9;
+      });
+      expect(f.controller.handleCut(f.event("cut"))).toMatchObject({kind: "reconcileRequired", reason: "staleBase"});
+      expect(f.transfer.setData).not.toHaveBeenCalled(); expect(f.selectionSync).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it("nested list paste prefers authoritative plain text and never falls back after invalid input", () => {
+    const f = clipboardFixture();
+    try {
+      f.values.set("text/plain", "\ud800"); f.values.set("text/html", "<p>valid</p>");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "blocked", reason: "invalidPlainText"});
+      expect(f.transfer.getData.mock.calls).toEqual([["text/plain"]]);
+      expect(f.selectionSync).not.toHaveBeenCalled();
+      f.values.delete("text/plain"); f.values.set("text/html", "<ul><li>unsupported</li></ul>");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "blocked", reason: "invalidHtml"});
+      expect(f.selectionSync).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it("nested list clipboard reports uncertain selection synchronization once without retrying", () => {
+    const f = clipboardFixture();
+    try {
+      f.values.set("text/plain", "pasted");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "reconcileRequired"});
+      expect(f.selectionSync).toHaveBeenCalledTimes(1); expect(f.action).not.toHaveBeenCalled();
+      expect(f.adapter.state).toBe("faulted");
+      expect(f.controller.handlePaste(f.event("paste"))).toMatchObject({kind: "reconcileRequired", reason: "queueUnavailable"});
+      expect(f.selectionSync).toHaveBeenCalledTimes(1);
+    } finally { f.dispose(); }
+  });
+
   it.each([false, true])("correlates durable document export with exact nested topology (reparented=%s)", reparented => {
     const element = (type: string, children: unknown[], properties = {}) => ({kind: "element", type: `breditor/${type}`, entityId: null, properties, children});
     const parent = element("paragraph", [{kind: "text", text: "P", formats: []}]);

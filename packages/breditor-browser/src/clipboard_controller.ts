@@ -1,7 +1,9 @@
 import {
   BreditorCommandQueue,
   BreditorFlatListCommandQueue,
+  BreditorNestedListCommandQueue,
   openFlatListCommandQueueLeasePort,
+  openNestedListCommandQueueLeasePort,
   openCommandQueueLeasePort,
   type CommandQueueLease,
   type CommandQueueLeasePort,
@@ -14,8 +16,10 @@ import {
 import {
   serializeClipboardSelection,
   serializeFlatListClipboardSelection,
+  serializeNestedListClipboardSelection,
 } from "./clipboard_fragment.js";
 import { flatListCutDeleteRequest, flatListPasteInsertRequest } from "./flat_list_clipboard_command.js";
+import { nestedListCutDeleteRequest, nestedListPasteInsertRequest } from "./nested_list_clipboard_command.js";
 import { parseClipboardHtmlToPlainText } from "./clipboard_html.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
@@ -35,16 +39,21 @@ import { nativeHtmlHostFacts } from "./html_host.js";
 import {
   isOwnedRenderedProjection,
   isOwnedFlatListRenderedProjection,
+  isOwnedNestedListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
-import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge, BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
 import {
   rangeSelectionSync,
   flatListRangeSelectionSync,
+  nestedListRangeSelectionSync,
   type FlatListEditorDeliveryToken,
+  type NestedListEditorDeliveryToken,
   type FlatListEditorSelectionSync,
+  type NestedListEditorSelectionSync,
   type EditorCommandRequest,
   type FlatListEditorCommandRequest,
+  type NestedListEditorCommandRequest,
   type EditorDeliveryToken,
   type EditorSelectionSync,
 } from "./editor_command.js";
@@ -59,11 +68,14 @@ import {
   projectionProfileDescriptor,
 } from "./projection.js";
 import { flatListProjectionPresentation, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { nestedListProjectionPresentation, type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
+import { isOwnedNestedListRangeSelection, type NestedListRangeSelection } from "./nested_list_selection.js";
 import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
 import type {
   BreditorWasmCommandAdapter,
   BreditorFlatListWasmCommandAdapter,
+  BreditorNestedListWasmCommandAdapter,
   WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
@@ -173,10 +185,10 @@ export type ClipboardControllerDisposition =
 
 // Only private plumbing is shared. Public constructors and all owned values
 // remain mode-specific; the immutable mode cannot be switched by caller data.
-type ClipboardProjection = BaseDocumentProjection | FlatListDocumentProjection;
-type ClipboardDelivery = EditorDeliveryToken | FlatListEditorDeliveryToken;
-type ClipboardSelectionSync = EditorSelectionSync | FlatListEditorSelectionSync;
-type ClipboardRequest = EditorCommandRequest | FlatListEditorCommandRequest;
+type ClipboardProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
+type ClipboardDelivery = EditorDeliveryToken | FlatListEditorDeliveryToken | NestedListEditorDeliveryToken;
+type ClipboardSelectionSync = EditorSelectionSync | FlatListEditorSelectionSync | NestedListEditorSelectionSync;
+type ClipboardRequest = EditorCommandRequest | FlatListEditorCommandRequest | NestedListEditorCommandRequest;
 type ClipboardOutcome = WasmCommandSequenceOutcome<ClipboardProjection>;
 type ClipboardRendered = RenderedProjection<ClipboardProjection>;
 
@@ -186,7 +198,7 @@ interface AdapterSurface {
   ) => ClipboardOutcome;
   readonly rendered: ClipboardRendered;
   readonly state: BreditorWasmCommandAdapter["state"];
-  readonly selectionBridge: BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
+  readonly selectionBridge: BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge | BreditorNestedListDomSelectionBridge;
   acceptsDeliveryToken(token: unknown): token is ClipboardDelivery;
   deliveryToken(): ClipboardDelivery;
 }
@@ -263,7 +275,7 @@ const HTML_MIME = "text/html";
  * DataTransfer objects never escape or enter a receipt.
  */
 class ClipboardControllerCore {
-  readonly #flatLists: boolean;
+  readonly #flatLists: boolean | "nested";
   readonly #queuePort: CommandQueueLeasePort<ClipboardOutcome, ClipboardRequest>;
   readonly #adapter: AdapterSurface;
   #receipt: EchoReceipt | undefined;
@@ -271,12 +283,12 @@ class ClipboardControllerCore {
   #disposed = false;
 
   constructor(
-    queue: BreditorCommandQueue<WasmCommandSequenceOutcome> | BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
-    adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter,
-    flatLists: boolean,
+    queue: BreditorCommandQueue<WasmCommandSequenceOutcome> | BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>> | BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>,
+    adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter | BreditorNestedListWasmCommandAdapter,
+    flatLists: boolean | "nested",
   ) {
     this.#flatLists = flatLists;
-    if (!(flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
+    if (!(flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("clipboard queue is invalid");
     }
     const surface = adapter as unknown as AdapterSurface;
@@ -287,7 +299,7 @@ class ClipboardControllerCore {
       valid =
         typeof executor === "function" &&
         surface.commandExecutor === executor &&
-        (flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
+        (flatLists === "nested" ? surface.selectionBridge instanceof BreditorNestedListDomSelectionBridge : flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
         typeof surface.deliveryToken === "function" &&
         typeof surface.acceptsDeliveryToken === "function";
     } catch {
@@ -296,7 +308,9 @@ class ClipboardControllerCore {
     if (!valid || executor === undefined) {
       throw new TypeError("clipboard adapter is invalid");
     }
-    const queuePort = (flatLists && queue instanceof BreditorFlatListCommandQueue
+    const queuePort = (flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue
+      ? openNestedListCommandQueueLeasePort(queue, executor)
+      : flatLists === true && queue instanceof BreditorFlatListCommandQueue
       ? openFlatListCommandQueueLeasePort(queue, executor)
       : !flatLists && queue instanceof BreditorCommandQueue
         ? openCommandQueueLeasePort(queue, executor) : undefined
@@ -556,7 +570,7 @@ class ClipboardControllerCore {
       );
     }
 
-    const serialized = (this.#flatLists ? serializeFlatListClipboardSelection : serializeClipboardSelection)(
+    const serialized = (this.#flatLists === "nested" ? serializeNestedListClipboardSelection : this.#flatLists ? serializeFlatListClipboardSelection : serializeClipboardSelection)(
       selection,
       base.presentation,
     );
@@ -618,7 +632,9 @@ class ClipboardControllerCore {
 
     let request;
     try {
-      request = this.#flatLists
+      request = this.#flatLists === "nested"
+        ? nestedListCutDeleteRequest(base.delivery as NestedListEditorDeliveryToken, selectionSync as NestedListEditorSelectionSync)
+        : this.#flatLists
         ? flatListCutDeleteRequest(base.delivery as FlatListEditorDeliveryToken, selectionSync as FlatListEditorSelectionSync)
         : cutDeleteRequest(base.delivery as EditorDeliveryToken, selectionSync as EditorSelectionSync);
     } catch {
@@ -661,7 +677,9 @@ class ClipboardControllerCore {
     }
     let request;
     try {
-      request = this.#flatLists
+      request = this.#flatLists === "nested"
+        ? nestedListPasteInsertRequest(base.delivery as NestedListEditorDeliveryToken, selection as NestedListEditorSelectionSync, payload.text)
+        : this.#flatLists
         ? flatListPasteInsertRequest(base.delivery as FlatListEditorDeliveryToken, selection as FlatListEditorSelectionSync, payload.text)
         : pasteInsertRequest(base.delivery as EditorDeliveryToken, selection as EditorSelectionSync, payload.text);
     } catch {
@@ -1118,14 +1136,16 @@ class ClipboardControllerCore {
       if (this.#disposed || this.#adapter.state !== "live") return null;
       const rendered = this.#adapter.rendered;
       if (
-        !(this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
+        !(this.#flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
         !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
       ) {
         return null;
       }
-      const presentation = this.#flatLists
+      const presentation = this.#flatLists === "nested"
+        ? nestedListProjectionPresentation(rendered.projection as NestedListDocumentProjection)
+        : this.#flatLists
         ? flatListProjectionPresentation(rendered.projection as FlatListDocumentProjection)
         : projectionPresentation(rendered.projection as BaseDocumentProjection);
       if (
@@ -1146,23 +1166,27 @@ class ClipboardControllerCore {
   #captureSelection(
     base: CanonicalBase,
   ): Readonly<{
-    selection: BaseRangeSelection | FlatListRangeSelection;
+    selection: BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection;
     selectionSync: ClipboardSelectionSync;
   }> | null {
     try {
-      const observed = this.#flatLists
+      const observed = this.#flatLists === "nested"
+        ? (this.#adapter.selectionBridge as BreditorNestedListDomSelectionBridge).read(base.rendered as RenderedProjection<NestedListDocumentProjection>)
+        : this.#flatLists
         ? (this.#adapter.selectionBridge as BreditorFlatListDomSelectionBridge).read(base.rendered as RenderedProjection<FlatListDocumentProjection>)
         : (this.#adapter.selectionBridge as BreditorDomSelectionBridge).read(base.rendered as RenderedProjection);
       if (
         !observed.ok ||
         observed.value.kind !== "range" ||
-        !(this.#flatLists ? isOwnedFlatListRangeSelection(observed.value.selection) : isOwnedBaseRangeSelection(observed.value.selection)) ||
+        !(this.#flatLists === "nested" ? isOwnedNestedListRangeSelection(observed.value.selection) : this.#flatLists ? isOwnedFlatListRangeSelection(observed.value.selection) : isOwnedBaseRangeSelection(observed.value.selection)) ||
         observed.value.selection.projection !== base.rendered.projection
       ) {
         return null;
       }
       const selection = observed.value.selection;
-      const selectionSync = this.#flatLists
+      const selectionSync = this.#flatLists === "nested"
+        ? nestedListRangeSelectionSync(selection as NestedListRangeSelection)
+        : this.#flatLists
         ? flatListRangeSelectionSync(selection as FlatListRangeSelection)
         : rangeSelectionSync(selection as BaseRangeSelection);
       return this.#baseIsCurrent(base)
@@ -1191,6 +1215,8 @@ class ClipboardControllerCore {
   }
 
   #basePresentationIsCurrent(base: CanonicalBase): boolean {
+    if (this.#flatLists === "nested") return base.presentation !== undefined &&
+      nestedListProjectionPresentation(base.rendered.projection as NestedListDocumentProjection) === base.presentation;
     if (this.#flatLists) return base.presentation !== undefined &&
       flatListProjectionPresentation(base.rendered.projection as FlatListDocumentProjection) === base.presentation;
     const projection = base.rendered.projection as BaseDocumentProjection;
@@ -1208,7 +1234,7 @@ class ClipboardControllerCore {
       const rendered = this.#adapter.rendered;
       if (
         result.rendered !== rendered ||
-        !(this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
+        !(this.#flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : this.#flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
         !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
@@ -1255,6 +1281,14 @@ export class BreditorFlatListClipboardController extends ClipboardControllerCore
   constructor(queue: BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
     adapter: BreditorFlatListWasmCommandAdapter) {
     super(queue, adapter, true);
+  }
+}
+
+/** Explicit recursive-list clipboard delivery with exclusive queue ownership. @internal */
+export class BreditorNestedListClipboardController extends ClipboardControllerCore {
+  constructor(queue: BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>,
+    adapter: BreditorNestedListWasmCommandAdapter) {
+    super(queue, adapter, "nested");
   }
 }
 

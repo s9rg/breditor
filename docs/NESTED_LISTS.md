@@ -429,5 +429,14 @@ metadata preflight, missing/async factories, malformed projections, cleanup
 failures and cross-mode rejection. Flat startup does not even inspect optional
 nested APIs. This is not yet a packed generated-Wasm or native browser test.
 
+The explicit nested clipboard controller now connects nested selection capture,
+serialization and cut/paste commands to the adapter-owned queue. It retains the
+shared transfer/cancellation checks, exclusive queue lease, stale-DOM guards and
+one-use input echo suppression. Adapter-backed tests cover backward emoji and
+parent/child copy, successful cut/paste, invalid payloads, transfer/cancellation
+failure and uncertain execution without retry. Test events and generated results
+are simulated; native clipboard qualification and editor/router attachment are
+still pending. Paste remains bounded plain text, not structural HTML import.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
