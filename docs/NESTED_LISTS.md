@@ -1030,3 +1030,12 @@ or an uninstrumented latency qualification. Inspection confirms that the second
 DOM/map traversal also checks unmapped wrappers/placeholders for stale reverse
 mappings; simply deleting it would drop a consistency invariant. Any traversal
 consolidation must preserve that negative check as well as mapped-node equality.
+
+Feature-boundary regression audit at source checkpoint `0528c22`: default
+`breditor-core --lib` passes 703 tests; default `breditor-wasm --lib` passes 43;
+core with `experimental-structural-properties` passes 1,187. These are separate
+Cargo invocations with no feature flags in the default runs. The feature-enabled
+Wasm suite separately passed 61 tests at `1ad0bc3`. Thus the larger structural
+suite count must not be described as default-core coverage. No shipping dist
+build or publication was performed. Native speech/IME, release size/latency
+criteria and the historical WebKit failure remain unqualified.
