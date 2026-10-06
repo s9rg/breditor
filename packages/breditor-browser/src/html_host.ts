@@ -690,7 +690,9 @@ export interface NativeSelectionFacts {
 
 /** Reads Selection state through captured brand-checked prototype getters. */
 export function nativeSelectionFacts(selection: Selection): NativeSelectionFacts {
-  const intrinsics = selectionIntrinsics(selection);
+  // The first native getter below performs the same receiver brand check.
+  // Do not read rangeCount once for validation and immediately read it again.
+  const intrinsics = selectionIntrinsics(selection, false);
   const rangeCount = Reflect.apply(intrinsics.rangeCount, selection, []) as unknown;
   const anchorNode = Reflect.apply(intrinsics.anchorNode, selection, []) as unknown;
   const anchorOffset = Reflect.apply(intrinsics.anchorOffset, selection, []) as unknown;
@@ -1205,7 +1207,7 @@ function optionElementIntrinsics(
   return intrinsics;
 }
 
-function selectionIntrinsics(selection: Selection): SelectionIntrinsics {
+function selectionIntrinsics(selection: Selection, checkBrand = true): SelectionIntrinsics {
   let intrinsics = capturedSelectionIntrinsics;
   if (intrinsics === undefined) {
     const prototype =
@@ -1245,7 +1247,7 @@ function selectionIntrinsics(selection: Selection): SelectionIntrinsics {
     });
     capturedSelectionIntrinsics = intrinsics;
   }
-  Reflect.apply(intrinsics.rangeCount, selection, []);
+  if (checkBrand) Reflect.apply(intrinsics.rangeCount, selection, []);
   return intrinsics;
 }
 

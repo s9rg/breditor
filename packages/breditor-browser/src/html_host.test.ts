@@ -28,6 +28,18 @@ beforeEach(() => {
 });
 
 describe("trusted platform intrinsics", () => {
+  it("rejects fabricated selection facts at the native getter boundary", () => {
+    expect(() => nativeSelectionFacts({rangeCount: 0, anchorNode: null,
+      anchorOffset: 0, focusNode: null, focusOffset: 0} as unknown as Selection)).toThrow();
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    const trap = vi.fn(() => { throw new Error("shadow selection getter"); });
+    Object.defineProperty(selection, "rangeCount", {configurable: true, get: trap});
+    try {
+      expect(nativeSelectionFacts(selection).rangeCount).toBe(0);
+      expect(trap).not.toHaveBeenCalled();
+    } finally { Reflect.deleteProperty(selection, "rangeCount"); }
+  });
   it("keeps empty child snapshots frozen while observing later DOM changes", () => {
     const element = document.createElement("p");
     const empty = nativeChildNodes(element);

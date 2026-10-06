@@ -1065,3 +1065,13 @@ driver hashes, on failures as well as success, so newer fixture coverage cannot
 be inferred from an old archive-only report. This archive is still private and
 unpublished; size, physical/native qualification and WebKit-risk gates remain
 open. Prior Safari/Chrome observations remain specific to `WNID8x`.
+
+Selection-fact reads no longer invoke native `rangeCount` twice consecutively:
+the first actual fact read itself supplies the receiver brand check. All other
+intrinsic-table callers retain their explicit check. Regression coverage rejects
+fabricated Selection objects and ignores a shadowed `rangeCount`; the full 2,099
+browser tests and type checks pass. Installed pair `nested-list-packages-TVVdTG`
+passes Node/types, Chromium/Firefox/WebKit and default-consumer checks; shipping
+trees are unchanged. This reduces redundant native calls but has no separately
+proven latency improvement yet. Latest single-archive evidence still refers to
+`jheBQW`, before this source-only optimization.
