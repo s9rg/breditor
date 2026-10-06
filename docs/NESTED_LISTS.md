@@ -968,3 +968,19 @@ the subsequent screenshot/tree showed the complete single insertion. These are
 OS-generated UI checks, not human physical IME, VoiceOver speech, exact serialized
 selection proof, cross-item clipboard qualification, or WebKit fault closure.
 No system input/VoiceOver settings were changed.
+
+Follow-up on the same `WNID8x` archive: native Safari backward selection from
+the end of `Deep 🙂` through the start of `First`, then Cut, leaves the heading
+and one empty ordered item numbered 3. Its system clipboard is exactly
+`First\nSecond\nDeep 🙂` (read through the connected Chrome clipboard surface).
+One toolbar Undo restores the visible First/Second items, markers 3/4 and nested
+Deep bullet. Safari endpoint offsets were not independently observable.
+
+The same installed fixture in Chrome passes both backward and forward cross-item
+Cut. Each produces exactly `First\nSecond\nDeep 🙂`, leaves only the heading and
+empty ordered item, and restores byte-identical editor `innerHTML` with one Undo.
+Read-only DOM inspection confirms restored endpoints: backward anchor Deep at
+UTF-16 offset 7 / focus First at 0; forward anchor First at 0 / focus Deep at 7.
+These browser/OS-dispatched checks strengthen clipboard/history qualification
+for this archive; they do not qualify physical IME or VoiceOver or close the
+intermittent WebKit fault.
