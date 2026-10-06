@@ -17,6 +17,7 @@ import {
 import { bindFlatListProjectionPresentation, isOwnedFlatListProjection, type FlatListDocumentProjection, type FlatListRootProjection } from "./flat_list_projection.js";
 import { flatListUpdatePlan, isOwnedFlatListProjectionUpdate, type FlatListProjectionUpdate } from "./flat_list_projection_update.js";
 import { bindNestedListProjectionPresentation, isOwnedNestedListProjection, type NestedListDocumentProjection, type NestedListRootProjection } from "./nested_list_projection.js";
+import { nestedListUpdatePlan, isOwnedNestedListProjectionUpdate, type NestedListProjectionUpdate } from "./nested_list_projection_update.js";
 import {
   browserPresentationRecipesForFormatDetails,
   isOwnedBrowserCompiledPresentation,
@@ -842,6 +843,39 @@ export class BreditorDomRenderer {
           if (oldIndex === undefined) return buildFlatListRoot(document, root, index, maps, this.#presentation);
           const node = rendered.nodeForAstPath([oldIndex]);
           if (node === null || !mapExistingFlatListRoot(node, root, index, maps, this.#presentation)) throw new TypeError("List reuse no longer matches canonical DOM.");
+          return node as HTMLElement;
+        });
+        return this.#install(host, update.result, {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze([])}, "incremental", undefined, guard);
+      } catch { return projectionFailure("renderer.dom_write_failed"); }
+    } finally { endHostOperation(host); }
+  }
+
+  /** Reuses only proved whole recursive subtrees and rebinds all moved paths. @internal */
+  updateNestedList(rendered: RenderedProjection<NestedListDocumentProjection>, update: NestedListProjectionUpdate): BrowserProjectionResult<ProjectionRenderOutcome<NestedListDocumentProjection>> {
+    if (!isOwnedNestedListProjectionUpdate(update)) return projectionFailure("projection.invalid_update");
+    if (!isOwnedNestedListRenderedProjection(rendered)) return projectionFailure("renderer.foreign_or_stale_render");
+    const host = rendered.host;
+    if (!beginHostOperation(host)) return projectionFailure("renderer.dom_write_failed");
+    try {
+      const owner = HOST_OWNERS.get(host);
+      if (!rendered.current || owner?.rendererToken !== this.#rendererToken || owner.handle !== rendered || update.base !== rendered.projection) return projectionFailure("renderer.foreign_or_stale_render");
+      const guard = this.#snapshotInstallGuard(host);
+      if (guard === null) return projectionFailure("renderer.dom_write_failed");
+      const plan = nestedListUpdatePlan(update);
+      if (plan === undefined || !this.#bindProjectionPresentation(update.result)) return projectionFailure("projection.invalid_update");
+      if (!renderFitsDomBudget(update.result)) return projectionFailure("projection.resource_limit");
+      try {
+        const canonical = rendered.canonicalDomMatches();
+        if (plan.kind === "full" || !canonical) return this.#install(host, update.result,
+          buildFullProjection(host, update.result, this.#presentation), "full", plan.kind === "full" ? plan.reason : "domDrift", guard);
+        const document = nativeOwnerDocument(host);
+        if (document === null) return projectionFailure("renderer.dom_write_failed");
+        const maps = createMaps(host), reuse = new Map(plan.roots.map(pair => [pair.newIndex, pair.oldIndex]));
+        const roots = update.result.blocks.map((root, index) => {
+          const oldIndex = reuse.get(index), path = Object.freeze([index]);
+          if (oldIndex === undefined) return buildNestedListRoot(document, root, path, maps, this.#presentation);
+          const node = rendered.nodeForAstPath([oldIndex]);
+          if (node === null || !mapExistingNestedListRoot(node, root, path, maps, this.#presentation)) throw new TypeError("Nested reuse no longer matches canonical DOM.");
           return node as HTMLElement;
         });
         return this.#install(host, update.result, {...maps, paragraphs: Object.freeze(roots), refreshes: Object.freeze([])}, "incremental", undefined, guard);

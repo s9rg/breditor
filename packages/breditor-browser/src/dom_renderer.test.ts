@@ -53,6 +53,7 @@ import { BreditorCommandQueue, BreditorFlatListCommandQueue, openFlatListCommand
 type Run = Readonly<{ text: string; strong: boolean }>;
 
 import { NestedListDocumentProjection } from "./nested_list_projection.js";
+import { NestedListProjectionUpdate } from "./nested_list_projection_update.js";
 import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
 
 describe("recursive nested-list DOM", () => {
@@ -61,15 +62,18 @@ describe("recursive nested-list DOM", () => {
     const presentation = compileBrowserPresentation(generation, descriptor,
       createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]}));
     const block = (text: string) => ({headingLevel: null, runs: text ? [{text, formatDetails: propertyFreeFormats(["breditor/strong"])}] : []});
-    const projection = valueOf(NestedListDocumentProjection.create({schema: descriptor.schema,
-      snapshot: {lineage: "nested-dom", revision: "0"}, blocks: [{kind: "bulletList", items: [
+    const blocks = [{kind: "bulletList", items: [
         {block: block("parent"), lists: [{kind: "orderedList", start: 9, items: [
           {block: block("child🙂"), lists: [{kind: "bulletList", items: [{block: block(""), lists: []}]}]},
         ]}]},
-      ]}]}, generation, descriptor));
+      ]}];
+    const projection = valueOf(NestedListDocumentProjection.create({schema: descriptor.schema,
+      snapshot: {lineage: "nested-dom", revision: "0"}, blocks}, generation, descriptor));
     const renderer = new BreditorDomRenderer(presentation), host = document.createElement("div");
     const rendered = valueOf(renderer.renderNestedList(host, projection)).rendered;
-    return {renderer, host, projection, rendered};
+    const make = (blocks: unknown[]) => valueOf(NestedListDocumentProjection.create({schema: descriptor.schema,
+      snapshot: {lineage: "nested-dom", revision: "1"}, blocks}, generation, descriptor));
+    return {renderer, host, projection, rendered, make, blocks};
   }
   it("renders sections and round-trips deep block/run paths without mapping wrappers", () => {
     const {host, rendered} = fixture();
@@ -98,6 +102,48 @@ describe("recursive nested-list DOM", () => {
     expect(renderer.releaseNestedList(rendered)).toBe(true);
     expect(rendered.current).toBe(false);
     expect(renderer.releaseNestedList(rendered)).toBe(false);
+  });
+  it("retains a moved recursive subtree and remaps every descendant", () => {
+    const f = fixture(), root = f.host.firstChild!, text = f.rendered.nodeForAstPath([0, 0, 1, 0, 0, 0]);
+    const result = f.make([{kind: "textBlock", block: {headingLevel: null, runs: []}}, ...f.blocks]);
+    const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result,
+      impact: {kind: "rootSplice", oldRange: {start: 0, end: 0}, newRange: {start: 0, end: 1}}}));
+    const outcome = valueOf(f.renderer.updateNestedList(f.rendered, update));
+    expect(outcome.mode).toBe("incremental");
+    expect(f.host.childNodes[1]).toBe(root);
+    expect(outcome.rendered.nodeForAstPath([1, 0, 1, 0, 0, 0])).toBe(text);
+    expect(outcome.rendered.astPathForDomNode(text!)).toEqual([1, 0, 1, 0, 0, 0]);
+    expect(outcome.rendered.validateCanonicalDom()).toBe(true);
+    expect(f.rendered.current).toBe(false);
+    expect(f.renderer.updateNestedList(f.rendered, update).ok).toBe(false);
+  });
+  it.each(["root", "drift"])("rebuilds nested DOM for %s without retaining old nodes", reason => {
+    const f = fixture(), root = f.host.firstChild!;
+    const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result: f.make(f.blocks),
+      impact: {kind: reason === "root" ? "root" : "none"}}));
+    if (reason === "drift") f.host.querySelector("ol")!.setAttribute("start", "99");
+    const outcome = valueOf(f.renderer.updateNestedList(f.rendered, update));
+    expect(outcome.mode).toBe("full");
+    expect(outcome.fallbackReason).toBe(reason === "root" ? "root" : "domDrift");
+    expect(f.host.firstChild).not.toBe(root);
+    expect(outcome.rendered.validateCanonicalDom()).toBe(true);
+  });
+  it("rejects foreign renderers and leaves the current subtree intact on construction failure", () => {
+    const f = fixture(), root = f.host.firstChild!, before = f.host.innerHTML;
+    const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result: f.make(f.blocks), impact: {kind: "root"}}));
+    expect(new BreditorDomRenderer().updateNestedList(f.rendered, update).ok).toBe(false);
+    expect(f.host.firstChild).toBe(root);
+    const original = document.createElementNS.bind(document);
+    const spy = vi.spyOn(document, "createElementNS").mockImplementation((namespace, name, options) => {
+      if (name === "ol") throw new Error("nested construction failure");
+      return original(namespace, name, options);
+    });
+    try { expect(f.renderer.updateNestedList(f.rendered, update)).toMatchObject({ok: false, error: {code: "renderer.dom_write_failed"}}); }
+    finally { spy.mockRestore(); }
+    expect(f.host.innerHTML).toBe(before);
+    expect(f.host.firstChild).toBe(root);
+    expect(f.rendered.validateCanonicalDom()).toBe(true);
+    expect(f.renderer.updateNestedList(f.rendered, update).ok).toBe(true);
   });
 });
 

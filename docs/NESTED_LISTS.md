@@ -254,5 +254,14 @@ Unit tests cover nested markup, deep path round trips and drift invalidation.
 Incremental nested rendering, composition leases, DOM selection integration and
 packaged/native browser qualification remain outstanding.
 
+`updateNestedList` now installs verified recursive updates through the shared
+host transaction guards. Unchanged whole-root subtrees retain DOM identity;
+moving a root rebinds every descendant AST path. Broad impacts and canonical
+DOM drift trigger a full rebuild. Stale handles and foreign renderers are
+rejected before mutation, and construction failures leave the current subtree
+usable for retry. Unit tests exercise moved deep paths, root/drift fallback,
+superseded handles, foreign ownership and failed-construction recovery.
+Composition leases and DOM selection integration remain separate work.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
