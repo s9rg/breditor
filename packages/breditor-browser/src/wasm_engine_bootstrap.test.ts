@@ -762,6 +762,147 @@ function headingBootstrapFixture(restore = false, heading = true) {
   return { fixture, profile, generation, compilation, compiled, compiledFactory, fromBootstrapJsonV3, module, source, headingLevel };
 }
 
+function nestedListBootstrapFixture(restore = false) {
+  const f = headingBootstrapFixture(restore);
+  const p = f.fixture.projection;
+  Object.defineProperty(p, "nodeCount", { value: 9 });
+  const children: Record<number, number[]> = {0: [1], 1: [2], 2: [3, 5], 3: [4], 5: [6], 6: [7], 7: [8]};
+  const types: Record<number, string> = {0: "document", 1: "ordered-list", 2: "list-item", 3: "paragraph", 5: "bullet-list", 6: "list-item", 7: "heading"};
+  p.nodeKind = index => index === 4 || index === 8 ? "text" : types[index] === undefined ? undefined : "element";
+  p.elementType = index => types[index] === undefined ? undefined : `breditor/${types[index]}`;
+  p.childCount = index => children[index]?.length;
+  p.childAt = (index, ordinal) => children[index]?.[ordinal];
+  p.text = index => index === 4 ? "parent" : index === 8 ? p.contents : undefined;
+  p.formatCount = index => index === 4 || index === 8 ? 0 : undefined;
+  p.formatPropertyCount = () => undefined;
+  f.headingLevel.mockImplementation(index => index === 7 ? 2 : undefined);
+  const listKind = vi.fn((index: number) => index === 1 ? "ordered" : index === 5 ? "bullet" : undefined);
+  const orderedListStart = vi.fn((index: number): number | undefined => index === 1 ? 8 : undefined);
+  Object.defineProperties(p, { listKind: { value: listKind, configurable: true }, orderedListStart: { value: orderedListStart, configurable: true } });
+  const profile = Object.assign(f.profile, {
+    createEngineFromDocumentJsonV7: vi.fn(f.profile.createEngineFromDocumentJsonV5),
+    createEngineFromSessionCheckpointJsonV7: vi.fn(f.profile.createEngineFromSessionCheckpointJsonV5),
+  });
+  const fromBootstrapJsonV5 = vi.fn(() => f.compilation);
+  const factory = Object.assign(f.compiledFactory, { fromBootstrapJsonV5 });
+  const semanticProfile = { bootstrapJson: '{"format":"breditor/profile-bootstrap","formatVersion":5}', formatVersion: 5 as const };
+  const value: Record<string, any> = JSON.parse(f.source.kind === "document" ? f.source.documentJson : f.source.checkpointJson);
+  const document = f.source.kind === "document" ? value : value["historyBase"]["document"];
+  const element = (type: string, children: unknown[], properties = {}) => ({ kind: "element", type: `breditor/${type}`, entityId: null, properties, children });
+  document["root"]["children"] = [element("ordered-list", [element("list-item", [element("paragraph", [{kind: "text", text: "parent", formats: []}]), element("bullet-list", [element("list-item", document["root"]["children"])])])], { "breditor/start": 8 })];
+  const source = f.source.kind === "document"
+    ? { ...f.source, documentJson: JSON.stringify(value), semanticProfile }
+    : { ...f.source, checkpointJson: JSON.stringify({ ...value, formatVersion: 7 }), semanticProfile };
+  return { ...f, profile, factory, fromBootstrapJsonV5, source, listKind, orderedListStart };
+}
+
+describe("explicit nested-list startup and restore", () => {
+  it("does not probe nested compiler or engine APIs during flat-list startup", () => {
+    const f = flatListBootstrapFixture();
+    const unexpected = vi.fn(() => { throw new Error("nested API touched"); });
+    Object.defineProperty(f.factory, "fromBootstrapJsonV5", {get: unexpected});
+    Object.defineProperty(f.profile, "createEngineFromDocumentJsonV7", {get: unexpected});
+    Object.defineProperty(f.profile, "createEngineFromSessionCheckpointJsonV7", {get: unexpected});
+    const result = bootstrapFlatListWasmEngine(f.module, f.source);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v6");
+    expect(unexpected).not.toHaveBeenCalled();
+    result.observation.free(); result.profileGeneration.free(); result.engine.free();
+  });
+
+  it("rejects cross-mode list profiles before compilation", () => {
+    const nested = nestedListBootstrapFixture(), flat = flatListBootstrapFixture();
+    expect(bootstrapFlatListWasmEngine(nested.module, nested.source as never).ok).toBe(false);
+    expect(preflightFlatListWasmSemanticProfile(nested.module, nested.source.semanticProfile as never).ok).toBe(false);
+    expect(bootstrapNestedListWasmEngine(flat.module, flat.source as never).ok).toBe(false);
+    expect(preflightNestedListWasmSemanticProfile(flat.module, flat.source.semanticProfile as never).ok).toBe(false);
+    expect(nested.fromBootstrapJsonV5).not.toHaveBeenCalled();
+    expect(flat.fromBootstrapJsonV4).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("transfers exactly the list engine/generation/observation owners (restore=%s)", restore => {
+    const f = nestedListBootstrapFixture(restore);
+    const result = bootstrapNestedListWasmEngine(f.module, f.source);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v7");
+    expect(result.projection.blocks[0]?.kind).toBe("orderedList");
+    expect(result.projection.textBlocks.map(block => block.path)).toEqual([[0, 0, 0], [0, 0, 1, 0, 0]]);
+    expect(result.projection.textBlocks[1]?.block.headingLevel).toBe(2);
+    expect(isOwnedBrowserNestedListWasmEngineBootstrapResult(result)).toBe(true);
+    expect(isOwnedBrowserWasmEngineBootstrapResult(result)).toBe(false);
+    expect(isOwnedBrowserFlatListWasmEngineBootstrapResult(result)).toBe(false);
+    expect(isOwnedBrowserNestedListWasmEngineBootstrapResult({ ...result })).toBe(false);
+    expect(f.fromBootstrapJsonV5).toHaveBeenCalledOnce();
+    expect(f.fromBootstrapJsonV3).not.toHaveBeenCalled();
+    expect(restore ? f.profile.createEngineFromSessionCheckpointJsonV7 : f.profile.createEngineFromDocumentJsonV7).toHaveBeenCalledOnce();
+    expect(f.profile.freeCalls).toBe(1); expect(f.fixture.projection.freeCalls).toBe(1);
+    expect(f.generation.freeCalls).toBe(0); expect(f.fixture.engineFree).not.toHaveBeenCalled();
+    result.observation.free(); result.profileGeneration.free(); result.engine.free();
+    expect(f.generation.freeCalls).toBe(1); expect(f.fixture.engineFree).toHaveBeenCalledOnce();
+  });
+
+  it("preflights list metadata and releases all generated owners", () => {
+    const f = nestedListBootstrapFixture();
+    expect(preflightNestedListWasmSemanticProfile(f.module, f.source.semanticProfile).ok).toBe(true);
+    expect(f.fromBootstrapJsonV5).toHaveBeenCalledOnce();
+    expect(f.profile.freeCalls).toBe(1); expect(f.generation.freeCalls).toBe(1);
+    expect(f.profile.createEngineFromDocumentJsonV7).not.toHaveBeenCalled();
+  });
+
+  it("keeps both entry points closed to the other mode before touching module factories", () => {
+    const f = nestedListBootstrapFixture();
+    expect(bootstrapWasmEngine(f.module, f.source as never).ok).toBe(false);
+    expect(preflightWasmSemanticProfile(f.module, f.source.semanticProfile as never).ok).toBe(false);
+    expect(bootstrapNestedListWasmEngine(f.module, DOCUMENT_SOURCE as never).ok).toBe(false);
+    expect(preflightNestedListWasmSemanticProfile(f.module, TYPED_SEMANTIC_PROFILE as never).ok).toBe(false);
+    expect(f.fromBootstrapJsonV5).not.toHaveBeenCalled();
+    expect(f.fromBootstrapJsonV3).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, () => Promise.resolve(undefined)])("requires a synchronous V5 compiler without fallback (%s)", compiler => {
+    const f = nestedListBootstrapFixture();
+    Object.defineProperty(f.factory, "fromBootstrapJsonV5", { value: compiler });
+    expect(bootstrapNestedListWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(f.fromBootstrapJsonV3).not.toHaveBeenCalled();
+    expect(f.compiled.fromBootstrapJsonV2).not.toHaveBeenCalled();
+  });
+
+  it.each(["createEngineFromDocumentJsonV7", "createEngineFromSessionCheckpointJsonV7"] as const)("requires %s and cleans up before construction", key => {
+    const f = nestedListBootstrapFixture(); Object.defineProperty(f.profile, key, { value: undefined });
+    expect(bootstrapNestedListWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(f.profile.freeCalls).toBe(1); expect(f.compilation.freeCalls).toBe(1);
+    expect(f.fixture.engineFree).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing kind", "missing start", "throwing getter", "async kind", "async absence", "invalid start", "missing leading block", "projection cleanup", "profile cleanup", "generation freed during cleanup"])("rejects %s and releases acquired owners", fault => {
+    const f = nestedListBootstrapFixture(); const p = f.fixture.projection;
+    if (fault === "missing kind") Object.defineProperty(p, "listKind", { value: undefined });
+    if (fault === "missing start") Object.defineProperty(p, "orderedListStart", { value: undefined });
+    if (fault === "throwing getter") Object.defineProperty(p, "listKind", { get() { throw new Error("kind getter"); } });
+    if (fault === "async kind") Object.defineProperty(p, "listKind", { value: () => Promise.resolve("ordered") });
+    if (fault === "async absence") Object.defineProperty(p, "orderedListStart", { value: (i: number) => i === 1 ? 8 : Promise.resolve(undefined) });
+    if (fault === "invalid start") f.orderedListStart.mockImplementation(index => index === 1 ? 0 : undefined);
+    if (fault === "missing leading block") p.elementType = index => index === 3 ? "breditor/bullet-list" : ["breditor/document", "breditor/ordered-list", "breditor/list-item"][index];
+    if (fault === "projection cleanup") p.free = () => { p.freeCalls += 1; throw new Error("cleanup"); };
+    if (fault === "profile cleanup") f.profile.free = () => { f.profile.freeCalls += 1; throw new Error("cleanup"); };
+    if (fault === "generation freed during cleanup") f.profile.free = () => { f.profile.freeCalls += 1; f.generation.free(); };
+    expect(bootstrapNestedListWasmEngine(f.module, f.source).ok).toBe(false);
+    expect(p.freeCalls).toBe(1); expect(f.profile.freeCalls).toBe(1);
+    expect(f.fixture.engineFree).toHaveBeenCalledOnce(); expect(f.fixture.observationFree).toHaveBeenCalledOnce();
+    expect(f.generation.freeCalls).toBe(1);
+  });
+
+  it.each([false, true])("rejects malformed durable input before the V7 engine factory (restore=%s)", restore => {
+    const f = nestedListBootstrapFixture(restore);
+    const source = f.source.kind === "document" ? { ...f.source, documentJson: "{}" } : { ...f.source, checkpointJson: "{}" };
+    expect(bootstrapNestedListWasmEngine(f.module, source).ok).toBe(false);
+    expect(f.profile.createEngineFromDocumentJsonV7).not.toHaveBeenCalled();
+    expect(f.profile.createEngineFromSessionCheckpointJsonV7).not.toHaveBeenCalled();
+    expect(f.profile.freeCalls).toBe(1); expect(f.generation.freeCalls).toBe(1);
+  });
+
+});
+
 function flatListBootstrapFixture(restore = false) {
   const f = headingBootstrapFixture(restore);
   const p = f.fixture.projection;
@@ -1894,3 +2035,4 @@ describe("Wasm engine bootstrap", () => {
     await Promise.resolve();
   });
 });
+import { bootstrapNestedListWasmEngine, preflightNestedListWasmSemanticProfile, isOwnedBrowserNestedListWasmEngineBootstrapResult } from "./wasm_engine_bootstrap.js";

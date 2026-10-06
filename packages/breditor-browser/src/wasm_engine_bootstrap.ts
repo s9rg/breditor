@@ -1,5 +1,6 @@
 import { isOwnedProjection, type BaseDocumentProjection } from "./projection.js";
 import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedNestedListProjection, type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 import {
   documentJsonUtf8Bytes,
@@ -14,6 +15,7 @@ import {
   consumeSemanticProjection,
   consumeTextBlockSemanticProjection,
   consumeFlatListSemanticProjection,
+  consumeNestedListSemanticProjection,
   type SemanticProjectionView,
   type TextBlockSemanticProjectionView,
   type FlatListSemanticProjectionView,
@@ -120,6 +122,9 @@ export interface WasmCompiledProfileBootstrapView
   /** Present only in the explicitly selected experimental flat-list build. */
   createEngineFromDocumentJsonV6?(lineageId: string, documentJson: string, historyCapacity: number): WasmEngineBootstrapResultView;
   createEngineFromSessionCheckpointJsonV6?(checkpointJson: string): WasmEngineBootstrapResultView;
+  /** Present only in the explicitly selected experimental nested-list build. */
+  createEngineFromDocumentJsonV7?(lineageId: string, documentJson: string, historyCapacity: number): WasmEngineBootstrapResultView;
+  createEngineFromSessionCheckpointJsonV7?(checkpointJson: string): WasmEngineBootstrapResultView;
   generation(): WasmProfileGenerationView;
   descriptor(): WasmCompiledProfileDescriptorView;
   matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
@@ -146,6 +151,8 @@ export interface WasmCompiledProfileBootstrapFactoryView {
   fromBootstrapJsonV3?(bootstrapJson: string): WasmCompiledProfileBootstrapResultView;
   /** Never inspected by the legacy bootstrap entry point. */
   fromBootstrapJsonV4?(bootstrapJson: string): WasmCompiledProfileBootstrapResultView;
+  /** Never inspected outside the explicit nested-list entry point. */
+  fromBootstrapJsonV5?(bootstrapJson: string): WasmCompiledProfileBootstrapResultView;
 }
 
 /** Structural generated module namespace with explicit compatibility probes. */
@@ -188,10 +195,15 @@ export type WasmFlatListProfileBootstrapSource = Readonly<{ bootstrapJson: strin
 export type WasmFlatListEngineBootstrapSource =
   | (Omit<WasmDocumentBootstrapSource, "semanticProfile"> & Readonly<{ semanticProfile: WasmFlatListProfileBootstrapSource }>)
   | (Omit<WasmSessionCheckpointBootstrapSource, "semanticProfile"> & Readonly<{ semanticProfile: WasmFlatListProfileBootstrapSource }>);
-type BootstrapSource = WasmEngineBootstrapSource | WasmFlatListEngineBootstrapSource;
-type BootstrapProfileSource = WasmSemanticProfileBootstrapSource | WasmFlatListProfileBootstrapSource;
-type BootstrapProjection = BaseDocumentProjection | FlatListDocumentProjection;
-type BootstrapProjectionMode = "base" | "textBlocks" | "flatLists";
+export type WasmNestedListProfileBootstrapSource = Readonly<{ bootstrapJson: string; formatVersion: 5 }>;
+/** List bootstrap cannot omit its explicit profile selector. @internal */
+export type WasmNestedListEngineBootstrapSource =
+  | (Omit<WasmDocumentBootstrapSource, "semanticProfile"> & Readonly<{ semanticProfile: WasmNestedListProfileBootstrapSource }>)
+  | (Omit<WasmSessionCheckpointBootstrapSource, "semanticProfile"> & Readonly<{ semanticProfile: WasmNestedListProfileBootstrapSource }>);
+type BootstrapSource = WasmEngineBootstrapSource | WasmFlatListEngineBootstrapSource | WasmNestedListEngineBootstrapSource;
+type BootstrapProfileSource = WasmSemanticProfileBootstrapSource | WasmFlatListProfileBootstrapSource | WasmNestedListProfileBootstrapSource;
+type BootstrapProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
+type BootstrapProjectionMode = "base" | "textBlocks" | "flatLists" | "nestedLists";
 
 /** Payload-redacted failure from the browser/Wasm bootstrap boundary. */
 export type BrowserWasmEngineBootstrapError =
@@ -291,7 +303,7 @@ type ResolvedFactory =
       protectedHandles: ReadonlySet<object>;
     }>
   | Readonly<{
-      durableMode: "v2" | "v3" | "v5" | "v6";
+      durableMode: "v2" | "v3" | "v5" | "v6" | "v7";
       factory: WasmCompiledProfileBootstrapFactoryView;
       compileProfile: WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"];
       protectedHandles: ReadonlySet<object>;
@@ -361,12 +373,21 @@ export function bootstrapFlatListWasmEngine(
   return bootstrapEngine(module, source, true);
 }
 
+/** Explicit V5-profile / V7-engine entry point; never inferred from document contents. @internal */
+export function bootstrapNestedListWasmEngine(
+  module: WasmEngineBootstrapModuleView,
+  source: WasmNestedListEngineBootstrapSource,
+): BrowserWasmEngineBootstrapResult<NestedListDocumentProjection> {
+  return bootstrapEngine(module, source, "nested");
+}
+
+function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: "nested"): BrowserWasmEngineBootstrapResult<NestedListDocumentProjection>;
 function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: false): BrowserWasmEngineBootstrapResult;
 function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: true): BrowserWasmEngineBootstrapResult<FlatListDocumentProjection>;
-function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: boolean): BrowserWasmEngineBootstrapResult<BootstrapProjection> {
+function bootstrapEngine(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: boolean | "nested"): BrowserWasmEngineBootstrapResult<BootstrapProjection> {
   const request = readSource(source, flatLists);
   if (request === null || (flatLists && !(request.semanticProfile !== undefined &&
-    "formatVersion" in request.semanticProfile && request.semanticProfile.formatVersion === 4))) return failure(INVALID_REQUEST);
+    "formatVersion" in request.semanticProfile && request.semanticProfile.formatVersion === (flatLists === "nested" ? 5 : 4)))) return failure(INVALID_REQUEST);
 
   const resolved = resolveFactory(module, request.semanticProfile);
   if (!resolved.ok) return failure(resolved.error);
@@ -490,9 +511,17 @@ export function preflightFlatListWasmSemanticProfile(
   return preflightProfile(module, source, true);
 }
 
-function preflightProfile(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: boolean): BrowserWasmSemanticProfilePreflightResult {
+/** Metadata-only preflight for the explicit recursive-list profile. @internal */
+export function preflightNestedListWasmSemanticProfile(
+  module: WasmEngineBootstrapModuleView,
+  source: WasmNestedListProfileBootstrapSource,
+): BrowserWasmSemanticProfilePreflightResult {
+  return preflightProfile(module, source, "nested");
+}
+
+function preflightProfile(module: WasmEngineBootstrapModuleView, source: unknown, flatLists: boolean | "nested"): BrowserWasmSemanticProfilePreflightResult {
   const normalized = readSemanticProfile(source, flatLists);
-  if (normalized === null || normalized === undefined || (flatLists && !("formatVersion" in normalized && normalized.formatVersion === 4))) {
+  if (normalized === null || normalized === undefined || (flatLists && !("formatVersion" in normalized && normalized.formatVersion === (flatLists === "nested" ? 5 : 4)))) {
     return preflightFailure(INVALID_REQUEST);
   }
   const resolved = resolveFactory(module, normalized);
@@ -544,9 +573,15 @@ export function isOwnedBrowserFlatListWasmEngineBootstrapResult(value: unknown):
   return !result.ok || isOwnedFlatListProjection(result.projection);
 }
 
+export function isOwnedBrowserNestedListWasmEngineBootstrapResult(value: unknown): value is BrowserWasmEngineBootstrapResult<NestedListDocumentProjection> {
+  if (!objectLike(value) || !OWNED_BOOTSTRAP_RESULTS.has(value)) return false;
+  const result = value as BrowserWasmEngineBootstrapResult<BootstrapProjection>;
+  return !result.ok || isOwnedNestedListProjection(result.projection);
+}
+
 function consumeCompiledProfile(
   bootstrapJson: unknown,
-  resolved: Extract<ResolvedFactory, { durableMode: "v2" | "v3" | "v5" | "v6" }>,
+  resolved: Extract<ResolvedFactory, { durableMode: "v2" | "v3" | "v5" | "v6" | "v7" }>,
   registry: GeneratedHandleRegistry,
 ):
   | Readonly<{ ok: true; value: CompiledProfileExpectation }>
@@ -825,7 +860,7 @@ function consumeConstructionResult(
       : activeDescriptor,
     registry,
     protectedHandles,
-    compiledProfile?.durableContract.mode === "v6" ? "flatLists" : compiledProfile?.durableContract.mode === "v5" ? "textBlocks" : "base",
+    compiledProfile?.durableContract.mode === "v7" ? "nestedLists" : compiledProfile?.durableContract.mode === "v6" ? "flatLists" : compiledProfile?.durableContract.mode === "v5" ? "textBlocks" : "base",
   );
   if (!projectionResult.ok) return failure(projectionResult.error);
 
@@ -916,7 +951,9 @@ function consumeProjectionRead(
     return Object.freeze({ ok: false, error: INVALID_VIEW });
   }
   // Structural modes always have a compiled descriptor, never a base fingerprint.
-  const consumed = mode === "flatLists" && typeof profile !== "string"
+  const consumed = mode === "nestedLists" && typeof profile !== "string"
+    ? consumeNestedListSemanticProjection(facade as FlatListSemanticProjectionView, rawGeneration, profile)
+    : mode === "flatLists" && typeof profile !== "string"
     ? consumeFlatListSemanticProjection(facade as FlatListSemanticProjectionView, rawGeneration, profile)
     : mode === "textBlocks" && typeof profile !== "string"
     ? consumeTextBlockSemanticProjection(facade as TextBlockSemanticProjectionView, rawGeneration, profile)
@@ -965,8 +1002,8 @@ function snapshotProjectionFacade(
     const formatPropertyString = view.formatPropertyString;
     const matchesProfileGeneration = view.matchesProfileGeneration;
     const headingLevel = textBlocks ? (raw as TextBlockSemanticProjectionView).headingLevel : undefined;
-    const listKind = mode === "flatLists" ? (raw as FlatListSemanticProjectionView).listKind : undefined;
-    const orderedListStart = mode === "flatLists" ? (raw as FlatListSemanticProjectionView).orderedListStart : undefined;
+    const listKind = (mode === "flatLists" || mode === "nestedLists") ? (raw as FlatListSemanticProjectionView).listKind : undefined;
+    const orderedListStart = (mode === "flatLists" || mode === "nestedLists") ? (raw as FlatListSemanticProjectionView).orderedListStart : undefined;
     const scalars = [
       schemaName,
       schemaVersion,
@@ -995,7 +1032,7 @@ function snapshotProjectionFacade(
     if (
       typeof schemaFingerprint !== "string" ||
       (textBlocks && (typeof headingLevel !== "function" || valueIsThenable(headingLevel))) ||
-      (mode === "flatLists" && [listKind, orderedListStart].some(method => typeof method !== "function" || valueIsThenable(method))) ||
+      ((mode === "flatLists" || mode === "nestedLists") && [listKind, orderedListStart].some(method => typeof method !== "function" || valueIsThenable(method))) ||
       scalars.some(valueIsThenable) ||
       methods.some((method) =>
         typeof method !== "function" || valueIsThenable(method)
@@ -1071,7 +1108,7 @@ function snapshotProjectionFacade(
       // at paragraph/root/absence probes, where undefined itself is valid.
       ...(textBlocks ? { headingLevel: (index: number) =>
         Reflect.apply(headingLevel as Function, raw, [index]) as number | undefined } : {}),
-      ...(mode === "flatLists" ? {
+      ...((mode === "flatLists" || mode === "nestedLists") ? {
         listKind: (index: number) => Reflect.apply(listKind as Function, raw, [index]) as ReturnType<FlatListSemanticProjectionView["listKind"]>,
         orderedListStart: (index: number) => Reflect.apply(orderedListStart as Function, raw, [index]) as number | undefined,
       } : {}),
@@ -1396,6 +1433,10 @@ function resolveFactory(
       const formatVersion = "formatVersion" in semanticProfile ? semanticProfile.formatVersion : 1;
       const fromBootstrapJsonV3 = formatVersion === 3 ? structural.fromBootstrapJsonV3 : undefined;
       const fromBootstrapJsonV4 = formatVersion === 4 ? structural.fromBootstrapJsonV4 : undefined;
+      const fromBootstrapJsonV5 = formatVersion === 5 ? structural.fromBootstrapJsonV5 : undefined;
+      if (formatVersion === 5 && (typeof fromBootstrapJsonV5 !== "function" || valueIsThenable(fromBootstrapJsonV5))) {
+        return Object.freeze({ ok: false, error: INVALID_MODULE });
+      }
       if (formatVersion === 4 && (typeof fromBootstrapJsonV4 !== "function" || valueIsThenable(fromBootstrapJsonV4))) {
         return Object.freeze({ ok: false, error: INVALID_MODULE });
       }
@@ -1405,9 +1446,9 @@ function resolveFactory(
       return Object.freeze({
         ok: true,
         value: Object.freeze({
-          durableMode: formatVersion === 4 ? "v6" as const : formatVersion === 3 ? "v5" as const : formatVersion === 2 ? "v3" as const : "v2" as const,
+          durableMode: formatVersion === 5 ? "v7" as const : formatVersion === 4 ? "v6" as const : formatVersion === 3 ? "v5" as const : formatVersion === 2 ? "v3" as const : "v2" as const,
           factory: structural,
-          compileProfile: formatVersion === 4 ? fromBootstrapJsonV4 as WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"] : formatVersion === 3
+          compileProfile: formatVersion === 5 ? fromBootstrapJsonV5 as WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"] : formatVersion === 4 ? fromBootstrapJsonV4 as WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"] : formatVersion === 3
             ? fromBootstrapJsonV3 as WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"]
             : formatVersion === 2 ? fromBootstrapJsonV2 : fromBootstrapJson,
           protectedHandles,
@@ -1441,7 +1482,7 @@ function resolveFactory(
   }
 }
 
-function readSource(value: unknown, flatLists: boolean): BootstrapSource | null {
+function readSource(value: unknown, flatLists: boolean | "nested"): BootstrapSource | null {
   const document = exactRecord(value, [
     "kind",
     "lineageId",
@@ -1525,14 +1566,14 @@ function readSource(value: unknown, flatLists: boolean): BootstrapSource | null 
 
 function readSemanticProfile(
   value: unknown,
-  flatLists: boolean,
+  flatLists: boolean | "nested",
 ): BootstrapProfileSource | null | undefined {
   if (value === undefined) return undefined;
   const v1 = exactRecord(value, ["bootstrapJson"]);
   const v2 = exactRecord(value, ["bootstrapJson", "formatVersion"]);
   const record = v1 ?? v2;
   if (record === null) return null;
-  if (v2 !== null && v2["formatVersion"] !== 2 && v2["formatVersion"] !== 3 && !(flatLists && v2["formatVersion"] === 4)) return null;
+  if (v2 !== null && v2["formatVersion"] !== 2 && v2["formatVersion"] !== 3 && !(flatLists === true && v2["formatVersion"] === 4) && !(flatLists === "nested" && v2["formatVersion"] === 5)) return null;
   const bootstrapJson = record["bootstrapJson"];
   if (
     typeof bootstrapJson !== "string" ||
@@ -1547,7 +1588,7 @@ function readSemanticProfile(
   }
   return v2 === null
     ? Object.freeze({ bootstrapJson })
-    : Object.freeze({ bootstrapJson, formatVersion: v2["formatVersion"] as 2 | 3 | 4 });
+    : Object.freeze({ bootstrapJson, formatVersion: v2["formatVersion"] as 2 | 3 | 4 | 5 });
 }
 
 function exactRecord(

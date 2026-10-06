@@ -417,8 +417,17 @@ exactly-once handle cleanup, stale and foreign requests, disabled commands,
 fault quarantine, composition refinement/recovery/failure and recursive document
 export correlation (including rejection of same-text reparenting). These prove
 browser adapter dispatch and ownership, not Rust execution or native IME behavior.
-Generated bootstrap, public editor owner, native controllers, toolbar and packed
-consumer qualification still need integration before release readiness.
+Public editor owner, native controllers, toolbar and packed consumer
+qualification still need integration before release readiness.
+
+Explicit nested bootstrap/preflight now selects profile format V5 and engine
+codec V7, including session restoration. Its initial projection reader captures
+recursive list metadata and transfers the engine, observation and generation
+owners only after validation and cleanup succeed. Bootstrap tests use simulated
+generated handles with actual child-list paths; they cover startup, restore,
+metadata preflight, missing/async factories, malformed projections, cleanup
+failures and cross-mode rejection. Flat startup does not even inspect optional
+nested APIs. This is not yet a packed generated-Wasm or native browser test.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
