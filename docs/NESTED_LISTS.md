@@ -773,6 +773,18 @@ one empty leading ordered item and the unselected heading. One toolbar Undo
 restored editor `innerHTML` exactly, including ordered start and child nesting.
 This covers one forward cross-level range; reverse ranges and Safari remain open.
 
+The matching backward Chrome range also passed Copy/Cut and one-step Undo.
+Undo restored exact `innerHTML` and the observed backward DOM selection:
+anchor Deep at UTF-16 offset 7, focus First at offset 0. Clipboard text remained
+`First\nSecond\nDeep 🙂` in document order.
+
+Native Safari opened the same immutable package consumer at port 4315. With a
+visually verified caret at Second, OS-delivered Tab indented Second and its Deep
+subtree beneath First; Shift+Tab restored the original ordered siblings and
+nested child. An earlier AX cursor-after selection landed at an unintended
+location and Tab moved focus outside; that attempt is not credited as an indent
+test. No Safari clipboard, IME or screen-reader qualification is claimed yet.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
