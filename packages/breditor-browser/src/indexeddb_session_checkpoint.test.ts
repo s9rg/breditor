@@ -403,7 +403,7 @@ describe("IndexedDbSessionCheckpointStore", () => {
       {
         slot: "profile.one",
         schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT,
-        checkpointFormatVersion: 7,
+        checkpointFormatVersion: 8,
       },
       {
         slot: "profile.one",
@@ -586,12 +586,13 @@ describe("IndexedDbSessionCheckpointStore", () => {
     wrongGeneration.close();
   });
 
-  it("keeps V6 list checkpoints separate from legacy, headings and foreign owners", async () => {
+  it.each([6, 7] as const)("keeps V%s list checkpoints separate from legacy, headings and foreign owners", async checkpointFormatVersion => {
     const factory = new IDBFactory(), digest = digestFixture();
-    const binding: IndexedDbSessionCheckpointBinding = {slot: "profile.lists", schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT, checkpointFormatVersion: 6};
+    const binding: IndexedDbSessionCheckpointBinding = {slot: "profile.lists", schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT, checkpointFormatVersion};
     const first = createStore(factory, digest, undefined, binding).store;
     const second = createStore(factory, digest, undefined, binding).store;
     const heading = createStore(factory, digest, undefined, {...binding, checkpointFormatVersion: 5}).store;
+    const otherList = createStore(factory, digest, undefined, {...binding, checkpointFormatVersion: checkpointFormatVersion === 7 ? 6 : 7}).store;
     const legacy = createStore(factory, digest).store;
     try {
       const a = await first.load(), b = await second.load();
@@ -600,19 +601,20 @@ describe("IndexedDbSessionCheckpointStore", () => {
       expect(await first.save(a.token, "list checkpoint one")).toMatchObject({ok: true});
       expect(await second.save(b.token, "stale checkpoint")).toMatchObject({ok: false, error: {code: "session_checkpoint.conflict"}});
       expect(await heading.load()).toMatchObject({ok: false, error: {code: "session_checkpoint.binding_mismatch"}});
+      expect(await otherList.load()).toMatchObject({ok: false, error: {code: "session_checkpoint.binding_mismatch"}});
       expect(await legacy.load()).toMatchObject({ok: true, status: "empty"});
       const observed = await second.load();
       if (!observed.ok) throw new Error(observed.error.code);
       expect(observed).toMatchObject({status: "loaded", checkpointJson: "list checkpoint one"});
       expect(await second.save(observed.token, "list checkpoint two")).toMatchObject({ok: true});
       expect(await first.load()).toMatchObject({ok: true, status: "loaded", checkpointJson: "list checkpoint two"});
-      expect(await rawSlot(factory, binding.slot)).toMatchObject({formatVersion: 2, checkpointFormatVersion: 6, generation: "2"});
-    } finally { first.close(); second.close(); heading.close(); legacy.close(); }
+      expect(await rawSlot(factory, binding.slot)).toMatchObject({formatVersion: 2, checkpointFormatVersion, generation: "2"});
+    } finally { first.close(); second.close(); heading.close(); otherList.close(); legacy.close(); }
   });
 
-  it("rejects corrupted V6 storage without changing its retained bytes", async () => {
+  it.each([6, 7] as const)("rejects corrupted V%s storage without changing its retained bytes", async checkpointFormatVersion => {
     const factory = new IDBFactory(), digest = digestFixture();
-    const binding: IndexedDbSessionCheckpointBinding = {slot: "profile.lists", schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT, checkpointFormatVersion: 6};
+    const binding: IndexedDbSessionCheckpointBinding = {slot: "profile.lists", schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT, checkpointFormatVersion};
     const store = createStore(factory, digest, undefined, binding).store;
     try {
       const initial = await store.load(); if (!initial.ok) throw new Error(initial.error.code);

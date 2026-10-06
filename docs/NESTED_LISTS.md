@@ -383,5 +383,13 @@ wire structure and lower-bound budgets only; Rust replay/inverse proof remains
 mandatory before a restored engine can be published. Packed integration remains
 unfinished.
 
+IndexedDB checkpoint storage now admits explicit version 7 bindings. V6 and V7
+records in the same slot cannot be loaded through each other's bindings; exact
+owner tokens, optimistic generation conflicts and digest checks remain in force.
+Storage tests cover V7 competing writers and corrupted records without rewriting
+their retained bytes. This storage layer treats checkpoint text as opaque;
+semantic validation and Rust replay are still required by the adapter before
+engine restoration. This is not an end-to-end recovery qualification.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
