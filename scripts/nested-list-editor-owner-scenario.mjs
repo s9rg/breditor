@@ -43,10 +43,11 @@ export async function verifyNestedListEditorOwner(api) {
     if (!button) throw new Error(`missing ${name}`);
     equal(button.getAttribute("aria-disabled"), "false"); button.focus(); button.click(); equal(editor.getStatus(), {phase: "live"});
   };
-  const select = (value, offset) => {
+  const select = (value, offset, notify = true) => {
     editor.focus(); const text = [...host.querySelectorAll("p")].find(p => p.textContent === value)?.firstChild;
     if (!text) throw new Error(`missing text ${value}`);
-    getSelection().setBaseAndExtent(text, offset, text, offset); document.dispatchEvent(new Event("selectionchange"));
+    getSelection().setBaseAndExtent(text, offset, text, offset);
+    if (notify) document.dispatchEvent(new Event("selectionchange"));
   };
   try {
     await open({initialDocument}); equal(exported("plainText"), "one\ntwo\nchild");
@@ -82,9 +83,20 @@ export async function verifyNestedListEditorOwner(api) {
     equal(key("KeyZ").defaultPrevented, true); equal(exported("documentJson"), keyBefore); equal(selected(), keySelection);
     equal(key("KeyZ", true).defaultPrevented, true); equal(exported("documentJson"), keyIndented); equal(selected(), keyIndentedSelection);
     equal(key("KeyI", true).defaultPrevented, true); equal(exported("documentJson"), keyBefore);
-    // Until a state-aware Tab policy exists, ordinary focus navigation stays native.
-    const tab = new KeyboardEvent("keydown", {bubbles: true, cancelable: true, key: "Tab", code: "Tab"});
-    host.dispatchEvent(tab); equal(tab.defaultPrevented, false); equal(exported("documentJson"), keyBefore);
+    const tab = (shiftKey = false, repeat = false) => {
+      const event = new KeyboardEvent("keydown", {bubbles: true, cancelable: true, key: "Tab", code: "Tab", shiftKey, repeat});
+      host.dispatchEvent(event); equal(editor.getStatus(), {phase: "live"}); return event.defaultPrevented;
+    };
+    equal(tab(), true); equal(exported("documentJson"), keyIndented);
+    equal(tab(true, true), true); equal(exported("documentJson"), keyIndented);
+    equal(tab(true), true); equal(exported("documentJson"), keyBefore);
+    // Move the DOM caret without letting selectionchange update Rust first.
+    select("one", 1, false); equal(tab(), false); equal(exported("documentJson"), keyBefore);
+    equal(tab(true), false); equal(exported("documentJson"), keyBefore);
+    select("two", 1, false);
+    equal(tab(), true);
+    equal(exported("documentJson"), keyIndented);
+    click("undo"); equal(exported("documentJson"), keyBefore); equal(selected(), keySelection);
     select("child🙂", 5);
     const pasteBefore = exported("documentJson"), pasteSelection = selected();
     const transfer = new DataTransfer(); transfer.setData("text/plain", "日本\r\nnext");
@@ -99,7 +111,15 @@ export async function verifyNestedListEditorOwner(api) {
     const pasted = exported("documentJson"), pastedSelection = selected();
     click("undo"); equal(exported("documentJson"), pasteBefore); equal(selected(), pasteSelection);
     click("redo"); equal(exported("documentJson"), pasted); equal(selected(), pastedSelection);
+    // A DOM-only paragraph caret and a host-disabled shortcut policy retain Tab.
     editor.dispose(); equal(host.childNodes.length, 0); equal(toolbar.childNodes.length, 0);
+    const bare = JSON.parse(initialDocument.documentJson); bare.root = element("document", [paragraph("outside")]);
+    await open({initialDocument: {...initialDocument, documentJson: JSON.stringify(bare)}});
+    select("outside", 2, false); equal(tab(), false); equal(tab(true), false);
+    equal(exported("plainText"), "outside"); editor.dispose();
+    await open({initialDocument, keyboard: {...common.keyboard, shortcuts: "disabled"}});
+    select("two", 1, false); equal(tab(), false); equal(exported("documentJson"), initialDocument.documentJson);
+    editor.dispose();
     return {status: "passed", scope: "real editor DOM/default toolbar, configured nesting/history shortcuts, repeat/composition guards, deep typing/plain-text paste, exact undo/redo and V7 recovery; synthetic events"};
   } finally { editor?.dispose(); host.remove(); toolbar.remove(); }
 }

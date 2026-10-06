@@ -6,7 +6,7 @@ and installed-package automated checks pass; this is not release readiness.
 Default shipping bundles and the existing flat-list package remain unchanged.
 The historical intermittent WebKit fault is unresolved.
 
-Remaining release gates: availability-aware Tab/Shift-Tab nesting; physical
+Remaining release gates: packed qualification of the new Tab integration; physical
 keyboard/IME, native clipboard and spoken screen-reader qualification; size and
 large-document performance qualification; resolution of the WebKit risk. The
 implementation log below is chronological: older pending notes are superseded
@@ -549,6 +549,18 @@ DOM selection before querying availability (selectionchange may arrive later),
 then revalidate the current owner/render before cancellation and dispatch. Cached
 toolbar availability cannot authorize this path. No current Tab behavior changes
 are claimed by the policy-only checkpoint.
+
+Tab/Shift-Tab is now connected only to the nested router. It synchronizes the
+current DOM range under an exclusive queue lease, reacquires admission, reads
+Rust action availability, revalidates selection/owner/render and only then cancels
+the event and dispatches the intent. Disabled states, bare paragraphs, modified
+keys, composition and host-disabled shortcuts retain native behavior. Enabled
+repeats are consumed without another structural command. Integrated real-Wasm
+checks pass in Chromium/Firefox/WebKit, including caret moves without a preceding
+selectionchange, first-item/root-outdent fallback, descendants, exact undo, and
+repeat suppression. The earlier opt-in archive predates this integration and must
+be rebuilt/requalified; these synthetic event tests do not prove physical keyboard
+focus navigation or assistive-technology behavior.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

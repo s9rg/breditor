@@ -1,5 +1,6 @@
 import { BreditorBrowserEventController, BreditorFlatListBrowserEventController, BreditorNestedListBrowserEventController } from "./browser_event_controller.js";
 import { containAsyncRejection } from "./contain_async_rejection.js";
+import { createNestedListTabController } from "./nested_list_tab_controller.js";
 import { BreditorClipboardController, BreditorFlatListClipboardController, BreditorNestedListClipboardController } from "./clipboard_controller.js";
 import { BreditorCommandQueue, BreditorFlatListCommandQueue, BreditorNestedListCommandQueue } from "./command_queue.js";
 import {
@@ -142,6 +143,7 @@ class BrowserEventRouterCore {
   readonly #listenerIntrinsics: ListenerIntrinsics;
   readonly #scheduleTask: (callback: () => void) => void;
   readonly #ordinary: OrdinaryRoutePort;
+  readonly #nestedTab: ReturnType<typeof createNestedListTabController> | undefined;
   readonly #clipboard: BreditorClipboardController | BreditorFlatListClipboardController | BreditorNestedListClipboardController;
   readonly #composition: RouterComposition;
   readonly #registrations: ListenerRegistration[] = [];
@@ -239,6 +241,8 @@ class BrowserEventRouterCore {
         clipboard = new BreditorNestedListClipboardController(queue, listAdapter);
         ordinary = new BreditorNestedListBrowserEventController(queue,
           {...ordinaryOptions, selectionBridge: listAdapter.selectionBridge}) as unknown as OrdinaryRoutePort;
+        this.#nestedTab = createNestedListTabController(queue, listAdapter, snapshot.keyboard.shortcuts === "enabled",
+          () => this.#status.kind === "live" && composition?.active === false);
       } else if (flatLists === true && queue instanceof BreditorFlatListCommandQueue) {
         const listAdapter = adapter as BreditorFlatListWasmCommandAdapter;
         composition = new BreditorFlatListCompositionController(queue, listAdapter, compositionOptions);
@@ -507,6 +511,9 @@ class BrowserEventRouterCore {
       this.#afterComposition(composition);
       return;
     }
+    const tab = this.#nestedTab?.handle(event);
+    if (tab === "failed") { this.#fault("eventDispatchFailed"); return; }
+    if (tab === "handled") return;
     const base = this.#ordinaryBase();
     if (base === null) return;
     this.#afterOrdinary(

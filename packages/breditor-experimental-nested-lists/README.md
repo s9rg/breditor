@@ -25,7 +25,8 @@ Each item has one leading paragraph or heading followed by child lists. Nested
 indent/outdent carries descendants and preserves selection/history. Plain-text
 paste does not import HTML structure. Task lists, arbitrary multi-block items,
 tables and collaboration are not included. Old sessions are not implicitly
-migrated. Tab nesting is pending; hosts can configure primary-modifier shortcuts.
+migrated. Tab/Shift-Tab nests only when Rust enables the command; otherwise Tab
+retains native navigation. Hosts can also configure primary-modifier shortcuts.
 
 Builds only write isolated target artifacts. Default shipping bundles are not
 rebuilt. Size budgets, native input/assistive-technology checks and the historical
