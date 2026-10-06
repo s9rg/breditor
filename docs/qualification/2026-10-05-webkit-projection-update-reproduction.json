@@ -67,5 +67,13 @@
     "loggedRightHeading": 2,
     "meaning": "The original headingLevel inequality evaluated true. Snapshot fields logged after rejection both serialize as 2. Capture the exact comparison operands next to exclude a discrepancy between evaluation and later observation. No causal fix is established."
   },
-  "next": "Capture the exact heading inequality operands once, with their types and diagnostic Object.is result on rejection. Validation still uses its original inequality result. Eighteen tests pass including WebKit."
+  "capturedOperandRun": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-PapHWP/measurement.json",
+    "progress": "500 items, repetition 18: selectionMs",
+    "itemIndex": 460,
+    "operand": "heading",
+    "capturedHeading": {"leftType": "number", "rightType": "number", "left": 2, "right": 2, "sameValue": true},
+    "meaning": "Single-read captured operands are both number 2 and Object.is reports true, but the original inequality reported mismatch. This supports a runtime comparison inconsistency; no production change has yet been tested as a fix."
+  },
+  "next": "Test a comparison variant equivalent on admitted heading levels (undefined or integers 1..6) against the retained reproducer before any production change. Keep independent paragraph-shape failure and nested release gates open."
 }
