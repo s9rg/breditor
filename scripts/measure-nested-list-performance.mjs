@@ -4,8 +4,8 @@
 // BREDITOR_PERF_RUNS=1..10 repeats fresh browser sessions, three owners per size.
 // WebKit-only BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 captures terminal queue/router
 // failures in a disposable bundle. Diagnostic runs are not timing evidence.
-// Profiling, exception probes, alternative scheduling and nondefault owner
-// repetition counts remain guarded off pending separate nested qualification.
+// Diagnostic owner churn is bounded to 30 owners per size; ordinary runs use 3.
+// Profiling, exception probes and alternative scheduling remain guarded off.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
@@ -49,7 +49,7 @@ assert.ok(Number.isSafeInteger(ownerRepetitions) && ownerRepetitions >= 3 && own
 // Diagnostic task ordering, not a normal selection latency measurement.
 const selectionScheduling = process.env["BREDITOR_PERF_SELECTION_SCHEDULING"] ?? "synchronous";
 assert.ok(!cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled &&
-  !constructorProbeEnabled && ownerRepetitions === 3 && selectionScheduling === "synchronous",
+  !constructorProbeEnabled && ownerRepetitions <= 30 && selectionScheduling === "synchronous",
   "Nested runs support ordinary measurements or bounded WebKit queue diagnostics only");
 assert.ok(["synchronous", "focus-task", "native-selection"].includes(selectionScheduling) &&
   (selectionScheduling === "synchronous" || queueDiagnosticsEnabled),

@@ -138,6 +138,16 @@ test("flat impact diagnostics preserve rejection and bound mismatch context", ()
   }
 });
 
+test("nested owner churn changes only its real fixture loop bound", async () => {
+  const source = await readFile(new URL("./fixtures/nested-list-performance/main.ts", import.meta.url), "utf8");
+  const expanded = repeatPerformanceOwners(source, 30);
+  assert.equal(expanded.replace("repetition < 30", "repetition < 3"), source);
+  for (const anchor of ["owner?.dispose()", 'exported("documentJson")', 'measured("redoMs", () => history("redo"))']) {
+    assert.ok(source.includes(anchor), `required correctness/lifecycle anchor missing: ${anchor}`);
+    assert.ok(expanded.includes(anchor));
+  }
+});
+
 test("projection site labels preserve values and contain failing loggers", () => {
   const source = 'return projectionFailure("projection.invalid_update");';
   const transformed = instrumentProjectionValidationSites(source, "wasm_projection_adapter");

@@ -797,6 +797,16 @@ here uses native AX/visual observations, not an exact serialized document or
 selection-offset comparison. Physical IME and spoken screen-reader checks remain
 open; these bounded successes do not close the intermittent WebKit fault.
 
+The nested diagnostic runner now admits 3–30 owners per size only when WebKit
+queue diagnostics are enabled (ordinary runs remain at three). A real-fixture
+regression proves the transformation changes only the loop bound and preserves
+document/redo assertions and final disposal. Nineteen diagnostic tests pass;
+the opt-in browser positive control was skipped in this invocation. The first
+30-per-size run completed all 90 cycles in one retained-package browser session:
+`breditor-nested-list-consumer-RBqXwA/performance-fgdPd1/measurement.json`.
+This extends same-page lifetime coverage, not latency qualification or fault
+resolution. Profiling and alternate scheduling remain disabled.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
