@@ -822,6 +822,17 @@ input-menu visibility off, Globe action Show Emoji & Symbols, and English
 (Canada)-only dictation languages (adding Romaji had also added Japanese there).
 Dictation remained off. All restoration values were observed in Settings.
 
+Performance coverage now includes explicit `BREDITOR_PERF_EDIT_TARGET=grandchild`
+in addition to the unchanged default root target. It edits a real grandchild
+paragraph, retains exact document/selection undo and V7 restore/redo assertions,
+records the target per sample and rejects runner/fixture target mismatches.
+The final runner passed 27 cycles across Chromium, Firefox and WebKit against
+`nested-list-packages-X9tiVj`; report
+`breditor-nested-list-consumer-ibvkuR/performance-HysI6a/measurement.json`.
+500-root grandchild-edit medians were approximately 97 ms Chromium, 348 ms
+Firefox and 214 ms WebKit. These remain measurements, not a latency-budget pass.
+All 19 non-opt-in diagnostic regression tests passed after the fixture change.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.

@@ -2,6 +2,7 @@
 // No hard timing threshold: correctness is mandatory, timing is machine-specific evidence.
 // BREDITOR_PERF_BROWSER selects all/Chromium/Firefox/WebKit (lowercase names).
 // BREDITOR_PERF_RUNS=1..10 repeats fresh browser sessions, three owners per size.
+// BREDITOR_PERF_EDIT_TARGET=root|grandchild selects the edited depth (default root).
 // WebKit-only BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 captures terminal queue/router
 // failures in a disposable bundle. Diagnostic runs are not timing evidence.
 // Diagnostic owner churn is bounded to 30 owners per size; ordinary runs use 3.
@@ -24,6 +25,8 @@ assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-pe
 const diagnoseExport = process.argv[3] === "--diagnose-export";
 const coreOnly = process.argv[3] === "--core-only";
 const browserName = process.env["BREDITOR_PERF_BROWSER"] ?? "all";
+const editTarget = process.env["BREDITOR_PERF_EDIT_TARGET"] ?? "root";
+assert.ok(["root", "grandchild"].includes(editTarget), "invalid BREDITOR_PERF_EDIT_TARGET");
 assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
 const cpuProfileEnabled = process.env["BREDITOR_PERF_CPU_PROFILE"] === "1";
 assert.ok(!cpuProfileEnabled || browserName === "chromium", "CPU profiling requires BREDITOR_PERF_BROWSER=chromium");
@@ -172,7 +175,7 @@ const save = async status => writeFile(output, JSON.stringify({status, diagnosti
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
-  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling,
+  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget,
   selectionTimingIncludesTaskWaits: selectionScheduling !== "synchronous",
   cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
@@ -180,7 +183,7 @@ const save = async status => writeFile(output, JSON.stringify({status, diagnosti
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
   methodology: coreOnly
     ? "One 5-item warm-up followed by three independent raw engines at each of 10/100/500 ordered items, every tenth item a heading, identical text to the DOM fixture. Installed packed Wasm, production bundle, headless browser, no editor DOM or browser owner. Raw synchronous calls include observation acquisition/disposal but exclude returned-handle inspection/disposal, except JSON exports which include takeValue and disposal. Action-state cold, exact-hit and post-edit refresh measured separately with full status/revision assertions. Commands pass false for history-group closure and do not call the result's projectionUpdate() readback; projection handle acquisition is a separate span, not full node readback or DOM rendering. Profile compilation once per process, no autosave/layout. Exact document/selection and undo/reload/redo assertions outside spans. Diagnostic decomposition, not an additive subtraction from browser timings or release performance qualification."
-    : `One 5-item warm-up followed by ${ownerRepetitions} independent editor owners at each of 10/100/500 ordered root items, every tenth item a heading with a bullet-list child and ordered-list grandchild, about 75 UTF-16 units per root item. Edits target a root item, not its descendant. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock spans include a forced layout read. Selection scheduling: ${selectionScheduling}; nondefault selection spans include task waits and are not comparable latency measurements. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Nondefault owner count is diagnostic same-page churn, not normal timing. Not OS input, statistical p95, memory or multi-device performance qualification.`,
+    : `One 5-item warm-up followed by ${ownerRepetitions} independent editor owners at each of 10/100/500 ordered root items, every tenth item a heading with a bullet-list child and ordered-list grandchild, about 75 UTF-16 units per root item. Edit target: ${editTarget}. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock spans include a forced layout read. Selection scheduling: ${selectionScheduling}; nondefault selection spans include task waits and are not comparable latency measurements. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Nondefault owner count is diagnostic same-page churn, not normal timing. Not OS input, statistical p95, memory or multi-device performance qualification.`,
 }, null, 2)+"\n");
 console.log(JSON.stringify({output}));
 await save("running");
@@ -283,7 +286,9 @@ try {
       }
       page.on("console", message => { if (message.type() === "error" && diagnostics.length < 100) { diagnostics.push(message.text()); console.error(message.text()); } });
       page.on("pageerror", error => { if (pageErrors.length < 100) pageErrors.push(String(error)); });
-      await page.goto(`http://127.0.0.1:${address.port}/${renderingTraceEnabled || geckoProfileEnabled ? "?renderTrace=1" : ""}`);
+      const query = new URLSearchParams({editTarget});
+      if (renderingTraceEnabled || geckoProfileEnabled) query.set("renderTrace", "1");
+      await page.goto(`http://127.0.0.1:${address.port}/?${query}`);
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
       await captureCpuProfile();
       await captureRenderingTrace();
@@ -292,6 +297,7 @@ try {
       assert.equal(status, "passed", await output.textContent());
       assert.deepEqual(pageErrors, [], "uncaught browser errors");
       const results = JSON.parse(await output.textContent()); assert.equal(results.cases.length, 3 * ownerRepetitions);
+      assert.ok(results.cases.every(sample => sample.editTarget === editTarget), "fixture edit target mismatch");
       const summary = [10, 100, 500].map(items => {
         const samples = results.cases.filter(sample => sample.items === items);
         assert.equal(samples.length, ownerRepetitions);

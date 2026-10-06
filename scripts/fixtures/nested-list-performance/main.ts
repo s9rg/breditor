@@ -16,9 +16,11 @@ const semanticProfile = {formatVersion: 5 as const, bootstrapJson: JSON.stringif
 type Metrics = Record<string, number>;
 let progress = "initialization";
 const renderingTrace = new URLSearchParams(location.search).get("renderTrace") === "1";
+const editTarget = new URLSearchParams(location.search).get("editTarget") ?? "root";
 
 void run().catch(error => { output.textContent = JSON.stringify({progress, error: String(error)}); output.dataset["status"] = "failed"; });
 async function run(): Promise<void> {
+  if (editTarget !== "root" && editTarget !== "grandchild") throw new Error("Invalid edit target");
   const initializeStart = performance.now(); await initialize();
   const initializationMs = performance.now() - initializeStart;
   const compiled = wasm.BreditorCompiledProfile.fromBootstrapJsonV5(semanticProfile.bootstrapJson);
@@ -90,8 +92,10 @@ async function sample(items: number, fingerprint: string, repetition: number) {
     if (!opened.ok) throw new Error(opened.error.code); owner = opened.editor;
     host.getBoundingClientRect(); metrics["startupMs"] = performance.now() - before;
     const middle = Math.floor(items / 2);
+    const targetText = editTarget === "grandchild" ? `Grandchild ${Math.floor(middle / 10) * 10}` : text(middle);
     measured("selectionMs", () => {
-      owner!.focus(); const block = [...host.querySelectorAll("p,h2")].find(block => block.textContent === text(middle))!;
+      owner!.focus(); const block = [...host.querySelectorAll("p,h2")].find(block => block.textContent === targetText);
+      if (!block) throw new Error(`Missing ${editTarget} edit target`);
       const range = document.createRange(); range.selectNodeContents(block); range.collapse(false);
       const selection = getSelection()!; selection.removeAllRanges(); selection.addRange(range);
       document.dispatchEvent(new Event("selectionchange"));
@@ -99,13 +103,13 @@ async function sample(items: number, fingerprint: string, repetition: number) {
     const original = exported("documentJson"), originalSelection = selected();
     measured("editMs", () => host.dispatchEvent(new InputEvent("beforeinput", {bubbles: true, cancelable: true, inputType: "insertText", data: "X"})));
     equal(owner.getStatus().phase, "live", "owner after edit");
-    const expectedText = `${text(middle)}X`;
+    const expectedText = `${targetText}X`;
     const matches = [...host.querySelectorAll("p,h2")].filter(block => block.textContent === expectedText).length;
     try { equal(matches, 1, "edited block count"); }
     catch (error) {
       throw new Error(`${String(error)}; context=${JSON.stringify({expectedText, originalSelection,
         currentSelection: selected(), status: owner.getStatus(),
-        matchingPrefix: [...host.querySelectorAll("p,h2")].map(block => block.textContent).filter(value => value?.startsWith(text(middle).slice(0, 12))).slice(0, 4),
+        matchingPrefix: [...host.querySelectorAll("p,h2")].map(block => block.textContent).filter(value => value?.startsWith(targetText.slice(0, 12))).slice(0, 4),
       }).slice(0, 4096)}`);
     }
     const edited = exported("documentJson"), editedSelection = selected();
@@ -120,6 +124,6 @@ async function sample(items: number, fingerprint: string, repetition: number) {
     host.getBoundingClientRect(); metrics["restoreMs"] = performance.now() - before;
     equal(exported("documentJson"), original); equal(selected(), originalSelection);
     measured("redoMs", () => history("redo")); equal(exported("documentJson"), edited); equal(selected(), editedSelection);
-    return {items, repetition, documentBytes: new TextEncoder().encode(documentJson).byteLength, checkpointBytes, metrics};
+    return {items, repetition, editTarget, documentBytes: new TextEncoder().encode(documentJson).byteLength, checkpointBytes, metrics};
   } finally { owner?.dispose(); equal(host.childNodes.length, 0); equal(toolbar.childNodes.length, 0); }
 }
