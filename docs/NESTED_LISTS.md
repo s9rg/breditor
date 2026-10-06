@@ -1075,3 +1075,19 @@ passes Node/types, Chromium/Firefox/WebKit and default-consumer checks; shipping
 trees are unchanged. This reduces redundant native calls but has no separately
 proven latency improvement yet. Latest single-archive evidence still refers to
 `jheBQW`, before this source-only optimization.
+
+Latest ordinary grandchild run passes 27 cycles on `TVVdTG`:
+`breditor-nested-list-consumer-P0t5NM/performance-p0pFYF/measurement.json`.
+500-root edit medians 89.8/335/196 ms do not establish a meaningful improvement
+from the selection getter change.
+
+Enabled the existing operation-scoped Firefox profiler for nested fixtures,
+explicitly marking those reports diagnostic. Its seven summarizer tests pass;
+the actual run passes nine correctness cycles and captures all 60 expected marks.
+Profile: `performance-t6BM3f/firefox-0.gecko-profile.json` in consumer `P0t5NM`,
+SHA-256 `2c9cce1c8b75891b095aa356af420629629938139b3cb1193f571226f05d2b61`.
+For the three 500-root edit spans, action-state reads appear in 240/401,
+269/438 and 249/410 samples, while canonical DOM/map checks appear in 105/401,
+117/438 and 106/410. These are inclusive sampled stacks, not additive self-time
+or uninstrumented timings. The next performance investigation should prioritize
+action availability computation rather than assume DOM traversal is dominant.
