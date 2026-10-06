@@ -765,6 +765,14 @@ inspection returned one `Could not establish connection. Receiving end does not
 exist.` error without an attributable stack; no claim of an error-free console
 is made. The editor remained responsive throughout the observed sequence.
 
+Chrome cross-level clipboard check on the same package: selected from the start
+of First through the end of its later nested descendant Deep using Shift+ArrowDown
+and Shift+End. DOM selection read `First\n\nSecond\n\nDeep 🙂`; native Copy
+and Cut clipboard text both read exactly `First\nSecond\nDeep 🙂`. Cut retained
+one empty leading ordered item and the unselected heading. One toolbar Undo
+restored editor `innerHTML` exactly, including ordered start and child nesting.
+This covers one forward cross-level range; reverse ranges and Safari remain open.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
