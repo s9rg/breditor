@@ -16,6 +16,10 @@ mod delete_nested_list_structure;
 #[cfg(feature = "experimental-structural-properties")]
 mod insert_nested_list_plain_text;
 #[cfg(feature = "experimental-structural-properties")]
+mod set_nested_list_block_kind;
+#[cfg(feature = "experimental-structural-properties")]
+pub use set_nested_list_block_kind::SetNestedListBlockKindAction;
+#[cfg(feature = "experimental-structural-properties")]
 pub use insert_nested_list_plain_text::{InsertNestedListPlainTextAction, insert_nested_list_plain_text_action_id};
 #[cfg(feature = "experimental-structural-properties")]
 mod delete_nested_list_backward;

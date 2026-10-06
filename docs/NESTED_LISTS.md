@@ -145,5 +145,15 @@ blank lines, numbering, headings, node/text/fanout/ordinal rejection and pending
 format restoration. Browser Copy/Cut serialization and paste binding are still
 unimplemented for the nested profile.
 
+`SetNestedListBlockKindAction` converts touched paragraphs/headings at arbitrary
+nesting depths in one guarded V7 replacement. A later endpoint at offset zero
+is excluded; collapsed empty blocks are included. List containers, starts, text,
+formats, exact selection encoding and pending formats remain unchanged.
+Toolbar activation distinguishes active, mixed and inactive selections, and
+already-matching selections are disabled. An independent tree oracle covers
+all endpoint pairs, both directions and multiple heading targets, with session
+recovery and property-budget checks. The nested compiled command profile still
+needs marker conversion/removal before browser-facing integration.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

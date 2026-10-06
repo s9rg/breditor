@@ -131,7 +131,7 @@ fn evaluate(state: &EditorState, target: TextBlockKind) -> Result<ActionEvaluati
         activation,
     ))
 }
-fn retype(node: &NodeRef, target: TextBlockKind) -> Result<NodeRef, ActionFault> {
+pub(super) fn retype(node: &NodeRef, target: TextBlockKind) -> Result<NodeRef, ActionFault> {
     let (kind, properties) = match target {
         TextBlockKind::Paragraph => ("breditor/paragraph", PropertyMap::default()),
         TextBlockKind::Heading(level) => (
