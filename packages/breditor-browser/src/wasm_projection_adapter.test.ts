@@ -48,6 +48,26 @@ describe("nested subtree update proof", () => {
     expect(NestedListProjectionUpdate.create({base, result: fixture().make("1", [tree()]), impact: {kind: "root"}}).ok).toBe(false);
     expect(NestedListProjectionUpdate.create({base: {...base}, result, impact: {kind: "root"}}).ok).toBe(false);
   });
+  it.each([1, 2, 3, 4, 5, 6])("proves descendant heading rank %i across shifted retained roots", headingLevel => {
+    const {make} = fixture();
+    const headingTree = (rank: number) => ({kind: "bulletList", items: [{
+      block: bare("parent").block, lists: [{kind: "orderedList", start: 8, items: [{
+        block: bare("child").block, lists: [{kind: "bulletList", items: [{
+          block: {...bare("grandchild🙂").block, headingLevel: rank}, lists: [],
+        }]}],
+      }]}],
+    }]});
+    const base = make("0", [headingTree(headingLevel), bare("replace"), headingTree(headingLevel)]);
+    const impact = {kind: "rootSplice", oldRange: {start: 1, end: 2}, newRange: {start: 1, end: 3}};
+    const unchanged = make("1", [headingTree(headingLevel), bare("one"), bare("two"), headingTree(headingLevel)]);
+    expect(nestedListUpdatePlan(valueOf(NestedListProjectionUpdate.create({base, result: unchanged, impact}))))
+      .toEqual({kind: "reuse", roots: [{oldIndex: 0, newIndex: 0}, {oldIndex: 2, newIndex: 3}]});
+    for (const changedIndex of [0, 3]) {
+      const blocks = [headingTree(headingLevel), bare("one"), bare("two"), headingTree(headingLevel)];
+      blocks[changedIndex] = headingTree(headingLevel % 6 + 1);
+      expect(NestedListProjectionUpdate.create({base, result: make("1", blocks), impact}).ok).toBe(false);
+    }
+  });
 });
 
 describe("recursive generated projection consumption", () => {

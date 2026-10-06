@@ -939,3 +939,11 @@ The extended instrumentation was exercised against retained package `TpYaIw`:
 all nine grandchild cycles passed (`breditor-nested-list-consumer-RBqXwA/performance-gJcltf`).
 No new reproduction occurred. These diagnostic runs are not latency evidence,
 native-input qualification, or closure of the previously recorded WebKit fault.
+
+Nested subtree proof coverage now checks every heading rank (1–6) at grandchild
+depth while a root insertion shifts a retained suffix. Independently constructed
+equal trees retain both prefix and shifted suffix; changing the deep rank on
+either side rejects the claimed impact. Targeted projection-adapter tests pass
+145 cases; the full browser suite passes 2,096 tests across 55 files and both
+production/test TypeScript checks pass. This adds deterministic validation
+coverage, not a reproduction or fix of the intermittent WebKit failure.
