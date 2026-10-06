@@ -132,5 +132,18 @@ for Delete. Directional text edits merge by direction; structural outdents/lifts
 are independent undo events. Document boundaries are disabled. These are opt-in
 Rust actions; browser input bindings and native qualification remain open.
 
+`InsertNestedListPlainTextAction` now accepts the existing bounded, non-empty
+plain-text contract. CRLF/CR/LF normalize to sibling blocks/items at the spatial
+start location; blank lines remain blank items, never implicit list exits.
+The first block retains the left kind, interior blocks are paragraphs, and the
+last block retains the right kind only when suffix text survives. Surviving
+descendants move beneath the last inserted item. Pending/focus formats at carets
+or the first selected run's formats apply to inserted text; pending formats are
+consumed. Paste is one independent undo unit, with exact V7 session recovery.
+Tests cover all endpoint pairs in a mixed nested document, reverse selections,
+blank lines, numbering, headings, node/text/fanout/ordinal rejection and pending
+format restoration. Browser Copy/Cut serialization and paste binding are still
+unimplemented for the nested profile.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

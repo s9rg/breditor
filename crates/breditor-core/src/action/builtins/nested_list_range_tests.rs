@@ -272,6 +272,211 @@ fn nested_deletion_rejects_interior_grapheme_carets_but_keeps_exact_ranges() -> 
     }
     Ok(())
 }
+#[test]
+fn nested_multiline_paste_endpoint_matrix_and_recovery() -> TestResult {
+    let context = context()?;
+    let registry = registry()?;
+    let source = ["op", "ab", "cd", "ef", "gh", "ij", "kl", "mn"];
+    for first in 0..source.len() {
+        for last in first..source.len() {
+            for reverse in [false, true] {
+                for input in ["X", "X\nY\n", "\r\nY\rZ", "\n"] {
+                    let before = selected(&context, first, 1, last, 1, reverse)?;
+                    let normalized = input.replace("\r\n", "\n").replace('\r', "\n");
+                    let mut inserted =
+                        normalized.split('\n').map(str::to_owned).collect::<Vec<_>>();
+                    inserted[0].insert_str(0, &source[first][..1]);
+                    inserted.last_mut().ok_or("last")?.push_str(&source[last][1..]);
+                    let mut expected =
+                        source[..first].iter().map(|v| (*v).to_owned()).collect::<Vec<_>>();
+                    expected.extend(inserted);
+                    expected.extend(source[last + 1..].iter().map(|v| (*v).to_owned()));
+                    let request = ActionInvocation::new(
+                        insert_nested_list_plain_text_action_id(),
+                        ActionInput::typed(
+                            insert_plain_text_input_contract(),
+                            ActionValue::try_from_string(input)?,
+                        ),
+                    );
+                    let mut session = EditorSession::new(before.clone());
+                    session.execute_prepared_action(registry.prepare(&before, &request)?)?;
+                    let mut actual = Vec::new();
+                    blocks(session.state().document().root(), &mut actual)?;
+                    assert_eq!(
+                        actual, expected,
+                        "first={first}, last={last}, reverse={reverse}, input={input:?}"
+                    );
+                    let range =
+                        crate::action::text_position::normalize_nested_list_range_selection(
+                            session.state(),
+                        )?;
+                    let tail =
+                        normalized.split('\n').next_back().ok_or("tail")?.encode_utf16().count();
+                    assert_eq!(
+                        range.start().offset().get(),
+                        (tail + usize::from(!normalized.contains('\n'))) as u64
+                    );
+                    assert!(range.is_collapsed());
+                    history(&session, &before)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn nested_multiline_paste_retains_descendants_under_last_inserted_item() -> TestResult {
+    let context = context()?;
+    let before = selected(&context, 1, 1, 1, 1, false)?;
+    let request = ActionInvocation::new(
+        insert_nested_list_plain_text_action_id(),
+        ActionInput::typed(
+            insert_plain_text_input_contract(),
+            ActionValue::try_from_string("X\n\nY")?,
+        ),
+    );
+    let mut session = EditorSession::new(before.clone());
+    session.execute_prepared_action(registry()?.prepare(&before, &request)?)?;
+    let expected = vec![
+        text("op")?,
+        list(
+            vec![
+                item(vec![block(heading(2)?, "aX", formats()?)?])?,
+                item(vec![text("")?])?,
+                item(vec![
+                    block(heading(2)?, "Yb", formats()?)?,
+                    list(vec![item(vec![text("cd")?])?, item(vec![text("ef")?])?], Some(20))?,
+                ])?,
+                item(vec![text("gh")?, list(vec![item(vec![text("ij")?])?], None)?])?,
+                item(vec![text("kl")?])?,
+            ],
+            Some(7),
+        )?,
+        text("mn")?,
+    ];
+    assert_eq!(
+        session
+            .state()
+            .document()
+            .root()
+            .as_element()
+            .ok_or("root")?
+            .children()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
+        expected
+    );
+    history(&session, &before)?;
+    Ok(())
+}
+#[test]
+fn nested_paste_limit_failures_are_atomic() -> TestResult {
+    use crate::action::{Action, ActionDecision};
+    for (limits, ordinal, input) in [
+        (DocumentLimits::default().with_max_nodes(8), None, "X\nY"),
+        (DocumentLimits::default().with_max_text_bytes(2), None, "XX"),
+        (DocumentLimits::default().with_max_children_per_element(2), None, "X\nY\nZ"),
+        (DocumentLimits::default(), Some(2_147_483_647), "X\nY"),
+    ] {
+        let context = EditorContext::new(context()?.schema().clone(), limits);
+        let point = Point::Text {
+            text_path: NodePath::try_from_indices(vec![0, 0, 1, 0, 0, 0])?,
+            utf16_offset: 1,
+            affinity: Affinity::After,
+        };
+        let before = state(
+            &context,
+            vec![list(
+                vec![item(vec![text("")?, list(vec![item(vec![text("ab")?])?], ordinal)?])?],
+                None,
+            )?],
+            Selection::Range(RangeSelection::new(point.clone(), point)),
+            None,
+        )?;
+        assert!(matches!(
+            InsertNestedListPlainTextAction
+                .evaluate(&before, &InsertPlainTextInput::try_new(input)?)?
+                .decision(),
+            ActionDecision::Disabled(_)
+        ));
+        let request = ActionInvocation::new(
+            insert_nested_list_plain_text_action_id(),
+            ActionInput::typed(
+                insert_plain_text_input_contract(),
+                ActionValue::try_from_string(input)?,
+            ),
+        );
+        let mut session = EditorSession::new(before.clone());
+        assert!(session.execute_prepared_action(registry()?.prepare(&before, &request)?).is_err());
+        assert_eq!(session.state(), &before);
+        assert_eq!(session.undo_depth(), 0);
+    }
+    let before = selected(&context()?, 2, 1, 2, 1, false)?;
+    let empty = ActionInvocation::new(
+        insert_nested_list_plain_text_action_id(),
+        ActionInput::typed(insert_plain_text_input_contract(), ActionValue::try_from_string("")?),
+    );
+    assert!(registry()?.prepare(&before, &empty).is_err());
+    Ok(())
+}
+#[test]
+fn nested_paste_consumes_pending_formats_and_restores_them_on_undo() -> TestResult {
+    use crate::document::{FormatSet, TextNode};
+    let context = context()?;
+    let plain = block(TextBlockKind::Paragraph, "ab", FormatSet::default())?;
+    let point = Point::Text {
+        text_path: NodePath::try_from_indices(vec![0, 0, 0, 0])?,
+        utf16_offset: 1,
+        affinity: Affinity::After,
+    };
+    let before = state(
+        &context,
+        vec![list(vec![item(vec![plain.clone()])?], None)?],
+        Selection::Range(RangeSelection::new(point.clone(), point)),
+        Some(formats()?),
+    )?;
+    let request = ActionInvocation::new(
+        insert_nested_list_plain_text_action_id(),
+        ActionInput::typed(
+            insert_plain_text_input_contract(),
+            ActionValue::try_from_string("X\nY")?,
+        ),
+    );
+    let mut session = EditorSession::new(before.clone());
+    session.execute_prepared_action(registry()?.prepare(&before, &request)?)?;
+    let mixed = |runs: Vec<(&str, FormatSet)>| -> Result<NodeRef, Box<dyn Error>> {
+        let children = runs
+            .into_iter()
+            .map(|(value, format)| TextNode::try_new(value.to_owned(), format).map(NodeRef::text))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(NodeRef::element(plain.as_element().ok_or("plain")?.try_with_children(children)?))
+    };
+    let expected = vec![list(
+        vec![
+            item(vec![mixed(vec![("a", FormatSet::default()), ("X", formats()?)])?])?,
+            item(vec![mixed(vec![("Y", formats()?), ("b", FormatSet::default())])?])?,
+        ],
+        None,
+    )?];
+    assert_eq!(
+        session
+            .state()
+            .document()
+            .root()
+            .as_element()
+            .ok_or("root")?
+            .children()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(session.state().pending_formats(), None);
+    history(&session, &before)?;
+    Ok(())
+}
 fn roots() -> Result<Vec<NodeRef>, Box<dyn Error>> {
     Ok(vec![
         text("op")?,
@@ -343,6 +548,11 @@ fn selected(
 }
 fn registry() -> Result<ActionRegistry, Box<dyn Error>> {
     Ok(ActionRegistry::try_new(vec![
+        ActionRegistration::with_input(
+            insert_nested_list_plain_text_action_id(),
+            insert_plain_text_input_contract(),
+            InsertNestedListPlainTextAction,
+        ),
         ActionRegistration::new(
             delete_nested_list_backward_action_id(),
             DeleteNestedListBackwardAction,
@@ -401,9 +611,11 @@ fn history(session: &EditorSession, before: &EditorState) -> TestResult {
     restored.undo()?.ok_or("undo")?;
     assert_eq!(restored.state().document(), before.document());
     assert_eq!(restored.state().selection(), before.selection());
+    assert_eq!(restored.state().pending_formats(), before.pending_formats());
     restored.redo()?.ok_or("redo")?;
     assert_eq!(restored.state().document(), session.state().document());
     assert_eq!(restored.state().selection(), session.state().selection());
+    assert_eq!(restored.state().pending_formats(), session.state().pending_formats());
     Ok(())
 }
 #[test]
