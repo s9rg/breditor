@@ -255,19 +255,25 @@ describe("recursive nested-list DOM", () => {
     expect(outcome.rendered.validateCanonicalDom()).toBe(true);
     expect(mapNestedListSelectionPointToDomPoint(outcome.rendered, {kind: "children", parentPath: path, childIndex: 0, affinity: "after"})).toMatchObject({ok: true, value: {node: oldBlock, offset: 0}});
   });
-  it("rolls back a nested paragraph refresh that throws after writing", () => {
+  it.each(["parent", "descendant"])("rolls back all nested refreshes when %s throws after writing", fault => {
     const f = fixture(), root = f.host.firstChild!, parent = f.host.querySelector("p")!, originalText = parent.firstChild;
+    const descendant = f.rendered.nodeForAstPath([0, 0, 1, 0, 0]) as HTMLElement;
+    const originalDescendants = [...descendant.childNodes];
     const before = f.host.innerHTML, blocks = structuredClone(f.blocks);
     blocks[0]!.items[0]!.block.runs[0]!.text = "edited parent";
+    blocks[0]!.items[0]!.lists[0]!.items[0]!.block.runs[0]!.text = "edited descendant";
     const update = valueOf(NestedListProjectionUpdate.create({base: f.projection, result: f.make(blocks),
       impact: {kind: "rootSplice", oldRange: {start: 0, end: 1}, newRange: {start: 0, end: 1}}}));
-    const replace = parent.replaceChildren.bind(parent);
-    const spy = vi.spyOn(parent, "replaceChildren").mockImplementationOnce((...nodes) => {replace(...nodes); throw new Error("after refresh");});
+    const failing = fault === "parent" ? parent : descendant;
+    const replace = failing.replaceChildren.bind(failing);
+    const spy = vi.spyOn(failing, "replaceChildren").mockImplementationOnce((...nodes) => {replace(...nodes); throw new Error("after refresh");});
     try { expect(f.renderer.updateNestedList(f.rendered, update).ok).toBe(false); }
     finally { spy.mockRestore(); }
     expect(f.host.firstChild).toBe(root);
     expect(f.host.innerHTML).toBe(before);
     expect(parent.firstChild).toBe(originalText);
+    expect([...descendant.childNodes]).toEqual(originalDescendants);
+    originalDescendants.forEach((node, index) => expect(descendant.childNodes[index]).toBe(node));
     expect(f.rendered.current).toBe(false);
   });
   it("retains a moved recursive subtree and remaps every descendant", () => {

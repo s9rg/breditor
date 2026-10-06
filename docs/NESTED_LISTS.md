@@ -715,6 +715,22 @@ Japanese text and a supplementary-plane emoji. Forward, inverse and replay
 report the conservative root span; intervening/trailing roots remain equal and
 undo/replay restore exact documents. All 60 nested-feature Wasm Rust tests pass.
 
+The retained pre-classifier package `target/nested-list-packages-TpYaIw` reproduced
+the nested redo fault with bounded rejection diagnostics: WebKit run index 5,
+500 items, repetition 2, `redoMs`. The owner fault is `toolbarDispatchFailed`;
+the captured underlying rejection is `projection.invalid_update`, followed by
+the queue executor throwing `TypeError: Wasm projection update is invalid`.
+This narrows the next investigation to projection conversion/update validation,
+not an assumed DOM rollback or toolbar button bug. The exact failed validation
+branch is not yet captured. Report:
+`breditor-nested-list-consumer-RBqXwA/performance-e8QUkx/measurement.json`, SHA-256
+`ee3f6d89d49550d16c498063346179e97d86441375e77b782c88d3ab1025488e`.
+The current package's clean repeats do not establish resolution of this fault.
+
+Renderer rollback coverage now changes both a parent and descendant paragraph
+and injects an exception after either write. Both cases restore original HTML
+and node identities and invalidate the old handle. All 199 renderer tests pass.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
