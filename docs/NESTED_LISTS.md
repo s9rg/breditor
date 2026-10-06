@@ -785,6 +785,18 @@ nested child. An earlier AX cursor-after selection landed at an unintended
 location and Tab moved focus outside; that attempt is not credited as an indent
 test. No Safari clipboard, IME or screen-reader qualification is claimed yet.
 
+Subsequent native Safari clipboard smoke passed with OS shortcuts after AX
+confirmed the selection: Copy of Deep pasted exactly `Deep 🙂` into the outside
+input; Cut emptied the nested paragraph; one toolbar Undo restored the text and
+selection. Paste at the collapsed end inserted one copy (`Deep 🙂Deep 🙂`), and
+one Undo restored the original. A backward cross-level selection from Deep
+through First copied `First\nSecond\nDeep 🙂` (read through the shared clipboard
+API), cut down to one empty ordered item, and one Undo restored visible text,
+ordered markers 3/4, child nesting and the selected range. Safari verification
+here uses native AX/visual observations, not an exact serialized document or
+selection-offset comparison. Physical IME and spoken screen-reader checks remain
+open; these bounded successes do not close the intermittent WebKit fault.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
