@@ -814,6 +814,14 @@ Longer page lifetime did not reproduce the fault in this bounded trial. The
 earlier `performance-e8QUkx` rejection remains authoritative failure evidence;
 no production validation changes or release-readiness claim follow from this run.
 
+Native IME setup attempt: temporarily added Japanese–Romaji through System
+Settings, but Control+Space did not activate composition in Safari; OS key
+presses entered literal `nihon`. This is not an IME pass or an editor IME bug
+reproduction. SystemUIServer inspection timed out. Restored Canadian-only input,
+input-menu visibility off, Globe action Show Emoji & Symbols, and English
+(Canada)-only dictation languages (adding Romaji had also added Japanese there).
+Dictation remained off. All restoration values were observed in Settings.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
