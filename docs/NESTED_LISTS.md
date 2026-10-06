@@ -1039,3 +1039,17 @@ Wasm suite separately passed 61 tests at `1ad0bc3`. Thus the larger structural
 suite count must not be described as default-core coverage. No shipping dist
 build or publication was performed. Native speech/IME, release size/latency
 criteria and the historical WebKit failure remain unqualified.
+
+Empty native child snapshots now reuse a frozen empty array after (not instead
+of) the captured getter, native length read and count validation. No DOM-state
+cache is introduced; an element gaining children is observed on the next call.
+Tests cover frozen snapshots, later insertion/removal, own-property shadows and
+invalid receivers. All 2,098 browser tests and production/test type checks pass.
+Isolated pair `nested-list-packages-dIX8SC` passes installed Node/types,
+Chromium/Firefox/WebKit and default-consumer checks with shipping trees unchanged.
+Its grandchild benchmark passes 27 correctness cycles:
+`breditor-nested-list-consumer-IPuQK5/performance-VFmqIY/measurement.json`.
+500-root edit medians are 91.1/338/188 ms (Chromium/Firefox/WebKit). This removes
+allocations but does not establish a statistically significant latency improvement
+or close performance qualification. Existing single-package/native evidence
+remains pinned to `WNID8x`, not this newer browser source.

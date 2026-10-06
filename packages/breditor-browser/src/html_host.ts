@@ -133,6 +133,7 @@ let capturedRangeIntrinsics: RangeIntrinsics | undefined;
 
 /** Maximum children copied by one native topology snapshot. */
 export const MAX_NATIVE_CHILD_NODE_SNAPSHOT = 262_144;
+const EMPTY_NATIVE_CHILD_NODES: readonly ChildNode[] = Object.freeze([]);
 
 /** Brand-checked native facts used to admit an application-owned HTML host. */
 export interface NativeHtmlHostFacts {
@@ -436,6 +437,9 @@ export function nativeChildNodes(node: Node): readonly ChildNode[] {
   ) {
     throw new TypeError("DOM child node count is invalid");
   }
+  // Empty snapshots contain no identities or mutable state. Still read and
+  // validate the native list every time: an element can gain children later.
+  if (length === 0) return EMPTY_NATIVE_CHILD_NODES;
   const safe: ChildNode[] = [];
   for (let index = 0; index < length; index += 1) {
     const child = Reflect.apply(

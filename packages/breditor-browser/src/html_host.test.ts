@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   nativeAbstractRangeFacts,
+  nativeChildNodes,
   nativeCreateHtmlElement,
   nativeDocumentActiveElement,
   nativeDocumentCreateRange,
@@ -27,6 +28,28 @@ beforeEach(() => {
 });
 
 describe("trusted platform intrinsics", () => {
+  it("keeps empty child snapshots frozen while observing later DOM changes", () => {
+    const element = document.createElement("p");
+    const empty = nativeChildNodes(element);
+    expect(empty).toEqual([]);
+    expect(Object.isFrozen(empty)).toBe(true);
+    const text = document.createTextNode("changed");
+    element.append(text);
+    const populated = nativeChildNodes(element);
+    expect(populated).toEqual([text]);
+    expect(Object.isFrozen(populated)).toBe(true);
+    expect(empty).toEqual([]);
+    text.remove();
+    expect(nativeChildNodes(element)).toEqual([]);
+    expect(populated).toEqual([text]);
+  });
+  it("does not let a childNodes shadow forge an empty snapshot", () => {
+    const element = document.createElement("p");
+    const text = document.createTextNode("real"); element.append(text);
+    Object.defineProperty(element, "childNodes", {value: []});
+    expect(nativeChildNodes(element)).toEqual([text]);
+    expect(() => nativeChildNodes({childNodes: []} as unknown as Node)).toThrow();
+  });
   it("checks attribute presence afresh without consulting own attribute shadows", () => {
     const element = document.createElement("p");
     const trap = vi.fn(() => { throw new Error("own attribute property read"); });
