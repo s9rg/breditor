@@ -754,6 +754,17 @@ the After editor input without changing list structure. These were browser-tool
 key presses and UI observations, not physical-keyboard, clipboard, IME or spoken
 screen-reader qualification. No OS input/accessibility settings were changed.
 
+Installed Chrome clipboard smoke on that same consumer: selected `Deep 🙂`
+with Home/Shift+End and verified the DOM selection; Meta+C then Meta+V into
+the outside input produced exactly `Deep 🙂` without a marker. Meta+X emptied
+only that nested paragraph; one toolbar Undo restored it. Pasting at its end
+produced `Deep 🙂Deep 🙂` once; one Undo restored `Deep 🙂`. These are observed
+browser-shortcut results, not synthetic clipboard-event injection, but do not
+cover cross-item selections, Safari, physical IME or screen readers. Console
+inspection returned one `Could not establish connection. Receiving end does not
+exist.` error without an attributable stack; no claim of an error-free console
+is made. The editor remained responsive throughout the observed sequence.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
