@@ -736,6 +736,15 @@ completed 90 cycles without a rejection; report
 `breditor-nested-list-consumer-RBqXwA/performance-ShGZVn/measurement.json`.
 This is additional instrumentation, not a fix or a closed intermittent issue.
 
+A second branch-labeled repeat also completed 90 cycles across ten sessions:
+`breditor-nested-list-consumer-RBqXwA/performance-BOZunU/measurement.json`, SHA-256
+`1a63a7e2a9e551d6c95e28d5f44d523d792483ee7ed8360f81b438f0a9c18f1d`.
+No rejection branch was captured in either labeled repeat. Instrumentation can
+change execution timing; these results cannot supersede the earlier reproduced
+redo failure. Native qualification remains separate from the consumer fixture's
+automated `keyboardProbe` mode, which keeps the editor alive for interaction but
+does not itself prove OS input, clipboard or spoken accessibility behavior.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
