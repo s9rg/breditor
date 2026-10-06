@@ -243,5 +243,16 @@ parent/child cleanup, including an outer owner's captured destructor.
 This supplies the update proof; recursive DOM rendering and public owner wiring
 are still pending and no packaged/native qualification is implied.
 
+The renderer now has an explicit internal `renderNestedList` entry point. It
+builds recursive list sections, preserves ordered starts and maps actual AST
+paths through all wrapper levels. Canonical validation checks the entire nested
+DOM and both private maps, including unmapped inline wrappers and empty-block
+placeholders; deep text, numbering, attribute and child-shape drift invalidate
+the handle. DOM resource accounting includes every nested list/item wrapper.
+Dedicated release/ownership checks keep base and flat handle admission separate.
+Unit tests cover nested markup, deep path round trips and drift invalidation.
+Incremental nested rendering, composition leases, DOM selection integration and
+packaged/native browser qualification remain outstanding.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

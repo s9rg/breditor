@@ -52,6 +52,55 @@ import { BreditorCommandQueue, BreditorFlatListCommandQueue, openFlatListCommand
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
+import { NestedListDocumentProjection } from "./nested_list_projection.js";
+import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
+
+describe("recursive nested-list DOM", () => {
+  function fixture() {
+    const generation = profileGeneration(), descriptor = ownedProfileDescriptor(generation, ["breditor/strong"]);
+    const presentation = compileBrowserPresentation(generation, descriptor,
+      createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "strong"}]}));
+    const block = (text: string) => ({headingLevel: null, runs: text ? [{text, formatDetails: propertyFreeFormats(["breditor/strong"])}] : []});
+    const projection = valueOf(NestedListDocumentProjection.create({schema: descriptor.schema,
+      snapshot: {lineage: "nested-dom", revision: "0"}, blocks: [{kind: "bulletList", items: [
+        {block: block("parent"), lists: [{kind: "orderedList", start: 9, items: [
+          {block: block("child🙂"), lists: [{kind: "bulletList", items: [{block: block(""), lists: []}]}]},
+        ]}]},
+      ]}]}, generation, descriptor));
+    const renderer = new BreditorDomRenderer(presentation), host = document.createElement("div");
+    const rendered = valueOf(renderer.renderNestedList(host, projection)).rendered;
+    return {renderer, host, projection, rendered};
+  }
+  it("renders sections and round-trips deep block/run paths without mapping wrappers", () => {
+    const {host, rendered} = fixture();
+    expect(host.innerHTML).toBe('<ul><li><p><strong>parent</strong></p><ol start="9"><li><p><strong>child🙂</strong></p><ul><li><p><br></p></li></ul></li></ol></li></ul>');
+    const path = [0, 0, 1, 0, 0, 0], text = rendered.nodeForAstPath(path);
+    expect(text?.nodeValue).toBe("child🙂");
+    expect(rendered.astPathForDomNode(text!)).toEqual(path);
+    expect(rendered.astPathForDomNode(text!.parentNode!)).toBeNull();
+    expect(rendered.nodeForAstPath([0, 0, 1, 0, 1, 0, 0])?.nodeName).toBe("P");
+    expect(rendered.validateCanonicalDom()).toBe(true);
+    expect(isOwnedNestedListRenderedProjection(rendered)).toBe(true);
+    expect(isOwnedFlatListRenderedProjection(rendered)).toBe(false);
+    expect(isOwnedRenderedProjection(rendered)).toBe(false);
+  });
+  it.each(["text", "numbering", "extraChild", "attribute"])("invalidates deep %s drift", fault => {
+    const {host, rendered} = fixture();
+    if (fault === "text") host.querySelector("ol strong")!.textContent = "wrong";
+    if (fault === "numbering") host.querySelector("ol")!.setAttribute("start", "10");
+    if (fault === "extraChild") host.querySelector("ol li")!.append(document.createElement("p"));
+    if (fault === "attribute") host.querySelector("ol li")!.setAttribute("title", "unexpected");
+    expect(rendered.validateCanonicalDom()).toBe(false);
+    expect(rendered.nodeForAstPath([0])).toBeNull();
+  });
+  it("releases nested handles through their explicit API", () => {
+    const {renderer, rendered} = fixture();
+    expect(renderer.releaseNestedList(rendered)).toBe(true);
+    expect(rendered.current).toBe(false);
+    expect(renderer.releaseNestedList(rendered)).toBe(false);
+  });
+});
+
 describe("hierarchical flat-list DOM and points", () => {
   function fixture(firstText = "a🙂b", secondText = "") {
     const generation = profileGeneration();
