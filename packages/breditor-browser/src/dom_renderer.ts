@@ -115,6 +115,15 @@ export interface FlatListDomCompositionLease {
   readonly __flatListDomCompositionLeaseBrand: never;
 }
 
+/** Opaque recursive-list composition ownership, distinct from legacy leases. @internal */
+export interface NestedListDomCompositionLease {
+  readonly __nestedListDomCompositionLeaseBrand: never;
+}
+
+function projectionMode(projection: RenderableProjection): boolean | "nested" {
+  return isOwnedNestedListProjection(projection) ? "nested" : isOwnedFlatListProjection(projection);
+}
+
 interface ProjectionMaps {
   readonly astToDom: Map<string, Node>;
   readonly domToAst: WeakMap<Node, AstPath>;
@@ -445,6 +454,13 @@ export class BreditorDomRenderer {
     return ownership?.rendererToken === this.#rendererToken && ownership.handle === rendered && rendered.validateCanonicalDom();
   }
 
+  /** Exact canonical ownership of a recursive-list generation. @internal */
+  ownsNestedList(rendered: unknown): rendered is RenderedProjection<NestedListDocumentProjection> {
+    if (!isOwnedNestedListRenderedProjection(rendered)) return false;
+    const ownership = HOST_OWNERS.get(rendered.host);
+    return ownership?.rendererToken === this.#rendererToken && ownership.handle === rendered && rendered.validateCanonicalDom();
+  }
+
   /**
    * Suspends canonical-DOM observation for one exact native composition.
    *
@@ -463,12 +479,17 @@ export class BreditorDomRenderer {
     return this.#beginCompositionDomLease(rendered, true) as FlatListDomCompositionLease | null;
   }
 
-  #beginCompositionDomLease(rendered: RenderedProjection<RenderableProjection>, flatLists: boolean): object | null {
+  /** Yields recursive DOM while withholding stale canonical path maps. @internal */
+  beginNestedListCompositionDomLease(rendered: RenderedProjection<NestedListDocumentProjection>): NestedListDomCompositionLease | null {
+    return this.#beginCompositionDomLease(rendered, "nested") as NestedListDomCompositionLease | null;
+  }
+
+  #beginCompositionDomLease(rendered: RenderedProjection<RenderableProjection>, flatLists: boolean | "nested"): object | null {
     if (
-      !(isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) ||
-      isOwnedFlatListProjection(rendered.projection) !== flatLists ||
+      !(isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) ||
+      projectionMode(rendered.projection) !== flatLists ||
       ACTIVE_HOST_OPERATIONS.has(rendered.host) ||
-      !(flatLists ? this.ownsFlatList(rendered) : this.owns(rendered))
+      !(flatLists === "nested" ? this.ownsNestedList(rendered) : flatLists ? this.ownsFlatList(rendered) : this.owns(rendered))
     ) {
       return null;
     }
@@ -506,11 +527,16 @@ export class BreditorDomRenderer {
     return isOwnedFlatListRenderedProjection(rendered) && this.#ownsCompositionDomLease(lease, rendered);
   }
 
+  /** Proves an uninterrupted recursive-list lease without inspecting provisional DOM. @internal */
+  ownsNestedListCompositionDomLease(lease: unknown, rendered: RenderedProjection<NestedListDocumentProjection>): lease is NestedListDomCompositionLease {
+    return isOwnedNestedListRenderedProjection(rendered) && this.#ownsCompositionDomLease(lease, rendered);
+  }
+
   #ownsCompositionDomLease(lease: unknown, rendered: RenderedProjection<RenderableProjection>): boolean {
     if (
       typeof lease !== "object" ||
       lease === null ||
-      !(isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered))
+      !(isOwnedNestedListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered))
     ) {
       return false;
     }
@@ -549,10 +575,15 @@ export class BreditorDomRenderer {
     return this.#restoreCompositionDomLease(lease, projection, true);
   }
 
+  /** Restores recursive DOM; detached construction failure leaves the lease retryable. @internal */
+  restoreNestedListCompositionDomLease(lease: NestedListDomCompositionLease, projection: NestedListDocumentProjection): BrowserProjectionResult<ProjectionRenderOutcome<NestedListDocumentProjection>> {
+    return this.#restoreCompositionDomLease(lease, projection, "nested");
+  }
+
   #restoreCompositionDomLease<P extends RenderableProjection>(lease: object, projection: P,
-    flatLists: boolean): BrowserProjectionResult<ProjectionRenderOutcome<P>> {
+    flatLists: boolean | "nested"): BrowserProjectionResult<ProjectionRenderOutcome<P>> {
     const record = this.#liveCompositionLeaseRecord(lease);
-    if (record === null || isOwnedFlatListProjection(record.handle.projection) !== flatLists) {
+    if (record === null || projectionMode(record.handle.projection) !== flatLists) {
       return projectionFailure("renderer.foreign_or_stale_render");
     }
     const host = record.handle.host;
@@ -564,7 +595,7 @@ export class BreditorDomRenderer {
       if (installGuard === null) {
         return projectionFailure("renderer.dom_write_failed");
       }
-      if (flatLists ? !isOwnedFlatListProjection(projection) : !isOwnedProjection(projection)) {
+      if (flatLists === "nested" ? !isOwnedNestedListProjection(projection) : flatLists ? !isOwnedFlatListProjection(projection) : !isOwnedProjection(projection)) {
         return projectionFailure("projection.invalid_shape");
       }
       if (!this.#bindProjectionPresentation(projection)) {
@@ -634,9 +665,14 @@ export class BreditorDomRenderer {
     return this.#discardCompositionDomLease(lease, true);
   }
 
-  #discardCompositionDomLease(lease: object, flatLists: boolean): boolean {
+  /** Discards the recursive lease without interpreting provisional input. @internal */
+  discardNestedListCompositionDomLease(lease: NestedListDomCompositionLease): boolean {
+    return this.#discardCompositionDomLease(lease, "nested");
+  }
+
+  #discardCompositionDomLease(lease: object, flatLists: boolean | "nested"): boolean {
     const record = this.#liveCompositionLeaseRecord(lease);
-    if (record === null || isOwnedFlatListProjection(record.handle.projection) !== flatLists ||
+    if (record === null || projectionMode(record.handle.projection) !== flatLists ||
       ACTIVE_HOST_OPERATIONS.has(record.handle.host)) {
       return false;
     }

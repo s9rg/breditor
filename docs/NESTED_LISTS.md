@@ -281,5 +281,14 @@ deep empty-block carets and clearing selection. These are jsdom integration
 checks, not native Safari/Chrome or physical IME qualification; event-controller
 and composition wiring still remain.
 
+Recursive renderers now expose distinct nested composition leases. While leased,
+canonical handles and AST maps are unavailable, but exact renderer/host ownership
+remains provable without interpreting provisional native DOM. Restoration uses
+the shared guarded installation path; detached construction failure leaves the
+lease retryable, and successful restoration or discard prevents reuse. Tests
+cover deep provisional text, foreign renderer rejection, canonical restoration,
+construction failure and discard. This is ownership infrastructure only: nested
+composition reconciliation and event delivery are not yet wired or IME-qualified.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

@@ -196,6 +196,40 @@ describe("recursive nested-list DOM", () => {
       expect(bridge.read(f.rendered).ok).toBe(false);
     } finally { bridge.dispose(); document.getSelection()?.removeAllRanges(); f.host.remove(); }
   });
+  it("leases recursive composition DOM and restores canonical paths exactly once", () => {
+    const f = fixture();
+    const lease = f.renderer.beginNestedListCompositionDomLease(f.rendered);
+    expect(lease).not.toBeNull();
+    if (lease === null) throw new Error("lease");
+    expect(f.rendered.current).toBe(false);
+    expect(f.rendered.nodeForAstPath([0])).toBeNull();
+    f.host.querySelector("ol strong")!.textContent = "にほん";
+    expect(f.renderer.ownsNestedListCompositionDomLease(lease, f.rendered)).toBe(true);
+    expect(new BreditorDomRenderer().ownsNestedListCompositionDomLease(lease, f.rendered)).toBe(false);
+    const restored = valueOf(f.renderer.restoreNestedListCompositionDomLease(lease, f.projection)).rendered;
+    expect(restored.validateCanonicalDom()).toBe(true);
+    expect(restored.nodeForAstPath([0, 0, 1, 0, 0, 0])?.nodeValue).toBe("child🙂");
+    expect(f.renderer.ownsNestedList(restored)).toBe(true);
+    expect(f.renderer.restoreNestedListCompositionDomLease(lease, f.projection).ok).toBe(false);
+    expect(f.renderer.discardNestedListCompositionDomLease(lease)).toBe(false);
+  });
+  it("keeps a nested lease retryable after detached construction fails and allows discard", () => {
+    const f = fixture(), lease = f.renderer.beginNestedListCompositionDomLease(f.rendered);
+    if (lease === null) throw new Error("lease");
+    f.host.querySelector("ol strong")!.textContent = "provisional";
+    const original = document.createElementNS.bind(document);
+    const spy = vi.spyOn(document, "createElementNS").mockImplementation((namespace, name, options) => {
+      if (name === "ol") throw new Error("construction failure");
+      return original(namespace, name, options);
+    });
+    try { expect(f.renderer.restoreNestedListCompositionDomLease(lease, f.projection).ok).toBe(false); }
+    finally { spy.mockRestore(); }
+    expect(f.renderer.ownsNestedListCompositionDomLease(lease, f.rendered)).toBe(true);
+    expect(f.host.querySelector("ol strong")!.textContent).toBe("provisional");
+    expect(f.renderer.discardNestedListCompositionDomLease(lease)).toBe(true);
+    expect(f.renderer.ownsNestedListCompositionDomLease(lease, f.rendered)).toBe(false);
+    expect(f.renderer.restoreNestedListCompositionDomLease(lease, f.projection).ok).toBe(false);
+  });
   it("normalizes wrapper edges across descendants but rejects interior item boundaries", () => {
     const {rendered, host} = fixture();
     const item = host.querySelector("li")!;
