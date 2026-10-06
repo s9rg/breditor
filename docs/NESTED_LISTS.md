@@ -991,3 +991,20 @@ not the text-only root span. Both operation orders, their inverse transactions
 and forward replays pass; inverse/replay documents are exact. All 61
 feature-enabled Wasm tests and strict all-target Clippy pass. This protects the
 conservative mixed-operation fallback without changing runtime behavior.
+
+Exact retained-bundle replay is now available through
+`scripts/replay-nested-list-performance.mjs <measurement.json>`. It accepts only
+retained nested performance records under the system temporary directory,
+verifies the complete recorded JS/Wasm asset set and hashes, serves the existing
+bundle without rebuilding or injecting code, and records ten fresh WebKit
+sessions with fixture correctness output and bounded error logs. It stops on the
+first failure and does not qualify release performance.
+
+The previously failing `performance-e8QUkx` bundle completed ten exact-byte
+replay sessions / 90 owner cycles without a new fault. Evidence:
+`performance-e8QUkx/exact-replay-ye4DSj/replay.json` in retained consumer `RBqXwA`.
+A separately rebuilt root-edit run with current rejection/subtree diagnostics
+also completed 90 cycles (`performance-yCf9af/measurement.json`). Neither result
+invalidates the earlier recorded failure. Exact-byte replay is a control for
+instrumentation/build differences, not a reproduction, root-cause identification
+or fix. The historical WebKit gate remains unresolved.

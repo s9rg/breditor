@@ -1,0 +1,81 @@
+// Replay retained browser bytes, not a rebuilt/instrumented approximation.
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {readFile, readdir, realpath, mkdtemp, writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {dirname, join, relative, resolve} from "node:path";
+import {preview} from "vite";
+import {webkit} from "playwright-core";
+
+assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
+const sourcePath = await realpath(resolve(process.argv[2]));
+const temporaryRoot = await realpath(tmpdir());
+assert.match(relative(temporaryRoot, sourcePath), /^breditor-nested-list-consumer-[a-zA-Z0-9]+\/performance-[a-zA-Z0-9]+\/measurement\.json$/u);
+const sourceBytes = await readFile(sourcePath);
+const source = JSON.parse(sourceBytes);
+assert.equal(source.browserName, "webkit");
+assert.equal(source.fixture, dirname(sourcePath));
+assert.ok(Number.isSafeInteger(source.ownerRepetitions) && source.ownerRepetitions >= 3 && source.ownerRepetitions <= 30);
+const bundle = join(dirname(sourcePath), "bundle");
+assert.equal(await realpath(bundle), bundle);
+const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+const verifyAssets = async () => {
+  const assets = join(bundle, "assets");
+  assert.deepEqual((await readdir(assets)).sort(), Object.keys(source.bundleAssets).sort());
+  for (const [name, expected] of Object.entries(source.bundleAssets)) {
+    assert.match(name, /^[a-zA-Z0-9_.-]+$/u);
+    const path = join(assets, name);
+    assert.equal(await realpath(path), path);
+    assert.equal(hash(await readFile(path)), expected, `retained asset changed: ${name}`);
+  }
+};
+await verifyAssets();
+const output = await mkdtemp(join(dirname(sourcePath), "exact-replay-"));
+const report = {status: "running", sourcePath, sourceSha256: hash(sourceBytes),
+  bundleAssets: source.bundleAssets, indexSha256: hash(await readFile(join(bundle, "index.html"))),
+  rebuilt: false, addedInstrumentation: false, releaseQualified: false, runs: []};
+const save = () => writeFile(join(output, "replay.json"), `${JSON.stringify(report, null, 2)}\n`);
+console.log(JSON.stringify({output}));
+await save();
+const server = await preview({configFile: false, root: dirname(sourcePath),
+  build: {outDir: bundle}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
+try {
+  const address = server.httpServer.address();
+  assert.ok(address && typeof address !== "string");
+  for (let run = 0; run < 10; run++) {
+    let browser;
+    const result = {run, status: "running", diagnostics: [], pageErrors: []};
+    report.runs.push(result);
+    try {
+      browser = await webkit.launch();
+      result.version = browser.version();
+      const page = await browser.newPage({viewport: {width: 1280, height: 960}});
+      page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
+      page.on("pageerror", error => {if (result.pageErrors.length < 100) result.pageErrors.push(String(error));});
+      await page.goto(`http://127.0.0.1:${address.port}/?editTarget=${source.editTarget ?? "root"}`);
+      await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
+      const element = page.locator("#result");
+      result.fixtureStatus = await element.getAttribute("data-status");
+      result.fixtureOutput = await element.textContent();
+      assert.equal(result.fixtureStatus, "passed", result.fixtureOutput);
+      assert.equal(JSON.parse(result.fixtureOutput).cases.length, 3 * source.ownerRepetitions);
+      assert.deepEqual(result.pageErrors, []);
+      result.status = "passed";
+    } catch (error) {
+      result.status = "failed";
+      result.error = String(error);
+    } finally {await browser?.close(); await save();}
+    console.log(JSON.stringify({run, status: result.status, diagnostics: result.diagnostics}));
+    if (result.status === "failed") break;
+  }
+  await verifyAssets();
+  assert.equal(hash(await readFile(join(bundle, "index.html"))), report.indexSha256);
+  report.status = report.runs.every(run => run.status === "passed") ? "passed" : "failed";
+  await save();
+  if (report.status === "failed") process.exitCode = 1;
+} catch (error) {
+  report.status = "failed";
+  report.error = String(error);
+  await save();
+  throw error;
+} finally {await new Promise(resolveClose => server.httpServer.close(resolveClose));}
