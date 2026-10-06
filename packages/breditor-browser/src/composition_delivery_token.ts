@@ -1,3 +1,6 @@
+import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
+import { isOwnedNestedListProjection, type NestedListDocumentProjection } from "./nested_list_projection.js";
+import { isOwnedNestedListRangeSelection, type NestedListRangeSelection } from "./nested_list_selection.js";
 import {
   isOwnedRenderedProjection,
   isOwnedFlatListRenderedProjection,
@@ -16,16 +19,19 @@ import {
 import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { isOwnedFlatListRangeSelection, type FlatListRangeSelection } from "./flat_list_selection.js";
 
-type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection;
-type CompositionSelection<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
+type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
+type CompositionSelection<P extends CompositionProjection> = P extends NestedListDocumentProjection ? NestedListRangeSelection : P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
 /** Explicit list composition capability; legacy matchers reject it. @internal */
 export type FlatListCompositionDeliveryToken = CompositionDeliveryToken<FlatListDocumentProjection>;
+
+/** Explicit recursive composition capability. @internal */
+export type NestedListCompositionDeliveryToken = CompositionDeliveryToken<NestedListDocumentProjection>;
 
 declare const COMPOSITION_DELIVERY_TOKEN_BRAND: unique symbol;
 
 const MAX_U64 = 18_446_744_073_709_551_615n;
 const CONSTRUCTION_PERMIT = Object.freeze({});
-const COMPOSITION_DELIVERY_TOKENS = new WeakMap<object, boolean>();
+const COMPOSITION_DELIVERY_TOKENS = new WeakMap<object, boolean | "nested">();
 const COMPOSITION_DELIVERY_AUTHORITIES = new WeakMap<object, symbol>();
 
 /**
@@ -77,7 +83,7 @@ class OwnedCompositionDeliveryToken<P extends CompositionProjection> implements 
     sessionId: bigint,
     authority: symbol,
     permit: object,
-    flatLists: boolean,
+    flatLists: boolean | "nested",
   ) {
     if (permit !== CONSTRUCTION_PERMIT) {
       throw new TypeError("composition delivery tokens have no public constructor");
@@ -122,14 +128,21 @@ export function issueFlatListCompositionDeliveryToken(projection: FlatListDocume
   return issueToken(projection, rendered, selection, observationEpoch, sessionId, authority, true);
 }
 
+/** Issues a nested composition capability against one exact canonical base. @internal */
+export function issueNestedListCompositionDeliveryToken(projection: NestedListDocumentProjection,
+  rendered: RenderedProjection<NestedListDocumentProjection>, selection: NestedListRangeSelection,
+  observationEpoch: bigint, sessionId: bigint, authority: symbol): NestedListCompositionDeliveryToken {
+  return issueToken(projection, rendered, selection, observationEpoch, sessionId, authority, "nested");
+}
+
 function issueToken<P extends CompositionProjection>(projection: P, rendered: RenderedProjection<P>,
   selection: CompositionSelection<P>, observationEpoch: bigint, sessionId: bigint, authority: symbol,
-  flatLists: boolean): CompositionDeliveryToken<P> {
+  flatLists: boolean | "nested"): CompositionDeliveryToken<P> {
   if (
-    !(flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) ||
-    !(flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
+    !(flatLists === "nested" ? isOwnedNestedListProjection(projection) : flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) ||
+    !(flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) ||
     rendered.projection !== projection ||
-    !(flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
+    !(flatLists === "nested" ? isOwnedNestedListRangeSelection(selection) : flatLists ? isOwnedFlatListRangeSelection(selection) : isOwnedBaseRangeSelection(selection)) ||
     selection.projection !== projection ||
     typeof observationEpoch !== "bigint" ||
     observationEpoch < 0n ||
@@ -232,6 +245,22 @@ export function flatListCompositionDeliveryTokenMatchesSettlement(token: unknown
     sessionId, authority, true) && renderHostIsConnected(rendered);
 }
 
+/** List-mode canonical opening proof. @internal */
+export function nestedListCompositionDeliveryTokenMatchesOpeningBase(token: unknown, projection: unknown,
+  rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
+): token is NestedListCompositionDeliveryToken {
+  return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
+    sessionId, authority, "nested") && renderIsLiveAndCanonical(rendered);
+}
+
+/** List-mode settlement proof; renderer lease must separately prove uninterrupted ownership. @internal */
+export function nestedListCompositionDeliveryTokenMatchesSettlement(token: unknown, projection: unknown,
+  rendered: unknown, selection: unknown, observationEpoch: unknown, sessionId: unknown, authority: unknown
+): token is NestedListCompositionDeliveryToken {
+  return compositionDeliveryTokenMatchesExactBase(token, projection, rendered, selection, observationEpoch,
+    sessionId, authority, "nested") && renderHostIsConnected(rendered);
+}
+
 function compositionDeliveryTokenMatchesExactBase(
   token: unknown,
   projection: unknown,
@@ -240,14 +269,14 @@ function compositionDeliveryTokenMatchesExactBase(
   observationEpoch: unknown,
   sessionId: unknown,
   authority: unknown,
-  flatLists: boolean,
+  flatLists: boolean | "nested",
 ): token is CompositionDeliveryToken<CompositionProjection> {
   try {
     return (
       isIssuedCompositionDeliveryToken(token, flatLists) &&
-      (isOwnedFlatListProjection(projection) || isOwnedProjection(projection)) &&
-      (isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) &&
-      (isOwnedFlatListRangeSelection(selection) || isOwnedBaseRangeSelection(selection)) &&
+      (isOwnedNestedListProjection(projection) || isOwnedFlatListProjection(projection) || isOwnedProjection(projection)) &&
+      (isOwnedNestedListRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered)) &&
+      (isOwnedNestedListRangeSelection(selection) || isOwnedFlatListRangeSelection(selection) || isOwnedBaseRangeSelection(selection)) &&
       typeof observationEpoch === "bigint" &&
       observationEpoch >= 0n &&
       isNonzeroU64(sessionId) &&
@@ -272,7 +301,7 @@ function compositionDeliveryTokenMatchesExactBase(
 
 function isIssuedCompositionDeliveryToken(
   value: unknown,
-  flatLists: boolean,
+  flatLists: boolean | "nested",
 ): value is CompositionDeliveryToken<CompositionProjection> {
   return (
     typeof value === "object" &&
@@ -284,7 +313,7 @@ function isIssuedCompositionDeliveryToken(
 function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjection<CompositionProjection> {
   try {
     return (
-      (isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
+      (isOwnedNestedListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
       rendered.current &&
       nativeHtmlHostFacts(rendered.host)?.isConnected === true &&
       rendered.validateCanonicalDom() === true &&
@@ -299,7 +328,7 @@ function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjec
 function renderHostIsConnected(rendered: unknown): rendered is RenderedProjection<CompositionProjection> {
   try {
     return (
-      (isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
+      (isOwnedNestedListRenderedProjection(rendered) || isOwnedRenderedProjection(rendered) || isOwnedFlatListRenderedProjection(rendered)) &&
       nativeHtmlHostFacts(rendered.host)?.isConnected === true
     );
   } catch {

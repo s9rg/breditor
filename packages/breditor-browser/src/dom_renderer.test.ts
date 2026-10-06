@@ -61,6 +61,8 @@ import { issueNestedListEditorDeliveryToken, nestedListEditorDeliveryTokenMatche
 import { NestedListTargetRange, isOwnedNestedListTargetRange } from "./nested_list_target_range.js";
 import { mapDomNestedListTargetRange } from "./dom_target_range.js";
 import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
+import { issueNestedListCompositionDeliveryToken, nestedListCompositionDeliveryTokenMatchesOpeningBase,
+  nestedListCompositionDeliveryTokenMatchesSettlement } from "./composition_delivery_token.js";
 import { BreditorNestedListCommandQueue, openNestedListCommandQueueLeasePort } from "./command_queue.js";
 import { mapDomPointToNestedListSelectionPoint, mapNestedListSelectionPointToDomPoint } from "./nested_list_dom_point_mapping.js";
 import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
@@ -287,6 +289,28 @@ describe("recursive nested-list DOM", () => {
     expect(f.renderer.ownsNestedList(restored)).toBe(true);
     expect(f.renderer.restoreNestedListCompositionDomLease(lease, f.projection).ok).toBe(false);
     expect(f.renderer.discardNestedListCompositionDomLease(lease)).toBe(false);
+  });
+  it("distinguishes nested composition opening from leased settlement and legacy modes", () => {
+    const f = fixture(), authority = Symbol("composition"); document.body.append(f.host);
+    try {
+      const point = {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 0, affinity: "after"};
+      const selection = valueOf(NestedListRangeSelection.create(f.projection, {kind: "range", anchor: point, focus: point}));
+      const token = issueNestedListCompositionDeliveryToken(f.projection, f.rendered, selection, 2n, 1n, authority);
+      const args = [token, f.projection, f.rendered, selection, 2n, 1n, authority] as const;
+      expect(nestedListCompositionDeliveryTokenMatchesOpeningBase(...args)).toBe(true);
+      expect(compositionDeliveryTokenMatchesOpeningBase(...args)).toBe(false);
+      expect(flatListCompositionDeliveryTokenMatchesOpeningBase(...args)).toBe(false);
+      expect(nestedListCompositionDeliveryTokenMatchesOpeningBase({...token}, ...args.slice(1) as [unknown, unknown, unknown, unknown, unknown, unknown])).toBe(false);
+      const lease = f.renderer.beginNestedListCompositionDomLease(f.rendered);
+      if (lease === null) throw new Error("lease");
+      f.host.querySelector("ol strong")!.textContent = "provisional";
+      expect(nestedListCompositionDeliveryTokenMatchesOpeningBase(...args)).toBe(false);
+      expect(nestedListCompositionDeliveryTokenMatchesSettlement(...args)).toBe(true);
+      expect(nestedListCompositionDeliveryTokenMatchesSettlement(token, f.projection, f.rendered, selection, 3n, 1n, authority)).toBe(false);
+      f.host.remove();
+      expect(nestedListCompositionDeliveryTokenMatchesSettlement(...args)).toBe(false);
+      f.renderer.discardNestedListCompositionDomLease(lease);
+    } finally { f.host.remove(); }
   });
   it.each(["valid", "sibling", "numbering", "section", "prefix"])("reconciles nested composition with %s DOM", fault => {
     const f = fixture(); document.body.append(f.host);

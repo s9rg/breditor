@@ -321,5 +321,13 @@ terminal executor uncertainty without replay, exclusive single-use leased
 delivery and rejection through legacy queue admission. This does not yet wire
 the nested generated command adapter or live event controller.
 
+Nested composition delivery tokens now distinguish exact canonical opening from
+connected provisional-DOM settlement. They retain exact selection identity,
+epoch, session and hidden adapter authority, with a separate nested mode in the
+ownership registry. Tests verify legacy-mode rejection, forged-token rejection,
+stale epochs and host disconnection. Settlement matching deliberately does not
+prove uninterrupted renderer ownership or spend a token; the adapter must pair
+it with the renderer lease and enforce single use when integration is wired.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
