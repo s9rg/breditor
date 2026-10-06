@@ -84,7 +84,7 @@ Nested text work in progress: `NestedListTextSplice` supports scalar-aligned
 replacement under arbitrary admitted item nesting while guarding the containing
 root and preserving wrappers. V7 operation and session persistence support this
 primitive; mixed indent/text/outdent histories are tested at every cursor.
-`InsertNestedListTextAction` now supports same-block typing with format inheritance,
+`InsertNestedListTextAction` now supports same- and cross-block typing with format inheritance,
 exact caret placement and merged typing history. Nested toggle/set/clear inline
 formatting now traverses selected blocks in depth-first order, retains directional
 logical endpoints, and supports pending formats at carets. Multi-block formatting
@@ -92,8 +92,8 @@ uses `NestedListFormatRewrite`: one guarded root-span operation with final-resul
 validation, exact inverse, aggregate-offset relocation and V7 recovery. The
 near-node-limit regression proves a growing block and a shrinking block can be
 formatted together without requiring a larger intermediate document or one
-operation per block. V1–V6 remain closed to this operation. Cross-block typing,
-deletion actions and browser integration remain outstanding.
+operation per block. V1–V6 remain closed to this operation. Directional deletion
+actions and browser integration remain outstanding.
 
 `NestedListTextReplace` now supplies the structural primitive for those actions.
 It accepts real nested block paths, inserted text-block fragments and an explicit
@@ -106,12 +106,20 @@ nested splits retaining descendants, cross-descendant replacement, stale guards,
 scalar-boundary rejection, descendant caret relocation and session undo/redo.
 Fragment-sequence decoding is bounded by the total-node budget rather than a
 single container's fanout, while final document fanout remains strictly checked.
-`InsertNestedListBreakAction` now connects same-block Enter to this primitive:
+`InsertNestedListBreakAction` now connects same- and cross-block Enter to this primitive:
 splits retain descendants beneath the right item, empty nested items outdent once,
 and empty root items exit with child sections promoted and following ordered
-starts retained. Bare empty headings become paragraphs. Cross-block Enter remains
-explicitly disabled pending range-deletion policy. Registration is opt-in Rust
+starts retained. Bare empty headings become paragraphs. Registration is opt-in Rust
 only; the browser profile and toolbar/keyboard wiring remain unfinished.
+
+Cross-block typing, Enter and `DeleteNestedListSelectionAction` share an explicit
+retention policy. The left location survives. Later selected leading blocks and
+empty containers are removed. Surviving child sections of a removed item attach
+to the preceding retained sibling; when none exists, they rise one level as
+separate sections. Marker families and starts remain explicit. Retained items
+within one list renumber naturally; a retained suffix starting a separate section
+keeps its original ordinal. Enter puts surviving descendants beneath its right
+item. The operation independently proves text-block order and exact inversion.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

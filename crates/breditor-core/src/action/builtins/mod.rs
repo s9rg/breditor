@@ -1,6 +1,16 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
 #[cfg(feature = "experimental-structural-properties")]
 mod insert_nested_list_break;
+#[cfg(feature = "experimental-structural-properties")]
+mod nested_list_range_layout;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod nested_list_range_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod insert_nested_list_structure;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_nested_list_selection;
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_nested_list_selection::{DeleteNestedListSelectionAction, delete_nested_list_selection_action_id};
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod insert_nested_list_break_tests;
 #[cfg(feature = "experimental-structural-properties")]

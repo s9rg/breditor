@@ -1,8 +1,8 @@
-//! Atomic Enter semantics for one bare or nested item text block.
+//! Atomic Enter semantics across bare blocks and nested item text ranges.
 use super::{
     InsertTextAction, OutdentListItemsAction,
     flat_list_text_support::empty_block,
-    nested_list_support::rebuild_root,
+    nested_list_range_layout::replacement_roots,
     outdent_list_items::suffix,
     support::{disabled, fault, require_operation_budget, strict_relocation},
 };
@@ -12,7 +12,7 @@ use crate::{
         ActionStateSpec, text_position::normalize_nested_list_range_selection,
     },
     block::TextBlockKind,
-    document::{ElementNode, NodeRef, TextFragment, TextRun},
+    document::{NodeRef, TextFragment, TextRun},
     identity::QualifiedName,
     operation::{
         NestedListTextRange, NestedListTextReplace, NestedListTextReplaceError, Operation,
@@ -24,14 +24,14 @@ use crate::{
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
 };
 
-/// Splits one selected text block; descendants stay beneath the right item so
+/// Replaces the selected text range with a break; descendants stay beneath the right item so
 /// reading order is unchanged. An empty nested item outdents one level. An empty
 /// root item exits the list, promoting its child lists after the bare paragraph
 /// and retaining any following ordered section's original starting ordinal.
 /// Middle heading splits retain rank; an empty right suffix becomes a paragraph.
 /// Pending formats survive and each edit is one undo unit with exact V7 recovery.
-/// Cross-block selections remain disabled until nested range-deletion policy is
-/// connected; this action never silently collapses or widens such a selection.
+/// Cross-block ranges retain the left location, use the right endpoint's block
+/// kind, and preserve surviving child sections through the shared range policy.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertNestedListBreakAction;
 /// Returns the opt-in nested Enter identity.
@@ -59,9 +59,6 @@ fn evaluate(state: &EditorState) -> Result<ActionDecision, ActionFault> {
     }
     let range = normalize_nested_list_range_selection(state)
         .map_err(|_| fault("breditor/nested-break-selection-fault"))?;
-    if !range.is_same_paragraph() {
-        return Ok(disabled("breditor/cross-block-edit-not-yet-supported"));
-    }
     if let Some(decision) = require_operation_budget(state, 1) {
         return Ok(decision);
     }
@@ -69,6 +66,11 @@ fn evaluate(state: &EditorState) -> Result<ActionDecision, ActionFault> {
     let node =
         state.document().node_at(path).map_err(|_| fault("breditor/nested-break-source-fault"))?;
     let text = fragment(node)?;
+    let last = state
+        .document()
+        .node_at(range.end().paragraph_path())
+        .map_err(|_| fault("breditor/nested-break-source-fault"))?;
+    let last_text = fragment(last)?;
     let empty = range.is_collapsed() && text.is_empty();
     if empty && path.len() > 3 {
         return Ok(OutdentListItemsAction.evaluate(state, &())?.decision().clone());
@@ -80,27 +82,20 @@ fn evaluate(state: &EditorState) -> Result<ActionDecision, ActionFault> {
     } else {
         vec![
             empty_block(node, false)?,
-            empty_block(node, range.end().offset() == text.utf16_len())?,
+            empty_block(last, range.end().offset() == last_text.utf16_len())?,
         ]
     };
-    let (roots, caret) = if path.len() == 1 {
-        let index = path.as_slice()[0]
-            .checked_add(u32::from(!exit))
-            .ok_or_else(|| fault("breditor/nested-break-path-fault"))?;
-        (
-            inserted.clone(),
-            NodePath::try_from_indices(vec![index])
-                .map_err(|_| fault("breditor/nested-break-path-fault"))?,
-        )
-    } else if exit {
+    let (roots, caret) = if exit && path.len() == 3 {
         exit_root_item(state, path, &inserted[0])?
     } else {
-        split_item(state, path, &inserted)?
+        let roots = replacement_roots(state, &range, &inserted)?;
+        let caret = if exit { path.clone() } else { right_block_path(path)? };
+        (roots, caret)
     };
     let range = NestedListTextRange::try_new(
         path.clone(),
         range.start().offset(),
-        path.clone(),
+        range.end().paragraph_path().clone(),
         range.end().offset(),
     )
     .map_err(|_| fault("breditor/nested-break-range-fault"))?;
@@ -151,49 +146,12 @@ fn fragment(node: &NodeRef) -> Result<TextFragment, ActionFault> {
         .collect::<Result<Vec<_>, _>>()?;
     TextFragment::try_from_runs(runs).map_err(|_| fault("breditor/nested-break-source-fault"))
 }
-fn split_item(
-    state: &EditorState,
-    path: &NodePath,
-    blocks: &[NodeRef],
-) -> Result<(Vec<NodeRef>, NodePath), ActionFault> {
-    let item_path = path.parent().ok_or_else(|| fault("breditor/nested-break-path-fault"))?;
-    let list_path = item_path.parent().ok_or_else(|| fault("breditor/nested-break-path-fault"))?;
-    let index = item_path.last_index().ok_or_else(|| fault("breditor/nested-break-path-fault"))?;
-    let item = state
-        .document()
-        .node_at(&item_path)
-        .map_err(|_| fault("breditor/nested-break-path-fault"))?
-        .as_element()
-        .ok_or_else(|| fault("breditor/nested-break-source-fault"))?;
-    let left = NodeRef::element(
-        item.try_with_children(vec![blocks[0].clone()])
-            .map_err(|_| fault("breditor/nested-break-build-fault"))?,
-    );
-    let mut children = item.children().to_vec();
-    children[0] = blocks[1].clone();
-    let right = NodeRef::element(
-        ElementNode::try_new(item.kind().clone(), None, item.properties().clone(), children)
-            .map_err(|_| fault("breditor/nested-break-build-fault"))?,
-    );
-    let list = state
-        .document()
-        .node_at(&list_path)
-        .map_err(|_| fault("breditor/nested-break-path-fault"))?
-        .as_element()
-        .ok_or_else(|| fault("breditor/nested-break-source-fault"))?;
-    let mut items = list.children().to_vec();
-    let native = usize::try_from(index).map_err(|_| fault("breditor/nested-break-path-fault"))?;
-    items.splice(native..=native, [left, right]);
-    let list = NodeRef::element(
-        list.try_with_children(items).map_err(|_| fault("breditor/nested-break-build-fault"))?,
-    );
-    let (_, root) = rebuild_root(state, list_path.clone(), list)?;
-    let next = index.checked_add(1).ok_or_else(|| fault("breditor/nested-break-path-fault"))?;
-    let caret = list_path
-        .try_child(next)
-        .and_then(|path| path.try_child(0))
-        .map_err(|_| fault("breditor/nested-break-path-fault"))?;
-    Ok((vec![root], caret))
+fn right_block_path(path: &NodePath) -> Result<NodePath, ActionFault> {
+    let mut indexes = path.to_vec();
+    let at = if indexes.len() == 1 { 0 } else { indexes.len() - 2 };
+    indexes[at] =
+        indexes[at].checked_add(1).ok_or_else(|| fault("breditor/nested-break-path-fault"))?;
+    NodePath::try_from_indices(indexes).map_err(|_| fault("breditor/nested-break-path-fault"))
 }
 fn exit_root_item(
     state: &EditorState,

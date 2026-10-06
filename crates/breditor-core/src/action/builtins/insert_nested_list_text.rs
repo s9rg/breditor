@@ -1,4 +1,4 @@
-//! Single-block typing in bare blocks and nested-list items.
+//! Typing and cross-block replacement in bare blocks and nested-list items.
 use super::{
     INSERT_TEXT_HISTORY_GROUP_NAME, InsertTextAction, InsertTextInput,
     insert_text::{ReplacementError, concat_result, replacement_fragment, source_range},
@@ -26,12 +26,13 @@ use crate::{
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
 };
 
-/// Inserts exact text in one paragraph or heading at any admitted nesting depth.
+/// Inserts exact text across paragraphs or headings at any admitted nesting depth.
 ///
 /// Preserves wrappers and descendants, inherits pending/focus formats for carets
 /// and first-selected-run formats for type-over. Places a Before-affinity caret
 /// after insertion and offers the existing typing history group. Cross-block
-/// replacement is explicitly disabled pending nested structural edit support.
+/// replacement retains the left block kind and reattaches surviving child lists
+/// according to the explicit nested range policy, without flattening markers.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertNestedListTextAction;
 
@@ -69,7 +70,7 @@ fn evaluate(state: &EditorState, input: &InsertTextInput) -> Result<ActionDecisi
         return Ok(decision);
     }
     if !range.is_same_paragraph() {
-        return Ok(disabled("breditor/cross-block-edit-not-yet-supported"));
+        return super::insert_nested_list_structure::evaluate(state, input, &range);
     }
     let path = range.start().paragraph_path();
     let node =

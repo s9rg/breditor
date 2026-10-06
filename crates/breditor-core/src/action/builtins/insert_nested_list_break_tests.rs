@@ -256,7 +256,7 @@ fn nested_enter_empty_nested_item_matches_one_level_outdent() -> TestResult {
     history(&run(&before)?, &before)
 }
 #[test]
-fn nested_enter_rejects_cross_block_selection_and_budget_without_mutation() -> TestResult {
+fn nested_enter_handles_cross_block_selection_and_rejects_zero_budget() -> TestResult {
     let context = context(DocumentLimits::default())?.with_max_operations_per_transaction(0);
     let a = Point::Text {
         text_path: NodePath::try_from_indices(vec![0, 0])?,
@@ -289,9 +289,18 @@ fn nested_enter_rejects_cross_block_selection_and_budget_without_mutation() -> T
         Selection::Range(RangeSelection::new(first, last)),
         None,
     )?;
-    assert!(
-        matches!(InsertNestedListBreakAction.evaluate(&cross,&())?.decision(),ActionDecision::Disabled(reason) if reason.code().as_str()=="breditor/cross-block-edit-not-yet-supported")
+    let session = run(&cross)?;
+    assert_eq!(
+        session.state().document(),
+        state(
+            &enabled_context,
+            vec![text("a", TextBlockKind::Paragraph)?, text("yz", TextBlockKind::Paragraph)?],
+            None,
+            None
+        )?
+        .document()
     );
+    history(&session, &cross)?;
     Ok(())
 }
 

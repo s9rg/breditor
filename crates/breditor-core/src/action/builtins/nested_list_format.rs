@@ -39,7 +39,7 @@ fn at(document: &Document, path: &NodePath) -> Result<TextFragment, ActionFault>
 }
 
 /// Captures only text-bearing blocks inside the admitted logical range.
-fn capture_selection(
+pub(super) fn capture_selection(
     state: &EditorState,
     range: &TextRangeSelection,
 ) -> Result<(Vec<TextRange>, Vec<TextFragment>), ActionFault> {
