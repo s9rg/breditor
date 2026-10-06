@@ -845,6 +845,18 @@ an edit-only attribution, nor evidence that canonical DOM validation can be
 skipped. It directs the next optimization investigation toward repeated DOM
 enumeration/map construction while preserving mutation detection and rollback.
 
+Implemented a single-pass paragraph mapper: full native wrapper/attribute/text
+validation now retains each validated text leaf for mapping rather than walking
+the same run a second time. Canonical document checks and rollback are unchanged.
+All 2,090 browser tests and TypeScript checks pass. Isolated package pair
+`nested-list-packages-3Zb7rY` passes Chromium/Firefox/WebKit and default-consumer
+smokes with shipping trees unchanged. Its grandchild run passes all 27 cycles:
+`breditor-nested-list-consumer-pTQSAR/performance-7kQDYa/measurement.json`.
+500-root edit medians were 89.7 ms Chromium, 340 ms Firefox and 204 ms WebKit
+(previous single-run medians 97/348/214 ms). This is a modest initial improvement,
+not a statistically qualified speedup or latency-budget pass. Native testing of
+this newer package and refreshed single-package assembly remain outstanding.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.

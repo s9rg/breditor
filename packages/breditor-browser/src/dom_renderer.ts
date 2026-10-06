@@ -1616,7 +1616,15 @@ function mapExistingParagraph(
   maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined,
 ): boolean {
-  if (!paragraphDomMatches(paragraphNode, paragraph, presentation)) {
+  // Validate each run once and retain the proven text leaf for mapping. The
+  // former second traversal repeated every wrapper/attribute/text check.
+  const texts: Text[] = [];
+  if (!paragraphDomMatches(paragraphNode, paragraph, presentation, (outer, run) => {
+    const text = textNodeForRunDom(outer, run, presentation);
+    if (text === undefined) return false;
+    texts.push(text);
+    return true;
+  })) {
     return false;
   }
   const paragraphPath = typeof paragraphIndex === "number" ? paragraphAstPath(paragraphIndex) : paragraphIndex;
@@ -1624,17 +1632,9 @@ function mapExistingParagraph(
   if (paragraph.runs.length === 0) {
     return true;
   }
-  const children = nativeChildNodes(paragraphNode);
-  paragraph.runs.forEach((run, runIndex) => {
+  texts.forEach((text, runIndex) => {
     const path = typeof paragraphIndex === "number" ? textRunAstPath(paragraphIndex, runIndex) : Object.freeze([...paragraphIndex, runIndex]);
-    const child = children[runIndex];
-    if (child === undefined) {
-      return;
-    }
-    const text = textNodeForRunDom(child, run, presentation);
-    if (text !== undefined) {
-      mapNode(text, path, maps.astToDom, maps.domToAst, true);
-    }
+    mapNode(text, path, maps.astToDom, maps.domToAst, true);
   });
   return true;
 }
