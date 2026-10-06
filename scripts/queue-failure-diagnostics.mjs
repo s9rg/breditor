@@ -19,12 +19,17 @@ export function instrumentParagraphComparison(code) {
     ["formats", "!formatDetailsEqual(leftRun.formatDetails, rightRun.formatDetails)"],
   ]) {
     assert.equal(body.split(expression).length, 2, `paragraph comparison changed: ${name}`);
-    body = body.replace(expression, `paragraphComparisonDiagnostic(${JSON.stringify(name)}, ${expression})`);
+    const captured = name === "heading"
+      ? "(headingLeft = left.headingLevel) !== (headingRight = right.headingLevel)" : expression;
+    body = body.replace(expression, `paragraphComparisonDiagnostic(${JSON.stringify(name)}, ${captured})`);
   }
   body = body.replace(start, start + `
+    let headingLeft, headingRight;
     const paragraphComparisonDiagnostic = (operand, mismatch) => {
         if (mismatch) {
-            try { console.error("breditor paragraph comparison mismatch", JSON.stringify({operand, left, right}).slice(0, 4096)); } catch {}
+            try { console.error("breditor paragraph comparison mismatch", JSON.stringify({operand, left, right,
+                capturedHeading: {leftType: typeof headingLeft, rightType: typeof headingRight,
+                    left: headingLeft, right: headingRight, sameValue: Object.is(headingLeft, headingRight)}}).slice(0, 4096)); } catch {}
         }
         return mismatch;
     };`);

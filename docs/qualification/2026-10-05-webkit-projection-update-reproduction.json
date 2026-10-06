@@ -57,5 +57,15 @@
     "tests": "18 diagnostic tests passed, including comparison preservation against compiled current source and the WebKit catch-site positive control",
     "limitation": "This is a diagnostic run, not a fix or release-performance qualification; instrumentation can change reproduction frequency."
   },
-  "next": "Repeat field-level diagnostics in fresh WebKit sessions to capture the failing operand. Do not alter production validation or insert timing workarounds."
+  "headingComparisonRun": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-UE3eSA/measurement.json",
+    "reportSha256": "7602c1f4f20058fc31354117d82bdcacc0689d0679c04139286fb384e86dd67a",
+    "progress": "500 items, repetition 63: selectionMs",
+    "operand": "heading",
+    "itemIndex": 190,
+    "loggedLeftHeading": 2,
+    "loggedRightHeading": 2,
+    "meaning": "The original headingLevel inequality evaluated true. Snapshot fields logged after rejection both serialize as 2. Capture the exact comparison operands next to exclude a discrepancy between evaluation and later observation. No causal fix is established."
+  },
+  "next": "Capture the exact heading inequality operands once, with their types and diagnostic Object.is result on rejection. Validation still uses its original inequality result. Eighteen tests pass including WebKit."
 }
