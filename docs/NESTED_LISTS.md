@@ -198,5 +198,15 @@ commits. Bridge tests cover a real child list, fresh-owner redo, old-bootstrap
 rejection and old-session-factory rejection. This does not rebuild or qualify
 the shipping bundles, and browser nested projection/rendering remains unfinished.
 
+The browser now has an internal owned `NestedListDocumentProjection`: recursive
+list/item sections plus a depth-first directory of real AST block paths.
+Closed records, ordinal ranges, aggregate node/property budgets, per-container
+fanout and actual nested depth are checked before ownership is granted. Text
+content uses the existing profile-bound validation proof; no base/flat renderer
+can mistake the nested projection for its own type. Tests cover immutable copies,
+empty/malformed sections, cycles, exact depth boundaries and 12,000 valid blocks
+distributed across lists. Wasm projection consumption, DOM rendering, selection,
+clipboard and public owner wiring remain unfinished.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

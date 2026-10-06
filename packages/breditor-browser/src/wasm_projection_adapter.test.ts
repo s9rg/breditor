@@ -4,6 +4,60 @@ import { consumeFlatListSemanticSelection, consumeFlatListSemanticSelectionWithC
 import { projectPlainText, projectFlatListPlainText, MAX_BROWSER_PLAIN_TEXT_UTF8_BYTES } from "./projection_plain_text.js";
 import { FlatListDocumentProjection, isOwnedFlatListProjection } from "./flat_list_projection.js";
 import { isOwnedProjection } from "./projection.js";
+import { NestedListDocumentProjection, isOwnedNestedListProjection } from "./nested_list_projection.js";
+
+describe("opt-in recursive nested projection", () => {
+  const block = (text: string) => ({headingLevel: null, runs: [{text, formatDetails: []}]});
+  const item = (text: string, lists: unknown[] = []) => ({block: block(text), lists});
+  const create = (blocks: unknown[]) => NestedListDocumentProjection.create({
+    schema: {name: "example/document", version: 1, fingerprint: TEST_SCHEMA_FINGERPRINT},
+    snapshot: {lineage: "nested", revision: "0"}, blocks,
+  }, TEST_PROFILE_GENERATION, ownedProfileDescriptor([]));
+  it("retains exact hierarchy and depth-first AST paths with immutable owned content", () => {
+    const source = [{kind: "orderedList", start: 8, items: [
+      item("parent", [{kind: "bulletList", items: [item("child🙂")]}]), item("tail"),
+    ]}];
+    const projection = valueOf(create(source));
+    expect(projection.textBlocks.map(entry => entry.path)).toEqual([[0, 0, 0], [0, 0, 1, 0, 0], [0, 1, 0]]);
+    expect(projection.textBlocks.map(entry => entry.block.runs[0]?.text)).toEqual(["parent", "child🙂", "tail"]);
+    expect(Object.isFrozen(projection.blocks[0])).toBe(true);
+    const root = projection.blocks[0]!;
+    if (root.kind === "textBlock") throw new Error("list");
+    expect(Object.isFrozen(root.items[0]!.lists)).toBe(true);
+    source[0]!.items[0]!.block.runs[0]!.text = "changed";
+    expect(projection.textBlocks[0]!.block.runs[0]!.text).toBe("parent");
+    expect(isOwnedNestedListProjection(projection)).toBe(true);
+    expect(isOwnedNestedListProjection({...projection})).toBe(false);
+    expect(isOwnedFlatListProjection(projection)).toBe(false);
+    expect(isOwnedProjection(projection)).toBe(false);
+  });
+  it("rejects malformed items, empty lists, and ordinal overflow", () => {
+    for (const list of [
+      {kind: "bulletList", items: [block("legacy flat")]},
+      {kind: "bulletList", items: []},
+      {kind: "bulletList", items: [{...item("a"), extra: true}]},
+      {kind: "orderedList", start: 2_147_483_647, items: [item("a"), item("b")]},
+    ]) expect(create([list]).ok).toBe(false);
+  });
+  it("bounds recursion, cyclic input, and total descendant counts", () => {
+    let tree: unknown = {kind: "bulletList", items: [item("end")]};
+    for (let i = 0; i < 32; i++) tree = {kind: "bulletList", items: [item("x", [tree])]};
+    expect(create([tree]).ok).toBe(false);
+    const cycle = {kind: "bulletList", items: [item("x")]};
+    cycle.items[0]!.lists.push(cycle);
+    expect(create([cycle]).ok).toBe(false);
+    expect(create([{kind: "bulletList", items: Array.from({length: 10001}, () => item("x"))}]).ok).toBe(false);
+  });
+  it("admits nested totals above flat root fanout while enforcing actual depth", () => {
+    const items = Array.from({length: 6000}, () => ({block: {headingLevel: null, runs: []}, lists: []}));
+    const projection = valueOf(create([{kind: "bulletList", items}, {kind: "bulletList", items}]));
+    expect(projection.textBlocks).toHaveLength(12000);
+    let tree: unknown = {kind: "bulletList", items: [item("end")]};
+    for (let i = 0; i < 30; i++) tree = {kind: "bulletList", items: [item("x", [tree])]};
+    expect(create([tree]).ok).toBe(true);
+    expect(create([{kind: "bulletList", items: [item("x", [tree])]}]).ok).toBe(false);
+  });
+});
 
 import {
   type BrowserCompiledProfileDescriptor,
