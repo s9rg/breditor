@@ -347,5 +347,13 @@ Tests cover valid nesting, malformed items/starts and the exact depth boundary.
 This is document validation only; nested projection correlation, V7 browser
 session validation and generated command-adapter wiring remain unfinished.
 
+`documentJsonMatchesNestedListProjection` now correlates a validated V7 document
+against an owned recursive projection: root grouping, list family/start, item
+order, child-section topology and complete text-block formats/ranks all take
+part. The schema selector and fingerprint must match. Tests reject equal-text
+structural changes, numbering/family changes, changed child text, old durable
+modes and lookalike projections. Browser V7 session-history validation and
+adapter publication are still pending.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

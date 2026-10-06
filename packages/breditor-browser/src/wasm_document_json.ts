@@ -9,6 +9,7 @@ import {
   type BaseParagraphProjection,
 } from "./projection.js";
 import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
+import { isOwnedNestedListProjection, type NestedListDocumentProjection, type NestedListRootProjection } from "./nested_list_projection.js";
 import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
@@ -329,6 +330,31 @@ export function documentJsonMatchesFlatListProjection(
       return items.length === projected.items.length && items.every((item, itemIndex) =>
         documentTextBlockMatches((item["children"] as Array<Record<string, unknown>>)[0]!, projected.items[itemIndex]));
     });
+  } catch { return false; }
+}
+
+/** Correlates V7 recursive structure and every text block, not just flattened text. @internal */
+export function documentJsonMatchesNestedListProjection(value: unknown, projection: NestedListDocumentProjection,
+  contract: WasmDurableJsonContract): boolean {
+  const resolved = resolveWasmDurableJsonContract(contract);
+  if (!isOwnedNestedListProjection(projection) || resolved?.mode !== "v7" ||
+    documentJsonUtf8Bytes(value, contract) === null || projection.schema.name !== resolved.schema.name ||
+    projection.schema.version !== resolved.schema.version || projection.schema.fingerprint !== resolved.schema.fingerprint) return false;
+  try {
+    const parsed = Reflect.apply(JSON_PARSE, JSON, [value]) as Record<string, unknown>;
+    const matches = (root: Record<string, unknown>, projected: NestedListRootProjection): boolean => {
+      if (projected.kind === "textBlock") return (root["type"] === "breditor/paragraph" || root["type"] === "breditor/heading") && documentTextBlockMatches(root, projected.block);
+      if (root["type"] !== (projected.kind === "bulletList" ? "breditor/bullet-list" : "breditor/ordered-list")) return false;
+      if (projected.kind === "orderedList" && (root["properties"] as Record<string, unknown>)["breditor/start"] !== projected.start) return false;
+      const items = root["children"] as Array<Record<string, unknown>>;
+      return items.length === projected.items.length && items.every((item, index) => {
+        const children = item["children"] as Array<Record<string, unknown>>, entry = projected.items[index]!;
+        return children.length === entry.lists.length + 1 && documentTextBlockMatches(children[0]!, entry.block) &&
+          entry.lists.every((list, section) => matches(children[section + 1]!, list));
+      });
+    };
+    const roots = (parsed["root"] as Record<string, unknown>)["children"] as Array<Record<string, unknown>>;
+    return roots.length === projection.blocks.length && roots.every((root, index) => matches(root, projection.blocks[index]!));
   } catch { return false; }
 }
 

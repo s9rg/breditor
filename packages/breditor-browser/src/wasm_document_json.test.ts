@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { consumeWasmSessionCheckpoint } from "./wasm_session_checkpoint.js";
+import { NestedListDocumentProjection } from "./nested_list_projection.js";
+import { documentJsonMatchesNestedListProjection } from "./wasm_document_json.js";
 
 import {
   MAX_BROWSER_DOCUMENT_JSON_BYTES,
@@ -1165,6 +1167,25 @@ describe("explicit V7 recursive document contract", () => {
     for (let depth = 0; depth < 30; depth++) root = nest(root);
     expect(documentJsonUtf8Bytes(documentV2Json([root]), contract)).not.toBeNull();
     expect(documentJsonUtf8Bytes(documentV2Json([nest(root)]), contract)).toBeNull();
+  });
+  it("correlates complete recursive hierarchy and rejects equal-text structural changes", () => {
+    const generation = new FakeProfileGeneration();
+    const descriptor = consumeWasmCompiledProfileDescriptor(generation, new FakeTypedProfileDescriptor(generation));
+    if (!descriptor.ok) throw new Error(descriptor.error.code);
+    const projected = NestedListDocumentProjection.create({schema: contract.schema, snapshot: EXPECTED, blocks: [
+      {kind: "bulletList", items: [{block: {headingLevel: null, runs: []}, lists: [
+        {kind: "orderedList", start: 8, items: [{block: {headingLevel: null, runs: [{text: "child🙂", formatDetails: []}]}, lists: []}]},
+      ]}]},
+    ]}, generation, descriptor.descriptor);
+    if (!projected.ok) throw new Error(projected.error.code);
+    const matches = (roots: unknown[]) => documentJsonMatchesNestedListProjection(documentV2Json(roots), projected.value, contract);
+    expect(matches([nest(leaf())])).toBe(true);
+    expect(matches([nest({...leaf(), properties: {"breditor/start": 9}})])).toBe(false);
+    expect(matches([nest({...leaf(), type: "breditor/bullet-list", properties: {}})])).toBe(false);
+    expect(matches([element("bullet-list", [element("list-item", [paragraph([])])]), leaf()])).toBe(false);
+    expect(matches([nest(element("ordered-list", [element("list-item", [paragraph([run("changed", false)])])], {"breditor/start": 8}))])).toBe(false);
+    expect(documentJsonMatchesNestedListProjection(documentV2Json([nest(leaf())]), projected.value, {...contract, mode: "v6"})).toBe(false);
+    expect(documentJsonMatchesNestedListProjection(documentV2Json([nest(leaf())]), {...projected.value} as NestedListDocumentProjection, contract)).toBe(false);
   });
 });
 
