@@ -18,6 +18,10 @@ mod compiler;
 mod error;
 #[cfg(feature = "experimental-structural-properties")]
 mod flat_list_compiler;
+#[cfg(feature = "experimental-structural-properties")]
+mod nested_list_compiler;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod nested_list_profile_tests;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod flat_list_profile_tests;
 #[cfg(feature = "experimental-structural-properties")]

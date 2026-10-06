@@ -153,7 +153,7 @@ Toolbar activation distinguishes active, mixed and inactive selections, and
 already-matching selections are disabled. An independent tree oracle covers
 all endpoint pairs, both directions and multiple heading targets, with session
 recovery and property-budget checks. The nested compiled command profile still
-needs compilation and routing integration before browser-facing use.
+needs Wasm/browser admission before browser-facing use.
 
 `WrapNestedListAction` wraps consecutive selected bare blocks and changes only
 selected items' marker families, rebuilding nested sections in source-path order.
@@ -172,6 +172,17 @@ and subsequent sections rise as separate lists so no content crosses the selecte
 block. Split ordered sections retain their original first ordinal. This is
 explicit removal, not one-level outdent. Endpoint/direction matrices, exact-tree
 numbering fixtures, V7 recovery and final-root-fanout rejection cover the action.
+
+`CompiledEditorProfile::try_compile_nested_list_profile` now assembles the
+opt-in Rust command graph: nested text/paste/Enter/deletion, inline extension
+formatting, heading conversion, wrapping/removal and indent/outdent. Existing
+format intent identities are preserved. New nesting intents are
+`breditor/indent-list-items` and `breditor/outdent-list-items`, with matching
+`breditor/control-...` state IDs and priority-zero blocking bindings.
+Sixteen built-in controls plus extension controls fit the unchanged ceilings.
+Tests exercise real engine routing, state derivation, V7 recovery, reserved IDs,
+maximum extension counts and flat-profile isolation. The checkpointed engine's
+V7 admission and the Wasm/browser profile are still outstanding.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

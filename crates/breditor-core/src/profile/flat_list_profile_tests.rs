@@ -32,7 +32,7 @@ fn name(value: &str) -> Result<QualifiedName, Box<dyn Error>> {
 fn schema_id() -> Result<SchemaId, Box<dyn Error>> {
     Ok(SchemaId::new(name("example/heading-editor")?, SchemaVersion::one()))
 }
-fn extension(toggles: u32, sets: u32, reserved: bool) -> Result<ExtensionSet, Box<dyn Error>> {
+pub(super) fn extension(toggles: u32, sets: u32, reserved: bool) -> Result<ExtensionSet, Box<dyn Error>> {
     let mut ts = vec![];
     let mut ss = vec![];
     let mut toggle_formats = vec![];

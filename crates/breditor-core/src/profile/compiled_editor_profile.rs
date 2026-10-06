@@ -29,6 +29,28 @@ pub struct CompiledEditorProfile {
 }
 
 impl CompiledEditorProfile {
+    /// Compiles the opt-in nested-list editor command graph.
+    ///
+    /// Uses nested-aware typing, paste, Enter, deletion, inline formatting,
+    /// heading conversion, wrapping and list removal. Existing semantic format
+    /// intents remain available. Adds tracked priority-zero blocking
+    /// `breditor/indent-list-items` and `breditor/outdent-list-items` routes,
+    /// with matching `breditor/control-...` state identities.
+    /// Sixteen built-in controls remain within the existing catalog ceiling.
+    /// Existing factories are unchanged; durable hosts must opt into Session V7.
+    /// This Rust factory alone does not enable browser or Wasm nested support.
+    ///
+    /// # Errors
+    /// Rejects invalid schema/declarations, reserved or conflicting identities,
+    /// and resource limits without publishing any partial command graph.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_compile_nested_list_profile(
+        schema_id: SchemaId,
+        extensions: ExtensionSet,
+    ) -> Result<Self, ProfileCompilationError> {
+        super::nested_list_compiler::compile(schema_id, extensions)
+    }
+
     /// Compiles an opt-in flat-list editor with bare paragraphs/headings and
     /// bullet/ordered lists whose items contain exactly one paragraph or heading.
     ///
