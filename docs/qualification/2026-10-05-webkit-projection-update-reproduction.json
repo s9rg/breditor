@@ -17,7 +17,7 @@
     "change": "Label actual projectionFailure expressions in the disposable wasm_projection_adapter and flat_list_projection_update modules; skip default result placeholders.",
     "tests": "14 diagnostic tests pass including the real WebKit catch-site positive control.",
     "noisyRun": "performance-gWvfWs completed 300 cycles without reproducing the fault, but logged default placeholders. It does not establish a fix.",
-    "correctedRun": "performance-zrKInh started with placeholder logging excluded; result pending at this checkpoint."
+    "correctedRun": "performance-zrKInh completed 300 cycles with placeholder logging excluded and no reproduction. The two earlier failing runs remain unresolved; this green diagnostic run does not establish a fix."
   },
   "next": "Read the corrected site-diagnostic run and map any rejection label to the retained installed source. Do not alter production validation or insert timing workarounds."
 }
