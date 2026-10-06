@@ -1,5 +1,6 @@
 // Real editor owner and DOM with generated Wasm; synthetic events are not native qualification.
 import { BreditorBrowserEditor } from "../packages/breditor-browser/src/browser_editor.ts";
+import { createKeyboardShortcutManifest, DEFAULT_KEYBOARD_SHORTCUT_MANIFEST } from "../packages/breditor-browser/src/keyboard_shortcut_manifest.ts";
 
 export async function verifyNestedListEditorOwner(api) {
   const equal = (actual, expected) => {
@@ -24,6 +25,10 @@ export async function verifyNestedListEditorOwner(api) {
   const host = document.createElement("div"), toolbar = document.createElement("div");
   document.body.append(host, toolbar);
   const common = {host, label: "Nested owner qualification", wasm: api, semanticProfile, toolbar: {host: toolbar},
+    keyboardShortcuts: createKeyboardShortcutManifest({shortcuts: [...DEFAULT_KEYBOARD_SHORTCUT_MANIFEST.shortcuts,
+      {stateId: "breditor/control-indent-list-items", chords: [{code: "KeyI", shift: false}]},
+      {stateId: "breditor/control-outdent-list-items", chords: [{code: "KeyI", shift: true}]},
+    ]}),
     keyboard: {editing: "beforeinputPrimary", primaryModifier: "control", shortcuts: "enabled"}};
   let editor;
   const exported = format => { const result = editor.exportContent(format); if (!result.ok) throw new Error(result.error.code); return result.value; };
@@ -62,7 +67,39 @@ export async function verifyNestedListEditorOwner(api) {
     const typed = exported("documentJson"), typedSelection = selected();
     click("undo"); equal(exported("documentJson"), preTyping); equal(selected(), preTypingSelection);
     click("redo"); equal(exported("documentJson"), typed); equal(selected(), typedSelection);
+    // Host-configured physical-code shortcuts must preserve the deep selection.
+    const key = (code, shiftKey = false, repeat = false, isComposing = false) => {
+      editor.focus();
+      const event = new KeyboardEvent("keydown", {bubbles: true, cancelable: true,
+        key: code === "KeyI" ? "i" : "z", code, ctrlKey: true, shiftKey, repeat, isComposing});
+      host.dispatchEvent(event); equal(editor.getStatus(), {phase: "live"}); return event;
+    };
+    select("two", 1); const keyBefore = exported("documentJson"), keySelection = selected();
+    equal(key("KeyI").defaultPrevented, true); const keyIndented = exported("documentJson"), keyIndentedSelection = selected();
+    equal(keyIndentedSelection.anchor.textPath.length, keySelection.anchor.textPath.length + 2);
+    equal(key("KeyI", false, true).defaultPrevented, true); equal(exported("documentJson"), keyIndented);
+    equal(key("KeyI", true, false, true).defaultPrevented, false); equal(exported("documentJson"), keyIndented);
+    equal(key("KeyZ").defaultPrevented, true); equal(exported("documentJson"), keyBefore); equal(selected(), keySelection);
+    equal(key("KeyZ", true).defaultPrevented, true); equal(exported("documentJson"), keyIndented); equal(selected(), keyIndentedSelection);
+    equal(key("KeyI", true).defaultPrevented, true); equal(exported("documentJson"), keyBefore);
+    // Until a state-aware Tab policy exists, ordinary focus navigation stays native.
+    const tab = new KeyboardEvent("keydown", {bubbles: true, cancelable: true, key: "Tab", code: "Tab"});
+    host.dispatchEvent(tab); equal(tab.defaultPrevented, false); equal(exported("documentJson"), keyBefore);
+    select("child🙂", 5);
+    const pasteBefore = exported("documentJson"), pasteSelection = selected();
+    const transfer = new DataTransfer(); transfer.setData("text/plain", "日本\r\nnext");
+    transfer.setData("text/html", "<h1>must not import</h1>");
+    const paste = new ClipboardEvent("paste", {bubbles: true, cancelable: true, clipboardData: transfer});
+    // Firefox allocates its own synthetic event store rather than retaining the supplied one.
+    paste.clipboardData.setData("text/plain", "日本\r\nnext");
+    paste.clipboardData.setData("text/html", "<h1>must not import</h1>");
+    equal(paste.clipboardData.getData("text/plain"), "日本\r\nnext");
+    host.dispatchEvent(paste); equal(paste.defaultPrevented, true); equal(editor.getStatus(), {phase: "live"});
+    equal(exported("plainText"), "one\ntwo\nchild日本\nnext🙂");
+    const pasted = exported("documentJson"), pastedSelection = selected();
+    click("undo"); equal(exported("documentJson"), pasteBefore); equal(selected(), pasteSelection);
+    click("redo"); equal(exported("documentJson"), pasted); equal(selected(), pastedSelection);
     editor.dispose(); equal(host.childNodes.length, 0); equal(toolbar.childNodes.length, 0);
-    return {status: "passed", scope: "real editor DOM/default toolbar, indent/outdent, deep typing, exact undo/redo and V7 owner recovery; synthetic events"};
+    return {status: "passed", scope: "real editor DOM/default toolbar, configured nesting/history shortcuts, repeat/composition guards, deep typing/plain-text paste, exact undo/redo and V7 recovery; synthetic events"};
   } finally { editor?.dispose(); host.remove(); toolbar.remove(); }
 }

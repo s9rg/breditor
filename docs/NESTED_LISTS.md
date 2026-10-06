@@ -499,5 +499,15 @@ clears owned DOM. These are source-integrated browser tests using synthetic
 selection/input/click events, not packed-consumer or physical input qualification.
 Run `node scripts/check-experimental-nested-list-browsers.mjs target/nested-list-candidate-5Um68E`.
 
+The integrated scenario also verifies host-configured primary-I/primary-Shift-I
+nesting shortcuts, primary-Z/primary-Shift-Z history, repeat suppression and
+composition bypass across all three engines. These chords are test configuration,
+not new default bindings. Tab remains native; availability-aware Tab/Shift-Tab
+nesting is still pending. Deep multiline plain-text paste (with conflicting HTML)
+and exact selection/document undo/redo pass through the actual clipboard controller.
+Firefox's constructed clipboard event did not retain the supplied transfer data;
+the fixture populates and checks the event's actual store before dispatch. This
+is synthetic clipboard coverage, not OS clipboard qualification.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
