@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BreditorNestedListWasmCommandAdapter } from "./wasm_command_adapter.js";
+import { createNestedListTabController } from "./nested_list_tab_controller.js";
 import { createNestedListToolbarDispatcher, type NestedListToolbarDispatcher } from "./nested_list_toolbar_dispatcher.js";
 import { nestedListToolbarCommandRequest } from "./toolbar.js";
 import { NESTED_LIST_TOOLBAR_MANIFEST } from "./nested_list_toolbar_manifest.js";
@@ -386,6 +387,71 @@ describe("explicit nested-list command adapter", () => {
     return {...f, tasks, options, router,
       dispose() { router.dispose(); f.dispose(); }};
   }
+
+  function dispatchTab(host: HTMLElement, controller: ReturnType<typeof createNestedListTabController>) {
+    let result: ReturnType<typeof controller.handle> | undefined;
+    const event = new KeyboardEvent("keydown", {key: "Tab", code: "Tab", bubbles: true, cancelable: true});
+    host.addEventListener("keydown", incoming => { result = controller.handle(incoming); }, {once: true});
+    host.dispatchEvent(event);
+    return {result, event};
+  }
+
+  it("nested Tab rejects foreign queues and leaves leased queues untouched", () => {
+    const f = clipboardFixture();
+    const foreign = new BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>(() => { throw new Error("unused"); });
+    try {
+      expect(() => createNestedListTabController(foreign, f.adapter, true, () => true)).toThrow("same owner");
+      const controller = createNestedListTabController(f.queue, f.adapter, true, () => true);
+      const port = openNestedListCommandQueueLeasePort(f.queue, f.adapter.commandExecutor)!;
+      const lease = port.acquireLease()!;
+      try {
+        const run = dispatchTab(f.host, controller);
+        expect(run.result).toBe("native"); expect(run.event.defaultPrevented).toBe(false);
+        expect(f.selectionSync).not.toHaveBeenCalled(); expect(f.action).not.toHaveBeenCalled();
+      } finally { expect(port.releaseLease(lease)).toBe(true); }
+    } finally { foreign.dispose(); f.dispose(); }
+  });
+
+  it("nested Tab leaves core selection errors uncanceled and does not query action states", () => {
+    const rejected = commandError("breditor/selection-rejected");
+    const f = clipboardFixture(false, {setSelection: [rejected.view]});
+    const states = vi.spyOn(f.engine, "actionStates");
+    try {
+      const controller = createNestedListTabController(f.queue, f.adapter, true, () => true);
+      const run = dispatchTab(f.host, controller);
+      expect(run.result).toBe("failed"); expect(run.event.defaultPrevented).toBe(false);
+      expect(f.selectionSync).toHaveBeenCalledOnce(); expect(states).not.toHaveBeenCalled();
+      expect(f.action).not.toHaveBeenCalled(); expect(f.adapter.state).toBe("live");
+      expect(f.queue.failure).toBeDefined();
+      expect(rejected.free).toHaveBeenCalledOnce(); expect(rejected.errorFree).toHaveBeenCalledOnce();
+    } finally { f.dispose(); }
+  });
+
+  it("nested Tab reports an uncertain selection once without retrying", () => {
+    const f = clipboardFixture();
+    try {
+      const controller = createNestedListTabController(f.queue, f.adapter, true, () => true);
+      expect(dispatchTab(f.host, controller).result).toBe("failed");
+      expect(dispatchTab(f.host, controller).result).toBe("failed");
+      expect(f.selectionSync).toHaveBeenCalledOnce(); expect(f.action).not.toHaveBeenCalled();
+    } finally { f.dispose(); }
+  });
+
+  it("nested Tab holds admission during selection observers and stops on disposal", () => {
+    const synchronized = transition(1, "A🙂", "selection");
+    const f = clipboardFixture(false, {setSelection: [synchronized.result.view], selection: [synchronized.selected.view]});
+    let controller: ReturnType<typeof createNestedListTabController>;
+    const queue = new BreditorNestedListCommandQueue(f.adapter.commandExecutor, {observer: () => {
+      expect(dispatchTab(f.host, controller).result).toBe("native");
+      queue.dispose();
+    }});
+    try {
+      controller = createNestedListTabController(queue, f.adapter, true, () => true);
+      const run = dispatchTab(f.host, controller);
+      expect(run.result).toBe("failed"); expect(run.event.defaultPrevented).toBe(false);
+      expect(f.selectionSync).toHaveBeenCalledOnce(); expect(f.action).not.toHaveBeenCalled();
+    } finally { queue.dispose(); f.dispose(); }
+  });
 
   it("nested list router keeps base mode closed and reserves one owner across both facades", () => {
     const f = routerFixture();

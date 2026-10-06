@@ -65,6 +65,12 @@ async function start(): Promise<void> {
     equal(exported("documentJson"), indented);
     equal(owner.executeIntent("breditor/outdent-list-items").status, "committed");
     equal(exported("documentJson"), beforeIndent);
+    const tab = new KeyboardEvent("keydown", {key: "Tab", code: "Tab", bubbles: true, cancelable: true});
+    options.host.dispatchEvent(tab); equal(tab.defaultPrevented, true);
+    equal(exported("documentJson"), indented);
+    const outdent = new KeyboardEvent("keydown", {key: "Tab", code: "Tab", shiftKey: true, bubbles: true, cancelable: true});
+    options.host.dispatchEvent(outdent); equal(outdent.defaultPrevented, true);
+    equal(exported("documentJson"), beforeIndent);
     owner.focus();
     const heading = options.host.querySelector("h2")!;
     const range = document.createRange(); range.selectNodeContents(heading);

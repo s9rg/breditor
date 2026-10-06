@@ -6,8 +6,8 @@ and installed-package automated checks pass; this is not release readiness.
 Default shipping bundles and the existing flat-list package remain unchanged.
 The historical intermittent WebKit fault is unresolved.
 
-Remaining release gates: packed qualification of the new Tab integration; physical
-keyboard/IME, native clipboard and spoken screen-reader qualification; size and
+Remaining release gates: physical keyboard/IME, native clipboard and spoken
+screen-reader qualification; size and
 large-document performance qualification; resolution of the WebKit risk. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
@@ -561,6 +561,18 @@ selectionchange, first-item/root-outdent fallback, descendants, exact undo, and
 repeat suppression. The earlier opt-in archive predates this integration and must
 be rebuilt/requalified; these synthetic event tests do not prove physical keyboard
 focus navigation or assistive-technology behavior.
+
+Focused Tab failure tests now cover foreign queues, an occupied lease, core
+selection errors, uncertain delivery without retry, reentrant selection observers
+and disposal during their callback. Core non-stale rejection may leave the adapter
+live while the queue faults; Tab correctly reports delivery failure and does not
+query availability or execute a content action. Browser totals are 2,084 passing
+tests with type checks passing. The refreshed external pair and single-package
+consumer also pass Node/TypeScript and Chromium/Firefox/WebKit, now including
+Tab/Shift-Tab. Current archive: `target/nested-list-opt-in-HwqlQN`, SHA-256
+`d7013694776c667101629799224fc3fdb2c0e52074b07bb38d535b0ec21e1426`,
+954,091 compressed bytes, from `target/nested-list-packages-fwwKqY`.
+Shipping trees remain unchanged and size/publication qualification remains false.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
