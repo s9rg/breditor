@@ -1091,3 +1091,29 @@ For the three 500-root edit spans, action-state reads appear in 240/401,
 117/438 and 106/410. These are inclusive sampled stacks, not additive self-time
 or uninstrumented timings. The next performance investigation should prioritize
 action availability computation rather than assume DOM traversal is dominant.
+
+At checkpoint `d3f3bb6`, a fresh symbol-bearing Firefox candidate confirms
+action-state refresh in approximately 60–62% of sampled 500-root edit stacks;
+nested heading/paragraph action evaluation accounts for 35–37% (overlapping
+inclusive stacks). Its executable sections differ from the normal candidate,
+so those names must not be used to relabel earlier unnamed profiles. See
+`qualification/2026-10-06-nested-list-firefox-symbol-profile.json`.
+
+`NestedListTextReplace::capture` now retains the reconstruction just checked by
+its constructor instead of deriving it again during context validation. This
+does not retain a proof across calls: source/result schema and resource limits,
+independent inverse reconstruction, and apply-time validation are unchanged.
+Default-core 703 tests, feature-core 1,187 unit tests, strict all-target core
+Clippy and isolated Wasm/package browser checks pass. The full integration
+command was still running when the checkpoint record was created.
+
+The current separately installed opt-in archive is `nested-list-opt-in-VqQ3UP`,
+SHA-256 `4c00fa7bfff6956e68ab7a667399d188369034feb8e6b96ca6e637729a268464`.
+Node/types and Chromium/Firefox/WebKit consumer checks pass, including trusted
+keyboard events and deep backward-selection formatting/history/recovery. Earlier
+native Safari/Chrome evidence does not automatically qualify this new archive.
+The 27-cycle timing run overlapped Rust verification and is correctness evidence,
+not a reliable speed comparison. Full details and remaining gates are in
+`qualification/2026-10-06-nested-list-capture-reuse.json`. Nothing was published;
+shipping artifact trees remain unchanged and WebKit/native/size/latency gates
+remain open.
