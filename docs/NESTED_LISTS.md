@@ -1018,3 +1018,15 @@ The unchanged `WNID8x` archive passes this extended fixture, Node/types and trus
 keyboard checks in Chromium, Firefox and WebKit. Latest external consumer:
 `breditor-opt-in-consumer-1yZSa2`. This closes a packed-consumer formatting/recovery
 coverage gap without changing the archive or claiming native IME qualification.
+
+Current single-pass renderer CPU profile (installed pair `3Zb7rY`, grandchild
+target) passes all nine correctness cycles. Artifact:
+`breditor-nested-list-consumer-pTQSAR/performance-P1IeN0/chromium-0.cpuprofile`,
+SHA-256 `05504c94c33343f444efa7a8006fd7692a492c47ec87cbfa6ffbc39fde34a1bf`.
+The 2,089.5 ms whole-lifecycle profile attributes approximately 170.9 ms self
+time to `nativeChildNodes`, 115.6 ms to `mapNode`, 90.0 ms to recursive nested
+mapping and 76.9 ms to selection intrinsics. This is not edit-only attribution
+or an uninstrumented latency qualification. Inspection confirms that the second
+DOM/map traversal also checks unmapped wrappers/placeholders for stale reverse
+mappings; simply deleting it would drop a consistency invariant. Any traversal
+consolidation must preserve that negative check as well as mapped-node equality.
