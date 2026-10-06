@@ -807,6 +807,13 @@ the opt-in browser positive control was skipped in this invocation. The first
 This extends same-page lifetime coverage, not latency qualification or fault
 resolution. Profiling and alternate scheduling remain disabled.
 
+Three further 30-per-size diagnostic sessions completed all 270 cycles without
+rejection: `breditor-nested-list-consumer-RBqXwA/performance-2pY1t9/measurement.json`,
+SHA-256 `e7c609f4b6baf61be49f56ac2e5dc7230a390e2a4e1982447b19119bc702bd5a`.
+Longer page lifetime did not reproduce the fault in this bounded trial. The
+earlier `performance-e8QUkx` rejection remains authoritative failure evidence;
+no production validation changes or release-readiness claim follow from this run.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
