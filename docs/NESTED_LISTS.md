@@ -594,6 +594,16 @@ adapter and `command_queue.executor_threw`. The reproduction record is
 This identifies the failing boundary, not the root cause or a fix. A disposable
 diagnostic now preserves the validator error before the generic exception.
 
+Further retained-package runs narrowed one failure path to `paragraphsEqual`:
+item 410 was a level-2 heading whose left/right logged fields matched, and both
+containing snapshots serialized identically. Another run failed earlier during
+paragraph-shape validation. These are unresolved observations, not proof of an
+engine defect. Single-read shape diagnostics and comparison-result diagnostics
+now preserve the original rejection behavior in disposable test bundles only.
+The first field-instrumented run passed 300 owner cycles; that does not establish
+a fix. Exact reports and follow-up results are recorded in the reproduction JSON
+above. No production validation has been weakened.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
