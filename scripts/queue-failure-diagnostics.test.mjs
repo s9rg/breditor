@@ -2,7 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
-import {instrumentQueueFailures, instrumentRouterFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+
+test("projection rejection diagnostics preserve the thrown failure even when logging fails", () => {
+  const source = 'if (!converted.ok) { throw new TypeError("Wasm projection update is invalid"); }';
+  for (const hostile of [false, true]) {
+    const logs = [];
+    const run = new Function("converted", "console", instrumentProjectionUpdateFailures(source));
+    assert.throws(() => run({ok: false, error: {code: "projection.invalid_update"}}, {error(...values) {
+      if (hostile) throw new Error("logger failed"); logs.push(values);
+    }}), /Wasm projection update is invalid/);
+    if (!hostile) assert.match(logs[0][1], /projection.invalid_update/);
+  }
+  assert.throws(() => instrumentProjectionUpdateFailures(""));
+  assert.throws(() => instrumentProjectionUpdateFailures(source + source));
+});
 
 test("router diagnostics distinguish adapter faults from queue faults and survive hostile logging", () => {
   const source = `class Router {

@@ -1,0 +1,17 @@
+{
+  "status": "reproduced; not fixed",
+  "packageRecord": "target/flat-list-packages-KklioP/qualification.json",
+  "command": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 BREDITOR_PERF_OWNER_REPETITIONS=100 BREDITOR_PERF_RUNS=1 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-KklioP/qualification.json",
+  "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-0wXuCT/measurement.json",
+  "reportSha256": "cf21b0e5b34d2ad1d3e74aaaf38243c461b85c6569fa19e10d8a72ee48a4ee6d",
+  "progress": "500 items, repetition 48: selectionMs",
+  "caughtException": "TypeError: Wasm projection update is invalid",
+  "router": {"reason": "queueUncertain", "adapterState": "faulted", "queueCode": "command_queue.executor_threw", "queueDisposed": false},
+  "secondRun": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-EmwEQf/measurement.json",
+    "progress": "500 items, repetition 19: selectionMs",
+    "validatorError": {"code": "projection.invalid_update", "message": "The projection update does not prove its claimed impact."}
+  },
+  "interpretation": "Two retained-original-package runs reproduce the selection-stage fault with captured validator rejection boundaries. This localizes the failure but does not identify the bad field, its source, or a causal fix.",
+  "next": "Log the converted projection-update error in the disposable adapter before the generic exception, then repeat the same stress workload. Do not alter production validation or insert timing workarounds."
+}

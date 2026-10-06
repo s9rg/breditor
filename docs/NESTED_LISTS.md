@@ -586,5 +586,22 @@ artifact stays `nested-list-opt-in-HwqlQN`; the current consumer report identifi
 `breditor-opt-in-consumer-fMmjHw`. This is browser automation, not physical keyboard,
 OS IME, native clipboard, VoiceOver or resolution of the older WebKit fault.
 
+The old WebKit fault reproduced on the retained original flat package at 500
+items/repetition 48 during selection synchronization. Queue diagnostics captured
+`TypeError: Wasm projection update is invalid`; router diagnostics show a faulted
+adapter and `command_queue.executor_threw`. The reproduction record is
+`docs/qualification/2026-10-05-webkit-projection-update-reproduction.json`.
+This identifies the failing boundary, not the root cause or a fix. A disposable
+diagnostic now preserves the validator error before the generic exception.
+
+A first nested performance baseline uses 10/100/500 root items, adding a child
+and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
+document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
+was 109 ms Chromium, 373 ms Firefox, 245 ms WebKit on this machine, including
+forced layout. Report: `breditor-nested-list-consumer-zNDGlm/performance-diBCqq/measurement.json`
+under the system temporary directory. This run overlapped the old WebKit stress
+workload, so timings are diagnostic, not isolated release latency or a budget pass.
+Large-document performance remains open.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

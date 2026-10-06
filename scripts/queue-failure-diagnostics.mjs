@@ -2,6 +2,14 @@
 // or production logging. Retain normal terminal queue semantics after logging.
 import assert from "node:assert/strict";
 
+// Preserve the validator's bounded failure code before the adapter replaces it
+// with its generic exception. Synthetic disposable bundles only.
+export function instrumentProjectionUpdateFailures(code) {
+  const anchor = 'throw new TypeError("Wasm projection update is invalid");';
+  assert.equal(code.split(anchor).length, 2, "projection-update diagnostic site changed");
+  return code.replace(anchor, `try { console.error("breditor projection update rejection", JSON.stringify(converted.error).slice(0, 2048)); } catch {}\n${anchor}`);
+}
+
 // Capture the terminal router boundary too: queueUncertain does not imply an
 // executor exception. Read each scalar independently before teardown destroys
 // the useful state. This is only injected into disposable synthetic bundles.
