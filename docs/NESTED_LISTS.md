@@ -364,5 +364,14 @@ Structural text replacement is not yet admitted here, and this helper is not
 yet connected to V7 session admission. Static preflight does not replace Rust
 replay or inverse validation.
 
+Structural V7 replacement preflight now checks exact root guards, ordered nested
+endpoints, scalar boundaries, text-block-only insertions and canonical empty
+paragraph layout slots with the derived slot count. Inserted fragment sequences
+use the Rust codec's larger per-container fragment bound while preserving total
+node/property/text limits; published document fanout stays unchanged. Tests
+cover malformed/reversed replacements and fragment sequences above 10,000
+blocks, including aggregate-node rejection. All four nested tags now have static
+preflight, but session integration and Rust replay qualification remain pending.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

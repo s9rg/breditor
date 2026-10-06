@@ -758,6 +758,15 @@ export function durableDocumentRootMatchesContract(
   value: unknown,
   contract: ResolvedWasmDurableJsonContract,
 ): boolean {
+  return validateDurableRoot(value, contract, MAX_PARAGRAPHS);
+}
+
+/** V7 inserted blocks are a fragment sequence, not published root fanout. @internal */
+export function durableNestedFragmentRootMatchesContract(value: unknown, contract: ResolvedWasmDurableJsonContract): boolean {
+  return contract.mode === "v7" && validateDurableRoot(value, contract, MAX_NODES);
+}
+
+function validateDurableRoot(value: unknown, contract: ResolvedWasmDurableJsonContract, maxChildren: number): boolean {
   const root = exactJsonRecord(value, [
     "kind",
     "type",
@@ -773,7 +782,7 @@ export function durableDocumentRootMatchesContract(
     !emptyJsonRecord(root["properties"]) ||
     !Array.isArray(root["children"]) ||
     root["children"].length === 0 ||
-    root["children"].length > MAX_PARAGRAPHS
+    root["children"].length > maxChildren
   ) {
     return false;
   }
@@ -795,7 +804,7 @@ export function durableDocumentRootMatchesContract(
     if ((contract.mode !== "v6" && contract.mode !== "v7") || depth + 2 > 63 ||
       block["kind"] !== "element" || block["entityId"] !== null ||
       !Array.isArray(block["children"]) || block["children"].length === 0 ||
-      block["children"].length > MAX_PARAGRAPHS) return false;
+      block["children"].length > maxChildren) return false;
     if (block["type"] === "breditor/ordered-list") {
       const properties = exactJsonRecord(block["properties"], ["breditor/start"]);
       const start = properties?.["breditor/start"];
@@ -809,7 +818,7 @@ export function durableDocumentRootMatchesContract(
       if (item === null || item["kind"] !== "element" || item["type"] !== "breditor/list-item" ||
         item["entityId"] !== null || !emptyJsonRecord(item["properties"]) ||
         !Array.isArray(item["children"]) || item["children"].length === 0 ||
-        item["children"].length > MAX_PARAGRAPHS ||
+        item["children"].length > maxChildren ||
         (contract.mode !== "v7" && item["children"].length !== 1)) return false;
       const leading = exactJsonRecord(item["children"][0], ["kind", "type", "entityId", "properties", "children"]);
       if (leading === null || (leading["type"] !== "breditor/paragraph" && leading["type"] !== "breditor/heading") ||
@@ -836,7 +845,7 @@ export function durableDocumentRootMatchesContract(
       paragraph["kind"] !== "element" ||
       paragraph["entityId"] !== null ||
       !Array.isArray(paragraph["children"]) ||
-      paragraph["children"].length > MAX_RUNS_PER_PARAGRAPH
+      paragraph["children"].length > (maxChildren === MAX_NODES ? MAX_NODES : MAX_RUNS_PER_PARAGRAPH)
     ) {
       return false;
     }

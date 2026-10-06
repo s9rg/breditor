@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nestedListOperationPreflight } from "./nested_list_operation_preflight.js";
-import { resolveWasmDurableJsonContract } from "./wasm_document_json.js";
+import { resolveWasmDurableJsonContract, durableDocumentRootMatchesContract, durableNestedFragmentRootMatchesContract } from "./wasm_document_json.js";
 
 describe("nested operation static admission", () => {
   const contract = resolveWasmDurableJsonContract({mode: "v7", schema: {name: "test/document", version: 1, fingerprint: `sha256:${"a".repeat(64)}`}, formats: []})!;
@@ -22,5 +22,23 @@ describe("nested operation static admission", () => {
     expect(nestedListOperationPreflight({...op, kind: "nestedListFormatRewrite"}, contract, () => true)).toBe(false);
     expect(nestedListOperationPreflight({...op, kind: "nestedListFormatRewrite", replacement: tree()}, contract, () => true)).toBe(true);
     expect(nestedListOperationPreflight({...op, kind: "nestedListFormatRewrite", replacement: tree("different")}, contract, () => true)).toBe(false);
+  });
+  it("validates structural replacement boundaries and exact empty layout slots", () => {
+    const empty = element("paragraph", []);
+    const op = {kind: "nestedListTextReplace", guardStart: 4, start: {block: [4, 0, 0], offset: 2},
+      end: {block: [4, 0, 1, 0, 0], offset: 3}, expected: tree(), inserted: element("document", [block("new")]),
+      layout: element("document", [empty])};
+    expect(nestedListOperationPreflight(op, contract, () => true)).toBe(true);
+    expect(nestedListOperationPreflight({...op, layout: tree()}, contract, () => true)).toBe(false);
+    expect(nestedListOperationPreflight({...op, layout: element("document", [empty, empty])}, contract, () => true)).toBe(false);
+    expect(nestedListOperationPreflight({...op, start: op.end, end: op.start}, contract, () => true)).toBe(false);
+    expect(nestedListOperationPreflight({...op, inserted: tree()}, contract, () => true)).toBe(false);
+  });
+  it("admits large fragment sequences without widening published root fanout", () => {
+    const sequence = element("document", Array.from({length: 10_001}, () => element("paragraph", [])));
+    expect(durableNestedFragmentRootMatchesContract(sequence, contract)).toBe(true);
+    expect(durableDocumentRootMatchesContract(sequence, contract)).toBe(false);
+    const oversized = element("document", Array.from({length: 100_000}, () => element("paragraph", [])));
+    expect(durableNestedFragmentRootMatchesContract(oversized, contract)).toBe(false);
   });
 });
