@@ -709,6 +709,12 @@ timing evidence. Profiling, alternate scheduling and larger owner counts remain
 guarded off in the nested runner. Neither clean repeat closes the previously
 captured intermittent faults; native, size and latency qualification remain open.
 
+Rust projection-impact regression coverage also checks a single transaction
+editing deep paragraphs in two disjoint roots, in both operation orders, using
+Japanese text and a supplementary-plane emoji. Forward, inverse and replay
+report the conservative root span; intervening/trailing roots remain equal and
+undo/replay restore exact documents. All 60 nested-feature Wasm Rust tests pass.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
