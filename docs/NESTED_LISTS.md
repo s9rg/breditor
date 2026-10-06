@@ -1117,3 +1117,12 @@ not a reliable speed comparison. Full details and remaining gates are in
 `qualification/2026-10-06-nested-list-capture-reuse.json`. Nothing was published;
 shipping artifact trees remain unchanged and WebKit/native/size/latency gates
 remain open.
+
+The complete feature-enabled core command subsequently exited successfully,
+including all integration binaries and 136 documentation tests. A bounded WebKit
+diagnostic run of the same installed candidate completed ten fresh sessions,
+30 owners at each of 10/100/500 roots per session: 900 root-edit/history/recovery
+cycles, no captured diagnostics. The retained report hash is in the capture-reuse
+qualification record. This is a clean stress observation, not an explanation or
+closure of the historical intermittent fault; no performance claim is made from
+the diagnostic run.

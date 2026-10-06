@@ -14,6 +14,7 @@
     "nativeInputQualified": false
   },
   "passed": [
+    "Full cargo test -p breditor-core --features experimental-structural-properties command exited zero, including integration binaries and all 136 documentation tests",
     "703 default-core unit tests in a separate invocation without feature flags",
     "1187 feature-enabled core unit tests",
     "Strict feature-enabled core clippy, all targets",
@@ -25,8 +26,28 @@
   ],
   "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-fgjS5V/performance-Bf57A9/measurement.json",
   "timingCaveat": "Rust verification overlapped measurement. Do not infer a speedup or regression; repeat under quiet conditions.",
+  "sequentialFirefoxComparison": {
+    "concurrentVerificationJobs": false,
+    "candidateMeasurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-fgjS5V/performance-AZuHKd/measurement.json",
+    "controlMeasurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-P0t5NM/performance-pPuUNh/measurement.json",
+    "candidate500RootEditMinMedianMaxMs": [339, 352, 366],
+    "control500RootEditMinMedianMaxMs": [349, 467, 876],
+    "conclusion": "Both nine-cycle correctness runs passed. Large timing outliers and three observations per size do not establish a performance improvement or a release latency bound."
+  },
   "observed500RootEditMedianMs": { "chromium": 89.7, "firefox": 380, "webkit": 200 },
   "shippingArtifactsWritten": false,
+  "webkitDiagnosticStress": {
+    "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-fgjS5V/performance-Xp0vFP/measurement.json",
+    "sha256": "5c32d30993bccfa0fafb09b2b88203ed22dd7766569bebf587251514548d92cd",
+    "freshSessions": 10,
+    "ownersPerSizePerSession": 30,
+    "rootSizes": [10, 100, 500],
+    "editTarget": "root",
+    "cyclesPassed": 900,
+    "capturedDiagnostics": 0,
+    "historicalFaultResolved": false,
+    "performanceQualified": false
+  },
   "releaseReady": false,
-  "openGates": ["Full Rust integration command still running at record creation", "Quiet performance comparison", "Retained intermittent WebKit fault", "Native IME/VoiceOver qualification", "Release size and latency acceptance"]
+  "openGates": ["Stable performance evidence", "Retained intermittent WebKit fault", "Native IME/VoiceOver qualification", "Release size and latency acceptance"]
 }
