@@ -541,5 +541,14 @@ scoped, explained length-lint exceptions. Strict Clippy now passes with warnings
 denied, and rustfmt check passes. This does not replace the outstanding release
 gates listed above.
 
+The isolated Tab policy now classifies genuine Tab/Shift-Tab through shared DOM
+intrinsics, honors disabled shortcuts/composition/modifiers, leaves every
+non-enabled Rust availability native, and suppresses repeated enabled nesting.
+It is not wired into event delivery yet. Integration must synchronize the actual
+DOM selection before querying availability (selectionchange may arrive later),
+then revalidate the current owner/render before cancellation and dispatch. Cached
+toolbar availability cannot authorize this path. No current Tab behavior changes
+are claimed by the policy-only checkpoint.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
