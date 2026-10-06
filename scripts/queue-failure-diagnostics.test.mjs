@@ -4,6 +4,33 @@ import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
 import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 
+test("flat impact diagnostics preserve rejection and bound mismatch context", () => {
+  const source = `function verifyImpact(a, b, input) {
+    const oldIndex = 0, newIndex = 0;
+    if (a === undefined || b === undefined || !flatListRootsEqual(a, b))
+            return false;
+    return true;
+  }
+  function rejected() { return projectionFailure("projection.invalid_update"); }`;
+  const transformed = instrumentProjectionValidationSites(source, "flat_list_projection_update");
+  for (const hostile of [false, true]) {
+    const logs = [];
+    const run = new Function("flatListRootsEqual", "console", `${transformed}; return verifyImpact;`)(
+      (a, b) => a === b, {error(...args) {if (hostile) throw new Error("logger"); logs.push(args);}});
+    const before = {text: "x".repeat(20000) + "a"}, after = {text: "x".repeat(20000) + "b"};
+    assert.equal(run(before, before, {kind: "none"}), true);
+    assert.equal(logs.length, 0);
+    assert.equal(run(before, after, {kind: "none"}), false);
+    if (!hostile) {
+      assert.ok(logs[0][1].length <= 4096);
+      const detail = JSON.parse(logs[0][1]);
+      assert.ok(detail.offset > 20000);
+      assert.match(detail.before, /a/);
+      assert.match(detail.after, /b/);
+    }
+  }
+});
+
 test("projection site labels preserve values and contain failing loggers", () => {
   const source = 'return projectionFailure("projection.invalid_update");';
   const transformed = instrumentProjectionValidationSites(source, "wasm_projection_adapter");

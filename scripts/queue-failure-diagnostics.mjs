@@ -23,7 +23,24 @@ export function instrumentProjectionValidationSites(code, moduleName) {
     return `((() => { try { console.error("breditor projection rejection site", ${label}); } catch {} })(), ${expression})`;
   });
   assert.ok(sites > 0, "projection rejection expressions changed");
-  return transformed;
+  if (moduleName !== "flat_list_projection_update") return transformed;
+  // Capture already-owned JS snapshots only after an equality rejection. Never
+  // reread a Wasm handle, retry validation, or change the rejected result.
+  const anchor = 'if (a === undefined || b === undefined || !flatListRootsEqual(a, b))\n            return false;';
+  if (!transformed.includes("function verifyImpact(")) return transformed;
+  assert.equal(transformed.split(anchor).length, 2, "flat impact retain diagnostic site changed");
+  return transformed.replace(anchor, `if (a === undefined || b === undefined || !flatListRootsEqual(a, b)) {
+            try {
+                const before = JSON.stringify(a) ?? "undefined", after = JSON.stringify(b) ?? "undefined";
+                let offset = 0;
+                while (offset < before.length && offset < after.length && before[offset] === after[offset]) offset++;
+                console.error("breditor flat impact mismatch", JSON.stringify({oldIndex, newIndex, impact: input,
+                    beforeLength: before.length, afterLength: after.length, offset,
+                    before: before.slice(Math.max(0, offset - 256), offset + 1024),
+                    after: after.slice(Math.max(0, offset - 256), offset + 1024)}).slice(0, 4096));
+            } catch {}
+            return false;
+        }`);
 }
 
 // Capture the terminal router boundary too: queueUncertain does not imply an

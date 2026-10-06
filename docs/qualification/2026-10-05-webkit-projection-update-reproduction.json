@@ -19,5 +19,19 @@
     "noisyRun": "performance-gWvfWs completed 300 cycles without reproducing the fault, but logged default placeholders. It does not establish a fix.",
     "correctedRun": "performance-zrKInh completed 300 cycles with placeholder logging excluded and no reproduction. The two earlier failing runs remain unresolved; this green diagnostic run does not establish a fix."
   },
-  "next": "Read the corrected site-diagnostic run and map any rejection label to the retained installed source. Do not alter production validation or insert timing workarounds."
+  "localizedRun": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-DJ9Iry/measurement.json",
+    "reportSha256": "4b90edb6037c565f66fbb83fe7149eea734651a4050d07f5920d251b767754bf",
+    "progress": "500 items, repetition 89: selectionMs",
+    "site": "flat_list_projection_update:29:projection.invalid_update",
+    "meaning": "verifyImpact returned null after ownership, profile, lineage and revision checks passed. The specific mismatch and its cause remain unknown."
+  },
+  "subsequentRun": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-uY9t2u/measurement.json",
+    "reportSha256": "59a3f5681ec945b5aebed1ee5d272451f52d2f7a4342b3c13b21327edc0b37ab",
+    "progress": "10 items, repetition 71: selectionMs",
+    "sites": ["wasm_projection_adapter:321:projection.invalid_shape", "wasm_projection_adapter:620:projection.invalid_update"],
+    "meaning": "A different rejection: semantic paragraph shape validation failed before impact comparison. No equality mismatch log was expected on this path. This does not establish which scalar or absent-value probe failed."
+  },
+  "next": "Capture the failing paragraph-shape operand without retrying handle reads, and retain failure-only equality snapshot diagnostics. Fifteen diagnostic tests pass including WebKit. Do not alter production validation or insert timing workarounds."
 }
