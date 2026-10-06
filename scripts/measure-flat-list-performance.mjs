@@ -51,7 +51,7 @@ const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
 const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
 const headingComparison = process.env["BREDITOR_PERF_HEADING_COMPARISON"] ?? "strict";
-assert.ok(["strict", "same-value"].includes(headingComparison) &&
+assert.ok(["strict", "same-value", "same-value-minimal"].includes(headingComparison) &&
   (headingComparison === "strict" || queueDiagnosticsEnabled), "heading comparison variant requires queue diagnostics");
 const constructorProbeEnabled = process.env["BREDITOR_PERF_EXCEPTION_PROBE"] === "1";
 assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
@@ -146,7 +146,7 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
   for (const moduleName of ["wasm_projection_adapter", "flat_list_projection_update"]) {
     if (id === join(consumer, `node_modules/@breditor/browser/dist/${moduleName}.js`)) {
       validationDiagnosticModules++;
-      return instrumentProjectionValidationSites(code, moduleName);
+      return headingComparison === "same-value-minimal" ? code : instrumentProjectionValidationSites(code, moduleName);
     }
   }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/wasm_command_adapter.js")) {

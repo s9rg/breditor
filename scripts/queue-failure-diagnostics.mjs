@@ -2,14 +2,19 @@
 // or production logging. Retain normal terminal queue semantics after logging.
 import assert from "node:assert/strict";
 
-/** Observe the original boolean results; never retry or override comparisons. */
+/** Diagnostic comparison trials; no retries or overrides of computed results. */
 export function instrumentParagraphComparison(code, headingComparison = "strict") {
-  assert.ok(["strict", "same-value"].includes(headingComparison), "unknown heading comparison variant");
+  assert.ok(["strict", "same-value", "same-value-minimal"].includes(headingComparison), "unknown heading comparison variant");
   const start = "export function paragraphsEqual(left, right) {";
   assert.equal(code.split(start).length, 2, "paragraph comparator start changed");
   const from = code.indexOf(start), end = code.indexOf("\n}", from);
   assert.ok(end > from);
   let body = code.slice(from, end);
+  if (headingComparison === "same-value-minimal") {
+    const expression = "left.headingLevel !== right.headingLevel";
+    assert.equal(body.split(expression).length, 2, "heading comparison changed");
+    return code.slice(0, from) + body.replace(expression, "!Object.is(left.headingLevel, right.headingLevel)") + code.slice(end);
+  }
   for (const [name, expression] of [
     ["heading", "left.headingLevel !== right.headingLevel"],
     ["runCount", "left.runs.length !== right.runs.length"],

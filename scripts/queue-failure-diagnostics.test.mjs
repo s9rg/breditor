@@ -13,6 +13,8 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
   const source = "export " + compiled.slice(start, end);
   const instrumented = instrumentParagraphComparison(source);
   const sameValue = instrumentParagraphComparison(source, "same-value");
+  const minimal = instrumentParagraphComparison(source, "same-value-minimal");
+  assert.equal(minimal, source.replace("left.headingLevel !== right.headingLevel", "!Object.is(left.headingLevel, right.headingLevel)"));
   for (const left of [undefined, 1, 2, 3, 4, 5, 6]) {
     for (const right of [undefined, 1, 2, 3, 4, 5, 6]) {
       const compare = new Function("formatDetailsEqual", "console", sameValue.replace("export ", "") + "; return paragraphsEqual;")(
@@ -27,7 +29,7 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
     {...a, runs: [{...a.runs[0], formatDetails: ["bold"]}]}]) {
     for (const hostile of [false, true]) {
       const results = [];
-      for (const code of [source, instrumented, sameValue]) {
+      for (const code of [source, instrumented, sameValue, minimal]) {
         let calls = 0;
         const compare = new Function("formatDetailsEqual", "console", code.replace("export ", "") + "; return paragraphsEqual;")(
           (left, right) => {calls++; return JSON.stringify(left) === JSON.stringify(right);},
@@ -36,6 +38,7 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
       }
       assert.deepEqual(results[0], results[1]);
       assert.deepEqual(results[0], results[2]);
+      assert.deepEqual(results[0], results[3]);
     }
   }
 });

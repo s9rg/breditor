@@ -79,8 +79,15 @@
     "scope": "Disposable diagnostic bundle only; production comparator unchanged",
     "command": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 BREDITOR_PERF_HEADING_COMPARISON=same-value BREDITOR_PERF_OWNER_REPETITIONS=100 BREDITOR_PERF_RUNS=3 node scripts/measure-flat-list-performance.mjs target/flat-list-packages-KklioP/qualification.json",
     "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-ZqFpzq/measurement.json",
-    "status": "running at checkpoint; result not yet established",
+    "status": "passed: three fresh WebKit sessions, 900 measured owner cycles",
+    "reportSha256": "7976f295e98903b94b05d8cf19c2650601f69057491aa80f839185f75430bcdd",
     "tests": "18 passed including WebKit; all 49 combinations of admitted heading values preserve comparison semantics"
   },
-  "next": "Inspect the running same-value comparison trial before any production change. Keep independent paragraph-shape failure and nested release gates open."
+  "minimalCandidate": {
+    "variant": "BREDITOR_PERF_HEADING_COMPARISON=same-value-minimal",
+    "scope": "Changes exactly the heading inequality to !Object.is; removes paragraph, root-comparison and shape instrumentation. Retains terminal queue/router/error logging only.",
+    "status": "three-session trial running at checkpoint",
+    "tests": "18 diagnostic tests passed; test verifies minimal comparator source differs by exactly the one intended replacement"
+  },
+  "next": "Inspect the running minimal same-value comparison trial before any production change. Keep independent paragraph-shape failure and nested release gates open."
 }
