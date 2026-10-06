@@ -355,5 +355,14 @@ structural changes, numbering/family changes, changed child text, old durable
 modes and lookalike projections. Browser V7 session-history validation and
 adapter publication are still pending.
 
+Initial V7 history-operation preflight now validates guarded reframing, nested
+text splices and inline-format rewrites against the Rust wire shapes. It checks
+complete guarded trees, preserved block order/topology and scalar-safe splice
+offsets at real nested paths. Tests cover valid deep splices and rejected scalar
+splits, wrong paths, reordered text blocks and structural format changes.
+Structural text replacement is not yet admitted here, and this helper is not
+yet connected to V7 session admission. Static preflight does not replace Rust
+replay or inverse validation.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
