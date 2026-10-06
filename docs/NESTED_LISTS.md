@@ -1126,3 +1126,11 @@ cycles, no captured diagnostics. The retained report hash is in the capture-reus
 qualification record. This is a clean stress observation, not an explanation or
 closure of the historical intermittent fault; no performance claim is made from
 the diagnostic run.
+
+Diagnostic projection catch sites now retain bounded original exception text
+and stack before returning the unchanged rejection. This closes an observability
+gap between a failed equality check and an unexpected thrown exception; it is
+not a production fallback or a fix for the historical fault. All 23 diagnostic
+tests pass, including the WebKit exception test and checks against hostile
+loggers/error objects. An instrumented current-candidate smoke run passes nine
+root-edit/history/recovery cycles (`fgjS5V/performance-2HUVLk/measurement.json`).

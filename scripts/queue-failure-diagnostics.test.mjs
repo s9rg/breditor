@@ -3,6 +3,36 @@ import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
 import {instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
+import {instrumentProjectionCaughtErrors} from "./queue-failure-diagnostics.mjs";
+
+test("caught projection diagnostics preserve rejection even with hostile errors or loggers", () => {
+  const source = `try { throw error; } catch { return projectionFailure("projection.invalid_update"); }`;
+  const transformed = instrumentProjectionCaughtErrors(source, "nested_list_projection_update");
+  assert.notEqual(transformed, source);
+  const hostileError = {toString() { throw new Error("string conversion"); }, get stack() { throw new Error("stack getter"); }};
+  for (const error of [new Error("original failure"), null, "failure", hostileError]) {
+    for (const hostileLogger of [false, true]) {
+      const logs = [];
+      const failure = Object.freeze({ok: false});
+      let calls = 0;
+      const result = new Function("error", "projectionFailure", "console", transformed)(error,
+        code => { calls++; assert.equal(code, "projection.invalid_update"); return failure; },
+        {error(...args) { if (hostileLogger) throw new Error("logger"); logs.push(args); }});
+      assert.equal(result, failure);
+      assert.equal(calls, 1);
+      assert.equal(logs.length, hostileLogger ? 0 : 1);
+      if (!hostileLogger) assert.ok(logs[0][2].length <= 1024 && logs[0][3].length <= 4096);
+    }
+  }
+  assert.equal(instrumentProjectionCaughtErrors("try {} catch { return false; }", "other"), "try {} catch { return false; }");
+});
+
+test("real nested projection catch is instrumented", async () => {
+  const ts = await readFile(new URL("../packages/breditor-browser/src/nested_list_projection_update.ts", import.meta.url), "utf8");
+  const compiled = (await transform("nested_list_projection_update.ts", ts, {lang: "ts"})).code;
+  const transformed = instrumentProjectionCaughtErrors(compiled, "nested_list_projection_update");
+  assert.equal(transformed.split("breditor projection caught exception").length - 1, 1);
+});
 
 test("paragraph comparison instrumentation preserves real compiled comparison", async () => {
   const ts = await readFile(new URL("../packages/breditor-browser/src/projection.ts", import.meta.url), "utf8");

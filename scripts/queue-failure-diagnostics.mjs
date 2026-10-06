@@ -55,6 +55,7 @@ export function instrumentProjectionUpdateFailures(code) {
 /** Label existing rejection expressions without changing their returned value. */
 export function instrumentProjectionValidationSites(code, moduleName) {
   assert.ok(["wasm_projection_adapter", "flat_list_projection_update", "nested_list_projection_update"].includes(moduleName));
+  code = instrumentProjectionCaughtErrors(code, moduleName);
   let sites = 0;
   const transformed = code.replace(/projectionFailure\("(projection\.[a-z_]+)"\)/gu, (expression, errorCode, offset) => {
     // These are default result placeholders, not taken rejection branches.
@@ -90,6 +91,12 @@ export function instrumentProjectionValidationSites(code, moduleName) {
         }`);
   return withSnapshots.includes("export function flatListRootsEqual(a, b)")
     ? instrumentFlatRootComparison(withSnapshots) : withSnapshots;
+}
+
+/** Preserve swallowed projection exceptions in diagnostic builds only. */
+export function instrumentProjectionCaughtErrors(code, moduleName) {
+  return code.replace(/catch \{(?=\s*return projectionFailure\("projection\.[a-z_]+"\))/gu,
+    `catch (projectionDiagnosticError) { try { let message = "<unprintable>", stack = ""; try { message = String(projectionDiagnosticError).slice(0, 1024); } catch {} try { if (typeof projectionDiagnosticError?.stack === "string") stack = projectionDiagnosticError.stack.slice(0, 4096); } catch {} console.error("breditor projection caught exception", ${JSON.stringify(moduleName)}, message, stack); } catch {}`);
 }
 
 /** Label false operands without replacing the equality algorithm or retrying it. */
