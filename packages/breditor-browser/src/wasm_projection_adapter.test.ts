@@ -5,6 +5,49 @@ import { projectPlainText, projectFlatListPlainText, MAX_BROWSER_PLAIN_TEXT_UTF8
 import { FlatListDocumentProjection, isOwnedFlatListProjection } from "./flat_list_projection.js";
 import { isOwnedProjection } from "./projection.js";
 import { NestedListDocumentProjection, isOwnedNestedListProjection } from "./nested_list_projection.js";
+import { consumeNestedListSemanticProjection } from "./wasm_projection_adapter.js";
+
+describe("recursive generated projection consumption", () => {
+  function fixture() {
+    const view = flatListView();
+    const element = (elementType: string, children: number[]): FlatNode => ({kind: "element", elementType, children});
+    const nodes = [
+      element("breditor/document", [1]), element("breditor/ordered-list", [2, 9]),
+      element("breditor/list-item", [3, 5]), element("breditor/heading", [4]),
+      {kind: "text", text: "parent", formats: []} as FlatNode,
+      element("breditor/bullet-list", [6]), element("breditor/list-item", [7]),
+      element("breditor/paragraph", [8]), {kind: "text", text: "child🙂", formats: []} as FlatNode,
+      element("breditor/list-item", [10]), element("breditor/paragraph", []),
+    ];
+    Object.defineProperty(view, "nodes", {value: nodes, configurable: true});
+    Object.assign(view, {
+      headingLevel: (index: number) => index === 3 ? 2 : undefined,
+      listKind: (index: number) => index === 1 ? "ordered" : index === 5 ? "bullet" : undefined,
+      orderedListStart: (index: number) => index === 1 ? 8 : undefined,
+    });
+    return {view, nodes, element};
+  }
+  it("consumes a child list and frees its handle without flattening paths", () => {
+    const {view} = fixture();
+    const result = valueOf(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])));
+    expect(result.textBlocks.map(entry => entry.path)).toEqual([[0, 0, 0], [0, 0, 1, 0, 0], [0, 1, 0]]);
+    expect(result.textBlocks.map(entry => entry.block.runs.map(run => run.text).join(""))).toEqual(["parent", "child🙂", ""]);
+    expect(view.freeCalls).toBe(1);
+    const legacy = fixture().view;
+    expect(consumeFlatListSemanticProjection(legacy, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+    expect(legacy.freeCalls).toBe(1);
+  });
+  it.each(["alias", "missingBlock", "extraBlock", "unreachable", "metadata"])("rejects %s and frees once", fault => {
+    const {view, nodes, element} = fixture();
+    if (fault === "alias") nodes[2] = element("breditor/list-item", [3, 1]);
+    if (fault === "missingBlock") nodes[2] = element("breditor/list-item", [5]);
+    if (fault === "extraBlock") nodes[5] = element("breditor/paragraph", [6]);
+    if (fault === "unreachable") nodes.push(element("breditor/paragraph", []));
+    if (fault === "metadata") Object.assign(view, {orderedListStart: () => 8});
+    expect(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+  });
+});
 
 describe("opt-in recursive nested projection", () => {
   const block = (text: string) => ({headingLevel: null, runs: [{text, formatDetails: []}]});

@@ -208,5 +208,13 @@ empty/malformed sections, cycles, exact depth boundaries and 12,000 valid blocks
 distributed across lists. Wasm projection consumption, DOM rendering, selection,
 clipboard and public owner wiring remain unfinished.
 
+`consumeNestedListSemanticProjection` now consumes the list-capable generated
+view through the existing guarded handle lifecycle. A recursive preorder proof
+checks every list/item edge, metadata sentinel, leading block and final node
+count before inline data is admitted. Tests exercise nested paths, empty items,
+alias/missing/extra/unreachable nodes, contradictory metadata and exactly-once
+cleanup. These are adapter tests; packaged generated-Wasm integration and
+projection-update consumption still require qualification.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

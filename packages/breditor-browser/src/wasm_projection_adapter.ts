@@ -14,6 +14,7 @@ import {
 } from "./projection.js";
 import { BaseProjectionUpdate, type BaseProjectionImpact } from "./projection_update.js";
 import { createFlatListTextProjection, FlatListDocumentProjection, flatListProjectionDescriptor, flatListProjectionMatchesProfileGeneration, isOwnedFlatListProjection, type FlatListRootShape } from "./flat_list_projection.js";
+import { createNestedListTextProjection, NestedListDocumentProjection, type NestedListRootShape } from "./nested_list_projection.js";
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
@@ -250,6 +251,16 @@ export function consumeFlatListSemanticProjection(
 ): BrowserProjectionResult<FlatListDocumentProjection> {
   const text = consumeProjection(view, generation, expectedProfile, createFlatListTextProjection);
   return text.ok ? FlatListDocumentProjection.fromValidatedText(text.value) : text;
+}
+
+/** Consumes one list-capable handle with recursive shape and exact preorder proof. */
+export function consumeNestedListSemanticProjection(
+  view: FlatListSemanticProjectionView,
+  generation: WasmProfileGenerationView,
+  expectedProfile: BrowserCompiledProfileDescriptor,
+): BrowserProjectionResult<NestedListDocumentProjection> {
+  const text = consumeProjection(view, generation, expectedProfile, createNestedListTextProjection);
+  return text.ok ? NestedListDocumentProjection.fromValidatedText(text.value) : text;
 }
 
 function consumeProjection(
@@ -602,7 +613,8 @@ function readProfiledSemanticProjection(
   ) {
     return projectionFailure("projection.invalid_shape");
   }
-  const snapshot = snapshotSemanticProjection(view, textBlockFactory !== undefined, textBlockFactory === createFlatListTextProjection);
+  const snapshot = snapshotSemanticProjection(view, textBlockFactory !== undefined,
+    textBlockFactory === createFlatListTextProjection || textBlockFactory === createNestedListTextProjection);
   if (
     snapshot === null ||
     snapshot.schemaFingerprint !== expectedSchemaFingerprint
@@ -672,8 +684,12 @@ function readSemanticProjection(
     return projectionFailure("projection.invalid_shape");
   }
 
-  const layout = textBlockFactory === createFlatListTextProjection
+  const nestedLayout = textBlockFactory === createNestedListTextProjection
+    ? readNestedListLayout(view, methods, rootChildCount, nodeCount) : undefined;
+  if (nestedLayout === null) return projectionFailure("projection.invalid_shape");
+  const flatLayout = textBlockFactory === createFlatListTextProjection
     ? readFlatListLayout(view, methods, rootChildCount, nodeCount) : undefined;
+  const layout = nestedLayout ?? flatLayout;
   if (layout === null) return projectionFailure("projection.invalid_shape");
   const paragraphCount = layout?.textBlocks.length ?? rootChildCount;
 
@@ -902,9 +918,22 @@ function readSemanticProjection(
       })),
     })),
   };
-  if (layout !== undefined) {
+  if (nestedLayout !== undefined) {
     let offset = 0;
-    const blocks = layout.shapes.map((shape) => shape.kind === "textBlock"
+    const build = (shape: NestedListRootShape): unknown => {
+      if (shape.kind === "textBlock") return {kind: "textBlock", block: input.paragraphs[offset++]};
+      const items = shape.items.map(item => {
+        const block = input.paragraphs[offset++];
+        return {block, lists: item.lists.map(build)};
+      });
+      return shape.kind === "bulletList" ? {kind: "bulletList", items} : {kind: "orderedList", start: shape.start, items};
+    };
+    return createNestedListTextProjection({schema: input.schema, snapshot: input.snapshot,
+      blocks: nestedLayout.shapes.map(build)}, generation, expectedProfile);
+  }
+  if (flatLayout !== undefined && flatLayout !== null) {
+    let offset = 0;
+    const blocks = flatLayout.shapes.map((shape) => shape.kind === "textBlock"
       ? {kind: "textBlock", block: input.paragraphs[offset++]}
       : {...shape, items: input.paragraphs.slice(offset, offset += shape.items)});
     return createFlatListTextProjection({schema: input.schema, snapshot: input.snapshot, blocks}, generation, expectedProfile);
@@ -978,6 +1007,80 @@ function readFlatListLayout(
       if (!readBlock(invokeGenerated(methods.childAt, view, item, 0))) return null;
     }
     if (invokeGenerated(methods.childAt, view, index, items) !== undefined) return null;
+  }
+  return next === nodeCount ? {shapes, textBlocks} : null;
+}
+
+/** Exact preorder traversal bounds recursion and rejects aliases and unreachable wrappers. */
+function readNestedListLayout(view: SemanticProjectionView, methods: SemanticProjectionMethods,
+  rootCount: number, nodeCount: number): Readonly<{
+    shapes: readonly NestedListRootShape[];
+    textBlocks: readonly Readonly<{index: number; runs: number}>[];
+  }> | null {
+  if (methods.listKind === undefined || methods.orderedListStart === undefined) return null;
+  type ListShape = Exclude<NestedListRootShape, Readonly<{kind: "textBlock"}>>;
+  const textBlocks: Array<{index: number; runs: number}> = [];
+  let next = 1;
+  const wrapper = (index: number, type: string): boolean =>
+    invokeGenerated(methods.nodeKind, view, index) === "element" &&
+    invokeGenerated(methods.elementType, view, index) === type &&
+    headingLevelIsAbsent(view, methods, index) &&
+    invokeGenerated(methods.text, view, index) === undefined &&
+    invokeGenerated(methods.formatCount, view, index) === undefined &&
+    invokeGenerated(methods.formatType, view, index, 0) === undefined &&
+    formatPropertyProbeIsAbsent(view, methods, index, 0, 0);
+  const block = (index: number | undefined): boolean => {
+    if (index !== next || next >= nodeCount) return false;
+    const type = invokeGenerated(methods.elementType, view, index);
+    if (type !== "breditor/paragraph" && type !== "breditor/heading") return false;
+    const runs = invokeGenerated(methods.childCount, view, index);
+    if (runs === undefined || !isIndex(runs) || runs > 10_000 || runs > nodeCount - next - 1) return false;
+    textBlocks.push({index, runs}); next += 1 + runs; return true;
+  };
+  const list = (index: number | undefined, depth: number): ListShape | null => {
+    if (depth + 3 > 64 || index !== next || next >= nodeCount) return null;
+    const type = invokeGenerated(methods.elementType, view, index);
+    const kind = type === "breditor/bullet-list" ? "bullet" : type === "breditor/ordered-list" ? "ordered" : null;
+    if (kind === null || !wrapper(index, type as string) || invokeGenerated(methods.listKind!, view, index) !== kind) return null;
+    const start = invokeGenerated(methods.orderedListStart!, view, index);
+    const count = invokeGenerated(methods.childCount, view, index);
+    if (count === undefined || !isIndex(count) || count < 1 || count > 10_000 ||
+        count > Math.floor((nodeCount - next - 1) / 2) ||
+        (kind === "bullet" ? start !== undefined : typeof start !== "number" || !Number.isSafeInteger(start) || start < 1 || start + count - 1 > 2_147_483_647)) return null;
+    next++;
+    const items: Array<{lists: ListShape[]}> = [];
+    for (let ordinal = 0; ordinal < count; ordinal++) {
+      const item = invokeGenerated(methods.childAt, view, index, ordinal);
+      if (item !== next || next >= nodeCount || !wrapper(item, "breditor/list-item") || !listMetadataIsAbsent(view, methods, item)) return null;
+      const children = invokeGenerated(methods.childCount, view, item);
+      if (children === undefined || !isIndex(children) || children < 1 || children > 10_000 || children > nodeCount - next - 1) return null;
+      next++;
+      if (!block(invokeGenerated(methods.childAt, view, item, 0))) return null;
+      const lists: ListShape[] = [];
+      for (let section = 1; section < children; section++) {
+        const child = list(invokeGenerated(methods.childAt, view, item, section), depth + 2);
+        if (child === null) return null;
+        lists.push(child);
+      }
+      if (invokeGenerated(methods.childAt, view, item, children) !== undefined) return null;
+      items.push({lists});
+    }
+    if (invokeGenerated(methods.childAt, view, index, count) !== undefined) return null;
+    return kind === "bullet" ? {kind: "bulletList", items} : {kind: "orderedList", start: start as number, items};
+  };
+  const shapes: NestedListRootShape[] = [];
+  for (let root = 0; root < rootCount; root++) {
+    const index = invokeGenerated(methods.childAt, view, 0, root);
+    if (index !== next || next >= nodeCount) return null;
+    const type = invokeGenerated(methods.elementType, view, index);
+    if (type === "breditor/paragraph" || type === "breditor/heading") {
+      if (!block(index)) return null;
+      shapes.push({kind: "textBlock"});
+    } else {
+      const shape = list(index, 1);
+      if (shape === null) return null;
+      shapes.push(shape);
+    }
   }
   return next === nodeCount ? {shapes, textBlocks} : null;
 }
