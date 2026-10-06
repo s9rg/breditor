@@ -467,5 +467,16 @@ with explicit history boundaries. The manifest still needs connection to the
 public editor and validation against a real generated nested profile; these are
 not yet working toolbar buttons in the running demo.
 
+`BreditorBrowserEditor.openNestedLists` now selects the explicit V5-profile/V7
+owner throughout startup, rendering, command delivery, toolbar, router and
+cleanup. It defaults to the separate nested toolbar manifest and binds storage
+to checkpoint version 7. Existing `open` and `openFlatLists` selectors remain
+closed. Owner tests cover recursive startup/export with and without a custom
+toolbar, exclusive host ownership, abort/failure rollback, invalid selectors,
+exact disposal and restoration from a V7 IndexedDB slot. Their engine is a
+static simulated startup fixture: real nested action execution, default toolbar
+descriptor compatibility and replay recovery still require packed generated-Wasm
+qualification. No running demo or shipping bundle has been rebuilt yet.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

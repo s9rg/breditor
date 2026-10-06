@@ -7,6 +7,7 @@ import {
   openBreditorBrowserEditor,
   type BreditorBrowserEditorOptions,
   type BreditorFlatListBrowserEditorOptions,
+  type BreditorNestedListBrowserEditorOptions,
 } from "./browser_editor.js";
 import { BreditorActionStateStore } from "./action_state_store.js";
 import { BreditorDomRenderer } from "./dom_renderer.js";
@@ -289,6 +290,7 @@ interface ProfileFormatFixture {
 }
 
 interface ProfileModuleFixtureOptions {
+  readonly nestedLists?: boolean;
   readonly text?: string;
   readonly schemasByCompilation?: readonly ProfileSchemaFixture[];
   readonly formatsByCompilation?: readonly (readonly ProfileFormatFixture[])[];
@@ -364,6 +366,55 @@ describe("BreditorBrowserEditor", () => {
   );
 
   it.each([undefined, {bootstrapJson: "{}"}, {bootstrapJson: "{}", formatVersion: 2},
+    {bootstrapJson: "{}", formatVersion: 3}, {bootstrapJson: "{}", formatVersion: 4}])("nested nested owner rejects non-V5 profile %j before Wasm", async semanticProfile => {
+    const fixture = moduleFixture(), host = mountHost();
+    const result = await BreditorBrowserEditor.openNestedLists({...options(host, fixture.module), semanticProfile} as unknown as BreditorNestedListBrowserEditorOptions);
+    expect(result).toMatchObject({ok: false, error: {code: "browser_editor.invalid_options"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled(); expect(host.childNodes).toHaveLength(0);
+  });
+
+  it("ordinary owner rejects explicit V5 options without changing its public contract", async () => {
+    const fixture = moduleFixture(), host = mountHost();
+    const listOptions: BreditorNestedListBrowserEditorOptions = {...options(host, fixture.module),
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 5}};
+    // @ts-expect-error The ordinary startup facade remains closed to list profiles.
+    expect(await BreditorBrowserEditor.open(listOptions)).toMatchObject({ok: false, error: {code: "browser_editor.invalid_options"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+  });
+
+  it("aborted nested startup releases the shared host reservation for an ordinary owner", async () => {
+    const fixture = moduleFixture(), host = mountHost();
+    const abort = new AbortController(); abort.abort();
+    expect(await BreditorBrowserEditor.openNestedLists({...options(host, fixture.module),
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 5}, signal: abort.signal}))
+      .toMatchObject({ok: false, error: {code: "browser_editor.aborted"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled(); expect(host.childNodes).toHaveLength(0);
+    const ordinary = await BreditorBrowserEditor.open(options(host, fixture.module));
+    expect(ordinary.ok).toBe(true); if (ordinary.ok) ordinary.editor.dispose();
+  });
+
+  it("unsupported nested Wasm startup rolls back and never falls back to the base engine", async () => {
+    const fixture = moduleFixture(), host = mountHost();
+    expect(await BreditorBrowserEditor.openNestedLists({...options(host, fixture.module),
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 5}}))
+      .toMatchObject({ok: false, error: {code: "browser_editor.engine_bootstrap_failed"}});
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled(); expect(host.childNodes).toHaveLength(0);
+    const ordinary = await BreditorBrowserEditor.open(options(host, fixture.module));
+    expect(ordinary.ok).toBe(true); if (ordinary.ok) ordinary.editor.dispose();
+  });
+
+  it("nested list backup startup rejects simultaneous persistence before touching storage", async () => {
+    const fixture = moduleFixture(), host = mountHost(), factory = new IDBFactory();
+    const open = vi.spyOn(factory, "open");
+    const candidate = {host, label: "List editor", wasm: fixture.module, keyboard: KEYBOARD,
+      semanticProfile: {bootstrapJson: "{}", formatVersion: 5}, initialSessionCheckpointJson: "{}",
+      persistence: {indexedDB: factory, crypto: {digest: vi.fn()}}};
+    expect(await BreditorBrowserEditor.openNestedLists(candidate as unknown as BreditorNestedListBrowserEditorOptions))
+      .toMatchObject({ok: false, error: {code: "browser_editor.invalid_options"}});
+    expect(open).not.toHaveBeenCalled(); expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, {bootstrapJson: "{}"}, {bootstrapJson: "{}", formatVersion: 2},
     {bootstrapJson: "{}", formatVersion: 3}])("list owner rejects non-V4 profile %j before Wasm", async semanticProfile => {
     const fixture = moduleFixture(), host = mountHost();
     const result = await BreditorBrowserEditor.openFlatLists({...options(host, fixture.module), semanticProfile} as unknown as BreditorFlatListBrowserEditorOptions);
@@ -410,6 +461,53 @@ describe("BreditorBrowserEditor", () => {
     expect(await BreditorBrowserEditor.openFlatLists(candidate as unknown as BreditorFlatListBrowserEditorOptions))
       .toMatchObject({ok: false, error: {code: "browser_editor.invalid_options"}});
     expect(open).not.toHaveBeenCalled(); expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("opens a nested owner, exports exact hierarchy and disposes its resources (toolbar=%s)", toolbar => {
+    return (async () => {
+      const host = mountHost(), toolbarHost = mountHost();
+      const fixture = profileModuleFixture({nestedLists: true, text: "nested"});
+      const documentJson = nestedProfileDocumentJson("nested", PROFILE_SCHEMA);
+      const opened = await BreditorBrowserEditor.openNestedLists({...options(host, fixture.module, {
+        initialDocument: {lineageId: LINEAGE, documentJson, historyCapacity: 100}, rendering: PROFILE_RENDERING,
+        ...(toolbar ? {toolbar: {host: toolbarHost, manifest: TOOLBAR_MANIFEST}} : {}),
+      }), semanticProfile: {bootstrapJson: PROFILE_BOOTSTRAP.bootstrapJson, formatVersion: 5}});
+      if (!opened.ok) throw new Error(opened.error.code);
+      try {
+        expect(host.querySelector("ul > li > ol")?.getAttribute("start")).toBe("8");
+        expect(host.textContent).toBe("nested");
+        expect(opened.editor.exportContent("plainText")).toMatchObject({ok: true, value: "\nnested"});
+        expect(opened.editor.exportContent("documentJson")).toMatchObject({ok: true, value: documentJson});
+        expect(fixture.legacyFromDocumentJson).not.toHaveBeenCalled();
+        if (toolbar) expect(toolbarHost.querySelector("button")).not.toBeNull();
+        expect(await BreditorBrowserEditor.open(options(host, moduleFixture().module)))
+          .toMatchObject({ok: false, error: {code: "browser_editor.host_in_use"}});
+      } finally { opened.editor.dispose(); opened.editor.dispose(); }
+      expect(fixture.engines[0]!.rawFree).toHaveBeenCalledOnce();
+      expect(fixture.compilations[0]!.profileGeneration.freeSpy).toHaveBeenCalledOnce();
+      expect(toolbarHost.childNodes).toHaveLength(0);
+    })();
+  });
+
+  it("restores a nested V7 storage slot through the owner without using document startup", async () => {
+    const indexedDB = new IDBFactory(), crypto = digestFixture(), host = mountHost();
+    const checkpoint = nestedProfileCheckpointJson(LINEAGE, 0, "restored", PROFILE_SCHEMA);
+    await seedCheckpoint(indexedDB, crypto, {slot: PROFILE_SCHEMA.fingerprint,
+      schemaFingerprint: PROFILE_SCHEMA.fingerprint, checkpointFormatVersion: 7}, checkpoint);
+    const fixture = profileModuleFixture({nestedLists: true, text: "restored"});
+    const opened = await BreditorBrowserEditor.openNestedLists({...options(host, fixture.module, {
+      initialDocument: {lineageId: LINEAGE, documentJson: nestedProfileDocumentJson("fallback", PROFILE_SCHEMA), historyCapacity: 100},
+      rendering: PROFILE_RENDERING, persistence: {indexedDB, crypto},
+    }), semanticProfile: {bootstrapJson: PROFILE_BOOTSTRAP.bootstrapJson, formatVersion: 5}});
+    if (!opened.ok) throw new Error(opened.error.code);
+    try {
+      expect(host.textContent).toBe("restored");
+      expect(opened.editor.exportContent("sessionCheckpointJson")).toMatchObject({ok: true, value: checkpoint});
+      expect(fixture.compilations).toHaveLength(2);
+      expect(fixture.compilations[1]!.createEngineFromSessionCheckpointJson).toHaveBeenCalledWith(checkpoint);
+      for (const compilation of fixture.compilations) expect(compilation.createEngineFromDocumentJson).not.toHaveBeenCalled();
+      expect(opened.editor.getStatus()).toEqual({phase: "live"});
+    } finally { opened.editor.dispose(); }
   });
 
   it("rejects an editor host inside a ShadowRoot before Wasm startup", async () => {
@@ -4116,6 +4214,12 @@ function profileModuleFixture(
           config.typedIntentOutcome,
           config.inlineFormatSetFormatKind,
         );
+        if (config.nestedLists) {
+          built.engine.projection = () => projectionReadResult(nestedProfileProjectionView(
+            lineage, revision, text, schema, formats, built.engineGeneration), built.engineGeneration);
+          built.engine.documentJson = () => stringResult(nestedProfileDocumentJson(text, schema));
+          built.engine.sessionCheckpointJson = () => stringResult(nestedProfileCheckpointJson(lineage, revision, text, schema));
+        }
         engines.push(built.record);
         engineGenerations.push(built.engineGeneration);
         descriptorFrees.push(built.descriptorFree);
@@ -4126,7 +4230,7 @@ function profileModuleFixture(
           createEngine(
             lineage,
             0,
-            profileDocumentText(documentJson) ?? config.text ?? "profile text",
+            config.nestedLists ? config.text ?? "nested" : profileDocumentText(documentJson) ?? config.text ?? "profile text",
           ),
       );
       const createEngineFromSessionCheckpointJson = vi.fn(
@@ -4135,11 +4239,15 @@ function profileModuleFixture(
           return createEngine(
             restored?.lineage ?? LINEAGE,
             restored?.revision ?? 0,
-            restored?.text ?? config.text ?? "profile text",
+            config.nestedLists ? config.text ?? "nested" : restored?.text ?? config.text ?? "profile text",
           );
         },
       );
       const profile: WasmCompiledProfileBootstrapView = {
+        ...(config.nestedLists ? {
+          createEngineFromDocumentJsonV7: createEngineFromDocumentJson,
+          createEngineFromSessionCheckpointJsonV7: createEngineFromSessionCheckpointJson,
+        } : {}),
         createEngineFromDocumentJson,
         createEngineFromSessionCheckpointJson,
         createEngineFromDocumentJsonV3: createEngineFromDocumentJson,
@@ -4176,6 +4284,7 @@ function profileModuleFixture(
       BreditorCompiledProfile: {
         fromBootstrapJson,
         fromBootstrapJsonV2: fromBootstrapJson,
+        ...(config.nestedLists ? {fromBootstrapJsonV5: fromBootstrapJson} : {}),
       },
       breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
       breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
@@ -4894,6 +5003,44 @@ function projectionView(
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     free: vi.fn(),
   };
+}
+
+/** Static startup fixture only; content-action replay is tested at the adapter boundary. */
+function nestedProfileProjectionView(lineage: string, revision: number, text: string,
+  schema: ProfileSchemaFixture, formats: readonly ProfileFormatFixture[], generation: WasmProfileGenerationView): SemanticProjectionView {
+  const base = profileProjectionView(lineage, revision, text, schema, formats, generation);
+  const children: Record<number, number[]> = {0: [1], 1: [2], 2: [3, 4], 3: [], 4: [5], 5: [6], 6: [7]};
+  const types = ["document", "bullet-list", "list-item", "paragraph", "ordered-list", "list-item", "paragraph"];
+  return Object.assign({...base}, {
+    nodeCount: 8,
+    nodeKind: (index: number) => index === 7 ? "text" : types[index] === undefined ? undefined : "element",
+    elementType: (index: number) => types[index] === undefined ? undefined : `breditor/${types[index]}`,
+    childCount: (index: number) => children[index]?.length,
+    childAt: (index: number, ordinal: number) => children[index]?.[ordinal],
+    text: (index: number) => index === 7 ? text : undefined,
+    formatCount: (index: number) => index === 7 ? base.formatCount(2) : undefined,
+    formatType: (index: number, ordinal: number) => index === 7 ? base.formatType(2, ordinal) : undefined,
+    formatPropertyCount: (index: number, ordinal: number) => index === 7 ? base.formatPropertyCount(2, ordinal) : undefined,
+    headingLevel: () => undefined,
+    listKind: (index: number) => index === 1 ? "bullet" : index === 4 ? "ordered" : undefined,
+    orderedListStart: (index: number) => index === 4 ? 8 : undefined,
+  });
+}
+
+function nestedProfileDocumentJson(text: string, schema: ProfileSchemaFixture): string {
+  const document = JSON.parse(profileDocumentJson(text, schema));
+  const element = (type: string, children: unknown[], properties = {}) => ({kind: "element", type: `breditor/${type}`, entityId: null, properties, children});
+  document.root.children = [element("bullet-list", [element("list-item", [element("paragraph", []),
+    element("ordered-list", [element("list-item", document.root.children)], {"breditor/start": 8})])])];
+  return JSON.stringify(document);
+}
+
+function nestedProfileCheckpointJson(lineage: string, revision: number, text: string, schema: ProfileSchemaFixture): string {
+  const checkpoint = JSON.parse(profileCheckpointJson(lineage, revision, text, schema));
+  checkpoint.formatVersion = 7;
+  checkpoint.historyBase.formatVersion = 3;
+  checkpoint.historyBase.document = JSON.parse(nestedProfileDocumentJson(text, schema));
+  return JSON.stringify(checkpoint);
 }
 
 function profileProjectionView(
