@@ -65,6 +65,7 @@ import { translateNestedListBeforeInput } from "./beforeinput.js";
 import { translateNestedListKeyDown } from "./keyboard.js";
 import { projectNestedListPlainText } from "./projection_plain_text.js";
 import { serializeNestedListClipboardSelection } from "./clipboard_fragment.js";
+import { nestedListCutDeleteRequest, nestedListPasteInsertRequest } from "./nested_list_clipboard_command.js";
 import { nestedListProjectionPresentation } from "./nested_list_projection.js";
 import { issueNestedListCompositionDeliveryToken, nestedListCompositionDeliveryTokenMatchesOpeningBase,
   nestedListCompositionDeliveryTokenMatchesSettlement } from "./composition_delivery_token.js";
@@ -146,6 +147,19 @@ describe("recursive nested-list DOM", () => {
     return nestedListCommandRequest(token, preserveSelectionSync(), {kind: "api", detail: "nested queue"},
       {kind: "action", actionId: nestedListBrowserInputActionIds(token).insertText, input: {kind: "string", value: "x"}});
   }
+  it("bounds nested clipboard commands and keeps their delivery capability isolated", () => {
+    const {delivery, selection} = nestedRequest();
+    const cut = nestedListCutDeleteRequest(delivery, selection);
+    expect(cut.command).toMatchObject({actionId: nestedListBrowserInputActionIds(delivery).deleteSelection});
+    expect(canonicalNestedListEditorCommandRequest(cut)).not.toBeNull();
+    const text = "日本" + "\r\n".repeat(9_999);
+    const paste = nestedListPasteInsertRequest(delivery, selection, text);
+    expect(paste.command).toMatchObject({actionId: nestedListBrowserInputActionIds(delivery).insertPlainText, input: {kind: "string", value: text}});
+    expect(() => nestedListPasteInsertRequest(delivery, selection, text + "\r")).toThrow();
+    expect(() => nestedListPasteInsertRequest(delivery, selection, "\ud800")).toThrow();
+    expect(() => nestedListCutDeleteRequest({...delivery} as never, selection)).toThrow();
+    expect(() => pasteInsertRequest(delivery as never, selection as never, "x")).toThrow();
+  });
   it("routes nested input syntax without widening legacy translation", () => {
     const request = nestedRequest(), delivery = request.delivery, selection = request.selection;
     for (const [inputType, suffix] of [["insertText", "text"], ["insertParagraph", "break"], ["deleteContentBackward", "backward"], ["deleteContentForward", "forward"]]) {

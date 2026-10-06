@@ -398,5 +398,11 @@ legacy translation rejection. Existing controller selection capture remains
 base/flat-only until nested controller wiring is implemented. Tab/Shift-Tab
 indent/outdent capability routing and live native delivery remain pending.
 
+Nested clipboard request builders now admit nested-only cut deletion and plain-text
+paste with a closed-before history boundary. Tests cover Japanese text, the source
+paragraph ceiling, invalid Unicode, forged delivery and rejection by legacy
+builders. Live clipboard-controller and Wasm-adapter integration remain pending;
+these request tests are not native clipboard qualification.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
