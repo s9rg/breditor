@@ -51,5 +51,11 @@
     "leftAndRight": {"headingLevel": 2, "runs": [{"text": "Item 410: A🙂 with enough text to measure a representative short list entry.", "strong": false, "formatDetails": []}]},
     "meaning": "paragraphsEqual returned false for this pair; root kind, start and length comparisons passed. The containing snapshots again serialized identically. This is narrower evidence, not a confirmed cause or fix."
   },
-  "next": "Trace heading level, run count, text, strong and format comparisons inside paragraphsEqual. Seventeen diagnostic tests pass including WebKit. Do not alter production validation or insert timing workarounds."
+  "fieldComparisonDiagnostics": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-6eABGC/measurement.json",
+    "result": "300 owner cycles passed; no reproduction with paragraph field comparison instrumentation in this run",
+    "tests": "18 diagnostic tests passed, including comparison preservation against compiled current source and the WebKit catch-site positive control",
+    "limitation": "This is a diagnostic run, not a fix or release-performance qualification; instrumentation can change reproduction frequency."
+  },
+  "next": "Repeat field-level diagnostics in fresh WebKit sessions to capture the failing operand. Do not alter production validation or insert timing workarounds."
 }

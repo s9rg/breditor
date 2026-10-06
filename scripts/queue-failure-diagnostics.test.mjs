@@ -2,6 +2,33 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
+import {instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
+
+test("paragraph comparison instrumentation preserves real compiled comparison", async () => {
+  const ts = await readFile(new URL("../packages/breditor-browser/src/projection.ts", import.meta.url), "utf8");
+  const compiled = (await transform("projection.ts", ts, {lang: "ts"})).code;
+  const start = compiled.indexOf("function paragraphsEqual(left, right) {");
+  const end = compiled.indexOf("\n}", start) + 2;
+  assert.ok(start >= 0 && end > start);
+  const source = "export " + compiled.slice(start, end);
+  const instrumented = instrumentParagraphComparison(source);
+  const a = {headingLevel: 2, runs: [{text: "A🙂", strong: false, formatDetails: []}]};
+  for (const b of [a, structuredClone(a), {...a, headingLevel: 3}, {...a, runs: []},
+    {...a, runs: [{...a.runs[0], text: "B"}]}, {...a, runs: [{...a.runs[0], strong: true}]},
+    {...a, runs: [{...a.runs[0], formatDetails: ["bold"]}]}]) {
+    for (const hostile of [false, true]) {
+      const results = [];
+      for (const code of [source, instrumented]) {
+        let calls = 0;
+        const compare = new Function("formatDetailsEqual", "console", code.replace("export ", "") + "; return paragraphsEqual;")(
+          (left, right) => {calls++; return JSON.stringify(left) === JSON.stringify(right);},
+          {error() {if (hostile) throw new Error("logger");}});
+        results.push({value: compare(a, b), calls});
+      }
+      assert.deepEqual(results[0], results[1]);
+    }
+  }
+});
 import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 
 test("flat comparator logging preserves short circuit and equality results", () => {

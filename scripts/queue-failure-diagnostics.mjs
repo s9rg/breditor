@@ -2,6 +2,35 @@
 // or production logging. Retain normal terminal queue semantics after logging.
 import assert from "node:assert/strict";
 
+/** Observe the original boolean results; never retry or override comparisons. */
+export function instrumentParagraphComparison(code) {
+  const start = "export function paragraphsEqual(left, right) {";
+  assert.equal(code.split(start).length, 2, "paragraph comparator start changed");
+  const from = code.indexOf(start), end = code.indexOf("\n}", from);
+  assert.ok(end > from);
+  let body = code.slice(from, end);
+  for (const [name, expression] of [
+    ["heading", "left.headingLevel !== right.headingLevel"],
+    ["runCount", "left.runs.length !== right.runs.length"],
+    ["leftAbsent", "leftRun === undefined"],
+    ["rightAbsent", "rightRun === undefined"],
+    ["text", "leftRun.text !== rightRun.text"],
+    ["strong", "leftRun.strong !== rightRun.strong"],
+    ["formats", "!formatDetailsEqual(leftRun.formatDetails, rightRun.formatDetails)"],
+  ]) {
+    assert.equal(body.split(expression).length, 2, `paragraph comparison changed: ${name}`);
+    body = body.replace(expression, `paragraphComparisonDiagnostic(${JSON.stringify(name)}, ${expression})`);
+  }
+  body = body.replace(start, start + `
+    const paragraphComparisonDiagnostic = (operand, mismatch) => {
+        if (mismatch) {
+            try { console.error("breditor paragraph comparison mismatch", JSON.stringify({operand, left, right}).slice(0, 4096)); } catch {}
+        }
+        return mismatch;
+    };`);
+  return code.slice(0, from) + body + code.slice(end);
+}
+
 // Preserve the validator's bounded failure code before the adapter replaces it
 // with its generic exception. Synthetic disposable bundles only.
 export function instrumentProjectionUpdateFailures(code) {
