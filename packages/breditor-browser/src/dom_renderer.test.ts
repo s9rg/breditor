@@ -54,6 +54,7 @@ type Run = Readonly<{ text: string; strong: boolean }>;
 
 import { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { NestedListProjectionUpdate } from "./nested_list_projection_update.js";
+import { mapDomPointToNestedListSelectionPoint, mapNestedListSelectionPointToDomPoint } from "./nested_list_dom_point_mapping.js";
 import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
 
 describe("recursive nested-list DOM", () => {
@@ -144,6 +145,39 @@ describe("recursive nested-list DOM", () => {
     expect(f.host.firstChild).toBe(root);
     expect(f.rendered.validateCanonicalDom()).toBe(true);
     expect(f.renderer.updateNestedList(f.rendered, update).ok).toBe(true);
+  });
+  it("round-trips every nested scalar and block boundary", () => {
+    const {rendered, projection} = fixture();
+    for (const {path, block} of projection.textBlocks) {
+      for (let childIndex = 0; childIndex <= block.runs.length; childIndex++) {
+        const point = {kind: "children", parentPath: path, childIndex, affinity: childIndex > 0 ? "before" : "after"};
+        const dom = valueOf(mapNestedListSelectionPointToDomPoint(rendered, point));
+        expect(valueOf(mapDomPointToNestedListSelectionPoint(rendered, dom.node, dom.offset))).toEqual(point);
+      }
+      block.runs.forEach((run, index) => {
+        let offset = 0;
+        for (const scalar of [...run.text, ""]) {
+          const point = {kind: "text", textPath: [...path, index], utf16Offset: offset,
+            affinity: offset === run.text.length ? "before" : "after"};
+          const dom = valueOf(mapNestedListSelectionPointToDomPoint(rendered, point));
+          expect(valueOf(mapDomPointToNestedListSelectionPoint(rendered, dom.node, dom.offset))).toEqual(point);
+          offset += scalar.length;
+        }
+      });
+    }
+  });
+  it("normalizes wrapper edges across descendants but rejects interior item boundaries", () => {
+    const {rendered, host} = fixture();
+    const item = host.querySelector("li")!;
+    expect(valueOf(mapDomPointToNestedListSelectionPoint(rendered, item, 0))).toEqual({kind: "children", parentPath: [0, 0, 0], childIndex: 0, affinity: "after"});
+    expect(valueOf(mapDomPointToNestedListSelectionPoint(rendered, item, 2))).toEqual({kind: "children", parentPath: [0, 0, 1, 0, 1, 0, 0], childIndex: 0, affinity: "after"});
+    expect(mapDomPointToNestedListSelectionPoint(rendered, item, 1).ok).toBe(false);
+    const placeholder = host.querySelector("br")!;
+    expect(valueOf(mapDomPointToNestedListSelectionPoint(rendered, placeholder, 0))).toMatchObject({parentPath: [0, 0, 1, 0, 1, 0, 0]});
+    const wrapper = host.querySelector("ol strong")!;
+    expect(valueOf(mapDomPointToNestedListSelectionPoint(rendered, wrapper, 1))).toEqual({kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 7, affinity: "before"});
+    expect(mapDomPointToNestedListSelectionPoint(rendered, wrapper.firstChild!, 6).ok).toBe(false);
+    expect(mapDomPointToNestedListSelectionPoint(rendered, document.createTextNode("foreign"), 0).ok).toBe(false);
   });
 });
 

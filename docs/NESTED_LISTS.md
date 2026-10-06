@@ -263,5 +263,14 @@ usable for retry. Unit tests exercise moved deep paths, root/drift fallback,
 superseded handles, foreign ownership and failed-construction recovery.
 Composition leases and DOM selection integration remain separate work.
 
+Nested DOM point mapping now translates validated semantic endpoints to native
+nodes/offsets and back. Outer root/list/item edges normalize to the first or
+last descendant block, not merely the leading block of the final item. Interior
+wrapper boundaries remain ambiguous and are rejected. Empty placeholders and
+inert inline wrappers normalize explicitly; foreign nodes and UTF-16 positions
+inside a scalar are rejected. Unit tests round-trip every scalar and text-block
+boundary in a recursive fixture. Native range direction, selection echoes,
+composition leases and public event-controller integration remain pending.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
