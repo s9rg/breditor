@@ -111,7 +111,7 @@ test("paragraph operand capture preserves single reads and short-circuit rejecti
   assert.throws(() => instrumentParagraphShapeOperands(""));
 });
 
-test("flat impact diagnostics preserve rejection and bound mismatch context", () => {
+for (const family of ["flat", "nested"]) test(`${family} impact diagnostics preserve rejection and bound mismatch context`, () => {
   const source = `function verifyImpact(a, b, input) {
     const oldIndex = 0, newIndex = 0;
     if (a === undefined || b === undefined || !flatListRootsEqual(a, b))
@@ -119,15 +119,18 @@ test("flat impact diagnostics preserve rejection and bound mismatch context", ()
     return true;
   }
   function rejected() { return projectionFailure("projection.invalid_update"); }`;
-  const transformed = instrumentProjectionValidationSites(source, "flat_list_projection_update");
+  const comparator = family === "nested" ? "nestedListRootsEqual" : "flatListRootsEqual";
+  const transformed = instrumentProjectionValidationSites(source.replaceAll("flatListRootsEqual", comparator), `${family}_list_projection_update`);
   for (const hostile of [false, true]) {
     const logs = [];
-    const run = new Function("flatListRootsEqual", "console", `${transformed}; return verifyImpact;`)(
-      (a, b) => a === b, {error(...args) {if (hostile) throw new Error("logger"); logs.push(args);}});
+    let comparisons = 0;
+    const run = new Function(comparator, "console", `${transformed}; return verifyImpact;`)(
+      (a, b) => { comparisons++; return a === b; }, {error(...args) {if (hostile) throw new Error("logger"); logs.push(args);}});
     const before = {text: "x".repeat(20000) + "a"}, after = {text: "x".repeat(20000) + "b"};
     assert.equal(run(before, before, {kind: "none"}), true);
     assert.equal(logs.length, 0);
     assert.equal(run(before, after, {kind: "none"}), false);
+    assert.equal(comparisons, 2, "diagnostics must not retry the comparator");
     if (!hostile) {
       assert.ok(logs[0][1].length <= 4096);
       const detail = JSON.parse(logs[0][1]);

@@ -921,3 +921,21 @@ fault, native-input checks or release performance gate.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
+
+### Deep-edit WebKit diagnostic checkpoint
+
+Current baseline `nested-list-packages-3Zb7rY` completed 270 grandchild-edit
+cycles (three fresh WebKit sessions, 30 owners each at 10/100/500 roots), with
+exact document/selection undo and fresh-owner redo recovery checks. Report:
+`breditor-nested-list-consumer-pTQSAR/performance-ce1Bmr/measurement.json`.
+This run used rejection-site labels, not the new subtree snapshot capture.
+
+Disposable diagnostics now also capture bounded before/after subtree excerpts
+when nested impact validation rejects a retained root. They keep the original
+comparison, short-circuit behavior, return value and terminal failure; tests
+check no comparator retry and containment of a throwing logger. All 21 diagnostic
+tests pass with the optional real-WebKit exception test enabled.
+The extended instrumentation was exercised against retained package `TpYaIw`:
+all nine grandchild cycles passed (`breditor-nested-list-consumer-RBqXwA/performance-gJcltf`).
+No new reproduction occurred. These diagnostic runs are not latency evidence,
+native-input qualification, or closure of the previously recorded WebKit fault.

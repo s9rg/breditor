@@ -68,18 +68,20 @@ export function instrumentProjectionValidationSites(code, moduleName) {
   if (moduleName === "wasm_projection_adapter" && transformed.includes("const plannedBlock = layout?.textBlocks[paragraphOrdinal];")) {
     return instrumentParagraphShapeOperands(transformed);
   }
-  if (moduleName !== "flat_list_projection_update") return transformed;
+  if (!["flat_list_projection_update", "nested_list_projection_update"].includes(moduleName)) return transformed;
   // Capture already-owned JS snapshots only after an equality rejection. Never
   // reread a Wasm handle, retry validation, or change the rejected result.
-  const anchor = 'if (a === undefined || b === undefined || !flatListRootsEqual(a, b))\n            return false;';
+  const family = moduleName === "nested_list_projection_update" ? "nested" : "flat";
+  const comparator = family === "nested" ? "nestedListRootsEqual" : "flatListRootsEqual";
+  const anchor = `if (a === undefined || b === undefined || !${comparator}(a, b))\n            return false;`;
   if (!transformed.includes("function verifyImpact(")) return transformed;
-  assert.equal(transformed.split(anchor).length, 2, "flat impact retain diagnostic site changed");
-  const withSnapshots = transformed.replace(anchor, `if (a === undefined || b === undefined || !flatListRootsEqual(a, b)) {
+  assert.equal(transformed.split(anchor).length, 2, `${family} impact retain diagnostic site changed`);
+  const withSnapshots = transformed.replace(anchor, `if (a === undefined || b === undefined || !${comparator}(a, b)) {
             try {
                 const before = JSON.stringify(a) ?? "undefined", after = JSON.stringify(b) ?? "undefined";
                 let offset = 0;
                 while (offset < before.length && offset < after.length && before[offset] === after[offset]) offset++;
-                console.error("breditor flat impact mismatch", JSON.stringify({oldIndex, newIndex, impact: input,
+                console.error("breditor ${family} impact mismatch", JSON.stringify({oldIndex, newIndex, impact: input,
                     beforeLength: before.length, afterLength: after.length, offset,
                     before: before.slice(Math.max(0, offset - 256), offset + 1024),
                     after: after.slice(Math.max(0, offset - 256), offset + 1024)}).slice(0, 4096));
