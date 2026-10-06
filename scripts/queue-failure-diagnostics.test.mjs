@@ -10,7 +10,9 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
   const start = compiled.indexOf("function paragraphsEqual(left, right) {");
   const end = compiled.indexOf("\n}", start) + 2;
   assert.ok(start >= 0 && end > start);
-  const source = "export " + compiled.slice(start, end);
+  const currentSource = "export " + compiled.slice(start, end);
+  // Diagnostics target the retained pre-fix package, not rebuilt current code.
+  const source = currentSource.replace("!Object.is(left.headingLevel, right.headingLevel)", "left.headingLevel !== right.headingLevel");
   const instrumented = instrumentParagraphComparison(source);
   const sameValue = instrumentParagraphComparison(source, "same-value");
   const minimal = instrumentParagraphComparison(source, "same-value-minimal");

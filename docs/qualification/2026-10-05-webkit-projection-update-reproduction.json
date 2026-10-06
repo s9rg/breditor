@@ -86,8 +86,17 @@
   "minimalCandidate": {
     "variant": "BREDITOR_PERF_HEADING_COMPARISON=same-value-minimal",
     "scope": "Changes exactly the heading inequality to !Object.is; removes paragraph, root-comparison and shape instrumentation. Retains terminal queue/router/error logging only.",
-    "status": "three-session trial running at checkpoint",
+    "status": "passed: three fresh WebKit sessions, 900 measured owner cycles",
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-flat-list-consumer-c55C4E/performance-Qpio0f/measurement.json",
+    "reportSha256": "be179d88095265ca891e1ff9ce07635cddaf88fc39b501eb465d8de8bf47cc18",
     "tests": "18 diagnostic tests passed; test verifies minimal comparator source differs by exactly the one intended replacement"
   },
-  "next": "Inspect the running minimal same-value comparison trial before any production change. Keep independent paragraph-shape failure and nested release gates open."
+  "sourceMitigation": {
+    "change": "paragraphsEqual uses Object.is for admitted heading ranks; all other comparisons and validation remain unchanged",
+    "verification": "Type checking, 2085 browser tests, 18 diagnostic tests, and isolated nested-list package checks in Chromium/Firefox/WebKit passed",
+    "packageRecord": "target/nested-list-packages-DC9v8R/qualification.json",
+    "shippingArtifactsWritten": false,
+    "limitation": "The reproduced heading-comparison path has a tested compatibility mitigation. The separate paragraph-shape rejection is not proven fixed; the overall WebKit and release gates remain open."
+  },
+  "next": "Refresh the single opt-in package, verify its consumer and stress current nested behavior. Continue isolating the independent paragraph-shape rejection."
 }

@@ -403,7 +403,10 @@ export function paragraphsEqual(
   if (left === right) {
     return true;
   }
-  if (left.headingLevel !== right.headingLevel || left.runs.length !== right.runs.length) {
+  // Admitted ranks are undefined or integers 1–6: SameValue preserves equality.
+  // Retained WebKit trials observed strict inequality reject two captured 2s;
+  // see the 2026-10-05 projection-update reproduction record.
+  if (!Object.is(left.headingLevel, right.headingLevel) || left.runs.length !== right.runs.length) {
     return false;
   }
   for (let index = 0; index < left.runs.length; index += 1) {

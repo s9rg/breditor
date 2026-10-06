@@ -604,6 +604,16 @@ The first field-instrumented run passed 300 owner cycles; that does not establis
 a fix. Exact reports and follow-up results are recorded in the reproduction JSON
 above. No production validation has been weakened.
 
+The captured heading inequality path now has a narrow compatibility mitigation:
+`paragraphsEqual` uses `Object.is` for heading ranks (equivalent for admitted
+undefined/1–6 values). The retained candidate passed 900 instrumented and 900
+lean owner cycles across six fresh WebKit sessions. Current source passes type
+checks, 2,085 browser tests, and isolated nested-package consumers in Chromium,
+Firefox and WebKit (`target/nested-list-packages-DC9v8R/qualification.json`).
+Shipping artifacts are unchanged. The independent paragraph-shape rejection,
+native qualification, size and large-document performance remain open; this is
+not a claim that all WebKit faults or release requirements are resolved.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
