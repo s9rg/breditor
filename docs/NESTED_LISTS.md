@@ -438,5 +438,16 @@ failure and uncertain execution without retry. Test events and generated results
 are simulated; native clipboard qualification and editor/router attachment are
 still pending. Paste remains bounded plain text, not structural HTML import.
 
+The explicit nested composition controller now connects deep target-range
+refinement, DOM reconciliation, adapter leases and nested command delivery to
+the shared composition state machine. Adapter-backed tests preserve backward
+selection/affinity, reject cross-item and scalar-splitting targets, restore
+canonical DOM after structural drift, cancel without text edits and quarantine
+uncertain execution without retry. A simulated Japanese replacement commits
+once and suppresses its terminal input echo while releasing the queue lease.
+These are synthetic-event/ABI tests, not physical Japanese IME qualification.
+Cross-block composition remains rejected; native router/editor attachment is
+still pending.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

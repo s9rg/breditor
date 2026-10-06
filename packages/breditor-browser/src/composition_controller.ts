@@ -1,7 +1,9 @@
 import {
   BreditorCommandQueue,
   BreditorFlatListCommandQueue,
+  BreditorNestedListCommandQueue,
   openFlatListCommandQueueLeasePort,
+  openNestedListCommandQueueLeasePort,
   openCommandQueueLeasePort,
   type CommandQueueLease,
   type CommandQueueLeasePort,
@@ -31,7 +33,7 @@ import {
   type CompositionSignal,
   type CompositionState,
 } from "./composition_state.js";
-import { reconcileCompositionDom, reconcileFlatListCompositionDom } from "./dom_composition_reconcile.js";
+import { reconcileCompositionDom, reconcileFlatListCompositionDom, reconcileNestedListCompositionDom } from "./dom_composition_reconcile.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
   preventDomEventDefault,
@@ -43,18 +45,21 @@ import { nativeHtmlHostFacts } from "./html_host.js";
 import {
   isOwnedRenderedProjection,
   isOwnedFlatListRenderedProjection,
+  isOwnedNestedListRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
-import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge } from "./dom_selection.js";
-import { mapDomTargetRange, mapDomFlatListTargetRange } from "./dom_target_range.js";
+import { BreditorDomSelectionBridge, BreditorFlatListDomSelectionBridge, BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
+import { mapDomTargetRange, mapDomFlatListTargetRange, mapDomNestedListTargetRange } from "./dom_target_range.js";
 import {
   flatListRangeSelectionSync,
+  nestedListRangeSelectionSync,
   isEditorDeliveryAuthority,
   rangeSelectionSync,
   type EditorDeliveryToken,
   type FlatListEditorDeliveryToken,
   type EditorCommandRequest,
   type FlatListEditorCommandRequest,
+  type NestedListEditorCommandRequest,
   type EditorDeliveryAuthority,
 } from "./editor_command.js";
 import {
@@ -64,6 +69,7 @@ import {
 import {
   type BreditorWasmCommandAdapter,
   type BreditorFlatListWasmCommandAdapter,
+  type BreditorNestedListWasmCommandAdapter,
   type WasmRenderReconciliationOutcome,
   type WasmCommandSequenceOutcome,
   type WasmCompositionLeaseRestoreOutcome,
@@ -74,13 +80,15 @@ import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 import { astPathsEqual } from "./ast_path.js";
 import type { BaseDocumentProjection } from "./projection.js";
 import type { FlatListDocumentProjection } from "./flat_list_projection.js";
+import type { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { FlatListRangeSelection, isOwnedFlatListRangeSelection, flatListSpatialPositionForPoint } from "./flat_list_selection.js";
+import { NestedListRangeSelection, isOwnedNestedListRangeSelection, nestedListSpatialPositionForPoint } from "./nested_list_selection.js";
 import { nativeCommandBuilder } from "./native_command_builder.js";
 
-type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection;
+type CompositionProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
 type Delivery<P extends CompositionProjection> = WasmCommandDeliveryToken<P>;
-type Selection<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
-type Request<P extends CompositionProjection> = P extends FlatListDocumentProjection ? FlatListEditorCommandRequest : EditorCommandRequest;
+type Selection<P extends CompositionProjection> = P extends NestedListDocumentProjection ? NestedListRangeSelection : P extends FlatListDocumentProjection ? FlatListRangeSelection : BaseRangeSelection;
+type Request<P extends CompositionProjection> = P extends NestedListDocumentProjection ? NestedListEditorCommandRequest : P extends FlatListDocumentProjection ? FlatListEditorCommandRequest : EditorCommandRequest;
 
 /** A completed, non-queued Rust composition delivery. */
 export interface CompositionCommandSubmission<P extends CompositionProjection = BaseDocumentProjection> {
@@ -151,7 +159,7 @@ interface AdapterSurface<P extends CompositionProjection> {
   ) => WasmCommandSequenceOutcome<P>;
   readonly rendered: RenderedProjection<P>;
   readonly state: BreditorWasmCommandAdapter["state"];
-  readonly selectionBridge: BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge;
+  readonly selectionBridge: BreditorDomSelectionBridge | BreditorFlatListDomSelectionBridge | BreditorNestedListDomSelectionBridge;
   readonly deliveryAuthority: EditorDeliveryAuthority;
   acceptsDeliveryToken(token: unknown): token is Delivery<P>;
   deliveryToken(): Delivery<P>;
@@ -214,7 +222,7 @@ const defaultScheduleTask = (callback: () => void): void => {
 class CompositionControllerCore<P extends CompositionProjection> {
   readonly #queuePort: CommandQueueLeasePort<WasmCommandSequenceOutcome<P>, Request<P>>;
   readonly #adapter: AdapterSurface<P>;
-  readonly #flatLists: boolean;
+  readonly #flatLists: boolean | "nested";
   readonly #scheduleTask: (callback: () => void) => void;
   readonly #onSettlement:
     | ((result: CompositionControllerNotification<P>) => void)
@@ -225,12 +233,12 @@ class CompositionControllerCore<P extends CompositionProjection> {
   #restoringDom = false;
 
   constructor(
-    queue: BreditorCommandQueue<WasmCommandSequenceOutcome<P>> | BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<P>>,
-    adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter,
+    queue: BreditorCommandQueue<WasmCommandSequenceOutcome<P>> | BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<P>> | BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<P>>,
+    adapter: BreditorWasmCommandAdapter | BreditorFlatListWasmCommandAdapter | BreditorNestedListWasmCommandAdapter,
     options: CompositionControllerOptions<P>,
-    flatLists: boolean,
+    flatLists: boolean | "nested",
   ) {
-    if (!(flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
+    if (!(flatLists === "nested" ? queue instanceof BreditorNestedListCommandQueue : flatLists ? queue instanceof BreditorFlatListCommandQueue : queue instanceof BreditorCommandQueue)) {
       throw new TypeError("composition queue is invalid");
     }
     const surface = adapter as unknown as AdapterSurface<P>;
@@ -241,9 +249,9 @@ class CompositionControllerCore<P extends CompositionProjection> {
       adapterValid =
         typeof executor === "function" &&
         surface.commandExecutor === executor &&
-        (flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
+        (flatLists === "nested" ? surface.selectionBridge instanceof BreditorNestedListDomSelectionBridge : flatLists ? surface.selectionBridge instanceof BreditorFlatListDomSelectionBridge : surface.selectionBridge instanceof BreditorDomSelectionBridge) &&
         isEditorDeliveryAuthority(surface.deliveryAuthority) &&
-        (flatLists ? isOwnedFlatListRenderedProjection(surface.rendered) : isOwnedRenderedProjection(surface.rendered)) &&
+        (flatLists === "nested" ? isOwnedNestedListRenderedProjection(surface.rendered) : flatLists ? isOwnedFlatListRenderedProjection(surface.rendered) : isOwnedRenderedProjection(surface.rendered)) &&
         typeof surface.deliveryToken === "function" &&
         typeof surface.acceptsDeliveryToken === "function" &&
         typeof surface.beginCompositionLease === "function" &&
@@ -258,7 +266,9 @@ class CompositionControllerCore<P extends CompositionProjection> {
     if (!adapterValid || executor === undefined) {
       throw new TypeError("composition adapter is invalid");
     }
-    const queuePort = (flatLists && queue instanceof BreditorFlatListCommandQueue
+    const queuePort = (flatLists === "nested" && queue instanceof BreditorNestedListCommandQueue
+      ? openNestedListCommandQueueLeasePort(queue, executor as (request: NestedListEditorCommandRequest) => WasmCommandSequenceOutcome<P>)
+      : flatLists === true && queue instanceof BreditorFlatListCommandQueue
       ? openFlatListCommandQueueLeasePort(queue, executor as (request: FlatListEditorCommandRequest) => WasmCommandSequenceOutcome<P>)
       : !flatLists && queue instanceof BreditorCommandQueue
         ? openCommandQueueLeasePort(queue, executor as (request: EditorCommandRequest) => WasmCommandSequenceOutcome<P>) : undefined
@@ -646,7 +656,9 @@ class CompositionControllerCore<P extends CompositionProjection> {
 
   #readSelection(rendered: RenderedProjection<P>): Selection<P> | null {
     const bridge = this.#adapter.selectionBridge;
-    const observed = this.#flatLists && isOwnedFlatListRenderedProjection(rendered) && bridge instanceof BreditorFlatListDomSelectionBridge
+    const observed = this.#flatLists === "nested" && isOwnedNestedListRenderedProjection(rendered) && bridge instanceof BreditorNestedListDomSelectionBridge
+      ? bridge.read(rendered)
+      : this.#flatLists === true && isOwnedFlatListRenderedProjection(rendered) && bridge instanceof BreditorFlatListDomSelectionBridge
       ? bridge.read(rendered)
       : !this.#flatLists && isOwnedRenderedProjection(rendered) && bridge instanceof BreditorDomSelectionBridge
         ? bridge.read(rendered) : null;
@@ -655,7 +667,27 @@ class CompositionControllerCore<P extends CompositionProjection> {
 
   #refinedTargetSelection(range: AbstractRange, captured: Selection<P>): Selection<P> | null {
     const rendered = this.#adapter.rendered;
-    if (this.#flatLists && isOwnedFlatListRenderedProjection(rendered)) {
+    if (this.#flatLists === "nested" && isOwnedNestedListRenderedProjection(rendered)) {
+      const mapped = mapDomNestedListTargetRange(rendered, range);
+      if (!mapped.ok) return null;
+      const refined = NestedListRangeSelection.create(rendered.projection, {
+        kind: "range", anchor: mapped.value.start, focus: mapped.value.end,
+      });
+      if (!refined.ok) return null;
+      const anchor = nestedListSpatialPositionForPoint(rendered.projection, refined.value.anchor);
+      const focus = nestedListSpatialPositionForPoint(rendered.projection, refined.value.focus);
+      if (anchor === null || focus === null || !astPathsEqual(anchor.textBlockPath, focus.textBlockPath)) return null;
+      const originalAnchor = nestedListSpatialPositionForPoint(rendered.projection, captured.anchor);
+      const originalFocus = nestedListSpatialPositionForPoint(rendered.projection, captured.focus);
+      if (captured.projection === rendered.projection && originalAnchor !== null && originalFocus !== null &&
+        astPathsEqual(originalAnchor.textBlockPath, anchor.textBlockPath) &&
+        astPathsEqual(originalFocus.textBlockPath, anchor.textBlockPath) &&
+        sameCompositionSpan(originalAnchor.utf16Offset, originalFocus.utf16Offset, anchor.utf16Offset, focus.utf16Offset)) {
+        return captured;
+      }
+      return refined.value as Selection<P>;
+    }
+    if (this.#flatLists === true && isOwnedFlatListRenderedProjection(rendered)) {
       const mapped = mapDomFlatListTargetRange(rendered, range);
       if (!mapped.ok) return null;
       const refined = FlatListRangeSelection.create(rendered.projection, {
@@ -782,7 +814,7 @@ class CompositionControllerCore<P extends CompositionProjection> {
       return this.#quarantine("invalidTransition");
     }
     if (!hostConnected(active.token.host)) return this.#quarantine("staleBase");
-    const reconciled = (this.#flatLists ? reconcileFlatListCompositionDom : reconcileCompositionDom)(
+    const reconciled = (this.#flatLists === "nested" ? reconcileNestedListCompositionDom : this.#flatLists ? reconcileFlatListCompositionDom : reconcileCompositionDom)(
       active.token.host,
       active.token.projection,
       active.selection,
@@ -810,7 +842,8 @@ class CompositionControllerCore<P extends CompositionProjection> {
 
     let request;
     try {
-      const selection = isOwnedFlatListRangeSelection(restored.selection)
+      const selection = isOwnedNestedListRangeSelection(restored.selection)
+        ? nestedListRangeSelectionSync(restored.selection) : isOwnedFlatListRangeSelection(restored.selection)
         ? flatListRangeSelectionSync(restored.selection) : rangeSelectionSync(restored.selection);
       const builder = nativeCommandBuilder(this.#flatLists, restored.delivery, selection);
       const source = {kind: "beforeinput" as const, detail: candidate.value.kind === "cancel" ? "composition-cancel" : "composition"};
@@ -1096,6 +1129,14 @@ export class BreditorFlatListCompositionController extends CompositionController
   constructor(queue: BreditorFlatListCommandQueue<WasmCommandSequenceOutcome<FlatListDocumentProjection>>,
     adapter: BreditorFlatListWasmCommandAdapter, options: CompositionControllerOptions<FlatListDocumentProjection> = {}) {
     super(queue, adapter, options, true);
+  }
+}
+
+/** Explicit recursive-list composition delivery. @internal */
+export class BreditorNestedListCompositionController extends CompositionControllerCore<NestedListDocumentProjection> {
+  constructor(queue: BreditorNestedListCommandQueue<WasmCommandSequenceOutcome<NestedListDocumentProjection>>,
+    adapter: BreditorNestedListWasmCommandAdapter, options: CompositionControllerOptions<NestedListDocumentProjection> = {}) {
+    super(queue, adapter, options, "nested");
   }
 }
 
