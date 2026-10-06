@@ -5,7 +5,7 @@ use crate::{
     block::{ListKind, OrderedListStart},
 };
 
-fn entries(
+pub(super) fn entries(
     node: &NodeRef,
     marker: Option<bool>,
     output: &mut Vec<(NodeRef, Option<bool>)>,

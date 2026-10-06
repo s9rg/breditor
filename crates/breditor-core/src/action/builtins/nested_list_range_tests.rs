@@ -3,6 +3,8 @@
 mod block_kind_tests;
 #[path = "wrap_nested_list_tests.rs"]
 mod wrap_tests;
+#[path = "unwrap_nested_list_tests.rs"]
+mod unwrap_tests;
 use super::*;
 use crate::{
     action::{ActionInput, ActionInvocation, ActionRegistration, ActionRegistry, ActionValue},

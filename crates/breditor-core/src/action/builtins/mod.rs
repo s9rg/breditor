@@ -20,6 +20,10 @@ mod set_nested_list_block_kind;
 #[cfg(feature = "experimental-structural-properties")]
 mod wrap_nested_list;
 #[cfg(feature = "experimental-structural-properties")]
+mod unwrap_nested_list;
+#[cfg(feature = "experimental-structural-properties")]
+pub use unwrap_nested_list::UnwrapNestedListAction;
+#[cfg(feature = "experimental-structural-properties")]
 pub use wrap_nested_list::WrapNestedListAction;
 #[cfg(feature = "experimental-structural-properties")]
 pub use set_nested_list_block_kind::SetNestedListBlockKindAction;
