@@ -857,6 +857,18 @@ smokes with shipping trees unchanged. Its grandchild run passes all 27 cycles:
 not a statistically qualified speedup or latency-budget pass. Native testing of
 this newer package and refreshed single-package assembly remain outstanding.
 
+Refreshed single-package archive `target/nested-list-opt-in-WNID8x` now passes
+external installed Node/types and Chromium/Firefox/WebKit checks, including
+trusted-key nesting, typing, Enter/Backspace, history and disabled-indent focus
+navigation. Archive SHA-256:
+`8c466298da0fc1c3c1ce3751f9bf46089df3b7d3e7c52941171dcbe2cd6e76fa`;
+955,010 compressed bytes, 4,159,393 unpacked bytes. Consumer:
+`breditor-opt-in-consumer-ajC0iA`. All ten package-contract tests also pass.
+Private/unpublished status and default shipping artifacts are unchanged.
+Native observations above still refer to the earlier `k3OedF` archive; do not
+transfer that evidence to this archive. Size, native and full release gates stay
+open.
+
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
