@@ -5,9 +5,50 @@ import { projectPlainText, projectFlatListPlainText, MAX_BROWSER_PLAIN_TEXT_UTF8
 import { FlatListDocumentProjection, isOwnedFlatListProjection } from "./flat_list_projection.js";
 import { isOwnedProjection } from "./projection.js";
 import { NestedListDocumentProjection, isOwnedNestedListProjection } from "./nested_list_projection.js";
-import { consumeNestedListSemanticProjection } from "./wasm_projection_adapter.js";
+import { consumeNestedListSemanticProjection, consumeNestedListSemanticProjectionUpdate, consumeNestedListSemanticProjectionUpdateWithCleanup } from "./wasm_projection_adapter.js";
 import { NestedListRangeSelection, nestedListSpatialPositionForPoint, isOwnedNestedListRangeSelection } from "./nested_list_selection.js";
 import { consumeNestedListSemanticSelection, consumeNestedListSemanticSelectionWithCleanup, nestedListSemanticRangeSelectionScalars } from "./wasm_selection_adapter.js";
+import { NestedListProjectionUpdate, nestedListUpdatePlan } from "./nested_list_projection_update.js";
+
+describe("nested subtree update proof", () => {
+  const bare = (text: string) => ({kind: "textBlock", block: {headingLevel: null, runs: [{text, formatDetails: []}]}});
+  const tree = (text = "child", start = 8) => ({kind: "bulletList", items: [
+    {block: bare("parent").block, lists: [{kind: "orderedList", start, items: [{block: bare(text).block, lists: []}]}]},
+  ]});
+  function fixture() {
+    const descriptor = ownedProfileDescriptor([]);
+    const make = (revision: string, blocks: unknown[]) => valueOf(NestedListDocumentProjection.create({
+      schema: descriptor.schema, snapshot: {lineage: "updates", revision}, blocks,
+    }, TEST_PROFILE_GENERATION, descriptor));
+    return {make, base: make("0", [bare("before"), tree(), bare("after")])};
+  }
+  it("only reuses complete equal subtrees outside a guarded root splice", () => {
+    const {make, base} = fixture();
+    const result = make("1", [bare("before"), tree("changed"), bare("inserted"), bare("after")]);
+    const update = valueOf(NestedListProjectionUpdate.create({base, result,
+      impact: {kind: "rootSplice", oldRange: {start: 1, end: 2}, newRange: {start: 1, end: 3}}}));
+    expect(nestedListUpdatePlan(update)).toEqual({kind: "reuse", roots: [{oldIndex: 0, newIndex: 0}, {oldIndex: 2, newIndex: 3}]});
+    expect(Object.isFrozen(nestedListUpdatePlan(update))).toBe(true);
+  });
+  it("detects descendant text and numbered-start changes under a claimed unchanged root", () => {
+    for (const changed of [tree("different"), tree("child", 9)]) {
+      const {make, base} = fixture();
+      const result = make("1", [bare("before"), changed, bare("after")]);
+      expect(NestedListProjectionUpdate.create({base, result, impact: {kind: "none"}}).ok).toBe(false);
+      expect(NestedListProjectionUpdate.create({base, result, impact: {kind: "textContainers", paragraphIndexes: [0]}}).ok).toBe(false);
+      expect(NestedListProjectionUpdate.create({base, result, impact: {kind: "textContainers", paragraphIndexes: [1]}}).ok).toBe(false);
+    }
+  });
+  it("requires consecutive same-owner snapshots and admits explicit full rebuild", () => {
+    const {make, base} = fixture();
+    const result = make("1", [tree()]);
+    const update = valueOf(NestedListProjectionUpdate.create({base, result, impact: {kind: "root"}}));
+    expect(nestedListUpdatePlan(update)).toEqual({kind: "full", reason: "root"});
+    expect(NestedListProjectionUpdate.create({base, result: make("2", [tree()]), impact: {kind: "root"}}).ok).toBe(false);
+    expect(NestedListProjectionUpdate.create({base, result: fixture().make("1", [tree()]), impact: {kind: "root"}}).ok).toBe(false);
+    expect(NestedListProjectionUpdate.create({base: {...base}, result, impact: {kind: "root"}}).ok).toBe(false);
+  });
+});
 
 describe("recursive generated projection consumption", () => {
   function fixture() {
@@ -29,6 +70,30 @@ describe("recursive generated projection consumption", () => {
     });
     return {view, nodes, element};
   }
+  it.each(["none", "root", "rootSplice"] as const)("consumes a nested %s update with exactly-once child and parent cleanup", impact => {
+    const descriptor = ownedProfileDescriptor([]);
+    const base = valueOf(consumeNestedListSemanticProjection(fixture().view, TEST_PROFILE_GENERATION, descriptor));
+    const {view: child, nodes} = fixture();
+    Object.defineProperty(child, "snapshotRevision", {value: "8"});
+    if (impact !== "none") nodes[8] = {kind: "text", text: "changed", formats: []};
+    const update = new FakeUpdateView({baseRevision: "7", resultRevision: "8", impact, projection: child,
+      ...(impact === "rootSplice" ? {oldRange: [0, 1] as const, newRange: [0, 1] as const} : {})});
+    const result = valueOf(consumeNestedListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor));
+    expect(result.result.textBlocks[1]!.block.runs[0]!.text).toBe(impact === "none" ? "child🙂" : "changed");
+    expect(child.freeCalls).toBe(1); expect(update.freeCalls).toBe(1);
+  });
+  it("rejects a generated no-change claim hiding a descendant edit", () => {
+    const descriptor = ownedProfileDescriptor([]);
+    const base = valueOf(consumeNestedListSemanticProjection(fixture().view, TEST_PROFILE_GENERATION, descriptor));
+    const {view: child, nodes} = fixture();
+    Object.defineProperty(child, "snapshotRevision", {value: "8"});
+    nodes[8] = {kind: "text", text: "changed", formats: []};
+    const update = new FakeUpdateView({baseRevision: "7", resultRevision: "8", impact: "none", projection: child});
+    const cleanup = vi.fn(update.free.bind(update));
+    Object.defineProperty(update, "free", {get: () => {throw new Error("already captured");}});
+    expect(consumeNestedListSemanticProjectionUpdateWithCleanup(base, update, cleanup, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    expect(cleanup).toHaveBeenCalledOnce(); expect(child.freeCalls).toBe(1); expect(update.freeCalls).toBe(1);
+  });
   it("consumes a child list and frees its handle without flattening paths", () => {
     const {view} = fixture();
     const result = valueOf(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])));

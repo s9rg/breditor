@@ -14,7 +14,7 @@ import {
 } from "./projection.js";
 import { BaseProjectionUpdate, type BaseProjectionImpact } from "./projection_update.js";
 import { createFlatListTextProjection, FlatListDocumentProjection, flatListProjectionDescriptor, flatListProjectionMatchesProfileGeneration, isOwnedFlatListProjection, type FlatListRootShape } from "./flat_list_projection.js";
-import { createNestedListTextProjection, NestedListDocumentProjection, type NestedListRootShape } from "./nested_list_projection.js";
+import { createNestedListTextProjection, NestedListDocumentProjection, isOwnedNestedListProjection, nestedListProjectionDescriptor, nestedListProjectionMatchesProfileGeneration, type NestedListRootShape } from "./nested_list_projection.js";
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
@@ -28,8 +28,9 @@ import {
 } from "./wasm_profile_descriptor.js";
 
 import { FlatListProjectionUpdate } from "./flat_list_projection_update.js";
-type UpdateBase = BaseDocumentProjection | FlatListDocumentProjection | undefined;
-type ProjectionUpdate = BaseProjectionUpdate | FlatListProjectionUpdate;
+import { NestedListProjectionUpdate } from "./nested_list_projection_update.js";
+type UpdateBase = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection | undefined;
+type ProjectionUpdate = BaseProjectionUpdate | FlatListProjectionUpdate | NestedListProjectionUpdate;
 
 type TextBlockProjectionFactory = typeof createTextBlockDocumentProjection;
 const TEXT_BLOCK_FACTORIES = new WeakMap<BaseDocumentProjection, TextBlockProjectionFactory>();
@@ -346,6 +347,20 @@ export function consumeFlatListSemanticProjectionUpdateWithCleanup(base: FlatLis
 export function consumeFlatListSemanticProjectionUpdate(base: FlatListDocumentProjection, view: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView, expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<FlatListProjectionUpdate> {
   return consumeProjectionUpdate(isOwnedFlatListProjection(base) ? base : undefined, view, generation, expectedProfile, protectedHandles) as BrowserProjectionResult<FlatListProjectionUpdate>;
+}
+
+/** Consumes an exact recursive-list update and proves all retained root subtrees. @internal */
+export function consumeNestedListSemanticProjectionUpdate(base: NestedListDocumentProjection, view: SemanticProjectionUpdateView,
+  generation: WasmProfileGenerationView, expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<NestedListProjectionUpdate> {
+  return consumeProjectionUpdate(isOwnedNestedListProjection(base) ? base : undefined, view, generation, expectedProfile, protectedHandles) as BrowserProjectionResult<NestedListProjectionUpdate>;
+}
+
+/** Uses the outer owner's captured cleanup without rereading a generated destructor. @internal */
+export function consumeNestedListSemanticProjectionUpdateWithCleanup(base: NestedListDocumentProjection,
+  view: SemanticProjectionUpdateView, cleanup: () => unknown, generation: WasmProfileGenerationView,
+  expectedProfile: BrowserCompiledProfileDescriptor, protectedHandles: readonly unknown[] = []): BrowserProjectionResult<NestedListProjectionUpdate> {
+  return consumeProjectionUpdateWithCleanup(isOwnedNestedListProjection(base) ? base : undefined, view, cleanup,
+    generation, expectedProfile, protectedHandles) as BrowserProjectionResult<NestedListProjectionUpdate>;
 }
 
 function consumeProjectionUpdate(base: UpdateBase, view: SemanticProjectionUpdateView, generation: WasmProfileGenerationView,
@@ -1196,12 +1211,13 @@ function readProfiledSemanticProjectionUpdate(
 ): BrowserProjectionResult<ProjectionUpdate> {
   if (base === undefined) return projectionFailure("projection.invalid_update");
   const flat = isOwnedFlatListProjection(base);
-  const descriptor = flat ? flatListProjectionDescriptor(base) : projectionProfileDescriptor(base);
+  const nested = isOwnedNestedListProjection(base);
+  const descriptor = nested ? nestedListProjectionDescriptor(base) : flat ? flatListProjectionDescriptor(base) : projectionProfileDescriptor(base);
   if (
     !wasmProfileGenerationIsLive(generation) ||
-    !(flat ? flatListProjectionMatchesProfileGeneration(base, generation) : projectionMatchesProfileGeneration(base, generation)) ||
+    !(nested ? nestedListProjectionMatchesProfileGeneration(base, generation) : flat ? flatListProjectionMatchesProfileGeneration(base, generation) : projectionMatchesProfileGeneration(base, generation)) ||
     (typeof expectedProfile === "string"
-      ? flat || descriptor !== undefined
+      ? nested || flat || descriptor !== undefined
       : descriptor !== expectedProfile ||
         !browserCompiledProfileDescriptorMatchesGeneration(
           expectedProfile,
@@ -1249,7 +1265,7 @@ function readProfiledSemanticProjectionUpdate(
     resultView,
     generation,
     expectedProfile,
-    flat ? createFlatListTextProjection : TEXT_BLOCK_FACTORIES.get(base),
+    nested ? createNestedListTextProjection : flat ? createFlatListTextProjection : TEXT_BLOCK_FACTORIES.get(base),
   );
   if (!projectionResult.ok) {
     return projectionFailure("projection.invalid_update");
@@ -1260,6 +1276,10 @@ function readProfiledSemanticProjectionUpdate(
     projection.snapshot.revision !== snapshot.resultRevision
   ) {
     return projectionFailure("projection.invalid_update");
+  }
+  if (nested) {
+    const list = NestedListDocumentProjection.fromValidatedText(projection);
+    return list.ok ? NestedListProjectionUpdate.create({base, result: list.value, impact}) : projectionFailure("projection.invalid_update");
   }
   if (flat) {
     const list = FlatListDocumentProjection.fromValidatedText(projection);

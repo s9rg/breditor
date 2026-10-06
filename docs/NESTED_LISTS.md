@@ -231,5 +231,17 @@ Tests cover nested scalar round trips, stale snapshots, wrapper rejection,
 direction mismatch, asynchronous rejection and exactly-once cleanup.
 DOM selection mapping remains outstanding.
 
+Nested generated projection updates now consume their owned result through the
+shared guarded handle lifecycle. `NestedListProjectionUpdate` independently
+proves complete recursive root-subtree equality before granting reuse; changes
+to descendant text, formatting, headings, child sections or numbering cannot
+hide behind an unchanged-root claim. Root splices retain only exact equal
+prefix/suffix subtrees, while explicit root changes require a full rebuild.
+Consecutive snapshots and exact profile ownership are mandatory. Tests cover
+deep edits, moved suffix indices, invalid no-change claims and exactly-once
+parent/child cleanup, including an outer owner's captured destructor.
+This supplies the update proof; recursive DOM rendering and public owner wiring
+are still pending and no packaged/native qualification is implied.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
