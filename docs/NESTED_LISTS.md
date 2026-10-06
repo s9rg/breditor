@@ -509,5 +509,19 @@ Firefox's constructed clipboard event did not retain the supplied transfer data;
 the fixture populates and checks the event's actual store before dispatch. This
 is synthetic clipboard coverage, not OS clipboard qualification.
 
+The separately named private package `@breditor/experimental-nested-lists` now
+assembles from an admitted experimental browser/Wasm pair. Its external offline
+consumer passes strict TypeScript, Node initialization/export-boundary checks and
+Chromium/Firefox/WebKit tests for nested descendants, indent/outdent, toolbar
+conversion, undo and V7 restore/redo. The same pair retains the default consumer
+smoke. A wrong toolbar re-export path was caught by the first TypeScript consumer,
+fixed, and covered by a regression test; the failed archive is not qualified.
+The passing archive is `target/nested-list-opt-in-r2RCEd` (SHA-256
+`d5d67895264aa4cdf57da1c45a7b7f7bdbf58c9b9e78513bf4fe9782fab49f2c`),
+from `target/nested-list-packages-uSbUD5/qualification.json`.
+It is 951,470 bytes compressed and 4,145,455 bytes unpacked. Default size ceilings
+are exceeded; size qualification remains false. Shipping artifact trees are
+unchanged, publication is disabled, and native-input/WebKit release gates remain.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
