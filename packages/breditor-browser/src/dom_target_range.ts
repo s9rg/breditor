@@ -2,6 +2,7 @@ import {
   type RenderedProjection,
   isOwnedRenderedProjection,
   isOwnedFlatListRenderedProjection,
+  isOwnedNestedListRenderedProjection,
 } from "./dom_renderer.js";
 import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
 import {
@@ -25,8 +26,11 @@ import { BaseTargetRange } from "./target_range.js";
 import { FlatListTargetRange } from "./flat_list_target_range.js";
 import type { FlatListDocumentProjection } from "./flat_list_projection.js";
 import { mapDomPointToFlatListSelectionPoint } from "./flat_list_dom_point_mapping.js";
+import { NestedListTargetRange } from "./nested_list_target_range.js";
+import type { NestedListDocumentProjection } from "./nested_list_projection.js";
+import { mapDomPointToNestedListSelectionPoint } from "./nested_list_dom_point_mapping.js";
 
-type TargetRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection>;
+type TargetRender = RenderedProjection | RenderedProjection<FlatListDocumentProjection> | RenderedProjection<NestedListDocumentProjection>;
 
 interface DomRangeSnapshot {
   readonly startContainer: Node;
@@ -64,7 +68,13 @@ export function mapDomFlatListTargetRange(rendered: RenderedProjection<FlatListD
   return mapTargetRange(rendered, range, true) as BrowserSelectionResult<FlatListTargetRange>;
 }
 
-function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists: boolean): BrowserSelectionResult<BaseTargetRange | FlatListTargetRange> {
+/** Native target range with exact recursive AST coordinates and render ownership. @internal */
+export function mapDomNestedListTargetRange(rendered: RenderedProjection<NestedListDocumentProjection>,
+  range: AbstractRange): BrowserSelectionResult<NestedListTargetRange> {
+  return mapTargetRange(rendered, range, "nested") as BrowserSelectionResult<NestedListTargetRange>;
+}
+
+function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists: boolean | "nested"): BrowserSelectionResult<BaseTargetRange | FlatListTargetRange | NestedListTargetRange> {
   const preflight = validateRenderedForTargetRange(rendered, flatLists);
   if (!preflight.ok) {
     return selectionFailure(preflight.code);
@@ -111,7 +121,7 @@ function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists:
       start: start.value,
       end: end.value,
     };
-    return isOwnedFlatListRenderedProjection(rendered) ? FlatListTargetRange.create(rendered, input)
+    return isOwnedNestedListRenderedProjection(rendered) ? NestedListTargetRange.create(rendered, input) : isOwnedFlatListRenderedProjection(rendered) ? FlatListTargetRange.create(rendered, input)
       : BaseTargetRange.create(rendered as RenderedProjection, input);
   } catch {
     return selectionFailure("selection.dom_read_failed");
@@ -119,6 +129,10 @@ function mapTargetRange(rendered: TargetRender, range: AbstractRange, flatLists:
 }
 
 function mapPoint(rendered: TargetRender, node: Node, offset: number) {
+  if (isOwnedNestedListRenderedProjection(rendered)) {
+    const result = mapDomPointToNestedListSelectionPoint(rendered, node, offset);
+    return result.ok ? result : {ok: false as const, code: result.error.code};
+  }
   if (isOwnedFlatListRenderedProjection(rendered)) {
     const result = mapDomPointToFlatListSelectionPoint(rendered, node, offset);
     return result.ok ? result : {ok: false as const, code: result.error.code};
@@ -126,8 +140,8 @@ function mapPoint(rendered: TargetRender, node: Node, offset: number) {
   return mapDomPointToBaseSelectionPoint(rendered as RenderedProjection, node, offset);
 }
 
-function validateRenderedForTargetRange(rendered: TargetRender, flatLists: boolean): DomRangePreflight {
-  if (!(flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
+function validateRenderedForTargetRange(rendered: TargetRender, flatLists: boolean | "nested"): DomRangePreflight {
+  if (!(flatLists === "nested" ? isOwnedNestedListRenderedProjection(rendered) : flatLists ? isOwnedFlatListRenderedProjection(rendered) : isOwnedRenderedProjection(rendered)) || !rendered.current) {
     return { ok: false, code: "selection.foreign_or_stale_render" };
   }
   return rendered.validateCanonicalDom()

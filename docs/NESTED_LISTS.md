@@ -299,5 +299,12 @@ and altered surrounding text. Cross-block composition remains rejected by the
 shared reconciliation contract; event delivery and physical IME qualification
 are still pending. Synthetic Japanese text in a test is not native IME evidence.
 
+Nested input target ranges now have an owned immutable `NestedListTargetRange`
+contract and `mapDomNestedListTargetRange` native adapter. The shared native
+range capture checks host ownership and DOM ordering before converting endpoints
+to recursive AST paths. Backward semantic targets, forged ownership and stale
+render handles are rejected. A cross-level native Range test verifies exact
+endpoints. Live beforeinput/event-controller delivery remains outstanding.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

@@ -56,6 +56,8 @@ type Run = Readonly<{ text: string; strong: boolean }>;
 import { NestedListDocumentProjection } from "./nested_list_projection.js";
 import { NestedListProjectionUpdate } from "./nested_list_projection_update.js";
 import { NestedListRangeSelection } from "./nested_list_selection.js";
+import { NestedListTargetRange, isOwnedNestedListTargetRange } from "./nested_list_target_range.js";
+import { mapDomNestedListTargetRange } from "./dom_target_range.js";
 import { BreditorNestedListDomSelectionBridge } from "./dom_selection.js";
 import { mapDomPointToNestedListSelectionPoint, mapNestedListSelectionPointToDomPoint } from "./nested_list_dom_point_mapping.js";
 import { isOwnedNestedListRenderedProjection } from "./dom_renderer.js";
@@ -168,6 +170,22 @@ describe("recursive nested-list DOM", () => {
         }
       });
     }
+  });
+  it("maps native input target ranges to ordered nested endpoints", () => {
+    const f = fixture(); document.body.append(f.host);
+    try {
+      const range = document.createRange();
+      range.setStart(f.rendered.nodeForAstPath([0, 0, 0, 0])!, 1);
+      range.setEnd(f.rendered.nodeForAstPath([0, 0, 1, 0, 0, 0])!, 7);
+      const target = valueOf(mapDomNestedListTargetRange(f.rendered, range));
+      expect(isOwnedNestedListTargetRange(target)).toBe(true);
+      expect(target.start).toEqual({kind: "text", textPath: [0, 0, 0, 0], utf16Offset: 1, affinity: "after"});
+      expect(target.end).toEqual({kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 7, affinity: "before"});
+      expect(NestedListTargetRange.create(f.rendered, {kind: "range", start: target.end, end: target.start}).ok).toBe(false);
+      expect(isOwnedNestedListTargetRange({...target})).toBe(false);
+      f.renderer.releaseNestedList(f.rendered);
+      expect(mapDomNestedListTargetRange(f.rendered, range).ok).toBe(false);
+    } finally { f.host.remove(); }
   });
   it("preserves backward nested selections and emits only one programmatic echo", () => {
     const f = fixture(), bridge = new BreditorNestedListDomSelectionBridge();
