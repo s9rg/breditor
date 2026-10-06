@@ -63,11 +63,23 @@ export async function verifyNestedListEditorOwner(api) {
     equal(exported("documentJson"), indented); equal(selected(), indentedSelection);
     click("outdent-list-items"); equal(exported("documentJson"), before);
     select("child", 5); const preTyping = exported("documentJson"), preTypingSelection = selected();
+    const retainedRoot = host.firstElementChild;
+    const retainedChild = [...host.querySelectorAll("p")].find(p => p.textContent === "child");
+    const retainedOther = [...host.querySelectorAll("p")].find(p => p.textContent === "one");
+    const assertTextRefresh = () => {
+      if (!retainedRoot || !retainedChild || !retainedOther || host.firstElementChild !== retainedRoot ||
+          !host.contains(retainedChild) || !host.contains(retainedOther)) {
+        throw new Error("Nested text edit/history rebuilt stable list topology");
+      }
+    };
     const event = new InputEvent("beforeinput", {bubbles: true, cancelable: true, inputType: "insertText", data: "🙂"});
     host.dispatchEvent(event); equal(event.defaultPrevented, true); equal(exported("plainText"), "one\ntwo\nchild🙂");
+    assertTextRefresh();
     const typed = exported("documentJson"), typedSelection = selected();
     click("undo"); equal(exported("documentJson"), preTyping); equal(selected(), preTypingSelection);
+    assertTextRefresh();
     click("redo"); equal(exported("documentJson"), typed); equal(selected(), typedSelection);
+    assertTextRefresh();
     // Host-configured physical-code shortcuts must preserve the deep selection.
     const key = (code, shiftKey = false, repeat = false, isComposing = false) => {
       editor.focus();

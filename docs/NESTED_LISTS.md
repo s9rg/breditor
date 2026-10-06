@@ -670,6 +670,16 @@ untouched roots and exact inverse restoration. A freshly compiled Wasm candidate
 and browser/package requalification are required before claiming the renderer
 refresh path is exercised by actual editing or improves latency.
 
+Rebuilt candidate `target/nested-list-candidate-ORMbAS` now passes the generated
+API/TypeScript checks, Node and Chromium/Firefox/WebKit scenarios. The integrated
+owner scenario explicitly asserts retained list and paragraph identities through
+real-Wasm deep typing, undo and redo. Wasm SHA-256:
+`09d3a7fae5fe47fb79be65ba38579e1605ba55f08bf1f52bd3ff9c5dde36c620`.
+Its external package pair `target/nested-list-packages-X9tiVj` passes all three
+browser consumers and default smoke checks, with shipping artifacts unchanged.
+The repeated post-classifier timing run is in progress; real path activation is
+now established, but speedup and intermittent-fault resolution are not.
+
 A first nested performance baseline uses 10/100/500 root items, adding a child
 and grandchild beneath every tenth item. All 27 measured owner cycles pass exact
 document/selection/edit/undo/restore/redo checks. At 500 roots, median edit time
