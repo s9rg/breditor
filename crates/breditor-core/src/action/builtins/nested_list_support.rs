@@ -11,9 +11,19 @@ use crate::{
 
 pub(super) fn plan(
     state: &EditorState,
+    path: NodePath,
+    replacement: NodeRef,
+) -> Result<ActionDecision, ActionFault> {
+    let (root_index, replacement) = rebuild_root(state, path, replacement)?;
+    plan_root(state, root_index, replacement)
+}
+
+/// Rebuild only ancestors of a validated path through its containing root child.
+pub(super) fn rebuild_root(
+    state: &EditorState,
     mut path: NodePath,
     mut replacement: NodeRef,
-) -> Result<ActionDecision, ActionFault> {
+) -> Result<(u32, NodeRef), ActionFault> {
     // Rebuild only ancestors through the containing root child, preserving all
     // unselected siblings and descendants. The reframe guards that whole root.
 
@@ -35,6 +45,14 @@ pub(super) fn plan(
         );
     }
     let root_index = path.last_index().ok_or_else(|| fault("breditor/list-path-fault"))?;
+    Ok((root_index, replacement))
+}
+
+fn plan_root(
+    state: &EditorState,
+    root_index: u32,
+    replacement: NodeRef,
+) -> Result<ActionDecision, ActionFault> {
     let operation = match NestedListReframe::capture(
         state.context(),
         state.document(),

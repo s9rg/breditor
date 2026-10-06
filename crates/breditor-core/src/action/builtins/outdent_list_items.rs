@@ -116,7 +116,11 @@ fn lift(
     ))
 }
 
-fn suffix(source: &NodeRef, offset: u32, items: Vec<NodeRef>) -> Result<NodeRef, ActionFault> {
+pub(super) fn suffix(
+    source: &NodeRef,
+    offset: u32,
+    items: Vec<NodeRef>,
+) -> Result<NodeRef, ActionFault> {
     let container = source.as_element().ok_or_else(|| fault("breditor/list-source-fault"))?;
     let mut properties = container.properties().clone();
     if let Some(ListKind::Ordered(start)) = flat_list_support::list_kind(source)? {

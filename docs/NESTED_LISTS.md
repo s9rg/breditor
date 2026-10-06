@@ -93,7 +93,7 @@ validation, exact inverse, aggregate-offset relocation and V7 recovery. The
 near-node-limit regression proves a growing block and a shrinking block can be
 formatted together without requiring a larger intermediate document or one
 operation per block. V1–V6 remain closed to this operation. Cross-block typing,
-structural editing actions and browser integration remain outstanding.
+deletion actions and browser integration remain outstanding.
 
 `NestedListTextReplace` now supplies the structural primitive for those actions.
 It accepts real nested block paths, inserted text-block fragments and an explicit
@@ -106,7 +106,12 @@ nested splits retaining descendants, cross-descendant replacement, stale guards,
 scalar-boundary rejection, descendant caret relocation and session undo/redo.
 Fragment-sequence decoding is bounded by the total-node budget rather than a
 single container's fanout, while final document fanout remains strictly checked.
-This is a Rust primitive checkpoint, not yet a registered Enter/Delete action.
+`InsertNestedListBreakAction` now connects same-block Enter to this primitive:
+splits retain descendants beneath the right item, empty nested items outdent once,
+and empty root items exit with child sections promoted and following ordered
+starts retained. Bare empty headings become paragraphs. Cross-block Enter remains
+explicitly disabled pending range-deletion policy. Registration is opt-in Rust
+only; the browser profile and toolbar/keyboard wiring remain unfinished.
 
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

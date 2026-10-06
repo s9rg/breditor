@@ -1,4 +1,10 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
+#[cfg(feature = "experimental-structural-properties")]
+mod insert_nested_list_break;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod insert_nested_list_break_tests;
+#[cfg(feature = "experimental-structural-properties")]
+pub use insert_nested_list_break::{InsertNestedListBreakAction, insert_nested_list_break_action_id};
 
 #[cfg(feature = "experimental-structural-properties")]
 mod clear_nested_list_inline_formats;
