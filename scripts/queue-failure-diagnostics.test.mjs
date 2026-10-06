@@ -12,13 +12,22 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
   assert.ok(start >= 0 && end > start);
   const source = "export " + compiled.slice(start, end);
   const instrumented = instrumentParagraphComparison(source);
+  const sameValue = instrumentParagraphComparison(source, "same-value");
+  for (const left of [undefined, 1, 2, 3, 4, 5, 6]) {
+    for (const right of [undefined, 1, 2, 3, 4, 5, 6]) {
+      const compare = new Function("formatDetailsEqual", "console", sameValue.replace("export ", "") + "; return paragraphsEqual;")(
+        () => true, {error() {}});
+      assert.equal(compare({headingLevel: left, runs: []}, {headingLevel: right, runs: []}), left === right);
+    }
+  }
+  assert.throws(() => instrumentParagraphComparison(source, "unknown"));
   const a = {headingLevel: 2, runs: [{text: "A🙂", strong: false, formatDetails: []}]};
   for (const b of [a, structuredClone(a), {...a, headingLevel: 3}, {...a, runs: []},
     {...a, runs: [{...a.runs[0], text: "B"}]}, {...a, runs: [{...a.runs[0], strong: true}]},
     {...a, runs: [{...a.runs[0], formatDetails: ["bold"]}]}]) {
     for (const hostile of [false, true]) {
       const results = [];
-      for (const code of [source, instrumented]) {
+      for (const code of [source, instrumented, sameValue]) {
         let calls = 0;
         const compare = new Function("formatDetailsEqual", "console", code.replace("export ", "") + "; return paragraphsEqual;")(
           (left, right) => {calls++; return JSON.stringify(left) === JSON.stringify(right);},
@@ -26,6 +35,7 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
         results.push({value: compare(a, b), calls});
       }
       assert.deepEqual(results[0], results[1]);
+      assert.deepEqual(results[0], results[2]);
     }
   }
 });

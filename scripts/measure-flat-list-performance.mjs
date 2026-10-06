@@ -50,6 +50,9 @@ assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BR
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
 const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
+const headingComparison = process.env["BREDITOR_PERF_HEADING_COMPARISON"] ?? "strict";
+assert.ok(["strict", "same-value"].includes(headingComparison) &&
+  (headingComparison === "strict" || queueDiagnosticsEnabled), "heading comparison variant requires queue diagnostics");
 const constructorProbeEnabled = process.env["BREDITOR_PERF_EXCEPTION_PROBE"] === "1";
 assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
   "queue diagnostics require WebKit full-editor mode without other instrumentation");
@@ -138,7 +141,7 @@ let selectionFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
   if (id === join(consumer, "node_modules/@breditor/browser/dist/projection.js")) {
     validationDiagnosticModules++;
-    return instrumentParagraphComparison(code);
+    return instrumentParagraphComparison(code, headingComparison);
   }
   for (const moduleName of ["wasm_projection_adapter", "flat_list_projection_update"]) {
     if (id === join(consumer, `node_modules/@breditor/browser/dist/${moduleName}.js`)) {
@@ -181,7 +184,7 @@ const server = await preview({configFile: false, root: fixture, logLevel: "warn"
 const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
-  routerDiagnosticsEnabled: queueDiagnosticsEnabled,
+  routerDiagnosticsEnabled: queueDiagnosticsEnabled, headingComparison,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling,

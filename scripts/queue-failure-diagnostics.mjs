@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 
 /** Observe the original boolean results; never retry or override comparisons. */
-export function instrumentParagraphComparison(code) {
+export function instrumentParagraphComparison(code, headingComparison = "strict") {
+  assert.ok(["strict", "same-value"].includes(headingComparison), "unknown heading comparison variant");
   const start = "export function paragraphsEqual(left, right) {";
   assert.equal(code.split(start).length, 2, "paragraph comparator start changed");
   const from = code.indexOf(start), end = code.indexOf("\n}", from);
@@ -20,7 +21,9 @@ export function instrumentParagraphComparison(code) {
   ]) {
     assert.equal(body.split(expression).length, 2, `paragraph comparison changed: ${name}`);
     const captured = name === "heading"
-      ? "(headingLeft = left.headingLevel) !== (headingRight = right.headingLevel)" : expression;
+      ? headingComparison === "same-value"
+        ? "!Object.is((headingLeft = left.headingLevel), (headingRight = right.headingLevel))"
+        : "(headingLeft = left.headingLevel) !== (headingRight = right.headingLevel)" : expression;
     body = body.replace(expression, `paragraphComparisonDiagnostic(${JSON.stringify(name)}, ${captured})`);
   }
   body = body.replace(start, start + `
