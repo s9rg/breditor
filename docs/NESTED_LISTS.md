@@ -984,3 +984,10 @@ UTF-16 offset 7 / focus First at 0; forward anchor First at 0 / focus Deep at 7.
 These browser/OS-dispatched checks strengthen clipboard/history qualification
 for this archive; they do not qualify physical IME or VoiceOver or close the
 intermittent WebKit fault.
+
+Mixed Rust impact regression: a deep Unicode text splice plus a disjoint list
+reframe that expands one root into two paragraphs must report a full root update,
+not the text-only root span. Both operation orders, their inverse transactions
+and forward replays pass; inverse/replay documents are exact. All 61
+feature-enabled Wasm tests and strict all-target Clippy pass. This protects the
+conservative mixed-operation fallback without changing runtime behavior.

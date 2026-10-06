@@ -5,7 +5,7 @@ use breditor_core::{
     document::{FormatSet, TextFragment, TextRun},
     extension::{ExtensionLimits, ExtensionSet},
     identity::QualifiedName,
-    operation::{NestedListTextSplice, Operation, TextRange},
+    operation::{NestedListReframe, NestedListTextSplice, Operation, TextRange},
     position::{NodePath, TextOffset},
     schema::{CompiledSchema, DocumentLimits, SchemaId, SchemaVersion},
     state::{EditorContext, EditorState, LineageId},
@@ -124,6 +124,55 @@ fn nested_text_batch_spans_disjoint_roots_and_replays_exactly() -> Result<(), Bo
             .into_commit()
             .ok_or("unchanged batch replay")?;
         assert_eq!(classify(&replay).root_splice(), Some((0, 3, 0, 3)));
+        assert_eq!(replay.after().document(), commit.after().document());
+    }
+    Ok(())
+}
+
+/// A text-only root span cannot describe a second operation that shifts roots.
+/// Both operation orders must fall back to a full update, including inverse/replay.
+#[test]
+fn mixed_nested_text_and_reframe_never_claim_text_only_impact() -> Result<(), Box<dyn Error>> {
+    for reframe_first in [false, true] {
+        let (context, state) = fixture()?;
+        let text = Operation::NestedListTextSplice(NestedListTextSplice::capture(
+            &context,
+            state.document(),
+            TextRange::try_new(
+                NodePath::try_from_indices(vec![0, 0, 1, 0, 0])?,
+                TextOffset::try_new(0)?,
+                TextOffset::try_new(0)?,
+            )?,
+            TextFragment::from(TextRun::try_new("日本🦀", FormatSet::default())?),
+        )?);
+        let replacement = [vec![2, 0, 0], vec![2, 0, 1, 0, 0]]
+            .into_iter()
+            .map(|path| Ok(state.document().node_at(&NodePath::try_from_indices(path)?)?.clone()))
+            .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
+        let reframe = Operation::NestedListReframe(NestedListReframe::capture(
+            &context,
+            state.document(),
+            2,
+            1,
+            replacement,
+        )?);
+        let operations = if reframe_first { vec![reframe, text] } else { vec![text, reframe] };
+        let commit = Transaction::new(&state, operations)
+            .apply(&context, &state)?
+            .into_commit()
+            .ok_or("unchanged mixed batch")?;
+        assert!(matches!(classify(&commit), ProjectionImpact::Root));
+        let inverse = Transaction::new(commit.after(), commit.inverse_operations().to_vec())
+            .apply(&context, commit.after())?
+            .into_commit()
+            .ok_or("unchanged inverse")?;
+        assert!(matches!(classify(&inverse), ProjectionImpact::Root));
+        assert_eq!(inverse.after().document(), state.document());
+        let replay = Transaction::new(inverse.after(), commit.forward_operations().to_vec())
+            .apply(&context, inverse.after())?
+            .into_commit()
+            .ok_or("unchanged replay")?;
+        assert!(matches!(classify(&replay), ProjectionImpact::Root));
         assert_eq!(replay.after().document(), commit.after().document());
     }
     Ok(())
