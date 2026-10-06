@@ -1,10 +1,29 @@
 import { describe, expect, it } from "vitest";
+import { paragraphsEqual, type BaseParagraphProjection } from "./projection.js";
 
 import {
   BaseDocumentProjection,
   BaseProjectionUpdate,
   type BrowserProjectionResult,
 } from "./advanced.js";
+
+describe("paragraph heading equality", () => {
+  it("compares every admitted heading pair without conflating rank or absence", () => {
+    const levels = [undefined, 1, 2, 3, 4, 5, 6] as const;
+    const paragraph = (level: typeof levels[number]): BaseParagraphProjection => Object.freeze({
+      ...(level === undefined ? {} : {headingLevel: level}),
+      runs: Object.freeze([Object.freeze({text: "A🙂", strong: false, formats: Object.freeze([]), formatDetails: Object.freeze([])})]),
+    });
+    for (const left of levels) {
+      for (const right of levels) {
+        const a = paragraph(left), b = paragraph(right);
+        expect(a).not.toBe(b);
+        expect(paragraphsEqual(a, b)).toBe(left === right);
+        expect(paragraphsEqual(b, a)).toBe(left === right);
+      }
+    }
+  });
+});
 
 function valueOf<T>(result: BrowserProjectionResult<T>): T {
   if (!result.ok) {
