@@ -6,6 +6,7 @@ import { FlatListDocumentProjection, isOwnedFlatListProjection } from "./flat_li
 import { isOwnedProjection } from "./projection.js";
 import { NestedListDocumentProjection, isOwnedNestedListProjection } from "./nested_list_projection.js";
 import { consumeNestedListSemanticProjection } from "./wasm_projection_adapter.js";
+import { NestedListRangeSelection, nestedListSpatialPositionForPoint, isOwnedNestedListRangeSelection } from "./nested_list_selection.js";
 
 describe("recursive generated projection consumption", () => {
   function fixture() {
@@ -73,6 +74,33 @@ describe("opt-in recursive nested projection", () => {
     expect(isOwnedNestedListProjection({...projection})).toBe(false);
     expect(isOwnedFlatListProjection(projection)).toBe(false);
     expect(isOwnedProjection(projection)).toBe(false);
+  });
+  it("validates backward nested selections, affinities, empty blocks and scalar seams", () => {
+    const projection = valueOf(create([{kind: "bulletList", items: [
+      item("parent", [{kind: "orderedList", start: 9, items: [
+        item("🙂x"), {block: {headingLevel: null, runs: []}, lists: []},
+      ]}]),
+    ]}]));
+    const anchor = {kind: "children", parentPath: [0, 0, 1, 1, 0], childIndex: 0, affinity: "after"};
+    const focus = {kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 2, affinity: "before"};
+    const result = NestedListRangeSelection.create(projection, {kind: "range", anchor, focus});
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("selection");
+    expect(result.value.order).toBe("backward");
+    expect(result.value.anchor).toEqual(anchor);
+    expect(result.value.focus).toEqual(focus);
+    expect(isOwnedNestedListRangeSelection(result.value)).toBe(true);
+    expect(isOwnedNestedListRangeSelection({...result.value})).toBe(false);
+    expect(nestedListSpatialPositionForPoint(projection, focus)).toEqual({textBlockPath: [0, 0, 1, 0, 0], utf16Offset: 2});
+    for (const invalid of [
+      {...focus, utf16Offset: 1},
+      {...anchor, parentPath: [0, 0, 1]},
+      {...focus, textPath: [0, 0, 0, 1, 0, 0]},
+      {...anchor, childIndex: 1},
+    ]) expect(NestedListRangeSelection.create(projection, {kind: "range", anchor: invalid, focus}).ok).toBe(false);
+    const collapsed = NestedListRangeSelection.create(projection, {kind: "range",
+      anchor: {...focus, utf16Offset: 0}, focus: {kind: "children", parentPath: [0, 0, 1, 0, 0], childIndex: 0, affinity: "after"}});
+    expect(collapsed.ok && collapsed.value.order).toBe("collapsed");
   });
   it("rejects malformed items, empty lists, and ordinal overflow", () => {
     for (const list of [

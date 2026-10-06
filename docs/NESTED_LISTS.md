@@ -216,5 +216,12 @@ alias/missing/extra/unreachable nodes, contradictory metadata and exactly-once
 cleanup. These are adapter tests; packaged generated-Wasm integration and
 projection-update consumption still require qualification.
 
+Internal `NestedListRangeSelection` validates owned snapshot-bound endpoints
+using bounded recursive AST lookup. It preserves anchor/focus affinity, derives
+direction from logical block order and aggregate UTF-16 offsets, admits empty
+block boundaries and rejects wrapper paths or scalar-interior text positions.
+Tests cover backward nested ranges and coincident text/child encodings. Native
+DOM mapping and generated selection-handle consumption remain separate work.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.
