@@ -6,11 +6,23 @@ and installed-package automated checks pass; this is not release readiness.
 Default shipping bundles and the existing flat-list package remain unchanged.
 The historical intermittent WebKit fault is unresolved.
 
-Remaining release gates: physical keyboard/IME, native clipboard and spoken
-screen-reader qualification; size and
-large-document performance qualification; resolution of the WebKit risk. The
+Remaining release gates: physical keyboard/IME and spoken screen-reader
+qualification; size and large-document performance qualification; resolution of
+the WebKit risk. Native clipboard checks now cover the current archive in Safari
+and Chrome, within the scope recorded below. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
+
+Current candidate: `target/nested-list-opt-in-VqQ3UP`, archive SHA-256
+`4c00fa7bfff6956e68ab7a667399d188369034feb8e6b96ca6e637729a268464`.
+The [capture-reuse qualification record](qualification/2026-10-06-nested-list-capture-reuse.json)
+records the complete Rust suite, generated and installed-package checks across
+three browser engines, and 900 diagnostic WebKit cycles without a new fault.
+The [native-browser record](qualification/2026-10-06-nested-list-vqq3up-native-safari.json)
+records Safari nesting and clipboard checks plus forward/backward cross-item
+Chrome cut/undo with exact DOM and selection restoration. These records do not
+qualify physical IME, spoken VoiceOver, size/latency acceptance, or a fix for the
+historical WebKit fault. Those gates remain open; this is not a release approval.
 
 ## Document shape
 
