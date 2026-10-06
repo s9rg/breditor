@@ -223,5 +223,13 @@ block boundaries and rejects wrapper paths or scalar-interior text positions.
 Tests cover backward nested ranges and coincident text/child encodings. Native
 DOM mapping and generated selection-handle consumption remain separate work.
 
+Generated nested selection handles now have explicit consumption and scalar
+encoding entry points. Recursive preorder counting includes every wrapper but
+only exposes text blocks/runs as selectable nodes. Exact owner/snapshot binding,
+direction, affinity and captured cleanup use the shared lifecycle checks.
+Tests cover nested scalar round trips, stale snapshots, wrapper rejection,
+direction mismatch, asynchronous rejection and exactly-once cleanup.
+DOM selection mapping remains outstanding.
+
 Task lists, arbitrary multi-block items, tables, rich HTML paste and collaboration.
 Migration of existing flat sessions requires an explicit, separately tested path.

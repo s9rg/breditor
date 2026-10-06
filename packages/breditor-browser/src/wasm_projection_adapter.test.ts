@@ -7,6 +7,7 @@ import { isOwnedProjection } from "./projection.js";
 import { NestedListDocumentProjection, isOwnedNestedListProjection } from "./nested_list_projection.js";
 import { consumeNestedListSemanticProjection } from "./wasm_projection_adapter.js";
 import { NestedListRangeSelection, nestedListSpatialPositionForPoint, isOwnedNestedListRangeSelection } from "./nested_list_selection.js";
+import { consumeNestedListSemanticSelection, consumeNestedListSemanticSelectionWithCleanup, nestedListSemanticRangeSelectionScalars } from "./wasm_selection_adapter.js";
 
 describe("recursive generated projection consumption", () => {
   function fixture() {
@@ -37,6 +38,41 @@ describe("recursive generated projection consumption", () => {
     const legacy = fixture().view;
     expect(consumeFlatListSemanticProjection(legacy, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
     expect(legacy.freeCalls).toBe(1);
+  });
+  it("round-trips nested selection indices with exact direction and captured cleanup", () => {
+    const projection = valueOf(consumeNestedListSemanticProjection(fixture().view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])));
+    const free = vi.fn();
+    const view: SemanticSelectionView = {
+      snapshotLineage: projection.snapshot.lineage, snapshotRevision: projection.snapshot.revision,
+      kind: "range", anchorPointKind: "children", anchorNodeIndex: 10, anchorOffset: 0, anchorAffinity: "after",
+      focusPointKind: "text", focusNodeIndex: 8, focusOffset: 2, focusAffinity: "before", rangeOrder: "backward",
+      matchesProfileGeneration: generation => generation === TEST_PROFILE_GENERATION, free,
+    };
+    const getter = vi.fn(() => {throw new Error("cleanup already captured");});
+    Object.defineProperty(view, "free", {get: getter});
+    const result = consumeNestedListSemanticSelectionWithCleanup(projection, view, free, TEST_PROFILE_GENERATION);
+    expect(result.ok && result.value?.order).toBe("backward");
+    if (!result.ok || result.value === null) throw new Error("selection");
+    expect(result.value.focus).toEqual({kind: "text", textPath: [0, 0, 1, 0, 0, 0], utf16Offset: 2, affinity: "before"});
+    expect(nestedListSemanticRangeSelectionScalars(result.value)).toEqual({ok: true, value: {
+      anchorPointKind: "children", anchorNodeIndex: 10, anchorOffset: 0, anchorAffinity: "after",
+      focusPointKind: "text", focusNodeIndex: 8, focusOffset: 2, focusAffinity: "before",
+    }});
+    expect(getter).not.toHaveBeenCalled(); expect(free).toHaveBeenCalledOnce();
+  });
+  it.each(["wrapper", "direction", "snapshot", "asynchronous"])("rejects nested selection %s and frees once", fault => {
+    const projection = valueOf(consumeNestedListSemanticProjection(fixture().view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])));
+    const free = vi.fn();
+    const view: SemanticSelectionView = {
+      snapshotLineage: projection.snapshot.lineage, snapshotRevision: fault === "snapshot" ? "99" : projection.snapshot.revision,
+      kind: "range", anchorPointKind: "children", anchorNodeIndex: fault === "wrapper" ? 6 : 10, anchorOffset: 0, anchorAffinity: "after",
+      focusPointKind: "text", focusNodeIndex: 8, focusOffset: 2, focusAffinity: "before", rangeOrder: fault === "direction" ? "forward" : "backward",
+      matchesProfileGeneration: generation => generation === TEST_PROFILE_GENERATION, free,
+    };
+    const result = fault === "asynchronous"
+      ? consumeNestedListSemanticSelectionWithCleanup(projection, view, free, TEST_PROFILE_GENERATION, true)
+      : consumeNestedListSemanticSelection(projection, view, TEST_PROFILE_GENERATION);
+    expect(result.ok).toBe(false); expect(free).toHaveBeenCalledOnce();
   });
   it.each(["alias", "missingBlock", "extraBlock", "unreachable", "metadata"])("rejects %s and frees once", fault => {
     const {view, nodes, element} = fixture();

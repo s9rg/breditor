@@ -2,6 +2,8 @@ import type { AstPath } from "./ast_path.js";
 import { astPathsEqual } from "./ast_path.js";
 import { flatListProjectionMatchesProfileGeneration, isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { FlatListRangeSelection, isOwnedFlatListRangeSelection } from "./flat_list_selection.js";
+import { nestedListProjectionMatchesProfileGeneration, isOwnedNestedListProjection, type NestedListDocumentProjection, type NestedListContainerProjection } from "./nested_list_projection.js";
+import { NestedListRangeSelection, isOwnedNestedListRangeSelection } from "./nested_list_selection.js";
 import { normalizeWasmBoundaryNumber } from "./normalize_wasm_boundary_number.js";
 import { type BaseDocumentProjection, isOwnedProjection } from "./projection.js";
 import {
@@ -37,8 +39,8 @@ const selectionSnapshotFields = Object.freeze([
 // Claim before touching any foreign getter, including `free` and `then`.
 // Nested consumers must neither inspect nor free the active owner's view.
 const ACTIVE_SELECTION_CONSUMPTIONS = new WeakSet<object>();
-type SelectionProjection = BaseDocumentProjection | FlatListDocumentProjection;
-type EditorSelection = BaseRangeSelection | FlatListRangeSelection | null;
+type SelectionProjection = BaseDocumentProjection | FlatListDocumentProjection | NestedListDocumentProjection;
+type EditorSelection = BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection | null;
 
 /** Point kinds exposed by the scalar Wasm selection boundary. */
 export type SemanticSelectionPointKind = "text" | "children";
@@ -122,8 +124,19 @@ export function consumeFlatListSemanticSelectionWithCleanup(projection: FlatList
   return consumeSelection(projection, view, cleanup, generation, asynchronous, true) as BrowserSelectionResult<FlatListRangeSelection | null>;
 }
 
+/** Recursive selection consumption retains the same exact-owner cleanup contract. */
+export function consumeNestedListSemanticSelection(projection: NestedListDocumentProjection, view: SemanticSelectionView,
+  generation: WasmProfileGenerationView): BrowserSelectionResult<NestedListRangeSelection | null> {
+  return consumeNestedListSemanticSelectionWithCleanup(projection, view, undefined, generation);
+}
+/** @internal */
+export function consumeNestedListSemanticSelectionWithCleanup(projection: NestedListDocumentProjection, view: SemanticSelectionView,
+  cleanup: (() => unknown) | undefined, generation: WasmProfileGenerationView, asynchronous?: boolean): BrowserSelectionResult<NestedListRangeSelection | null> {
+  return consumeSelection(projection, view, cleanup, generation, asynchronous, "nested") as BrowserSelectionResult<NestedListRangeSelection | null>;
+}
+
 function consumeSelection(projection: SelectionProjection, view: SemanticSelectionView, cleanup: (() => unknown) | undefined,
-  generation: WasmProfileGenerationView, asynchronous: boolean | undefined, flatLists: boolean): BrowserSelectionResult<EditorSelection> {
+  generation: WasmProfileGenerationView, asynchronous: boolean | undefined, flatLists: boolean | "nested"): BrowserSelectionResult<EditorSelection> {
   if (((typeof view !== "object" || view === null) && typeof view !== "function") ||
       (view as unknown) === generation || ACTIVE_SELECTION_CONSUMPTIONS.has(view)) {
     return selectionFailure("selection.invalid_wasm_view");
@@ -138,9 +151,9 @@ function consumeSelection(projection: SelectionProjection, view: SemanticSelecti
     );
     try {
       result = !capturedAsynchronous &&
-        (flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) &&
+        (flatLists === "nested" ? isOwnedNestedListProjection(projection) : flatLists ? isOwnedFlatListProjection(projection) : isOwnedProjection(projection)) &&
         wasmProfileGenerationIsLive(generation) &&
-        (isOwnedFlatListProjection(projection) ? flatListProjectionMatchesProfileGeneration(projection, generation) : projectionMatchesProfileGeneration(projection, generation)) &&
+        (isOwnedNestedListProjection(projection) ? nestedListProjectionMatchesProfileGeneration(projection, generation) : isOwnedFlatListProjection(projection) ? flatListProjectionMatchesProfileGeneration(projection, generation) : projectionMatchesProfileGeneration(projection, generation)) &&
         wasmViewMatchesProfileGeneration(view, generation)
         ? readSemanticSelection(projection, view)
         : selectionFailure("selection.invalid_wasm_view");
@@ -238,7 +251,11 @@ export function flatListSemanticRangeSelectionScalars(selection: FlatListRangeSe
   return isOwnedFlatListRangeSelection(selection) ? rangeSelectionScalars(selection) : selectionFailure("selection.invalid_shape");
 }
 
-function rangeSelectionScalars(selection: BaseRangeSelection | FlatListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
+/** Scalar ABI mapping includes all nested list/item wrappers in preorder. */
+export function nestedListSemanticRangeSelectionScalars(selection: NestedListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
+  return isOwnedNestedListRangeSelection(selection) ? rangeSelectionScalars(selection) : selectionFailure("selection.invalid_shape");
+}
+function rangeSelectionScalars(selection: BaseRangeSelection | FlatListRangeSelection | NestedListRangeSelection): BrowserSelectionResult<SemanticRangeSelectionScalars> {
   try {
     const anchorNodeIndex = preorderIndexForPoint(selection.projection, selection.anchor);
     const focusNodeIndex = preorderIndexForPoint(selection.projection, selection.focus);
@@ -328,7 +345,7 @@ function readSemanticSelection(
     anchor: anchorInput,
     focus: focusInput,
   };
-  const selection = isOwnedFlatListProjection(projection) ? FlatListRangeSelection.create(projection, input) : BaseRangeSelection.create(projection, input);
+  const selection = isOwnedNestedListProjection(projection) ? NestedListRangeSelection.create(projection, input) : isOwnedFlatListProjection(projection) ? FlatListRangeSelection.create(projection, input) : BaseRangeSelection.create(projection, input);
   if (!selection.ok || selection.value.order !== rangeOrder) {
     return selectionFailure("selection.invalid_wasm_view");
   }
@@ -380,8 +397,8 @@ function pathAtPreorderIndex(
   requestedIndex: number,
   expectedKind: SemanticSelectionPointKind,
 ): AstPath | null {
-  if (isOwnedFlatListProjection(projection)) {
-    for (const entry of flatListSelectableNodes(projection)) {
+  if (isOwnedFlatListProjection(projection) || isOwnedNestedListProjection(projection)) {
+    for (const entry of isOwnedNestedListProjection(projection) ? nestedListSelectableNodes(projection) : flatListSelectableNodes(projection)) {
       if (entry.index === requestedIndex) return entry.kind === expectedKind ? entry.path : null;
       if (entry.index > requestedIndex) return null;
     }
@@ -412,8 +429,8 @@ function preorderIndexForPoint(
   point: BaseSelectionPoint,
 ): number | null {
   const path = point.kind === "text" ? point.textPath : point.parentPath;
-  if (isOwnedFlatListProjection(projection)) {
-    for (const entry of flatListSelectableNodes(projection)) {
+  if (isOwnedFlatListProjection(projection) || isOwnedNestedListProjection(projection)) {
+    for (const entry of isOwnedNestedListProjection(projection) ? nestedListSelectableNodes(projection) : flatListSelectableNodes(projection)) {
       if (entry.kind === point.kind && astPathsEqual(entry.path, path)) return entry.index;
     }
     return null;
@@ -454,6 +471,28 @@ function* flatListSelectableNodes(projection: FlatListDocumentProjection): Gener
       yield {index: index++, path: Object.freeze(path), kind: "children"};
       for (let run = 0; run < block.runs.length; run += 1) yield {index: index++, path: Object.freeze([...path, run]), kind: "text"};
     }
+  }
+}
+
+function* nestedListSelectableNodes(projection: NestedListDocumentProjection): Generator<Readonly<{index: number; path: AstPath; kind: SemanticSelectionPointKind}>> {
+  let index = 1;
+  type Entry = Readonly<{index: number; path: AstPath; kind: SemanticSelectionPointKind}>;
+  function* block(path: readonly number[], runs: number): Generator<Entry> {
+    yield {index: index++, path: Object.freeze([...path]), kind: "children"};
+    for (let run = 0; run < runs; run++) yield {index: index++, path: Object.freeze([...path, run]), kind: "text"};
+  }
+  function* list(node: NestedListContainerProjection, path: readonly number[]): Generator<Entry> {
+    index++;
+    for (const [itemIndex, item] of node.items.entries()) {
+      index++;
+      const itemPath = [...path, itemIndex];
+      yield* block([...itemPath, 0], item.block.runs.length);
+      for (const [section, child] of item.lists.entries()) yield* list(child, [...itemPath, section + 1]);
+    }
+  }
+  for (const [rootIndex, root] of projection.blocks.entries()) {
+    if (root.kind === "textBlock") yield* block([rootIndex], root.block.runs.length);
+    else yield* list(root, [rootIndex]);
   }
 }
 
