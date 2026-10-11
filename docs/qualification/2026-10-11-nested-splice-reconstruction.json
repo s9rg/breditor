@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "featureCoreUnitTestsPassed": 1197,
+  "strictCoreClippyLibAndTests": "passed after final proof tests",
+  "candidate": "target/nested-list-candidate-Ejgzp2",
+  "wasmSha256": "f262a11610503614d79b3bd5187d53629a64cf40c0e7e58c0dea49a5974c49fe",
+  "wasmBytes": 2307050,
+  "wasmGzip9Bytes": 633907,
+  "installedPair": "target/nested-list-packages-m25FxW/qualification.json",
+  "singleArchive": "target/nested-list-opt-in-VTFj93",
+  "singleArchiveSha256": "cdf2b46b9353756d7675927b62eb47849280104b85f27fd09bbe76a67ee57377",
+  "singleArchiveBytes": 958099,
+  "singleArchiveUnpackedBytes": 4164498,
+  "generatedAndInstalledBrowserEngines": ["chromium", "firefox", "webkit"],
+  "independentSingleArchiveConsumerChecks": "passed",
+  "browserDispatchedKeyboardChecks": "passed all three engines; not physical IME",
+  "mixedHistoryFreshOwnerCursors": [4, 3, 2, 1, 0],
+  "proofScope": "Reconstruction and complete result proof retained only within a validation/apply call. Exact complete-root equality and matching schema/limits required; partial guards and changed full roots use independent validation.",
+  "proofRegressions": [
+    "exact independently allocated content reuses matching proof",
+    "partial-root summaries match fresh validation",
+    "foreign compiled authority and changed limits revalidate",
+    "whole-document text budgets include untouched roots",
+    "stale source guards reject before no-op acceptance"
+  ],
+  "webKitDiagnosticStress": {
+    "fixture": "KeGjmR/performance-GKlOfH",
+    "reportSha256": "e72dc9a4a93cad284e71419aef690a1cd525c7bc6ff9852520b976d65b2a4887",
+    "freshSessions": 3,
+    "ownerRepetitionsPerSize": 10,
+    "correctnessCycles": 90,
+    "diagnostics": [],
+    "timingQualified": false
+  },
+  "ordinaryFirefoxGrandchildComparison": {
+    "compilerOverlap": false,
+    "fixtureCompletionPollingMs": 100,
+    "sequence": ["candidate", "control", "candidate"],
+    "candidateBeforeControl": {
+      "fixture": "KeGjmR/performance-Oj1HGd",
+      "reportSha256": "3085644d4ca9d485fa01c525d32f2948b20a05fd1440b0284ee97a1b82374be7",
+      "correctnessCycles": 27,
+      "edit500Samples": 9,
+      "edit500MedianMs": 331,
+      "edit500RangeMs": [316, 346]
+    },
+    "control": {
+      "installedPair": "target/nested-list-packages-OxsnSQ/qualification.json",
+      "fixture": "CRYOGf/performance-dRlxp5",
+      "reportSha256": "5d099b60ee987294c7068058b17d98db81c862895849af87d9708d50691092ea",
+      "correctnessCycles": 27,
+      "edit500Samples": 9,
+      "edit500MedianMs": 398,
+      "edit500RangeMs": [373, 429]
+    },
+    "candidateAfterControl": {
+      "fixture": "KeGjmR/performance-RhovCU",
+      "reportSha256": "d5ddb540092564022c746b906440fccc703a4c37779b647dd905f1b9fed426bb",
+      "correctnessCycles": 27,
+      "edit500Samples": 9,
+      "edit500MedianMs": 423,
+      "edit500RangeMs": [412, 446]
+    },
+    "latencyImprovementDemonstrated": false,
+    "releasePerformanceQualified": false,
+    "boundary": "The apparent initial gain did not survive the reversed-order candidate trial. Do not attribute sequential measurement drift to this optimization or claim release latency acceptance."
+  },
+  "nativeQualification": "not attempted for this archive: Mac locked",
+  "nativeQualificationTransferred": false,
+  "shippingArtifactsWritten": false,
+  "protocolsChanged": false,
+  "sizeBudgetQualified": false,
+  "historicalWebKitFaultResolved": false
+}

@@ -68,7 +68,7 @@ impl NestedListTextSplice {
         let expected_root =
             document.node_at(&path).map_err(|_| NestedListTextSpliceError::InvalidTarget)?.clone();
         let operation = Self::try_new(range, expected_root, replacement)?;
-        operation.validate(context)?;
+        operation.validate_and_derive(context, Some(document))?;
         Ok(operation)
     }
     /// Returns the block-local text range, including its full block path.
@@ -91,6 +91,17 @@ impl NestedListTextSplice {
         &self,
         context: &EditorContext,
     ) -> Result<(), NestedListTextSpliceError> {
+        self.validate_and_derive(context, None).map(|_| ())
+    }
+
+    // Retain reconstruction and its complete proof only within this call.
+    // Source proof reuse requires exact synthetic-root equality under the same
+    // compiled schema and limits. Partial guards still validate independently.
+    fn validate_and_derive(
+        &self,
+        context: &EditorContext,
+        source: Option<&Document>,
+    ) -> Result<(NodeRef, Document), NestedListTextSpliceError> {
         require_schema(context)?;
         self.root_index()?;
         let maximum =
@@ -98,14 +109,15 @@ impl NestedListTextSplice {
         if self.range.container_path().iter().any(|index| u64::from(index) >= maximum) {
             return Err(NestedListTextSpliceError::InvalidTarget);
         }
-        validate_root(context, self.expected_root.clone())?;
+        validate_root(context, self.expected_root.clone(), source)?;
         validate_fragment(context, FragmentRole::Replacement, &self.replacement)?;
         let block = self.block()?.as_element().ok_or(NestedListTextSpliceError::InvalidTarget)?;
         let length = container_length(block, self.range.container_path())?;
         validate_range_boundary(block, self.range.start(), length)?;
         validate_range_boundary(block, self.range.end(), length)?;
-        validate_root(context, self.result_root(length)?)?;
-        Ok(())
+        let result = self.result_root(length)?;
+        let proof = validate_root(context, result.clone(), None)?;
+        Ok((result, proof))
     }
     pub(crate) fn apply(
         &self,
@@ -113,7 +125,7 @@ impl NestedListTextSplice {
         document: &Document,
     ) -> Result<AppliedOperation, NestedListTextSpliceError> {
         require_document(context, document)?;
-        self.validate(context)?;
+        let (result_root, result_proof) = self.validate_and_derive(context, Some(document))?;
         let index = usize::try_from(self.root_index()?)
             .map_err(|_| NestedListTextSpliceError::InvalidTarget)?;
         let root = document.root().as_element().ok_or(NestedListTextSpliceError::InvalidTarget)?;
@@ -121,8 +133,6 @@ impl NestedListTextSplice {
             return Err(NestedListTextSpliceError::ExpectedMismatch);
         }
         let block = self.block()?.as_element().ok_or(NestedListTextSpliceError::InvalidTarget)?;
-        let length = container_length(block, self.range.container_path())?;
-        let result_root = self.result_root(length)?;
         if result_root == self.expected_root {
             return Ok(AppliedOperation::Unchanged);
         }
@@ -155,8 +165,14 @@ impl NestedListTextSplice {
         let root = root
             .try_with_children(children)
             .map_err(|_| NestedListTextSpliceError::InvalidTarget)?;
-        let document =
-            Document::try_new(context.schema(), NodeRef::element(root), context.limits())?;
+        let root = NodeRef::element(root);
+        // This proof includes root metadata and complete document-wide budgets.
+        // Other untouched root children or metadata force fresh validation.
+        let document = if result_proof.root() == &root {
+            result_proof
+        } else {
+            Document::try_new(context.schema(), root, context.limits())?
+        };
         Ok(AppliedOperation::Changed(Box::new(AppliedChange {
             document,
             inverse: Operation::NestedListTextSplice(inverse),
@@ -256,7 +272,11 @@ fn require_document(
     }
     Ok(())
 }
-fn validate_root(context: &EditorContext, root: NodeRef) -> Result<(), NestedListTextSpliceError> {
+fn validate_root(
+    context: &EditorContext,
+    root: NodeRef,
+    source: Option<&Document>,
+) -> Result<Document, NestedListTextSpliceError> {
     let root = ElementNode::try_new(
         context.schema().root_kind().clone(),
         None,
@@ -264,8 +284,14 @@ fn validate_root(context: &EditorContext, root: NodeRef) -> Result<(), NestedLis
         vec![root],
     )
     .map_err(|_| NestedListTextSpliceError::InvalidTarget)?;
-    Document::try_new(context.schema(), NodeRef::element(root), context.limits())?;
-    Ok(())
+    let root = NodeRef::element(root);
+    if let Some(source) = source
+        && source.is_proven_for(context.schema(), context.limits())
+        && source.root() == &root
+    {
+        return Ok(source.clone());
+    }
+    Ok(Document::try_new(context.schema(), root, context.limits())?)
 }
 
 /// Failure to construct, admit or apply a nested-list text edit.
@@ -290,3 +316,7 @@ pub enum NestedListTextSpliceError {
     #[error(transparent)]
     Text(#[from] TextSpliceApplyError),
 }
+
+#[cfg(test)]
+#[path = "nested_list_splice_proof_tests.rs"]
+mod proof_tests;

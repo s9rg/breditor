@@ -15,6 +15,81 @@ use std::error::Error;
 fn element(kind: &str, children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>> {
     Ok(NodeRef::element(ElementNode::try_new(name(kind)?, None, PropertyMap::default(), children)?))
 }
+
+fn context(limits: DocumentLimits) -> Result<EditorContext, Box<dyn Error>> {
+    Ok(EditorContext::new(
+        CompiledSchema::try_compile_nested_list_profile(
+            SchemaId::new(name("test/nested-splice-proof")?, SchemaVersion::one()),
+            &extensions()?,
+        )?,
+        limits,
+    ))
+}
+
+#[test]
+fn within_call_reconstruction_preserves_whole_document_budgets() -> TestResult {
+    let context = context(DocumentLimits::default().with_max_total_text_bytes(2))?;
+    let first = block(TextBlockKind::Paragraph, "a", formats()?)?;
+    let second = block(TextBlockKind::Paragraph, "b", formats()?)?;
+    let before = state(&context, vec![first.clone(), second], None, None)?;
+    let range = TextRange::try_new(
+        NodePath::try_from_indices(vec![0])?,
+        TextOffset::try_new(1)?,
+        TextOffset::try_new(1)?,
+    )?;
+    let replacement = TextFragment::try_from_runs(vec![TextRun::try_new("X", formats()?)?])?;
+    let operation = NestedListTextSplice::capture(&context, before.document(), range, replacement)?;
+    // The guarded synthetic result fits, but the complete document does not.
+    assert!(matches!(
+        operation.apply(&context, before.document()),
+        Err(super::NestedListTextSpliceError::Validation(_))
+    ));
+    assert_eq!(before.document().node_at(&NodePath::try_from_indices(vec![0])?)?, &first);
+    Ok(())
+}
+
+#[test]
+fn source_proof_cannot_cross_context_limits_or_hide_stale_noop_guards() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let foreign = EditorContext::new(
+        context.schema().clone(),
+        DocumentLimits::default().with_max_total_text_bytes(1),
+    );
+    let original = block(TextBlockKind::Paragraph, "ab", formats()?)?;
+    let before = state(&context, vec![original.clone()], None, None)?;
+    let range = TextRange::try_new(
+        NodePath::try_from_indices(vec![0])?,
+        TextOffset::ZERO,
+        TextOffset::try_new(1)?,
+    )?;
+    let replacement = TextFragment::try_from_runs(vec![TextRun::try_new("a", formats()?)?])?;
+    assert!(matches!(
+        NestedListTextSplice::capture(
+            &foreign,
+            before.document(),
+            range.clone(),
+            replacement.clone()
+        ),
+        Err(super::NestedListTextSpliceError::DocumentProof(_))
+    ));
+    let operation = NestedListTextSplice::capture(&context, before.document(), range, replacement)?;
+    assert!(matches!(
+        operation.apply(&context, before.document())?,
+        super::AppliedOperation::Unchanged
+    ));
+    assert!(matches!(
+        operation.validate(&foreign),
+        Err(super::NestedListTextSpliceError::Validation(_))
+    ));
+    let changed =
+        state(&context, vec![block(TextBlockKind::Paragraph, "ac", formats()?)?], None, None)?;
+    assert!(matches!(
+        operation.apply(&context, changed.document()),
+        Err(super::NestedListTextSpliceError::ExpectedMismatch)
+    ));
+    assert_eq!(before.document().node_at(&NodePath::try_from_indices(vec![0])?)?, &original);
+    Ok(())
+}
 #[test]
 #[allow(
     clippy::too_many_lines,

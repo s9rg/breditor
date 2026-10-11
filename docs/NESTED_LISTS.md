@@ -13,8 +13,8 @@ and Chrome, within the scope recorded below. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
 
-Latest automated candidate: `target/nested-list-opt-in-imtO3H`, archive SHA-256
-`8529f438907c43cb24d9be1d33dbe58d9d1e88a46143ea8b6ded7c64da1e3452`.
+Latest automated candidate: `target/nested-list-opt-in-VTFj93`, archive SHA-256
+`cdf2b46b9353756d7675927b62eb47849280104b85f27fd09bbe76a67ee57377`.
 Its installed Node/types and Chromium/Firefox/WebKit checks pass. Native
 qualification has not transferred to this candidate.
 
@@ -1258,3 +1258,53 @@ win; allocation sharing is the only improvement directly proved here. The
 [qualification record](qualification/2026-10-11-nested-wrapper-reuse.json)
 binds each report and archive. Performance acceptance and the historical WebKit
 fault remain open.
+
+### October 11: within-call nested typing reconstruction
+
+Single-block nested text splice validation now returns its reconstructed root
+and independently validated synthetic document to application within the same
+call. Application no longer rebuilds that result a second time. A source document
+can supply its existing proof only for an exactly equal complete synthetic root
+under the same compiled schema and limits. The validated result proof can supply
+publication only when its complete root equals the final reconstructed document;
+untouched sibling roots or different metadata force full validation. No proof is
+stored on the operation or passed across contexts. Codec admission, source-guard
+ordering and no-op behavior remain unchanged.
+
+All 1,197 feature-core unit tests and final strict library/test Clippy pass.
+Dedicated proof tests assert exact allocation/summary reuse, fresh validation of
+partial roots and foreign authorities, complete-document budget rejection, and
+stale no-op guard rejection. Candidate `nested-list-candidate-Ejgzp2`, installed
+pair `nested-list-packages-m25FxW` and single archive `nested-list-opt-in-VTFj93`
+pass generated/installed Node/types and all three browser engines, including
+mixed-history recovery and browser-dispatched keyboard checks. The archive is
+958,099 bytes compressed. Native testing of this archive could not begin because
+the Mac was locked; prior native observations do not transfer.
+
+A deep-target diagnostic WebKit run passed 90 edit/history/recovery cycles across
+three sessions with no captured diagnostics. It is not timing evidence or a fix
+for the historical fault. Ordinary Firefox candidate/control/candidate trials
+passed 27 cycles each, with 500-item edit medians of 331/398/423 ms. The apparent
+first-trial gain did not survive the reversed-order check, so no reliable latency
+improvement or release performance qualification is claimed. The
+[reconstruction record](qualification/2026-10-11-nested-splice-reconstruction.json)
+binds the archive and reports. Shipping bundles and public protocols are unchanged.
+
+### October 11: frame-independent fixture completion
+
+An ordinary Firefox trial timed out waiting for completion, while its captured
+page already reported passed with all nine cases and no page errors. The exact
+failed report and bundle are preserved in
+`target/nested-list-reproductions/failure-Sfmj7O`; hash verification passes.
+The installed Playwright waiter defaults to animation-frame polling. A synthetic
+Firefox control reproduces timeout despite completed page state when frame
+callbacks are suppressed; 100-ms timer polling completes. The original timeout's
+exact scheduling cause is not proven.
+
+Measurement and exact-byte replay now poll the same marker on a timer, retaining
+the same deadline and failure propagation. They record the interval, do not retry
+failed reads, and do not rewrite failed evidence. Five watcher/retention tests,
+including ten synthetic exact-byte WebKit replay sessions, pass; the hardened
+two-test watcher regression passes independently. This fixes a demonstrated
+completion-watcher failure class, not an editor or historical WebKit projection
+fault. See the [watcher record](qualification/2026-10-11-fixture-completion.json).
