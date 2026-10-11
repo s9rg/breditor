@@ -13,8 +13,12 @@ and Chrome, within the scope recorded below. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
 
-Current candidate: `target/nested-list-opt-in-VqQ3UP`, archive SHA-256
-`4c00fa7bfff6956e68ab7a667399d188369034feb8e6b96ca6e637729a268464`.
+Current automated candidate: `target/nested-list-opt-in-Skv8uP`, archive SHA-256
+`2a6e34b69ab028fc8f2e20327b2581baef4e531adc1461a133dbabe1548b3af7`.
+Its installed Node/types and Chromium/Firefox/WebKit checks pass. Native checks
+below apply to the earlier `nested-list-opt-in-VqQ3UP` archive, not this one.
+The [source-proof checkpoint](qualification/2026-10-11-nested-capture-source-proof.json)
+records the current Rust change and its limits; no latency improvement is claimed.
 The [capture-reuse qualification record](qualification/2026-10-06-nested-list-capture-reuse.json)
 records the complete Rust suite, generated and installed-package checks across
 three browser engines, and 900 diagnostic WebKit cycles without a new fault.
@@ -1146,3 +1150,19 @@ not a production fallback or a fix for the historical fault. All 23 diagnostic
 tests pass, including the WebKit exception test and checks against hostile
 loggers/error objects. An instrumented current-candidate smoke run passes nine
 root-edit/history/recovery cycles (`fgjS5V/performance-2HUVLk/measurement.json`).
+
+### October 11: durable failed-run retention
+
+Failed performance measurements now copy their exact report, HTML and asset
+inventory to `target/nested-list-reproductions/failure-*`. The report is preserved
+byte-for-byte; a separate manifest binds its hash and the HTML hash. Asset hashes
+remain bound by the original report. Replay accepts validated durable bundles
+without rebuilding them, checks hashes before and after execution, and rejects
+linked files or unexpected assets. Temporary consumers may be cleaned by macOS;
+the new retention does not recover old missing bundles or resolve the fault.
+
+Unit checks cover source deletion, changed reports/HTML/assets, unexpected files
+and linked assets. A deliberately synthetic fixture also passes ten real WebKit
+replay sessions after source deletion. This is replay-plumbing evidence only,
+not editor reliability evidence. The current single opt-in archive is 955,556
+compressed bytes and 4,159,936 unpacked bytes; size acceptance remains open.

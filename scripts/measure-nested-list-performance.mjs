@@ -20,6 +20,7 @@ import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
 import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
+import {retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -329,7 +330,12 @@ try {
       } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
       try { await captureGeckoProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
       measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, exceptionProbe, fixtureState});
-      await save("failed"); throw error;
+      await save("failed");
+      try {
+        const retained = await retainNestedListFailure(output, join(repository, "target/nested-list-reproductions"));
+        console.error(JSON.stringify({retained}));
+      } catch (retentionError) { console.error("Failure retention failed:", retentionError); }
+      throw error;
     } finally {await browser?.close();}
     }
   }

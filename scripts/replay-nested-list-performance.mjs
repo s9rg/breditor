@@ -6,15 +6,23 @@ import {tmpdir} from "node:os";
 import {dirname, join, relative, resolve} from "node:path";
 import {preview} from "vite";
 import {webkit} from "playwright-core";
+import {fileURLToPath} from "node:url";
+import {verifyFailureBundle} from "./retain-nested-list-failure.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
 const sourcePath = await realpath(resolve(process.argv[2]));
 const temporaryRoot = await realpath(tmpdir());
-assert.match(relative(temporaryRoot, sourcePath), /^breditor-nested-list-consumer-[a-zA-Z0-9]+\/performance-[a-zA-Z0-9]+\/measurement\.json$/u);
+const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
+const durable = /^failure-[a-zA-Z0-9]+\/measurement\.json$/u.test(relative(join(repository, "target/nested-list-reproductions"), sourcePath));
+const manifest = durable ? JSON.parse(await readFile(join(dirname(sourcePath), "retention.json"))) : undefined;
+if (!durable) assert.match(relative(temporaryRoot, sourcePath), /^breditor-nested-list-consumer-[a-zA-Z0-9]+\/performance-[a-zA-Z0-9]+\/measurement\.json$/u);
+await verifyFailureBundle(sourcePath, manifest);
 const sourceBytes = await readFile(sourcePath);
 const source = JSON.parse(sourceBytes);
-assert.equal(source.browserName, "webkit");
-assert.equal(source.fixture, dirname(sourcePath));
+assert.ok(source.browserName === "webkit" || (source.browserName === "all" &&
+  source.measurements?.some(run => run.browser === "webkit" && run.status === "failed")),
+"replay requires a WebKit run or a failed WebKit measurement from an all-engine run");
+if (!durable) assert.equal(source.fixture, dirname(sourcePath));
 assert.ok(Number.isSafeInteger(source.ownerRepetitions) && source.ownerRepetitions >= 3 && source.ownerRepetitions <= 30);
 const bundle = join(dirname(sourcePath), "bundle");
 assert.equal(await realpath(bundle), bundle);
@@ -69,6 +77,7 @@ try {
     if (result.status === "failed") break;
   }
   await verifyAssets();
+  await verifyFailureBundle(sourcePath, manifest);
   assert.equal(hash(await readFile(join(bundle, "index.html"))), report.indexSha256);
   report.status = report.runs.every(run => run.status === "passed") ? "passed" : "failed";
   await save();

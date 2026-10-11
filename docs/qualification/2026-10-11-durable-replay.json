@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "published": false,
+  "archive": {
+    "directory": "target/nested-list-opt-in-Skv8uP",
+    "sha256": "2a6e34b69ab028fc8f2e20327b2581baef4e531adc1461a133dbabe1548b3af7",
+    "compressedBytes": 955556,
+    "unpackedBytes": 4159936,
+    "installedNodeAndTypes": "passed",
+    "installedBrowsers": ["chromium", "firefox", "webkit"],
+    "nativeQualification": "not transferred from older archive"
+  },
+  "durableFailureRetention": {
+    "tests": "3 passed, including ten synthetic real-WebKit replay sessions after source deletion",
+    "scope": "Exact failed report, HTML and assets with hash checks; diagnostic machinery only",
+    "historicalMissingBundlesRecovered": false
+  },
+  "webkitStress": {
+    "report": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-s90sJg/performance-pe6cU2/measurement.json",
+    "reportSha256": "70ea07effc4d479efb4117117cdefc9f22467c83fd4d005c57746b3108854f07",
+    "status": "measured",
+    "freshSessions": 3,
+    "cycles": 270,
+    "editTarget": "root",
+    "capturedDiagnostics": [],
+    "instrumented": true,
+    "releasePerformanceQualified": false,
+    "historicalFaultResolved": false
+  },
+  "remainingGates": [
+    "Historical intermittent WebKit fault reproduction and root-cause resolution",
+    "Current-archive native input and spoken screen-reader qualification",
+    "Explicit size and large-document latency acceptance"
+  ]
+}
