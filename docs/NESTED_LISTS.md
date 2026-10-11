@@ -1166,3 +1166,22 @@ and linked assets. A deliberately synthetic fixture also passes ten real WebKit
 replay sessions after source deletion. This is replay-plumbing evidence only,
 not editor reliability evidence. The current single opt-in archive is 955,556
 compressed bytes and 4,159,936 unpacked bytes; size acceptance remains open.
+
+### October 11: mixed history and deep WebKit checks
+
+The installed consumer now exercises indent, emoji insertion, heading conversion
+and outdent in one history. At each cursor from four to zero it disposes the owner,
+reopens the exact checkpoint, checks byte-identical checkpoint export, then checks
+every remaining redo and undo against independently retained document, selection
+and pending-format states. Descendants and heading content are checked explicitly.
+The current archive passes this expanded fixture and keyboard driver in Chromium,
+Firefox and WebKit. Its fixture hash differs from the previous qualification;
+earlier reports do not claim this expanded coverage.
+
+A separate deep-target WebKit stress run passes 270 cycles in three fresh browser
+sessions, with no captured diagnostics. New diagnostic-only nested comparator
+labels identify failed operands without rereading snapshots or retrying equality.
+Proxy-read traces, results and paragraph-comparison counts match the uninstrumented
+real compiled comparator, including a throwing logger. An installed-editor WebKit
+smoke run passes nine cycles with the enhanced diagnostics. These are not a root
+cause or fix for the intermittent fault, nor release timing/native-input evidence.

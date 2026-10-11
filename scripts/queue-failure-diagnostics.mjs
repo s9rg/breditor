@@ -89,8 +89,41 @@ export function instrumentProjectionValidationSites(code, moduleName) {
             } catch {}
             return false;
         }`);
-  return withSnapshots.includes("export function flatListRootsEqual(a, b)")
-    ? instrumentFlatRootComparison(withSnapshots) : withSnapshots;
+  if (withSnapshots.includes("export function flatListRootsEqual(a, b)")) return instrumentFlatRootComparison(withSnapshots);
+  return withSnapshots.includes("export function nestedListRootsEqual(a, b)")
+    ? instrumentNestedRootComparison(withSnapshots) : withSnapshots;
+}
+
+/** Diagnostic-only labels for already-evaluated nested comparison operands. */
+export function instrumentNestedRootComparison(code) {
+  const start = "export function nestedListRootsEqual(a, b) {";
+  assert.equal(code.split(start).length, 2, "nested comparator start changed");
+  const from = code.indexOf(start), end = code.indexOf("\n}", from);
+  assert.ok(end > from, "nested comparator end changed");
+  let body = code.slice(from, end);
+  const operands = [
+    ["textParagraph", "paragraphsEqual(a.block, b.block)", "null"],
+    ["kind", "a.kind === b.kind", "null"],
+    ["start", "a.start === b.start", "null"],
+    ["itemCount", "a.items.length === b.items.length", "null"],
+    ["itemPresent", "b.items[index] !== undefined", "[index]"],
+    ["paragraph", "paragraphsEqual(item.block, b.items[index].block)", "[index]"],
+    ["sectionCount", "item.lists.length === b.items[index].lists.length", "[index]"],
+    ["sectionPresent", "b.items[index].lists[section] !== undefined", "[index, section]"],
+    ["childList", "nestedListRootsEqual(list, b.items[index].lists[section])", "[index, section]"],
+  ];
+  for (const [name, expression, context] of operands) {
+    assert.equal(body.split(expression).length, 2, `nested comparator operand changed: ${name}`);
+    body = body.replace(expression, `nestedComparisonDiagnostic(${JSON.stringify(name)}, ${expression}, ${context})`);
+  }
+  body = body.replace(start, start + `
+    const nestedComparisonDiagnostic = (operand, value, indexes) => {
+        if (!value) {
+            try { console.error("breditor nested comparison false", JSON.stringify({operand, indexes})); } catch {}
+        }
+        return value;
+    };`);
+  return code.slice(0, from) + body + code.slice(end);
 }
 
 /** Preserve swallowed projection exceptions in diagnostic builds only. */

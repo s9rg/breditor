@@ -4,6 +4,44 @@ import {readFile} from "node:fs/promises";
 import {transform} from "rolldown/utils";
 import {instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
 import {instrumentProjectionCaughtErrors} from "./queue-failure-diagnostics.mjs";
+import {instrumentNestedRootComparison} from "./queue-failure-diagnostics.mjs";
+
+test("real nested comparator labels preserve results, reads and short circuits", async () => {
+  const ts = await readFile(new URL("../packages/breditor-browser/src/nested_list_projection_update.ts", import.meta.url), "utf8");
+  const compiled = (await transform("nested_list_projection_update.ts", ts, {lang: "ts"})).code;
+  const start = compiled.indexOf("export function nestedListRootsEqual(a, b) {");
+  const source = compiled.slice(start, compiled.indexOf("\n}", start) + 2);
+  const changed = instrumentNestedRootComparison(source);
+  const paragraph = {runs: [{text: "A🙂", formats: []}], headingLevel: 2};
+  const child = {kind: "orderedList", start: 4, items: [{block: paragraph, lists: []}]};
+  const root = {kind: "orderedList", start: 3, items: [{block: paragraph, lists: [child]}]};
+  const cases = [root, {...root, kind: "bulletList"}, {...root, start: 5}, {...root, items: []},
+    {...root, items: [{block: {...paragraph, headingLevel: 3}, lists: [child]}]},
+    {...root, items: [{block: paragraph, lists: []}]},
+    {...root, items: [{block: paragraph, lists: [{...child, start: 5}]}]},
+    {kind: "textBlock", block: paragraph}];
+  for (const right of cases) for (const hostile of [false, true]) {
+    const outcomes = [];
+    for (const code of [source, changed]) {
+      const reads = [], logs = [];
+      const observe = (value, path) => typeof value !== "object" || value === null ? value : new Proxy(value, {
+        get(target, key, receiver) {
+          reads.push(`${path}.${String(key)}`);
+          return observe(Reflect.get(target, key, receiver), `${path}.${String(key)}`);
+        },
+      });
+      let paragraphs = 0;
+      const compare = new Function("paragraphsEqual", "console", `${code.replace("export ", "")}; return nestedListRootsEqual;`)(
+        (a, b) => {paragraphs++; return JSON.stringify(a) === JSON.stringify(b);},
+        {error(...args) {if (hostile) throw new Error("logger"); logs.push(args);}});
+      const result = compare(observe(structuredClone(root), "left"), observe(structuredClone(right), "right"));
+      outcomes.push({result, reads, paragraphs});
+      if (code === changed && !hostile) assert.equal(logs.length > 0, !result && right.kind !== "textBlock");
+    }
+    assert.deepEqual(outcomes[0], outcomes[1]);
+  }
+  assert.throws(() => instrumentNestedRootComparison(source.replace("a.start === b.start", "false")));
+});
 
 test("caught projection diagnostics preserve rejection even with hostile errors or loggers", () => {
   const source = `try { throw error; } catch { return projectionFailure("projection.invalid_update"); }`;

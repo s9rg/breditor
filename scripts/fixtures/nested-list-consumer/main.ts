@@ -118,6 +118,53 @@ async function start(): Promise<void> {
     owner = restored.editor; equal(exported("sessionCheckpointJson"), checkpoint);
     (options.toolbar!.host.querySelector('[data-breditor-state-id="breditor/control-redo"]') as HTMLButtonElement).click();
     equal(exported("documentJson"), changed);
+    // A mixed structural/text/kind history must survive fresh-owner recovery at
+    // every cursor, not only a checkpoint with one pending formatting redo.
+    owner.dispose();
+    const mixed = await BreditorBrowserEditor.openNestedLists(options);
+    if (!mixed.ok) throw new Error(mixed.error.code);
+    owner = mixed.editor;
+    owner.focus();
+    const mixedSecond = [...options.host.querySelectorAll("p")].find(p => p.textContent === "Second")!.firstChild!;
+    getSelection()!.setBaseAndExtent(mixedSecond, 2, mixedSecond, 2);
+    document.dispatchEvent(new Event("selectionchange"));
+    const mixedState = () => {
+      const checkpoint = JSON.parse(exported("sessionCheckpointJson"));
+      const current = checkpoint.cursor === 0 ? checkpoint.historyBase : checkpoint.entries[checkpoint.cursor - 1];
+      return {document: exported("documentJson"),
+        selection: checkpoint.cursor === 0 ? current.selection : current.resultSelection,
+        pendingFormats: checkpoint.cursor === 0 ? current.pendingFormats : current.resultPendingFormats};
+    };
+    const mixedStates = [mixedState()];
+    for (const action of [
+      () => equal(owner.executeIntent("breditor/indent-list-items").status, "committed"),
+      () => options.host.dispatchEvent(new InputEvent("beforeinput", {bubbles: true, cancelable: true, inputType: "insertText", data: "🙂"})),
+      () => equal(owner.executeIntent("breditor/format-heading-3").status, "committed"),
+      () => equal(owner.executeIntent("breditor/outdent-list-items").status, "committed"),
+    ]) {
+      action(); equal(owner.getStatus().phase, "live");
+      mixedStates.push(mixedState());
+      equal(JSON.parse(exported("sessionCheckpointJson")).cursor, mixedStates.length - 1);
+    }
+    equal(options.host.querySelector("ol > li:nth-child(2) > h3")?.textContent, "Se🙂cond");
+    equal(options.host.querySelector("ol > li:nth-child(2) > ul > li > p")?.textContent, "Deep 🙂");
+    const history = (operation: "undo" | "redo") => {
+      const button = options.toolbar!.host.querySelector<HTMLButtonElement>(`[data-breditor-state-id="breditor/control-${operation}"]`)!;
+      equal(button.disabled, false); button.click(); equal(owner.getStatus().phase, "live");
+    };
+    for (let cursor = 4; cursor >= 0; cursor--) {
+      const saved = exported("sessionCheckpointJson");
+      equal(JSON.parse(saved).cursor, cursor);
+      owner.dispose();
+      const reopened = await BreditorBrowserEditor.openNestedLists({...recovery, initialSessionCheckpointJson: saved});
+      if (!reopened.ok) throw new Error(reopened.error.code);
+      owner = reopened.editor;
+      equal(exported("sessionCheckpointJson"), saved);
+      equal(mixedState(), mixedStates[cursor]);
+      for (let index = cursor + 1; index <= 4; index++) {history("redo"); equal(mixedState(), mixedStates[index]);}
+      for (let index = 3; index >= cursor; index--) {history("undo"); equal(mixedState(), mixedStates[index]);}
+      if (cursor > 0) {history("undo"); equal(mixedState(), mixedStates[cursor - 1]);}
+    }
     if (new URL(location.href).searchParams.has("keyboardProbe")) {
       owner.dispose();
       const fresh = await BreditorBrowserEditor.openNestedLists(options);

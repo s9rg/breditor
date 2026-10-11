@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "archiveSha256": "2a6e34b69ab028fc8f2e20327b2581baef4e531adc1461a133dbabe1548b3af7",
+  "installedConsumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-opt-in-consumer-jOUHGn",
+  "fixtureSha256": "fb8f06eaa88bfab12fbb23b03071f0c6357e9436ac6bd2ff360bcd0901e66c85",
+  "nodeAndTypes": "passed",
+  "browserEngines": ["chromium", "firefox", "webkit"],
+  "mixedHistory": {
+    "operations": ["indent", "emoji insertion", "heading conversion", "outdent"],
+    "freshOwnerCursors": [4, 3, 2, 1, 0],
+    "exactCheckpointExport": true,
+    "redoAndUndoDocumentSelectionPendingFormats": "passed at every remaining cursor",
+    "descendantContentAndHeading": "passed"
+  },
+  "deepWebKitStress": {
+    "fixture": "s90sJg/performance-G3ZWw1",
+    "reportSha256": "237e6d71a0f70ed3dbe63f8e7d3a3f4d2e9a2189a989bb92e52849b02f236a47",
+    "cycles": 270,
+    "freshSessions": 3,
+    "diagnostics": []
+  },
+  "enhancedComparatorDiagnosticSmoke": {
+    "fixture": "s90sJg/performance-HaJLRL",
+    "reportSha256": "b4332a8fcd289e1c7bea5b2f4e07568ba297920cee8b180925891932f0fef9c9",
+    "cycles": 9,
+    "diagnostics": []
+  },
+  "limitations": ["No fault reproduced or resolved", "Not native IME or spoken accessibility qualification", "Diagnostic timings do not qualify release performance"]
+}

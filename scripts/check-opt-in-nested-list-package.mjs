@@ -97,7 +97,9 @@ console.log("Node opt-in imports, identity, engine and export boundaries passed"
   const report = {status: "passed", assembly: assemblyPath, archiveSha256: assembly.sha256, consumer,
     fixtureSha256, keyboardProbeSha256,
     nodeAndTypes: "passed", browserRuns: runs, publishable: false, sizeBudgetQualified: false,
-    boundary: "External installed single-package consumer; nested indent/outdent with descendants, list conversion, deep formatting with backward selection, Undo, V7 restore and Redo. Not native-input qualification or a complete release gate."};
+    mixedHistoryRecovery: {operations: ["indent", "emoji insertion", "heading conversion", "outdent"],
+      freshOwnerCursors: [4, 3, 2, 1, 0], exactDocumentSelectionAndPendingFormats: true},
+    boundary: "External installed single-package consumer; nested indent/outdent with descendants, list conversion, deep formatting with backward selection, mixed structural/text/heading history restored at every cursor, Undo, V7 restore and Redo. Not native-input qualification or a complete release gate."};
   await writeFile(join(assembly.directory, "consumer-qualification.json"), JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report, null, 2));
 } catch (error) {
