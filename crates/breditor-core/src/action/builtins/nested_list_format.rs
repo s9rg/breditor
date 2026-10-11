@@ -61,7 +61,7 @@ pub(super) fn capture_selection(
     let mut spans = Vec::new();
     let mut selected = Vec::new();
     while let Some((path, node)) = stack.pop() {
-        if path > *end {
+        if !subtree_intersects_range(&path, start, end) {
             continue;
         }
         let element =
@@ -80,18 +80,58 @@ pub(super) fn capture_selection(
             );
             selected.push(part);
         } else {
-            for (index, child) in element.children().iter().enumerate().rev() {
+            let children = element.children();
+            let indexes = selected_child_indexes(&path, start, end, children.len())?;
+            for (index, child) in
+                children.iter().enumerate().take(indexes.end).skip(indexes.start).rev()
+            {
                 let index =
                     u32::try_from(index).map_err(|_| fault("breditor/nested-format-path-fault"))?;
-                stack.push((
-                    path.try_child(index)
-                        .map_err(|_| fault("breditor/nested-format-path-fault"))?,
-                    child.clone(),
-                ));
+                let child_path = path
+                    .try_child(index)
+                    .map_err(|_| fault("breditor/nested-format-path-fault"))?;
+                if subtree_intersects_range(&child_path, start, end) {
+                    stack.push((child_path, child.clone()));
+                }
             }
         }
     }
     Ok((spans, selected))
+}
+
+/// Lexical paths are depth-first ordered. A subtree before the start can contain
+/// selected blocks only when its path is an ancestor of that start. The admitted
+/// document and normalized range remain authoritative; no proof or fragment is
+/// cached. In particular, do not prune ancestors merely because they sort first.
+pub(super) fn subtree_intersects_range(path: &NodePath, start: &NodePath, end: &NodePath) -> bool {
+    path <= end && (path >= start || start.as_slice().starts_with(path.as_slice()))
+}
+
+/// Bounds the direct children of an intersecting ancestor before allocating
+/// their paths. Sibling subtrees outside this interval cannot contain a selected
+/// text block. Ancestors of an endpoint retain its next path component; interior
+/// containers retain every child. This does not infer or widen text selection.
+pub(super) fn selected_child_indexes(
+    path: &NodePath,
+    start: &NodePath,
+    end: &NodePath,
+    count: usize,
+) -> Result<std::ops::Range<usize>, ActionFault> {
+    let next = |endpoint: &NodePath| -> Result<Option<usize>, ActionFault> {
+        if !endpoint.as_slice().starts_with(path.as_slice()) {
+            return Ok(None);
+        }
+        endpoint
+            .as_slice()
+            .get(path.as_slice().len())
+            .map(|index| {
+                usize::try_from(*index).map_err(|_| fault("breditor/nested-format-path-fault"))
+            })
+            .transpose()
+    };
+    let first = next(start)?.unwrap_or(0).min(count);
+    let stop = next(end)?.map_or(count, |index| index.saturating_add(1).min(count));
+    Ok(first..stop)
 }
 
 pub(super) fn evaluate(

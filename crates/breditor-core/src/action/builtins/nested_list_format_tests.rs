@@ -19,6 +19,65 @@ use std::error::Error;
 fn element(kind: &str, children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>> {
     Ok(NodeRef::element(ElementNode::try_new(name(kind)?, None, PropertyMap::default(), children)?))
 }
+
+#[test]
+fn range_subtree_pruning_matches_independent_depth_first_oracle() -> TestResult {
+    let source = fixture(false, 8)?;
+    let mut containers = Vec::new();
+    let mut blocks = Vec::new();
+    let mut stack = vec![(NodePath::root(), source.document().root().clone())];
+    while let Some((path, node)) = stack.pop() {
+        let Some(element) = node.as_element() else { continue };
+        containers.push(path.clone());
+        if matches!(element.kind().as_str(), "breditor/paragraph" | "breditor/heading") {
+            blocks.push(path);
+        } else {
+            for (index, child) in element.children().iter().enumerate().rev() {
+                stack.push((path.try_child(u32::try_from(index)?)?, child.clone()));
+            }
+        }
+    }
+    assert_eq!(blocks.len(), 4);
+    for first in 0..blocks.len() {
+        for last in first..blocks.len() {
+            for container in &containers {
+                let contains_selected = blocks[first..=last]
+                    .iter()
+                    .any(|block| block.as_slice().starts_with(container.as_slice()));
+                assert_eq!(
+                    super::nested_list_format::subtree_intersects_range(
+                        container,
+                        &blocks[first],
+                        &blocks[last]
+                    ),
+                    contains_selected,
+                    "container {container:?}, range {:?}..{:?}",
+                    blocks[first],
+                    blocks[last],
+                );
+                let node = source.document().node_at(container)?.as_element().ok_or("element")?;
+                if contains_selected
+                    && !matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading")
+                {
+                    let indexes = super::nested_list_format::selected_child_indexes(
+                        container,
+                        &blocks[first],
+                        &blocks[last],
+                        node.children().len(),
+                    )?;
+                    for index in 0..node.children().len() {
+                        let child = container.try_child(u32::try_from(index)?)?;
+                        let expected = blocks[first..=last]
+                            .iter()
+                            .any(|block| block.as_slice().starts_with(child.as_slice()));
+                        assert_eq!(indexes.contains(&index), expected);
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
 fn fixture(reverse: bool, budget: u32) -> Result<EditorState, Box<dyn Error>> {
     let context = EditorContext::new(
         CompiledSchema::try_compile_nested_list_profile(

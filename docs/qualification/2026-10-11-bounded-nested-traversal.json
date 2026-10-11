@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "featureCoreUnitTestsPassed": 1189,
+  "strictCoreClippyLibAndTests": "passed",
+  "candidate": "target/nested-list-candidate-nChfBd",
+  "wasmSha256": "7697e942e35b02f375f83f14073952f3b14f14b1a01dd15573b07123b45bf2a1",
+  "wasmBytes": 2303089,
+  "wasmGzip9Bytes": 631474,
+  "generatedAndInstalledBrowserEngines": ["chromium", "firefox", "webkit"],
+  "installedPair": "target/nested-list-packages-MmJ9rC/qualification.json",
+  "shippingArtifactsWritten": false,
+  "protocolsChanged": false,
+  "nativeQualificationTransferred": false,
+  "ordinarySequentialFirefoxGrandchildTrials": {
+    "candidate": {
+      "fixture": "zis1MN/performance-ZCPxzX",
+      "reportSha256": "cc103ec4b5ef17d68e3469477c67b6e110ce939ff407634436a2a09986bdc50b",
+      "correctnessCycles": 27,
+      "edit500Samples": 9,
+      "edit500MedianMs": 373,
+      "edit500RangeMs": [357, 414]
+    },
+    "control": {
+      "fixture": "s90sJg/performance-RvQ9AC",
+      "reportSha256": "f002068b58cc8d6a0591e2b913c9c7cc33561f5143a9ee151a54aa21eae6ac4e",
+      "correctnessCycles": 27,
+      "edit500Samples": 9,
+      "edit500MedianMs": 363,
+      "edit500RangeMs": [351, 411]
+    },
+    "latencyImprovementDemonstrated": false,
+    "releasePerformanceQualified": false
+  },
+  "startupFailure": {
+    "retained": "target/nested-list-reproductions/failure-jsJ64u",
+    "browser": "firefox",
+    "phase": "launch before editor load",
+    "timeoutMs": 180000,
+    "retainedHashesVerified": true,
+    "subsequentEditorFreeLaunchMs": 567,
+    "retryCorrectnessCyclesPassed": 27,
+    "isHistoricalWebKitProjectionFault": false
+  }
+}

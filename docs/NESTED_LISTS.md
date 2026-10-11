@@ -1194,3 +1194,29 @@ produces exact plain-text newlines; browser-dispatched Control-Z restores the
 exact DOM and directional endpoints. The native Chrome Control-Z wrapper had no
 observed effect, so physical shortcut qualification is not claimed. No OS settings
 were changed and neither Japanese IME nor spoken VoiceOver was qualified.
+
+### October 11: bounded selection traversal
+
+Nested formatting/kind selection capture now prunes subtrees outside the logical
+range and bounds each ancestor's child-index interval before allocating paths.
+Ancestors are retained even when they sort before the range start. An independent
+depth-first oracle checks every endpoint pair and child interval in a nested tree;
+all 1,189 feature-core unit tests and strict core library/test Clippy pass. Isolated
+generated Wasm and installed-package checks pass in all three browser engines,
+including mixed-history recovery. No ABI, schema, codec or shipping artifact changes
+are made by this optimization.
+
+The final candidate is `nested-list-candidate-nChfBd`, installed pair
+`nested-list-packages-MmJ9rC`. It is not yet the separately assembled/native-qualified
+archive identified above. Ordinary sequential Firefox grandchild trials measured
+500-item edit medians of 373 ms for this candidate and 363 ms for the control,
+with overlapping ranges. This does not demonstrate a latency improvement or
+qualify release performance. The broader full-plan reconstruction cost remains.
+
+One preceding trial timed out during Firefox launch before the editor loaded.
+Its exact report and bundle were retained at
+`target/nested-list-reproductions/failure-jsJ64u`; hash verification passes. A fresh
+editor-free Firefox launch then succeeded in 567 ms, followed by the successful
+retry. This is an intermittent startup observation, not the historical WebKit
+projection fault. Future measurement failures include their launch/setup/navigation/
+execution/assertion stage so infrastructure and editor failures remain distinct.

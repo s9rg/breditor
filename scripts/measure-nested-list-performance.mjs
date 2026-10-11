@@ -195,6 +195,7 @@ try {
     for (let run = 0; run < runCount; run++) {
     let browser;
     let page;
+    let failureStage = "browserLaunch";
     const diagnostics = [];
     const pageErrors = [];
     let cpuSession;
@@ -272,6 +273,7 @@ try {
         MOZ_PROFILER_STARTUP_FEATURES: "js,stackwalk,leaf", MOZ_PROFILER_STARTUP_INTERVAL: "1",
         MOZ_PROFILER_SHUTDOWN: geckoProfilePath,
       }} : {});
+      failureStage = "pageSetup";
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
       if (constructorProbeEnabled) await page.addInitScript(installExceptionConstructorProbe);
       if (renderingTraceEnabled) {
@@ -289,8 +291,11 @@ try {
       page.on("pageerror", error => { if (pageErrors.length < 100) pageErrors.push(String(error)); });
       const query = new URLSearchParams({editTarget});
       if (renderingTraceEnabled || geckoProfileEnabled) query.set("renderTrace", "1");
+      failureStage = "pageNavigation";
       await page.goto(`http://127.0.0.1:${address.port}/?${query}`);
+      failureStage = "fixtureExecution";
       await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
+      failureStage = "fixtureAssertions";
       await captureCpuProfile();
       await captureRenderingTrace();
       await captureExceptionProbe();
@@ -329,7 +334,7 @@ try {
         }), undefined, {timeout: 5000});
       } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
       try { await captureGeckoProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
-      measurements.push({browser: name, run, version: browser?.version(), status: "failed", error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, exceptionProbe, fixtureState});
+      measurements.push({browser: name, run, version: browser?.version(), status: "failed", failureStage, error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, exceptionProbe, fixtureState});
       await save("failed");
       try {
         const retained = await retainNestedListFailure(output, join(repository, "target/nested-list-reproductions"));
