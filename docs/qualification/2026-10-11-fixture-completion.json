@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "productionEditorChanged": false,
+  "failure": {
+    "retained": "target/nested-list-reproductions/failure-Sfmj7O",
+    "reportSha256": "6212178db8d0992bdacdb784f529a854b3bea87e2b48dbd25ae9bde2b9052a08",
+    "browser": "firefox",
+    "stage": "fixtureExecution",
+    "timeoutMs": 180000,
+    "completedSessions": 2,
+    "capturedThirdSessionStatus": "passed",
+    "capturedThirdSessionCases": 9,
+    "pageErrors": [],
+    "diagnostics": [],
+    "retainedHashesVerified": true,
+    "originalCauseProven": false
+  },
+  "reproducedClass": "Synthetic Firefox page completes after the first poll while animation-frame callbacks are suppressed; default frame polling times out, numeric timer polling completes.",
+  "fix": {
+    "scope": "measurement and exact-byte replay completion watcher",
+    "pollingMs": 100,
+    "deadlineChanged": false,
+    "predicateChanged": false,
+    "failureRetryAdded": false,
+    "failedEvidenceRewritten": false,
+    "reportsRecordPollingInterval": true
+  },
+  "tests": {
+    "watcherAndRetentionTestsPassed": 5,
+    "hardenedWatcherTestsPassed": 2,
+    "syntheticExactByteWebKitReplaySessionsPassed": 10,
+    "boundary": "Synthetic scheduler and retention controls, not editor or native-input qualification."
+  },
+  "historicalWebKitFaultResolved": false
+}

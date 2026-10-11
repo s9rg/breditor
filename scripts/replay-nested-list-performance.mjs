@@ -8,6 +8,7 @@ import {preview} from "vite";
 import {webkit} from "playwright-core";
 import {fileURLToPath} from "node:url";
 import {verifyFailureBundle} from "./retain-nested-list-failure.mjs";
+import {FIXTURE_COMPLETION_POLLING_MS, waitForFixtureCompletion} from "./fixture-completion.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
 const sourcePath = await realpath(resolve(process.argv[2]));
@@ -40,6 +41,7 @@ const verifyAssets = async () => {
 await verifyAssets();
 const output = await mkdtemp(join(dirname(sourcePath), "exact-replay-"));
 const report = {status: "running", sourcePath, sourceSha256: hash(sourceBytes),
+  fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   bundleAssets: source.bundleAssets, indexSha256: hash(await readFile(join(bundle, "index.html"))),
   rebuilt: false, addedInstrumentation: false, releaseQualified: false, runs: []};
 const save = () => writeFile(join(output, "replay.json"), `${JSON.stringify(report, null, 2)}\n`);
@@ -61,7 +63,7 @@ try {
       page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
       page.on("pageerror", error => {if (result.pageErrors.length < 100) result.pageErrors.push(String(error));});
       await page.goto(`http://127.0.0.1:${address.port}/?editTarget=${source.editTarget ?? "root"}`);
-      await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
+      await waitForFixtureCompletion(page);
       const element = page.locator("#result");
       result.fixtureStatus = await element.getAttribute("data-status");
       result.fixtureOutput = await element.textContent();

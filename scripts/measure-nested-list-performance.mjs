@@ -21,6 +21,7 @@ import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
 import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 import {retainNestedListFailure} from "./retain-nested-list-failure.mjs";
+import {FIXTURE_COMPLETION_POLLING_MS, waitForFixtureCompletion} from "./fixture-completion.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -176,6 +177,7 @@ const save = async status => writeFile(output, JSON.stringify({status, diagnosti
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
+  fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget,
   selectionTimingIncludesTaskWaits: selectionScheduling !== "synchronous",
   cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
@@ -294,7 +296,7 @@ try {
       failureStage = "pageNavigation";
       await page.goto(`http://127.0.0.1:${address.port}/?${query}`);
       failureStage = "fixtureExecution";
-      await page.waitForFunction(() => document.getElementById("result")?.hasAttribute("data-status"), undefined, {timeout: 180000});
+      await waitForFixtureCompletion(page);
       failureStage = "fixtureAssertions";
       await captureCpuProfile();
       await captureRenderingTrace();
