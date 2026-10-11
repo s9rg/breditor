@@ -1,0 +1,34 @@
+{
+  "change": "Pass capture's matching validated document to the existing exact-root source-proof reuse helper",
+  "sourceBaseCommit": "aea513b",
+  "candidate": "target/nested-list-candidate-BbhcOM",
+  "wasmSha256": "d6b1ab179d3a7667d9a0cd485b5540fdc374384acce5b49ade94846c99b56f74",
+  "packages": "target/nested-list-packages-MDa2Km/qualification.json",
+  "contract": "Proof reuse requires exact complete reconstructed root equality under the same schema and limits. Partial spans still validate independently; replacement and apply-time validation remain required.",
+  "checks": {
+    "coreFeatureUnitTests": 1188,
+    "foreignLimitsProofRejected": true,
+    "strictClippyLibAndTests": "passed",
+    "generatedAbiAndNode": "passed",
+    "generatedAndInstalledChromiumFirefoxWebKit": "passed",
+    "shippingArtifactsWritten": false
+  },
+  "comparison": {
+    "browser": "Firefox 153.0",
+    "editTarget": "grandchild",
+    "candidateMeasurement": "breditor-nested-list-consumer-s90sJg/performance-nG3eiO/measurement.json",
+    "controlMeasurement": "breditor-nested-list-consumer-p6wM4Q/performance-lHwGpi/measurement.json",
+    "candidate500ItemEditMedianMsBySession": [326, 320, 317],
+    "control500ItemEditMedianMsBySession": [313, 314, 320],
+    "correctnessCyclesPerCandidate": 27,
+    "sessionsPerCandidate": 3,
+    "concurrentCompilation": false,
+    "controlPackages": "target/nested-list-packages-kRlzje/qualification.json",
+    "controlWasmSha256": "a930aa46bf2b577c25e5056ffc6acb1b8b9c13ffa88b93ad18956a548dd467de",
+    "controlRecreated": "Previous external temporary consumer was missing; recreated installed packages have identical browser and Wasm tarball hashes to the previous qualification.",
+    "conclusion": "No demonstrated latency improvement. Ordered sequential runs and limited samples do not establish a small regression either. Large-document latency remains unqualified."
+  },
+  "releaseQualified": false,
+  "nativeEvidenceBoundary": "Existing native checks refer to VqQ3UP before this Rust change. They are not automatically transferred to this candidate.",
+  "remaining": ["Historical WebKit fault", "Physical IME and spoken VoiceOver", "Release size and latency criteria", "Durable retention of future failure bundles"]
+}

@@ -15,6 +15,47 @@ use crate::{
     transaction::Transaction,
 };
 use std::error::Error;
+
+#[test]
+fn capture_cannot_reuse_a_whole_document_proof_under_different_limits() -> TestResult {
+    let schema = CompiledSchema::try_compile_nested_list_profile(
+        SchemaId::new(name("test/nested-proof-limits")?, SchemaVersion::one()),
+        &extensions()?,
+    )?;
+    let context = EditorContext::new(schema.clone(), DocumentLimits::default());
+    let foreign =
+        EditorContext::new(schema, DocumentLimits::default().with_max_children_per_element(2));
+    let before = state(&context, vec![text("ab")?], None, None)?;
+    let edit_range = NestedListTextRange::try_new(
+        NodePath::try_from_indices(vec![0])?,
+        TextOffset::try_new(1)?,
+        NodePath::try_from_indices(vec![0])?,
+        TextOffset::try_new(1)?,
+    )?;
+    let layout = NestedListTextReplace::capture_layout(&[text("")?])?;
+    assert!(
+        NestedListTextReplace::capture(
+            &context,
+            before.document(),
+            edit_range.clone(),
+            vec![text("X")?],
+            layout.clone(),
+        )
+        .is_ok()
+    );
+    assert!(matches!(
+        NestedListTextReplace::capture(
+            &foreign,
+            before.document(),
+            edit_range,
+            vec![text("X")?],
+            layout,
+        ),
+        Err(super::NestedListTextReplaceError::DocumentProof(_))
+    ));
+    Ok(())
+}
+
 fn element(kind: &str, children: Vec<NodeRef>) -> Result<NodeRef, Box<dyn Error>> {
     Ok(NodeRef::element(ElementNode::try_new(name(kind)?, None, PropertyMap::default(), children)?))
 }

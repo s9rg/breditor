@@ -113,7 +113,10 @@ impl NestedListTextReplace {
         let expected = root.children().iter().skip(start).take(end - start).cloned().collect();
         let (operation, derived) =
             Self::try_new_with_derived(range.root_start(), range, expected, inserted, layout)?;
-        operation.validate_with_derived(context, None, Some(derived))?;
+        // Reuse the source proof only when validate_roots reconstructs this
+        // exact whole document under the same schema and limits. Partial root
+        // spans still receive independent validation through that helper.
+        operation.validate_with_derived(context, Some(document), Some(derived))?;
         Ok(operation)
     }
     /// Source range in real document block paths.
