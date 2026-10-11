@@ -13,7 +13,12 @@ and Chrome, within the scope recorded below. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
 
-Current automated candidate: `target/nested-list-opt-in-Skv8uP`, archive SHA-256
+Latest automated candidate: `target/nested-list-opt-in-imtO3H`, archive SHA-256
+`8529f438907c43cb24d9be1d33dbe58d9d1e88a46143ea8b6ded7c64da1e3452`.
+Its installed Node/types and Chromium/Firefox/WebKit checks pass. Native
+qualification has not transferred to this candidate.
+
+Most recent archive with native observations: `target/nested-list-opt-in-Skv8uP`, archive SHA-256
 `2a6e34b69ab028fc8f2e20327b2581baef4e531adc1461a133dbabe1548b3af7`.
 Its installed Node/types and Chromium/Firefox/WebKit checks pass. The
 [current native record](qualification/2026-10-11-current-native-lists.json)
@@ -1220,3 +1225,36 @@ editor-free Firefox launch then succeeded in 567 ms, followed by the successful
 retry. This is an intermittent startup observation, not the historical WebKit
 projection fault. Future measurement failures include their launch/setup/navigation/
 execution/assertion stage so infrastructure and editor failures remain distinct.
+
+### October 11: exact nested wrapper reuse
+
+Nested text-layout reconstruction now reuses a same-position immutable source
+wrapper only when its kind, identity, properties and every reconstructed child
+match exactly. Changed paths receive fresh wrappers; unaffected descendant
+branches can retain their allocations. The walk also avoids cloning an
+intermediate vector of source children. Source nodes are optimization hints,
+never admission proofs: canonical slot checks, grammar validation, source guards,
+context/limit validation and inverse checks remain unchanged.
+
+All 1,192 feature-core unit tests pass. Dedicated reuse tests compare against
+fresh construction for unchanged, edited, reordered and unrelated source trees,
+check allocation sharing, reject foreign identity/properties and extra children,
+and retain invalid-layout rejection. Strict library-and-test Clippy passes.
+The isolated candidate `nested-list-candidate-7LMpoV` and installed pair
+`nested-list-packages-OxsnSQ` pass Node/types and Chromium/Firefox/WebKit checks.
+The single archive `nested-list-opt-in-imtO3H` passes independent installed
+consumer and browser-dispatched keyboard checks, including exact mixed-history
+recovery at every cursor. Its SHA-256 is
+`8529f438907c43cb24d9be1d33dbe58d9d1e88a46143ea8b6ded7c64da1e3452`.
+It is 956,291 bytes compressed; no size acceptance, native qualification or
+latency improvement is implied. Previous native records do not transfer to this
+new archive. Shipping bundles and public protocols remain unchanged.
+
+Ordinary sequential Firefox grandchild measurements, with compilation finished,
+passed 27 correctness cycles per candidate/control. The 500-item edit medians
+were 550 ms for wrapper reuse and 560 ms for the previous bounded-traversal
+candidate, with overlapping ranges. This does not establish a stable latency
+win; allocation sharing is the only improvement directly proved here. The
+[qualification record](qualification/2026-10-11-nested-wrapper-reuse.json)
+binds each report and archive. Performance acceptance and the historical WebKit
+fault remain open.

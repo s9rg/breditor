@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "featureCoreUnitTestsPassed": 1192,
+  "finalReuseTestsPassed": 3,
+  "strictCoreClippyLibAndTests": "passed",
+  "candidate": "target/nested-list-candidate-7LMpoV",
+  "wasmSha256": "be674f0fe8f2b1b289f95c77bf22cf497b39e8a53f0e1aa00f83b0612a84c702",
+  "wasmBytes": 2305763,
+  "wasmGzip9Bytes": 631978,
+  "generatedAndInstalledBrowserEngines": ["chromium", "firefox", "webkit"],
+  "installedPair": "target/nested-list-packages-OxsnSQ/qualification.json",
+  "singleArchive": "target/nested-list-opt-in-imtO3H",
+  "singleArchiveSha256": "8529f438907c43cb24d9be1d33dbe58d9d1e88a46143ea8b6ded7c64da1e3452",
+  "singleArchiveBytes": 956291,
+  "singleArchiveUnpackedBytes": 4163211,
+  "independentSingleArchiveConsumerChecks": "passed",
+  "browserDispatchedKeyboardChecks": "passed all three engines; not physical IME",
+  "mixedHistoryFreshOwnerCursors": [4, 3, 2, 1, 0],
+  "shippingArtifactsWritten": false,
+  "protocolsChanged": false,
+  "nativeQualificationTransferred": false,
+  "allocationReuseProvedByUnitTests": true,
+  "ordinarySequentialFirefoxGrandchildTrials": {
+    "compilerOverlap": false,
+    "candidate": {
+      "fixture": "CRYOGf/performance-35f7bZ",
+      "reportSha256": "1a6d35cc0d6888cb59ab33473dfb0128731e343ce272946cc60c0a9711bc62a2",
+      "correctnessCycles": 27,
+      "edit500Samples": 9,
+      "edit500MedianMs": 550,
+      "edit500RangeMs": [518, 566]
+    },
+    "control": {
+      "installedPair": "target/nested-list-packages-MmJ9rC/qualification.json",
+      "fixture": "zis1MN/performance-HOdPrn",
+      "reportSha256": "a400ef1b0e2608bdaf34968f959dcffea4c905a4d89ed97661688396035a62db",
+      "correctnessCycles": 27,
+      "edit500Samples": 9,
+      "edit500MedianMs": 560,
+      "edit500RangeMs": [540, 758]
+    },
+    "latencyImprovementDemonstrated": false,
+    "releasePerformanceQualified": false,
+    "boundary": "Overlapping ranges and sequential order do not establish a stable latency win. Allocation sharing is independently asserted; no release performance claim."
+  },
+  "historicalWebKitFaultResolved": false,
+  "sizeBudgetQualified": false
+}
