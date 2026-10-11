@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "archive": "target/nested-list-opt-in-Skv8uP",
+  "archiveSha256": "2a6e34b69ab028fc8f2e20327b2581baef4e531adc1461a133dbabe1548b3af7",
+  "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-opt-in-consumer-jOUHGn",
+  "fixtureSha256": "fb8f06eaa88bfab12fbb23b03071f0c6357e9436ac6bd2ff360bcd0901e66c85",
+  "preview": "http://127.0.0.1:4318/?keyboardProbe",
+  "bundleIndexSha256": "0fc606ee62cc1bc31849c6aadf23de03b9b79ad4fcb6b647552df9e08cedea85",
+  "bundleAssets": {
+    "breditor_wasm_bg-DhuCOHEK.wasm": "d6b1ab179d3a7667d9a0cd485b5540fdc374384acce5b49ade94846c99b56f74",
+    "index-ddRwga4m.js": "de1193d6aaad4e5863042b2ea6be6b16bcd1bb74daa5246a8f763a70a3e75255"
+  },
+  "safari": {
+    "delivery": "native macOS app controls, visible clicks and key chords",
+    "indentOutdent": "Second moved beneath First and returned; Deep descendant retained; ordered markers 3 and 4 preserved",
+    "typing": "Second! observed, undo restored Second; redo returned Second!",
+    "copy": "Deep emoji text copied with Command-C and pasted exactly into outside input",
+    "cut": "Deep emoji text deleted once; Control-Z restored text and selected range visibly",
+    "paste": "Right collapsed restored selection, Command-V produced Deep emoji text twice; Control-Z restored original once",
+    "selectionOffsets": "not programmatically inspected",
+    "axSelectTextLimitation": "AX selectText did not place the requested caret in Second; visible click and native caret movement used instead"
+  },
+  "chrome": {
+    "delivery": "visible locator clicks, native key wrappers for Tab/outdent and Command-X; browser-dispatched keys for forward-range construction and verified Control-Z",
+    "indentOutdent": "descendant retained and original visible hierarchy restored",
+    "backwardSelection": {"anchorText": "Deep 🙂", "anchorOffset": 7, "focusText": "First", "focusOffset": 0},
+    "forwardSelection": {"anchorText": "First", "anchorOffset": 0, "focusText": "Deep 🙂", "focusOffset": 7},
+    "clipboardBothDirections": "First\nSecond\nDeep 🙂",
+    "undoBothDirections": "byte-identical editor innerHTML and exact directional DOM endpoints",
+    "nativeControlZWrapper": "no observed effect; browser-dispatched Control+z restored correctly; physical shortcut not qualified"
+  },
+  "screenshot": {
+    "path": "/private/tmp/breditor-native-release-j6r06S/chrome-restored-selection-detail.jpg",
+    "sha256": "508979aa5e9707b1761be908ca76d06852f0905df389fc068579cbab60285c01"
+  },
+  "osSettingsChanged": false,
+  "limitations": ["Not physical Japanese IME", "Not spoken VoiceOver", "Does not resolve historical WebKit fault", "No performance or size acceptance"]
+}

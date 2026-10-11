@@ -15,8 +15,10 @@ only where a later checkpoint explicitly supplies matching evidence.
 
 Current automated candidate: `target/nested-list-opt-in-Skv8uP`, archive SHA-256
 `2a6e34b69ab028fc8f2e20327b2581baef4e531adc1461a133dbabe1548b3af7`.
-Its installed Node/types and Chromium/Firefox/WebKit checks pass. Native checks
-below apply to the earlier `nested-list-opt-in-VqQ3UP` archive, not this one.
+Its installed Node/types and Chromium/Firefox/WebKit checks pass. The
+[current native record](qualification/2026-10-11-current-native-lists.json)
+adds Safari nesting/clipboard and Chrome cross-item cut/undo observations for
+this archive. Older native records still apply only to their identified archive.
 The [source-proof checkpoint](qualification/2026-10-11-nested-capture-source-proof.json)
 records the current Rust change and its limits; no latency improvement is claimed.
 The [capture-reuse qualification record](qualification/2026-10-06-nested-list-capture-reuse.json)
@@ -1185,3 +1187,10 @@ Proxy-read traces, results and paragraph-comparison counts match the uninstrumen
 real compiled comparator, including a throwing logger. An installed-editor WebKit
 smoke run passes nine cycles with the enhanced diagnostics. These are not a root
 cause or fix for the intermittent fault, nor release timing/native-input evidence.
+
+The current archive also passes observed Safari native nesting, single-item
+Copy/Cut/Paste and Undo checks. Chrome forward/backward cross-item native Cut
+produces exact plain-text newlines; browser-dispatched Control-Z restores the
+exact DOM and directional endpoints. The native Chrome Control-Z wrapper had no
+observed effect, so physical shortcut qualification is not claimed. No OS settings
+were changed and neither Japanese IME nor spoken VoiceOver was qualified.
