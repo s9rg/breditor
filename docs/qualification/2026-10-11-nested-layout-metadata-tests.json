@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "productionCodeChanged": false,
+  "protocolsChanged": false,
+  "shippingArtifactsWritten": false,
+  "targetedReuseTestsPassed": 5,
+  "strictFeatureCoreClippyLibAndTests": "passed",
+  "newRegressions": [
+    "All nine source/target combinations of bullet lists and ordered lists starting at 7 or 19 match fresh construction; only identical metadata may share the original root allocation.",
+    "An empty heading with valid rank metadata is rejected as a layout slot, with and without a source hint; slots remain canonical empty paragraphs."
+  ],
+  "baselineFeatureCoreUnitTestsPassed": 1197,
+  "currentFeatureCoreUnitTestCount": 1199,
+  "currentCompleteUnitSuiteRun": false,
+  "baselineFullIntegrationAndDoctestRun": "still running at checkpoint; not claimed passed",
+  "historicalWebKitProjectionFaultResolved": false,
+  "performanceAndNativeReleaseGates": "open"
+}

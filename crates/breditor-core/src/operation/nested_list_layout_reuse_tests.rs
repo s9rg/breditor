@@ -102,3 +102,54 @@ fn reuse_preserves_invalid_layout_rejection() -> TestResult {
     assert!(matches!(build(&valid, &blocks[..2], &source), Err(Error::InvalidLayout)));
     Ok(())
 }
+
+#[test]
+fn numbering_and_marker_changes_cannot_reuse_old_wrapper_metadata() -> TestResult {
+    let blocks = [paragraph("parent")?, paragraph("child")?, paragraph("tail")?];
+    let bullet = tree(&blocks)?;
+    let children = bullet[0].as_element().ok_or("list")?.children().to_vec();
+    let ordered = |start| -> Result<NodeRef, Box<dyn StdError>> {
+        Ok(NodeRef::element(ElementNode::try_new(
+            name("breditor/ordered-list")?,
+            None,
+            PropertyMap::try_from_sorted(vec![(
+                name("breditor/start")?,
+                PropertyValue::from_integer(PropertyInteger::try_new(start)?),
+            )])?,
+            children.clone(),
+        )?))
+    };
+    let seven = vec![ordered(7)?];
+    let nineteen = vec![ordered(19)?];
+    for source in [&bullet, &seven, &nineteen] {
+        for target in [&bullet, &seven, &nineteen] {
+            let layout = capture(target)?;
+            let result = build(&layout, &blocks, source)?;
+            assert_eq!(result, build(&layout, &blocks, &[])?);
+            assert_eq!(&result, target);
+            assert_eq!(result[0].shares_allocation_with(&source[0]), source == target);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn an_empty_heading_is_not_a_canonical_layout_slot() -> TestResult {
+    let block = paragraph("content")?;
+    let heading = NodeRef::element(ElementNode::try_new(
+        name("breditor/heading")?,
+        None,
+        PropertyMap::try_from_sorted(vec![(
+            name("breditor/level")?,
+            PropertyValue::from_integer(PropertyInteger::try_new(2)?),
+        )])?,
+        vec![],
+    )?);
+    for source in [vec![], vec![block.clone()]] {
+        assert!(matches!(
+            build(std::slice::from_ref(&heading), std::slice::from_ref(&block), &source),
+            Err(Error::InvalidLayout)
+        ));
+    }
+    Ok(())
+}

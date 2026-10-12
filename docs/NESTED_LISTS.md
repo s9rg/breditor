@@ -1351,3 +1351,19 @@ Temporary process-scoped wake prevention has been requested but not authorized;
 no power settings have changed. Native qualification still awaits manual unlock.
 The current release candidate remains `nested-list-opt-in-VTFj93`, not the restored
 historical pair. No shipping artifact, protocol, push or publication changes occur.
+
+### October 11: numbering and canonical-slot reuse regressions
+
+Test-only coverage now checks every source/target combination of bullet lists
+and ordered lists starting at 7 or 19. Results must equal fresh construction;
+changed marker families or starts cannot reuse old root metadata. An empty
+heading, despite valid rank metadata, cannot replace a canonical empty-paragraph
+layout slot. All five focused reuse tests and strict feature-core library/test
+Clippy pass. Production code, protocols and shipping artifacts are unchanged.
+
+The feature unit inventory is now 1,199 tests; the completed baseline unit run
+covered 1,197, and the focused run includes the two new tests. The baseline full
+integration/doctest command remains live at this checkpoint and is not claimed
+passed. The [metadata regression record](qualification/2026-10-11-nested-layout-metadata-tests.json)
+preserves this distinction. Native, performance and historical WebKit gates remain
+open.
