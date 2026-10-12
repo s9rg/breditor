@@ -174,7 +174,22 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
     }
   }
 });
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentOwnerFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentOwnerFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentBlockTypeCall, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+
+test("block type call marker distinguishes skipped and undefined without duplicate calls", () => {
+  const source = `const blockType = paragraphIndex === expectedIndex
+        ? invokeGenerated(methods.elementType, view, paragraphIndex) : undefined;
+    return {value: blockType};`;
+  const transformed = instrumentBlockTypeCall(source).replace("return {value: blockType}", "return {value: blockType, invoked: paragraphBlockTypeInvoked}");
+  for (const equal of [false, true]) for (const value of [undefined, "breditor/paragraph"]) {
+    let calls = 0;
+    const run = new Function("paragraphIndex", "expectedIndex", "methods", "view", "invokeGenerated", transformed);
+    const result = run(2, equal ? 2 : 3, {elementType: "elementType"}, {}, () => {calls++; return value;});
+    assert.deepEqual(result, {value: equal ? value : undefined, invoked: equal});
+    assert.equal(calls, equal ? 1 : 0);
+  }
+  for (const value of ["", source + source]) assert.throws(() => instrumentBlockTypeCall(value));
+});
 
 test("flat comparator logging preserves short circuit and equality results", () => {
   const source = `export function flatListRootsEqual(a, b) {

@@ -67,7 +67,7 @@ export function instrumentProjectionValidationSites(code, moduleName) {
   });
   assert.ok(sites > 0, "projection rejection expressions changed");
   if (moduleName === "wasm_projection_adapter" && transformed.includes("const plannedBlock = layout?.textBlocks[paragraphOrdinal];")) {
-    return instrumentParagraphShapeOperands(transformed);
+    return instrumentParagraphShapeOperands(instrumentBlockTypeCall(transformed));
   }
   if (!["flat_list_projection_update", "nested_list_projection_update"].includes(moduleName)) return transformed;
   // Capture already-owned JS snapshots only after an equality rejection. Never
@@ -164,6 +164,15 @@ export function instrumentFlatRootComparison(code) {
 }
 
 /** Disposable fixture only: preserve short-circuit order and single reads. */
+export function instrumentBlockTypeCall(code) {
+  const declaration = "const blockType = paragraphIndex === expectedIndex";
+  const call = "? invokeGenerated(methods.elementType, view, paragraphIndex) : undefined;";
+  assert.equal(code.split(declaration).length, 2, "block type declaration changed");
+  assert.equal(code.split(call).length, 2, "block type call changed");
+  return code.replace(declaration, "let paragraphBlockTypeInvoked = false;\n        " + declaration)
+    .replace(call, "? (paragraphBlockTypeInvoked = true, invokeGenerated(methods.elementType, view, paragraphIndex)) : undefined;");
+}
+
 export function instrumentParagraphShapeOperands(code) {
   const start = "        if (paragraphIndex !== expectedIndex ||";
   const end = "!formatPropertyProbeIsAbsent(view, methods, paragraphIndex, 0, 0)) {";
@@ -186,6 +195,7 @@ export function instrumentParagraphShapeOperands(code) {
   }
   return code.slice(0, from) + `
         const paragraphDiagnostic = {paragraphOrdinal, paragraphIndex, expectedIndex,
+            blockTypeInvoked: typeof paragraphBlockTypeInvoked === "boolean" ? paragraphBlockTypeInvoked : undefined,
             blockType: {type: typeof blockType, value: blockType},
             headingLevel: {type: typeof headingLevel, value: headingLevel}};
         const paragraphDiagnosticRead = (name, value) => {
