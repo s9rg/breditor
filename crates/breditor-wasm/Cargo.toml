@@ -23,6 +23,8 @@ diagnostic-projection-child-count = []
 candidate-explicit-child-count = []
 candidate-word-child-count = []
 candidate-word-projection-scalars = ["candidate-word-child-count", "experimental-nested-lists"]
+# Private signed property transport; no floating-point value crosses this ABI.
+candidate-word-property-integers = ["candidate-word-projection-scalars"]
 # Unqualified local candidate; deliberately excluded from default packaging.
 candidate-rust-selection-tokens = []
 # Opt-in heading profile/Session V5 bridge. Never enabled by default packaging.

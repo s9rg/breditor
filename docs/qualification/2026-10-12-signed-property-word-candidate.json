@@ -1,0 +1,39 @@
+{
+  "status": "private-candidate-stress-running",
+  "releaseQualified": false,
+  "observedFault": {
+    "integerMismatchRecord": "target/nested-list-reproductions/failure-52ZY9K/measurement.json",
+    "integerMismatchSha256": "93e3ad412d2c22c88cbdb43ca2b3ef48a091577ffe6360cd595546a0b2c9fb13",
+    "description": "Selection-only update changed example/rgb24 projection value 1193046 to 0. Strict impact validation rejected the change.",
+    "diagnosticExactReplay": "failure-52ZY9K/exact-replay-PWKzyw/replay.json",
+    "diagnosticReplaySha256": "01be6634dba2063fdd012eb1506a81e1c80e13cf3c7403f892a99be14316ee0e",
+    "diagnosticReplayOutcome": "Failed process index 6, 500 items repetition 16 after edit. Wasm result consumption succeeded; document/projection correlation failed.",
+    "causalityBoundary": "This localizes observed failures but does not yet prove which native return, internal state or comparison caused every rejection. Integer-word transport is an unqualified treatment, not a claimed fix."
+  },
+  "contract": {
+    "feature": "candidate-word-property-integers",
+    "defaultEnabled": false,
+    "marker": "projectionIntegerWordsVersion = 1",
+    "record": "Owned Uint32Array [presence, low-u32, high-u32], signed two's-complement i64",
+    "absence": [0, 0, 0],
+    "presence": "1; all exact JS-safe integers admitted, including zero and negative limits",
+    "browserDecode": "Native cross-realm brands and ordinary ArrayBuffer only; BigInt reconstructs exactly, safe-domain checked before Number conversion. Malformed, shared, detached, overflowing and async records fail without fallback.",
+    "scope": "Nested adapter only. Base and flat-list consumers do not inspect this marker. Existing generated high-level formatPropertyInteger and raw export remain legacy; no claim of global ABI replacement."
+  },
+  "checks": {
+    "rustEncodingUnit": "passed",
+    "rustNestedPropertyContract": "passed, owner survives engine drop; negative integer, wrong kinds and out-of-bounds ordinals",
+    "browserFocusedTests": 176,
+    "browserFullTests": 2138,
+    "browserFullFiles": 56,
+    "browserTypecheck": "passed",
+    "declarationAndPairAndBindingTests": 46,
+    "fixtureCorrection": "Initial fake signed getter returned a value for absence probes; seven positive tests rejected it. Corrected fixture honors exact node/format/property indices. No production validation weakened."
+  },
+  "build": {"candidate": "target/nested-list-candidate-3WvT8u", "status": "passed", "wasmSha256": "518ca2af03c796344468e34e39a51cc0a38780e723e18b91cc426b4205843544", "shippingArtifactsChanged": false},
+  "packedConsumer": {"status": "passed", "record": "target/nested-list-packages-KuFTmJ/qualification.json", "tarballSha256": {"browser": "f3402ef3687f36ce758c2cbe61d52f44fb63455487ec933b201880c6afdab317", "wasm": "baef33b6c1398c86156b4d37e0761e5c1d062f07d8e8f7d0e7dc08bf4228101e"}, "scope": "Node, TypeScript and all three browser engines; final decoder captures conversion intrinsics. Earlier cWHrD2 pair predates that hardening and is retained separately.", "sizeBudgetQualified": false},
+  "fullRustWrapperSuite": {"session": 41606, "status": "running"},
+  "typedWebkitStress": {"session": 85369, "status": "running", "ownersPerSize": 30, "processesRequested": 10, "editTarget": "grandchild", "formatted": true, "propertyFormats": true, "integerFormats": true, "pendingFormatRecoveryAssertion": true, "diagnosticInstrumentation": false},
+  "remaining": ["Pack exact artifacts and test external consumer", "Full typed-property WebKit churn plus exact replay", "Default contract compatibility", "Native clipboard/IME/screen-reader qualification", "Accepted size and latency gates"],
+  "published": false
+}

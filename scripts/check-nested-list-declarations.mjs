@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { checkFlatListDeclarations } from "./check-flat-list-declarations.mjs";
 
 /** Nested builds add exactly three profile methods and their raw exports. */
-export function checkNestedListDeclarations(base, nested, {privateScalarWords = false} = {}) {
+export function checkNestedListDeclarations(base, nested, {privateScalarWords = false, privateIntegerWords = false} = {}) {
   assert.equal(typeof privateScalarWords, "boolean");
+  assert.equal(typeof privateIntegerWords, "boolean");
+  assert.ok(!privateIntegerWords || privateScalarWords);
   const additions = new Map([
     ["BreditorCompiledProfile", new Set([
       "createEngineFromDocumentJsonV7(lineage: string, document_json: string, history_capacity: number): BreditorEngineResult;",
@@ -35,6 +37,12 @@ export function checkNestedListDeclarations(base, nested, {privateScalarWords = 
       "readonly breditorprojection_headingLevelWords: (a: number, b: number, c: number) => void;",
       "readonly breditorprojection_orderedListStartWords: (a: number, b: number, c: number) => void;",
     ]) additions.get("InitOutput").add(signature);
+  }
+  if (privateIntegerWords) {
+    additions.get("BreditorProjection").add("readonly projectionIntegerWordsVersion: number;");
+    additions.get("BreditorProjection").add("formatPropertyIntegerWords(index: number, format_ordinal: number, property_ordinal: number): Uint32Array;");
+    additions.get("InitOutput").add("readonly breditorprojection_projectionIntegerWordsVersion: (a: number) => number;");
+    additions.get("InitOutput").add("readonly breditorprojection_formatPropertyIntegerWords: (a: number, b: number, c: number, d: number, e: number) => void;");
   }
   let owner;
   const flat = nested.split(/\r?\n/).filter(line => {

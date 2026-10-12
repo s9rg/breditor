@@ -26,6 +26,17 @@ test("assembly transport admission requires exact candidate/pair agreement", () 
 });
 
 const json = async path => JSON.parse(await readFile(new URL(path, import.meta.url), "utf8"));
+test("private integer transport metadata is exact and paired", () => {
+  const words = {privateScalarWords: true, projectionScalarWordsVersion: 1};
+  const integers = {...words, privateIntegerWords: true, projectionIntegerWordsVersion: 1};
+  validateTransportPair(integers, integers);
+  for (const malformed of [words, {...integers, privateIntegerWords: false},
+    {...integers, privateIntegerWords: "true"}, {...integers, projectionIntegerWordsVersion: 2},
+    {privateIntegerWords: true, projectionIntegerWordsVersion: 1}]) {
+    assert.throws(() => validateTransportPair(malformed, integers));
+    assert.throws(() => validateTransportPair(integers, malformed));
+  }
+});
 const manifest = await json("../packages/breditor-experimental-nested-lists/package.json");
 const browser = await json("../packages/breditor-browser/package.json");
 const wasm = await json("../packages/breditor-wasm/package.json");

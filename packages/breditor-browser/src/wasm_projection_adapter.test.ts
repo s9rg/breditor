@@ -75,6 +75,7 @@ describe("recursive generated projection consumption", () => {
     const view = flatListView();
     const marker = vi.fn(() => { throw new Error("nested transport must not be read"); });
     Object.defineProperty(view, "projectionScalarWordsVersion", {get: marker});
+    Object.defineProperty(view, "projectionIntegerWordsVersion", {get: marker});
     expect(consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(true);
     expect(marker).not.toHaveBeenCalled();
     expect(view.freeCalls).toBe(1);
@@ -105,6 +106,47 @@ describe("recursive generated projection consumption", () => {
     expect(Object.getPrototypeOf(view)).toBe(prototype);
     expect(view.freeCalls).toBe(1);
   });
+  function integerWordFixture(value = 1193046) {
+    const {view, record} = wordFixture();
+    const nodes = record["nodes"] as FlatNode[];
+    nodes[4] = {kind: "text", text: "parent", formats: [{kind: "example/color", properties: [
+      {name: "example/rgb24", kind: "integer", value},
+    ]}]};
+    const descriptor = ownedProfileDescriptor([{kind: "example/color", properties: [
+      {name: "example/rgb24", presence: "required", valueType: {kind: "integer"}},
+    ]}]);
+    Object.defineProperty(view, "projectionIntegerWordsVersion", {value: 1, configurable: true});
+    record["formatPropertyIntegerWords"] = vi.fn(function(this: object, ...args: number[]) {
+      expect(this).toBe(view);
+      if (args[0] !== 4 || args[1] !== 0 || args[2] !== 0) return new Uint32Array([0, 0, 0]);
+      const bits = BigInt.asUintN(64, BigInt(value));
+      return new Uint32Array([1, Number(bits & 0xffffffffn), Number(bits >> 32n)]);
+    });
+    record["formatPropertyInteger"] = vi.fn(() => {throw new Error("legacy integer invoked");});
+    return {view, record, descriptor};
+  }
+  it.each([-9007199254740991, -4294967296, -5, 0, 1193046, 4294967296, 9007199254740991])(
+    "admits exact signed integer %s without legacy reads", value => {
+      const {view, record, descriptor} = integerWordFixture(value);
+      const result = valueOf(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor));
+      expect(result.textBlocks[0]!.block.runs[0]!.formatDetails[0]!.properties[0]!.value).toBe(value);
+      expect(record["formatPropertyInteger"]).not.toHaveBeenCalled();
+      expect(record["formatPropertyIntegerWords"]).toHaveBeenCalledWith(4, 0, 0);
+      expect(view.freeCalls).toBe(1);
+    });
+  it.each(["version", "missing", "malformed", "overflow", "async", "no-scalars"])(
+    "rejects %s integer word admission without fallback", failure => {
+      const {view, record, descriptor} = integerWordFixture();
+      if (failure === "version") Object.defineProperty(view, "projectionIntegerWordsVersion", {value: 2});
+      if (failure === "no-scalars") Object.defineProperty(view, "projectionScalarWordsVersion", {value: undefined});
+      if (failure === "missing") delete record["formatPropertyIntegerWords"];
+      if (failure === "malformed") record["formatPropertyIntegerWords"] = vi.fn(() => new Uint32Array([0, 1, 0]));
+      if (failure === "overflow") record["formatPropertyIntegerWords"] = vi.fn(() => new Uint32Array([1, 0, 0x200000]));
+      if (failure === "async") record["formatPropertyIntegerWords"] = vi.fn(() => Promise.reject(Error("async integer")));
+      expect(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+      expect(record["formatPropertyInteger"]).not.toHaveBeenCalled();
+      expect(view.freeCalls).toBe(1);
+    });
   it.each(["version", "missing", "malformed", "async"])("rejects %s word transport without fallback and cleans up", failure => {
     const {view, record} = wordFixture();
     if (failure === "version") Object.defineProperty(view, "projectionScalarWordsVersion", {value: 2});

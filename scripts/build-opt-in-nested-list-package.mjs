@@ -53,6 +53,15 @@ export function validateTransportPair(record, candidate) {
     return enabled ? 1 : null;
   };
   assert.equal(bindings(record), bindings(candidate), "Qualified pair/candidate binding mismatch");
+  const integers = value => {
+    assert.ok(value.projectionIntegerWordsVersion == null || value.projectionIntegerWordsVersion === 1, "Unknown integer transport version");
+    assert.ok(value.privateIntegerWords === undefined || typeof value.privateIntegerWords === "boolean");
+    const enabled = value.projectionIntegerWordsVersion === 1;
+    assert.equal(value.privateIntegerWords === true, enabled, "Integer flag/version mismatch");
+    assert.ok(!enabled || version(value) === 1, "Integer words require scalar words");
+    return enabled ? 1 : null;
+  };
+  assert.equal(integers(record), integers(candidate), "Qualified pair/candidate integer mismatch");
 }
 
 export async function readQualifiedPair(recordPath) {

@@ -80,7 +80,7 @@ impl BreditorProjection {
             .and_then(|text| text.formats().iter().nth(ordinal as usize))
     }
 
-    fn format_property(
+    pub(super) fn format_property(
         &self,
         index: u32,
         format_ordinal: u32,

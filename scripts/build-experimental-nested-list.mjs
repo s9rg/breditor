@@ -23,6 +23,10 @@ const bindingFlag = process.env.BREDITOR_NESTED_WORD_BINDINGS ?? "0";
 assert.ok(["0", "1"].includes(bindingFlag), "BREDITOR_NESTED_WORD_BINDINGS must be 0 or 1");
 const privateWordBindings = bindingFlag === "1";
 assert.ok(!privateWordBindings || privateScalarWords, "word bindings require word candidate");
+const integerFlag = process.env.BREDITOR_NESTED_INTEGER_WORDS ?? "0";
+assert.ok(["0", "1"].includes(integerFlag), "BREDITOR_NESTED_INTEGER_WORDS must be 0 or 1");
+const privateIntegerWords = integerFlag === "1";
+assert.ok(!privateIntegerWords || privateScalarWords, "integer words require scalar word candidate");
 // Explicit experimental override: keep the production profile and its cache
 // untouched, and record the optimization choice in qualification evidence.
 const optLevel = process.env.BREDITOR_WASM_SIZE_OPT ?? "s";
@@ -62,7 +66,7 @@ const shippingDist = join(repository, "packages/breditor-wasm/dist");
 const shippingTreeBefore = await hashTree(shippingDist);
 const browserDist = join(repository, "packages/breditor-browser/dist");
 const browserTreeBefore = await hashTree(browserDist);
-run(cargo, ["build", "--locked", "-p", "breditor-wasm", "--features", privateScalarWords ? "candidate-word-projection-scalars" : "experimental-nested-lists",
+run(cargo, ["build", "--locked", "-p", "breditor-wasm", "--features", privateIntegerWords ? "candidate-word-property-integers" : privateScalarWords ? "candidate-word-projection-scalars" : "experimental-nested-lists",
   "--profile", "wasm-release", "--target", "wasm32-unknown-unknown"], {
   env: { ...process.env, CARGO_TARGET_DIR: cargoTarget, CARGO_HOME: cargoHome,
     CARGO_PROFILE_WASM_RELEASE_OPT_LEVEL: optLevel,
@@ -110,7 +114,7 @@ for (const file of ["breditor_wasm.d.ts", "breditor_wasm_bg.wasm", "breditor_was
 }
 const declarations = await readFile(join(directory, "breditor_wasm.d.ts"), "utf8");
 run(process.execPath, ["--test", "scripts/check-nested-list-declarations.test.mjs"]);
-checkNestedListDeclarations(await readFile(join(repository, "crates/breditor-wasm/api/breditor_wasm.d.ts"), "utf8"), declarations, {privateScalarWords});
+checkNestedListDeclarations(await readFile(join(repository, "crates/breditor-wasm/api/breditor_wasm.d.ts"), "utf8"), declarations, {privateScalarWords, privateIntegerWords});
 await writeFile(join(directory, "nested-list-api.ts"), await readFile(join(repository, "scripts/fixtures/nested-list-api.ts")));
 run(join(repository, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--target", "ES2022",
   "--module", "NodeNext", "--lib", "ES2022,DOM,esnext.disposable", join(directory, "nested-list-api.ts")]);
@@ -126,6 +130,7 @@ assert.deepEqual(await hashTree(shippingDist), shippingTreeBefore, "shipping art
 assert.deepEqual(await hashTree(browserDist), browserTreeBefore, "browser artifacts changed during experimental qualification");
 const manifest = { status: "passed", publishable: false, feature: "experimental-nested-lists",
   diagnosticNames, optLevel, privateScalarWords, projectionScalarWordsVersion: privateScalarWords ? 1 : null,
+  privateIntegerWords, projectionIntegerWordsVersion: privateIntegerWords ? 1 : null,
   privateWordBindings, projectionWordBindingsVersion: privateWordBindings ? 1 : null,
   codecs: { bootstrap: 5, document: 2, state: 3, session: 7, commit: 7 },
   wasmBytes: wasm.length, wasmGzip9Bytes: gzipSync(wasm, { level: 9 }).length,

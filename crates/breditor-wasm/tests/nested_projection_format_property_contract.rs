@@ -52,6 +52,19 @@ fn typed_properties_and_word_counts_survive_engine_drop() -> Result<(), Box<dyn 
         Some("https://example.test/")
     );
     assert_eq!(projection.format_property_integer(4, 0, 2), Some(-5.0));
+    #[cfg(feature = "candidate-word-property-integers")]
+    {
+        assert_eq!(projection.projection_integer_words_version(), 1);
+        assert_eq!(
+            projection.format_property_integer_words(4, 0, 2),
+            vec![1, u32::MAX - 4, u32::MAX]
+        );
+        for ordinal in [0, 1, 3, u32::MAX] {
+            assert_eq!(projection.format_property_integer_words(4, 0, ordinal), vec![0, 0, 0]);
+        }
+        assert_eq!(projection.format_property_integer_words(u32::MAX, 0, 2), vec![0, 0, 0]);
+        assert_eq!(projection.format_property_integer_words(4, u32::MAX, 2), vec![0, 0, 0]);
+    }
     for ordinal in 0..3 {
         assert_eq!(projection.format_property_count_words(4, ordinal + 1), vec![0, 0]);
     }

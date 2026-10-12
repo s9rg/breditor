@@ -12,6 +12,8 @@ mod impact;
 #[cfg(feature = "experimental-flat-lists")]
 mod list;
 mod node_record;
+#[cfg(feature = "candidate-word-property-integers")]
+mod property_integer_words;
 mod read_projection;
 #[cfg(feature = "candidate-word-projection-scalars")]
 mod scalar_words;

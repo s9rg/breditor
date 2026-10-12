@@ -31,7 +31,11 @@ assert.ok(qualification.projectionWordBindingsVersion == null || qualification.p
 const privateWordBindings = qualification.projectionWordBindingsVersion === 1;
 assert.equal(qualification.privateWordBindings === true, privateWordBindings);
 assert.ok(!privateWordBindings || privateScalarWords);
-checkNestedListDeclarations(await readFile(join(repository, "crates/breditor-wasm/api/breditor_wasm.d.ts"), "utf8"), declarations, {privateScalarWords});
+assert.ok(qualification.projectionIntegerWordsVersion == null || qualification.projectionIntegerWordsVersion === 1);
+const privateIntegerWords = qualification.projectionIntegerWordsVersion === 1;
+assert.equal(qualification.privateIntegerWords === true, privateIntegerWords);
+assert.ok(!privateIntegerWords || privateScalarWords);
+checkNestedListDeclarations(await readFile(join(repository, "crates/breditor-wasm/api/breditor_wasm.d.ts"), "utf8"), declarations, {privateScalarWords, privateIntegerWords});
 const files = async path => (await Promise.all((await readdir(path, {withFileTypes: true})).sort((a,b) => a.name.localeCompare(b.name))
   .map(async entry => entry.isDirectory() ? (await files(join(path, entry.name))).map(file => join(entry.name, file)) : [entry.name]))).flat();
 const tree = async path => Object.fromEntries(await Promise.all((await files(path)).map(async name => [name, hash(await readFile(join(path, name)))])));
@@ -137,6 +141,7 @@ try {
     diagnosticNames: qualification.diagnosticNames === true,
     privateScalarWords, projectionScalarWordsVersion: privateScalarWords ? 1 : null,
     privateWordBindings, projectionWordBindingsVersion: privateWordBindings ? 1 : null,
+    privateIntegerWords, projectionIntegerWordsVersion: privateIntegerWords ? 1 : null,
     browserPackage, wasmPackage, browserJavaScriptBytes, browserDeclarationsBytes,
     tarballSha256: {browser: hash(await readFile(browserPackage.path)), wasm: hash(await readFile(wasmPackage.path))},
     baseConsumer: "Existing Node import, strict TypeScript and Chromium initialization/format/content/teardown smoke passed against these same installed experimental artifacts",

@@ -37,6 +37,25 @@ test("admits the complete private word ABI only with explicit opt-in", () => {
   checkNestedListDeclarations(base, wordCandidate, {privateScalarWords: true});
   assert.throws(() => checkNestedListDeclarations(base, nested, {privateScalarWords: true}));
 });
+const integerCandidate = wordCandidate.replace("export class BreditorProjection {", `export class BreditorProjection {
+    readonly projectionIntegerWordsVersion: number;
+    formatPropertyIntegerWords(index: number, format_ordinal: number, property_ordinal: number): Uint32Array;`)
+  .replace("export interface InitOutput {", `export interface InitOutput {
+    readonly breditorprojection_projectionIntegerWordsVersion: (a: number) => number;
+    readonly breditorprojection_formatPropertyIntegerWords: (a: number, b: number, c: number, d: number, e: number) => void;`);
+test("admits signed property words only as a complete explicit private addition", () => {
+  const options = {privateScalarWords: true, privateIntegerWords: true};
+  checkNestedListDeclarations(base, integerCandidate, options);
+  assert.throws(() => checkNestedListDeclarations(base, integerCandidate));
+  assert.throws(() => checkNestedListDeclarations(base, integerCandidate, {privateScalarWords: true}));
+  assert.throws(() => checkNestedListDeclarations(base, integerCandidate, {privateIntegerWords: true}));
+  for (const malformed of [
+    integerCandidate.replace("readonly projectionIntegerWordsVersion: number;", ""),
+    integerCandidate.replace("property_ordinal: number): Uint32Array;", "property_ordinal: number): Int32Array;"),
+    integerCandidate.replace("breditorprojection_formatPropertyIntegerWords: (a: number, b: number, c: number, d: number, e: number) => void;", "breditorprojection_formatPropertyIntegerWords: (a: number) => number;"),
+    integerCandidate.replace("readonly projectionIntegerWordsVersion: number;", "readonly projectionIntegerWordsVersion: number;\n    readonly projectionIntegerWordsVersion: number;"),
+  ]) assert.throws(() => checkNestedListDeclarations(base, malformed, options));
+});
 for (const [label, source] of [
   ["missing marker", wordCandidate.replace("readonly projectionScalarWordsVersion: number;", "")],
   ["wrong vector", wordCandidate.replace("childAtWords(index: number, ordinal: number): Uint32Array;", "childAtWords(index: number, ordinal: number): Int32Array;")],

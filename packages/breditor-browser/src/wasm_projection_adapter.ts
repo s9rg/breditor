@@ -18,7 +18,7 @@ import { createNestedListTextProjection, NestedListDocumentProjection, isOwnedNe
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
-import { decodeProjectionScalarWords } from "./projection_scalar_words.js";
+import { decodeProjectionIntegerWords, decodeProjectionScalarWords } from "./projection_scalar_words.js";
 import {
   browserCompiledProfileDescriptorMatchesGeneration,
   wasmProfileGenerationIsLive,
@@ -1479,6 +1479,16 @@ function snapshotSemanticProjection(
                 return decodeProjectionScalarWords(invokeGenerated(word as (index: number, ordinal: number) => unknown, this, index, ordinal));
               };
         }
+      }
+      const integerVersion = readGeneratedScalar(view, "projectionIntegerWordsVersion");
+      if (integerVersion !== undefined) {
+        if (integerVersion !== 1 || version !== 1) return null;
+        const word = readGeneratedMethod(view as unknown as Record<string, unknown>, "formatPropertyIntegerWords");
+        if (typeof word !== "function") return null;
+        methods["formatPropertyInteger"] = function(this: object, index: number, ordinal: number, property: number) {
+          return decodeProjectionIntegerWords(invokeGenerated(
+            word as (index: number, ordinal: number, property: number) => unknown, this, index, ordinal, property));
+        };
       }
     }
     return {
