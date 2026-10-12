@@ -16,6 +16,33 @@ const nested = flat.replace("export class BreditorCompiledProfile {", `export cl
     readonly breditorcompiledprofile_createEngineFromSessionCheckpointJsonV7: (a: number, b: number, c: number) => number;`);
 
 test("accepts exactly the nested additive API", () => checkNestedListDeclarations(base, nested));
+const wordCandidate = nested.replace("export class BreditorProjection {", `export class BreditorProjection {
+    readonly projectionScalarWordsVersion: number;
+    childCountWords(index: number): Uint32Array;
+    childAtWords(index: number, ordinal: number): Uint32Array;
+    formatCountWords(index: number): Uint32Array;
+    formatPropertyCountWords(index: number, ordinal: number): Uint32Array;
+    headingLevelWords(index: number): Uint32Array;
+    orderedListStartWords(index: number): Uint32Array;`)
+  .replace("export interface InitOutput {", `export interface InitOutput {
+    readonly breditorprojection_projectionScalarWordsVersion: (a: number) => number;
+    readonly breditorprojection_childCountWords: (a: number, b: number, c: number) => void;
+    readonly breditorprojection_childAtWords: (a: number, b: number, c: number, d: number) => void;
+    readonly breditorprojection_formatCountWords: (a: number, b: number, c: number) => void;
+    readonly breditorprojection_formatPropertyCountWords: (a: number, b: number, c: number, d: number) => void;
+    readonly breditorprojection_headingLevelWords: (a: number, b: number, c: number) => void;
+    readonly breditorprojection_orderedListStartWords: (a: number, b: number, c: number) => void;`);
+test("admits the complete private word ABI only with explicit opt-in", () => {
+  assert.throws(() => checkNestedListDeclarations(base, wordCandidate));
+  checkNestedListDeclarations(base, wordCandidate, {privateScalarWords: true});
+  assert.throws(() => checkNestedListDeclarations(base, nested, {privateScalarWords: true}));
+});
+for (const [label, source] of [
+  ["missing marker", wordCandidate.replace("readonly projectionScalarWordsVersion: number;", "")],
+  ["wrong vector", wordCandidate.replace("childAtWords(index: number, ordinal: number): Uint32Array;", "childAtWords(index: number, ordinal: number): Int32Array;")],
+  ["wrong raw return", wordCandidate.replace("breditorprojection_childAtWords: (a: number, b: number, c: number, d: number) => void;", "breditorprojection_childAtWords: (a: number, b: number, c: number, d: number) => number;")],
+  ["duplicate marker", wordCandidate.replace("readonly projectionScalarWordsVersion: number;", "readonly projectionScalarWordsVersion: number;\n    readonly projectionScalarWordsVersion: number;")],
+]) test(`rejects private word ${label}`, () => assert.throws(() => checkNestedListDeclarations(base, source, {privateScalarWords: true})));
 const reorderRaw = (source) => source.replace(/(export interface InitOutput \{\n)([\s\S]*?)(\n\})/u,
   (_, open, members, close) => open + members.split("\n").reverse().join("\n") + close);
 test("accepts reordered raw exports without changing signatures", () => {

@@ -18,6 +18,7 @@ import { createNestedListTextProjection, NestedListDocumentProjection, isOwnedNe
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
+import { decodeProjectionScalarWords } from "./projection_scalar_words.js";
 import {
   browserCompiledProfileDescriptorMatchesGeneration,
   wasmProfileGenerationIsLive,
@@ -629,7 +630,8 @@ function readProfiledSemanticProjection(
     return projectionFailure("projection.invalid_shape");
   }
   const snapshot = snapshotSemanticProjection(view, textBlockFactory !== undefined,
-    textBlockFactory === createFlatListTextProjection || textBlockFactory === createNestedListTextProjection);
+    textBlockFactory === createFlatListTextProjection || textBlockFactory === createNestedListTextProjection,
+    textBlockFactory === createNestedListTextProjection);
   if (
     snapshot === null ||
     snapshot.schemaFingerprint !== expectedSchemaFingerprint
@@ -735,12 +737,15 @@ function readSemanticProjection(
       0,
       paragraphOrdinal,
     );
-    const blockType = paragraphIndex === expectedIndex
-      ? invokeGenerated(methods.elementType, view, paragraphIndex) : undefined;
-    const headingLevel = paragraphIndex === expectedIndex && methods.headingLevel !== undefined
+    // Admit the index before reading metadata. Keep this as an explicit branch:
+    // each admitted block must execute its type getter exactly once.
+    if (paragraphIndex !== expectedIndex) {
+      return projectionFailure("projection.invalid_shape");
+    }
+    const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);
+    const headingLevel = methods.headingLevel !== undefined
       ? invokeGenerated(methods.headingLevel, view, paragraphIndex) : undefined;
     if (
-      paragraphIndex !== expectedIndex ||
       !listMetadataIsAbsent(view, methods, paragraphIndex) ||
       invokeGenerated(methods.nodeKind, view, paragraphIndex) !== "element" ||
       (blockType === "breditor/heading"
@@ -1428,6 +1433,7 @@ function snapshotSemanticProjection(
   view: SemanticProjectionView,
   textBlocks: boolean,
   flatLists: boolean,
+  nestedLists: boolean,
 ): SemanticProjectionSnapshot | null {
   try {
     const headingLevel = textBlocks ? readGeneratedScalar(view, "headingLevel") : undefined;
@@ -1451,6 +1457,30 @@ function snapshotSemanticProjection(
     methods["headingLevel"] = headingLevel;
     methods["listKind"] = listKind;
     methods["orderedListStart"] = orderedListStart;
+    // Only the opt-in nested adapter recognizes this private, versioned ABI.
+    // Missing marker means legacy transport; partial/unknown word ABIs fail.
+    // Never mutate generated prototypes or retry a scalar getter after failure.
+    if (nestedLists) {
+      const version = readGeneratedScalar(view, "projectionScalarWordsVersion");
+      if (version !== undefined) {
+        if (version !== 1) return null;
+        for (const [name, wordName, arity] of [
+          ["childCount", "childCountWords", 1], ["childAt", "childAtWords", 2],
+          ["formatCount", "formatCountWords", 1], ["formatPropertyCount", "formatPropertyCountWords", 2],
+          ["headingLevel", "headingLevelWords", 1], ["orderedListStart", "orderedListStartWords", 1],
+        ] as const) {
+          const word = readGeneratedMethod(view as unknown as Record<string, unknown>, wordName);
+          if (typeof word !== "function") return null;
+          methods[name] = arity === 1
+            ? function(this: object, index: number) {
+                return decodeProjectionScalarWords(invokeGenerated(word as (index: number) => unknown, this, index));
+              }
+            : function(this: object, index: number, ordinal: number) {
+                return decodeProjectionScalarWords(invokeGenerated(word as (index: number, ordinal: number) => unknown, this, index, ordinal));
+              };
+        }
+      }
+    }
     return {
       ...readGeneratedScalars(view, [
         "schemaName", "schemaVersion", "schemaFingerprint", "snapshotLineage",

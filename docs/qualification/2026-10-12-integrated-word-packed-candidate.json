@@ -1,0 +1,25 @@
+{
+  "releaseQualified": false,
+  "legacyFaultResolved": false,
+  "candidate": "target/nested-list-candidate-xyv6uo/qualification.json",
+  "candidateWasmSha256": "b8f623534c75926cafaf63b3faf338878e528ac625d412ac1ccbe85417fbc17a",
+  "packedPair": "target/nested-list-packages-DTRnAp/qualification.json",
+  "browserTarballSha256": "041b0f7bc2cbb63872820b284a2c4568aa62759897f1d41c943bc2b18b0e7a93",
+  "wasmTarballSha256": "7e0df34660ce27d18e04e49e15525fc5e47d93a839dd377862f01f798c9d8a7a",
+  "transport": "Explicit private projectionScalarWordsVersion=1; all six getters required; nested adapter only; no prototype mutation, retries or fallback. Default/flat consumers retain their scalar transport.",
+  "verified": {
+    "rustCheck": "passed candidate-word-projection-scalars",
+    "browserSuiteBeforeFinalCompatibilityTest": {"files": 56, "tests": 2116, "status": "passed"},
+    "finalAdapterSuite": {"tests": 155, "status": "passed"},
+    "testTypecheck": "passed",
+    "declarationAndPackageProvenanceTests": "44 passed",
+    "candidate": "Generated declaration/TypeScript checks, Node editing/recovery, five raw-Wasm plus one integrated editor run per Chromium/Firefox/WebKit passed",
+    "packedConsumer": "Offline actual tarballs, no aliases/workspace links; strict TypeScript, Chromium/Firefox/WebKit nested scenarios and base Node/Chromium compatibility smoke passed",
+    "shippingArtifacts": "unchanged"
+  },
+  "open": ["fully packed repeated WebKit stress and exact replay", "assembled opt-in package qualification", "native clipboard, IME and accessibility qualification for final artifacts", "explicit size and performance budgets"],
+  "sizeBudgetQualified": false,
+  "sizeNote": "All four measured private-pair sizes exceed existing default-package ceilings; no relaxed threshold adopted. Separate opt-in assembly still required.",
+  "pushed": false,
+  "published": false
+}

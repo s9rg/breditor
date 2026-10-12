@@ -14,13 +14,17 @@ import { nonCustomWasmBytes, retainWasmCustomSections, wasmFunctionNames, withWa
 
 assert.ok(process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === "--diagnostic-names"), "only optional --diagnostic-names is supported");
 const diagnosticNames = process.argv[2] === "--diagnostic-names";
+const wordFlag = process.env.BREDITOR_NESTED_WORD_CANDIDATE ?? "0";
+assert.ok(["0", "1"].includes(wordFlag), "BREDITOR_NESTED_WORD_CANDIDATE must be 0 or 1");
+const privateScalarWords = wordFlag === "1";
+assert.ok(!privateScalarWords || !diagnosticNames, "word candidate cannot add diagnostic names");
 // Explicit experimental override: keep the production profile and its cache
 // untouched, and record the optimization choice in qualification evidence.
 const optLevel = process.env.BREDITOR_WASM_SIZE_OPT ?? "s";
 assert.ok(["s", "z"].includes(optLevel), "BREDITOR_WASM_SIZE_OPT must be s or z");
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const target = join(repository, "target");
-const cargoTarget = join(target, `${diagnosticNames ? "nested-list-symbols" : "nested-list"}${optLevel === "z" ? "-size-z" : ""}-cargo`);
+const cargoTarget = join(target, `${privateScalarWords ? "nested-list-words" : diagnosticNames ? "nested-list-symbols" : "nested-list"}${optLevel === "z" ? "-size-z" : ""}-cargo`);
 await mkdir(cargoTarget, { recursive: true });
 // A symlink must not redirect experimental compilation into the default cache.
 assert.equal(await realpath(cargoTarget), cargoTarget, "experimental Cargo target must be isolated");
@@ -53,7 +57,7 @@ const shippingDist = join(repository, "packages/breditor-wasm/dist");
 const shippingTreeBefore = await hashTree(shippingDist);
 const browserDist = join(repository, "packages/breditor-browser/dist");
 const browserTreeBefore = await hashTree(browserDist);
-run(cargo, ["build", "--locked", "-p", "breditor-wasm", "--features", "experimental-nested-lists",
+run(cargo, ["build", "--locked", "-p", "breditor-wasm", "--features", privateScalarWords ? "candidate-word-projection-scalars" : "experimental-nested-lists",
   "--profile", "wasm-release", "--target", "wasm32-unknown-unknown"], {
   env: { ...process.env, CARGO_TARGET_DIR: cargoTarget, CARGO_HOME: cargoHome,
     CARGO_PROFILE_WASM_RELEASE_OPT_LEVEL: optLevel,
@@ -96,7 +100,7 @@ for (const file of ["breditor_wasm.d.ts", "breditor_wasm_bg.wasm", "breditor_was
 }
 const declarations = await readFile(join(directory, "breditor_wasm.d.ts"), "utf8");
 run(process.execPath, ["--test", "scripts/check-nested-list-declarations.test.mjs"]);
-checkNestedListDeclarations(await readFile(join(repository, "crates/breditor-wasm/api/breditor_wasm.d.ts"), "utf8"), declarations);
+checkNestedListDeclarations(await readFile(join(repository, "crates/breditor-wasm/api/breditor_wasm.d.ts"), "utf8"), declarations, {privateScalarWords});
 await writeFile(join(directory, "nested-list-api.ts"), await readFile(join(repository, "scripts/fixtures/nested-list-api.ts")));
 run(join(repository, "node_modules/.bin/tsc"), ["--noEmit", "--strict", "--target", "ES2022",
   "--module", "NodeNext", "--lib", "ES2022,DOM,esnext.disposable", join(directory, "nested-list-api.ts")]);
@@ -111,7 +115,7 @@ assert.equal(hash(await readFile(shippingPath)), shippingBefore, "shipping Wasm 
 assert.deepEqual(await hashTree(shippingDist), shippingTreeBefore, "shipping artifacts changed during experimental qualification");
 assert.deepEqual(await hashTree(browserDist), browserTreeBefore, "browser artifacts changed during experimental qualification");
 const manifest = { status: "passed", publishable: false, feature: "experimental-nested-lists",
-  diagnosticNames, optLevel,
+  diagnosticNames, optLevel, privateScalarWords, projectionScalarWordsVersion: privateScalarWords ? 1 : null,
   codecs: { bootstrap: 5, document: 2, state: 3, session: 7, commit: 7 },
   wasmBytes: wasm.length, wasmGzip9Bytes: gzipSync(wasm, { level: 9 }).length,
   wasmSha256: hash(wasm), shippingWasmSha256: shippingBefore,

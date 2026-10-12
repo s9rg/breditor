@@ -71,6 +71,50 @@ describe("nested subtree update proof", () => {
 });
 
 describe("recursive generated projection consumption", () => {
+  it("does not inspect the private nested transport marker for flat-list consumers", () => {
+    const view = flatListView();
+    const marker = vi.fn(() => { throw new Error("nested transport must not be read"); });
+    Object.defineProperty(view, "projectionScalarWordsVersion", {get: marker});
+    expect(consumeFlatListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(true);
+    expect(marker).not.toHaveBeenCalled();
+    expect(view.freeCalls).toBe(1);
+  });
+  function wordFixture() {
+    const {view} = fixture();
+    const fields = ["childCount", "childAt", "formatCount", "formatPropertyCount", "headingLevel", "orderedListStart"] as const;
+    const record = view as unknown as Record<string, unknown>;
+    Object.defineProperty(view, "projectionScalarWordsVersion", {value: 1, configurable: true});
+    for (const name of fields) {
+      const original = record[name] as (...args: number[]) => number | undefined;
+      record[`${name}Words`] = vi.fn(function(this: object, ...args: number[]) {
+        expect(this).toBe(view);
+        const value = Reflect.apply(original, this, args) as number | undefined;
+        return new Uint32Array(value === undefined ? [0, 0] : [1, value]);
+      });
+      record[name] = vi.fn(() => { throw new Error("legacy scalar invoked"); });
+    }
+    return {view, record};
+  }
+  it("admits all versioned word getters without legacy calls or prototype mutation", () => {
+    const {view, record} = wordFixture();
+    const prototype = Object.getPrototypeOf(view);
+    const result = valueOf(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])));
+    expect(result.textBlocks.map(entry => entry.block.runs.map(run => run.text).join(""))).toEqual(["parent", "child🙂", ""]);
+    expect(record["childCount"]).not.toHaveBeenCalled();
+    expect(record["childCountWords"]).toHaveBeenCalled();
+    expect(Object.getPrototypeOf(view)).toBe(prototype);
+    expect(view.freeCalls).toBe(1);
+  });
+  it.each(["version", "missing", "malformed", "async"])("rejects %s word transport without fallback and cleans up", failure => {
+    const {view, record} = wordFixture();
+    if (failure === "version") Object.defineProperty(view, "projectionScalarWordsVersion", {value: 2});
+    if (failure === "missing") delete record["childAtWords"];
+    if (failure === "malformed") record["childCountWords"] = vi.fn(() => new Uint32Array([0, 1]));
+    if (failure === "async") record["childCountWords"] = vi.fn(() => Promise.reject(new Error("invalid async getter")));
+    expect(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+    expect(record["childCount"]).not.toHaveBeenCalled();
+    expect(view.freeCalls).toBe(1);
+  });
   function fixture() {
     const view = flatListView();
     const element = (elementType: string, children: number[]): FlatNode => ({kind: "element", elementType, children});
@@ -1125,6 +1169,38 @@ function typedProperties(priority = 7): readonly FlatProperty[] {
 }
 
 describe("Wasm semantic projection adapter", () => {
+  it("rejects an unexpected block index before reading its metadata", () => {
+    const descriptor = ownedProfileDescriptor(["breditor/strong"]);
+    const view = Object.assign(new FakeProjectionView("0", [[{ text: "hello", strong: false }]], descriptor.schema), {
+      headingLevel: (_index: number): undefined => undefined,
+    });
+    const originalChildAt = view.childAt.bind(view);
+    view.childAt = (index, ordinal) => index === 0 && ordinal === 0
+      ? 2 : originalChildAt(index, ordinal);
+    const type = vi.spyOn(view, "elementType");
+    expect(consumeTextBlockSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor))
+      .toMatchObject({ ok: false, error: { code: "projection.invalid_shape" } });
+    expect(type.mock.calls.every(([index]) => index === 0)).toBe(true);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it.each(["breditor/paragraph", undefined, "unknown/block"])(
+    "reads an admitted block type exactly once and validates %s",
+    (blockType) => {
+      const descriptor = ownedProfileDescriptor(["breditor/strong"]);
+      const view = Object.assign(new FakeProjectionView("0", [[{ text: "hello", strong: false }]], descriptor.schema), {
+        headingLevel: (_index: number): undefined => undefined,
+      });
+      const originalType = view.elementType.bind(view);
+      const type = vi.spyOn(view, "elementType").mockImplementation((index) =>
+        index === 1 ? blockType : originalType(index));
+      const result = consumeTextBlockSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor);
+      expect(result.ok).toBe(blockType === "breditor/paragraph");
+      expect(type.mock.calls.filter(([index]) => index === 1)).toHaveLength(1);
+      expect(view.freeCalls).toBe(1);
+    },
+  );
+
   function headingView(rank: unknown = 2, revision = "0") {
     const descriptor = ownedProfileDescriptor(["breditor/strong"]);
     const view = new FakeProjectionView(revision, [[{ text: "a🙂", strong: true }]], descriptor.schema);

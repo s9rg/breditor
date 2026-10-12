@@ -5,6 +5,13 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
 impl BreditorProjection {
+    /// Explicit private transport admission marker. Absent from default builds.
+    #[must_use]
+    #[wasm_bindgen(getter, js_name = projectionScalarWordsVersion)]
+    pub fn projection_scalar_words_version(&self) -> u32 {
+        1
+    }
+
     /// Copies optional child index as [presence, value], preserving zero.
     #[must_use]
     #[wasm_bindgen(js_name = childAtWords)]
