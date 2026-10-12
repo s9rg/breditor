@@ -1,0 +1,20 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "wasmSha256":"4c74d07945c2f138f0f6a4c709dc217708b5717804cf2bda9ae19ed06103dbaf",
+  "adapter":"scripts/private-word-projection-adapter.mjs",
+  "installedInShippingRuntime":false,
+  "contract":"Known generated class only. Atomic preflight of all six method pairs; same native receiver and arguments forwarded once; strict word decode; original public names/arity/descriptors retained and restored after owner disposal. No fallback or retry.",
+  "unitChecks":["one invocation and preserved receiver/arguments","zero value and getter signatures","exact descriptor restoration","missing/accessor word methods rejected before mutation or invocation","malformed record throws with no old-getter fallback"],
+  "browserChecks":[
+    {"browser":"chromium","version":"151.0.7922.34","rawWasmScenarios":5,"editorScenarios":1,"status":"passed"},
+    {"browser":"firefox","version":"153.0","rawWasmScenarios":5,"editorScenarios":1,"status":"passed"},
+    {"browser":"webkit","version":"26.5","rawWasmScenarios":5,"editorScenarios":1,"status":"passed"}
+  ],
+  "scope":"Real editor DOM/default toolbar; configured indent/outdent and history shortcuts; repeat/composition guards; deep typing/plain-text paste; exact undo/redo document and selection; V7 fresh-owner redo recovery.",
+  "boundary":"Dev-served source and synthetic events. Not a packed/minified consumer, native clipboard/IME, hostile-module adapter qualification or size/latency release gate. Prototype adapter is diagnostic, not the production design.",
+  "toolingTests":"passed",
+  "next":"Minified installed-consumer stress and recovery using this transport; then production-quality adapter admission and compatibility checks before promotion.",
+  "pushed":false,
+  "published":false
+}

@@ -8,6 +8,9 @@ import { createServer } from "vite";
 assert.equal(process.argv.length, 3, "provide candidate binding directory");
 const root = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const directory = await realpath(resolve(process.argv[2]));
+const wordFlag=process.env.BREDITOR_WORD_EDITOR_CANDIDATE??"0";
+assert.ok(["0","1"].includes(wordFlag));const wordCandidate=wordFlag==="1";
+if(wordCandidate)assert.equal(directory,resolve(root,"target/nested-child-count-words/pkg"));
 const path = relative(root, directory);
 assert.ok(path.startsWith(`target${sep}`) && !path.split(sep).includes(".."));
 const bindingUrl = `/${path.split(sep).map(encodeURIComponent).join("/")}`;
@@ -30,18 +33,22 @@ try {
       const page = await browser.newPage();
       const errors = []; page.on("pageerror", error => errors.push(String(error)));
       await page.goto(url);
-      const results = await page.evaluate(async bindingUrl => {
+      const results = await page.evaluate(async ({bindingUrl,wordCandidate}) => {
         const api = await import(`${bindingUrl}/breditor_wasm.js`);
         api.initSync({module: await (await fetch(`${bindingUrl}/breditor_wasm_bg.wasm`)).arrayBuffer()});
+        let restore;
+        if(wordCandidate){const {installPrivateWordProjectionAdapter}=await import("/scripts/private-word-projection-adapter.mjs");restore=installPrivateWordProjectionAdapter(api);}
+        try {
         const {runNestedListWasmScenario} = await import("/scripts/nested-list-wasm-scenario.mjs");
         const results = Array.from({length: 5}, () => runNestedListWasmScenario(api));
         const {verifyNestedListEditorOwner} = await import("/scripts/nested-list-editor-owner-scenario.mjs");
         results.push(await verifyNestedListEditorOwner(api));
         return results;
-      }, bindingUrl);
+        }finally{restore?.();}
+      }, {bindingUrl,wordCandidate});
       assert.equal(results.length, 6); assert.deepEqual(errors, []);
       console.log(JSON.stringify({browser: name, editor: results[5]}));
-      console.log(JSON.stringify({browser: name, version: browser.version(), status: "passed", rawWasmRuns: 5, editorRuns: 1, scope: results[0].scope}));
+      console.log(JSON.stringify({browser: name, version: browser.version(), status: "passed", wordCandidate, rawWasmRuns: 5, editorRuns: 1, scope: results[0].scope}));
     } catch (error) {
       process.exitCode = 1;
       console.log(JSON.stringify({browser: name, version: browser.version(), status: "failed", error: String(error)}));
