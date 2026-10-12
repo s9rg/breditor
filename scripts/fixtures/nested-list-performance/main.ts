@@ -96,7 +96,10 @@ async function sample(items: number, fingerprint: string, repetition: number) {
   };
   const selected = () => {
     const checkpoint = JSON.parse(exported("sessionCheckpointJson"));
-    return checkpoint.cursor === 0 ? checkpoint.historyBase.selection : checkpoint.entries[checkpoint.cursor - 1].resultSelection;
+    const state = checkpoint.cursor === 0 ? checkpoint.historyBase : checkpoint.entries[checkpoint.cursor - 1];
+    const pendingKey = checkpoint.cursor === 0 ? "pendingFormats" : "resultPendingFormats";
+    if (!Object.hasOwn(state, pendingKey)) throw new Error("Checkpoint pending-format state is missing");
+    return {selection: checkpoint.cursor === 0 ? state.selection : state.resultSelection, pendingFormats: state[pendingKey]};
   };
   const history = (operation: "undo" | "redo") => {
     const button = toolbar.querySelector<HTMLButtonElement>(`[data-breditor-state-id="breditor/control-${operation}"]`)!;
