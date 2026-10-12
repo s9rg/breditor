@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-11",
+  "sourceCheckpoint": "f14582f",
+  "releaseQualified": false,
+  "defaultCoreUnits": {
+    "command": "cargo test -p breditor-core --lib --quiet",
+    "passed": 703,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "featureCoreUnits": {
+    "command": "cargo test -p breditor-core --features experimental-structural-properties --lib --quiet",
+    "passed": 1199,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "strictFeatureCoreClippyLibAndTests": "passed for the same test sources before the checkpoint commit",
+  "fullFeatureIntegrationAndDoctestCommand": "cargo test -p breditor-core --features experimental-structural-properties --quiet",
+  "fullFeatureIntegrationAndDoctestStatus": "still live at this checkpoint; no complete success claim",
+  "productionCodeChanged": false,
+  "protocolsChanged": false,
+  "shippingArtifactsWritten": false,
+  "powerSettingsChanged": false,
+  "historicalWebKitProjectionFaultResolved": false,
+  "nativeAndPerformanceReleaseGates": "open"
+}
