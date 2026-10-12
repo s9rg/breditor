@@ -1,0 +1,16 @@
+{
+  "releaseQualified": false,
+  "faultResolved": false,
+  "report": "target/nested-list-reproductions/failure-0LXbgv/measurement.json",
+  "sha256": "cf2f8440a1261e5feb9217ba245606a48dd1ff46d2519ea8109df7a455a92663",
+  "originalPackedWasm": true,
+  "changedBoundary": "Private generated getter bridge: fixed-arity function.call, no Reflect.apply or rest argument array. Same thenable guard and getter sequence.",
+  "failure": {"run": 3,"progress":"100 items, owner 9, forward node 105","label":"child count","actual":"undefined","expected":1,"sameValue":false},
+  "interpretation": "Original packed getter failure does not require the generic Reflect.apply bridge. Do not promote direct calls as a fix.",
+  "ownershipInspection": "ProjectionNodeRecord owns NodeRef (Arc immutable node) and boxed child indices. append_preorder clones NodeRef. This inspection found no borrowed engine-lifetime reference; native after-engine-drop test remains unqualified pending startup.",
+  "productionWarning": "The experimental bridge reads method.call and is not appropriate for hostile generated methods. It must not replace the hardened production bridge.",
+  "toolingTests": "passed including receiver/arity, exact one invocation, zero/undefined preservation, throws and thenable rejection",
+  "shippingChanged": false,
+  "pushed": false,
+  "published": false
+}

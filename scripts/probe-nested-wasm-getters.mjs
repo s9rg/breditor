@@ -12,6 +12,7 @@ import {webkitReplayTier} from "./webkit-replay-tier.mjs";
 import {verifyFailureBundle,retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 import {waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
 import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn} from "./child-count-return-diagnostics.mjs";
+import {DIRECT_GETTER_BRIDGE} from "./direct-getter-bridge.mjs";
 
 assert.equal(process.argv.length,3,"usage: node scripts/probe-nested-wasm-getters.mjs <private pair qualification.json>");
 const repository=fileURLToPath(new URL("../",import.meta.url));
@@ -32,6 +33,9 @@ assert.ok(!(fixedArity&&(rawTrace||sentinelTreatment)),"change one boundary at a
 const lastCaptureFlag=process.env.BREDITOR_GETTER_LAST_CAPTURE??"0";
 assert.ok(["0","1"].includes(lastCaptureFlag));const lastCapture=lastCaptureFlag==="1";
 assert.ok(!(lastCapture&&(fixedArity||rawTrace||sentinelTreatment)),"last capture is a separate experiment");
+const directCallFlag=process.env.BREDITOR_GETTER_DIRECT_CALL??"0";
+assert.ok(["0","1"].includes(directCallFlag));const directCall=directCallFlag==="1";
+assert.ok(!(directCall&&(lastCapture||fixedArity||rawTrace||sentinelTreatment)),"direct calls are a separate experiment");
 await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
 const originalMain=await readFile(join(fixture,"main.ts"),"utf8");
 assert.equal(originalMain.split("const ownerRepetitions = 30;").length,2);
@@ -44,6 +48,7 @@ const diagnosticDirectory=process.env.BREDITOR_GETTER_RUST_DIAGNOSTIC;
 const candidateDirectory=process.env.BREDITOR_GETTER_WASM_CANDIDATE;
 assert.ok(!(diagnosticDirectory!==undefined&&candidateDirectory!==undefined),"diagnostic and candidate Wasm must be tested separately");
 const privateDirectory=diagnosticDirectory??candidateDirectory;
+assert.ok(!(directCall&&privateDirectory!==undefined),"direct-call experiment requires original packed Wasm");
 const explicitChildCountTransport=candidateDirectory!==undefined;
 let privateDestination;
 let wasmModule=join(record.consumer,"node_modules/@breditor/wasm/dist/breditor_wasm.js");
@@ -68,7 +73,7 @@ const verifiedControl=await verifyFailureBundle(controlPath,controlManifest);
 const control=verifiedControl.files["bundle/assets/index-DEzwFtBf.js"].toString("utf8");
 assert.ok(control.includes(bridge)&&control.includes(guard),"inspected retained bridge changed");
 // Getter return values are primitive; thenable containment must remain unreachable.
-const fixtureBridge=fixedArity?'function z(e,t,index,child){let r;if(arguments.length===3)r=Reflect.apply(e,t,[index]);else if(arguments.length===4)r=Reflect.apply(e,t,[index,child]);else throw Error("Unexpected getter arity");if(Ph(r))throw TypeError(`generated scalar method returned a thenable`);return r}':bridge;
+const fixtureBridge=directCall?DIRECT_GETTER_BRIDGE:fixedArity?'function z(e,t,index,child){let r;if(arguments.length===3)r=Reflect.apply(e,t,[index]);else if(arguments.length===4)r=Reflect.apply(e,t,[index,child]);else throw Error("Unexpected getter arity");if(Ph(r))throw TypeError(`generated scalar method returned a thenable`);return r}':bridge;
 await writeFile(join(fixture,"bridge.js"),`${fixtureBridge}\n${guard}\nfunction Rh(){throw Error("Unexpected non-primitive generated scalar");}\nexport {z as bridgeInvoke};`);
 const types=spawnSync(process.execPath,[join(repository,"node_modules/typescript/bin/tsc"),"-p",join(fixture,"tsconfig.json")],{encoding:"utf8"});
 assert.equal(types.status,0,`${types.stdout}\n${types.stderr}`);
@@ -80,7 +85,7 @@ const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 const bundleAssets=Object.fromEntries(await Promise.all((await readdir(join(fixture,"bundle/assets"))).sort().map(async name=>[name,hash(await readFile(join(fixture,"bundle/assets",name)))])));
 const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions,runCount:10,editTarget:"root",bundleAssets,
   packageRecord,tarballSha256:record.tarballSha256,
-  bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
+  bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,directCallBridgeTreatment:directCall,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
   childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,
   diagnosticWasmAssets,explicitChildCountTransport,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
