@@ -96,6 +96,29 @@ describe("recursive generated projection consumption", () => {
     }
     return {view, record};
   }
+  it.each(["childCountWords", "childAtWords", "formatCountWords", "formatPropertyCountWords",
+    "headingLevelWords", "orderedListStartWords", "formatPropertyIntegerWords"])(
+    "rejects orphan %s without accepting legacy fallback", name => {
+      const {view} = fixture();
+      const orphan = vi.fn(() => {throw new Error("orphan word method must not be invoked");});
+      (view as unknown as Record<string, unknown>)[name] = orphan;
+      expect(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, ownedProfileDescriptor([])).ok).toBe(false);
+      expect(orphan).not.toHaveBeenCalled();
+      expect(view.freeCalls).toBe(1);
+    });
+  it("rejects orphan capability in an update with exactly-once child and parent cleanup", () => {
+    const descriptor = ownedProfileDescriptor([]);
+    const base = valueOf(consumeNestedListSemanticProjection(fixture().view, TEST_PROFILE_GENERATION, descriptor));
+    const {view: child} = fixture();
+    Object.defineProperty(child, "snapshotRevision", {value:"8"});
+    const orphan = vi.fn(() => new Uint32Array([0, 0, 0]));
+    (child as unknown as Record<string, unknown>)["formatPropertyIntegerWords"] = orphan;
+    const update = new FakeUpdateView({baseRevision:"7",resultRevision:"8",impact:"none",projection:child});
+    expect(consumeNestedListSemanticProjectionUpdate(base, update, TEST_PROFILE_GENERATION, descriptor).ok).toBe(false);
+    expect(orphan).not.toHaveBeenCalled();
+    expect(child.freeCalls).toBe(1);
+    expect(update.freeCalls).toBe(1);
+  });
   it("admits all versioned word getters without legacy calls or prototype mutation", () => {
     const {view, record} = wordFixture();
     const prototype = Object.getPrototypeOf(view);

@@ -110,6 +110,21 @@ test("admission capture records same view and actual wrapper without repeat read
   const current=readFileSync(new URL("../packages/breditor-browser/src/wasm_projection_adapter.ts",import.meta.url),"utf8");
   const generated=transformSync("wasm_projection_adapter.ts",current).code;
   assert.ok(instrumentProjectionTransportAdmission(instrumentIntegerWordReturn(generated)).includes("integerApplied"));
+  const facadeSource=source.replace("if(nestedLists){", "if(nestedLists){ const wordFacade=view.capability;")
+    .replace('readGeneratedScalar(view, "projectionScalarWordsVersion")','wordFacade["projectionScalarWordsVersion"]')
+    .replace('readGeneratedScalar(view, "projectionIntegerWordsVersion")','wordFacade["projectionIntegerWordsVersion"]');
+  let facadeReads=0; const state={};
+  const capability={get projectionScalarWordsVersion(){facadeReads++;return 1;},
+    get projectionIntegerWordsVersion(){facadeReads++;return 1;}};
+  const run=Function("globalThis",instrumentProjectionTransportAdmission(facadeSource)+";return snapshotSemanticProjection;")(state);
+  const view={legacy:()=>0,words:()=>1193046,capability};
+  assert.equal(run(view,true,true,true).formatPropertyInteger(4,2,0),1193046);
+  assert.equal(facadeReads,2);
+  assert.equal(state.__breditorProjectionTransports.get(view).integerVersion,1);
+  assert.throws(()=>instrumentProjectionTransportAdmission(facadeSource.replace(
+    'const version = wordFacade["projectionScalarWordsVersion"];',
+    'const version = wordFacade["projectionScalarWordsVersion"]; const version = readGeneratedScalar(view, "projectionScalarWordsVersion");')),
+    /missing or ambiguous/u);
 });
 test("current decoder site is exact and unknown code rejects", () => {
   const source=readFileSync(new URL("../packages/breditor-browser/src/projection_scalar_words.ts",import.meta.url),"utf8");

@@ -106,10 +106,15 @@ export function instrumentProjectionTransportAdmission(code) {
         globalThis.__breditorIntegerWrappers ??= new WeakSet();
         globalThis.__breditorProjectionTransports.set(view, transportTrace);
     } catch {}`);
-  for(const [site,field] of [
-    ['const version = readGeneratedScalar(view, "projectionScalarWordsVersion");',"scalarVersion"],
-    ['const integerVersion = readGeneratedScalar(view, "projectionIntegerWordsVersion");',"integerVersion"],
+  for(const [alternatives,field] of [
+    [['const version = readGeneratedScalar(view, "projectionScalarWordsVersion");',
+      'const version = wordFacade["projectionScalarWordsVersion"];'],"scalarVersion"],
+    [['const integerVersion = readGeneratedScalar(view, "projectionIntegerWordsVersion");',
+      'const integerVersion = wordFacade["projectionIntegerWordsVersion"];'],"integerVersion"],
   ]) {
+    const present=alternatives.filter(site=>code.includes(site));
+    assert.equal(present.length,1,"transport version read missing or ambiguous");
+    const site=present[0];
     assert.equal(code.split(site).length,2,"transport version read changed");
     code=code.replace(site,site+`\n    transportTrace.${field} = ${field==="scalarVersion"?"version":"integerVersion"};`);
   }

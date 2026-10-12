@@ -19,6 +19,7 @@ import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
 import { decodeProjectionIntegerWords, decodeProjectionScalarWords } from "./projection_scalar_words.js";
+import { snapshotNestedProjectionWordFacade } from "./wasm_projection_word_facade.js";
 import {
   browserCompiledProfileDescriptorMatchesGeneration,
   wasmProfileGenerationIsLive,
@@ -1462,11 +1463,14 @@ function snapshotSemanticProjection(
     methods["headingLevel"] = headingLevel;
     methods["listKind"] = listKind;
     methods["orderedListStart"] = orderedListStart;
-    // Only the opt-in nested adapter recognizes this private, versioned ABI.
-    // Missing marker means legacy transport; partial/unknown word ABIs fail.
+    // Only the opt-in nested adapter recognizes this versioned word ABI.
+    // Legacy requires the complete capability to be absent, not just markers.
+    // Share startup/restore admission so partial/unknown word ABIs always fail.
     // Never mutate generated prototypes or retry a scalar getter after failure.
     if (nestedLists) {
-      const version = readGeneratedScalar(view, "projectionScalarWordsVersion");
+      const wordFacade = snapshotNestedProjectionWordFacade(view, containGeneratedThenable);
+      if (wordFacade === null) return null;
+      const version = wordFacade["projectionScalarWordsVersion"];
       if (version !== undefined) {
         if (version !== 1) return null;
         for (const [name, wordName, arity] of [
@@ -1474,7 +1478,7 @@ function snapshotSemanticProjection(
           ["formatCount", "formatCountWords", 1], ["formatPropertyCount", "formatPropertyCountWords", 2],
           ["headingLevel", "headingLevelWords", 1], ["orderedListStart", "orderedListStartWords", 1],
         ] as const) {
-          const word = readGeneratedMethod(view as unknown as Record<string, unknown>, wordName);
+          const word = wordFacade[wordName];
           if (typeof word !== "function") return null;
           methods[name] = arity === 1
             ? function(this: object, index: number) {
@@ -1485,10 +1489,10 @@ function snapshotSemanticProjection(
               };
         }
       }
-      const integerVersion = readGeneratedScalar(view, "projectionIntegerWordsVersion");
+      const integerVersion = wordFacade["projectionIntegerWordsVersion"];
       if (integerVersion !== undefined) {
         if (integerVersion !== 1 || version !== 1) return null;
-        const word = readGeneratedMethod(view as unknown as Record<string, unknown>, "formatPropertyIntegerWords");
+        const word = wordFacade["formatPropertyIntegerWords"];
         if (typeof word !== "function") return null;
         methods["formatPropertyInteger"] = function(this: object, index: number, ordinal: number, property: number) {
           return decodeProjectionIntegerWords(invokeGenerated(

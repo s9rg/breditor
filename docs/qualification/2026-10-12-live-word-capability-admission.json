@@ -1,0 +1,18 @@
+{
+  "status": "fixed-source-packed-qualification-running",
+  "releaseQualified": false,
+  "beforeCheckpoint": "fe628ff",
+  "bug": "Live nested projection consumption treated missing word-version markers as legacy even when word methods remained present. Startup/restore already required complete capability absence. Thus partial live capabilities could silently fall back to scalar transport.",
+  "reproduction": {"command":"npm exec --workspace @breditor/browser -- vitest run src/wasm_projection_adapter.test.ts -t 'rejects orphan'","beforeExitCode":1,"beforeFailures":7,"observation":"Each scalar word method and the signed integer word method, independently present without markers on a valid legacy view, was wrongly admitted."},
+  "fix": "Use the shared captured, receiver-preserving all-or-none word capability admission in live semantic snapshots as well as startup/restore. No generated prototype mutation, repeated marker reads, fallback after invalid admission or change to base/flat capability probing.",
+  "regressions": {"standaloneAndUpdateOrphanCases":8,"focusedAfterPassed":8,"fullBrowserTestsPassed":2161,"files":57,"productionAndTestTypecheck":"passed","fullScriptSuitePassed":253,"optionalScriptsSkipped":3,"scriptFailures":0,"cleanup":"Invalid live child and update parent freed exactly once; orphan methods never invoked."},
+  "diagnosticCompatibility": "Admission tracer accepts the exact prior raw marker reads or the new captured-facade fields, rejects missing/ambiguous sites and observes existing operands without repeat reads. Tests cover both shapes and actual transpiled current source.",
+  "rustWasmChanged": false,
+  "stress": {"session":37363,"record":"performance-n1saWJ/measurement.json","status":"running","requestedCases":900,"requestedFreshWebKitProcesses":10},
+  "optIn": {"assembly":"target/nested-list-opt-in-ByyOGo/assembly.json","archiveSha256":"b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e","bytes":962748,"unpackedBytes":4186923,"consumerSession":7301,"consumerStatus":"running","sizeBudgetQualified":false,"publishable":false},
+  "packedQualification": {"status":"passed all three engines/Node/types","candidate":"target/nested-list-candidate-sqOt8p","record":"target/nested-list-packages-zXu1Pv/qualification.json","browserSha256":"3d26dacd906cc63af7cd585c3c78d49b1ab4db4599a62673548cd5d3d04fc4c6","wasmPackageSha256":"99b99caccafd14e1ed4db68d5af3749618774600b823f793baeee9d644ffee53","scope":"New browser bytes require independent stress/replay. Default shipping artifacts unchanged."},
+  "priorLatencyDiagnostic": {"sourceCheckpoint":"fe628ff","measurement":"performance-zEbgX5/measurement.json","measurementSha256":"dd6b8dd5544c52669da11c134b5aa296c92735a8d187573c352c70a5d075f798","profileSha256":"5c6a0d5d7dce789b3e30c4fe50981c33f420dc18fab5ae5d383122a38208df68","cases":9,"build":"unminified diagnostic Chromium","largestSampledSelfFunctions":["nativeChildNodes","mapNode","recipeElementMatches"],"scope":"Includes warm-up and all operations, concurrent native test jobs. Not an isolated timing gate, statistical p95, WebKit attribution or post-fix performance evidence. Intrinsic captures were already cached; no DOM validation pass removed."},
+  "remaining": ["Exact new packed stress/replay and opt-in archive qualification","Native clipboard/IME/VoiceOver","Accepted size and latency gates"],
+  "pushed": false,
+  "published": false
+}
