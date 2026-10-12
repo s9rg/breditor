@@ -47,3 +47,23 @@ export function instrumentContentSnapshotComparison(code) {
     }
     return result;`);
 }
+
+/** Capture each property's exact equality operands only if comparison rejects. */
+export function instrumentDocumentPropertyComparison(code) {
+  const start = "function documentTextBlockMatches(paragraph, projectedBlock) {";
+  const expression = "properties[name] === projectedProperty.value;";
+  assert.equal(code.split(start).length, 2, "document block matcher changed");
+  assert.equal(code.split(expression).length, 2, "document property equality changed");
+  return code.replace(expression, "diagnosticPropertyEquality(properties[name], projectedProperty.value, name, propertyIndex);")
+    .replace(start, start + `
+    const diagnosticPropertyEquality = (left, right, name, index) => {
+        const result = left === right;
+        if (!result) {
+            try { console.error("breditor document property rejection", JSON.stringify({
+                name, index, leftType: typeof left, rightType: typeof right,
+                left, right, sameValueAfterRejection: Object.is(left, right)
+            }).slice(0, 2048)); } catch {}
+        }
+        return result;
+    };`);
+}

@@ -29,7 +29,7 @@ import {nestedListStressMode, uninstrumentedNestedStressPlugin} from "./nested-l
 import {tree as artifactTree} from "./build-opt-in-nested-list-package.mjs";
 import {instrumentNestedParagraphResults, instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
 import {stringKeyHeadingComparison} from "./heading-comparison-trial.mjs";
-import {instrumentContentSnapshotComparison,instrumentDocumentExportRead} from "./document-export-diagnostics.mjs";
+import {instrumentContentSnapshotComparison,instrumentDocumentExportRead,instrumentDocumentPropertyComparison} from "./document-export-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -192,6 +192,9 @@ let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
 let progressFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
+  if (id === join(consumer, "node_modules/@breditor/browser/dist/wasm_document_json.js")) {
+    return instrumentDocumentPropertyComparison(code);
+  }
   if (paragraphDiagnosticsEnabled && id === join(consumer, "node_modules/@breditor/browser/dist/projection.js")) {
     return instrumentParagraphComparison(code, "strict", {failureCapture: true});
   }

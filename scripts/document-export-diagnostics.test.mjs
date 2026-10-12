@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import test from "node:test";
-import {instrumentContentSnapshotComparison,instrumentDocumentExportRead} from "./document-export-diagnostics.mjs";
+import {transformSync} from "rolldown/utils";
+import {instrumentContentSnapshotComparison,instrumentDocumentExportRead,instrumentDocumentPropertyComparison} from "./document-export-diagnostics.mjs";
 
 test("document read attribution preserves exact result and one correlation", () => {
   const source = `class Owner {
@@ -58,4 +59,24 @@ test("snapshot diagnosis preserves short-circuit and exact getter counts", () =>
   const generated=readFileSync(new URL("../packages/breditor-browser/dist/browser_editor.js",import.meta.url),"utf8");
   assert.ok(instrumentContentSnapshotComparison(generated).includes("breditor content snapshot rejection"));
   assert.throws(()=>instrumentContentSnapshotComparison("return true;"));
+});
+
+test("property comparison captures operands once without overriding equality", () => {
+  const source = `function documentTextBlockMatches(paragraph, projectedBlock) {
+    const properties = paragraph, projectedProperty = projectedBlock, name = "value", propertyIndex = 0;
+    return properties[name] === projectedProperty.value;
+  }`;
+  for (const [leftValue,rightValue,expected] of [[1193046,1193046,true],[1193046,0,false],[1,"1",false],[false,false,true]]) {
+    let leftReads=0,rightReads=0;const logs=[];
+    const compare = Function("console",instrumentDocumentPropertyComparison(source)+";return documentTextBlockMatches;")({error:(...args)=>logs.push(args)});
+    const result=compare({get value(){leftReads++;return leftValue;}},{get value(){rightReads++;return rightValue;}});
+    assert.equal(result,expected);assert.equal(leftReads,1);assert.equal(rightReads,1);
+    assert.equal(logs.length,expected?0:1);
+  }
+  // Shipping dist intentionally stays old during private-candidate development.
+  // Compile current source in memory rather than editing that default artifact.
+  const sourceText=readFileSync(new URL("../packages/breditor-browser/src/wasm_document_json.ts",import.meta.url),"utf8");
+  const generated=transformSync("wasm_document_json.ts",sourceText).code;
+  assert.ok(instrumentDocumentPropertyComparison(generated).includes("breditor document property rejection"));
+  assert.throws(()=>instrumentDocumentPropertyComparison("return true;"));
 });
