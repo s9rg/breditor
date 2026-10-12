@@ -8,8 +8,9 @@ The historical intermittent WebKit fault is unresolved.
 
 Remaining release gates: physical keyboard/IME and spoken screen-reader
 qualification; size and large-document performance qualification; resolution of
-the WebKit risk. Native clipboard checks now cover the current archive in Safari
-and Chrome, within the scope recorded below. The
+the WebKit risk. Native clipboard observations cover the older `Skv8uP` archive
+in Safari and Chrome, within the scope recorded below; they do not qualify the
+latest `VTFj93` candidate. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
 
