@@ -18,17 +18,28 @@ export function instrumentIntegerWordDecode(code) {
     return decoded;`);
 }
 
-/** Observe the heterogeneous property tuple after its existing map completes. */
-export function instrumentProjectedIntegerTuple(code) {
+/** Observe existing property locals; optional capture brackets the final call. */
+export function instrumentProjectedIntegerTuple(code, {captureBeforeString = false} = {}) {
+  assert.equal(typeof captureBeforeString, "boolean");
   const legacy = "view, nodeIndex, formatIndex, propertyIndex));";
   const explicit = "const stringValue = invokeGenerated(methods.formatPropertyString, view, nodeIndex, formatIndex, propertyIndex);";
   const site = code.includes(legacy) ? legacy : explicit;
   assert.equal(code.split(site).length, 2, "projected property tuple site changed");
+  if (captureBeforeString && site === explicit) {
+    const integerSite = "const integerValue = invokeGenerated(methods.formatPropertyInteger, view, nodeIndex, formatIndex, propertyIndex);";
+    assert.equal(code.split(integerSite).length, 2, "explicit integer call site changed");
+    code = code.replace(integerSite, integerSite + `
+    try { globalThis.__breditorIntegerBeforeString = {
+        nodeIndex, formatIndex, propertyIndex, integerValue,
+        words: globalThis.__breditorLastIntegerWords ?? null
+    }; } catch {}`);
+  }
   return code.replace(site, site + `
     if (name === "example/rgb24" && kind === "integer" && integerValue !== 1193046) {
         try { console.error("breditor projected integer tuple deviation", JSON.stringify({
             nodeIndex, formatIndex, propertyIndex, name, kind, integerValue,
-            lastWords: globalThis.__breditorLastIntegerWords ?? null
+            lastWords: globalThis.__breditorLastIntegerWords ?? null,
+            beforeString: ${captureBeforeString && site === explicit ? "globalThis.__breditorIntegerBeforeString ?? null" : "null"}
         }).slice(0, 2048)); } catch {}
     }`);
 }

@@ -212,7 +212,7 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
       assert.ok(!validationDiagnosticModules.has(name), "duplicate validation transform");
       validationDiagnosticModules.add(name);
       let diagnosed = instrumentProjectionValidationSites(code, name, {blockTypeCallMarker});
-      if (integerFormats && name === "wasm_projection_adapter") diagnosed = instrumentProjectedIntegerTuple(diagnosed);
+      if (integerFormats && name === "wasm_projection_adapter") diagnosed = instrumentProjectedIntegerTuple(diagnosed, {captureBeforeString: true});
       return paragraphDiagnosticsEnabled && name === "nested_list_projection_update"
         ? instrumentNestedParagraphResults(diagnosed) : diagnosed;
     }
