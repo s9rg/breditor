@@ -160,6 +160,26 @@ describe("recursive nested-list DOM", () => {
     expect(() => nestedListCutDeleteRequest({...delivery} as never, selection)).toThrow();
     expect(() => pasteInsertRequest(delivery as never, selection as never, "x")).toThrow();
   });
+  it.each(["\n", "\r", "\r\n"])("admits exactly the nested paste paragraph ceiling for %j", separator => {
+    const {delivery, selection} = nestedRequest();
+    const text = "日本🙂" + separator.repeat(9_999);
+    const paste = nestedListPasteInsertRequest(delivery, selection, text);
+    expect(paste.source).toEqual({kind: "clipboard", detail: "paste"});
+    expect(paste.requirements).toEqual({selection: "preserve", history: "closeBefore"});
+    expect(paste.command).toMatchObject({input: {kind: "string", value: text}});
+    expect(() => nestedListPasteInsertRequest(delivery, selection, text + separator)).toThrow(RangeError);
+  });
+  it("keeps HTML-looking paste and Unicode separators as literal nested text", () => {
+    const {delivery, selection} = nestedRequest();
+    const text = "<ol><li>日本🙂</li></ol>" + "\u2028\u2029".repeat(10_000);
+    const paste = nestedListPasteInsertRequest(delivery, selection, text);
+    expect(paste.command).toMatchObject({kind: "action", input: {kind: "string", value: text}});
+    expect(canonicalNestedListEditorCommandRequest(paste)).not.toBeNull();
+    const cut = nestedListCutDeleteRequest(delivery, selection);
+    expect(cut.source).toEqual({kind: "clipboard", detail: "cut"});
+    expect(cut.requirements).toEqual({selection: "preserve", history: "closeBefore"});
+    expect(cut.command).toMatchObject({input: {kind: "none"}});
+  });
   it("routes nested input syntax without widening legacy translation", () => {
     const request = nestedRequest(), delivery = request.delivery, selection = request.selection;
     for (const [inputType, suffix] of [["insertText", "text"], ["insertParagraph", "break"], ["deleteContentBackward", "backward"], ["deleteContentForward", "forward"]]) {

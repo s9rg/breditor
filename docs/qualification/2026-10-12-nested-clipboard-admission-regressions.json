@@ -1,0 +1,16 @@
+{
+  "releaseQualified":false,
+  "nativeClipboardQualified":false,
+  "scope":"Nested clipboard command-factory admission and literal payload preservation; no native clipboard interaction or Rust mutation performed.",
+  "addedCases":[
+    "LF: exactly 10000 source paragraphs accepted, 10001 rejected",
+    "CR: exactly 10000 source paragraphs accepted, 10001 rejected",
+    "CRLF: exactly 10000 source paragraphs accepted, 10001 rejected without double counting",
+    "HTML-looking text, Japanese/emoji and Unicode line/paragraph separators remain exact request payload; separators do not create structural paragraphs; cut/paste retain closeBefore history and the preserve-selection fixture contract"
+  ],
+  "verification":{"focusedDomTests":203,"focusedStatus":"passed","browserTestFiles":55,"browserTests":2107,"browserStatus":"passed","testTypes":"passed","diffWhitespace":"passed"},
+  "excludedHarnessAttempts":["Root-level Vitest lacked the package DOM environment: document undefined","Root-level config invocation used package-relative include patterns and found no files"],
+  "productionCodeChanged":false,
+  "pushed":false,
+  "published":false
+}
