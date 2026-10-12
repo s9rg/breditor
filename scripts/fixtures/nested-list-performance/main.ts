@@ -16,7 +16,7 @@ const semanticProfile = {formatVersion: 5 as const, bootstrapJson: JSON.stringif
     id: {name: "example/annotation-extension", version: 1}, dependencies: [], conflicts: [],
     inlineFormats: [{kind: "example/link", revision: 1}],
     inlineFormatPropertyContracts: [{formatKind: "example/link", properties: [
-      {name: "example/href", presence: "required", valueType: {kind: "string", minimumUtf8Bytes: 1, maximumUtf8Bytes: 128}},
+      {name: "example/href", presence: "required", valueType: {kind: "string", minimumUtf8Bytes: 1, maximumUtf8Bytes: 2048}},
       {name: "example/open-in-new-window", presence: "required", valueType: {kind: "boolean"}},
     ]}], inlineFormatToggles: [], inlineFormatSets: [],
   }] : [],
