@@ -3,6 +3,14 @@
   "faultResolved": false,
   "candidateFeature": "candidate-explicit-child-count",
   "defaultEnabled": false,
+  "higherStress": {
+    "firstBatch": "getter-probe-wFIa68: 10 fresh processes, 9000 owners, 7365010 checks passed",
+    "firstBatchSha256": "23232f7bae1f0643248d60896d11c0cbd54da91fa648540174f60d340875bcac",
+    "exactReplay": "target/nested-list-reproductions/failure-jqlHGu/replay.json",
+    "exactReplaySha256": "6db7269dc54f6754fb26a52118369336410747d0c1ee245f8e8e704e3fc9ba86",
+    "failure": "Run 2: 100 items, owner 282, walk 0, backward node 177; child count actual number 1, expected number 1, failure-path SameValue true",
+    "decision": "Not a complete fix even for child-count-only reads. Do not promote on the green first batch."
+  },
   "candidateWasmSha256": "85fb201dd40487f0f84f097b0e329ebbaf181dc5c3b3a70e5cb6e6609eff9205",
   "failedReplaySha256": "b3d52604ed2158ad9baceb33d898cad06513e6d1db1f933e9d17cb1fe01600b4",
   "scope": "Private explicit JsValue child-count transport; same shared Rust calculation and public number-or-undefined contract. No retries, fallback values or relaxed checks.",
