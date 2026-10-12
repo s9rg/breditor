@@ -43,13 +43,28 @@
   "nextExperiment": {
     "kind": "explicit bounded uninstrumented WebKit owner churn",
     "record": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-k9LZAE/performance-MHpvVp/measurement.json",
-    "status": "running",
+    "status": "measured",
+    "sha256": "a6f5fe0a2a1727675555323e1c830d14127a0893882b4931c8c54885016b7b84",
+    "completedSessions": 10,
+    "completedCases": 900,
     "ownersPerSize": 30,
     "requestedSessions": 10,
     "packageInstrumentation": false,
-    "transformation": "Only the fixture owner-loop bound changes; installed browser and Wasm code is not transformed. Module transform-count assertions enforce this. Correctness assertions remain intact; timings are not release qualification."
+    "transformation": "Only the fixture owner-loop bound changes; installed browser and Wasm code is not transformed. Module transform-count assertions enforce this. Correctness assertions remain intact; timings are not release qualification.",
+    "interpretation": "All 900 cases passed without diagnostics. Bounded success does not supersede earlier retained failures of the same candidate package pair."
   },
-  "toolingVerification": {"passed": 173, "skipped": 3, "failed": 0},
+  "nestedLayoutTracing": {
+    "record": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-k9LZAE/performance-ZJahKM/measurement.json",
+    "sha256": "22114e92b5e2e0515d254d434dbda9039984d573132c0ab355569fb4b7a99d88",
+    "completedSessions": 10,
+    "completedCases": 900,
+    "result": "passed without diagnostics",
+    "coverage": "Sixteen explicit null/false rejection sites plus final node coverage; stage and local primitive values captured only on failure, without generated metadata rereads or validation retries.",
+    "regression": "Real compiled adapter function returned identical results and generated-method call sequences before/after transformation across valid and malformed fixtures, with normal and throwing loggers. Structural anchors reject changed or duplicate rejection sites.",
+    "exactReplay": "running",
+    "boundary": "Instrumentation can affect recurrence. This bounded pass does not resolve or supersede retained candidate failures."
+  },
+  "toolingVerification": {"passed": 174, "skipped": 3, "failed": 0},
   "externalSource": "https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/OptionsList.h",
   "systemSettingsChanged": false,
   "shippingArtifactsWritten": false,

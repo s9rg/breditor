@@ -5,7 +5,72 @@ import {transform} from "rolldown/utils";
 import {instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
 import {instrumentProjectionCaughtErrors} from "./queue-failure-diagnostics.mjs";
 import {instrumentNestedRootComparison} from "./queue-failure-diagnostics.mjs";
+import {instrumentNestedLayoutRejections} from "./queue-failure-diagnostics.mjs";
 import {instrumentFixtureProgress} from "./queue-failure-diagnostics.mjs";
+
+test("real nested layout rejection traces preserve results, scalar reads and cleanup-independent failures", async () => {
+  const ts = await readFile(new URL("../packages/breditor-browser/src/wasm_projection_adapter.ts", import.meta.url), "utf8");
+  const compiled = (await transform("wasm_projection_adapter.ts", ts, {lang: "ts"})).code;
+  const from = compiled.indexOf("function readNestedListLayout(view, methods, rootCount, nodeCount) {");
+  assert.ok(from >= 0);
+  const source = compiled.slice(from, compiled.indexOf("\n}", from) + 2);
+  const changed = instrumentNestedLayoutRejections(source);
+  for (const fault of [null, "capabilities", "rootIndex", "blockIndex", "blockType", "runs", "kind", "start", "count", "itemIndex", "children", "extraItem", "extraChild", "wrapper", "coverage"]) {
+    for (const hostile of [false, true]) {
+      const outcomes = [];
+      for (const code of [source, changed]) {
+        const children = [[1], [2], [3], [4]];
+        const methods = {
+          nodeKind: index => index === 4 ? "text" : "element",
+          elementType: index => ["breditor/document", "breditor/bullet-list", "breditor/list-item", "breditor/paragraph"][index],
+          text: () => undefined, formatCount: () => undefined, formatType: () => undefined,
+          listKind: index => index === 1 ? "bullet" : undefined,
+          orderedListStart: () => undefined,
+          childCount: index => children[index]?.length,
+          childAt: (index, ordinal) => children[index]?.[ordinal],
+        };
+        if (fault === "capabilities") methods.listKind = undefined;
+        if (fault === "rootIndex") children[0][0] = 2;
+        if (fault === "blockIndex") children[2][0] = 4;
+        if (fault === "itemIndex") children[1][0] = 3;
+        if (fault === "extraItem") children[1].push(2);
+        if (fault === "extraChild") children[2].push(4);
+        if (fault === "children") children[2] = [];
+        if (fault === "blockType") {
+          const original = methods.elementType;
+          methods.elementType = index => index === 3 ? "unknown/block" : original(index);
+        }
+        if (fault === "runs" || fault === "count") {
+          const original = methods.childCount;
+          methods.childCount = index => index === (fault === "runs" ? 3 : 1) ? NaN : original(index);
+        }
+        if (fault === "kind") methods.listKind = () => "ordered";
+        if (fault === "start") methods.orderedListStart = () => 3;
+        if (fault === "wrapper") methods.text = () => "unexpected";
+        const names = new Map(Object.entries(methods).map(([name, fn]) => [fn, name]));
+        const calls = [], logs = [];
+        const run = new Function("invokeGenerated", "headingLevelIsAbsent", "formatPropertyProbeIsAbsent", "listMetadataIsAbsent", "isIndex", "console", code + "; return readNestedListLayout;")(
+          (fn, receiver, ...args) => {calls.push([names.get(fn), ...args]); return Reflect.apply(fn, receiver, args);},
+          () => true, () => true, () => true, value => Number.isInteger(value) && value >= 0,
+          {error(...args) {if (hostile) throw Error("logger"); logs.push(args);}});
+        const result = run({}, methods, 1, fault === "coverage" ? 6 : 5);
+        outcomes.push({result, calls});
+        assert.equal(result !== null, fault === null);
+        if (code === changed && fault !== null && !hostile) {
+          assert.ok(logs.length > 0);
+          const detail = JSON.parse(logs[0][1]);
+          assert.equal(typeof detail.stage, "string");
+          assert.equal(detail.scalars.nodeCount.type, "number");
+          if (fault === "rootIndex") assert.equal(detail.stage, "root.index");
+          if (fault === "runs") assert.equal(detail.scalars.runs.spelling, "NaN");
+        }
+      }
+      assert.deepEqual(outcomes[0], outcomes[1]);
+    }
+  }
+  assert.throws(() => instrumentNestedLayoutRejections(source + source));
+  assert.throws(() => instrumentNestedLayoutRejections(source.replace("return false;", "throw Error('changed');")));
+});
 
 test("real fixture progress preserves execution before pending startup, even with a throwing marker", async () => {
   const source = await readFile(new URL("./fixtures/nested-list-performance/main.ts", import.meta.url), "utf8");

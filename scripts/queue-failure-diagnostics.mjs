@@ -69,7 +69,7 @@ export function instrumentProjectionValidationSites(code, moduleName, {blockType
   assert.ok(sites > 0, "projection rejection expressions changed");
   if (moduleName === "wasm_projection_adapter" && transformed.includes("const plannedBlock = layout?.textBlocks[paragraphOrdinal];")) {
     const marked = blockTypeCallMarker ? instrumentBlockTypeCall(transformed) : transformed;
-    return instrumentParagraphShapeOperands(instrumentAdmittedBlockIndex(marked));
+    return instrumentNestedLayoutRejections(instrumentParagraphShapeOperands(instrumentAdmittedBlockIndex(marked)));
   }
   if (!["flat_list_projection_update", "nested_list_projection_update"].includes(moduleName)) return transformed;
   // Capture already-owned JS snapshots only after an equality rejection. Never
@@ -94,6 +94,53 @@ export function instrumentProjectionValidationSites(code, moduleName, {blockType
   if (withSnapshots.includes("export function flatListRootsEqual(a, b)")) return instrumentFlatRootComparison(withSnapshots);
   return withSnapshots.includes("export function nestedListRootsEqual(a, b)")
     ? instrumentNestedRootComparison(withSnapshots) : withSnapshots;
+}
+
+/** Failure-only local scalar capture; do not reread generated metadata. */
+export function instrumentNestedLayoutRejections(code) {
+  const start = "function readNestedListLayout(view, methods, rootCount, nodeCount) {";
+  assert.equal(code.split(start).length, 2, "nested layout diagnostic start changed");
+  const from = code.indexOf(start), to = code.indexOf("\n}", from) + 2;
+  assert.ok(to > from + start.length, "nested layout diagnostic end changed");
+  let body = code.slice(from, to);
+  const sites = [
+    ["capabilities", "rootCount, nodeCount"],
+    ["block.index", "index, next, nodeCount"],
+    ["block.type", "index, next, nodeCount, type"],
+    ["block.runs", "index, next, nodeCount, runs"],
+    ["list.indexOrDepth", "index, next, nodeCount, depth"],
+    ["list.kindOrWrapper", "index, next, nodeCount, type, kind"],
+    ["list.countOrStart", "index, next, nodeCount, kind, start, count"],
+    ["item.indexOrWrapper", "index, next, nodeCount, item, ordinal, count"],
+    ["item.children", "index, next, nodeCount, item, children"],
+    ["item.block", "index, next, nodeCount, item, children"],
+    ["item.childList", "index, next, nodeCount, item, section, depth"],
+    ["item.extraChild", "index, next, nodeCount, item, children"],
+    ["list.extraItem", "index, next, nodeCount, count"],
+    ["root.index", "index, next, nodeCount, root"],
+    ["root.block", "index, next, nodeCount, root"],
+    ["root.list", "index, next, nodeCount, root"],
+  ];
+  let site = 0;
+  body = body.replace(/return (null|false);/gu, (_, value) => {
+    const entry = sites[site++];
+    assert.ok(entry, "unexpected nested layout rejection");
+    return `return nestedLayoutReject(${JSON.stringify(entry[0])}, ${value}, {${entry[1]}});`;
+  });
+  assert.equal(site, sites.length, "nested layout rejection count changed");
+  const coverage = /return next === nodeCount \? \{\s*shapes,\s*textBlocks\s*\} : null;/gu;
+  assert.equal([...body.matchAll(coverage)].length, 1, "nested layout coverage branch changed");
+  body = body.replace(coverage, 'return next === nodeCount ? { shapes, textBlocks } : nestedLayoutReject("coverage", null, {next, nodeCount, rootCount});');
+  body = body.replace(start, start + `
+    const nestedLayoutReject = (stage, result, scalars) => {
+        try { console.error("breditor nested layout rejection", JSON.stringify({stage,
+            scalars: Object.fromEntries(Object.entries(scalars).map(([name, value]) => [name, {
+                type: typeof value, value, spelling: typeof value === "number" ? String(value) : undefined,
+            }])),
+        }).slice(0, 4096)); } catch {}
+        return result;
+    };`);
+  return code.slice(0, from) + body + code.slice(to);
 }
 
 /** Diagnostic-only labels for already-evaluated nested comparison operands. */
