@@ -63,6 +63,12 @@ export interface InlineFormatProjection {
   readonly properties: readonly InlineFormatPropertyProjection[];
 }
 
+const OWNED_FORMAT_DETAILS = new WeakSet<object>();
+/** Internal admission identity, not structural frozen-object trust. */
+export function isOwnedInlineFormatDetails(value: unknown): value is readonly InlineFormatProjection[] {
+  return typeof value === "object" && value !== null && OWNED_FORMAT_DETAILS.has(value);
+}
+
 /** One base-schema text leaf projected without persistence-record details. */
 export interface BaseTextRunProjection {
   /** Non-empty Unicode scalar text. */
@@ -774,9 +780,11 @@ function validateFormatDetails(
     }));
     previous = format;
   }
+  const ownedDetails = Object.freeze(formatDetails);
+  OWNED_FORMAT_DETAILS.add(ownedDetails);
   return Object.freeze({
     formats: Object.freeze(formats),
-    formatDetails: Object.freeze(formatDetails),
+    formatDetails: ownedDetails,
     propertyValues,
     propertyStringBytes,
   });

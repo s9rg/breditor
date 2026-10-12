@@ -1,0 +1,19 @@
+{
+  "releaseQualified": false,
+  "performanceImprovementProven": false,
+  "scope": "Cache only resolved expected semantic recipes for projection-validation-owned deeply frozen format arrays, keyed by exact owned presentation. Weak keys; mutable/frozen lookalikes and forged presentations remain uncached/rejected. Actual DOM attribute/node/map checks unchanged.",
+  "verified": {
+    "fullBrowserSuiteBeforeNewTests": "2118 passed",
+    "targetedCacheRendererSelectionSuite": "284 passed, including two new ownership/isolation tests",
+    "testTypecheck": "passed",
+    "packedPair": "target/nested-list-packages-8VpHv5/qualification.json",
+    "browserTarballSha256": "c5b947406e6066ba511aab6d4d4b18a8d38ddeeb1a0013d7490b6d0453207d3d",
+    "wasmTarballSha256": "7e0df34660ce27d18e04e49e15525fc5e47d93a839dd377862f01f798c9d8a7a",
+    "packedConsumer": "Node/base compatibility, TypeScript and Chromium/Firefox/WebKit nested consumer scenarios passed",
+    "shippingArtifacts": "unchanged"
+  },
+  "next": "Compare diagnostic profile, then verify fresh packed repeated correctness and exact replay before promotion. Reassemble final opt-in archive and repeat native gates. Size/latency gates remain open.",
+  "setupCorrection": "First edit inserted cache retrieval into the wrong helper, caught by types/full suite. Corrected placement passed all checks above. Excluded from editor runtime qualification.",
+  "pushed": false,
+  "published": false
+}

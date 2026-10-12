@@ -8,7 +8,11 @@ import {
   resolveInlineFormatRenderAttributes,
   type InlineFormatRenderAttribute,
 } from "./inline_format_render_attributes.js";
-import type { InlineFormatProjection } from "./projection.js";
+import {isOwnedInlineFormatDetails, type InlineFormatProjection} from "./projection.js";
+
+// Only normalized, deeply frozen projection-owned semantic arrays qualify.
+// No DOM state is cached; keys are presentation-specific and weakly held.
+const RESOLVED_OWNED_RECIPES = new WeakMap<object, WeakMap<object, readonly BrowserResolvedInlineFormatRenderRecipe[]>>();
 import {
   browserCompiledProfileDescriptorMatchesGeneration,
   isOwnedBrowserCompiledProfileDescriptor,
@@ -209,6 +213,9 @@ export function browserPresentationRecipesForFormatDetails(
   formats: readonly InlineFormatProjection[],
 ): readonly BrowserResolvedInlineFormatRenderRecipe[] | undefined {
   if (!isOwnedBrowserCompiledPresentation(presentation)) return undefined;
+  const cacheable = isOwnedInlineFormatDetails(formats);
+  const cached = cacheable ? RESOLVED_OWNED_RECIPES.get(presentation)?.get(formats) : undefined;
+  if (cached !== undefined) return cached;
   const selected = new Map<string, InlineFormatProjection>();
   for (const format of formats) {
     if (selected.has(format.kind)) return undefined;
@@ -225,9 +232,17 @@ export function browserPresentationRecipesForFormatDetails(
         : resolveInlineFormatRenderAttributes(recipe.attributes, format.properties),
     }));
   }
-  return resolved.length === formats.length
-    ? Object.freeze(resolved)
-    : undefined;
+  if (resolved.length !== formats.length) return undefined;
+  const result = Object.freeze(resolved);
+  if (cacheable) {
+    let cache = RESOLVED_OWNED_RECIPES.get(presentation);
+    if (cache === undefined) {
+      cache = new WeakMap();
+      RESOLVED_OWNED_RECIPES.set(presentation, cache);
+    }
+    cache.set(formats, result);
+  }
+  return result;
 }
 
 /** Checks identity ownership without treating a caller-forged object as proof. @internal */

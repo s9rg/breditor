@@ -4,6 +4,7 @@ import {
   browserPresentationMatchesProfile,
   browserPresentationOwnsIdentity,
   browserPresentationRecipeForFormat,
+  browserPresentationRecipesForFormatDetails,
   compileBrowserPresentation,
   isOwnedBrowserCompiledPresentation,
   isOwnedBrowserPresentationIdentity,
@@ -19,6 +20,7 @@ import {
   type WasmCompiledProfileDescriptorView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
+import {createProfiledDocumentProjection, isOwnedInlineFormatDetails} from "./projection.js";
 
 const FINGERPRINT =
   "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -45,6 +47,41 @@ class Generation implements WasmProfileGenerationView {
 }
 
 describe("compiled browser presentation", () => {
+  it("caches only owned immutable format arrays and isolates presentations", () => {
+    const generation = new Generation();
+    const descriptor = ownedDescriptor(generation, ["breditor/strong"]);
+    const projection = createProfiledDocumentProjection({schema: descriptor.schema,
+      snapshot: {lineage: "cache", revision: "0"}, paragraphs: [{runs: [{text: "A🙂",
+        formatDetails: [{kind: "breditor/strong", properties: []}]}]}]}, generation, descriptor);
+    if (!projection.ok) throw Error(projection.error.code);
+    const formats = projection.value.paragraphs[0]!.runs[0]!.formatDetails;
+    expect(isOwnedInlineFormatDetails(formats)).toBe(true);
+    const first = compileBrowserPresentation(generation, descriptor, DEFAULT_INLINE_FORMAT_RENDER_MANIFEST);
+    const second = compileBrowserPresentation(generation, descriptor,
+      createInlineFormatRenderManifest({recipes: [{formatKind: "breditor/strong", element: "mark"}]}));
+    const a = browserPresentationRecipesForFormatDetails(first, formats);
+    expect(browserPresentationRecipesForFormatDetails(first, formats)).toBe(a);
+    const b = browserPresentationRecipesForFormatDetails(second, formats);
+    expect(b).not.toBe(a);
+    expect(b?.[0]?.recipe.element).toBe("mark");
+    expect(a?.[0]?.recipe.element).toBe("strong");
+    const lookalike = Object.freeze([...formats]);
+    expect(isOwnedInlineFormatDetails(lookalike)).toBe(false);
+    expect(browserPresentationRecipesForFormatDetails(first, lookalike))
+      .not.toBe(browserPresentationRecipesForFormatDetails(first, lookalike));
+    expect(browserPresentationRecipesForFormatDetails({...first}, formats)).toBeUndefined();
+  });
+  it("does not cache mutable caller formats or stale values after mutation", () => {
+    const generation = new Generation(), descriptor = ownedDescriptor(generation, ["breditor/strong"]);
+    const presentation = compileBrowserPresentation(generation, descriptor, DEFAULT_INLINE_FORMAT_RENDER_MANIFEST);
+    const formats = [{kind: "breditor/strong", properties: []}];
+    const first = browserPresentationRecipesForFormatDetails(presentation, formats);
+    expect(first?.length).toBe(1);
+    expect(isOwnedInlineFormatDetails(formats)).toBe(false);
+    expect(browserPresentationRecipesForFormatDetails(presentation, formats)).not.toBe(first);
+    formats[0]!.kind = "example/unknown";
+    expect(browserPresentationRecipesForFormatDetails(presentation, formats)).toBeUndefined();
+  });
   it("binds the default recipe to the base strong format", () => {
     const generation = new Generation();
     const descriptor = ownedDescriptor(generation, ["breditor/strong"]);
