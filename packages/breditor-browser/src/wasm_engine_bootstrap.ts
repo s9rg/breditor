@@ -2,6 +2,7 @@ import { isOwnedProjection, type BaseDocumentProjection } from "./projection.js"
 import { isOwnedFlatListProjection, type FlatListDocumentProjection } from "./flat_list_projection.js";
 import { isOwnedNestedListProjection, type NestedListDocumentProjection } from "./nested_list_projection.js";
 import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
+import { snapshotNestedProjectionWordFacade } from "./wasm_projection_word_facade.js";
 import {
   documentJsonUtf8Bytes,
   type WasmDurableJsonContract,
@@ -1042,9 +1043,16 @@ function snapshotProjectionFacade(
       return null;
     }
     const invoke = (method: Function, args: readonly unknown[]): unknown => {
-      const returned = Reflect.apply(method, raw, args) as unknown;
-      return valueIsThenable(returned) ? undefined : returned;
+      // The strict consumer owns result admission and thenable containment.
+      // Replacing an async result with undefined makes absence probes accept it.
+      return Reflect.apply(method, raw, args) as unknown;
     };
+    const wordFacade = mode === "nestedLists"
+      ? snapshotNestedProjectionWordFacade(raw, valueIsThenable) : {};
+    if (wordFacade === null) {
+      bestEffortCleanup(cleanup);
+      return null;
+    }
     return Object.freeze({
       schemaName,
       schemaVersion,
@@ -1112,6 +1120,10 @@ function snapshotProjectionFacade(
         listKind: (index: number) => Reflect.apply(listKind as Function, raw, [index]) as ReturnType<FlatListSemanticProjectionView["listKind"]>,
         orderedListStart: (index: number) => Reflect.apply(orderedListStart as Function, raw, [index]) as number | undefined,
       } : {}),
+      // Startup, restore and later raw updates must admit the same capability.
+      // Preserve raw word records so the consumer can reject malformed/async
+      // returns itself; do not coerce them to an acceptable absence value.
+      ...wordFacade,
       free: (() => cleanup()) as () => void,
     });
   } catch {

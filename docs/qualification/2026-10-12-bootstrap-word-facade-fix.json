@@ -1,0 +1,21 @@
+{
+  "status": "private-fix-candidate-stress-running",
+  "releaseQualified": false,
+  "identifiedBug": {
+    "source": "packages/breditor-browser/src/wasm_engine_bootstrap.ts:snapshotProjectionFacade",
+    "description": "Bootstrap/restore created a receiver-preserving facade containing only the older scalar getters. It omitted both private word-version markers and all word methods, so nested startup/restore could silently use legacy integer transport while live raw projections used words.",
+    "runtimeEvidence": "target/nested-list-reproductions/failure-dpfg8m/measurement.json",
+    "runtimeSha256": "7d09d75dc58b4c3ef02fe744704bc0645de48083977d68021291d96fafc75140",
+    "runtimeObservation": "Same-view trace: nestedLists=true, integerApplied=false, invoked function not in word-wrapper WeakSet, integer result zero before and after thenable guard. Last word-call record belonged to another projection/read.",
+    "deterministicReproduction": "Valid complete word API plus legacy getter traps failed both document startup and checkpoint restore before forwarding; both passed after forwarding.",
+    "testSetupCorrection": "First attempt tried assigning configurable but readonly fake heading/start methods and failed in setup. Replaced via defineProperty, then obtained the actual expected-false bootstrap reproduction."
+  },
+  "fix": "Capture and validate the complete nested-only word capability once, preserve markers and receiver-bound raw word methods in the facade. Unknown, partial and async capabilities fail with exactly-once raw projection cleanup. Scalar-only and genuine legacy modules remain compatible. Base/flat bootstraps do not probe these private capabilities.",
+  "adjacentFixedBug": "Facade invocation converted asynchronous legacy method results into undefined, permitting absence probes to accept forbidden async returns. Deterministic rejected-Promise test previously returned successful bootstrap. Raw results now reach the strict consumer's thenable containment and validation; test rejects without double cleanup.",
+  "regressions": {"fullBrowserTests":2153,"files":57,"typecheck":"passed","focusedForwardingAndOwnershipTests":272,"signedFacadeRecordTest":"Same record identity, raw receiver, indices and exact safe signed boundaries; method snapshot resists later replacement, helper never owns raw cleanup"},
+  "wasm": {"candidate":"target/nested-list-candidate-3WvT8u","sha256":"518ca2af03c796344468e34e39a51cc0a38780e723e18b91cc426b4205843544","changed":false},
+  "forwardingOnlyPair": {"record":"target/nested-list-packages-bvCpTZ/qualification.json","tarballSha256":{"browser":"c024dbb2b6d6afc60ba16d02d35b3465475c1a4a13a522f3c970d68f9344ca75","wasm":"baef33b6c1398c86156b4d37e0761e5c1d062f07d8e8f7d0e7dc08bf4228101e"},"basicConsumer":"passed all three engines/Node/types","stress":{"session":56841,"record":"performance-zvZpXz/measurement.json","status":"running"},"scope":"Predates raw async-return preservation; retained independently."},
+  "finalPair": {"record":"target/nested-list-packages-9DTe0q/qualification.json","tarballSha256":{"browser":"fa32b1bb5da85eaa0dc858e625ca07ff06f1bb6d64c2799cc5cea6425e7ee6d9","wasm":"baef33b6c1398c86156b4d37e0761e5c1d062f07d8e8f7d0e7dc08bf4228101e"},"basicConsumer":"passed all three engines/Node/types","stress":{"session":96438,"status":"running"},"shippingArtifactsChanged":false},
+  "limits": "Fixes concrete facade omissions and async acceptance. Repeated packed stress, exact replay, native input and accepted size/latency gates remain open; no claim all historical WebKit faults are resolved.",
+  "published": false
+}

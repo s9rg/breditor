@@ -797,6 +797,98 @@ function nestedListBootstrapFixture(restore = false) {
 }
 
 describe("explicit nested-list startup and restore", () => {
+  function wordBootstrapFixture(restore = false) {
+    const f = nestedListBootstrapFixture(restore), p = f.fixture.projection;
+    const legacyInteger = p.formatPropertyInteger;
+    const record = p as unknown as Record<string, unknown>;
+    const scalarMarker = vi.fn(() => 1), integerMarker = vi.fn(() => 1);
+    Object.defineProperties(p, {
+      projectionScalarWordsVersion: {get: scalarMarker, configurable: true},
+      projectionIntegerWordsVersion: {get: integerMarker, configurable: true},
+    });
+    for (const name of ["childCount", "childAt", "formatCount", "formatPropertyCount", "headingLevel", "orderedListStart"] as const) {
+      const original = record[name] as (...args: number[]) => number | undefined;
+      record[`${name}Words`] = vi.fn(function(this: object, ...args: number[]) {
+        expect(this).toBe(p);
+        const value = Reflect.apply(original, this, args) as number | undefined;
+        return new Uint32Array(value === undefined ? [0, 0] : [1, value]);
+      });
+      Object.defineProperty(p, name, {value: vi.fn(() => {throw Error("legacy projection scalar called");}), configurable: true});
+    }
+    record["formatPropertyIntegerWords"] = vi.fn(function(this: object) {
+      expect(this).toBe(p);return new Uint32Array([0, 0, 0]);
+    });
+    record["formatPropertyInteger"] = vi.fn(() => {throw Error("legacy integer called");});
+    return {...f, record, scalarMarker, integerMarker, legacyInteger};
+  }
+  it.each([false, true])("preserves complete word transport through nested bootstrap facade (restore=%s)", restore => {
+    const f = wordBootstrapFixture(restore);
+    const result = bootstrapNestedListWasmEngine(f.module, f.source);
+    expect(result.ok).toBe(true);
+    expect(f.record["childCount"]).not.toHaveBeenCalled();
+    expect(f.record["formatPropertyInteger"]).not.toHaveBeenCalled();
+    expect(f.record["childCountWords"]).toHaveBeenCalled();
+    expect(f.record["formatPropertyIntegerWords"]).toHaveBeenCalled();
+    expect(f.scalarMarker).toHaveBeenCalledTimes(1);
+    expect(f.integerMarker).toHaveBeenCalledTimes(1);
+    expect(f.fixture.projection.freeCalls).toBe(1);
+    if(result.ok) {result.observation.free();result.profileGeneration.free();result.engine.free();}
+  });
+  it.each(["scalar-version", "integer-version", "missing-scalar-marker", "missing-integer-marker", "missing-method", "malformed"])(
+    "rejects %s word facade and releases projection exactly once", failure => {
+      const f = wordBootstrapFixture();
+      if(failure === "scalar-version") Object.defineProperty(f.fixture.projection,"projectionScalarWordsVersion",{value:2});
+      if(failure === "integer-version") Object.defineProperty(f.fixture.projection,"projectionIntegerWordsVersion",{value:2});
+      if(failure === "missing-scalar-marker") Object.defineProperty(f.fixture.projection,"projectionScalarWordsVersion",{value:undefined});
+      if(failure === "missing-integer-marker") Object.defineProperty(f.fixture.projection,"projectionIntegerWordsVersion",{value:undefined});
+      if(failure === "missing-method") delete f.record["childAtWords"];
+      if(failure === "malformed") f.record["childCountWords"] = () => new Uint32Array([0,1]);
+      expect(bootstrapNestedListWasmEngine(f.module,f.source).ok).toBe(false);
+      expect(f.fixture.projection.freeCalls).toBe(1);
+      expect(f.record["childCount"]).not.toHaveBeenCalled();
+      expect(f.record["formatPropertyInteger"]).not.toHaveBeenCalled();
+    });
+  it("retains scalar-only word transport without inventing integer capability", () => {
+    const f = wordBootstrapFixture();
+    Object.defineProperty(f.fixture.projection,"projectionIntegerWordsVersion",{value:undefined});
+    delete f.record["formatPropertyIntegerWords"];
+    f.record["formatPropertyInteger"] = f.legacyInteger;
+    const result = bootstrapNestedListWasmEngine(f.module,f.source);
+    expect(result.ok).toBe(true);
+    expect(f.record["childCount"]).not.toHaveBeenCalled();
+    expect(f.fixture.projection.freeCalls).toBe(1);
+    if(result.ok){result.observation.free();result.profileGeneration.free();result.engine.free();}
+  });
+  it.each(["word-return", "markers"])("contains asynchronous %s without fallback", async failure => {
+    const f = wordBootstrapFixture();
+    if(failure === "word-return") f.record["childCountWords"] = () => Promise.reject(Error("invalid word promise"));
+    else {
+      Object.defineProperty(f.fixture.projection,"projectionScalarWordsVersion",{get:()=>Promise.reject(Error("invalid scalar marker"))});
+      Object.defineProperty(f.fixture.projection,"projectionIntegerWordsVersion",{get:()=>Promise.reject(Error("invalid integer marker"))});
+    }
+    expect(bootstrapNestedListWasmEngine(f.module,f.source).ok).toBe(false);
+    expect(f.fixture.projection.freeCalls).toBe(1);
+    expect(f.record["childCount"]).not.toHaveBeenCalled();
+    await Promise.resolve();await Promise.resolve();
+  });
+  it("does not inspect private projection transports in flat-list bootstrap", () => {
+    const f = flatListBootstrapFixture(), unexpected = vi.fn(()=>{throw Error("private transport read");});
+    for(const name of ["projectionScalarWordsVersion","projectionIntegerWordsVersion","childCountWords","formatPropertyIntegerWords"]){
+      Object.defineProperty(f.fixture.projection,name,{get:unexpected});
+    }
+    const result = bootstrapFlatListWasmEngine(f.module,f.source);
+    expect(result.ok).toBe(true);expect(unexpected).not.toHaveBeenCalled();
+    if(result.ok){result.observation.free();result.profileGeneration.free();result.engine.free();}
+  });
+  it("does not turn an asynchronous legacy absence probe into valid undefined", async () => {
+    const f = nestedListBootstrapFixture();
+    f.fixture.projection.formatPropertyInteger = (() => Promise.reject(Error("invalid asynchronous absence"))) as never;
+    const result = bootstrapNestedListWasmEngine(f.module, f.source);
+    if(result.ok){result.observation.free();result.profileGeneration.free();result.engine.free();}
+    expect(result.ok).toBe(false);
+    expect(f.fixture.projection.freeCalls).toBe(1);
+    await Promise.resolve();await Promise.resolve();
+  });
   it("does not probe nested compiler or engine APIs during flat-list startup", () => {
     const f = flatListBootstrapFixture();
     const unexpected = vi.fn(() => { throw new Error("nested API touched"); });
