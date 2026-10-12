@@ -9,10 +9,12 @@
     {"fixture": "getter-probe-Zcan68", "sha256": "77d567bdf71b8222e0b24b3a83c560cd8f3daf6be1bbf8e83782736253598d4a", "checks": 13944910, "status": "passed", "capture": "Rust plus last-value JS"},
     {"fixture": "getter-probe-Zcan68/exact-replay-TqeQNm", "sha256": "a59283783e679d3ff370c04421117f43d4494bae052f26ece43af6dc584c9639", "checks": 13944910, "status": "passed", "capture": "Exact retained Rust plus JS bundle"},
     {"fixture": "getter-probe-E65We4", "sha256": "545bbc97d25d87312fa615cf3a445058a44242c63ff05865dc83533957d56ba9", "checks": 13944910, "status": "passed", "capture": "Rust only"},
-    {"fixture": "getter-probe-E65We4/exact-replay-d2eLM2", "checks": 13944910, "status": "passed", "capture": "Exact retained Rust-only bundle"}
+    {"fixture": "getter-probe-E65We4/exact-replay-d2eLM2", "checks": 13944910, "status": "passed", "capture": "Exact retained Rust-only bundle"},
+    {"fixture": "getter-probe-E65We4/exact-replay-q9kBBH", "checks": 13944910, "status": "passed", "capture": "Second exact retained Rust-only replay"},
+    {"fixture": "getter-probe-XcoWKu", "sha256": "b172bcd294d9d32558365fb0b28fff65a88a98d9040ead57de6fe0157fccdb82", "checks": 139449010, "owners": 9000, "status": "passed", "capture": "Rust only; 300 repetitions per document size per process"}
   ],
   "interpretation": "Diagnostic builds did not reproduce; this does not contradict retained failures of the packed control. No failing Rust input/result has been captured yet. Added instrumentation and compilation change execution shape.",
-  "verification": {"toolingTests": "passed", "rustFormatting": "passed", "rustUnitTest": "live exec session 25233; not yet qualified"},
+  "verification": {"toolingTests": "passed", "rustFormatting": "passed", "rustUnitTest": "focused trace unit passed; enclosing cargo process session 25233 still live", "nativeNestedProjectionContract": "new test compiling in session 39233; not yet qualified"},
   "defaultContract": "Feature absent from default. Native child_count remains Option<u32>; shipping generated artifacts not written.",
   "next": "Continue with this exact diagnostic artifact; obtain a failing Rust input/result before assigning ABI or Rust root cause. Do not ship a speculative return-transport fix.",
   "pushed": false,

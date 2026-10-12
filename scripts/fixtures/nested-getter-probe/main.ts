@@ -5,6 +5,7 @@ import initialize, * as wasm from "@breditor/wasm";
 import {bridgeInvoke} from "./bridge.js";
 const output = document.getElementById("result")!;
 let progress = "initialization", checks = 0;
+const ownerRepetitions = 30;
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
   // Fixture references are finite unsigned integers, strings or undefined.
@@ -58,7 +59,7 @@ async function run():Promise<void> {
   if(!profile)throw Error("Missing profile");
   try {
     const fingerprint=using(profile.descriptor(),descriptor=>descriptor.schemaFingerprint);
-    for(const items of [10,100,500])for(let repetition=0;repetition<30;repetition++) {
+    for(const items of [10,100,500])for(let repetition=0;repetition<ownerRepetitions;repetition++) {
       progress=`${items} items, owner ${repetition}`;
       const root=tree(items), expected=rows(root);
       using(using(profile.createEngineFromDocumentJsonV7(`getter-${items}-${repetition}`,JSON.stringify({format:"breditor/document",formatVersion:2,schema,schemaFingerprint:fingerprint,root}),20),result=>{
@@ -85,6 +86,6 @@ async function run():Promise<void> {
       });
       await new Promise<void>(resolve=>setTimeout(resolve,4));
     }
-    output.textContent=JSON.stringify({checks:String(checks),owners:"90",result:"passed"});output.dataset["status"]="passed";
+    output.textContent=JSON.stringify({checks:String(checks),owners:String(3*ownerRepetitions),result:"passed"});output.dataset["status"]="passed";
   }finally{profile.free();}
 }

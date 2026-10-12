@@ -17,6 +17,9 @@ assert.equal(process.argv.length,3,"usage: node scripts/probe-nested-wasm-getter
 const repository=fileURLToPath(new URL("../",import.meta.url));
 const {record,path:packageRecord}=await readQualifiedPair(process.argv[2]);
 const tier=webkitReplayTier(process.env);assert.equal(tier.mode,"default");
+const ownerFlag=process.env.BREDITOR_GETTER_OWNERS??"30";
+assert.ok(["30","100","300"].includes(ownerFlag),"getter owners must be 30, 100 or 300");
+const ownerRepetitions=Number(ownerFlag);
 const fixture=await mkdtemp(join(record.consumer,"getter-probe-"));
 const rawTraceFlag=process.env.BREDITOR_GETTER_RAW_TRACE??"0";
 assert.ok(["0","1"].includes(rawTraceFlag));const rawTrace=rawTraceFlag==="1";
@@ -30,6 +33,9 @@ const lastCaptureFlag=process.env.BREDITOR_GETTER_LAST_CAPTURE??"0";
 assert.ok(["0","1"].includes(lastCaptureFlag));const lastCapture=lastCaptureFlag==="1";
 assert.ok(!(lastCapture&&(fixedArity||rawTrace||sentinelTreatment)),"last capture is a separate experiment");
 await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
+const originalMain=await readFile(join(fixture,"main.ts"),"utf8");
+assert.equal(originalMain.split("const ownerRepetitions = 30;").length,2);
+await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`));
 // Explicitly separate diagnostic Wasm from the qualified packed control.
 let diagnosticWasmAssets;
 const diagnosticFiles=["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"];
@@ -65,7 +71,7 @@ await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sen
 assert.equal(transformedModules,rawTrace||sentinelTreatment||lastCapture?1:0,"getter experiment transform count");
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 const bundleAssets=Object.fromEntries(await Promise.all((await readdir(join(fixture,"bundle/assets"))).sort().map(async name=>[name,hash(await readFile(join(fixture,"bundle/assets",name)))])));
-const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions:30,runCount:10,editTarget:"root",bundleAssets,
+const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions,runCount:10,editTarget:"root",bundleAssets,
   packageRecord,tarballSha256:record.tarballSha256,
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
@@ -85,7 +91,7 @@ try{
       await waitForTerminalFixtureCompletion(page,60000);
       result.fixtureStatus=await page.locator("#result").getAttribute("data-status");result.details=await page.locator("#result").textContent();
       assert.equal(result.fixtureStatus,"passed",result.details);assert.deepEqual(result.pageErrors,[]);
-      assert.equal(JSON.parse(result.details).owners,"90");result.status="passed";
+      assert.equal(JSON.parse(result.details).owners,String(3*ownerRepetitions));result.status="passed";
     }catch(error){result.status="failed";result.error=String(error);}
     finally{await browser?.close();await save();}
     console.log(JSON.stringify({run,status:result.status,details:result.details}));if(result.status==="failed")break;
