@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {runInNewContext} from "node:vm";
-import {readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
+import {readFixtureFailureState, waitForFixtureCompletion, waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
+
+test("terminal fixture wait ignores running and preserves failure markers and timer polling", async () => {
+  let predicate;
+  const page={waitForFunction(fn,arg,options){predicate=fn;assert.equal(arg,undefined);assert.deepEqual(options,{timeout:1234,polling:100});return Promise.resolve("done");}};
+  assert.equal(await waitForTerminalFixtureCompletion(page,1234),"done");
+  for(const status of [undefined,null,"running","passed","failed","unexpected"]){
+    const document={getElementById(){return status===undefined?null:{getAttribute(name){assert.equal(name,"data-status");return status;}};}};
+    assert.equal(runInNewContext(`(${predicate.toString()})()`,{document}),status!==undefined&&status!==null&&status!=="running");
+  }
+});
 
 test("failure state uses one bounded read and preserves uncompleted state", async () => {
   let calls = 0;

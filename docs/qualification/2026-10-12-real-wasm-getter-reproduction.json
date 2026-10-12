@@ -1,0 +1,23 @@
+{
+  "status": "release-blocked",
+  "releaseQualified": false,
+  "scope": "Private packed Wasm, generated projection getters, independent expected tree, retained scalar bridge. No browser editor, renderer, clipboard or history.",
+  "reproductions": [
+    {"report": "target/nested-list-reproductions/failure-KM0dKC/measurement.json", "observation": "childCount undefined; expected 1; 500 items, owner 8, forward node 1185"},
+    {"report": "target/nested-list-reproductions/failure-KM0dKC/exact-replay-8KQbtX/replay.json", "observation": "Strict inequality rejected captured child indices both spelled 1146; Object.is was true. Root cause not established."},
+    {"report": "target/nested-list-reproductions/failure-1JzQf5/measurement.json", "observation": "SameValue fixture comparison still reproduced undefined childCount; expected 1"},
+    {"report": "target/nested-list-reproductions/failure-ZeYSw1/measurement.json", "sha256": "8194a66657b355c4c4e5a39f2159709cddaf9e990ea0ef14fb5c88be51583ee6", "observation": "Private generated sentinel SameValue treatment failed; undefined childCount, expected 1"},
+    {"report": "target/nested-list-reproductions/failure-eioKQR/measurement.json", "observation": "Private fixed-arity bridge treatment passed runs 0 through 6, failed run 7: 500 items, owner 0, backward node 649; undefined childCount, expected 1"}
+  ],
+  "diagnosticControls": {
+    "rawChildCountTrace": "10 fresh processes passed 13944910 checks; exact replay passed another 13944910. Tracing may perturb recurrence; not proof of a fix.",
+    "harnessCorrections": ["Wait for terminal status, not initial running marker", "Generated Wasm variable matcher admits dollar sign"],
+    "excludedFailures": ["Premature running-marker replay", "Trace transform build rejection before browser launch"]
+  },
+  "decisions": [
+    "Do not ship either experimental treatment as a complete fix",
+    "Keep earlier production index-branch candidate uncommitted until qualified",
+    "Capture actual raw return, input index and receiver at a failing getter boundary before attributing root cause",
+    "Native, size and performance release gates remain open"
+  ]
+}

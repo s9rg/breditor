@@ -11,6 +11,16 @@ export function waitForFixtureCompletion(page, timeout = 180000) {
   );
 }
 
+/** Some standalone probes explicitly expose an initial "running" marker. */
+export function waitForTerminalFixtureCompletion(page, timeout = 180000) {
+  return page.waitForFunction(
+    () => {
+      const status = document.getElementById("result")?.getAttribute("data-status");
+      return status !== undefined && status !== null && status !== "running";
+    }, undefined, {timeout, polling: FIXTURE_COMPLETION_POLLING_MS},
+  );
+}
+
 // Capture status and payload in one read; separate calls can straddle completion.
 // Used only after failure. No retries, mutation, or success reinterpretation.
 export function readFixtureFailureState(page) {

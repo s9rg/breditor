@@ -8,7 +8,7 @@ import {preview} from "vite";
 import {webkit} from "playwright-core";
 import {fileURLToPath} from "node:url";
 import {verifyFailureBundle, retainNestedListReplayFailure} from "./retain-nested-list-failure.mjs";
-import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
+import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion, waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
 import {webkitReplayTier} from "./webkit-replay-tier.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
@@ -18,10 +18,13 @@ const temporaryRoot = await realpath(tmpdir());
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 const durable = /^(?:failure|trace)-[a-zA-Z0-9]+\/measurement\.json$/u.test(relative(join(repository, "target/nested-list-reproductions"), sourcePath));
 const manifest = durable ? JSON.parse(await readFile(join(dirname(sourcePath), "retention.json"))) : undefined;
-if (!durable) assert.match(relative(temporaryRoot, sourcePath), /^breditor-nested-list-consumer-[a-zA-Z0-9]+\/performance-[a-zA-Z0-9]+\/measurement\.json$/u);
+if (!durable) assert.match(relative(temporaryRoot, sourcePath), /^breditor-nested-list-consumer-[a-zA-Z0-9]+\/(?:performance|getter-probe)-[a-zA-Z0-9]+\/measurement\.json$/u);
 await verifyFailureBundle(sourcePath, manifest);
 const sourceBytes = await readFile(sourcePath);
 const source = JSON.parse(sourceBytes);
+if (!durable && dirname(sourcePath).split("/").at(-1).startsWith("getter-probe-")) {
+  assert.equal(source.fixtureKind, "nested-getter-probe", "getter path requires its explicit fixture kind");
+}
 assert.ok(source.browserName === "webkit" || (source.browserName === "all" &&
   source.measurements?.some(run => run.browser === "webkit" && run.status === "failed")),
 "replay requires a WebKit run or a failed WebKit measurement from an all-engine run");
@@ -69,12 +72,15 @@ try {
       page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
       page.on("pageerror", error => {if (result.pageErrors.length < 100) result.pageErrors.push(String(error));});
       await page.goto(`http://127.0.0.1:${address.port}/?editTarget=${source.editTarget ?? "root"}`);
-      await waitForFixtureCompletion(page);
+      if (source.fixtureKind === "nested-getter-probe") await waitForTerminalFixtureCompletion(page);
+      else await waitForFixtureCompletion(page);
       const element = page.locator("#result");
       result.fixtureStatus = await element.getAttribute("data-status");
       result.fixtureOutput = await element.textContent();
       assert.equal(result.fixtureStatus, "passed", result.fixtureOutput);
-      assert.equal(JSON.parse(result.fixtureOutput).cases.length, 3 * source.ownerRepetitions);
+      const fixtureResult = JSON.parse(result.fixtureOutput);
+      if (source.fixtureKind === "nested-getter-probe") assert.equal(fixtureResult.owners, String(3 * source.ownerRepetitions));
+      else assert.equal(fixtureResult.cases.length, 3 * source.ownerRepetitions);
       assert.deepEqual(result.pageErrors, []);
       result.status = "passed";
     } catch (error) {

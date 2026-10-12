@@ -1,0 +1,79 @@
+// Packed installed Wasm + exact retained bridge; no browser editor runtime.
+import assert from "node:assert/strict";
+import {spawnSync} from "node:child_process";
+import {createHash} from "node:crypto";
+import {cp, mkdtemp, readFile, readdir, writeFile} from "node:fs/promises";
+import {dirname,join} from "node:path";
+import {fileURLToPath} from "node:url";
+import {build,preview} from "vite";
+import {webkit} from "playwright-core";
+import {readQualifiedPair} from "./build-opt-in-nested-list-package.mjs";
+import {webkitReplayTier} from "./webkit-replay-tier.mjs";
+import {verifyFailureBundle,retainNestedListFailure} from "./retain-nested-list-failure.mjs";
+import {waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
+import {instrumentChildCountReturn,childCountSentinelSameValue} from "./child-count-return-diagnostics.mjs";
+
+assert.equal(process.argv.length,3,"usage: node scripts/probe-nested-wasm-getters.mjs <private pair qualification.json>");
+const repository=fileURLToPath(new URL("../",import.meta.url));
+const {record,path:packageRecord}=await readQualifiedPair(process.argv[2]);
+const tier=webkitReplayTier(process.env);assert.equal(tier.mode,"default");
+const fixture=await mkdtemp(join(record.consumer,"getter-probe-"));
+const rawTraceFlag=process.env.BREDITOR_GETTER_RAW_TRACE??"0";
+assert.ok(["0","1"].includes(rawTraceFlag));const rawTrace=rawTraceFlag==="1";
+const treatmentFlag=process.env.BREDITOR_GETTER_SENTINEL_SAMEVALUE??"0";
+assert.ok(["0","1"].includes(treatmentFlag));const sentinelTreatment=treatmentFlag==="1";
+assert.ok(!(rawTrace&&sentinelTreatment),"raw trace and sentinel treatment are separate experiments");
+const fixedArityFlag=process.env.BREDITOR_GETTER_FIXED_ARITY??"0";
+assert.ok(["0","1"].includes(fixedArityFlag));const fixedArity=fixedArityFlag==="1";
+assert.ok(!(fixedArity&&(rawTrace||sentinelTreatment)),"change one boundary at a time");
+await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
+for(const name of ["package.json","tsconfig.json"])await cp(join(record.consumer,name),join(fixture,name));
+const bridge='function z(e,t,...n){let r=Reflect.apply(e,t,n);if(Ph(r))throw TypeError(`generated scalar method returned a thenable`);return r}';
+const guard='function Ph(e){if((typeof e!=`object`||!e)&&typeof e!=`function`)return!1;let t;try{t=e.then}catch{return!0}return t!==void 0&&(Rh(e),!0)}';
+const controlPath=join(repository,"target/nested-list-reproductions/failure-WsjQQ6/measurement.json");
+const controlManifest=JSON.parse(await readFile(join(dirname(controlPath),"retention.json")));
+const verifiedControl=await verifyFailureBundle(controlPath,controlManifest);
+const control=verifiedControl.files["bundle/assets/index-DEzwFtBf.js"].toString("utf8");
+assert.ok(control.includes(bridge)&&control.includes(guard),"inspected retained bridge changed");
+// Getter return values are primitive; thenable containment must remain unreachable.
+const fixtureBridge=fixedArity?'function z(e,t,index,child){let r;if(arguments.length===3)r=Reflect.apply(e,t,[index]);else if(arguments.length===4)r=Reflect.apply(e,t,[index,child]);else throw Error("Unexpected getter arity");if(Ph(r))throw TypeError(`generated scalar method returned a thenable`);return r}':bridge;
+await writeFile(join(fixture,"bridge.js"),`${fixtureBridge}\n${guard}\nfunction Rh(){throw Error("Unexpected non-primitive generated scalar");}\nexport {z as bridgeInvoke};`);
+const types=spawnSync(process.execPath,[join(repository,"node_modules/typescript/bin/tsc"),"-p",join(fixture,"tsconfig.json")],{encoding:"utf8"});
+assert.equal(types.status,0,`${types.stdout}\n${types.stderr}`);
+let transformedModules=0;
+const plugin={name:"child-count-private-experiment",enforce:"pre",transform(code,id){if(id===join(record.consumer,"node_modules/@breditor/wasm/dist/breditor_wasm.js")){transformedModules++;return rawTrace?instrumentChildCountReturn(code):childCountSentinelSameValue(code);}}};
+await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sentinelTreatment?[plugin]:[],build:{outDir:join(fixture,"bundle"),minify:true,target:"es2022",modulePreload:{polyfill:false}}});
+assert.equal(transformedModules,rawTrace||sentinelTreatment?1:0,"getter experiment transform count");
+const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
+const bundleAssets=Object.fromEntries(await Promise.all((await readdir(join(fixture,"bundle/assets"))).sort().map(async name=>[name,hash(await readFile(join(fixture,"bundle/assets",name)))])));
+const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions:30,runCount:10,editTarget:"root",bundleAssets,
+  packageRecord,tarballSha256:record.tarballSha256,
+  bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
+  releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
+  childCountSentinelSameValueTreatment:sentinelTreatment,
+  scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
+const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();
+console.log(JSON.stringify({fixture}));
+const server=await preview({configFile:false,root:fixture,logLevel:"warn",build:{outDir:join(fixture,"bundle")},preview:{host:"127.0.0.1",port:0,strictPort:true}});
+try{
+  for(let run=0;run<10;run++){
+    let browser;const result={run,status:"running",pageErrors:[]};report.runs.push(result);
+    try{
+      browser=await webkit.launch({env:tier.browserEnvironment});result.version=browser.version();
+      const page=await browser.newPage();page.on("pageerror",error=>{if(result.pageErrors.length<16)result.pageErrors.push(String(error));});
+      await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/`);
+      await waitForTerminalFixtureCompletion(page,60000);
+      result.fixtureStatus=await page.locator("#result").getAttribute("data-status");result.details=await page.locator("#result").textContent();
+      assert.equal(result.fixtureStatus,"passed",result.details);assert.deepEqual(result.pageErrors,[]);
+      assert.equal(JSON.parse(result.details).owners,"90");result.status="passed";
+    }catch(error){result.status="failed";result.error=String(error);}
+    finally{await browser?.close();await save();}
+    console.log(JSON.stringify({run,status:result.status,details:result.details}));if(result.status==="failed")break;
+  }
+  await readQualifiedPair(process.argv[2]);
+  report.status=report.runs.every(run=>run.status==="passed")?"passed":"failed";await save();
+  if(report.status==="failed"){
+    console.log(JSON.stringify({retained:await retainNestedListFailure(join(fixture,"measurement.json"),join(repository,"target/nested-list-reproductions"))}));
+    process.exitCode=1;
+  }
+}finally{await new Promise(resolveClose=>server.httpServer.close(resolveClose));}
