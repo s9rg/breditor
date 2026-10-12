@@ -12,7 +12,9 @@ fn element(kind: &str, children: Vec<Value>, properties: Value) -> Value {
 fn paragraph(value: String, heading: bool) -> Value {
     element(
         if heading { "heading" } else { "paragraph" },
-        vec![json!({"kind":"text","text":value,"formats":[]})],
+        vec![
+            json!({"kind":"text","text":value,"formats":[{"type":"breditor/strong","properties":{}}]}),
+        ],
         if heading { json!({"breditor/level":2}) } else { json!({}) },
     )
 }
@@ -45,7 +47,10 @@ fn tree(items: usize) -> Value {
         .collect();
     element(
         "document",
-        vec![element("ordered-list", children, json!({"breditor/start":7}))],
+        vec![
+            element("ordered-list", children, json!({"breditor/start":7})),
+            element("paragraph", vec![], json!({})),
+        ],
         json!({}),
     )
 }
@@ -112,9 +117,52 @@ fn nested_child_counts_and_edges_remain_exact_after_engine_drop() -> Result<(), 
                         );
                     }
                     assert_eq!(projection.child_at(index, u32::try_from(children.len())?), None);
+                    #[cfg(feature = "candidate-word-projection-scalars")]
+                    {
+                        let encode = |value: Option<u32>| match value {
+                            Some(value) => vec![1, value],
+                            None => vec![0, 0],
+                        };
+                        assert_eq!(
+                            projection.child_count_words(index),
+                            encode(projection.child_count(index))
+                        );
+                        for child_ordinal in 0..=children.len() {
+                            let child_ordinal = u32::try_from(child_ordinal)?;
+                            assert_eq!(
+                                projection.child_at_words(index, child_ordinal),
+                                encode(projection.child_at(index, child_ordinal))
+                            );
+                        }
+                        assert_eq!(
+                            projection.format_count_words(index),
+                            encode(projection.format_count(index))
+                        );
+                        assert_eq!(
+                            projection.format_property_count_words(index, 0),
+                            encode(projection.format_property_count(index, 0))
+                        );
+                        assert_eq!(
+                            projection.heading_level_words(index),
+                            encode(projection.heading_level(index))
+                        );
+                        assert_eq!(
+                            projection.ordered_list_start_words(index),
+                            encode(projection.ordered_list_start(index))
+                        );
+                    }
                 }
             }
             assert_eq!(projection.child_count(u32::MAX), None);
+            #[cfg(feature = "candidate-word-projection-scalars")]
+            {
+                assert_eq!(projection.child_count_words(u32::MAX), vec![0, 0]);
+                assert_eq!(projection.child_at_words(u32::MAX, u32::MAX), vec![0, 0]);
+                assert_eq!(projection.format_count_words(u32::MAX), vec![0, 0]);
+                assert_eq!(projection.format_property_count_words(u32::MAX, u32::MAX), vec![0, 0]);
+                assert_eq!(projection.heading_level_words(u32::MAX), vec![0, 0]);
+                assert_eq!(projection.ordered_list_start_words(u32::MAX), vec![0, 0]);
+            }
         }
     }
     Ok(())
