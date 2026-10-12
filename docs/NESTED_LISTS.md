@@ -892,18 +892,6 @@ Native observations above still refer to the earlier `k3OedF` archive; do not
 transfer that evidence to this archive. Size, native and full release gates stay
 open.
 
-### October 11: complete default and feature unit floor
-
-At source checkpoint `f14582f`, the complete default core unit suite passes all
-703 tests and the complete feature-enabled core unit suite passes all 1,199,
-including the two new layout-metadata regressions. Strict feature-core
-library/test Clippy also passes for these sources. The separate baseline full
-integration/doctest command remains live; completed harnesses have passed, but
-the whole command is not yet claimed successful. Slow harness startup was sampled
-at the system loader before test execution; no security or power settings were
-changed. The [unit-floor record](qualification/2026-10-11-complete-core-unit-floor.json)
-keeps unit completion distinct from integration and release qualification.
-
 Renderer rollback coverage now changes both a parent and descendant paragraph
 and injects an exception after either write. Both cases restore original HTML
 and node identities and invalidate the old handle. All 199 renderer tests pass.
@@ -1379,3 +1367,15 @@ integration/doctest command remains live at this checkpoint and is not claimed
 passed. The [metadata regression record](qualification/2026-10-11-nested-layout-metadata-tests.json)
 preserves this distinction. Native, performance and historical WebKit gates remain
 open.
+
+### October 11: complete default and feature unit floor
+
+At source checkpoint `f14582f`, the complete default core unit suite passes all
+703 tests and the complete feature-enabled core unit suite passes all 1,199,
+including the two new layout-metadata regressions. Strict feature-core
+library/test Clippy also passes for these sources. The separate baseline full
+integration/doctest command remains live; completed harnesses have passed, but
+the whole command is not yet claimed successful. Slow harness startup was sampled
+at the system loader before test execution; no security or power settings were
+changed. The [unit-floor record](qualification/2026-10-11-complete-core-unit-floor.json)
+keeps unit completion distinct from integration and release qualification.
