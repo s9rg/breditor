@@ -10,12 +10,12 @@ Remaining release gates: physical keyboard/IME and spoken screen-reader
 qualification; size and large-document performance qualification; resolution of
 the WebKit risk. Native clipboard observations cover the older `Skv8uP` archive
 in Safari and Chrome, within the scope recorded below; they do not qualify the
-latest `VTFj93` candidate. The
+latest `NcIyGX` candidate. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
 
-Latest automated candidate: `target/nested-list-opt-in-VTFj93`, archive SHA-256
-`cdf2b46b9353756d7675927b62eb47849280104b85f27fd09bbe76a67ee57377`.
+Latest automated candidate: `target/nested-list-opt-in-NcIyGX`, archive SHA-256
+`68d8d72df843709df1dd52ed6bbdfdc23c280891edec1243bb0474a2d0093817`.
 Its installed Node/types and Chromium/Firefox/WebKit checks pass. Native
 qualification has not transferred to this candidate.
 
@@ -1443,3 +1443,17 @@ statistical significance claim or release p95 qualification. The
 binds the reports and samples. The full feature integration/doctest rerun for the
 new production change started after these measurements and remains pending.
 Historical WebKit, native and explicit size/latency gates remain open.
+
+### October 12: current reframe candidate opt-in archive
+
+Private archive `NcIyGX` packages the verified `j6nDXM` pair and passes external
+installed Node/types checks, all three engines, browser-dispatched trusted
+keyboard checks and exact mixed-history recovery at cursors 4 through 0. Its
+archive SHA-256 is
+`68d8d72df843709df1dd52ed6bbdfdc23c280891edec1243bb0474a2d0093817`;
+compressed size is 958,885 bytes, unpacked size 4,165,809. The
+[archive checkpoint](qualification/2026-10-12-current-reframe-opt-in.json)
+binds the evidence. Browser-dispatched keys are not physical IME or spoken
+screen-reader qualification. No native evidence transfers from older archives.
+The full feature integration/doctest rerun remains live; WebKit risk and explicit
+release budgets remain open. Shipping bundles are unchanged; nothing is published.
