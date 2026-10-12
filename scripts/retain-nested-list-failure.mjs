@@ -32,7 +32,46 @@ export async function verifyFailureBundle(sourcePath, manifest) {
     if (expected !== undefined) assert.equal(hash(content), expected, `changed bundle file: ${name}`);
     files[`bundle/${name}`] = content;
   }
+  if (manifest?.replaySha256 !== undefined) {
+    const replayBytes = await readFile(join(root, "replay.json"));
+    assert.equal(hash(replayBytes), manifest.replaySha256, "changed retained replay");
+    const replay = JSON.parse(replayBytes);
+    assert.equal(replay.status, "failed");
+    assert.equal(replay.sourcePath, manifest.replaySourcePath);
+    assert.equal(replay.sourceSha256, manifest.measurementSha256);
+    assert.equal(replay.indexSha256, manifest.indexSha256);
+    assert.deepEqual(replay.bundleAssets, source.bundleAssets);
+    files["replay.json"] = replayBytes;
+  }
   return {source, files};
+}
+
+/** Retain a failed exact replay even when its original measurement passed.
+ * Copy both reports unchanged: failure belongs to the replay, not its source.
+ */
+export async function retainNestedListReplayFailure(replayPath, sourcePath, retentionRoot, sourceManifest) {
+  replayPath = await realpath(replayPath);
+  sourcePath = await realpath(sourcePath);
+  const {files} = await verifyFailureBundle(sourcePath, sourceManifest);
+  const replayBytes = await readFile(replayPath);
+  const replay = JSON.parse(replayBytes);
+  assert.equal(replay.status, "failed", "retain only failed replays");
+  assert.equal(replay.sourcePath, sourcePath);
+  assert.equal(replay.sourceSha256, hash(files["measurement.json"]));
+  assert.equal(replay.indexSha256, hash(files["bundle/index.html"]));
+  assert.deepEqual(replay.bundleAssets, JSON.parse(files["measurement.json"]).bundleAssets);
+  files["replay.json"] = replayBytes;
+  await mkdir(retentionRoot, {recursive: true});
+  const output = await mkdtemp(join(await realpath(retentionRoot), "failure-"));
+  await mkdir(join(output, "bundle/assets"), {recursive: true});
+  for (const [name, bytes] of Object.entries(files)) await writeFile(join(output, name), bytes, {flag: "wx"});
+  const manifest = {version: 1, failureKind: "exact-replay",
+    originalSourcePath: sourceManifest?.originalSourcePath ?? sourcePath,
+    measurementSha256: hash(files["measurement.json"]), indexSha256: hash(files["bundle/index.html"]),
+    originalReplayPath: replayPath, replaySourcePath: sourcePath, replaySha256: hash(replayBytes)};
+  await writeFile(join(output, "retention.json"), `${JSON.stringify(manifest, null, 2)}\n`, {flag: "wx"});
+  await verifyFailureBundle(join(output, "measurement.json"), manifest);
+  return output;
 }
 
 export async function retainNestedListFailure(sourcePath, retentionRoot) {

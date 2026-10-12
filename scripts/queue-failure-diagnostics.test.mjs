@@ -77,7 +77,7 @@ test("real nested comparator labels preserve results, reads and short circuits",
   const paragraph = {runs: [{text: "A🙂", formats: []}], headingLevel: 2};
   const child = {kind: "orderedList", start: 4, items: [{block: paragraph, lists: []}]};
   const root = {kind: "orderedList", start: 3, items: [{block: paragraph, lists: [child]}]};
-  const cases = [root, {...root, kind: "bulletList"}, {...root, start: 5}, {...root, items: []},
+  const cases = [root, {...root, kind: "bulletList"}, {...root, start: 5}, {...root, start: "3"}, {...root, start: NaN}, {...root, items: []},
     {...root, items: [{block: {...paragraph, headingLevel: 3}, lists: [child]}]},
     {...root, items: [{block: paragraph, lists: []}]},
     {...root, items: [{block: paragraph, lists: [{...child, start: 5}]}]},
@@ -99,6 +99,15 @@ test("real nested comparator labels preserve results, reads and short circuits",
       const result = compare(observe(structuredClone(root), "left"), observe(structuredClone(right), "right"));
       outcomes.push({result, reads, paragraphs});
       if (code === changed && !hostile) assert.equal(logs.length > 0, !result && right.kind !== "textBlock");
+      if (code === changed && !hostile && right.kind === "orderedList" && right.start !== 3) {
+        const entry = logs.find(args => args[0] === "breditor nested start operands");
+        assert.ok(entry);
+        const detail = JSON.parse(entry[1]);
+        assert.deepEqual(detail.left, {type: "number", value: 3, spelling: "3"});
+        assert.equal(detail.right.type, typeof right.start);
+        assert.equal(detail.right.value, Number.isNaN(right.start) ? null : right.start);
+        if (typeof right.start === "number") assert.equal(detail.right.spelling, String(right.start));
+      }
     }
     assert.deepEqual(outcomes[0], outcomes[1]);
   }

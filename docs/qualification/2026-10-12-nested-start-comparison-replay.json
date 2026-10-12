@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "24232b1 plus uncommitted explicit-index candidate and diagnostic tooling",
+  "releaseQualified": false,
+  "faultResolved": false,
+  "packageRecord": "target/nested-list-packages-67Ig9X/qualification.json",
+  "browser": "WebKit 26.5",
+  "failure": {
+    "record": "target/nested-list-reproductions/failure-z1DMC6/replay.json",
+    "sha256": "ed1848bd6143559b053f512f613cbc5afa356847729bd5d2ca17565088e1ddcc",
+    "sourceMeasurementStatus": "measured",
+    "run": 1,
+    "phase": "100 items, repetition 0: selectionMs",
+    "falseOperand": "ordered-list start equality",
+    "firstRejection": "nested_list_projection_update:29:projection.invalid_update",
+    "impact": "none",
+    "rootIndexes": [0, 0],
+    "snapshotDiagnostic": {"beforeLength": 18000, "afterLength": 18000, "firstDifferenceOffset": 18000},
+    "limitation": "The diagnostic reported matching JSON, but did not capture the two typed start operands. This is evidence for further tracing, not proof of an optimizer defect. The original successful source measurement and failed replay are retained unchanged, with hash-verified exact assets."
+  },
+  "tierComparison": {
+    "record": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-k9LZAE/performance-T9dkc6/exact-replay-BqEd6f/replay.json",
+    "sha256": "66e3ec125d88ad09ca63f5887954a4d626435ef5111842088c3ef700420ac7cb",
+    "rebuilt": false,
+    "addedBundleInstrumentation": false,
+    "requestedMode": "no-ftl",
+    "requestedOverrides": {"JSC_useFTLJIT": "false", "__XPC_JSC_useFTLJIT": "false", "JSC_dumpOptions": "1", "__XPC_JSC_dumpOptions": "1"},
+    "observedOptionOutput": "Playwright browser process logs reported useFTLJIT=false (default: true) in each of ten fresh processes, four modified-option blocks per process.",
+    "runtimeVerificationBoundary": "The replay report itself deliberately leaves tierOverrideEffectVerified false; option-output evidence was observed externally and does not prove which tier executed a specific comparison.",
+    "passedSessions": 10,
+    "passedCases": 900,
+    "conclusion": "A bounded diagnostic pass only. The same bundle previously passed 900 normal cases before its exact normal replay failed. Passing with the FTL option disabled does not establish causality, fix the library, qualify performance or provide a deployable workaround."
+  },
+  "nextExperiment": "Normal WebKit with single-read typed start operands and failure-only typed block-index capture; unchanged installed candidate pair.",
+  "toolingVerification": {"passed": 171, "skipped": 3, "failed": 0},
+  "externalSource": "https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/OptionsList.h",
+  "systemSettingsChanged": false,
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}

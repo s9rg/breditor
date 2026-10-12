@@ -118,7 +118,20 @@ export function instrumentNestedRootComparison(code) {
     assert.equal(body.split(expression).length, 2, `nested comparator operand changed: ${name}`);
     body = body.replace(expression, `nestedComparisonDiagnostic(${JSON.stringify(name)}, ${expression}, ${context})`);
   }
+  // Capture both primitive operands once, rather than rereading the owned
+  // snapshots after rejection or relying on JSON to preserve numeric types.
+  body = body.replace("a.start === b.start", "nestedStartComparisonDiagnostic(a.start, b.start)");
   body = body.replace(start, start + `
+    const nestedStartComparisonDiagnostic = (left, right) => {
+        const equal = left === right;
+        if (!equal) {
+            try { console.error("breditor nested start operands", JSON.stringify({
+                left: {type: typeof left, value: left, spelling: typeof left === "number" ? String(left) : undefined},
+                right: {type: typeof right, value: right, spelling: typeof right === "number" ? String(right) : undefined},
+            }).slice(0, 4096)); } catch {}
+        }
+        return equal;
+    };
     const nestedComparisonDiagnostic = (operand, value, indexes) => {
         if (!value) {
             try { console.error("breditor nested comparison false", JSON.stringify({operand, indexes})); } catch {}

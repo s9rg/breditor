@@ -6,7 +6,33 @@ import {join} from "node:path";
 import {test} from "node:test";
 import {spawnSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
-import {retainNestedListFailure, verifyFailureBundle} from "./retain-nested-list-failure.mjs";
+import {retainNestedListFailure, retainNestedListReplayFailure, verifyFailureBundle} from "./retain-nested-list-failure.mjs";
+
+test("failed replay retains a successful source unchanged and survives source deletion", async t => {
+  const {root, source, report} = await fixture(t);
+  const sourcePath = join(source, "measurement.json");
+  await writeFile(sourcePath, JSON.stringify({...report, status: "measured"}));
+  const sourceBytes = await readFile(sourcePath);
+  const replayPath = join(source, "replay.json");
+  const replay = {status: "failed", sourcePath, sourceSha256: createHash("sha256").update(sourceBytes).digest("hex"),
+    indexSha256: createHash("sha256").update(await readFile(join(source, "bundle/index.html"))).digest("hex"),
+    bundleAssets: report.bundleAssets};
+  await writeFile(replayPath, JSON.stringify({...replay, status: "passed"}));
+  await assert.rejects(retainNestedListReplayFailure(replayPath, sourcePath, join(root, "retained")));
+  await writeFile(replayPath, JSON.stringify({...replay, sourceSha256: "wrong"}));
+  await assert.rejects(retainNestedListReplayFailure(replayPath, sourcePath, join(root, "retained")));
+  const replayBytes = Buffer.from(JSON.stringify(replay));
+  await writeFile(replayPath, replayBytes);
+  const output = await retainNestedListReplayFailure(replayPath, sourcePath, join(root, "retained"));
+  const manifest = JSON.parse(await readFile(join(output, "retention.json")));
+  await rm(source, {recursive: true});
+  const retained = await verifyFailureBundle(join(output, "measurement.json"), manifest);
+  assert.deepEqual(retained.files["measurement.json"], sourceBytes);
+  assert.equal(retained.source.status, "measured");
+  assert.deepEqual(retained.files["replay.json"], replayBytes);
+  await writeFile(join(output, "replay.json"), "{}");
+  await assert.rejects(verifyFailureBundle(join(output, "measurement.json"), manifest));
+});
 
 async function fixture(t) {
   const root = await realpath(await mkdtemp(join(tmpdir(), "breditor-retention-test-")));

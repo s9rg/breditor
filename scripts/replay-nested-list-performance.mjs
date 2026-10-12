@@ -7,10 +7,12 @@ import {dirname, join, relative, resolve} from "node:path";
 import {preview} from "vite";
 import {webkit} from "playwright-core";
 import {fileURLToPath} from "node:url";
-import {verifyFailureBundle} from "./retain-nested-list-failure.mjs";
+import {verifyFailureBundle, retainNestedListReplayFailure} from "./retain-nested-list-failure.mjs";
 import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
+import {webkitReplayTier} from "./webkit-replay-tier.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
+const replayTier = webkitReplayTier(process.env);
 const sourcePath = await realpath(resolve(process.argv[2]));
 const temporaryRoot = await realpath(tmpdir());
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
@@ -41,6 +43,8 @@ const verifyAssets = async () => {
 await verifyAssets();
 const output = await mkdtemp(join(dirname(sourcePath), "exact-replay-"));
 const report = {status: "running", sourcePath, sourceSha256: hash(sourceBytes),
+  javaScriptTierMode: replayTier.mode, requestedJavaScriptTierOverrides: replayTier.overrides,
+  tierOverrideEffectVerified: false,
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   bundleAssets: source.bundleAssets, indexSha256: hash(await readFile(join(bundle, "index.html"))),
   rebuilt: false, addedInstrumentation: false, releaseQualified: false, runs: []};
@@ -58,7 +62,7 @@ try {
     const result = {run, status: "running", diagnostics: [], pageErrors: []};
     report.runs.push(result);
     try {
-      browser = await webkit.launch();
+      browser = await webkit.launch({env: replayTier.browserEnvironment});
       result.version = browser.version();
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
       page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
@@ -86,7 +90,14 @@ try {
   assert.equal(hash(await readFile(join(bundle, "index.html"))), report.indexSha256);
   report.status = report.runs.every(run => run.status === "passed") ? "passed" : "failed";
   await save();
-  if (report.status === "failed") process.exitCode = 1;
+  if (report.status === "failed") {
+    if (!durable) {
+      const retained = await retainNestedListReplayFailure(join(output, "replay.json"), sourcePath,
+        join(repository, "target/nested-list-reproductions"));
+      console.log(JSON.stringify({retained}));
+    }
+    process.exitCode = 1;
+  }
 } catch (error) {
   report.status = "failed";
   report.error = String(error);
