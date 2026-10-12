@@ -403,10 +403,10 @@ export function paragraphsEqual(
   if (left === right) {
     return true;
   }
-  // Admitted ranks are undefined or integers 1–6: SameValue preserves equality.
-  // Retained WebKit trials observed strict inequality reject two captured 2s;
-  // see the 2026-10-05 projection-update reproduction record.
-  if (!Object.is(left.headingLevel, right.headingLevel) || left.runs.length !== right.runs.length) {
+  // Owned ranks form a closed domain. Retained packed WebKit runs rejected
+  // captured numeric 2/2 in the SameValue branch; use exact typed keys instead.
+  // This is not a retry, fallback, or permission to ignore an impact mismatch.
+  if (!ownedHeadingLevelsEqual(left.headingLevel, right.headingLevel) || left.runs.length !== right.runs.length) {
     return false;
   }
   for (let index = 0; index < left.runs.length; index += 1) {
@@ -423,6 +423,14 @@ export function paragraphsEqual(
     }
   }
   return true;
+}
+
+/** Exact on admitted absent/1–6 ranks; invalid values never gain equality. */
+function ownedHeadingLevelsEqual(left: unknown, right: unknown): boolean {
+  const valid = (value: unknown): boolean => value === undefined ||
+    (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 6);
+  if (!valid(left) || !valid(right)) return false;
+  return typeof left === typeof right && String(left) === String(right);
 }
 
 function validateProjection(input: unknown): ValidationResult {

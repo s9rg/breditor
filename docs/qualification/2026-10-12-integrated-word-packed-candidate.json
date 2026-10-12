@@ -35,7 +35,8 @@
       "session": 29423,
       "verifiedProgress": {"completedProcesses": 10, "editorCases": 900, "observedFailures": 0},
       "measurementSha256": "006e55668a86c0e942ab89fc1760bec940421a615c82b5948143c227df90b612",
-      "exactReplay": {"session": 53674, "status": "running", "record": "performance-Dng4kH/exact-replay-ZPj8bm/replay.json"},
+      "exactReplay": {"status": "passed", "record": "performance-Dng4kH/exact-replay-ZPj8bm/replay.json", "sha256": "c063ea48db5e79126f91946545f8e966527a345a2c43ac0406763aefb7512258", "processes": 10, "editorCases": 900},
+      "rootExactReplay": {"session": 1391, "status": "running", "record": "performance-C6X67X/exact-replay-qHY5c2/replay.json"},
       "rootFollowUp": {"status": "measured", "measurement": "performance-C6X67X/measurement.json", "sha256": "5723668c0364dba34d0b6336df468e3cbf8be474e373069ac032e30b8b72292b", "processes": 10, "editorCases": 900, "observedFailures": 0, "scope": "Same private comparison trial, root edit workload. Overlapped grandchild run; timings excluded from release latency qualification."},
       "measurement": "breditor-nested-list-consumer-q2nZu9/performance-Dng4kH/measurement.json",
       "scope": "Disposable minified bundle transform only, original installed tarballs unchanged. Type-checked string equality on admitted undefined/integer 1..6, rejects invalid ranks. No retries, scalar fallbacks or validation bypass.",
@@ -55,6 +56,17 @@
     "consumerQualification": "target/nested-list-opt-in-Mbm1cf/consumer-qualification.json",
     "status": "consumer checks passed",
     "scope": "Node/types and all three browsers; trusted keyboard Tab/Shift-Tab, typing, Enter/Backspace, history; fresh-owner mixed recovery at every cursor. Not physical IME or complete reliability qualification."
+  },
+  "sourceHeadingCandidate": {
+    "releaseQualified": false,
+    "packedPair": "target/nested-list-packages-kBnx5y/qualification.json",
+    "browserTests": {"files": 56, "passed": 2118},
+    "testTypecheck": "passed",
+    "packedConsumer": "Node/base compatibility and Chromium/Firefox/WebKit scenarios passed",
+    "diagnosticAndTrialTests": "37 passed; both current helper and retained historical comparator supported",
+    "stress": {"session": 56177, "status": "running", "record": "breditor-nested-list-consumer-7430NU/performance-gkK3UX/measurement.json", "scope": "Actual packed source-level helper; no trial transform or diagnostic instrumentation"},
+    "shippingArtifactsWritten": false,
+    "boundary": "Closed admitted heading domain uses validated typed string keys. All text, run and typed format checks retained. Fresh repeated packed verification and final opt-in assembly still required; no fault resolution claim."
   },
   "open": ["reproducible fully packed WebKit selection/queue fault", "native clipboard, IME and accessibility qualification for final artifacts", "explicit size and performance budgets"],
   "sizeBudgetQualified": false,

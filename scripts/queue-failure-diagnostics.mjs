@@ -44,8 +44,10 @@ export function instrumentParagraphComparison(code, headingComparison = "strict"
   const from = code.indexOf(start), end = code.indexOf("\n}", from);
   assert.ok(end > from);
   let body = code.slice(from, end);
-  const headingExpression = body.includes("!Object.is(left.headingLevel, right.headingLevel)")
-    ? "!Object.is(left.headingLevel, right.headingLevel)" : "left.headingLevel !== right.headingLevel";
+  const headingExpression = body.includes("!ownedHeadingLevelsEqual(left.headingLevel, right.headingLevel)")
+    ? "!ownedHeadingLevelsEqual(left.headingLevel, right.headingLevel)"
+    : body.includes("!Object.is(left.headingLevel, right.headingLevel)")
+      ? "!Object.is(left.headingLevel, right.headingLevel)" : "left.headingLevel !== right.headingLevel";
   if (headingComparison === "same-value-minimal") {
     const expression = headingExpression;
     assert.equal(body.split(expression).length, 2, "heading comparison changed");
@@ -62,7 +64,9 @@ export function instrumentParagraphComparison(code, headingComparison = "strict"
   ]) {
     assert.equal(body.split(expression).length, 2, `paragraph comparison changed: ${name}`);
     const captured = name === "heading"
-      ? headingComparison === "same-value" || headingExpression.startsWith("!Object.is")
+      ? headingComparison === "strict" && headingExpression.startsWith("!ownedHeadingLevelsEqual")
+        ? "!ownedHeadingLevelsEqual((headingLeft = left.headingLevel), (headingRight = right.headingLevel))"
+        : headingComparison === "same-value" || headingExpression.startsWith("!Object.is")
         ? "!Object.is((headingLeft = left.headingLevel), (headingRight = right.headingLevel))"
         : "(headingLeft = left.headingLevel) !== (headingRight = right.headingLevel)" : expression;
     body = body.replace(expression, `paragraphComparisonDiagnostic(${JSON.stringify(name)}, ${captured})`);

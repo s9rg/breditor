@@ -30,12 +30,15 @@ test("paragraph argument capture calls the comparator once and preserves its fal
   assert.throws(() => instrumentNestedParagraphResults(source.replace("paragraphsEqual", "changed")));
 });
 
-test("internal paragraph diagnostics preserve the current SameValue comparator", async () => {
+test("internal paragraph diagnostics preserve the current owned-heading comparator", async () => {
   const ts = await readFile(new URL("../packages/breditor-browser/src/projection.ts", import.meta.url), "utf8");
   const compiled = (await transform("projection.ts", ts, {lang: "ts"})).code;
   const from = compiled.indexOf("export function paragraphsEqual(left, right) {");
   assert.ok(from >= 0);
-  const source = compiled.slice(from, compiled.indexOf("\n}", from) + 2);
+  const helperStart = compiled.indexOf("function ownedHeadingLevelsEqual(left, right) {");
+  assert.ok(helperStart >= 0);
+  const source = compiled.slice(from, compiled.indexOf("\n}", from) + 2) + "\n" +
+    compiled.slice(helperStart, compiled.indexOf("\n}", helperStart) + 2);
   const changed = instrumentParagraphComparison(source);
   const make = code => new Function("formatDetailsEqual", "console",
     `${code.replace("export function", "function")}; return paragraphsEqual;`)(
@@ -262,7 +265,9 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
   assert.ok(start >= 0 && end > start);
   const currentSource = "export " + compiled.slice(start, end);
   // Diagnostics target the retained pre-fix package, not rebuilt current code.
-  const source = currentSource.replace("!Object.is(left.headingLevel, right.headingLevel)", "left.headingLevel !== right.headingLevel");
+  const source = currentSource
+    .replace("!Object.is(left.headingLevel, right.headingLevel)", "left.headingLevel !== right.headingLevel")
+    .replace("!ownedHeadingLevelsEqual(left.headingLevel, right.headingLevel)", "left.headingLevel !== right.headingLevel");
   const instrumented = instrumentParagraphComparison(source);
   const sameValue = instrumentParagraphComparison(source, "same-value");
   const minimal = instrumentParagraphComparison(source, "same-value-minimal");
