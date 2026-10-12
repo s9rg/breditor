@@ -26,6 +26,8 @@ assert.ok(["all","shape","child-count"].includes(getterSequence),"invalid getter
 const walkFlag=process.env.BREDITOR_GETTER_WALKS??"1";
 assert.ok(["1","100"].includes(walkFlag),"getter walks must be 1 or 100");
 const walkRepetitions=Number(walkFlag);
+const keepOwnersFlag=process.env.BREDITOR_GETTER_KEEP_OWNERS??"0";
+assert.ok(["0","1"].includes(keepOwnersFlag));const keepProjectionOwners=keepOwnersFlag==="1";
 const fixture=await mkdtemp(join(record.consumer,"getter-probe-"));
 const rawTraceFlag=process.env.BREDITOR_GETTER_RAW_TRACE??"0";
 assert.ok(["0","1"].includes(rawTraceFlag));const rawTrace=rawTraceFlag==="1";
@@ -46,7 +48,8 @@ const originalMain=await readFile(join(fixture,"main.ts"),"utf8");
 assert.equal(originalMain.split("const ownerRepetitions = 30;").length,2);
 assert.equal(originalMain.split('const getterSequence: string = "all";').length,2);
 assert.equal(originalMain.split("const walkRepetitions = 1;").length,2);
-await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`).replace('const getterSequence: string = "all";',`const getterSequence: string = ${JSON.stringify(getterSequence)};`).replace("const walkRepetitions = 1;",`const walkRepetitions = ${walkRepetitions};`));
+assert.equal(originalMain.split("const keepProjectionOwners = false;").length,2);
+await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`).replace('const getterSequence: string = "all";',`const getterSequence: string = ${JSON.stringify(getterSequence)};`).replace("const walkRepetitions = 1;",`const walkRepetitions = ${walkRepetitions};`).replace("const keepProjectionOwners = false;",`const keepProjectionOwners = ${keepProjectionOwners};`));
 // Explicitly separate diagnostic Wasm from the qualified packed control.
 let diagnosticWasmAssets;
 const diagnosticFiles=["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"];
@@ -55,6 +58,7 @@ const diagnosticDirectory=process.env.BREDITOR_GETTER_RUST_DIAGNOSTIC;
 const candidateDirectory=process.env.BREDITOR_GETTER_WASM_CANDIDATE;
 assert.ok(!(diagnosticDirectory!==undefined&&candidateDirectory!==undefined),"diagnostic and candidate Wasm must be tested separately");
 const privateDirectory=diagnosticDirectory??candidateDirectory;
+assert.ok(!(keepProjectionOwners&&(privateDirectory!==undefined||directCall||fixedArity||lastCapture||rawTrace||sentinelTreatment)),"owner retention is tested independently on original packed Wasm");
 assert.ok(!(directCall&&privateDirectory!==undefined),"direct-call experiment requires original packed Wasm");
 const explicitChildCountTransport=candidateDirectory!==undefined;
 let privateDestination;
@@ -90,7 +94,7 @@ await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sen
 assert.equal(transformedModules,rawTrace||sentinelTreatment||lastCapture?1:0,"getter experiment transform count");
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 const bundleAssets=Object.fromEntries(await Promise.all((await readdir(join(fixture,"bundle/assets"))).sort().map(async name=>[name,hash(await readFile(join(fixture,"bundle/assets",name)))])));
-const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions,getterSequence,walkRepetitions,runCount:10,editTarget:"root",bundleAssets,
+const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions,getterSequence,walkRepetitions,keepProjectionOwners,runCount:10,editTarget:"root",bundleAssets,
   packageRecord,tarballSha256:record.tarballSha256,
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,directCallBridgeTreatment:directCall,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
@@ -110,7 +114,10 @@ try{
       await waitForTerminalFixtureCompletion(page,60000);
       result.fixtureStatus=await page.locator("#result").getAttribute("data-status");result.details=await page.locator("#result").textContent();
       assert.equal(result.fixtureStatus,"passed",result.details);assert.deepEqual(result.pageErrors,[]);
-      assert.equal(JSON.parse(result.details).owners,String(3*ownerRepetitions));result.status="passed";
+      const details=JSON.parse(result.details);
+      assert.equal(details.owners,String(3*ownerRepetitions));
+      assert.equal(details.cleanupCompleted,true);
+      assert.equal(details.retainedOwnerCount,String(keepProjectionOwners?6*ownerRepetitions:0));result.status="passed";
     }catch(error){result.status="failed";result.error=String(error);}
     finally{await browser?.close();await save();}
     console.log(JSON.stringify({run,status:result.status,details:result.details}));if(result.status==="failed")break;

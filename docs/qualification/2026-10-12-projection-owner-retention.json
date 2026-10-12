@@ -1,0 +1,24 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "scope":"Private fixture holds completed engine and projection objects until final cleanup; result/observation wrappers still close normally. Original packed Wasm and child-count-only sequence.",
+  "failures":[
+    {"report":"target/nested-list-reproductions/failure-ik9Wtq/measurement.json","sha256":"ef8742e3e97dc1632030084944c64c6caeacdfb3644bd1b9e2a087c0f16a7c54","run":1,"progress":"500 items, owner 10, walk 0, forward node 500","actual":"undefined","expected":2},
+    {"report":"target/nested-list-reproductions/failure-ur2kMA/measurement.json","sha256":"22bde73125e609fd4e0d99556a7b1f36f385cb458c3388423a5460d8395cbdc1","run":3,"progress":"500 items, owner 20, walk 0, forward node 598","actual":"undefined","expected":1,"cleanupControl":"First three runs retained 180 engine/projection objects and completed cleanup before declaring passed"}
+  ],
+  "rustTraceControl":{"fixture":"getter-probe-lKLWe6","sha256":"44c02f318af093f72ccb966e91756747c6da3a483ff4f3e4ecff2f7e48f75ea6","sequence":"child-count","checks":1397110,"status":"passed","interpretation":"No failing Rust input/result captured; not a fix"},
+  "nativeContract":{
+    "test":"nested_child_counts_and_edges_remain_exact_after_engine_drop",
+    "file":"crates/breditor-wasm/tests/nested_projection_child_count_contract.rs",
+    "features":"experimental-nested-lists,diagnostic-projection-child-count",
+    "status":"passed",
+    "runtimeSeconds":1.18,
+    "binarySha256":"eccf037aa58e6656128716662c05ebe520cd77bc0cd2e363e9bda3182fd4ea3b",
+    "scope":"90 independent native engines, 10/100/500 nested items, projection retained after engine drop, independent preorder expectation, forward/backward node kinds/types/counts/edges and absent/out-of-range checks",
+    "boundary":"Native diagnostic-feature counterpart, not proof that default shipping Wasm or the candidate transport is correct"
+  },
+  "otherJobs":"Focused Rust trace unit test process and original fresh-cache candidate build both completed successfully. Fresh cache took 29m54s; no timeout-based restart or security-setting changes.",
+  "decisions":["Immediate reuse of completed engine/projection allocations is not required for the fault","Native lifetime test passed but does not exonerate the browser/Wasm boundary","Fixture success must be declared only after cleanup"],
+  "pushed":false,
+  "published":false
+}

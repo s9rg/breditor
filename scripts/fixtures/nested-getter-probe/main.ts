@@ -8,6 +8,8 @@ let progress = "initialization", checks = 0;
 const ownerRepetitions = 30;
 const getterSequence: string = "all";
 const walkRepetitions = 1;
+const keepProjectionOwners = false;
+const retainedOwners:Array<wasm.BreditorEngine|wasm.BreditorProjection>=[];
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
   // Fixture references are finite unsigned integers, strings or undefined.
@@ -23,7 +25,10 @@ function same(actual: unknown, expected: unknown, label: string): void {
 }
 function using<T extends {free(): void}, R>(handle: T | undefined, action: (value:T)=>R):R {
   if (!handle) throw Error("Missing handle: " + progress);
-  try {return action(handle);} finally {handle.free();}
+  try {return action(handle);} finally {
+    if(keepProjectionOwners&&(handle instanceof wasm.BreditorEngine||handle instanceof wasm.BreditorProjection))retainedOwners.push(handle);
+    else handle.free();
+  }
 }
 type Node = {kind:"text";text:string;formats:[]} | {kind:"element";type:string;entityId:null;properties:Record<string,number>;children:Node[]};
 const element = (type:string,children:Node[],properties:Record<string,number>={}):Node => ({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
@@ -59,6 +64,7 @@ async function run():Promise<void> {
     same(result.status,"profile","profile status");return result.takeProfile();
   });
   if(!profile)throw Error("Missing profile");
+  let retainedOwnerCount=0;
   try {
     const fingerprint=using(profile.descriptor(),descriptor=>descriptor.schemaFingerprint);
     for(const items of [10,100,500])for(let repetition=0;repetition<ownerRepetitions;repetition++) {
@@ -91,6 +97,13 @@ async function run():Promise<void> {
       });
       await new Promise<void>(resolve=>setTimeout(resolve,4));
     }
-    output.textContent=JSON.stringify({checks:String(checks),owners:String(3*ownerRepetitions),result:"passed"});output.dataset["status"]="passed";
-  }finally{profile.free();}
+  }finally{
+    retainedOwnerCount=retainedOwners.length;
+    try {
+      const failures:unknown[]=[];
+      for(const owner of retainedOwners.splice(0))try{owner.free();}catch(error){failures.push(error);}
+      if(failures.length)throw new AggregateError(failures,"retained fixture owner cleanup failed");
+    }finally{profile.free();}
+  }
+  output.textContent=JSON.stringify({checks:String(checks),owners:String(3*ownerRepetitions),retainedOwnerCount:String(retainedOwnerCount),cleanupCompleted:true,result:"passed"});output.dataset["status"]="passed";
 }
