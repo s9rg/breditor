@@ -16,6 +16,8 @@ test("word editor stress rejects unknown flags and conflicting instrumentation b
 test("heading trials and diagnostic flags reject ambiguous modes before artifact admission", () => {
   for (const [overrides, message] of [
     [{BREDITOR_PERF_FORMATTED: "2"}, "invalid formatted stress flag"],
+    [{BREDITOR_PERF_PROPERTY_FORMATS: "2"}, "invalid property format flag"],
+    [{BREDITOR_PERF_PROPERTY_FORMATS: "1"}, "property formats require formatted workload"],
     [{BREDITOR_PERF_HEADING_STRING_TRIAL: "2"}, "invalid heading trial flag"],
     [{BREDITOR_PERF_HEADING_STRING_TRIAL: "1", BREDITOR_PERF_BROWSER: "chromium"}, "heading trial requires isolated WebKit mode"],
     [{BREDITOR_PERF_HEADING_STRING_TRIAL: "1", BREDITOR_PERF_BROWSER: "webkit", BREDITOR_PERF_QUEUE_DIAGNOSTICS: "1"}, "heading trial requires isolated WebKit mode"],

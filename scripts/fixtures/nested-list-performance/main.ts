@@ -1,4 +1,4 @@
-import { BreditorBrowserEditor } from "@breditor/browser";
+import { BreditorBrowserEditor, createInlineFormatRenderManifest } from "@breditor/browser";
 import initialize, * as wasm from "@breditor/wasm";
 
 const output = document.getElementById("result")!;
@@ -10,15 +10,29 @@ const equal = (actual: unknown, expected: unknown, label = "assertion"): void =>
 };
 const element = (type: string, children: unknown[], properties = {}) => ({kind: "element", type: `breditor/${type}`, entityId: null, properties, children});
 const schema = {name: "example/list-performance", version: 1};
+const propertyFormats = new URLSearchParams(location.search).get("propertyFormats") === "1";
 const semanticProfile = {formatVersion: 5 as const, bootstrapJson: JSON.stringify({
-  format: "breditor/profile-bootstrap", formatVersion: 5, schema, extensions: [],
+  format: "breditor/profile-bootstrap", formatVersion: 5, schema, extensions: propertyFormats ? [{
+    id: {name: "example/annotation-extension", version: 1}, dependencies: [], conflicts: [],
+    inlineFormats: [{kind: "example/link", revision: 1}],
+    inlineFormatPropertyContracts: [{formatKind: "example/link", properties: [
+      {name: "example/href", presence: "required", valueType: {kind: "string", minimumUtf8Bytes: 1, maximumUtf8Bytes: 128}},
+      {name: "example/open-in-new-window", presence: "required", valueType: {kind: "boolean"}},
+    ]}], inlineFormatToggles: [], inlineFormatSets: [],
+  }] : [],
 })};
 type Metrics = Record<string, number>;
 let progress = "initialization";
 const renderingTrace = new URLSearchParams(location.search).get("renderTrace") === "1";
 const editTarget = new URLSearchParams(location.search).get("editTarget") ?? "root";
 const formatted = new URLSearchParams(location.search).get("formatted") === "1";
-const formats = () => formatted ? [{type: "breditor/strong", properties: {}}] : [];
+const formats = () => formatted ? [{type: "breditor/strong", properties: {}}, ...(propertyFormats ? [{
+  type: "example/link", properties: {"example/href": "https://example.test/", "example/open-in-new-window": false},
+}] : [])] : [];
+const rendering = propertyFormats ? createInlineFormatRenderManifest({recipes: [
+  {formatKind: "breditor/strong", element: "strong"},
+  {formatKind: "example/link", element: "a", attributes: {kind: "safeLinkV1", hrefProperty: "example/href", openInNewWindowProperty: "example/open-in-new-window"}},
+]}) : undefined;
 
 void run().catch(error => { output.textContent = JSON.stringify({progress, error: String(error)}); output.dataset["status"] = "failed"; });
 async function run(): Promise<void> {
@@ -59,7 +73,7 @@ async function sample(items: number, fingerprint: string, repetition: number) {
       ])])] : []),
     ])), {"breditor/start": 7})]),
   });
-  const options = {host, label: "List performance document", wasm, semanticProfile, toolbar: {host: toolbar},
+  const options = {host, label: "List performance document", wasm, semanticProfile, ...(rendering ? {rendering} : {}), toolbar: {host: toolbar},
     keyboard: {editing: "beforeinputPrimary" as const, primaryModifier: "control" as const, shortcuts: "enabled" as const}};
   const measured = <T>(name: string, action: () => T): T => {
     progress = `${items} items, repetition ${repetition}: ${name}`;

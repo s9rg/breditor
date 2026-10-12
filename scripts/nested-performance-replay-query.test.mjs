@@ -7,6 +7,9 @@ test("replay preserves exact recorded formatting and target, including legacy re
   assert.equal(String(nestedPerformanceReplayQuery({editTarget: "grandchild", formatted: true})),
     "editTarget=grandchild&formatted=1");
   assert.equal(String(nestedPerformanceReplayQuery({editTarget: "root", formatted: false})), "editTarget=root");
+  assert.equal(String(nestedPerformanceReplayQuery({formatted: true, propertyFormats: true})), "editTarget=root&formatted=1&propertyFormats=1");
+  assert.throws(() => nestedPerformanceReplayQuery({propertyFormats: true}));
+  assert.throws(() => nestedPerformanceReplayQuery({formatted: true, propertyFormats: "1"}));
   for (const formatted of [null, "1", "true", 0, 1, {}]) {
     assert.throws(() => nestedPerformanceReplayQuery({formatted}));
   }
