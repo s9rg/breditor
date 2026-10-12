@@ -1,0 +1,16 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "source":"target/nested-list-reproductions/failure-cbYRsh/measurement.json",
+  "scope":"Exactly retained plain-paragraph bundle; no rebuild or added fixture instrumentation. Child-count-only reads. Same 90 projection owners per process.",
+  "comparisons":[
+    {"report":"exact-replay-rnDPca/replay.json","sha256":"e42a5815d1fef146f3f487e86396641e970ee89344db2753df34c6ab0c3846f8","browser":"chromium","version":"151.0.7922.34","processes":10,"checks":736510,"status":"passed"},
+    {"report":"exact-replay-HUNwKz/replay.json","sha256":"d0e888b4278ffafa648c3768dc7d0ef1b91d4ecd23513967e9a14e316ae9a63f","browser":"firefox","version":"153.0","processes":10,"checks":736510,"status":"passed"},
+    {"report":"exact-replay-7FZJzl/replay.json","sha256":"82a619e7eff2f5959040fb17859dc1da16edba4e83a47a41c2d39d8d131d4755","browser":"webkit","processes":10,"checks":736510,"status":"passed"}
+  ],
+  "interpretation":"Retained prior WebKit failure remains authoritative. Following WebKit control also passed, so these runs do not establish a browser-exclusive or optimizing-tier cause. No shipping fix qualified.",
+  "verification":"Source retention and bundle asset hashes verified before/after each replay; explicit target browser recorded. WebKit-specific tier requests rejected for other browsers. Tooling tests passed.",
+  "nativeBoundary":"Headless bundled engines only; not native Chrome/Safari, clipboard or physical IME qualification",
+  "pushed":false,
+  "published":false
+}

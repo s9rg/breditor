@@ -5,14 +5,17 @@ import {readFile, readdir, realpath, mkdtemp, writeFile} from "node:fs/promises"
 import {tmpdir} from "node:os";
 import {dirname, join, relative, resolve} from "node:path";
 import {preview} from "vite";
-import {webkit} from "playwright-core";
+import {webkit,chromium,firefox} from "playwright-core";
 import {fileURLToPath} from "node:url";
 import {verifyFailureBundle, retainNestedListReplayFailure} from "./retain-nested-list-failure.mjs";
 import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion, waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
 import {webkitReplayTier} from "./webkit-replay-tier.mjs";
+import {replayBrowserName} from "./replay-browser.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
 const replayTier = webkitReplayTier(process.env);
+const browserName=replayBrowserName(process.env,replayTier.mode);
+const browserType={webkit,chromium,firefox}[browserName];
 const sourcePath = await realpath(resolve(process.argv[2]));
 const temporaryRoot = await realpath(tmpdir());
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
@@ -46,6 +49,7 @@ const verifyAssets = async () => {
 await verifyAssets();
 const output = await mkdtemp(join(dirname(sourcePath), "exact-replay-"));
 const report = {status: "running", sourcePath, sourceSha256: hash(sourceBytes),
+  browserName,
   javaScriptTierMode: replayTier.mode, requestedJavaScriptTierOverrides: replayTier.overrides,
   tierOverrideEffectVerified: false,
   sourceDiagnosticDerivation: source.retainedLayoutDerivation ?? null,
@@ -66,7 +70,7 @@ try {
     const result = {run, status: "running", diagnostics: [], pageErrors: []};
     report.runs.push(result);
     try {
-      browser = await webkit.launch({env: replayTier.browserEnvironment});
+      browser = await browserType.launch({env: replayTier.browserEnvironment});
       result.version = browser.version();
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
       page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
