@@ -174,7 +174,7 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
     }
   }
 });
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentOwnerFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 
 test("flat comparator logging preserves short circuit and equality results", () => {
   const source = `export function flatListRootsEqual(a, b) {
@@ -356,6 +356,39 @@ test("router diagnostics distinguish adapter faults from queue faults and surviv
     assert.equal(router.fail().kind, "faulted");
   }
   for (const code of ["", source + source]) assert.throws(() => instrumentRouterFailures(code), /fault site changed/u);
+});
+
+test("owner fault tracing preserves one terminal transition and contains hostile observers", () => {
+  const source = `class Owner {
+    #status = {phase: "live"}; #adapter; #queue;
+    constructor(adapter, queue) {this.#adapter = adapter; this.#queue = queue;}
+    #fault(reason) {
+      if (this.#status.phase !== "live") return;
+      this.#status = {phase: "faulted", reason};
+      this.#queue.dispose();
+    }
+    fail() {this.#fault("queueUncertain"); return this.#status;}
+  }`;
+  for (const hostile of [false, true]) {
+    const logs = [];
+    const Owner = new Function("console", `${instrumentOwnerFailures(source)}; return Owner;`)({error(...args) {
+      logs.push(args); if (hostile) throw new Error("logger failed");
+    }});
+    let disposed = 0;
+    const owner = new Owner({state: "faulted"}, {failure: {code: "command_queue.observer_threw"}, disposed: false, dispose() {disposed++;}});
+    assert.deepEqual(owner.fail(), {phase: "faulted", reason: "queueUncertain"});
+    owner.fail(); assert.equal(disposed, 1); assert.equal(logs.length, 1);
+    const diagnostic = JSON.parse(logs[0][1]);
+    assert.equal(diagnostic.queueCode, "command_queue.observer_threw");
+    assert.equal(diagnostic.queueDisposed, false);
+    assert.equal(diagnostic.adapterState, "faulted");
+    assert.ok(diagnostic.stack.length <= 4096);
+    const hostileOwner = new Owner({get state() {throw 1;}}, {
+      get failure() {throw 2;}, get disposed() {throw 3;}, dispose() {disposed++;}
+    });
+    assert.equal(hostileOwner.fail().phase, "faulted");
+  }
+  for (const code of ["", source + source]) assert.throws(() => instrumentOwnerFailures(code), /fault site changed/u);
 });
 
 const fixture = `class Queue {

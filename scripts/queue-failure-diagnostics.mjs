@@ -216,6 +216,25 @@ export function instrumentRouterFailures(code) {
   return result;
 }
 
+/** Capture owner-only terminal transitions before disposal erases queue state. */
+export function instrumentOwnerFailures(code) {
+  const anchor = /(#fault\(reason\)\s*\{\s*if \(this\.#status\.phase !== "live"\)\s*return;)/gu;
+  let sites = 0;
+  const result = code.replace(anchor, match => {
+    sites++;
+    return `${match}
+    const ownerDiagnostic = {reason};
+    try { ownerDiagnostic.adapterState = this.#adapter.state; } catch {}
+    try { ownerDiagnostic.queueCode = this.#queue.failure?.code; } catch {}
+    try { ownerDiagnostic.queueDisposed = this.#queue.disposed; } catch {}
+    try { ownerDiagnostic.stack = new Error("owner fault boundary").stack?.slice(0, 4096); } catch {}
+    try { console.error("breditor owner failure", JSON.stringify(ownerDiagnostic)); } catch {}
+    `;
+  });
+  assert.equal(sites, 1, "owner diagnostic fault site changed");
+  return result;
+}
+
 export function instrumentQueueFailures(code) {
   const sites = [];
   const transformed = code.replace(/\}\s+catch \{\n(\s+)((?:const failure = )?this\.#fail\("command_queue\.(executor|observer)_threw", (?:sequence|pending\.sequence)\);)/gu,

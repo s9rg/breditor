@@ -18,7 +18,7 @@ import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentFixtureProgress, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentOwnerFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentFixtureProgress, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 import {retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
@@ -129,6 +129,7 @@ let queueDiagnosticModules = 0;
 let projectionDiagnosticModules = 0;
 const validationDiagnosticModules = new Set();
 let routerDiagnosticModules = 0;
+let ownerDiagnosticModules = 0;
 let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
 let progressFixtureModules = 0;
@@ -147,6 +148,10 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
   if (id === join(consumer, "node_modules/@breditor/browser/dist/browser_event_router.js")) {
     routerDiagnosticModules++;
     return instrumentRouterFailures(code);
+  }
+  if (id === join(consumer, "node_modules/@breditor/browser/dist/browser_editor.js")) {
+    ownerDiagnosticModules++;
+    return instrumentOwnerFailures(code);
   }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/command_queue.js")) {
     queueDiagnosticModules++;
@@ -171,6 +176,7 @@ assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue dia
 assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "projection diagnostic module was not transformed exactly once");
 assert.equal(validationDiagnosticModules.size, queueDiagnosticsEnabled ? 2 : 0, "validation diagnostic modules were not transformed exactly once");
 assert.equal(routerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "router diagnostic module was not transformed exactly once");
+assert.equal(ownerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "owner diagnostic module was not transformed exactly once");
 assert.equal(progressFixtureModules, queueDiagnosticsEnabled ? 1 : 0, "progress fixture was not transformed exactly once");
 assert.equal(stressFixtureModules, ownerRepetitions === 3 ? 0 : 1, "stress fixture was not transformed exactly once");
 assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 : 1, "selection fixture was not transformed exactly once");
@@ -179,6 +185,7 @@ const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
+  ownerDiagnosticsEnabled: queueDiagnosticsEnabled,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
