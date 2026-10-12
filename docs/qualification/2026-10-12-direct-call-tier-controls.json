@@ -1,0 +1,16 @@
+{
+  "releaseQualified": false,
+  "faultResolved": false,
+  "control": "target/nested-list-reproductions/failure-0LXbgv/measurement.json",
+  "rebuilt": false,
+  "runs": [
+    {"report":"exact-replay-P8GIsv/replay.json","sha256":"a80b39c390ef254ee7e57dcc8492fe43e2dcec3548fb8e28448d3b8f5e89f52d","actualMode":"default","status":"failed","note":"Mistyped BREDITOR_WEBKIT_JS_TIER was ignored; report correctly records default. Run 1: 500 items, owner 4, forward node 1507, childCount undefined expected 1."},
+    {"report":"exact-replay-sK8LqZ/replay.json","sha256":"913392905848ff6aa58b301a4918f5600a18d2b0bfb188c8733c10c3085eed3f","requestedMode":"no-dfg","status":"passed","checks":13944910,"tierOverrideEffectVerified":false},
+    {"report":"exact-replay-Ai6Q70/replay.json","sha256":"b20d1110c69bd1844ebf0511c02022ac47a97494848a4275f977b694686cafe6","actualMode":"default","status":"passed","checks":13944910}
+  ],
+  "interpretation":"Default also passed after the requested no-DFG run. This comparison does not establish a tier-specific cause or qualify any fix. Requested overrides are not proof of a specific expression's execution tier.",
+  "toolingCorrection":"Reject BREDITOR_WEBKIT_JS_TIER with an explicit instruction to use BREDITOR_REPLAY_JSC_TIER; prevent silently mislabeled future comparisons.",
+  "nativeWait":"Previously sampled loader-startup jobs remain alive. Original fresh-cache candidate build and filtered test process have since emitted further output; no timeout-based restart or system-security change.",
+  "pushed":false,
+  "published":false
+}

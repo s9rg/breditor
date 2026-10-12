@@ -21,6 +21,7 @@ test("WebKit replay options are explicit, process-local and do not disable Wasm 
 });
 
 test("replay rejects invalid modes and hidden inherited tier overrides", () => {
+  assert.throws(() => webkitReplayTier({BREDITOR_WEBKIT_JS_TIER: "no-dfg"}), /use BREDITOR_REPLAY_JSC_TIER/);
   for (const mode of ["", "off", "NO-FTL", "no-wasm"]) {
     assert.throws(() => webkitReplayTier({BREDITOR_REPLAY_JSC_TIER: mode}));
   }

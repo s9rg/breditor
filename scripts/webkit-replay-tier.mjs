@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
  * These disable JS optimizing tiers, not the separately named Wasm JIT tiers.
  */
 export function webkitReplayTier(environment) {
+  assert.equal(environment.BREDITOR_WEBKIT_JS_TIER, undefined,
+    "BREDITOR_WEBKIT_JS_TIER is not supported; use BREDITOR_REPLAY_JSC_TIER");
   const mode = environment.BREDITOR_REPLAY_JSC_TIER ?? "default";
   assert.ok(["default", "no-ftl", "no-dfg"].includes(mode), "invalid replay JavaScript tier mode");
   for (const name of Object.keys(environment)) {
