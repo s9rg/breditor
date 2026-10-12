@@ -6,6 +6,8 @@ import {bridgeInvoke} from "./bridge.js";
 const output = document.getElementById("result")!;
 let progress = "initialization", checks = 0;
 const ownerRepetitions = 30;
+const getterSequence: string = "all";
+const walkRepetitions = 1;
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
   // Fixture references are finite unsigned integers, strings or undefined.
@@ -69,12 +71,15 @@ async function run():Promise<void> {
           const methods={childAt:view.childAt,nodeKind:view.nodeKind,elementType:view.elementType,childCount:view.childCount,
             text:view.text,formatCount:view.formatCount,headingLevel:view.headingLevel,listKind:view.listKind,orderedListStart:view.orderedListStart};
           same(view.nodeCount,expected.length,"node count");same(view.rootIndex,0,"root index");
-          for(const reverse of [false,true])for(let ordinal=0;ordinal<expected.length;ordinal++) {
+          for(let walk=0;walk<walkRepetitions;walk++)for(const reverse of [false,true])for(let ordinal=0;ordinal<expected.length;ordinal++) {
             const index=reverse?expected.length-ordinal-1:ordinal, row=expected[index]!,node=row.node;
-            progress=`${items} items, owner ${repetition}, ${reverse?"backward":"forward"} node ${index}`;
-            same(bridgeInvoke(methods.nodeKind,view,index),node.kind,"node kind");
-            same(bridgeInvoke(methods.elementType,view,index),node.kind==="element"?node.type:undefined,"element type");
+            progress=`${items} items, owner ${repetition}, walk ${walk}, ${reverse?"backward":"forward"} node ${index}`;
+            if(getterSequence!=="child-count") {
+              same(bridgeInvoke(methods.nodeKind,view,index),node.kind,"node kind");
+              same(bridgeInvoke(methods.elementType,view,index),node.kind==="element"?node.type:undefined,"element type");
+            }
             same(bridgeInvoke(methods.childCount,view,index),node.kind==="element"?row.children.length:undefined,"child count");
+            if(getterSequence!=="all")continue;
             same(bridgeInvoke(methods.text,view,index),node.kind==="text"?node.text:undefined,"text");
             same(bridgeInvoke(methods.formatCount,view,index),node.kind==="text"?0:undefined,"format count");
             same(bridgeInvoke(methods.headingLevel,view,index),node.kind==="element"?node.properties["breditor/level"]:undefined,"heading level");

@@ -1,0 +1,21 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "scope":"Original private packed Wasm. Same independently expected nested tree. ChildCount is the only per-node getter invoked in these reductions; nodeCount/rootIndex and factory setup remain.",
+  "failures":[
+    {"report":"target/nested-list-reproductions/failure-fNy8CL/measurement.json","sha256":"f17874df3c9aa57932a4f5aa98852d5eacad4ba066cb22a816717c5af6290556","run":4,"progress":"500 items, owner 26, backward node 113","actual":"undefined","expected":1,"sameValue":false},
+    {"report":"target/nested-list-reproductions/failure-DNACg3/measurement.json","sha256":"0ccbdd5a0262faba6d3356ddda06dd300d0d4345a9a3eb97bbaf089e1c0f2e74","run":4,"progress":"500 items, owner 17, walk 0, forward node 598","actual":"number 1","expected":"number 1","sameValue":true,"note":"The comparison check rejected; the failure-path captured SameValue check was true. Engine-level cause remains unproven."}
+  ],
+  "singleProjectionControls":[
+    {"fixture":"getter-probe-aLqH6H","sha256":"a6e5cfa1eeb3f7f1176f8a6616ff1b2f1c3624da8cfe458a193079737bd64895","ownersPerProcess":3,"walksPerProjection":100,"checks":4648100,"status":"passed"},
+    {"fixture":"getter-probe-aLqH6H/exact-replay-1HCOeR","sha256":"870fedcfce9b5d6f97934b45fdbb5a39ba1285be6335cdb9a1c65b3f8278d72e","checks":4648100,"status":"passed","rebuilt":false}
+  ],
+  "decisions":[
+    "Mixed string/number per-node getter sequences are not required for the failure",
+    "Repeated owner allocation is a hypothesis to investigate, not a proven root cause",
+    "Do not reinterpret green single-owner controls as release qualification",
+    "Native after-engine-drop contract remains pending in live session 39233"
+  ],
+  "pushed":false,
+  "published":false
+}

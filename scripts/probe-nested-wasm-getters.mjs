@@ -19,8 +19,13 @@ const repository=fileURLToPath(new URL("../",import.meta.url));
 const {record,path:packageRecord}=await readQualifiedPair(process.argv[2]);
 const tier=webkitReplayTier(process.env);assert.equal(tier.mode,"default");
 const ownerFlag=process.env.BREDITOR_GETTER_OWNERS??"30";
-assert.ok(["30","100","300"].includes(ownerFlag),"getter owners must be 30, 100 or 300");
+assert.ok(["1","30","100","300"].includes(ownerFlag),"getter owners must be 1, 30, 100 or 300");
 const ownerRepetitions=Number(ownerFlag);
+const getterSequence=process.env.BREDITOR_GETTER_SEQUENCE??"all";
+assert.ok(["all","shape","child-count"].includes(getterSequence),"invalid getter sequence");
+const walkFlag=process.env.BREDITOR_GETTER_WALKS??"1";
+assert.ok(["1","100"].includes(walkFlag),"getter walks must be 1 or 100");
+const walkRepetitions=Number(walkFlag);
 const fixture=await mkdtemp(join(record.consumer,"getter-probe-"));
 const rawTraceFlag=process.env.BREDITOR_GETTER_RAW_TRACE??"0";
 assert.ok(["0","1"].includes(rawTraceFlag));const rawTrace=rawTraceFlag==="1";
@@ -39,7 +44,9 @@ assert.ok(!(directCall&&(lastCapture||fixedArity||rawTrace||sentinelTreatment)),
 await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
 const originalMain=await readFile(join(fixture,"main.ts"),"utf8");
 assert.equal(originalMain.split("const ownerRepetitions = 30;").length,2);
-await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`));
+assert.equal(originalMain.split('const getterSequence: string = "all";').length,2);
+assert.equal(originalMain.split("const walkRepetitions = 1;").length,2);
+await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`).replace('const getterSequence: string = "all";',`const getterSequence: string = ${JSON.stringify(getterSequence)};`).replace("const walkRepetitions = 1;",`const walkRepetitions = ${walkRepetitions};`));
 // Explicitly separate diagnostic Wasm from the qualified packed control.
 let diagnosticWasmAssets;
 const diagnosticFiles=["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"];
@@ -83,7 +90,7 @@ await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sen
 assert.equal(transformedModules,rawTrace||sentinelTreatment||lastCapture?1:0,"getter experiment transform count");
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 const bundleAssets=Object.fromEntries(await Promise.all((await readdir(join(fixture,"bundle/assets"))).sort().map(async name=>[name,hash(await readFile(join(fixture,"bundle/assets",name)))])));
-const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions,runCount:10,editTarget:"root",bundleAssets,
+const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions,getterSequence,walkRepetitions,runCount:10,editTarget:"root",bundleAssets,
   packageRecord,tarballSha256:record.tarballSha256,
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,directCallBridgeTreatment:directCall,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,

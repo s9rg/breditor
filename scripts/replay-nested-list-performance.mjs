@@ -29,7 +29,7 @@ assert.ok(source.browserName === "webkit" || (source.browserName === "all" &&
   source.measurements?.some(run => run.browser === "webkit" && run.status === "failed")),
 "replay requires a WebKit run or a failed WebKit measurement from an all-engine run");
 if (!durable) assert.equal(source.fixture, dirname(sourcePath));
-assert.ok(Number.isSafeInteger(source.ownerRepetitions) && source.ownerRepetitions >= 3 && source.ownerRepetitions <= (source.fixtureKind === "nested-getter-probe" ? 300 : 30));
+assert.ok(Number.isSafeInteger(source.ownerRepetitions) && source.ownerRepetitions >= (source.fixtureKind === "nested-getter-probe" ? 1 : 3) && source.ownerRepetitions <= (source.fixtureKind === "nested-getter-probe" ? 300 : 30));
 const bundle = join(dirname(sourcePath), "bundle");
 assert.equal(await realpath(bundle), bundle);
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
