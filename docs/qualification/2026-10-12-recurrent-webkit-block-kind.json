@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "4d9dca3",
+  "releaseQualified": false,
+  "faultResolved": false,
+  "packageRecord": "target/nested-list-packages-j6nDXM/qualification.json",
+  "browserVersion": "WebKit 26.5",
+  "failures": [
+    {
+      "record": "target/nested-list-reproductions/failure-eDwgUp/measurement.json",
+      "sha256": "2455a53eb3a65e225dbce2f87f928cfd33a71badddd7ce2a3bbd3dc8b672e478",
+      "run": 5,
+      "phase": "500 items, repetition 0: undoMs",
+      "paragraphIndex": 634,
+      "firstRejection": "wasm_projection_adapter:338:projection.invalid_shape",
+      "terminalChain": "Invalid shape -> invalid projection update -> executor exception -> adapter faulted -> owner toolbarDispatchFailed."
+    },
+    {
+      "record": "target/nested-list-reproductions/failure-eDwgUp/exact-replay-9ESyUq/replay.json",
+      "sha256": "a58eb8349d9c627b218826994430ea0ae32cdff1fda74c27f7ddff4ea0e5f4f8",
+      "run": 2,
+      "phase": "500 items, repetition 1: restore",
+      "paragraphIndex": 1587,
+      "rebuilt": false,
+      "addedInstrumentation": false,
+      "firstRejection": "wasm_projection_adapter:338:projection.invalid_shape"
+    },
+    {
+      "record": "target/nested-list-reproductions/failure-ac6DHo/measurement.json",
+      "sha256": "b06d6406cf4fc0ea7884435f359e11d5287ceeceac1060359348d3440c4ecc13",
+      "run": 5,
+      "phase": "500 items, repetition 2: restore",
+      "paragraphIndex": 1587,
+      "blockType": "undefined",
+      "headingLevel": "undefined",
+      "nodeKind": "element",
+      "listMetadataAbsent": true,
+      "expectedIndex": 1587,
+      "firstRejection": "wasm_projection_adapter:338:projection.invalid_shape"
+    }
+  ],
+  "conclusion": "The same paragraph shape branch recurred from exact retained bytes during Undo and restoration. Explicit diagnostics confirm undefined blockType despite an element node at the expected index. Whether its conditional getter call was skipped or returned undefined remains unproven; a single-call marker now distinguishes those paths. No engine-specific root cause or production fix is asserted.",
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}

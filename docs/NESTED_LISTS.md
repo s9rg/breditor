@@ -1518,3 +1518,15 @@ cases with the original three-owner workload across ten fresh sessions.
 The [tracing record](qualification/2026-10-12-owner-fault-tracing.json) binds both
 reports. Neither run reproduced the fault; tracing may affect timing and does not
 prove a fix. Production behavior and shipping bundles remain unchanged.
+
+### October 12: recurring block-kind rejection isolated
+
+The same current-candidate paragraph-shape rejection now recurs during Undo and
+checkpoint restoration, including an exact-byte replay. Explicit operand tracing
+reports `blockType` and `headingLevel` as undefined while node kind is `element`,
+list metadata is absent, and the index matches the expected text-block index.
+The [recurrent failure record](qualification/2026-10-12-recurrent-webkit-block-kind.json)
+binds three failed reports. A disposable single-call marker distinguishes whether
+the conditional getter was skipped or returned undefined; that distinction and
+the root cause remain unproven. Production validation is unchanged, no fix is
+claimed, and this remains a release blocker.
