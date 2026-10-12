@@ -1,0 +1,25 @@
+{
+  "releasePerformanceQualified": false,
+  "measurement": "breditor-nested-list-consumer-7430NU/performance-jC1NR6/measurement.json",
+  "status": "measured",
+  "browser": "chromium",
+  "profile": "performance-jC1NR6/chromium-0.cpuprofile",
+  "profileSha256": "2a731d8830572474ca2858d1c91361301ad1e6905595a13ea3038897387c957c",
+  "durationMs": 3655.437,
+  "workload": "Actual packed candidate, nine root-size cases 10/100/500; grandchild edit, strong plus reviewed safe-link Boolean/string properties; edit/history/fresh-owner recovery assertions passed. CPU-profile build is diagnostic, not normal latency qualification.",
+  "sampledSelfMs": {
+    "nativeChildNodes": 317.967,
+    "mapNode": 154.638,
+    "mapExistingNestedListRoot": 112.505,
+    "canonicalSafeLinkHref": 104.065,
+    "selectionIntrinsics": 90.52,
+    "recipeElementMatches": 82.62,
+    "browserPresentationRecipesForFormatDetails": 78.598,
+    "canonicalDomAndMapsMatch": 77.565,
+    "decodeProjectionScalarWords": 46.425
+  },
+  "boundary": "Sampled self time across complete fixture, not per-action attribution or inclusive cost. Chromium evidence does not establish WebKit cost. DOM validation/mapping and link normalization warrant inspection; no validation skipped, no transport redesign inferred.",
+  "next": "Inspect repeated DOM-validation work and immutable expected-recipe computation; preserve actual-DOM checks, profile-generation correlation and hostile mutation defenses.",
+  "pushed": false,
+  "published": false
+}
