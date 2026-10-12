@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-12",
+  "releaseQualified": false,
+  "faultResolved": false,
+  "sourceControl": "target/nested-list-reproductions/failure-WsjQQ6/measurement.json",
+  "experiments": [
+    {
+      "record": "target/nested-list-reproductions/failure-WsjQQ6/bridge-probe-FaEPQ8/report.json",
+      "sha256": "8bfcbefef1f499e26f85bbec1596c9f33979af97cc2e43c86d5d5f0ad9158efd",
+      "checks": 100000,
+      "result": "passed",
+      "scope": "Numeric arguments encoded by a string-returning mock getter."
+    },
+    {
+      "record": "target/nested-list-reproductions/failure-WsjQQ6/bridge-probe-IQ6W9J/report.json",
+      "sha256": "dc4a84dd14e57a0077716bf6b3794e1cfc4caf48cef6518bca04f150e44ff169",
+      "checks": 200000,
+      "result": "passed",
+      "scope": "String- and number-returning mock getters."
+    },
+    {
+      "record": "target/nested-list-reproductions/failure-WsjQQ6/bridge-probe-EfsYxJ/report.json",
+      "sha256": "bc8c60adef35d311d31178910df9a9d74c265ec688263c5ba37257a214f8d375",
+      "checks": 200000,
+      "sessions": 10,
+      "result": "passed",
+      "javaScriptTierMode": "default",
+      "requestedOverrides": {},
+      "bridgeSha256": "57fdb8d9f5304656186788cceb86d91e7e42525082e8e4c1df6606691e988349",
+      "guardSha256": "990495c9545beaa1198b8aa98a1f35723744c16fea40ba4d685a37c2bbcdd04e",
+      "probeSha256": "5931ac867f4dba000686439a28e2d4494ad680c15b5732fafd3a442c6b625ba3"
+    }
+  ],
+  "method": "Exact inspected retained bridge and primitive-result guard; fractional warm-up followed by numeric parent/ordinal arguments, string encoding at the mock method and SameValue numeric return checks. Four-millisecond task yields. No Rust, Wasm or editor loaded.",
+  "interpretation": "The reduced bridge did not reproduce the fault in these bounded runs. This does not exonerate the bridge with real generated Wasm getters, reproduce the editor failure, establish an engine defect or validate a production fix. Next investigation must include the real getter boundary rather than change argument packing on assumption.",
+  "verification": {"scriptSyntax": "passed", "toolingTestsPassed": 177, "toolingTestsSkipped": 3},
+  "productionChangedByExperiment": false,
+  "controlModified": false,
+  "systemSettingsChanged": false,
+  "pushed": false,
+  "published": false
+}
