@@ -19,6 +19,7 @@ export function instrumentNestedParagraphResults(code) {
                 console.error("breditor nested paragraph operands", JSON.stringify({index, result,
                     sameReference: left === right, left, right,
                     internalMismatch: globalThis.__breditorParagraphMismatch ?? null,
+                    internalPropertyMismatch: globalThis.__breditorFormatPropertyMismatch ?? null,
                     heading: {left: scalar(left.headingLevel), right: scalar(right.headingLevel),
                         sameValue: Object.is(left.headingLevel, right.headingLevel)},
                     runCounts: {left: left.runs.length, right: right.runs.length},
@@ -82,7 +83,7 @@ export function instrumentParagraphComparison(code, headingComparison = "strict"
         return mismatch;
     };`);
   if (failureCapture) {
-    body = body.replace(start, start + "\n    globalThis.__breditorParagraphMismatch = undefined;");
+    body = body.replace(start, start + "\n    globalThis.__breditorParagraphMismatch = undefined;\n    globalThis.__breditorFormatPropertyMismatch = undefined;");
     const logging = 'console.error("breditor paragraph comparison mismatch", JSON.stringify({operand, left, right,';
     assert.equal(body.split(logging).length, 2, "paragraph diagnostic payload changed");
     body = body.replace(logging, 'globalThis.__breditorParagraphMismatch = JSON.stringify({operand, left, right,');
@@ -90,6 +91,26 @@ export function instrumentParagraphComparison(code, headingComparison = "strict"
       'sameValue: Object.is(headingLeft, headingRight)}}).slice(0, 4096);');
   }
   return code.slice(0, from) + body + code.slice(end);
+}
+
+/** Store exact typed scalar operands only on rejection; never override it. */
+export function instrumentFormatPropertyComparison(code) {
+  const start = "function formatDetailsEqual(left, right) {";
+  const expression = "leftProperty.value !== rightProperty.value";
+  assert.equal(code.split(start).length, 2, "format equality method changed");
+  assert.equal(code.split(expression).length, 2, "format property comparison changed");
+  return code.replace(expression, "diagnosticPropertyMismatch(leftProperty.value, rightProperty.value, formatIndex, propertyIndex)")
+    .replace(start, start + `
+    const diagnosticPropertyMismatch = (left, right, formatIndex, propertyIndex) => {
+        const mismatch = left !== right;
+        if (mismatch) {
+            try { globalThis.__breditorFormatPropertyMismatch = JSON.stringify({
+                formatIndex, propertyIndex, leftType: typeof left, rightType: typeof right,
+                left, right, sameValueAfterRejection: Object.is(left, right)
+            }).slice(0, 2048); } catch {}
+        }
+        return mismatch;
+    };`);
 }
 
 // Preserve the validator's bounded failure code before the adapter replaces it
