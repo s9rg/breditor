@@ -31,8 +31,25 @@
     "passedCases": 900,
     "conclusion": "A bounded diagnostic pass only. The same bundle previously passed 900 normal cases before its exact normal replay failed. Passing with the FTL option disabled does not establish causality, fix the library, qualify performance or provide a deployable workaround."
   },
-  "nextExperiment": "Normal WebKit with single-read typed start operands and failure-only typed block-index capture; unchanged installed candidate pair.",
-  "toolingVerification": {"passed": 171, "skipped": 3, "failed": 0},
+  "normalTypedOperandRun": {
+    "record": "target/nested-list-reproductions/failure-WsjQQ6/measurement.json",
+    "sha256": "5386a1716f7b73aeba16372b2281a043a13ca18adb35c0692bd1680f00c64246",
+    "result": "failed",
+    "run": 7,
+    "phase": "100 items, repetition 0: undoMs",
+    "firstRejection": "wasm_projection_adapter:302:projection.invalid_shape",
+    "interpretation": "Nested layout admission returned null before the new block-index or start-comparison traces were reached. No typed operands from those sites were observed. The explicit-index candidate remains incomplete."
+  },
+  "nextExperiment": {
+    "kind": "explicit bounded uninstrumented WebKit owner churn",
+    "record": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-k9LZAE/performance-MHpvVp/measurement.json",
+    "status": "running",
+    "ownersPerSize": 30,
+    "requestedSessions": 10,
+    "packageInstrumentation": false,
+    "transformation": "Only the fixture owner-loop bound changes; installed browser and Wasm code is not transformed. Module transform-count assertions enforce this. Correctness assertions remain intact; timings are not release qualification."
+  },
+  "toolingVerification": {"passed": 173, "skipped": 3, "failed": 0},
   "externalSource": "https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/OptionsList.h",
   "systemSettingsChanged": false,
   "shippingArtifactsWritten": false,

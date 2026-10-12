@@ -6,6 +6,8 @@
 // WebKit-only BREDITOR_PERF_QUEUE_DIAGNOSTICS=1 captures terminal queue/router
 // failures in a disposable bundle. Diagnostic runs are not timing evidence.
 // Diagnostic owner churn is bounded to 30 owners per size; ordinary runs use 3.
+// BREDITOR_PERF_STRESS=1 admits 4..30 owners with no package instrumentation.
+// Explicit stress verifies correctness, not ordinary latency or release budgets.
 // Chromium/Firefox CPU profiling is diagnostic-only; rendering traces and scheduling remain guarded off.
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
@@ -23,6 +25,7 @@ import {installExceptionConstructorProbe} from "./exception-constructor-probe.mj
 import {retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
 import {instrumentElementTypeReturn} from "./element-type-return-diagnostics.mjs";
+import {nestedListStressMode, uninstrumentedNestedStressPlugin} from "./nested-list-stress-mode.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -53,9 +56,11 @@ assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && 
   "queue diagnostics require WebKit full-editor mode without other instrumentation");
 assert.ok(!constructorProbeEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled && !queueDiagnosticsEnabled),
   "exception constructor probe requires WebKit full-editor mode without other instrumentation");
-const ownerRepetitions = Number(process.env["BREDITOR_PERF_OWNER_REPETITIONS"] ?? "3");
-assert.ok(Number.isSafeInteger(ownerRepetitions) && ownerRepetitions >= 3 && ownerRepetitions <= 100 && (ownerRepetitions === 3 || queueDiagnosticsEnabled),
-  "owner repetitions must be 3..100 and nondefault counts require queue diagnostics");
+const stressMode = nestedListStressMode({flag: process.env["BREDITOR_PERF_STRESS"] ?? "0",
+  owners: process.env["BREDITOR_PERF_OWNER_REPETITIONS"] ?? "3", browser: browserName,
+  diagnostics: queueDiagnosticsEnabled,
+  otherInstrumentation: coreOnly || diagnoseExport || cpuProfileEnabled || geckoProfileEnabled || renderingTraceEnabled || constructorProbeEnabled});
+const ownerRepetitions = stressMode.count;
 // Diagnostic task ordering, not a normal selection latency measurement.
 const selectionScheduling = process.env["BREDITOR_PERF_SELECTION_SCHEDULING"] ?? "synchronous";
 assert.ok(!renderingTraceEnabled &&
@@ -181,7 +186,8 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
     return code;
   }
 }};
-await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
+const stressPlugin = uninstrumentedNestedStressPlugin(fixture, ownerRepetitions, () => stressFixtureModules++);
+await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : stressMode.enabled ? [stressPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
 assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
 assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "projection diagnostic module was not transformed exactly once");
 assert.equal(validationDiagnosticModules.size, queueDiagnosticsEnabled ? 2 : 0, "validation diagnostic modules were not transformed exactly once");
@@ -196,6 +202,7 @@ const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
+  uninstrumentedStressEnabled: stressMode.enabled,
   ownerDiagnosticsEnabled: queueDiagnosticsEnabled,
   blockTypeCallMarkerEnabled: queueDiagnosticsEnabled && blockTypeCallMarker,
   diagnosticWasmNames: record.diagnosticNames === true,
