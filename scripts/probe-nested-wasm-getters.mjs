@@ -11,7 +11,7 @@ import {readQualifiedPair} from "./build-opt-in-nested-list-package.mjs";
 import {webkitReplayTier} from "./webkit-replay-tier.mjs";
 import {verifyFailureBundle,retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 import {waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
-import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn} from "./child-count-return-diagnostics.mjs";
+import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn,childCountUnsignedIndex} from "./child-count-return-diagnostics.mjs";
 import {DIRECT_GETTER_BRIDGE} from "./direct-getter-bridge.mjs";
 
 assert.equal(process.argv.length,3,"usage: node scripts/probe-nested-wasm-getters.mjs <private pair qualification.json>");
@@ -45,6 +45,9 @@ assert.ok(!(lastCapture&&(fixedArity||rawTrace||sentinelTreatment)),"last captur
 const directCallFlag=process.env.BREDITOR_GETTER_DIRECT_CALL??"0";
 assert.ok(["0","1"].includes(directCallFlag));const directCall=directCallFlag==="1";
 assert.ok(!(directCall&&(lastCapture||fixedArity||rawTrace||sentinelTreatment)),"direct calls are a separate experiment");
+const unsignedFlag=process.env.BREDITOR_GETTER_UNSIGNED_INDEX??"0";
+assert.ok(["0","1"].includes(unsignedFlag));const unsignedIndex=unsignedFlag==="1";
+assert.ok(!(unsignedIndex&&(directCall||lastCapture||fixedArity||rawTrace||sentinelTreatment||keepProjectionOwners)),"unsigned index is a separate experiment");
 await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
 const originalMain=await readFile(join(fixture,"main.ts"),"utf8");
 assert.equal(originalMain.split("const ownerRepetitions = 30;").length,2);
@@ -61,6 +64,7 @@ const diagnosticDirectory=process.env.BREDITOR_GETTER_RUST_DIAGNOSTIC;
 const candidateDirectory=process.env.BREDITOR_GETTER_WASM_CANDIDATE;
 assert.ok(!(diagnosticDirectory!==undefined&&candidateDirectory!==undefined),"diagnostic and candidate Wasm must be tested separately");
 const privateDirectory=diagnosticDirectory??candidateDirectory;
+assert.ok(!(unsignedIndex&&privateDirectory!==undefined),"unsigned index requires original packed Wasm");
 assert.ok(!(keepProjectionOwners&&(privateDirectory!==undefined||directCall||fixedArity||lastCapture||rawTrace||sentinelTreatment)),"owner retention is tested independently on original packed Wasm");
 assert.ok(!(directCall&&privateDirectory!==undefined),"direct-call experiment requires original packed Wasm");
 const explicitChildCountTransport=candidateDirectory!==undefined;
@@ -92,16 +96,16 @@ await writeFile(join(fixture,"bridge.js"),`${fixtureBridge}\n${guard}\nfunction 
 const types=spawnSync(process.execPath,[join(repository,"node_modules/typescript/bin/tsc"),"-p",join(fixture,"tsconfig.json")],{encoding:"utf8"});
 assert.equal(types.status,0,`${types.stdout}\n${types.stderr}`);
 let transformedModules=0;
-const plugin={name:"child-count-private-experiment",enforce:"pre",transform(code,id){if(id===wasmModule){transformedModules++;return lastCapture?captureLastChildCountReturn(code):rawTrace?instrumentChildCountReturn(code):childCountSentinelSameValue(code);}}};
-await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sentinelTreatment||lastCapture?[plugin]:[],build:{outDir:join(fixture,"bundle"),minify:true,target:"es2022",modulePreload:{polyfill:false}}});
-assert.equal(transformedModules,rawTrace||sentinelTreatment||lastCapture?1:0,"getter experiment transform count");
+const plugin={name:"child-count-private-experiment",enforce:"pre",transform(code,id){if(id===wasmModule){transformedModules++;return unsignedIndex?childCountUnsignedIndex(code):lastCapture?captureLastChildCountReturn(code):rawTrace?instrumentChildCountReturn(code):childCountSentinelSameValue(code);}}};
+await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sentinelTreatment||lastCapture||unsignedIndex?[plugin]:[],build:{outDir:join(fixture,"bundle"),minify:true,target:"es2022",modulePreload:{polyfill:false}}});
+assert.equal(transformedModules,rawTrace||sentinelTreatment||lastCapture||unsignedIndex?1:0,"getter experiment transform count");
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 const bundleAssets=Object.fromEntries(await Promise.all((await readdir(join(fixture,"bundle/assets"))).sort().map(async name=>[name,hash(await readFile(join(fixture,"bundle/assets",name)))])));
 const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions,getterSequence,treeShape,walkRepetitions,keepProjectionOwners,runCount:10,editTarget:"root",bundleAssets,
   packageRecord,tarballSha256:record.tarballSha256,
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,directCallBridgeTreatment:directCall,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
-  childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,
+  childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,unsignedChildCountIndexTreatment:unsignedIndex,
   diagnosticWasmAssets,explicitChildCountTransport,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();

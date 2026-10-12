@@ -1,0 +1,15 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "scope":"Private generated childCount glue only: admitted index coerced with >>>0 immediately at raw Wasm call. Original packed Wasm, sentinel decoding, getter count and fixture expectations unchanged. Plain-paragraph, child-count-only reduction.",
+  "productionWarning":"Not validation. Invalid, fractional, negative or wider inputs must still be rejected by the browser adapter. Do not deploy a coercion to admit invalid indices.",
+  "results":[
+    {"fixture":"getter-probe-B3N3Jm","sha256":"be0152de3b1c38ef79ebcb1175f03df11d9b6325caa4d62c59dbc6c41b8530d9","status":"passed","processes":10,"checks":736510},
+    {"fixture":"getter-probe-B3N3Jm/exact-replay-8nMvGS","sha256":"64b5da7e562d701b817a7b3d478b9b97c0722bb8e7ca51489e842b5c0b71d58e","status":"passed","processes":10,"checks":736510,"rebuilt":false}
+  ],
+  "unitCoverage":"One original raw call and sampled admitted indices through u32::MAX, zero/one/absence return preservation; repeated transform rejected. All tooling tests passed.",
+  "interpretation":"Green experimental and exact replay runs, not proof of a causal fix. Unchanged controls previously also passed ten processes. Higher-stress comparison and actual fault-side Rust input/result still needed.",
+  "shippingChanged":false,
+  "pushed":false,
+  "published":false
+}

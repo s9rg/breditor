@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn} from "./child-count-return-diagnostics.mjs";
+import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn,childCountUnsignedIndex} from "./child-count-return-diagnostics.mjs";
+
+test("unsigned-index experiment preserves every sampled admitted index and one raw call",()=>{
+  const source="class View{constructor(){this.__wbg_ptr=17}childCount(e){let t=$.breditorprojection_childCount(this.__wbg_ptr,e);return t===2**53-1?void 0:t}}";
+  const changed=childCountUnsignedIndex(source);
+  for(const index of [0,1,113,488,863,0x7fffffff,0x80000000,0xffffffff])for(const raw of [0,1,9007199254740991]){
+    const calls=[];
+    const view=new Function("$",changed+";return new View();")({breditorprojection_childCount(...args){calls.push(args);return raw;}});
+    assert.ok(Object.is(view.childCount(index),raw===9007199254740991?undefined:raw));
+    assert.deepEqual(calls,[[17,index]]);
+  }
+  assert.throws(()=>childCountUnsignedIndex(changed));
+});
 
 test("last-value capture preserves one call and formats only when read",()=>{
   const source="class View{constructor(){this.__wbg_ptr=17}childCount(e){let t=$.breditorprojection_childCount(this.__wbg_ptr,e);return t===2**53-1?void 0:t}}";

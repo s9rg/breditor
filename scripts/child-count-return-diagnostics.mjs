@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
 
+/** Private valid-index representation experiment, not validation or a retry. */
+export function childCountUnsignedIndex(code) {
+  const expression=/childCount\(([\w$]+)\)\{let ([\w$]+)=([\w$]+)\.breditorprojection_childCount\(this\.__wbg_ptr,\1\);return \2===2\*\*53-1\?void 0:\2\}/gu;
+  assert.equal([...code.matchAll(expression)].length,1,"generated childCount index wrapper changed");
+  return code.replace(expression,(_,index,raw,wasm)=>`childCount(${index}){let ${raw}=${wasm}.breditorprojection_childCount(this.__wbg_ptr,${index}>>>0);return ${raw}===2**53-1?void 0:${raw}}`);
+}
+
 /** Minimal private capture: primitive assignments only on the getter hot path.
  * Formatting happens only when the fixture fails. One original Wasm call.
  */
