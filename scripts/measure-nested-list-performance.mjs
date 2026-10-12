@@ -26,6 +26,7 @@ import {retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
 import {instrumentElementTypeReturn} from "./element-type-return-diagnostics.mjs";
 import {nestedListStressMode, uninstrumentedNestedStressPlugin} from "./nested-list-stress-mode.mjs";
+import {tree as artifactTree} from "./build-opt-in-nested-list-package.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -52,6 +53,9 @@ assert.ok(["0", "1"].includes(blockTypeCallMarkerValue), "invalid block call mar
 assert.ok(blockTypeCallMarkerValue === "1" || queueDiagnosticsEnabled, "disabling the block call marker requires queue diagnostics");
 const blockTypeCallMarker = blockTypeCallMarkerValue === "1";
 const constructorProbeEnabled = process.env["BREDITOR_PERF_EXCEPTION_PROBE"] === "1";
+const wordCandidateFlag=process.env.BREDITOR_PERF_WORD_CANDIDATE??"0";
+assert.ok(["0","1"].includes(wordCandidateFlag));const wordCandidate=wordCandidateFlag==="1";
+assert.ok(!wordCandidate||(!coreOnly&&!diagnoseExport&&!cpuProfileEnabled&&!geckoProfileEnabled&&!renderingTraceEnabled&&!constructorProbeEnabled&&!queueDiagnosticsEnabled),"word candidate cannot combine with other instrumentation");
 assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
   "queue diagnostics require WebKit full-editor mode without other instrumentation");
 assert.ok(!constructorProbeEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled && !queueDiagnosticsEnabled),
@@ -100,6 +104,24 @@ const fixture = await mkdtemp(join(consumer, "performance-"));
 await cp(join(repository, coreOnly ? "scripts/fixtures/nested-list-core-performance" : "scripts/fixtures/nested-list-performance"), fixture, {recursive: true});
 await cp(join(consumer, "tsconfig.json"), join(fixture, "tsconfig.json"));
 await cp(join(consumer, "package.json"), join(fixture, "package.json"));
+let privateWordWasmTree;
+if(wordCandidate){
+  const source=join(repository,"target/nested-child-count-words/pkg");
+  assert.equal(await realpath(source),source);
+  const destination=join(fixture,"private-word-wasm");await cp(source,destination,{recursive:true});
+  privateWordWasmTree=await artifactTree(destination);
+  const declarations=await readFile(join(destination,"breditor_wasm.d.ts"),"utf8");
+  for(const name of ["childCountWords","childAtWords","formatCountWords","formatPropertyCountWords","headingLevelWords","orderedListStartWords"])assert.ok(declarations.includes(name+"("),"missing word scalar: "+name);
+  const adapter=await readFile(join(repository,"scripts/private-word-projection-adapter.mjs"),"utf8");
+  assert.equal(adapter.split('./fixtures/nested-getter-probe/word-count.js').length,2);
+  await writeFile(join(fixture,"word-adapter.mjs"),adapter.replace('./fixtures/nested-getter-probe/word-count.js','./word-count.js'));
+  await cp(join(repository,"scripts/fixtures/nested-getter-probe/word-count.js"),join(fixture,"word-count.js"));
+  await writeFile(join(fixture,"word-adapter.d.mts"),'export function installPrivateWordProjectionAdapter(api: {BreditorProjection: {prototype: object}}): () => void;\n');
+  const mainPath=join(fixture,"main.ts"),main=await readFile(mainPath,"utf8");
+  assert.equal(main.split('from "@breditor/wasm"').length,2);
+  assert.equal(main.split('await initialize();').length,2);
+  await writeFile(mainPath,'import {installPrivateWordProjectionAdapter} from "./word-adapter.mjs";\n'+main.replace('from "@breditor/wasm"','from "./private-word-wasm/breditor_wasm.js"').replace('await initialize();','await initialize(); installPrivateWordProjectionAdapter(wasm);'));
+}
 const types = spawnSync(process.execPath, [join(repository, "node_modules/typescript/bin/tsc"), "-p", join(fixture, "tsconfig.json")], {encoding: "utf8"});
 assert.equal(types.status, 0, `${types.stdout}\n${types.stderr}`);
 // Diagnostic transforms affect only this disposable bundle, never the installed
@@ -200,9 +222,13 @@ assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
 const measurements = [];
 const output = join(fixture, "measurement.json");
-const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
+const save = async status => {
+  if(wordCandidate)assert.deepEqual(await artifactTree(join(fixture,"private-word-wasm")),privateWordWasmTree,"private word Wasm changed during qualification");
+  return writeFile(output, JSON.stringify({status, diagnosticInstrumentation: wordCandidate || diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
+  wordCandidate,privateWordWasmTree,installedPackedWasmUsed:!wordCandidate,
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
-  uninstrumentedStressEnabled: stressMode.enabled,
+  uninstrumentedStressEnabled: stressMode.enabled && !wordCandidate,
+  ownerStressEnabled: stressMode.enabled,
   ownerDiagnosticsEnabled: queueDiagnosticsEnabled,
   blockTypeCallMarkerEnabled: queueDiagnosticsEnabled && blockTypeCallMarker,
   diagnosticWasmNames: record.diagnosticNames === true,
@@ -215,10 +241,10 @@ const save = async status => writeFile(output, JSON.stringify({status, diagnosti
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
   packageRecord: recordPath, fixture, tarballSha256: record.tarballSha256,
   environment: {platform: platform(), arch: arch(), cpu: cpus()[0]?.model}, measurements,
-  methodology: coreOnly
+  methodology: wordCandidate ? `Private word-transport integration experiment. Installed qualified packed browser runtime, copied unqualified word Wasm and prototype adapter, minified disposable consumer. ${ownerRepetitions} owners per size, edit target ${editTarget}. Exact document/selection and redo recovery assertions retained. Not ordinary latency, a fully packed Wasm candidate, native input or release qualification.` : coreOnly
     ? "One 5-item warm-up followed by three independent raw engines at each of 10/100/500 ordered items, every tenth item a heading, identical text to the DOM fixture. Installed packed Wasm, production bundle, headless browser, no editor DOM or browser owner. Raw synchronous calls include observation acquisition/disposal but exclude returned-handle inspection/disposal, except JSON exports which include takeValue and disposal. Action-state cold, exact-hit and post-edit refresh measured separately with full status/revision assertions. Commands pass false for history-group closure and do not call the result's projectionUpdate() readback; projection handle acquisition is a separate span, not full node readback or DOM rendering. Profile compilation once per process, no autosave/layout. Exact document/selection and undo/reload/redo assertions outside spans. Diagnostic decomposition, not an additive subtraction from browser timings or release performance qualification."
     : `One 5-item warm-up followed by ${ownerRepetitions} independent editor owners at each of 10/100/500 ordered root items, every tenth item a heading with a bullet-list child and ordered-list grandchild, about 75 UTF-16 units per root item. Edit target: ${editTarget}. Installed packed artifacts, production bundle, 1280x960 headless browser. Wall-clock spans include a forced layout read. Selection scheduling: ${selectionScheduling}; nondefault selection spans include task waits and are not comparable latency measurements. No autosave. Full selection, document and redo recovery assertions outside measured spans; initialization fetch/compile measured once separately. Nondefault owner count is diagnostic same-page churn, not normal timing. Not OS input, statistical p95, memory or multi-device performance qualification.`,
-}, null, 2)+"\n");
+}, null, 2)+"\n");};
 console.log(JSON.stringify({output}));
 await save("running");
 try {

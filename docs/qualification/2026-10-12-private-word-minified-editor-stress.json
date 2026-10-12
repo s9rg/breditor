@@ -1,0 +1,17 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "status":"running",
+  "session":78602,
+  "measurement":"breditor-nested-list-consumer-k9LZAE/performance-J7ByzU/measurement.json",
+  "configuration":{"browser":"webkit","freshProcesses":10,"ownersPerSize":30,"sizes":[10,100,500],"editTarget":"root","minified":true,"wordCandidate":true},
+  "verifiedProgressAtCheckpoint":{"completedProcesses":9,"completedEditorOwners":810,"observedFailures":0},
+  "scope":"Verified installed private packed browser runtime, copied unqualified word Wasm and diagnostic prototype adapter. Full fixture selection, document, Undo/Redo and fresh-owner V7 recovery assertions retained. Not an entirely packed candidate or normal latency qualification.",
+  "admission":"Original archive/installed artifacts checked; candidate copied only into disposable fixture; recursive candidate-tree hashes checked on every measurement save. No shipping directories changed.",
+  "setupCorrection":"Initial flat directory hash rejected generated snippets directory before browser launch; recursive artifact admission fixed it. Excluded from editor fault counts.",
+  "reportBoundary":"Live run began before uninstrumentedStressEnabled label correction; wordCandidate=true and diagnosticInstrumentation=true identify it as a diagnostic candidate. Timings do not qualify release budgets.",
+  "toolingTests":"final suite passed including invalid/conflicting candidate-mode rejection before artifact admission",
+  "next":"Poll the same live session, retain any failure, then exact-replay completed bytes and cover grandchild edits. No timeout-based restart.",
+  "pushed":false,
+  "published":false
+}
