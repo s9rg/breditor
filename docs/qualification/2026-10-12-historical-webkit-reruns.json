@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "cf40b0e",
+  "historicalProjectionFaultResolved": false,
+  "releaseQualified": false,
+  "packageRecord": "target/nested-list-restored-X5oVrw/qualification.json",
+  "historicalLibrariesRebuilt": false,
+  "originalFailedJavaScriptBundleRecovered": false,
+  "originalBrowserEnvironmentReproduced": false,
+  "browserVersion": "WebKit 26.5",
+  "tarballSha256": {
+    "browser": "e4e6b2a2d814282f286290b8fa279adc09dcd252746742e7c8ebc6e9542b524c",
+    "wasm": "a3a3c80629ffee40f38f480d3b30bcc84157cb114b5925609da51f007fe956a9"
+  },
+  "diagnosticAttempt": {
+    "fixture": "breditor-nested-list-consumer-pFkhCS/performance-2qpvot",
+    "measurementSha256": "fdcf51bb1f2f4f2680d2e3044c3bc6707acc55db7503ae88d292640bf0ea08bf",
+    "runs": 1,
+    "ownersPerSize": 30,
+    "casesPassed": 90,
+    "capturedDiagnostics": [],
+    "startedAtUtc": "2026-10-12T08:39:03.668Z",
+    "finishedAtUtc": "2026-10-12T08:39:37.160Z",
+    "fixtureWaitWallMs": 33492,
+    "exitCode": 0
+  },
+  "uninstrumentedAttempt": {
+    "fixture": "breditor-nested-list-consumer-pFkhCS/performance-s9o3vR",
+    "measurementSha256": "3ccbcf4d9025b2e1874c3e5ea8d190d3befb1d65312c7338cc9f2e8ed0ad2d34",
+    "runs": 10,
+    "ownersPerSize": 3,
+    "casesPassed": 90,
+    "capturedDiagnostics": [],
+    "startedAtUtc": "2026-10-12T08:40:21.425Z",
+    "finishedAtUtc": "2026-10-12T08:41:05.944Z",
+    "fixtureWaitWallMsByRun": [3727, 3803, 3708, 3791, 3797, 3746, 3832, 3797, 3702, 3731],
+    "exitCode": 0
+  },
+  "caseScope": "Root edits at 10/100/500 nested items, exact selection/document assertions, undo, checkpoint, fresh-owner recovery and redo.",
+  "interpretation": "The fault did not recur in these bounded attempts. Fresh fixture code and the current browser environment are not an exact replay of the lost original failure. No fix or release latency qualification is claimed.",
+  "releasePerformanceQualified": false,
+  "powerSettingsChanged": false,
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}

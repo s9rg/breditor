@@ -1398,3 +1398,18 @@ loader startup before Rust tests ran, then passed. No security or power settings
 were changed. This closes the pending feature integration/doctest run, not the
 historical WebKit fault, latest-candidate native checks, or size/latency release
 gates. No shipping artifacts, push or publication changes occur.
+
+### October 12: historical WebKit reruns after full-core completion
+
+The retained historical libraries passed 90 root edit/history/recovery cases in
+one diagnostic session with 30 owners per size, followed by 90 uninstrumented
+cases across ten fresh WebKit sessions. Both commands exit 0; no rejection was
+captured. The [rerun record](qualification/2026-10-12-historical-webkit-reruns.json)
+binds package and measurement hashes and absolute timestamps.
+
+These use current fixture code and WebKit 26.5, not the lost original failed
+JavaScript bundle or a proven identical historical browser environment. The
+older projection fault remains unresolved: bounded green runs do not identify
+its cause or prove a fix. Neither run qualifies release latency or transfers
+native evidence to the latest candidate. No power settings or shipping artifacts
+were changed; nothing was pushed or published.
