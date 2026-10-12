@@ -59,7 +59,32 @@
       "firstRejection": "wasm_projection_adapter:325:projection.invalid_shape",
       "interpretation": "The candidate failed at its new early paragraphIndex versus expectedIndex branch, rather than the later type/metadata branch. No index operand values were captured in this run. The explicit branch is not a complete fix; failure-only scalar capture has been added for the next diagnostic run."
     },
-    "exactControlReplay": "pending"
+    "highChurnWithIndexCapture": {
+      "record": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-k9LZAE/performance-T9dkc6/measurement.json",
+      "sha256": "d7cdaabafc91d19142a7a6fbaf0f2cbcad5f0491f0004107f4efce9f701286e3",
+      "sessions": 10,
+      "completedCases": 900,
+      "result": "passed with no diagnostics; did not reproduce the previous candidate failure and does not supersede it"
+    },
+    "exactControlReplay": {
+      "record": "target/nested-list-reproductions/failure-7xkaOG/exact-replay-gt61Wu/replay.json",
+      "sha256": "bae33c524290645f54adeeb3ed049ea20fe7ddd643ceb0ba9881745b19ac6c9e",
+      "result": "failed in run 2",
+      "phase": "500 items, repetition 0: restore",
+      "rebuilt": false,
+      "addedInstrumentation": false,
+      "paragraphOrdinal": 157,
+      "paragraphIndex": 501,
+      "expectedIndex": 501,
+      "blockType": "breditor/paragraph",
+      "interpretation": "Shape rejection recurred with a valid type and equal JSON-rendered indices. The diagnostic has no evaluated list metadata or node-kind operands, consistent with short-circuit rejection at the index comparison. Scalar runtime types were not captured in this control; an engine-specific root cause is not proven."
+    },
+    "optInArchive": {
+      "assembly": "target/nested-list-opt-in-eWZ6Ee/assembly.json",
+      "archiveSha256": "28b673c4380bba01bdbf41b9e20db9fca112c38d6a6bb9e7630ae02a6147679d",
+      "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-opt-in-consumer-IAniLT",
+      "result": "Node, strict TypeScript and all three browser engines passed keyboard and mixed-history fresh-owner recovery checks. Browser-dispatched keys, not physical IME or VoiceOver."
+    }
   },
   "openGates": ["intermittent fault qualification", "current-artifact native input and clipboard", "accepted opt-in size and latency budgets"],
   "shippingArtifactsWritten": false,
