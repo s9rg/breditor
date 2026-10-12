@@ -11,6 +11,7 @@ import {verifyFailureBundle, retainNestedListReplayFailure} from "./retain-neste
 import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion, waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
 import {webkitReplayTier} from "./webkit-replay-tier.mjs";
 import {replayBrowserName} from "./replay-browser.mjs";
+import {nestedPerformanceReplayQuery} from "./nested-performance-replay-query.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
 const replayTier = webkitReplayTier(process.env);
@@ -25,6 +26,7 @@ if (!durable) assert.match(relative(temporaryRoot, sourcePath), /^breditor-neste
 await verifyFailureBundle(sourcePath, manifest);
 const sourceBytes = await readFile(sourcePath);
 const source = JSON.parse(sourceBytes);
+const workloadQuery = nestedPerformanceReplayQuery(source);
 if (!durable && dirname(sourcePath).split("/").at(-1).startsWith("getter-probe-")) {
   assert.equal(source.fixtureKind, "nested-getter-probe", "getter path requires its explicit fixture kind");
 }
@@ -75,9 +77,7 @@ try {
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
       page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
       page.on("pageerror", error => {if (result.pageErrors.length < 100) result.pageErrors.push(String(error));});
-      const query = new URLSearchParams({editTarget: source.editTarget ?? "root"});
-      if (source.formatted === true) query.set("formatted", "1");
-      await page.goto(`http://127.0.0.1:${address.port}/?${query}`);
+      await page.goto(`http://127.0.0.1:${address.port}/?${workloadQuery}`);
       if (source.fixtureKind === "nested-getter-probe") await waitForTerminalFixtureCompletion(page);
       else await waitForFixtureCompletion(page);
       const element = page.locator("#result");
