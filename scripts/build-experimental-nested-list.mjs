@@ -12,21 +12,12 @@ import { checkNestedListDeclarations } from "./check-nested-list-declarations.mj
 import { assertNoWasmHostPathLeaks } from "./wasm-path-leaks.mjs";
 import { nonCustomWasmBytes, retainWasmCustomSections, wasmFunctionNames, withWasmFunctionNames } from "./wasm-function-names.mjs";
 import {rewriteProjectionWordBindings} from "./projection-word-bindings.mjs";
+import {nestedListBuildTransport} from "./nested-list-build-transport.mjs";
 
 assert.ok(process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === "--diagnostic-names"), "only optional --diagnostic-names is supported");
 const diagnosticNames = process.argv[2] === "--diagnostic-names";
-const wordFlag = process.env.BREDITOR_NESTED_WORD_CANDIDATE ?? "0";
-assert.ok(["0", "1"].includes(wordFlag), "BREDITOR_NESTED_WORD_CANDIDATE must be 0 or 1");
-const privateScalarWords = wordFlag === "1";
-assert.ok(!privateScalarWords || !diagnosticNames, "word candidate cannot add diagnostic names");
-const bindingFlag = process.env.BREDITOR_NESTED_WORD_BINDINGS ?? "0";
-assert.ok(["0", "1"].includes(bindingFlag), "BREDITOR_NESTED_WORD_BINDINGS must be 0 or 1");
-const privateWordBindings = bindingFlag === "1";
-assert.ok(!privateWordBindings || privateScalarWords, "word bindings require word candidate");
-const integerFlag = process.env.BREDITOR_NESTED_INTEGER_WORDS ?? "0";
-assert.ok(["0", "1"].includes(integerFlag), "BREDITOR_NESTED_INTEGER_WORDS must be 0 or 1");
-const privateIntegerWords = integerFlag === "1";
-assert.ok(!privateIntegerWords || privateScalarWords, "integer words require scalar word candidate");
+const {privateScalarWords, privateWordBindings, privateIntegerWords} =
+  nestedListBuildTransport(process.env, {diagnosticNames});
 // Explicit experimental override: keep the production profile and its cache
 // untouched, and record the optimization choice in qualification evidence.
 const optLevel = process.env.BREDITOR_WASM_SIZE_OPT ?? "s";
