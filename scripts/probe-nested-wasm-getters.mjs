@@ -10,7 +10,7 @@ import {webkit} from "playwright-core";
 import {readQualifiedPair} from "./build-opt-in-nested-list-package.mjs";
 import {webkitReplayTier} from "./webkit-replay-tier.mjs";
 import {verifyFailureBundle,retainNestedListFailure} from "./retain-nested-list-failure.mjs";
-import {waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
+import {readFixtureFailureState,waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
 import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn,childCountUnsignedIndex} from "./child-count-return-diagnostics.mjs";
 import {DIRECT_GETTER_BRIDGE} from "./direct-getter-bridge.mjs";
 
@@ -133,10 +133,10 @@ console.log(JSON.stringify({fixture}));
 const server=await preview({configFile:false,root:fixture,logLevel:"warn",build:{outDir:join(fixture,"bundle")},preview:{host:"127.0.0.1",port:0,strictPort:true}});
 try{
   for(let run=0;run<10;run++){
-    let browser;const result={run,status:"running",pageErrors:[]};report.runs.push(result);
+    let browser, page;const result={run,status:"running",pageErrors:[]};report.runs.push(result);
     try{
       browser=await webkit.launch({env:tier.browserEnvironment});result.version=browser.version();
-      const page=await browser.newPage();page.on("pageerror",error=>{if(result.pageErrors.length<16)result.pageErrors.push(String(error));});
+      page=await browser.newPage();page.on("pageerror",error=>{if(result.pageErrors.length<16)result.pageErrors.push(String(error));});
       await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/`);
       await waitForTerminalFixtureCompletion(page,60000);
       result.fixtureStatus=await page.locator("#result").getAttribute("data-status");result.details=await page.locator("#result").textContent();
@@ -145,7 +145,13 @@ try{
       assert.equal(details.owners,String(3*ownerRepetitions));
       assert.equal(details.cleanupCompleted,true);
       assert.equal(details.retainedOwnerCount,String(keepProjectionOwners?6*ownerRepetitions:0));result.status="passed";
-    }catch(error){result.status="failed";result.error=String(error);}
+    }catch(error){
+      result.status="failed";result.error=String(error);
+      // Preserve the failed observation before closing the page. This bounded
+      // read does not retry the probe or promote a late result to a pass.
+      try {result.failureState=await readFixtureFailureState(page);}
+      catch(captureError){result.failureStateCaptureError=String(captureError);}
+    }
     finally{await browser?.close();await save();}
     console.log(JSON.stringify({run,status:result.status,details:result.details}));if(result.status==="failed")break;
   }

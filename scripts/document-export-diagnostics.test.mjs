@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import test from "node:test";
-import {instrumentDocumentExportRead} from "./document-export-diagnostics.mjs";
+import {instrumentContentSnapshotComparison,instrumentDocumentExportRead} from "./document-export-diagnostics.mjs";
 
 test("document read attribution preserves exact result and one correlation", () => {
   const source = `class Owner {
@@ -40,4 +40,22 @@ test("current generated adapter admits exact diagnostic sites; drift rejects", (
   const source = readFileSync(new URL("../packages/breditor-browser/dist/wasm_command_adapter.js", import.meta.url), "utf8");
   assert.ok(instrumentDocumentExportRead(source).includes("projection-correlation"));
   assert.throws(() => instrumentDocumentExportRead(source.replace("return consumed.ok &&", "return false &&")));
+});
+
+test("snapshot diagnosis preserves short-circuit and exact getter counts", () => {
+  const source = "return left.lineage === right.lineage && left.revision === right.revision;";
+  for (const [lineage, revision, expected, revisionReads] of [
+    ["a", "1", true, 1], ["b", "1", false, 0], ["a", "2", false, 1],
+  ]) {
+    const reads = {leftLineage:0,rightLineage:0,leftRevision:0,rightRevision:0}, logs=[];
+    const left = {get lineage(){reads.leftLineage++;return "a";},get revision(){reads.leftRevision++;return "1";}};
+    const right = {get lineage(){reads.rightLineage++;return lineage;},get revision(){reads.rightRevision++;return revision;}};
+    const compare = Function("left","right","console",instrumentContentSnapshotComparison(source));
+    assert.equal(compare(left,right,{error:(...args)=>logs.push(args)}),expected);
+    assert.deepEqual(reads,{leftLineage:1,rightLineage:1,leftRevision:revisionReads,rightRevision:revisionReads});
+    assert.equal(logs.length,expected?0:1);
+  }
+  const generated=readFileSync(new URL("../packages/breditor-browser/dist/browser_editor.js",import.meta.url),"utf8");
+  assert.ok(instrumentContentSnapshotComparison(generated).includes("breditor content snapshot rejection"));
+  assert.throws(()=>instrumentContentSnapshotComparison("return true;"));
 });

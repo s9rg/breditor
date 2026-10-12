@@ -32,3 +32,18 @@ export function instrumentDocumentExportRead(code) {
             return invalidWasmDocumentJsonReadResult();`);
   return code.slice(0, from) + body + code.slice(end);
 }
+
+/** Preserve the original short-circuit and each getter's single evaluation. */
+export function instrumentContentSnapshotComparison(code) {
+  const expression = "return left.lineage === right.lineage && left.revision === right.revision;";
+  assert.equal(code.split(expression).length, 2, "snapshot comparison changed");
+  return code.replace(expression, `let leftLineage, rightLineage, leftRevision, rightRevision;
+    const result = (leftLineage = left.lineage) === (rightLineage = right.lineage) &&
+        (leftRevision = left.revision) === (rightRevision = right.revision);
+    if (!result) {
+        try { console.error("breditor content snapshot rejection", JSON.stringify({
+            leftLineage, rightLineage, leftRevision, rightRevision
+        }).slice(0, 2048)); } catch {}
+    }
+    return result;`);
+}
