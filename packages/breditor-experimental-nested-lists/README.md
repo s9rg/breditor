@@ -10,7 +10,21 @@ node scripts/build-experimental-nested-list.mjs
 node scripts/check-experimental-nested-list-packages.mjs target/nested-list-candidate-XXXXXX
 node scripts/build-opt-in-nested-list-package.mjs target/nested-list-packages-XXXXXX/qualification.json
 node scripts/check-opt-in-nested-list-package.mjs target/nested-list-opt-in-XXXXXX/assembly.json
+node scripts/measure-opt-in-nested-list-size.mjs target/nested-list-opt-in-XXXXXX/assembly.json
 ```
+
+The plain build command above still selects the legacy projection transport.
+The current private word-transport qualification uses all three explicit flags:
+
+```sh
+BREDITOR_NESTED_WORD_CANDIDATE=1 BREDITOR_NESTED_WORD_BINDINGS=1 BREDITOR_NESTED_INTEGER_WORDS=1 node scripts/build-experimental-nested-list.mjs
+```
+
+Then use that candidate's printed directory in the remaining commands. Do not
+transfer a word-candidate pass to a legacy build, or vice versa. This transport
+remains a private qualification candidate, not an approved release recipe.
+The size command verifies the archive, package tree, consumer report and emitted
+Wasm identities; it measures all consumer assets without approving a ceiling.
 
 Import `BreditorBrowserEditor` and `BreditorNestedListBrowserEditorOptions` from
 `@breditor/experimental-nested-lists`, initialize the engine from its `/wasm`
