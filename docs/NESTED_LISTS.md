@@ -1482,3 +1482,14 @@ Long command wall time includes native loader delays and doctest compilation;
 it is not editor performance evidence. Historical WebKit, current-archive native
 qualification, and explicit size/latency acceptance remain open. No shipping
 bundles or system settings changed; nothing was pushed or published.
+
+### October 12: current reframe WebKit stress check
+
+The exact installed `j6nDXM` pair passes 90 root editing/history/recovery cases
+across ten fresh WebKit 26.5 sessions with no captured diagnostics. Thirty
+500-item edit samples have median 218.5 ms and nearest-rank sample p95 230 ms.
+The [stress record](qualification/2026-10-12-current-reframe-webkit-stress.json)
+binds the measurement hash and scope. This does not identify or resolve the
+historical fault, qualify native input, or establish release latency acceptance.
+The unaccepted proposed 100 ms target is not met. No shipping bundles, push or
+publication changes occur.
