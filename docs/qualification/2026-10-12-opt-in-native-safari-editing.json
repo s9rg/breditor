@@ -1,0 +1,26 @@
+{
+  "releaseQualified":false,
+  "nativeQualificationComplete":false,
+  "archive":"target/nested-list-opt-in-eWZ6Ee/breditor-experimental-nested-lists-0.3.0-alpha.22.tgz",
+  "archiveSha256":"28b673c4380bba01bdbf41b9e20db9fca112c38d6a6bb9e7630ae02a6147679d",
+  "fixtureSha256":"fb8f06eaa88bfab12fbb23b03071f0c6357e9436ac6bd2ff360bcd0901e66c85",
+  "nativeBundle":"breditor-opt-in-consumer-IAniLT/native-bundle-NCo6Ew",
+  "nativeBundleTreeSha256":"a3a74f740a06e1cba79f1fc02d550cf76560168e7c059e26dc02df666d1f85d7",
+  "browser":"native Safari 26.6.2",
+  "observedChecks":[
+    "Pointer caret in Second enabled Indent and identified Numbered list",
+    "Native Tab nested Second beneath First; its Deep emoji descendant remained nested beneath Second; ordered markers 3 and 4 survived",
+    "Native Shift-Tab restored the original sibling structure and descendant",
+    "Native toolbar Undo restored the indented tree; Redo restored the outdented tree",
+    "Native text input inserted ! as Sec!ond after structural history round-trip",
+    "Native Return split Sec! and ond into items 4 and 5; descendant followed ond",
+    "Native Backspace joined to Sec!ond, restoring item numbering and descendant"
+  ],
+  "evidenceBoundary":"Visible native Safari accessibility hierarchy and text after each action. Native input automation, not human physical IME, canonical checkpoint equality, clipboard, VoiceOver or full release qualification.",
+  "selectionAutomationNote":"Whole-editor accessibility selectText placed the caret in the wrong descendant; pointer click on the visible Second text established the intended caret before testing. This is not claimed as a Breditor selection bug.",
+  "admission":"Archive hash, assembly input record, installed package tree, fixture source and index checked before/after separate native bundle build and again after server shutdown. Generated native bundle tree unchanged at shutdown.",
+  "cleanup":"Temporary native tab closed. Original Safari packed-consumer tab visibly restored unchanged; only the temporary loopback server stopped. No system settings changed.",
+  "openGates":["intermittent bundled WebKit fault","native clipboard","physical IME","VoiceOver","size and latency budgets","complete release audit"],
+  "pushed":false,
+  "published":false
+}
