@@ -41,6 +41,7 @@ export function readFixtureFailureState(page) {
     workTotalWallMs: element.getAttribute("data-work-total-wall-ms"),
     workLastWallMs: element.getAttribute("data-work-last-wall-ms"),
     visibility: document.visibilityState, readyState: document.readyState,
+    wordCapabilityDiagnostic: globalThis.__breditorLastWordCapability ?? null,
     resources: performance.getEntriesByType("resource").slice(-12).map(entry => ({
       path: new URL(entry.name).pathname,
       initiatorType: entry.initiatorType, duration: entry.duration,

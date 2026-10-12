@@ -32,6 +32,7 @@ import {stringKeyHeadingComparison} from "./heading-comparison-trial.mjs";
 import {instrumentContentSnapshotComparison,instrumentDocumentExportRead,instrumentDocumentPropertyComparison} from "./document-export-diagnostics.mjs";
 import {instrumentFormatPropertyComparison} from "./queue-failure-diagnostics.mjs";
 import {instrumentIntegerWordDecode,instrumentProjectedIntegerTuple,instrumentIntegerInvocation,instrumentIntegerWordReturn,instrumentProjectionTransportAdmission} from "./integer-word-diagnostics.mjs";
+import {instrumentWordCapabilityAdmission,instrumentBootstrapFailureSites} from "./word-capability-admission-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -64,6 +65,11 @@ assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BR
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
 const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
+const wordAdmissionDiagnosticFlag = process.env["BREDITOR_PERF_WORD_ADMISSION_DIAGNOSTICS"] ?? "0";
+assert.ok(["0", "1"].includes(wordAdmissionDiagnosticFlag), "invalid word admission diagnostic flag");
+const wordAdmissionDiagnosticsEnabled = wordAdmissionDiagnosticFlag === "1";
+assert.ok(!wordAdmissionDiagnosticsEnabled || (queueDiagnosticsEnabled && integerFormats),
+  "word admission diagnostics require queue diagnostics and integer formatting");
 const headingTrialFlag = process.env["BREDITOR_PERF_HEADING_STRING_TRIAL"] ?? "0";
 assert.ok(["0", "1"].includes(headingTrialFlag), "invalid heading trial flag");
 const headingStringTrial = headingTrialFlag === "1";
@@ -193,7 +199,17 @@ let elementTypeDiagnosticModules = 0;
 let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
 let progressFixtureModules = 0;
+let wordAdmissionDiagnosticModules = 0;
+let bootstrapFailureDiagnosticModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
+  if (wordAdmissionDiagnosticsEnabled && id === join(consumer, "node_modules/@breditor/browser/dist/wasm_projection_word_facade.js")) {
+    wordAdmissionDiagnosticModules++;
+    return instrumentWordCapabilityAdmission(code);
+  }
+  if (wordAdmissionDiagnosticsEnabled && id === join(consumer, "node_modules/@breditor/browser/dist/wasm_engine_bootstrap.js")) {
+    bootstrapFailureDiagnosticModules++;
+    return instrumentBootstrapFailureSites(code);
+  }
   if (integerFormats && id === join(consumer, "node_modules/@breditor/browser/dist/projection_scalar_words.js")) {
     return instrumentIntegerWordDecode(code);
   }
@@ -259,6 +275,8 @@ assert.equal(headingTrialModules, headingStringTrial ? 1 : 0);
 assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
 assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "projection diagnostic module was not transformed exactly once");
 assert.equal(validationDiagnosticModules.size, queueDiagnosticsEnabled ? 2 : 0, "validation diagnostic modules were not transformed exactly once");
+assert.equal(wordAdmissionDiagnosticModules, wordAdmissionDiagnosticsEnabled ? 1 : 0, "word admission module transform count");
+assert.equal(bootstrapFailureDiagnosticModules, wordAdmissionDiagnosticsEnabled ? 1 : 0, "bootstrap failure module transform count");
 assert.equal(routerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "router diagnostic module was not transformed exactly once");
 assert.equal(ownerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "owner diagnostic module was not transformed exactly once");
 assert.equal(elementTypeDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "element type diagnostic module was not transformed exactly once");
@@ -281,7 +299,7 @@ const save = async status => {
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   liveFixtureProgress: queueDiagnosticsEnabled,
-  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget, formatted, propertyFormats, integerFormats,
+  deepDiagnostics, wordAdmissionDiagnosticsEnabled, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget, formatted, propertyFormats, integerFormats,
   selectionTimingIncludesTaskWaits: selectionScheduling !== "synchronous",
   cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
