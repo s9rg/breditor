@@ -31,9 +31,11 @@
     "paragraphOperandFailure": "target/nested-list-reproductions/failure-nO8wys/measurement.json",
     "internalBranchFailure": "target/nested-list-reproductions/failure-QNPe79/measurement.json",
     "headingStringTrial": {
-      "status": "running",
+      "status": "grandchild-stress-complete-replay-and-root-running",
       "session": 29423,
-      "verifiedProgress": {"completedProcesses": 6, "editorCases": 540, "observedFailures": 0},
+      "verifiedProgress": {"completedProcesses": 10, "editorCases": 900, "observedFailures": 0},
+      "measurementSha256": "006e55668a86c0e942ab89fc1760bec940421a615c82b5948143c227df90b612",
+      "exactReplay": {"session": 53674, "status": "running", "record": "performance-Dng4kH/exact-replay-ZPj8bm/replay.json"},
       "rootFollowUp": {"session": 92128, "status": "running", "scope": "Same private comparison trial, root edit workload, ten processes planned. Overlaps grandchild run; timings excluded from release latency qualification."},
       "measurement": "breditor-nested-list-consumer-q2nZu9/performance-Dng4kH/measurement.json",
       "scope": "Disposable minified bundle transform only, original installed tarballs unchanged. Type-checked string equality on admitted undefined/integer 1..6, rejects invalid ranks. No retries, scalar fallbacks or validation bypass.",
