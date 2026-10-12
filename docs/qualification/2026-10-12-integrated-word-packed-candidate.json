@@ -33,6 +33,8 @@
     "headingStringTrial": {
       "status": "running",
       "session": 29423,
+      "verifiedProgress": {"completedProcesses": 6, "editorCases": 540, "observedFailures": 0},
+      "rootFollowUp": {"session": 92128, "status": "running", "scope": "Same private comparison trial, root edit workload, ten processes planned. Overlaps grandchild run; timings excluded from release latency qualification."},
       "measurement": "breditor-nested-list-consumer-q2nZu9/performance-Dng4kH/measurement.json",
       "scope": "Disposable minified bundle transform only, original installed tarballs unchanged. Type-checked string equality on admitted undefined/integer 1..6, rejects invalid ranks. No retries, scalar fallbacks or validation bypass.",
       "tests": "49 admitted heading pairs agree with SameValue; invalid ranks reject",
