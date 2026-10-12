@@ -17,7 +17,28 @@
     "packedConsumer": "Offline actual tarballs, no aliases/workspace links; strict TypeScript, Chromium/Firefox/WebKit nested scenarios and base Node/Chromium compatibility smoke passed",
     "shippingArtifacts": "unchanged"
   },
-  "open": ["fully packed repeated WebKit stress and exact replay", "assembled opt-in package qualification", "native clipboard, IME and accessibility qualification for final artifacts", "explicit size and performance budgets"],
+  "packedStress": {
+    "status": "failed",
+    "firstFailure": "target/nested-list-reproductions/failure-MMIY5g/measurement.json",
+    "firstStage": "500 items, repetition 9: selectionMs",
+    "exactReplay": "target/nested-list-reproductions/failure-MMIY5g/exact-replay-T1eSbJ/replay.json",
+    "exactReplayStatus": "failed in first process",
+    "exactReplaySha256": "93cc9fb985cd72ef3ee5628f6874e26f0ba17a9e397c3495899b5667ac8c02f4",
+    "secondUninstrumentedFailure": "target/nested-list-reproductions/failure-O35k0i/measurement.json",
+    "secondStage": "500 items, repetition 20: selectionMs",
+    "observed": "owner faulted with queueUncertain, authoritative content unavailable; root cause not yet established",
+    "queueDiagnosticFailure": "target/nested-list-reproductions/failure-YDHnl7/measurement.json",
+    "queueDiagnosticBoundary": "Nested update impact none rejected after paragraph equality returned false at item 230. Serialized before/after roots had equal 90360 lengths and reported first-difference offset 90360 (no difference found). This is not yet proof that every typed field or comparison operand is equal; next step is capturing the exact failing paragraph operands and comparison branch. No rejection bypass introduced.",
+    "diagnosticSetupNote": "First diagnostic attempt used an ignored BREDITOR_QUEUE_DIAGNOSTICS flag and is the second uninstrumented failure above. Correct queue flag combined with stress was rejected before artifact admission. Supported queue diagnostics run uses no stress flag; session 37502. No diagnostic evidence claimed from either setup mistake."
+  },
+  "optInAssembly": {
+    "record": "target/nested-list-opt-in-Mbm1cf/assembly.json",
+    "archiveSha256": "1c964d09b5508925063f4c0978b6896e869809e43b0fd02041e1d9da98ea97f1",
+    "consumerQualification": "target/nested-list-opt-in-Mbm1cf/consumer-qualification.json",
+    "status": "consumer checks passed",
+    "scope": "Node/types and all three browsers; trusted keyboard Tab/Shift-Tab, typing, Enter/Backspace, history; fresh-owner mixed recovery at every cursor. Not physical IME or complete reliability qualification."
+  },
+  "open": ["reproducible fully packed WebKit selection/queue fault", "native clipboard, IME and accessibility qualification for final artifacts", "explicit size and performance budgets"],
   "sizeBudgetQualified": false,
   "sizeNote": "All four measured private-pair sizes exceed existing default-package ceilings; no relaxed threshold adopted. Separate opt-in assembly still required.",
   "pushed": false,
