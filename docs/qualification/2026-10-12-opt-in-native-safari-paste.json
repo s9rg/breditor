@@ -1,0 +1,22 @@
+{
+  "releaseQualified":false,
+  "nativeClipboardQualified":false,
+  "archiveSha256":"28b673c4380bba01bdbf41b9e20db9fca112c38d6a6bb9e7630ae02a6147679d",
+  "fixtureSha256":"fb8f06eaa88bfab12fbb23b03071f0c6357e9436ac6bd2ff360bcd0901e66c85",
+  "bundleTreeSha256":"a3a74f740a06e1cba79f1fc02d550cf76560168e7c059e26dc02df666d1f85d7",
+  "browser":"native Safari 26.6.2",
+  "observedChecks":[
+    "Plain-text native paste of Japanese, emoji and CRLF at Sec|ond produced Sec日本🙂 and nextond in items 4 and 5; Deep emoji descendant remained under the latter",
+    "One toolbar Undo restored Second, original numbering and descendant; Redo restored the paste once",
+    "Plain-text native paste of <ol><li>x</li></ol> plus immediate typing ! remained literal text, not imported list markup",
+    "One Undo removed only subsequent typing; next Undo removed the paste and restored original tree",
+    "Native double-click visibly selected Second; paste 日本🙂 replaced the word once without replacing its descendant",
+    "One Undo restored Second and visibly restored its selected text"
+  ],
+  "evidence":"Native Safari accessibility hierarchy, text and selected-text output after each action on a fresh verified consumer. No browser-event trust trace or canonical checkpoint equality inferred from UI.",
+  "clipboardHandling":"Native app paste helper documented to restore original pasteboard after each call. No original clipboard contents read or printed; Copy/Cut not performed or qualified.",
+  "cleanup":"Temporary tab closed; pre-existing Safari editor visibly unchanged. Temporary loopback server stopped with successful post-run archive/consumer/bundle verification. No system settings changed.",
+  "remaining":"Native Copy/Cut and cross-descendant selection, native Chrome, physical IME/VoiceOver, intermittent WebKit fault, size/latency gates and final audit remain open.",
+  "pushed":false,
+  "published":false
+}
