@@ -20,12 +20,31 @@ function __breditorOptionalU32(record) {
     throw TypeError("invalid projection scalar words");
 }
 `;
+const integerHelper = `
+const __breditorBigInt = BigInt;
+const __breditorAsIntN = BigInt.asIntN;
+const __breditorNumber = Number;
+function __breditorOptionalInteger(record) {
+    const length = Reflect.apply(__breditorWordLength, record, []);
+    const tag = Reflect.apply(__breditorWordTag, record, []);
+    Reflect.apply(__breditorBufferLength, Reflect.apply(__breditorWordBuffer, record, []), []);
+    if (length !== 3 || tag !== "Uint32Array") throw TypeError("invalid projection integer words");
+    const presence = record[0], low = record[1], high = record[2];
+    if (presence === 0 && low === 0 && high === 0) return undefined;
+    if (presence !== 1) throw TypeError("invalid projection integer words");
+    const value = __breditorAsIntN(64, (__breditorBigInt(high) << 32n) | __breditorBigInt(low));
+    if (value < -9007199254740991n || value > 9007199254740991n) throw TypeError("unsafe projection integer");
+    return __breditorNumber(value);
+}
+`;
 
 /** Preserve public names/parameters and native word-body cleanup, replacing only
  * legacy method bodies. Each getter calls its native word calculation once.
- * All six methods must exist before transformation; declarations stay unchanged.
+ * All six structural methods must exist; explicit integer opt-in additionally
+ * requires the signed property pair. Public declarations stay unchanged.
  */
-export function rewriteProjectionWordBindings(source) {
+export function rewriteProjectionWordBindings(source, {privateIntegerWords = false} = {}) {
+  assert.equal(typeof privateIntegerWords, "boolean");
   assert.ok(!source.includes("__breditor"), "binding helper collision");
   const file = parseSync("generated.js", source);
   assert.equal(file.errors.length, 0, "invalid generated JavaScript");
@@ -38,7 +57,7 @@ export function rewriteProjectionWordBindings(source) {
     methods.set(node.key.name, node.value);
   }
   const edits = [];
-  for (const name of pairs) {
+  for (const name of privateIntegerWords ? [...pairs, "formatPropertyInteger"] : pairs) {
     const legacy = methods.get(name), word = methods.get(`${name}Words`);
     assert.ok(legacy?.body && word?.body, `missing projection pair ${name}`);
     assert.equal(legacy.params.length, word.params.length, "getter arity mismatch");
@@ -53,7 +72,7 @@ export function rewriteProjectionWordBindings(source) {
         assert.ok(node.argument?.type === "Identifier", "word getter return shape changed");
         returns++;
         replacements.push({from: node.argument.start, to: node.argument.end,
-          text: `__breditorOptionalU32(${node.argument.name})`});
+          text: `${name === "formatPropertyInteger" ? "__breditorOptionalInteger" : "__breditorOptionalU32"}(${node.argument.name})`});
         return;
       } else if (node.type === "Identifier" && rename.has(node.name)) {
         replacements.push({from: node.start, to: node.end, text: rename.get(node.name)});
@@ -72,5 +91,5 @@ export function rewriteProjectionWordBindings(source) {
     edits.push({from: legacy.body.start, to: legacy.body.end, text: body});
   }
   for (const edit of edits.sort((a, b) => b.from - a.from)) source = source.slice(0, edit.from) + edit.text + source.slice(edit.to);
-  return source + helper;
+  return source + helper + (privateIntegerWords ? integerHelper : "");
 }

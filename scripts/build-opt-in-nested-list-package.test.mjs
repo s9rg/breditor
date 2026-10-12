@@ -30,6 +30,10 @@ test("private integer transport metadata is exact and paired", () => {
   const words = {privateScalarWords: true, projectionScalarWordsVersion: 1};
   const integers = {...words, privateIntegerWords: true, projectionIntegerWordsVersion: 1};
   validateTransportPair(integers, integers);
+  const signedBindings = {...integers, privateWordBindings: true, projectionWordBindingsVersion: 2};
+  validateTransportPair(signedBindings, signedBindings);
+  assert.throws(() => validateTransportPair(signedBindings, integers));
+  assert.throws(() => validateTransportPair({...signedBindings, projectionWordBindingsVersion: 3}, signedBindings));
   for (const malformed of [words, {...integers, privateIntegerWords: false},
     {...integers, privateIntegerWords: "true"}, {...integers, projectionIntegerWordsVersion: 2},
     {privateIntegerWords: true, projectionIntegerWordsVersion: 1}]) {

@@ -104,7 +104,7 @@ run(bindgen, [bindgenInput,
   "--out-dir", raw, "--out-name", "breditor_wasm"]);
 if (privateWordBindings) {
   const generatedPath = join(raw, "breditor_wasm.js");
-  await writeFile(generatedPath, rewriteProjectionWordBindings(await readFile(generatedPath, "utf8")));
+  await writeFile(generatedPath, rewriteProjectionWordBindings(await readFile(generatedPath, "utf8"), {privateIntegerWords}));
   run(process.execPath, ["--test", "scripts/projection-word-bindings.test.mjs"]);
 }
 run(rolldown, [join(raw, "breditor_wasm.js"), "--file", join(directory, "breditor_wasm.js"),
@@ -131,7 +131,7 @@ assert.deepEqual(await hashTree(browserDist), browserTreeBefore, "browser artifa
 const manifest = { status: "passed", publishable: false, feature: "experimental-nested-lists",
   diagnosticNames, optLevel, privateScalarWords, projectionScalarWordsVersion: privateScalarWords ? 1 : null,
   privateIntegerWords, projectionIntegerWordsVersion: privateIntegerWords ? 1 : null,
-  privateWordBindings, projectionWordBindingsVersion: privateWordBindings ? 1 : null,
+  privateWordBindings, projectionWordBindingsVersion: privateWordBindings ? (privateIntegerWords ? 2 : 1) : null,
   codecs: { bootstrap: 5, document: 2, state: 3, session: 7, commit: 7 },
   wasmBytes: wasm.length, wasmGzip9Bytes: gzipSync(wasm, { level: 9 }).length,
   wasmSha256: hash(wasm), shippingWasmSha256: shippingBefore,
