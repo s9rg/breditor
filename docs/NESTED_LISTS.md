@@ -1380,3 +1380,21 @@ the whole command is not yet claimed successful. Slow harness startup was sample
 at the system loader before test execution; no security or power settings were
 changed. The [unit-floor record](qualification/2026-10-11-complete-core-unit-floor.json)
 keeps unit completion distinct from integration and release qualification.
+
+### October 12: complete feature core suite
+
+The existing full feature-enabled core command completed with exit code 0,
+without restarting it. Its baseline 1,197 unit tests and every enabled integration
+harness passed, followed by doctest batches of one and 136 tests. No aggregate
+integration-test count is asserted. Production core sources remained unchanged;
+the only later core diff adds two layout-reuse regression tests, separately
+covered by the complete 1,199-test feature unit run recorded above. The default
+703-test unit floor remains separately qualified.
+
+The [full-suite record](qualification/2026-10-12-complete-feature-core-suite.json)
+records the terminal result and source-scope distinction. Long wall time is not
+editor performance evidence: several quiet harnesses were sampled at native
+loader startup before Rust tests ran, then passed. No security or power settings
+were changed. This closes the pending feature integration/doctest run, not the
+historical WebKit fault, latest-candidate native checks, or size/latency release
+gates. No shipping artifacts, push or publication changes occur.

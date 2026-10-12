@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-12",
+  "recordedAtSourceCheckpoint": "6a63b65674ebd20b22c55919d954c75fe576d74b",
+  "releaseQualified": false,
+  "fullFeatureCoreSuite": {
+    "command": "CARGO_BUILD_JOBS=2 /Users/s/.cargo/bin/cargo test -p breditor-core --features experimental-structural-properties --quiet",
+    "sessionId": 60143,
+    "exitCode": 0,
+    "baselineUnitTestsPassed": 1197,
+    "integrationHarnesses": "All enabled integration harnesses completed successfully in the same command; no aggregate integration-test count is asserted.",
+    "doctestBatchesPassed": [1, 136],
+    "finalDoctestBatchFailed": 0,
+    "finalDoctestBatchIgnored": 0,
+    "finalDoctestBatchSeconds": 360.64,
+    "allDoctestsSeconds": 425.25
+  },
+  "sourceScope": {
+    "productionBaseline": "391113c",
+    "coreDiffFromBaselineAtRecording": "Only nested_list_layout_reuse_tests.rs changed: two additional regression tests, 51 added lines. No production core changes.",
+    "additionalRegressionQualification": "The later complete feature-enabled unit run passed all 1199 tests, including the two new tests; the default unit run passed all 703. See 2026-10-11-complete-core-unit-floor.json.",
+    "fullCommandWasRestarted": false
+  },
+  "executionLimits": {
+    "longWallTimeIsNotEditorTimingEvidence": true,
+    "readOnlyStartupSamples": "Several quiet native harnesses were sampled at _dyld_start before Rust test execution, then subsequently passed.",
+    "securityOrPowerSettingsChanged": false
+  },
+  "openReleaseGates": [
+    "Historical intermittent WebKit projection.invalid_update fault remains unresolved.",
+    "Latest VTFj93 candidate still requires matching native keyboard, clipboard, IME and spoken screen-reader qualification; older native observations do not transfer.",
+    "Explicit package-size and large-document latency acceptance remain unqualified."
+  ],
+  "productionCodeChangedForThisCheckpoint": false,
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}
