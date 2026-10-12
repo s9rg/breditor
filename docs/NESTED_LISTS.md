@@ -1431,3 +1431,15 @@ binds the artifacts and keeps scope explicit: full integration/doctest testing
 for this new production change, performance comparisons and matching native
 qualification remain outstanding. No latency benefit is claimed. Shipping
 artifacts remain unchanged, and the historical WebKit and size gates remain open.
+
+### October 12: bounded reframe proof-reuse comparison
+
+Sequential ordinary Firefox candidate/control/candidate runs pass 27 exact
+editing/history/recovery cases each. Nine 500-item root-edit samples per trial
+yield medians of 272/285/273 ms. The modest improvement survives this ordering
+check, but is only bounded evidence on this Mac, not a general speed guarantee,
+statistical significance claim or release p95 qualification. The
+[comparison record](qualification/2026-10-12-reframe-proof-performance.json)
+binds the reports and samples. The full feature integration/doctest rerun for the
+new production change started after these measurements and remains pending.
+Historical WebKit, native and explicit size/latency gates remain open.

@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "dff3ac6",
+  "releasePerformanceQualified": false,
+  "method": "Sequential candidate/control/candidate, ordinary minified Firefox fixture, three fresh browser sessions per trial, no overlapping compilation, exact editing/history/recovery assertions. Root edit target; 10/100/500 nested items. Nine 500-item edit samples per trial, not a p95 release qualification.",
+  "candidatePair": "target/nested-list-packages-j6nDXM/qualification.json",
+  "controlPair": "target/nested-list-packages-m25FxW/qualification.json",
+  "trials": [
+    {
+      "role": "candidate-before-control",
+      "fixture": "breditor-nested-list-consumer-8kol5y/performance-IeeIUR",
+      "measurementSha256": "fa090d7fd4c10ee39ea227ba9e37f21f6dcf91909b6b83eff38629d251ebde55",
+      "correctnessCasesPassed": 27,
+      "fiveHundredItemEditMs": [271, 272, 272, 272, 272, 273, 274, 276, 277],
+      "medianMs": 272
+    },
+    {
+      "role": "control",
+      "fixture": "breditor-nested-list-consumer-KeGjmR/performance-quXnNq",
+      "measurementSha256": "1014c68f1b23a5b4079eb3936ff5e5d7d8f2e29bd2f46a27ca3048b5022f70dc",
+      "correctnessCasesPassed": 27,
+      "fiveHundredItemEditMs": [278, 281, 281, 284, 285, 287, 287, 287, 299],
+      "medianMs": 285
+    },
+    {
+      "role": "candidate-after-control",
+      "fixture": "breditor-nested-list-consumer-8kol5y/performance-FLRSwq",
+      "measurementSha256": "b59a7f1f55d4ba5ccf17984dfb920d58a6b09effc9e53b41e9cdd192b99ad1cc",
+      "correctnessCasesPassed": 27,
+      "fiveHundredItemEditMs": [269, 271, 272, 273, 273, 273, 276, 276, 280],
+      "medianMs": 273
+    }
+  ],
+  "interpretation": "A modest improvement persists in this bounded comparison: candidate medians are 12-13 ms below control, approximately 4 percent. This is observed evidence on one Mac, not a general speed guarantee, a statistical significance claim or acceptance of the open release latency gate.",
+  "fullFeatureIntegrationAndDoctestRerun": "started separately after measurements; terminal result pending",
+  "historicalWebKitFaultResolved": false,
+  "nativeQualificationTransferred": false,
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}
