@@ -20,7 +20,9 @@ export function instrumentIntegerWordDecode(code) {
 
 /** Observe the heterogeneous property tuple after its existing map completes. */
 export function instrumentProjectedIntegerTuple(code) {
-  const site = "view, nodeIndex, formatIndex, propertyIndex));";
+  const legacy = "view, nodeIndex, formatIndex, propertyIndex));";
+  const explicit = "const stringValue = invokeGenerated(methods.formatPropertyString, view, nodeIndex, formatIndex, propertyIndex);";
+  const site = code.includes(legacy) ? legacy : explicit;
   assert.equal(code.split(site).length, 2, "projected property tuple site changed");
   return code.replace(site, site + `
     if (name === "example/rgb24" && kind === "integer" && integerValue !== 1193046) {

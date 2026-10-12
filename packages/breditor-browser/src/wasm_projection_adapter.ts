@@ -1130,11 +1130,15 @@ function readProjectedFormatProperty(
   formatIndex: number,
   propertyIndex: number,
 ): ReadProjectedFormatProperty | null {
-  const [name, kind, booleanValue, integerValue, stringValue] = [
-    methods.formatPropertyName, methods.formatPropertyValueKind, methods.formatPropertyBoolean,
-    methods.formatPropertyInteger, methods.formatPropertyString,
-  ].map((method) => invokeGenerated(method as (...indexes: number[]) => unknown,
-    view, nodeIndex, formatIndex, propertyIndex));
+  // Keep heterogeneous scalar returns in separate locals. A retained WebKit
+  // reproduction captured correct integer words and decoding, followed by zero
+  // in the mixed map/destructuring tuple. Preserve order and single invocation;
+  // no retry, coercion or weakened wrong-kind/absence validation is permitted.
+  const name = invokeGenerated(methods.formatPropertyName, view, nodeIndex, formatIndex, propertyIndex);
+  const kind = invokeGenerated(methods.formatPropertyValueKind, view, nodeIndex, formatIndex, propertyIndex);
+  const booleanValue = invokeGenerated(methods.formatPropertyBoolean, view, nodeIndex, formatIndex, propertyIndex);
+  const integerValue = invokeGenerated(methods.formatPropertyInteger, view, nodeIndex, formatIndex, propertyIndex);
+  const stringValue = invokeGenerated(methods.formatPropertyString, view, nodeIndex, formatIndex, propertyIndex);
   if (!isQualifiedName(name)) return null;
 
   switch (kind) {

@@ -134,6 +134,23 @@ describe("recursive generated projection consumption", () => {
       expect(record["formatPropertyIntegerWords"]).toHaveBeenCalledWith(4, 0, 0);
       expect(view.freeCalls).toBe(1);
     });
+  it("reads each typed property getter exactly once in the established order", () => {
+    const {view, record, descriptor} = integerWordFixture();
+    const calls: string[] = [];
+    for (const [method, label] of [["formatPropertyName", "name"], ["formatPropertyValueKind", "kind"],
+      ["formatPropertyBoolean", "boolean"], ["formatPropertyIntegerWords", "integer"],
+      ["formatPropertyString", "string"]] as const) {
+      const original = record[method] as (...args: number[]) => unknown;
+      record[method] = function(this: object, ...args: number[]) {
+        if (args[0] === 4 && args[1] === 0 && args[2] === 0) calls.push(label);
+        return Reflect.apply(original, this, args);
+      };
+    }
+    expect(consumeNestedListSemanticProjection(view, TEST_PROFILE_GENERATION, descriptor).ok).toBe(true);
+    expect(calls).toEqual(["name", "kind", "boolean", "integer", "string"]);
+    expect(record["formatPropertyInteger"]).not.toHaveBeenCalled();
+    expect(view.freeCalls).toBe(1);
+  });
   it.each(["version", "missing", "malformed", "overflow", "async", "no-scalars"])(
     "rejects %s integer word admission without fallback", failure => {
       const {view, record, descriptor} = integerWordFixture();
