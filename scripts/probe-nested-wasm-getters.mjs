@@ -11,7 +11,7 @@ import {readQualifiedPair} from "./build-opt-in-nested-list-package.mjs";
 import {webkitReplayTier} from "./webkit-replay-tier.mjs";
 import {verifyFailureBundle,retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 import {waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
-import {instrumentChildCountReturn,childCountSentinelSameValue} from "./child-count-return-diagnostics.mjs";
+import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn} from "./child-count-return-diagnostics.mjs";
 
 assert.equal(process.argv.length,3,"usage: node scripts/probe-nested-wasm-getters.mjs <private pair qualification.json>");
 const repository=fileURLToPath(new URL("../",import.meta.url));
@@ -26,6 +26,9 @@ assert.ok(!(rawTrace&&sentinelTreatment),"raw trace and sentinel treatment are s
 const fixedArityFlag=process.env.BREDITOR_GETTER_FIXED_ARITY??"0";
 assert.ok(["0","1"].includes(fixedArityFlag));const fixedArity=fixedArityFlag==="1";
 assert.ok(!(fixedArity&&(rawTrace||sentinelTreatment)),"change one boundary at a time");
+const lastCaptureFlag=process.env.BREDITOR_GETTER_LAST_CAPTURE??"0";
+assert.ok(["0","1"].includes(lastCaptureFlag));const lastCapture=lastCaptureFlag==="1";
+assert.ok(!(lastCapture&&(fixedArity||rawTrace||sentinelTreatment)),"last capture is a separate experiment");
 await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
 for(const name of ["package.json","tsconfig.json"])await cp(join(record.consumer,name),join(fixture,name));
 const bridge='function z(e,t,...n){let r=Reflect.apply(e,t,n);if(Ph(r))throw TypeError(`generated scalar method returned a thenable`);return r}';
@@ -41,16 +44,16 @@ await writeFile(join(fixture,"bridge.js"),`${fixtureBridge}\n${guard}\nfunction 
 const types=spawnSync(process.execPath,[join(repository,"node_modules/typescript/bin/tsc"),"-p",join(fixture,"tsconfig.json")],{encoding:"utf8"});
 assert.equal(types.status,0,`${types.stdout}\n${types.stderr}`);
 let transformedModules=0;
-const plugin={name:"child-count-private-experiment",enforce:"pre",transform(code,id){if(id===join(record.consumer,"node_modules/@breditor/wasm/dist/breditor_wasm.js")){transformedModules++;return rawTrace?instrumentChildCountReturn(code):childCountSentinelSameValue(code);}}};
-await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sentinelTreatment?[plugin]:[],build:{outDir:join(fixture,"bundle"),minify:true,target:"es2022",modulePreload:{polyfill:false}}});
-assert.equal(transformedModules,rawTrace||sentinelTreatment?1:0,"getter experiment transform count");
+const plugin={name:"child-count-private-experiment",enforce:"pre",transform(code,id){if(id===join(record.consumer,"node_modules/@breditor/wasm/dist/breditor_wasm.js")){transformedModules++;return lastCapture?captureLastChildCountReturn(code):rawTrace?instrumentChildCountReturn(code):childCountSentinelSameValue(code);}}};
+await build({configFile:false,root:fixture,logLevel:"warn",plugins:rawTrace||sentinelTreatment||lastCapture?[plugin]:[],build:{outDir:join(fixture,"bundle"),minify:true,target:"es2022",modulePreload:{polyfill:false}}});
+assert.equal(transformedModules,rawTrace||sentinelTreatment||lastCapture?1:0,"getter experiment transform count");
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
 const bundleAssets=Object.fromEntries(await Promise.all((await readdir(join(fixture,"bundle/assets"))).sort().map(async name=>[name,hash(await readFile(join(fixture,"bundle/assets",name)))])));
 const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browserName:"webkit",ownerRepetitions:30,runCount:10,editTarget:"root",bundleAssets,
   packageRecord,tarballSha256:record.tarballSha256,
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
-  childCountSentinelSameValueTreatment:sentinelTreatment,
+  childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();
 console.log(JSON.stringify({fixture}));

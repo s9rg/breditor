@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {instrumentChildCountReturn,childCountSentinelSameValue} from "./child-count-return-diagnostics.mjs";
+import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn} from "./child-count-return-diagnostics.mjs";
+
+test("last-value capture preserves one call and formats only when read",()=>{
+  const source="class View{constructor(){this.__wbg_ptr=17}childCount(e){let t=$.breditorprojection_childCount(this.__wbg_ptr,e);return t===2**53-1?void 0:t}}";
+  const changed=captureLastChildCountReturn(source).replace("export function","function");
+  for(const raw of [0,-0,1,9007199254740991]){
+    const calls=[];
+    const {view,read}=new Function("$",changed+";return {view:new View(),read:breditorChildCountTrace};")({breditorprojection_childCount(...args){calls.push(args);return raw;}});
+    assert.ok(Object.is(view.childCount(1185),raw===9007199254740991?undefined:raw));
+    assert.deepEqual(calls,[[17,1185]]);
+    assert.deepEqual(read(),{index:"1185",handle:"17",raw:String(raw),returnedType:raw===9007199254740991?"undefined":"number",returned:String(raw===9007199254740991?undefined:raw)});
+  }
+  assert.throws(()=>captureLastChildCountReturn(source+source));
+});
 
 test("positive sentinel SameValue treatment preserves all specified raw return values and calls",()=>{
   const source="class View{constructor(){this.__wbg_ptr=17}childCount(e){let t=w.breditorprojection_childCount(this.__wbg_ptr,e);return t===2**53-1?void 0:t}}";

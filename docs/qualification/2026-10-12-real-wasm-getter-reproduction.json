@@ -10,6 +10,18 @@
     {"report": "target/nested-list-reproductions/failure-eioKQR/measurement.json", "observation": "Private fixed-arity bridge treatment passed runs 0 through 6, failed run 7: 500 items, owner 0, backward node 649; undefined childCount, expected 1"}
   ],
   "diagnosticControls": {
+    "minimalCaptureReplay": {
+      "report": "target/nested-list-reproductions/failure-NfBWZC/replay.json",
+      "run": 5,
+      "progress": "500 items, owner 5, forward node 488",
+      "capturedIndex": "488",
+      "capturedHandle": "1857592",
+      "rawReturn": "9007199254740991",
+      "returnedType": "undefined",
+      "expectedChildCount": 1,
+      "interpretation": "Original sentinel conversion was correct for the captured raw return. Failure precedes that conversion. Rust input/result or ABI root cause remains unproven. Replay and new uninstrumented control overlapped; concurrency can affect recurrence timing."
+    },
+    "freshUninstrumentedControl": "failure-cFdgfb/measurement.json: run 1, 100 items, owner 27, backward node 34; childCount undefined, expected 1",
     "rawChildCountTrace": "10 fresh processes passed 13944910 checks; exact replay passed another 13944910. Tracing may perturb recurrence; not proof of a fix.",
     "harnessCorrections": ["Wait for terminal status, not initial running marker", "Generated Wasm variable matcher admits dollar sign"],
     "excludedFailures": ["Premature running-marker replay", "Trace transform build rejection before browser launch"]
