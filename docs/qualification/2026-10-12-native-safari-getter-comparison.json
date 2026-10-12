@@ -1,0 +1,22 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "source":"target/nested-list-reproductions/failure-cbYRsh/measurement.json",
+  "sourceSha256":"56ea417d528c839533dc50eca84e106b462dde9d75b5703b3469e9ce80198ae7",
+  "nativeBrowser":"Safari",
+  "nativeBrowserVersion":"26.6.2",
+  "versionEvidence":"/Applications/Safari.app/Contents/Info.plist CFBundleShortVersionString",
+  "bundledComparison":{"playwright":"1.62.1","webkitRevision":"2336","webkitVersion":"26.5"},
+  "verifiedDocuments":[
+    {"url":"http://127.0.0.1:65332/","checks":73651,"owners":90,"cleanupCompleted":true,"result":"passed"},
+    {"url":"http://127.0.0.1:65332/?nativeRun=1","checks":73651,"owners":90,"cleanupCompleted":true,"result":"passed"},
+    {"url":"http://127.0.0.1:65332/?nativeRun=2","checks":73651,"owners":90,"cleanupCompleted":true,"result":"passed"}
+  ],
+  "observations":"Observed starting state and terminal JSON for distinct loaded native documents through Safari accessibility UI. Earlier shortcut reload observations are excluded because new-document navigation was not proven.",
+  "interpretation":"Three same-browser-context document loads passed; not three fresh processes and not a fault fix. Browser version difference is an investigation lead, not causal proof.",
+  "cleanup":"Temporary test tab closed; original packed editor tab and contents visibly restored unchanged. Temporary loopback server stopped gracefully and source retention reverified.",
+  "scopeBoundary":"Getter fixture only, not native clipboard, IME, VoiceOver, current opt-in release artifact or performance qualification",
+  "systemSettingsChanged":false,
+  "pushed":false,
+  "published":false
+}
