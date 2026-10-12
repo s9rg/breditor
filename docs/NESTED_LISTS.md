@@ -1506,3 +1506,15 @@ keeps the original failure distinct from replay success. The first failing branc
 and relationship to the older projection fault remain unidentified. The subsequent
 bounded diagnostic run passed 900 cases across ten sessions with 30 owners per
 size and no captured diagnostics; no fix or release qualification is claimed.
+
+### October 12: owner-boundary fault tracing
+
+Disposable WebKit diagnostics now capture the editor-owner terminal transition
+before disposal, supplementing queue/router/projection tracing. Scalar reads and
+bounded stack capture cannot replace outcomes or retry commands; hostile getters
+and loggers are contained. All 28 tracing contract tests pass. The exact installed
+candidate also passes 90 deep-child cases with 30 owners in one session and 90
+cases with the original three-owner workload across ten fresh sessions.
+The [tracing record](qualification/2026-10-12-owner-fault-tracing.json) binds both
+reports. Neither run reproduced the fault; tracing may affect timing and does not
+prove a fix. Production behavior and shipping bundles remain unchanged.

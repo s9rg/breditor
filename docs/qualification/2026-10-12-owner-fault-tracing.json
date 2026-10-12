@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "9e50115",
+  "releaseQualified": false,
+  "productionBehaviorChanged": false,
+  "change": "Disposable queue diagnostic bundles now trace the editor-owner terminal fault boundary before disposal, in addition to queue, router and projection rejection sites. Reads bounded scalar state and stack, contains getter/logging exceptions, and does not retry or replace outcomes.",
+  "contractTestCommand": "node --test --test-reporter=dot scripts/queue-failure-diagnostics.test.mjs",
+  "contractTestsPassed": 28,
+  "contractTestExitCode": 0,
+  "installedPackageRecord": "target/nested-list-packages-j6nDXM/qualification.json",
+  "webKitRuns": [
+    {
+      "measurement": "breditor-nested-list-consumer-8kol5y/performance-EfhXYv/measurement.json",
+      "sha256": "334bae7d3ab112ec7b7db218e0d2d944a824410d589234e50665b21f2477b833",
+      "sessions": 1,
+      "ownersPerSize": 30,
+      "casesPassed": 90,
+      "exitCode": 0,
+      "ownerDiagnosticsEnabled": true,
+      "diagnostics": []
+    },
+    {
+      "measurement": "breditor-nested-list-consumer-8kol5y/performance-4uTXRo/measurement.json",
+      "sha256": "94fefe04b851c965021c50ab8525b06f1daf2a67eb9fa8cb36454a5b75186c95",
+      "sessions": 10,
+      "ownersPerSize": 3,
+      "casesPassed": 90,
+      "exitCode": 0,
+      "ownerDiagnosticsEnabled": true,
+      "diagnostics": []
+    }
+  ],
+  "faultResolved": false,
+  "interpretation": "Transforms matched the exact installed candidate once each and preserved deep-child editing/history/recovery assertions. No fault recurred. Logging changes can affect timing; these passes do not explain or fix the retained uninstrumented failure.",
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}
