@@ -1,5 +1,9 @@
 #[cfg(feature = "diagnostic-projection-child-count")]
 mod child_count_diagnostics;
+#[cfg(feature = "candidate-explicit-child-count")]
+mod child_count_transport;
+#[cfg(feature = "candidate-word-child-count")]
+mod child_count_words;
 #[cfg(feature = "diagnostic-projection-format-count")]
 mod format_count_diagnostics;
 #[cfg(feature = "experimental-text-blocks")]
@@ -9,6 +13,8 @@ mod impact;
 mod list;
 mod node_record;
 mod read_projection;
+#[cfg(feature = "candidate-word-projection-scalars")]
+mod scalar_words;
 mod snapshot;
 mod snapshot_result;
 mod update;

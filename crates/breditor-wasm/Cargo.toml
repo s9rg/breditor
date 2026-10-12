@@ -19,6 +19,10 @@ selection-token-codes = []
 diagnostic-selection-inputs = []
 diagnostic-projection-format-count = []
 diagnostic-projection-child-count = []
+# Private transport comparison; not enabled by default/release packaging.
+candidate-explicit-child-count = []
+candidate-word-child-count = []
+candidate-word-projection-scalars = ["candidate-word-child-count", "experimental-nested-lists"]
 # Unqualified local candidate; deliberately excluded from default packaging.
 candidate-rust-selection-tokens = []
 # Opt-in heading profile/Session V5 bridge. Never enabled by default packaging.

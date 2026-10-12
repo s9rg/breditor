@@ -13,6 +13,7 @@ const keepProjectionOwners = false;
 const treeShape: string = "nested";
 const wordChildCountTransport = false;
 const allWordScalars = false;
+const enrichedScalars = false;
 const retainedOwners:Array<wasm.BreditorEngine|wasm.BreditorProjection>=[];
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
@@ -34,9 +35,10 @@ function using<T extends {free(): void}, R>(handle: T | undefined, action: (valu
     else handle.free();
   }
 }
-type Node = {kind:"text";text:string;formats:[]} | {kind:"element";type:string;entityId:null;properties:Record<string,number>;children:Node[]};
+type Format = {type:string;properties:Record<string,never>};
+type Node = {kind:"text";text:string;formats:Format[]} | {kind:"element";type:string;entityId:null;properties:Record<string,number>;children:Node[]};
 const element = (type:string,children:Node[],properties:Record<string,number>={}):Node => ({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
-const paragraph = (text:string,heading=false):Node => element(heading?"heading":"paragraph",[{kind:"text",text,formats:[]}],heading?{"breditor/level":2}:{});
+const paragraph = (text:string,heading=false):Node => element(heading?"heading":"paragraph",[{kind:"text",text,formats:enrichedScalars?[{type:"breditor/strong",properties:{}}]:[]}],heading?{"breditor/level":2}:{});
 function tree(items:number):Node {
   if(treeShape==="paragraphs")return element("document",Array.from({length:items},(_,index)=>paragraph(`Item ${index}: A🙂`)));
   return element("document",[element("ordered-list",Array.from({length:items},(_,index)=>element("list-item",[
@@ -74,13 +76,15 @@ async function run():Promise<void> {
     const fingerprint=using(profile.descriptor(),descriptor=>descriptor.schemaFingerprint);
     for(const items of [10,100,500])for(let repetition=0;repetition<ownerRepetitions;repetition++) {
       progress=`${items} items, owner ${repetition}`;
-      const root=tree(items), expected=rows(root);
+      const root=tree(items);
+      if(enrichedScalars&&root.kind==="element")root.children.push(element("paragraph",[]));
+      const expected=rows(root);
       using(using(profile.createEngineFromDocumentJsonV7(`getter-${items}-${repetition}`,JSON.stringify({format:"breditor/document",formatVersion:2,schema,schemaFingerprint:fingerprint,root}),20),result=>{
         same(result.status,"engine","engine status");return result.takeEngine();
       }),engine=>{
         using(engine.observation(),observation=>using(engine.projection(observation),result=>using(result.takeProjection(),view=>{
           const methods={childAt:view.childAt,nodeKind:view.nodeKind,elementType:view.elementType,childCount:view.childCount,
-            text:view.text,formatCount:view.formatCount,headingLevel:view.headingLevel,listKind:view.listKind,orderedListStart:view.orderedListStart};
+            text:view.text,formatCount:view.formatCount,formatType:view.formatType,formatPropertyCount:view.formatPropertyCount,formatPropertyName:view.formatPropertyName,headingLevel:view.headingLevel,listKind:view.listKind,orderedListStart:view.orderedListStart};
           if(wordChildCountTransport){
             const wordGetter=(view as wasm.BreditorProjection & {childCountWords(index:number):Uint32Array}).childCountWords;
             if(typeof wordGetter!=="function")throw Error("Missing word-count transport");
@@ -91,6 +95,7 @@ async function run():Promise<void> {
               const two=(name:string)=>{const getter=api[name];if(typeof getter!=="function")throw Error("Missing word scalar: "+name);return (index:number,ordinal:number)=>decodeChildCountWords(bridgeInvoke(getter,view,index,ordinal));};
               methods.childAt=two("childAtWords");methods.formatCount=one("formatCountWords");
               methods.headingLevel=one("headingLevelWords");methods.orderedListStart=one("orderedListStartWords");
+              methods.formatPropertyCount=two("formatPropertyCountWords");
             }
           }
           same(view.nodeCount,expected.length,"node count");same(view.rootIndex,0,"root index");
@@ -104,7 +109,15 @@ async function run():Promise<void> {
             same(bridgeInvoke(methods.childCount,view,index),node.kind==="element"?row.children.length:undefined,"child count");
             if(getterSequence!=="all")continue;
             same(bridgeInvoke(methods.text,view,index),node.kind==="text"?node.text:undefined,"text");
-            same(bridgeInvoke(methods.formatCount,view,index),node.kind==="text"?0:undefined,"format count");
+            same(bridgeInvoke(methods.formatCount,view,index),node.kind==="text"?node.formats.length:undefined,"format count");
+            if(enrichedScalars){
+              const formats=node.kind==="text"?node.formats:[];
+              for(let format=0;format<=formats.length;format++){
+                same(bridgeInvoke(methods.formatType,view,index,format),formats[format]?.type,"format type or absence");
+                same(bridgeInvoke(methods.formatPropertyCount,view,index,format),formats[format]===undefined?undefined:0,"format property count or absence");
+                same(bridgeInvoke(methods.formatPropertyName,view,index,format,0),undefined,"absent format property name");
+              }
+            }
             same(bridgeInvoke(methods.headingLevel,view,index),node.kind==="element"?node.properties["breditor/level"]:undefined,"heading level");
             same(bridgeInvoke(methods.listKind,view,index),node.kind==="element"&&node.type==="breditor/ordered-list"?"ordered":node.kind==="element"&&node.type==="breditor/bullet-list"?"bullet":undefined,"list kind");
             same(bridgeInvoke(methods.orderedListStart,view,index),node.kind==="element"?node.properties["breditor/start"]:undefined,"ordered start");

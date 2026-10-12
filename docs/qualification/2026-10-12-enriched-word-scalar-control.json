@@ -1,0 +1,17 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "privateRustExperimentsCommittedAtThisCheckpoint":true,
+  "defaultFeaturesChanged":false,
+  "wasmSha256":"4c74d07945c2f138f0f6a4c709dc217708b5717804cf2bda9ae19ed06103dbaf",
+  "scope":"Nested projection with strong-formatted text and an appended empty block. Valid/absent format ordinals, format-property zero/absence, zero child count, all original getter checks, independent expected preorder and cleanup verified.",
+  "wordFirst":{"fixture":"getter-probe-nsOs6q","sha256":"99da5fb3171e2dc0b1c63d891c71d1c97c27247b874dc8ea358420a420f3bc5e","processes":10,"owners":9000,"checks":194691010,"status":"passed"},
+  "wordExactReplay":{"fixture":"getter-probe-nsOs6q/exact-replay-DlIGAD","sha256":"57cd6ff2ef8030b31264a8553a18f05ec2acedb77b94adac2b29ebfba970d010","processes":10,"owners":9000,"checks":194691010,"status":"passed","rebuilt":false},
+  "sameWasmLegacyControl":{"report":"target/nested-list-reproductions/failure-FatirI/measurement.json","sha256":"135ade6cdcbe0485ced3c9a550cf07aaf418f36e37b2ba73ed89a81da04e559a","run":0,"progress":"100 items, owner 152, walk 0, forward node 0","label":"child index or absent sentinel","actual":"number 1","expected":"number 1","failurePathSameValue":true,"checks":1964924,"wasmIdentical":true},
+  "interpretation":"Same Wasm bytes remove recompilation/module-layout differences from this control. JS routing/build shapes still differ. Supports the word transport candidate; does not prove engine-internal cause, integration correctness or absence of future faults.",
+  "verification":{"privateWasmBuild":"passed","nativeWordEncodingUnit":"1 passed, 61 filtered; session 2067 completed","toolingTests":"passed","rustFormatting":"passed","crossRealmDecoder":"native Uint32Array brand accepted across realms; Int32Array, proxy and spoof rejected"},
+  "sourceBoundary":"Only private candidate flags and shared pure count calculation added/refactored. Rejected explicit-value transport retained as disabled private comparison. No candidate enabled by default, no production adapter promotion, no shipping artifacts written.",
+  "next":"Private browser adapter integration plus editor/clipboard/undo/recovery workload, public/default compatibility, native checks and size/performance qualification.",
+  "pushed":false,
+  "published":false
+}

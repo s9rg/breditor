@@ -34,6 +34,16 @@ pub struct BreditorProjection {
 }
 
 impl BreditorProjection {
+    /// Shared calculation for the default and experimental count transports.
+    pub(super) fn child_count_value(&self, index: u32) -> Option<u32> {
+        let count = self
+            .node(index)
+            .filter(|record| record.node().as_element().is_some())
+            .and_then(|record| u32::try_from(record.children().len()).ok());
+        #[cfg(feature = "diagnostic-projection-child-count")]
+        super::child_count_diagnostics::record(self as *const Self as usize, index, count);
+        count
+    }
     /// Returns the canonical format count for a text leaf.
     #[must_use]
     pub fn format_count(&self, index: u32) -> Option<u32> {
@@ -160,16 +170,11 @@ impl BreditorProjection {
     }
 
     /// Returns the number of direct semantic children for an element node.
+    #[cfg(not(feature = "candidate-explicit-child-count"))]
     #[must_use]
     #[wasm_bindgen(js_name = childCount)]
     pub fn child_count(&self, index: u32) -> Option<u32> {
-        let count = self
-            .node(index)
-            .filter(|record| record.node().as_element().is_some())
-            .and_then(|record| u32::try_from(record.children().len()).ok());
-        #[cfg(feature = "diagnostic-projection-child-count")]
-        super::child_count_diagnostics::record(self as *const Self as usize, index, count);
-        count
+        self.child_count_value(index)
     }
 
     /// Returns one child's flattened node index.
