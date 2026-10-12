@@ -53,7 +53,8 @@ export function instrumentProjectionUpdateFailures(code) {
 }
 
 /** Label existing rejection expressions without changing their returned value. */
-export function instrumentProjectionValidationSites(code, moduleName) {
+export function instrumentProjectionValidationSites(code, moduleName, {blockTypeCallMarker = true} = {}) {
+  assert.equal(typeof blockTypeCallMarker, "boolean", "block call marker must be boolean");
   assert.ok(["wasm_projection_adapter", "flat_list_projection_update", "nested_list_projection_update"].includes(moduleName));
   code = instrumentProjectionCaughtErrors(code, moduleName);
   let sites = 0;
@@ -67,7 +68,7 @@ export function instrumentProjectionValidationSites(code, moduleName) {
   });
   assert.ok(sites > 0, "projection rejection expressions changed");
   if (moduleName === "wasm_projection_adapter" && transformed.includes("const plannedBlock = layout?.textBlocks[paragraphOrdinal];")) {
-    return instrumentParagraphShapeOperands(instrumentBlockTypeCall(transformed));
+    return instrumentParagraphShapeOperands(blockTypeCallMarker ? instrumentBlockTypeCall(transformed) : transformed);
   }
   if (!["flat_list_projection_update", "nested_list_projection_update"].includes(moduleName)) return transformed;
   // Capture already-owned JS snapshots only after an equality rejection. Never

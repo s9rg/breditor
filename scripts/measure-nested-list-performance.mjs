@@ -44,6 +44,10 @@ assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BR
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
 const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
+const blockTypeCallMarkerValue = process.env["BREDITOR_PERF_BLOCK_CALL_MARKER"] ?? "1";
+assert.ok(["0", "1"].includes(blockTypeCallMarkerValue), "invalid block call marker mode");
+assert.ok(blockTypeCallMarkerValue === "1" || queueDiagnosticsEnabled, "disabling the block call marker requires queue diagnostics");
+const blockTypeCallMarker = blockTypeCallMarkerValue === "1";
 const constructorProbeEnabled = process.env["BREDITOR_PERF_EXCEPTION_PROBE"] === "1";
 assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
   "queue diagnostics require WebKit full-editor mode without other instrumentation");
@@ -144,7 +148,7 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
     if (id === join(consumer, `node_modules/@breditor/browser/dist/${name}.js`)) {
       assert.ok(!validationDiagnosticModules.has(name), "duplicate validation transform");
       validationDiagnosticModules.add(name);
-      return instrumentProjectionValidationSites(code, name);
+      return instrumentProjectionValidationSites(code, name, {blockTypeCallMarker});
     }
   }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/wasm_command_adapter.js")) {
@@ -193,6 +197,7 @@ const output = join(fixture, "measurement.json");
 const save = async status => writeFile(output, JSON.stringify({status, diagnosticInstrumentation: diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
   ownerDiagnosticsEnabled: queueDiagnosticsEnabled,
+  blockTypeCallMarkerEnabled: queueDiagnosticsEnabled && blockTypeCallMarker,
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
