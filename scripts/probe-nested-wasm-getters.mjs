@@ -41,6 +41,9 @@ const allWordScalars=wordFields==="all";
 const enrichedFlag=process.env.BREDITOR_GETTER_ENRICHED??"0";
 assert.ok(["0","1"].includes(enrichedFlag));const enrichedScalars=enrichedFlag==="1";
 assert.ok(!enrichedScalars||getterSequence==="all","enriched coverage requires all getters");
+const integerPropertyFlag=process.env.BREDITOR_GETTER_INTEGER_PROPERTIES??"0";
+assert.ok(["0","1"].includes(integerPropertyFlag));const integerProperties=integerPropertyFlag==="1";
+assert.ok(!integerProperties||enrichedScalars,"integer properties require enriched coverage");
 assert.ok(!allWordScalars||wordChildCountTransport,"all word scalars require private word Wasm");
 assert.ok(["0","1"].includes(keepOwnersFlag));const keepProjectionOwners=keepOwnersFlag==="1";
 const fixture=await mkdtemp(join(record.consumer,"getter-probe-"));
@@ -74,6 +77,11 @@ assert.equal(originalMain.split("const enrichedScalars = false;").length,2);
 await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`).replace('const getterSequence: string = "all";',`const getterSequence: string = ${JSON.stringify(getterSequence)};`).replace("const walkRepetitions = 1;",`const walkRepetitions = ${walkRepetitions};`).replace("const keepProjectionOwners = false;",`const keepProjectionOwners = ${keepProjectionOwners};`).replace('const treeShape: string = "nested";',`const treeShape: string = ${JSON.stringify(treeShape)};`).replace("const wordChildCountTransport = false;",`const wordChildCountTransport = ${wordChildCountTransport};`));
 if(allWordScalars)await writeFile(join(fixture,"main.ts"),(await readFile(join(fixture,"main.ts"),"utf8")).replace("const allWordScalars = false;","const allWordScalars = true;"));
 if(enrichedScalars)await writeFile(join(fixture,"main.ts"),(await readFile(join(fixture,"main.ts"),"utf8")).replace("const enrichedScalars = false;","const enrichedScalars = true;"));
+assert.equal(originalMain.split("const integerProperties = false;").length,2);
+if(integerProperties){
+  const integerMain=await readFile(join(fixture,"main.ts"),"utf8");
+  await writeFile(join(fixture,"main.ts"),integerMain.replace("const integerProperties = false;","const integerProperties = true;"));
+}
 // Explicitly separate diagnostic Wasm from the qualified packed control.
 let diagnosticWasmAssets;
 const diagnosticFiles=["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"];
@@ -83,6 +91,7 @@ const candidateDirectory=process.env.BREDITOR_GETTER_WASM_CANDIDATE;
 assert.ok([diagnosticDirectory,candidateDirectory,wordDirectory].filter(value=>value!==undefined).length<=1,"private Wasm variants must be tested separately");
 assert.ok(!(wordCandidateSelected&&(unsignedIndex||directCall||fixedArity||lastCapture||rawTrace||sentinelTreatment||keepProjectionOwners)),"word transport is a separate experiment");
 const privateDirectory=diagnosticDirectory??candidateDirectory??wordDirectory;
+assert.ok(!integerProperties||(privateDirectory===undefined&&!fixedArity&&!directCall&&!rawTrace&&!sentinelTreatment&&!lastCapture&&!unsignedIndex),"typed integer probe requires installed package and original variadic bridge");
 assert.ok(!(unsignedIndex&&privateDirectory!==undefined),"unsigned index requires original packed Wasm");
 assert.ok(!(keepProjectionOwners&&(privateDirectory!==undefined||directCall||fixedArity||lastCapture||rawTrace||sentinelTreatment)),"owner retention is tested independently on original packed Wasm");
 assert.ok(!(directCall&&privateDirectory!==undefined),"direct-call experiment requires original packed Wasm");
@@ -126,7 +135,7 @@ const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browser
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,directCallBridgeTreatment:directCall,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
   childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,unsignedChildCountIndexTreatment:unsignedIndex,
-  diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,wordCandidateSelected,wordRouting,allWordScalars,enrichedScalars,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
+  diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,wordCandidateSelected,wordRouting,allWordScalars,enrichedScalars,integerProperties,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();
 console.log(JSON.stringify({fixture}));

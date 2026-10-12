@@ -14,10 +14,13 @@ const treeShape: string = "nested";
 const wordChildCountTransport = false;
 const allWordScalars = false;
 const enrichedScalars = false;
+const integerProperties = false;
+const propertyValues = [-9007199254740991, -4294967296, -5, 0, 1193046, 4294967295, 4294967296, 9007199254740991];
+let propertyCursor = 0;
 const retainedOwners:Array<wasm.BreditorEngine|wasm.BreditorProjection>=[];
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
-  // Fixture references are finite unsigned integers, strings or undefined.
+  // Fixture references are finite safe integers, strings or undefined.
   // Preserve zero-sign equivalence while avoiding the observed strict-equality
   // rejection of two captured 1146s (whose SameValue comparison was true).
   const equal = Object.is(actual,expected) ||
@@ -35,10 +38,12 @@ function using<T extends {free(): void}, R>(handle: T | undefined, action: (valu
     else handle.free();
   }
 }
-type Format = {type:string;properties:Record<string,never>};
+type Format = {type:string;properties:Record<string,number>};
 type Node = {kind:"text";text:string;formats:Format[]} | {kind:"element";type:string;entityId:null;properties:Record<string,number>;children:Node[]};
 const element = (type:string,children:Node[],properties:Record<string,number>={}):Node => ({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
-const paragraph = (text:string,heading=false):Node => element(heading?"heading":"paragraph",[{kind:"text",text,formats:enrichedScalars?[{type:"breditor/strong",properties:{}}]:[]}],heading?{"breditor/level":2}:{});
+const paragraph = (text:string,heading=false):Node => element(heading?"heading":"paragraph",[{kind:"text",text,
+  formats:integerProperties?[{type:"example/signed",properties:{"example/value":propertyValues[propertyCursor++%propertyValues.length]!}}]:
+    enrichedScalars?[{type:"breditor/strong",properties:{}}]:[]}],heading?{"breditor/level":2}:{});
 function tree(items:number):Node {
   if(treeShape==="paragraphs")return element("document",Array.from({length:items},(_,index)=>paragraph(`Item ${index}: A🙂`)));
   return element("document",[element("ordered-list",Array.from({length:items},(_,index)=>element("list-item",[
@@ -67,7 +72,11 @@ void run().catch(error=>{output.textContent=JSON.stringify({progress,error:Strin
 async function run():Promise<void> {
   await initialize();
   const schema={name:"example/getter-probe",version:1};
-  const profile=using(wasm.BreditorCompiledProfile.fromBootstrapJsonV5(JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:5,schema,extensions:[]})),result=>{
+  const extensions=integerProperties?[{id:{name:"example/signed-extension",version:1},dependencies:[],conflicts:[],
+    inlineFormats:[{kind:"example/signed",revision:1}],inlineFormatPropertyContracts:[{formatKind:"example/signed",properties:[
+      {name:"example/value",presence:"required",valueType:{kind:"integer",minimum:-9007199254740991,maximum:9007199254740991}}
+    ]}],inlineFormatToggles:[],inlineFormatSets:[]}]:[];
+  const profile=using(wasm.BreditorCompiledProfile.fromBootstrapJsonV5(JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:5,schema,extensions})),result=>{
     same(result.status,"profile","profile status");return result.takeProfile();
   });
   if(!profile)throw Error("Missing profile");
@@ -84,7 +93,10 @@ async function run():Promise<void> {
       }),engine=>{
         using(engine.observation(),observation=>using(engine.projection(observation),result=>using(result.takeProjection(),view=>{
           const methods={childAt:view.childAt,nodeKind:view.nodeKind,elementType:view.elementType,childCount:view.childCount,
-            text:view.text,formatCount:view.formatCount,formatType:view.formatType,formatPropertyCount:view.formatPropertyCount,formatPropertyName:view.formatPropertyName,headingLevel:view.headingLevel,listKind:view.listKind,orderedListStart:view.orderedListStart};
+            text:view.text,formatCount:view.formatCount,formatType:view.formatType,formatPropertyCount:view.formatPropertyCount,formatPropertyName:view.formatPropertyName,
+            formatPropertyInteger:view.formatPropertyInteger,formatPropertyValueKind:view.formatPropertyValueKind,
+            formatPropertyBoolean:view.formatPropertyBoolean,formatPropertyString:view.formatPropertyString,
+            headingLevel:view.headingLevel,listKind:view.listKind,orderedListStart:view.orderedListStart};
           if(wordChildCountTransport){
             const wordGetter=(view as wasm.BreditorProjection & {childCountWords(index:number):Uint32Array}).childCountWords;
             if(typeof wordGetter!=="function")throw Error("Missing word-count transport");
@@ -114,8 +126,17 @@ async function run():Promise<void> {
               const formats=node.kind==="text"?node.formats:[];
               for(let format=0;format<=formats.length;format++){
                 same(bridgeInvoke(methods.formatType,view,index,format),formats[format]?.type,"format type or absence");
-                same(bridgeInvoke(methods.formatPropertyCount,view,index,format),formats[format]===undefined?undefined:0,"format property count or absence");
-                same(bridgeInvoke(methods.formatPropertyName,view,index,format,0),undefined,"absent format property name");
+                const properties=Object.entries(formats[format]?.properties??{});
+                same(bridgeInvoke(methods.formatPropertyCount,view,index,format),formats[format]===undefined?undefined:properties.length,"format property count or absence");
+                for(let property=0;property<=properties.length;property++) {
+                  same(bridgeInvoke(methods.formatPropertyName,view,index,format,property),properties[property]?.[0],"property name or absence");
+                  if(integerProperties) {
+                    same(bridgeInvoke(methods.formatPropertyValueKind,view,index,format,property),properties[property]===undefined?undefined:"integer","integer kind or absence");
+                    same(bridgeInvoke(methods.formatPropertyInteger,view,index,format,property),properties[property]?.[1],"exact signed integer or absence");
+                    same(bridgeInvoke(methods.formatPropertyBoolean,view,index,format,property),undefined,"integer is not boolean");
+                    same(bridgeInvoke(methods.formatPropertyString,view,index,format,property),undefined,"integer is not string");
+                  }
+                }
               }
             }
             same(bridgeInvoke(methods.headingLevel,view,index),node.kind==="element"?node.properties["breditor/level"]:undefined,"heading level");
