@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "5314710 plus diagnostic derivation tooling",
+  "releaseQualified": false,
+  "faultResolved": false,
+  "control": {
+    "record": "target/nested-list-reproductions/failure-WsjQQ6/measurement.json",
+    "sha256": "5386a1716f7b73aeba16372b2281a043a13ca18adb35c0692bd1680f00c64246",
+    "firstRejection": "wasm_projection_adapter:302:projection.invalid_shape",
+    "phase": "100 items, repetition 0: undoMs"
+  },
+  "derivedTrace": {
+    "record": "target/nested-list-reproductions/trace-2iJsL5/measurement.json",
+    "sha256": "b879c5dc39850b43f34c727c20f63e9a25497ab9de47e65a40f506d3c0d345ee",
+    "status": "prepared-diagnostic-only",
+    "asset": "index-DEzwFtBf.js",
+    "function": "Hh",
+    "failureSites": 16,
+    "rebuilt": false,
+    "remangled": false,
+    "controlModified": false,
+    "verification": "Reconstructing the original function inside the traced script reproduces the original whole-script hash. Original measurement, retention metadata, HTML and non-script assets are retained and hash-checked. Coordinated derived-header changes still cannot conceal changed code outside the traced function."
+  },
+  "derivedReplay": {
+    "record": "target/nested-list-reproductions/trace-2iJsL5/exact-replay-k5wQjQ/replay.json",
+    "sha256": "4af2fe1b85a503459bd9385215ac4e361c483a63535301a6a0ad192405177247",
+    "result": "passed",
+    "sessions": 10,
+    "cases": 900,
+    "browser": "WebKit 26.5",
+    "runtimeTierOverrides": {},
+    "interpretation": "No failed local operands captured. This bounded diagnostic pass does not resolve the retained control failure or prove tracing neutral."
+  },
+  "followingControlReplay": {
+    "record": "target/nested-list-reproductions/failure-WsjQQ6/exact-replay-sivnf9/replay.json",
+    "status": "running",
+    "rebuilt": false,
+    "addedInstrumentation": false
+  },
+  "toolingTests": {"passed": 177, "skipped": 3, "failed": 0},
+  "openGates": ["recurrent WebKit fault", "native qualification while Mac is locked", "accepted size and latency budgets"],
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}

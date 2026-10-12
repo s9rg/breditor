@@ -43,6 +43,37 @@ export async function verifyFailureBundle(sourcePath, manifest) {
     assert.deepEqual(replay.bundleAssets, source.bundleAssets);
     files["replay.json"] = replayBytes;
   }
+  if (manifest?.diagnosticDerivation === true) {
+    const derivation = source.retainedLayoutDerivation;
+    assert.equal(source.status, "prepared-diagnostic-only");
+    assert.equal(source.releaseQualified, false);
+    const originalMeasurement = await readFile(join(root, "original-measurement.json"));
+    const originalRetention = await readFile(join(root, "original-retention.json"));
+    const originalLayout = await readFile(join(root, "original-layout.js"));
+    assert.equal(hash(originalMeasurement), derivation.sourceMeasurementSha256);
+    assert.equal(hash(originalRetention), derivation.sourceRetentionSha256);
+    assert.equal(hash(originalLayout), derivation.originalLayoutSha256);
+    const original = JSON.parse(originalMeasurement), retained = JSON.parse(originalRetention);
+    assert.equal(retained.version, 1);
+    assert.equal(retained.measurementSha256, hash(originalMeasurement));
+    assert.equal(retained.indexSha256, hash(files["bundle/index.html"]));
+    assert.equal(original.bundleAssets[derivation.asset], derivation.originalAssetSha256);
+    const tracedScript = files[`bundle/assets/${derivation.asset}`];
+    assert.ok(tracedScript, "missing derived script");
+    assert.equal(hash(tracedScript), derivation.tracedAssetSha256);
+    const code = tracedScript.toString("utf8"), layout = derivation.layout;
+    assert.ok(Number.isSafeInteger(layout.start) && Number.isSafeInteger(layout.tracedEnd) &&
+      layout.start >= 0 && layout.tracedEnd > layout.start && layout.tracedEnd <= code.length, "invalid derived layout span");
+    const restored = code.slice(0, layout.start) + originalLayout.toString("utf8") + code.slice(layout.tracedEnd);
+    assert.equal(hash(Buffer.from(restored)), derivation.originalAssetSha256, "bytes outside retained layout changed");
+    assert.deepEqual(Object.keys(original.bundleAssets).sort(), Object.keys(source.bundleAssets).sort());
+    for (const name of Object.keys(original.bundleAssets)) if (name !== derivation.asset) {
+      assert.equal(source.bundleAssets[name], original.bundleAssets[name], "non-script control asset changed");
+    }
+    files["original-measurement.json"] = originalMeasurement;
+    files["original-retention.json"] = originalRetention;
+    files["original-layout.js"] = originalLayout;
+  }
   return {source, files};
 }
 
@@ -66,6 +97,7 @@ export async function retainNestedListReplayFailure(replayPath, sourcePath, rete
   await mkdir(join(output, "bundle/assets"), {recursive: true});
   for (const [name, bytes] of Object.entries(files)) await writeFile(join(output, name), bytes, {flag: "wx"});
   const manifest = {version: 1, failureKind: "exact-replay",
+    ...(sourceManifest?.diagnosticDerivation === true ? {diagnosticDerivation: true} : {}),
     originalSourcePath: sourceManifest?.originalSourcePath ?? sourcePath,
     measurementSha256: hash(files["measurement.json"]), indexSha256: hash(files["bundle/index.html"]),
     originalReplayPath: replayPath, replaySourcePath: sourcePath, replaySha256: hash(replayBytes)};

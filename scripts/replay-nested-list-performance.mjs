@@ -16,7 +16,7 @@ const replayTier = webkitReplayTier(process.env);
 const sourcePath = await realpath(resolve(process.argv[2]));
 const temporaryRoot = await realpath(tmpdir());
 const repository = await realpath(fileURLToPath(new URL("../", import.meta.url)));
-const durable = /^failure-[a-zA-Z0-9]+\/measurement\.json$/u.test(relative(join(repository, "target/nested-list-reproductions"), sourcePath));
+const durable = /^(?:failure|trace)-[a-zA-Z0-9]+\/measurement\.json$/u.test(relative(join(repository, "target/nested-list-reproductions"), sourcePath));
 const manifest = durable ? JSON.parse(await readFile(join(dirname(sourcePath), "retention.json"))) : undefined;
 if (!durable) assert.match(relative(temporaryRoot, sourcePath), /^breditor-nested-list-consumer-[a-zA-Z0-9]+\/performance-[a-zA-Z0-9]+\/measurement\.json$/u);
 await verifyFailureBundle(sourcePath, manifest);
@@ -45,6 +45,7 @@ const output = await mkdtemp(join(dirname(sourcePath), "exact-replay-"));
 const report = {status: "running", sourcePath, sourceSha256: hash(sourceBytes),
   javaScriptTierMode: replayTier.mode, requestedJavaScriptTierOverrides: replayTier.overrides,
   tierOverrideEffectVerified: false,
+  sourceDiagnosticDerivation: source.retainedLayoutDerivation ?? null,
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   bundleAssets: source.bundleAssets, indexSha256: hash(await readFile(join(bundle, "index.html"))),
   rebuilt: false, addedInstrumentation: false, releaseQualified: false, runs: []};
