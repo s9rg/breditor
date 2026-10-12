@@ -1,0 +1,13 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "scope":"Retained diagnostic Wasm, plain-paragraph child-count-only reduction, 300 owners per document size. No renderer/history/clipboard/native input.",
+  "rustComputedButJsMissing":{"report":"target/nested-list-reproductions/failure-kEx3H1/measurement.json","sha256":"7db82487256a2565c0ea677b7bb184c817a7567f35bfb2feee73192604be91d9","progress":"500 items, owner 285, walk 0, forward node 809","rust":{"receiver":1324380,"index":809,"count":1},"jsResult":"undefined","rawReturnCaptured":false},
+  "combinedTraceInitial":{"report":"target/nested-list-reproductions/failure-dkIAO6/measurement.json","sha256":"669eec3947d6d6e0e58a43f806b699d9decf54a0c2d5bdcbf98cdf78961b322f","progress":"10 items, owner 155, walk 0, backward node 15","rust":{"receiver":1193004,"index":15,"count":1},"js":{"handle":"1193000","index":"15","raw":"1","returned":"1"},"expected":1,"failurePathSameValue":true,"note":"Original check rejected despite matching captured values. Separate comparison failure pattern; root cause unproven."},
+  "combinedTraceExactReplay":{"report":"target/nested-list-reproductions/failure-dkIAO6/exact-replay-fd6De7/replay.json","sha256":"83fbe43926ea36cad47445f22195d36567698accc0b202966afef3097060724c","run":0,"progress":"100 items, owner 9, walk 0, forward node 81","rust":{"receiver":1218700,"index":81,"count":1},"js":{"handle":"1218696","index":"81","raw":"9007199254740991","returnedType":"undefined"},"expected":1,"failurePathSameValue":false,"rebuilt":false},
+  "interpretation":"Missing-value failure lies after Rust's recorded count computation and before the correct JS sentinel decoding. This does not yet distinguish compiled optional-result lowering from WebKit execution/return transfer. Rust reference address and JS wrapper handle are different representations; their four-byte difference is not claimed as pointer corruption. Matching-value rejection remains a separate unresolved observable pattern.",
+  "diagnosticWasmSha256":"74468c5e2e4bc8ad921e4801ad1d52856ab75d55ae2d0983b066f8b560a6de1a",
+  "decisions":["Preserve both failure patterns rather than treating transport-only candidates as complete fixes","Do not add fallback counts, retry getters or weaken admission","Use captured post-Rust mismatch to guide the next boundary change and verify it against both patterns"],
+  "pushed":false,
+  "published":false
+}
