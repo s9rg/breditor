@@ -67,6 +67,7 @@ const constructorProbeEnabled = process.env["BREDITOR_PERF_EXCEPTION_PROBE"] ===
 const wordCandidateFlag=process.env.BREDITOR_PERF_WORD_CANDIDATE??"0";
 assert.ok(["0","1"].includes(wordCandidateFlag));const wordCandidate=wordCandidateFlag==="1";
 assert.ok(!headingStringTrial || !wordCandidate, "heading trial cannot combine with copied word Wasm mode");
+assert.ok(!headingStringTrial || !constructorProbeEnabled, "heading trial cannot combine with constructor probe");
 assert.ok(!wordCandidate||(!coreOnly&&!diagnoseExport&&!cpuProfileEnabled&&!geckoProfileEnabled&&!renderingTraceEnabled&&!constructorProbeEnabled&&!queueDiagnosticsEnabled),"word candidate cannot combine with other instrumentation");
 assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
   "queue diagnostics require WebKit full-editor mode without other instrumentation");
