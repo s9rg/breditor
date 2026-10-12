@@ -1457,3 +1457,15 @@ binds the evidence. Browser-dispatched keys are not physical IME or spoken
 screen-reader qualification. No native evidence transfers from older archives.
 The full feature integration/doctest rerun remains live; WebKit risk and explicit
 release budgets remain open. Shipping bundles are unchanged; nothing is published.
+
+### October 12: release-tooling regression checks
+
+Release-stage sequencing, private opt-in packaging, declaration contracts,
+retained-pair verification and failure retention pass 51 script checks, with the
+opt-in browser plumbing test initially skipped. Enabling that test explicitly
+passes all three failure-retention tests, including ten fresh WebKit replays of
+an exact retained synthetic fixture after its original directory is removed.
+The [tooling record](qualification/2026-10-12-release-tooling-regression.json)
+records the commands and scope. This qualifies replay plumbing, not editor
+reliability or resolution of the historical fault. The full Rust rerun remains
+live. No shipping bundles, push or publication changes occur.

@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "4fafcf3f15e08fdb232d2f9cde2dd49aeceefe85",
+  "releaseQualified": false,
+  "scriptContracts": {
+    "command": "node --test scripts/verify-release.test.mjs scripts/build-opt-in-nested-list-package.test.mjs scripts/check-nested-list-declarations.test.mjs scripts/retained-nested-pair.test.mjs scripts/retain-nested-list-failure.test.mjs",
+    "exitCode": 0,
+    "passed": 51,
+    "failed": 0,
+    "skipped": 1
+  },
+  "explicitWebKitReplayPlumbing": {
+    "command": "BREDITOR_RETENTION_WEBKIT_TEST=1 node --test --test-reporter=dot scripts/retain-nested-list-failure.test.mjs",
+    "exitCode": 0,
+    "passed": 3,
+    "scope": "Synthetic already-passed page retained after original fixture deletion and replayed across ten fresh WebKit runs. Tests exact-byte retention/replay plumbing, not editor reliability or reproduction of the historical fault."
+  },
+  "fullCoreIntegrationAndDoctestRun": "Session 58562 remains live; full success not yet claimed.",
+  "historicalWebKitFaultResolved": false,
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}
