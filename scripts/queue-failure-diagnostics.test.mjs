@@ -5,6 +5,30 @@ import {transform} from "rolldown/utils";
 import {instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
 import {instrumentProjectionCaughtErrors} from "./queue-failure-diagnostics.mjs";
 import {instrumentNestedRootComparison} from "./queue-failure-diagnostics.mjs";
+import {instrumentNestedParagraphResults} from "./queue-failure-diagnostics.mjs";
+
+test("paragraph argument capture calls the comparator once and preserves its false result", () => {
+  const source = `export function nestedListRootsEqual(a, b) {
+    return a.items.every((item, index) => paragraphsEqual(item.block, b.items[index].block));
+}`;
+  const changed = instrumentNestedParagraphResults(source).replace("export function", "function");
+  const paragraph = {headingLevel: 2, runs: [{text: "A🙂", strong: false, formatDetails: []}]};
+  const left = {items: [{block: paragraph}]}, right = {items: [{block: structuredClone(paragraph)}]};
+  let calls = 0;
+  const logs = [];
+  const compare = new Function("paragraphsEqual", "console", `${changed}; return nestedListRootsEqual;`)(
+    (a, b) => { calls++; assert.equal(a, paragraph); assert.equal(b, right.items[0].block); return false; },
+    {error: (...args) => logs.push(args)},
+  );
+  assert.equal(compare(left, right), false);
+  assert.equal(calls, 1);
+  assert.equal(logs.length, 1);
+  const payload = JSON.parse(logs[0][1]);
+  assert.equal(payload.result, false);
+  assert.equal(payload.heading.sameValue, true);
+  assert.equal(payload.runs[0].textEqual, true);
+  assert.throws(() => instrumentNestedParagraphResults(source.replace("paragraphsEqual", "changed")));
+});
 import {instrumentNestedLayoutRejections} from "./queue-failure-diagnostics.mjs";
 import {instrumentFixtureProgress} from "./queue-failure-diagnostics.mjs";
 

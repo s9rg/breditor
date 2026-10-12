@@ -2,6 +2,38 @@
 // or production logging. Retain normal terminal queue semantics after logging.
 import assert from "node:assert/strict";
 
+/** Capture exact comparator arguments and its result; never retry or override. */
+export function instrumentNestedParagraphResults(code) {
+  const expression = "paragraphsEqual(item.block, b.items[index].block)";
+  const start = "export function nestedListRootsEqual(a, b) {";
+  assert.equal(code.split(expression).length, 2, "nested paragraph call changed");
+  assert.equal(code.split(start).length, 2, "nested comparator start changed");
+  return code.replace(expression, "diagnosticParagraphResult(item.block, b.items[index].block, index)")
+    .replace(start, start + `
+    const diagnosticParagraphResult = (left, right, index) => {
+        const result = paragraphsEqual(left, right);
+        if (!result) {
+            try {
+                const scalar = value => ({type: typeof value, value,
+                    spelling: typeof value === "number" ? String(value) : undefined});
+                console.error("breditor nested paragraph operands", JSON.stringify({index, result,
+                    sameReference: left === right, left, right,
+                    heading: {left: scalar(left.headingLevel), right: scalar(right.headingLevel),
+                        sameValue: Object.is(left.headingLevel, right.headingLevel)},
+                    runCounts: {left: left.runs.length, right: right.runs.length},
+                    runs: left.runs.slice(0, 8).map((run, ordinal) => {
+                        const other = right.runs[ordinal];
+                        return {ordinal, rightPresent: other !== undefined,
+                            textEqual: other !== undefined && run.text === other.text,
+                            strongEqual: other !== undefined && run.strong === other.strong,
+                            formatJsonEqual: other !== undefined && JSON.stringify(run.formatDetails) === JSON.stringify(other.formatDetails)};
+                    })}).slice(0, 8192));
+            } catch {}
+        }
+        return result;
+    };`);
+}
+
 /** Diagnostic comparison trials; no retries or overrides of computed results. */
 export function instrumentParagraphComparison(code, headingComparison = "strict") {
   assert.ok(["strict", "same-value", "same-value-minimal"].includes(headingComparison), "unknown heading comparison variant");

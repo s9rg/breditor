@@ -27,6 +27,7 @@ import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCo
 import {instrumentElementTypeReturn} from "./element-type-return-diagnostics.mjs";
 import {nestedListStressMode, uninstrumentedNestedStressPlugin} from "./nested-list-stress-mode.mjs";
 import {tree as artifactTree} from "./build-opt-in-nested-list-package.mjs";
+import {instrumentNestedParagraphResults} from "./queue-failure-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -48,6 +49,11 @@ assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BR
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
 const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
+assert.equal(process.env["BREDITOR_QUEUE_DIAGNOSTICS"], undefined, "use BREDITOR_PERF_QUEUE_DIAGNOSTICS");
+const paragraphFlag = process.env["BREDITOR_PERF_PARAGRAPH_DIAGNOSTICS"] ?? "0";
+assert.ok(["0", "1"].includes(paragraphFlag), "invalid paragraph diagnostic flag");
+const paragraphDiagnosticsEnabled = paragraphFlag === "1";
+assert.ok(!paragraphDiagnosticsEnabled || queueDiagnosticsEnabled, "paragraph diagnostics require queue diagnostics");
 const blockTypeCallMarkerValue = process.env["BREDITOR_PERF_BLOCK_CALL_MARKER"] ?? "1";
 assert.ok(["0", "1"].includes(blockTypeCallMarkerValue), "invalid block call marker mode");
 assert.ok(blockTypeCallMarkerValue === "1" || queueDiagnosticsEnabled, "disabling the block call marker requires queue diagnostics");
@@ -175,7 +181,9 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
     if (id === join(consumer, `node_modules/@breditor/browser/dist/${name}.js`)) {
       assert.ok(!validationDiagnosticModules.has(name), "duplicate validation transform");
       validationDiagnosticModules.add(name);
-      return instrumentProjectionValidationSites(code, name, {blockTypeCallMarker});
+      const diagnosed = instrumentProjectionValidationSites(code, name, {blockTypeCallMarker});
+      return paragraphDiagnosticsEnabled && name === "nested_list_projection_update"
+        ? instrumentNestedParagraphResults(diagnosed) : diagnosed;
     }
   }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/wasm_command_adapter.js")) {
@@ -224,7 +232,7 @@ const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => {
   if(wordCandidate)assert.deepEqual(await artifactTree(join(fixture,"private-word-wasm")),privateWordWasmTree,"private word Wasm changed during qualification");
-  return writeFile(output, JSON.stringify({status, diagnosticInstrumentation: wordCandidate || diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
+  return writeFile(output, JSON.stringify({status, diagnosticInstrumentation: wordCandidate || diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, paragraphDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   wordCandidate,privateWordWasmTree,installedPackedWasmUsed:!wordCandidate,
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
   uninstrumentedStressEnabled: stressMode.enabled && !wordCandidate,

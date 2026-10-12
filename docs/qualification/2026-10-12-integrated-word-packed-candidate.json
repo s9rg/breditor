@@ -28,6 +28,8 @@
     "secondStage": "500 items, repetition 20: selectionMs",
     "observed": "owner faulted with queueUncertain, authoritative content unavailable; root cause not yet established",
     "queueDiagnosticFailure": "target/nested-list-reproductions/failure-YDHnl7/measurement.json",
+    "paragraphOperandFailure": "target/nested-list-reproductions/failure-nO8wys/measurement.json",
+    "paragraphOperandObservation": "500 items repetition 26 selectionMs: comparator false at item 20. Both logged paragraphs have heading 2, one run, equal text/strong and empty format arrays; failure-only SameValue heading check true. Need internal comparator branch capture; no engine-level cause proven. Live run started before paragraphDiagnosticsEnabled report field addition; retained bundle contains the operand capture.",
     "queueDiagnosticBoundary": "Nested update impact none rejected after paragraph equality returned false at item 230. Serialized before/after roots had equal 90360 lengths and reported first-difference offset 90360 (no difference found). This is not yet proof that every typed field or comparison operand is equal; next step is capturing the exact failing paragraph operands and comparison branch. No rejection bypass introduced.",
     "diagnosticSetupNote": "First diagnostic attempt used an ignored BREDITOR_QUEUE_DIAGNOSTICS flag and is the second uninstrumented failure above. Correct queue flag combined with stress was rejected before artifact admission. Supported queue diagnostics run uses no stress flag; session 37502. No diagnostic evidence claimed from either setup mistake."
   },
