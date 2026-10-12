@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "productionEditorChanged": false,
+  "schedulerChanged": false,
+  "deadlineChanged": false,
+  "failedReportsRewritten": false,
+  "diagnosticProgressOnlyInDisposableBundles": true,
+  "diagnosticAndRestorationTestsPassed": 34,
+  "browserPositiveControls": ["Firefox suppressed animation frames", "WebKit engine-created exceptions"],
+  "retainedFailureHashesVerified": ["failure-ELMe6p", "failure-Qzzcoi", "failure-70GU4b"],
+  "sleepCorrelatedTimeouts": [
+    {
+      "retained": "target/nested-list-reproductions/failure-ELMe6p",
+      "reportSha256": "94f5db2a650d7a272cf5c923edaf33d3c5aed050f80e05058b0a2193cc4d4cd5",
+      "sourceReportCreatedUtc": "2026-10-11T23:19:52.639Z",
+      "sourceReportModifiedUtc": "2026-10-11T23:26:29.736Z",
+      "wallSpanMs": 397096.9453125,
+      "sleepStartUtc": "2026-10-11T23:19:58Z",
+      "wakeUtc": "2026-10-11T23:26:29Z",
+      "sleepSeconds": 391
+    },
+    {
+      "retained": "target/nested-list-reproductions/failure-Qzzcoi",
+      "reportSha256": "075ed26e6789620ca65a083674b5a0ceb77f832a3b736759015c1cb8c91f3e28",
+      "sourceReportCreatedUtc": "2026-10-12T00:48:45.912Z",
+      "sourceReportModifiedUtc": "2026-10-12T00:54:26.459Z",
+      "wallSpanMs": 340546.3283691406,
+      "sleepStartUtc": "2026-10-12T00:48:47Z",
+      "wakeUtc": "2026-10-12T00:54:22Z",
+      "sleepSeconds": 335,
+      "completedCases": 51,
+      "lastPhase": "100 items, repetition 20: drain"
+    },
+    {
+      "retained": "target/nested-list-reproductions/failure-70GU4b",
+      "sourceFixture": "pFkhCS/performance-PXlaAd",
+      "sourceReportCreatedUtc": "2026-10-12T00:57:15.851Z",
+      "sourceReportModifiedUtc": "2026-10-12T01:12:40.693Z",
+      "wallSpanMs": 924841.4323730469,
+      "sleepStartUtc": "2026-10-12T00:57:22Z",
+      "wakeUtc": "2026-10-12T01:12:40Z",
+      "sleepSeconds": 918,
+      "completedCases": 51,
+      "lastPhase": "100 items, repetition 20: drain",
+      "pendingDrainMonotonicMs": 1,
+      "previousDrainTotalMonotonicMs": 350,
+      "previousDrainMaxMonotonicMs": 19
+    }
+  ],
+  "powerLogSource": "Read-only pmset log: maintenance sleep and subsequent dark wake, local UTC-04:00 timestamps converted above to UTC; no power settings changed.",
+  "classification": "Test execution interrupted by system sleep. These timeout observations do not show the historical projection.invalid_update fault.",
+  "exactReplayOfNewTimeout": {
+    "report": "target/nested-list-reproductions/failure-ELMe6p/exact-replay-pELSkF/replay.json",
+    "reportSha256": "5df7e90e0244d5bca42878859b2ff9813ca9d99fdaba179d0ed4fab2d2782e5c",
+    "outcomes": ["90 cases passed", "90 cases passed", "timeout"],
+    "bundleRebuilt": false,
+    "addedInstrumentation": false,
+    "boundary": "Repeated timeout under the sleeping-host conditions, not a reproduction of the historical projection rejection."
+  },
+  "completedMarkedTrial": {
+    "fixture": "pFkhCS/performance-6BWOg1",
+    "reportSha256": "bb7e87af2735e934599e8c4ea9110bc1fc0e18c402958ce541e96b7cef247940",
+    "correctnessCycles": 270,
+    "freshSessions": 3,
+    "hostWaitMs": [55031, 54966, 55610],
+    "diagnostics": [],
+    "timingQualified": false
+  },
+  "finalTimestampAndProgressSmoke": {
+    "fixture": "pFkhCS/performance-0MBAPQ",
+    "reportSha256": "d6c5eea2e48d8c906b0066a7ec65ac95c70459faa8f96ae53963998e47714c9f",
+    "correctnessCycles": 9,
+    "waitStartedUtc": "2026-10-12T02:24:57.741Z",
+    "waitFinishedUtc": "2026-10-12T02:25:04.525Z",
+    "hostWaitMs": 6784,
+    "completedMarker": "9",
+    "diagnostics": []
+  },
+  "historicalWebKitProjectionFaultResolved": false,
+  "awakeAssertionApprovalPending": true,
+  "nativeQualificationPendingUnlock": true,
+  "powerSettingsChanged": false
+}

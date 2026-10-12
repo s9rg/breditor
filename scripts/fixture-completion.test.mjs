@@ -1,7 +1,39 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {runInNewContext} from "node:vm";
-import {waitForFixtureCompletion} from "./fixture-completion.mjs";
+import {readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
+
+test("failure state uses one bounded read and preserves uncompleted state", async () => {
+  let calls = 0;
+  const reads = [];
+  const element = {getAttribute(name) {reads.push(name); return name === "data-progress" ? "initialization" : name === "data-cases-completed" ? "0" : null;},
+    get textContent() {reads.push("textContent"); return "starting";}};
+  const resources = Array.from({length: 15}, (_, i) => ({name: `http://127.0.0.1:1234/assets/${i}.js`, initiatorType: "script", duration: i, responseEnd: i + 1, transferSize: i * 10}));
+  const page = {locator(selector) {
+    assert.equal(selector, "#result");
+    return {evaluate(fn, arg, options) {
+      calls++;
+      assert.equal(arg, undefined);
+      assert.deepEqual(options, {timeout: 5000});
+      return runInNewContext(`(${fn.toString()})(element)`, {element, URL,
+        document: {visibilityState: "visible", readyState: "complete"},
+        performance: {getEntriesByType(type) {assert.equal(type, "resource"); return resources;}},
+      });
+    }};
+  }};
+  const result = await readFixtureFailureState(page);
+  assert.equal(calls, 1);
+  assert.deepEqual(reads, ["data-drain-start-ms", "data-drain-start-wall-ms", "data-status", "textContent", "data-progress", "data-cases-completed", "data-drain-total-ms", "data-drain-max-ms", "data-drain-total-wall-ms", "data-work-total-wall-ms", "data-work-last-wall-ms"]);
+  assert.equal(result.status, null);
+  assert.equal(result.output, "starting");
+  assert.equal(result.progress, "initialization");
+  assert.equal(result.completedCases, "0");
+  assert.equal(result.drainWaitMs, null);
+  assert.equal(result.resources.length, 12);
+  assert.equal(result.resources[0].path, "/assets/3.js");
+  assert.equal(result.resources[11].path, "/assets/14.js");
+  assert.equal(await readFixtureFailureState(undefined), undefined);
+});
 
 test("completion uses timer polling and preserves the deadline and rejection", async () => {
   let predicate;
@@ -30,6 +62,24 @@ test("completion uses timer polling and preserves the deadline and rejection", a
     }};
     assert.equal(runInNewContext(`(${predicate.toString()})()`, {document}), status);
   }
+});
+
+test("failure state distinguishes wall-clock and monotonic drain time", async () => {
+  const attributes = {"data-drain-start-ms": "50", "data-drain-start-wall-ms": "1000",
+    "data-progress": "100 items, repetition 20: drain", "data-cases-completed": "51",
+    "data-drain-total-wall-ms": "350", "data-work-total-wall-ms": "12000"};
+  const element = {textContent: "starting", getAttribute(name) {return attributes[name] ?? null;}};
+  const page = {locator() {return {evaluate(fn) {return runInNewContext(`(${fn.toString()})(element)`, {
+    element, URL, Date: {now: () => 11000},
+    document: {visibilityState: "visible", readyState: "complete"},
+    performance: {now: () => 51, getEntriesByType: () => []},
+  });}};}};
+  const state = await readFixtureFailureState(page);
+  assert.equal(state.drainWaitMs, 1);
+  assert.equal(state.drainWaitWallMs, 10000);
+  assert.equal(state.completedCases, "51");
+  assert.equal(state.status, null);
+  assert.equal(state.workTotalWallMs, "12000");
 });
 
 test("timer completion works when animation-frame polling is suppressed", {

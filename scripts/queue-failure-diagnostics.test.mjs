@@ -5,6 +5,68 @@ import {transform} from "rolldown/utils";
 import {instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
 import {instrumentProjectionCaughtErrors} from "./queue-failure-diagnostics.mjs";
 import {instrumentNestedRootComparison} from "./queue-failure-diagnostics.mjs";
+import {instrumentFixtureProgress} from "./queue-failure-diagnostics.mjs";
+
+test("real fixture progress preserves execution before pending startup, even with a throwing marker", async () => {
+  const source = await readFile(new URL("./fixtures/nested-list-performance/main.ts", import.meta.url), "utf8");
+  const changed = instrumentFixtureProgress(source);
+  const outcomes = [];
+  for (const [code, hostile] of [[source, false], [changed, false], [changed, true]]) {
+    const compiled = (await transform("fixture.ts", code, {lang: "ts"})).code.replace(/^import[^\n]+\n/gmu, "");
+    const calls = [], phases = [];
+    const output = {textContent: "starting", dataset: {}, setAttribute(name, value) {
+      assert.ok(["data-progress", "data-cases-completed"].includes(name));
+      if (hostile) throw new Error("marker");
+      if (name === "data-progress") phases.push(value);
+    }};
+    const document = {getElementById(id) {return id === "result" ? output : {};}};
+    const wasm = {BreditorCompiledProfile: {fromBootstrapJsonV5(value) {
+      calls.push(["compile", value]);
+      return {takeProfile() {return {descriptor() {return {schemaFingerprint: "fingerprint", free() {calls.push("descriptor free");}};}, free() {calls.push("profile free");}};}, free() {calls.push("compiled free");}};
+    }}};
+    const editor = {openNestedLists(options) {calls.push(["open", options]); return new Promise(() => {});}};
+    new Function("document", "initialize", "wasm", "BreditorBrowserEditor", "performance", "location", compiled)(
+      document, async () => {calls.push("initialize");}, wasm, editor, {now: () => 42}, {search: ""},
+    );
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(output.textContent, "starting");
+    assert.equal(output.dataset.status, undefined);
+    outcomes.push(JSON.stringify(calls));
+    if (code === changed && !hostile) assert.deepEqual(phases, ["initialization", "profile compilation", "5 items, repetition -1: startup"]);
+  }
+  assert.equal(outcomes[0], outcomes[1]);
+  assert.equal(outcomes[0], outcomes[2]);
+});
+
+test("fixture progress rejects changed or duplicate anchors", async () => {
+  const source = await readFile(new URL("./fixtures/nested-list-performance/main.ts", import.meta.url), "utf8");
+  assert.throws(() => instrumentFixtureProgress(source.replace('let progress = "initialization";', "let progress;")));
+  assert.throws(() => instrumentFixtureProgress(source.replace("exportContent(format)", "exportContent(other)")));
+  assert.throws(() => instrumentFixtureProgress(instrumentFixtureProgress(source)));
+});
+
+test("drain diagnostics accumulate both clocks and contain marker failures", async () => {
+  const source = await readFile(new URL("./fixtures/nested-list-performance/main.ts", import.meta.url), "utf8");
+  const changed = instrumentFixtureProgress(source);
+  const helper = changed.slice(changed.indexOf("let fixtureCaseStartedWallMs:"), changed.indexOf("recordFixtureProgress(progress, 0);"));
+  const compiled = (await transform("drain.ts", helper, {lang: "ts"})).code;
+  for (const hostile of [false, true]) {
+    const attributes = new Map();
+    const output = {setAttribute(name, value) {if (hostile) throw new Error("marker"); attributes.set(name, value);},
+      removeAttribute(name) {if (hostile) throw new Error("marker"); attributes.delete(name);}};
+    const times = [10, 25, 30, 60], wallTimes = [1000, 1015, 1030, 1060];
+    let reads = 0, wallReads = 0;
+    const helper = new Function("output", "performance", "Date", `${compiled}; return {start: recordFixtureDrainStart, end: recordFixtureDrainEnd};`)(
+      output, {now: () => times[reads++]}, {now: () => wallTimes[wallReads++]},
+    );
+    const first = helper.start(); assert.equal(first, 10); helper.end(first);
+    const second = helper.start(); assert.equal(second, 30); helper.end(second);
+    assert.equal(reads, 4); assert.equal(wallReads, 4);
+    if (!hostile) assert.deepEqual(Object.fromEntries(attributes), {
+      "data-drain-total-ms": "45", "data-drain-max-ms": "30", "data-drain-total-wall-ms": "45",
+    });
+  }
+});
 
 test("real nested comparator labels preserve results, reads and short circuits", async () => {
   const ts = await readFile(new URL("../packages/breditor-browser/src/nested_list_projection_update.ts", import.meta.url), "utf8");

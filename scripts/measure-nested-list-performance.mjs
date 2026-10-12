@@ -18,10 +18,10 @@ import {build, preview} from "vite";
 import {chromium, firefox, webkit} from "playwright-core";
 import {summarizeRenderingTrace} from "./rendering-trace-summary.mjs";
 import {summarizeGeckoProfile} from "./gecko-profile-summary.mjs";
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentFixtureProgress, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 import {retainNestedListFailure} from "./retain-nested-list-failure.mjs";
-import {FIXTURE_COMPLETION_POLLING_MS, waitForFixtureCompletion} from "./fixture-completion.mjs";
+import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -131,6 +131,7 @@ const validationDiagnosticModules = new Set();
 let routerDiagnosticModules = 0;
 let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
+let progressFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
   for (const name of ["wasm_projection_adapter", "nested_list_projection_update"]) {
     if (id === join(consumer, `node_modules/@breditor/browser/dist/${name}.js`)) {
@@ -152,6 +153,8 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
     return instrumentQueueFailures(code);
   }
   if (id === join(fixture, "main.ts")) {
+    progressFixtureModules++;
+    code = instrumentFixtureProgress(code);
     if (ownerRepetitions !== 3) {
       stressFixtureModules++;
       code = repeatPerformanceOwners(code, ownerRepetitions);
@@ -168,6 +171,7 @@ assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue dia
 assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "projection diagnostic module was not transformed exactly once");
 assert.equal(validationDiagnosticModules.size, queueDiagnosticsEnabled ? 2 : 0, "validation diagnostic modules were not transformed exactly once");
 assert.equal(routerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "router diagnostic module was not transformed exactly once");
+assert.equal(progressFixtureModules, queueDiagnosticsEnabled ? 1 : 0, "progress fixture was not transformed exactly once");
 assert.equal(stressFixtureModules, ownerRepetitions === 3 ? 0 : 1, "stress fixture was not transformed exactly once");
 assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 : 1, "selection fixture was not transformed exactly once");
 const server = await preview({configFile: false, root: fixture, logLevel: "warn", build: {outDir: join(fixture, "bundle")}, preview: {host: "127.0.0.1", port: 0, strictPort: true}});
@@ -178,6 +182,7 @@ const save = async status => writeFile(output, JSON.stringify({status, diagnosti
   diagnosticWasmNames: record.diagnosticNames === true,
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
+  liveFixtureProgress: queueDiagnosticsEnabled,
   deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget,
   selectionTimingIncludesTaskWaits: selectionScheduling !== "synchronous",
   cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
@@ -198,6 +203,8 @@ try {
     let browser;
     let page;
     let failureStage = "browserLaunch";
+    let fixtureWaitStartedWallMs;
+    let fixtureWaitFinishedWallMs;
     const diagnostics = [];
     const pageErrors = [];
     let cpuSession;
@@ -296,7 +303,10 @@ try {
       failureStage = "pageNavigation";
       await page.goto(`http://127.0.0.1:${address.port}/?${query}`);
       failureStage = "fixtureExecution";
+      fixtureWaitStartedWallMs = Date.now();
       await waitForFixtureCompletion(page);
+      fixtureWaitFinishedWallMs = Date.now();
+      const fixtureWaitElapsedWallMs = fixtureWaitFinishedWallMs - fixtureWaitStartedWallMs;
       failureStage = "fixtureAssertions";
       await captureCpuProfile();
       await captureRenderingTrace();
@@ -306,6 +316,16 @@ try {
       assert.deepEqual(pageErrors, [], "uncaught browser errors");
       const results = JSON.parse(await output.textContent()); assert.equal(results.cases.length, 3 * ownerRepetitions);
       assert.ok(results.cases.every(sample => sample.editTarget === editTarget), "fixture edit target mismatch");
+      const fixtureProgress = queueDiagnosticsEnabled ? await output.evaluate(element => ({
+        progress: element.getAttribute("data-progress"),
+        completedCases: element.getAttribute("data-cases-completed"),
+        drainTotalMs: element.getAttribute("data-drain-total-ms"),
+        drainMaxMs: element.getAttribute("data-drain-max-ms"),
+        drainTotalWallMs: element.getAttribute("data-drain-total-wall-ms"),
+        workTotalWallMs: element.getAttribute("data-work-total-wall-ms"),
+        workLastWallMs: element.getAttribute("data-work-last-wall-ms"),
+      })) : undefined;
+      if (fixtureProgress) assert.equal(fixtureProgress.completedCases, String(results.cases.length));
       const summary = [10, 100, 500].map(items => {
         const samples = results.cases.filter(sample => sample.items === items);
         assert.equal(samples.length, ownerRepetitions);
@@ -319,10 +339,13 @@ try {
       });
       if (renderingTraceEnabled) assert.equal(renderingTrace.spans.length, 60, "six measured spans for warm-up plus nine cases");
       await captureGeckoProfile();
-      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile, geckoProfile, renderingTrace, exceptionProbe};
+      const measured = {browser: name, run, version: browser.version(), ...results, summary, diagnostics, cpuProfile, geckoProfile, renderingTrace, exceptionProbe, fixtureWaitElapsedWallMs, fixtureProgress,
+        fixtureWaitStartedAt: new Date(fixtureWaitStartedWallMs).toISOString(),
+        fixtureWaitFinishedAt: new Date(fixtureWaitFinishedWallMs).toISOString()};
       measurements.push(measured); console.log(JSON.stringify({browser: name, summary}));
       await save("running");
     } catch (error) {
+      const failureCaughtWallMs = Date.now();
       try { await captureCpuProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
       try { await captureRenderingTrace(); } catch (traceError) { diagnostics.push(String(traceError)); }
       try { await captureExceptionProbe(); } catch (probeError) { diagnostics.push(String(probeError)); }
@@ -330,13 +353,13 @@ try {
       try {
         // Read completion and payload in one evaluation: separate protocol calls
         // can straddle completion and produce a misleading mixed-time snapshot.
-        fixtureState = await page?.locator("#result").evaluate(element => ({
-          status: element.getAttribute("data-status"), output: element.textContent,
-          visibility: document.visibilityState, readyState: document.readyState,
-        }), undefined, {timeout: 5000});
+        fixtureState = await readFixtureFailureState(page);
       } catch (snapshotError) { fixtureState = {snapshotError: String(snapshotError)}; }
       try { await captureGeckoProfile(); } catch (profileError) { diagnostics.push(String(profileError)); }
-      measurements.push({browser: name, run, version: browser?.version(), status: "failed", failureStage, error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, exceptionProbe, fixtureState});
+      measurements.push({browser: name, run, version: browser?.version(), status: "failed", failureStage, error: String(error), diagnostics, pageErrors, cpuProfile, geckoProfile, renderingTrace, exceptionProbe, fixtureState,
+        fixtureWaitElapsedWallMs: fixtureWaitStartedWallMs === undefined ? undefined : (fixtureWaitFinishedWallMs ?? failureCaughtWallMs) - fixtureWaitStartedWallMs,
+        fixtureWaitStartedAt: fixtureWaitStartedWallMs === undefined ? undefined : new Date(fixtureWaitStartedWallMs).toISOString(),
+        fixtureWaitFinishedAt: fixtureWaitStartedWallMs === undefined ? undefined : new Date(fixtureWaitFinishedWallMs ?? failureCaughtWallMs).toISOString()});
       await save("failed");
       try {
         const retained = await retainNestedListFailure(output, join(repository, "target/nested-list-reproductions"));

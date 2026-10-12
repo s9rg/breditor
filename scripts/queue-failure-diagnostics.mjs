@@ -249,6 +249,72 @@ export function repeatPerformanceOwners(code, repetitions) {
   return code.replace(anchor, `repetition < ${repetitions}`);
 }
 
+// Diagnostic-only progress mirrors existing phase assignments into the fixture
+// DOM. Ordinary measurement bytes are untouched. Failed diagnostics must not
+// change editor execution or hide its original error.
+export function instrumentFixtureProgress(code) {
+  assert.ok(!code.includes("recordFixtureProgress"), "duplicate fixture progress transform");
+  const initial = 'let progress = "initialization";';
+  assert.equal(code.split(initial).length, 2, "fixture initialization anchor changed");
+  let assignments = 0;
+  code = code.replace(/^(\s*)progress = ([^\n]+);$/gmu, (line, indent) => {
+    assignments++;
+    return `${line}\n${indent}recordFixtureProgress(progress);`;
+  });
+  assert.equal(assignments, 3, "fixture phase assignments changed");
+  code = code.replace(initial, `${initial}
+function recordFixtureProgress(value: string, completed?: number): void {
+  if (value.endsWith(": startup")) fixtureCaseStartedWallMs = Date.now();
+  try { output.setAttribute("data-progress", value); } catch {}
+  if (completed !== undefined) {
+    try { output.setAttribute("data-cases-completed", String(completed)); } catch {}
+    if (completed > 0 && fixtureCaseStartedWallMs !== undefined) {
+      const elapsed = Date.now() - fixtureCaseStartedWallMs;
+      fixtureWorkTotalWallMs += elapsed;
+      try { output.setAttribute("data-work-total-wall-ms", String(fixtureWorkTotalWallMs)); } catch {}
+      try { output.setAttribute("data-work-last-wall-ms", String(elapsed)); } catch {}
+    }
+  }
+}
+let fixtureCaseStartedWallMs: number | undefined;
+let fixtureWorkTotalWallMs = 0;
+let fixtureDrainTotalMs = 0;
+let fixtureDrainMaxMs = 0;
+let fixtureDrainTotalWallMs = 0;
+let fixtureDrainStartedWallMs = 0;
+function recordFixtureDrainStart(): number {
+  const start = performance.now();
+  fixtureDrainStartedWallMs = Date.now();
+  try { output.setAttribute("data-drain-start-ms", String(start)); } catch {}
+  try { output.setAttribute("data-drain-start-wall-ms", String(fixtureDrainStartedWallMs)); } catch {}
+  return start;
+}
+function recordFixtureDrainEnd(start: number): void {
+  const elapsed = performance.now() - start;
+  fixtureDrainTotalMs += elapsed;
+  fixtureDrainMaxMs = Math.max(fixtureDrainMaxMs, elapsed);
+  fixtureDrainTotalWallMs += Date.now() - fixtureDrainStartedWallMs;
+  try { output.setAttribute("data-drain-total-ms", String(fixtureDrainTotalMs)); } catch {}
+  try { output.setAttribute("data-drain-max-ms", String(fixtureDrainMaxMs)); } catch {}
+  try { output.setAttribute("data-drain-total-wall-ms", String(fixtureDrainTotalWallMs)); } catch {}
+  try { output.removeAttribute("data-drain-start-ms"); } catch {}
+  try { output.removeAttribute("data-drain-start-wall-ms"); } catch {}
+}
+recordFixtureProgress(progress, 0);`);
+  const compile = "  const compiled = wasm.BreditorCompiledProfile.fromBootstrapJsonV5(semanticProfile.bootstrapJson);";
+  assert.equal(code.split(compile).length, 2, "fixture compilation anchor changed");
+  code = code.replace(compile, `  recordFixtureProgress("profile compilation");\n${compile}`);
+  const drain = "      await new Promise<void>(resolve => setTimeout(resolve, 0));";
+  assert.equal(code.split(drain).length, 2, "fixture owner drain anchor changed");
+  code = code.replace(drain, `      recordFixtureProgress(\`\${items} items, repetition \${repetition}: drain\`, cases.length);
+      const fixtureDrainStart = recordFixtureDrainStart();
+${drain}
+      recordFixtureDrainEnd(fixtureDrainStart);`);
+  const exportRead = "    const value = owner!.exportContent(format);";
+  assert.equal(code.split(exportRead).length, 2, "fixture export anchor changed");
+  return code.replace(exportRead, `    recordFixtureProgress(\`\${items} items, repetition \${repetition}: export \${format}\`);\n${exportRead}`);
+}
+
 // Separate focus-triggered native notifications from the synthetic selection
 // delivery in the original reproducer. Only rewrite the disposable fixture;
 // these wall-clock spans include task waits and are not performance samples.

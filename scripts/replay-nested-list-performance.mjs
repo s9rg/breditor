@@ -8,7 +8,7 @@ import {preview} from "vite";
 import {webkit} from "playwright-core";
 import {fileURLToPath} from "node:url";
 import {verifyFailureBundle} from "./retain-nested-list-failure.mjs";
-import {FIXTURE_COMPLETION_POLLING_MS, waitForFixtureCompletion} from "./fixture-completion.mjs";
+import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
 
 assert.equal(process.argv.length, 3, "usage: node scripts/replay-nested-list-performance.mjs <retained measurement.json>");
 const sourcePath = await realpath(resolve(process.argv[2]));
@@ -54,12 +54,13 @@ try {
   assert.ok(address && typeof address !== "string");
   for (let run = 0; run < 10; run++) {
     let browser;
+    let page;
     const result = {run, status: "running", diagnostics: [], pageErrors: []};
     report.runs.push(result);
     try {
       browser = await webkit.launch();
       result.version = browser.version();
-      const page = await browser.newPage({viewport: {width: 1280, height: 960}});
+      page = await browser.newPage({viewport: {width: 1280, height: 960}});
       page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
       page.on("pageerror", error => {if (result.pageErrors.length < 100) result.pageErrors.push(String(error));});
       await page.goto(`http://127.0.0.1:${address.port}/?editTarget=${source.editTarget ?? "root"}`);
@@ -74,6 +75,8 @@ try {
     } catch (error) {
       result.status = "failed";
       result.error = String(error);
+      try {result.fixtureState = await readFixtureFailureState(page);}
+      catch (snapshotError) {result.fixtureState = {snapshotError: String(snapshotError)};}
     } finally {await browser?.close(); await save();}
     console.log(JSON.stringify({run, status: result.status, diagnostics: result.diagnostics}));
     if (result.status === "failed") break;

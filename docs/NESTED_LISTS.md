@@ -1308,3 +1308,46 @@ including ten synthetic exact-byte WebKit replay sessions, pass; the hardened
 two-test watcher regression passes independently. This fixes a demonstrated
 completion-watcher failure class, not an editor or historical WebKit projection
 fault. See the [watcher record](qualification/2026-10-11-fixture-completion.json).
+
+### October 11: historical package restoration and sleep-interrupted tests
+
+The historical `nested-list-packages-TpYaIw` archives and staged library bytes
+survive even though the original temporary consumer is gone. A read-only verifier
+checks hashes, sizes, private manifests, canonical target boundaries and linked
+entries. `restore-nested-list-consumer.mjs` copies those exact bytes into a new
+offline consumer, then reruns Node/types, nested browser checks in three engines
+and the base consumer smoke. It never rebuilds libraries, overwrites old records,
+or claims recovery of the lost historical failed JavaScript bundle. Fresh fixture
+code and the current browser environment are explicit. Restoration passes at
+`target/nested-list-restored-X5oVrw`; see the
+[restoration record](qualification/2026-10-11-restored-historical-pair.json).
+
+The restored libraries passed 90 uninstrumented root edit/history cycles across
+ten fresh WebKit sessions. Higher same-page churn produced timeouts, including
+one exact-byte replay timeout after two complete 90-case sessions. New
+diagnostic-only phase/case-count markers locate two timeouts after 51 successful
+cases, awaiting the timer between owners. Measuring those timers contradicted a
+timer-throttling explanation: the pending wait was 1 ms and preceding waits
+totaled 350 ms. The scheduler and deadline were not changed.
+
+The host power log and source-report creation/modification times identify actual
+system-sleep interruptions. One report spans 924.8 seconds, including 918 seconds
+of maintenance sleep, and is written immediately after wake. Two other timeout
+reports likewise bracket long sleeps and are written just after wake. All failed
+reports/bundles remain preserved and hash-verified; none is rewritten as passed.
+This explains the new apparent stalls as interrupted test execution, not the
+historical `projection.invalid_update` rejection. That older fault remains open.
+
+Completed marked runs pass 270 cases in three WebKit sessions, about 55 seconds
+per session, with no captured rejection. A final nine-case smoke verifies absolute
+host timestamps, completed-case markers and wall/monotonic clock accounting. All
+34 diagnostic/restoration tests pass, including real Firefox and WebKit positive
+controls. Ordinary fixture code remains uninstrumented; marked runs are not
+release timing evidence. See the
+[sleep-interruption record](qualification/2026-10-11-sleep-interrupted-tests.json).
+
+Reliable further long-running measurements require a continuously awake host.
+Temporary process-scoped wake prevention has been requested but not authorized;
+no power settings have changed. Native qualification still awaits manual unlock.
+The current release candidate remains `nested-list-opt-in-VTFj93`, not the restored
+historical pair. No shipping artifact, protocol, push or publication changes occur.
