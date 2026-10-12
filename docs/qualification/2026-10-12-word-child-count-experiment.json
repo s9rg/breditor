@@ -1,0 +1,20 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "candidateFeature":"candidate-word-child-count",
+  "rustSourceCommitted":false,
+  "defaultEnabled":false,
+  "contract":"Owned Uint32Array [presence,count]: [0,0] means absent; [1,value] means present including zero and u32::MAX. Invalid shape/tag rejected. Same native calculation once; no retry, fallback or index-admission relaxation.",
+  "wasmSha256":"906e345949396ae297e58a4a596f7146314a93ef1fadf962fb22db8d5f1e5137",
+  "childCountOnly":[
+    {"fixture":"getter-probe-Ah01hx","sha256":"94a922fbb9bf78147a800cc49d4293ae5f73cf306b23eee18eeaa40f340fdf82","processes":10,"owners":9000,"checks":7365010,"status":"passed"},
+    {"fixture":"getter-probe-Ah01hx/exact-replay-vzFGfR","sha256":"1402123454e155966bc4f24a336050b8526bab8c3d3828a37d0f20cadec79a16","processes":10,"owners":9000,"checks":7365010,"status":"passed","rebuilt":false}
+  ],
+  "allGetterFailure":{"report":"target/nested-list-reproductions/failure-Rh3i81/measurement.json","run":3,"progress":"100 items, owner 67, walk 0, forward node 2","label":"child index or absent sentinel","actual":"number 3","expected":"number 3","failurePathSameValue":true,"priorPassedProcesses":3},
+  "interpretation":"Word child-count runs passed but complete getter coverage did not. Remaining raw childAt still uses optional-number transport. Failure at childAt does not establish that word childCount is fully fixed or that converting another field will resolve all failures.",
+  "verification":{"wasmBuild":"passed","strictDecoderUnit":"passed","toolingTests":"passed","nativeWordEncodingUnit":"live session 2067; not yet qualified"},
+  "next":"Investigate consistent unsigned-word transport for the remaining optional projection scalars, then repeat full getter and editor/recovery qualification. Keep all candidates private until all required gates pass.",
+  "shippingChanged":false,
+  "pushed":false,
+  "published":false
+}

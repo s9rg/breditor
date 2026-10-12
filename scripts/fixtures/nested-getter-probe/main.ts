@@ -3,6 +3,7 @@ import initialize, * as wasm from "@breditor/wasm";
 // The runner supplies exact inspected bridge source from the retained control.
 // @ts-expect-error Generated private diagnostic module has no public declarations.
 import {bridgeInvoke} from "./bridge.js";
+import {decodeChildCountWords} from "./word-count.js";
 const output = document.getElementById("result")!;
 let progress = "initialization", checks = 0;
 const ownerRepetitions = 30;
@@ -10,6 +11,7 @@ const getterSequence: string = "all";
 const walkRepetitions = 1;
 const keepProjectionOwners = false;
 const treeShape: string = "nested";
+const wordChildCountTransport = false;
 const retainedOwners:Array<wasm.BreditorEngine|wasm.BreditorProjection>=[];
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
@@ -78,6 +80,11 @@ async function run():Promise<void> {
         using(engine.observation(),observation=>using(engine.projection(observation),result=>using(result.takeProjection(),view=>{
           const methods={childAt:view.childAt,nodeKind:view.nodeKind,elementType:view.elementType,childCount:view.childCount,
             text:view.text,formatCount:view.formatCount,headingLevel:view.headingLevel,listKind:view.listKind,orderedListStart:view.orderedListStart};
+          if(wordChildCountTransport){
+            const wordGetter=(view as wasm.BreditorProjection & {childCountWords(index:number):Uint32Array}).childCountWords;
+            if(typeof wordGetter!=="function")throw Error("Missing word-count transport");
+            methods.childCount=function(index:number){return decodeChildCountWords(bridgeInvoke(wordGetter,view,index));};
+          }
           same(view.nodeCount,expected.length,"node count");same(view.rootIndex,0,"root index");
           for(let walk=0;walk<walkRepetitions;walk++)for(const reverse of [false,true])for(let ordinal=0;ordinal<expected.length;ordinal++) {
             const index=reverse?expected.length-ordinal-1:ordinal, row=expected[index]!,node=row.node;
