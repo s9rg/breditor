@@ -6,10 +6,10 @@ export function instrumentElementTypeReturn(code) {
   let sites = 0;
   const result = code.replace(pattern, (match, index, stack, wasm, pointer, memory, length) => {
     sites++;
-    return match.slice(0, -6) + `if (${pointer} === 0 && (${index} === 634 || ${index} === 1587) && breditorElementTypeAbsenceLogs < 16) {breditorElementTypeAbsenceLogs++;try {console.error("breditor elementType raw absence", JSON.stringify({index:${index},handle:this.__wbg_ptr,pointer:${pointer},length:${length}}));} catch {}} return`;
+    return match.slice(0, -6) + `if (${index} === 634 || ${index} === 1587) {try {if(breditorElementTypeCalls.length===16)breditorElementTypeCalls.shift();breditorElementTypeCalls.push({index:${index},handle:this.__wbg_ptr,pointer:${pointer},length:${length}});}catch{}} if (${pointer} === 0 && (${index} === 634 || ${index} === 1587) && breditorElementTypeAbsenceLogs < 16) {breditorElementTypeAbsenceLogs++;try {console.error("breditor elementType raw absence", JSON.stringify({index:${index},handle:this.__wbg_ptr,pointer:${pointer},length:${length}}));} catch {}} return`;
   });
   assert.equal(sites, 1, "generated elementType return site changed");
   // Only the two fixed-workload indexes already captured as failed elements.
   // Other absent types are expected for text nodes and must not flood tracing.
-  return "let breditorElementTypeAbsenceLogs = 0;\n" + result;
+  return "let breditorElementTypeAbsenceLogs = 0; const breditorElementTypeCalls = [];\ntry {globalThis.__breditorElementTypeTrace = () => breditorElementTypeCalls.map(value => ({...value}));}catch{}\n" + result;
 }

@@ -11,12 +11,14 @@ test("raw absence trace preserves calls, decoding, cleanup and hostile logging",
       const w = {__wbindgen_add_to_stack_pointer(n) {calls.push(["stack",n]);return 100;},
         breditorprojection_elementType(...args) {calls.push(["wasm",...args]);},
         __wbindgen_export(...args) {calls.push(["free",...args]);}};
-      const View = new Function("w","R","z","console",`${code}; return View;`)(w,
+      const diagnosticGlobal = {};
+      const View = new Function("w","R","z","console","globalThis",`${code}; return View;`)(w,
         () => ({getInt32(offset) {calls.push(["read",offset]);return offset===100?pointer:4;}}),
         (...args) => {calls.push(["decode",...args]);return "name";},
-        {error(...args) {logs.push(args);if(hostile)throw 1;}});
+        {error(...args) {logs.push(args);if(hostile)throw 1;}}, diagnosticGlobal);
       traces.push({value:new View().elementType(1587),calls});
       if(code!==source) assert.equal(logs.length,pointer===0?1:0);
+      if(code!==source) assert.deepEqual(diagnosticGlobal.__breditorElementTypeTrace(), [{index:1587,handle:7,pointer,length:4}]);
     }
     assert.deepEqual(traces[0],traces[1]);
   }

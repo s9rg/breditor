@@ -204,6 +204,8 @@ export function instrumentParagraphShapeOperands(code) {
             return value;
         };
 ` + condition + `
+            try { paragraphDiagnostic.handle = view.__wbg_ptr; } catch {}
+            try { paragraphDiagnostic.rawElementTypeCalls = globalThis.__breditorElementTypeTrace?.(); } catch {}
             try { console.error("breditor paragraph shape operands", JSON.stringify(paragraphDiagnostic).slice(0, 4096)); } catch {}
 ` + code.slice(to);
 }
