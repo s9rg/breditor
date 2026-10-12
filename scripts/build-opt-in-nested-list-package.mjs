@@ -33,6 +33,19 @@ export async function tree(path) {
 }
 
 /** Only admitted experimental pairs can seed this separately named package. */
+export function validateTransportPair(record, candidate) {
+  const version = value => {
+    assert.ok(value.projectionScalarWordsVersion == null || value.projectionScalarWordsVersion === 1,
+      "Unknown projection scalar transport version");
+    assert.ok(value.privateScalarWords === undefined || typeof value.privateScalarWords === "boolean",
+      "Invalid private scalar transport flag");
+    const words = value.projectionScalarWordsVersion === 1;
+    assert.equal(value.privateScalarWords === true, words, "Private scalar transport flag/version mismatch");
+    return words ? 1 : null;
+  };
+  assert.equal(version(record), version(candidate), "Qualified pair/candidate transport mismatch");
+}
+
 export async function readQualifiedPair(recordPath) {
   const root = await realpath(repository), target = await realpath(join(root, "target"));
   assert.equal(target, join(root, "target"));
@@ -57,6 +70,7 @@ export async function readQualifiedPair(recordPath) {
   const candidate = JSON.parse(await readFile(join(record.candidate, "qualification.json"), "utf8"));
   assert.equal(candidate.status, "passed");
   assert.equal(candidate.feature, "experimental-nested-lists");
+  validateTransportPair(record, candidate);
   const wasm = join(staging, "wasm/dist");
   assert.equal(sha256(await readFile(join(wasm, "breditor_wasm_bg.wasm"))), candidate.wasmSha256);
   assert.equal(sha256(await readFile(join(wasm, "breditor_wasm.d.ts"))), candidate.declarationsSha256);

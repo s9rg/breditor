@@ -1,7 +1,22 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
-import {validateOptInManifest} from "./build-opt-in-nested-list-package.mjs";
+import {validateOptInManifest, validateTransportPair} from "./build-opt-in-nested-list-package.mjs";
+
+test("assembly transport admission requires exact candidate/pair agreement", () => {
+  const legacy = {}, words = {privateScalarWords: true, projectionScalarWordsVersion: 1};
+  validateTransportPair(legacy, legacy);
+  validateTransportPair(words, words);
+  validateTransportPair({privateScalarWords: false, projectionScalarWordsVersion: null}, legacy);
+  for (const invalid of [
+    {privateScalarWords: true}, {projectionScalarWordsVersion: 1},
+    {privateScalarWords: false, projectionScalarWordsVersion: 1},
+    {privateScalarWords: "true", projectionScalarWordsVersion: 1},
+    {privateScalarWords: true, projectionScalarWordsVersion: 2},
+  ]) assert.throws(() => validateTransportPair(invalid, words));
+  assert.throws(() => validateTransportPair(legacy, words));
+  assert.throws(() => validateTransportPair(words, legacy));
+});
 
 const json = async path => JSON.parse(await readFile(new URL(path, import.meta.url), "utf8"));
 const manifest = await json("../packages/breditor-experimental-nested-lists/package.json");
