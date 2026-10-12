@@ -51,6 +51,8 @@ pub use profile::{
     BreditorCompiledProfile, BreditorCompiledProfileDescriptor, BreditorCompiledProfileResult,
     BreditorProfileGeneration,
 };
+#[cfg(feature = "diagnostic-projection-child-count")]
+pub use projection::debug_last_projection_child_count;
 #[cfg(feature = "diagnostic-projection-format-count")]
 pub use projection::debug_last_projection_format_count;
 pub use projection::{BreditorProjection, BreditorProjectionResult, BreditorProjectionUpdate};

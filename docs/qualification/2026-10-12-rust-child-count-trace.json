@@ -1,0 +1,20 @@
+{
+  "releaseQualified": false,
+  "faultResolved": false,
+  "feature": "diagnostic-projection-child-count",
+  "scope": "Local diagnostic builds only. Fixed-size Rust receiver/index/Option count recorded before return; no host call, document text or second projection read.",
+  "diagnosticWasmSha256": "74468c5e2e4bc8ad921e4801ad1d52856ab75d55ae2d0983b066f8b560a6de1a",
+  "build": "Isolated target/nested-child-count-diagnostic-cargo; experimental-nested-lists,diagnostic-projection-child-count; wasm-release; wasm-bindgen 0.2.127; rolldown 1.2.7",
+  "evidence": [
+    {"fixture": "getter-probe-Zcan68", "sha256": "77d567bdf71b8222e0b24b3a83c560cd8f3daf6be1bbf8e83782736253598d4a", "checks": 13944910, "status": "passed", "capture": "Rust plus last-value JS"},
+    {"fixture": "getter-probe-Zcan68/exact-replay-TqeQNm", "sha256": "a59283783e679d3ff370c04421117f43d4494bae052f26ece43af6dc584c9639", "checks": 13944910, "status": "passed", "capture": "Exact retained Rust plus JS bundle"},
+    {"fixture": "getter-probe-E65We4", "sha256": "545bbc97d25d87312fa615cf3a445058a44242c63ff05865dc83533957d56ba9", "checks": 13944910, "status": "passed", "capture": "Rust only"},
+    {"fixture": "getter-probe-E65We4/exact-replay-d2eLM2", "checks": 13944910, "status": "passed", "capture": "Exact retained Rust-only bundle"}
+  ],
+  "interpretation": "Diagnostic builds did not reproduce; this does not contradict retained failures of the packed control. No failing Rust input/result has been captured yet. Added instrumentation and compilation change execution shape.",
+  "verification": {"toolingTests": "passed", "rustFormatting": "passed", "rustUnitTest": "live exec session 25233; not yet qualified"},
+  "defaultContract": "Feature absent from default. Native child_count remains Option<u32>; shipping generated artifacts not written.",
+  "next": "Continue with this exact diagnostic artifact; obtain a failing Rust input/result before assigning ABI or Rust root cause. Do not ship a speculative return-transport fix.",
+  "pushed": false,
+  "published": false
+}

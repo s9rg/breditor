@@ -18,6 +18,7 @@ selection-token-codes = []
 # Local investigation only. Default/release packaging never enables this.
 diagnostic-selection-inputs = []
 diagnostic-projection-format-count = []
+diagnostic-projection-child-count = []
 # Unqualified local candidate; deliberately excluded from default packaging.
 candidate-rust-selection-tokens = []
 # Opt-in heading profile/Session V5 bridge. Never enabled by default packaging.

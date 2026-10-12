@@ -47,7 +47,8 @@ function rows(root:Node):Array<{node:Node;children:number[]}> {
   return result;
 }
 void run().catch(error=>{output.textContent=JSON.stringify({progress,error:String(error),checks:String(checks),
-  childCountTrace:(wasm as unknown as {breditorChildCountTrace?:()=>unknown}).breditorChildCountTrace?.()});output.dataset["status"]="failed";});
+  childCountTrace:(wasm as unknown as {breditorChildCountTrace?:()=>unknown}).breditorChildCountTrace?.(),
+  rustChildCountTrace:(wasm as unknown as {debugLastProjectionChildCount?:()=>string}).debugLastProjectionChildCount?.()});output.dataset["status"]="failed";});
 async function run():Promise<void> {
   await initialize();
   const schema={name:"example/getter-probe",version:1};

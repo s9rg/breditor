@@ -163,9 +163,13 @@ impl BreditorProjection {
     #[must_use]
     #[wasm_bindgen(js_name = childCount)]
     pub fn child_count(&self, index: u32) -> Option<u32> {
-        self.node(index)
+        let count = self
+            .node(index)
             .filter(|record| record.node().as_element().is_some())
-            .and_then(|record| u32::try_from(record.children().len()).ok())
+            .and_then(|record| u32::try_from(record.children().len()).ok());
+        #[cfg(feature = "diagnostic-projection-child-count")]
+        super::child_count_diagnostics::record(self as *const Self as usize, index, count);
+        count
     }
 
     /// Returns one child's flattened node index.

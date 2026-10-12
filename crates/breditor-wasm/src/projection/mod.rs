@@ -1,3 +1,5 @@
+#[cfg(feature = "diagnostic-projection-child-count")]
+mod child_count_diagnostics;
 #[cfg(feature = "diagnostic-projection-format-count")]
 mod format_count_diagnostics;
 #[cfg(feature = "experimental-text-blocks")]
@@ -11,6 +13,8 @@ mod snapshot;
 mod snapshot_result;
 mod update;
 
+#[cfg(feature = "diagnostic-projection-child-count")]
+pub use child_count_diagnostics::debug_last_projection_child_count;
 #[cfg(feature = "diagnostic-projection-format-count")]
 pub use format_count_diagnostics::debug_last_projection_format_count;
 pub use snapshot::BreditorProjection;
