@@ -12,6 +12,7 @@ const walkRepetitions = 1;
 const keepProjectionOwners = false;
 const treeShape: string = "nested";
 const wordChildCountTransport = false;
+const allWordScalars = false;
 const retainedOwners:Array<wasm.BreditorEngine|wasm.BreditorProjection>=[];
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
@@ -84,6 +85,13 @@ async function run():Promise<void> {
             const wordGetter=(view as wasm.BreditorProjection & {childCountWords(index:number):Uint32Array}).childCountWords;
             if(typeof wordGetter!=="function")throw Error("Missing word-count transport");
             methods.childCount=function(index:number){return decodeChildCountWords(bridgeInvoke(wordGetter,view,index));};
+            if(allWordScalars){
+              const api=view as unknown as Record<string,(...args:number[])=>Uint32Array>;
+              const one=(name:string)=>{const getter=api[name];if(typeof getter!=="function")throw Error("Missing word scalar: "+name);return (index:number)=>decodeChildCountWords(bridgeInvoke(getter,view,index));};
+              const two=(name:string)=>{const getter=api[name];if(typeof getter!=="function")throw Error("Missing word scalar: "+name);return (index:number,ordinal:number)=>decodeChildCountWords(bridgeInvoke(getter,view,index,ordinal));};
+              methods.childAt=two("childAtWords");methods.formatCount=one("formatCountWords");
+              methods.headingLevel=one("headingLevelWords");methods.orderedListStart=one("orderedListStartWords");
+            }
           }
           same(view.nodeCount,expected.length,"node count");same(view.rootIndex,0,"root index");
           for(let walk=0;walk<walkRepetitions;walk++)for(const reverse of [false,true])for(let ordinal=0;ordinal<expected.length;ordinal++) {

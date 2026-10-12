@@ -31,6 +31,10 @@ const walkRepetitions=Number(walkFlag);
 const keepOwnersFlag=process.env.BREDITOR_GETTER_KEEP_OWNERS??"0";
 const wordDirectory=process.env.BREDITOR_GETTER_WORD_CANDIDATE;
 const wordChildCountTransport=wordDirectory!==undefined;
+const wordFields=process.env.BREDITOR_GETTER_WORD_FIELDS??"child-count";
+assert.ok(["child-count","all"].includes(wordFields));
+const allWordScalars=wordFields==="all";
+assert.ok(!allWordScalars||wordChildCountTransport,"all word scalars require private word Wasm");
 assert.ok(["0","1"].includes(keepOwnersFlag));const keepProjectionOwners=keepOwnersFlag==="1";
 const fixture=await mkdtemp(join(record.consumer,"getter-probe-"));
 const rawTraceFlag=process.env.BREDITOR_GETTER_RAW_TRACE??"0";
@@ -58,7 +62,9 @@ assert.equal(originalMain.split("const walkRepetitions = 1;").length,2);
 assert.equal(originalMain.split("const keepProjectionOwners = false;").length,2);
 assert.equal(originalMain.split('const treeShape: string = "nested";').length,2);
 assert.equal(originalMain.split("const wordChildCountTransport = false;").length,2);
+assert.equal(originalMain.split("const allWordScalars = false;").length,2);
 await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`).replace('const getterSequence: string = "all";',`const getterSequence: string = ${JSON.stringify(getterSequence)};`).replace("const walkRepetitions = 1;",`const walkRepetitions = ${walkRepetitions};`).replace("const keepProjectionOwners = false;",`const keepProjectionOwners = ${keepProjectionOwners};`).replace('const treeShape: string = "nested";',`const treeShape: string = ${JSON.stringify(treeShape)};`).replace("const wordChildCountTransport = false;",`const wordChildCountTransport = ${wordChildCountTransport};`));
+if(allWordScalars)await writeFile(join(fixture,"main.ts"),(await readFile(join(fixture,"main.ts"),"utf8")).replace("const allWordScalars = false;","const allWordScalars = true;"));
 // Explicitly separate diagnostic Wasm from the qualified packed control.
 let diagnosticWasmAssets;
 const diagnosticFiles=["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"];
@@ -111,7 +117,7 @@ const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browser
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,directCallBridgeTreatment:directCall,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
   childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,unsignedChildCountIndexTreatment:unsignedIndex,
-  diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
+  diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,allWordScalars,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();
 console.log(JSON.stringify({fixture}));

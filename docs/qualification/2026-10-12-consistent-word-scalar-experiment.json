@@ -1,0 +1,17 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "rustSourceCommitted":false,
+  "feature":"candidate-word-projection-scalars",
+  "defaultEnabled":false,
+  "scope":"Private word methods delegate to existing native optional-u32 calculations. Fixture routes child count/index, format count, heading rank and ordered start through strict [presence,value] decoding; kinds/types/text remain original string getters.",
+  "wasmSha256":"4c74d07945c2f138f0f6a4c709dc217708b5717804cf2bda9ae19ed06103dbaf",
+  "firstRun":{"fixture":"getter-probe-LgDVcC","sha256":"e18734bd47d5cc5f834ffc301d2782047212103dfc8b76dfbe61fc121f92a00c","status":"passed","processes":10,"owners":9000,"checks":139449010},
+  "exactReplay":{"fixture":"getter-probe-LgDVcC/exact-replay-8z2PxR","status":"passed","processes":10,"owners":9000,"checks":139449010,"rebuilt":false},
+  "verification":"Private Wasm compilation, fixture TypeScript/Vite and all diagnostic tooling tests passed. Native word-encoding test still live in session 2067.",
+  "coverageBoundary":"Getter reduction only. Format-property word method was compiled but the fixture has no formats and does not exercise it. Not integrated renderer, clipboard, recovery, default contract, native-input, size or performance qualification.",
+  "interpretation":"Promising full-sequence and exact-replay result, not causal proof or release readiness. Earlier private variants also had green runs before failing.",
+  "next":"Add complete scalar contract coverage and integrate only in a private editor candidate, then repeat the retained reproduction and editing/recovery workloads. Preserve strict admission and default public contracts.",
+  "pushed":false,
+  "published":false
+}
