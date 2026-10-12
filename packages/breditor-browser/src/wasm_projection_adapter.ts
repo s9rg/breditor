@@ -1130,9 +1130,10 @@ function readProjectedFormatProperty(
   formatIndex: number,
   propertyIndex: number,
 ): ReadProjectedFormatProperty | null {
-  // Keep heterogeneous scalar returns in separate locals. A retained WebKit
-  // reproduction captured correct integer words and decoding, followed by zero
-  // in the mixed map/destructuring tuple. Preserve order and single invocation;
+  // Keep heterogeneous scalar returns in separate, auditable locals. Retained
+  // WebKit reproductions showed a changed integer result during collection;
+  // its precise call-boundary cause remains under investigation. Preserve order
+  // and single invocation;
   // no retry, coercion or weakened wrong-kind/absence validation is permitted.
   const name = invokeGenerated(methods.formatPropertyName, view, nodeIndex, formatIndex, propertyIndex);
   const kind = invokeGenerated(methods.formatPropertyValueKind, view, nodeIndex, formatIndex, propertyIndex);
