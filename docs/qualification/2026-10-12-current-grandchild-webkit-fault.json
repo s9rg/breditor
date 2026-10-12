@@ -26,7 +26,16 @@
     "addedInstrumentation": false
   },
   "interpretation": "A real current-candidate terminal fault was captured and its exact bytes retained. It did not recur in ten exact replays. Its first failing branch and relationship to the older projection fault remain unproven. This is not a timeout classification or a fix.",
-  "nextDiagnosticRun": "Live session 38013, ten sessions with 30 owners per size and existing bounded queue/projection failure-site diagnostics on a disposable bundle.",
+  "diagnosticAttempt": {
+    "measurement": "breditor-nested-list-consumer-8kol5y/performance-gSU6H1/measurement.json",
+    "sha256": "18e6d88f489020e4545c3b03d90d92d95cc7e5b2ec67a9ec0c5f8cdc13fc9477",
+    "exitCode": 0,
+    "freshSessions": 10,
+    "ownersPerSize": 30,
+    "casesPassed": 900,
+    "diagnostics": [],
+    "scope": "Existing bounded queue/router/projection failure-site tracing and fixture progress on a disposable bundle. No recurrence; not a fix or release latency evidence."
+  },
   "shippingArtifactsWritten": false,
   "pushed": false,
   "published": false

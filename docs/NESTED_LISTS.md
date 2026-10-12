@@ -1503,5 +1503,6 @@ The exact failed bundle and report are retained as `failure-uasLwJ`; ten exact-b
 replay sessions then passed without rebuilding or added instrumentation.
 The [failure record](qualification/2026-10-12-current-grandchild-webkit-fault.json)
 keeps the original failure distinct from replay success. The first failing branch
-and relationship to the older projection fault remain unidentified. A bounded
-diagnostic run is live; no fix or release qualification is claimed.
+and relationship to the older projection fault remain unidentified. The subsequent
+bounded diagnostic run passed 900 cases across ten sessions with 30 owners per
+size and no captured diagnostics; no fix or release qualification is claimed.
