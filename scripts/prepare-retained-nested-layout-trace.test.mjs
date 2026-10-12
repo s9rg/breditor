@@ -4,7 +4,7 @@ import {mkdir, mkdtemp, readFile, realpath, rm, writeFile} from "node:fs/promise
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
-import {retainNestedListFailure, verifyFailureBundle} from "./retain-nested-list-failure.mjs";
+import {retainNestedListFailure, retainNestedListReplayFailure, verifyFailureBundle} from "./retain-nested-list-failure.mjs";
 import {prepareRetainedNestedLayoutTrace} from "./prepare-retained-nested-layout-trace.mjs";
 
 const hash = value => createHash("sha256").update(value).digest("hex");
@@ -59,8 +59,21 @@ test("derived trace keeps control evidence and every non-script asset unchanged"
   await writeFile(join(result.output, "original-layout.js"), "changed original function");
   await assert.rejects(verifyFailureBundle(result.measurementPath, manifest));
   await writeFile(join(result.output, "original-layout.js"), verified.files["original-layout.js"]);
+  const replayPath = join(result.output, "synthetic-failed-replay.json");
+  await writeFile(replayPath, JSON.stringify({status: "failed", sourcePath: result.measurementPath,
+    sourceSha256: hash(measurementBytes), indexSha256: hash(html), bundleAssets: verified.source.bundleAssets}));
+  const retainedReplay = await retainNestedListReplayFailure(replayPath, result.measurementPath, join(root, "retained"), manifest);
   await writeFile(join(result.output, "bundle/assets/main.js"), "tampered");
   await assert.rejects(verifyFailureBundle(result.measurementPath, manifest));
   await writeFile(join(control, "measurement.json"), JSON.stringify({...JSON.parse(original), status: "measured"}));
   await assert.rejects(prepareRetainedNestedLayoutTrace(join(control, "measurement.json"), join(root, "retained")));
+  // A failed derived replay keeps the entire provenance chain, not just assets.
+  await rm(source, {recursive: true});
+  await rm(control, {recursive: true});
+  await rm(result.output, {recursive: true});
+  const replayManifest = JSON.parse(await readFile(join(retainedReplay, "retention.json")));
+  assert.equal(replayManifest.diagnosticDerivation, true);
+  const standalone = await verifyFailureBundle(join(retainedReplay, "measurement.json"), replayManifest);
+  assert.deepEqual(standalone.files["original-measurement.json"], original);
+  assert.deepEqual(standalone.files["original-layout.js"], verified.files["original-layout.js"]);
 });

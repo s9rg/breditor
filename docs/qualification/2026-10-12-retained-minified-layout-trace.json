@@ -33,10 +33,15 @@
   },
   "followingControlReplay": {
     "record": "target/nested-list-reproductions/failure-WsjQQ6/exact-replay-sivnf9/replay.json",
-    "status": "running",
+    "status": "passed",
+    "sha256": "fb46c30fc2a53bb47b3f352af332b099321fd31696f6b9ae7668d15e9760dae3",
+    "sessions": 10,
+    "cases": 900,
     "rebuilt": false,
-    "addedInstrumentation": false
+    "addedInstrumentation": false,
+    "interpretation": "The unchanged control also passed this bounded run. The derived pass therefore does not establish a tracing effect or fix; the earlier exact retained failure remains valid evidence."
   },
+  "derivedRetentionRegression": "A failed derived replay retains original measurement, retention metadata and original function bytes; verification succeeds after the synthetic source and derived source directories are removed.",
   "toolingTests": {"passed": 177, "skipped": 3, "failed": 0},
   "openGates": ["recurrent WebKit fault", "native qualification while Mac is locked", "accepted size and latency budgets"],
   "shippingArtifactsWritten": false,
