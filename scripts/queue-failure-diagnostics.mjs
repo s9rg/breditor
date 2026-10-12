@@ -135,7 +135,10 @@ export function instrumentNestedLayoutRejections(code) {
     const nestedLayoutReject = (stage, result, scalars) => {
         try { console.error("breditor nested layout rejection", JSON.stringify({stage,
             scalars: Object.fromEntries(Object.entries(scalars).map(([name, value]) => [name, {
-                type: typeof value, value, spelling: typeof value === "number" ? String(value) : undefined,
+                type: typeof value,
+                value: typeof value === "string" ? value.slice(0, 256)
+                    : value === null || typeof value === "number" || typeof value === "boolean" ? value : undefined,
+                spelling: typeof value === "number" ? String(value) : undefined,
             }])),
         }).slice(0, 4096)); } catch {}
         return result;

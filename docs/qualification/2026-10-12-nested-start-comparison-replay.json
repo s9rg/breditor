@@ -61,10 +61,28 @@
     "result": "passed without diagnostics",
     "coverage": "Sixteen explicit null/false rejection sites plus final node coverage; stage and local primitive values captured only on failure, without generated metadata rereads or validation retries.",
     "regression": "Real compiled adapter function returned identical results and generated-method call sequences before/after transformation across valid and malformed fixtures, with normal and throwing loggers. Structural anchors reject changed or duplicate rejection sites.",
-    "exactReplay": "running",
+    "exactReplay": {
+      "record": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-k9LZAE/performance-ZJahKM/exact-replay-vbkDNU/replay.json",
+      "sha256": "36ed7b5941b89d083eca69bae760403b3c20bde4993fc2a400ba833cc3b520e4",
+      "passedSessions": 10,
+      "passedCases": 900,
+      "addedInstrumentation": false,
+      "rebuilt": false
+    },
     "boundary": "Instrumentation can affect recurrence. This bounded pass does not resolve or supersede retained candidate failures."
   },
-  "toolingVerification": {"passed": 174, "skipped": 3, "failed": 0},
+  "retainedMinifiedTracePrototype": {
+    "sourceFailure": "target/nested-list-reproductions/failure-WsjQQ6/measurement.json",
+    "asset": "index-DEzwFtBf.js",
+    "layout": {"name": "Hh", "start": 237590, "end": 239336, "parameters": ["e", "t", "n", "r"]},
+    "failingLiteralReturns": 16,
+    "verification": "AST-offset patch parses successfully and preserves all bytes outside the selected function. Unit fixtures preserve return values, generated getter order, throwing logger behavior, primitive-only serialization and lexical shadowing/TDZ safety. No module-global values are captured.",
+    "preparedArtifact": false,
+    "replayed": false,
+    "purpose": "Next trace can patch the retained failing minified function without rebuilding or remangling the rest of its bundle; this reduces a compilation confound, but does not prove instrumentation is observationally neutral."
+  },
+  "nativeAvailability": {"checked": "2026-10-12", "result": "Mac remains locked; no native input sent or settings changed. Requested manual unlock."},
+  "toolingVerification": {"passed": 176, "skipped": 3, "failed": 0},
   "externalSource": "https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/OptionsList.h",
   "systemSettingsChanged": false,
   "shippingArtifactsWritten": false,

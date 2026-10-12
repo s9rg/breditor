@@ -15,7 +15,7 @@ test("real nested layout rejection traces preserve results, scalar reads and cle
   assert.ok(from >= 0);
   const source = compiled.slice(from, compiled.indexOf("\n}", from) + 2);
   const changed = instrumentNestedLayoutRejections(source);
-  for (const fault of [null, "capabilities", "rootIndex", "blockIndex", "blockType", "runs", "kind", "start", "count", "itemIndex", "children", "extraItem", "extraChild", "wrapper", "coverage"]) {
+  for (const fault of [null, "capabilities", "rootIndex", "blockIndex", "blockType", "runs", "hostileRuns", "kind", "start", "count", "itemIndex", "children", "extraItem", "extraChild", "wrapper", "coverage"]) {
     for (const hostile of [false, true]) {
       const outcomes = [];
       for (const code of [source, changed]) {
@@ -40,9 +40,11 @@ test("real nested layout rejection traces preserve results, scalar reads and cle
           const original = methods.elementType;
           methods.elementType = index => index === 3 ? "unknown/block" : original(index);
         }
-        if (fault === "runs" || fault === "count") {
+        let serializationCalls = 0;
+        if (fault === "runs" || fault === "count" || fault === "hostileRuns") {
           const original = methods.childCount;
-          methods.childCount = index => index === (fault === "runs" ? 3 : 1) ? NaN : original(index);
+          const invalid = fault === "hostileRuns" ? {toJSON() {serializationCalls++; throw Error("hostile serialization");}} : NaN;
+          methods.childCount = index => index === (fault === "count" ? 1 : 3) ? invalid : original(index);
         }
         if (fault === "kind") methods.listKind = () => "ordered";
         if (fault === "start") methods.orderedListStart = () => 3;
@@ -54,7 +56,8 @@ test("real nested layout rejection traces preserve results, scalar reads and cle
           () => true, () => true, () => true, value => Number.isInteger(value) && value >= 0,
           {error(...args) {if (hostile) throw Error("logger"); logs.push(args);}});
         const result = run({}, methods, 1, fault === "coverage" ? 6 : 5);
-        outcomes.push({result, calls});
+        outcomes.push({result, calls, serializationCalls});
+        assert.equal(serializationCalls, 0, "diagnostics must not serialize malformed generated objects");
         assert.equal(result !== null, fault === null);
         if (code === changed && fault !== null && !hostile) {
           assert.ok(logs.length > 0);
