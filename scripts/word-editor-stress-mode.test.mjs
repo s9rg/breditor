@@ -17,6 +17,8 @@ test("heading trials and diagnostic flags reject ambiguous modes before artifact
   for (const [overrides, message] of [
     [{BREDITOR_PERF_FORMATTED: "2"}, "invalid formatted stress flag"],
     [{BREDITOR_PERF_PROPERTY_FORMATS: "2"}, "invalid property format flag"],
+    [{BREDITOR_PERF_INTEGER_FORMATS: "2"}, "invalid integer format flag"],
+    [{BREDITOR_PERF_INTEGER_FORMATS: "1"}, "integer formats require property workload"],
     [{BREDITOR_PERF_PROPERTY_FORMATS: "1"}, "property formats require formatted workload"],
     [{BREDITOR_PERF_HEADING_STRING_TRIAL: "2"}, "invalid heading trial flag"],
     [{BREDITOR_PERF_HEADING_STRING_TRIAL: "1", BREDITOR_PERF_BROWSER: "chromium"}, "heading trial requires isolated WebKit mode"],

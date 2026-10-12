@@ -11,14 +11,17 @@ const equal = (actual: unknown, expected: unknown, label = "assertion"): void =>
 const element = (type: string, children: unknown[], properties = {}) => ({kind: "element", type: `breditor/${type}`, entityId: null, properties, children});
 const schema = {name: "example/list-performance", version: 1};
 const propertyFormats = new URLSearchParams(location.search).get("propertyFormats") === "1";
+const integerFormats = new URLSearchParams(location.search).get("integerFormats") === "1";
 const semanticProfile = {formatVersion: 5 as const, bootstrapJson: JSON.stringify({
   format: "breditor/profile-bootstrap", formatVersion: 5, schema, extensions: propertyFormats ? [{
     id: {name: "example/annotation-extension", version: 1}, dependencies: [], conflicts: [],
-    inlineFormats: [{kind: "example/link", revision: 1}],
+    inlineFormats: [{kind: "example/link", revision: 1}, ...(integerFormats ? [{kind: "example/text-color", revision: 1}] : [])],
     inlineFormatPropertyContracts: [{formatKind: "example/link", properties: [
       {name: "example/href", presence: "required", valueType: {kind: "string", minimumUtf8Bytes: 1, maximumUtf8Bytes: 2048}},
       {name: "example/open-in-new-window", presence: "required", valueType: {kind: "boolean"}},
-    ]}], inlineFormatToggles: [], inlineFormatSets: [],
+    ]}, ...(integerFormats ? [{formatKind: "example/text-color", properties: [
+      {name: "example/rgb24", presence: "required", valueType: {kind: "integer", minimum: 0, maximum: 16777215}},
+    ]}] : [])], inlineFormatToggles: [], inlineFormatSets: [],
   }] : [],
 })};
 type Metrics = Record<string, number>;
@@ -28,10 +31,11 @@ const editTarget = new URLSearchParams(location.search).get("editTarget") ?? "ro
 const formatted = new URLSearchParams(location.search).get("formatted") === "1";
 const formats = () => formatted ? [{type: "breditor/strong", properties: {}}, ...(propertyFormats ? [{
   type: "example/link", properties: {"example/href": "https://example.test/", "example/open-in-new-window": false},
-}] : [])] : [];
+}] : []), ...(integerFormats ? [{type: "example/text-color", properties: {"example/rgb24": 0x123456}}] : [])] : [];
 const rendering = () => createInlineFormatRenderManifest({recipes: [
   {formatKind: "breditor/strong", element: "strong"},
   {formatKind: "example/link", element: "a", classes: ["breditor-link"], attributes: {kind: "safeLinkV1", hrefProperty: "example/href", openInNewWindowProperty: "example/open-in-new-window"}},
+  ...(integerFormats ? [{formatKind: "example/text-color", element: "span", classes: ["breditor-text-color"], attributes: {kind: "safeTextColorV1"}}] : []),
 ]});
 
 void run().catch(error => { output.textContent = JSON.stringify({progress, error: String(error)}); output.dataset["status"] = "failed"; });

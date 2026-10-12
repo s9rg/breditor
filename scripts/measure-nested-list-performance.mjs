@@ -42,6 +42,10 @@ const propertyFlag = process.env["BREDITOR_PERF_PROPERTY_FORMATS"] ?? "0";
 assert.ok(["0", "1"].includes(propertyFlag), "invalid property format flag");
 const propertyFormats = propertyFlag === "1";
 assert.ok(!propertyFormats || formatted, "property formats require formatted workload");
+const integerFlag = process.env["BREDITOR_PERF_INTEGER_FORMATS"] ?? "0";
+assert.ok(["0", "1"].includes(integerFlag), "invalid integer format flag");
+const integerFormats = integerFlag === "1";
+assert.ok(!integerFormats || propertyFormats, "integer formats require property workload");
 assert.ok(["root", "grandchild"].includes(editTarget), "invalid BREDITOR_PERF_EDIT_TARGET");
 assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
 const cpuProfileEnabled = process.env["BREDITOR_PERF_CPU_PROFILE"] === "1";
@@ -267,7 +271,7 @@ const save = async status => {
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   liveFixtureProgress: queueDiagnosticsEnabled,
-  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget, formatted, propertyFormats,
+  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget, formatted, propertyFormats, integerFormats,
   selectionTimingIncludesTaskWaits: selectionScheduling !== "synchronous",
   cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
@@ -385,6 +389,7 @@ try {
       const query = new URLSearchParams({editTarget});
       if (formatted) query.set("formatted", "1");
       if (propertyFormats) query.set("propertyFormats", "1");
+      if (integerFormats) query.set("integerFormats", "1");
       if (renderingTraceEnabled || geckoProfileEnabled) query.set("renderTrace", "1");
       failureStage = "pageNavigation";
       await page.goto(`http://127.0.0.1:${address.port}/?${query}`);
