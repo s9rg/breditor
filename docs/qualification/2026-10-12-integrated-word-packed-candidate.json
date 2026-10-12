@@ -36,7 +36,7 @@
       "verifiedProgress": {"completedProcesses": 10, "editorCases": 900, "observedFailures": 0},
       "measurementSha256": "006e55668a86c0e942ab89fc1760bec940421a615c82b5948143c227df90b612",
       "exactReplay": {"session": 53674, "status": "running", "record": "performance-Dng4kH/exact-replay-ZPj8bm/replay.json"},
-      "rootFollowUp": {"session": 92128, "status": "running", "scope": "Same private comparison trial, root edit workload, ten processes planned. Overlaps grandchild run; timings excluded from release latency qualification."},
+      "rootFollowUp": {"status": "measured", "measurement": "performance-C6X67X/measurement.json", "sha256": "5723668c0364dba34d0b6336df468e3cbf8be474e373069ac032e30b8b72292b", "processes": 10, "editorCases": 900, "observedFailures": 0, "scope": "Same private comparison trial, root edit workload. Overlapped grandchild run; timings excluded from release latency qualification."},
       "measurement": "breditor-nested-list-consumer-q2nZu9/performance-Dng4kH/measurement.json",
       "scope": "Disposable minified bundle transform only, original installed tarballs unchanged. Type-checked string equality on admitted undefined/integer 1..6, rejects invalid ranks. No retries, scalar fallbacks or validation bypass.",
       "tests": "49 admitted heading pairs agree with SameValue; invalid ranks reject",
