@@ -29,10 +29,10 @@ const formatted = new URLSearchParams(location.search).get("formatted") === "1";
 const formats = () => formatted ? [{type: "breditor/strong", properties: {}}, ...(propertyFormats ? [{
   type: "example/link", properties: {"example/href": "https://example.test/", "example/open-in-new-window": false},
 }] : [])] : [];
-const rendering = propertyFormats ? createInlineFormatRenderManifest({recipes: [
+const rendering = () => createInlineFormatRenderManifest({recipes: [
   {formatKind: "breditor/strong", element: "strong"},
-  {formatKind: "example/link", element: "a", attributes: {kind: "safeLinkV1", hrefProperty: "example/href", openInNewWindowProperty: "example/open-in-new-window"}},
-]}) : undefined;
+  {formatKind: "example/link", element: "a", classes: ["breditor-link"], attributes: {kind: "safeLinkV1", hrefProperty: "example/href", openInNewWindowProperty: "example/open-in-new-window"}},
+]});
 
 void run().catch(error => { output.textContent = JSON.stringify({progress, error: String(error)}); output.dataset["status"] = "failed"; });
 async function run(): Promise<void> {
@@ -73,7 +73,7 @@ async function sample(items: number, fingerprint: string, repetition: number) {
       ])])] : []),
     ])), {"breditor/start": 7})]),
   });
-  const options = {host, label: "List performance document", wasm, semanticProfile, ...(rendering ? {rendering} : {}), toolbar: {host: toolbar},
+  const options = {host, label: "List performance document", wasm, semanticProfile, ...(propertyFormats ? {rendering: rendering()} : {}), toolbar: {host: toolbar},
     keyboard: {editing: "beforeinputPrimary" as const, primaryModifier: "control" as const, shortcuts: "enabled" as const}};
   const measured = <T>(name: string, action: () => T): T => {
     progress = `${items} items, repetition ${repetition}: ${name}`;
