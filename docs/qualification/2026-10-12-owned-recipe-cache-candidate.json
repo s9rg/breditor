@@ -15,11 +15,12 @@
     "boundary": "Chromium CPU-profile builds, three 500-item samples, sequential diagnostic runs while WebKit work overlapped. Observed reduction supports candidate direction, not statistical significance, WebKit effect or release latency acceptance. Actual DOM checks retained."
   },
   "packedWebkitPropertyStress": {"session": 49179, "status": "running", "scope": "Fresh cache candidate installed tarballs, reviewed strong/link properties, 30 owners per size and ten processes planned; not the older archive's stress."},
-  "optInAssembly": {"record": "target/nested-list-opt-in-jGyrA5/assembly.json", "sha256": "778d1179c195d76ddb2f2058605b5113ce97cb97c3c7c5e383ac795febaf01cd", "status": "assembled; consumer qualification running", "nativeQualified": false},
+  "optInAssembly": {"record": "target/nested-list-opt-in-jGyrA5/assembly.json", "sha256": "778d1179c195d76ddb2f2058605b5113ce97cb97c3c7c5e383ac795febaf01cd", "status": "consumer qualification passed", "scope": "Node/types, all three engines, trusted keyboard and mixed-history fresh-owner recovery at every cursor", "nativeQualified": false},
   "preCachePropertyControl": {"record": "breditor-nested-list-consumer-7430NU/performance-7vlgRJ/measurement.json", "sha256": "7a16a05ddf0b108137b28776437b1edecab3cde87f42690a650c11fa63201659", "status": "measured", "processes": 10, "editorCases": 900, "boundary": "Pre-cache candidate passed link-property churn; exact replay started independently. Does not qualify cache candidate."},
   "scope": "Cache only resolved expected semantic recipes for projection-validation-owned deeply frozen format arrays, keyed by exact owned presentation. Weak keys; mutable/frozen lookalikes and forged presentations remain uncached/rejected. Actual DOM attribute/node/map checks unchanged.",
   "verified": {
     "fullBrowserSuiteBeforeNewTests": "2118 passed",
+    "currentFullBrowserSuite": "56 files, 2120 tests passed",
     "targetedCacheRendererSelectionSuite": "284 passed, including two new ownership/isolation tests",
     "testTypecheck": "passed",
     "packedPair": "target/nested-list-packages-8VpHv5/qualification.json",
