@@ -1,0 +1,23 @@
+{
+  "releaseQualified": false,
+  "faultResolved": false,
+  "candidateFeature": "candidate-explicit-child-count",
+  "defaultEnabled": false,
+  "candidateWasmSha256": "85fb201dd40487f0f84f097b0e329ebbaf181dc5c3b3a70e5cb6e6609eff9205",
+  "failedReplaySha256": "b3d52604ed2158ad9baceb33d898cad06513e6d1db1f933e9d17cb1fe01600b4",
+  "scope": "Private explicit JsValue child-count transport; same shared Rust calculation and public number-or-undefined contract. No retries, fallback values or relaxed checks.",
+  "checks": {
+    "generatedDeclarations": "passed exact nested declaration check",
+    "nodeNestedScenario": "passed indent/outdent, typing/paste, commits, undo/redo selection and fresh-owner recovery",
+    "browsers": "Chromium, Firefox, WebKit: five raw-Wasm runs and one integrated editor/default-toolbar/recovery run each passed; synthetic input only",
+    "reducedGetters": "getter-probe-k1yFGV: ten fresh WebKit processes passed 13944910 checks",
+    "exactReplay": "target/nested-list-reproductions/failure-nTcdWO/replay.json: run 9 failed, 500 items, owner 11, forward node 1076; format count actual number 0, expected number 0, failure-path SameValue true"
+  },
+  "decision": "Reject as complete fix. No childCount failure observed in these candidate runs, but another getter check failed. Do not infer a causal childCount fix from changed compiled code and green subset.",
+  "nativeStartupEvidence": "Sample of project native test PID 59727 on 2026-10-12: main thread at _dyld_start, 96K footprint, no test CPU time. No system protections or provenance attributes changed. Existing processes remain alive.",
+  "buildAlternative": "Warm isolated nested-child-count-diagnostic-cargo cache compiled candidate in 6.45 seconds. Original fresh-cache build remains live; not restarted or used as qualification.",
+  "candidateCommitted": false,
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}

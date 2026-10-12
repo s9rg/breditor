@@ -41,16 +41,23 @@ let diagnosticWasmAssets;
 const diagnosticFiles=["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"];
 const diagnosticHashes=async directory=>Object.fromEntries(await Promise.all(diagnosticFiles.map(async name=>[name,createHash("sha256").update(await readFile(join(directory,name))).digest("hex")])));
 const diagnosticDirectory=process.env.BREDITOR_GETTER_RUST_DIAGNOSTIC;
+const candidateDirectory=process.env.BREDITOR_GETTER_WASM_CANDIDATE;
+assert.ok(!(diagnosticDirectory!==undefined&&candidateDirectory!==undefined),"diagnostic and candidate Wasm must be tested separately");
+const privateDirectory=diagnosticDirectory??candidateDirectory;
+const explicitChildCountTransport=candidateDirectory!==undefined;
+let privateDestination;
 let wasmModule=join(record.consumer,"node_modules/@breditor/wasm/dist/breditor_wasm.js");
-if(diagnosticDirectory!==undefined){
-  assert.equal(resolve(diagnosticDirectory),join(repository,"target/nested-child-count-diagnostic/pkg"),"only isolated child-count diagnostic directory admitted");
-  const destination=join(fixture,"rust-diagnostic");await cp(resolve(diagnosticDirectory),destination,{recursive:true});
+if(privateDirectory!==undefined){
+  assert.equal(resolve(privateDirectory),join(repository,explicitChildCountTransport?"target/nested-child-count-candidate/pkg":"target/nested-child-count-diagnostic/pkg"),"only isolated child-count experiment directory admitted");
+  const privateFolder=explicitChildCountTransport?"rust-candidate":"rust-diagnostic";
+  const destination=join(fixture,privateFolder);privateDestination=destination;await cp(resolve(privateDirectory),destination,{recursive:true});
   diagnosticWasmAssets=await diagnosticHashes(destination);
-  assert.ok((await readFile(join(destination,"breditor_wasm.d.ts"),"utf8")).includes("export function debugLastProjectionChildCount(): string;"),"missing Rust computed-result trace");
+  if(!explicitChildCountTransport)assert.ok((await readFile(join(destination,"breditor_wasm.d.ts"),"utf8")).includes("export function debugLastProjectionChildCount(): string;"),"missing Rust computed-result trace");
+  else assert.ok((await readFile(join(destination,"breditor_wasm.d.ts"),"utf8")).includes("childCount(index: number): number | undefined;"),"candidate must preserve public JS child-count contract");
   wasmModule=join(destination,"breditor_wasm.js");
   const main=await readFile(join(fixture,"main.ts"),"utf8");
   assert.equal(main.split('from "@breditor/wasm"').length,2);
-  await writeFile(join(fixture,"main.ts"),main.replace('from "@breditor/wasm"','from "./rust-diagnostic/breditor_wasm.js"'));
+  await writeFile(join(fixture,"main.ts"),main.replace('from "@breditor/wasm"',`from "./${privateFolder}/breditor_wasm.js"`));
 }
 for(const name of ["package.json","tsconfig.json"])await cp(join(record.consumer,name),join(fixture,name));
 const bridge='function z(e,t,...n){let r=Reflect.apply(e,t,n);if(Ph(r))throw TypeError(`generated scalar method returned a thenable`);return r}';
@@ -76,7 +83,7 @@ const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browser
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
   childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,
-  diagnosticWasmAssets,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
+  diagnosticWasmAssets,explicitChildCountTransport,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();
 console.log(JSON.stringify({fixture}));
@@ -97,7 +104,7 @@ try{
     console.log(JSON.stringify({run,status:result.status,details:result.details}));if(result.status==="failed")break;
   }
   await readQualifiedPair(process.argv[2]);
-  if(diagnosticWasmAssets!==undefined)assert.deepEqual(await diagnosticHashes(join(fixture,"rust-diagnostic")),diagnosticWasmAssets,"copied Rust diagnostic artifacts changed during the run");
+  if(diagnosticWasmAssets!==undefined)assert.deepEqual(await diagnosticHashes(privateDestination),diagnosticWasmAssets,"copied private Wasm artifacts changed during the run");
   report.status=report.runs.every(run=>run.status==="passed")?"passed":"failed";await save();
   if(report.status==="failed"){
     console.log(JSON.stringify({retained:await retainNestedListFailure(join(fixture,"measurement.json"),join(repository,"target/nested-list-reproductions"))}));
