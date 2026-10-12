@@ -30,6 +30,15 @@
     "queueDiagnosticFailure": "target/nested-list-reproductions/failure-YDHnl7/measurement.json",
     "paragraphOperandFailure": "target/nested-list-reproductions/failure-nO8wys/measurement.json",
     "internalBranchFailure": "target/nested-list-reproductions/failure-QNPe79/measurement.json",
+    "headingStringTrial": {
+      "status": "running",
+      "session": 29423,
+      "measurement": "breditor-nested-list-consumer-q2nZu9/performance-Dng4kH/measurement.json",
+      "scope": "Disposable minified bundle transform only, original installed tarballs unchanged. Type-checked string equality on admitted undefined/integer 1..6, rejects invalid ranks. No retries, scalar fallbacks or validation bypass.",
+      "tests": "49 admitted heading pairs agree with SameValue; invalid ranks reject",
+      "reportCaveat": "Run started before uninstrumentedStressEnabled label correction; headingStringTrial=true and diagnosticInstrumentation=true identify the transformed candidate.",
+      "releaseQualified": false
+    },
     "internalBranchObservation": "500 items repetition 11 selectionMs: paragraph item 350 returned false. Internal mismatch operand heading captured number 2 and number 2; failure-path Object.is true. Retained diagnostic uses bounded last-branch capture reset per comparator invocation. This localizes rejection to heading equality but does not prove an engine-level cause. No validation bypass.",
     "excludedNoisyCapture": "failure-TenmWH reproduced selection fault but ordinary typing mismatches exhausted 100 diagnostics; excluded from internal branch attribution",
     "paragraphOperandObservation": "500 items repetition 26 selectionMs: comparator false at item 20. Both logged paragraphs have heading 2, one run, equal text/strong and empty format arrays; failure-only SameValue heading check true. Need internal comparator branch capture; no engine-level cause proven. Live run started before paragraphDiagnosticsEnabled report field addition; retained bundle contains the operand capture.",

@@ -28,6 +28,7 @@ import {instrumentElementTypeReturn} from "./element-type-return-diagnostics.mjs
 import {nestedListStressMode, uninstrumentedNestedStressPlugin} from "./nested-list-stress-mode.mjs";
 import {tree as artifactTree} from "./build-opt-in-nested-list-package.mjs";
 import {instrumentNestedParagraphResults, instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
+import {stringKeyHeadingComparison} from "./heading-comparison-trial.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -49,6 +50,10 @@ assert.ok(Number.isSafeInteger(runCount) && runCount >= 1 && runCount <= 10, "BR
 const deepDiagnostics = process.env["BREDITOR_EXPORT_DEEP_DIAGNOSTICS"] === "1";
 assert.ok(!deepDiagnostics || diagnoseExport, "deep diagnostics require --diagnose-export");
 const queueDiagnosticsEnabled = process.env["BREDITOR_PERF_QUEUE_DIAGNOSTICS"] === "1";
+const headingTrialFlag = process.env["BREDITOR_PERF_HEADING_STRING_TRIAL"] ?? "0";
+assert.ok(["0", "1"].includes(headingTrialFlag), "invalid heading trial flag");
+const headingStringTrial = headingTrialFlag === "1";
+assert.ok(!headingStringTrial || (browserName === "webkit" && !queueDiagnosticsEnabled && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled), "heading trial requires isolated WebKit mode");
 assert.equal(process.env["BREDITOR_QUEUE_DIAGNOSTICS"], undefined, "use BREDITOR_PERF_QUEUE_DIAGNOSTICS");
 const paragraphFlag = process.env["BREDITOR_PERF_PARAGRAPH_DIAGNOSTICS"] ?? "0";
 assert.ok(["0", "1"].includes(paragraphFlag), "invalid paragraph diagnostic flag");
@@ -61,6 +66,7 @@ const blockTypeCallMarker = blockTypeCallMarkerValue === "1";
 const constructorProbeEnabled = process.env["BREDITOR_PERF_EXCEPTION_PROBE"] === "1";
 const wordCandidateFlag=process.env.BREDITOR_PERF_WORD_CANDIDATE??"0";
 assert.ok(["0","1"].includes(wordCandidateFlag));const wordCandidate=wordCandidateFlag==="1";
+assert.ok(!headingStringTrial || !wordCandidate, "heading trial cannot combine with copied word Wasm mode");
 assert.ok(!wordCandidate||(!coreOnly&&!diagnoseExport&&!cpuProfileEnabled&&!geckoProfileEnabled&&!renderingTraceEnabled&&!constructorProbeEnabled&&!queueDiagnosticsEnabled),"word candidate cannot combine with other instrumentation");
 assert.ok(!queueDiagnosticsEnabled || (browserName === "webkit" && !coreOnly && !diagnoseExport && !cpuProfileEnabled && !geckoProfileEnabled && !renderingTraceEnabled),
   "queue diagnostics require WebKit full-editor mode without other instrumentation");
@@ -220,7 +226,14 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
   }
 }};
 const stressPlugin = uninstrumentedNestedStressPlugin(fixture, ownerRepetitions, () => stressFixtureModules++);
-await build({configFile: false, root: fixture, logLevel: "warn", plugins: diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : stressMode.enabled ? [stressPlugin] : [], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
+let headingTrialModules = 0;
+const headingTrialPlugin = {name: "private-heading-string-trial", enforce: "pre", transform(code, id) {
+  if (id !== join(consumer, "node_modules/@breditor/browser/dist/projection.js")) return undefined;
+  headingTrialModules++;
+  return stringKeyHeadingComparison(code);
+}};
+await build({configFile: false, root: fixture, logLevel: "warn", plugins: [...(diagnoseExport ? [diagnosticPlugin] : queueDiagnosticsEnabled ? [queueDiagnosticPlugin] : stressMode.enabled ? [stressPlugin] : []), ...(headingStringTrial ? [headingTrialPlugin] : [])], build: {outDir: join(fixture, "bundle"), emptyOutDir: false, minify: !cpuProfileEnabled && !geckoProfileEnabled, target: "es2022", modulePreload: {polyfill: false}}});
+assert.equal(headingTrialModules, headingStringTrial ? 1 : 0);
 assert.equal(queueDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "queue diagnostic module was not transformed exactly once");
 assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "projection diagnostic module was not transformed exactly once");
 assert.equal(validationDiagnosticModules.size, queueDiagnosticsEnabled ? 2 : 0, "validation diagnostic modules were not transformed exactly once");
@@ -235,10 +248,10 @@ const measurements = [];
 const output = join(fixture, "measurement.json");
 const save = async status => {
   if(wordCandidate)assert.deepEqual(await artifactTree(join(fixture,"private-word-wasm")),privateWordWasmTree,"private word Wasm changed during qualification");
-  return writeFile(output, JSON.stringify({status, diagnosticInstrumentation: wordCandidate || diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, queueDiagnosticsEnabled, paragraphDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
+  return writeFile(output, JSON.stringify({status, diagnosticInstrumentation: headingStringTrial || wordCandidate || diagnoseExport || queueDiagnosticsEnabled || constructorProbeEnabled || cpuProfileEnabled || geckoProfileEnabled, headingStringTrial, queueDiagnosticsEnabled, paragraphDiagnosticsEnabled, constructorProbeEnabled, releasePerformanceQualified: false,
   wordCandidate,privateWordWasmTree,installedPackedWasmUsed:!wordCandidate,
   routerDiagnosticsEnabled: queueDiagnosticsEnabled,
-  uninstrumentedStressEnabled: stressMode.enabled && !wordCandidate,
+  uninstrumentedStressEnabled: stressMode.enabled && !wordCandidate && !headingStringTrial,
   ownerStressEnabled: stressMode.enabled,
   ownerDiagnosticsEnabled: queueDiagnosticsEnabled,
   blockTypeCallMarkerEnabled: queueDiagnosticsEnabled && blockTypeCallMarker,
