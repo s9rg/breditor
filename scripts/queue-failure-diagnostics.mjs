@@ -185,7 +185,9 @@ export function instrumentParagraphShapeOperands(code) {
     condition = condition.replace(expression, `paragraphDiagnosticRead(${JSON.stringify(name)}, ${expression})`);
   }
   return code.slice(0, from) + `
-        const paragraphDiagnostic = {paragraphOrdinal, paragraphIndex, expectedIndex, blockType, headingLevel};
+        const paragraphDiagnostic = {paragraphOrdinal, paragraphIndex, expectedIndex,
+            blockType: {type: typeof blockType, value: blockType},
+            headingLevel: {type: typeof headingLevel, value: headingLevel}};
         const paragraphDiagnosticRead = (name, value) => {
             paragraphDiagnostic[name] = {type: typeof value, value: typeof value === "string" ? value.slice(0, 256) : value};
             return value;

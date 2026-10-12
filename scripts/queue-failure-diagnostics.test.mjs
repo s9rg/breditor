@@ -232,7 +232,10 @@ test("paragraph operand capture preserves single reads and short-circuit rejecti
           {error(...args) {if (hostile) throw new Error("logger"); logs.push(args);}});
         outcomes.push({result, calls});
         if (code === transformed && failing !== null && !hostile) {
-          assert.equal(JSON.parse(logs[0][1])[failing].value, "bad");
+          const diagnostic = JSON.parse(logs[0][1]);
+          assert.equal(diagnostic[failing].value, "bad");
+          assert.deepEqual(diagnostic.blockType, {type: "string", value: "breditor/paragraph"});
+          assert.deepEqual(diagnostic.headingLevel, {type: "undefined"});
         }
       }
       assert.deepEqual(outcomes[0], outcomes[1]);
