@@ -1422,6 +1422,29 @@ function render(
 }
 
 describe("BreditorDomRenderer", () => {
+  it("rejects a wrapper replacement during reverse-map validation", () => {
+    const {make, renderer} = headingFixture();
+    const host = document.createElement("div");
+    const rendered = valueOf(renderer.render(host, make(0, [2]))).rendered;
+    expect(rendered.validateCanonicalDom()).toBe(true); // Warm expected-recipe cache.
+    const wrapper = host.querySelector("strong")!;
+    const text = wrapper.firstChild!;
+    const original = WeakMap.prototype.get;
+    let changed = false;
+    const spy = vi.spyOn(WeakMap.prototype, "get").mockImplementation(function(this: WeakMap<object, unknown>, key: object) {
+      const value = Reflect.apply(original, this, [key]);
+      if (key === text && Array.isArray(value) && !changed) {
+        changed = true;
+        wrapper.replaceChild(document.createTextNode("changed"), text);
+      }
+      return value;
+    });
+    try {
+      expect(rendered.validateCanonicalDom()).toBe(false);
+      expect(changed).toBe(true);
+      expect(rendered.current).toBe(false);
+    } finally { spy.mockRestore(); }
+  });
   function headingFixture() {
     const generation = profileGeneration();
     const descriptor = ownedProfileDescriptor(generation, ["breditor/strong"]);
