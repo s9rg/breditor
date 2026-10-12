@@ -29,6 +29,7 @@ import {nestedListStressMode, uninstrumentedNestedStressPlugin} from "./nested-l
 import {tree as artifactTree} from "./build-opt-in-nested-list-package.mjs";
 import {instrumentNestedParagraphResults, instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
 import {stringKeyHeadingComparison} from "./heading-comparison-trial.mjs";
+import {instrumentDocumentExportRead} from "./document-export-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -209,7 +210,7 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
   }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/wasm_command_adapter.js")) {
     projectionDiagnosticModules++;
-    return instrumentProjectionUpdateFailures(code);
+    return instrumentDocumentExportRead(instrumentProjectionUpdateFailures(code));
   }
   if (id === join(consumer, "node_modules/@breditor/browser/dist/browser_event_router.js")) {
     routerDiagnosticModules++;

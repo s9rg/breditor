@@ -16,9 +16,11 @@
     "browserTypecheck": "production and test typechecks passed",
     "candidateBuild": "passed",
     "externalPackedConsumer": "Node, TypeScript, Chromium, Firefox and WebKit passed",
-    "directGetterStress": "terminal timeout in first process, no page errors; retained failure-Qmp6Zk. Inconclusive, not a correctness pass.",
+    "directGetterHighWalkStress": "100 walks: terminal timeout in first process, no page errors; retained failure-Qmp6Zk. Inconclusive, not a correctness pass.",
+    "directGetterStress": {"status": "passed", "record": "getter-probe-PHPiel/measurement.json", "sha256": "a237ff3c083a93b526a55e1efd155c825e8dcf3262bdf812d90d7ac9dd2a001a", "processes": 10, "ownersPerProcess": 90, "checksPerProcess": 1946911, "totalChecks": 19469110, "walks": 1, "enrichedScalars": true, "scope": "Installed candidate ordinary generated getter methods. No private module override, prototype word adapter or diagnostic Wasm. Cleanup completed in every process. Not a substitute for 100-walk coverage or packed-editor qualification."},
     "typedEditorStress": "terminal failure in second process at 100 items, repetition 5, after restore: content_export.invalid_wasm_view; retained failure-hEGB5r.",
-    "typedEditorExactReplay": "running: failure-hEGB5r/exact-replay-kGO0Pr, session 15925"
+    "typedEditorExactReplay": "running: failure-hEGB5r/exact-replay-kGO0Pr, session 15925",
+    "exportAttributionDiagnostic": "running: performance-Gq0917, session 23037. Separate disposable bundle logs consumption versus projection correlation failure without overriding results, additional native reads or retries; not timing evidence. Two focused semantic/drift tests passed."
   },
   "limitations": [
     "Low-level raw Wasm InitOutput legacy exports still retain their original ABI; this experiment changes generated high-level class methods only.",
