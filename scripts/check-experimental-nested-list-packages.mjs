@@ -27,6 +27,10 @@ assert.equal(hash(declarations), qualification.declarationsSha256);
 assert.ok(qualification.projectionScalarWordsVersion == null || qualification.projectionScalarWordsVersion === 1);
 const privateScalarWords = qualification.projectionScalarWordsVersion === 1;
 assert.equal(qualification.privateScalarWords === true, privateScalarWords);
+assert.ok(qualification.projectionWordBindingsVersion == null || qualification.projectionWordBindingsVersion === 1);
+const privateWordBindings = qualification.projectionWordBindingsVersion === 1;
+assert.equal(qualification.privateWordBindings === true, privateWordBindings);
+assert.ok(!privateWordBindings || privateScalarWords);
 checkNestedListDeclarations(await readFile(join(repository, "crates/breditor-wasm/api/breditor_wasm.d.ts"), "utf8"), declarations, {privateScalarWords});
 const files = async path => (await Promise.all((await readdir(path, {withFileTypes: true})).sort((a,b) => a.name.localeCompare(b.name))
   .map(async entry => entry.isDirectory() ? (await files(join(path, entry.name))).map(file => join(entry.name, file)) : [entry.name]))).flat();
@@ -132,6 +136,7 @@ try {
   const report = {status: "passed", publishable: false, candidate, staging, consumer, browserRuns,
     diagnosticNames: qualification.diagnosticNames === true,
     privateScalarWords, projectionScalarWordsVersion: privateScalarWords ? 1 : null,
+    privateWordBindings, projectionWordBindingsVersion: privateWordBindings ? 1 : null,
     browserPackage, wasmPackage, browserJavaScriptBytes, browserDeclarationsBytes,
     tarballSha256: {browser: hash(await readFile(browserPackage.path)), wasm: hash(await readFile(wasmPackage.path))},
     baseConsumer: "Existing Node import, strict TypeScript and Chromium initialization/format/content/teardown smoke passed against these same installed experimental artifacts",

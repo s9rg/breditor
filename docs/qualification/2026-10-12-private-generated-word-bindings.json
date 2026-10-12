@@ -1,0 +1,29 @@
+{
+  "status": "candidate-under-test",
+  "releaseQualified": false,
+  "candidate": "target/nested-list-candidate-BcaYD3/qualification.json",
+  "packedPair": "target/nested-list-packages-8ejwsM/qualification.json",
+  "transportVersion": 1,
+  "bindingVersion": 1,
+  "tarballSha256": {
+    "browser": "c5b947406e6066ba511aab6d4d4b18a8d38ddeeb1a0013d7490b6d0453207d3d",
+    "wasm": "c72f134280949718f502645aa4242c50453d33ae69dc8710e5a275bf614eaa5f"
+  },
+  "implementation": "Private build rewrites six generated high-level optional-u32 getter bodies to their generated word-returning equivalents. Public method names, argument names and TypeScript signatures are preserved. Native word-buffer cleanup is retained; each result is decoded once, without fallback or retry. Default shipping artifacts are unchanged.",
+  "checks": {
+    "bindingAndPairRegressionTests": 13,
+    "candidateBuild": "passed",
+    "externalPackedConsumer": "Node, TypeScript, Chromium, Firefox and WebKit passed",
+    "directGetterStress": "running: getter-probe-hINIke, session 39914",
+    "typedEditorStress": "running: performance-4hpmgz, session 9880"
+  },
+  "limitations": [
+    "Low-level raw Wasm InitOutput legacy exports still retain their original ABI; this experiment changes generated high-level class methods only.",
+    "Not a proven WebKit engine-internal diagnosis or complete fix qualification.",
+    "Native clipboard, physical IME and screen-reader gates remain separate and open.",
+    "Default package-size ceilings are exceeded; no larger budget is implicitly accepted.",
+    "Stress runs are correctness evidence, not accepted latency or p95 qualification."
+  ],
+  "commandCorrection": "The first typed stress invocation used BREDITOR_PERF_OWNERS rather than BREDITOR_PERF_OWNER_REPETITIONS and was rejected before fixture creation. The corrected invocation is retained separately; this was a command configuration error, not an editor failure.",
+  "published": false
+}

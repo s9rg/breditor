@@ -44,6 +44,15 @@ export function validateTransportPair(record, candidate) {
     return words ? 1 : null;
   };
   assert.equal(version(record), version(candidate), "Qualified pair/candidate transport mismatch");
+  const bindings = value => {
+    assert.ok(value.projectionWordBindingsVersion == null || value.projectionWordBindingsVersion === 1, "Unknown projection binding version");
+    assert.ok(value.privateWordBindings === undefined || typeof value.privateWordBindings === "boolean");
+    const enabled = value.projectionWordBindingsVersion === 1;
+    assert.equal(value.privateWordBindings === true, enabled, "Binding flag/version mismatch");
+    assert.ok(!enabled || version(value) === 1, "Word bindings require word transport");
+    return enabled ? 1 : null;
+  };
+  assert.equal(bindings(record), bindings(candidate), "Qualified pair/candidate binding mismatch");
 }
 
 export async function readQualifiedPair(recordPath) {

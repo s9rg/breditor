@@ -16,6 +16,13 @@ test("assembly transport admission requires exact candidate/pair agreement", () 
   ]) assert.throws(() => validateTransportPair(invalid, words));
   assert.throws(() => validateTransportPair(legacy, words));
   assert.throws(() => validateTransportPair(words, legacy));
+  const bound = {...words, privateWordBindings: true, projectionWordBindingsVersion: 1};
+  validateTransportPair(bound, bound);
+  assert.throws(() => validateTransportPair(bound, words));
+  assert.throws(() => validateTransportPair(words, bound));
+  assert.throws(() => validateTransportPair({...bound, privateWordBindings: false}, bound));
+  assert.throws(() => validateTransportPair({...bound, projectionWordBindingsVersion: 2}, bound));
+  assert.throws(() => validateTransportPair({privateWordBindings: true, projectionWordBindingsVersion: 1}, bound));
 });
 
 const json = async path => JSON.parse(await readFile(new URL(path, import.meta.url), "utf8"));

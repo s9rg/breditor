@@ -11,6 +11,7 @@ import { gzipSync } from "node:zlib";
 import { checkNestedListDeclarations } from "./check-nested-list-declarations.mjs";
 import { assertNoWasmHostPathLeaks } from "./wasm-path-leaks.mjs";
 import { nonCustomWasmBytes, retainWasmCustomSections, wasmFunctionNames, withWasmFunctionNames } from "./wasm-function-names.mjs";
+import {rewriteProjectionWordBindings} from "./projection-word-bindings.mjs";
 
 assert.ok(process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === "--diagnostic-names"), "only optional --diagnostic-names is supported");
 const diagnosticNames = process.argv[2] === "--diagnostic-names";
@@ -18,6 +19,10 @@ const wordFlag = process.env.BREDITOR_NESTED_WORD_CANDIDATE ?? "0";
 assert.ok(["0", "1"].includes(wordFlag), "BREDITOR_NESTED_WORD_CANDIDATE must be 0 or 1");
 const privateScalarWords = wordFlag === "1";
 assert.ok(!privateScalarWords || !diagnosticNames, "word candidate cannot add diagnostic names");
+const bindingFlag = process.env.BREDITOR_NESTED_WORD_BINDINGS ?? "0";
+assert.ok(["0", "1"].includes(bindingFlag), "BREDITOR_NESTED_WORD_BINDINGS must be 0 or 1");
+const privateWordBindings = bindingFlag === "1";
+assert.ok(!privateWordBindings || privateScalarWords, "word bindings require word candidate");
 // Explicit experimental override: keep the production profile and its cache
 // untouched, and record the optimization choice in qualification evidence.
 const optLevel = process.env.BREDITOR_WASM_SIZE_OPT ?? "s";
@@ -93,6 +98,11 @@ if (diagnosticNames) {
 run(bindgen, [bindgenInput,
   "--target", "web", "--typescript", ...(diagnosticNames ? [] : ["--remove-name-section"]), "--remove-producers-section",
   "--out-dir", raw, "--out-name", "breditor_wasm"]);
+if (privateWordBindings) {
+  const generatedPath = join(raw, "breditor_wasm.js");
+  await writeFile(generatedPath, rewriteProjectionWordBindings(await readFile(generatedPath, "utf8")));
+  run(process.execPath, ["--test", "scripts/projection-word-bindings.test.mjs"]);
+}
 run(rolldown, [join(raw, "breditor_wasm.js"), "--file", join(directory, "breditor_wasm.js"),
   "--format", "esm", "--platform", "browser", "--minify", "--logLevel", "silent"]);
 for (const file of ["breditor_wasm.d.ts", "breditor_wasm_bg.wasm", "breditor_wasm_bg.wasm.d.ts"]) {
@@ -116,6 +126,7 @@ assert.deepEqual(await hashTree(shippingDist), shippingTreeBefore, "shipping art
 assert.deepEqual(await hashTree(browserDist), browserTreeBefore, "browser artifacts changed during experimental qualification");
 const manifest = { status: "passed", publishable: false, feature: "experimental-nested-lists",
   diagnosticNames, optLevel, privateScalarWords, projectionScalarWordsVersion: privateScalarWords ? 1 : null,
+  privateWordBindings, projectionWordBindingsVersion: privateWordBindings ? 1 : null,
   codecs: { bootstrap: 5, document: 2, state: 3, session: 7, commit: 7 },
   wasmBytes: wasm.length, wasmGzip9Bytes: gzipSync(wasm, { level: 9 }).length,
   wasmSha256: hash(wasm), shippingWasmSha256: shippingBefore,
