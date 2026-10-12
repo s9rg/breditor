@@ -1,6 +1,20 @@
 {
   "releaseQualified": false,
   "performanceImprovementProven": false,
+  "diagnosticProfileComparison": {
+    "status": "measured",
+    "baselineProfileSha256": "2a731d8830572474ca2858d1c91361301ad1e6905595a13ea3038897387c957c",
+    "candidateProfileSha256": "c99f74aef9efbbceac41ec747769d169a157f3617c68f6d6f70bcffedef049c2",
+    "candidateMeasurement": "breditor-nested-list-consumer-oNfGNd/performance-yGJMoA/measurement.json",
+    "baseline500EditMedianMs": 186.3,
+    "candidate500EditMedianMs": 144.5,
+    "baselineSafeLinkNormalizationSelfMs": 104.065,
+    "candidateSafeLinkNormalizationSelfMs": 10.529,
+    "baselineRecipeResolutionSelfMs": 78.598,
+    "candidateRecipeResolutionSelfMs": 6.73,
+    "boundary": "Chromium CPU-profile builds, three 500-item samples, sequential diagnostic runs while WebKit work overlapped. Observed reduction supports candidate direction, not statistical significance, WebKit effect or release latency acceptance. Actual DOM checks retained."
+  },
+  "packedWebkitPropertyStress": {"session": 49179, "status": "running", "scope": "Fresh cache candidate installed tarballs, reviewed strong/link properties, 30 owners per size and ten processes planned; not the older archive's stress."},
   "scope": "Cache only resolved expected semantic recipes for projection-validation-owned deeply frozen format arrays, keyed by exact owned presentation. Weak keys; mutable/frozen lookalikes and forged presentations remain uncached/rejected. Actual DOM attribute/node/map checks unchanged.",
   "verified": {
     "fullBrowserSuiteBeforeNewTests": "2118 passed",
