@@ -29,6 +29,25 @@ test("paragraph argument capture calls the comparator once and preserves its fal
   assert.equal(payload.runs[0].textEqual, true);
   assert.throws(() => instrumentNestedParagraphResults(source.replace("paragraphsEqual", "changed")));
 });
+
+test("internal paragraph diagnostics preserve the current SameValue comparator", async () => {
+  const ts = await readFile(new URL("../packages/breditor-browser/src/projection.ts", import.meta.url), "utf8");
+  const compiled = (await transform("projection.ts", ts, {lang: "ts"})).code;
+  const from = compiled.indexOf("export function paragraphsEqual(left, right) {");
+  assert.ok(from >= 0);
+  const source = compiled.slice(from, compiled.indexOf("\n}", from) + 2);
+  const changed = instrumentParagraphComparison(source);
+  const make = code => new Function("formatDetailsEqual", "console",
+    `${code.replace("export function", "function")}; return paragraphsEqual;`)(
+      (a, b) => JSON.stringify(a) === JSON.stringify(b), {error() {}},
+    );
+  const left = {headingLevel: 2, runs: [{text: "A🙂", strong: false, formatDetails: []}]};
+  for (const right of [structuredClone(left), {...left, headingLevel: 3}, {...left, runs: []},
+    {...left, runs: [{text: "B", strong: false, formatDetails: []}]}]) {
+    assert.equal(make(changed)(left, right), make(source)(left, right));
+    assert.equal(make(instrumentParagraphComparison(source, "strict", {failureCapture: true}))(left, right), make(source)(left, right));
+  }
+});
 import {instrumentNestedLayoutRejections} from "./queue-failure-diagnostics.mjs";
 import {instrumentFixtureProgress} from "./queue-failure-diagnostics.mjs";
 

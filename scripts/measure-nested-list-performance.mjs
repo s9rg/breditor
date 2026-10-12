@@ -27,7 +27,7 @@ import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCo
 import {instrumentElementTypeReturn} from "./element-type-return-diagnostics.mjs";
 import {nestedListStressMode, uninstrumentedNestedStressPlugin} from "./nested-list-stress-mode.mjs";
 import {tree as artifactTree} from "./build-opt-in-nested-list-package.mjs";
-import {instrumentNestedParagraphResults} from "./queue-failure-diagnostics.mjs";
+import {instrumentNestedParagraphResults, instrumentParagraphComparison} from "./queue-failure-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -173,6 +173,9 @@ let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
 let progressFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
+  if (paragraphDiagnosticsEnabled && id === join(consumer, "node_modules/@breditor/browser/dist/projection.js")) {
+    return instrumentParagraphComparison(code, "strict", {failureCapture: true});
+  }
   if (id === join(consumer, "node_modules/@breditor/wasm/dist/breditor_wasm.js")) {
     elementTypeDiagnosticModules++;
     return instrumentElementTypeReturn(code);

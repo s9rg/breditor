@@ -18,6 +18,7 @@ export function instrumentNestedParagraphResults(code) {
                     spelling: typeof value === "number" ? String(value) : undefined});
                 console.error("breditor nested paragraph operands", JSON.stringify({index, result,
                     sameReference: left === right, left, right,
+                    internalMismatch: globalThis.__breditorParagraphMismatch ?? null,
                     heading: {left: scalar(left.headingLevel), right: scalar(right.headingLevel),
                         sameValue: Object.is(left.headingLevel, right.headingLevel)},
                     runCounts: {left: left.runs.length, right: right.runs.length},
@@ -35,20 +36,23 @@ export function instrumentNestedParagraphResults(code) {
 }
 
 /** Diagnostic comparison trials; no retries or overrides of computed results. */
-export function instrumentParagraphComparison(code, headingComparison = "strict") {
+export function instrumentParagraphComparison(code, headingComparison = "strict", {failureCapture = false} = {}) {
+  assert.equal(typeof failureCapture, "boolean");
   assert.ok(["strict", "same-value", "same-value-minimal"].includes(headingComparison), "unknown heading comparison variant");
   const start = "export function paragraphsEqual(left, right) {";
   assert.equal(code.split(start).length, 2, "paragraph comparator start changed");
   const from = code.indexOf(start), end = code.indexOf("\n}", from);
   assert.ok(end > from);
   let body = code.slice(from, end);
+  const headingExpression = body.includes("!Object.is(left.headingLevel, right.headingLevel)")
+    ? "!Object.is(left.headingLevel, right.headingLevel)" : "left.headingLevel !== right.headingLevel";
   if (headingComparison === "same-value-minimal") {
-    const expression = "left.headingLevel !== right.headingLevel";
+    const expression = headingExpression;
     assert.equal(body.split(expression).length, 2, "heading comparison changed");
     return code.slice(0, from) + body.replace(expression, "!Object.is(left.headingLevel, right.headingLevel)") + code.slice(end);
   }
   for (const [name, expression] of [
-    ["heading", "left.headingLevel !== right.headingLevel"],
+    ["heading", headingExpression],
     ["runCount", "left.runs.length !== right.runs.length"],
     ["leftAbsent", "leftRun === undefined"],
     ["rightAbsent", "rightRun === undefined"],
@@ -58,7 +62,7 @@ export function instrumentParagraphComparison(code, headingComparison = "strict"
   ]) {
     assert.equal(body.split(expression).length, 2, `paragraph comparison changed: ${name}`);
     const captured = name === "heading"
-      ? headingComparison === "same-value"
+      ? headingComparison === "same-value" || headingExpression.startsWith("!Object.is")
         ? "!Object.is((headingLeft = left.headingLevel), (headingRight = right.headingLevel))"
         : "(headingLeft = left.headingLevel) !== (headingRight = right.headingLevel)" : expression;
     body = body.replace(expression, `paragraphComparisonDiagnostic(${JSON.stringify(name)}, ${captured})`);
@@ -73,6 +77,14 @@ export function instrumentParagraphComparison(code, headingComparison = "strict"
         }
         return mismatch;
     };`);
+  if (failureCapture) {
+    body = body.replace(start, start + "\n    globalThis.__breditorParagraphMismatch = undefined;");
+    const logging = 'console.error("breditor paragraph comparison mismatch", JSON.stringify({operand, left, right,';
+    assert.equal(body.split(logging).length, 2, "paragraph diagnostic payload changed");
+    body = body.replace(logging, 'globalThis.__breditorParagraphMismatch = JSON.stringify({operand, left, right,');
+    body = body.replace('sameValue: Object.is(headingLeft, headingRight)}}).slice(0, 4096));',
+      'sameValue: Object.is(headingLeft, headingRight)}}).slice(0, 4096);');
+  }
   return code.slice(0, from) + body + code.slice(end);
 }
 
