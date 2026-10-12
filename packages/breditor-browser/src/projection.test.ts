@@ -8,6 +8,23 @@ import {
 } from "./advanced.js";
 
 describe("paragraph heading equality", () => {
+  it("retains exact typed-format equality under equal headings", () => {
+    const paragraph = (value: boolean | number | string): BaseParagraphProjection => ({
+      headingLevel: 2,
+      runs: [{text: "A🙂", strong: false, formats: [], formatDetails: [{
+        kind: "example/annotation", properties: [{name: "example/value", value}],
+      }]}],
+    });
+    for (const left of [false, true, 1, 2, "1", "2"]) {
+      for (const right of [false, true, 1, 2, "1", "2"]) {
+        expect(paragraphsEqual(paragraph(left), paragraph(right))).toBe(Object.is(left, right));
+      }
+    }
+    const a = paragraph("1");
+    expect(paragraphsEqual(a, {...a, runs: [{...a.runs[0]!, text: "B"}]})).toBe(false);
+    expect(paragraphsEqual(a, {...a, runs: [{...a.runs[0]!, strong: true}]})).toBe(false);
+    expect(paragraphsEqual(a, {...a, runs: []})).toBe(false);
+  });
   it("compares every admitted heading pair without conflating rank or absence", () => {
     const levels = [undefined, 1, 2, 3, 4, 5, 6] as const;
     const paragraph = (level: typeof levels[number]): BaseParagraphProjection => Object.freeze({
