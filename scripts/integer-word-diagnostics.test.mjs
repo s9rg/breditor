@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFileSync} from "node:fs";
 import {transformSync} from "rolldown/utils";
-import {instrumentIntegerWordDecode,instrumentProjectedIntegerTuple,instrumentIntegerInvocation,instrumentIntegerWordReturn} from "./integer-word-diagnostics.mjs";
+import {instrumentIntegerWordDecode,instrumentProjectedIntegerTuple,instrumentIntegerInvocation,instrumentIntegerWordReturn,instrumentProjectionTransportAdmission} from "./integer-word-diagnostics.mjs";
 
 test("captures existing conversion operands without retry or replacement", () => {
   for(const [low,decoded,expectedLogs] of [[1193046,1193046,0],[0,0,1],[1193046,0,1]]) {
@@ -82,6 +82,34 @@ test("invocation capture preserves guard, exact return and one native invocation
   }
   const current=readFileSync(new URL("../packages/breditor-browser/src/wasm_projection_adapter.ts",import.meta.url),"utf8");
   assert.ok(instrumentIntegerInvocation(transformSync("wasm_projection_adapter.ts",current).code).includes("beforeGuard"));
+});
+test("admission capture records same view and actual wrapper without repeat reads", () => {
+  const source=`function snapshotSemanticProjection(view, textBlocks, flatLists, nestedLists) {
+    const methods={formatPropertyInteger:view.legacy};
+    if(nestedLists){
+      const version = readGeneratedScalar(view, "projectionScalarWordsVersion");
+      const integerVersion = readGeneratedScalar(view, "projectionIntegerWordsVersion");
+      if(version===1&&integerVersion===1){
+        methods["formatPropertyInteger"] = function (index, ordinal, property) {
+          return view.words(index,ordinal,property);
+        };
+      }
+    }
+    return methods;
+  }`;
+  for(const nested of [false,true]) {
+    let reads=0;const state={};
+    const run=Function("readGeneratedScalar","globalThis",instrumentProjectionTransportAdmission(source)+";return snapshotSemanticProjection;")(
+      ()=>{reads++;return 1;},state);
+    const view={legacy:()=>0,words:()=>1193046},methods=run(view,true,true,nested);
+    assert.equal(reads,nested?2:0);
+    assert.equal(state.__breditorProjectionTransports.get(view).integerApplied,nested);
+    assert.equal(state.__breditorIntegerWrappers.has(methods.formatPropertyInteger),nested);
+    assert.equal(methods.formatPropertyInteger(4,2,0),nested?1193046:0);
+  }
+  const current=readFileSync(new URL("../packages/breditor-browser/src/wasm_projection_adapter.ts",import.meta.url),"utf8");
+  const generated=transformSync("wasm_projection_adapter.ts",current).code;
+  assert.ok(instrumentProjectionTransportAdmission(instrumentIntegerWordReturn(generated)).includes("integerApplied"));
 });
 test("current decoder site is exact and unknown code rejects", () => {
   const source=readFileSync(new URL("../packages/breditor-browser/src/projection_scalar_words.ts",import.meta.url),"utf8");

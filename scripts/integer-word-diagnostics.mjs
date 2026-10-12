@@ -47,6 +47,7 @@ export function instrumentProjectedIntegerTuple(code, {captureBeforeString = fal
             lastWords: globalThis.__breditorLastIntegerWords ?? null,
             lastInvocation: globalThis.__breditorIntegerInvocation ?? null,
             wordReturn: globalThis.__breditorIntegerWordReturn ?? null,
+            transport: globalThis.__breditorProjectionTransports?.get(view) ?? null,
             beforeString: ${captureBeforeString && site === explicit ? "globalThis.__breditorIntegerBeforeString ?? null" : "null"}
         }).slice(0, 2048)); } catch {}
     }`);
@@ -79,7 +80,9 @@ export function instrumentIntegerInvocation(code) {
     if (tracedInteger) {
         try { globalThis.__breditorIntegerInvocation = {
             nodeIndex: args[0], formatIndex: args[1], propertyIndex: args[2],
-            beforeGuard: value, words: globalThis.__breditorLastIntegerWords ?? null
+            beforeGuard: value, words: globalThis.__breditorLastIntegerWords ?? null,
+            wordWrapper: globalThis.__breditorIntegerWrappers?.has(method) ?? null,
+            transport: globalThis.__breditorProjectionTransports?.get(receiver) ?? null
         }; } catch {}
     }`);
   body=body.replace(returned,`
@@ -90,4 +93,31 @@ export function instrumentIntegerInvocation(code) {
     }
     ${returned}`);
   return code.slice(0,from)+body+code.slice(end);
+}
+
+/** Record admission and exact wrapper identity without additional view reads. */
+export function instrumentProjectionTransportAdmission(code) {
+  const start="function snapshotSemanticProjection(view, textBlocks, flatLists, nestedLists) {";
+  assert.equal(code.split(start).length,2,"projection snapshot admission changed");
+  code=code.replace(start,start+`
+    const transportTrace = {textBlocks, flatLists, nestedLists, integerApplied:false};
+    try {
+        globalThis.__breditorProjectionTransports ??= new WeakMap();
+        globalThis.__breditorIntegerWrappers ??= new WeakSet();
+        globalThis.__breditorProjectionTransports.set(view, transportTrace);
+    } catch {}`);
+  for(const [site,field] of [
+    ['const version = readGeneratedScalar(view, "projectionScalarWordsVersion");',"scalarVersion"],
+    ['const integerVersion = readGeneratedScalar(view, "projectionIntegerWordsVersion");',"integerVersion"],
+  ]) {
+    assert.equal(code.split(site).length,2,"transport version read changed");
+    code=code.replace(site,site+`\n    transportTrace.${field} = ${field==="scalarVersion"?"version":"integerVersion"};`);
+  }
+  const assignment=/methods\["formatPropertyInteger"\] = function\s*\(index, ordinal, property\) \{[\s\S]*?\n\s*\};/gu;
+  let sites=0;
+  code=code.replace(assignment,match=>{sites++;return match+`
+    transportTrace.integerApplied = true;
+    try { globalThis.__breditorIntegerWrappers.add(methods["formatPropertyInteger"]); } catch {}`;});
+  assert.equal(sites,1,"integer wrapper assignment changed");
+  return code;
 }

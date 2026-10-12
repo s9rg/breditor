@@ -31,7 +31,7 @@ import {instrumentNestedParagraphResults, instrumentParagraphComparison} from ".
 import {stringKeyHeadingComparison} from "./heading-comparison-trial.mjs";
 import {instrumentContentSnapshotComparison,instrumentDocumentExportRead,instrumentDocumentPropertyComparison} from "./document-export-diagnostics.mjs";
 import {instrumentFormatPropertyComparison} from "./queue-failure-diagnostics.mjs";
-import {instrumentIntegerWordDecode,instrumentProjectedIntegerTuple,instrumentIntegerInvocation,instrumentIntegerWordReturn} from "./integer-word-diagnostics.mjs";
+import {instrumentIntegerWordDecode,instrumentProjectedIntegerTuple,instrumentIntegerInvocation,instrumentIntegerWordReturn,instrumentProjectionTransportAdmission} from "./integer-word-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -212,7 +212,7 @@ const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre"
       assert.ok(!validationDiagnosticModules.has(name), "duplicate validation transform");
       validationDiagnosticModules.add(name);
       let diagnosed = instrumentProjectionValidationSites(code, name, {blockTypeCallMarker});
-      if (integerFormats && name === "wasm_projection_adapter") diagnosed = instrumentIntegerWordReturn(instrumentIntegerInvocation(instrumentProjectedIntegerTuple(diagnosed, {captureBeforeString: true})));
+      if (integerFormats && name === "wasm_projection_adapter") diagnosed = instrumentProjectionTransportAdmission(instrumentIntegerWordReturn(instrumentIntegerInvocation(instrumentProjectedIntegerTuple(diagnosed, {captureBeforeString: true}))));
       return paragraphDiagnosticsEnabled && name === "nested_list_projection_update"
         ? instrumentNestedParagraphResults(diagnosed) : diagnosed;
     }
