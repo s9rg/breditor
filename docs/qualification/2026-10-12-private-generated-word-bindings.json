@@ -1,5 +1,5 @@
 {
-  "status": "candidate-under-test",
+  "status": "candidate-blocked-by-observed-failure",
   "releaseQualified": false,
   "candidate": "target/nested-list-candidate-BcaYD3/qualification.json",
   "packedPair": "target/nested-list-packages-8ejwsM/qualification.json",
@@ -12,10 +12,13 @@
   "implementation": "Private build rewrites six generated high-level optional-u32 getter bodies to their generated word-returning equivalents. Public method names, argument names and TypeScript signatures are preserved. Native word-buffer cleanup is retained; each result is decoded once, without fallback or retry. Default shipping artifacts are unchanged.",
   "checks": {
     "bindingAndPairRegressionTests": 13,
+    "browserRegressionTests": "56 files, 2121 tests passed",
+    "browserTypecheck": "production and test typechecks passed",
     "candidateBuild": "passed",
     "externalPackedConsumer": "Node, TypeScript, Chromium, Firefox and WebKit passed",
-    "directGetterStress": "running: getter-probe-hINIke, session 39914",
-    "typedEditorStress": "running: performance-4hpmgz, session 9880"
+    "directGetterStress": "terminal timeout in first process, no page errors; retained failure-Qmp6Zk. Inconclusive, not a correctness pass.",
+    "typedEditorStress": "terminal failure in second process at 100 items, repetition 5, after restore: content_export.invalid_wasm_view; retained failure-hEGB5r.",
+    "typedEditorExactReplay": "running: failure-hEGB5r/exact-replay-kGO0Pr, session 15925"
   },
   "limitations": [
     "Low-level raw Wasm InitOutput legacy exports still retain their original ABI; this experiment changes generated high-level class methods only.",
