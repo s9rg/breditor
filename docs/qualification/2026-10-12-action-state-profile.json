@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "7b9195c",
+  "packageRecord": "target/nested-list-packages-m25FxW/qualification.json",
+  "fixture": "breditor-nested-list-consumer-KeGjmR/performance-1oHXlt",
+  "profileSha256": "444a827ee04a4d3d08ae0e2a887d34f0799e10665e7a19f06b72036df3f8b87a",
+  "correctnessCasesPassed": 9,
+  "profileSpans": 60,
+  "fiveHundredItemEditSamples": [
+    {"total": 308, "innermostActionStatesFixtureFrame": 173},
+    {"total": 312, "innermostActionStatesFixtureFrame": 174},
+    {"total": 306, "innermostActionStatesFixtureFrame": 169}
+  ],
+  "interpretation": "Action-state refresh is the largest sampled fixture/Wasm entry-point cost in these edit trials. Approximately 55 percent of samples have actionStates as their innermost fixture frame; deeper Wasm/native work is included, so this is not JavaScript self time or CPU milliseconds.",
+  "sourceTrace": [
+    "action/state/cache.rs refresh derives invalidated source groups and reuses unaffected outcomes; exact duplicate sources evaluate once.",
+    "action/state/catalog.rs derive_entry prepares direct actions and preflights history directions to report authoritative availability and actual writes.",
+    "action/builtins/nested_list_support.rs captures then previews reframes; nested_list_reframe.rs validates guarded fragments and the complete final document."
+  ],
+  "nextInvestigation": "Locate repeated reconstruction and validation within action preparation while preserving authoritative availability, source guards, limits and actual-write reporting. Function-index attribution requires a verified matching executable-section symbol map.",
+  "releasePerformanceQualified": false,
+  "productionCodeChanged": false,
+  "shippingArtifactsWritten": false,
+  "historicalWebKitFaultResolved": false,
+  "pushed": false,
+  "published": false
+}
