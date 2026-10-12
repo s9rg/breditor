@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "8d52b30 plus uncommitted explicit-admission candidate",
+  "releaseQualified": false,
+  "faultResolved": false,
+  "controlPackageRecord": "target/nested-list-packages-j6nDXM/qualification.json",
+  "candidatePackageRecord": "target/nested-list-packages-67Ig9X/qualification.json",
+  "browserVersion": "WebKit 26.5",
+  "evidence": [
+    {
+      "record": "target/nested-list-reproductions/failure-nogNyq/measurement.json",
+      "sha256": "66a68e1e2249e2740484890dd96592b0ec3c707c956591b60d8332d5d0822a14",
+      "phase": "500 items, repetition 26: undoMs",
+      "blockType": "undefined",
+      "rawZeroPointerLogObserved": false,
+      "adapterCallMarkerEnabled": false
+    },
+    {
+      "record": "target/nested-list-reproductions/failure-7xkaOG/measurement.json",
+      "sha256": "081141efe8bc4145ee4e03517c290dc7fb160c860d4df9bf5a070dbbce3c08cf",
+      "phase": "500 items, repetition 2: editMs",
+      "paragraphIndex": 1587,
+      "expectedIndex": 1587,
+      "blockType": "undefined",
+      "nodeKind": "element",
+      "handle": 1734512,
+      "rawRingTailForHandle": [
+        {"index": 634, "pointer": 1734592, "length": 18},
+        {"index": 1587, "pointer": 1734592, "length": 18},
+        {"index": 634, "pointer": 1734592, "length": 18}
+      ],
+      "interpretation": "Layout traversal read the type at 1587 successfully. The subsequent paragraph pass read 634, but the ring has no subsequent 1587 call before the shape rejection. This supports investigating the guarded type-call expression; it does not establish an engine optimizer root cause.",
+      "adapterCallMarkerEnabled": false
+    }
+  ],
+  "candidateChange": "Reject mismatched paragraph indices in an explicit early branch, then call the admitted block type getter unconditionally once. Preserve all type, heading, list metadata, run and format validation and ownership cleanup. No retry, fallback or fault clearing.",
+  "verification": {
+    "browserUnitTests": {"filesPassed": 55, "testsPassed": 2103},
+    "focusedProjectionTests": {"testsPassed": 149},
+    "browserTypecheck": "passed",
+    "diagnosticTests": {"passed": 31, "skipped": 1, "failed": 0},
+    "releaseToolingTestsAfterIndexCapture": {"passed": 168, "skipped": 3, "failed": 0},
+    "packedConsumer": "Node, strict TypeScript, Chromium, Firefox, WebKit and default-consumer smoke passed",
+    "plainWebKitStress": {
+      "record": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-k9LZAE/performance-GBHGUP/measurement.json",
+      "sha256": "8fbc19cac941d8c2926435621a5ee6f39aa10af7ffab0ab4fb1c80268f4f87c5",
+      "sessions": 10,
+      "ownersPerSize": 3,
+      "sizes": [10, 100, 500],
+      "editTarget": "grandchild",
+      "result": "All exact document, selection, undo, checkpoint restore and redo assertions passed; no diagnostics observed. Bounded evidence only."
+    },
+    "highChurnCandidate": {
+      "record": "target/nested-list-reproductions/failure-jIZfNd/measurement.json",
+      "sha256": "e6bfec88729743f1e29b76a72c9e38821dd1c467ac1bf9df1f964c39a257a18c",
+      "result": "failed",
+      "run": 5,
+      "phase": "500 items, repetition 21: editMs",
+      "firstRejection": "wasm_projection_adapter:325:projection.invalid_shape",
+      "interpretation": "The candidate failed at its new early paragraphIndex versus expectedIndex branch, rather than the later type/metadata branch. No index operand values were captured in this run. The explicit branch is not a complete fix; failure-only scalar capture has been added for the next diagnostic run."
+    },
+    "exactControlReplay": "pending"
+  },
+  "openGates": ["intermittent fault qualification", "current-artifact native input and clipboard", "accepted opt-in size and latency budgets"],
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}

@@ -68,7 +68,8 @@ export function instrumentProjectionValidationSites(code, moduleName, {blockType
   });
   assert.ok(sites > 0, "projection rejection expressions changed");
   if (moduleName === "wasm_projection_adapter" && transformed.includes("const plannedBlock = layout?.textBlocks[paragraphOrdinal];")) {
-    return instrumentParagraphShapeOperands(blockTypeCallMarker ? instrumentBlockTypeCall(transformed) : transformed);
+    const marked = blockTypeCallMarker ? instrumentBlockTypeCall(transformed) : transformed;
+    return instrumentParagraphShapeOperands(instrumentAdmittedBlockIndex(marked));
   }
   if (!["flat_list_projection_update", "nested_list_projection_update"].includes(moduleName)) return transformed;
   // Capture already-owned JS snapshots only after an equality rejection. Never
@@ -165,7 +166,30 @@ export function instrumentFlatRootComparison(code) {
 }
 
 /** Disposable fixture only: preserve short-circuit order and single reads. */
+export function instrumentAdmittedBlockIndex(code) {
+  const anchor = "if (paragraphIndex !== expectedIndex) {";
+  if (!code.includes("const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);") &&
+      !code.includes("const blockType = (paragraphBlockTypeInvoked = true, invokeGenerated(methods.elementType, view, paragraphIndex));")) return code;
+  assert.equal(code.split(anchor).length, 2, "admitted block index branch changed");
+  return code.replace(anchor, anchor + `
+            try { console.error("breditor admitted block index rejection", JSON.stringify({
+                paragraphOrdinal,
+                paragraphIndex: {type: typeof paragraphIndex, value: paragraphIndex},
+                expectedIndex: {type: typeof expectedIndex, value: expectedIndex},
+                plannedBlockPresent: plannedBlock !== undefined,
+                handle: view.__wbg_ptr,
+                rawElementTypeCalls: globalThis.__breditorElementTypeTrace?.(),
+            }).slice(0, 4096)); } catch {}`);
+}
+
 export function instrumentBlockTypeCall(code) {
+  const admittedDeclaration = "const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);";
+  if (code.includes(admittedDeclaration)) {
+    assert.equal(code.split(admittedDeclaration).length, 2, "admitted block type declaration changed");
+    assert.ok(!code.includes("const blockType = paragraphIndex === expectedIndex"), "mixed block type declarations");
+    return code.replace(admittedDeclaration,
+      "let paragraphBlockTypeInvoked = false;\n        const blockType = (paragraphBlockTypeInvoked = true, invokeGenerated(methods.elementType, view, paragraphIndex));");
+  }
   const declaration = "const blockType = paragraphIndex === expectedIndex";
   const call = "? invokeGenerated(methods.elementType, view, paragraphIndex) : undefined;";
   assert.equal(code.split(declaration).length, 2, "block type declaration changed");
@@ -175,7 +199,10 @@ export function instrumentBlockTypeCall(code) {
 }
 
 export function instrumentParagraphShapeOperands(code) {
-  const start = "        if (paragraphIndex !== expectedIndex ||";
+  const legacyStart = "        if (paragraphIndex !== expectedIndex ||";
+  const admittedStart = "        if (!listMetadataIsAbsent(view, methods, paragraphIndex) ||";
+  assert.ok(!(code.includes(legacyStart) && code.includes(admittedStart)), "mixed paragraph shape conditions");
+  const start = code.includes(legacyStart) ? legacyStart : admittedStart;
   const end = "!formatPropertyProbeIsAbsent(view, methods, paragraphIndex, 0, 0)) {";
   assert.equal(code.split(start).length, 2, "paragraph diagnostic start changed");
   assert.equal(code.split(end).length, 2, "paragraph diagnostic end changed");

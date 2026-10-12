@@ -174,7 +174,32 @@ test("paragraph comparison instrumentation preserves real compiled comparison", 
     }
   }
 });
-import {instrumentQueueFailures, instrumentRouterFailures, instrumentOwnerFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentBlockTypeCall, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+import {instrumentQueueFailures, instrumentRouterFailures, instrumentOwnerFailures, instrumentProjectionUpdateFailures, instrumentProjectionValidationSites, instrumentParagraphShapeOperands, instrumentAdmittedBlockIndex, instrumentBlockTypeCall, instrumentFlatRootComparison, repeatPerformanceOwners, schedulePerformanceSelection} from "./queue-failure-diagnostics.mjs";
+
+test("admitted index diagnostics preserve rejection without type reads or logger dependency", () => {
+  const source = `const paragraphOrdinal = 3, plannedBlock = {};
+    if (paragraphIndex !== expectedIndex) { return false; }
+    const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);
+    return blockType;`;
+  const transformed = instrumentAdmittedBlockIndex(source);
+  for (const index of [2, undefined, "2", NaN]) for (const hostile of [false, true]) {
+    const outcomes = [];
+    for (const code of [source, transformed]) {
+      let calls = 0;
+      const logs = [];
+      const result = new Function("paragraphIndex", "expectedIndex", "methods", "view", "invokeGenerated", "console", "globalThis", code)(
+        index, 2, {elementType: "type"}, {}, () => {calls++; return "paragraph";},
+        {error(...args) {if (hostile) throw Error("logger"); logs.push(args);}}, {});
+      outcomes.push({result, calls});
+      if (code === transformed && index !== 2 && !hostile) {
+        assert.equal(logs.length, 1);
+        assert.equal(JSON.parse(logs[0][1]).paragraphIndex.type, typeof index);
+      }
+    }
+    assert.deepEqual(outcomes[0], outcomes[1]);
+  }
+  assert.throws(() => instrumentAdmittedBlockIndex(source + source));
+});
 
 test("block type call marker distinguishes skipped and undefined without duplicate calls", () => {
   const source = `const blockType = paragraphIndex === expectedIndex
@@ -218,8 +243,8 @@ test("flat comparator logging preserves short circuit and equality results", () 
   assert.throws(() => instrumentFlatRootComparison(""));
 });
 
-test("paragraph operand capture preserves single reads and short-circuit rejection", () => {
-  const source = `const paragraphOrdinal = 0, paragraphIndex = 2, expectedIndex = 2;
+for (const admitted of [false, true]) test(`paragraph operand capture preserves single reads and short-circuit rejection (admitted=${admitted})`, () => {
+  let source = `const paragraphOrdinal = 0, paragraphIndex = 2, expectedIndex = 2;
     const blockType = "breditor/paragraph", headingLevel = undefined;
         if (paragraphIndex !== expectedIndex ||
             !listMetadataIsAbsent(view, methods, paragraphIndex) ||
@@ -234,6 +259,7 @@ test("paragraph operand capture preserves single reads and short-circuit rejecti
             return false;
         }
         return true;`;
+  if (admitted) source = source.replace("if (paragraphIndex !== expectedIndex ||\n            !listMetadataIsAbsent", "if (!listMetadataIsAbsent");
   const transformed = instrumentParagraphShapeOperands(source);
   for (const failing of [null, "nodeKind", "text", "formatCount", "formatType"]) {
     for (const hostile of [false, true]) {
@@ -257,6 +283,21 @@ test("paragraph operand capture preserves single reads and short-circuit rejecti
     }
   }
   assert.throws(() => instrumentParagraphShapeOperands(""));
+});
+
+test("admitted block marker preserves the early rejection and exactly one type read", () => {
+  const source = `if (paragraphIndex !== expectedIndex) return {rejected: true};
+    const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);
+    return {value: blockType};`;
+  const transformed = instrumentBlockTypeCall(source).replace("return {value: blockType}", "return {value: blockType, invoked: paragraphBlockTypeInvoked}");
+  for (const equal of [false, true]) for (const value of [undefined, "breditor/paragraph"]) {
+    let calls = 0;
+    const run = new Function("paragraphIndex", "expectedIndex", "methods", "view", "invokeGenerated", transformed);
+    assert.deepEqual(run(2, equal ? 2 : 3, {elementType: "elementType"}, {}, () => {calls++; return value;}),
+      equal ? {value, invoked: true} : {rejected: true});
+    assert.equal(calls, equal ? 1 : 0);
+  }
+  assert.throws(() => instrumentBlockTypeCall(source + source));
 });
 
 for (const family of ["flat", "nested"]) test(`${family} impact diagnostics preserve rejection and bound mismatch context`, () => {
