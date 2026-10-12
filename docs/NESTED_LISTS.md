@@ -1469,3 +1469,16 @@ The [tooling record](qualification/2026-10-12-release-tooling-regression.json)
 records the commands and scope. This qualifies replay plumbing, not editor
 reliability or resolution of the historical fault. The full Rust rerun remains
 live. No shipping bundles, push or publication changes occur.
+
+### October 12: current reframe full-core rerun completed
+
+The full feature-enabled core command for production checkpoint `dff3ac6`
+completed with exit 0: all 1,204 unit tests, all enabled integration harnesses,
+and doctest batches of 1 and 136 passed. There are no core source changes between
+that checkpoint and this record. The
+[full rerun record](qualification/2026-10-12-current-reframe-full-core-suite.json)
+supersedes the pending integration/doctest notes for this source change.
+Long command wall time includes native loader delays and doctest compilation;
+it is not editor performance evidence. Historical WebKit, current-archive native
+qualification, and explicit size/latency acceptance remain open. No shipping
+bundles or system settings changed; nothing was pushed or published.
