@@ -1,5 +1,5 @@
 {
-  "status": "private-fix-candidate-stress-running",
+  "status": "private-fix-candidate-replay-failed",
   "releaseQualified": false,
   "reproduction": {
     "record": "target/nested-list-reproductions/failure-PIQbzb/measurement.json",
@@ -14,7 +14,9 @@
   "optInArchive": {"assembly": "target/nested-list-opt-in-UGofXh/assembly.json", "sha256": "7d41e758b346f6f3f07017bbd375ffad60d229655fdc12fa73e51184f5c79a33", "bytes": 961700, "unpackedBytes": 4182540, "consumer": "breditor-opt-in-consumer-KsDqqA", "status": "passed Node/types and all three engine keyboard/mixed-history checks", "scope": "Browser-dispatched trusted keys; exact document/selection/pending formats restored in fresh owners at each mixed-history cursor 4..0. Not native clipboard, physical IME or screen-reader qualification.", "sizeBudgetQualified": false},
   "rootTypedThreeEngineChecks": {"record": "performance-nTu70J/measurement.json", "status": "measured", "sha256": "ff8eb5d145d80f2606066180999b55c1fd8ecc9ae69f42f9a18ac91ec1462f5c", "editorCases": 81, "processes": 9, "observedFailures": 0, "scope": "Explicit-read candidate, root edits, three owners per size and three processes per engine; all typed properties and pending-format recovery. Overlapped deep stress, correctness evidence only."},
   "stress": {"record": "breditor-nested-list-consumer-gbfPoi/performance-yt5MZu/measurement.json", "status": "measured", "sha256": "024c8572cdfc7b3f41c0cfc0429e0016758a75d75e68dfd355efa2f875aa65b7", "processes": 10, "editorCases": 900, "observedFailures": 0, "ownersPerSize": 30, "editTarget": "grandchild", "allTypedProperties": true, "pendingFormatRecovery": true, "diagnosticInstrumentation": false, "releasePerformanceQualified": false},
-  "exactReplay": {"session": 39468, "record": "performance-yt5MZu/exact-replay-OR4o4l/replay.json", "status": "running", "rebuilt": false, "addedInstrumentation": false},
+  "exactReplay": {"record": "performance-yt5MZu/exact-replay-OR4o4l/replay.json", "status": "failed", "sha256": "b9be6522269de281faeb4e6fee28be108c94b39c58e74d0d775c86e1a73c8e47", "failedProcessIndex": 0, "progress": "10 items, repetition 25: restore", "error": "content_export.invalid_wasm_view", "retainedFailure": "target/nested-list-reproductions/failure-aJDyJD", "rebuilt": false, "addedInstrumentation": false},
+  "conclusion": "Explicit scalar reads preserve contracts and remove mixed tuple packing, but did not eliminate every export failure. Initial 900-case pass remains valid evidence of that run, not proof of a complete fix or of map-only causality.",
+  "failureDiagnosis": {"session": 17140, "status": "running", "scope": "Same FhGi6L installed package pair; separate disposable decoder/property/export diagnostics without retry or acceptance overrides."},
   "remaining": ["Repeated uninstrumented correctness and exact replay", "Native clipboard/IME/screen reader qualification", "Accepted size and latency budgets"],
   "published": false
 }
