@@ -1,6 +1,11 @@
 {
   "releaseQualified":false,
   "faultResolved":false,
+  "higherStressDecision":"Rejected as a complete fix: both experimental and control 300-owner-per-size fixtures reproduced missing childCount.",
+  "higherStressFailures":[
+    {"report":"target/nested-list-reproductions/failure-GvY0Om/measurement.json","sha256":"9c3c500ed4a70d72b90ad42ec3d88a2cf01772e075c3ae6bb32dec43f5b20c47","unsignedIndex":true,"run":0,"progress":"500 items, owner 248, walk 0, forward node 799","actual":"undefined","expected":1,"checks":633044},
+    {"report":"target/nested-list-reproductions/failure-jHUnpI/measurement.json","sha256":"f07a198f32e296f68273587b68ff9e158c8ff43bbcaa050507bc85678108270c","unsignedIndex":false,"run":1,"progress":"100 items, owner 269, walk 0, backward node 97","actual":"undefined","expected":1,"checks":122754}
+  ],
   "scope":"Private generated childCount glue only: admitted index coerced with >>>0 immediately at raw Wasm call. Original packed Wasm, sentinel decoding, getter count and fixture expectations unchanged. Plain-paragraph, child-count-only reduction.",
   "productionWarning":"Not validation. Invalid, fractional, negative or wider inputs must still be rejected by the browser adapter. Do not deploy a coercion to admit invalid indices.",
   "results":[
@@ -8,7 +13,7 @@
     {"fixture":"getter-probe-B3N3Jm/exact-replay-8nMvGS","sha256":"64b5da7e562d701b817a7b3d478b9b97c0722bb8e7ca51489e842b5c0b71d58e","status":"passed","processes":10,"checks":736510,"rebuilt":false}
   ],
   "unitCoverage":"One original raw call and sampled admitted indices through u32::MAX, zero/one/absence return preservation; repeated transform rejected. All tooling tests passed.",
-  "interpretation":"Green experimental and exact replay runs, not proof of a causal fix. Unchanged controls previously also passed ten processes. Higher-stress comparison and actual fault-side Rust input/result still needed.",
+  "interpretation":"Initial green runs did not survive higher stress. The forced unsigned representation did not eliminate missing childCount. Actual fault-side Rust input/result still needed to identify cause; no production coercion should be added on this evidence.",
   "shippingChanged":false,
   "pushed":false,
   "published":false
