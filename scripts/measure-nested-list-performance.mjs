@@ -22,6 +22,7 @@ import {instrumentQueueFailures, instrumentRouterFailures, instrumentOwnerFailur
 import {installExceptionConstructorProbe} from "./exception-constructor-probe.mjs";
 import {retainNestedListFailure} from "./retain-nested-list-failure.mjs";
 import {FIXTURE_COMPLETION_POLLING_MS, readFixtureFailureState, waitForFixtureCompletion} from "./fixture-completion.mjs";
+import {instrumentElementTypeReturn} from "./element-type-return-diagnostics.mjs";
 
 assert.ok(process.argv.length === 3, "usage: node scripts/measure-nested-list-performance.mjs <packed-consumer-qualification.json>");
 const diagnoseExport = process.argv[3] === "--diagnose-export";
@@ -130,10 +131,15 @@ let projectionDiagnosticModules = 0;
 const validationDiagnosticModules = new Set();
 let routerDiagnosticModules = 0;
 let ownerDiagnosticModules = 0;
+let elementTypeDiagnosticModules = 0;
 let stressFixtureModules = 0;
 let selectionFixtureModules = 0;
 let progressFixtureModules = 0;
 const queueDiagnosticPlugin = {name: "queue-failure-diagnostics", enforce: "pre", transform(code, id) {
+  if (id === join(consumer, "node_modules/@breditor/wasm/dist/breditor_wasm.js")) {
+    elementTypeDiagnosticModules++;
+    return instrumentElementTypeReturn(code);
+  }
   for (const name of ["wasm_projection_adapter", "nested_list_projection_update"]) {
     if (id === join(consumer, `node_modules/@breditor/browser/dist/${name}.js`)) {
       assert.ok(!validationDiagnosticModules.has(name), "duplicate validation transform");
@@ -177,6 +183,7 @@ assert.equal(projectionDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "proj
 assert.equal(validationDiagnosticModules.size, queueDiagnosticsEnabled ? 2 : 0, "validation diagnostic modules were not transformed exactly once");
 assert.equal(routerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "router diagnostic module was not transformed exactly once");
 assert.equal(ownerDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "owner diagnostic module was not transformed exactly once");
+assert.equal(elementTypeDiagnosticModules, queueDiagnosticsEnabled ? 1 : 0, "element type diagnostic module was not transformed exactly once");
 assert.equal(progressFixtureModules, queueDiagnosticsEnabled ? 1 : 0, "progress fixture was not transformed exactly once");
 assert.equal(stressFixtureModules, ownerRepetitions === 3 ? 0 : 1, "stress fixture was not transformed exactly once");
 assert.equal(selectionFixtureModules, selectionScheduling === "synchronous" ? 0 : 1, "selection fixture was not transformed exactly once");
