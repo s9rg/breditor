@@ -74,3 +74,67 @@ fn typed_properties_and_word_counts_survive_engine_drop() -> Result<(), Box<dyn 
     assert_eq!(projection.format_property_name(4, 0, 3), None);
     Ok(())
 }
+
+#[cfg(feature = "candidate-word-property-integers")]
+#[test]
+fn full_safe_integer_properties_cross_real_nested_projection() -> Result<(), Box<dyn Error>> {
+    let schema = json!({"name":"example/signed-probe","version":1});
+    let mut factory = BreditorCompiledProfile::from_bootstrap_json_v5(&json!({
+        "format":"breditor/profile-bootstrap","formatVersion":5,"schema":schema,
+        "extensions":[{"id":{"name":"example/signed-extension","version":1},
+            "dependencies":[],"conflicts":[],"inlineFormats":[{"kind":"example/signed","revision":1}],
+            "inlineFormatPropertyContracts":[{"formatKind":"example/signed","properties":[
+                {"name":"example/value","presence":"required","valueType":{"kind":"integer",
+                    "minimum":-9_007_199_254_740_991_i64,"maximum":9_007_199_254_740_991_i64}}
+            ]}],"inlineFormatToggles":[],"inlineFormatSets":[]}]
+    }).to_string());
+    let profile = factory.take_profile().ok_or_else(|| io::Error::other("profile missing"))?;
+    let fingerprint = profile.descriptor().schema_fingerprint();
+    let element = |kind: &str, children: Vec<serde_json::Value>| {
+        json!({
+            "kind":"element","type":format!("breditor/{kind}"),"entityId":null,"properties":{},"children":children
+        })
+    };
+    for value in [
+        -9_007_199_254_740_991_i64,
+        -4_294_967_296,
+        -5,
+        0,
+        1_193_046,
+        4_294_967_295,
+        4_294_967_296,
+        9_007_199_254_740_991,
+    ] {
+        let text = json!({"kind":"text","text":"value🙂","formats":[{"type":"example/signed",
+            "properties":{"example/value":value}}]});
+        let root = element(
+            "document",
+            vec![element(
+                "bullet-list",
+                vec![element("list-item", vec![element("paragraph", vec![text])])],
+            )],
+        );
+        let document = json!({"format":"breditor/document","formatVersion":2,"schema":schema,
+            "schemaFingerprint":fingerprint,"root":root})
+        .to_string();
+        let projection = {
+            let mut factory =
+                profile.create_engine_from_document_json_v7("signed-probe", &document, 20.0);
+            let engine = factory.take_engine().ok_or_else(|| io::Error::other("engine missing"))?;
+            let mut result = engine.projection(&engine.observation());
+            result.take_projection().ok_or_else(|| io::Error::other("projection missing"))?
+        };
+        let words = projection.format_property_integer_words(4, 0, 0);
+        assert_eq!(words.len(), 3);
+        assert_eq!(words[0], 1);
+        let low = words[1].to_le_bytes();
+        let high = words[2].to_le_bytes();
+        assert_eq!(
+            i64::from_le_bytes([
+                low[0], low[1], low[2], low[3], high[0], high[1], high[2], high[3]
+            ]),
+            value
+        );
+    }
+    Ok(())
+}
