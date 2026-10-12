@@ -9,6 +9,7 @@ const ownerRepetitions = 30;
 const getterSequence: string = "all";
 const walkRepetitions = 1;
 const keepProjectionOwners = false;
+const treeShape: string = "nested";
 const retainedOwners:Array<wasm.BreditorEngine|wasm.BreditorProjection>=[];
 function same(actual: unknown, expected: unknown, label: string): void {
   checks++;
@@ -34,9 +35,10 @@ type Node = {kind:"text";text:string;formats:[]} | {kind:"element";type:string;e
 const element = (type:string,children:Node[],properties:Record<string,number>={}):Node => ({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
 const paragraph = (text:string,heading=false):Node => element(heading?"heading":"paragraph",[{kind:"text",text,formats:[]}],heading?{"breditor/level":2}:{});
 function tree(items:number):Node {
+  if(treeShape==="paragraphs")return element("document",Array.from({length:items},(_,index)=>paragraph(`Item ${index}: A🙂`)));
   return element("document",[element("ordered-list",Array.from({length:items},(_,index)=>element("list-item",[
-    paragraph(`Item ${index}: A🙂`,index%10===0),
-    ...(index%10===0?[element("bullet-list",[element("list-item",[
+    paragraph(`Item ${index}: A🙂`,treeShape==="nested"&&index%10===0),
+    ...(treeShape==="nested"&&index%10===0?[element("bullet-list",[element("list-item",[
       paragraph(`Child ${index}`),element("ordered-list",[element("list-item",[paragraph(`Grandchild ${index}`)])],{"breditor/start":4}),
     ])])]:[]),
   ])),{"breditor/start":7})]);

@@ -1,0 +1,12 @@
+{
+  "releaseQualified":false,
+  "faultResolved":false,
+  "scope":"Original packed Wasm. Child-count-only reads; independent preorder expectations. No browser editor, editing commands, clipboard or history.",
+  "flatListFailure":{"report":"target/nested-list-reproductions/failure-U6hFQw/measurement.json","sha256":"263521ea1914da092c8b1ba7329d6c4c3574c89880022e7af3837604d32de1dd","run":0,"progress":"500 items, owner 26, walk 0, backward node 368","actual":"undefined","expected":1,"headingOrNestedDescendants":false},
+  "plainParagraphControl":{"fixture":"getter-probe-nFHQEl","sha256":"56ea417d528c839533dc50eca84e106b462dde9d75b5703b3469e9ce80198ae7","status":"passed","checks":736510,"listsOrHeadings":false},
+  "plainParagraphExactReplay":{"report":"target/nested-list-reproductions/failure-cbYRsh/replay.json","sha256":"00ac8ad5d09b04fa29522cf3dee12c5ba93bb5bafe0de287d938c6dd14604252","status":"failed","run":5,"progress":"500 items, owner 18, walk 0, forward node 863","actual":"undefined","expected":1,"sameValue":false,"rebuilt":false},
+  "decisions":["Deep nesting and headings are not required","List document structure is not required","Compiled Wasm still includes nested-list feature APIs; this does not prove identical recurrence in a default-feature artifact","Focus next investigation on the smaller plain-projection boundary, not nested-list editing algorithms"],
+  "toolingTests":"passed",
+  "pushed":false,
+  "published":false
+}
