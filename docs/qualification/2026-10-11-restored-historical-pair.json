@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-11",
+  "releaseQualified": false,
+  "sourcePair": "target/nested-list-packages-TpYaIw/qualification.json",
+  "sourcePairReportSha256": "d5f7ac35e036f853e159de092981c41cc57f8888cdb3928757f8d9d21c552a98",
+  "restoredPair": "target/nested-list-restored-X5oVrw/qualification.json",
+  "restoredPairReportSha256": "7953713dcb7b74c47764293201d37668a8517b8989c2c812446f02b76bad008a",
+  "browserArchiveSha256": "e4e6b2a2d814282f286290b8fa279adc09dcd252746742e7c8ebc6e9542b524c",
+  "wasmArchiveSha256": "a3a3c80629ffee40f38f480d3b30bcc84157cb114b5925609da51f007fe956a9",
+  "wasmSha256": "93d04f43c3b922e0faac254850900764794eb69d6ffc4d823e2499a94784829a",
+  "currentConsumerFixtureSha256": "bdc542b5214c41d2ee754ed4f5b302686a7d9890b55587ad8c213e59d33fcb81",
+  "offlineInstallNodeAndTypeChecks": "passed",
+  "freshConsumerBrowserChecks": ["chromium", "firefox", "webkit"],
+  "libraryArtifactsRebuilt": false,
+  "consumerBundleRebuilt": true,
+  "originalRecordsRewritten": false,
+  "lostHistoricalFailureBundleRestored": false,
+  "unInstrumentedRootEditHistoryTrial": {
+    "fixture": "pFkhCS/performance-NpaCpr",
+    "reportSha256": "6a20577e1a1e96a68266ece4f4cd831acd6c1c5c4c5b6693378185138964a843",
+    "freshSessions": 10,
+    "correctnessCycles": 90,
+    "diagnostics": []
+  },
+  "retainedPairVerifierUnitTestsPassed": 3,
+  "nativeQualificationTransferred": false,
+  "shippingArtifactsWritten": false,
+  "publishable": false,
+  "historicalWebKitProjectionFaultResolved": false,
+  "boundary": "Exact retained library bytes, current fixture and current installed browser driver. This is not recovery of the lost historical failed JavaScript bundle or proof that the historical engine binary/environment is identical."
+}
