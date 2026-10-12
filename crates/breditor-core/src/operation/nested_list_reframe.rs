@@ -88,7 +88,7 @@ impl NestedListReframe {
             usize::try_from(start).map_err(|_| NestedListReframeError::InvalidTarget)?;
         let expected = root.children().iter().skip(start_native).take(count).cloned().collect();
         let operation = Self::try_new(start, expected, replacement)?;
-        operation.validate(context)?;
+        operation.validate_with_source(context, Some(document))?;
         Ok(operation)
     }
 
@@ -109,6 +109,16 @@ impl NestedListReframe {
     }
 
     pub(crate) fn validate(&self, context: &EditorContext) -> Result<(), NestedListReframeError> {
+        self.validate_with_source(context, None)
+    }
+
+    // A source proof is only a within-call hint. Codecs still validate without
+    // one, and partial spans cannot inherit the complete document's proof.
+    fn validate_with_source(
+        &self,
+        context: &EditorContext,
+        source: Option<&Document>,
+    ) -> Result<(), NestedListReframeError> {
         require_schema(context)?;
         for nodes in [&self.expected, &self.replacement] {
             let stop = usize::try_from(end(self.start, nodes.len())?)
@@ -116,14 +126,7 @@ impl NestedListReframe {
             if stop > context.limits().max_children_per_element() {
                 return Err(NestedListReframeError::RootChildLimit);
             }
-            let root = ElementNode::try_new(
-                context.schema().root_kind().clone(),
-                None,
-                PropertyMap::default(),
-                nodes.to_vec(),
-            )
-            .map_err(|_| NestedListReframeError::InvalidTarget)?;
-            Document::try_new(context.schema(), NodeRef::element(root), context.limits())?;
+            validate_roots(context, nodes, source)?;
         }
         Ok(())
     }
@@ -138,7 +141,7 @@ impl NestedListReframe {
         document: &Document,
     ) -> Result<Option<NestedListReframeEdit>, NestedListReframeError> {
         require_document(context, document)?;
-        self.validate(context)?;
+        self.validate_with_source(context, Some(document))?;
         let document_before = document.clone();
         let old_end = end(self.start, self.expected.len())?;
         let new_end = end(self.start, self.replacement.len())?;
@@ -204,6 +207,34 @@ impl NestedListReframe {
         }))
     }
 }
+
+/// Reuse admission only for an exactly matching complete root and authority.
+/// Root metadata, all children, compiled schema identity and limits must match.
+fn validate_roots(
+    context: &EditorContext,
+    nodes: &[NodeRef],
+    source: Option<&Document>,
+) -> Result<Document, NestedListReframeError> {
+    let root = ElementNode::try_new(
+        context.schema().root_kind().clone(),
+        None,
+        PropertyMap::default(),
+        nodes.to_vec(),
+    )
+    .map_err(|_| NestedListReframeError::InvalidTarget)?;
+    let root = NodeRef::element(root);
+    if let Some(source) = source
+        && source.is_proven_for(context.schema(), context.limits())
+        && source.root() == &root
+    {
+        return Ok(source.clone());
+    }
+    Ok(Document::try_new(context.schema(), root, context.limits())?)
+}
+
+#[cfg(test)]
+#[path = "nested_list_reframe_proof_tests.rs"]
+mod proof_tests;
 
 fn end(start: u32, count: usize) -> Result<u32, NestedListReframeError> {
     if count == 0 {

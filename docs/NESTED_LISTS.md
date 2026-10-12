@@ -1413,3 +1413,21 @@ older projection fault remains unresolved: bounded green runs do not identify
 its cause or prove a fix. Neither run qualifies release latency or transfers
 native evidence to the latest candidate. No power settings or shipping artifacts
 were changed; nothing was pushed or published.
+
+### October 12: exact-source reframe admission reuse
+
+`NestedListReframe` now reuses admission for an exactly matching complete source
+root proven for the same compiled schema and limits. The hint is within-call
+only, not retained on operations or admitted by codecs. Partial roots cannot
+inherit whole-document summaries; replacement and complete-result validation,
+root-child bounds, stale guards and actual-write preflight remain checked.
+
+Five proof regressions, all 61 nested-list-filtered unit tests, the complete
+1,204-test feature unit suite and strict library/test Clippy pass. Generated
+candidate `xov6ZE` and private installed pair `j6nDXM` pass Node/types and checks
+in Chromium, Firefox and WebKit. The
+[checkpoint record](qualification/2026-10-12-nested-reframe-source-proof.json)
+binds the artifacts and keeps scope explicit: full integration/doctest testing
+for this new production change, performance comparisons and matching native
+qualification remain outstanding. No latency benefit is claimed. Shipping
+artifacts remain unchanged, and the historical WebKit and size gates remain open.

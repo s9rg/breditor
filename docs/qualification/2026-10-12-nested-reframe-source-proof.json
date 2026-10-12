@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-12",
+  "releaseQualified": false,
+  "change": "NestedListReframe capture/apply reuse admission only when the complete synthetic root exactly equals a source proven for the same compiled schema and limits. Codec validation has no source hint; partial roots and replacements still validate independently, and the final document remains fully validated.",
+  "focusedProofTestsPassed": 5,
+  "nestedListFilteredUnitTestsPassed": 61,
+  "completeFeatureUnitTestsPassed": 1204,
+  "strictFeatureCoreClippyLibAndTests": "passed, exit 0",
+  "candidate": "target/nested-list-candidate-xov6ZE",
+  "wasmSha256": "ac676c428f12023aafe754fdf691a8f1b6a25800dbe0aeb8511a432a7c2b6eb4",
+  "wasmBytes": 2308361,
+  "wasmGzip9Bytes": 634718,
+  "generatedQualification": "26 declaration controls, Node commands/recovery, five raw-Wasm and one integrated editor scenario in each of Chromium, Firefox and WebKit passed.",
+  "installedPair": "target/nested-list-packages-j6nDXM/qualification.json",
+  "installedPairQualification": "Node/types, nested checks in three engines and the base-consumer smoke passed.",
+  "tarballSha256": {
+    "browser": "46124a53f47f7fb4e619820c80cd68c07244ccd7371c5b73fde6d339356a7b62",
+    "wasm": "680eea209b252504d3700915de7191bee265e687b4cce038861b7825afeb288e"
+  },
+  "performanceBenefitMeasured": false,
+  "fullIntegrationAndDoctestRunForThisProductionChange": "not yet run; the previously completed suite predates this change",
+  "nativeQualificationForThisCandidate": false,
+  "sizeBudgetQualified": false,
+  "historicalWebKitFaultResolved": false,
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}
