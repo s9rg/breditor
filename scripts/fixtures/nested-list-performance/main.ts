@@ -17,6 +17,8 @@ type Metrics = Record<string, number>;
 let progress = "initialization";
 const renderingTrace = new URLSearchParams(location.search).get("renderTrace") === "1";
 const editTarget = new URLSearchParams(location.search).get("editTarget") ?? "root";
+const formatted = new URLSearchParams(location.search).get("formatted") === "1";
+const formats = () => formatted ? [{type: "breditor/strong", properties: {}}] : [];
 
 void run().catch(error => { output.textContent = JSON.stringify({progress, error: String(error)}); output.dataset["status"] = "failed"; });
 async function run(): Promise<void> {
@@ -50,10 +52,10 @@ async function sample(items: number, fingerprint: string, repetition: number) {
   const text = (i: number) => `Item ${i}: A🙂 with enough text to measure a representative short list entry.`;
   const documentJson = JSON.stringify({format: "breditor/document", formatVersion: 2, schema, schemaFingerprint: fingerprint,
     root: element("document", [element("ordered-list", Array.from({length: items}, (_, i) => element("list-item", [
-      element(i % 10 === 0 ? "heading" : "paragraph", [{kind: "text", text: text(i), formats: []}], i % 10 === 0 ? {"breditor/level": 2} : {}),
+      element(i % 10 === 0 ? "heading" : "paragraph", [{kind: "text", text: text(i), formats: formats()}], i % 10 === 0 ? {"breditor/level": 2} : {}),
       ...(i % 10 === 0 ? [element("bullet-list", [element("list-item", [
-        element("paragraph", [{kind: "text", text: `Child ${i}`, formats: []}]),
-        element("ordered-list", [element("list-item", [element("paragraph", [{kind: "text", text: `Grandchild ${i}`, formats: []}])])], {"breditor/start": 4}),
+        element("paragraph", [{kind: "text", text: `Child ${i}`, formats: formats()}]),
+        element("ordered-list", [element("list-item", [element("paragraph", [{kind: "text", text: `Grandchild ${i}`, formats: formats()}])])], {"breditor/start": 4}),
       ])])] : []),
     ])), {"breditor/start": 7})]),
   });
@@ -113,6 +115,13 @@ async function sample(items: number, fingerprint: string, repetition: number) {
       }).slice(0, 4096)}`);
     }
     const edited = exported("documentJson"), editedSelection = selected();
+    if (formatted) {
+      const verifyFormats = (node: {kind: string; formats?: unknown; children?: unknown[]}) => {
+        if (node.kind === "text") equal(node.formats, formats(), "strong format retained after edit");
+        for (const child of node.children ?? []) verifyFormats(child as typeof node);
+      };
+      verifyFormats(JSON.parse(edited).root);
+    }
     measured("undoMs", () => history("undo")); equal(exported("documentJson"), original); equal(selected(), originalSelection);
     const backup = measured("checkpointMs", () => exported("sessionCheckpointJson"));
     const checkpointBytes = new TextEncoder().encode(backup).byteLength;

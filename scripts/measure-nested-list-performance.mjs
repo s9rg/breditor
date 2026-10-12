@@ -35,6 +35,9 @@ const diagnoseExport = process.argv[3] === "--diagnose-export";
 const coreOnly = process.argv[3] === "--core-only";
 const browserName = process.env["BREDITOR_PERF_BROWSER"] ?? "all";
 const editTarget = process.env["BREDITOR_PERF_EDIT_TARGET"] ?? "root";
+const formattedFlag = process.env["BREDITOR_PERF_FORMATTED"] ?? "0";
+assert.ok(["0", "1"].includes(formattedFlag), "invalid formatted stress flag");
+const formatted = formattedFlag === "1";
 assert.ok(["root", "grandchild"].includes(editTarget), "invalid BREDITOR_PERF_EDIT_TARGET");
 assert.ok(["all", "chromium", "firefox", "webkit"].includes(browserName), "invalid BREDITOR_PERF_BROWSER");
 const cpuProfileEnabled = process.env["BREDITOR_PERF_CPU_PROFILE"] === "1";
@@ -260,7 +263,7 @@ const save = async status => {
   measurementScope: coreOnly ? "raw-core-abi-no-editor-dom" : "browser-owner-with-editor-dom",
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   liveFixtureProgress: queueDiagnosticsEnabled,
-  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget,
+  deepDiagnostics, browserName, runCount, ownerRepetitions, selectionScheduling, editTarget, formatted,
   selectionTimingIncludesTaskWaits: selectionScheduling !== "synchronous",
   cpuProfileEnabled, geckoProfileEnabled, renderingTraceEnabled, profileBuild: cpuProfileEnabled || geckoProfileEnabled ? "unminified" : null, bundleAssets: await tree(join(fixture, "bundle/assets")),
   fixtureSha256: hash(await readFile(join(fixture, "main.ts"))),
@@ -376,6 +379,7 @@ try {
       page.on("console", message => { if (message.type() === "error" && diagnostics.length < 100) { diagnostics.push(message.text()); console.error(message.text()); } });
       page.on("pageerror", error => { if (pageErrors.length < 100) pageErrors.push(String(error)); });
       const query = new URLSearchParams({editTarget});
+      if (formatted) query.set("formatted", "1");
       if (renderingTraceEnabled || geckoProfileEnabled) query.set("renderTrace", "1");
       failureStage = "pageNavigation";
       await page.goto(`http://127.0.0.1:${address.port}/?${query}`);

@@ -97,6 +97,8 @@ fn nested_child_counts_and_edges_remain_exact_after_engine_drop() -> Result<(), 
                 result.take_projection().ok_or_else(|| io::Error::other("projection missing"))?
             };
             assert_eq!(projection.node_count() as usize, expected.len());
+            #[cfg(feature = "candidate-word-projection-scalars")]
+            assert_eq!(projection.projection_scalar_words_version(), 1);
             for reverse in [false, true] {
                 for ordinal in 0..expected.len() {
                     let index = if reverse { expected.len() - ordinal - 1 } else { ordinal };

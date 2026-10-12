@@ -75,7 +75,9 @@ try {
       page = await browser.newPage({viewport: {width: 1280, height: 960}});
       page.on("console", message => {if (message.type() === "error" && result.diagnostics.length < 100) result.diagnostics.push(message.text());});
       page.on("pageerror", error => {if (result.pageErrors.length < 100) result.pageErrors.push(String(error));});
-      await page.goto(`http://127.0.0.1:${address.port}/?editTarget=${source.editTarget ?? "root"}`);
+      const query = new URLSearchParams({editTarget: source.editTarget ?? "root"});
+      if (source.formatted === true) query.set("formatted", "1");
+      await page.goto(`http://127.0.0.1:${address.port}/?${query}`);
       if (source.fixtureKind === "nested-getter-probe") await waitForTerminalFixtureCompletion(page);
       else await waitForFixtureCompletion(page);
       const element = page.locator("#result");
