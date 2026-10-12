@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-12",
+  "sourceCheckpoint": "eec2d1e",
+  "releaseQualified": false,
+  "faultResolved": false,
+  "packageRecord": "target/nested-list-packages-j6nDXM/qualification.json",
+  "command": "BREDITOR_PERF_BROWSER=webkit BREDITOR_PERF_EDIT_TARGET=grandchild BREDITOR_PERF_RUNS=10 node scripts/measure-nested-list-performance.mjs target/nested-list-packages-j6nDXM/qualification.json",
+  "exitCode": 1,
+  "retainedFailure": "target/nested-list-reproductions/failure-uasLwJ/measurement.json",
+  "failureMeasurementSha256": "170ad5cda8353e85a5c883ba81dc15d62c9acfef6099e9b597764f97ac3ffcab",
+  "browserVersion": "WebKit 26.5",
+  "completedSessionsBeforeFailure": 8,
+  "completedCasesBeforeFailedSession": 72,
+  "failedSession": 8,
+  "phase": "500 items, repetition 0: selectionMs",
+  "observedFailure": "Content export unavailable because the owner entered faulted/queueUncertain.",
+  "consoleDiagnostics": [],
+  "pageErrors": [],
+  "failedFixtureWaitWallMs": 1137,
+  "exactReplay": {
+    "record": "target/nested-list-reproductions/failure-uasLwJ/exact-replay-eWEUHt/replay.json",
+    "sha256": "eaf640d1a3dfde77e4a831684034819fcdf89b6149fdafc3f74b5e0c1f355d2e",
+    "exitCode": 0,
+    "freshSessionsPassed": 10,
+    "rebuilt": false,
+    "addedInstrumentation": false
+  },
+  "interpretation": "A real current-candidate terminal fault was captured and its exact bytes retained. It did not recur in ten exact replays. Its first failing branch and relationship to the older projection fault remain unproven. This is not a timeout classification or a fix.",
+  "nextDiagnosticRun": "Live session 38013, ten sessions with 30 owners per size and existing bounded queue/projection failure-site diagnostics on a disposable bundle.",
+  "shippingArtifactsWritten": false,
+  "pushed": false,
+  "published": false
+}

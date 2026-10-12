@@ -1493,3 +1493,15 @@ binds the measurement hash and scope. This does not identify or resolve the
 historical fault, qualify native input, or establish release latency acceptance.
 The unaccepted proposed 100 ms target is not met. No shipping bundles, push or
 publication changes occur.
+
+### October 12: current deep-child WebKit fault retained
+
+The current `j6nDXM` package failed in fresh WebKit session 8 during selection
+of a grandchild in a 500-item document: content export became unavailable after
+the owner entered `faulted/queueUncertain`. Eight prior sessions passed 72 cases.
+The exact failed bundle and report are retained as `failure-uasLwJ`; ten exact-byte
+replay sessions then passed without rebuilding or added instrumentation.
+The [failure record](qualification/2026-10-12-current-grandchild-webkit-fault.json)
+keeps the original failure distinct from replay success. The first failing branch
+and relationship to the older projection fault remain unidentified. A bounded
+diagnostic run is live; no fix or release qualification is claimed.
