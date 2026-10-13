@@ -900,6 +900,27 @@
     "scope": "One fresh diagnostic Firefox session, formatted/property/integer grandchild workload. Profiling has overhead; samples include deeper Wasm/native work, not true JS self time or CPU milliseconds. Wasm indices cannot borrow symbol mappings from another executable. Not release timing/p95 evidence. No runtime changes; full native core session 26861 remains live.",
     "releaseQualified": false
   },
+  "reconstructionCacheFullCoreGateCompleted": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "359bf9f",
+    "command": "cargo test --locked -p breditor-core --features experimental-structural-properties --quiet",
+    "session": 26861,
+    "exitCode": 0,
+    "unitTestsPassed": 1212,
+    "integrationStatus": "All integration batches passed in the original unfiltered command.",
+    "doctestBatches": [1,136],
+    "doctestsPassed": 137,
+    "scope": "Original current-runtime command retained through compilation, integration executable startup and doctest execution to terminal exit zero, without restart. No Rust runtime edits occurred during this gate. Earlier pending records remain chronological observations, superseded by this terminal result. Default wrapper, full opt-in wrapper, Wasm-target, archive and documentation results remain separately scoped.",
+    "releaseQualified": false,
+    "remainingGates": [
+      "Historical intermittent WebKit fault remains unresolved; passing replays and current-candidate runs do not establish a fix.",
+      "Current-archive physical clipboard, Japanese IME and VoiceOver qualification remains open.",
+      "Explicit accepted size and latency budgets remain absent; current 500-item edit median does not establish release p95 performance."
+    ],
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false

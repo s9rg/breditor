@@ -1584,6 +1584,14 @@ Matched local Firefox runs measured 410 ms versus 445 ms median 500-item edits
 (nine samples each), with 27 correctness cases passing on each candidate.
 This sequential comparison is not randomized or release p95 qualification.
 Compressed Wasm increases by 2,366 bytes to 638,652 bytes; total heap retention
-has not been measured. Full native integration/doctests and the release archive
-still need qualification for this latest runtime change. Historical WebKit,
-native input and accepted size/performance gates remain open.
+has not been measured. The original full native core command now passes all
+integration batches and 137 doctests, alongside its 1,212 unit tests. The default
+wrapper passes 43 units; the opt-in word wrapper passes 63 units and 25 integration
+tests; the Wasm-target gate and strict documentation build also pass.
+
+The current `AW83Uz` archive passes Node/types, browser-dispatched keyboard and
+exact mixed-history recovery checks in all three engines. Its external consumer
+JS + Wasm estimate is 817,455 bytes gzip-9, including the fixture; this is not
+budget approval or shipping-demo network transfer. Historical WebKit, physical
+native input and accepted size/performance gates remain open. No push or
+publication occurred.
