@@ -23,9 +23,16 @@
     "pasteUndoRedoObserved": "One Control-Z restored baseline; Control-Shift-Z restored pasted result; final Control-Z restored baseline.",
     "contract": "Plaintext newlines normalize into sibling destination items, not rich source-structure import."
   },
+  "forwardSelection": {
+    "browsers": ["Native Chrome", "Native Safari"],
+    "method": "Native line-boundary keys from First start, Shift-Down twice and Command-Shift-Right through Deep emoji end. Safari accessibility cursor placement initially landed inside First; corrected with Left and Command-Left before selection.",
+    "copyObservedText": "First\nSecond\nDeep 🙂",
+    "cutObserved": "Each browser left one empty ordered item numbered 3 and the unchanged heading.",
+    "undoObserved": "One Control-Z restored ordered numbering 3 and 4, nested Deep emoji and selected cross-item range in each browser."
+  },
   "limitations": [
     "Native accessibility and visible UI observations, not serialized durable-state equality.",
-    "Forward selection, physical IME and VoiceOver remain unqualified.",
+    "Physical IME and VoiceOver remain unqualified.",
     "Historical intermittent WebKit fault remains unresolved.",
     "Earlier single-line scratch input cannot establish newline preservation."
   ],
