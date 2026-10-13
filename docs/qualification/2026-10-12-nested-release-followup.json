@@ -1025,6 +1025,24 @@
     "scope": "Original current-runtime default-wrapper unit command completed without restart. Default distributions untouched. Full native core and opt-in wrapper integration verification remain open, as do historical WebKit, physical input and accepted budgets.",
     "releaseQualified": false
   },
+  "fragmentProofReuseFullWordWrapperGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "cargo test --locked -p breditor-wasm --features candidate-word-property-integers --quiet",
+    "session": 43825,
+    "exitCode": 0,
+    "unitTestsPassed": 63,
+    "integrationBatches": [1,2,1,21],
+    "integrationTestsPassed": 25,
+    "wrapperDoctests": 0,
+    "scope": "Original current-runtime native opt-in wrapper command retained through compilation, executable startup and terminal success. Default wrapper and Wasm-target results are separately scoped. Does not prove full native core completion, physical input, historical WebKit fault resolution or accepted budgets.",
+    "fullCoreSession": 94976,
+    "fullCoreStatus": "Original command confirmed live with unit and observed integration batches passing; no terminal full-suite claim.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
