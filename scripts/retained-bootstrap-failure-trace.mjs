@@ -46,7 +46,7 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
@@ -54,6 +54,8 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   assert.equal(typeof checkpointReader,"boolean");
   assert.equal(typeof checkpointValidation,"boolean");
   assert.equal(typeof checkpointPredicates,"boolean");
+  assert.equal(typeof checkpointStateComponents,"boolean");
+  assert.ok(!checkpointStateComponents||checkpointPredicates,"state components require predicate tracing");
   assert.equal(typeof checkpointCapture,"boolean");
   assert.equal(typeof ownerReasons,"boolean");
   assert.ok(!checkpointCapture||checkpointReader,"checkpoint capture requires reader tracing");
@@ -157,6 +159,30 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
         children(node).forEach(findGuard);
       }
       findGuard(envelope.body);assert.equal(guards.length,1,"checkpoint predicate group missing or ambiguous");
+      if(checkpointStateComponents) {
+        const stateName=guards[0][1].argument.callee.name;
+        const state=functions.find(fn=>fn.id.name===stateName);
+        assert.equal(state?.params.length,3,"checkpoint state parameters changed");
+        assert.equal(state.body.body.length,1,"checkpoint state body changed");
+        const expression=state.body.body[0].argument;
+        assert.equal(state.body.body[0].type,"ReturnStatement");
+        assert.equal(expression?.type,"LogicalExpression");assert.equal(expression.operator,"&&");
+        for(const [index,node] of [expression.left,expression.right].entries()) {
+          const field=["selection","pendingFormats"][index];
+          assert.equal(node.type,"CallExpression");assert.equal(node.callee.type,"Identifier");
+          assert.equal(node.arguments[0]?.type,"MemberExpression");
+          assert.equal(node.arguments[0].object.name,state.params[0].name);
+          assert.equal(node.arguments[0].property.name,field);
+          assert.equal(node.arguments.length,index===0?1:3,"checkpoint state call arity changed");
+          if(index===1) {
+            assert.equal(node.arguments[1]?.name,state.params[1].name);
+            assert.equal(node.arguments[2]?.name,state.params[2].name);
+          }
+          const original=code.slice(node.start,node.end),kind=`checkpoint-state-${field}`,stage=`${kind}:${node.start}`;
+          edits.push({start:node.start,end:node.end,original,replacement:`${helper}Predicate(${JSON.stringify(stage)},${original})`});
+          sites.push({stage,start:node.start,end:node.end,code:kind});
+        }
+      }
       for(const [index,term] of guards[0].entries()) {
         const node=term.argument,kind=["checkpoint-property-accounting","checkpoint-base-state","checkpoint-history"][index];
         const original=code.slice(node.start,node.end),stage=`${kind}:${node.start}`;

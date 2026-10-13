@@ -1681,3 +1681,10 @@ The new direct-validation path also passes a bounded ten-process WebKit follow-u
 with 90 deep formatted/property/integer editing and recovery cases and no
 diagnostics. The historical fault did not reproduce; this is correctness evidence
 for the changed path, not a demonstrated fault fix or native-input qualification.
+
+The retained checkpoint diagnostic can now opt into separate selection and
+pending-format result tracing within the base-state predicate. It preserves
+single evaluation, short circuit and earlier retained trace bytes; 15 diagnostic
+tests pass. Ten fresh historical-bundle WebKit replays pass 90 cases with no
+rejection captured. This adds fault-localization coverage, not a runtime fix or
+evidence that the unresolved historical fault has disappeared.

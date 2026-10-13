@@ -174,6 +174,29 @@ test("checkpoint predicate trace preserves single evaluation and short circuit o
   }
   }
   assert.throws(()=>traceRetainedBootstrapFailures(source+fixture,{checkpointPredicates:true}),/require validation/u);
+  const stateFixture=fixture.replace('function state(d,c,p){seen.push("state");return flags[1];}',
+    'function state(d,c,p){return select(d.selection)&&pending(d.pendingFormats,c,p)}function select(v){seen.push("selection");return flags[1];}function pending(v,c,p){seen.push("pendingFormats");return flags[3];}');
+  const options={checkpointReader:true,checkpointValidation:true,checkpointPredicates:true};
+  assert.equal(traceRetainedBootstrapFailures(source+fixture,{...options,checkpointStateComponents:false}).code,
+    traceRetainedBootstrapFailures(source+fixture,options).code);
+  const stateTrace=traceRetainedBootstrapFailures(source+stateFixture,{...options,checkpointStateComponents:true});
+  for(const failure of [1,3,-1]) {
+    const logs=[],seen=[],flags=[true,true,true,true];if(failure>=0)flags[failure]=false;
+    const run=Function("error","console","flags","seen",stateTrace.code+";return reader;")(code=>({code}),{error:(...args)=>logs.push(args)},flags,seen);
+    const raw=JSON.stringify({currentRevision:"1",historyBase:{snapshot:{lineage:"fixture"},document:{text:"private fixture"},selection:null,pendingFormats:null}});
+    let takes=0;const result=run({lineage:"fixture",revision:"1"},{status:"value",takeValue(){takes++;return raw;}},{invalid:false},{},{mode:"v7"});
+    assert.equal(takes,1);
+    assert.deepEqual(seen,failure===1?["account","selection"]:failure===3?["account","selection","pendingFormats"]:["account","selection","pendingFormats","history"]);
+    if(failure<0){assert.equal(result.checkpointJson,raw);assert.equal(logs.length,0);}
+    else {
+      assert.equal(result.ok,false);
+      const stages=logs.map(log=>JSON.parse(log[1]).stage);
+      assert.ok(stages.some(stage=>stage.startsWith(failure===1?"checkpoint-state-selection:":"checkpoint-state-pendingFormats:")));
+      assert.equal(logs.some(log=>log[1].includes("private fixture")),false);
+    }
+  }
+  assert.throws(()=>traceRetainedBootstrapFailures(source+stateFixture,{checkpointStateComponents:true}),/require predicate/u);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+fixture,{...options,checkpointStateComponents:true}),assert.AssertionError);
 });
 
 test("rejected checkpoint capture owns existing text without rereading or changing outcomes",()=>{
