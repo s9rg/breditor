@@ -975,6 +975,27 @@
     "releaseQualified": false,
     "scope": "Fresh actual archive qualified within automated scope. Historical WebKit, physical input, current native/Wasm verification and accepted budget gates remain open. No push or publication."
   },
+  "fragmentProofReuseDeepWebKitFollowup": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "installedPair": "target/nested-list-packages-lZQEME/qualification.json",
+    "measurement": "breditor-nested-list-consumer-myKcNP/performance-5oSfDk/measurement.json",
+    "measurementSha256": "aaa7ecc6c48c56d3ec37ac39a60fc28a680df0ea90d163e28f99b750c09f0a74",
+    "exitCode": 0,
+    "freshWebKitSessions": 10,
+    "casesPassed": 90,
+    "diagnostics": 0,
+    "historicalFaultResolved": false,
+    "scope": "Bounded new-runtime correctness run: ordinary three-owner 10/100/500-item formatted/property/integer grandchild edits, undo/redo and recovery. Concurrent Rust integration compilation and Wasm-target checking overlapped, so timing is not performance qualification. No added instrumentation; no unchanged follow-on soak launched.",
+    "fullCoreSession": 94976,
+    "fullCoreStatus": "Original run remains live; 1213 unit tests and first integration batch of 18 passed. No terminal integration/doctest claim.",
+    "wasmTargetSession": 61330,
+    "wasmTargetStatus": "Original run retained through build-lock wait; target check passed and strict target lint is live. Boundary-test completion not claimed.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
