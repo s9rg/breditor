@@ -1014,6 +1014,17 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReuseDefaultWrapperGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "cargo test --locked -p breditor-wasm --lib --quiet",
+    "session": 3716,
+    "exitCode": 0,
+    "testsPassed": 43,
+    "featureScope": "Normal default selection-token-codes configuration, not --no-default-features or experimental nested word transport.",
+    "scope": "Original current-runtime default-wrapper unit command completed without restart. Default distributions untouched. Full native core and opt-in wrapper integration verification remain open, as do historical WebKit, physical input and accepted budgets.",
+    "releaseQualified": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
