@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-13",
+  "releaseQualified": false,
+  "productionCodeChanged": false,
+  "ime": {
+    "originalInputSources": ["Canadian"],
+    "temporarySource": "Japanese – Romaji",
+    "attempt": "Native Safari key presses n/i/h/o/n after Control-Space and, separately, enabled Control-Option-Space source-switch shortcut.",
+    "observed": "Both attempts produced Roman nihon. No Japanese composition or candidate window was observed. Each insertion was undone to baseline.",
+    "qualified": false,
+    "restored": ["Canadian-only input", "Input menu hidden", "Globe key Show Emoji & Symbols"],
+    "residualSetting": "macOS automatically added Japanese (Japan) to Dictation languages. Dictation remains off. Its Edit control did not open; language cleanup remains pending."
+  },
+  "voiceOver": {
+    "originalState": "off",
+    "attempt": "Enabled the VoiceOver switch in Accessibility settings, observed on, then attempted native Safari Control-Option-Shift-Down and Control-Option-Right interaction.",
+    "observed": "No independent screen-reader cursor or spoken-output evidence. Acquiring VoiceOver app timed out. On subsequent settings inspection the switch was off; transition cause not established.",
+    "finalObservedState": "off",
+    "qualified": false
+  },
+  "limitations": [
+    "Native key automation is not physical operator IME evidence.",
+    "Accessibility tree inspection does not qualify a screen reader.",
+    "Do not infer editor defects from these inconclusive OS/control attempts."
+  ]
+}
