@@ -31,11 +31,18 @@ const walkRepetitions=Number(walkFlag);
 const keepOwnersFlag=process.env.BREDITOR_GETTER_KEEP_OWNERS??"0";
 const wordDirectory=process.env.BREDITOR_GETTER_WORD_CANDIDATE;
 const wordCandidateSelected=wordDirectory!==undefined;
+// Explicit installed-package control: never replace its Wasm or bridge. The
+// fixture routes optional-u32 metadata through words; signed property values
+// still use their legacy getter, so this is not full editor-routing coverage.
+const packedWordsFlag=process.env.BREDITOR_GETTER_PACKED_WORDS??"0";
+assert.ok(["0","1"].includes(packedWordsFlag),"packed word routing must be 0 or 1");
+const packedWordRouting=packedWordsFlag==="1";
+assert.ok(!(packedWordRouting&&wordCandidateSelected),"packed routing must not substitute private Wasm");
 const wordRouting=process.env.BREDITOR_GETTER_WORD_ROUTING??"word";
 assert.ok(["word","legacy"].includes(wordRouting));
 assert.ok(wordRouting!=="legacy"||wordCandidateSelected,"legacy comparison requires the same private word Wasm");
-const wordChildCountTransport=wordCandidateSelected&&wordRouting==="word";
-const wordFields=process.env.BREDITOR_GETTER_WORD_FIELDS??"child-count";
+const wordChildCountTransport=(wordCandidateSelected||packedWordRouting)&&wordRouting==="word";
+const wordFields=process.env.BREDITOR_GETTER_WORD_FIELDS??(packedWordRouting?"all":"child-count");
 assert.ok(["child-count","all"].includes(wordFields));
 const allWordScalars=wordFields==="all";
 const enrichedFlag=process.env.BREDITOR_GETTER_ENRICHED??"0";
@@ -92,6 +99,7 @@ assert.ok([diagnosticDirectory,candidateDirectory,wordDirectory].filter(value=>v
 assert.ok(!(wordCandidateSelected&&(unsignedIndex||directCall||fixedArity||lastCapture||rawTrace||sentinelTreatment||keepProjectionOwners)),"word transport is a separate experiment");
 const privateDirectory=diagnosticDirectory??candidateDirectory??wordDirectory;
 assert.ok(!integerProperties||(privateDirectory===undefined&&!fixedArity&&!directCall&&!rawTrace&&!sentinelTreatment&&!lastCapture&&!unsignedIndex),"typed integer probe requires installed package and original variadic bridge");
+assert.ok(!packedWordRouting||(privateDirectory===undefined&&allWordScalars&&!fixedArity&&!directCall&&!rawTrace&&!sentinelTreatment&&!lastCapture&&!unsignedIndex&&!keepProjectionOwners),"packed word probe requires installed package, all scalar words and original bridge");
 assert.ok(!(unsignedIndex&&privateDirectory!==undefined),"unsigned index requires original packed Wasm");
 assert.ok(!(keepProjectionOwners&&(privateDirectory!==undefined||directCall||fixedArity||lastCapture||rawTrace||sentinelTreatment)),"owner retention is tested independently on original packed Wasm");
 assert.ok(!(directCall&&privateDirectory!==undefined),"direct-call experiment requires original packed Wasm");
@@ -135,7 +143,7 @@ const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browser
   bridgeSha256:hash(fixtureBridge),controlBridgeSha256:hash(bridge),fixedArityBridgeTreatment:fixedArity,directCallBridgeTreatment:directCall,guardSha256:hash(guard),fixtureSha256:hash(await readFile(join(fixture,"main.ts"))),
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
   childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,unsignedChildCountIndexTreatment:unsignedIndex,
-  diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,wordCandidateSelected,wordRouting,allWordScalars,enrichedScalars,integerProperties,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
+  diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,wordCandidateSelected,packedWordRouting,wordRouting,allWordScalars,enrichedScalars,integerProperties,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();
 console.log(JSON.stringify({fixture}));

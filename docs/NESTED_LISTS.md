@@ -1621,3 +1621,10 @@ format properties and cleanup. This uses the original retained variadic bridge
 and legacy getter methods, not the editor's word-getter routing. No editor,
 renderer or history is loaded; this narrower passing control does not resolve
 the historical WebKit fault or qualify native input or performance.
+
+An explicit installed-package word-scalar control additionally passes the same
+900-owner workload in ten fresh WebKit processes. Child count/index, format
+count/property count, heading level and ordered start use optional-u32 words;
+signed property values and strings still use legacy getters. This closes that
+raw-probe coverage gap without substituting private Wasm or changing the bridge.
+It is not full editor-routing coverage or evidence of a historical fault fix.

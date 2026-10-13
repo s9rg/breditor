@@ -1077,6 +1077,24 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReusePackedScalarGetterProbe": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "BREDITOR_GETTER_OWNERS=30 BREDITOR_GETTER_PACKED_WORDS=1 BREDITOR_GETTER_ENRICHED=1 BREDITOR_GETTER_INTEGER_PROPERTIES=1 BREDITOR_GETTER_TREE=nested node scripts/probe-nested-wasm-getters.mjs target/nested-list-packages-lZQEME/qualification.json",
+    "session": 86081,
+    "exitCode": 0,
+    "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-myKcNP/getter-probe-nOV0ML/measurement.json",
+    "measurementSha256": "999e6f9341cd6f68a010762412951a2059ffad1f55ac94948e3d78298c153a67",
+    "freshWebKitProcessesPassed": 10,
+    "projectionOwnersChecked": 900,
+    "exactAssertionsTotal": 29006710,
+    "invalidModeChecksPassed": 4,
+    "scope": "New explicit installed-package control routes child count/index, format count/property count, heading level and ordered start through optional-u32 words. Qualified packed Wasm and original retained bridge remain unchanged; signed property integers and string getters still use legacy methods. No private Wasm substitution, editor, renderer or history. Missing optional debug-export build warnings are expected. Does not establish full editor-routing coverage, reproduce/fix the historical fault or qualify performance. Four invalid packed modes rejected before fixture creation; initial manual rejection-check assertion expected too narrow an error message, corrected to allow the existing legacy-routing guard.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
