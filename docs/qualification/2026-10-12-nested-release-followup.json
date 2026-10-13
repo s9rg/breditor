@@ -1212,6 +1212,23 @@
     "pushed": false,
     "published": false
   },
+  "directNestedDomOwnershipProof": {
+    "date": "2026-10-13",
+    "change": "Replace temporary expected-map construction and second whole-DOM reverse-map scan with a recursive direct shape/ownership proof. Traverse with a local non-retained path cursor, validating every path at depth 64; preserve attributes, numbering, text, exact mapped identities, unmapped wrappers/placeholders, reverse-path equality and forward-map cardinality.",
+    "focusedSession": 21403,
+    "rendererTestsPassed": 211,
+    "newSynchronousDriftCases": 6,
+    "strictBrowserTypecheckExitCode": 0,
+    "fullBrowserSession": 63224,
+    "fullBrowserExitCode": 0,
+    "browserTestFilesPassed": 57,
+    "browserUnitTestsPassed": 2172,
+    "scope": "Browser runtime change only. Existing rendering/reuse/selection/composition/DOM-mutation tests and new nested wrapper attributes/children/comments, same-text replacement identity and placeholder mutation tests pass. Rust crates unchanged, so completed native Rust gate retains its scope. Installed archive/browser measurements predate this browser change; new isolated build, installed checks, browser qualification and matched performance measurement are pending. Unit correctness does not establish speed, historical WebKit fault resolution, physical input or budget acceptance.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false

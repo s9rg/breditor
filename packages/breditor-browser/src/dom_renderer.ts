@@ -1305,18 +1305,64 @@ function mapExistingNestedListRoot(node: Node | undefined, root: NestedListRootP
 
 function nestedListDomAndMapsMatch(host: HTMLElement, projection: NestedListDocumentProjection, maps: ProjectionMaps,
   presentation: BrowserCompiledPresentation | undefined): boolean {
-  const expected = createMaps(host), children = nativeChildNodes(host);
-  if (children.length !== projection.blocks.length || !projection.blocks.every((root, index) =>
-    mapExistingNestedListRoot(children[index], root, Object.freeze([index]), expected, presentation))) return false;
-  if (expected.astToDom.size !== maps.astToDom.size) return false;
-  for (const [key, node] of expected.astToDom) if (maps.astToDom.get(key) !== node) return false;
-  const pending: Node[] = [host];
-  while (pending.length !== 0) {
-    const node = pending.pop()!, a = expected.domToAst.get(node), b = maps.domToAst.get(node);
-    if (a === undefined ? b !== undefined : b === undefined || !astPathsEqual(a, b)) return false;
-    pending.push(...nativeChildNodes(node));
+  // This traversal-local cursor never escapes into a retained map. Prove
+  // canonical shape and both ownership directions together, rather than build
+  // temporary maps and then traverse every DOM node a second time.
+  const path: number[] = [];
+  let mappedNodes = 1;
+  const matchesMap = (node: Node | undefined): node is Node => {
+    const key = astPathKey(path, 64);
+    if (node === undefined || key === null || maps.astToDom.get(key) !== node) return false;
+    const reverse = maps.domToAst.get(node);
+    return reverse !== undefined && astPathsEqual(reverse, path);
+  };
+  const blockMatches = (node: Node | undefined, block: BaseParagraphProjection): boolean => {
+    if (!matchesMap(node) || !paragraphDomMatches(node, block, presentation, (outer, run, index) => {
+      const text = textNodeForRunDom(outer, run, presentation);
+      path.push(index);
+      const matches = matchesMap(text) && wrappersAreUnmapped(outer, text, maps.domToAst);
+      path.pop();
+      return matches;
+    })) return false;
+    mappedNodes += 1 + block.runs.length;
+    if (block.runs.length !== 0) return true;
+    const placeholder = nativeChildNodes(node)[0];
+    return placeholder !== undefined && maps.domToAst.get(placeholder) === undefined;
+  };
+  const rootMatches = (node: Node | undefined, root: NestedListRootProjection): boolean => {
+    if (root.kind === "textBlock") return blockMatches(node, root.block);
+    if (!isHtmlElementNamed(node, root.kind === "bulletList" ? "ul" : "ol") || !matchesMap(node)) return false;
+    const attrs = nativeAttributeNames(node), items = nativeChildNodes(node);
+    if (root.kind === "bulletList" ? attrs.length !== 0 :
+      attrs.length !== 1 || attrs[0] !== "start" || nativeGetAttribute(node, "start") !== String(root.start)) return false;
+    if (items.length !== root.items.length) return false;
+    mappedNodes += 1 + items.length;
+    for (const [index, entry] of root.items.entries()) {
+      const item = items[index];
+      path.push(index);
+      if (!isHtmlElementNamed(item, "li") || nativeHasAttributes(item) || !matchesMap(item)) return false;
+      const children = nativeChildNodes(item);
+      if (children.length !== entry.lists.length + 1) return false;
+      path.push(0);
+      if (!blockMatches(children[0], entry.block)) return false;
+      path.pop();
+      for (const [section, list] of entry.lists.entries()) {
+        path.push(section + 1);
+        if (!rootMatches(children[section + 1], list)) return false;
+        path.pop();
+      }
+      path.pop();
+    }
+    return true;
+  };
+  const children = nativeChildNodes(host);
+  if (children.length !== projection.blocks.length || !matchesMap(host)) return false;
+  for (const [index, root] of projection.blocks.entries()) {
+    path.push(index);
+    if (!rootMatches(children[index], root)) return false;
+    path.pop();
   }
-  return true;
+  return maps.astToDom.size === mappedNodes;
 }
 
 function buildFlatListProjection(

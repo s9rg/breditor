@@ -280,6 +280,26 @@ describe("recursive nested-list DOM", () => {
     expect(rendered.validateCanonicalDom()).toBe(false);
     expect(rendered.nodeForAstPath([0])).toBeNull();
   });
+  it.each(["wrapperAttribute", "wrapperChild", "wrapperComment", "textIdentity",
+    "placeholderAttribute", "placeholderChild"])("rejects nested %s drift synchronously", fault => {
+    const {host, rendered} = fixture();
+    expect(rendered.validateCanonicalDom()).toBe(true);
+    const wrapper = host.querySelector("ol strong")!;
+    const placeholder = host.querySelector("br")!;
+    if (fault === "wrapperAttribute") wrapper.setAttribute("title", "foreign");
+    if (fault === "wrapperChild") wrapper.append(document.createTextNode(""));
+    if (fault === "wrapperComment") wrapper.append(document.createComment("foreign"));
+    if (fault === "textIdentity") {
+      const text = wrapper.firstChild!;
+      text.replaceWith(text.cloneNode());
+    }
+    if (fault === "placeholderAttribute") placeholder.setAttribute("title", "foreign");
+    if (fault === "placeholderChild") placeholder.append(document.createTextNode("foreign"));
+    // Before observer delivery: canonical content alone does not prove the
+    // retained bidirectional maps still own the exact text identity.
+    expect(rendered.validateCanonicalDom()).toBe(false);
+    expect(rendered.nodeForAstPath([0])).toBeNull();
+  });
   it("releases nested handles through their explicit API", () => {
     const {renderer, rendered} = fixture();
     expect(renderer.releaseNestedList(rendered)).toBe(true);

@@ -1653,3 +1653,15 @@ These counts include underlying Wasm/native work, not JavaScript self-time or
 release p95. No runtime validation was removed. The separately running full Rust
 command resumed passing test output after an observed pre-start loader wait
 and subsequently completed with exit zero. That wait's cause remains unknown.
+
+### October 13: direct nested DOM ownership proof
+
+Nested canonical-DOM validation now checks shape, text, attributes and both map
+directions in one recursive proof, using a traversal-local path cursor. It no
+longer constructs temporary maps or performs a second whole-DOM map traversal.
+Wrapper and empty-placeholder non-ownership, exact text-node identity, numbering
+and total forward-map cardinality remain checked. The renderer suite passes 211
+tests, including six new synchronous drift regressions; all 2,172 browser unit
+tests and strict browser type checks pass. Packaged browser checks and performance
+measurement for this change are pending. No speed improvement or release readiness
+is claimed from unit tests alone; the historical WebKit/native/budget gates stay open.
