@@ -1043,6 +1043,19 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReuseStrictDocumentationGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked",
+    "session": 65200,
+    "exitCode": 0,
+    "crates": ["breditor-core", "breditor-wasm"],
+    "scope": "Current-runtime strict workspace documentation build passed without warning allowances; not doctest execution or publication. Original full native core session 94976 remains live with observed integration batches passing, so terminal full-suite success is not claimed.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
