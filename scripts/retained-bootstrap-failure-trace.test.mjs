@@ -120,3 +120,26 @@ test("checkpoint reader trace logs rejected guards without checkpoint text or re
   assert.throws(()=>traceRetainedBootstrapFailures(source,{checkpointReader:true}),/reader missing/u);
   assert.throws(()=>traceRetainedBootstrapFailures(source+reader,{checkpointReader:"yes"}));
 });
+
+test("checkpoint validation trace separates envelope and revision guards and redacts strings",()=>{
+  const fixture='const invalid=Object.freeze({code:"session_checkpoint.invalid_wasm_view"});function own(x){return x;}function reject(){return own(Object.freeze({ok:false,error:invalid}));}function reader(e,t,n,r,i){if(n.invalid)return reject();let a=e;if(!a)return reject();let o=t.status;if(o==="bad")return reject();let s=t.takeValue;if(!s)return reject();let c=t.error;if(c)return reject();let u=Reflect.apply(s,t,[]);if(u==null)return reject();if(typeof u!=="string")return reject();let d=bytes(u,a,i);if(d===null)return reject();return {checkpointJson:u};}function bytes(e,t,n){let r=envelope(e,n);if(r===null)return null;if(r.envelope.currentRevision!==t.revision)return null;return r.historyBase.snapshot.lineage!==t.lineage?null:r.utf8Bytes;}function envelope(e,n){let count=e.length;if(count===0)return null;const parsed=JSON.parse(e);if(parsed.invalid)return null;if(n.mode!=="v7")return null;return {utf8Bytes:count,envelope:parsed,historyBase:parsed.historyBase};}';
+  const traced=traceRetainedBootstrapFailures(source+fixture,{checkpointReader:true,checkpointValidation:true}),logs=[];
+  let parses=0,takes=0;
+  const run=Function("error","console","JSON",traced.code+";return reader;")(code=>({code}),{error:(...args)=>logs.push(args)},
+    {parse(value){parses++;return JSON.parse(value);},stringify:JSON.stringify});
+  const execute=(revision,invalid=false)=>{
+    const value=JSON.stringify({currentRevision:revision,invalid,secret:"never log this payload",historyBase:{snapshot:{lineage:"fixture"}}});
+    const view={status:"value",error:undefined,takeValue(){assert.equal(this,view);takes++;return value;}};
+    return run({lineage:"fixture",revision:"1"},view,{invalid:false},{},{mode:"v7"});
+  };
+  assert.equal(execute("99").ok,false);
+  assert.equal(JSON.parse(logs[0][1]).code,"checkpoint-correlation");
+  assert.equal(parses,1);assert.equal(takes,1);
+  const first=JSON.parse(logs[0][1]);assert.equal(first.bindings.r.fields.envelope.fields.currentRevision.value,"99");
+  const before=logs.length;assert.equal(execute("1",true).ok,false);
+  assert.equal(JSON.parse(logs[before][1]).code,"checkpoint-envelope");
+  const after=logs.length;assert.equal(typeof execute("1").checkpointJson,"string");assert.equal(logs.length,after);
+  assert.equal(parses,3);assert.equal(takes,3);
+  assert.equal(logs.some(log=>log[1].includes("never log this payload")),false);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+fixture,{checkpointValidation:true}),/requires reader/u);
+});

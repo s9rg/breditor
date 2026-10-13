@@ -214,6 +214,26 @@
     "nextBoundary": "Inside validatedCheckpointBytes: envelope validation versus current revision/history-base snapshot correlation. Checkpoint text intentionally redacted; no raw/generated getter reread. No runtime fix or relaxed validation.",
     "scope": "Existing return/catch boundary-failure sites logged only when evaluated. Raw checkpoint string omitted from bindings and represented by type/length. Receiver and one-take behavior tested; forged reader option rejected; older trace-Fnf7ad and trace-pkuVzx provenance reverified. Test correction separated reader guard counts from outer export boundary counts. Diagnostic call layout differs; no release or latency qualification."
   },
+  "checkpointValidationBranchTrace": {
+    "date": "2026-10-13",
+    "record": "target/nested-list-reproductions/trace-tVCZyN/measurement.json",
+    "sha256": "78a2350bc25a26e887b97fefab137d116245754856e28c130c53841b70e74bad",
+    "tracedScriptSha256": "2bf761394b7f6ddbec6b020551d0cd1ceb1d4cd3f1538d23a6b6bbe7ef61953d",
+    "sites": 67,
+    "correlationNullSites": 3,
+    "envelopeNullSites": 11,
+    "rebuilt": false,
+    "remangled": false,
+    "originalControlModified": false,
+    "fullScriptTestsPassed": 268,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "firstReplay": {"record":"target/nested-list-reproductions/trace-tVCZyN/exact-replay-REWB3S/replay.json","sha256":"8de6c7d87df763548e94dcef5cdd579bb09387cd098eb00bb41eee9c9b1c6524","status":"passed","cases":90,"freshProcesses":10},
+    "secondReplay": {"record":"target/nested-list-reproductions/trace-tVCZyN/exact-replay-1CPYtr/replay.json","sha256":"a2767f3a434c0f2b5c322c22dec91b8a642d7380fe9c74ff34f70504f5dbf409","status":"failed","exitCode":1,"retained":"target/nested-list-reproductions/failure-5Zwa0e","browserLogSha256":"788ecdc4b8cbc31cca002057d5bb486c0902792f1dfe1f47c3c668841c4a538c"},
+    "capturedFailure": "Seventh process, 500 items, repetition 0, Redo checkpoint export. checkpoint-envelope:268163 maps to the combined observeHistoryBaseDocumentProperties / validEditorStateV3 / validSessionV3History condition. Earlier JSON/envelope/schema/base-document checks passed. Retained-property counters were 1901 values and 12600 string UTF-8 bytes. Envelope version 7, current revision 4, cursor 1, one entry, history capacity 20, base snapshot lineage perf-500-0 and revision 0. Subsequent correlation and reader rejections propagated this envelope failure.",
+    "nextBoundary": "Observe the three existing predicate results individually without rerunning them; exact failing predicate is not yet identified. No runtime fix, validation relaxation or release qualification.",
+    "scope": "Only evaluated null-return branches traced; string locals redacted to type/length, parsed data limited to header/counter fields. One parse/take, successful-path silence and forged option rejection tested. Older input/reader traces remain verifiable. Source assertions count each diagnostic family separately; full original workload and correctness checks retained."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",

@@ -46,12 +46,14 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
   assert.equal(typeof inputRoutes,"boolean");
   assert.equal(typeof checkpointReader,"boolean");
+  assert.equal(typeof checkpointValidation,"boolean");
+  assert.ok(!checkpointValidation||checkpointReader,"checkpoint validation requires reader tracing");
   assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
   assert.ok(!code.includes(helper),"retained bootstrap already traced");
   const parsed=parseSync("retained-bootstrap.js",code);assert.deepEqual(parsed.errors,[]);
@@ -84,7 +86,44 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   countWrites(parsed.program,[]);
   assert.ok([...writes.values()].every(count=>count===1),"bootstrap error binding is reassigned");
   const edits=[],sites=[];
+  if(checkpointValidation) {
+    const has=(node,predicate)=>predicate(node)||children(node).some(child=>has(child,predicate));
+    const readers=parsed.program.body.filter(node=>node.type==="FunctionDeclaration"&&node.params.length===5&&
+      has(node.body,n=>n.type==="MemberExpression"&&n.property?.name==="takeValue")&&
+      has(node.body,n=>n.type==="Property"&&n.key?.name==="checkpointJson"));
+    assert.equal(readers.length,1,"checkpoint validation reader missing");
+    const raw=[],calls=[];
+    function collect(node) {
+      if(node.type==="VariableDeclarator"&&node.init?.callee?.object?.name==="Reflect"&&node.init.callee.property?.name==="apply")raw.push(node.id.name);
+      if(node.type==="VariableDeclarator"&&node.init?.type==="CallExpression"&&node.init.callee.type==="Identifier"&&node.init.arguments.length===3)calls.push(node.init);
+      children(node).forEach(collect);
+    }
+    collect(readers[0].body);assert.equal(raw.length,1);
+    const selected=calls.filter(call=>call.arguments[0]?.name===raw[0]);assert.equal(selected.length,1,"checkpoint byte validator changed");
+    const functions=parsed.program.body.filter(n=>n.type==="FunctionDeclaration");
+    const validator=functions.find(n=>n.id.name===selected[0].callee.name);assert.equal(validator?.params.length,3);
+    const envelopeCall=validator.body.body[0]?.declarations?.[0]?.init;
+    assert.equal(envelopeCall?.callee?.type,"Identifier");assert.equal(envelopeCall.arguments.length,2);
+    const envelope=functions.find(n=>n.id.name===envelopeCall.callee.name);assert.equal(envelope?.params.length,2);
+    for(const [fn,kind] of [[validator,"checkpoint-correlation"],[envelope,"checkpoint-envelope"]]) {
+      let count=0;
+      function traceNull(node,ancestors=[]) {
+        const parent=ancestors.at(-1);
+        if(node.type==="Literal"&&node.value===null&&
+          (parent?.type==="ReturnStatement"&&parent.argument===node||parent?.type==="ConditionalExpression"&&
+            (parent.consequent===node||parent.alternate===node)&&ancestors.some(a=>a.type==="ReturnStatement"))) {
+          const names=initializedBindings([fn,...ancestors],node.start),stage=`${kind}:${node.start}`;
+          const fields=names.map(name=>`${JSON.stringify(name)}:typeof ${name}==="string"?{diagnosticStringType:"string",diagnosticStringLength:${name}.length}:${name}`).join(",");
+          edits.push({start:node.start,end:node.end,original:"null",replacement:`(${helper}(${JSON.stringify(stage)},${JSON.stringify(kind)},{${fields}}),null)`});
+          sites.push({stage,start:node.start,end:node.end,code:kind,names,stringsRedacted:true});count++;
+        }
+        children(node).forEach(child=>traceNull(child,[...ancestors,node]));
+      }
+      traceNull(fn.body);assert.ok(count>=3&&count<=32,"checkpoint null exits changed");
+    }
+  }
   if(checkpointReader) {
+    const readerSiteStart=sites.length;
     const has=(node,predicate)=>predicate(node)||children(node).some(child=>has(child,predicate));
     const readers=parsed.program.body.filter(node=>node.type==="FunctionDeclaration"&&node.params.length===5&&
       has(node.body,n=>n.type==="MemberExpression"&&n.property?.name==="takeValue")&&
@@ -123,7 +162,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
       }
       children(node).forEach(child=>traceReader(child,[...ancestors,node]));
     }
-    traceReader(parsed.program);assert.ok(sites.length>=8&&sites.length<=32,"checkpoint rejection sites changed");
+    traceReader(parsed.program);assert.ok(sites.length-readerSiteStart>=8&&sites.length-readerSiteStart<=32,"checkpoint rejection sites changed");
   }
   if(inputRoutes) {
     const candidates=[];
@@ -267,6 +306,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   }catch{}}\n`:`function ${helper}(stage,code){try{console.error("breditor retained bootstrap rejection",JSON.stringify({stage,code}))}catch{}}\n`;
   if(checkpointExports)prefix=prefix.replace('"actionState","projection"','"actionState","projection","error","checkpoint","snapshot","lineage","revision"');
   if(checkpointReader)prefix=prefix.replace('"actionState","projection"','"actionState","projection","invalid","mode"');
+  if(checkpointValidation)prefix=prefix.replace('"actionState","projection"','"actionState","projection","diagnosticStringType","diagnosticStringLength","format","formatVersion","currentRevision","schema","schemaFingerprint","name","version","historyBase","envelope","cursor","historyCapacity","entries","length","propertyValues","propertyStringUtf8Bytes"');
   if(inputRoutes) {
     prefix=prefix.replace('"status","kind","operation"','"defaultPrevented","inputType","outcome","status","kind","operation"');
     prefix+=`function ${helper}Input(stage,value){${helper}(stage,"beforeinput-result",{result:value});return value;}\n`;
