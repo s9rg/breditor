@@ -1676,3 +1676,8 @@ and exact mixed-history fresh-owner recovery at cursors 4 through 0 in all three
 engines. Its consumer JS + Wasm estimate is 818,099 bytes gzip-9, including the
 fixture. Physical input, historical WebKit resolution and accepted budgets remain
 open; no push, publication or default-distribution promotion occurred.
+
+The new direct-validation path also passes a bounded ten-process WebKit follow-up
+with 90 deep formatted/property/integer editing and recovery cases and no
+diagnostics. The historical fault did not reproduce; this is correctness evidence
+for the changed path, not a demonstrated fault fix or native-input qualification.

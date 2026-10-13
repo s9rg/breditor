@@ -1283,6 +1283,22 @@
     "pushed": false,
     "published": false
   },
+  "directNestedDomDeepWebKitQualification": {
+    "date": "2026-10-13",
+    "browserCheckpoint": "e3846e9",
+    "session": 83598,
+    "exitCode": 0,
+    "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-pVpa3z/performance-BHkz0J/measurement.json",
+    "measurementSha256": "f8478e799959276ee21def572eab527299ee5d40b151eedb402284729246e74a",
+    "freshProcessesPassed": 10,
+    "deepEditingRecoveryCasesPassed": 90,
+    "diagnostics": 0,
+    "scope": "New direct nested DOM validation implementation, installed wWGE0C pair, default WebKit tier with no diagnostic instrumentation; formatted/property/integer grandchild workload. Bounded changed-code correctness qualification, not repeated unchanged soaking, physical input, release p95 or a historical fault fix. Historical failure did not reproduce. Current archive size and local Firefox comparison remain measurements rather than owner-approved ceilings; a fresh explicit size/p95 decision was requested.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
