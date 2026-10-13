@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-13",
+  "browser": "Native Google Chrome on macOS; version not recorded",
+  "archiveSha256": "2aaf452690acfbfa1d9de5e18960af0db37293ad9e1a5f94ac35556bbe62be88",
+  "method": "Native keyboard selection, Command-C/X/V; configured Control-Z editor history. Independent plain multiline textarea on loopback, outside qualified bundle.",
+  "selectionDirection": "backward from Deep emoji end through First start",
+  "copyObservedText": "First\nSecond\nDeep 🙂",
+  "copyPreservedNewlinesWithoutMarkers": true,
+  "cutObserved": "One cut left heading Packed 🙂 and one empty ordered item numbered 3.",
+  "undoObserved": "One Control-Z restored First numbered 3, Second numbered 4, nested Deep 🙂 and selected range.",
+  "chromeMultilinePaste": {
+    "clipboardSource": "Native Safari cross-item cut, same plaintext verified in independent textarea",
+    "pasteObserved": "At Deep emoji end, Command-V inserted three lines once as nested bullet items Deep emoji + First, Second, Deep emoji; ordered source markers were not imported.",
+    "undoRedoObserved": "Control-Z restored baseline, Control-Shift-Z restored pasted result, final Control-Z restored baseline."
+  },
+  "safari": {
+    "browser": "Native Safari on macOS; version not recorded",
+    "selectionDirection": "backward from Deep emoji end through First start",
+    "copyObservedText": "First\nSecond\nDeep 🙂",
+    "cutObserved": "One cut left heading Packed 🙂 and one empty ordered item numbered 3.",
+    "cutUndoObserved": "One configured Control-Z restored ordered items 3 and 4, nested Deep 🙂 and selected range.",
+    "pasteObserved": "At Deep emoji end, Command-V inserted First, Second and Deep emoji once: destination nested bullet items became Deep emoji + First, Second, Deep emoji. Source ordered markers were not imported.",
+    "pasteUndoRedoObserved": "One Control-Z restored baseline; Control-Shift-Z restored pasted result; final Control-Z restored baseline.",
+    "contract": "Plaintext newlines normalize into sibling destination items, not rich source-structure import."
+  },
+  "limitations": [
+    "Native accessibility and visible UI observations, not serialized durable-state equality.",
+    "Forward selection, physical IME and VoiceOver remain unqualified.",
+    "Historical intermittent WebKit fault remains unresolved.",
+    "Earlier single-line scratch input cannot establish newline preservation."
+  ],
+  "productionCodeChanged": false,
+  "releaseQualified": false,
+  "published": false
+}
