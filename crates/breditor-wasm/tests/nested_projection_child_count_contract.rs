@@ -6,10 +6,12 @@ use serde_json::{Value, json};
 use std::{error::Error, io};
 
 fn element(kind: &str, children: Vec<Value>, properties: Value) -> Value {
-    json!({"kind":"element","type":format!("breditor/{kind}"),"entityId":null,
-        "properties":properties,"children":children})
+    let mut node = json!({"kind":"element","type":format!("breditor/{kind}"),"entityId":null});
+    node["properties"] = properties;
+    node["children"] = Value::Array(children);
+    node
 }
-fn paragraph(value: String, heading: bool) -> Value {
+fn paragraph(value: &str, heading: bool) -> Value {
     element(
         if heading { "heading" } else { "paragraph" },
         vec![
@@ -21,13 +23,13 @@ fn paragraph(value: String, heading: bool) -> Value {
 fn tree(items: usize) -> Value {
     let children = (0..items)
         .map(|index| {
-            let mut content = vec![paragraph(format!("Item {index}: A🙂"), index % 10 == 0)];
+            let mut content = vec![paragraph(&format!("Item {index}: A🙂"), index % 10 == 0)];
             if index % 10 == 0 {
                 let ordered = element(
                     "ordered-list",
                     vec![element(
                         "list-item",
-                        vec![paragraph(format!("Grandchild {index}"), false)],
+                        vec![paragraph(&format!("Grandchild {index}"), false)],
                         json!({}),
                     )],
                     json!({"breditor/start":4}),
@@ -36,7 +38,7 @@ fn tree(items: usize) -> Value {
                     "bullet-list",
                     vec![element(
                         "list-item",
-                        vec![paragraph(format!("Child {index}"), false), ordered],
+                        vec![paragraph(&format!("Child {index}"), false), ordered],
                         json!({}),
                     )],
                     json!({}),
@@ -54,16 +56,20 @@ fn tree(items: usize) -> Value {
         json!({}),
     )
 }
-fn flatten<'a>(node: &'a Value, rows: &mut Vec<(&'a Value, Vec<u32>)>) -> u32 {
-    let index = u32::try_from(rows.len()).expect("small test tree");
+fn flatten<'a>(
+    node: &'a Value,
+    rows: &mut Vec<(&'a Value, Vec<u32>)>,
+) -> Result<u32, std::num::TryFromIntError> {
+    let position = rows.len();
+    let index = u32::try_from(position)?;
     rows.push((node, vec![]));
     if let Some(children) = node.get("children").and_then(Value::as_array) {
         for child in children {
-            let child_index = flatten(child, rows);
-            rows[index as usize].1.push(child_index);
+            let child_index = flatten(child, rows)?;
+            rows[position].1.push(child_index);
         }
     }
-    index
+    Ok(index)
 }
 
 #[test]
@@ -80,7 +86,7 @@ fn nested_child_counts_and_edges_remain_exact_after_engine_drop() -> Result<(), 
     for items in [10, 100, 500] {
         let root = tree(items);
         let mut expected = vec![];
-        flatten(&root, &mut expected);
+        flatten(&root, &mut expected)?;
         let document = json!({"format":"breditor/document","formatVersion":2,
             "schema":schema,"schemaFingerprint":fingerprint,"root":root})
         .to_string();

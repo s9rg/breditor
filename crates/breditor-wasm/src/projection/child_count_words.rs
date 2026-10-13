@@ -11,7 +11,7 @@ pub(super) fn words(count: Option<u32>) -> Vec<u32> {
 
 #[wasm_bindgen]
 impl BreditorProjection {
-    /// Copies [presence, count] into an owned JS Uint32Array.
+    /// Copies `[presence, count]` into an owned JS `Uint32Array`.
     /// Presence is 0 or 1; absence requires a zero payload. Some(0) is distinct
     /// from absence, and the full u32 domain is retained without a sentinel.
     /// Calls the same native calculation once. No retry or fallback count.

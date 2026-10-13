@@ -41,7 +41,7 @@ impl std::fmt::Debug for NestedListReframe {
             .field("start", &self.start)
             .field("expected", &self.expected)
             .field("replacement", &self.replacement)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

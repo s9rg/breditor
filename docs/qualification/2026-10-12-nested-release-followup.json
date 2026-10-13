@@ -659,6 +659,32 @@
     "filteredFocusedStatus": "existing session 5262 remains live; empty filtered harnesses not counted as full qualification",
     "scope": "Serializer/selection/renderer regression only. No system clipboard read or overwrite, no native Copy/Cut/Paste, no new production source or artifact changes. Existing native permissions and release gates remain open; no push or publication."
   },
+  "strictRustLintFollowup": {
+    "date": "2026-10-13",
+    "command": "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+    "exitCode": 0,
+    "corrections": [
+      "Manual NestedListReframe Debug uses finish_non_exhaustive to explicitly omit private admission hints; cached/uncached Debug equality asserted.",
+      "Word-array documentation uses code markup; integer getter closure replaced by the same qualified method; diagnostic pointer conversion uses std::ptr::from_ref.",
+      "Native getter fixture moves owned JSON inputs, borrows temporary paragraph strings, and propagates checked index-conversion errors instead of expect."
+    ],
+    "suppressedWarnings": false,
+    "coreUnitTestsPassedAfterCorrection": 1209,
+    "fullWordWrapperUnitTestsPassedAfterCorrection": 63,
+    "correctedNativeGetterFixtureExitCode": 0,
+    "correctedNativeGetterFixtureTests": 1,
+    "candidate": "target/nested-list-candidate-Bcxylo/qualification.json",
+    "candidateSha256": "0c456e8a99d88ada68219abcfcfb8898db1a3cfc7e09307fd6b422f68bc62e23",
+    "candidateStatus": "passed API/declarations, TypeScript, Node recovery and all three browser engines",
+    "wasmSha256": "6effb364ba0547ca8e5ef89c5d73e03d24ac81cf17b1d48e8ccc15dea7ff8367",
+    "javascriptGlueSha256": "786d6f5869549b32c6b7f9466e41fb41db4ca90b67247efe3717af242a5f7a40",
+    "executableIdentityComparedWith": "target/nested-list-candidate-q9KZAI",
+    "wasmAndJavaScriptBytesUnchanged": true,
+    "declarationsChange": "Documentation only; reviewed API signature checker passed. Declaration hash 608d431591906aa022877505995ac9bc90f4b958ad2ab86dec062d93fc30ac73 differs, so whole-archive identity is not asserted.",
+    "fullCoreStatus": "original integration/doctest job 93438 remains live, covering admission logic before Debug presentation correction; terminal full-suite success not claimed",
+    "filteredFocusedStatus": "original filtered job 5262 remains live; empty harnesses not qualification",
+    "scope": "Strict gate now passes without allowances. Native Debug presentation explicitly hides cache, not a protocol/data/validation change. Fresh build verifies executable identity; shipping bundles untouched. Historical WebKit/native-input/accepted size and latency gates remain open; no push or publish."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false

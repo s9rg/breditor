@@ -133,6 +133,7 @@ fn captured_fragment_proofs_preserve_value_equality_and_exact_inverse() -> TestR
         NestedListReframe::capture(&context, source.document(), 0, 1, replacement.clone())?;
     let uncached = NestedListReframe::try_new(0, captured.expected().to_vec(), replacement)?;
     assert_eq!(captured, uncached);
+    assert_eq!(format!("{captured:?}"), format!("{uncached:?}"));
     let edit = captured.apply(&context, source.document())?.ok_or("unchanged")?;
     let fresh = uncached.apply(&context, source.document())?.ok_or("unchanged")?;
     assert_eq!(edit.document(), fresh.document());

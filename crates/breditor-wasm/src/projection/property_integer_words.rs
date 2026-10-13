@@ -26,7 +26,7 @@ impl BreditorProjection {
         integer_words(
             self.format_property(index, format_ordinal, property_ordinal)
                 .and_then(|(_, value)| value.as_integer())
-                .map(|value| value.get()),
+                .map(breditor_core::document::PropertyInteger::get),
         )
     }
 }

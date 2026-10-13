@@ -41,7 +41,7 @@ impl BreditorProjection {
             .filter(|record| record.node().as_element().is_some())
             .and_then(|record| u32::try_from(record.children().len()).ok());
         #[cfg(feature = "diagnostic-projection-child-count")]
-        super::child_count_diagnostics::record(self as *const Self as usize, index, count);
+        super::child_count_diagnostics::record(std::ptr::from_ref(self) as usize, index, count);
         count
     }
     /// Returns the canonical format count for a text leaf.
