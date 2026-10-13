@@ -1,0 +1,54 @@
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {mkdir,mkdtemp,readFile,realpath,writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import test from "node:test";
+import {retainNestedListFailure,retainNestedListReplayFailure,verifyFailureBundle} from "./retain-nested-list-failure.mjs";
+import {prepareRetainedBootstrapTrace} from "./prepare-retained-bootstrap-failure-trace.mjs";
+const hash=value=>createHash("sha256").update(value).digest("hex");
+
+test("bootstrap derivation preserves control and rejects coordinated changes outside trace",async()=>{
+  const root=await realpath(await mkdtemp(join(tmpdir(),"breditor-bootstrap-trace-test-")));
+  const fixture=join(root,"original");await mkdir(join(fixture,"bundle/assets"),{recursive:true});
+  const script='const a=error(`engine_bootstrap.invalid_wasm_view`),b=error("engine_bootstrap.invalid_initial_projection");function run(x){if(x)return Object.freeze({ok:false,error:a});return Object.freeze({ok:!1,error:b});}';
+  const html="fixture html",wasm=Buffer.from([0,97,115,109]);
+  await writeFile(join(fixture,"bundle/index.html"),html);
+  await writeFile(join(fixture,"bundle/assets/main.js"),script);
+  await writeFile(join(fixture,"bundle/assets/engine.wasm"),wasm);
+  const measurementBytes=Buffer.from(JSON.stringify({status:"failed",fixture,browserName:"webkit",ownerRepetitions:3,
+    bundleAssets:{"main.js":hash(script),"engine.wasm":hash(wasm)},measurements:[{status:"failed"}]}));
+  await writeFile(join(fixture,"measurement.json"),measurementBytes);
+  const control=await retainNestedListFailure(join(fixture,"measurement.json"),join(root,"retained"));
+  const result=await prepareRetainedBootstrapTrace(join(control,"measurement.json"),join(root,"retained"));
+  const manifestPath=join(result.output,"retention.json"),manifestBytes=await readFile(manifestPath),manifest=JSON.parse(manifestBytes);
+  const verified=await verifyFailureBundle(result.measurementPath,manifest);
+  assert.equal(verified.source.releaseQualified,false);
+  assert.equal(verified.source.status,"prepared-diagnostic-only");
+  assert.deepEqual(verified.source.measurements,[]);
+  assert.deepEqual(await readFile(join(control,"measurement.json")),measurementBytes);
+  assert.equal(await readFile(join(control,"bundle/assets/main.js"),"utf8"),script);
+  assert.equal(await readFile(join(result.output,"original-script.js"),"utf8"),script);
+  assert.deepEqual(await readFile(join(result.output,"bundle/assets/engine.wasm")),wasm);
+  const tracedPath=join(result.output,"bundle/assets/main.js"),tracedBytes=await readFile(tracedPath);
+  const derivedBytes=await readFile(result.measurementPath);
+  const altered=Buffer.from("const unrelatedChange=1;"+tracedBytes.toString("utf8"));
+  const report=structuredClone(verified.source);
+  report.bundleAssets["main.js"]=hash(altered);report.retainedBootstrapDerivation.tracedAssetSha256=hash(altered);
+  const alteredReport=Buffer.from(JSON.stringify(report));
+  await writeFile(tracedPath,altered);await writeFile(result.measurementPath,alteredReport);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(alteredReport)}),/outside bootstrap trace changed/u);
+  await writeFile(tracedPath,tracedBytes);await writeFile(result.measurementPath,derivedBytes);
+  await writeFile(join(result.output,"original-script.js"),"changed original");
+  await assert.rejects(verifyFailureBundle(result.measurementPath,manifest));
+  await writeFile(join(result.output,"original-script.js"),script);
+  const replayPath=join(result.output,"synthetic-replay.json");
+  await writeFile(replayPath,JSON.stringify({status:"failed",sourcePath:result.measurementPath,
+    sourceSha256:hash(derivedBytes),indexSha256:hash(html),bundleAssets:verified.source.bundleAssets}));
+  const retained=await retainNestedListReplayFailure(replayPath,result.measurementPath,join(root,"retained"),manifest);
+  const replayManifest=JSON.parse(await readFile(join(retained,"retention.json")));
+  assert.equal(replayManifest.diagnosticDerivationKind,"bootstrap");
+  const standalone=await verifyFailureBundle(join(retained,"measurement.json"),replayManifest);
+  assert.equal(standalone.files["original-script.js"].toString("utf8"),script);
+  await assert.rejects(prepareRetainedBootstrapTrace(result.measurementPath,join(root,"retained")),/nested diagnostic/u);
+});

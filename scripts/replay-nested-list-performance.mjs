@@ -54,7 +54,7 @@ const report = {status: "running", sourcePath, sourceSha256: hash(sourceBytes),
   browserName,
   javaScriptTierMode: replayTier.mode, requestedJavaScriptTierOverrides: replayTier.overrides,
   tierOverrideEffectVerified: false,
-  sourceDiagnosticDerivation: source.retainedLayoutDerivation ?? null,
+  sourceDiagnosticDerivation: source.retainedBootstrapDerivation ?? source.retainedLayoutDerivation ?? null,
   fixtureCompletionPollingMs: FIXTURE_COMPLETION_POLLING_MS,
   bundleAssets: source.bundleAssets, indexSha256: hash(await readFile(join(bundle, "index.html"))),
   rebuilt: false, addedInstrumentation: false, releaseQualified: false, runs: []};

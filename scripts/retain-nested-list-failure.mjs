@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {mkdir, mkdtemp, readFile, readdir, realpath, writeFile} from "node:fs/promises";
 import {dirname, join} from "node:path";
+import {traceRetainedBootstrapFailures} from "./retained-bootstrap-failure-trace.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 
@@ -44,15 +45,19 @@ export async function verifyFailureBundle(sourcePath, manifest) {
     files["replay.json"] = replayBytes;
   }
   if (manifest?.diagnosticDerivation === true) {
-    const derivation = source.retainedLayoutDerivation;
+    const bootstrap = source.retainedBootstrapDerivation !== undefined;
+    assert.notEqual(bootstrap, source.retainedLayoutDerivation !== undefined, "ambiguous diagnostic derivation");
+    if (bootstrap) assert.equal(manifest.diagnosticDerivationKind, "bootstrap");
+    const derivation = bootstrap ? source.retainedBootstrapDerivation : source.retainedLayoutDerivation;
     assert.equal(source.status, "prepared-diagnostic-only");
     assert.equal(source.releaseQualified, false);
     const originalMeasurement = await readFile(join(root, "original-measurement.json"));
     const originalRetention = await readFile(join(root, "original-retention.json"));
-    const originalLayout = await readFile(join(root, "original-layout.js"));
+    const originalFile = bootstrap ? "original-script.js" : "original-layout.js";
+    const originalLayout = await readFile(join(root, originalFile));
     assert.equal(hash(originalMeasurement), derivation.sourceMeasurementSha256);
     assert.equal(hash(originalRetention), derivation.sourceRetentionSha256);
-    assert.equal(hash(originalLayout), derivation.originalLayoutSha256);
+    assert.equal(hash(originalLayout), bootstrap ? derivation.originalAssetSha256 : derivation.originalLayoutSha256);
     const original = JSON.parse(originalMeasurement), retained = JSON.parse(originalRetention);
     assert.equal(retained.version, 1);
     assert.equal(retained.measurementSha256, hash(originalMeasurement));
@@ -61,18 +66,26 @@ export async function verifyFailureBundle(sourcePath, manifest) {
     const tracedScript = files[`bundle/assets/${derivation.asset}`];
     assert.ok(tracedScript, "missing derived script");
     assert.equal(hash(tracedScript), derivation.tracedAssetSha256);
+    if (bootstrap) {
+      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"));
+      assert.deepEqual(tracedScript, Buffer.from(expected.code), "bytes outside bootstrap trace changed");
+      assert.deepEqual(derivation.sites, expected.sites, "bootstrap trace sites changed");
+      assert.equal(derivation.rebuilt, false);
+      assert.equal(derivation.remangled, false);
+    } else {
     const code = tracedScript.toString("utf8"), layout = derivation.layout;
     assert.ok(Number.isSafeInteger(layout.start) && Number.isSafeInteger(layout.tracedEnd) &&
       layout.start >= 0 && layout.tracedEnd > layout.start && layout.tracedEnd <= code.length, "invalid derived layout span");
     const restored = code.slice(0, layout.start) + originalLayout.toString("utf8") + code.slice(layout.tracedEnd);
     assert.equal(hash(Buffer.from(restored)), derivation.originalAssetSha256, "bytes outside retained layout changed");
+    }
     assert.deepEqual(Object.keys(original.bundleAssets).sort(), Object.keys(source.bundleAssets).sort());
     for (const name of Object.keys(original.bundleAssets)) if (name !== derivation.asset) {
       assert.equal(source.bundleAssets[name], original.bundleAssets[name], "non-script control asset changed");
     }
     files["original-measurement.json"] = originalMeasurement;
     files["original-retention.json"] = originalRetention;
-    files["original-layout.js"] = originalLayout;
+    files[originalFile] = originalLayout;
   }
   return {source, files};
 }
@@ -98,6 +111,7 @@ export async function retainNestedListReplayFailure(replayPath, sourcePath, rete
   for (const [name, bytes] of Object.entries(files)) await writeFile(join(output, name), bytes, {flag: "wx"});
   const manifest = {version: 1, failureKind: "exact-replay",
     ...(sourceManifest?.diagnosticDerivation === true ? {diagnosticDerivation: true} : {}),
+    ...(sourceManifest?.diagnosticDerivationKind !== undefined ? {diagnosticDerivationKind: sourceManifest.diagnosticDerivationKind} : {}),
     originalSourcePath: sourceManifest?.originalSourcePath ?? sourcePath,
     measurementSha256: hash(files["measurement.json"]), indexSha256: hash(files["bundle/index.html"]),
     originalReplayPath: replayPath, replaySourcePath: sourcePath, replaySha256: hash(replayBytes)};
