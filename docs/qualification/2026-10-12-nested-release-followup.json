@@ -429,6 +429,22 @@
     "checkpointStages": 567,
     "scope": "Each typed nested owner also restores its Undo checkpoint through bootstrapNestedListWasmEngine, which validates the initial semantic projection and transfers the forwarding engine, profile generation and observation. The forwarding owner's fresh checkpoint is consumed with its actual snapshot and captured descriptor contract, then compared byte-for-byte. All transferred generated owners released. No command adapter, rendering, DOM selection or event routing; historical intermittent full-editor faults remain open."
   },
+  "commandAdapterIsolation": {
+    "date": "2026-10-13",
+    "record": "target/nested-validator-probe-xn9d6v/report.json",
+    "sha256": "7225d2fb310d9222dfaecc1454c039c338cafc523b589f64282837246365a194",
+    "status": "passed",
+    "exitCode": 0,
+    "freshProcesses": 9,
+    "adapterCheckpointAndDomChecks": 243,
+    "sizes": [10, 100, 500],
+    "scriptRegressionExitCode": 0,
+    "constructionFailures": [
+      {"record": "target/nested-validator-probe-DEjKdk/report.json", "cause": "Fixture document payload shadowed the browser document before adapter construction; renamed payload."},
+      {"record": "target/nested-validator-probe-6RdR46/report.json", "cause": "Fixture rendering recipes omitted required canonical link/color classes; corrected to the actual editor recipes."}
+    ],
+    "scope": "Real source nested command adapter around the qualified generated Wasm, with compiled typed-format presentation, DOM renderer and selection bridge. Each restored owner exports checkpoints initially and after API Redo and Undo, checks history cursors and canonical DOM, and releases adapter-owned render/observation/generation plus engine. No editor owner/event controller/router, toolbar dispatch, native input, installed browser archive or performance/release qualification. Passing isolation does not resolve the intermittent full-editor failures."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false
