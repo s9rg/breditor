@@ -32,8 +32,8 @@ const keepOwnersFlag=process.env.BREDITOR_GETTER_KEEP_OWNERS??"0";
 const wordDirectory=process.env.BREDITOR_GETTER_WORD_CANDIDATE;
 const wordCandidateSelected=wordDirectory!==undefined;
 // Explicit installed-package control: never replace its Wasm or bridge. The
-// fixture routes optional-u32 metadata through words; signed property values
-// still use their legacy getter, so this is not full editor-routing coverage.
+// fixture routes optional-u32 metadata and signed properties through the
+// browser's current decoders; this remains a raw probe, not the editor runtime.
 const packedWordsFlag=process.env.BREDITOR_GETTER_PACKED_WORDS??"0";
 assert.ok(["0","1"].includes(packedWordsFlag),"packed word routing must be 0 or 1");
 const packedWordRouting=packedWordsFlag==="1";
@@ -72,6 +72,7 @@ const unsignedFlag=process.env.BREDITOR_GETTER_UNSIGNED_INDEX??"0";
 assert.ok(["0","1"].includes(unsignedFlag));const unsignedIndex=unsignedFlag==="1";
 assert.ok(!(unsignedIndex&&(directCall||lastCapture||fixedArity||rawTrace||sentinelTreatment||keepProjectionOwners)),"unsigned index is a separate experiment");
 await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
+await cp(join(repository,"packages/breditor-browser/src/projection_scalar_words.ts"),join(fixture,"projection_scalar_words.ts"));
 const originalMain=await readFile(join(fixture,"main.ts"),"utf8");
 assert.equal(originalMain.split("const ownerRepetitions = 30;").length,2);
 assert.equal(originalMain.split('const getterSequence: string = "all";').length,2);
@@ -79,10 +80,12 @@ assert.equal(originalMain.split("const walkRepetitions = 1;").length,2);
 assert.equal(originalMain.split("const keepProjectionOwners = false;").length,2);
 assert.equal(originalMain.split('const treeShape: string = "nested";').length,2);
 assert.equal(originalMain.split("const wordChildCountTransport = false;").length,2);
+assert.equal(originalMain.split("const packedWordRouting = false;").length,2);
 assert.equal(originalMain.split("const allWordScalars = false;").length,2);
 assert.equal(originalMain.split("const enrichedScalars = false;").length,2);
 await writeFile(join(fixture,"main.ts"),originalMain.replace("const ownerRepetitions = 30;",`const ownerRepetitions = ${ownerRepetitions};`).replace('const getterSequence: string = "all";',`const getterSequence: string = ${JSON.stringify(getterSequence)};`).replace("const walkRepetitions = 1;",`const walkRepetitions = ${walkRepetitions};`).replace("const keepProjectionOwners = false;",`const keepProjectionOwners = ${keepProjectionOwners};`).replace('const treeShape: string = "nested";',`const treeShape: string = ${JSON.stringify(treeShape)};`).replace("const wordChildCountTransport = false;",`const wordChildCountTransport = ${wordChildCountTransport};`));
 if(allWordScalars)await writeFile(join(fixture,"main.ts"),(await readFile(join(fixture,"main.ts"),"utf8")).replace("const allWordScalars = false;","const allWordScalars = true;"));
+if(packedWordRouting)await writeFile(join(fixture,"main.ts"),(await readFile(join(fixture,"main.ts"),"utf8")).replace("const packedWordRouting = false;","const packedWordRouting = true;"));
 if(enrichedScalars)await writeFile(join(fixture,"main.ts"),(await readFile(join(fixture,"main.ts"),"utf8")).replace("const enrichedScalars = false;","const enrichedScalars = true;"));
 assert.equal(originalMain.split("const integerProperties = false;").length,2);
 if(integerProperties){
@@ -144,6 +147,8 @@ const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browser
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
   childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,unsignedChildCountIndexTreatment:unsignedIndex,
   diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,wordCandidateSelected,packedWordRouting,wordRouting,allWordScalars,enrichedScalars,integerProperties,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
+  packedIntegerWordRouting:packedWordRouting,
+  productionDecoderSha256:hash(await readFile(join(fixture,"projection_scalar_words.ts"))),
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();
 console.log(JSON.stringify({fixture}));

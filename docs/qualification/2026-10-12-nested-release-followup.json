@@ -1095,6 +1095,36 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReuseProductionDecoderGetterProbe": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "BREDITOR_GETTER_OWNERS=30 BREDITOR_GETTER_PACKED_WORDS=1 BREDITOR_GETTER_ENRICHED=1 BREDITOR_GETTER_INTEGER_PROPERTIES=1 BREDITOR_GETTER_TREE=nested node scripts/probe-nested-wasm-getters.mjs target/nested-list-packages-lZQEME/qualification.json",
+    "session": 85954,
+    "exitCode": 0,
+    "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-myKcNP/getter-probe-1STfGN/measurement.json",
+    "measurementSha256": "dcaab04441d97ce47dee4e16fe93863045986b9d0c4bb5932950bbc74c91417e",
+    "productionDecoderSha256": "3d11e0a17ee215cd81572d0bf18e18f518eaacc257d4850d4d1587df3d624829",
+    "freshWebKitProcessesPassed": 10,
+    "projectionOwnersChecked": 900,
+    "exactAssertionsTotal": 29008510,
+    "finalLookupCompatibilityChecks": {
+      "change": "Use a dynamically typed version lookup so legacy declaration files need not expose word versions; neither mode falls back from malformed or missing packed words.",
+      "packedSession": 58787,
+      "packedMeasurementSha256": "8c01e96376c7d5badacb4de225fb93c7106741384c7af6d31d121f8b1d4725aa",
+      "packedFixture": "getter-probe-asCMgP",
+      "legacySession": 66800,
+      "legacyMeasurementSha256": "27ad0110de3c726f8dfc192d527a6350a054e5e1ff6ff403c8ecc704b40de61c",
+      "legacyFixture": "getter-probe-NrDTF6",
+      "exitCodes": [0,0],
+      "freshProcessesPassedPerMode": 10,
+      "ownersCheckedPerMode": 30
+    },
+    "scope": "Current installed package, original variadic bridge, scalar and signed-integer words decoded with the copied current production browser decoder, whose source hash is recorded. Exact negative, zero, 32-bit boundary and safe-integer-boundary values, metadata, absence and cleanup passed. Checks both word versions explicitly; missing getter/version or invalid records fail rather than retry. No editor, renderer/history or native-input qualification; no historical fault reproduced or fixed. Full core session 94976 remains live with observed groups passing. Production runtime and shipping distributions unchanged.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false

@@ -4,6 +4,8 @@ import initialize, * as wasm from "@breditor/wasm";
 // @ts-expect-error Generated private diagnostic module has no public declarations.
 import {bridgeInvoke} from "./bridge.js";
 import {decodeChildCountWords} from "./word-count.js";
+// Copied from the current browser source by the runner, with its hash recorded.
+import {decodeProjectionScalarWords, decodeProjectionIntegerWords} from "./projection_scalar_words.js";
 const output = document.getElementById("result")!;
 let progress = "initialization", checks = 0;
 const ownerRepetitions = 30;
@@ -12,6 +14,7 @@ const walkRepetitions = 1;
 const keepProjectionOwners = false;
 const treeShape: string = "nested";
 const wordChildCountTransport = false;
+const packedWordRouting = false;
 const allWordScalars = false;
 const enrichedScalars = false;
 const integerProperties = false;
@@ -98,16 +101,28 @@ async function run():Promise<void> {
             formatPropertyBoolean:view.formatPropertyBoolean,formatPropertyString:view.formatPropertyString,
             headingLevel:view.headingLevel,listKind:view.listKind,orderedListStart:view.orderedListStart};
           if(wordChildCountTransport){
+            const decodeScalar=packedWordRouting?decodeProjectionScalarWords:decodeChildCountWords;
+            if(packedWordRouting){
+              const versions=view as unknown as Record<string,unknown>;
+              same(versions["projectionScalarWordsVersion"],1,"packed scalar word version");
+              same(versions["projectionIntegerWordsVersion"],1,"packed integer word version");
+            }
             const wordGetter=(view as wasm.BreditorProjection & {childCountWords(index:number):Uint32Array}).childCountWords;
             if(typeof wordGetter!=="function")throw Error("Missing word-count transport");
-            methods.childCount=function(index:number){return decodeChildCountWords(bridgeInvoke(wordGetter,view,index));};
+            methods.childCount=function(index:number){return decodeScalar(bridgeInvoke(wordGetter,view,index));};
             if(allWordScalars){
               const api=view as unknown as Record<string,(...args:number[])=>Uint32Array>;
-              const one=(name:string)=>{const getter=api[name];if(typeof getter!=="function")throw Error("Missing word scalar: "+name);return (index:number)=>decodeChildCountWords(bridgeInvoke(getter,view,index));};
-              const two=(name:string)=>{const getter=api[name];if(typeof getter!=="function")throw Error("Missing word scalar: "+name);return (index:number,ordinal:number)=>decodeChildCountWords(bridgeInvoke(getter,view,index,ordinal));};
+              const one=(name:string)=>{const getter=api[name];if(typeof getter!=="function")throw Error("Missing word scalar: "+name);return (index:number)=>decodeScalar(bridgeInvoke(getter,view,index));};
+              const two=(name:string)=>{const getter=api[name];if(typeof getter!=="function")throw Error("Missing word scalar: "+name);return (index:number,ordinal:number)=>decodeScalar(bridgeInvoke(getter,view,index,ordinal));};
               methods.childAt=two("childAtWords");methods.formatCount=one("formatCountWords");
               methods.headingLevel=one("headingLevelWords");methods.orderedListStart=one("orderedListStartWords");
               methods.formatPropertyCount=two("formatPropertyCountWords");
+              if(packedWordRouting){
+                const integerGetter=api["formatPropertyIntegerWords"];
+                if(typeof integerGetter!=="function")throw Error("Missing packed integer words");
+                methods.formatPropertyInteger=(index:number,ordinal:number,property:number)=>
+                  decodeProjectionIntegerWords(bridgeInvoke(integerGetter,view,index,ordinal,property));
+              }
             }
           }
           same(view.nodeCount,expected.length,"node count");same(view.rootIndex,0,"root index");

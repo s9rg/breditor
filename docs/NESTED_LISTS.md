@@ -1628,3 +1628,11 @@ count/property count, heading level and ordered start use optional-u32 words;
 signed property values and strings still use legacy getters. This closes that
 raw-probe coverage gap without substituting private Wasm or changing the bridge.
 It is not full editor-routing coverage or evidence of a historical fault fix.
+
+The probe now also routes signed property integers through words and uses the
+actual browser scalar/integer decoders (copied and source-hashed), with explicit
+version checks and no fallback. Ten fresh WebKit processes pass 900 owners and
+29,008,510 assertions, including negative values and safe-integer boundaries.
+After a declaration-compatible version-lookup adjustment, bounded packed and
+legacy mode checks each pass ten fresh processes. These remain standalone raw
+getter controls, not editor/history reproduction or release qualification.
