@@ -822,6 +822,24 @@
     "wasmTargetStatus": "Confirmed live awaiting Cargo build-directory lock; not restarted or treated as a failed gate.",
     "releaseQualified": false
   },
+  "reconstructionCacheWasmTargetGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "359bf9f",
+    "command": "CARGO_BIN=/Users/s/.cargo/bin/cargo WASM_BINDGEN_TEST_RUNNER_BIN=/Users/s/.cargo/bin/wasm-bindgen-test-runner bash scripts/check-wasm-tests.sh",
+    "session": 29848,
+    "exitCode": 0,
+    "workspaceTargetCheck": "passed wasm32-unknown-unknown all features",
+    "strictTargetLint": "passed all Wasm crate targets/features with -D warnings",
+    "boundaryTestsPassed": 25,
+    "wrapperDoctests": 0,
+    "scope": "Original job retained through Cargo lock wait, compilation and terminal success. Boundary tests execute in Node through wasm-bindgen-test-runner 0.2.127; native-only projection fixtures have no Wasm tests. Not 1212 core tests executed in Wasm, native browser/input qualification or historical WebKit fault resolution.",
+    "fullCoreSession": 26861,
+    "fullCoreStatus": "Confirmed live, integration batches passing; native integration/doctest terminal completion not claimed.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
