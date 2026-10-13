@@ -882,6 +882,24 @@
     "pushed": false,
     "published": false
   },
+  "currentCacheFirefoxProfile": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "359bf9f",
+    "installedPair": "target/nested-list-packages-5fCraC/qualification.json",
+    "measurement": "breditor-nested-list-consumer-hysthR/performance-OiIVt1/measurement.json",
+    "measurementSha256": "4790921512e4850d1bbade39525e3a92239332691d0e758dba7c2b92913bb800",
+    "profile": "breditor-nested-list-consumer-hysthR/performance-OiIVt1/firefox-0.gecko-profile.json",
+    "profileSha256": "9a3b0871af949649bfa505050a34f92098d11b21533e0b47beb885cd55ef09de",
+    "exitCode": 0,
+    "casesPassed": 9,
+    "edit500ItemSampleCounts": [420,417,420],
+    "innermostActionStatesSamples": [150,150,156],
+    "innermostNativeChildNodesSamples": [55,56,51],
+    "innermostExecuteStringActionSamples": [45,45,44],
+    "nextInvestigation": "Action-state evaluation remains the largest measured path. Inspect repeated context/result admission before further runtime optimization; preserve stale guards, schema authority, aggregate limits and exact history.",
+    "scope": "One fresh diagnostic Firefox session, formatted/property/integer grandchild workload. Profiling has overhead; samples include deeper Wasm/native work, not true JS self time or CPU milliseconds. Wasm indices cannot borrow symbol mappings from another executable. Not release timing/p95 evidence. No runtime changes; full native core session 26861 remains live.",
+    "releaseQualified": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
