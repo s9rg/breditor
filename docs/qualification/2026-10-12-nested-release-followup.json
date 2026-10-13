@@ -332,6 +332,23 @@
     "setupCorrection": "Exact minified method uses a parenthesized logical-and sequence rather than an if statement. Initial preparation stopped before launch; syntax-node matching now supports both forms and preserves the original live-only guard.",
     "scope": "Capture existing central owner fault reason parameter only; no adapter/Wasm state reread, retry or altered teardown. Tests cover first live fault, ignored later faults, both guard forms and forged metadata. Prior cold capture trace remains verifiable. Neither batch reproduced a reason; warm-up fault remains unresolved. No shipping runtime change, release qualification, push or publish."
   },
+  "boundedCentralOwnerCaptureSoak": {
+    "date": "2026-10-13",
+    "session": 92941,
+    "maximumBatches": 5,
+    "status": "passed",
+    "exitCode": 0,
+    "freshWebKitProcesses": 50,
+    "cases": 450,
+    "replays": [
+      {"record":"target/nested-list-reproductions/trace-96lhGz/exact-replay-48GrUS/replay.json","sha256":"70950ef858cf145235f4428e0a6d458bcaaede388e3c6fa992a48a87552cf888"},
+      {"record":"target/nested-list-reproductions/trace-96lhGz/exact-replay-opMutM/replay.json","sha256":"dcf20b6f8d15a32a971edc018086ccbde6f991f6e6c4b296d66e583525f86da3"},
+      {"record":"target/nested-list-reproductions/trace-96lhGz/exact-replay-Vb9NRT/replay.json","sha256":"3d322b5a84ba7da7aea6dd0dbb42d181ebc9d40238442c128391621a2a29c118"},
+      {"record":"target/nested-list-reproductions/trace-96lhGz/exact-replay-sjElvm/replay.json","sha256":"dea1993583a38366f700fb2ba2bb804aa8583fd07675bed4588e9fcc82aee82b"},
+      {"record":"target/nested-list-reproductions/trace-96lhGz/exact-replay-3GILH4/replay.json","sha256":"3098bab70acc478f84d06a9d6121ccf08841a750e3a313233283386e4d90d80a"}
+    ],
+    "scope": "Configured five-batch endpoint reached with no central owner reason or rejected checkpoint capture. Same live job polled throughout; no restart, source/runtime change, additional unchanged repetition, release/performance qualification or historical-fault resolution. Original failures remain retained and open."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
