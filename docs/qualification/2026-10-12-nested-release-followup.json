@@ -349,6 +349,28 @@
     ],
     "scope": "Configured five-batch endpoint reached with no central owner reason or rejected checkpoint capture. Same live job polled throughout; no restart, source/runtime change, additional unchanged repetition, release/performance qualification or historical-fault resolution. Original failures remain retained and open."
   },
+  "sourceOnlyValidatorIsolation": {
+    "date": "2026-10-13",
+    "command": "node scripts/probe-nested-checkpoint-validator.mjs",
+    "record": "target/nested-validator-probe-PquTab/report.json",
+    "sha256": "1ebbe17386437d5a8c70536878550d6e165cc5074b2a293ad5a894efe1d4edc6",
+    "scriptSha256": "2a3de9bb630e530eed3a6816c4939a06ca290aebd341444caf00b369d565d6ef",
+    "status": "passed",
+    "exitCode": 0,
+    "freshProcesses": 9,
+    "checks": 2160,
+    "browsers": ["chromium", "firefox", "webkit"],
+    "sizes": [10, 100, 500],
+    "cursorStates": [0, 1],
+    "checksPerProcess": 240,
+    "wasmUsed": false,
+    "fixtureTypecheck": "passed",
+    "fullScriptTestsPassed": 273,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "probeConstructionCorrection": "Initial report nested-validator-probe-KIdUcm rejected its supposedly valid input in Chromium. The probe had placed openMergeGroup before entries, violating exact canonical key order. The matching experimental validator in Node accepted the same data only after that ordering correction. Fixture corrected; library validation unchanged. No browser bug attributed to this construction failure.",
+    "scope": "Minified repository-source validator only, no editor, DOM editing, Rust/Wasm or generated bindings. Synthetic large typed grandchild-splice corpus checks exact TextEncoder UTF-8 byte counts and rejects out-of-range RGB values repeatedly. Not the actual failed checkpoint/runtime contract, installed archive, live command/history replay, native input, performance gate or release qualification. Passing isolation does not rule out engine or live-context behavior; original failures remain open. Unsupported probe arguments rejected before report creation."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
