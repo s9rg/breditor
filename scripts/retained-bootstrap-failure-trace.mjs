@@ -46,7 +46,7 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointCapture=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointCapture=false,ownerReasons=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
@@ -55,6 +55,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   assert.equal(typeof checkpointValidation,"boolean");
   assert.equal(typeof checkpointPredicates,"boolean");
   assert.equal(typeof checkpointCapture,"boolean");
+  assert.equal(typeof ownerReasons,"boolean");
   assert.ok(!checkpointCapture||checkpointReader,"checkpoint capture requires reader tracing");
   assert.ok(!checkpointPredicates||checkpointValidation,"checkpoint predicates require validation tracing");
   assert.ok(!checkpointValidation||checkpointReader,"checkpoint validation requires reader tracing");
@@ -90,6 +91,37 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   countWrites(parsed.program,[]);
   assert.ok([...writes.values()].every(count=>count===1),"bootstrap error binding is reassigned");
   const edits=[],sites=[];
+  if(ownerReasons) {
+    const candidates=[];
+    function findOwner(node) {
+      if(node.type==="MethodDefinition"&&node.key.type==="PrivateIdentifier"&&node.value.params.length===1&&node.value.params[0].type==="Identifier") {
+        const body=node.value.body.body,logical=body[0]?.expression;
+        const sequence=logical?.right?.type==="ParenthesizedExpression"?logical.right.expression:logical?.right;
+        const compact=logical?.type==="LogicalExpression"&&logical.operator==="&&"&&
+          logical.left?.type==="BinaryExpression"&&logical.left.operator==="==="&&
+          logical.left.left?.property?.name==="phase"&&string(logical.left.right)==="live"&&sequence?.type==="SequenceExpression";
+        const guarded=body[0]?.type==="IfStatement"&&body[0].test?.type==="BinaryExpression"&&body[0].test.operator==="!=="&&
+          body[0].test.left?.property?.name==="phase"&&string(body[0].test.right)==="live";
+        const assignment=compact?sequence.expressions[0]:body[1]?.expression;
+        const record=assignment?.right?.arguments?.[0];
+        if((compact||guarded)&&assignment?.type==="AssignmentExpression"&&
+          assignment.right?.callee?.object?.name==="Object"&&assignment.right.callee.property?.name==="freeze"&&
+          assignment.left?.property?.type==="PrivateIdentifier"&&record?.type==="ObjectExpression"&&
+          record.properties.some(p=>p.key?.name==="phase"&&string(p.value)==="faulted")&&
+          record.properties.some(p=>p.key?.name==="reason"&&p.value?.name===node.value.params[0].name))candidates.push({node,compact,assignment});
+      }
+      children(node).forEach(findOwner);
+    }
+    findOwner(parsed.program);assert.equal(candidates.length,1,"owner fault reason boundary missing or ambiguous");
+    const {node,compact,assignment}=candidates[0],offset=node.value.body.body[0].end,reason=node.value.params[0].name;
+    const stage=`owner-reason:${node.start}`;
+    const log=`${helper}(${JSON.stringify(stage)},"owner-terminal",{reason:${reason}})`;
+    if(compact) {
+      const original=code.slice(assignment.start,assignment.end);
+      edits.push({start:assignment.start,end:assignment.end,original,replacement:`(${log},${original})`});
+    } else edits.push({start:offset,end:offset,original:"",replacement:`;${log};`});
+    sites.push({stage,start:compact?assignment.start:offset,end:compact?assignment.end:offset,code:"owner-terminal",names:[reason]});
+  }
   if(checkpointValidation) {
     const has=(node,predicate)=>predicate(node)||children(node).some(child=>has(child,predicate));
     const readers=parsed.program.body.filter(node=>node.type==="FunctionDeclaration"&&node.params.length===5&&
@@ -313,7 +345,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   }
   visit(parsed.program,[]);assert.ok(sites.length>=2&&sites.length<=128,"bootstrap exits missing or unexpected");
   if(ownerFaults)assert.ok(sites.some(site=>site.code==="toolbarDispatchFailed"),"owner fault sites missing");
-  let prefix=ownerFaults||checkpointExports||inputRoutes||checkpointReader?`function ${helper}(stage,code,bindings){try{
+  let prefix=ownerFaults||checkpointExports||inputRoutes||checkpointReader||ownerReasons?`function ${helper}(stage,code,bindings){try{
     const summarize=(value,depth=0)=>{
       const result={type:typeof value};
       if(value===null||typeof value==="boolean"||typeof value==="number")result.value=value;

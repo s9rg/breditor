@@ -48,6 +48,10 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   assert.deepEqual(await readFile(join(result.output,"bundle/assets/engine.wasm")),wasm);
   const tracedPath=join(result.output,"bundle/assets/main.js"),tracedBytes=await readFile(tracedPath);
   const derivedBytes=await readFile(result.measurementPath);
+  const forgedOwner=structuredClone(verified.source);forgedOwner.retainedBootstrapDerivation.ownerReasons=true;
+  const forgedOwnerBytes=Buffer.from(JSON.stringify(forgedOwner));await writeFile(result.measurementPath,forgedOwnerBytes);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedOwnerBytes)}),/owner fault reason boundary missing/u);
+  await writeFile(result.measurementPath,derivedBytes);
   const forgedCapture=structuredClone(verified.source);forgedCapture.retainedBootstrapDerivation.checkpointCapture=false;
   const forgedCaptureBytes=Buffer.from(JSON.stringify(forgedCapture));await writeFile(result.measurementPath,forgedCaptureBytes);
   await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedCaptureBytes)}),/outside bootstrap trace changed/u);

@@ -180,3 +180,17 @@ test("rejected checkpoint capture owns existing text without rereading or changi
   assert.equal(frozenRun(snapshot,{status:"value",takeValue(){return "bad";}},{invalid:false},{},{}).ok,false);
   assert.throws(()=>traceRetainedBootstrapFailures(source+reader,{checkpointCapture:true}),/requires reader/u);
 });
+
+test("owner reason trace observes the first live fault without extra state reads or altered return",()=>{
+  for(const body of ['if(this.#status.phase!=="live")return;this.#status=Object.freeze({phase:"faulted",reason});',
+    'this.#status.phase==="live"&&(this.#status=Object.freeze({phase:"faulted",reason}),void 0);']) {
+  const owner=`class Owner{#status={phase:"live"};#fault(reason){${body}}run(reason){return this.#fault(reason);}get status(){return this.#status;}}`;
+  const traced=traceRetainedBootstrapFailures(source+owner,{ownerReasons:true}),logs=[];
+  const instance=Function("error","console",traced.code+";return new Owner;")(code=>({code}),{error:(...args)=>logs.push(args)});
+  assert.equal(instance.run("eventRouterFaulted"),undefined);assert.deepEqual(instance.status,{phase:"faulted",reason:"eventRouterFaulted"});
+  assert.equal(logs.length,1);assert.equal(JSON.parse(logs[0][1]).bindings.reason.value,"eventRouterFaulted");
+  instance.run("ignored later fault");assert.equal(logs.length,1);assert.equal(instance.status.reason,"eventRouterFaulted");
+  assert.throws(()=>traceRetainedBootstrapFailures(source,{ownerReasons:true}),/boundary missing/u);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+owner,{ownerReasons:"yes"}));
+  }
+});

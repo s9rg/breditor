@@ -297,6 +297,41 @@
     "runtimeChanged": false,
     "scope": "Direct JSON-preflight coverage for a grandchild splice guarded by a complete containing ordered-list root, mixed headings/child lists and both pending/completed Redo cursors. Synthetic known-valid wire shape, not the exact failed checkpoint, Rust replay proof, browser engine qualification or resolution of the intermittent fault. No deterministic mismatch found; original failure remains open."
   },
+  "defaultColdCaptureSoak": {
+    "date": "2026-10-13",
+    "session": 55627,
+    "maximumBatches": 5,
+    "status": "failed",
+    "exitCode": 1,
+    "stopCondition": "first nonzero replay exit; stopped in fourth batch, fifth not launched",
+    "completedBatches": [
+      {"record":"target/nested-list-reproductions/trace-PCz76y/exact-replay-2U603P/replay.json","sha256":"71d043a1ee5d7781e22479b178db2985dc573bfd0bfe7879bf51259ddf8b6ac8"},
+      {"record":"target/nested-list-reproductions/trace-PCz76y/exact-replay-EgqPvS/replay.json","sha256":"5e2169a1bf494736e3648514bae8d5c49f730c2e1f3f90875251b560dd73ec87"},
+      {"record":"target/nested-list-reproductions/trace-PCz76y/exact-replay-WGUSRS/replay.json","sha256":"f5717226c31bae134f2bac33b796690e37a1b8cd645795b52c1f851b4a2e86f2"}
+    ],
+    "failedReplay": "target/nested-list-reproductions/trace-PCz76y/exact-replay-RdsITF/replay.json",
+    "failedReplaySha256": "def9ba9b60936ea2e14cb5749fb1796ba248f12a5b00de82846e33e79b7724cc",
+    "retained": "target/nested-list-reproductions/failure-8FENCq",
+    "failure": "Ninth process of fourth batch, five-item warm-up, editMs: owner after edit faulted instead of live. No cold checkpoint/bootstrap/toolbar rejection log, no rejected checkpoint input. Fault reason not exposed by this fixture assertion; distinct from a checkpoint reader rejection until evidence connects them.",
+    "scope": "Default requested tiers, same verified cold capture source. Original handle preserved, failed replay retained, stopped at configured first failure. Not release qualification or fault resolution."
+  },
+  "centralOwnerReasonTrace": {
+    "date": "2026-10-13",
+    "record": "target/nested-list-reproductions/trace-96lhGz/measurement.json",
+    "sha256": "711bbb0c8c72f86f4ca1dce86b502b18f7a59e003c6fb8f2f12a397733aaefca",
+    "tracedScriptSha256": "b26cca8cf72691a5c3cc52aaed1d2cd0ecfe4001a621c669e1b09a6ab9fb80af",
+    "sites": 64,
+    "ownerReasonSites": 1,
+    "fullScriptTestsPassed": 271,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "replays": [
+      {"record":"target/nested-list-reproductions/trace-96lhGz/exact-replay-I7V82n/replay.json","sha256":"4ff354cf1e8d9ec33d6f977258f3b4fd344a262ee1f8340dbcce4fabb1c44af4","status":"passed","cases":90,"freshProcesses":10},
+      {"record":"target/nested-list-reproductions/trace-96lhGz/exact-replay-cNMQd5/replay.json","sha256":"c3800bd184e0c0c90fd5b85ef29d112076ed1acab05d7f3aef62cbb4b3f9bb04","status":"passed","cases":90,"freshProcesses":10}
+    ],
+    "setupCorrection": "Exact minified method uses a parenthesized logical-and sequence rather than an if statement. Initial preparation stopped before launch; syntax-node matching now supports both forms and preserves the original live-only guard.",
+    "scope": "Capture existing central owner fault reason parameter only; no adapter/Wasm state reread, retry or altered teardown. Tests cover first live fault, ignored later faults, both guard forms and forged metadata. Prior cold capture trace remains verifiable. Neither batch reproduced a reason; warm-up fault remains unresolved. No shipping runtime change, release qualification, push or publish."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
