@@ -32,6 +32,11 @@ test("bootstrap derivation preserves control and rejects coordinated changes out
   assert.deepEqual(await readFile(join(result.output,"bundle/assets/engine.wasm")),wasm);
   const tracedPath=join(result.output,"bundle/assets/main.js"),tracedBytes=await readFile(tracedPath);
   const derivedBytes=await readFile(result.measurementPath);
+  const forgedWorkload={...structuredClone(verified.source),diagnosticWorkload:{expectedCases:1}};
+  const forgedBytes=Buffer.from(JSON.stringify(forgedWorkload));
+  await writeFile(result.measurementPath,forgedBytes);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedBytes)}),/diagnostic workload changed/u);
+  await writeFile(result.measurementPath,derivedBytes);
   const altered=Buffer.from("const unrelatedChange=1;"+tracedBytes.toString("utf8"));
   const report=structuredClone(verified.source);
   report.bundleAssets["main.js"]=hash(altered);report.retainedBootstrapDerivation.tracedAssetSha256=hash(altered);

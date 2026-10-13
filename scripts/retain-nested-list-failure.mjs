@@ -11,6 +11,10 @@ export async function verifyFailureBundle(sourcePath, manifest) {
   const root = dirname(sourcePath);
   const bytes = await readFile(sourcePath);
   const source = JSON.parse(bytes);
+  if(source.diagnosticWorkload!==undefined) {
+    assert.equal(manifest?.diagnosticDerivation,true,"workload override requires verified derivation");
+    assert.equal(manifest.diagnosticDerivationKind,"bootstrap");
+  }
   if (manifest) {
     assert.equal(manifest.version, 1);
     assert.equal(hash(bytes), manifest.measurementSha256);
@@ -68,7 +72,9 @@ export async function verifyFailureBundle(sourcePath, manifest) {
     assert.equal(hash(tracedScript), derivation.tracedAssetSha256);
     if (bootstrap) {
       assert.ok(derivation.ownerFaults===undefined||typeof derivation.ownerFaults==="boolean");
-      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true});
+      assert.ok(derivation.smallRestoreChurn===undefined||typeof derivation.smallRestoreChurn==="boolean");
+      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,smallRestoreChurn:derivation.smallRestoreChurn===true});
+      assert.deepEqual(source.diagnosticWorkload,expected.diagnosticWorkload,"diagnostic workload changed");
       assert.deepEqual(tracedScript, Buffer.from(expected.code), "bytes outside bootstrap trace changed");
       assert.deepEqual(derivation.sites, expected.sites, "bootstrap trace sites changed");
       assert.equal(derivation.rebuilt, false);

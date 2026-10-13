@@ -86,7 +86,11 @@ try {
       assert.equal(result.fixtureStatus, "passed", result.fixtureOutput);
       const fixtureResult = JSON.parse(result.fixtureOutput);
       if (source.fixtureKind === "nested-getter-probe") assert.equal(fixtureResult.owners, String(3 * source.ownerRepetitions));
-      else assert.equal(fixtureResult.cases.length, 3 * source.ownerRepetitions);
+      else {
+        const expectedCases=source.diagnosticWorkload?.expectedCases??3*source.ownerRepetitions;
+        assert.equal(fixtureResult.cases.length,expectedCases);
+        if(source.diagnosticWorkload)assert.ok(fixtureResult.cases.every(item=>source.diagnosticWorkload.sizes.includes(item.items)),"diagnostic size mismatch");
+      }
       assert.deepEqual(result.pageErrors, []);
       result.status = "passed";
     } catch (error) {

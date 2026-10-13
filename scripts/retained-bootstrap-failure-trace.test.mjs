@@ -51,3 +51,13 @@ test("owner cold trace preserves calls and captures data fields without invoking
   assert.equal(traced.sites.filter(site=>site.code==="toolbarDispatchFailed").length,2);
   assert.throws(()=>traceRetainedBootstrapFailures(source,{ownerFaults:true}),/owner fault sites missing/u);
 });
+test("focused churn changes only fixture sizes/owner count and is explicitly diagnostic",()=>{
+  const owner='class Owner{#fault(reason){return reason;}run(){return this.#fault("toolbarDispatchFailed");}}';
+  const workload='function cases(){let values=[];for(const items of [10,100,500]){for(let repetition=0;repetition<30;repetition++){values.push([items,repetition]);}}return values;}';
+  const traced=traceRetainedBootstrapFailures(source+owner+workload,{ownerFaults:true,smallRestoreChurn:true});
+  const run=Function("error","console",traced.code+";return cases;")(code=>({code}),{error(){}});
+  const cases=run();assert.equal(cases.length,300);assert.ok(cases.every(([size])=>size===10));
+  assert.deepEqual(traced.diagnosticWorkload,{variant:"small-restore-churn",sizes:[10],owners:300,expectedCases:300,warmupPreserved:true});
+  assert.throws(()=>traceRetainedBootstrapFailures(source+owner+workload,{smallRestoreChurn:true}),/requires owner/u);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+owner+workload.replace("<30","<3"),{ownerFaults:true,smallRestoreChurn:true}),/owner loop changed/u);
+});

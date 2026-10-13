@@ -46,8 +46,10 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
+  assert.equal(typeof smallRestoreChurn,"boolean");
+  assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
   assert.ok(!code.includes(helper),"retained bootstrap already traced");
   const parsed=parseSync("retained-bootstrap.js",code);assert.deepEqual(parsed.errors,[]);
   const roots=new Set(parsed.program.body.filter(n=>n.type==="VariableDeclaration")
@@ -79,6 +81,26 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false}={}) {
   countWrites(parsed.program,[]);
   assert.ok([...writes.values()].every(count=>count===1),"bootstrap error binding is reassigned");
   const edits=[],sites=[];
+  let diagnosticWorkload;
+  if(smallRestoreChurn) {
+    const loops=[];
+    function findLoop(node) {
+      if(node.type==="ForOfStatement"&&node.right?.type==="ArrayExpression"&&
+        JSON.stringify(node.right.elements.map(n=>n?.value))==="[10,100,500]")loops.push(node);
+      children(node).forEach(findLoop);
+    }
+    findLoop(parsed.program);assert.equal(loops.length,1,"performance size loop missing or ambiguous");
+    const loop=loops[0],ownerLoops=[];
+    function findOwners(node) {
+      if(node.type==="ForStatement"&&node.test?.type==="BinaryExpression"&&node.test.operator==="<"&&
+        node.test.right?.type==="Literal"&&node.test.right.value===30)ownerLoops.push(node);
+      children(node).forEach(findOwners);
+    }
+    findOwners(loop.body);assert.equal(ownerLoops.length,1,"performance owner loop changed");
+    for(const [node,replacement] of [[loop.right,"[10]"],[ownerLoops[0].test.right,"300"]])
+      edits.push({start:node.start,end:node.end,original:code.slice(node.start,node.end),replacement});
+    diagnosticWorkload={variant:"small-restore-churn",sizes:[10],owners:300,expectedCases:300,warmupPreserved:true};
+  }
   function initializedBindings(ancestors,offset) {
     const names=new Map();
     for(const scope of ancestors) {
@@ -147,5 +169,5 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false}={}) {
     traced=traced.slice(0,edit.start)+edit.replacement+traced.slice(edit.end);
   }
   assert.deepEqual(parseSync("traced-bootstrap.js",traced).errors,[]);
-  return {code:traced,sites,edits};
+  return {code:traced,sites,edits,diagnosticWorkload};
 }
