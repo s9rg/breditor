@@ -2786,6 +2786,30 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(adapter.restoreCanonicalSelection()).toBe(false);
   });
 
+  it("rechecks canonical DOM after an overridden renderer ownership hook", () => {
+    const base = projectionFixture(0, "abc");
+    const engine = engineQueues({});
+    const read = vi.spyOn(engine, "selection");
+    const adapter = new BreditorWasmCommandAdapter(engine, observation(0), {
+      renderer: base.renderer, rendered: base.rendered, selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    // A renderer hook can mutate DOM and still claim ownership. The subsequent
+    // canonical check is a separate authority boundary, not redundant work.
+    const owns = vi.spyOn(base.renderer, "owns").mockImplementation(() => {
+      base.host.textContent = "hook changed DOM";
+      return true;
+    });
+    try {
+      expect(adapter.restoreCanonicalSelection()).toBe(false);
+      expect(adapter.state).toBe("reconcile");
+      expect(read).not.toHaveBeenCalled();
+      expect(base.host.textContent).toBe("hook changed DOM");
+    } finally {
+      owns.mockRestore();
+      adapter.dispose();
+    }
+  });
+
   it("refuses selection-only restoration over drifted DOM without reading Wasm", () => {
     const base = projectionFixture(0, "abc");
     const engine = engineQueues({});

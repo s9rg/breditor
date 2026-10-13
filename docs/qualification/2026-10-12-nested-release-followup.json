@@ -521,6 +521,26 @@
     "promoted": false,
     "scope": "Existing explicit z optimization override, separate Cargo cache and retained candidate; production defaults/source and shipping artifacts unchanged. Installed qualification-consumer gzip estimates include its fixture, not network transfer. Total remains above unaccepted proposed 700000-byte target. Deep formatted grandchild workload uses nine 500-item samples per browser; initial timing overlapped opt-in consumer qualification, so no controlled speed comparison or release latency claim. Proposed 100ms target unmet. Candidate retained for further comparison only; historical fault/native/size acceptance/latency gates remain open."
   },
+  "currentFirefoxLatencyAttribution": {
+    "date": "2026-10-13",
+    "pair": "target/nested-list-packages-zXu1Pv/qualification.json",
+    "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-xu6bmg/performance-42Gru1/measurement.json",
+    "measurementSha256": "5923e52795f998a6fe865f6971bad00bb8fcd924e5eb45411f39864340c430b3",
+    "profileSha256": "503ca981e218bb0caae46ffc13f11847f198b6e9ce856c04361d87260ef9fc79",
+    "status": "profiled-correctness-passed",
+    "ownerCases": 9,
+    "profileSpans": 60,
+    "edit500Spans": [
+      {"durationMs":519.11125,"samples":519,"innermostActionStatesFixtureSamples":230,"innermostNativeChildNodesSamples":56},
+      {"durationMs":513.896625,"samples":514,"innermostActionStatesFixtureSamples":230,"innermostNativeChildNodesSamples":56},
+      {"durationMs":509.800541,"samples":510,"innermostActionStatesFixtureSamples":229,"innermostNativeChildNodesSamples":50}
+    ],
+    "rendererHookRegression": "Command adapter rejects canonical-selection restoration if an overridden renderer owns() hook changes host DOM while claiming ownership; no Wasm selection read occurs. The second canonical check is an independent callback boundary, not safely removable as a duplicate.",
+    "browserTestsPassed": 2165,
+    "browserTestFilesPassed": 57,
+    "productionAndTestTypechecks": "passed",
+    "scope": "Fresh ordinary s candidate, Firefox 153.0, typed grandchild profile. Innermost fixture-frame attribution includes deeper Wasm/native work, not JavaScript self time or CPU milliseconds. ActionStates remains the largest sampled entry point; no function-index symbolism transferred from a different executable. Immutable format recipe caching already exists. Native/performance/release gates and historical intermittent fault remain open; no production optimization or validation bypass applied."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false
