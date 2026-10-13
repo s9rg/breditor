@@ -1595,3 +1595,21 @@ JS + Wasm estimate is 817,455 bytes gzip-9, including the fixture; this is not
 budget approval or shipping-demo network transfer. Historical WebKit, physical
 native input and accepted size/performance gates remain open. No push or
 publication occurred.
+
+### October 13: exact nested replacement fragment admission reuse
+
+Checkpoint `40d491c` additionally retains admitted source/result fragments on
+captured nested replacements. Reuse requires exact complete roots, the same
+compiled schema authority and limits. Source guards remain checked, partial
+aggregate results validate independently, and the inverse swaps immutable hints.
+Proofs stay outside equality, Debug and wire data. Eight focused tests, 1,213 core
+unit tests, strict core lint and isolated/installed three-engine checks pass.
+
+Matched local Firefox edits measured 383 ms versus 423 ms median at 500 items;
+both candidates passed 27 cases. This is sequential local evidence, not release
+p95 qualification. Compressed Wasm adds 561 bytes. The fresh `keYUbr` archive
+passes Node/types, browser keyboard and exact mixed-history recovery in all
+three engines; its consumer estimate is 818,016 bytes gzip-9 including the fixture.
+Current full native verification remains running; prior full-core results cover
+the earlier reconstruction-only cache. Historical WebKit, physical native input
+and accepted size/performance gates remain open. No push or publication occurred.
