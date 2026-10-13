@@ -592,6 +592,23 @@
     "filteredFocusedCommandStatus": "running session 5262; nine focused tests passed, remaining integration harnesses filtered and not full qualification",
     "scope": "Exact optimized normal-s artifact, original ordinary typed-grandchild workload. Ten WebKit sessions passed without reproducing the retained historical fault. Wrapper compilation overlapped, so timing is not release performance evidence. New private archive, default shipping artifacts unchanged; no native IME/clipboard/VoiceOver proof, accepted size/latency budget, shipping promotion, push or publication. Native quiet jobs verified live and polled without restarting."
   },
+  "optimizedWrapperVerificationCompleted": {
+    "date": "2026-10-13",
+    "sourceCheckpoint": "ebeebe6",
+    "fullWordCommand": "cargo test --locked -p breditor-wasm --features candidate-word-property-integers --quiet",
+    "fullWordExitCode": 0,
+    "fullWordUnitTests": 63,
+    "fullWordIntegrationBatches": [1,2,1,21],
+    "fullWordIntegrationTests": 25,
+    "wrapperDoctests": 0,
+    "defaultCommand": "cargo test --locked -p breditor-wasm --lib --quiet",
+    "defaultExitCode": 0,
+    "defaultUnitTests": 43,
+    "defaultFeature": "selection-token-codes; not the no-default-features legacy comparison",
+    "fullCoreStatus": "session 93438 remains live; full unit suite and successive integration harnesses passed so far, core integration/doctest command not yet terminal",
+    "filteredFocusedStatus": "session 5262 remains live; nine focused tests passed; remaining harnesses filtered and not substituted for full core qualification",
+    "scope": "Native wrapper tests for the committed exact-root admission optimization, plus default-wrapper unit compatibility. All original handles polled to terminal completion for wrapper jobs; no timeout restart. No source changes while core verification continues. Zero wrapper doctests is not documentation-test coverage. Browser archive/native-input/latency acceptance, historical WebKit fault resolution and full core integration/doctest completion remain separate gates. No shipping artifacts, push or publication changes."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
