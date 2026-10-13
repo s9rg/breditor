@@ -38,6 +38,14 @@ later. The list toolbar/controller scenarios pass in Chromium, Firefox and
 WebKit with real Wasm and synthetic input. These checks do not qualify physical
 typing, OS input methods, accessibility or a finished list-enabled beta.
 
+The next expansion combines tables, images and full offline-capable
+collaboration. The [rich content and collaboration plan](docs/RICH_CONTENT_AND_COLLABORATION.md)
+defines shared identity, selections, table conflicts, asset lifecycle, local
+undo and mixed-feature acceptance gates. The [isolated Rust/Wasm checkpoint](experiments/collaboration/README.md)
+now proves selective history, offline cell text merging, rich geometry and image
+binding contracts. The combined editor UI, asset storage and reference server
+are not implemented yet; existing shipping features and protocols are unchanged.
+
 ## Run the browser demo
 
 The React demo loads the packaged Text Size Showcase profile, its canonical

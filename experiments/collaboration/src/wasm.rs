@@ -1,0 +1,122 @@
+//! Matching Rust implementation for browser feasibility checks, not JS CRDT state.
+
+use crate::{
+    Error,
+    actions::Command,
+    anchor::{Affinity, TextAnchor},
+    session::Session,
+};
+use wasm_bindgen::prelude::*;
+
+fn js_error(error: impl std::fmt::Display) -> JsValue {
+    JsValue::from_str(&error.to_string())
+}
+
+fn checked_offset(value: &JsValue) -> Result<u32, JsValue> {
+    let number = value.as_f64().ok_or_else(|| js_error(Error::Offset))?;
+    if !number.is_finite() || number.fract() != 0.0 || number < 0.0 || number > f64::from(u32::MAX)
+    {
+        return Err(js_error(Error::Offset));
+    }
+    // Parse after the exact numeric checks; no wasm-bindgen u32 coercion, casts,
+    // silent wraparound, string/boolean/null conversion or saturation.
+    number.to_string().parse::<u32>().map_err(|_| js_error(Error::Offset))
+}
+
+/// Run closed fixture admission through the same rich geometry used by Rust.
+#[wasm_bindgen]
+pub fn resolve_geometry(input: &str) -> Result<String, JsValue> {
+    crate::rich_fixture::resolve_geometry(input).map_err(js_error)
+}
+
+/// Classify an upload binding without authoring content or resurrecting nodes.
+#[wasm_bindgen]
+pub fn classify_upload(input: &str) -> Result<String, JsValue> {
+    crate::rich_fixture::classify_upload(input).map_err(js_error)
+}
+
+#[wasm_bindgen]
+pub struct ProbeSession {
+    inner: Session,
+}
+
+#[wasm_bindgen]
+impl ProbeSession {
+    #[wasm_bindgen(constructor)]
+    pub fn new(document: String, writer: String) -> Result<ProbeSession, JsValue> {
+        Ok(Self { inner: Session::new(document, writer).map_err(js_error)? })
+    }
+
+    pub fn restore(checkpoint: &str) -> Result<ProbeSession, JsValue> {
+        Ok(Self { inner: Session::restore(checkpoint).map_err(js_error)? })
+    }
+
+    pub fn apply(&mut self, commands: &str) -> Result<(), JsValue> {
+        if commands.len() > 1024 * 1024 {
+            return Err(js_error(Error::Limit("command JSON bytes")));
+        }
+        let commands: Vec<Command> = serde_json::from_str(commands).map_err(js_error)?;
+        self.inner.apply(commands).map_err(js_error)
+    }
+
+    pub fn receive(&mut self, bytes: &[u8]) -> Result<(), JsValue> {
+        self.inner.receive(bytes.to_vec()).map_err(js_error)
+    }
+
+    pub fn undo(&mut self) -> Result<bool, JsValue> {
+        self.inner.undo().map_err(js_error)
+    }
+    pub fn redo(&mut self) -> Result<bool, JsValue> {
+        self.inner.redo().map_err(js_error)
+    }
+    pub fn updates(&self) -> Result<Vec<u8>, JsValue> {
+        self.inner.updates().map_err(js_error)
+    }
+    pub fn checkpoint(&self) -> Result<String, JsValue> {
+        self.inner.checkpoint().map_err(js_error)
+    }
+    pub fn view(&self) -> String {
+        self.inner.view().to_string()
+    }
+    pub fn version(&self) -> String {
+        self.inner.version().to_string()
+    }
+    pub fn body(&self) -> String {
+        self.inner.body()
+    }
+    pub fn undo_count(&self) -> u32 {
+        u32::try_from(self.inner.undo_count()).unwrap_or(u32::MAX)
+    }
+    pub fn redo_count(&self) -> u32 {
+        u32::try_from(self.inner.redo_count()).unwrap_or(u32::MAX)
+    }
+
+    pub fn set_selection(&mut self, anchor: &JsValue, focus: &JsValue) -> Result<(), JsValue> {
+        self.inner
+            .set_body_selection(checked_offset(anchor)?, checked_offset(focus)?)
+            .map_err(js_error)
+    }
+
+    pub fn selection(&self) -> Result<String, JsValue> {
+        serde_json::to_string(&self.inner.selection_offsets().map_err(js_error)?).map_err(js_error)
+    }
+
+    pub fn anchor(&self, offset: &JsValue, before: &JsValue) -> Result<String, JsValue> {
+        let offset = checked_offset(offset)?;
+        let before =
+            before.as_bool().ok_or_else(|| js_error(Error::Contract("anchor affinity boolean")))?;
+        let anchor = self
+            .inner
+            .body_anchor(offset, if before { Affinity::Before } else { Affinity::After })
+            .map_err(js_error)?;
+        serde_json::to_string(&anchor).map_err(js_error)
+    }
+
+    pub fn resolve_anchor(&self, serialized: &str) -> Result<u32, JsValue> {
+        if serialized.len() > 4096 {
+            return Err(js_error(Error::Limit("anchor JSON bytes")));
+        }
+        let anchor: TextAnchor = serde_json::from_str(serialized).map_err(js_error)?;
+        self.inner.resolve_body_anchor(&anchor).map_err(js_error)
+    }
+}

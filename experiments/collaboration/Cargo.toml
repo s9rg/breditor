@@ -1,0 +1,42 @@
+[package]
+name = "breditor-collab-feasibility"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+license = "MIT OR Apache-2.0"
+description = "Isolated native and Wasm contract checks for Breditor collaboration"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+# Prove replication/history before linking a new dependency into shipping crates.
+[workspace]
+resolver = "3"
+
+[dependencies]
+breditor-core = { path = "../../crates/breditor-core", features = ["experimental-rich-content"] }
+loro = { version = "=1.16.2", default-features = false }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+thiserror = "=2.0.20"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.127"
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+

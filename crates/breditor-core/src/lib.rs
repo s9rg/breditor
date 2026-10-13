@@ -836,6 +836,8 @@ pub mod operation;
 pub mod position;
 pub mod profile;
 mod record;
+#[cfg(feature = "experimental-rich-content")]
+pub mod rich_content;
 pub mod schema;
 pub mod schema_admission;
 pub mod selection;
