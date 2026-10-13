@@ -402,6 +402,22 @@
     "checksPerProcess": 63,
     "scope": "Exact qualified generated Rust/Wasm producer and minified source validator, with artifact admission before and after. Real nested selection, insertion, Undo, Redo, V7 restoration and restored Redo; exact UTF-8 lengths, history cursors and restoration bytes. Declarative contract, not bootstrap-captured runtime binding; no editor wrapper, DOM editing or input routing. Does not resolve retained intermittent full-editor failures or qualify native, performance or release gates."
   },
+  "capturedContractReaderIsolation": {
+    "date": "2026-10-13",
+    "capturedContractRecord": "target/nested-validator-probe-LqcLJn/report.json",
+    "capturedContractSha256": "e0abac3758c2a59fe46d96342be85c6e96acb33f35bd0b635cb485dd030df1ce",
+    "readerRecord": "target/nested-validator-probe-M8VOVn/report.json",
+    "readerSha256": "ee1638c7c921ef3f52f507fabde1e7ece733111e883f56dd8fa0eec34d457309",
+    "status": "passed",
+    "exitCode": 0,
+    "freshProcessesPerProbe": 9,
+    "checkpointStagesPerProbe": 567,
+    "contractChecksPerProbe": 1134,
+    "ownedReaderChecks": 567,
+    "browsers": ["chromium", "firefox", "webkit"],
+    "scriptRegressionExitCode": 0,
+    "scope": "Generated qualified Wasm creates the real typed nested history; source bootstrap preflight captures and freezes the live descriptor contract. Both declarative and captured contracts accept each checkpoint. Second probe additionally consumes a fresh generated string result through consumeWasmSessionCheckpoint with actual observation lineage/revision and protected engine/profile/observation owners; exact bytes retained. No editor adapter or DOM routing, installed browser archive, native/performance or release qualification. Intermittent full-editor failures remain unresolved."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false

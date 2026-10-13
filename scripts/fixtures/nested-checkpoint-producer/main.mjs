@@ -1,6 +1,7 @@
 // Real generated Rust/Wasm producer plus source validator; no editor/DOM routing.
 import initialize,* as api from "@probe/wasm";
-import {sessionCheckpointJsonMatchesDurableContract} from "../../../packages/breditor-browser/src/wasm_session_checkpoint.ts";
+import {sessionCheckpointJsonMatchesDurableContract,consumeWasmSessionCheckpoint} from "../../../packages/breditor-browser/src/wasm_session_checkpoint.ts";
+import {preflightNestedListWasmSemanticProfile} from "../../../packages/breditor-browser/src/wasm_engine_bootstrap.ts";
 
 const output=document.getElementById("result"),schema={name:"example/producer-validator",version:1};
 const properties=[
@@ -27,6 +28,9 @@ function command(engine,run){const observation=engine.observation();try{const re
 
 async function run(){
   await initialize();
+  const preflight=preflightNestedListWasmSemanticProfile(api,{bootstrapJson:JSON.stringify(bootstrap),formatVersion:5});
+  assert(preflight.ok,"runtime profile preflight failed");
+  const capturedContract=Object.freeze({mode:"v7",schema:preflight.profileDescriptor.schema,formats:preflight.profileDescriptor.formats});
   const profile=take(api.BreditorCompiledProfile.fromBootstrapJsonV5(JSON.stringify(bootstrap)),"profile","takeProfile");
   try{
     const descriptor=profile.descriptor();let fingerprint;
@@ -40,6 +44,13 @@ async function run(){
       progress=stage;const checkpoint=string(engine.sessionCheckpointJson());
       const bytes=sessionCheckpointJsonMatchesDurableContract(checkpoint,contract),expectedBytes=new TextEncoder().encode(checkpoint).length;
       if(bytes!==expectedBytes){failureInput={checkpointJson:checkpoint,contract,bytes,expectedBytes};throw Error("producer checkpoint rejected by source validator");}
+      const capturedBytes=sessionCheckpointJsonMatchesDurableContract(checkpoint,capturedContract);
+      if(capturedBytes!==expectedBytes){failureInput={checkpointJson:checkpoint,contract:capturedContract,bytes:capturedBytes,expectedBytes};throw Error("producer checkpoint rejected by captured runtime contract");}
+      const observation=engine.observation();let reader;
+      try{reader=consumeWasmSessionCheckpoint({lineage:observation.snapshotLineage,revision:observation.snapshotRevision},engine.sessionCheckpointJson(),[engine,observation,profile],capturedContract);}
+      finally{observation.free();}
+      assert(reader.ok,"owned checkpoint reader rejected producer result");
+      assert(reader.checkpoint.checkpointJson===checkpoint&&reader.checkpoint.checkpointUtf8Bytes===expectedBytes,"owned checkpoint reader changed bytes");
       const parsed=JSON.parse(checkpoint);assert(parsed.cursor===expectedCursor,"history cursor mismatch");checks++;return checkpoint;
     };
     for(const items of [10,100,500])for(let repetition=0;repetition<3;repetition++){
@@ -77,7 +88,7 @@ async function run(){
         command(restored,o=>restored.redo(o,false));check(restored,`${items}/${repetition}: restored redo`,1);
       }finally{restored?.free();engine.free();}
     }
-    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7});output.dataset.status="passed";
+    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7,contractChecks:checks*2,readerChecks:checks,runtimeContractCaptured:true});output.dataset.status="passed";
   }finally{profile.free();}
 }
 void run().catch(error=>{output.textContent=JSON.stringify({progress,checks,error:String(error),failureInput});output.dataset.status="failed";});
