@@ -46,7 +46,8 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false}={}) {
+  assert.equal(typeof ownerFaults,"boolean");
   assert.ok(!code.includes(helper),"retained bootstrap already traced");
   const parsed=parseSync("retained-bootstrap.js",code);assert.deepEqual(parsed.errors,[]);
   const roots=new Set(parsed.program.body.filter(n=>n.type==="VariableDeclaration")
@@ -78,6 +79,17 @@ export function traceRetainedBootstrapFailures(code) {
   countWrites(parsed.program,[]);
   assert.ok([...writes.values()].every(count=>count===1),"bootstrap error binding is reassigned");
   const edits=[],sites=[];
+  function initializedBindings(ancestors,offset) {
+    const names=new Map();
+    for(const scope of ancestors) {
+      if(functions.has(scope.type))for(const parameter of scope.params)for(const name of boundNames(parameter))names.set(name,true);
+      if(scope.type==="BlockStatement")for(const statement of scope.body)if(statement.type==="VariableDeclaration")
+        for(const declaration of statement.declarations)for(const name of boundNames(declaration.id))
+          names.set(name,!!declaration.init&&declaration.init.end<=offset);
+    }
+    const ready=[...names].filter(([,ready])=>ready).map(([name])=>name);
+    assert.ok(ready.length<=32);return ready;
+  }
   function visit(node,ancestors) {
     const chain=[...ancestors,node];
     if(node.type==="CallExpression"&&node.callee?.type==="MemberExpression"&&
@@ -95,10 +107,38 @@ export function traceRetainedBootstrapFailures(code) {
         }
       }
     }
+    if(ownerFaults&&node.type==="CallExpression"&&node.callee?.type==="MemberExpression"&&
+      node.callee.object?.type==="ThisExpression"&&node.callee.property?.type==="PrivateIdentifier"&&
+      node.arguments.length===1&&string(node.arguments[0])==="toolbarDispatchFailed") {
+      const original=code.slice(node.start,node.end),stage=`owner:${node.start}`;
+      const names=initializedBindings(ancestors,node.start);
+      const fields=names.map(name=>`${JSON.stringify(name)}:${name}`).join(",");
+      edits.push({start:node.start,end:node.end,original,
+        replacement:`(${helper}(${JSON.stringify(stage)},"toolbarDispatchFailed",{${fields}}),${original})`});
+      sites.push({stage,start:node.start,end:node.end,code:"toolbarDispatchFailed",names});
+    }
     children(node).forEach(child=>visit(child,chain));
   }
   visit(parsed.program,[]);assert.ok(sites.length>=2&&sites.length<=128,"bootstrap exits missing or unexpected");
-  const prefix=`function ${helper}(stage,code){try{console.error("breditor retained bootstrap rejection",JSON.stringify({stage,code}))}catch{}}\n`;
+  if(ownerFaults)assert.ok(sites.some(site=>site.code==="toolbarDispatchFailed"),"owner fault sites missing");
+  const prefix=ownerFaults?`function ${helper}(stage,code,bindings){try{
+    const summarize=(value,depth=0)=>{
+      const result={type:typeof value};
+      if(value===null||typeof value==="boolean"||typeof value==="number")result.value=value;
+      else if(typeof value==="string")result.value=value.slice(0,256);
+      else if(typeof value==="object"&&depth<4){
+        const fields={};
+        for(const key of ["status","kind","operation","eventKind","phase","reason","code","ok","submission","result","command","actionState","projection"]){
+          const descriptor=Object.getOwnPropertyDescriptor(value,key);
+          if(descriptor&&"value" in descriptor)fields[key]=summarize(descriptor.value,depth+1);
+        }
+        result.fields=fields;
+      }
+      return result;
+    };
+    const values=bindings?Object.fromEntries(Object.entries(bindings).map(([name,value])=>[name,summarize(value)])):undefined;
+    console.error("breditor retained owner/bootstrap rejection",JSON.stringify({stage,code,bindings:values}).slice(0,4096));
+  }catch{}}\n`:`function ${helper}(stage,code){try{console.error("breditor retained bootstrap rejection",JSON.stringify({stage,code}))}catch{}}\n`;
   edits.push({start:0,end:0,original:"",replacement:prefix});
   edits.sort((a,b)=>b.start-a.start);
   let traced=code;

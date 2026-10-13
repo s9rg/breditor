@@ -32,3 +32,22 @@ test("rejects unknown, duplicate and already traced bindings",()=>{
   assert.throws(()=>traceRetainedBootstrapFailures(source+'a={};'),/reassigned/u);
   assert.throws(()=>traceRetainedBootstrapFailures(traceRetainedBootstrapFailures(source).code),/already traced/u);
 });
+test("owner cold trace preserves calls and captures data fields without invoking accessors",()=>{
+  const owner='class Owner {#fault(reason){return reason;}run(delivery){const completed=true;return this.#fault("toolbarDispatchFailed");}later(){const before=1;this.#fault("toolbarDispatchFailed");let after=2;}}';
+  const traced=traceRetainedBootstrapFailures(source+owner,{ownerFaults:true}),logs=[];
+  const instance=Function("error","console",traced.code+";return new Owner;")(
+    code=>({code}),{error:(...args)=>logs.push(args)});
+  let getterCalls=0;
+  const delivery={status:"completed",submission:{result:{status:"delivered",command:{status:"committed",eventKind:"undo"}}},
+    get projection(){getterCalls++;throw Error("must not invoke accessor");},__wbg_ptr:1234};
+  assert.equal(instance.run(delivery),"toolbarDispatchFailed");assert.equal(getterCalls,0);
+  const captured=JSON.parse(logs[0][1]);
+  assert.equal(captured.bindings.delivery.fields.status.value,"completed");
+  assert.equal(captured.bindings.delivery.fields.submission.fields.result.fields.status.value,"delivered");
+  assert.equal(captured.bindings.delivery.fields.submission.fields.result.fields.command.fields.eventKind.value,"undo");
+  assert.equal(captured.bindings.completed.value,true);
+  assert.equal(logs[0][1].includes("__wbg_ptr"),false);
+  instance.later();assert.equal(JSON.parse(logs[1][1]).bindings.after,undefined);
+  assert.equal(traced.sites.filter(site=>site.code==="toolbarDispatchFailed").length,2);
+  assert.throws(()=>traceRetainedBootstrapFailures(source,{ownerFaults:true}),/owner fault sites missing/u);
+});

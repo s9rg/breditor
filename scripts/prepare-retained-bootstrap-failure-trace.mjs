@@ -9,7 +9,8 @@ import {traceRetainedBootstrapFailures} from "./retained-bootstrap-failure-trace
 const hash=value=>createHash("sha256").update(value).digest("hex");
 
 /** Preserve original control and full provenance in a separate trace tree. */
-export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot) {
+export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot,{ownerFaults=false}={}) {
+  assert.equal(typeof ownerFaults,"boolean");
   sourcePath=await realpath(sourcePath);
   const originalRetention=await readFile(join(dirname(sourcePath),"retention.json"));
   const control=JSON.parse(originalRetention);
@@ -21,7 +22,7 @@ export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot) {
   assert.equal(scripts.length,1);
   const asset=scripts[0],original=files[`bundle/assets/${asset}`],code=original.toString("utf8");
   assert.deepEqual(Buffer.from(code),original,"script is not lossless UTF-8");
-  const traced=traceRetainedBootstrapFailures(code),bytes=Buffer.from(traced.code);
+  const traced=traceRetainedBootstrapFailures(code,{ownerFaults}),bytes=Buffer.from(traced.code);
   await mkdir(retentionRoot,{recursive:true});
   const output=await mkdtemp(join(await realpath(retentionRoot),"trace-"));
   await mkdir(join(output,"bundle/assets"),{recursive:true});
@@ -33,7 +34,7 @@ export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot) {
     await writeFile(join(output,name),value,{flag:"wx"});
   const derivation={sourcePath,sourceMeasurementSha256:hash(files["measurement.json"]),
     sourceRetentionSha256:hash(originalRetention),asset,originalAssetSha256:hash(original),
-    tracedAssetSha256:hash(bytes),sites:traced.sites,rebuilt:false,remangled:false,originalControlModified:false};
+    tracedAssetSha256:hash(bytes),sites:traced.sites,ownerFaults,rebuilt:false,remangled:false,originalControlModified:false};
   const measurement={...source,status:"prepared-diagnostic-only",fixture:output,measurements:[],
     diagnosticInstrumentation:true,releaseQualified:false,releasePerformanceQualified:false,
     bundleAssets:{...source.bundleAssets,[asset]:hash(bytes)},retainedBootstrapDerivation:derivation};
@@ -48,11 +49,12 @@ export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot) {
   return {output,measurementPath:join(output,"measurement.json"),derivation};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
-  assert.equal(process.argv.length,3,"usage: node scripts/prepare-retained-bootstrap-failure-trace.mjs <retained measurement.json>");
+  assert.ok(process.argv.length===3||(process.argv.length===4&&process.argv[3]==="--owner-faults"),
+    "usage: node scripts/prepare-retained-bootstrap-failure-trace.mjs <retained measurement.json> [--owner-faults]");
   const repository=await realpath(fileURLToPath(new URL("../",import.meta.url)));
   const root=join(repository,"target/nested-list-reproductions"),source=await realpath(resolve(process.argv[2]));
   assert.match(relative(root,source),/^(?:failure|trace)-[a-zA-Z0-9]+\/measurement\.json$/u);
-  const result=await prepareRetainedBootstrapTrace(source,root);
+  const result=await prepareRetainedBootstrapTrace(source,root,{ownerFaults:process.argv[3]==="--owner-faults"});
   console.log(JSON.stringify({output:result.output,measurementPath:result.measurementPath,
     sites:result.derivation.sites.length,rebuilt:false,remangled:false}));
 }

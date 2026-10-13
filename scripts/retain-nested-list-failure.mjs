@@ -67,7 +67,8 @@ export async function verifyFailureBundle(sourcePath, manifest) {
     assert.ok(tracedScript, "missing derived script");
     assert.equal(hash(tracedScript), derivation.tracedAssetSha256);
     if (bootstrap) {
-      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"));
+      assert.ok(derivation.ownerFaults===undefined||typeof derivation.ownerFaults==="boolean");
+      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true});
       assert.deepEqual(tracedScript, Buffer.from(expected.code), "bytes outside bootstrap trace changed");
       assert.deepEqual(derivation.sites, expected.sites, "bootstrap trace sites changed");
       assert.equal(derivation.rebuilt, false);
