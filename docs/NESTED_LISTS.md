@@ -1645,3 +1645,11 @@ retained-bundle replay combines checkpoint predicate/input/contract capture with
 3,000 cases pass without diagnostics or a rejected checkpoint capture. This is
 instrumented evidence on the historical binary, not a fault fix or current
 release qualification; source Wasm was not rebuilt or substituted.
+
+A current-runtime Firefox diagnostic profile passes nine formatted/property/
+integer grandchild cases. Its 500-item edit spans retain action-state calculation,
+native child-node inspection and command execution as leading sampled paths.
+These counts include underlying Wasm/native work, not JavaScript self-time or
+release p95. No runtime validation was removed. The separately running full Rust
+command resumed passing test output after an observed pre-start loader wait;
+that wait's cause is unknown and the command's final result is still pending.

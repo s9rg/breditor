@@ -1168,6 +1168,31 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReuseCurrentFirefoxProfile": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "BREDITOR_PERF_BROWSER=firefox BREDITOR_PERF_RUNS=1 BREDITOR_PERF_FIREFOX_PROFILE=1 BREDITOR_PERF_EDIT_TARGET=grandchild BREDITOR_PERF_FORMATTED=1 BREDITOR_PERF_PROPERTY_FORMATS=1 BREDITOR_PERF_INTEGER_FORMATS=1 node scripts/measure-nested-list-performance.mjs target/nested-list-packages-lZQEME/qualification.json",
+    "session": 73523,
+    "exitCode": 0,
+    "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-myKcNP/performance-KFXWDe/measurement.json",
+    "measurementSha256": "5f24dd9ff669aec9a23c3a697b6c64b52f346f9ab21abf764683116504062fa7",
+    "profileSha256": "ca216e5020a7180f02e3cee2670ada8280720af1c337791f1244741c2267204f",
+    "correctnessCasesPassed": 9,
+    "operationSpans": 60,
+    "fiveHundredItemEditSamples": {
+      "total": [444,436,436],
+      "innermostFixtureActionStates": [125,126,126],
+      "innermostFixtureNativeChildNodes": [65,67,74],
+      "innermostFixtureExecuteStringAction": [49,48,47]
+    },
+    "scope": "One fresh Firefox process, current qualified pair, unminified profiling build, formatted/property/integer grandchild workload. Counts include deeper Wasm/native stacks; not JavaScript self-time, CPU milliseconds, statistical comparison or release p95. Native core run was concurrently live in a pre-start loader wait. Current action-state and DOM paths remain candidates for source-level investigation; no validation removal or runtime optimization was made from this profile alone.",
+    "originalFullCoreFollowup": "After the pre-start observation and without restarting or altering the original command, session 94976 emitted an eight-test passing integration group. Full command remains live; no terminal success claim or startup-cause/fix claim.",
+    "releaseQualified": false,
+    "releasePerformanceQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
