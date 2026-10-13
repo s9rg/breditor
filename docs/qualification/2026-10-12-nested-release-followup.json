@@ -1229,6 +1229,26 @@
     "pushed": false,
     "published": false
   },
+  "directNestedDomInstalledQualification": {
+    "date": "2026-10-13",
+    "browserCheckpoint": "e3846e9",
+    "buildSession": 27580,
+    "buildExitCode": 0,
+    "candidate": "target/nested-list-candidate-DFT4Ql/qualification.json",
+    "candidateSha256": "a2342078067a9d2661dc9cc7f30fd4ab36df429e50a35cdff7abc06db285ec2a",
+    "wasmSha256": "578f0e7cafde8d387b3e8b49372126614393ea541182db03c2c870d9fe677960",
+    "declarationsSha256": "608d431591906aa022877505995ac9bc90f4b958ad2ab86dec062d93fc30ac73",
+    "installedSession": 83159,
+    "installedExitCode": 0,
+    "pair": "target/nested-list-packages-wWGE0C/qualification.json",
+    "pairSha256": "6126a51c0962b044578f0c19b476ebba53161e331f8c6f2abd2d9c1300d6c50b",
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-pVpa3z",
+    "scope": "Generated API/TypeScript, Node commands/recovery, five raw Wasm plus one integrated editor scenario in each engine passed; disposable installed pair Node/types/base smoke and Chromium/Firefox/WebKit checks also passed. Complete scalar/integer word transport retained. Initial installed-check invocation supplied the qualification file instead of directory and stopped before packaging; corrected directory invocation completed. Shipping artifact tree checks pass unchanged. Archive keyboard/mixed-history/native checks and matched performance for this browser change are not yet qualified; no historical fault fix or size-budget acceptance claim.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
