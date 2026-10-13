@@ -282,6 +282,21 @@
     "capturedRejectedInput": false,
     "scope": "Different requested process-local tier settings on the same verified capture bundle. Both terminal batches passed with no rejection. No raw failed input obtained, no engine attribution or original-fault resolution, no production workaround, OS setting change or release qualification. Comparison stopped after these bounded batches."
   },
+  "largeTypedHistoryPreflightRegression": {
+    "date": "2026-10-13",
+    "source": "packages/breditor-browser/src/wasm_session_checkpoint.test.ts",
+    "focusedCommand": "npm exec --workspace @breditor/browser -- vitest run src/wasm_session_checkpoint.test.ts -t 'typed grandchild splice'",
+    "focusedTestsPassed": 3,
+    "sizes": [10, 100, 500],
+    "cursorStates": [0, 1],
+    "formats": ["breditor/strong", "example/link with string/boolean properties", "example/text-color with bounded RGB integer"],
+    "rejectionCase": "RGB 16777216 remains rejected while valid 1193046 is admitted",
+    "fullBrowserTestsPassed": 2164,
+    "fullBrowserFilesPassed": 57,
+    "productionAndTestTypecheck": "passed",
+    "runtimeChanged": false,
+    "scope": "Direct JSON-preflight coverage for a grandchild splice guarded by a complete containing ordered-list root, mixed headings/child lists and both pending/completed Redo cursors. Synthetic known-valid wire shape, not the exact failed checkpoint, Rust replay proof, browser engine qualification or resolution of the intermittent fault. No deterministic mismatch found; original failure remains open."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",

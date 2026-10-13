@@ -96,6 +96,51 @@ describe("explicit nested Session V7 preflight", () => {
     if (fault === "nullOperation") value["entries"][0]["forwardOperations"][0] = null;
     expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), contract)).toBeNull();
   });
+  it.each([10, 100, 500])("admits typed grandchild splice history with %i sibling items across Undo/Redo cursors", items => {
+    const typedContract: WasmDurableJsonContract = {...contract, formats: [
+      {kind: "breditor/strong", revision: 1, properties: []},
+      {kind: "example/link", revision: 1, properties: [
+        {name: "example/href", presence: "required", valueType: {kind: "string", minimumUtf8Bytes: 1, maximumUtf8Bytes: 2048}},
+        {name: "example/open-in-new-window", presence: "required", valueType: {kind: "boolean"}},
+      ]},
+      {kind: "example/text-color", revision: 1, properties: [
+        {name: "example/rgb24", presence: "required", valueType: {kind: "integer", minimum: 0, maximum: 16777215}},
+      ]},
+    ]};
+    const formats = [
+      {type: "breditor/strong", properties: {}},
+      {type: "example/link", properties: {"example/href": "https://example.test/", "example/open-in-new-window": false}},
+      {type: "example/text-color", properties: {"example/rgb24": 0x123456}},
+    ];
+    const text = (value: string) => ({kind: "text", text: value, formats});
+    const root = listElement("document", [listElement("ordered-list", Array.from({length: items}, (_, i) =>
+      listElement("list-item", [
+        listElement(i % 10 === 0 ? "heading" : "paragraph", [text(`Item ${i}: A🙂`)], i % 10 === 0 ? {"breditor/level": 2} : {}),
+        ...(i % 10 === 0 ? [listElement("bullet-list", [listElement("list-item", [
+          listElement("paragraph", [text(`Child ${i}`)]),
+          listElement("ordered-list", [listElement("list-item", [listElement("paragraph", [text(`Grandchild ${i}`)])])], {"breditor/start": 4}),
+        ])])] : []),
+      ])), {"breditor/start": 7})]);
+    const middle = Math.floor(Math.floor(items / 2) / 10) * 10;
+    const block = [0, middle, 1, 0, 1, 0, 0];
+    const offset = `Grandchild ${middle}`.length;
+    const point = {kind: "text", textPath: [...block, 0], utf16Offset: offset + 1, affinity: "after"};
+    for (const cursor of [0, 1]) {
+      const value = checkpointV3Value(); value["formatVersion"] = 7;
+      value["historyBase"]["document"]["root"] = root;
+      value["historyBase"]["selection"] = null; value["historyBase"]["pendingFormats"] = null;
+      value["currentRevision"] = cursor === 0 ? "3" : "4";
+      value["historyCapacity"] = 20; value["cursor"] = cursor; value["openMergeGroup"] = null;
+      value["entries"] = [{forwardOperations: [{kind: "nestedListTextSplice", block, start: offset, end: offset,
+        expected: root, replacement: {runs: [{text: "X", formats}]}}],
+        resultSelection: {kind: "range", anchor: point, focus: point}, resultPendingFormats: null}];
+      expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), typedContract)).not.toBeNull();
+      value["entries"][0]["forwardOperations"][0]["replacement"]["runs"][0]["formats"] = [
+        {type: "example/text-color", properties: {"example/rgb24": 16777216}},
+      ];
+      expect(sessionCheckpointJsonMatchesDurableContract(JSON.stringify(value), typedContract)).toBeNull();
+    }
+  });
 });
 
 describe("explicit flat-list Session V6 preflight", () => {
