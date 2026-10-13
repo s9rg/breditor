@@ -100,6 +100,14 @@ try {
       result.error = String(error);
       try {result.fixtureState = await readFixtureFailureState(page);}
       catch (snapshotError) {result.fixtureState = {snapshotError: String(snapshotError)};}
+      if(source.retainedBootstrapDerivation?.checkpointCapture===true) {
+        try {
+          result.rejectedCheckpointInput=await page.evaluate(()=>{
+            const descriptor=Object.getOwnPropertyDescriptor(globalThis,"__breditorRejectedCheckpointInput");
+            return descriptor&&"value" in descriptor?descriptor.value:undefined;
+          });
+        } catch(captureError) {result.checkpointCaptureReadError=String(captureError);}
+      }
     } finally {await browser?.close(); await save();}
     // Full diagnostics remain in replay.json; progress must not dump fixture data.
     console.log(JSON.stringify({run, status: result.status, diagnosticCount: result.diagnostics.length}));

@@ -161,3 +161,22 @@ test("checkpoint predicate trace preserves single evaluation and short circuit o
   }
   assert.throws(()=>traceRetainedBootstrapFailures(source+fixture,{checkpointPredicates:true}),/require validation/u);
 });
+
+test("rejected checkpoint capture owns existing text without rereading or changing outcomes",()=>{
+  const reader='const invalid=Object.freeze({code:"session_checkpoint.invalid_wasm_view"});function own(x){return x;}function reject(){return own(Object.freeze({ok:false,error:invalid}));}function reader(e,t,n,r,i){if(n.invalid)return reject();let a=e;if(!a)return reject();let o=t.status;if(o==="bad")return reject();let s=t.takeValue;if(!s)return reject();let c=t.error;if(c)return reject();let u=Reflect.apply(s,t,[]);if(u==null)return reject();if(typeof u!=="string")return reject();if(u!=="valid")return reject();return {checkpointJson:u};}';
+  const traced=traceRetainedBootstrapFailures(source+reader,{checkpointReader:true,checkpointCapture:true});
+  const global={},logs=[];
+  const run=Function("error","console","globalThis",traced.code+";return reader;")(code=>({code}),{error:(...args)=>logs.push(args)},global);
+  const snapshot={lineage:"fixture",revision:"3"};let takes=0;
+  const invoke=text=>{const view={status:"value",error:undefined,takeValue(){assert.equal(this,view);takes++;return text;}};return run(snapshot,view,{invalid:false},{},{});};
+  assert.deepEqual(invoke("valid"),{checkpointJson:"valid"});assert.equal(Object.hasOwn(global,"__breditorRejectedCheckpointInput"),false);
+  assert.equal(invoke("private checkpoint text").ok,false);assert.equal(takes,2);
+  const capture=Object.getOwnPropertyDescriptor(global,"__breditorRejectedCheckpointInput").value;
+  assert.equal(capture.checkpointJson,"private checkpoint text");assert.deepEqual(capture.snapshot,snapshot);
+  assert.ok(Object.isFrozen(capture));assert.ok(Object.isFrozen(capture.snapshot));
+  assert.equal(logs.some(log=>log[1].includes("private checkpoint text")),false);
+  invoke("later rejected text");assert.equal(global.__breditorRejectedCheckpointInput,capture);
+  const frozenRun=Function("error","console","globalThis",traced.code+";return reader;")(code=>({code}),{error(){}},Object.freeze({}));
+  assert.equal(frozenRun(snapshot,{status:"value",takeValue(){return "bad";}},{invalid:false},{},{}).ok,false);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+reader,{checkpointCapture:true}),/requires reader/u);
+});

@@ -253,6 +253,25 @@
     ],
     "scope": "Existing three predicate calls wrapped once, original result returned unchanged; false/falsy results logged without re-running validators. Short-circuit order, one take and success silence tested for all three rejection positions. Forged metadata rejected; prior validator trace remains verifiable. Diagnostic call layout changes; no timing/release evidence, engine attribution, original fault resolution or runtime workaround. Two-batch bound completed; no further unchanged repetition launched."
   },
+  "rejectedCheckpointInputCapture": {
+    "date": "2026-10-13",
+    "record": "target/nested-list-reproductions/trace-PCz76y/measurement.json",
+    "sha256": "02dfec0bcda88956d317eebe87ff3662d6e44debaafe2cc07200e87051df702b",
+    "tracedScriptSha256": "a9d5f91224e9da5da727d114ad8f46dc4b127808ba58e55dfc1055e43e3fd844",
+    "sites": 63,
+    "rebuilt": false,
+    "remangled": false,
+    "originalControlModified": false,
+    "fullScriptTestsPassed": 270,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "replays": [
+      {"record":"target/nested-list-reproductions/trace-PCz76y/exact-replay-OzOpJV/replay.json","sha256":"e712356f3c70439a3b9741d72264cf2a0e5888fd39f1483660be983f099cd7ef","status":"passed","cases":90,"freshProcesses":10},
+      {"record":"target/nested-list-reproductions/trace-PCz76y/exact-replay-fLzkx6/replay.json","sha256":"c679795fa7e022421344cda6eba3994ab3799ca561134538ca16bea55afcb430","status":"passed","cases":90,"freshProcesses":10}
+    ],
+    "capturedInput": false,
+    "scope": "Opt-in capture of the already-taken string on a late reader rejection, with own data snapshot descriptors only. First bounded nonempty string retained in a frozen local diagnostic slot; no Wasm handles/getter rereads. Failure collector retains it privately in replay.json, not progress/console logs. Success untouched, capture-storage failure cannot change rejection, first capture not overwritten, forged flag rejected. Hot input/predicate wrappers omitted. Both batches passed, so no real rejected input captured and no fault resolution. Older traces remain verifiable; no default/shipping behavior change."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",

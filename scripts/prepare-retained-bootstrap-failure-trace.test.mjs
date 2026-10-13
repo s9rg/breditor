@@ -30,7 +30,7 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
     await assert.rejects(prepareRetainedBootstrapTrace(join(control,"measurement.json"),join(root,"retained")),/sole recorded WebKit failure/u);
     await writeFile(join(control,"measurement.json"),measurementBytes);await writeFile(controlManifestPath,originalManifest);
   }
-  const result=await prepareRetainedBootstrapTrace(join(control,"measurement.json"),join(root,"retained"),{checkpointExports:true,inputRoutes:true,checkpointReader:true});
+  const result=await prepareRetainedBootstrapTrace(join(control,"measurement.json"),join(root,"retained"),{checkpointExports:true,inputRoutes:true,checkpointReader:true,checkpointCapture:true});
   const manifestPath=join(result.output,"retention.json"),manifestBytes=await readFile(manifestPath),manifest=JSON.parse(manifestBytes);
   const verified=await verifyFailureBundle(result.measurementPath,manifest);
   assert.equal(verified.source.releaseQualified,false);
@@ -39,6 +39,7 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   assert.equal(verified.source.retainedBootstrapDerivation.checkpointExports,true);
   assert.equal(verified.source.retainedBootstrapDerivation.inputRoutes,true);
   assert.equal(verified.source.retainedBootstrapDerivation.checkpointReader,true);
+  assert.equal(verified.source.retainedBootstrapDerivation.checkpointCapture,true);
   assert.equal(verified.source.retainedBootstrapDerivation.sites.filter(s=>["checkpoint-reader","checkpoint-snapshot"].includes(s.code)).length,2);
   assert.equal(verified.source.retainedBootstrapDerivation.sites.filter(s=>s.code==="checkpoint-read-rejection").length,8);
   assert.deepEqual(await readFile(join(control,"measurement.json")),measurementBytes);
@@ -47,6 +48,10 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   assert.deepEqual(await readFile(join(result.output,"bundle/assets/engine.wasm")),wasm);
   const tracedPath=join(result.output,"bundle/assets/main.js"),tracedBytes=await readFile(tracedPath);
   const derivedBytes=await readFile(result.measurementPath);
+  const forgedCapture=structuredClone(verified.source);forgedCapture.retainedBootstrapDerivation.checkpointCapture=false;
+  const forgedCaptureBytes=Buffer.from(JSON.stringify(forgedCapture));await writeFile(result.measurementPath,forgedCaptureBytes);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedCaptureBytes)}),/outside bootstrap trace changed/u);
+  await writeFile(result.measurementPath,derivedBytes);
   const forgedPredicates=structuredClone(verified.source);forgedPredicates.retainedBootstrapDerivation.checkpointPredicates=true;
   const forgedPredicatesBytes=Buffer.from(JSON.stringify(forgedPredicates));await writeFile(result.measurementPath,forgedPredicatesBytes);
   await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedPredicatesBytes)}),/require validation/u);
@@ -57,7 +62,7 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   await writeFile(result.measurementPath,derivedBytes);
   const forgedReader=structuredClone(verified.source);forgedReader.retainedBootstrapDerivation.checkpointReader=false;
   const forgedReaderBytes=Buffer.from(JSON.stringify(forgedReader));await writeFile(result.measurementPath,forgedReaderBytes);
-  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedReaderBytes)}),/outside bootstrap trace changed/u);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedReaderBytes)}),/capture requires reader tracing/u);
   await writeFile(result.measurementPath,derivedBytes);
   const forgedInput=structuredClone(verified.source);forgedInput.retainedBootstrapDerivation.inputRoutes=false;
   const forgedInputBytes=Buffer.from(JSON.stringify(forgedInput));await writeFile(result.measurementPath,forgedInputBytes);

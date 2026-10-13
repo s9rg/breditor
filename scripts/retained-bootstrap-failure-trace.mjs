@@ -46,7 +46,7 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointCapture=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
@@ -54,6 +54,8 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   assert.equal(typeof checkpointReader,"boolean");
   assert.equal(typeof checkpointValidation,"boolean");
   assert.equal(typeof checkpointPredicates,"boolean");
+  assert.equal(typeof checkpointCapture,"boolean");
+  assert.ok(!checkpointCapture||checkpointReader,"checkpoint capture requires reader tracing");
   assert.ok(!checkpointPredicates||checkpointValidation,"checkpoint predicates require validation tracing");
   assert.ok(!checkpointValidation||checkpointReader,"checkpoint validation requires reader tracing");
   assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
@@ -180,7 +182,9 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
         const fields=names.filter(name=>!inside||name!==raw).map(name=>`${JSON.stringify(name)}:${name}`);
         if(inside&&names.includes(raw))fields.push(`rawValueType:typeof ${raw},rawValueUtf16Length:typeof ${raw}==="string"?${raw}.length:null`);
         const original=code.slice(node.start,node.end),stage=`checkpoint-read:${node.start}`;
-        edits.push({start:node.start,end:node.end,original,replacement:`(${helper}(${JSON.stringify(stage)},"checkpoint-read-rejection",{${fields.join(",")}}),${original})`});
+        const capture=checkpointCapture&&inside&&names.includes(raw)
+          ?`${helper}Capture(${JSON.stringify(stage)},${raw},${reader.params[0].name}),`:"";
+        edits.push({start:node.start,end:node.end,original,replacement:`(${capture}${helper}(${JSON.stringify(stage)},"checkpoint-read-rejection",{${fields.join(",")}}),${original})`});
         sites.push({stage,start:node.start,end:node.end,code:"checkpoint-read-rejection",names,redactedRawValue:inside&&names.includes(raw)});
       }
       children(node).forEach(child=>traceReader(child,[...ancestors,node]));
@@ -335,6 +339,12 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     prefix+=`function ${helper}Input(stage,value){${helper}(stage,"beforeinput-result",{result:value});return value;}\n`;
   }
   if(checkpointPredicates)prefix+=`function ${helper}Predicate(stage,value){if(!value)${helper}(stage,"checkpoint-predicate-rejection",{result:value});return value;}\n`;
+  if(checkpointCapture)prefix+=`function ${helper}Capture(stage,value,expected){try{
+    if(typeof value!=="string"||value.length===0||value.length>16777216||Object.getOwnPropertyDescriptor(globalThis,"__breditorRejectedCheckpointInput"))return;
+    const lineage=Object.getOwnPropertyDescriptor(expected,"lineage"),revision=Object.getOwnPropertyDescriptor(expected,"revision");
+    if(!lineage||!("value" in lineage)||typeof lineage.value!=="string"||!revision||!("value" in revision)||typeof revision.value!=="string")return;
+    Object.defineProperty(globalThis,"__breditorRejectedCheckpointInput",{configurable:true,value:Object.freeze({format:"breditor/rejected-checkpoint-input",formatVersion:1,stage,checkpointJson:value,snapshot:Object.freeze({lineage:lineage.value,revision:revision.value})})});
+  }catch{}}\n`;
   edits.push({start:0,end:0,original:"",replacement:prefix});
   edits.sort((a,b)=>b.start-a.start);
   let traced=code;
