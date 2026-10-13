@@ -86,3 +86,21 @@ test("checkpoint trace distinguishes reader rejection and snapshot mismatch with
   assert.throws(()=>traceRetainedBootstrapFailures(source+boundary+boundary.replaceAll("checkpointExport","otherExport"),{checkpointExports:true}),/ambiguous/u);
   assert.throws(()=>traceRetainedBootstrapFailures(source+boundary,{checkpointExports:"yes"}));
 });
+
+test("input route trace preserves receivers, call counts and result identity without extra getters",()=>{
+  const route='class Router{#composition;#clipboard;#ordinary;#baseValue;constructor(c,p,o,b){this.#composition=c;this.#clipboard=p;this.#ordinary=o;this.#baseValue=b;}#base(){return this.#baseValue;}#after(value,route){return value;}run(event){return this.#route(event);}#route(event){const c=this.#composition.handleBeforeInput(event);if(c.kind!=="ordinary")return c;const p=this.#clipboard.handleBeforeInput(event);if(p.kind!=="ordinary")return p;const b=this.#base();if(b===null)return;return this.#after(this.#ordinary.handleBeforeInput(event,b.rendered,b.delivery),"beforeinput");}}';
+  const traced=traceRetainedBootstrapFailures(source+route,{inputRoutes:true}),logs=[];
+  const Router=Function("error","console",traced.code+";return Router;")(code=>({code}),{error:(...args)=>logs.push(args)});
+  let calls=0,getters=0;const event={},rendered={},delivery={};
+  const ordinary={kind:"handled",defaultPrevented:true,submission:{status:"completed"},get projection(){getters++;throw Error("no extra read");}};
+  // Each port checks its actual receiver independently.
+  function port(value){const p={handleBeforeInput(e,...rest){assert.equal(this,p);assert.equal(e,event);calls++;if(value===ordinary)assert.deepEqual(rest,[rendered,delivery]);return value;}};return p;}
+  const router=new Router(port({kind:"ordinary"}),port({kind:"ordinary"}),port(ordinary),{rendered,delivery});
+  assert.equal(router.run(event),ordinary);assert.equal(calls,3);assert.equal(logs.length,4);assert.equal(getters,0);
+  const blocked={kind:"blocked",reason:"selectionUnavailable",defaultPrevented:true};
+  const stopped=new Router(port(blocked),port({kind:"ordinary"}),port(ordinary),null);
+  assert.equal(stopped.run(event),blocked);assert.equal(calls,4);assert.equal(logs.length,5);
+  const captured=JSON.parse(logs.at(-1)[1]);assert.equal(captured.bindings.result.fields.reason.value,"selectionUnavailable");
+  assert.throws(()=>traceRetainedBootstrapFailures(source,{inputRoutes:true}),/route missing/u);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+route,{inputRoutes:"yes"}));
+});

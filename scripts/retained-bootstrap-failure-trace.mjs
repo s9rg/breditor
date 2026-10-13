@@ -46,10 +46,11 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
+  assert.equal(typeof inputRoutes,"boolean");
   assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
   assert.ok(!code.includes(helper),"retained bootstrap already traced");
   const parsed=parseSync("retained-bootstrap.js",code);assert.deepEqual(parsed.errors,[]);
@@ -82,6 +83,33 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   countWrites(parsed.program,[]);
   assert.ok([...writes.values()].every(count=>count===1),"bootstrap error binding is reassigned");
   const edits=[],sites=[];
+  if(inputRoutes) {
+    const candidates=[];
+    function callsWithin(node,found=[]) {
+      if(node.type==="CallExpression"&&node.callee?.type==="MemberExpression"&&node.callee.property?.name==="handleBeforeInput")found.push(node);
+      children(node).forEach(child=>callsWithin(child,found));return found;
+    }
+    function findRoutes(node) {
+      if(node.type==="MethodDefinition"&&node.key.type==="PrivateIdentifier"&&callsWithin(node.value.body).length===3)candidates.push(node);
+      children(node).forEach(findRoutes);
+    }
+    findRoutes(parsed.program);assert.equal(candidates.length,1,"beforeinput route missing or ambiguous");
+    const fn=candidates[0],calls=callsWithin(fn.value.body),bases=[];
+    function findBase(node) {
+      if(node.type==="VariableDeclarator"&&node.init?.type==="CallExpression"&&node.init.arguments.length===0&&
+        node.init.callee?.type==="MemberExpression"&&node.init.callee.object?.type==="ThisExpression"&&
+        node.init.callee.property?.type==="PrivateIdentifier")bases.push(node.init);
+      children(node).forEach(findBase);
+    }
+    findBase(fn.value.body);assert.equal(bases.length,1,"beforeinput delivery base missing or ambiguous");
+    for(const [index,node] of [...calls,...bases].entries()) {
+      if(index<3)assert.equal(node.arguments.length,index===2?3:1,"beforeinput call shape changed");
+      const kind=["beforeinput-composition","beforeinput-clipboard","beforeinput-ordinary","beforeinput-base"][index];
+      const original=code.slice(node.start,node.end),stage=`${kind}:${node.start}`;
+      edits.push({start:node.start,end:node.end,original,replacement:`${helper}Input(${JSON.stringify(stage)},${original})`});
+      sites.push({stage,start:node.start,end:node.end,code:kind});
+    }
+  }
   if(checkpointExports) {
     const candidates=[];
     const hasMember=(node,name)=>node.type==="MemberExpression"&&node.property?.name===name
@@ -177,7 +205,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   }
   visit(parsed.program,[]);assert.ok(sites.length>=2&&sites.length<=128,"bootstrap exits missing or unexpected");
   if(ownerFaults)assert.ok(sites.some(site=>site.code==="toolbarDispatchFailed"),"owner fault sites missing");
-  let prefix=ownerFaults||checkpointExports?`function ${helper}(stage,code,bindings){try{
+  let prefix=ownerFaults||checkpointExports||inputRoutes?`function ${helper}(stage,code,bindings){try{
     const summarize=(value,depth=0)=>{
       const result={type:typeof value};
       if(value===null||typeof value==="boolean"||typeof value==="number")result.value=value;
@@ -196,6 +224,10 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     console.error("breditor retained owner/bootstrap rejection",JSON.stringify({stage,code,bindings:values}).slice(0,4096));
   }catch{}}\n`:`function ${helper}(stage,code){try{console.error("breditor retained bootstrap rejection",JSON.stringify({stage,code}))}catch{}}\n`;
   if(checkpointExports)prefix=prefix.replace('"actionState","projection"','"actionState","projection","error","checkpoint","snapshot","lineage","revision"');
+  if(inputRoutes) {
+    prefix=prefix.replace('"status","kind","operation"','"defaultPrevented","inputType","outcome","status","kind","operation"');
+    prefix+=`function ${helper}Input(stage,value){${helper}(stage,"beforeinput-result",{result:value});return value;}\n`;
+  }
   edits.push({start:0,end:0,original:"",replacement:prefix});
   edits.sort((a,b)=>b.start-a.start);
   let traced=code;

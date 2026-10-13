@@ -101,7 +101,8 @@ try {
       try {result.fixtureState = await readFixtureFailureState(page);}
       catch (snapshotError) {result.fixtureState = {snapshotError: String(snapshotError)};}
     } finally {await browser?.close(); await save();}
-    console.log(JSON.stringify({run, status: result.status, diagnostics: result.diagnostics}));
+    // Full diagnostics remain in replay.json; progress must not dump fixture data.
+    console.log(JSON.stringify({run, status: result.status, diagnosticCount: result.diagnostics.length}));
     if (result.status === "failed") break;
   }
   await verifyAssets();

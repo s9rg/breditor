@@ -176,6 +176,23 @@
     "browserLog": "/private/tmp/breditor-tier-observation-rACD0K/traced-browser.log",
     "scope": "Use combined cold owner/checkpoint trace under the requested controls which reproduced the checkpoint failure. Separate log; original failing evidence preserved. Not shipping/performance qualification or a fix."
   },
+  "inputRouteTrace": {
+    "record": "target/nested-list-reproductions/trace-pkuVzx/measurement.json",
+    "sha256": "7ce3e890d553383c6d291d533c51b4ecc5304876d7a9bb93e8adc127d4e481ff",
+    "sites": 39,
+    "inputRouteSites": 4,
+    "rebuilt": false,
+    "remangled": false,
+    "originalControlModified": false,
+    "fullScriptTestsPassed": 266,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "firstReplay": {"record":"target/nested-list-reproductions/trace-pkuVzx/exact-replay-pztyEQ/replay.json","sha256":"13e2847d4b53e3c1a140d425fb3d02bfb22a4607380d37c4062b6824be8128d6","status":"passed","cases":90,"freshProcesses":10,"diagnosticsPerProcess":40},
+    "secondReplay": {"record":"target/nested-list-reproductions/trace-pkuVzx/exact-replay-FRClvF/replay.json","sha256":"250995896bf8c25c9d36e2deab3b4a05abe32ce0cf73ba07620874565fb42f38","status":"failed","exitCode":1,"retained":"target/nested-list-reproductions/failure-hSPtzl","browserLogSha256":"8142e93d8d1759c8e132ca39bf0bd365009d6fcb333ef1fdfcd2b7c45975b2b1"},
+    "capturedFailure": "Second process, 500 items, repetition 2, Undo checkpoint export. Cold checkpoint-reader:656058 observed an owned result with ok=false, error kind boundary and code session_checkpoint.invalid_wasm_view. Before/after owner snapshots both lineage perf-500-2, revision 3. The preceding ordinary input reported handled, completed submission, delivered sequence and committed action.",
+    "nextBoundary": "Checkpoint reader guard/validation/cleanup rejection, rather than outer export snapshot mismatch. Exact reader rejection still unknown; no runtime change selected.",
+    "scope": "Four existing beforeinput handoff results observed once, preserving receivers and exact returned identity. Logs successful routes too and changes diagnostic call layout; not timing or release evidence. Own data descriptors only, accessors skipped. Forged option/browser metadata rejected. Full logs retained in replay.json; progress output now prints counts, not fixture data. Older trace-ObqNWE and trace-Fnf7ad provenance reverified."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",

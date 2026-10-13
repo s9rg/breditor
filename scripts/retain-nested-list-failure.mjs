@@ -82,7 +82,8 @@ export async function verifyFailureBundle(sourcePath, manifest) {
       assert.ok(derivation.ownerFaults===undefined||typeof derivation.ownerFaults==="boolean");
       assert.ok(derivation.smallRestoreChurn===undefined||typeof derivation.smallRestoreChurn==="boolean");
       assert.ok(derivation.checkpointExports===undefined||typeof derivation.checkpointExports==="boolean");
-      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,smallRestoreChurn:derivation.smallRestoreChurn===true,checkpointExports:derivation.checkpointExports===true});
+      assert.ok(derivation.inputRoutes===undefined||typeof derivation.inputRoutes==="boolean");
+      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,smallRestoreChurn:derivation.smallRestoreChurn===true,checkpointExports:derivation.checkpointExports===true,inputRoutes:derivation.inputRoutes===true});
       assert.deepEqual(source.diagnosticWorkload,expected.diagnosticWorkload,"diagnostic workload changed");
       assert.deepEqual(tracedScript, Buffer.from(expected.code), "bytes outside bootstrap trace changed");
       assert.deepEqual(derivation.sites, expected.sites, "bootstrap trace sites changed");

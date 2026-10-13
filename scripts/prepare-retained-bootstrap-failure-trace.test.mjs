@@ -11,7 +11,7 @@ const hash=value=>createHash("sha256").update(value).digest("hex");
 for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivation preserves control and rejects coordinated changes outside trace`,async()=>{
   const root=await realpath(await mkdtemp(join(tmpdir(),"breditor-bootstrap-trace-test-")));
   const fixture=join(root,"original");await mkdir(join(fixture,"bundle/assets"),{recursive:true});
-  const script='const a=error(`engine_bootstrap.invalid_wasm_view`),b=error("engine_bootstrap.invalid_initial_projection");function run(x){if(x)return Object.freeze({ok:false,error:a});return Object.freeze({ok:!1,error:b});}function failure(e){return {ok:false,error:e};}function exportCheckpoint(e,t,n){if(!e.ok)return failure(e.error);const r=e.checkpoint;return t!==n?failure("mismatch"):Object.freeze({ok:true,value:r.checkpointJson});}';
+  const script='const a=error(`engine_bootstrap.invalid_wasm_view`),b=error("engine_bootstrap.invalid_initial_projection");function run(x){if(x)return Object.freeze({ok:false,error:a});return Object.freeze({ok:!1,error:b});}function failure(e){return {ok:false,error:e};}function exportCheckpoint(e,t,n){if(!e.ok)return failure(e.error);const r=e.checkpoint;return t!==n?failure("mismatch"):Object.freeze({ok:true,value:r.checkpointJson});}class Router{#c;#p;#o;#base(){return null;}#after(v,r){return v;}#route(e){const c=this.#c.handleBeforeInput(e);if(c.kind!=="ordinary")return;const p=this.#p.handleBeforeInput(e);if(p.kind!=="ordinary")return;const b=this.#base();if(b!==null)this.#after(this.#o.handleBeforeInput(e,b.rendered,b.delivery),"beforeinput");}}';
   const html="fixture html",wasm=Buffer.from([0,97,115,109]);
   await writeFile(join(fixture,"bundle/index.html"),html);
   await writeFile(join(fixture,"bundle/assets/main.js"),script);
@@ -30,13 +30,14 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
     await assert.rejects(prepareRetainedBootstrapTrace(join(control,"measurement.json"),join(root,"retained")),/sole recorded WebKit failure/u);
     await writeFile(join(control,"measurement.json"),measurementBytes);await writeFile(controlManifestPath,originalManifest);
   }
-  const result=await prepareRetainedBootstrapTrace(join(control,"measurement.json"),join(root,"retained"),{checkpointExports:true});
+  const result=await prepareRetainedBootstrapTrace(join(control,"measurement.json"),join(root,"retained"),{checkpointExports:true,inputRoutes:true});
   const manifestPath=join(result.output,"retention.json"),manifestBytes=await readFile(manifestPath),manifest=JSON.parse(manifestBytes);
   const verified=await verifyFailureBundle(result.measurementPath,manifest);
   assert.equal(verified.source.releaseQualified,false);
   assert.equal(verified.source.status,"prepared-diagnostic-only");
   assert.deepEqual(verified.source.measurements,[]);
   assert.equal(verified.source.retainedBootstrapDerivation.checkpointExports,true);
+  assert.equal(verified.source.retainedBootstrapDerivation.inputRoutes,true);
   assert.equal(verified.source.retainedBootstrapDerivation.sites.filter(s=>s.code.startsWith("checkpoint-")).length,2);
   assert.deepEqual(await readFile(join(control,"measurement.json")),measurementBytes);
   assert.equal(await readFile(join(control,"bundle/assets/main.js"),"utf8"),script);
@@ -44,6 +45,10 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   assert.deepEqual(await readFile(join(result.output,"bundle/assets/engine.wasm")),wasm);
   const tracedPath=join(result.output,"bundle/assets/main.js"),tracedBytes=await readFile(tracedPath);
   const derivedBytes=await readFile(result.measurementPath);
+  const forgedInput=structuredClone(verified.source);forgedInput.retainedBootstrapDerivation.inputRoutes=false;
+  const forgedInputBytes=Buffer.from(JSON.stringify(forgedInput));await writeFile(result.measurementPath,forgedInputBytes);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedInputBytes)}),/outside bootstrap trace changed/u);
+  await writeFile(result.measurementPath,derivedBytes);
   if(browserName==="all") {
     assert.equal(verified.source.retainedBootstrapDerivation.replayBrowser,"webkit");
     const forged=structuredClone(verified.source);forged.retainedBootstrapDerivation.replayBrowser="chromium";
