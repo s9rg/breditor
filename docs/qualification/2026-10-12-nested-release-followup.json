@@ -730,6 +730,24 @@
     "releaseQualified": false,
     "scope": "Verification continuation only. No runtime edits, default artifact rebuild, push or publication. Historical WebKit fault, physical browser/input qualification and accepted size/performance budgets remain open."
   },
+  "combinedPredicateAndContractCapture": {
+    "date": "2026-10-13",
+    "sourceCheckpoint": "0148a7b",
+    "sourceFailure": "target/nested-list-reproductions/failure-exsfE3/measurement.json",
+    "measurement": "target/nested-list-reproductions/trace-ukN0sq/measurement.json",
+    "measurementSha256": "0bbd941ecb40b9c17e468f5c5d689f08a903643422eec80955dcf5fd637e92f3",
+    "replay": "target/nested-list-reproductions/trace-ukN0sq/exact-replay-reDf7D/replay.json",
+    "replaySha256": "1c4093ecb3ce1afdc5f372638dc4bbc54bba0cc854f0bb519fcb011486714366",
+    "exitCode": 0,
+    "freshWebKitSessions": 10,
+    "casesPassed": 90,
+    "pageErrors": 0,
+    "rejectedInputCaptured": false,
+    "traceContractTestsPassed": 13,
+    "newRegressionCoverage": "Existing predicate regression now also combines reader/validation/predicate tracing with checkpoint and contract capture. All three rejection positions and successful validation retain single evaluation, short-circuit order, one take, silent success and console payload redaction; rejection retains an independent frozen contract copy.",
+    "faultResolved": false,
+    "scope": "One bounded changed diagnostic experiment: combines previously separate predicate-result and input/contract capture evidence on retained failing bytes. Diagnostic call layout can affect reproduction; no root cause or runtime fix established, and no unchanged follow-on soak started. Shipping runtime unchanged."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
