@@ -2,7 +2,8 @@
 
 Status: implemented behind experimental Rust/Wasm features and a separate private
 `@breditor/experimental-nested-lists` package. Generated-Wasm, integrated-browser
-and installed-package automated checks pass; this is not release readiness.
+and short installed-package automated checks pass, but the latest packed stress
+run failed. This is not release readiness.
 Default shipping bundles and the existing flat-list package remain unchanged.
 The historical intermittent WebKit fault is unresolved.
 
@@ -10,14 +11,21 @@ Remaining release gates: physical keyboard/IME and spoken screen-reader
 qualification; size and large-document performance qualification; resolution of
 the WebKit risk. Native clipboard observations cover the older `Skv8uP` archive
 in Safari and Chrome, within the scope recorded below; they do not qualify the
-latest `NcIyGX` candidate. The
+latest `ByyOGo` candidate. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
 
-Latest automated candidate: `target/nested-list-opt-in-NcIyGX`, archive SHA-256
-`68d8d72df843709df1dd52ed6bbdfdc23c280891edec1243bb0474a2d0093817`.
-Its installed Node/types and Chromium/Firefox/WebKit checks pass. Native
-qualification has not transferred to this candidate.
+Latest automated candidate: `target/nested-list-opt-in-ByyOGo`, archive SHA-256
+`b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e`.
+Its installed Node/types and short Chromium/Firefox/WebKit checks pass. Independent
+packed stress failed during WebKit restore; a separate diagnostic replay failed
+during Undo. Passing subsequent replays do not resolve either retained failure.
+The [live capability admission record](qualification/2026-10-12-live-word-capability-admission.json)
+separates the deterministic capability fix from these unresolved faults.
+The [release follow-up](qualification/2026-10-12-nested-release-followup.json)
+records current size and partial keyboard observations. Full native qualification
+has not transferred to this candidate. Standard `npm run verify:release` covers
+the default shipping path; its success alone cannot qualify this opt-in archive.
 
 Most recent archive with native observations: `target/nested-list-opt-in-Skv8uP`, archive SHA-256
 `2a6e34b69ab028fc8f2e20327b2581baef4e531adc1461a133dbabe1548b3af7`.

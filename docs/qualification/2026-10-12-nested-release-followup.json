@@ -41,6 +41,13 @@
     "copyCut": "not-tested: clipboard-overwrite permission pending",
     "scope": "Partial UI observation only, not canonical checkpoint or full native qualification. Agent-created test tab closed; unrelated user tab left unchanged."
   },
+  "releaseBoundaryFollowup": {
+    "tests": "node --test --test-reporter=dot scripts/verify-release.test.mjs scripts/retain-nested-list-failure.test.mjs",
+    "exitCode": 0,
+    "passed": 14,
+    "documentation": "Nested-list status now names the current ByyOGo archive and explicitly records independent restore/Undo failures. Root development instructions distinguish default shipping verification from opt-in nested release qualification.",
+    "scope": "Tool contracts and documentation only; no new release pass or runtime fix."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false

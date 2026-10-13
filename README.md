@@ -1458,6 +1458,10 @@ It includes native Rust, real Wasm-target tests, ABI comparison, TypeScript,
 packed consumers, a fresh production build and size check, and both browser
 matrices. It never publishes packages. `npm run verify:release -- --dry-run`
 prints the plan without running checks; it is not a verification result.
+This command qualifies the default shipping path, not the separate experimental
+nested-list archive. Nested lists additionally require their exact installed
+archive checks, stress/fault resolution, native qualification, and accepted
+size/performance gates described in [Nested lists](docs/NESTED_LISTS.md).
 Individual setup/check commands remain below for targeted development.
 
 ```sh
