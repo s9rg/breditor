@@ -46,6 +46,35 @@
     "replaySha256": "128535b88332459fd5cadfc450b470ce1191e6d15680b98cdb2836aad595352a",
     "result": "Ten fresh WebKit processes / 90 cases passed, diagnostics zero. Comparison only, not release qualification."
   },
+  "immediateFailureExitFollowup": {
+    "option": "--owner-immediate-exits",
+    "default": false,
+    "reason": "The owner previously collapsed multiple immediate-delivery failures into toolbarDispatchFailed, hiding which preflight, lease, or submission exit was taken.",
+    "scope": "A private method identified by acquireLease, submitLeased and releaseLease. Only returned Object.freeze({status: failed}) leaves log; successful paths, cached failure values and nested functions are not instrumented.",
+    "semantics": "No new generated/adapter/queue reads or retries. Existing return identity, short circuiting, receiver, release calls and exceptions are preserved. Cold logging contains descriptor/logging failures and summarizes bounded existing bindings without invoking accessors.",
+    "retainedFailureSites": 9,
+    "failureSiteMapping": {
+      "652905": "canonical host preflight rejected",
+      "653203": "queue already failed before lease acquisition",
+      "653249": "preflight threw",
+      "653330": "lease acquisition threw",
+      "653446": "lease unavailable and queue failure present",
+      "653492": "failure inspection after unavailable lease threw",
+      "653701": "completed submission but lease release failed while owner live",
+      "653804": "queue returned failed submission",
+      "653957": "remaining unclassified delivery outcome"
+    },
+    "tests": {"newContractTestsPassed": 6, "fullScriptPassed": 289, "fullScriptSkipped": 3, "fullScriptFailed": 0},
+    "previousTracesVerified": ["trace-PRvatM: 64 sites, exact regeneration", "trace-mNAibg: 79 sites, exact regeneration"],
+    "trace": "target/nested-list-reproductions/trace-G6U8DK/measurement.json",
+    "traceSha256": "30555c17bd38e1771e8249a3431e5e95a8cfbf25819b68ae24f00ca1e79f6cf5",
+    "originalScriptSha256": "028f26593edffc790b980337eb4febe1326cbed3d7331bc772d1358f16c601df",
+    "tracedScriptSha256": "c8c65a9098dc4132a49dc3f42460a90ddbc951d1d646a1706c1eee64ac66288a",
+    "replay": "target/nested-list-reproductions/trace-G6U8DK/exact-replay-kIbMRU/replay.json",
+    "replaySha256": "258fed2fe8ca581facb257948dab48ea400f8e0f7c0ff13f6492a9d3890e5629",
+    "result": "Ten fresh Playwright WebKit 26.5 processes / 90 cases passed, diagnostics and page errors zero. Same retained Wasm and workload; no rebuild, remangle or JavaScript tier override.",
+    "conclusion": "The next recurrence can distinguish these nine immediate exits. No failure recurred in this batch, so no production repair or release qualification is inferred."
+  },
   "limitations": [
     "Retained historical binaries, not proof of a defect or repair in the current qualified archive.",
     "Root cause remains unknown; no workaround, validation weakening, engine-tier change or production patch justified.",

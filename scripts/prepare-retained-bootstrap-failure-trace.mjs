@@ -9,8 +9,9 @@ import {traceRetainedBootstrapFailures} from "./retained-bootstrap-failure-trace
 const hash=value=>createHash("sha256").update(value).digest("hex");
 
 /** Preserve original control and full provenance in a separate trace tree. */
-export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointPredicateExits=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
+export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot,{ownerFaults=false,ownerImmediateExits=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointPredicateExits=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
+  assert.equal(typeof ownerImmediateExits,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
   assert.equal(typeof inputRoutes,"boolean");
@@ -35,7 +36,7 @@ export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot,{ow
   assert.equal(scripts.length,1);
   const asset=scripts[0],original=files[`bundle/assets/${asset}`],code=original.toString("utf8");
   assert.deepEqual(Buffer.from(code),original,"script is not lossless UTF-8");
-  const traced=traceRetainedBootstrapFailures(code,{ownerFaults,smallRestoreChurn,checkpointExports,inputRoutes,checkpointReader,checkpointValidation,checkpointPredicates,checkpointStateComponents,checkpointPredicateExits,checkpointCapture,checkpointContractCapture,ownerReasons}),bytes=Buffer.from(traced.code);
+  const traced=traceRetainedBootstrapFailures(code,{ownerFaults,ownerImmediateExits,smallRestoreChurn,checkpointExports,inputRoutes,checkpointReader,checkpointValidation,checkpointPredicates,checkpointStateComponents,checkpointPredicateExits,checkpointCapture,checkpointContractCapture,ownerReasons}),bytes=Buffer.from(traced.code);
   await mkdir(retentionRoot,{recursive:true});
   const output=await mkdtemp(join(await realpath(retentionRoot),"trace-"));
   await mkdir(join(output,"bundle/assets"),{recursive:true});
@@ -47,7 +48,7 @@ export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot,{ow
     await writeFile(join(output,name),value,{flag:"wx"});
   const derivation={sourcePath,sourceMeasurementSha256:hash(files["measurement.json"]),
     sourceRetentionSha256:hash(originalRetention),asset,originalAssetSha256:hash(original),
-    tracedAssetSha256:hash(bytes),sites:traced.sites,ownerFaults,smallRestoreChurn,checkpointExports,inputRoutes,checkpointReader,checkpointValidation,checkpointPredicates,checkpointStateComponents,checkpointPredicateExits,checkpointCapture,checkpointContractCapture,ownerReasons,
+    tracedAssetSha256:hash(bytes),sites:traced.sites,ownerFaults,ownerImmediateExits,smallRestoreChurn,checkpointExports,inputRoutes,checkpointReader,checkpointValidation,checkpointPredicates,checkpointStateComponents,checkpointPredicateExits,checkpointCapture,checkpointContractCapture,ownerReasons,
     ...(source.browserName==="all"?{replayBrowser:"webkit"}:{}),rebuilt:false,remangled:false,originalControlModified:false};
   const measurement={...source,status:"prepared-diagnostic-only",fixture:output,measurements:[],
     diagnosticInstrumentation:true,releaseQualified:false,releasePerformanceQualified:false,
@@ -65,13 +66,13 @@ export async function prepareRetainedBootstrapTrace(sourcePath,retentionRoot,{ow
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const flags=process.argv.slice(3);
-  assert.ok(flags.every(flag=>["--owner-faults","--small-restore-churn","--checkpoint-exports","--input-routes","--checkpoint-reader","--checkpoint-validation","--checkpoint-predicates","--checkpoint-state-components","--checkpoint-predicate-exits","--checkpoint-capture","--checkpoint-contract-capture","--owner-reasons"].includes(flag))&&new Set(flags).size===flags.length,
-    "usage: node scripts/prepare-retained-bootstrap-failure-trace.mjs <retained measurement.json> [--owner-faults] [--small-restore-churn] [--checkpoint-exports] [--input-routes] [--checkpoint-reader] [--checkpoint-validation] [--checkpoint-predicates] [--checkpoint-state-components] [--checkpoint-predicate-exits] [--checkpoint-capture] [--checkpoint-contract-capture] [--owner-reasons]");
+  assert.ok(flags.every(flag=>["--owner-faults","--owner-immediate-exits","--small-restore-churn","--checkpoint-exports","--input-routes","--checkpoint-reader","--checkpoint-validation","--checkpoint-predicates","--checkpoint-state-components","--checkpoint-predicate-exits","--checkpoint-capture","--checkpoint-contract-capture","--owner-reasons"].includes(flag))&&new Set(flags).size===flags.length,
+    "usage: node scripts/prepare-retained-bootstrap-failure-trace.mjs <retained measurement.json> [--owner-faults] [--owner-immediate-exits] [--small-restore-churn] [--checkpoint-exports] [--input-routes] [--checkpoint-reader] [--checkpoint-validation] [--checkpoint-predicates] [--checkpoint-state-components] [--checkpoint-predicate-exits] [--checkpoint-capture] [--checkpoint-contract-capture] [--owner-reasons]");
   assert.ok(process.argv[2]);
   const repository=await realpath(fileURLToPath(new URL("../",import.meta.url)));
   const root=join(repository,"target/nested-list-reproductions"),source=await realpath(resolve(process.argv[2]));
   assert.match(relative(root,source),/^(?:failure|trace)-[a-zA-Z0-9]+\/measurement\.json$/u);
-  const result=await prepareRetainedBootstrapTrace(source,root,{ownerFaults:flags.includes("--owner-faults"),smallRestoreChurn:flags.includes("--small-restore-churn"),checkpointExports:flags.includes("--checkpoint-exports"),inputRoutes:flags.includes("--input-routes"),checkpointReader:flags.includes("--checkpoint-reader"),checkpointValidation:flags.includes("--checkpoint-validation"),checkpointPredicates:flags.includes("--checkpoint-predicates"),checkpointStateComponents:flags.includes("--checkpoint-state-components"),checkpointPredicateExits:flags.includes("--checkpoint-predicate-exits"),checkpointCapture:flags.includes("--checkpoint-capture"),checkpointContractCapture:flags.includes("--checkpoint-contract-capture"),ownerReasons:flags.includes("--owner-reasons")});
+  const result=await prepareRetainedBootstrapTrace(source,root,{ownerFaults:flags.includes("--owner-faults"),ownerImmediateExits:flags.includes("--owner-immediate-exits"),smallRestoreChurn:flags.includes("--small-restore-churn"),checkpointExports:flags.includes("--checkpoint-exports"),inputRoutes:flags.includes("--input-routes"),checkpointReader:flags.includes("--checkpoint-reader"),checkpointValidation:flags.includes("--checkpoint-validation"),checkpointPredicates:flags.includes("--checkpoint-predicates"),checkpointStateComponents:flags.includes("--checkpoint-state-components"),checkpointPredicateExits:flags.includes("--checkpoint-predicate-exits"),checkpointCapture:flags.includes("--checkpoint-capture"),checkpointContractCapture:flags.includes("--checkpoint-contract-capture"),ownerReasons:flags.includes("--owner-reasons")});
   console.log(JSON.stringify({output:result.output,measurementPath:result.measurementPath,
     sites:result.derivation.sites.length,rebuilt:false,remangled:false}));
 }

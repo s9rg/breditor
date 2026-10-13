@@ -46,8 +46,9 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointPredicateExits=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,ownerImmediateExits=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointPredicateExits=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
+  assert.equal(typeof ownerImmediateExits,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
   assert.equal(typeof inputRoutes,"boolean");
@@ -360,16 +361,67 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
       edits.push({start:node.start,end:node.end,original:code.slice(node.start,node.end),replacement});
     diagnosticWorkload={variant:"small-restore-churn",sizes:[10],owners:300,expectedCases:300,warmupPreserved:true};
   }
-  function initializedBindings(ancestors,offset) {
+  function initializedBindings(ancestors,offset,includeDeclared=false) {
     const names=new Map();
     for(const scope of ancestors) {
       if(functions.has(scope.type))for(const parameter of scope.params)for(const name of boundNames(parameter))names.set(name,true);
       if(scope.type==="BlockStatement")for(const statement of scope.body)if(statement.type==="VariableDeclaration")
         for(const declaration of statement.declarations)for(const name of boundNames(declaration.id))
-          names.set(name,!!declaration.init&&declaration.init.end<=offset);
+          // A declaration without an initializer is initialized to undefined
+          // after its declarator. Only the new immediate-exit trace uses this;
+          // existing trace options must regenerate their original bytes.
+          names.set(name,includeDeclared?declaration.end<=offset:!!declaration.init&&declaration.init.end<=offset);
     }
     const ready=[...names].filter(([,ready])=>ready).map(([name])=>name);
     assert.ok(ready.length<=32);return ready;
+  }
+  if(ownerImmediateExits) {
+    // Locate the immediate queue boundary by all three lease operations, not
+    // by a minifier-selected private name. Do not cross nested functions.
+    const hasLeaseOperation=(node,name)=>node.type==="MemberExpression"&&node.property?.name===name||
+      children(node).some(child=>!functions.has(child.type)&&hasLeaseOperation(child,name));
+    const candidates=[];
+    function findImmediate(node) {
+      if(node.type==="MethodDefinition"&&node.key?.type==="PrivateIdentifier"&&
+        node.value.params.length===1&&node.value.params[0].type==="Identifier"&&
+        ["acquireLease","submitLeased","releaseLease"].every(name=>hasLeaseOperation(node.value.body,name)))candidates.push(node);
+      children(node).forEach(findImmediate);
+    }
+    findImmediate(parsed.program);
+    assert.equal(candidates.length,1,"owner immediate boundary missing or ambiguous");
+    const fn=candidates[0].value;
+    const returnedLeaf=(node,ancestors)=>{
+      let child=node;
+      for(const parent of [...ancestors].reverse()) {
+        if(parent.type==="ReturnStatement")return parent.argument===child;
+        const returned=parent.type==="ParenthesizedExpression"&&parent.expression===child||
+          parent.type==="ConditionalExpression"&&(parent.consequent===child||parent.alternate===child)||
+          parent.type==="SequenceExpression"&&parent.expressions.at(-1)===child||
+          parent.type==="LogicalExpression"&&parent.right===child;
+        if(!returned)return false;
+        child=parent;
+      }
+      return false;
+    };
+    function findFailed(node,ancestors) {
+      if(node!==fn&&functions.has(node.type))return;
+      if(node.type==="CallExpression"&&node.callee?.object?.name==="Object"&&
+        node.callee.property?.name==="freeze"&&node.arguments.length===1) {
+        const record=node.arguments[0];
+        if(returnedLeaf(node,ancestors)&&record?.type==="ObjectExpression"&&record.properties.length===1&&
+          record.properties[0].key?.name==="status"&&string(record.properties[0].value)==="failed") {
+          const names=initializedBindings(ancestors,node.start,true);
+          const original=code.slice(node.start,node.end),stage=`owner-immediate:${node.start}`;
+          const fields=names.map(name=>`${JSON.stringify(name)}:${name}`).join(",");
+          edits.push({start:node.start,end:node.end,original,
+            replacement:`(${helper}(${JSON.stringify(stage)},"owner-immediate-rejection",{${fields}}),${original})`});
+          sites.push({stage,start:node.start,end:node.end,code:"owner-immediate-rejection",names});
+        }
+      }
+      children(node).forEach(child=>findFailed(child,[...ancestors,node]));
+    }
+    const before=sites.length;findFailed(fn,[fn]);
+    assert.ok(sites.length>before,"owner immediate rejection exits missing");
   }
   function visit(node,ancestors) {
     const chain=[...ancestors,node];
@@ -402,7 +454,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   }
   visit(parsed.program,[]);assert.ok(sites.length>=2&&sites.length<=128,"bootstrap exits missing or unexpected");
   if(ownerFaults)assert.ok(sites.some(site=>site.code==="toolbarDispatchFailed"),"owner fault sites missing");
-  let prefix=ownerFaults||checkpointExports||inputRoutes||checkpointReader||ownerReasons?`function ${helper}(stage,code,bindings){try{
+  let prefix=ownerFaults||ownerImmediateExits||checkpointExports||inputRoutes||checkpointReader||ownerReasons?`function ${helper}(stage,code,bindings){try{
     const summarize=(value,depth=0)=>{
       const result={type:typeof value};
       if(value===null||typeof value==="boolean"||typeof value==="number")result.value=value;
