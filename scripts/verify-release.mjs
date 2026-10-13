@@ -5,6 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const repository = dirname(dirname(fileURLToPath(import.meta.url)));
+/** This pipeline builds default outputs, not the separately assembled nested archive. */
+export const releaseScope = "default-packages";
 
 /** Explicit argv avoids shell interpolation, including executable overrides. */
 export function releaseChecks(environment = process.env) {
@@ -57,13 +59,13 @@ export function runReleaseChecks(checks, run = spawnSync, report = console.log) 
         : Number.isInteger(result.status) && result.status > 0 ? result.status : 1;
     }
   }
-  report(`verify-release: all ${checks.length} gates passed; nothing published.`);
+  report(`verify-release: all ${checks.length} gates passed for default packages; opt-in nested lists, physical input and nested budget acceptance are not qualified; nothing published.`);
   return 0;
 }
 
 function main(args) {
   if (args.length === 1 && args[0] === "--help") {
-    console.log("Usage: node scripts/verify-release.mjs [--dry-run]\nRuns all local release checks; never publishes packages. --dry-run only prints the plan.");
+    console.log("Usage: node scripts/verify-release.mjs [--dry-run]\nRuns default-package release checks; never publishes packages. Opt-in nested lists, physical input and nested budget acceptance require separate qualification. --dry-run only prints the plan.");
     return 0;
   }
   if (args.length > 1 || (args.length === 1 && args[0] !== "--dry-run")) {
@@ -72,7 +74,7 @@ function main(args) {
   }
   const checks = releaseChecks();
   if (args[0] === "--dry-run") {
-    console.log(JSON.stringify({ executed: false, cwd: repository, checks }, null, 2));
+    console.log(JSON.stringify({ executed: false, scope: releaseScope, experimentalNestedListsQualified: false, cwd: repository, checks }, null, 2));
     return 0;
   }
   return runReleaseChecks(checks);

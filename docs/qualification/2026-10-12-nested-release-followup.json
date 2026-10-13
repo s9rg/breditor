@@ -633,6 +633,16 @@
     "filteredFocusedStatus": "existing session 5262 remains live; filtered harnesses do not qualify full integrations",
     "scope": "Regression and documentation only; runtime source and qualified candidate unchanged since ebeebe6. Sharing avoids duplicate descendant trees but does not eliminate retained proof metadata/synthetic root-reference arrays. No measured RSS/heap ceiling, memory-leak qualification, historical WebKit fix or release claim. Original native handles polled without timeout restart."
   },
+  "defaultReleaseCommandScopeGuard": {
+    "date": "2026-10-13",
+    "change": "Default release command success/help explicitly excludes opt-in nested archive, physical input and nested budget acceptance. Dry-run metadata declares scope=default-packages, experimentalNestedListsQualified=false and executed=false. Unknown --nested remains rejected; execution order, failure handling and gates unchanged.",
+    "releaseCommandContractTests": 11,
+    "releaseCommandContractExitCode": 0,
+    "fullScriptRegressionExitCode": 0,
+    "fullCoreStatus": "existing session 93438 remains live; full integration/doctest completion not claimed",
+    "filteredFocusedStatus": "existing session 5262 remains live; empty filtered harnesses not counted as qualification",
+    "scope": "Release-tool messaging/metadata and tests only; did not execute the default full release pipeline, alter shipping artifacts, weaken checks, approve budgets or qualify nested release. Production Rust/Wasm unchanged since ebeebe6; historical/native/latency gates remain open."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false

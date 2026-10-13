@@ -52,3 +52,5 @@ Builds only write isolated target artifacts. Default shipping bundles are not
 rebuilt. Size budgets, native input/assistive-technology checks and the historical
 intermittent WebKit fault remain release gates. Automated green checks do not
 establish native clipboard, physical IME or spoken VoiceOver support.
+The root `verify:release` command qualifies default package outputs only. Its
+success does not qualify this separately assembled archive or accept its budgets.

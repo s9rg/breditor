@@ -50,6 +50,8 @@ test("all successful stages run sequentially from the repository without a shell
   }, (message) => reports.push(message)), 0);
   assert.equal(calls, checks.length);
   assert.match(reports.at(-1), /all 17 gates passed/);
+  assert.match(reports.at(-1), /for default packages/);
+  assert.match(reports.at(-1), /opt-in nested lists, physical input and nested budget acceptance are not qualified/);
 });
 
 for (const [name, failure, expected] of [
@@ -75,11 +77,25 @@ test("dry-run is explicitly non-executing and rejects unknown options", () => {
   assert.equal(preview.status, 0);
   const plan = JSON.parse(preview.stdout);
   assert.equal(plan.executed, false);
+  assert.equal(plan.scope, "default-packages");
+  assert.equal(plan.experimentalNestedListsQualified, false);
   assert.equal(plan.cwd, repository);
   assert.equal(plan.checks.length, 17);
   const rejected = spawnSync(process.execPath, [script, "--skip-tests"], { encoding: "utf8" });
   assert.equal(rejected.status, 2);
   assert.match(rejected.stderr, /unknown argument/);
+});
+
+test("help and argument rejection cannot imply an opt-in nested release pass", () => {
+  const script = join(repository, "scripts/verify-release.mjs");
+  const help = spawnSync(process.execPath, [script, "--help"], {encoding: "utf8"});
+  assert.equal(help.status, 0);
+  assert.match(help.stdout, /default-package release checks/);
+  assert.match(help.stdout, /require separate qualification/);
+  const rejected = spawnSync(process.execPath, [script, "--nested"], {encoding: "utf8"});
+  assert.equal(rejected.status, 2);
+  assert.match(rejected.stderr, /unknown argument/);
+  assert.equal(/gates passed/.test(rejected.stdout), false);
 });
 
 test("a symlinked entry point still runs the gate instead of silently exiting", () => {
