@@ -1636,3 +1636,12 @@ version checks and no fallback. Ten fresh WebKit processes pass 900 owners and
 After a declaration-compatible version-lookup adjustment, bounded packed and
 legacy mode checks each pass ten fresh processes. These remain standalone raw
 getter controls, not editor/history reproduction or release qualification.
+
+A diagnostic-tool regression was also fixed: small-owner churn now admits the
+known three-owner retained control, as well as the original 30-owner control,
+while rejecting unknown counts. Fifteen tracing/provenance tests pass. A changed
+retained-bundle replay combines checkpoint predicate/input/contract capture with
+300 ten-item owner/recovery cases in each of ten fresh WebKit processes. All
+3,000 cases pass without diagnostics or a rejected checkpoint capture. This is
+instrumented evidence on the historical binary, not a fault fix or current
+release qualification; source Wasm was not rebuilt or substituted.

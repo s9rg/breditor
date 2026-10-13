@@ -297,7 +297,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     const loop=loops[0],ownerLoops=[];
     function findOwners(node) {
       if(node.type==="ForStatement"&&node.test?.type==="BinaryExpression"&&node.test.operator==="<"&&
-        node.test.right?.type==="Literal"&&node.test.right.value===30)ownerLoops.push(node);
+        node.test.right?.type==="Literal"&&[3,30].includes(node.test.right.value))ownerLoops.push(node);
       children(node).forEach(findOwners);
     }
     findOwners(loop.body);assert.equal(ownerLoops.length,1,"performance owner loop changed");
