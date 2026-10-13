@@ -1152,6 +1152,22 @@
     "pushed": false,
     "published": false
   },
+  "currentFullCoreStartupWaitObservation": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "fullCoreSession": 94976,
+    "cargoPid": 33655,
+    "testPid": 72733,
+    "testExecutable": "set_inline_format_cross_paragraph_contracts-eea13bad909a9e4b",
+    "observation": "Process remained live, sleeping, with zero recorded CPU time after roughly three minutes. One-second native sample found only _dyld_start at offset zero on the main thread, 96K physical footprint and no binary-image description; no Rust test frames were observed.",
+    "sample": "/private/tmp/breditor-test-72733-sample.txt",
+    "sampleExitCode": 0,
+    "interpretation": "Observed delay is before normal executable startup/test execution, not evidence that a Rust assertion or nested-list algorithm is hanging. Root cause of the startup wait is not established; do not infer security scanning, loader defect or test deadlock from this sample alone. Original command was neither killed nor restarted and remains live. Full-suite terminal success is not claimed.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
