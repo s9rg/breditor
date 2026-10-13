@@ -869,6 +869,19 @@
     "pushed": false,
     "published": false
   },
+  "reconstructionCacheStrictDocumentationGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "359bf9f",
+    "command": "RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked",
+    "session": 72283,
+    "exitCode": 0,
+    "crates": ["breditor-core", "breditor-wasm"],
+    "scope": "Strict documentation build for the current cache source passed with no warning allowances; not doctest execution or publication. Full native core session 26861 remains live with observed integration batches passing, so terminal native integration/doctest success is not claimed.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
