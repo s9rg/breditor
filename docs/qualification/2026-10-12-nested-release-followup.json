@@ -67,9 +67,14 @@
   "newCheckpointFailureReplay": {
     "session": 42969,
     "record": "target/nested-list-reproductions/failure-exsfE3/exact-replay-tgnYy5/replay.json",
-    "statusAtRecording": "running",
+    "statusAtRecording": "passed",
+    "sha256": "c33f2a2adf860c12df7c271cb768313a00eefe5ec6b1f48c2a9d0d6e0ea1126d",
+    "exitCode": 0,
+    "freshWebKitProcesses": 10,
+    "cases": 90,
     "rebuilt": false,
-    "addedInstrumentation": false
+    "addedInstrumentation": false,
+    "scope": "The exact failed ordinary-workload bytes passed this replay. Original checkpoint failure remains open. Next diagnostic must separate checkpoint-reader rejection from surrounding snapshot mismatch; no runtime workaround selected."
   },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
