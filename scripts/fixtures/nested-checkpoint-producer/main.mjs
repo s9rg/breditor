@@ -1,4 +1,4 @@
-// Real generated Rust/Wasm producer plus source validator; no editor/DOM routing.
+// Private layered diagnostic: generated Wasm through the public editor owner.
 import initialize,* as api from "@probe/wasm";
 import {sessionCheckpointJsonMatchesDurableContract,consumeWasmSessionCheckpoint} from "../../../packages/breditor-browser/src/wasm_session_checkpoint.ts";
 import {preflightNestedListWasmSemanticProfile,bootstrapNestedListWasmEngine} from "../../../packages/breditor-browser/src/wasm_engine_bootstrap.ts";
@@ -10,6 +10,7 @@ import {createInlineFormatRenderManifest} from "../../../packages/breditor-brows
 import {nestedListCommandRequest,preserveSelectionSync} from "../../../packages/breditor-browser/src/editor_command.ts";
 import {BreditorNestedListCommandQueue} from "../../../packages/breditor-browser/src/command_queue.ts";
 import {BreditorNestedListBrowserEventRouter} from "../../../packages/breditor-browser/src/browser_event_router.ts";
+import {BreditorBrowserEditor} from "../../../packages/breditor-browser/src/browser_editor.ts";
 
 const output=document.getElementById("result"),schema={name:"example/producer-validator",version:1};
 const properties=[
@@ -28,11 +29,35 @@ const formats=[{type:"breditor/strong",properties:{}},
   {type:"example/text-color",properties:{"example/rgb24":0x123456}}];
 const element=(type,children,properties={})=>({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
 const text=value=>({kind:"text",text:value,formats});
-let progress="initialization",checks=0,bootstrapChecks=0,adapterChecks=0,routerChecks=0,failureInput;
+let progress="initialization",checks=0,bootstrapChecks=0,adapterChecks=0,routerChecks=0,ownerChecks=0,failureInput;
 function assert(value,message){if(!value)throw Error(message);}
 function take(result,status,method){try{assert(result.status===status,`${method}: invalid result status`);const value=result[method]();assert(value!==undefined,`${method}: absent`);return value;}finally{result.free();}}
 function string(result){return take(result,"value","takeValue");}
 function command(engine,run){const observation=engine.observation();try{const result=run(observation);try{assert(result.status==="committed",`command: ${result.status}`);}finally{result.free();}}finally{observation.free();}}
+function renderManifest(){return createInlineFormatRenderManifest({recipes:[
+  {formatKind:"breditor/strong",element:"strong"},
+  {formatKind:"example/link",element:"a",classes:["breditor-link"],attributes:{kind:"safeLinkV1",hrefProperty:"example/href",openInNewWindowProperty:"example/open-in-new-window"}},
+  {formatKind:"example/text-color",element:"span",classes:["breditor-text-color"],attributes:{kind:"safeTextColorV1"}},
+]});}
+async function publicOwner(backup,items,repetition,middle){
+  const host=document.createElement("div"),toolbar=document.createElement("div");document.body.append(host,toolbar);let owner;
+  const options={host,label:"Nested owner isolation",wasm:api,semanticProfile:{formatVersion:5,bootstrapJson:JSON.stringify(bootstrap)},rendering:renderManifest(),toolbar:{host:toolbar},keyboard:{editing:"beforeinputPrimary",primaryModifier:"control",shortcuts:"enabled"}};
+  const open=async checkpoint=>{const result=await BreditorBrowserEditor.openNestedLists({...options,initialSessionCheckpointJson:checkpoint});assert(result.ok,"public owner restore failed");owner=result.editor;};
+  const check=(stage,cursor,suffix)=>{
+    progress=`${items}/${repetition}: owner ${stage}`;
+    assert(owner.getStatus().phase==="live","public owner faulted");
+    const result=owner.exportContent("sessionCheckpointJson");assert(result.ok,"public owner checkpoint failed");
+    assert(JSON.parse(result.value).cursor===cursor,"public owner cursor mismatch");
+    assert([...host.querySelectorAll("p")].filter(node=>node.textContent===`Grandchild ${middle}${suffix}`).length===1,"public owner text mismatch");ownerChecks++;return result.value;
+  };
+  const history=operation=>{const button=toolbar.querySelector(`[data-breditor-state-id="breditor/control-${operation}"]`);assert(button&&button.getAttribute("aria-disabled")==="false","public owner history disabled");button.click();};
+  try{
+    progress=`${items}/${repetition}: owner restore`;await open(backup);check("initial",0,"");
+    history("redo");check("redo",1,"X");history("undo");const restoredBackup=check("undo",0,"");
+    owner.dispose();owner=undefined;assert(host.childNodes.length===0&&toolbar.childNodes.length===0,"public owner disposal left DOM");
+    progress=`${items}/${repetition}: owner second restore`;await open(restoredBackup);history("redo");check("restored redo",1,"X");
+  }finally{owner?.dispose();host.remove();toolbar.remove();}
+}
 
 async function run(){
   await initialize();
@@ -97,11 +122,7 @@ async function run(){
         try{
           const read=consumeWasmSessionCheckpoint({lineage:bootstrapped.observation.snapshotLineage,revision:bootstrapped.observation.snapshotRevision},bootstrapped.engine.sessionCheckpointJson(),[bootstrapped.engine,bootstrapped.observation,bootstrapped.profileGeneration],{mode:"v7",schema:bootstrapped.profileDescriptor.schema,formats:bootstrapped.profileDescriptor.formats});
           assert(read.ok&&read.checkpoint.checkpointJson===backup,"forwarding owner checkpoint mismatch");bootstrapChecks++;
-          const manifest=createInlineFormatRenderManifest({recipes:[
-            {formatKind:"breditor/strong",element:"strong"},
-            {formatKind:"example/link",element:"a",classes:["breditor-link"],attributes:{kind:"safeLinkV1",hrefProperty:"example/href",openInNewWindowProperty:"example/open-in-new-window"}},
-            {formatKind:"example/text-color",element:"span",classes:["breditor-text-color"],attributes:{kind:"safeTextColorV1"}},
-          ]});
+          const manifest=renderManifest();
           renderer=new BreditorDomRenderer(compileBrowserPresentation(bootstrapped.profileGeneration,bootstrapped.profileDescriptor,manifest));
           const initial=renderer.renderNestedList(host,bootstrapped.projection);assert(initial.ok,"adapter initial render failed");rendered=initial.value.rendered;
           adapter=new BreditorNestedListWasmCommandAdapter(bootstrapped.engine,bootstrapped.observation,{durableMode:"v7",profileGeneration:bootstrapped.profileGeneration,profileDescriptor:bootstrapped.profileDescriptor,renderer,rendered,selectionBridge:bridge});
@@ -143,9 +164,10 @@ async function run(){
         restored=take(profile.createEngineFromSessionCheckpointJsonV7(backup),"engine","takeEngine");
         assert(check(restored,`${items}/${repetition}: restore`,0)===backup,"checkpoint bytes changed on restore");
         command(restored,o=>restored.redo(o,false));check(restored,`${items}/${repetition}: restored redo`,1);
+        await publicOwner(backup,items,repetition,middle);
       }finally{restored?.free();engine.free();}
     }
-    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7,contractChecks:checks*2,readerChecks:checks,bootstrapChecks,adapterChecks,routerChecks,runtimeContractCaptured:true});output.dataset.status="passed";
+    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7,contractChecks:checks*2,readerChecks:checks,bootstrapChecks,adapterChecks,routerChecks,ownerChecks,runtimeContractCaptured:true});output.dataset.status="passed";
   }finally{profile.free();}
 }
 void run().catch(error=>{output.textContent=JSON.stringify({progress,checks,error:String(error),failureInput});output.dataset.status="failed";});

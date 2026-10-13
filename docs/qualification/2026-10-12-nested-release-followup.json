@@ -459,6 +459,20 @@
     "scriptRegressionExitCode": 0,
     "scope": "Real source command queue and nested browser event router around qualified generated Wasm, typed renderer and DOM selection bridge. Synthetic beforeinput inserts Y at a selected grandchild exactly once; synthetic Ctrl+Z and Ctrl+Shift+Z restore its exact text. After each step checks live router/adapter, history cursor and checkpoint export; canonical DOM checked after history. Adapter-only history checks strengthened to assert actual grandchild text. No editor owner, toolbar, installed browser archive or physical input. Diagnostic bundle size warning is not a shipping size measurement. Retained intermittent full-editor failures remain open; no runtime fix or release qualification claimed."
   },
+  "publicOwnerToolbarIsolation": {
+    "date": "2026-10-13",
+    "record": "target/nested-validator-probe-PSiSju/report.json",
+    "sha256": "520357ea02911e13216b91f97928f22c01a081996131e7d31aae89a5c25eba09",
+    "status": "passed",
+    "exitCode": 0,
+    "freshProcesses": 9,
+    "ownerCheckpointTextChecks": 324,
+    "publicOwnerRestores": 162,
+    "browsers": ["chromium", "firefox", "webkit"],
+    "scriptRegressionExitCode": 0,
+    "reportScopeCorrection": "After terminal completion, corrected the report's stale scope sentence to include the public owner and toolbar now exercised by its fixture; run results, hashes of bundle assets and fixture bytes unchanged.",
+    "scope": "Public source BreditorBrowserEditor restores each generated Undo checkpoint with typed-format rendering and toolbar. Toolbar Redo/Undo checked against exact grandchild text and cursor; checkpoint exported, editor disposed with empty hosts, checkpoint restored again and toolbar Redo verified. Lower-layer comparisons remain included. Passing does not match original workload bytes, long item strings, warm-up/scheduling or installed browser archive. Intermittent retained full-editor failures still unresolved; no native, performance or release qualification."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false
