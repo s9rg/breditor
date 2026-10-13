@@ -71,9 +71,18 @@ export async function verifyFailureBundle(sourcePath, manifest) {
     assert.ok(tracedScript, "missing derived script");
     assert.equal(hash(tracedScript), derivation.tracedAssetSha256);
     if (bootstrap) {
+      if(derivation.replayBrowser!==undefined) {
+        assert.equal(derivation.replayBrowser,"webkit","invalid diagnostic replay browser");
+        assert.equal(original.browserName,"all");
+        assert.equal(source.browserName,original.browserName);
+        const failures=original.measurements?.filter(run=>run.status==="failed")??[];
+        assert.equal(failures.length,1,"ambiguous original failed browser");
+        assert.equal(failures[0].browser,"webkit","original failure was not WebKit");
+      }
       assert.ok(derivation.ownerFaults===undefined||typeof derivation.ownerFaults==="boolean");
       assert.ok(derivation.smallRestoreChurn===undefined||typeof derivation.smallRestoreChurn==="boolean");
-      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,smallRestoreChurn:derivation.smallRestoreChurn===true});
+      assert.ok(derivation.checkpointExports===undefined||typeof derivation.checkpointExports==="boolean");
+      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,smallRestoreChurn:derivation.smallRestoreChurn===true,checkpointExports:derivation.checkpointExports===true});
       assert.deepEqual(source.diagnosticWorkload,expected.diagnosticWorkload,"diagnostic workload changed");
       assert.deepEqual(tracedScript, Buffer.from(expected.code), "bytes outside bootstrap trace changed");
       assert.deepEqual(derivation.sites, expected.sites, "bootstrap trace sites changed");

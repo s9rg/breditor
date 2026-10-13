@@ -61,3 +61,28 @@ test("focused churn changes only fixture sizes/owner count and is explicitly dia
   assert.throws(()=>traceRetainedBootstrapFailures(source+owner+workload,{smallRestoreChurn:true}),/requires owner/u);
   assert.throws(()=>traceRetainedBootstrapFailures(source+owner+workload.replace("<30","<3"),{ownerFaults:true,smallRestoreChurn:true}),/owner loop changed/u);
 });
+
+test("checkpoint trace distinguishes reader rejection and snapshot mismatch without logging success",()=>{
+  const boundary='function fail(error){return {ok:false,error};}function same(a,b){return a.revision===b.revision;}function checkpointExport(result,before,after){if(!result.ok)return fail(result.error);let exported=result.checkpoint;return !same(before,after)||!same(exported.snapshot,before)?fail("mismatch"):Object.freeze({ok:true,value:exported.checkpointJson});}';
+  const traced=traceRetainedBootstrapFailures(source+boundary,{checkpointExports:true}),logs=[];
+  const run=Function("error","console",traced.code+";return checkpointExport;")(code=>({code}),{error:(...args)=>logs.push(args)});
+  const snapshot={lineage:"fixture",revision:"1"};
+  let getters=0;
+  const checkpoint={snapshot,checkpointJson:"owned JSON",get projection(){getters++;throw Error("no accessor reads");}};
+  assert.deepEqual(run({ok:true,checkpoint},snapshot,snapshot),{ok:true,value:"owned JSON"});
+  assert.equal(logs.length,0);
+  const error={kind:"boundary",code:"session_checkpoint.invalid_wasm_view"};
+  assert.equal(run({ok:false,error},snapshot,snapshot).error,error);
+  assert.equal(JSON.parse(logs[0][1]).code,"checkpoint-reader");
+  assert.equal(JSON.parse(logs[0][1]).bindings.result.fields.error.fields.code.value,"session_checkpoint.invalid_wasm_view");
+  assert.equal(run({ok:true,checkpoint},snapshot,{revision:"2"}).error,"mismatch");
+  const captured=JSON.parse(logs[1][1]);
+  assert.equal(captured.code,"checkpoint-snapshot");
+  assert.equal(captured.bindings.before.fields.revision.value,"1");
+  assert.equal(captured.bindings.after.fields.revision.value,"2");
+  assert.equal(getters,0);
+  assert.equal(logs[1][1].includes("owned JSON"),false);
+  assert.throws(()=>traceRetainedBootstrapFailures(source,{checkpointExports:true}),/boundary missing/u);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+boundary+boundary.replaceAll("checkpointExport","otherExport"),{checkpointExports:true}),/ambiguous/u);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+boundary,{checkpointExports:"yes"}));
+});

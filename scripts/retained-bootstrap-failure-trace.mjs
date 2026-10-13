@@ -46,9 +46,10 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
+  assert.equal(typeof checkpointExports,"boolean");
   assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
   assert.ok(!code.includes(helper),"retained bootstrap already traced");
   const parsed=parseSync("retained-bootstrap.js",code);assert.deepEqual(parsed.errors,[]);
@@ -81,6 +82,39 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   countWrites(parsed.program,[]);
   assert.ok([...writes.values()].every(count=>count===1),"bootstrap error binding is reassigned");
   const edits=[],sites=[];
+  if(checkpointExports) {
+    const candidates=[];
+    const hasMember=(node,name)=>node.type==="MemberExpression"&&node.property?.name===name
+      ||children(node).some(child=>hasMember(child,name));
+    function findCheckpoint(node) {
+      if(node.type==="FunctionDeclaration"&&node.params.length===3&&node.params.every(p=>p.type==="Identifier")&&
+        hasMember(node.body,"checkpoint")&&hasMember(node.body,"checkpointJson"))candidates.push(node);
+      children(node).forEach(findCheckpoint);
+    }
+    findCheckpoint(parsed.program);assert.equal(candidates.length,1,"checkpoint export boundary missing or ambiguous");
+    const fn=candidates[0],params=fn.params.map(p=>p.name),rejections=[];
+    function findRejections(node,ancestors) {
+      if(node!==fn&&functions.has(node.type))return;
+      if(node.type==="ReturnStatement"&&node.argument?.type==="CallExpression")
+        rejections.push({node:node.argument,kind:"checkpoint-reader",ancestors});
+      if(node.type==="ReturnStatement"&&node.argument?.type==="ConditionalExpression"&&
+        node.argument.consequent?.type==="CallExpression"&&node.argument.alternate?.type==="CallExpression"&&
+        hasMember(node.argument.alternate,"checkpointJson"))
+        rejections.push({node:node.argument.consequent,kind:"checkpoint-snapshot",ancestors});
+      children(node).forEach(child=>findRejections(child,[...ancestors,node]));
+    }
+    findRejections(fn,[fn]);
+    assert.deepEqual(rejections.map(r=>r.kind),["checkpoint-reader","checkpoint-snapshot"],"checkpoint rejection shape changed");
+    for(const {node,kind,ancestors} of rejections) {
+      const names=initializedBindings(ancestors,node.start);
+      assert.ok(params.every(name=>names.includes(name)));
+      const original=code.slice(node.start,node.end),stage=`${kind}:${node.start}`;
+      const fields=names.map(name=>`${JSON.stringify(name)}:${name}`).join(",");
+      edits.push({start:node.start,end:node.end,original,
+        replacement:`(${helper}(${JSON.stringify(stage)},${JSON.stringify(kind)},{${fields}}),${original})`});
+      sites.push({stage,start:node.start,end:node.end,code:kind,names});
+    }
+  }
   let diagnosticWorkload;
   if(smallRestoreChurn) {
     const loops=[];
@@ -143,7 +177,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   }
   visit(parsed.program,[]);assert.ok(sites.length>=2&&sites.length<=128,"bootstrap exits missing or unexpected");
   if(ownerFaults)assert.ok(sites.some(site=>site.code==="toolbarDispatchFailed"),"owner fault sites missing");
-  const prefix=ownerFaults?`function ${helper}(stage,code,bindings){try{
+  let prefix=ownerFaults||checkpointExports?`function ${helper}(stage,code,bindings){try{
     const summarize=(value,depth=0)=>{
       const result={type:typeof value};
       if(value===null||typeof value==="boolean"||typeof value==="number")result.value=value;
@@ -161,6 +195,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     const values=bindings?Object.fromEntries(Object.entries(bindings).map(([name,value])=>[name,summarize(value)])):undefined;
     console.error("breditor retained owner/bootstrap rejection",JSON.stringify({stage,code,bindings:values}).slice(0,4096));
   }catch{}}\n`:`function ${helper}(stage,code){try{console.error("breditor retained bootstrap rejection",JSON.stringify({stage,code}))}catch{}}\n`;
+  if(checkpointExports)prefix=prefix.replace('"actionState","projection"','"actionState","projection","error","checkpoint","snapshot","lineage","revision"');
   edits.push({start:0,end:0,original:"",replacement:prefix});
   edits.sort((a,b)=>b.start-a.start);
   let traced=code;

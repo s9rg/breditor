@@ -76,6 +76,38 @@
     "addedInstrumentation": false,
     "scope": "The exact failed ordinary-workload bytes passed this replay. Original checkpoint failure remains open. Next diagnostic must separate checkpoint-reader rejection from surrounding snapshot mismatch; no runtime workaround selected."
   },
+  "checkpointColdTrace": {
+    "record": "target/nested-list-reproductions/trace-PiFpVh/measurement.json",
+    "sha256": "a48876dba1b35ae389935709c6ef0d4cfd7c81fe99b717c4078070279f00030d",
+    "tracedScriptSha256": "779c008e07b0c2957605cc2476c070523b7624c3a8f75bdd71f10c0c1aacb808",
+    "sites": 32,
+    "checkpointSites": 2,
+    "session": 91953,
+    "replay": "target/nested-list-reproductions/trace-PiFpVh/exact-replay-J85P93/replay.json",
+    "statusAtRecording": "failed",
+    "replaySha256": "d449957066618907579acfb6aae1052f15087fa2be9d915b88e9d42c3605ef03",
+    "retainedFailedReplay": "target/nested-list-reproductions/failure-Pw9VWp",
+    "failure": "Sixth process, 100 items, repetition 0: Redo owner faulted with toolbarDispatchFailed. No checkpoint/bootstrap cold rejection log; this trace did not yet include owner fault sites. Not assumed identical to the checkpoint export failure.",
+    "oldTraceProvenanceCompatibility": "trace-AdVMfC, trace-ObqNWE and trace-muYwEQ reverified successfully with updated tooling",
+    "rebuilt": false,
+    "remangled": false,
+    "originalControlModified": false,
+    "scriptContractTestsPassed": 265,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "setupCorrections": "Preparation initially required WebKit-only metadata; the retained failure is from an all-engine report. Admission now requires a sole recorded WebKit failure and binds diagnostic replay-browser metadata to original provenance. Initial replay stopped before launch because derived measurements are cleared; verified replay-browser identity now carries this proof without inventing a failure.",
+    "scope": "Logs only evaluated checkpoint reader rejection or export snapshot mismatch, plus existing cold bootstrap exits. Existing own data descriptors only; skips accessors, checkpoint bytes and pointers. Original calls/returns and validation unchanged. Not a runtime fix, timing evidence or release qualification. Earlier preparation copies were not launched; only this final trace is active."
+  },
+  "combinedCheckpointOwnerTrace": {
+    "record": "target/nested-list-reproductions/trace-Fnf7ad/measurement.json",
+    "session": 15856,
+    "replay": "target/nested-list-reproductions/trace-Fnf7ad/exact-replay-N7rDhw/replay.json",
+    "sites": 35,
+    "checkpointSites": 2,
+    "ownerSites": 3,
+    "statusAtRecording": "running",
+    "scope": "Derived from the original failure-exsfE3 bytes, not a nested trace. Existing cold owner sites added because checkpoint-only replay failed in Redo dispatch. Original calls, validation, page and Wasm preserved. No runtime fix or release qualification."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",

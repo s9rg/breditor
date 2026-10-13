@@ -31,7 +31,9 @@ if (!durable && dirname(sourcePath).split("/").at(-1).startsWith("getter-probe-"
   assert.equal(source.fixtureKind, "nested-getter-probe", "getter path requires its explicit fixture kind");
 }
 assert.ok(source.browserName === "webkit" || (source.browserName === "all" &&
-  source.measurements?.some(run => run.browser === "webkit" && run.status === "failed")),
+  (source.measurements?.some(run => run.browser === "webkit" && run.status === "failed")||
+    manifest?.diagnosticDerivation===true&&manifest.diagnosticDerivationKind==="bootstrap"&&
+      source.retainedBootstrapDerivation?.replayBrowser==="webkit")),
 "replay requires a WebKit run or a failed WebKit measurement from an all-engine run");
 if (!durable) assert.equal(source.fixture, dirname(sourcePath));
 assert.ok(Number.isSafeInteger(source.ownerRepetitions) && source.ownerRepetitions >= (source.fixtureKind === "nested-getter-probe" ? 1 : 3) && source.ownerRepetitions <= (source.fixtureKind === "nested-getter-probe" ? 300 : 30));
