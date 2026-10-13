@@ -1569,3 +1569,21 @@ combined gzip-9 estimate is 815,089 bytes, including its fixture. Size and laten
 acceptance remain open. The [current follow-up record](qualification/2026-10-12-nested-release-followup.json)
 binds the candidate, archive, measurements and tests. Default shipping artifacts
 are unchanged; no push or publication occurred.
+
+### October 13: nested replacement reconstruction reuse
+
+Nested text replacement now retains its immutable structural derivation after
+exact inverse checking. This is not schema admission: each use still validates
+the context and fragments, checks stale source guards and validates complete
+aggregate results. Equality, wire data and Debug output exclude the cache.
+Clones share the private derivation allocation. The current 1,212 core unit
+tests, seven focused replacement tests, strict core lint, generated bindings,
+Node recovery and isolated/installed checks in all three browser engines pass.
+
+Matched local Firefox runs measured 410 ms versus 445 ms median 500-item edits
+(nine samples each), with 27 correctness cases passing on each candidate.
+This sequential comparison is not randomized or release p95 qualification.
+Compressed Wasm increases by 2,366 bytes to 638,652 bytes; total heap retention
+has not been measured. Full native integration/doctests and the release archive
+still need qualification for this latest runtime change. Historical WebKit,
+native input and accepted size/performance gates remain open.

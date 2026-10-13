@@ -26,13 +26,37 @@ use thiserror::Error;
 /// merge policy in the operation. Every source kind and wrapper is recoverable
 /// through the same-type inverse. Operation V7 explicitly admits this recipe;
 /// no existing wire tag is widened.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct NestedListTextReplace {
     guard_start: u32,
     range: NestedListTextRange,
     expected: Arc<[NodeRef]>,
     inserted: Arc<[NodeRef]>,
     layout: Arc<[NodeRef]>,
+    // Pure reconstruction of immutable recipe fields, not a schema proof.
+    // Never serialized or included in semantic equality / diagnostics.
+    derived: Option<Arc<Derived>>,
+}
+impl PartialEq for NestedListTextReplace {
+    fn eq(&self, other: &Self) -> bool {
+        self.guard_start == other.guard_start
+            && self.range == other.range
+            && self.expected == other.expected
+            && self.inserted == other.inserted
+            && self.layout == other.layout
+    }
+}
+impl Eq for NestedListTextReplace {}
+impl std::fmt::Debug for NestedListTextReplace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NestedListTextReplace")
+            .field("guard_start", &self.guard_start)
+            .field("range", &self.range)
+            .field("expected", &self.expected)
+            .field("inserted", &self.inserted)
+            .field("layout", &self.layout)
+            .finish_non_exhaustive()
+    }
 }
 impl NestedListTextReplace {
     /// Captures an explicit container template with canonical empty block slots.
@@ -66,9 +90,8 @@ impl NestedListTextReplace {
             .map(|(operation, _)| operation)
     }
 
-    // Return the checked reconstruction to capture within this call only. It
-    // is not a schema proof and is never stored on the operation or reused by
-    // apply under another document/context.
+    // Retain the context-independent reconstruction only after checking the
+    // exact inverse. Context admission is still performed on every use.
     fn try_new_with_derived(
         guard_start: u32,
         range: NestedListTextRange,
@@ -76,18 +99,20 @@ impl NestedListTextReplace {
         inserted: Vec<NodeRef>,
         layout: Vec<NodeRef>,
     ) -> Result<(Self, Derived), NestedListTextReplaceError> {
-        let operation = Self {
+        let mut operation = Self {
             guard_start,
             range,
             expected: expected.into(),
             inserted: inserted.into(),
             layout: layout.into(),
+            derived: None,
         };
         let derived = operation.derive()?;
         let inverse = operation.inverse(&derived)?;
         if inverse.derive()?.roots.as_slice() != operation.expected.as_ref() {
             return Err(NestedListTextReplaceError::InvalidTarget);
         }
+        operation.derived = Some(Arc::new(derived.clone()));
         Ok((operation, derived))
     }
     /// Captures every complete root child intersected by the real block paths.
@@ -154,7 +179,7 @@ impl NestedListTextReplace {
     }
 
     /// Retains the exact replacement already reconstructed for result validation.
-    /// No proof is cached across operations or contexts. A source document may
+    /// The retained structural derivation is not an admission proof. A source document may
     /// prove only an exactly equal reconstructed source root under the same
     /// compiled schema and limits. Otherwise validate that root afresh. Retain
     /// the independently validated result document too: if
@@ -288,6 +313,12 @@ impl NestedListTextReplace {
             .ok_or(NestedListTextReplaceError::InvalidTarget)
     }
     fn derive(&self) -> Result<Derived, NestedListTextReplaceError> {
+        if let Some(derived) = &self.derived {
+            return Ok(derived.as_ref().clone());
+        }
+        self.derive_uncached()
+    }
+    fn derive_uncached(&self) -> Result<Derived, NestedListTextReplaceError> {
         if self.range.root_start() < self.guard_start || self.range.root_end() > self.guard_end()? {
             return Err(NestedListTextReplaceError::InvalidTarget);
         }
@@ -385,9 +416,11 @@ impl NestedListTextReplace {
             expected: derived.roots.clone().into(),
             inserted: derived.removed.clone().into(),
             layout: nested_list_layout::capture(&self.expected)?.into(),
+            derived: None,
         })
     }
 }
+#[derive(Clone)]
 struct Derived {
     roots: Vec<NodeRef>,
     flat_range: RootTextRange,
@@ -397,6 +430,10 @@ struct Derived {
     result_paths: Arc<[NodePath]>,
     preserves_text: bool,
 }
+
+#[cfg(test)]
+#[path = "nested_list_text_replace_cache_tests.rs"]
+mod cache_tests;
 fn absolute_paths(
     roots: &[NodeRef],
     start: u32,
