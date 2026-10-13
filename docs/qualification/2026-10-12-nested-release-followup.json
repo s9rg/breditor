@@ -126,6 +126,21 @@
     ],
     "scope": "No failure captured by the combined cold owner/checkpoint instrumentation. Stop limit reached; no further unchanged repetitions launched. Original failures remain open. Not a runtime fix, latency gate or release qualification."
   },
+  "checkpointFailureTierComparison": {
+    "record": "target/nested-list-reproductions/failure-exsfE3/exact-replay-UH0Wz8/replay.json",
+    "sha256": "b7b7adac193249ea51951d92bdb374714aa192222b05c3bf0581c0f5f9c6d47f",
+    "status": "passed",
+    "exitCode": 0,
+    "requestedJavaScriptTierMode": "no-dfg",
+    "tierOverrideEffectVerified": false,
+    "freshWebKitProcesses": 10,
+    "cases": 90,
+    "rebuilt": false,
+    "addedInstrumentation": false,
+    "environment": {"platform":"darwin","arch":"arm64","cpu":"Apple M1 Pro","webkit":"26.5","playwright":"1.62.1"},
+    "primaryOptionReference": "https://raw.githubusercontent.com/WebKit/WebKit/main/Source/JavaScriptCore/runtime/OptionsList.h",
+    "scope": "Exact original failure-exsfE3 bytes, existing process-local JavaScript tier controls. Requesting controls is not proof that a particular comparison used a particular tier. Passing this comparison does not establish engine causation, a Wasm tier change, production workaround or fault resolution. No OS settings changed."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
