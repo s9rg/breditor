@@ -45,7 +45,13 @@
     "session": 6247,
     "record": "performance-JoD1eU/measurement.json",
     "packedQualification": "target/nested-list-packages-zXu1Pv/qualification.json",
-    "statusAtRecording": "running",
+    "statusAtRecording": "failed",
+    "exitCode": 1,
+    "retained": "target/nested-list-reproductions/failure-exsfE3/measurement.json",
+    "retainedSha256": "442dace923344a47dbf8cee10ab6e03a23daebca3406616fe39d48fe7f1af89f",
+    "scriptSha256": "028f26593edffc790b980337eb4febe1326cbed3d7331bc772d1358f16c601df",
+    "failure": "Ninth WebKit process, 500 items, repetition 1, Undo correctness check: sessionCheckpointJson returned content_export.invalid_wasm_view while owner remained live. No console diagnostic or uncaught page error.",
+    "completedBrowserRuns": {"chromium": 10, "firefox": 10, "webkit": 8},
     "browsers": ["chromium", "firefox", "webkit"],
     "runsPerBrowser": 10,
     "ownersPerSize": 3,
@@ -56,7 +62,14 @@
     "diagnosticInstrumentation": false,
     "stress": false,
     "releasePerformanceQualified": false,
-    "scope": "Started after bounded soak exited. Ordinary timing samples with document/selection/history/restore assertions, not an accepted p95 gate, native input, multi-device qualification or resolution of retained faults."
+    "scope": "Started after bounded soak exited. Runner stopped on failed assertion. Earlier successful timing samples do not make this failed run performance-qualified. Public error conflates checkpoint reader rejection and surrounding snapshot mismatch; cause not identified. Not assumed identical to older restore or toolbar faults."
+  },
+  "newCheckpointFailureReplay": {
+    "session": 42969,
+    "record": "target/nested-list-reproductions/failure-exsfE3/exact-replay-tgnYy5/replay.json",
+    "statusAtRecording": "running",
+    "rebuilt": false,
+    "addedInstrumentation": false
   },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
