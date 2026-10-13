@@ -46,11 +46,12 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
   assert.equal(typeof inputRoutes,"boolean");
+  assert.equal(typeof checkpointReader,"boolean");
   assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
   assert.ok(!code.includes(helper),"retained bootstrap already traced");
   const parsed=parseSync("retained-bootstrap.js",code);assert.deepEqual(parsed.errors,[]);
@@ -83,6 +84,47 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   countWrites(parsed.program,[]);
   assert.ok([...writes.values()].every(count=>count===1),"bootstrap error binding is reassigned");
   const edits=[],sites=[];
+  if(checkpointReader) {
+    const has=(node,predicate)=>predicate(node)||children(node).some(child=>has(child,predicate));
+    const readers=parsed.program.body.filter(node=>node.type==="FunctionDeclaration"&&node.params.length===5&&
+      has(node.body,n=>n.type==="MemberExpression"&&n.property?.name==="takeValue")&&
+      has(node.body,n=>n.type==="Property"&&n.key?.name==="checkpointJson"));
+    assert.equal(readers.length,1,"checkpoint reader missing or ambiguous");
+    const reader=readers[0],failureNames=new Set(),rawNames=[];
+    function inspect(node,ancestors=[]) {
+      if(node.type==="CallExpression"&&node.callee?.type==="Identifier"&&node.arguments.length===0&&
+        ancestors.some(a=>a.type==="ReturnStatement"))failureNames.add(node.callee.name);
+      if(node.type==="VariableDeclarator"&&node.id.type==="Identifier"&&node.init?.type==="CallExpression"&&
+        node.init.callee?.object?.name==="Reflect"&&node.init.callee.property?.name==="apply")rawNames.push(node.id.name);
+      children(node).forEach(child=>inspect(child,[...ancestors,node]));
+    }
+    inspect(reader.body);assert.equal(failureNames.size,1,"checkpoint boundary helper changed");
+    assert.equal(rawNames.length,1,"checkpoint string take changed");
+    const failure=[...failureNames][0],definition=parsed.program.body.filter(n=>n.type==="FunctionDeclaration"&&n.id?.name===failure);
+    assert.equal(definition.length,1);assert.equal(definition[0].params.length,0);
+    const returned=definition[0].body.body;
+    assert.equal(returned.length,1);assert.equal(returned[0].type,"ReturnStatement");
+    const frozen=returned[0].argument?.arguments?.[0];
+    assert.equal(frozen?.callee?.object?.name,"Object");assert.equal(frozen?.callee?.property?.name,"freeze");
+    const error=frozen.arguments?.[0]?.properties?.find(p=>p.key?.name==="error")?.value;
+    assert.equal(error?.type,"Identifier");
+    const labels=parsed.program.body.filter(n=>n.type==="VariableDeclaration").flatMap(n=>n.declarations)
+      .filter(d=>d.id.name===error.name&&d.init?.arguments?.[0]?.properties?.some(p=>p.key?.name==="code"&&string(p.value)==="session_checkpoint.invalid_wasm_view"));
+    assert.equal(labels.length,1,"checkpoint boundary error binding missing");
+    function traceReader(node,ancestors=[]) {
+      if(node.type==="CallExpression"&&node.callee?.name===failure&&node.arguments.length===0&&
+        !shadowed(failure,ancestors)&&ancestors.some(a=>a.type==="ReturnStatement"||a.type==="CatchClause")) {
+        const names=initializedBindings(ancestors,node.start),inside=ancestors.includes(reader),raw=rawNames[0];
+        const fields=names.filter(name=>!inside||name!==raw).map(name=>`${JSON.stringify(name)}:${name}`);
+        if(inside&&names.includes(raw))fields.push(`rawValueType:typeof ${raw},rawValueUtf16Length:typeof ${raw}==="string"?${raw}.length:null`);
+        const original=code.slice(node.start,node.end),stage=`checkpoint-read:${node.start}`;
+        edits.push({start:node.start,end:node.end,original,replacement:`(${helper}(${JSON.stringify(stage)},"checkpoint-read-rejection",{${fields.join(",")}}),${original})`});
+        sites.push({stage,start:node.start,end:node.end,code:"checkpoint-read-rejection",names,redactedRawValue:inside&&names.includes(raw)});
+      }
+      children(node).forEach(child=>traceReader(child,[...ancestors,node]));
+    }
+    traceReader(parsed.program);assert.ok(sites.length>=8&&sites.length<=32,"checkpoint rejection sites changed");
+  }
   if(inputRoutes) {
     const candidates=[];
     function callsWithin(node,found=[]) {
@@ -205,7 +247,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   }
   visit(parsed.program,[]);assert.ok(sites.length>=2&&sites.length<=128,"bootstrap exits missing or unexpected");
   if(ownerFaults)assert.ok(sites.some(site=>site.code==="toolbarDispatchFailed"),"owner fault sites missing");
-  let prefix=ownerFaults||checkpointExports||inputRoutes?`function ${helper}(stage,code,bindings){try{
+  let prefix=ownerFaults||checkpointExports||inputRoutes||checkpointReader?`function ${helper}(stage,code,bindings){try{
     const summarize=(value,depth=0)=>{
       const result={type:typeof value};
       if(value===null||typeof value==="boolean"||typeof value==="number")result.value=value;
@@ -224,6 +266,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     console.error("breditor retained owner/bootstrap rejection",JSON.stringify({stage,code,bindings:values}).slice(0,4096));
   }catch{}}\n`:`function ${helper}(stage,code){try{console.error("breditor retained bootstrap rejection",JSON.stringify({stage,code}))}catch{}}\n`;
   if(checkpointExports)prefix=prefix.replace('"actionState","projection"','"actionState","projection","error","checkpoint","snapshot","lineage","revision"');
+  if(checkpointReader)prefix=prefix.replace('"actionState","projection"','"actionState","projection","invalid","mode"');
   if(inputRoutes) {
     prefix=prefix.replace('"status","kind","operation"','"defaultPrevented","inputType","outcome","status","kind","operation"');
     prefix+=`function ${helper}Input(stage,value){${helper}(stage,"beforeinput-result",{result:value});return value;}\n`;

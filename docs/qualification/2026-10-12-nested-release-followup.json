@@ -193,6 +193,27 @@
     "nextBoundary": "Checkpoint reader guard/validation/cleanup rejection, rather than outer export snapshot mismatch. Exact reader rejection still unknown; no runtime change selected.",
     "scope": "Four existing beforeinput handoff results observed once, preserving receivers and exact returned identity. Logs successful routes too and changes diagnostic call layout; not timing or release evidence. Own data descriptors only, accessors skipped. Forged option/browser metadata rejected. Full logs retained in replay.json; progress output now prints counts, not fixture data. Older trace-ObqNWE and trace-Fnf7ad provenance reverified."
   },
+  "checkpointReaderGuardTrace": {
+    "record": "target/nested-list-reproductions/trace-RxzAeZ/measurement.json",
+    "sha256": "4967d7c11abbab1fa4fe0517506a99879741a666d6bcec9431a3a7092258471f",
+    "sites": 53,
+    "readerRejectionSites": 14,
+    "rebuilt": false,
+    "remangled": false,
+    "originalControlModified": false,
+    "fullScriptTestsPassed": 267,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "replay": "target/nested-list-reproductions/trace-RxzAeZ/exact-replay-zZIxNL/replay.json",
+    "replaySha256": "fe6fd13936c677486b96aacd35c20cd886cd0259a6a254c2ad76a5132cbf5ead",
+    "status": "failed",
+    "exitCode": 1,
+    "retained": "target/nested-list-reproductions/failure-DcDUlN",
+    "browserLogSha256": "99df9507906efec092af064ab43e8122f9b27ca9ee42c8d7732b7eeaa3731681",
+    "capturedFailure": "First process, 100 items, repetition 2, selectionMs checkpoint export. checkpoint-read:266465 maps to readCheckpoint's validatedCheckpointBytes === null rejection. Captured status value, no cloned error, callable takeValue, registry.invalid false, raw value type string, UTF-16 length 64795; expected lineage perf-100-2, revision 1, contract v7. Outer checkpoint-reader rejection followed; owner remained live.",
+    "nextBoundary": "Inside validatedCheckpointBytes: envelope validation versus current revision/history-base snapshot correlation. Checkpoint text intentionally redacted; no raw/generated getter reread. No runtime fix or relaxed validation.",
+    "scope": "Existing return/catch boundary-failure sites logged only when evaluated. Raw checkpoint string omitted from bindings and represented by type/length. Receiver and one-take behavior tested; forged reader option rejected; older trace-Fnf7ad and trace-pkuVzx provenance reverified. Test correction separated reader guard counts from outer export boundary counts. Diagnostic call layout differs; no release or latency qualification."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",

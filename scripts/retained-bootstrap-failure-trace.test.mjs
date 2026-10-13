@@ -104,3 +104,19 @@ test("input route trace preserves receivers, call counts and result identity wit
   assert.throws(()=>traceRetainedBootstrapFailures(source,{inputRoutes:true}),/route missing/u);
   assert.throws(()=>traceRetainedBootstrapFailures(source+route,{inputRoutes:"yes"}));
 });
+
+test("checkpoint reader trace logs rejected guards without checkpoint text or repeat reads",()=>{
+  const reader='const invalid=Object.freeze({code:"session_checkpoint.invalid_wasm_view"});function own(x){return x;}function reject(){return own(Object.freeze({ok:false,error:invalid}));}function reader(e,t,n,r,i){if(n.invalid)return reject();let a=e;if(!a)return reject();let o=t.status;if(o==="bad")return reject();let s=t.takeValue;if(!s)return reject();let c=t.error;if(c)return reject();let u=Reflect.apply(s,t,[]);if(u==null)return reject();if(typeof u!=="string")return reject();if(u==="secret checkpoint")return reject();return {checkpointJson:u};}';
+  const traced=traceRetainedBootstrapFailures(source+reader,{checkpointReader:true}),logs=[];
+  const run=Function("error","console",traced.code+";return reader;")(code=>({code}),{error:(...args)=>logs.push(args)});
+  let statusReads=0,takes=0;const view={get status(){statusReads++;return "value";},takeValue(){assert.equal(this,view);takes++;return "secret checkpoint";},error:undefined};
+  assert.equal(run({lineage:"fixture",revision:"3"},view,{invalid:false},{},{}).ok,false);
+  assert.equal(statusReads,1);assert.equal(takes,1);assert.equal(logs.length,1);
+  const capture=JSON.parse(logs[0][1]);assert.equal(capture.code,"checkpoint-read-rejection");
+  assert.equal(capture.bindings.rawValueType.value,"string");assert.equal(capture.bindings.rawValueUtf16Length.value,17);
+  assert.equal(logs[0][1].includes("secret checkpoint"),false);
+  const good={status:"value",error:undefined,takeValue(){return "valid";}};
+  assert.deepEqual(run({},good,{invalid:false},{},{}),{checkpointJson:"valid"});assert.equal(logs.length,1);
+  assert.throws(()=>traceRetainedBootstrapFailures(source,{checkpointReader:true}),/reader missing/u);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+reader,{checkpointReader:"yes"}));
+});
