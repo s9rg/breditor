@@ -1554,8 +1554,10 @@ fragments share their descendant allocations, operation clones share the proof
 array, and unrelated result roots stay shared. This is allocation-sharing proof,
 not a measured total-heap budget. The nested word-wrapper command
 passes 63 unit and 25 integration tests; the default wrapper passes 43 unit tests.
-The full core integration/doctest command remains running, so that gate is not
-yet complete. The separately installed `RgWmOP` archive passes all three browser
+The original full core command has now completed with exit zero: all integration
+batches and 137 doctests passed. It covers the admission implementation before
+the later Debug-only correction and two extra unit regressions; the current
+1,209-unit suite passed separately. The separately installed `RgWmOP` archive passes all three browser
 engines, browser-dispatched keyboard and exact mixed-history recovery; ten fresh
 WebKit sessions pass 90 deep formatted editing/recovery cases without reproducing
 the historical fault. Passing runs do not establish a fault fix or physical

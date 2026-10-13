@@ -712,6 +712,24 @@
     "filteredFocusedStatus": "original session 5262 remains live; filtered harnesses are not full qualification",
     "scope": "Entire original gate polled to terminal exit zero without restart. Target-specific correctness, not 1209 core unit tests executed in Wasm, native-only getter-fixture execution, shipping-default/opt-in artifact identity, browser DOM/physical input or release-performance proof. No package dist rebuild, push or publication. Historical WebKit fault and accepted budgets remain open."
   },
+  "releaseVerificationContinuation": {
+    "date": "2026-10-13",
+    "sourceCheckpoint": "99e1869",
+    "focusedNativeSession": 5262,
+    "focusedNativeExitCode": 0,
+    "focusedScope": "Nine nested_list_reframe focused tests passed; filtered zero-test integration harnesses do not qualify full integration coverage.",
+    "scriptCommand": "node --test scripts/verify-release.test.mjs scripts/retained-bootstrap-failure-trace.test.mjs",
+    "scriptTestsPassed": 24,
+    "scriptExitCode": 0,
+    "fullCoreSession": 93438,
+    "fullCoreCommand": "cargo test --locked -p breditor-core --features experimental-structural-properties --quiet",
+    "fullCoreExitCode": 0,
+    "fullCoreStatus": "Original session completed without restart: original unit phase 1207 passed, all integration batches passed, then doctest batches 1 and 136 passed (137 total).",
+    "currentCoreUnitTestsPassedSeparately": 1209,
+    "sourceScope": "Full command tested admission logic from ebeebe6 before the later Debug presentation correction and two added unit regressions. Current 1209-unit suite and strict lint passed separately; fresh candidate executable Wasm/JavaScript identity was verified. Full command is not falsely attributed to later native Debug/test edits.",
+    "releaseQualified": false,
+    "scope": "Verification continuation only. No runtime edits, default artifact rebuild, push or publication. Historical WebKit fault, physical browser/input qualification and accepted size/performance budgets remain open."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
