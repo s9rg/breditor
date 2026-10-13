@@ -272,6 +272,16 @@
     "capturedInput": false,
     "scope": "Opt-in capture of the already-taken string on a late reader rejection, with own data snapshot descriptors only. First bounded nonempty string retained in a frozen local diagnostic slot; no Wasm handles/getter rereads. Failure collector retains it privately in replay.json, not progress/console logs. Success untouched, capture-storage failure cannot change rejection, first capture not overwritten, forged flag rejected. Hot input/predicate wrappers omitted. Both batches passed, so no real rejected input captured and no fault resolution. Older traces remain verifiable; no default/shipping behavior change."
   },
+  "captureTierComparisons": {
+    "date": "2026-10-13",
+    "source": "target/nested-list-reproductions/trace-PCz76y/measurement.json",
+    "replays": [
+      {"record":"target/nested-list-reproductions/trace-PCz76y/exact-replay-QIaIpx/replay.json","sha256":"0c8108438dc6a6d1681c7d94e2572eccd830c915e2c7196fa9f5f349d5d064fa","requestedMode":"default","status":"passed","cases":90,"freshProcesses":10},
+      {"record":"target/nested-list-reproductions/trace-PCz76y/exact-replay-mLJXZ2/replay.json","sha256":"0782be34d7a95874fd9f7f7a15501f1f0cf13a941258b3fa2acb3ec3bbf05fdb","requestedMode":"no-ftl","status":"passed","cases":90,"freshProcesses":10,"tierOverrideEffectVerified":false}
+    ],
+    "capturedRejectedInput": false,
+    "scope": "Different requested process-local tier settings on the same verified capture bundle. Both terminal batches passed with no rejection. No raw failed input obtained, no engine attribution or original-fault resolution, no production workaround, OS setting change or release qualification. Comparison stopped after these bounded batches."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
