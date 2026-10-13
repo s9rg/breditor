@@ -181,6 +181,20 @@ test("rejected checkpoint capture owns existing text without rereading or changi
   assert.throws(()=>traceRetainedBootstrapFailures(source+reader,{checkpointCapture:true}),/requires reader/u);
 });
 
+test("optional rejection contract capture is bounded, handle-free and never reads accessors",()=>{
+  const reader='const invalid=Object.freeze({code:"session_checkpoint.invalid_wasm_view"});function own(x){return x;}function reject(){return own(Object.freeze({ok:false,error:invalid}));}function reader(e,t,n,r,i){if(n.invalid)return reject();let a=e;if(!a)return reject();let o=t.status;if(o==="bad")return reject();let s=t.takeValue;if(!s)return reject();let c=t.error;if(c)return reject();let u=Reflect.apply(s,t,[]);if(u==null)return reject();if(typeof u!=="string")return reject();if(u!=="valid")return reject();return {checkpointJson:u};}';
+  const options={checkpointReader:true,checkpointCapture:true,checkpointContractCapture:true};
+  const traced=traceRetainedBootstrapFailures(source+reader,options);
+  const contract={mode:"v7",schema:{name:"fixture",version:1,fingerprint:"4".repeat(64)},formats:[{kind:"example/color",revision:1,properties:[{name:"example/rgb",presence:"required",valueType:{kind:"integer",minimum:0,maximum:16777215}}]}]};
+  const invoke=(value,binding)=>{const global={},logs=[];let takes=0;const run=Function("error","console","globalThis",traced.code+";return reader;")(code=>({code}),{error:(...args)=>logs.push(args)},global);const result=run({lineage:"fixture",revision:"3"},{status:"value",takeValue(){takes++;return value;}},{invalid:false},{},binding);assert.equal(takes,1);return {result,capture:global.__breditorRejectedCheckpointInput,logs};};
+  const valid=invoke("valid",contract);assert.equal(valid.capture,undefined);assert.equal(valid.logs.length,0);
+  const failed=invoke("bad",contract);assert.equal(failed.result.ok,false);assert.equal(JSON.stringify(failed.capture.contract),JSON.stringify(contract));assert.ok(Object.isFrozen(failed.capture.contract.formats[0].properties[0].valueType));assert.notEqual(failed.capture.contract,contract);
+  let reads=0;const accessor={mode:"v7",get formats(){reads++;throw Error();}};assert.equal(invoke("bad",accessor).capture.contract,undefined);assert.equal(reads,0);
+  for(const invalid of [{__wbg_ptr:1},{mode:"x".repeat(65537)},Object.assign({},contract,{self:null})]){if(Object.hasOwn(invalid,"self"))invalid.self=invalid;assert.equal(invoke("bad",invalid).capture.contract,undefined);}
+  assert.throws(()=>traceRetainedBootstrapFailures(source+reader,{checkpointContractCapture:true}),/requires checkpoint capture/u);
+  assert.equal(traceRetainedBootstrapFailures(source+reader,{checkpointReader:true,checkpointCapture:true,checkpointContractCapture:false}).code,traceRetainedBootstrapFailures(source+reader,{checkpointReader:true,checkpointCapture:true}).code);
+});
+
 test("owner reason trace observes the first live fault without extra state reads or altered return",()=>{
   for(const body of ['if(this.#status.phase!=="live")return;this.#status=Object.freeze({phase:"faulted",reason});',
     'this.#status.phase==="live"&&(this.#status=Object.freeze({phase:"faulted",reason}),void 0);']) {

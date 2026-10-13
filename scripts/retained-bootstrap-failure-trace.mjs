@@ -46,7 +46,7 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointCapture=false,ownerReasons=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
@@ -57,6 +57,8 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   assert.equal(typeof checkpointCapture,"boolean");
   assert.equal(typeof ownerReasons,"boolean");
   assert.ok(!checkpointCapture||checkpointReader,"checkpoint capture requires reader tracing");
+  assert.equal(typeof checkpointContractCapture,"boolean");
+  assert.ok(!checkpointContractCapture||checkpointCapture,"contract capture requires checkpoint capture");
   assert.ok(!checkpointPredicates||checkpointValidation,"checkpoint predicates require validation tracing");
   assert.ok(!checkpointValidation||checkpointReader,"checkpoint validation requires reader tracing");
   assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
@@ -215,7 +217,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
         if(inside&&names.includes(raw))fields.push(`rawValueType:typeof ${raw},rawValueUtf16Length:typeof ${raw}==="string"?${raw}.length:null`);
         const original=code.slice(node.start,node.end),stage=`checkpoint-read:${node.start}`;
         const capture=checkpointCapture&&inside&&names.includes(raw)
-          ?`${helper}Capture(${JSON.stringify(stage)},${raw},${reader.params[0].name}),`:"";
+          ?`${helper}Capture(${JSON.stringify(stage)},${raw},${reader.params[0].name}${checkpointContractCapture?`,${reader.params[4].name}`:""}),`:"";
         edits.push({start:node.start,end:node.end,original,replacement:`(${capture}${helper}(${JSON.stringify(stage)},"checkpoint-read-rejection",{${fields.join(",")}}),${original})`});
         sites.push({stage,start:node.start,end:node.end,code:"checkpoint-read-rejection",names,redactedRawValue:inside&&names.includes(raw)});
       }
@@ -371,11 +373,22 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     prefix+=`function ${helper}Input(stage,value){${helper}(stage,"beforeinput-result",{result:value});return value;}\n`;
   }
   if(checkpointPredicates)prefix+=`function ${helper}Predicate(stage,value){if(!value)${helper}(stage,"checkpoint-predicate-rejection",{result:value});return value;}\n`;
-  if(checkpointCapture)prefix+=`function ${helper}Capture(stage,value,expected){try{
+  if(checkpointContractCapture)prefix+=`function ${helper}Contract(value){let nodes=0,strings=0;const seen=new Set();function copy(v,depth){
+    if(++nodes>2048||depth>12)throw Error();
+    if(v===null||typeof v==="boolean")return v;
+    if(typeof v==="number"&&Number.isSafeInteger(v))return v;
+    if(typeof v==="string"){strings+=v.length;if(strings>65536)throw Error();return v;}
+    if(typeof v!=="object"||seen.has(v))throw Error();seen.add(v);
+    const array=Array.isArray(v),proto=Object.getPrototypeOf(v);if(!array&&proto!==Object.prototype&&proto!==null)throw Error();
+    const result=array?[]:Object.create(null),keys=Object.keys(v);if(keys.length>2048)throw Error();
+    for(const key of keys){strings+=key.length;if(strings>65536||key==="__wbg_ptr")throw Error();const d=Object.getOwnPropertyDescriptor(v,key);if(!d||!("value" in d))throw Error();Object.defineProperty(result,key,{enumerable:true,value:copy(d.value,depth+1)});}
+    return Object.freeze(result);
+  }try{return copy(value,0);}catch{return undefined;}}\n`;
+  if(checkpointCapture)prefix+=`function ${helper}Capture(stage,value,expected${checkpointContractCapture?",contract":""}){try{
     if(typeof value!=="string"||value.length===0||value.length>16777216||Object.getOwnPropertyDescriptor(globalThis,"__breditorRejectedCheckpointInput"))return;
     const lineage=Object.getOwnPropertyDescriptor(expected,"lineage"),revision=Object.getOwnPropertyDescriptor(expected,"revision");
     if(!lineage||!("value" in lineage)||typeof lineage.value!=="string"||!revision||!("value" in revision)||typeof revision.value!=="string")return;
-    Object.defineProperty(globalThis,"__breditorRejectedCheckpointInput",{configurable:true,value:Object.freeze({format:"breditor/rejected-checkpoint-input",formatVersion:1,stage,checkpointJson:value,snapshot:Object.freeze({lineage:lineage.value,revision:revision.value})})});
+    Object.defineProperty(globalThis,"__breditorRejectedCheckpointInput",{configurable:true,value:Object.freeze({format:"breditor/rejected-checkpoint-input",formatVersion:1,stage,checkpointJson:value,snapshot:Object.freeze({lineage:lineage.value,revision:revision.value})${checkpointContractCapture?`,contract:${helper}Contract(contract)`:""}})});
   }catch{}}\n`;
   edits.push({start:0,end:0,original:"",replacement:prefix});
   edits.sort((a,b)=>b.start-a.start);

@@ -473,6 +473,22 @@
     "reportScopeCorrection": "After terminal completion, corrected the report's stale scope sentence to include the public owner and toolbar now exercised by its fixture; run results, hashes of bundle assets and fixture bytes unchanged.",
     "scope": "Public source BreditorBrowserEditor restores each generated Undo checkpoint with typed-format rendering and toolbar. Toolbar Redo/Undo checked against exact grandchild text and cursor; checkpoint exported, editor disposed with empty hosts, checkpoint restored again and toolbar Redo verified. Lower-layer comparisons remain included. Passing does not match original workload bytes, long item strings, warm-up/scheduling or installed browser archive. Intermittent retained full-editor failures still unresolved; no native, performance or release qualification."
   },
+  "checkpointContractCaptureFollowup": {
+    "date": "2026-10-13",
+    "previousTraceReplay": "target/nested-list-reproductions/trace-96lhGz/exact-replay-czuVCR/replay.json",
+    "previousTraceReplaySha256": "cd9e4e266fc87a95d42db00c2fb572fa8f4cc5a7352a90198a26fff0b227beb6",
+    "contractCaptureMeasurement": "target/nested-list-reproductions/trace-U3hzce/measurement.json",
+    "contractCaptureMeasurementSha256": "7ffc12a02095ef477521c49a1ca14b703199d5bb2548dfc4f749f113da240f9c",
+    "contractCaptureReplay": "target/nested-list-reproductions/trace-U3hzce/exact-replay-XCBQJk/replay.json",
+    "contractCaptureReplaySha256": "46aa249ce12bbcabb8fc1c6ca30c8a9ffdc18505133b412951970dd497f44043",
+    "status": "passed-without-reproduction",
+    "freshWebKitProcesses": 20,
+    "ownerCases": 180,
+    "diagnosticRecords": 0,
+    "scriptRegressionExitCode": 0,
+    "existingTraceByteVerification": "passed",
+    "scope": "One bounded replay of the existing owner-reason trace, then one bounded replay with optional checkpointContractCapture. Original failed workload data/scheduling and Wasm unchanged; new cold helper clones bounded contract data only at late rejection. It refuses accessors, generated-pointer records, cycles and excessive depth/node/string budgets; checkpoint text still retained if contract copy is unavailable. No repeated generated reads or success-path work. Old trace bytes remain exact when the option is absent. No rejected input/contract captured this time and no historical-fault fix, native/performance gate or release qualification claimed."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false
