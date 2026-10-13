@@ -1538,3 +1538,29 @@ binds three failed reports. A disposable single-call marker distinguishes whethe
 the conditional getter was skipped or returned undefined; that distinction and
 the root cause remain unproven. Production validation is unchanged, no fix is
 claimed, and this remains a release blocker.
+
+### October 13: retained exact-root admission and current verification
+
+Checkpoint `ebeebe6` retains private immutable admission proofs on captured
+nested container reframes. Reuse requires exact root content, the same compiled
+schema authority and the same limits. Source guards remain checked on every
+apply; partial complete results and decoded operations still require validation.
+Proofs are excluded from operation equality, Debug output and wire codecs.
+An additional regression verifies that a proof captured for a complete result
+cannot hide newly added, unselected roots or bypass aggregate document limits.
+
+The current core unit suite passes 1,208 tests. The nested word-wrapper command
+passes 63 unit and 25 integration tests; the default wrapper passes 43 unit tests.
+The full core integration/doctest command remains running, so that gate is not
+yet complete. The separately installed `RgWmOP` archive passes all three browser
+engines, browser-dispatched keyboard and exact mixed-history recovery; ten fresh
+WebKit sessions pass 90 deep formatted editing/recovery cases without reproducing
+the historical fault. Passing runs do not establish a fault fix or physical
+IME, clipboard or VoiceOver qualification.
+
+Matched local Firefox runs measured 409 ms versus 452 ms median 500-item edit
+latency, not statistically qualified release p95 evidence. The archive consumer's
+combined gzip-9 estimate is 815,089 bytes, including its fixture. Size and latency
+acceptance remain open. The [current follow-up record](qualification/2026-10-12-nested-release-followup.json)
+binds the candidate, archive, measurements and tests. Default shipping artifacts
+are unchanged; no push or publication occurred.

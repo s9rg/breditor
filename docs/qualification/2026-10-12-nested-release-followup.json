@@ -609,6 +609,18 @@
     "filteredFocusedStatus": "session 5262 remains live; nine focused tests passed; remaining harnesses filtered and not substituted for full core qualification",
     "scope": "Native wrapper tests for the committed exact-root admission optimization, plus default-wrapper unit compatibility. All original handles polled to terminal completion for wrapper jobs; no timeout restart. No source changes while core verification continues. Zero wrapper doctests is not documentation-test coverage. Browser archive/native-input/latency acceptance, historical WebKit fault resolution and full core integration/doctest completion remain separate gates. No shipping artifacts, push or publication changes."
   },
+  "retainedProofExpandedRootRegression": {
+    "date": "2026-10-13",
+    "runtimeSourceCheckpoint": "ebeebe6",
+    "regression": "Capture a complete replacement proof that fits exactly within max_nodes=5, then apply the unchanged guard to a valid document with an additional unselected root. The larger complete result must fail aggregate validation; a formerly complete cached proof is insufficient.",
+    "focusedTestExitCode": 0,
+    "fullCoreUnitCommand": "cargo test --locked -p breditor-core --features experimental-structural-properties --lib --quiet",
+    "fullCoreUnitExitCode": 0,
+    "fullCoreUnitTests": 1208,
+    "fullCoreIntegrationAndDoctestStatus": "existing session 93438 remains live; no terminal success claimed",
+    "filteredFocusedStatus": "existing session 5262 remains live; filtered integration harnesses not counted as full qualification",
+    "scope": "New regression and release-status documentation only; production source and qualified candidate bytes unchanged since ebeebe6. Full unit suite rerun includes the added test. Native jobs polled by original handles, not restarted. Historical fault, physical input and explicit release acceptance gates remain open."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false

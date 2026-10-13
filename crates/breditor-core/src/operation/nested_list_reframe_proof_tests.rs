@@ -190,3 +190,23 @@ fn partial_replacement_proof_does_not_replace_the_complete_result() -> TestResul
     );
     Ok(())
 }
+
+#[test]
+fn retained_complete_proof_cannot_hide_new_unselected_roots() -> TestResult {
+    let context = context(DocumentLimits::default().with_max_nodes(5))?;
+    let first = paragraph("first")?;
+    let initial = state(&context, vec![first.clone()], None, None)?;
+    let operation =
+        NestedListReframe::capture(&context, initial.document(), 0, 1, vec![list(first.clone())?])?;
+    // At capture this fragment is also the complete result and fits exactly.
+    assert!(operation.apply(&context, initial.document())?.is_some());
+    // The same guard still matches after an unrelated root is added. Its cached
+    // result proof no longer covers the complete document, whose limit is lower
+    // than the resulting aggregate. Revalidate rather than reuse that proof.
+    let expanded = state(&context, vec![first, paragraph("outside")?], None, None)?;
+    assert!(matches!(
+        operation.apply(&context, expanded.document()),
+        Err(NestedListReframeError::Validation(_))
+    ));
+    Ok(())
+}
