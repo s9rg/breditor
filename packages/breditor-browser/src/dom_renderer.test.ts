@@ -242,6 +242,26 @@ describe("recursive nested-list DOM", () => {
     expect(translateNestedListKeyDown(key, {editing: "structuralFallback", primaryModifier: "meta", shortcuts: "enabled"}, false, delivery, selection))
       .toMatchObject({kind: "command", request: {command: {actionId: "breditor/insert-nested-list-break"}}});
   });
+  it.each([
+    ["a", "KeyA", false],
+    ["ArrowRight", "ArrowRight", false],
+    ["ArrowDown", "ArrowDown", true],
+    ["ArrowUp", "ArrowUp", true],
+    ["b", "KeyB", false],
+    ["z", "KeyZ", false],
+  ] as const)("does not turn nested Control-Option %s into a command", (key, code, shiftKey) => {
+    const {delivery, selection} = nestedRequest();
+    const snapshot = {key, code, ctrlKey: true, altKey: true, metaKey: false, shiftKey,
+      repeat: false, isComposing: false, keyCode: 0, altGraph: false};
+    for (const editing of ["beforeinputPrimary", "structuralFallback"] as const) {
+      for (const primaryModifier of ["control", "meta"] as const) {
+        for (const shortcuts of ["enabled", "disabled"] as const) {
+          expect(translateNestedListKeyDown(snapshot, {editing, primaryModifier, shortcuts}, false, delivery, selection))
+            .toEqual({kind: "native", reason: editing === "beforeinputPrimary" ? "beforeinputOwns" : "selectionOrPageCommand"});
+        }
+      }
+    }
+  });
   it("serializes reentrant nested requests and quarantines uncertain execution", () => {
     const request = nestedRequest(), calls: string[] = [];
     const queue: BreditorNestedListCommandQueue<string> = new BreditorNestedListCommandQueue(() => {

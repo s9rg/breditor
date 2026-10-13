@@ -14,9 +14,28 @@
   "voiceOver": {
     "originalState": "off",
     "attempt": "Enabled the VoiceOver switch in Accessibility settings, observed on, then attempted native Safari Control-Option-Shift-Down and Control-Option-Right interaction.",
-    "observed": "No independent screen-reader cursor or spoken-output evidence. Acquiring VoiceOver app timed out. On subsequent settings inspection the switch was off; transition cause not established.",
+    "observed": "No independent screen-reader cursor or spoken-output evidence. Acquiring VoiceOver app timed out. On subsequent settings inspection the switch was off; user subsequently confirmed they had turned it off because speech was bothering them.",
     "finalObservedState": "off",
-    "qualified": false
+    "qualified": false,
+    "authorizedRetry": {
+      "method": "User requested VoiceOver now. Enabled switch and observed on. Clicked native Safari editor, attempted Control-Option-Shift-Down and Control-Option-A.",
+      "observed": "Shortcut input mutated editor content: Second plus nested Deep became one ordered item containing U+0001 followed by Deep emoji. One Control-Z restored Second and nested Deep. No spoken-output evidence captured; routing cause not established.",
+      "cleanup": "Explicitly turned VoiceOver off; settings switch observed off. Editor content restored.",
+      "qualified": false
+    }
+  },
+  "keyRoutingRegression": {
+    "scope": "Synthetic browser unit regressions only, not native VoiceOver qualification.",
+    "chords": ["Control-Option-A", "Control-Option-Right", "Control-Option-Shift-Down", "Control-Option-Shift-Up", "Control-Option-B", "Control-Option-Z"],
+    "translationMatrix": "Base and nested translators; both editing policies, both primary modifiers, shortcuts enabled and disabled. No command or text derived from any chord.",
+    "eventController": "Each chord is ignored without preventDefault, queue submission or DOM mutation in the base controller fixture.",
+    "addedTests": 18,
+    "focusedTestsPassed": 317,
+    "fullBrowserTestsPassed": 2190,
+    "fullBrowserFilesPassed": 57,
+    "strictProductionAndTestTypes": "passed",
+    "conclusion": "Existing library keydown classification does not claim these chords. The previous native mutation's originating events and OS/automation routing are still unknown; no production fix justified.",
+    "nativeComparison": "Not run: native-computer tools unavailable in this turn."
   },
   "limitations": [
     "Native key automation is not physical operator IME evidence.",

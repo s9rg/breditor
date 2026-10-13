@@ -142,6 +142,29 @@ describe("translateKeyDown", () => {
     ).toEqual({ kind: "native", reason: "selectionOrPageCommand" });
   });
 
+  it.each([
+    ["read-all", "a", "KeyA", false],
+    ["next", "ArrowRight", "ArrowRight", false],
+    ["interact", "ArrowDown", "ArrowDown", true],
+    ["stop-interacting", "ArrowUp", "ArrowUp", true],
+    ["editing-key overlap", "b", "KeyB", false],
+    ["history-key overlap", "z", "KeyZ", false],
+  ] as const)("leaves Control-Option %s unclaimed", (_name, key, code, shiftKey) => {
+    // These snapshots prove only library routing, not OS interception or speech.
+    // In particular, do not derive text from a screen-reader key chord.
+    const event = keyboard(key, {code, ctrlKey: true, altKey: true, shiftKey});
+    for (const editing of ["beforeinputPrimary", "structuralFallback"] as const) {
+      for (const primaryModifier of ["control", "meta"] as const) {
+        for (const shortcuts of ["enabled", "disabled"] as const) {
+          expect(translate(event, {editing, primaryModifier, shortcuts})).toEqual({
+            kind: "native",
+            reason: editing === "beforeinputPrimary" ? "beforeinputOwns" : "selectionOrPageCommand",
+          });
+        }
+      }
+    }
+  });
+
   it.each(["c", "C", "x", "X", "v", "V"])(
     "leaves primary-%s to the clipboard owner",
     (key) => {

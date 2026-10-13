@@ -86,6 +86,29 @@ beforeEach(() => {
 });
 
 describe("BreditorBrowserEventController", () => {
+  it.each([
+    ["a", "KeyA", false],
+    ["ArrowRight", "ArrowRight", false],
+    ["ArrowDown", "ArrowDown", true],
+    ["ArrowUp", "ArrowUp", true],
+    ["b", "KeyB", false],
+    ["z", "KeyZ", false],
+  ] as const)("does not cancel or submit a Control-Option %s chord", (key, code, shiftKey) => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const event = new KeyboardEvent("keydown", {bubbles: true, cancelable: true,
+      key, code, ctrlKey: true, altKey: true, shiftKey});
+    const before = fixture.host.innerHTML;
+    const disposition = dispatch(fixture.host, event, observed => controller.handleKeyDown(
+      observed as KeyboardEvent, fixture.rendered, fixture.delivery));
+    expect(disposition).toEqual({kind: "ignored", reason: "selectionOrPageCommand", defaultPrevented: false});
+    expect(event.defaultPrevented).toBe(false);
+    expect(delivered).toEqual([]);
+    expect(fixture.host.innerHTML).toBe(before);
+  });
+
   it("captures the exact shared-bridge range before admitting text", () => {
     const fixture = createFixture();
     const exact = selectionValue(
