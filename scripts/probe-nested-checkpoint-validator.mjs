@@ -22,7 +22,7 @@ for(const name of await readdir(join(outDir,"assets")))bundleAssets[name]=sha(aw
 assert.equal(Object.keys(bundleAssets).some(name=>name.endsWith(".wasm")),!!pair);
 if(pair)assert.equal(Object.entries(bundleAssets).find(([name])=>name.endsWith(".wasm"))[1],sha(await readFile(join(pair.staging,"wasm/dist/breditor_wasm_bg.wasm"))));
 const report={status:"running",releaseQualified:false,sourceOnly:!pair,wasmUsed:!!pair,bundleAssets,runs:[],...(pair?{qualifiedPair:pair.path,tarballSha256:pair.record.tarballSha256}:{}),
-  scope:pair?"Verified generated Rust/Wasm producer plus minified source validator, bootstrap restore and real command adapter with DOM renderer/selection bridge; real select/insert/Undo/Redo/V7 restore. Both declarative and bootstrap-captured runtime contracts checked. No editor owner, event router or native input. Diagnostic only; not full packaged/native/performance/release qualification."
+  scope:pair?"Verified generated Rust/Wasm producer plus minified source validator, bootstrap restore and real command adapter with DOM renderer/selection bridge/event router; real select/insert/Undo/Redo/V7 restore, synthetic beforeinput insertion and keyboard history. Both declarative and bootstrap-captured runtime contracts checked. No editor owner, toolbar or native input. Diagnostic only; not full packaged/native/performance/release qualification."
     :"Synthetic known-valid/invalid V7 nested splice corpus; minified repository source validator, no Wasm/editor/input routing. Not exact failed input, installed package, native or performance/release qualification."};
 const record=join(output,"report.json");
 const save=()=>writeFile(record,JSON.stringify(report,null,2)+"\n");
@@ -40,7 +40,7 @@ try {
         const node=page.locator("#result");result.fixtureStatus=await node.getAttribute("data-status");
         result.fixture=JSON.parse(await node.textContent());
         assert.equal(result.fixtureStatus,"passed");assert.equal(result.fixture.checks,pair?63:240);assert.deepEqual(result.pageErrors,[]);
-        if(pair){assert.equal(result.fixture.runtimeContractCaptured,true);assert.equal(result.fixture.contractChecks,126);assert.equal(result.fixture.readerChecks,63);assert.equal(result.fixture.bootstrapChecks,9);assert.equal(result.fixture.adapterChecks,27);}
+        if(pair){assert.equal(result.fixture.runtimeContractCaptured,true);assert.equal(result.fixture.contractChecks,126);assert.equal(result.fixture.readerChecks,63);assert.equal(result.fixture.bootstrapChecks,9);assert.equal(result.fixture.adapterChecks,27);assert.equal(result.fixture.routerChecks,27);}
         result.status="passed";
       } catch(error) {result.status="failed";result.error=String(error);throw error;}
       finally {await browser?.close();await save();console.log(JSON.stringify({browser:name,run,status:result.status,checks:result.fixture?.checks}));}

@@ -445,6 +445,20 @@
     ],
     "scope": "Real source nested command adapter around the qualified generated Wasm, with compiled typed-format presentation, DOM renderer and selection bridge. Each restored owner exports checkpoints initially and after API Redo and Undo, checks history cursors and canonical DOM, and releases adapter-owned render/observation/generation plus engine. No editor owner/event controller/router, toolbar dispatch, native input, installed browser archive or performance/release qualification. Passing isolation does not resolve the intermittent full-editor failures."
   },
+  "eventRouterIsolation": {
+    "date": "2026-10-13",
+    "insertionRecord": "target/nested-validator-probe-Dizu3H/report.json",
+    "insertionSha256": "d42fa93698f0e99bccf2722af610c3ca877cca6da02340d660f29c94ae43ab43",
+    "historyRecord": "target/nested-validator-probe-FZ6D8W/report.json",
+    "historySha256": "afa730617d1a91fba7fa320c174b197b631a5a5d654c35eaa27f9b3e1eca5bdc",
+    "status": "passed",
+    "exitCode": 0,
+    "freshProcessesPerProbe": 9,
+    "routedInsertionChecks": 81,
+    "routedHistoryProbeChecks": 243,
+    "scriptRegressionExitCode": 0,
+    "scope": "Real source command queue and nested browser event router around qualified generated Wasm, typed renderer and DOM selection bridge. Synthetic beforeinput inserts Y at a selected grandchild exactly once; synthetic Ctrl+Z and Ctrl+Shift+Z restore its exact text. After each step checks live router/adapter, history cursor and checkpoint export; canonical DOM checked after history. Adapter-only history checks strengthened to assert actual grandchild text. No editor owner, toolbar, installed browser archive or physical input. Diagnostic bundle size warning is not a shipping size measurement. Retained intermittent full-editor failures remain open; no runtime fix or release qualification claimed."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false

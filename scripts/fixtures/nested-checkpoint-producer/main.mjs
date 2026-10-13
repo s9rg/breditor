@@ -8,6 +8,8 @@ import {BreditorNestedListDomSelectionBridge} from "../../../packages/breditor-b
 import {compileBrowserPresentation} from "../../../packages/breditor-browser/src/compiled_browser_presentation.ts";
 import {createInlineFormatRenderManifest} from "../../../packages/breditor-browser/src/inline_format_render_manifest.ts";
 import {nestedListCommandRequest,preserveSelectionSync} from "../../../packages/breditor-browser/src/editor_command.ts";
+import {BreditorNestedListCommandQueue} from "../../../packages/breditor-browser/src/command_queue.ts";
+import {BreditorNestedListBrowserEventRouter} from "../../../packages/breditor-browser/src/browser_event_router.ts";
 
 const output=document.getElementById("result"),schema={name:"example/producer-validator",version:1};
 const properties=[
@@ -26,7 +28,7 @@ const formats=[{type:"breditor/strong",properties:{}},
   {type:"example/text-color",properties:{"example/rgb24":0x123456}}];
 const element=(type,children,properties={})=>({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
 const text=value=>({kind:"text",text:value,formats});
-let progress="initialization",checks=0,bootstrapChecks=0,adapterChecks=0,failureInput;
+let progress="initialization",checks=0,bootstrapChecks=0,adapterChecks=0,routerChecks=0,failureInput;
 function assert(value,message){if(!value)throw Error(message);}
 function take(result,status,method){try{assert(result.status===status,`${method}: invalid result status`);const value=result[method]();assert(value!==undefined,`${method}: absent`);return value;}finally{result.free();}}
 function string(result){return take(result,"value","takeValue");}
@@ -91,7 +93,7 @@ async function run(){
         progress=`${items}/${repetition}: browser bootstrap restore`;
         const bootstrapped=bootstrapNestedListWasmEngine(api,{kind:"sessionCheckpoint",checkpointJson:backup,semanticProfile:{bootstrapJson:JSON.stringify(bootstrap),formatVersion:5}});
         assert(bootstrapped.ok,"browser bootstrap restore rejected checkpoint");
-        let adapter,renderer,rendered;const host=document.createElement("div"),bridge=new BreditorNestedListDomSelectionBridge();document.body.append(host);
+        let adapter,renderer,rendered,router;const host=document.createElement("div"),bridge=new BreditorNestedListDomSelectionBridge();host.contentEditable="true";document.body.append(host);
         try{
           const read=consumeWasmSessionCheckpoint({lineage:bootstrapped.observation.snapshotLineage,revision:bootstrapped.observation.snapshotRevision},bootstrapped.engine.sessionCheckpointJson(),[bootstrapped.engine,bootstrapped.observation,bootstrapped.profileGeneration],{mode:"v7",schema:bootstrapped.profileDescriptor.schema,formats:bootstrapped.profileDescriptor.formats});
           assert(read.ok&&read.checkpoint.checkpointJson===backup,"forwarding owner checkpoint mismatch");bootstrapChecks++;
@@ -109,9 +111,31 @@ async function run(){
             if(operation!=="initial")assert(adapter.execute(nestedListCommandRequest(adapter.deliveryToken(),preserveSelectionSync(),{kind:"api",detail:operation},{kind:"history",operation})).command.status==="committed","adapter history failed");
             const checkpoint=ports.sessionCheckpointJson.read();assert(checkpoint?.ok,"adapter checkpoint read failed");
             assert(JSON.parse(checkpoint.checkpoint.checkpointJson).cursor===(operation==="redo"?1:0),"adapter checkpoint cursor mismatch");
+            const expectedText=`Grandchild ${middle}${operation==="redo"?"X":""}`;
+            assert([...host.querySelectorAll("p")].filter(node=>node.textContent===expectedText).length===1,"adapter history text mismatch");
             assert(adapter.rendered.validateCanonicalDom(),"adapter canonical render drift");adapterChecks++;
           }
+          const queue=new BreditorNestedListCommandQueue(adapter.commandExecutor);
+          router=new BreditorNestedListBrowserEventRouter(queue,adapter,{keyboard:{editing:"beforeinputPrimary",primaryModifier:"control",shortcuts:"enabled"}});
+          const target=[...host.querySelectorAll("p")].find(node=>node.textContent===`Grandchild ${middle}`);assert(target,"router target absent");
+          host.focus();const range=document.createRange();range.selectNodeContents(target);range.collapse(false);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);
+          progress=`${items}/${repetition}: router insertion`;
+          const event=new InputEvent("beforeinput",{bubbles:true,cancelable:true,inputType:"insertText",data:"Y"});host.dispatchEvent(event);
+          assert(event.defaultPrevented,"router did not cancel insertion");
+          assert(router.status.kind==="live"&&adapter.state==="live","router insertion faulted owner");
+          assert([...host.querySelectorAll("p")].filter(node=>node.textContent===`Grandchild ${middle}Y`).length===1,"router insertion text mismatch");
+          const routed=ports.sessionCheckpointJson.read();assert(routed?.ok&&JSON.parse(routed.checkpoint.checkpointJson).cursor===1,"router checkpoint failed");routerChecks++;
+          for(const operation of ["undo","redo"]){
+            progress=`${items}/${repetition}: router ${operation}`;
+            const key=new KeyboardEvent("keydown",{bubbles:true,cancelable:true,key:"z",code:"KeyZ",ctrlKey:true,shiftKey:operation==="redo"});host.dispatchEvent(key);
+            assert(key.defaultPrevented,"router did not cancel history shortcut");
+            assert(router.status.kind==="live"&&adapter.state==="live","router history faulted owner");
+            assert([...host.querySelectorAll("p")].filter(node=>node.textContent===`Grandchild ${middle}${operation==="redo"?"Y":""}`).length===1,"router history text mismatch");
+            const checkpoint=ports.sessionCheckpointJson.read();assert(checkpoint?.ok&&JSON.parse(checkpoint.checkpoint.checkpointJson).cursor===(operation==="redo"?1:0),"router history checkpoint failed");
+            assert(adapter.rendered.validateCanonicalDom(),"router history DOM drift");routerChecks++;
+          }
         }finally{
+          router?.dispose();
           if(adapter)adapter.dispose();else{if(rendered)renderer.releaseNestedList(rendered);bootstrapped.observation.free();bootstrapped.profileGeneration.free();}
           bridge.dispose();bootstrapped.engine.free();host.remove();
         }
@@ -121,7 +145,7 @@ async function run(){
         command(restored,o=>restored.redo(o,false));check(restored,`${items}/${repetition}: restored redo`,1);
       }finally{restored?.free();engine.free();}
     }
-    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7,contractChecks:checks*2,readerChecks:checks,bootstrapChecks,adapterChecks,runtimeContractCaptured:true});output.dataset.status="passed";
+    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7,contractChecks:checks*2,readerChecks:checks,bootstrapChecks,adapterChecks,routerChecks,runtimeContractCaptured:true});output.dataset.status="passed";
   }finally{profile.free();}
 }
 void run().catch(error=>{output.textContent=JSON.stringify({progress,checks,error:String(error),failureInput});output.dataset.status="failed";});
