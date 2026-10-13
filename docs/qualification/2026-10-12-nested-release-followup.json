@@ -1,0 +1,47 @@
+{
+  "status": "release-gates-open",
+  "releaseQualified": false,
+  "sourceCheckpoint": "a4c9953",
+  "releaseToolContracts": {
+    "command": "node --test scripts/retained-bootstrap-failure-trace.test.mjs scripts/measure-opt-in-nested-list-size.test.mjs scripts/nested-list-build-transport.test.mjs",
+    "exitCode": 0,
+    "passed": 38,
+    "failed": 0,
+    "skipped": 0
+  },
+  "currentOptInSize": {
+    "assembly": "target/nested-list-opt-in-ByyOGo/assembly.json",
+    "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
+    "archiveBytes": 962748,
+    "unpackedBytes": 4186923,
+    "javascriptGzip9Bytes": 178804,
+    "wasmGzip9Bytes": 635148,
+    "combinedGzip9Bytes": 813952,
+    "budgetQualified": false,
+    "scope": "Verified current archive/tree/consumer/Wasm identities. All emitted qualification-consumer assets including fixture; not shipping-demo or actual network transfer size. No ceiling assumed approved."
+  },
+  "boundedDiagnosticSoak": {
+    "session": 82258,
+    "maximumBatches": 3,
+    "statusAtRecording": "running",
+    "firstBatch": "target/nested-list-reproductions/trace-ObqNWE/exact-replay-3tYSZV/replay.json",
+    "firstBatchStatus": "passed",
+    "firstBatchCases": 900,
+    "secondBatch": "target/nested-list-reproductions/trace-ObqNWE/exact-replay-X5Pn01/replay.json",
+    "secondBatchStatusAtRecording": "running",
+    "scope": "Cold-owner diagnostic only. Existing restore and Undo failures remain unresolved; passing instrumentation is not a runtime fix. Original handle preserved."
+  },
+  "nativeChromeAttempt": {
+    "consumer": "breditor-opt-in-consumer-CC2Vrv",
+    "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
+    "tabKeyboardObservation": "AX tree showed Second and Deep descendant nested under First after Tab, then returned to the original numbered siblings after Shift-Tab.",
+    "nativePaste": "not-qualified: input interrupted by foreground change before a verified result",
+    "nativeUndoRedo": "not-tested",
+    "physicalImeAndVoiceOver": "not-tested",
+    "copyCut": "not-tested: clipboard-overwrite permission pending",
+    "scope": "Partial UI observation only, not canonical checkpoint or full native qualification. Agent-created test tab closed; unrelated user tab left unchanged."
+  },
+  "runtimeChanged": false,
+  "pushed": false,
+  "published": false
+}
