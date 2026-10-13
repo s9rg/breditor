@@ -1688,3 +1688,11 @@ single evaluation, short circuit and earlier retained trace bytes; 15 diagnostic
 tests pass. Ten fresh historical-bundle WebKit replays pass 90 cases with no
 rejection captured. This adds fault-localization coverage, not a runtime fix or
 evidence that the unresolved historical fault has disappeared.
+
+After explicit human permission, installed Safari and Chrome native-app checks
+pass single-item Unicode Copy/Cut/Paste and editor Undo/Redo on the `fRaea0`
+archive. Exact external text, one deletion/insertion and preserved numbering were
+observed. The fixture configures Control shortcuts even on macOS; Command-Z is
+native browser history, not that editor contract. Both test documents were
+restored. Cross-item newlines, physical Japanese IME and VoiceOver remain
+unqualified; no system input/accessibility settings changed in this check.

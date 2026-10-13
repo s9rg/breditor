@@ -1343,6 +1343,31 @@
     "pushed": false,
     "published": false
   },
+  "nativeSingleItemClipboardQualification": {
+    "date": "2026-10-13",
+    "authorization": "Human explicitly approved native browser/clipboard testing: go ahead.",
+    "archiveSha256": "2aaf452690acfbfa1d9de5e18960af0db37293ad9e1a5f94ac35556bbe62be88",
+    "serverSession": 9912,
+    "url": "http://127.0.0.1:49769/?keyboardProbe=1",
+    "nativeBundle": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-opt-in-consumer-tE0YLF/native-bundle-4LxoQJ",
+    "nativeBundleTreeSha256": "2bc3f5027b5d301c2ae9de3936ec5ee40f68479ea447ab4646c0ff033fae49bc",
+    "browsers": ["installed Safari", "installed Google Chrome"],
+    "observedChecks": [
+      "Actual native-app keyboard Copy from selected Deep emoji text pasted exact Deep emoji text in external field, without list marker",
+      "Native Cut removed the selected deep text once while preserving nested item and ordered starts 3/4",
+      "Editor Undo restored the cut text",
+      "Native Paste inserted a single additional copy, visibly Deep emoji text repeated exactly twice",
+      "Configured Control-Z removed one paste and Control-Shift-Z restored one paste"
+    ],
+    "fixtureShortcutContract": "Consumer explicitly configures primaryModifier control. Command-Z instead invokes native browser history and is not the configured editor shortcut; corrected test uses Control. No runtime change was needed.",
+    "selectionCaveat": "Accessibility selectText did not reliably produce the requested range in these rich-text controls. Verified native selection through visible text-node clicks and keyboard selection; do not count earlier wrong/focus-ambiguous attempts as editor failures or passes. Chrome tab-control observations were followed by actual native-app window tests; only native-app results qualify this record.",
+    "limits": "Single-item plain-text external target only. Its single-line input cannot prove cross-item newline preservation. No physical Japanese IME, VoiceOver, native durable snapshot equivalence, historical WebKit cause/fix or size/p95 acceptance is established. Accessibility observations and screenshots were inspected; no saved video artifact is available in this desktop tooling.",
+    "cleanup": "Both native test documents restored to baseline. Intermediate agent browser tab closed. Native test windows/server retained for remaining checks. No input-source or VoiceOver settings changed. System clipboard intentionally contains test text under the explicit authorization; prior private clipboard contents were not retained in this record.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
