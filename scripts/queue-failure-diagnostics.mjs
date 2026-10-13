@@ -299,9 +299,13 @@ export function instrumentFlatRootComparison(code) {
 
 /** Disposable fixture only: preserve short-circuit order and single reads. */
 export function instrumentAdmittedBlockIndex(code) {
-  const anchor = "if (paragraphIndex !== expectedIndex) {";
+  const anchors = ["if (paragraphIndex !== expectedIndex) {",
+    'if (typeof paragraphIndex !== "number" || !projectionU32sEqual(paragraphIndex, expectedIndex)) {'];
   if (!code.includes("const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);") &&
       !code.includes("const blockType = (paragraphBlockTypeInvoked = true, invokeGenerated(methods.elementType, view, paragraphIndex));")) return code;
+  const matches = anchors.filter(anchor => code.includes(anchor));
+  assert.equal(matches.length, 1, "admitted block index branch changed or mixed");
+  const anchor = matches[0];
   assert.equal(code.split(anchor).length, 2, "admitted block index branch changed");
   return code.replace(anchor, anchor + `
             try { console.error("breditor admitted block index rejection", JSON.stringify({

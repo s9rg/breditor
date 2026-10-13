@@ -13,6 +13,7 @@ import {verifyFailureBundle,retainNestedListFailure} from "./retain-nested-list-
 import {readFixtureFailureState,waitForTerminalFixtureCompletion} from "./fixture-completion.mjs";
 import {instrumentChildCountReturn,childCountSentinelSameValue,captureLastChildCountReturn,childCountUnsignedIndex} from "./child-count-return-diagnostics.mjs";
 import {DIRECT_GETTER_BRIDGE} from "./direct-getter-bridge.mjs";
+import {getterU32ComparisonMode} from "./getter-u32-comparison-mode.mjs";
 
 assert.equal(process.argv.length,3,"usage: node scripts/probe-nested-wasm-getters.mjs <private pair qualification.json>");
 const repository=fileURLToPath(new URL("../",import.meta.url));
@@ -51,6 +52,8 @@ assert.ok(!enrichedScalars||getterSequence==="all","enriched coverage requires a
 const integerPropertyFlag=process.env.BREDITOR_GETTER_INTEGER_PROPERTIES??"0";
 assert.ok(["0","1"].includes(integerPropertyFlag));const integerProperties=integerPropertyFlag==="1";
 assert.ok(!integerProperties||enrichedScalars,"integer properties require enriched coverage");
+const u32KeyFlag=process.env.BREDITOR_GETTER_U32_KEYS??"0";
+const u32KeyComparison=getterU32ComparisonMode({flag:u32KeyFlag,sequence:getterSequence,tree:treeShape,integerProperties});
 assert.ok(!allWordScalars||wordChildCountTransport,"all word scalars require private word Wasm");
 assert.ok(["0","1"].includes(keepOwnersFlag));const keepProjectionOwners=keepOwnersFlag==="1";
 const fixture=await mkdtemp(join(record.consumer,"getter-probe-"));
@@ -73,7 +76,9 @@ assert.ok(["0","1"].includes(unsignedFlag));const unsignedIndex=unsignedFlag==="
 assert.ok(!(unsignedIndex&&(directCall||lastCapture||fixedArity||rawTrace||sentinelTreatment||keepProjectionOwners)),"unsigned index is a separate experiment");
 await cp(join(repository,"scripts/fixtures/nested-getter-probe"),fixture,{recursive:true});
 await cp(join(repository,"packages/breditor-browser/src/projection_scalar_words.ts"),join(fixture,"projection_scalar_words.ts"));
+await cp(join(repository,"packages/breditor-browser/src/projection_u32_identity.ts"),join(fixture,"projection_u32_identity.ts"));
 const originalMain=await readFile(join(fixture,"main.ts"),"utf8");
+assert.equal(originalMain.split("const u32KeyComparison = false;").length,2);
 assert.equal(originalMain.split("const ownerRepetitions = 30;").length,2);
 assert.equal(originalMain.split('const getterSequence: string = "all";').length,2);
 assert.equal(originalMain.split("const walkRepetitions = 1;").length,2);
@@ -91,6 +96,10 @@ assert.equal(originalMain.split("const integerProperties = false;").length,2);
 if(integerProperties){
   const integerMain=await readFile(join(fixture,"main.ts"),"utf8");
   await writeFile(join(fixture,"main.ts"),integerMain.replace("const integerProperties = false;","const integerProperties = true;"));
+}
+if(u32KeyComparison){
+  const keyMain=await readFile(join(fixture,"main.ts"),"utf8");
+  await writeFile(join(fixture,"main.ts"),keyMain.replace("const u32KeyComparison = false;","const u32KeyComparison = true;"));
 }
 // Explicitly separate diagnostic Wasm from the qualified packed control.
 let diagnosticWasmAssets;
@@ -147,7 +156,8 @@ const report={status:"running",fixture,fixtureKind:"nested-getter-probe",browser
   releaseQualified:false,releasePerformanceQualified:false,editorLoaded:false,rawChildCountTraceEnabled:rawTrace,
   childCountSentinelSameValueTreatment:sentinelTreatment,lastChildCountCaptureEnabled:lastCapture,unsignedChildCountIndexTreatment:unsignedIndex,
   diagnosticWasmAssets,explicitChildCountTransport,wordChildCountTransport,wordCandidateSelected,packedWordRouting,wordRouting,allWordScalars,enrichedScalars,integerProperties,qualifiedPackedWasmUsed:diagnosticWasmAssets===undefined,
-  packedIntegerWordRouting:packedWordRouting,
+  packedIntegerWordRouting:packedWordRouting,u32KeyComparison,
+  productionU32IdentitySha256:hash(await readFile(join(fixture,"projection_u32_identity.ts"))),
   productionDecoderSha256:hash(await readFile(join(fixture,"projection_scalar_words.ts"))),
   scope:"Real generated nested projection getters through retained bridge; minified standalone consumer, no editor/renderer/history/native input",runs:[]};
 const save=async()=>{const bytes=JSON.stringify({...report,measurements:report.runs},null,2);await writeFile(join(fixture,"report.json"),bytes);await writeFile(join(fixture,"measurement.json"),bytes);};await save();

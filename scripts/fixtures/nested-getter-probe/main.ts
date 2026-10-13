@@ -6,6 +6,8 @@ import {bridgeInvoke} from "./bridge.js";
 import {decodeChildCountWords} from "./word-count.js";
 // Copied from the current browser source by the runner, with its hash recorded.
 import {decodeProjectionScalarWords, decodeProjectionIntegerWords} from "./projection_scalar_words.js";
+// Copied private production helper; enabled only by an explicit u32-only trial.
+import {projectionU32sEqual} from "./projection_u32_identity.js";
 const output = document.getElementById("result")!;
 let progress = "initialization", checks = 0;
 const ownerRepetitions = 30;
@@ -18,6 +20,7 @@ const packedWordRouting = false;
 const allWordScalars = false;
 const enrichedScalars = false;
 const integerProperties = false;
+const u32KeyComparison = false;
 const propertyValues = [-9007199254740991, -4294967296, -5, 0, 1193046, 4294967295, 4294967296, 9007199254740991];
 let propertyCursor = 0;
 const retainedOwners:Array<wasm.BreditorEngine|wasm.BreditorProjection>=[];
@@ -26,8 +29,9 @@ function same(actual: unknown, expected: unknown, label: string): void {
   // Fixture references are finite safe integers, strings or undefined.
   // Preserve zero-sign equivalence while avoiding the observed strict-equality
   // rejection of two captured 1146s (whose SameValue comparison was true).
-  const equal = Object.is(actual,expected) ||
-    (Object.is(expected,0) && Object.is(actual,-0));
+  const equal = u32KeyComparison && (typeof actual === "number" || typeof expected === "number")
+    ? projectionU32sEqual(actual,expected)
+    : Object.is(actual,expected) || (Object.is(expected,0) && Object.is(actual,-0));
   if (!equal) {
     const scalar = (value: unknown) => ({type: typeof value,
       spelling: typeof value === "number" || typeof value === "string" ? String(value).slice(0,256) : undefined});

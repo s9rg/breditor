@@ -326,6 +326,31 @@ test("admitted index diagnostics preserve rejection without type reads or logger
   assert.throws(() => instrumentAdmittedBlockIndex(source + source));
 });
 
+test("integer-key admission diagnostics retain type guards, one comparison and one admitted getter", () => {
+  const source = `const paragraphOrdinal = 3, plannedBlock = {};
+    if (typeof paragraphIndex !== "number" || !projectionU32sEqual(paragraphIndex, expectedIndex)) { return false; }
+    const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);
+    return blockType;`;
+  const traced = instrumentAdmittedBlockIndex(source);
+  for (const index of [2, 3, undefined, "2", NaN]) for (const hostile of [false, true]) {
+    const outcomes = [];
+    for (const code of [source, traced]) {
+      let comparisons = 0, getters = 0;
+      const result = Function("paragraphIndex", "expectedIndex", "methods", "view", "invokeGenerated", "projectionU32sEqual", "console", "globalThis", code)(
+        index, 2, {elementType: "type"}, {}, () => {getters++;return "paragraph";},
+        (a,b) => {comparisons++;return typeof a === "number" && Number.isSafeInteger(a) && a >= 0 && String(a) === String(b);},
+        {error() {if (hostile) throw Error("logger unavailable");}}, {});
+      outcomes.push({result, comparisons, getters});
+    }
+    assert.deepEqual(outcomes[0], outcomes[1]);
+    assert.equal(outcomes[0].comparisons, typeof index === "number" ? 1 : 0);
+    assert.equal(outcomes[0].getters, index === 2 ? 1 : 0);
+  }
+  assert.throws(() => instrumentAdmittedBlockIndex(source + source));
+  const legacy = source.replace('if (typeof paragraphIndex !== "number" || !projectionU32sEqual(paragraphIndex, expectedIndex)) {', "if (paragraphIndex !== expectedIndex) {");
+  assert.throws(() => instrumentAdmittedBlockIndex(source + legacy), /mixed/u);
+});
+
 test("block type call marker distinguishes skipped and undefined without duplicate calls", () => {
   const source = `const blockType = paragraphIndex === expectedIndex
         ? invokeGenerated(methods.elementType, view, paragraphIndex) : undefined;

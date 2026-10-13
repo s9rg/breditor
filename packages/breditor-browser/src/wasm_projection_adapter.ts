@@ -20,6 +20,7 @@ import { projectionFailure } from "./result.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
 import { decodeProjectionIntegerWords, decodeProjectionScalarWords } from "./projection_scalar_words.js";
 import { snapshotNestedProjectionWordFacade } from "./wasm_projection_word_facade.js";
+import { projectionU32sEqual } from "./projection_u32_identity.js";
 import {
   browserCompiledProfileDescriptorMatchesGeneration,
   wasmProfileGenerationIsLive,
@@ -740,7 +741,7 @@ function readSemanticProjection(
     );
     // Admit the index before reading metadata. Keep this as an explicit branch:
     // each admitted block must execute its type getter exactly once.
-    if (paragraphIndex !== expectedIndex) {
+    if (typeof paragraphIndex !== "number" || !projectionU32sEqual(paragraphIndex, expectedIndex)) {
       return projectionFailure("projection.invalid_shape");
     }
     const blockType = invokeGenerated(methods.elementType, view, paragraphIndex);
@@ -764,7 +765,7 @@ function readSemanticProjection(
     if (
       runCount === undefined ||
       !isIndex(runCount) ||
-      (plannedBlock !== undefined && runCount !== plannedBlock.runs) ||
+      (plannedBlock !== undefined && !projectionU32sEqual(runCount, plannedBlock.runs)) ||
       runCount > 10_000 ||
       runCount > nodeCount - expectedIndex
     ) {
@@ -784,7 +785,7 @@ function readSemanticProjection(
         runOrdinal,
       );
       if (
-        runIndex !== expectedIndex ||
+        typeof runIndex !== "number" || !projectionU32sEqual(runIndex, expectedIndex) ||
         !listMetadataIsAbsent(view, methods, runIndex) ||
         invokeGenerated(methods.nodeKind, view, runIndex) !== "text" ||
         !headingLevelIsAbsent(view, methods, runIndex) ||
@@ -898,7 +899,7 @@ function readSemanticProjection(
     paragraphs.push({ headingLevel: isHeadingProjectionLevel(headingLevel) ? headingLevel : null, runs });
   }
   if (
-    expectedIndex !== nodeCount ||
+    !projectionU32sEqual(expectedIndex, nodeCount) ||
     !listMetadataIsAbsent(view, methods, nodeCount) ||
     !headingLevelIsAbsent(view, methods, nodeCount) ||
     invokeGenerated(methods.childAt, view, 0, rootChildCount) !== undefined ||

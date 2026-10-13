@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-13",
+  "status": "tested-editor-compatibility-patch; broader-engine-fault-open",
+  "releaseQualified": false,
+  "underlyingEngineFixed": false,
+  "historicalOwnerFaultRootCauseEstablished": false,
+  "productionSourceChanged": true,
+  "rustSourceChanged": false,
+  "shippingArtifactsWritten": false,
+  "numericIdentityChange": {
+    "source": "packages/breditor-browser/src/projection_u32_identity.ts",
+    "sourceSha256": "46bbc19fc983768b42753406c747b28db32b89f9c1211f1de52a1eee7905c6ad",
+    "sites": ["paragraph preorder identity", "planned run count", "run preorder identity", "final node count"],
+    "semantics": "Independently require primitive u32 operands and compare exact decimal keys. Reject numeric strings, objects, fractions, infinities, NaN and overflow. Preserve zero-sign equivalence and all existing document-size, preorder, shape, format and ownership checks.",
+    "foreignCode": "No object conversion hooks. Capture the primitive String converter at module initialization rather than consulting a subsequently replaced global.",
+    "notChanged": "No getter retry, substitute count, fault clearing, raw ABI change, public export addition, engine option override or runtime prototype mutation.",
+    "reason": "Retained failures previously rejected equal captured numeric indices. A fresh reduced getter replay also entered its failure branch with Rust count, raw return and both JS operands equal to 1."
+  },
+  "freshReducedControl": {
+    "source": "target/nested-list-reproductions/failure-dkIAO6/measurement.json",
+    "sourceSha256": "669eec3947d6d6e0e58a43f806b699d9decf54a0c2d5bdcbf98cdf78961b322f",
+    "webkit265Replay": "target/nested-list-reproductions/failure-dkIAO6/exact-replay-WuY9BJ/replay.json",
+    "webkit265ReplaySha256": "92f9c8348c4cd7109ccebddd9b4befec06302ea43ba9141239adbb24270ce836",
+    "webkit265Failure": "Process 1, 100 items, owner 237, backward node 55: Rust/raw/returned/expected count 1; failure-path SameValue true.",
+    "webkit266Report": "target/webkit-u32-interop-KxpWzb/getter-rust-raw-webkit266.json",
+    "webkit266ReportSha256": "eab321557921485a39b582523fa03c20e1e4f80b70268124f06c5dc83be15b42",
+    "webkit266Failure": "Process 0, 500 items, owner 175, backward node 453: the same matching-value rejection.",
+    "engineComparison": "Official isolated playwright-core 1.63.0 / WebKit revision 2359, version 26.6. Project dependencies and old browser installation were not changed. Exact retained HTML/JS/Wasm served unchanged.",
+    "conclusion": "A dependency update alone is not a fix. Exact engine/platform responsibility remains unproved."
+  },
+  "legacyTransportCounterexample": {
+    "report": "target/webkit-u32-interop-KxpWzb/getter-u32-key-treatment-webkit266.json",
+    "sha256": "14a23ffaf930ff202089bedeaffd6febe4c29b680d9ddd5a1a73bda71c7bbf4a",
+    "scope": "Private treatment replaces only the reduced oracle's numeric comparison with the earlier-stage production u32 helper. Original diagnostic Wasm, getter sequence and expected counts remain unchanged.",
+    "result": "Process 0 passed; process 1 failed at 500 items, owner 2, backward node 873. Rust recorded count 1; raw optional-u32 return was 9007199254740991, correctly decoded as undefined.",
+    "conclusion": "Comparison changes cannot repair this legacy post-computation missing-value failure. It remains retained; no fallback or retry was added. The current opt-in package's existing integer-word transport is tested separately."
+  },
+  "nativeSafariControl": {
+    "version": "26.6.2",
+    "versionEvidence": "/Applications/Safari.app/Contents/Info.plist CFBundleShortVersionString",
+    "source": "Same failure-dkIAO6 bytes on loopback, no rebuild.",
+    "documents": ["http://127.0.0.1:54652/", "http://127.0.0.1:54652/?nativeRun=1", "http://127.0.0.1:54652/?nativeRun=2"],
+    "observed": "Each distinct document displayed terminal passed, checks 736501, owners 900, retainedOwnerCount 0 and cleanupCompleted true through native Safari accessibility UI.",
+    "scope": "Three document loads in one native browser context, not fresh processes, physical input, clipboard, VoiceOver or current-package qualification.",
+    "cleanup": "Only the disposable test tab closed; original scratch/editor tabs preserved. Loopback server stopped gracefully and retained source reverified. System settings unchanged."
+  },
+  "finalPackage": {
+    "record": "target/nested-list-packages-KnfEb5/qualification.json",
+    "sha256": "c892c44b7ef8fbf3d39160dbe2573e6b70245dac70c6f8ef1795e9ea3bb84edc",
+    "browserTarballSha256": "8ec207c7cccdd5483bfe39326619d828073fd8c1e98ecc828c2443afa15eea95",
+    "wasmTarballSha256": "c818c566b63b0ad82cbe365b193449a2d045b7c30f5f9d2f67c7d96ab3ced943",
+    "transport": "Existing scalar words version 1, integer words version 1 and generated bindings version 2. Same qualified Rust/Wasm candidate DFT4Ql; no private Wasm substitution or floating-point transport fallback.",
+    "qualification": "Strict types, offline installed actual tarballs, Chromium/Firefox/WebKit nested scenarios and base Node/Chromium compatibility smoke passed. Shipping trees unchanged.",
+    "browserTests": {"passed": 2195, "failed": 0, "pending": 0, "files": 58},
+    "typecheck": "Strict production and test types passed.",
+    "scriptTests": {"passed": 293, "failed": 0, "skipped": 3},
+    "excludedInvocation": "An earlier root-level Vitest invocation lacked the browser workspace's jsdom configuration and failed with document undefined. It is not candidate qualification; the configured final workspace suite passed completely."
+  },
+  "finalWordGetterStress": {
+    "record": "breditor-nested-list-consumer-eiPeob/getter-probe-YlWMt8/measurement.json",
+    "sha256": "b514a121a6a0e70ff491d16cb8413390927f9680213b74d75954ffa120f315cf",
+    "result": "Ten fresh WebKit 26.5 processes, 9000 projection owners and 7383010 exact getter checks passed; cleanup completed.",
+    "scope": "Current installed Wasm, current copied production helper, original retained bridge, paragraph child-count-only forward/backward traversal. Signed-property checks are not replaced with a u32 oracle."
+  },
+  "finalTypedEditorStress": {
+    "record": "breditor-nested-list-consumer-eiPeob/performance-g8Z2za/measurement.json",
+    "sha256": "154065eb01d2c5d605dc9a71b079bc4a11b001b882e865901e13436553848a02",
+    "result": "Ten fresh WebKit 26.5 processes / 900 editor cases passed, diagnostics zero.",
+    "scope": "Exact final captured-converter package. Grandchild editing at 10/100/500 items, 30 owners per size, formatted text, typed properties and signed integers. Exact document, selection, undo, checkpoint, fresh-owner restoration and redo assertions retained. No package instrumentation, retries or tier overrides; not accepted latency evidence."
+  },
+  "earlierStageNewEngineCheck": {
+    "record": "target/webkit-u32-interop-KxpWzb/current-word-u32-webkit266.json",
+    "sha256": "010b427583aec5a0b0667bcdf02eff077df47b44afbe1e169d833c96fa4b66de",
+    "result": "Same earlier-stage LlYZOt word/u32 getter bundle passed ten fresh WebKit 26.6 processes / 7383010 checks, unchanged application bytes.",
+    "boundary": "Predates only the final captured-converter hardening. Do not substitute this record for final-package 26.6 or full-editor qualification. Exact completed comparison drivers and SDK lock are retained alongside both failed legacy reports."
+  },
+  "diagnosticContract": "New BREDITOR_GETTER_U32_KEYS flag is opt-in and rejects non-paragraph, non-child-count or signed-property combinations. Private helper copied and hashed; no oracle weakening. Current and retained legacy admission branches remain supported by cold diagnostic tracing.",
+  "remaining": [
+    "The legacy standalone optional-u32 failure remains reproducible.",
+    "The exact underlying engine/platform cause and the most recent retained toolbar-owner fault's causal repair are not established.",
+    "Passing current-package samples are a tested compatibility candidate, not proof that every historical WebKit fault is resolved.",
+    "Physical IME/VoiceOver, accepted size/latency budgets and final release promotion remain separate open gates."
+  ],
+  "pushed": false,
+  "published": false
+}
