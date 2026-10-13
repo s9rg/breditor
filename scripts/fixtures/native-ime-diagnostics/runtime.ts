@@ -56,20 +56,38 @@ function shape(host: Element, event: Event) {
   }};
 }
 
+/** Metadata only: fixed key identities, modifiers and a bounded control-byte sample. */
+function diagnosticInputMetadata(event: Event) {
+  const keyboard = event instanceof KeyboardEvent;
+  const data = event instanceof InputEvent || event instanceof CompositionEvent ? event.data : null;
+  const scannedUtf16 = Math.min(data?.length ?? 0, 256);
+  const controlCodeUnits: number[] = [];
+  for (let index = 0; index < scannedUtf16; index++) {
+    const value = data!.charCodeAt(index);
+    if ((value < 32 || value === 127) && !controlCodeUnits.includes(value)) controlCodeUnits.push(value);
+  }
+  return {
+    trusted: event.isTrusted,
+    inputType: event instanceof InputEvent ? event.inputType : undefined,
+    composing: event instanceof InputEvent || keyboard ? event.isComposing : undefined,
+    // Only reviewed control/shortcut identities; never arbitrary text or codes.
+    key: keyboard ? (["Enter", "Escape", "Tab", " ", "Process", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key) ? event.key : "other") : undefined,
+    code: keyboard ? (["KeyA", "KeyB", "KeyZ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Escape", "Tab", "Space"].includes(event.code) ? event.code : "other") : undefined,
+    modifiers: keyboard ? {control: event.ctrlKey, option: event.altKey, command: event.metaKey, shift: event.shiftKey} : undefined,
+    dataLength: data?.length,
+    dataControlSample: data === null ? undefined : {scannedUtf16, truncated: data.length > scannedUtf16, controlCodeUnits},
+  };
+}
+
 // Registration precedes editor startup. DOM metadata records lengths and paths,
 // never actual input/document strings; exception messages may contain payloads.
 for (const type of ["compositionstart", "compositionupdate", "compositionend", "beforeinput", "input", "keydown", "blur"]) {
   document.addEventListener(type, event => {
     const host = document.querySelector("#editor [contenteditable=true]") ?? document.querySelector("#editor");
     if (!host || !(event.target instanceof Node) || !host.contains(event.target)) return;
-    recordImeDiagnostic(`event:${type}`, undefined, {trusted: event.isTrusted,
-      inputType: event instanceof InputEvent ? event.inputType : undefined,
-      composing: event instanceof InputEvent || event instanceof KeyboardEvent ? event.isComposing : undefined,
-      // Never log arbitrary key text; only lifecycle-relevant control keys.
-      key: event instanceof KeyboardEvent
-        ? (["Enter", "Escape", "Tab", " ", "Process"].includes(event.key) ? event.key : "other") : undefined,
-      dataLength: event instanceof InputEvent || event instanceof CompositionEvent ? event.data?.length : undefined,
-      ...shape(host, event)});
+    try {
+      recordImeDiagnostic(`event:${type}`, undefined, {...diagnosticInputMetadata(event), ...shape(host, event)});
+    } catch { /* Observation must not interfere with event delivery. */ }
   }, true);
 }
 window.addEventListener("DOMContentLoaded", () => {

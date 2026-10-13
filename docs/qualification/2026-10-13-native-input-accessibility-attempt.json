@@ -37,6 +37,22 @@
     "conclusion": "Existing library keydown classification does not claim these chords. The previous native mutation's originating events and OS/automation routing are still unknown; no production fix justified.",
     "nativeComparison": "Not run: native-computer tools unavailable in this turn."
   },
+  "diagnosticMetadataFollowup": {
+    "scope": "Private flat-list IME diagnostic fixture only; not the qualified nested archive, not native certification, and not a production fix.",
+    "captures": "Control/Option/Command/Shift flags and a fixed allowlist of shortcut key identities; data length and unique control-code units from the first at most 256 UTF-16 units. Ordinary text is never recorded by these new fields.",
+    "failureContainment": "Metadata or DOM observation failure is contained without canceling event delivery.",
+    "focusedDiagnosticTestsPassed": 9,
+    "fullScriptTestsPassed": 278,
+    "fullScriptTestsSkipped": 3,
+    "fullScriptTestsFailed": 0,
+    "isolatedBuild": "target/native-ime-diagnostic-wWZry8",
+    "scriptSha256": "3287b84931e2dbd1192fa98aa78a4515d28ac9cfd88783a497ea301d2e826f7d",
+    "wasmSha256": "d89a4a5a6de7c7f33333a3a50f0444a224c193e8646aee86b467bac1c426dc64",
+    "syntheticCompositionCasesPassed": {"chromium": 60, "firefox": 60, "webkit": 60},
+    "nativeImeQualified": false,
+    "voiceOverQualified": false,
+    "historicalWebKitFaultResolved": false
+  },
   "limitations": [
     "Native key automation is not physical operator IME evidence.",
     "Accessibility tree inspection does not qualify a screen reader.",
