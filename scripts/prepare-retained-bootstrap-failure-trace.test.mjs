@@ -47,6 +47,10 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   assert.deepEqual(await readFile(join(result.output,"bundle/assets/engine.wasm")),wasm);
   const tracedPath=join(result.output,"bundle/assets/main.js"),tracedBytes=await readFile(tracedPath);
   const derivedBytes=await readFile(result.measurementPath);
+  const forgedPredicates=structuredClone(verified.source);forgedPredicates.retainedBootstrapDerivation.checkpointPredicates=true;
+  const forgedPredicatesBytes=Buffer.from(JSON.stringify(forgedPredicates));await writeFile(result.measurementPath,forgedPredicatesBytes);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedPredicatesBytes)}),/require validation/u);
+  await writeFile(result.measurementPath,derivedBytes);
   const forgedValidation=structuredClone(verified.source);forgedValidation.retainedBootstrapDerivation.checkpointValidation=true;
   const forgedValidationBytes=Buffer.from(JSON.stringify(forgedValidation));await writeFile(result.measurementPath,forgedValidationBytes);
   await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedValidationBytes)}),/checkpoint byte validator changed/u);

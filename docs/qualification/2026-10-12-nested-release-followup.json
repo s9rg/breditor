@@ -234,6 +234,25 @@
     "nextBoundary": "Observe the three existing predicate results individually without rerunning them; exact failing predicate is not yet identified. No runtime fix, validation relaxation or release qualification.",
     "scope": "Only evaluated null-return branches traced; string locals redacted to type/length, parsed data limited to header/counter fields. One parse/take, successful-path silence and forged option rejection tested. Older input/reader traces remain verifiable. Source assertions count each diagnostic family separately; full original workload and correctness checks retained."
   },
+  "checkpointPredicateTrace": {
+    "date": "2026-10-13",
+    "record": "target/nested-list-reproductions/trace-n0mpWp/measurement.json",
+    "sha256": "4ef231e0dbb0f68606f980da479948c25d3255f036f51846185e4ce7987127f8",
+    "tracedScriptSha256": "900cbb873888ce407e145224eff9c37684e13b0aca598a8db8827d2c91054d25",
+    "sites": 70,
+    "predicateSites": 3,
+    "rebuilt": false,
+    "remangled": false,
+    "originalControlModified": false,
+    "fullScriptTestsPassed": 269,
+    "optionalScriptTestsSkipped": 3,
+    "scriptFailures": 0,
+    "replays": [
+      {"record":"target/nested-list-reproductions/trace-n0mpWp/exact-replay-6CdZg8/replay.json","sha256":"373497138a7af99f78157cccfa0c15d05a5022e76d05927d230832b4047186ed","status":"passed","cases":90,"freshProcesses":10},
+      {"record":"target/nested-list-reproductions/trace-n0mpWp/exact-replay-B0bBuc/replay.json","sha256":"898b56acb44fb8697f3a94738a96a69f929d23edbb8427a0306caf80415e248d","status":"passed","cases":90,"freshProcesses":10}
+    ],
+    "scope": "Existing three predicate calls wrapped once, original result returned unchanged; false/falsy results logged without re-running validators. Short-circuit order, one take and success silence tested for all three rejection positions. Forged metadata rejected; prior validator trace remains verifiable. Diagnostic call layout changes; no timing/release evidence, engine attribution, original fault resolution or runtime workaround. Two-batch bound completed; no further unchanged repetition launched."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",

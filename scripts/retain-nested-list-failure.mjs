@@ -85,7 +85,8 @@ export async function verifyFailureBundle(sourcePath, manifest) {
       assert.ok(derivation.inputRoutes===undefined||typeof derivation.inputRoutes==="boolean");
       assert.ok(derivation.checkpointReader===undefined||typeof derivation.checkpointReader==="boolean");
       assert.ok(derivation.checkpointValidation===undefined||typeof derivation.checkpointValidation==="boolean");
-      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,smallRestoreChurn:derivation.smallRestoreChurn===true,checkpointExports:derivation.checkpointExports===true,inputRoutes:derivation.inputRoutes===true,checkpointReader:derivation.checkpointReader===true,checkpointValidation:derivation.checkpointValidation===true});
+      assert.ok(derivation.checkpointPredicates===undefined||typeof derivation.checkpointPredicates==="boolean");
+      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,smallRestoreChurn:derivation.smallRestoreChurn===true,checkpointExports:derivation.checkpointExports===true,inputRoutes:derivation.inputRoutes===true,checkpointReader:derivation.checkpointReader===true,checkpointValidation:derivation.checkpointValidation===true,checkpointPredicates:derivation.checkpointPredicates===true});
       assert.deepEqual(source.diagnosticWorkload,expected.diagnosticWorkload,"diagnostic workload changed");
       assert.deepEqual(tracedScript, Buffer.from(expected.code), "bytes outside bootstrap trace changed");
       assert.deepEqual(derivation.sites, expected.sites, "bootstrap trace sites changed");

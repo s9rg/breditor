@@ -46,13 +46,15 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
   assert.equal(typeof inputRoutes,"boolean");
   assert.equal(typeof checkpointReader,"boolean");
   assert.equal(typeof checkpointValidation,"boolean");
+  assert.equal(typeof checkpointPredicates,"boolean");
+  assert.ok(!checkpointPredicates||checkpointValidation,"checkpoint predicates require validation tracing");
   assert.ok(!checkpointValidation||checkpointReader,"checkpoint validation requires reader tracing");
   assert.ok(!smallRestoreChurn||ownerFaults,"small churn requires owner fault tracing");
   assert.ok(!code.includes(helper),"retained bootstrap already traced");
@@ -105,6 +107,27 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     const envelopeCall=validator.body.body[0]?.declarations?.[0]?.init;
     assert.equal(envelopeCall?.callee?.type,"Identifier");assert.equal(envelopeCall.arguments.length,2);
     const envelope=functions.find(n=>n.id.name===envelopeCall.callee.name);assert.equal(envelope?.params.length,2);
+    if(checkpointPredicates) {
+      const flatten=node=>node.type==="LogicalExpression"&&node.operator==="||"?[...flatten(node.left),...flatten(node.right)]:[node];
+      const guards=[];
+      function findGuard(node) {
+        if(node.type==="IfStatement") {
+          const terms=flatten(node.test);
+          if(terms.length===3&&terms.every(t=>t.type==="UnaryExpression"&&t.operator==="!"&&
+            t.argument.type==="CallExpression"&&t.argument.callee.type==="Identifier"&&t.argument.arguments.length===3)&&
+            terms[0].argument.arguments[0]?.property?.name==="document"&&
+            terms.every(t=>t.argument.arguments[2]?.type==="Identifier"&&t.argument.arguments[2].name===terms[0].argument.arguments[2].name))guards.push(terms);
+        }
+        children(node).forEach(findGuard);
+      }
+      findGuard(envelope.body);assert.equal(guards.length,1,"checkpoint predicate group missing or ambiguous");
+      for(const [index,term] of guards[0].entries()) {
+        const node=term.argument,kind=["checkpoint-property-accounting","checkpoint-base-state","checkpoint-history"][index];
+        const original=code.slice(node.start,node.end),stage=`${kind}:${node.start}`;
+        edits.push({start:node.start,end:node.end,original,replacement:`${helper}Predicate(${JSON.stringify(stage)},${original})`});
+        sites.push({stage,start:node.start,end:node.end,code:kind});
+      }
+    }
     for(const [fn,kind] of [[validator,"checkpoint-correlation"],[envelope,"checkpoint-envelope"]]) {
       let count=0;
       function traceNull(node,ancestors=[]) {
@@ -311,6 +334,7 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
     prefix=prefix.replace('"status","kind","operation"','"defaultPrevented","inputType","outcome","status","kind","operation"');
     prefix+=`function ${helper}Input(stage,value){${helper}(stage,"beforeinput-result",{result:value});return value;}\n`;
   }
+  if(checkpointPredicates)prefix+=`function ${helper}Predicate(stage,value){if(!value)${helper}(stage,"checkpoint-predicate-rejection",{result:value});return value;}\n`;
   edits.push({start:0,end:0,original:"",replacement:prefix});
   edits.sort((a,b)=>b.start-a.start);
   let traced=code;

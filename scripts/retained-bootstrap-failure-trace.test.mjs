@@ -143,3 +143,21 @@ test("checkpoint validation trace separates envelope and revision guards and red
   assert.equal(logs.some(log=>log[1].includes("never log this payload")),false);
   assert.throws(()=>traceRetainedBootstrapFailures(source+fixture,{checkpointValidation:true}),/requires reader/u);
 });
+
+test("checkpoint predicate trace preserves single evaluation and short circuit order",()=>{
+  const fixture='const invalid=Object.freeze({code:"session_checkpoint.invalid_wasm_view"});function own(x){return x;}function reject(){return own(Object.freeze({ok:false,error:invalid}));}function reader(e,t,n,r,i){if(n.invalid)return reject();let a=e;if(!a)return reject();let o=t.status;if(o==="bad")return reject();let s=t.takeValue;if(!s)return reject();let c=t.error;if(c)return reject();let u=Reflect.apply(s,t,[]);if(u==null)return reject();if(typeof u!=="string")return reject();let d=bytes(u,a,i);if(d===null)return reject();return {checkpointJson:u};}function bytes(e,t,n){let r=envelope(e,n);if(r===null)return null;if(r.envelope.currentRevision!==t.revision)return null;return r.historyBase.snapshot.lineage!==t.lineage?null:r.utf8Bytes;}function envelope(e,n){let count=e.length;if(count===0)return null;const parsed=JSON.parse(e);if(parsed.invalid)return null;if(n.mode!=="v7")return null;let base=parsed.historyBase,counter={propertyValues:0};if(!account(base.document,n,counter)||!state(base,n,counter)||!history(parsed,n,counter))return null;return {utf8Bytes:count,envelope:parsed,historyBase:base};}function account(d,c,p){seen.push("account");return flags[0];}function state(d,c,p){seen.push("state");return flags[1];}function history(d,c,p){seen.push("history");return flags[2];}';
+  const traced=traceRetainedBootstrapFailures(source+fixture,{checkpointReader:true,checkpointValidation:true,checkpointPredicates:true});
+  for(const failure of [0,1,2,-1]) {
+    const logs=[],seen=[],flags=[true,true,true];if(failure>=0)flags[failure]=false;
+    const run=Function("error","console","flags","seen",traced.code+";return reader;")(code=>({code}),{error:(...args)=>logs.push(args)},flags,seen);
+    const raw=JSON.stringify({currentRevision:"1",historyBase:{snapshot:{lineage:"fixture"},document:{text:"private fixture"}}});
+    let takes=0;const view={status:"value",error:undefined,takeValue(){takes++;return raw;}};
+    const result=run({lineage:"fixture",revision:"1"},view,{invalid:false},{},{mode:"v7"});
+    assert.equal(takes,1);assert.deepEqual(seen,["account","state","history"].slice(0,failure<0?3:failure+1));
+    const rejected=logs.map(log=>JSON.parse(log[1])).filter(log=>log.code==="checkpoint-predicate-rejection");
+    if(failure<0){assert.equal(result.checkpointJson,raw);assert.equal(logs.length,0);}
+    else{assert.equal(result.ok,false);assert.equal(rejected.length,1);assert.ok(rejected[0].stage.startsWith(["checkpoint-property-accounting:","checkpoint-base-state:","checkpoint-history:"][failure]));assert.equal(rejected[0].bindings.result.value,false);}
+    assert.equal(logs.some(log=>log[1].includes("private fixture")),false);
+  }
+  assert.throws(()=>traceRetainedBootstrapFailures(source+fixture,{checkpointPredicates:true}),/require validation/u);
+});
