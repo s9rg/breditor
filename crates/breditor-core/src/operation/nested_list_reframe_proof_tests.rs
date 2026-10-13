@@ -122,3 +122,71 @@ fn reused_admission_does_not_hide_a_stale_noop_guard() -> TestResult {
     ));
     Ok(())
 }
+
+#[test]
+fn captured_fragment_proofs_preserve_value_equality_and_exact_inverse() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let block = paragraph("ab🙂")?;
+    let source = state(&context, vec![block.clone()], None, None)?;
+    let replacement = vec![list(block)?];
+    let captured =
+        NestedListReframe::capture(&context, source.document(), 0, 1, replacement.clone())?;
+    let uncached = NestedListReframe::try_new(0, captured.expected().to_vec(), replacement)?;
+    assert_eq!(captured, uncached);
+    let edit = captured.apply(&context, source.document())?.ok_or("unchanged")?;
+    let fresh = uncached.apply(&context, source.document())?.ok_or("unchanged")?;
+    assert_eq!(edit.document(), fresh.document());
+    assert_eq!(edit.document().summary(), fresh.document().summary());
+    let proofs = captured.admitted_fragments.as_ref().ok_or("missing proofs")?;
+    assert!(edit.document().root().shares_allocation_with(proofs[1].root()));
+    let undone = edit.inverse().apply(&context, edit.document())?.ok_or("unchanged inverse")?;
+    assert_eq!(undone.document(), source.document());
+    assert!(undone.document().root().shares_allocation_with(source.document().root()));
+    Ok(())
+}
+
+#[test]
+fn retained_fragment_proofs_never_admit_foreign_authority_or_stricter_limits() -> TestResult {
+    let original = context(DocumentLimits::default())?;
+    let block = paragraph("ab")?;
+    let source = state(&original, vec![block.clone()], None, None)?;
+    let operation =
+        NestedListReframe::capture(&original, source.document(), 0, 1, vec![list(block.clone())?])?;
+    let foreign = context(DocumentLimits::default())?;
+    let foreign_source = state(&foreign, vec![block.clone()], None, None)?;
+    let edit = operation.apply(&foreign, foreign_source.document())?.ok_or("unchanged")?;
+    assert!(edit.document().is_proven_for(foreign.schema(), foreign.limits()));
+    assert!(!edit.document().root().shares_allocation_with(
+        operation.admitted_fragments.as_ref().ok_or("missing proofs")?[1].root(),
+    ));
+    let strict =
+        EditorContext::new(original.schema().clone(), DocumentLimits::default().with_max_nodes(3));
+    let strict_source = state(&strict, vec![block], None, None)?;
+    assert!(matches!(
+        operation.apply(&strict, strict_source.document()),
+        Err(NestedListReframeError::Validation(_))
+    ));
+    Ok(())
+}
+
+#[test]
+fn partial_replacement_proof_does_not_replace_the_complete_result() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let first = paragraph("first")?;
+    let last = paragraph("last")?;
+    let source = state(&context, vec![first.clone(), last.clone()], None, None)?;
+    let operation =
+        NestedListReframe::capture(&context, source.document(), 0, 1, vec![list(first)?])?;
+    let edit = operation.apply(&context, source.document())?.ok_or("unchanged")?;
+    let root = edit.document().root().as_element().ok_or("missing root")?;
+    assert_eq!(root.children().len(), 2);
+    assert_eq!(root.children().iter().nth(1), Some(&last));
+    assert!(!edit.document().root().shares_allocation_with(
+        operation.admitted_fragments.as_ref().ok_or("missing proofs")?[1].root(),
+    ));
+    assert_eq!(
+        edit.inverse().apply(&context, edit.document())?.ok_or("unchanged")?.document(),
+        source.document()
+    );
+    Ok(())
+}

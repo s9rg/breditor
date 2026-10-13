@@ -17,11 +17,32 @@ use crate::{
 /// Transactions and operation V7 support this operation; earlier codecs do not.
 /// Complete source guards and final document limits are checked.
 /// Each returned edit contains its exact inverse and snapshot-local point mapping.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct NestedListReframe {
     start: u32,
     expected: Arc<[NodeRef]>,
     replacement: Arc<[NodeRef]>,
+    // Private immutable admission hints, never serialized or part of operation
+    // equality. Each use still checks the complete root, schema and limits.
+    admitted_fragments: Option<Arc<[Document; 2]>>,
+}
+
+impl PartialEq for NestedListReframe {
+    fn eq(&self, other: &Self) -> bool {
+        self.start == other.start
+            && self.expected == other.expected
+            && self.replacement == other.replacement
+    }
+}
+impl Eq for NestedListReframe {}
+impl std::fmt::Debug for NestedListReframe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NestedListReframe")
+            .field("start", &self.start)
+            .field("expected", &self.expected)
+            .field("replacement", &self.replacement)
+            .finish()
+    }
 }
 
 impl NestedListReframe {
@@ -62,7 +83,12 @@ impl NestedListReframe {
         if !source.iter().map(|(_, block)| block).eq(result.iter().map(|(_, block)| block)) {
             return Err(NestedListReframeError::ContentChanged);
         }
-        Ok(Self { start, expected: expected.into(), replacement: replacement.into() })
+        Ok(Self {
+            start,
+            expected: expected.into(),
+            replacement: replacement.into(),
+            admitted_fragments: None,
+        })
     }
 
     /// Captures an exact, nonempty root-child guard from a matching document.
@@ -87,8 +113,9 @@ impl NestedListReframe {
         let start_native =
             usize::try_from(start).map_err(|_| NestedListReframeError::InvalidTarget)?;
         let expected = root.children().iter().skip(start_native).take(count).cloned().collect();
-        let operation = Self::try_new(start, expected, replacement)?;
-        operation.validate_with_source(context, Some(document))?;
+        let mut operation = Self::try_new(start, expected, replacement)?;
+        operation.admitted_fragments =
+            Some(Arc::new(operation.validate_fragments(context, Some(document))?));
         Ok(operation)
     }
 
@@ -119,16 +146,26 @@ impl NestedListReframe {
         context: &EditorContext,
         source: Option<&Document>,
     ) -> Result<(), NestedListReframeError> {
+        self.validate_fragments(context, source).map(|_| ())
+    }
+
+    fn validate_fragments(
+        &self,
+        context: &EditorContext,
+        source: Option<&Document>,
+    ) -> Result<[Document; 2], NestedListReframeError> {
         require_schema(context)?;
-        for nodes in [&self.expected, &self.replacement] {
+        let mut admitted = Vec::with_capacity(2);
+        for (index, nodes) in [&self.expected, &self.replacement].into_iter().enumerate() {
             let stop = usize::try_from(end(self.start, nodes.len())?)
                 .map_err(|_| NestedListReframeError::InvalidTarget)?;
             if stop > context.limits().max_children_per_element() {
                 return Err(NestedListReframeError::RootChildLimit);
             }
-            validate_roots(context, nodes, source)?;
+            let hint = self.admitted_fragments.as_ref().map(|proofs| &proofs[index]);
+            admitted.push(validate_roots(context, nodes, hint.or(source))?);
         }
-        Ok(())
+        admitted.try_into().map_err(|_| NestedListReframeError::InvalidTarget)
     }
 
     /// Applies the source-guarded edit atomically; returns `None` for a no-op.
@@ -141,7 +178,7 @@ impl NestedListReframe {
         document: &Document,
     ) -> Result<Option<NestedListReframeEdit>, NestedListReframeError> {
         require_document(context, document)?;
-        self.validate_with_source(context, Some(document))?;
+        let admitted = self.validate_fragments(context, Some(document))?;
         let document_before = document.clone();
         let old_end = end(self.start, self.expected.len())?;
         let new_end = end(self.start, self.replacement.len())?;
@@ -172,12 +209,12 @@ impl NestedListReframe {
             .collect();
         let root =
             root.try_with_children(children).map_err(|_| NestedListReframeError::InvalidTarget)?;
-        let document =
-            Document::try_new(context.schema(), NodeRef::element(root), context.limits())?;
+        let document = admit_root(context, NodeRef::element(root), Some(&admitted[1]))?;
         let inverse = Self {
             start: self.start,
             expected: self.replacement.clone(),
             replacement: self.expected.clone(),
+            admitted_fragments: Some(Arc::new([admitted[1].clone(), admitted[0].clone()])),
         };
         let paths = |nodes: &[NodeRef]| -> Result<Arc<[NodePath]>, NestedListReframeError> {
             blocks(nodes)?
@@ -222,7 +259,14 @@ fn validate_roots(
         nodes.to_vec(),
     )
     .map_err(|_| NestedListReframeError::InvalidTarget)?;
-    let root = NodeRef::element(root);
+    admit_root(context, NodeRef::element(root), source)
+}
+
+fn admit_root(
+    context: &EditorContext,
+    root: NodeRef,
+    source: Option<&Document>,
+) -> Result<Document, NestedListReframeError> {
     if let Some(source) = source
         && source.is_proven_for(context.schema(), context.limits())
         && source.root() == &root
