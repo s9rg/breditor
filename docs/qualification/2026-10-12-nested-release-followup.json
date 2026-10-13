@@ -804,6 +804,24 @@
     "releaseQualified": false,
     "scope": "Actual new-cache archive functionally qualified within stated automated scope. Historical WebKit, full native core gate, physical input and accepted size/performance gates remain open. Defaults unchanged; no push or publication."
   },
+  "currentCacheDeepWebKitFollowup": {
+    "date": "2026-10-13",
+    "sourceCheckpoint": "e6215bc",
+    "installedPair": "target/nested-list-packages-5fCraC/qualification.json",
+    "measurement": "breditor-nested-list-consumer-hysthR/performance-Dmmomq/measurement.json",
+    "measurementSha256": "e97f744f444631c55916a8253192e196aeb769b083baef276dabb7fd45e5bb45",
+    "exitCode": 0,
+    "freshWebKitSessions": 10,
+    "casesPassed": 90,
+    "diagnostics": 0,
+    "scope": "New reconstruction-cache runtime: ordinary three-owner workload at 10/100/500 items with formatted/property/integer grandchild editing, undo/redo and recovery. Native core integration compilation overlapped; timing explicitly not qualified. No added instrumentation or shipping writes.",
+    "historicalFaultResolved": false,
+    "fullCoreSession": 26861,
+    "fullCoreStatus": "Confirmed live compiling integration executables; no restart or terminal pass claim.",
+    "wasmTargetSession": 29848,
+    "wasmTargetStatus": "Confirmed live awaiting Cargo build-directory lock; not restarted or treated as a failed gate.",
+    "releaseQualified": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
