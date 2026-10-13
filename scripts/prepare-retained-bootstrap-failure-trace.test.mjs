@@ -60,6 +60,10 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   const forgedPredicatesBytes=Buffer.from(JSON.stringify(forgedPredicates));await writeFile(result.measurementPath,forgedPredicatesBytes);
   await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedPredicatesBytes)}),/require validation/u);
   await writeFile(result.measurementPath,derivedBytes);
+  const forgedExits=structuredClone(verified.source);forgedExits.retainedBootstrapDerivation.checkpointPredicateExits=true;
+  const forgedExitsBytes=Buffer.from(JSON.stringify(forgedExits));await writeFile(result.measurementPath,forgedExitsBytes);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedExitsBytes)}),/require predicate/u);
+  await writeFile(result.measurementPath,derivedBytes);
   const forgedValidation=structuredClone(verified.source);forgedValidation.retainedBootstrapDerivation.checkpointValidation=true;
   const forgedValidationBytes=Buffer.from(JSON.stringify(forgedValidation));await writeFile(result.measurementPath,forgedValidationBytes);
   await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedValidationBytes)}),/checkpoint byte validator changed/u);

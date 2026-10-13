@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-13",
+  "releaseQualified": false,
+  "productionFixImplemented": false,
+  "nativeControls": {
+    "authorization": "User explicitly requested enabling controls and settings.",
+    "observedConfiguration": "Computer Use plugins enabled; separate computer-use MCP server disabled with relative command and cwd.",
+    "change": "Enabled that existing server and replaced command/cwd with validated installed absolute paths. Other settings and approval policies unchanged.",
+    "launcherValidation": "Installed executable exists; --help and help mcp returned successfully.",
+    "toolRecoveryConfirmed": false,
+    "blocker": "No native-control tool exposed in this running chat after the configuration change. Client reload/reconnection is required before native testing can be attempted again; recovery is not proven.",
+    "imeQualified": false,
+    "voiceOverQualified": false,
+    "dictationLanguageCleanup": "Still pending; Dictation remains off."
+  },
+  "checkpointPredicateExits": {
+    "option": "--checkpoint-predicate-exits",
+    "requirements": "Explicit checkpoint predicates, validation and reader tracing; false by default.",
+    "scope": "Separate exact-retained diagnostic copies, not a rebuild or shipping artifact.",
+    "sites": {"propertyAccounting": 8, "history": 4},
+    "semantics": "Only literal false return exits log. Existing expressions, short circuiting, generated reads and successful hot paths are retained. Nested accounting propagation sites have distinct source offsets.",
+    "tests": {"focusedPassed": 20, "fullScriptPassed": 283, "fullScriptSkipped": 3, "fullScriptFailed": 0},
+    "previousTraceBytesVerified": "trace-PRvatM still regenerates exactly with the new option omitted."
+  },
+  "retainedReproduction": {
+    "trace": "target/nested-list-reproductions/trace-3fMDwL/measurement.json",
+    "traceSha256": "0a647d0516c1c6b656d42caaa8a4346aa293446c3dfeae8b3eaaa5a1b86b36db",
+    "replay": "target/nested-list-reproductions/trace-3fMDwL/exact-replay-9ymc2k/replay.json",
+    "replaySha256": "17d528f0b60ad1545fdfa99fd5332760a7512647b24c424b34c4fb05f0f1faad",
+    "observed": "Six fresh WebKit processes passed. Seventh process failed during 100-item repetition 0 Redo; owner phase faulted, reason toolbarDispatchFailed.",
+    "checkpointRejectionSitesObserved": false,
+    "rejectedCheckpointCaptured": false,
+    "conclusion": "A retained-byte Redo owner fault recurred. Its underlying cause is not established, and it is not proven identical to the earlier checkpoint-validation fault."
+  },
+  "dispatchFollowup": {
+    "trace": "target/nested-list-reproductions/trace-mNAibg/measurement.json",
+    "traceSha256": "969efb12788d21fb24a405430724814a57fb1f21f00929d3d3df75f6bcca5ad3",
+    "replay": "target/nested-list-reproductions/trace-mNAibg/exact-replay-55yMsJ/replay.json",
+    "replaySha256": "a91ee8d2d2ec1a2984ada563d4a48deaefc7045f1d97d0f080d0e7c48c294765",
+    "difference": "Additional cold owner dispatch-site logging; same original control bytes, workload and Wasm.",
+    "result": "Ten fresh WebKit processes / 90 cases passed, diagnostics zero. Failure did not recur; no repair inferred."
+  },
+  "unchangedControl": {
+    "replay": "target/nested-list-reproductions/failure-exsfE3/exact-replay-UvZ5Mw/replay.json",
+    "replaySha256": "128535b88332459fd5cadfc450b470ce1191e6d15680b98cdb2836aad595352a",
+    "result": "Ten fresh WebKit processes / 90 cases passed, diagnostics zero. Comparison only, not release qualification."
+  },
+  "limitations": [
+    "Retained historical binaries, not proof of a defect or repair in the current qualified archive.",
+    "Root cause remains unknown; no workaround, validation weakening, engine-tier change or production patch justified.",
+    "Passing batches do not cancel retained failure evidence.",
+    "Native IME and VoiceOver require actual restored controls and observed OS behavior."
+  ],
+  "pushed": false,
+  "published": false
+}

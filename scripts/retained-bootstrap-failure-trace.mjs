@@ -46,7 +46,7 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointPredicateExits=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
   assert.equal(typeof checkpointExports,"boolean");
@@ -56,6 +56,8 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
   assert.equal(typeof checkpointPredicates,"boolean");
   assert.equal(typeof checkpointStateComponents,"boolean");
   assert.ok(!checkpointStateComponents||checkpointPredicates,"state components require predicate tracing");
+  assert.equal(typeof checkpointPredicateExits,"boolean");
+  assert.ok(!checkpointPredicateExits||checkpointPredicates,"predicate exits require predicate tracing");
   assert.equal(typeof checkpointCapture,"boolean");
   assert.equal(typeof ownerReasons,"boolean");
   assert.ok(!checkpointCapture||checkpointReader,"checkpoint capture requires reader tracing");
@@ -159,6 +161,33 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,smallRest
         children(node).forEach(findGuard);
       }
       findGuard(envelope.body);assert.equal(guards.length,1,"checkpoint predicate group missing or ambiguous");
+      if(checkpointPredicateExits) {
+        // Exact false exits only: preserve the original return expression,
+        // evaluation count, short circuiting, and all successful hot paths.
+        // Nested functions in accounting are included, so a recursive failure
+        // is distinguishable from its enclosing function's propagation exit.
+        for(const index of [0,2]) {
+          const kind=index===0?"checkpoint-accounting-exit":"checkpoint-history-exit";
+          const predicate=functions.find(fn=>fn.id.name===guards[0][index].argument.callee.name);
+          assert.equal(predicate?.params.length,3,"checkpoint exit predicate parameters changed");
+          let count=0;
+          function traceFalse(node,ancestors=[]) {
+            const parent=ancestors.at(-1);
+            const falseValue=node.type==="Literal"&&node.value===false||node.type==="UnaryExpression"&&
+              node.operator==="!"&&node.argument?.type==="Literal"&&node.argument.value===1;
+            if(falseValue&&(parent?.type==="ReturnStatement"&&parent.argument===node||
+              parent?.type==="ConditionalExpression"&&(parent.consequent===node||parent.alternate===node)&&
+              ancestors.some(a=>a.type==="ReturnStatement"))) {
+              const original=code.slice(node.start,node.end),stage=`${kind}:${node.start}`;
+              edits.push({start:node.start,end:node.end,original,replacement:`(${helper}(${JSON.stringify(stage)},${JSON.stringify(kind)}),${original})`});
+              sites.push({stage,start:node.start,end:node.end,code:kind});count++;
+            }
+            children(node).forEach(child=>traceFalse(child,[...ancestors,node]));
+          }
+          traceFalse(predicate.body);
+          assert.ok(count>=1&&count<=32,"checkpoint false exit shape changed");
+        }
+      }
       if(checkpointStateComponents) {
         const stateName=guards[0][1].argument.callee.name;
         const state=functions.find(fn=>fn.id.name===stateName);
