@@ -1613,3 +1613,11 @@ three engines; its consumer estimate is 818,016 bytes gzip-9 including the fixtu
 Current full native verification remains running; prior full-core results cover
 the earlier reconstruction-only cache. Historical WebKit, physical native input
 and accepted size/performance gates remain open. No push or publication occurred.
+
+The current installed Wasm also passes a standalone enriched nested-getter probe
+in ten fresh WebKit 26.5 processes: 900 projection owners and 29,006,710 exact
+assertions, including forward/backward reads, absent values, signed integer
+format properties and cleanup. This uses the original retained variadic bridge
+and legacy getter methods, not the editor's word-getter routing. No editor,
+renderer or history is loaded; this narrower passing control does not resolve
+the historical WebKit fault or qualify native input or performance.

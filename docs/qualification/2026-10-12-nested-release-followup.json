@@ -1056,6 +1056,27 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReuseRawGetterProbe": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "BREDITOR_GETTER_OWNERS=30 BREDITOR_GETTER_ENRICHED=1 BREDITOR_GETTER_INTEGER_PROPERTIES=1 BREDITOR_GETTER_TREE=nested node scripts/probe-nested-wasm-getters.mjs target/nested-list-packages-lZQEME/qualification.json",
+    "session": 54137,
+    "exitCode": 0,
+    "measurement": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-nested-list-consumer-myKcNP/getter-probe-rjgc2l/measurement.json",
+    "measurementSha256": "d8a086bae39389abad422f981a0ecde00e15c2431cb7f133aae178490c27f7fd",
+    "browser": "WebKit 26.5",
+    "freshProcessesPassed": 10,
+    "projectionOwnersChecked": 900,
+    "exactAssertionsPerProcess": 2900671,
+    "exactAssertionsTotal": 29006710,
+    "wasmTarballSha256": "a999f3adea626768f7389135fa32cbb3ca8e7ebec2fc7a8d32a1d6a900b3a1f1",
+    "bridgeSha256": "57fdb8d9f5304656186788cceb86d91e7e42525082e8e4c1df6606691e988349",
+    "scope": "Current qualified installed Wasm, original retained variadic bridge, legacy getter methods on nested trees with enriched format metadata and signed integer properties; forward/backward walks, absent-value probes and cleanup passed. No private getter treatment or Rust debug exports. Missing optional debug-export build warnings are expected for this non-debug package. This does not exercise the editor, renderer, history, native input or packaged word-getter routing; does not reproduce or fix the historical WebKit fault, qualify performance, or replace the still-running full core session 94976.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
