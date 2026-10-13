@@ -418,6 +418,17 @@
     "scriptRegressionExitCode": 0,
     "scope": "Generated qualified Wasm creates the real typed nested history; source bootstrap preflight captures and freezes the live descriptor contract. Both declarative and captured contracts accept each checkpoint. Second probe additionally consumes a fresh generated string result through consumeWasmSessionCheckpoint with actual observation lineage/revision and protected engine/profile/observation owners; exact bytes retained. No editor adapter or DOM routing, installed browser archive, native/performance or release qualification. Intermittent full-editor failures remain unresolved."
   },
+  "bootstrapForwardingIsolation": {
+    "date": "2026-10-13",
+    "record": "target/nested-validator-probe-gofizZ/report.json",
+    "sha256": "e673021fc0fc1a8279b271c6e06ad283c9ae6489c2d2e5ba8f53f7dbf11359e2",
+    "status": "passed",
+    "exitCode": 0,
+    "freshProcesses": 9,
+    "bootstrapRestores": 81,
+    "checkpointStages": 567,
+    "scope": "Each typed nested owner also restores its Undo checkpoint through bootstrapNestedListWasmEngine, which validates the initial semantic projection and transfers the forwarding engine, profile generation and observation. The forwarding owner's fresh checkpoint is consumed with its actual snapshot and captured descriptor contract, then compared byte-for-byte. All transferred generated owners released. No command adapter, rendering, DOM selection or event routing; historical intermittent full-editor faults remain open."
+  },
   "runtimeChanged": false,
   "pushed": false,
   "published": false

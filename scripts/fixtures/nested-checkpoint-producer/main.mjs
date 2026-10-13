@@ -1,7 +1,7 @@
 // Real generated Rust/Wasm producer plus source validator; no editor/DOM routing.
 import initialize,* as api from "@probe/wasm";
 import {sessionCheckpointJsonMatchesDurableContract,consumeWasmSessionCheckpoint} from "../../../packages/breditor-browser/src/wasm_session_checkpoint.ts";
-import {preflightNestedListWasmSemanticProfile} from "../../../packages/breditor-browser/src/wasm_engine_bootstrap.ts";
+import {preflightNestedListWasmSemanticProfile,bootstrapNestedListWasmEngine} from "../../../packages/breditor-browser/src/wasm_engine_bootstrap.ts";
 
 const output=document.getElementById("result"),schema={name:"example/producer-validator",version:1};
 const properties=[
@@ -20,7 +20,7 @@ const formats=[{type:"breditor/strong",properties:{}},
   {type:"example/text-color",properties:{"example/rgb24":0x123456}}];
 const element=(type,children,properties={})=>({kind:"element",type:`breditor/${type}`,entityId:null,properties,children});
 const text=value=>({kind:"text",text:value,formats});
-let progress="initialization",checks=0,failureInput;
+let progress="initialization",checks=0,bootstrapChecks=0,failureInput;
 function assert(value,message){if(!value)throw Error(message);}
 function take(result,status,method){try{assert(result.status===status,`${method}: invalid result status`);const value=result[method]();assert(value!==undefined,`${method}: absent`);return value;}finally{result.free();}}
 function string(result){return take(result,"value","takeValue");}
@@ -82,13 +82,20 @@ async function run(){
         command(engine,o=>engine.executeStringAction(o,"breditor/insert-nested-list-text","X",false));
         check(engine,`${items}/${repetition}: insert`,1);
         command(engine,o=>engine.undo(o,false));const backup=check(engine,`${items}/${repetition}: undo`,0);
+        progress=`${items}/${repetition}: browser bootstrap restore`;
+        const bootstrapped=bootstrapNestedListWasmEngine(api,{kind:"sessionCheckpoint",checkpointJson:backup,semanticProfile:{bootstrapJson:JSON.stringify(bootstrap),formatVersion:5}});
+        assert(bootstrapped.ok,"browser bootstrap restore rejected checkpoint");
+        try{
+          const read=consumeWasmSessionCheckpoint({lineage:bootstrapped.observation.snapshotLineage,revision:bootstrapped.observation.snapshotRevision},bootstrapped.engine.sessionCheckpointJson(),[bootstrapped.engine,bootstrapped.observation,bootstrapped.profileGeneration],{mode:"v7",schema:bootstrapped.profileDescriptor.schema,formats:bootstrapped.profileDescriptor.formats});
+          assert(read.ok&&read.checkpoint.checkpointJson===backup,"forwarding owner checkpoint mismatch");bootstrapChecks++;
+        }finally{bootstrapped.observation.free();bootstrapped.profileGeneration.free();bootstrapped.engine.free();}
         command(engine,o=>engine.redo(o,false));check(engine,`${items}/${repetition}: redo`,1);
         restored=take(profile.createEngineFromSessionCheckpointJsonV7(backup),"engine","takeEngine");
         assert(check(restored,`${items}/${repetition}: restore`,0)===backup,"checkpoint bytes changed on restore");
         command(restored,o=>restored.redo(o,false));check(restored,`${items}/${repetition}: restored redo`,1);
       }finally{restored?.free();engine.free();}
     }
-    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7,contractChecks:checks*2,readerChecks:checks,runtimeContractCaptured:true});output.dataset.status="passed";
+    output.textContent=JSON.stringify({checks,sizes:[10,100,500],repetitions:3,stages:7,contractChecks:checks*2,readerChecks:checks,bootstrapChecks,runtimeContractCaptured:true});output.dataset.status="passed";
   }finally{profile.free();}
 }
 void run().catch(error=>{output.textContent=JSON.stringify({progress,checks,error:String(error),failureInput});output.dataset.status="failed";});

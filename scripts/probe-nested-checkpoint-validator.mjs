@@ -40,7 +40,7 @@ try {
         const node=page.locator("#result");result.fixtureStatus=await node.getAttribute("data-status");
         result.fixture=JSON.parse(await node.textContent());
         assert.equal(result.fixtureStatus,"passed");assert.equal(result.fixture.checks,pair?63:240);assert.deepEqual(result.pageErrors,[]);
-        if(pair){assert.equal(result.fixture.runtimeContractCaptured,true);assert.equal(result.fixture.contractChecks,126);assert.equal(result.fixture.readerChecks,63);}
+        if(pair){assert.equal(result.fixture.runtimeContractCaptured,true);assert.equal(result.fixture.contractChecks,126);assert.equal(result.fixture.readerChecks,63);assert.equal(result.fixture.bootstrapChecks,9);}
         result.status="passed";
       } catch(error) {result.status="failed";result.error=String(error);throw error;}
       finally {await browser?.close();await save();console.log(JSON.stringify({browser:name,run,status:result.status,checks:result.fixture?.checks}));}
