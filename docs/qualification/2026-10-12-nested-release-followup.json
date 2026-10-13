@@ -112,6 +112,20 @@
     "freshWebKitProcesses": 10,
     "scope": "Derived from the original failure-exsfE3 bytes, not a nested trace. Existing cold owner sites added because checkpoint-only replay failed in Redo dispatch. Original calls, validation, page and Wasm preserved. No runtime fix or release qualification."
   },
+  "boundedCombinedTraceReplay": {
+    "session": 22102,
+    "status": "passed",
+    "exitCode": 0,
+    "maximumBatches": 3,
+    "freshWebKitProcesses": 30,
+    "cases": 270,
+    "batches": [
+      {"record":"target/nested-list-reproductions/trace-Fnf7ad/exact-replay-mxxrYN/replay.json","sha256":"11ef8b940f02ac91402c9954a8eb08430d62a3293f49d46883a49aa511bf3b6d"},
+      {"record":"target/nested-list-reproductions/trace-Fnf7ad/exact-replay-3K1pij/replay.json","sha256":"6429277c99c69f3e1443f8f394a5b72b45f20669c854f5579c20390add843876"},
+      {"record":"target/nested-list-reproductions/trace-Fnf7ad/exact-replay-SJMg0G/replay.json","sha256":"cf283d381b3a1c5a8341fdaa3cc017a65807b2d099ab11b503718dc4ff63bb6c"}
+    ],
+    "scope": "No failure captured by the combined cold owner/checkpoint instrumentation. Stop limit reached; no further unchanged repetitions launched. Original failures remain open. Not a runtime fix, latency gate or release qualification."
+  },
   "nativeChromeAttempt": {
     "consumer": "breditor-opt-in-consumer-CC2Vrv",
     "archiveSha256": "b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e",
