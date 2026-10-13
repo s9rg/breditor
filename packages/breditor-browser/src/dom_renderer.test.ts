@@ -123,6 +123,55 @@ describe("recursive nested-list DOM", () => {
       expect(serializeNestedListClipboardSelection({...selection}, presentation).ok).toBe(false);
     }
   });
+  it("exports every cross-level sibling range consistently in both directions", () => {
+    const f = fixture();
+    const block = (text: string, headingLevel: number | null = null) => ({headingLevel,
+      runs: text ? [{text, formatDetails: propertyFreeFormats(["breditor/strong"])}] : []});
+    const projection = f.make([
+      {kind: "orderedList", start: 7, items: [
+        {block: block("A🙂", 2), lists: [{kind: "bulletList", items: [
+          {block: block(""), lists: []},
+          {block: block("Child"), lists: [{kind: "orderedList", start: 9, items: [
+            {block: block("Deep&<"), lists: []},
+          ]}]},
+          {block: block("Tail"), lists: []},
+        ]}]},
+        {block: block("Next", 3), lists: []},
+      ]},
+      {kind: "textBlock", block: block("End")},
+    ]);
+    const texts = ["A🙂", "", "Child", "Deep&<", "Tail", "Next", "End"];
+    expect(projection.textBlocks.map(entry => entry.block.runs.map(run => run.text).join(""))).toEqual(texts);
+    // Rendering installs the exact owned presentation required for clipboard
+    // export; constructing a projection alone deliberately does not bind one.
+    const rendered = valueOf(f.renderer.renderNestedList(document.createElement("div"), projection)).rendered;
+    const presentation = nestedListProjectionPresentation(projection)!;
+    const point = (index: number, atEnd: boolean) => {
+      const entry = projection.textBlocks[index]!;
+      return entry.block.runs.length === 0
+        ? {kind: "children" as const, parentPath: entry.path, childIndex: 0, affinity: "before" as const}
+        : {kind: "text" as const, textPath: [...entry.path, 0],
+          utf16Offset: atEnd ? entry.block.runs[0]!.text.length : 0, affinity: "before" as const};
+    };
+    for (let first = 0; first < texts.length - 1; first += 1) {
+      for (let last = first + 1; last < texts.length; last += 1) {
+        const start = point(first, false), end = point(last, true);
+        let forward: unknown;
+        for (const backward of [false, true]) {
+          const selection = valueOf(NestedListRangeSelection.create(projection, {kind: "range",
+            anchor: backward ? end : start, focus: backward ? start : end}));
+          const fragment = valueOf(serializeNestedListClipboardSelection(selection, presentation));
+          expect(fragment.plainText).toBe(texts.slice(first, last + 1).join("\n"));
+          expect(fragment.html).not.toMatch(/<(?:ol|ul|li|h[1-6])[ >]/);
+          const parsed = document.createElement("div"); parsed.innerHTML = fragment.html;
+          expect([...parsed.querySelectorAll("p")].map(node => node.textContent)).toEqual(texts.slice(first, last + 1));
+          if (first <= 3 && last >= 3) expect(fragment.html).toContain("Deep&amp;&lt;");
+          if (backward) expect(fragment).toEqual(forward); else forward = fragment;
+        }
+      }
+    }
+    expect(f.renderer.releaseNestedList(rendered)).toBe(true);
+  });
   it("binds nested command requests to exact selections, epochs and authorities", () => {
     const f = fixture(), authority = Symbol("nested owner");
     const token = issueNestedListEditorDeliveryToken(f.projection, f.rendered, 3n, authority);
