@@ -996,6 +996,24 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReuseWasmTargetGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "CARGO_BIN=/Users/s/.cargo/bin/cargo WASM_BINDGEN_TEST_RUNNER_BIN=/Users/s/.cargo/bin/wasm-bindgen-test-runner bash scripts/check-wasm-tests.sh",
+    "session": 61330,
+    "exitCode": 0,
+    "workspaceTargetCheck": "passed wasm32-unknown-unknown all features",
+    "strictTargetLint": "passed all Wasm crate targets/features with -D warnings",
+    "boundaryTestsPassed": 25,
+    "wrapperDoctests": 0,
+    "scope": "Original command retained through build-lock wait to terminal success. Node through wasm-bindgen-test-runner 0.2.127; native-only fixtures have no Wasm tests. Not 1213 core tests executed in Wasm, native browser/input qualification or historical fault resolution.",
+    "fullCoreSession": 94976,
+    "fullCoreStatus": "Original run remains live; unit phase and observed integration batches passing. Terminal full-suite result not claimed.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
