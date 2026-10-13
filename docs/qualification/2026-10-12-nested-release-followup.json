@@ -851,6 +851,24 @@
     "scope": "Current default-wrapper unit gate passed. Original run retained through compilation and quiet executable startup; no restart. Default package distributions untouched. Full native core and opt-in wrapper integration verification remain incomplete; historical WebKit, physical input and accepted budgets stay open.",
     "releaseQualified": false
   },
+  "reconstructionCacheFullWordWrapperGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "359bf9f",
+    "command": "cargo test --locked -p breditor-wasm --features candidate-word-property-integers --quiet",
+    "session": 3232,
+    "exitCode": 0,
+    "unitTestsPassed": 63,
+    "integrationBatches": [1,2,1,21],
+    "integrationTestsPassed": 25,
+    "wrapperDoctests": 0,
+    "scope": "Original full native opt-in wrapper command retained through compilation and executable startup to terminal success. Default wrapper 43-unit result remains separate; Wasm-target Node boundary result is separately recorded. Does not establish physical browser/input qualification, historical WebKit fault resolution, accepted budgets or full native core completion.",
+    "fullCoreSession": 26861,
+    "fullCoreStatus": "Confirmed live, integration batches passing; terminal full-suite result still pending.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
