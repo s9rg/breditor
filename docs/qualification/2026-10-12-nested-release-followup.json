@@ -570,6 +570,28 @@
     "performanceCasesPassedPerCandidate": 27,
     "scope": "Ordinary uninstrumented typed-grandchild Firefox workload, three fresh sessions and nine 500-item samples per candidate, optimized run followed by baseline. No concurrent compilation or browser qualification; filtered native harness visits remained live and timing is machine-local, not randomized significance or release p95 qualification. About 9.5 percent lower local median, still far above proposed 100ms target. Full integrations/doctests, wrapper/default rebuild verification and further release gates remain outstanding. No historical fault fix, native input qualification, shipping promotion, push or publication."
   },
+  "retainedReframeAdmissionFollowup": {
+    "date": "2026-10-13",
+    "sourceCheckpoint": "ebeebe6",
+    "webkitMeasurement": "breditor-nested-list-consumer-oco0RS/performance-PfkOfD/measurement.json",
+    "webkitMeasurementSha256": "7fd508bc27591570ac56b05f72c9822febf1d5292ba2fc5ba8322f63368a1e46",
+    "webkitExitCode": 0,
+    "freshWebKitProcesses": 10,
+    "deepFormattedRecoveryCasesPassed": 90,
+    "assembly": "target/nested-list-opt-in-RgWmOP/assembly.json",
+    "assemblySha256": "26ed01ef6c79d8f6e3cca933ef311248bba22903d377ff70c13d7f7c9c249fc3",
+    "consumerProof": "target/nested-list-opt-in-RgWmOP/consumer-qualification.json",
+    "consumerProofSha256": "4751025530fa9e177810e344a9bbc985dfaca00e08f25ef073d6109b6c8795ca",
+    "archiveSha256": "aa5054ba9191c1a5a4be1ea50354aed6cbba5f66c0bef71ecb3a87a3b1513cdd",
+    "installedConsumer": "passed Node/types, Chromium/Firefox/WebKit, browser-dispatched trusted keyboard and exact mixed-history fresh-owner recovery at cursors 4 through 0",
+    "combinedGzip9Bytes": 815089,
+    "archiveBytes": 963983,
+    "unpackedBytes": 4188810,
+    "fullCoreIntegrationStatus": "running session 93438; 1207 unit tests and integration batches 18, 7, 10, 12, 7, 8, 10, 9 passed so far; no full integration/doctest success claimed",
+    "fullWordWrapperStatus": "running session 24028, cargo test --locked -p breditor-wasm --features candidate-word-property-integers --quiet",
+    "filteredFocusedCommandStatus": "running session 5262; nine focused tests passed, remaining integration harnesses filtered and not full qualification",
+    "scope": "Exact optimized normal-s artifact, original ordinary typed-grandchild workload. Ten WebKit sessions passed without reproducing the retained historical fault. Wrapper compilation overlapped, so timing is not release performance evidence. New private archive, default shipping artifacts unchanged; no native IME/clipboard/VoiceOver proof, accepted size/latency budget, shipping promotion, push or publication. Native quiet jobs verified live and polled without restarting."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
