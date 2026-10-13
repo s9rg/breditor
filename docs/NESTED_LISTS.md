@@ -1549,7 +1549,10 @@ Proofs are excluded from operation equality, Debug output and wire codecs.
 An additional regression verifies that a proof captured for a complete result
 cannot hide newly added, unselected roots or bypass aggregate document limits.
 
-The current core unit suite passes 1,208 tests. The nested word-wrapper command
+The current core unit suite passes 1,209 tests. A regression verifies that cached
+fragments share their descendant allocations, operation clones share the proof
+array, and unrelated result roots stay shared. This is allocation-sharing proof,
+not a measured total-heap budget. The nested word-wrapper command
 passes 63 unit and 25 integration tests; the default wrapper passes 43 unit tests.
 The full core integration/doctest command remains running, so that gate is not
 yet complete. The separately installed `RgWmOP` archive passes all three browser

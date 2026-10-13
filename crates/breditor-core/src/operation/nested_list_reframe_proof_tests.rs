@@ -210,3 +210,33 @@ fn retained_complete_proof_cannot_hide_new_unselected_roots() -> TestResult {
     ));
     Ok(())
 }
+
+#[test]
+fn retained_fragment_proofs_share_descendants_and_operation_clones() -> TestResult {
+    let context = context(DocumentLimits::default())?;
+    let first = paragraph("first")?;
+    let last = paragraph("last🙂")?;
+    let source = state(&context, vec![first.clone(), last.clone()], None, None)?;
+    let operation =
+        NestedListReframe::capture(&context, source.document(), 0, 1, vec![list(first)?])?;
+    let clone = operation.clone();
+    let proofs = operation.admitted_fragments.as_ref().ok_or("missing proofs")?;
+    assert!(std::sync::Arc::ptr_eq(
+        proofs,
+        clone.admitted_fragments.as_ref().ok_or("missing cloned proofs")?,
+    ));
+    // The partial proof adds a synthetic root, not copies of its descendants.
+    for (nodes, proof) in
+        [operation.expected(), operation.replacement()].into_iter().zip(proofs.iter())
+    {
+        let root = proof.root().as_element().ok_or("missing proof root")?;
+        assert_eq!(root.children().len(), nodes.len());
+        for (actual, expected) in root.children().iter().zip(nodes) {
+            assert!(actual.shares_allocation_with(expected));
+        }
+    }
+    let edit = operation.apply(&context, source.document())?.ok_or("unchanged")?;
+    let result = edit.document().root().as_element().ok_or("missing result root")?;
+    assert!(result.children().get(1).ok_or("missing outside root")?.shares_allocation_with(&last));
+    Ok(())
+}
