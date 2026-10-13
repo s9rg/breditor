@@ -36,6 +36,9 @@ pub struct NestedListTextReplace {
     // Pure reconstruction of immutable recipe fields, not a schema proof.
     // Never serialized or included in semantic equality / diagnostics.
     derived: Option<Arc<Derived>>,
+    // Exact fragment admission hints, guarded by root/schema/limit equality.
+    // Not serialized or included in operation equality or Debug output.
+    admitted_fragments: Option<Arc<[Document; 2]>>,
 }
 impl PartialEq for NestedListTextReplace {
     fn eq(&self, other: &Self) -> bool {
@@ -106,6 +109,7 @@ impl NestedListTextReplace {
             inserted: inserted.into(),
             layout: layout.into(),
             derived: None,
+            admitted_fragments: None,
         };
         let derived = operation.derive()?;
         let inverse = operation.inverse(&derived)?;
@@ -136,12 +140,14 @@ impl NestedListTextReplace {
             return Err(NestedListTextReplaceError::InvalidTarget);
         }
         let expected = root.children().iter().skip(start).take(end - start).cloned().collect();
-        let (operation, derived) =
+        let (mut operation, derived) =
             Self::try_new_with_derived(range.root_start(), range, expected, inserted, layout)?;
         // Reuse the source proof only when validate_roots reconstructs this
         // exact whole document under the same schema and limits. Partial root
         // spans still receive independent validation through that helper.
-        operation.validate_with_derived(context, Some(document), Some(derived))?;
+        let (_, admitted) =
+            operation.validate_with_derived(context, Some(document), Some(derived))?;
+        operation.admitted_fragments = Some(Arc::new(admitted));
         Ok(operation)
     }
     /// Source range in real document block paths.
@@ -178,18 +184,16 @@ impl NestedListTextReplace {
         self.validate_and_derive(context, None).map(|_| ())
     }
 
-    /// Retains the exact replacement already reconstructed for result validation.
-    /// The retained structural derivation is not an admission proof. A source document may
-    /// prove only an exactly equal reconstructed source root under the same
-    /// compiled schema and limits. Otherwise validate that root afresh. Retain
-    /// the independently validated result document too: if
-    /// the final root is exactly equal, it already has the complete proof for
-    /// this call's context and limits; otherwise validate the final root afresh.
+    /// Reuses pure reconstruction and optionally admitted fragments. A retained
+    /// fragment proves only its exact complete root under the same compiled
+    /// schema authority and limits; otherwise validate that root afresh. The
+    /// final complete document can reuse the admitted result only when exactly
+    /// equal; partial results with retained siblings still validate afresh.
     fn validate_and_derive(
         &self,
         context: &EditorContext,
         source: Option<&Document>,
-    ) -> Result<(Derived, Document), NestedListTextReplaceError> {
+    ) -> Result<(Derived, [Document; 2]), NestedListTextReplaceError> {
         self.validate_with_derived(context, source, None)
     }
 
@@ -200,20 +204,26 @@ impl NestedListTextReplace {
         context: &EditorContext,
         source: Option<&Document>,
         captured: Option<Derived>,
-    ) -> Result<(Derived, Document), NestedListTextReplaceError> {
+    ) -> Result<(Derived, [Document; 2]), NestedListTextReplaceError> {
         require_schema(context)?;
         let maximum =
             u64::try_from(context.limits().max_children_per_element()).unwrap_or(u64::MAX);
         if u64::from(self.guard_end()?) > maximum || u64::from(self.result_end()?) > maximum {
             return Err(NestedListTextReplaceError::RootChildLimit);
         }
-        validate_roots(context, self.expected.to_vec(), source)?;
+        let hints = self.admitted_fragments.as_ref();
+        let admitted_source = validate_roots(
+            context,
+            self.expected.to_vec(),
+            hints.map(|proofs| &proofs[0]).or(source),
+        )?;
         let derived = match captured {
             Some(derived) => derived,
             None => self.derive()?,
         };
-        let validated_result = validate_roots(context, derived.roots.clone(), None)?;
-        Ok((derived, validated_result))
+        let admitted_result =
+            validate_roots(context, derived.roots.clone(), hints.map(|proofs| &proofs[1]))?;
+        Ok((derived, [admitted_source, admitted_result]))
     }
     pub(crate) fn apply(
         &self,
@@ -221,7 +231,7 @@ impl NestedListTextReplace {
         document: &Document,
     ) -> Result<AppliedOperation, NestedListTextReplaceError> {
         require_document(context, document)?;
-        let (derived, validated_result) = self.validate_and_derive(context, Some(document))?;
+        let (derived, [_, validated_result]) = self.validate_and_derive(context, Some(document))?;
         let start = usize::try_from(self.guard_start)
             .map_err(|_| NestedListTextReplaceError::InvalidTarget)?;
         let end = usize::try_from(self.guard_end()?)
@@ -417,6 +427,10 @@ impl NestedListTextReplace {
             inserted: derived.removed.clone().into(),
             layout: nested_list_layout::capture(&self.expected)?.into(),
             derived: None,
+            admitted_fragments: self
+                .admitted_fragments
+                .as_ref()
+                .map(|proofs| Arc::new([proofs[1].clone(), proofs[0].clone()])),
         })
     }
 }
