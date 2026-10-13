@@ -1665,3 +1665,14 @@ tests, including six new synchronous drift regressions; all 2,172 browser unit
 tests and strict browser type checks pass. Packaged browser checks and performance
 measurement for this change are pending. No speed improvement or release readiness
 is claimed from unit tests alone; the historical WebKit/native/budget gates stay open.
+
+The isolated `DFT4Ql` candidate and installed `wWGE0C` pair subsequently pass
+Node/types and all three engines. Matched local Firefox runs measure 340 ms
+versus 431 ms median 500-item edits (nine samples each), with 27 correctness
+cases passing on each package. Both runs include outliers; this sequential
+comparison is not randomized, statistical significance or release p95 proof.
+The actual `fRaea0` archive passes installed Node/types, browser-dispatched keys
+and exact mixed-history fresh-owner recovery at cursors 4 through 0 in all three
+engines. Its consumer JS + Wasm estimate is 818,099 bytes gzip-9, including the
+fixture. Physical input, historical WebKit resolution and accepted budgets remain
+open; no push, publication or default-distribution promotion occurred.
