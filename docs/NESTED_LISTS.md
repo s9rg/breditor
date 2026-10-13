@@ -1610,8 +1610,8 @@ both candidates passed 27 cases. This is sequential local evidence, not release
 p95 qualification. Compressed Wasm adds 561 bytes. The fresh `keYUbr` archive
 passes Node/types, browser keyboard and exact mixed-history recovery in all
 three engines; its consumer estimate is 818,016 bytes gzip-9 including the fixture.
-Current full native verification remains running; prior full-core results cover
-the earlier reconstruction-only cache. Historical WebKit, physical native input
+The original current-runtime full native command completed with exit zero:
+1,213 unit tests, all integration suites and 137 doctests passed. Historical WebKit, physical native input
 and accepted size/performance gates remain open. No push or publication occurred.
 
 The current installed Wasm also passes a standalone enriched nested-getter probe
@@ -1651,5 +1651,5 @@ integer grandchild cases. Its 500-item edit spans retain action-state calculatio
 native child-node inspection and command execution as leading sampled paths.
 These counts include underlying Wasm/native work, not JavaScript self-time or
 release p95. No runtime validation was removed. The separately running full Rust
-command resumed passing test output after an observed pre-start loader wait;
-that wait's cause is unknown and the command's final result is still pending.
+command resumed passing test output after an observed pre-start loader wait
+and subsequently completed with exit zero. That wait's cause remains unknown.

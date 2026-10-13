@@ -1193,6 +1193,25 @@
     "pushed": false,
     "published": false
   },
+  "fragmentProofReuseFullNativeCoreGate": {
+    "date": "2026-10-13",
+    "runtimeCheckpoint": "40d491c",
+    "command": "cargo test --locked -p breditor-core --features experimental-structural-properties --quiet",
+    "session": 94976,
+    "exitCode": 0,
+    "unitTestsPassed": 1213,
+    "integrationStatus": "All integration suites completed without failures; no narrowed or filtered replacement command.",
+    "doctestBatchesPassed": [1,136],
+    "doctestsPassed": 137,
+    "finalDoctestBatchSeconds": 335.49,
+    "allDoctestsSeconds": 391.59,
+    "mergedDoctestCompilationSeconds": 55.79,
+    "scope": "Original full current-runtime core command retained through compilation, executable startup delays, all integration suites and terminal doctest success. Never restarted or narrowed. Later checkpoints changed diagnostic tools/documentation only, not this Rust runtime. Earlier live/pending journal entries remain historical observations. Confirms the full native core gate for exact fragment-admission reuse, not historical WebKit resolution, physical clipboard/IME/VoiceOver qualification, accepted size/latency budgets or publication approval.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
