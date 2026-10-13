@@ -53,6 +53,24 @@
     "voiceOverQualified": false,
     "historicalWebKitFaultResolved": false
   },
+  "plainBrowserIsolationAfterReopen": {
+    "nativeToolsAvailable": true,
+    "scope": "Independent loopback HTML contenteditable control; no Breditor, Rust or Wasm. Logger records only event metadata, bounded control units and fixed key identities.",
+    "voiceOver": "User confirmed helping enable VoiceOver; System Settings observed on. VoiceOver Utility caption panel and cursor preferences already enabled and unchanged. Direct VoiceOver app-window read timed out.",
+    "automation": "Native tool sent Control-Option-A at the end of the plain nested Deep emoji item.",
+    "eventsObserved": [
+      {"type": "keydown", "trusted": true, "code": "KeyA", "modifiers": {"control": true, "option": true, "command": false, "shift": false}},
+      {"type": "beforeinput", "trusted": true, "inputType": "insertText", "dataLength": 1, "controlCodeUnits": [1]},
+      {"type": "input", "trusted": true, "inputType": "insertText", "dataLength": 1, "controlCodeUnits": [1]}
+    ],
+    "result": "Plain Safari inserted U+0001, reproducing the control-character symptom without Breditor. Command-Z restored the plain control; event log then cleared for a physical-key comparison.",
+    "conclusion": "The symptom is not specific to Breditor/Rust/Wasm. OS versus native-tool routing cause still unestablished; trusted automated events are not proof of physical screen-reader input.",
+    "physicalComparison": "User asked the agent to check independently instead. No physical-key result obtained; do not infer one from automated trusted events.",
+    "configurationCheck": "VoiceOver Utility Commands visibly configured the modifier as Control-Option or Caps Lock. Arrow-key and single-key Quick Nav were off; Always allow typing in text fields was on. These preferences were inspected, not changed.",
+    "independentHelpAttempt": "Automated Control-Option-H in VoiceOver Utility produced no visible Help menu or AX-tree change. This does not establish whether global screen-reader commands were delivered or consumed.",
+    "cleanupAfterIndependentCheck": "Explicitly switched VoiceOver off and observed off. Keyboard settings showed Canadian input, Globe key Show Emoji & Symbols and Dictation off. Dictation Languages remained English (Canada) and Japanese (Japan); clicking its Edit control returned AXError.failure. Dictation was not enabled for cleanup.",
+    "voiceOverQualified": false
+  },
   "limitations": [
     "Native key automation is not physical operator IME evidence.",
     "Accessibility tree inspection does not qualify a screen reader.",

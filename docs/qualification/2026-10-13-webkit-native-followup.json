@@ -7,8 +7,9 @@
     "observedConfiguration": "Computer Use plugins enabled; separate computer-use MCP server disabled with relative command and cwd.",
     "change": "Enabled that existing server and replaced command/cwd with validated installed absolute paths. Other settings and approval policies unchanged.",
     "launcherValidation": "Installed executable exists; --help and help mcp returned successfully.",
-    "toolRecoveryConfirmed": false,
-    "blocker": "No native-control tool exposed in this running chat after the configuration change. Client reload/reconnection is required before native testing can be attempted again; recovery is not proven.",
+    "toolRecoveryConfirmed": true,
+    "recoveryObservation": "After user reopened the chat, native Computer Use tools appeared. Safari, System Settings and VoiceOver Utility were successfully inspected through the native tool (CUA app version 1001425).",
+    "blocker": null,
     "imeQualified": false,
     "voiceOverQualified": false,
     "dictationLanguageCleanup": "Still pending; Dictation remains off."
