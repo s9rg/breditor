@@ -1321,6 +1321,28 @@
     "pushed": false,
     "published": false
   },
+  "checkpointStateComponentFullScriptGate": {
+    "date": "2026-10-13",
+    "diagnosticCheckpoint": "0bb8e11",
+    "fullCommand": "npm run test:scripts",
+    "fullSession": 75308,
+    "fullExitCode": 0,
+    "testsPassed": 275,
+    "normallySkipped": 3,
+    "browserOptInCommand": "BREDITOR_COMPLETION_BROWSER_TEST=1 BREDITOR_QUEUE_DIAGNOSTIC_BROWSER=1 BREDITOR_RETENTION_WEBKIT_TEST=1 node --test --test-reporter=dot scripts/fixture-completion.test.mjs scripts/queue-failure-diagnostics.test.mjs scripts/retain-nested-list-failure.test.mjs",
+    "browserOptInSession": 31952,
+    "browserOptInExitCode": 0,
+    "explicitBrowserChecks": [
+      "Firefox timer completion with animation-frame polling suppressed",
+      "WebKit synthetic engine-exception capture at diagnostic catch sites",
+      "WebKit synthetic retained replay after original fixture deletion"
+    ],
+    "scope": "Complete script regression suite and separately enabled browser-backed checks pass. These are synthetic diagnostic/provenance controls, not reproduction of the historical editor fault, physical input, native clipboard/VoiceOver or size/p95 acceptance. Production and shipping code unchanged; required release gates remain open.",
+    "releaseQualified": false,
+    "shippingArtifactsWritten": false,
+    "pushed": false,
+    "published": false
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false
