@@ -102,10 +102,14 @@
     "record": "target/nested-list-reproductions/trace-Fnf7ad/measurement.json",
     "session": 15856,
     "replay": "target/nested-list-reproductions/trace-Fnf7ad/exact-replay-N7rDhw/replay.json",
+    "replaySha256": "b89d816cf1e7b54c83e0d0e843e9e9dbf37e5b4b6e86d1d91feee3f01dbb5e42",
     "sites": 35,
     "checkpointSites": 2,
     "ownerSites": 3,
-    "statusAtRecording": "running",
+    "statusAtRecording": "passed",
+    "exitCode": 0,
+    "cases": 90,
+    "freshWebKitProcesses": 10,
     "scope": "Derived from the original failure-exsfE3 bytes, not a nested trace. Existing cold owner sites added because checkpoint-only replay failed in Redo dispatch. Original calls, validation, page and Wasm preserved. No runtime fix or release qualification."
   },
   "nativeChromeAttempt": {
