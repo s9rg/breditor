@@ -165,7 +165,13 @@
   "loggedTierCombinedTrace": {
     "session": 10909,
     "replay": "target/nested-list-reproductions/trace-Fnf7ad/exact-replay-CFEIx6/replay.json",
-    "statusAtRecording": "running",
+    "statusAtRecording": "failed",
+    "exitCode": 1,
+    "replaySha256": "f5edc9ed10b3a718f7db541782453591937b0880493d8b1491575cb547ff2e6c",
+    "retained": "target/nested-list-reproductions/failure-alReGk",
+    "retainedBrowserLogSha256": "276babc7f206ac7aef772bc0921b882b90c41f8dab6a802fa00e810a6cecc9eb",
+    "failure": "Third process, 500 items, repetition 2, editMs: expected Grandchild 250X absent, actual edited block count 0, owner live and selection unchanged. No checkpoint/owner cold rejection logs. Not assumed identical to checkpoint export or toolbar faults.",
+    "nextDiagnosticBoundary": "Beforeinput router intake/rejection result; existing router fault logger alone cannot identify a benignly rejected input while owner remains live.",
     "requestedJavaScriptTierMode": "no-dfg",
     "browserLog": "/private/tmp/breditor-tier-observation-rACD0K/traced-browser.log",
     "scope": "Use combined cold owner/checkpoint trace under the requested controls which reproduced the checkpoint failure. Separate log; original failing evidence preserved. Not shipping/performance qualification or a fix."
