@@ -81,6 +81,7 @@ export async function verifyFailureBundle(sourcePath, manifest) {
       }
       assert.ok(derivation.ownerFaults===undefined||typeof derivation.ownerFaults==="boolean");
       assert.ok(derivation.smallRestoreChurn===undefined||typeof derivation.smallRestoreChurn==="boolean");
+      assert.ok(derivation.restoreChurnItems===undefined||[10,100].includes(derivation.restoreChurnItems),"invalid restore churn items");
       assert.ok(derivation.checkpointExports===undefined||typeof derivation.checkpointExports==="boolean");
       assert.ok(derivation.inputRoutes===undefined||typeof derivation.inputRoutes==="boolean");
       assert.ok(derivation.checkpointReader===undefined||typeof derivation.checkpointReader==="boolean");
@@ -92,7 +93,7 @@ export async function verifyFailureBundle(sourcePath, manifest) {
       assert.ok(derivation.checkpointContractCapture===undefined||typeof derivation.checkpointContractCapture==="boolean");
       assert.ok(derivation.ownerReasons===undefined||typeof derivation.ownerReasons==="boolean");
       assert.ok(derivation.ownerImmediateExits===undefined||typeof derivation.ownerImmediateExits==="boolean");
-      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,ownerImmediateExits:derivation.ownerImmediateExits===true,smallRestoreChurn:derivation.smallRestoreChurn===true,checkpointExports:derivation.checkpointExports===true,inputRoutes:derivation.inputRoutes===true,checkpointReader:derivation.checkpointReader===true,checkpointValidation:derivation.checkpointValidation===true,checkpointPredicates:derivation.checkpointPredicates===true,checkpointStateComponents:derivation.checkpointStateComponents===true,checkpointPredicateExits:derivation.checkpointPredicateExits===true,checkpointCapture:derivation.checkpointCapture===true,checkpointContractCapture:derivation.checkpointContractCapture===true,ownerReasons:derivation.ownerReasons===true});
+      const expected = traceRetainedBootstrapFailures(originalLayout.toString("utf8"),{ownerFaults:derivation.ownerFaults===true,ownerImmediateExits:derivation.ownerImmediateExits===true,smallRestoreChurn:derivation.smallRestoreChurn===true,restoreChurnItems:derivation.restoreChurnItems??10,checkpointExports:derivation.checkpointExports===true,inputRoutes:derivation.inputRoutes===true,checkpointReader:derivation.checkpointReader===true,checkpointValidation:derivation.checkpointValidation===true,checkpointPredicates:derivation.checkpointPredicates===true,checkpointStateComponents:derivation.checkpointStateComponents===true,checkpointPredicateExits:derivation.checkpointPredicateExits===true,checkpointCapture:derivation.checkpointCapture===true,checkpointContractCapture:derivation.checkpointContractCapture===true,ownerReasons:derivation.ownerReasons===true});
       assert.deepEqual(source.diagnosticWorkload,expected.diagnosticWorkload,"diagnostic workload changed");
       assert.deepEqual(tracedScript, Buffer.from(expected.code), "bytes outside bootstrap trace changed");
       assert.deepEqual(derivation.sites, expected.sites, "bootstrap trace sites changed");

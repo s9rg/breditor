@@ -2,8 +2,8 @@
 
 Status: implemented behind experimental Rust/Wasm features and a separate private
 `@breditor/experimental-nested-lists` package. Generated-Wasm, integrated-browser
-and short installed-package automated checks pass, but the latest packed stress
-run failed. This is not release readiness.
+and current installed-package automated checks pass. Historical packed stress
+failures remain unresolved; this is not release readiness.
 Default shipping bundles and the existing flat-list package remain unchanged.
 The historical intermittent WebKit fault is unresolved.
 
@@ -11,11 +11,30 @@ Remaining release gates: physical keyboard/IME and spoken screen-reader
 qualification; size and large-document performance qualification; resolution of
 the WebKit risk. Native clipboard observations cover the older `Skv8uP` archive
 in Safari and Chrome, within the scope recorded below; they do not qualify the
-latest `ByyOGo` candidate. The
+latest `KnfEb5` package pair. The
 implementation log below is chronological: older pending notes are superseded
 only where a later checkpoint explicitly supplies matching evidence.
 
-Latest automated candidate: `target/nested-list-opt-in-ByyOGo`, archive SHA-256
+Latest tested compatibility candidate:
+`target/nested-list-packages-KnfEb5/qualification.json`, record SHA-256
+`c892c44b7ef8fbf3d39160dbe2573e6b70245dac70c6f8ef1795e9ea3bb84edc`.
+The browser patch compares projection coordinates/counts as exact primitive u32
+keys, without accepting invalid values, weakening shape checks or retrying
+getters. Installed Node/types and Chromium/Firefox/WebKit checks pass, as do
+2195 browser contract tests, 900 rich grandchild editor cases and 7,383,010
+integer-word getter checks in fresh WebKit 26.5 processes. See the
+[candidate record](qualification/2026-10-13-u32-comparison-candidate.json) for
+exact artifacts and limits: the legacy raw getter still fails in reduced controls,
+and a causal repair of the historical toolbar-owner fault is not established.
+The [focused owner follow-up](qualification/2026-10-13-webkit-owner-route-followup.json)
+records 10- and 100-item historical diagnostic workloads; their passing results
+do not cancel the retained failure. The patched private archive
+`target/nested-list-opt-in-f6yF8a` (SHA-256
+`35498ffd95de6456943f1f32941591bcaaba35bb9af3eb75bac6bc24a164f122`)
+also passes its offline external Node/types and three-engine consumer checks.
+No shipping artifacts were promoted.
+
+Earlier failed automated candidate: `target/nested-list-opt-in-ByyOGo`, archive SHA-256
 `b07da983b56d62fd417369696389b0c9a15fced9fec112d869750caa4a08bd9e`.
 Its installed Node/types and short Chromium/Firefox/WebKit checks pass. Independent
 packed stress failed during WebKit restore; a separate diagnostic replay failed

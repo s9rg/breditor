@@ -56,6 +56,10 @@ for(const browserName of ["webkit","all"])test(`${browserName} bootstrap derivat
   const forgedImmediateBytes=Buffer.from(JSON.stringify(forgedImmediate));await writeFile(result.measurementPath,forgedImmediateBytes);
   await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedImmediateBytes)}),/owner immediate boundary missing/u);
   await writeFile(result.measurementPath,derivedBytes);
+  const forgedChurn=structuredClone(verified.source);forgedChurn.retainedBootstrapDerivation.restoreChurnItems=100;
+  const forgedChurnBytes=Buffer.from(JSON.stringify(forgedChurn));await writeFile(result.measurementPath,forgedChurnBytes);
+  await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedChurnBytes)}),/requires explicit churn/u);
+  await writeFile(result.measurementPath,derivedBytes);
   const forgedCapture=structuredClone(verified.source);forgedCapture.retainedBootstrapDerivation.checkpointCapture=false;
   const forgedCaptureBytes=Buffer.from(JSON.stringify(forgedCapture));await writeFile(result.measurementPath,forgedCaptureBytes);
   await assert.rejects(verifyFailureBundle(result.measurementPath,{...manifest,measurementSha256:hash(forgedCaptureBytes)}),/outside bootstrap trace changed/u);

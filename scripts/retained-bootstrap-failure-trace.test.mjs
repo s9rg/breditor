@@ -65,6 +65,15 @@ test("focused churn changes only fixture sizes/owner count and is explicitly dia
   assert.equal(shortRun().length,300);
   assert.ok(shortRun().every(([size])=>size===10));
   assert.throws(()=>traceRetainedBootstrapFailures(source+owner+workload.replace("<30","<4"),{ownerFaults:true,smallRestoreChurn:true}),/owner loop changed/u);
+  const medium=traceRetainedBootstrapFailures(source+owner+workload,{ownerFaults:true,smallRestoreChurn:true,restoreChurnItems:100});
+  const mediumRun=Function("error","console",medium.code+";return cases;")(code=>({code}),{error(){}});
+  assert.equal(mediumRun().length,300);assert.ok(mediumRun().every(([size])=>size===100));
+  assert.deepEqual(medium.diagnosticWorkload,{variant:"medium-restore-churn",sizes:[100],owners:300,expectedCases:300,warmupPreserved:true});
+  assert.equal(traceRetainedBootstrapFailures(source+owner+workload,{ownerFaults:true,smallRestoreChurn:true,restoreChurnItems:10}).code,traced.code);
+  assert.throws(()=>traceRetainedBootstrapFailures(source+owner+workload,{ownerFaults:true,restoreChurnItems:100}),/requires explicit churn/u);
+  for(const restoreChurnItems of [0,500,"100",null,-1,100.5]) {
+    assert.throws(()=>traceRetainedBootstrapFailures(source+owner+workload,{ownerFaults:true,smallRestoreChurn:true,restoreChurnItems}),/must be 10 or 100/u);
+  }
 });
 
 test("checkpoint trace distinguishes reader rejection and snapshot mismatch without logging success",()=>{

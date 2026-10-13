@@ -46,10 +46,12 @@ function shadowed(name,ancestors) {
  * has a proven unshadowed module binding. No generated reads or retries.
  * Conditional/inline branches retain evaluation order and returned identity.
  */
-export function traceRetainedBootstrapFailures(code,{ownerFaults=false,ownerImmediateExits=false,smallRestoreChurn=false,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointPredicateExits=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
+export function traceRetainedBootstrapFailures(code,{ownerFaults=false,ownerImmediateExits=false,smallRestoreChurn=false,restoreChurnItems=10,checkpointExports=false,inputRoutes=false,checkpointReader=false,checkpointValidation=false,checkpointPredicates=false,checkpointStateComponents=false,checkpointPredicateExits=false,checkpointCapture=false,checkpointContractCapture=false,ownerReasons=false}={}) {
   assert.equal(typeof ownerFaults,"boolean");
   assert.equal(typeof ownerImmediateExits,"boolean");
   assert.equal(typeof smallRestoreChurn,"boolean");
+  assert.ok([10,100].includes(restoreChurnItems),"restore churn items must be 10 or 100");
+  assert.ok(restoreChurnItems===10||smallRestoreChurn,"changed restore size requires explicit churn");
   assert.equal(typeof checkpointExports,"boolean");
   assert.equal(typeof inputRoutes,"boolean");
   assert.equal(typeof checkpointReader,"boolean");
@@ -357,9 +359,9 @@ export function traceRetainedBootstrapFailures(code,{ownerFaults=false,ownerImme
       children(node).forEach(findOwners);
     }
     findOwners(loop.body);assert.equal(ownerLoops.length,1,"performance owner loop changed");
-    for(const [node,replacement] of [[loop.right,"[10]"],[ownerLoops[0].test.right,"300"]])
+    for(const [node,replacement] of [[loop.right,JSON.stringify([restoreChurnItems])],[ownerLoops[0].test.right,"300"]])
       edits.push({start:node.start,end:node.end,original:code.slice(node.start,node.end),replacement});
-    diagnosticWorkload={variant:"small-restore-churn",sizes:[10],owners:300,expectedCases:300,warmupPreserved:true};
+    diagnosticWorkload={variant:restoreChurnItems===10?"small-restore-churn":"medium-restore-churn",sizes:[restoreChurnItems],owners:300,expectedCases:300,warmupPreserved:true};
   }
   function initializedBindings(ancestors,offset,includeDeclared=false) {
     const names=new Map();

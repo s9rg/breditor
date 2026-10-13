@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-13",
+  "status": "historical-owner-fault-open; focused-diagnostics-completed",
+  "releaseQualified": false,
+  "historicalOwnerFaultRootCauseEstablished": false,
+  "runtimeSourceChangedInThisFollowup": false,
+  "comparisonPatch": "668a1d9; qualification/2026-10-13-u32-comparison-candidate.json",
+  "diagnosticChange": {
+    "option": "--small-restore-churn --restore-churn-items=100",
+    "reason": "The latest retained Redo failure occurred at 100 items. The existing focused churn option selected only 10 items.",
+    "scope": "Explicit diagnostic copies only. Select 10 or 100 items and 300 owners; retain original Wasm, warmup, rich grandchild document, exact correctness assertions and cold fault tracing. No rebuild, remangle, getter retry or engine override.",
+    "compatibility": "Default remains 10. Previous trace bytes regenerate exactly when the new option is omitted. Unsupported sizes, wrong types and a changed size without explicit churn are rejected. Retention verification regenerates the exact derived bytes and workload metadata.",
+    "tests": {"focusedPassed": 21, "fullScriptPassed": 293, "fullScriptSkipped": 3, "fullScriptFailed": 0}
+  },
+  "retainedControl": {
+    "source": "target/nested-list-reproductions/failure-exsfE3/measurement.json",
+    "scriptSha256": "028f26593edffc790b980337eb4febe1326cbed3d7331bc772d1358f16c601df",
+    "latestFailure": "target/nested-list-reproductions/trace-3fMDwL/exact-replay-9ymc2k/replay.json",
+    "latestFailureSha256": "17d528f0b60ad1545fdfa99fd5332760a7512647b24c424b34c4fb05f0f1faad",
+    "observed": "Process 6, 100 items, repetition 0, Redo: owner faulted with toolbarDispatchFailed. No checkpoint predicate rejection or rejected checkpoint was captured.",
+    "limitation": "This reason does not identify a failed immediate delivery versus rejection of a completed toolbar outcome. It is not proof that the new comparison patch repairs the owner fault."
+  },
+  "smallChurn": {
+    "trace": "target/nested-list-reproductions/trace-YuIkyk/measurement.json",
+    "traceSha256": "46c561612732f0f073714563210c8d7c3c6e33dcfbd863bac104e69acd929b05",
+    "tracedScriptSha256": "150fe3f6af80840b0dd3ddf0ddee47c770bbacb03b9029ab2e9674751e30e253",
+    "replay": "target/nested-list-reproductions/trace-YuIkyk/exact-replay-FkucmU/replay.json",
+    "replaySha256": "7aa8a53ce8d75a063af525a0cc211c833d714beed26e7b873b12d1047e0070cc",
+    "result": "Ten fresh WebKit 26.5 processes, 3000 exact editor cases at 10 items, diagnostics and page errors zero; terminal exit 0."
+  },
+  "mediumChurn": {
+    "trace": "target/nested-list-reproductions/trace-8wVFdP/measurement.json",
+    "traceSha256": "22646bbf1e5f7483485fb5c6d94b90493918ad6b2e9ed6ff27c0e3ab2ef41539",
+    "replay": "target/nested-list-reproductions/trace-8wVFdP/exact-replay-cWNkHU/replay.json",
+    "replaySha256": "4162164cdf35b11c93b480e79650fd13043c16981b4baee685dab48df8c9197a",
+    "result": "Ten fresh WebKit 26.5 processes, 3000 exact editor cases at 100 items, diagnostics and page errors zero; terminal exit 0."
+  },
+  "sameCurrentArtifactLegacyControl": {
+    "record": "breditor-nested-list-consumer-eiPeob/getter-probe-vZUeSy/measurement.json",
+    "sha256": "5ccc53a6db76152af417483c98da9a54092539592abef8a080442dfe4eb1a82b",
+    "packageRecord": "target/nested-list-packages-KnfEb5/qualification.json",
+    "wasmSha256": "578f0e7cafde8d387b3e8b49372126614393ea541182db03c2c870d9fe677960",
+    "wordChildCountTransport": false,
+    "u32KeyComparison": true,
+    "result": "Ten fresh WebKit 26.5 processes, 9000 projection owners and 7,365,010 exact getter checks passed; cleanup completed and page errors zero; terminal exit 0.",
+    "comparison": "Same current installed Wasm, retained variadic bridge, production u32 helper, paragraph child-count-only workload and owner count as the earlier current-package integer-word trial. This run selects the generated legacy getter, not the word getter. No private diagnostic Wasm or raw-return instrumentation is substituted.",
+    "limitation": "The legacy failure previously captured with diagnostic Wasm is not reproduced by this current-artifact sample. Do not claim it occurs in this package or that the transport alone caused or repaired it. The integer-word and legacy bundles necessarily differ in their routing code."
+  },
+  "patchedPrivateArchive": {
+    "assembly": "target/nested-list-opt-in-f6yF8a/assembly.json",
+    "assemblySha256": "a25a76408bd7e8f530ce1c6c56d96e9996f2b43f4bfccb14a7f3287ff891dee8",
+    "archiveSha256": "35498ffd95de6456943f1f32941591bcaaba35bb9af3eb75bac6bc24a164f122",
+    "qualification": "target/nested-list-opt-in-f6yF8a/consumer-qualification.json",
+    "qualificationSha256": "3a7f45b554f9bb16e35e9d2167a7e5e6f1f76c03aee6c89b3d72add77b59f14b",
+    "bytes": 967787,
+    "result": "Offline external installation, exact installed tree, strict types, Node imports/export boundaries and Chromium 151.0.7922.34 / Firefox 153.0 / WebKit 26.5 passed; terminal exit 0.",
+    "coverage": "Nested indent/outdent with descendants, list conversion, backward deep formatting, mixed indent/text/heading/outdent history restored at every cursor with exact document/selection/pending formats, Undo and Redo. Browser-dispatched keyboard checks include Tab/Shift-Tab, typing, Enter/Backspace and disabled-indent focus navigation.",
+    "boundary": "Private patched candidate, not native input, size/latency acceptance, historical-fault closure or release promotion. Minified consumer emits a chunk-size warning; no warning threshold or size budget was raised.",
+    "shippingArtifactsWritten": false,
+    "publishable": false
+  },
+  "conclusion": "These changed-workload, instrumented historical controls did not reproduce the owner failure. No failed branch was captured and no causal repair follows. They are not the current package, latency qualification, native-input qualification or proof of an engine fix. The current-artifact getter control and patched archive also passed but do not erase older failing bytes. Do not repeat unchanged passing batches as a substitute for identifying a failing branch.",
+  "pushed": false,
+  "published": false
+}
