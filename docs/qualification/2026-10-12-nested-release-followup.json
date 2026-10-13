@@ -685,6 +685,17 @@
     "filteredFocusedStatus": "original filtered job 5262 remains live; empty harnesses not qualification",
     "scope": "Strict gate now passes without allowances. Native Debug presentation explicitly hides cache, not a protocol/data/validation change. Fresh build verifies executable identity; shipping bundles untouched. Historical WebKit/native-input/accepted size and latency gates remain open; no push or publish."
   },
+  "strictRustDocumentationFollowup": {
+    "date": "2026-10-13",
+    "command": "RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked",
+    "exitCode": 0,
+    "initialFailure": "child_count_transport module documentation rendered Option<u32> as an unclosed HTML tag",
+    "correction": "Marked number | undefined and Option<u32> as inline code; no warning allowances or runtime changes",
+    "generatedCrates": ["breditor-core", "breditor-wasm"],
+    "fullCoreStatus": "original test session 93438 remains live; integration/doctest terminal success not claimed",
+    "filteredFocusedStatus": "original session 5262 remains live; filtered integration harnesses not full qualification",
+    "scope": "Strict documentation build only, not doctest execution, package publication, native input or full nested release qualification. Original native handles polled without restarting. Historical WebKit fault and accepted budget gates remain open; shipping artifacts unchanged."
+  },
   "runtimeChanged": true,
   "pushed": false,
   "published": false

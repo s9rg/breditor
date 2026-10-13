@@ -1,5 +1,5 @@
 //! Unqualified private comparison of explicit JS values with optional-u32 ABI.
-//! The public JS contract remains number | undefined; Rust retains Option<u32>.
+//! The public JS contract remains `number | undefined`; Rust retains `Option<u32>`.
 //! No retries, normalization, fallback counts or weaker shape checks.
 use super::BreditorProjection;
 use wasm_bindgen::{JsValue, prelude::wasm_bindgen};
