@@ -354,8 +354,11 @@ On October 14, 2026, the reproducible script passed:
   closure, explicit edges, reordered axes and metadata-only redo preservation.
 - 11 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 native collaboration/history contracts.
-- 75 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- 27 retained native collaboration/history contracts and 18 shared rich-AST
+  contracts with actual Document V2 materialization and selective history.
+- 99 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine
+  and 24 new generated-Wasm shared-AST tests. The explicit test list now includes
+  `rich-replica.spec.mjs`; the old 75-test configuration did not exercise it.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
@@ -379,10 +382,52 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 6,477,550 bytes, or 1,787,869 bytes under gzip, with
-SHA-256 `5e5f0292ef3e3307c0e05ddf6f4d93a9cd1366beae50ff5fbe87fa07a671d94f`.
+The tested fixture Wasm is 6,941,668 bytes, or 1,916,540 bytes under gzip, with
+SHA-256 `484868783e2083731c4d815ae34f6fedfaa830b58989b738aff61bc6f6f751b2`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
+
+## Shared rich AST checkpoint
+
+The new `rich_replica::RichReplica` owns the CRDT and publishes an immutable,
+schema-admitted rich AST. Genesis is decomposed once; ongoing text, formatting,
+metadata, move and deletion actions use stable primitives, not root replacements.
+Every action has its own documented Rust file. The Wasm `RichReplicaProbe` uses
+the same coordinator and exact Document V2 export.
+
+Native checks cover concurrent cell/caption edits; generic typed format literals,
+including a declared Link value; paired image alt/size; column widths; independent
+row/column deletions; later remote node/column placements surviving Undo/Redo;
+hidden-subtree text/metadata recovery; authored text in normalized empty flow;
+failed-group isolation; stale causal-version rejection before target/JSON admission;
+original room/schema/model/engine envelope checks before engine import; and exact
+future selective-history operation identities
+after restart. Browser checks exercise the real generated module, including an
+actual page reload from the same-writer journal.
+
+Two reproduced native tree-undo behaviors determined the design. Deletion Undo
+can recreate physical nodes, so stable block metadata/text must outlive physical
+tree IDs. Native move Undo can override a later remote move, so semantic moves
+select writer-owned ordered occurrences instead. Deletion contributions combine
+by active presence, not by the last shared boolean: undoing A's deletion cannot
+retract B's independent deletion. Caption/cell text and paired metadata are
+separate from those structural effects.
+
+The shared rich journal is a private V1 family with 1,000 events, 16 MiB serialized
+bytes and 1 MiB imported engine frames. Its independently bounded causal view is
+4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
+architecture-independent length-prefixed SHA-256 inputs under the reserved
+`breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
+as portable recovery branches. Rebuild/compaction and decoder-work budgets are
+still provisional.
+
+`breditor/rich-replica-update` V1 binds the document ID, complete schema selector
+and fingerprint, model revision 1 and pinned Loro 1.16.2 codec before importing
+its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
+uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
+authentication or a writer lease. The reference relay must supply those checks.
+`apply_at` guards exact canonical causal versions; it does not freeze local
+selection/history metadata or replace the future shared observation contract.
 
 ## Limits and remaining gates
 
@@ -408,9 +453,11 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-Shared tree/AST materialization, collaborative IndexedDB recovery and the
-authorized reference relay/asset-provider integration remain
-implementation gates. The fixture exchanges engine bytes in one test host;
+Complete shared structural/range planner coverage, causal rich selections and
+cycle/conflict normalization remain implementation gates. The shared browser
+coordinator, collaborative IndexedDB/leases and authorized reference
+relay/presence/asset-provider integration are also unfinished. The fixture
+exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.
 

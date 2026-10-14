@@ -19,7 +19,7 @@ fn contract(_error: impl std::fmt::Display) -> Error {
     Error::Contract("rich AST fixture admission")
 }
 
-fn schema() -> Result<CompiledSchema, Error> {
+pub(crate) fn schema() -> Result<CompiledSchema, Error> {
     let id = SchemaId::new(
         QualifiedName::try_new("breditor-probe/rich-content").map_err(contract)?,
         SchemaVersion::try_new(1).map_err(contract)?,

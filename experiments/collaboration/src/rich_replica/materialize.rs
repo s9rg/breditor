@@ -1,0 +1,197 @@
+//! Pure canonical AST projection; hidden causal nodes/text remain in the replica.
+use super::model::{object_string, patches, placeholder, string, virtual_id};
+use crate::Error;
+use loro::{ContainerID, ContainerType, LoroDoc, ToJson};
+use serde_json::{Map, Value, json};
+use std::collections::{BTreeMap, BTreeSet};
+
+pub(super) fn header(doc: &LoroDoc) -> Result<Value, Error> {
+    object_string(&doc.get_map("binding"), "header")
+}
+
+pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
+    let mut value = header(doc)?;
+    let document = value
+        .pointer("/root/properties/breditor~1document-id")
+        .and_then(Value::as_str)
+        .ok_or(Error::Contract("shared document identity"))?
+        .to_owned();
+    let mut children = vec![];
+    for block in super::placement::children(doc, None)? {
+        if let Some(node) = element(doc, &block, 0)? {
+            children.push(node);
+        }
+    }
+    let block = virtual_id("root", &[&document]);
+    let fallback = super::text::block_runs(doc, &block)?;
+    if children.is_empty() || !fallback.is_empty() {
+        children.insert(0, placeholder(&block, &fallback));
+    }
+    value
+        .get_mut("root")
+        .and_then(Value::as_object_mut)
+        .ok_or(Error::Contract("shared root header"))?
+        .insert("children".into(), Value::Array(children));
+    Ok(value)
+}
+
+fn element(doc: &LoroDoc, block: &str, depth: usize) -> Result<Option<Value>, Error> {
+    if depth > 64 {
+        return Err(Error::Limit("shared node depth"));
+    }
+    if super::model::deleted(doc, block)? {
+        return Ok(None);
+    }
+    let meta = super::model::metadata(doc, block)?;
+    let mut kind = string(&meta, "type")?;
+    let identity = object_string(&meta, "identity")?;
+    let mut properties =
+        identity.as_object().ok_or(Error::Contract("shared identity fields"))?.clone();
+    properties.insert("breditor/block-id".into(), block.into());
+    let raw = meta.get_deep_value().to_json_value();
+    let empty = json!({});
+    for patch in patches(doc, raw.get("effects").unwrap_or(&empty))? {
+        for name in patch.removes {
+            properties.remove(&name);
+        }
+        for (name, value) in patch.sets {
+            if name == "$type" {
+                kind = value.as_str().ok_or(Error::Contract("shared type intent"))?.into();
+            } else {
+                properties.insert(name, value);
+            }
+        }
+    }
+    let mut children = vec![];
+    if kind == "breditor/paragraph" || kind == "breditor/heading" {
+        children = super::text::block_runs(doc, block)?;
+    } else {
+        for child in super::placement::children(doc, Some(block))? {
+            if let Some(value) = element(doc, &child, depth + 1)? {
+                children.push(value);
+            }
+        }
+    }
+    if kind == "breditor/table" {
+        let columns = columns(doc, block)?;
+        for row in &mut children {
+            complete_row(doc, &properties, row, &columns)?;
+        }
+        properties.insert("breditor/columns".into(), Value::Array(columns));
+    }
+    if (kind == "breditor/bullet-list" || kind == "breditor/ordered-list") && children.is_empty() {
+        return Ok(None);
+    }
+    if kind == "breditor/table-cell" || kind == "breditor/list-item" {
+        let leading_text = children
+            .first()
+            .and_then(|node| node.get("type"))
+            .and_then(Value::as_str)
+            .is_some_and(|kind| kind == "breditor/paragraph" || kind == "breditor/heading");
+        let default = virtual_id("flow", &[block]);
+        let fallback = super::text::block_runs(doc, &default)?;
+        if children.is_empty()
+            || (kind == "breditor/list-item" && !leading_text)
+            || !fallback.is_empty()
+        {
+            children.insert(0, placeholder(&default, &fallback));
+        }
+    }
+    Ok(Some(
+        json!({"kind":"element","type":kind,"entityId":object_string(&meta,"entity")?,"properties":properties,"children":children}),
+    ))
+}
+
+fn columns(doc: &LoroDoc, block: &str) -> Result<Vec<Value>, Error> {
+    let root = ContainerID::new_root("columns", ContainerType::Map);
+    let owner = ContainerID::new_mergeable(&root, block, ContainerType::Map);
+    let values = super::column_order::selected(doc, block)?;
+    if values.len() > 128 {
+        return Err(Error::Limit("shared columns"));
+    }
+    let source = doc
+        .try_get_map(owner.clone())
+        .ok_or(Error::Contract("shared column owner"))?
+        .get_deep_value()
+        .to_json_value();
+    let widths = doc
+        .try_get_map(ContainerID::new_mergeable(&owner, "widths", ContainerType::Map))
+        .ok_or(Error::Contract("shared column widths"))?
+        .get_deep_value()
+        .to_json_value();
+    let mut seen = BTreeSet::new();
+    let mut output = vec![];
+    for (column, _) in values {
+        if !seen.insert(column.clone()) {
+            return Err(Error::Contract("duplicate shared column"));
+        }
+        if super::model::any_deleted(
+            doc,
+            source.get("deletions").and_then(|value| value.get(&column)),
+        )? {
+            continue;
+        }
+        let records = widths
+            .get(&column)
+            .and_then(|value| value.get("width"))
+            .and_then(Value::as_object)
+            .ok_or(Error::Contract("shared width contributions"))?;
+        let mut chosen = None;
+        for (key, value) in records {
+            let (stamp, value) = crate::register::read_contribution(doc, key, value)?;
+            if chosen.as_ref().is_none_or(|(prior, _)| stamp > *prior) {
+                chosen = Some((stamp, value));
+            }
+        }
+        let encoded = chosen.ok_or(Error::Contract("missing shared width"))?.1;
+        let width: Value =
+            serde_json::from_str(encoded.as_str().ok_or(Error::Contract("shared width literal"))?)?;
+        output.push(json!({"id":column,"width":width}));
+    }
+    Ok(output)
+}
+
+fn complete_row(
+    doc: &LoroDoc,
+    table: &Map<String, Value>,
+    row: &mut Value,
+    columns: &[Value],
+) -> Result<(), Error> {
+    let table = table
+        .get("breditor/table-id")
+        .and_then(Value::as_str)
+        .ok_or(Error::Contract("shared table identity"))?;
+    let row_id = row
+        .pointer("/properties/breditor~1row-id")
+        .and_then(Value::as_str)
+        .ok_or(Error::Contract("shared row identity"))?
+        .to_owned();
+    let existing = row
+        .get_mut("children")
+        .and_then(Value::as_array_mut)
+        .ok_or(Error::Contract("shared row cells"))?;
+    let mut by_column = BTreeMap::new();
+    for cell in std::mem::take(existing) {
+        let column = cell
+            .pointer("/properties/breditor~1column-id")
+            .and_then(Value::as_str)
+            .ok_or(Error::Contract("shared cell column"))?
+            .to_owned();
+        if by_column.insert(column, cell).is_some() {
+            return Err(Error::Contract("duplicate shared base cell"));
+        }
+    }
+    for column in columns {
+        let column =
+            column.get("id").and_then(Value::as_str).ok_or(Error::Contract("shared column"))?;
+        let cell = if let Some(cell) = by_column.remove(column) {
+            cell
+        } else {
+            let block = virtual_id("cell", &[table, &row_id, column]);
+            let text = virtual_id("flow", &[&block]);
+            json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[placeholder(&text,&super::text::block_runs(doc,&text)?)]})
+        };
+        existing.push(cell);
+    }
+    Ok(())
+}

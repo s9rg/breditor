@@ -42,7 +42,11 @@ leading list heads. A separately gated rich Wasm owner and opt-in browser packag
 expose these actions, typed construction drafts, a DOM editor, expandable toolbar,
 grid/node selection, event clipboard paths and an interactive combined local demo. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
-separate tested contracts from the remaining shared rich replica and relay.
+separate tested contracts from the remaining shared planner coverage and relay.
+The isolated rich replica now decomposes admitted ASTs into shared primitives
+and rebuilds the same validated Document V2. Concurrent cell/caption edits,
+typed formatting, paired image metadata, writer-owned moves/deletions and exact
+selective-history restart have native and generated-Wasm functional checks.
 Optional local IndexedDB checkpoints and content-addressed raster bytes now
 survive reload; file picker/paste/drop insert only after bytes are durable. The
 upload queue has explicit retry/cancel and late-epoch guards, but requires a host
@@ -316,6 +320,52 @@ collaboration backup are different products: the former preserves content/geomet
 also preserves causal identity, pending work and durable selective history.
 
 ## Replication engine decision
+
+### Shared rich AST adapter
+
+`experiments/collaboration/src/rich_replica` now owns a staged rich replica.
+Genesis admits one Document V2 under the supplied compiled rich schema, then
+decomposes it into stable keyed metadata/text and independently ordered structural
+occurrences. Later commands never replace a complete shared AST. Each candidate
+rebuilds an immutable AST through `DocumentJsonCodecV2` and `RichDocument`, so the
+existing fingerprint, rich grammar, typed formats and identity directory remain
+the semantic admission boundary.
+
+Backend tree IDs are not Breditor identities. Loro tree deletion Undo can create
+new physical nodes. Metadata therefore lives in mergeable maps keyed by stable
+block IDs, with text in separate stable containers. A deleted row/column hides
+its cell content; another writer's text or image metadata remains available when
+the deletion is retracted.
+
+Native tree-move Undo also failed the required later-remote-move scenario: Undo
+moved the node back after another writer had moved it. Shared block and column
+moves now insert writer-owned occurrences into replicated sibling orders and
+select the highest active placement contribution. Undo retracts this writer's
+occurrence/contribution; Redo restores its original causal priority. Logical
+descendants follow their stable parent identity without copying text or metadata.
+Deletion is an independently owned visibility effect: any surviving deletion
+keeps the node/axis hidden, even after another writer undoes its own deletion.
+
+The private `breditor/rich-replica-journal` V1 reconstructs the original seed/join,
+ordered local/import/history events and their exact authored causal effects.
+Resume requires the original exclusively leased writer and matching room/schema.
+It is separate from local exact-history recovery and is not a portable backup or
+a server acknowledgement. The reference rebuilds the journal on each mutation;
+compaction and production work budgets are not established by these tests.
+
+Shared updates now have an original private `breditor/rich-replica-update` V1
+envelope. Room ID, schema selector/fingerprint, model revision and engine codec
+are checked before opaque engine import. The header does not authenticate a
+sender or acquire a writer lease; those remain reference-host responsibilities.
+Asynchronous content work can use `apply_at` with the exact causal version. This
+rejects stale coordinates before target/value admission, but is not the future
+selection/history observation token.
+
+Shared creation/axis insertion, merge/split/header and complete list/range planner
+coverage remain to implement. Causal rich selections, placement-conflict/cycle
+normalization, the browser shared coordinator, leases, collaborative IndexedDB,
+presence and relay/provider integration are also unfinished. The full functional
+goal is unchanged; this adapter is not an end-user collaboration release.
 
 Candidate under test: Loro 1.16.2 in the isolated
 `experiments/collaboration` workspace, before promotion to an optional Rust
@@ -675,8 +725,9 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused sessions should connect the same semantic planners and rich
-selections to the shared rich replica, then integrate the reference relay,
+The next focused sessions should complete rich structural planner coverage and
+causal selections in the shared replica, connect the browser shared coordinator,
+then integrate the reference relay,
 presence and host asset provider with durable collaborative recovery. Local asset
 bytes and local checkpoints are tested, not a substitute for shared causal state
 or selective undo. Arbitrary cross-container

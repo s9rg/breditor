@@ -16,6 +16,7 @@ pub mod rich_local_fixture;
 pub mod rich_navigation_fixture;
 pub mod rich_paste_fixture;
 pub mod rich_recovery_fixture;
+pub mod rich_replica;
 pub mod session;
 pub mod table_axis_fixture;
 mod text_projection;
@@ -23,6 +24,9 @@ mod validation;
 
 #[cfg(target_arch = "wasm32")]
 mod wasm;
+
+#[cfg(target_arch = "wasm32")]
+mod rich_replica_wasm;
 
 /// Failures isolated before a candidate session replaces published state.
 #[derive(Debug, thiserror::Error)]
