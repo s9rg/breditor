@@ -12,7 +12,7 @@ publish = false
 # Internal structural-schema work only. The default editor/Wasm package stays
 # paragraph-only until the complete structural editing contract is qualified.
 experimental-structural-properties = []
-# Additive semantic values only; does not widen existing schemas or codecs.
+# Separate rich AST admission and semantic values; existing profiles stay exact.
 experimental-rich-content = ["experimental-structural-properties"]
 
 [dependencies]

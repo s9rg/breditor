@@ -1,13 +1,19 @@
-//! Opt-in semantic contracts for table geometry and immutable image bindings.
+//! Opt-in rich AST, local actions, table geometry and immutable image bindings.
 //!
-//! These checked values do not widen the existing AST grammar, provide a new
-//! document codec, or install browser behavior. They are independent of any
-//! replication library. Their identities are durable content identities, not
+//! The separate sealed rich-content schema adds AST admission without widening
+//! existing profiles, editing/history codecs or browser behavior. Values are
+//! independent of any replication library. Their identities are durable content identities, not
 //! semantic `EntityId`, snapshot-local paths, DOM keys or authentication claims.
 
+pub mod actions;
+pub(crate) mod ast_properties;
 mod identity;
 mod image_binding;
+mod rich_document;
 mod table_geometry;
+
+pub use ast_properties::{RichColumn, RichTableView};
+pub use rich_document::{RichDocument, RichDocumentError};
 
 pub use identity::{
     AssetGeneration, AssetId, BlockId, CellId, ChangeId, ColumnId, DocumentId, ImageId, MergeId,

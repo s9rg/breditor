@@ -1,6 +1,6 @@
 # Breditor collaboration feasibility checkpoint
 
-This private, isolated Rust workspace proves ownership, recovery and rich-content
+This isolated experimental Rust workspace exercises ownership, recovery and rich-content
 contracts before introducing a CRDT dependency into shipping Breditor packages.
 It pins `loro = 1.16.2` and `wasm-bindgen = 0.2.127`, and exercises the actual
 opt-in `breditor-core::rich_content` values in matching WebAssembly.
@@ -56,6 +56,12 @@ surrogates and coerced/wrapped JavaScript values are rejected.
 table axes, non-destructive merge overlays and image asset bindings. It does not
 widen existing schemas, reinterpret EntityId or change legacy codecs.
 
+The separate `CompiledSchema::try_compile_rich_content_profile` factory now
+admits rich blocks through the existing immutable AST. Compiler contract 6
+binds rich-rule revision 1, including closed metadata, stable-ID uniqueness,
+cell-axis correspondence, image binding and the ancestor-aware table exclusion.
+Contracts 1–5 and their editing capabilities remain unchanged.
+
 Merge capture retains full original axis context. Resolution sorts by descending
 numeric causal priority, then exact merge identity bytes as the final tie-break.
 Overlaps deactivate losing regions without flattening source-cell content.
@@ -71,20 +77,62 @@ Completion matching cannot change a deleted node or a replaced asset binding.
 Matching an upload token updates host status, not document insertion/history.
 This is not validation of raster bytes or implementation of an upload provider.
 
+## Rich AST and local actions
+
+`RichDocument` adds a typed identity directory over one immutable `Document`;
+it does not maintain a second content tree. Block IDs are document-unique,
+table/image IDs are unique within their separate typed domains, and row/column
+IDs are scoped to their table. Directory paths change when nodes move and belong
+only to one snapshot. IDs must not be reused by an author after deletion;
+admission establishes snapshot uniqueness, not a historical allocation registry.
+
+Tables retain every current base-cell body, column widths, header flags and
+canonical merge/retraction records. Merge records preserve their original axis
+contexts and exact decimal u64 causal words. Derived spans are never authored
+properties. Empty axes remain hidden retained table state. An image owns an
+opaque asset ID and generation, explicit alt/decorative intent, optional paired
+size and zero or one ordinary paragraph caption. DOM URLs, upload status and
+unknown properties are rejected.
+
+Semantic AST admission does not authenticate a merge's causal stamp. The shared
+adapter must verify provenance against replicated operations before materializing
+accepted shared records. Generic `DocumentLimits` additionally constrain aggregate
+properties, nodes, depth and text: a per-table maximum is not a promise that every
+shape at that maximum fits the default document budget.
+
+The first guarded local actions live in individually documented files:
+`resize_image.rs`, `set_image_alt.rs` and `resize_table_column.rs`. They resolve
+stable targets in the current snapshot, validate active schema/resource policy,
+preserve unrelated content and return exact guarded inverses. Image actions
+guard the captured binding; column actions guard their own captured width.
+`apply_batch` stages the entire bounded group, emits inverse actions in undo
+order and publishes no result after a late failure. Dependent actions must be
+captured against the preceding staged snapshot, not blindly against one old tree.
+
+These are local research primitives, not collaborative inverse recipes or a
+durable rich session. The generic fingerprint-bearing Document V2 codec carries
+research AST fixtures only; new shipping rich-session/sync contracts remain a
+separate gate. No legacy Operation/session codec gains these action variants.
+
 ## Verified checkpoint
 
 On October 13, 2026, the reproducible script passed:
 
-- 703 default core unit tests and 1,213 opt-in structural core unit tests.
+- 703 default core unit tests and 1,216 opt-in core unit tests.
 - 11 rich-content contract tests, including 256 seeded merge schedules.
+- 29 rich-AST/action tests, including 256 seeded axis-order/roundtrip cases,
+  typed-format admission, stale guards, atomic groups and exact local undo/redo.
 - 27 native collaboration/history contracts.
-- 36 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
-- Strict native and wasm32 Clippy checks and isolated Rust formatting checks.
+- 48 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
+- 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
   formatting and writer IDs above JavaScript's safe-integer range.
+- Exact native/Wasm rich-AST exports, cell/image identity directories and grouped
+  local action/inverse/redo bytes. The rich schema fingerprint has a locked vector.
 
-The tested fixture Wasm is 4,623,985 bytes, or 1,314,703 bytes under gzip, with
-SHA-256 `0124a1c3a1060ae7e31a09bd1e2a95a01b19d21762d5e06d1790b0a6c011cd62`.
+The tested fixture Wasm is 5,378,860 bytes, or 1,509,679 bytes under gzip, with
+SHA-256 `72295dbdac3bd9d519fa3efcc371753d5aedb18f822a7d0aff35ae17977d4bc4`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -103,8 +151,9 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Rich AST admission, identity materialization, table/image CRUD, node/grid
-selections, complete format/list/caption planners, toolbar/input/clipboard,
+Remaining rich-AST work includes table/image creation and structural CRUD,
+node/grid selections, mapping, durable recipes and complete format/list/caption
+planners. Shared tree/AST materialization, toolbar/input/clipboard,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.

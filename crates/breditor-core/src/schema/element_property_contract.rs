@@ -17,7 +17,7 @@ pub(super) struct RequiredIntegerProperty {
     pub(super) child_ordinals: bool,
 }
 
-pub(super) fn child_ordinals_fit(start: i64, count: usize, maximum: i64) -> bool {
+pub(crate) fn child_ordinals_fit(start: i64, count: usize, maximum: i64) -> bool {
     let Some(last_index) = count.checked_sub(1) else { return true };
     i64::try_from(last_index)
         .ok()

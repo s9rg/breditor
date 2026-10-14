@@ -7,6 +7,7 @@
 pub mod actions;
 pub mod anchor;
 mod register;
+pub mod rich_ast_fixture;
 pub mod rich_fixture;
 pub mod session;
 mod text_projection;

@@ -50,7 +50,7 @@ macro_rules! identity {
 }
 
 identity!(DocumentId, "A host-scoped durable document identity, not a room permission.");
-identity!(BlockId, "A durable flow-block identity, independent of its current AST path.");
+identity!(BlockId, "A durable content-node identity, including flow blocks and table containers.");
 identity!(TableId, "A durable table identity, distinct from a row, column or block key.");
 identity!(RowId, "A durable row identity, unchanged by insertion or reordering.");
 identity!(ColumnId, "A durable column identity, unchanged by insertion or reordering.");

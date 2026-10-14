@@ -35,6 +35,8 @@ const SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_GROUPS: u32 = 3;
 const SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER: u32 = 4;
 #[cfg(feature = "experimental-structural-properties")]
 const SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_ORDINALS: u32 = 5;
+#[cfg(feature = "experimental-rich-content")]
+const SCHEMA_COMPILER_CONTRACT_VERSION_RICH_CONTENT: u32 = 6;
 const FINGERPRINT_DOMAIN: &[u8] = b"breditor/schema-fingerprint\0";
 
 const MAX_ELEMENT_TYPES: u32 = 256;
@@ -55,6 +57,8 @@ pub(super) struct CompiledSchemaDefinition {
     constraints: GlobalConstraints,
     elements: BTreeMap<QualifiedName, ElementDefinition>,
     inline_formats: BTreeMap<QualifiedName, InlineFormatDefinition>,
+    #[cfg(feature = "experimental-rich-content")]
+    rich_content_contract: Option<u32>,
 }
 
 impl CompiledSchemaDefinition {
@@ -210,6 +214,8 @@ struct SchemaSpec {
     constraints: GlobalConstraints,
     elements: Vec<ElementSpec>,
     inline_formats: Vec<InlineFormatSpec>,
+    #[cfg(feature = "experimental-rich-content")]
+    rich_content_contract: Option<u32>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -396,6 +402,14 @@ pub(super) use nested_list_profile::{compile_nested_list_profile, supports_neste
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 #[path = "nested_list_profile_tests.rs"]
 mod nested_list_profile_tests;
+#[cfg(feature = "experimental-rich-content")]
+#[path = "rich_content_profile.rs"]
+mod rich_content_profile;
+#[cfg(feature = "experimental-rich-content")]
+pub(super) use rich_content_profile::{compile_rich_content_profile, supports_rich_content};
+#[cfg(all(test, feature = "experimental-rich-content"))]
+#[path = "rich_content_profile_tests.rs"]
+mod rich_content_profile_tests;
 #[cfg(feature = "experimental-structural-properties")]
 #[path = "text_block_profile.rs"]
 mod text_block_profile;
@@ -410,6 +424,10 @@ pub(super) use text_block_profile::{
 };
 
 fn supports_base_text_structure(definition: &CompiledSchemaDefinition) -> bool {
+    #[cfg(feature = "experimental-rich-content")]
+    if definition.rich_content_contract.is_some() {
+        return false;
+    }
     let base = base_spec();
     if definition.root_kind != base.root_kind
         || definition.paragraph_kind != base.paragraph_kind
@@ -583,6 +601,8 @@ fn compile(
         constraints: spec.constraints,
         elements,
         inline_formats,
+        #[cfg(feature = "experimental-rich-content")]
+        rich_content_contract: spec.rich_content_contract,
     });
     let fingerprint = fingerprint(&definition);
     Ok(CompiledSchema::from_compilation(definition, fingerprint))
@@ -704,6 +724,10 @@ fn fingerprint(definition: &CompiledSchemaDefinition) -> SchemaFingerprint {
 }
 
 fn compiler_contract_version(definition: &CompiledSchemaDefinition) -> u32 {
+    #[cfg(feature = "experimental-rich-content")]
+    if definition.rich_content_contract.is_some() {
+        return SCHEMA_COMPILER_CONTRACT_VERSION_RICH_CONTENT;
+    }
     #[cfg(feature = "experimental-structural-properties")]
     if definition.elements.values().any(|element| {
         element.property_contract.as_ref().is_some_and(|contract| contract.child_ordinals)
@@ -739,6 +763,12 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
     encoder.boolean(0x22, definition.constraints.unique_format_kinds.is_enforced());
     encoder.boolean(0x23, definition.constraints.merged_adjacent_equal_text.is_enforced());
     encoder.boolean(0x24, definition.constraints.globally_unique_entity_ids.is_enforced());
+    #[cfg(feature = "experimental-rich-content")]
+    if compiler_contract_version >= SCHEMA_COMPILER_CONTRACT_VERSION_RICH_CONTENT {
+        // This sealed rule revision binds cross-node identity, cell-axis,
+        // image-binding and ancestor laws, not just the permissive property bit.
+        encoder.optional_u32(0x60, definition.rich_content_contract);
+    }
     encoder.u32(0x30, fixed_count(definition.elements.len()));
     for (kind, element) in &definition.elements {
         encoder.tag(0x31);
@@ -780,6 +810,13 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
             }
         }
     }
+    encode_inline_formats(definition, &mut encoder);
+}
+
+fn encode_inline_formats<F: FnMut(&[u8])>(
+    definition: &CompiledSchemaDefinition,
+    encoder: &mut CanonicalFingerprintEncoder<F>,
+) {
     encoder.u32(0x40, fixed_count(definition.inline_formats.len()));
     for (kind, inline_format) in &definition.inline_formats {
         encoder.tag(0x41);
@@ -948,6 +985,8 @@ fn base_spec() -> SchemaSpec {
             revision: PersistedTypeRevision::one(),
             property_contract: None,
         }],
+        #[cfg(feature = "experimental-rich-content")]
+        rich_content_contract: None,
     }
 }
 

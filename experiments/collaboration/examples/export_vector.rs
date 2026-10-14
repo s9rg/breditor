@@ -46,6 +46,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         a.undo()?;
     }
     let after_undo_all = a.checkpoint()?;
+    let mut rich_ast_input: serde_json::Value =
+        serde_json::from_str(&breditor_collab_feasibility::rich_ast_fixture::binding()?)?;
+    rich_ast_input["format"] = "breditor/document".into();
+    rich_ast_input["formatVersion"] = 2.into();
+    rich_ast_input["root"] = serde_json::from_str(include_str!("../browser/rich-ast-root.json"))?;
+    let rich_ast_input = serde_json::to_string(&rich_ast_input)?;
+    let rich_ast_expected: serde_json::Value = serde_json::from_str(
+        &breditor_collab_feasibility::rich_ast_fixture::admit(&rich_ast_input)?,
+    )?;
+    let rich_actions_expected: serde_json::Value = serde_json::from_str(
+        &breditor_collab_feasibility::rich_ast_fixture::exercise_actions(&rich_ast_input)?,
+    )?;
     let vector = serde_json::json!({
         "checkpoint": checkpoint,
         "initial": initial,
@@ -55,6 +67,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "after_redo": after_redo,
         "after_undo_all": after_undo_all,
         "remaining": a.view(),
+        "rich_ast_input": rich_ast_input,
+        "rich_ast_expected": rich_ast_expected,
+        "rich_actions_expected": rich_actions_expected,
     });
     std::fs::write(path, serde_json::to_vec_pretty(&vector)?)?;
     Ok(())

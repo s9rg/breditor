@@ -1,0 +1,65 @@
+{
+  "kind": "element", "type": "breditor/document", "entityId": null,
+  "properties": { "breditor/document-id": "rich-golden-room" },
+  "children": [
+    {
+      "kind": "element", "type": "breditor/heading", "entityId": null,
+      "properties": { "breditor/block-id": "heading-one", "breditor/level": 2 },
+      "children": [{ "kind": "text", "text": "Rich 🙂 document", "formats": [{ "type": "breditor/strong", "properties": {} }] }]
+    },
+    {
+      "kind": "element", "type": "breditor/table", "entityId": null,
+      "properties": {
+        "breditor/block-id": "table-block", "breditor/table-id": "table-one",
+        "breditor/columns": [{ "id": "c0", "width": 120 }, { "id": "c1", "width": 240 }],
+        "breditor/merges": [{
+          "id": "merge-one", "lamport": "18446744073709551615", "writer": "9007199254740993", "counter": "18446744073709551615",
+          "rows": ["r0", "r1"], "columns": ["c0", "c1"],
+          "first-row": "r0", "last-row": "r1", "first-column": "c0", "last-column": "c1"
+        }],
+        "breditor/retracted-merges": []
+      },
+      "children": [
+        {
+          "kind": "element", "type": "breditor/table-row", "entityId": null,
+          "properties": { "breditor/block-id": "row-block-0", "breditor/row-id": "r0" },
+          "children": [
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": { "breditor/block-id": "cell-block-00", "breditor/column-id": "c0", "breditor/header": true },
+              "children": [{ "kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": { "breditor/block-id": "body-00" }, "children": [{ "kind": "text", "text": "first", "formats": [] }] }]
+            },
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": { "breditor/block-id": "cell-block-01", "breditor/column-id": "c1", "breditor/header": true },
+              "children": [{ "kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": { "breditor/block-id": "body-01" }, "children": [{ "kind": "text", "text": "second 🙂", "formats": [] }] }]
+            }
+          ]
+        },
+        {
+          "kind": "element", "type": "breditor/table-row", "entityId": null,
+          "properties": { "breditor/block-id": "row-block-1", "breditor/row-id": "r1" },
+          "children": [
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": { "breditor/block-id": "cell-block-10", "breditor/column-id": "c0", "breditor/header": false },
+              "children": [{ "kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": { "breditor/block-id": "body-10" }, "children": [{ "kind": "text", "text": "third é", "formats": [] }] }]
+            },
+            {
+              "kind": "element", "type": "breditor/table-cell", "entityId": null,
+              "properties": { "breditor/block-id": "cell-block-11", "breditor/column-id": "c1", "breditor/header": false },
+              "children": [
+                { "kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": { "breditor/block-id": "body-11" }, "children": [{ "kind": "text", "text": "fourth", "formats": [] }] },
+                {
+                  "kind": "element", "type": "breditor/image", "entityId": null,
+                  "properties": { "breditor/block-id": "covered-image-block", "breditor/image-id": "covered-image", "breditor/asset-id": "immutable-asset", "breditor/asset-generation": "generation-one", "breditor/alt-text": "Covered cell landscape", "breditor/decorative": false, "breditor/width": 640, "breditor/height": 480 },
+                  "children": [{ "kind": "element", "type": "breditor/paragraph", "entityId": null, "properties": { "breditor/block-id": "caption-one" }, "children": [{ "kind": "text", "text": "Caption survives merge", "formats": [] }] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

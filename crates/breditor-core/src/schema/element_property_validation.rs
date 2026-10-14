@@ -95,7 +95,7 @@ impl ValidationState<'_> {
         }
     }
 
-    fn element_property_issue(
+    pub(super) fn element_property_issue(
         &mut self,
         code: ValidationCode,
         path: &NodePathCursor,

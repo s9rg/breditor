@@ -35,6 +35,24 @@ pub fn classify_upload(input: &str) -> Result<String, JsValue> {
     crate::rich_fixture::classify_upload(input).map_err(js_error)
 }
 
+/// Exact binding of the research rich AST fixture schema.
+#[wasm_bindgen]
+pub fn rich_ast_binding() -> Result<String, JsValue> {
+    crate::rich_ast_fixture::binding().map_err(js_error)
+}
+
+/// Run bounded rich AST admission and typed identity/geometry reads in Rust.
+#[wasm_bindgen]
+pub fn admit_rich_ast(input: &str) -> Result<String, JsValue> {
+    crate::rich_ast_fixture::admit(input).map_err(js_error)
+}
+
+/// Execute the real Rust local action group and its exact inverse/redo fixture.
+#[wasm_bindgen]
+pub fn exercise_rich_actions(input: &str) -> Result<String, JsValue> {
+    crate::rich_ast_fixture::exercise_actions(input).map_err(js_error)
+}
+
 #[wasm_bindgen]
 pub struct ProbeSession {
     inner: Session,

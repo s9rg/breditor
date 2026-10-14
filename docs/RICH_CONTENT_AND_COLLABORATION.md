@@ -7,8 +7,10 @@ shipping packages remain unchanged. It extends the requested scope to tables, im
 full collaboration in one interoperable editor. Implementation checkpoints are
 not permission to reduce collaboration to an online-only demo.
 
-The first implementation checkpoint now includes an isolated, pinned Rust/Wasm
-replication coordinator and feature-gated rich geometry/image values. Its
+Implemented checkpoints include an isolated, pinned Rust/Wasm replication
+coordinator, feature-gated rich geometry/image values, a separate sealed rich
+AST and stable-ID directory, and the first guarded local metadata actions. The
+rich-AST/local-operation checkpoint is still in progress. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
 separate tested contracts from the still-unimplemented editor, relay and asset
 storage. The default packages, schemas and codecs remain unchanged.
@@ -99,10 +101,10 @@ Presence and upload progress use separate ephemeral channels.
 The rich AST contains flow blocks: paragraphs, headings, lists, tables and
 images. List items have one leading text block followed by further flow blocks,
 not the old one-block-only item contract. Cells contain a nonempty flow-block
-sequence. A table anywhere beneath another table is rejected, including one
-hidden inside a cell's list; this needs an ancestor-aware admission rule.
-An image has optional caption content restricted to a text block. Its bitmap
-is atomic, while the caption remains ordinary editable text.
+sequence. The separate rich schema rejects a table anywhere beneath another
+table, including one hidden inside a cell's list. An image has optional caption
+content restricted to one paragraph. Its bitmap is atomic, while the caption
+remains ordinary editable text.
 
 Tables retain the base rectangular cells and a typed merge-region description;
 the renderer skips covered cells and presents the merged bodies. The semantic
@@ -116,10 +118,28 @@ Formatting can split AST text runs without changing shared text identity.
 Treat shared node IDs separately from existing optional semantic `EntityId`
 values; do not repurpose the latter silently as CRDT or authentication identity.
 
+The implemented admission factory is
+`CompiledSchema::try_compile_rich_content_profile`. Compiler contract 6 includes
+sealed rich-rule revision 1; changes to those semantic laws require a new rule
+revision/fingerprint. `RichDocument` indexes the existing immutable AST by block,
+table, image and base-cell identities. Blocks are document-unique, table/image
+identities occupy separate typed domains, and axes are scoped to their table.
+Historical ID allocation remains a host/replication contract: an author must
+never reuse a deleted content ID merely because it is absent from the current AST.
+
+Local image-size, alt/decorative and table-column-width actions now return exact
+inverses and support all-or-nothing groups. They are not wired into existing
+session/history codecs. Dependent steps are captured against staged snapshots;
+stale targets and tighter host limits reject publication. The core still needs
+structural CRUD, node/grid selections, position mapping and durable rich recipes
+before checkpoint 3 can exit.
+
 Plan new rich-document, session and collaboration envelopes where that directory
-and geometry require them. Their exact names/numbers are frozen in checkpoint 1,
-not guessed by reinterpreting V7. A semantic export and a collaboration backup
-are different products: the former preserves content/geometry, while the latter
+and geometry require them. Freeze their exact names/numbers before exposing the
+shipping rich session/sync API; do not reinterpret V7. The existing generic
+fingerprint-bearing Document V2 envelope currently carries research AST fixtures,
+not a newly declared shipping session/sync protocol. A semantic export and a
+collaboration backup are different products: the former preserves content/geometry, while the latter
 also preserves causal identity, pending work and durable selective history.
 
 ## Replication engine decision
@@ -482,8 +502,10 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused session should close the contracts and replication feasibility
-decision. Schedule the full release after that measured spike. Production follows
+The next focused session should finish rich structural CRUD, node/grid selection
+and durable local recipes, then connect the same semantic planners to the
+replication adapter. Schedule the full release after the remaining measured
+integration gates. Production follows
 combined qualification and a real pilot, not the existence of three toolbar buttons.
 The accepted Breditor-side WebKit repair remains in the baseline; document the
 historical engine/owner risk without restarting that investigation as the main task.

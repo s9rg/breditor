@@ -30,6 +30,9 @@ use super::{
 #[path = "element_property_validation.rs"]
 #[cfg(feature = "experimental-structural-properties")]
 mod element_properties;
+#[path = "rich_content_validation.rs"]
+#[cfg(feature = "experimental-rich-content")]
+mod rich_content;
 
 /// Maximum issues retained by one validation report, including truncation metadata.
 pub const MAX_VALIDATION_REPORT_ISSUES: usize = 1_024;
@@ -93,6 +96,15 @@ pub enum ValidationCode {
     EntityIdForbidden,
     /// A semantic entity ID occurs on more than one element.
     DuplicateEntityId,
+    /// Rich-content metadata violates the sealed typed semantic contract.
+    #[cfg(feature = "experimental-rich-content")]
+    RichContentContract,
+    /// A stable block, table or image ID is reused within its typed domain.
+    #[cfg(feature = "experimental-rich-content")]
+    DuplicateContentId,
+    /// A table occurs anywhere beneath another table, even through a list.
+    #[cfg(feature = "experimental-rich-content")]
+    NestedTable,
     /// A configured resource limit was exceeded.
     LimitExceeded,
 }
@@ -136,6 +148,12 @@ impl ValidationCode {
             }
             Self::EntityIdForbidden => "document.entity_id_forbidden",
             Self::DuplicateEntityId => "document.duplicate_entity_id",
+            #[cfg(feature = "experimental-rich-content")]
+            Self::RichContentContract => "document.rich_content_contract",
+            #[cfg(feature = "experimental-rich-content")]
+            Self::DuplicateContentId => "document.duplicate_content_id",
+            #[cfg(feature = "experimental-rich-content")]
+            Self::NestedTable => "document.nested_table",
             Self::LimitExceeded => "document.limit_exceeded",
         }
     }
@@ -512,6 +530,10 @@ struct ValidationState<'a> {
     property_value_count: u64,
     property_string_bytes: u64,
     entity_ids: BTreeMap<EntityId, NodePath>,
+    #[cfg(feature = "experimental-rich-content")]
+    content_ids: BTreeMap<(&'static str, Arc<str>), NodePath>,
+    #[cfg(feature = "experimental-rich-content")]
+    rich_table_depth: usize,
 }
 
 impl<'a> ValidationState<'a> {
@@ -528,6 +550,10 @@ impl<'a> ValidationState<'a> {
             property_value_count: 0,
             property_string_bytes: 0,
             entity_ids: BTreeMap::new(),
+            #[cfg(feature = "experimental-rich-content")]
+            content_ids: BTreeMap::new(),
+            #[cfg(feature = "experimental-rich-content")]
+            rich_table_depth: 0,
         }
     }
 
@@ -731,12 +757,23 @@ impl<'a> ValidationState<'a> {
             );
         }
         self.validate_child_shape(element, path, definition.map(ElementDefinition::children));
+        #[cfg(feature = "experimental-rich-content")]
+        if self.schema.is_rich_content_profile() && definition.is_some() {
+            self.validate_rich_content(element, path);
+        }
         if self.report_is_saturated() {
             return;
         }
         self.validate_adjacent_text(element, path);
 
         let child_limit = children.len().min(self.limits.max_children_per_element);
+        #[cfg(feature = "experimental-rich-content")]
+        let rich_table =
+            self.schema.is_rich_content_profile() && element.kind().as_str() == "breditor/table";
+        #[cfg(feature = "experimental-rich-content")]
+        if rich_table {
+            self.rich_table_depth += 1;
+        }
         for (index, child) in children.iter().take(child_limit).enumerate() {
             if self.report_is_saturated() {
                 break;
@@ -754,6 +791,10 @@ impl<'a> ValidationState<'a> {
             // cutoffs) restores this cursor before visiting the next sibling.
             self.visit_node(child, path);
             path.pop();
+        }
+        #[cfg(feature = "experimental-rich-content")]
+        if rich_table {
+            self.rich_table_depth -= 1;
         }
     }
 

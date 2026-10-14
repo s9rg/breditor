@@ -31,6 +31,8 @@ pub struct CompiledSchema {
     text_block_kind_capability: Option<TextBlockKindCapability>,
     #[cfg(feature = "experimental-structural-properties")]
     flat_list_capability: Option<FlatListCapability>,
+    #[cfg(feature = "experimental-rich-content")]
+    rich_content_capability: Option<RichContentCapability>,
 }
 
 /// Presence records the compiler's exact experimental structural-language proof.
@@ -41,6 +43,10 @@ struct TextBlockKindCapability;
 #[cfg(feature = "experimental-structural-properties")]
 #[derive(Clone)]
 struct FlatListCapability;
+
+#[cfg(feature = "experimental-rich-content")]
+#[derive(Clone)]
+struct RichContentCapability;
 
 /// Cloneable crate-private handle to one process-local schema-proof allocation.
 ///
@@ -159,6 +165,34 @@ impl CompiledSchema {
         super::compiler::compile_nested_list_profile(schema_id, extensions)
     }
 
+    /// Compiles the separate opt-in rich-content AST admission language.
+    ///
+    /// Flow blocks have stable content IDs. Tables retain all base cells and
+    /// non-destructive merge intents; images carry checked immutable asset
+    /// bindings and an optional paragraph caption. Nested tables are forbidden
+    /// anywhere below another table, including through lists. The compiler
+    /// fingerprint includes the sealed rich-rule revision. Existing profiles,
+    /// editing capabilities and session/history codecs are not widened.
+    ///
+    /// # Errors
+    /// Rejects reserved schema identities, invalid extensions or compiler limits.
+    #[cfg(feature = "experimental-rich-content")]
+    pub fn try_compile_rich_content_profile(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        super::compiler::compile_rich_content_profile(schema_id, extensions)
+    }
+
+    /// Whether this schema proves the exact sealed rich-content language.
+    ///
+    /// This read-only query does not grant editing or replication authority.
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn is_rich_content_profile(&self) -> bool {
+        self.rich_content_capability.is_some()
+    }
+
     /// Recognizes the exact nested grammar for the experimental reframe primitive.
     #[cfg(feature = "experimental-structural-properties")]
     pub(crate) fn supports_nested_list_reframe(&self) -> bool {
@@ -189,6 +223,9 @@ impl CompiledSchema {
         #[cfg(feature = "experimental-structural-properties")]
         let flat_list_capability = super::compiler::supports_flat_list_operations(&definition)
             .then_some(FlatListCapability);
+        #[cfg(feature = "experimental-rich-content")]
+        let rich_content_capability =
+            super::compiler::supports_rich_content(&definition).then_some(RichContentCapability);
         Self {
             definition,
             fingerprint,
@@ -200,6 +237,8 @@ impl CompiledSchema {
             text_block_kind_capability,
             #[cfg(feature = "experimental-structural-properties")]
             flat_list_capability,
+            #[cfg(feature = "experimental-rich-content")]
+            rich_content_capability,
         }
     }
 

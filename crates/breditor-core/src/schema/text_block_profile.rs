@@ -63,6 +63,10 @@ pub(super) fn supports_structural_profile(
     definition: &CompiledSchemaDefinition,
     expected: &SchemaSpec,
 ) -> bool {
+    #[cfg(feature = "experimental-rich-content")]
+    if definition.rich_content_contract != expected.rich_content_contract {
+        return false;
+    }
     definition.root_kind == expected.root_kind
         && definition.paragraph_kind == expected.paragraph_kind
         && definition.strong_kind == expected.strong_kind
