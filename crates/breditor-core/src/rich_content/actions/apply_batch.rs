@@ -6,11 +6,23 @@ use crate::{rich_content::RichDocument, state::EditorContext};
 /// One admitted local action group and its inverse actions in undo order.
 #[derive(Clone, Debug)]
 pub struct RichBatchEdit {
+    before: RichDocument,
     document: RichDocument,
     inverse: Vec<RichAction>,
 }
 
 impl RichBatchEdit {
+    /// Map a source selection through the complete admitted group, not partial steps.
+    ///
+    /// # Errors
+    /// Rejects stale source selections, binding mismatches or unsupported text edits.
+    pub fn map_selection(
+        &self,
+        selection: &crate::rich_content::RichSelection,
+    ) -> Result<crate::rich_content::RichSelectionMapping, crate::rich_content::RichSelectionError>
+    {
+        crate::rich_content::rebase_rich_selection(&self.before, &self.document, selection)
+    }
     /// Fully admitted candidate, never an intermediate partially applied tree.
     #[must_use]
     pub const fn document(&self) -> &RichDocument {
@@ -62,5 +74,5 @@ pub fn apply_batch(
         return Ok(None);
     }
     inverse.reverse();
-    Ok(Some(RichBatchEdit { document: candidate, inverse }))
+    Ok(Some(RichBatchEdit { before: document.clone(), document: candidate, inverse }))
 }

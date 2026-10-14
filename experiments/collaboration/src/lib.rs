@@ -10,6 +10,7 @@ mod register;
 pub mod rich_ast_fixture;
 pub mod rich_fixture;
 pub mod session;
+pub mod table_axis_fixture;
 mod text_projection;
 mod validation;
 

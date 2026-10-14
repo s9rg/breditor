@@ -58,6 +58,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rich_actions_expected: serde_json::Value = serde_json::from_str(
         &breditor_collab_feasibility::rich_ast_fixture::exercise_actions(&rich_ast_input)?,
     )?;
+    let table_axes_expected: serde_json::Value = serde_json::from_str(
+        &breditor_collab_feasibility::table_axis_fixture::exercise(&rich_ast_input)?,
+    )?;
     let vector = serde_json::json!({
         "checkpoint": checkpoint,
         "initial": initial,
@@ -70,6 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rich_ast_input": rich_ast_input,
         "rich_ast_expected": rich_ast_expected,
         "rich_actions_expected": rich_actions_expected,
+        "table_axes_expected":table_axes_expected,
     });
     std::fs::write(path, serde_json::to_vec_pretty(&vector)?)?;
     Ok(())

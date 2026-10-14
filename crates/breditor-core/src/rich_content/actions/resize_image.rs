@@ -60,6 +60,10 @@ impl ResizeImage {
         ];
         let candidate = rewrite(context, document, path, dimensions)?;
         let inverse = Self::capture(&candidate, self.expected.image(), current.size())?;
-        Ok(Some(RichEdit { document: candidate, inverse: RichAction::ResizeImage(inverse) }))
+        Ok(Some(RichEdit {
+            before: document.clone(),
+            document: candidate,
+            inverse: RichAction::ResizeImage(inverse),
+        }))
     }
 }

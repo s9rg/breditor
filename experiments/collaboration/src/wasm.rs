@@ -53,6 +53,18 @@ pub fn exercise_rich_actions(input: &str) -> Result<String, JsValue> {
     crate::rich_ast_fixture::exercise_actions(input).map_err(js_error)
 }
 
+/// Run real table axis actions, selection mapping and exact undo/redo in Rust.
+#[wasm_bindgen]
+pub fn exercise_table_axes(input: &str) -> Result<String, JsValue> {
+    crate::table_axis_fixture::exercise(input).map_err(js_error)
+}
+
+/// Resolve a bounded research selection fixture against its admitted rich AST.
+#[wasm_bindgen]
+pub fn resolve_rich_selection(input: &str, selection: &str) -> Result<String, JsValue> {
+    crate::table_axis_fixture::resolve_selection(input, selection).map_err(js_error)
+}
+
 #[wasm_bindgen]
 pub struct ProbeSession {
     inner: Session,

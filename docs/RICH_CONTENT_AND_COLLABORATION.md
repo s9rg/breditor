@@ -9,7 +9,8 @@ not permission to reduce collaboration to an online-only demo.
 
 Implemented checkpoints include an isolated, pinned Rust/Wasm replication
 coordinator, feature-gated rich geometry/image values, a separate sealed rich
-AST and stable-ID directory, and the first guarded local metadata actions. The
+AST and stable-ID directory, guarded metadata and table-axis actions, and a
+separate stable text/node/grid selection family. The
 rich-AST/local-operation checkpoint is still in progress. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
 separate tested contracts from the still-unimplemented editor, relay and asset
@@ -128,11 +129,24 @@ Historical ID allocation remains a host/replication contract: an author must
 never reuse a deleted content ID merely because it is absent from the current AST.
 
 Local image-size, alt/decorative and table-column-width actions now return exact
-inverses and support all-or-nothing groups. They are not wired into existing
+inverses and support all-or-nothing groups. Row/column insertion and deletion
+also retain exact inverse subtrees, with whole-table stale guards. Typed drafts
+provide explicit IDs and bodies; deleting the final axis retains hidden table
+state. These actions are not wired into existing
 session/history codecs. Dependent steps are captured against staged snapshots;
 stale targets and tighter host limits reject publication. The core still needs
-structural CRUD, node/grid selections, position mapping and durable rich recipes
+whole table/image CRUD, axis moves, merge/split/header operations and durable rich recipes
 before checkpoint 3 can exit.
+
+`RichSelection` now validates text, node and grid selections against an exact
+immutable source tree. Text uses stable block-relative scalar-aligned UTF-16
+positions; grids retain directional base-cell endpoints and close the rectangle
+over complete merged presentation cells. Edit/group mapping relocates deleted
+endpoints to surviving original-axis neighbours or reports an explicit clearing
+reason. It rejects changed text in a surviving block rather than guessing an
+offset transform. History must retain before/after selections for exact restoration;
+a deletion fallback is not reversible by inference. This separate family does not
+widen existing Selection/session codecs or provide shared causal text anchors.
 
 Plan new rich-document, session and collaboration envelopes where that directory
 and geometry require them. Freeze their exact names/numbers before exposing the
@@ -502,10 +516,11 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused session should finish rich structural CRUD, node/grid selection
-and durable local recipes, then connect the same semantic planners to the
-replication adapter. Schedule the full release after the remaining measured
-integration gates. Production follows
-combined qualification and a real pilot, not the existence of three toolbar buttons.
+The next focused session should finish whole table/image creation and deletion,
+axis moves, merge/split/header actions and durable local recipes, then connect the
+same semantic planners and rich selections to the replication adapter. Schedule
+the full release after the remaining measured integration gates. Production
+follows combined qualification and a real pilot, not the existence of three
+toolbar buttons.
 The accepted Breditor-side WebKit repair remains in the baseline; document the
 historical engine/owner risk without restarting that investigation as the main task.

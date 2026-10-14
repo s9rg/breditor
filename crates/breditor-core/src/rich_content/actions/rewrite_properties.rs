@@ -13,25 +13,17 @@ use std::collections::BTreeMap;
 fn replace(
     node: &NodeRef,
     path: &[u32],
-    properties: &PropertyMap,
+    replacement: &NodeRef,
 ) -> Result<NodeRef, RichActionError> {
     let element = node.as_element().ok_or(RichActionError::Rewrite)?;
     let Some((index, rest)) = path.split_first() else {
-        return Ok(NodeRef::element(
-            ElementNode::try_new(
-                element.kind().clone(),
-                element.entity_id().cloned(),
-                properties.clone(),
-                element.children().to_vec(),
-            )
-            .map_err(|_| RichActionError::Rewrite)?,
-        ));
+        return Ok(replacement.clone());
     };
     let mut children = element.children().to_vec();
     let child = children
         .get_mut(usize::try_from(*index).map_err(|_| RichActionError::Rewrite)?)
         .ok_or(RichActionError::Rewrite)?;
-    *child = replace(child, rest, properties)?;
+    *child = replace(child, rest, replacement)?;
     Ok(NodeRef::element(element.try_with_children(children).map_err(|_| RichActionError::Rewrite)?))
 }
 
@@ -60,7 +52,25 @@ pub(super) fn rewrite(
     }
     let properties = PropertyMap::try_from_sorted(properties.into_iter().collect())
         .map_err(|_| RichActionError::Rewrite)?;
-    let root = replace(document.document().root(), &path.to_vec(), &properties)?;
+    let replacement = NodeRef::element(
+        ElementNode::try_new(
+            element.kind().clone(),
+            element.entity_id().cloned(),
+            properties,
+            element.children().to_vec(),
+        )
+        .map_err(|_| RichActionError::Rewrite)?,
+    );
+    replace_node(context, document, path, &replacement)
+}
+
+pub(super) fn replace_node(
+    context: &EditorContext,
+    document: &RichDocument,
+    path: &NodePath,
+    replacement: &NodeRef,
+) -> Result<RichDocument, RichActionError> {
+    let root = replace(document.document().root(), &path.to_vec(), replacement)?;
     let candidate = Document::try_new(context.schema(), root, context.limits())?;
     Ok(RichDocument::try_admit(context.schema(), candidate, context.limits())?)
 }

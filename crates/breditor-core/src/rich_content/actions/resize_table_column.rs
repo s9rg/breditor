@@ -100,6 +100,10 @@ impl ResizeColumn {
         let candidate =
             rewrite(context, document, path, [("columns", Some(PropertyValue::array(columns)))])?;
         let inverse = Self::capture(&candidate, &self.table, &self.column, current)?;
-        Ok(Some(RichEdit { document: candidate, inverse: RichAction::ResizeColumn(inverse) }))
+        Ok(Some(RichEdit {
+            before: document.clone(),
+            document: candidate,
+            inverse: RichAction::ResizeColumn(inverse),
+        }))
     }
 }

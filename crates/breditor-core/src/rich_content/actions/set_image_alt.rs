@@ -62,6 +62,10 @@ impl SetImageAlt {
             ],
         )?;
         let inverse = Self::capture(&candidate, self.expected.image(), current.alt().clone())?;
-        Ok(Some(RichEdit { document: candidate, inverse: RichAction::SetImageAlt(inverse) }))
+        Ok(Some(RichEdit {
+            before: document.clone(),
+            document: candidate,
+            inverse: RichAction::SetImageAlt(inverse),
+        }))
     }
 }

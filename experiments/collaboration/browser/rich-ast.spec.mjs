@@ -114,3 +114,77 @@ test("rich table reorder updates snapshot paths and retracts spans without losin
   expect(result.images[0].path).toEqual([1, 0, 0, 1]);
   expect(JSON.parse(result.canonical).root.children[1].children.flatMap(row => row.children).flatMap(cell => cell.children).filter(node => node.type === "breditor/paragraph")).toHaveLength(4);
 });
+
+test("native and Wasm table axis edits preserve exact inverses and map node grid and caption selections", async ({ page }) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const { exercise_table_axes } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    return { actual: JSON.parse(exercise_table_axes(vector.rich_ast_input)), expected: vector.table_axes_expected };
+  });
+  expect(result.actual).toEqual(result.expected);
+  expect(result.actual.cases.map(value => value.name)).toEqual(["insert_row", "insert_column", "delete_row", "delete_column"]);
+  for (const value of result.actual.cases) {
+    expect(value.undone).toBe(result.actual.initial);
+    expect(value.redone).toBe(value.changed);
+    const node = value.mapping.find(mapping => mapping.name === "node");
+    const grid = value.mapping.find(mapping => mapping.name === "grid");
+    const text = value.mapping.find(mapping => mapping.name === "text");
+    if (value.name.startsWith("insert")) {
+      expect(node.outcome).toBe("preserved");
+      expect(grid.outcome).toBe("preserved");
+      expect(grid.selection.resolved.cells).toHaveLength(6);
+      expect(grid.selection.resolved.masters).toHaveLength(1);
+      expect(text.selection.kind.anchor.block).toBe("caption-one");
+      expect(text.outcome).toBe("preserved");
+    } else {
+      expect(node).toMatchObject({ outcome: "cleared", reason: "target_deleted", selection: null });
+      expect(grid.outcome).toBe("relocated");
+      expect(grid.selection.resolved.cells).toHaveLength(2);
+      expect(grid.selection.kind.anchor).toEqual(grid.selection.kind.focus);
+      expect(text.outcome).toBe("relocated");
+      expect(text.selection.kind.anchor.offset).toBe(0);
+    }
+  }
+  const insertedRow = result.actual.cases[0].mapping.find(mapping => mapping.name === "node");
+  expect(insertedRow.selection.resolved.path).toEqual([1, 2, 1, 1]);
+});
+
+test("Wasm rich selection admission preserves scalar boundaries direction and merged closure", async ({ page }) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const { resolve_rich_selection } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    const resolve = selection => JSON.parse(resolve_rich_selection(vector.rich_ast_input, JSON.stringify(selection)));
+    const text = offset => ({ block: "body-01", offset, affinity: "after" });
+    const cell = (row, column, table = "table-one") => ({ table, row, column });
+    const valid = resolve({ kind: "text", anchor: text(9), focus: text(7) });
+    const merged = resolve({ kind: "grid", anchor: cell("r1", "c1"), focus: cell("r1", "c1") });
+    const node = resolve({ kind: "node", block: "covered-image-block" });
+    const invalid = [
+      ...[-1, 8, 10, 0.5, 2 ** 32, 2 ** 53, Number.NaN, Number.POSITIVE_INFINITY, "0", false, null].map(offset => ({ kind: "text", anchor: text(offset), focus: text(0) })),
+      { kind: "text", anchor: { ...text(0), affinity: "sideways" }, focus: text(0) },
+      { kind: "text", anchor: { ...text(0), extra: true }, focus: text(0) },
+      { kind: "node", block: "row-block-0" },
+      { kind: "node", block: "missing" },
+      { kind: "node", block: "covered-image-block", extra: true },
+      { kind: "grid", anchor: cell("r0", "c0"), focus: cell("r1", "c1", "other-table") },
+      { kind: "grid", anchor: cell("missing", "c0"), focus: cell("r1", "c1") },
+    ];
+    const rejected = invalid.map(value => { try { resolve(value); return false; } catch { return true; } });
+    let duplicateRejected = false;
+    const duplicate = JSON.stringify({ kind: "text", anchor: text(7), focus: text(9) }).replace('"offset":7', '"offset":7,"offset":7');
+    try { resolve_rich_selection(vector.rich_ast_input, duplicate); } catch { duplicateRejected = true; }
+    return { valid, merged, node, rejected, duplicateRejected };
+  });
+  expect(result.valid.kind.anchor.offset).toBe(9);
+  expect(result.valid.kind.focus.offset).toBe(7);
+  expect(result.valid.resolved.anchor.offset).toBe(9);
+  expect(result.merged.resolved.cells).toHaveLength(4);
+  expect(result.merged.resolved.masters).toHaveLength(1);
+  expect(result.merged.kind.anchor).toEqual(result.merged.kind.focus);
+  expect(result.node.resolved.path).toEqual([1, 1, 1, 1]);
+  expect(result.rejected).toHaveLength(18);
+  expect(result.rejected.every(Boolean)).toBe(true);
+  expect(result.duplicateRejected).toBe(true);
+});

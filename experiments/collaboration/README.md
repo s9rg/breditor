@@ -85,6 +85,8 @@ table/image IDs are unique within their separate typed domains, and row/column
 IDs are scoped to their table. Directory paths change when nodes move and belong
 only to one snapshot. IDs must not be reused by an author after deletion;
 admission establishes snapshot uniqueness, not a historical allocation registry.
+Cloning a rich snapshot shares both its AST and its immutable identity directory;
+the directory is rebuilt only for a newly admitted tree.
 
 Tables retain every current base-cell body, column widths, header flags and
 canonical merge/retraction records. Merge records preserve their original axis
@@ -109,6 +111,38 @@ guard the captured binding; column actions guard their own captured width.
 order and publishes no result after a late failure. Dependent actions must be
 captured against the preceding staged snapshot, not blindly against one old tree.
 
+`insert_table_row.rs`, `delete_table_row.rs`, `insert_table_column.rs` and
+`delete_table_column.rs` add guarded local axis editing. Typed row/column/cell
+drafts provide explicit IDs and rich bodies, not fabricated empty-cell IDs.
+Insertion checks stable anchors and exact axis correspondence; per-row column
+draft order is irrelevant, but missing/extra/duplicate rows fail admission.
+Deleting the final axis retains the table as hidden state. Merge intent remains
+unchanged, and inverse actions retain original bodies, headers, widths and assets.
+Structural actions guard the whole captured table: a later table edit makes an
+old action or inverse stale, instead of allowing it to erase newer content.
+
+## Rich selection contracts
+
+The separate `RichSelection` family supports directional text ranges, flow-node
+selection and rectangular grid selection. It is bound to an exact immutable
+source tree, including document ID and schema fingerprint. A newer snapshot must
+use an edit/group mapping before resolution; an independently decoded equal tree
+is valid. Node paths remain rendering coordinates, never persistent identities.
+
+Text points name a stable paragraph/heading and checked aggregate UTF-16 offset.
+Scalar boundaries, empty paragraphs, direction and run-seam affinity are explicit.
+Grid endpoints retain base-cell IDs and direction, while the visible rectangle
+expands to a fixed point over every touched merged cell. Copy/render consumers
+receive all selected base bodies and unique presentation masters, not half a merge.
+
+Deletion mapping prefers surviving original-axis neighbours. A deleted collapsed
+grid relocates both endpoints together. A text caret uses the preceding block end
+or following block start according to affinity. Hidden tables, absent neighbours
+and image-only cells without a text target produce explicit clearing reasons.
+Structural mapping rejects changed text in a surviving block; text edits need their
+own position map or causal anchors. Local history must retain before/after
+selections to restore exact undo: reverse deletion fallback cannot infer the original.
+
 These are local research primitives, not collaborative inverse recipes or a
 durable rich session. The generic fingerprint-bearing Document V2 codec carries
 research AST fixtures only; new shipping rich-session/sync contracts remain a
@@ -118,21 +152,24 @@ separate gate. No legacy Operation/session codec gains these action variants.
 
 On October 13, 2026, the reproducible script passed:
 
-- 703 default core unit tests and 1,216 opt-in core unit tests.
+- 703 default core unit tests and 1,217 opt-in core unit tests.
 - 11 rich-content contract tests, including 256 seeded merge schedules.
 - 29 rich-AST/action tests, including 256 seeded axis-order/roundtrip cases,
   typed-format admission, stale guards, atomic groups and exact local undo/redo.
+- 19 table-action/selection contracts, including 256 seeded row/column deletion
+  schedules, merge closure, deleted-caret fallback and exact inverse bytes.
 - 27 native collaboration/history contracts.
-- 48 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- 54 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
   formatting and writer IDs above JavaScript's safe-integer range.
 - Exact native/Wasm rich-AST exports, cell/image identity directories and grouped
-  local action/inverse/redo bytes. The rich schema fingerprint has a locked vector.
+  local action/inverse/redo bytes, including all four axis edits and mapped rich
+  selections. The rich schema fingerprint has a locked vector.
 
-The tested fixture Wasm is 5,378,860 bytes, or 1,509,679 bytes under gzip, with
-SHA-256 `72295dbdac3bd9d519fa3efcc371753d5aedb18f822a7d0aff35ae17977d4bc4`.
+The tested fixture Wasm is 5,591,189 bytes, or 1,560,385 bytes under gzip, with
+SHA-256 `f754af7c73b347aebcc52ceab3c106412006180aed6d987d244787d4dfb63965`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -151,9 +188,9 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Remaining rich-AST work includes table/image creation and structural CRUD,
-node/grid selections, mapping, durable recipes and complete format/list/caption
-planners. Shared tree/AST materialization, toolbar/input/clipboard,
+Remaining rich-AST work includes whole table/image creation and deletion,
+axis moves, merge/split/header actions, durable rich recipes and complete
+format/list/caption planners. Shared tree/AST materialization, toolbar/input/clipboard,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.

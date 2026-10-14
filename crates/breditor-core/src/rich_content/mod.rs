@@ -7,13 +7,25 @@
 
 pub mod actions;
 pub(crate) mod ast_properties;
+mod drafts;
 mod identity;
 mod image_binding;
 mod rich_document;
+mod rich_grid_selection;
+mod rich_selection;
+mod rich_selection_mapping;
 mod table_geometry;
 
 pub use ast_properties::{RichColumn, RichTableView};
+pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use rich_document::{RichDocument, RichDocumentError};
+pub use rich_grid_selection::ResolvedRichGrid;
+pub use rich_selection::{
+    ResolvedRichSelection, RichSelection, RichSelectionError, RichSelectionKind, RichTextPoint,
+};
+pub use rich_selection_mapping::{
+    RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
+};
 
 pub use identity::{
     AssetGeneration, AssetId, BlockId, CellId, ChangeId, ColumnId, DocumentId, ImageId, MergeId,

@@ -1,6 +1,6 @@
 //! Typed stable-ID directory over the existing immutable validated AST.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use thiserror::Error;
 
@@ -42,6 +42,11 @@ pub enum RichDocumentError {
 pub struct RichDocument {
     document: Document,
     id: DocumentId,
+    directory: Arc<IdentityDirectory>,
+}
+
+#[derive(Debug, Default)]
+struct IdentityDirectory {
     blocks: BTreeMap<BlockId, NodePath>,
     tables: BTreeMap<TableId, NodePath>,
     images: BTreeMap<ImageId, NodePath>,
@@ -82,19 +87,11 @@ impl RichDocument {
             ast_properties::string(root, "document-id").map_err(RichDocumentError::Invariant)?,
         )
         .map_err(|_| RichDocumentError::Invariant("document identity"))?;
-        let mut result = Self {
-            document,
-            id,
-            blocks: BTreeMap::new(),
-            tables: BTreeMap::new(),
-            images: BTreeMap::new(),
-            cells: BTreeMap::new(),
-        };
+        let mut directory = IdentityDirectory::default();
         // Share immutable node references while constructing indices; no full
         // AST copy is made, and the prior proof bounds this recursive walk.
-        let root = result.document.root().clone();
-        result.index(&root, &mut NodePathCursor::default(), None, None)?;
-        Ok(result)
+        directory.index(document.root(), &mut NodePathCursor::default(), None, None)?;
+        Ok(Self { document, id, directory: Arc::new(directory) })
     }
 
     /// Underlying single immutable AST.
@@ -112,43 +109,43 @@ impl RichDocument {
     /// Snapshot-local path of a stable content node, including row/cell nodes.
     #[must_use]
     pub fn block_path(&self, id: &BlockId) -> Option<&NodePath> {
-        self.blocks.get(id)
+        self.directory.blocks.get(id)
     }
 
     /// Snapshot-local path of a base cell, even when covered by a merge.
     #[must_use]
     pub fn cell_path(&self, id: &CellId) -> Option<&NodePath> {
-        self.cells.get(id)
+        self.directory.cells.get(id)
     }
 
     /// Snapshot-local path of a stable table node.
     #[must_use]
     pub fn table_path(&self, id: &TableId) -> Option<&NodePath> {
-        self.tables.get(id)
+        self.directory.tables.get(id)
     }
 
     /// Stable table IDs in canonical byte order, not document visual order.
     #[must_use]
     pub fn table_ids(&self) -> impl ExactSizeIterator<Item = &TableId> {
-        self.tables.keys()
+        self.directory.tables.keys()
     }
 
     /// Snapshot-local path of a stable image node.
     #[must_use]
     pub fn image_path(&self, id: &ImageId) -> Option<&NodePath> {
-        self.images.get(id)
+        self.directory.images.get(id)
     }
 
     /// Stable image IDs in canonical byte order, not document visual order.
     #[must_use]
     pub fn image_ids(&self) -> impl ExactSizeIterator<Item = &ImageId> {
-        self.images.keys()
+        self.directory.images.keys()
     }
 
     /// Canonical base-cell identity directory, including covered cells.
     #[must_use]
     pub fn cell_entries(&self) -> impl ExactSizeIterator<Item = (&CellId, &NodePath)> {
-        self.cells.iter()
+        self.directory.cells.iter()
     }
 
     /// Derive geometry without flattening covered base-cell content.
@@ -156,7 +153,7 @@ impl RichDocument {
     /// # Errors
     /// Returns an invariant error only if the proved AST and private directory disagree.
     pub fn table(&self, id: &TableId) -> Result<Option<RichTableView>, RichDocumentError> {
-        let Some(path) = self.tables.get(id) else { return Ok(None) };
+        let Some(path) = self.directory.tables.get(id) else { return Ok(None) };
         Ok(Some(
             ast_properties::table_view(self.element_at(path)?)
                 .map_err(RichDocumentError::Invariant)?,
@@ -168,7 +165,7 @@ impl RichDocument {
     /// # Errors
     /// Returns an invariant error only if the proved AST and private directory disagree.
     pub fn image(&self, id: &ImageId) -> Result<Option<ImageBinding>, RichDocumentError> {
-        let Some(path) = self.images.get(id) else { return Ok(None) };
+        let Some(path) = self.directory.images.get(id) else { return Ok(None) };
         Ok(Some(
             ast_properties::image_binding(self.element_at(path)?)
                 .map_err(RichDocumentError::Invariant)?,
@@ -185,7 +182,9 @@ impl RichDocument {
             .and_then(NodeRef::as_element)
             .ok_or(RichDocumentError::Invariant("directory node"))
     }
+}
 
+impl IdentityDirectory {
     fn index(
         &mut self,
         node: &NodeRef,
@@ -249,6 +248,35 @@ impl RichDocument {
             self.index(child, path, table.as_ref().or(owning_table), row.as_ref().or(owning_row))?;
             path.pop();
         }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        codec::DocumentJsonCodecV2,
+        extension::{ExtensionLimits, ExtensionSet},
+        identity::QualifiedName,
+        schema::{SchemaId, SchemaVersion},
+    };
+
+    #[test]
+    fn clones_share_the_immutable_identity_directory() -> Result<(), Box<dyn std::error::Error>> {
+        let schema = CompiledSchema::try_compile_rich_content_profile(
+            SchemaId::new(
+                QualifiedName::try_new("example/directory-sharing")?,
+                SchemaVersion::try_new(1)?,
+            ),
+            &ExtensionSet::try_new(vec![], ExtensionLimits::default())?,
+        )?;
+        let value = serde_json::json!({"format":"breditor/document","formatVersion":2,"schema":{"name":schema.id().name().as_str(),"version":1},"schemaFingerprint":schema.fingerprint().to_string(),"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{"breditor/document-id":"document-one"},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{"breditor/block-id":"paragraph-one"},"children":[]}]}});
+        let document = DocumentJsonCodecV2::new(schema.clone()).decode(&value.to_string())?;
+        let rich = RichDocument::try_admit(&schema, document, &DocumentLimits::default())?;
+        let cloned = rich.clone();
+        assert!(Arc::ptr_eq(&rich.directory, &cloned.directory));
+        assert_eq!(rich.document().root(), cloned.document().root());
         Ok(())
     }
 }
