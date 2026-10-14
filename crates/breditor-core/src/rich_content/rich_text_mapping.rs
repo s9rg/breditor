@@ -75,6 +75,7 @@ pub(crate) struct RichBoundaryMap {
 pub(crate) enum RichPositionMap {
     Text(RichTextMap),
     Boundary(RichBoundaryMap),
+    Range(super::rich_range_mapping::RichRangeMap),
 }
 
 impl RichPositionMap {
@@ -86,6 +87,7 @@ impl RichPositionMap {
                 inverse.splitting = !inverse.splitting;
                 Ok(Self::Boundary(inverse))
             }
+            Self::Range(map) => Ok(Self::Range(map.inverse())),
         }
     }
 }
@@ -152,6 +154,7 @@ pub(super) fn map_text<'a>(
                 element(&map.after)?,
             )),
             RichPositionMap::Boundary(map) => boundary(map, &point)?,
+            RichPositionMap::Range(map) => map.map(&point)?,
             RichPositionMap::Text(_) => None,
         };
         if let Some((mapped, before, after)) = update {

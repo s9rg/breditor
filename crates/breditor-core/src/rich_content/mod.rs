@@ -19,6 +19,7 @@ pub(crate) mod local_session;
 mod navigate_grid;
 mod rich_document;
 mod rich_grid_selection;
+mod rich_range_mapping;
 mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;

@@ -1,6 +1,11 @@
 //! Strict versioned codecs for untrusted persisted data.
 
 #[cfg(feature = "experimental-rich-content")]
+mod rich_formats_json;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_formats_json::{RichFormatsCodecError, RichFormatsJsonCodec};
+
+#[cfg(feature = "experimental-rich-content")]
 mod rich_clipboard_json;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_clipboard_json::{

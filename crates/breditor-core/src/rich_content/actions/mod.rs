@@ -40,6 +40,7 @@ mod paste_table_cells;
 mod replace_blocks;
 mod replace_image;
 mod replace_text;
+pub(crate) mod replace_text_range;
 mod resize_image;
 mod resize_table_column;
 pub(crate) mod rewrite_properties;
@@ -56,6 +57,7 @@ mod table_body_rewrite;
 mod table_merges;
 mod table_patch;
 pub(crate) mod text_patch;
+mod text_range_list;
 mod unwrap_list;
 mod wrap_list;
 
@@ -83,6 +85,7 @@ pub use paste_table_cells::PasteTableCells;
 pub use replace_blocks::ReplaceBlocks;
 pub use replace_image::ReplaceImage;
 pub use replace_text::ReplaceText;
+pub use replace_text_range::ReplaceTextRange;
 pub use resize_image::ResizeImage;
 pub use resize_table_column::ResizeColumn;
 pub use set_heading::SetHeading;
@@ -103,6 +106,8 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Atomically replace an admitted same-block or sibling-flow text range.
+    ReplaceTextRange(ReplaceTextRange),
     /// Replace a matching rich cell rectangle and translated non-destructive merge intent.
     PasteTableCells(PasteTableCells),
     /// Clear selected base bodies with explicit empty-block IDs, retaining geometry and headers.
@@ -183,6 +188,7 @@ impl RichAction {
     ) -> Result<Option<super::rich_text_mapping::RichPositionMap>, super::RichSelectionError> {
         use super::rich_text_mapping::RichPositionMap;
         let map = match self {
+            Self::ReplaceTextRange(action) => Some(action.map.clone()),
             Self::InsertText(action) => Some(RichPositionMap::Text(action.patch.map.clone())),
             Self::DeleteText(action) => Some(RichPositionMap::Text(action.patch.map.clone())),
             Self::ReplaceText(action) => Some(RichPositionMap::Text(action.patch.map.clone())),
@@ -209,6 +215,7 @@ impl RichAction {
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
         match self {
+            Self::ReplaceTextRange(action) => action.apply(context, document),
             Self::PasteTableCells(action) => action.apply(context, document),
             Self::ClearTableCells(action) => action.apply(context, document),
             Self::InsertBlocks(action) => action.apply(context, document),

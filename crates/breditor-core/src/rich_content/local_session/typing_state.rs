@@ -27,6 +27,13 @@ pub(super) fn validate(
     if caret(selection).is_none() {
         return Err(RichLocalSessionError::TypingCaret);
     }
+    validate_formats(context, formats)
+}
+
+pub(crate) fn validate_formats(
+    context: &EditorContext,
+    formats: &FormatSet,
+) -> Result<(), RichLocalSessionError> {
     if formats.len() > context.limits().max_formats_per_text() {
         return Err(RichLocalSessionError::TypingLimit);
     }
