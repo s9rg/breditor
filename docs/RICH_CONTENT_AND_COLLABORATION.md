@@ -401,6 +401,24 @@ rejects stale coordinates before target/value admission. Complete queued-work
 guards use an opaque observation instead; a content version does not freeze local
 selection or history.
 
+The isolated text-flow lowerer now represents paragraphs as ordered trees of
+stable source fragments. Split assigns character ownership and moves following
+subtrees; join reparents a text root. Original text-container and character IDs
+are retained, so offline edits need not be copied into a new paragraph. Logical
+range deletion/formatting map back to original intervals, even after reordering.
+Writer-owned contributions support selective history; descending-priority edge
+selection normalizes concurrent text-root joins into a cycle-free forest.
+Separate empty fragments and causal cut witnesses distinguish deliberately empty
+paragraphs and unseen end splits without synthetic characters.
+
+Native and generated-Wasm fixtures exercise this lowerer separately. It is not
+yet part of `RichReplica` publication or the browser editor. Integration must
+combine structural births with routing, adapt source-based selection/history
+cursors, admit the original core's paragraph/list grammar, and revise the shared
+model/checkpoint before accepting its new root family. The existing shared
+model revision 2 and V3 journal remain unchanged. See the
+[text-fragment contract and limits](../experiments/collaboration/README.md#text-fragments-for-shared-paragraph-boundaries).
+
 Complete shared paragraph/list/range planner coverage remains to implement.
 Structured shared clipboard must rekey history-free content and generate shared
 merge operations, rather than import local intent clocks or history.

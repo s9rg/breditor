@@ -53,55 +53,16 @@ pub(super) fn runs(doc: &LoroDoc, text: &LoroText) -> Result<Vec<Value>, Error> 
         let TextDelta::Insert { insert, attributes } = run else {
             return Err(Error::Contract("shared text delta"));
         };
-        let mut formats: BTreeMap<String, (Stamp, usize, Annotation)> = BTreeMap::new();
-        for (key, value) in attributes.unwrap_or_default() {
-            total += 1;
-            if total > 50_000 {
-                return Err(Error::Limit("shared annotations"));
-            }
-            let id = key
-                .strip_prefix("breditor_format_")
-                .ok_or(Error::Contract("shared annotation namespace"))?;
-            let parts: Vec<_> = id.split('_').collect();
-            if parts.len() != 3 {
-                return Err(Error::Contract("shared annotation identity"));
-            }
-            let ordinal = parts[2]
-                .parse::<usize>()
-                .map_err(|_| Error::Contract("shared annotation ordinal"))?;
-            if ordinal.to_string() != parts[2] || ordinal > 100_000 {
-                return Err(Error::Contract("shared annotation ordinal"));
-            }
-            if value.is_null() {
-                continue;
-            }
-            let (stamp, value) = read_contribution(
-                doc,
-                &format!("{}:{}", parts[0], parts[1]),
-                &value.to_json_value(),
-            )?;
-            let encoded = value.as_str().ok_or(Error::Contract("shared annotation value"))?;
-            if encoded.len() > 64 * 1024 {
-                return Err(Error::Limit("shared annotation bytes"));
-            }
-            let annotation: Annotation = serde_json::from_str(encoded)?;
-            let kind = annotation
-                .format
-                .get("type")
-                .and_then(Value::as_str)
-                .ok_or(Error::Contract("shared format kind"))?
-                .to_owned();
-            if formats
-                .get(&kind)
-                .is_none_or(|(previous, index, _)| (stamp, ordinal) > (*previous, *index))
-            {
-                formats.insert(kind, (stamp, ordinal, annotation));
-            }
-        }
-        let formats: Vec<_> = formats
-            .into_values()
-            .filter_map(|(_, _, annotation)| annotation.enabled.then_some(annotation.format))
+        let attributes: Vec<_> = attributes
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(key, value)| (key, value.to_json_value()))
             .collect();
+        total += attributes.len();
+        if total > 50_000 {
+            return Err(Error::Limit("shared annotations"));
+        }
+        let formats = annotations(doc, &attributes)?;
         if let Some((prior, marks)) = output.last_mut()
             && *marks == formats
         {
@@ -114,6 +75,52 @@ pub(super) fn runs(doc: &LoroDoc, text: &LoroText) -> Result<Vec<Value>, Error> 
         .into_iter()
         .filter(|(text, _)| !text.is_empty())
         .map(|(text, formats)| json!({"kind":"text","text":text,"formats":formats}))
+        .collect())
+}
+
+pub(super) fn annotations(
+    doc: &LoroDoc,
+    attributes: &[(String, Value)],
+) -> Result<Vec<Value>, Error> {
+    let mut formats: BTreeMap<String, (Stamp, usize, Annotation)> = BTreeMap::new();
+    for (key, value) in attributes {
+        let id = key
+            .strip_prefix("breditor_format_")
+            .ok_or(Error::Contract("shared annotation namespace"))?;
+        let parts: Vec<_> = id.split('_').collect();
+        if parts.len() != 3 {
+            return Err(Error::Contract("shared annotation identity"));
+        }
+        let ordinal =
+            parts[2].parse::<usize>().map_err(|_| Error::Contract("shared annotation ordinal"))?;
+        if ordinal.to_string() != parts[2] || ordinal > 100_000 {
+            return Err(Error::Contract("shared annotation ordinal"));
+        }
+        if value.is_null() {
+            continue;
+        }
+        let (stamp, value) = read_contribution(doc, &format!("{}:{}", parts[0], parts[1]), value)?;
+        let encoded = value.as_str().ok_or(Error::Contract("shared annotation value"))?;
+        if encoded.len() > 64 * 1024 {
+            return Err(Error::Limit("shared annotation bytes"));
+        }
+        let annotation: Annotation = serde_json::from_str(encoded)?;
+        let kind = annotation
+            .format
+            .get("type")
+            .and_then(Value::as_str)
+            .ok_or(Error::Contract("shared format kind"))?
+            .to_owned();
+        if formats
+            .get(&kind)
+            .is_none_or(|(previous, index, _)| (stamp, ordinal) > (*previous, *index))
+        {
+            formats.insert(kind, (stamp, ordinal, annotation));
+        }
+    }
+    Ok(formats
+        .into_values()
+        .filter_map(|(_, _, annotation)| annotation.enabled.then_some(annotation.format))
         .collect())
 }
 

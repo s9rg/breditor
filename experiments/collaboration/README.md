@@ -356,10 +356,13 @@ On October 14, 2026, the reproducible script passed:
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
 - 27 retained native collaboration/history contracts and 57 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
-- 147 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine
-  and 72 generated-Wasm shared-AST/selection tests. The explicit test list includes
-  `rich-replica.spec.mjs` and `rich-selection.spec.mjs`; the old 75-test configuration
-  did not exercise those shared families.
+- 21 isolated text-flow contracts covering original-source split/join, logical
+  range edits, offline typing, causal boundary carets and selective routing history.
+- 171 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
+  72 generated-Wasm shared-AST/selection tests and 24 text-flow lowerer checks.
+  The explicit test list includes `rich-replica.spec.mjs`, `rich-selection.spec.mjs`
+  and `text-flow.spec.mjs`; the old 75-test configuration did not exercise these
+  additional families.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
@@ -383,8 +386,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 7,682,786 bytes, or 2,085,607 bytes under gzip, with
-SHA-256 `122d4dd84004435f6350e375b0da09d94d65014ddff551d59d3f629b081262b2`.
+The tested fixture Wasm is 7,993,968 bytes, or 2,172,057 bytes under gzip, with
+SHA-256 `6e80085763956c417dcaa736785a61eb141d11b61bd4cbe7969e27e4cbe0afb4`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -487,6 +490,65 @@ including identities hidden by Undo. These independent prototype ceilings requir
 the later compaction and workload pass; visible geometry limits alone do not
 describe retained causal storage.
 
+## Text fragments for shared paragraph boundaries
+
+The isolated `rich_replica::text_flow` lowerer removes the assumption that a
+paragraph owns one text container. A paragraph instead owns an ordered tree of
+stable fragments. Every rendered chunk records its original source, scalar-aligned
+UTF-16 interval, fragment ID and typed formats. Split assigns existing characters
+to a new fragment and moves following fragment subtrees; join attaches the whole
+right text root to the left. Neither operation deletes, copies or reinserts those
+characters. Offline edits retain their source identities and follow the selected
+fragment placement. Deletion and formatting route logical ranges back to the
+original intervals, including reordered intervals in the same source.
+
+Definitions and canonical containers are prepared outside user history. Cut,
+placement and ownership contributions are recorded inside the explicit action
+group, so selective Undo cannot erase another writer's owned typing. Concurrent
+join edges are selected in descending causal priority; an edge that would close
+a cycle falls back to an older placement. The result is a deterministic forest
+whose character-bearing fragments each occur once. This normalization applies to
+the new text-flow graph, not the still-unfinished general AST placement conflict
+normalizer.
+
+Each root has a separate empty insertion fragment. Typing into an empty half of
+a split cannot leak into its sibling. Causal cut records handle empty/end splits
+without adding sentinel characters. A captured After caret can follow an unseen
+cut while a caret clicked at the same left boundary after observing the cut stays
+there. A regression reproduced an observed left-end After caret resolving to the
+right paragraph at zero. End carets now retain both a character binding and a
+floating edge scoped to that character's current fragment: right-side typing
+cannot pull the observed left caret across the seam, while an unobserved original
+end still follows the split and subsequent typing. Anchor witnesses and all
+source identities survive engine export/import.
+Unobserved insertions exactly at a cut inherit the engine's fragment annotation
+at both edges; observed insertions explicitly select their logical paragraph.
+This seam policy does not promise that a concurrent insertion uses a remote
+writer's not-yet-observed paragraph choice.
+
+The lowerer has separate documented files for split, join, insert, delete and
+format. Prepared actions reject stale engine versions before writing. They must
+run on a disposable staged document: they do not themselves provide atomic AST
+publication, schema admission, transport authorization or durable undo-stack
+recovery. The coordinator must admit sibling/grammar rules and publish structural
+births with these routing effects in one action. Its existing history-cursor
+repair must also be adapted to source identities.
+
+The lowerer independently caps 20,000 graph nodes, 50,000 placement sites,
+20,000 source runs, 100,000 projected attributes, 1,000 cut owners and 10,000 cut
+contributions. Sources and indexes are rebuilt for each operation; these ceilings
+do not establish production latency, memory or compaction budgets.
+
+Twenty-one native contracts exercise scalar cuts, source-preserving split/rejoin,
+offline typing/formatting, concurrent cuts/joins, reversed source order, empty
+paragraphs, causal boundary carets, selective history and export/import. Eight
+closed scenarios also run through the actual compiled Wasm lowerer and compare
+with independently generated native JSON. The lowerer is **not yet connected to
+`RichReplica` commands, its shared selection/history contract or the browser
+editor**. Existing model revision 2 rejects its separate root family. Promotion
+requires a new shared model/checkpoint version; the current V3 journal and
+shipping contracts remain unchanged.
+
 ## Limits and remaining gates
 
 These are provisional probe limits, not public editor guarantees: 1,000 journal
@@ -522,12 +584,15 @@ merge stamps, rather than copy local history through the creation record API.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.
 
 Follow-up Firefox large-object comparisons reported zero path/grid coordinates
-as `NaN`, including a native-expected zero in an axis test. Recovery and axis
-checks now compare the actual Wasm JSON wire with independent browser parsing;
-the axis check also verifies finite numbers before test-protocol transport. Five
-recovery repeats per engine and five axis repeats in Firefox agreed. The earlier
-object-comparison mismatch's origin is not established, and these passing runs
-are not an upstream browser repair claim.
+as `NaN` or `Infinity`, including native-expected zeros and an actual local-history
+path. The failing flow/local traces are retained in the ignored
+`target/collaboration-browser-evidence` directory. Rich action/axis/flow/navigation/
+clipboard fixtures now share exact JSON-wire transport with independent browser
+parsing and finite-number checks before test-protocol transport. Recovery uses
+the same JSON-wire strategy. Five recovery repeats per engine, five Firefox axis
+repeats, and five repeats of each Firefox local/flow fixture agreed. The original
+large-object mismatch's origin is not established; these tests do not establish
+an upstream browser repair.
 
 The pinned Wasm normal/build closure contains 139 packages. Loro's facade is MIT,
 but `im 15.1.0`, `bitmaps 2.1.0` and `sized-chunks 0.6.5` declare `MPL-2.0+`.

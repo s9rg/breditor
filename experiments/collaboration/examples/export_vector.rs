@@ -51,6 +51,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "anchor":anchor,"anchor_position":anchor_position,"after_redo":after_redo,
         "after_undo_all":after_undo_all,"remaining":a.view(),
     });
+    let mut text_flow = serde_json::Map::new();
+    for scenario in breditor_collab_feasibility::text_flow_fixture::SCENARIOS {
+        text_flow.insert(
+            scenario.into(),
+            breditor_collab_feasibility::text_flow_fixture::exercise(scenario)?.into(),
+        );
+    }
+    vector["text_flow_expected"] = text_flow.into();
     let serde_json::Value::Object(rich) = rich_vectors()? else {
         return Err("rich vectors object".into());
     };

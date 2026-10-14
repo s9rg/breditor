@@ -23,6 +23,12 @@ fn checked_offset(value: &JsValue) -> Result<u32, JsValue> {
     number.to_string().parse::<u32>().map_err(|_| js_error(Error::Offset))
 }
 
+/// Run the isolated original-character text-flow lowerer, not the shared editor coordinator.
+#[wasm_bindgen]
+pub fn exercise_shared_text_flow(scenario: &str) -> Result<String, JsValue> {
+    crate::text_flow_fixture::exercise(scenario).map_err(js_error)
+}
+
 /// Run closed fixture admission through the same rich geometry used by Rust.
 #[wasm_bindgen]
 pub fn resolve_geometry(input: &str) -> Result<String, JsValue> {

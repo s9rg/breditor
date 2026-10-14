@@ -21,6 +21,7 @@ mod session;
 mod set_pending_formats;
 mod set_selection;
 mod text;
+pub mod text_flow;
 mod ui_state;
 mod update_frame;
 mod view;

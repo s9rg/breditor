@@ -15,13 +15,28 @@ async function ready(page) {
   await expect(page.locator("#status")).toHaveText("Ready for contract tests");
 }
 
+async function fixtureResult(page, exportName, inputKey, expectedKey) {
+  const wire = await page.evaluate(async ({ exportName, inputKey, expectedKey }) => {
+    const wasm = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    const actual = wasm[exportName](vector[inputKey]), parsed = JSON.parse(actual);
+    function finite(value) {
+      if(typeof value === "number" && !Number.isFinite(value)) throw Error("Nonfinite fixture coordinate inside browser JSON");
+      if(value && typeof value === "object") for(const child of Object.values(value)) finite(child);
+    }
+    finite(parsed); finite(vector[expectedKey]);
+    // Preserve the actual Wasm JSON and independently check browser parsing.
+    // Do not transport these large numeric object graphs through the test RPC.
+    return { actual, browserParsed:JSON.stringify(parsed), expected:JSON.stringify(vector[expectedKey]) };
+  }, { exportName, inputKey, expectedKey });
+  const result = Object.fromEntries(Object.entries(wire).map(([key,value])=>[key,JSON.parse(value)]));
+  expect(result.browserParsed).toEqual(result.actual);
+  return result;
+}
+
 test("native and Wasm whole table/image move merge split header and caption actions match exactly", async ({ page }) => {
   await ready(page);
-  const result = await page.evaluate(async () => {
-    const { exercise_rich_features } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    return { actual: JSON.parse(exercise_rich_features(vector.rich_ast_input)), expected: vector.rich_features_expected };
-  });
+  const result = await fixtureResult(page, "exercise_rich_features", "rich_ast_input", "rich_features_expected");
   expect(result.actual).toEqual(result.expected);
   expect(result.actual.cases.map(value => value.name)).toEqual([
     "move_row", "move_column", "merge", "split", "header", "insert_table", "delete_table",
@@ -53,11 +68,7 @@ test("native and Wasm whole table/image move merge split header and caption acti
 
 test("real Rust rich owner groups typing formatting caption header resize and exact selection history", async ({ page }) => {
   await ready(page);
-  const result = await page.evaluate(async () => {
-    const { exercise_rich_local_session } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    return { actual: JSON.parse(exercise_rich_local_session(vector.rich_local_input)), expected: vector.rich_local_expected };
-  });
+  const result = await fixtureResult(page, "exercise_rich_local_session", "rich_local_input", "rich_local_expected");
   expect(result.actual).toEqual(result.expected);
   expect(result.actual.action_count).toBe(6);
   expect(result.actual.undone).toBe(result.actual.initial);
@@ -81,11 +92,7 @@ test("real Rust rich owner groups typing formatting caption header resize and ex
 
 test("rich paragraph list media and pending-format workflows replay exactly through the Rust owner", async ({ page }) => {
   await ready(page);
-  const result = await page.evaluate(async () => {
-    const { exercise_rich_flow } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    return { actual: JSON.parse(exercise_rich_flow(vector.rich_local_input)), expected: vector.rich_flow_expected };
-  });
+  const result = await fixtureResult(page, "exercise_rich_flow", "rich_local_input", "rich_flow_expected");
   expect(result.actual).toEqual(result.expected);
   expect(result.actual.steps.map(step => step.name)).toEqual([
     "split_paragraph", "join_paragraph", "insert_fragment", "wrap_rich_list", "indent_items",
@@ -110,14 +117,7 @@ test("rich paragraph list media and pending-format workflows replay exactly thro
 
 test("original rich clipboard roundtrips fresh grid image table and inline paste with recovered history", async ({ page }) => {
   await ready(page);
-  const wire = await page.evaluate(async () => {
-    const { exercise_rich_clipboard } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    const actual = exercise_rich_clipboard(vector.rich_ast_input);
-    return { actual, browserParsed: JSON.stringify(JSON.parse(actual)), expected: JSON.stringify(vector.rich_clipboard_expected) };
-  });
-  const result = Object.fromEntries(Object.entries(wire).map(([key, value]) => [key, JSON.parse(value)]));
-  expect(result.browserParsed).toEqual(result.actual);
+  const result = await fixtureResult(page, "exercise_rich_clipboard", "rich_ast_input", "rich_clipboard_expected");
   expect(result.actual).toEqual(result.expected);
   expect(JSON.parse(result.actual.wire)).toMatchObject({ format: "breditor/rich-clipboard", formatVersion: 1, kind: "grid" });
   expect(result.actual.steps.map(step => step.name)).toEqual(["grid_paste", "image_paste", "table_paste", "inline_paste"]);
@@ -144,14 +144,7 @@ test("original rich clipboard roundtrips fresh grid image table and inline paste
 
 test("real rich axis edits and merged grid navigation retain logical lanes and directional closure", async ({ page }) => {
   await ready(page);
-  const wire = await page.evaluate(async () => {
-    const { exercise_rich_navigation } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    const actual = exercise_rich_navigation(vector.rich_ast_input);
-    return { actual, browserParsed: JSON.stringify(JSON.parse(actual)), expected: JSON.stringify(vector.rich_navigation_expected) };
-  });
-  const result = Object.fromEntries(Object.entries(wire).map(([key, value]) => [key, JSON.parse(value)]));
-  expect(result.browserParsed).toEqual(result.actual);
+  const result = await fixtureResult(page, "exercise_rich_navigation", "rich_ast_input", "rich_navigation_expected");
   expect(result.actual).toEqual(result.expected);
   expect(result.actual.tab.map(selection => [selection.kind.focus.row, selection.kind.focus.column])).toEqual([
     ["r0", "c0"], ["r0", "c2"], ["r0", "c3"], ["r1", "c2"], ["r2", "c0"], ["r2", "c1"], ["r2", "c2"],
@@ -200,11 +193,7 @@ test("native rich checkpoints restore every mixed history cursor and future undo
 
 test("rich table paste and cut-like clearing retain source partitions geometry and exact inverses", async ({ page }) => {
   await ready(page);
-  const result = await page.evaluate(async () => {
-    const { exercise_rich_paste } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    return { actual: JSON.parse(exercise_rich_paste(vector.rich_ast_input)), expected: vector.rich_paste_expected };
-  });
+  const result = await fixtureResult(page, "exercise_rich_paste", "rich_ast_input", "rich_paste_expected");
   expect(result.actual).toEqual(result.expected);
   const [paste, clear] = result.actual.cases;
   for (const value of result.actual.cases) {
@@ -226,11 +215,7 @@ test("rich table paste and cut-like clearing retain source partitions geometry a
 
 test("native and Wasm rich local action groups undo and redo exact document bytes", async ({ page }) => {
   await ready(page);
-  const result = await page.evaluate(async () => {
-    const { exercise_rich_actions } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    return { actual: JSON.parse(exercise_rich_actions(vector.rich_ast_input)), expected: vector.rich_actions_expected };
-  });
+  const result = await fixtureResult(page, "exercise_rich_actions", "rich_ast_input", "rich_actions_expected");
   expect(result.actual).toEqual(result.expected);
   expect(result.actual.inverse_count).toBe(3);
   expect(result.actual.undone).toBe(result.actual.initial);
@@ -326,21 +311,7 @@ test("rich table reorder updates snapshot paths and retracts spans without losin
 
 test("native and Wasm table axis edits preserve exact inverses and map node grid and caption selections", async ({ page }) => {
   await ready(page);
-  const wire = await page.evaluate(async () => {
-    const { exercise_table_axes } = await import("/probe.js");
-    const vector = await (await fetch("/native-vector.json")).json();
-    const actual = exercise_table_axes(vector.rich_ast_input), parsed = JSON.parse(actual);
-    function finite(value) {
-      if(typeof value === "number" && !Number.isFinite(value)) throw Error("Nonfinite axis coordinate inside browser JSON");
-      if(value && typeof value === "object") for(const child of Object.values(value)) finite(child);
-    }
-    finite(parsed); finite(vector.table_axes_expected);
-    // Compare the actual Wasm JSON boundary and browser parsing, not the test
-    // protocol's independent large-object number marshalling.
-    return { actual, browserParsed:JSON.stringify(parsed), expected:JSON.stringify(vector.table_axes_expected) };
-  });
-  const result = Object.fromEntries(Object.entries(wire).map(([key,value])=>[key,JSON.parse(value)]));
-  expect(result.browserParsed).toEqual(result.actual);
+  const result = await fixtureResult(page, "exercise_table_axes", "rich_ast_input", "table_axes_expected");
   expect(result.actual).toEqual(result.expected);
   expect(result.actual.cases.map(value => value.name)).toEqual(["insert_row", "insert_column", "delete_row", "delete_column"]);
   for (const value of result.actual.cases) {

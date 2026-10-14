@@ -20,6 +20,7 @@ pub mod rich_replica;
 pub mod session;
 pub mod table_axis_fixture;
 mod text_projection;
+pub use rich_replica::text_flow::fixture as text_flow_fixture;
 mod validation;
 
 #[cfg(target_arch = "wasm32")]
