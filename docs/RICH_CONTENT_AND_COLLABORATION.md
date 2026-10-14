@@ -33,7 +33,8 @@ Work proceeds through these connected exits:
 Implemented checkpoints include an isolated, pinned Rust/Wasm replication
 coordinator, feature-gated rich geometry/image values, a separate sealed rich
 AST and stable-ID directory, guarded table/image and rich text/format/heading
-actions, rich paragraph/list/fragment editing, multicell paste/clear, a separate
+actions, rich paragraph/list/fragment editing, multicell paste/clear, merge-aware
+grid navigation and original structured clipboard/fresh-ID preparation, a separate
 stable text/node/grid selection family, and an exclusive single-user rich runtime
 history owner with pending caret formats and replay-proved local recovery. The
 rich-AST/local-operation checkpoint is still in progress. The
@@ -173,8 +174,9 @@ cells, lists and captions. Heading conversion retains stable block identity
 and text positions. Paragraph and list-item split/join maps also witness changes
 of text-block identity. Rich list wrap/unwrap, kind changes, indent/outdent and
 partial extraction preserve IDs, numbering and media order. Typed block fragments
-and multicell paste/clear retain rich bodies and exact inverses; browser clipboard
-interchange and fresh-ID allocation remain separate integration work.
+and multicell paste/clear retain rich bodies and exact inverses. Structured
+clipboard capture and fresh-ID preparation now produce those same typed drafts;
+browser event integration remains separate work.
 
 `RichLocalSession` owns synchronous rich content, selection, pending caret formats, revision and bounded
 exact runtime history. Dispatch requires a current same-owner observation;
@@ -184,8 +186,39 @@ publication token and history. Replay verifies the exact AST and restores saved
 before/after selections and pending formats. Plain typing honors an explicit
 pending override or derives run formats from caret affinity. This is single-user
 history with a separate local restart codec, not shared selective undo.
-The remaining cross-block range/interchange/navigation planners remain before
+The remaining cross-block replacement and cross-container copy planners remain before
 checkpoint 3 can exit.
+
+### Grid navigation and semantic clipboard
+
+Pure logical grid movement uses the current admitted merge view and stable base
+IDs. Tab visits each presentation master once; arrows retain the focus lane
+while stepping outside spans. Directional extension preserves anchor order and
+closes over touched merges. Table/edge boundaries are explicit host decisions,
+not fabricated rows or implicit content edits. Browser bidi/key interpretation
+and focus transfer remain integration work.
+
+The separate clipboard family is `breditor/rich-clipboard` version 1, with text,
+flow and grid meanings and a schema-bound neutral Document V2 wrapper. Inline,
+direct-sibling flow and sibling leading-list-head ranges retain partial endpoint
+content, formatting and ordinals. Whole flow nodes retain tables/images/captions;
+grids retain independent base bodies, headers, widths and active spans. Arbitrary
+cross-container text ranges remain unsupported rather than flattened.
+
+Semantic clipboard tables recapture active current spans over copied axes and
+exclude inactive/retracted history. This is not shared causal state or backup.
+Before insertion, the host allocates fresh content/axis/image/merge identities,
+image binding generations and newly authored merge priority. Immutable asset
+references are preserved. The core checks source-ID reuse and duplicate new IDs;
+the host still owns historical allocation, and final target admission is atomic.
+Failed preparation consumes IDs without publishing a document mutation.
+
+The outer clipboard budget defaults to 1 MiB independently of document limits.
+Plain fallback is reading-order text and quoted TSV, without list markers; image
+alt/caption content is included without asset URLs. HTML/custom-flavor browser
+events, file paste/drop, asset resolution and target-growth commands remain
+integration work. Rectangle paste must match the complete merge-closed target;
+it never crops or tiles silently.
 
 ### Local rich session checkpoint
 
@@ -589,9 +622,9 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused session should finish the remaining cross-block range,
-grid-navigation and structured-interchange planners, then connect the same
-planners and rich selections to the replication adapter. Schedule the full
+The next focused session should finish remaining text-range planners, expose
+the rich owner/projection through the browser package, and connect the same
+semantic planners and rich selections to the replication adapter. Schedule the full
 release after the remaining measured integration gates. Production
 follows combined qualification and a real pilot, not the existence of three
 toolbar buttons.

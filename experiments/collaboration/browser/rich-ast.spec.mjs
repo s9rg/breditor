@@ -108,6 +108,64 @@ test("rich paragraph list media and pending-format workflows replay exactly thro
   expect(result.actual).toMatchObject({ undo_depth: 10, redo_depth: 0, revision: "31" });
 });
 
+test("original rich clipboard roundtrips fresh grid image table and inline paste with recovered history", async ({ page }) => {
+  await ready(page);
+  const wire = await page.evaluate(async () => {
+    const { exercise_rich_clipboard } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    const actual = exercise_rich_clipboard(vector.rich_ast_input);
+    return { actual, browserParsed: JSON.stringify(JSON.parse(actual)), expected: JSON.stringify(vector.rich_clipboard_expected) };
+  });
+  const result = Object.fromEntries(Object.entries(wire).map(([key, value]) => [key, JSON.parse(value)]));
+  expect(result.browserParsed).toEqual(result.actual);
+  expect(result.actual).toEqual(result.expected);
+  expect(JSON.parse(result.actual.wire)).toMatchObject({ format: "breditor/rich-clipboard", formatVersion: 1, kind: "grid" });
+  expect(result.actual.steps.map(step => step.name)).toEqual(["grid_paste", "image_paste", "table_paste", "inline_paste"]);
+  expect(result.actual.recovered).toEqual(result.actual.changed);
+  expect(result.actual.undone.document).toBe(result.actual.initial.document);
+  expect(result.actual.undone.selection).toEqual(result.actual.initial.selection);
+  expect(result.actual.redone.document).toBe(result.actual.changed.document);
+  expect(result.actual.redone.selection).toEqual(result.actual.changed.selection);
+  const root = JSON.parse(result.actual.changed.document).root;
+  expect(root.children).toHaveLength(4);
+  const table = root.children[1];
+  expect(table.properties["breditor/columns"].map(column => column.width)).toEqual([120, 240]);
+  const body = table.children[0].children[0].children[0];
+  expect(body.children.map(run => run.text).join("")).toBe("first🙂");
+  expect(body.children[1].formats[0].type).toBe("breditor/strong");
+  const image = root.children[2];
+  expect(image.properties["breditor/asset-id"]).toBe("immutable-asset");
+  expect(image.properties["breditor/image-id"]).not.toBe("covered-image");
+  expect(image.properties["breditor/asset-generation"]).not.toBe("generation-one");
+  expect(image.children[0].children[0].text).toBe("Caption survives merge");
+  expect(root.children[3].properties["breditor/table-id"]).not.toBe("table-one");
+  expect(result.actual.plain).toContain("second 🙂");
+});
+
+test("real rich axis edits and merged grid navigation retain logical lanes and directional closure", async ({ page }) => {
+  await ready(page);
+  const wire = await page.evaluate(async () => {
+    const { exercise_rich_navigation } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    const actual = exercise_rich_navigation(vector.rich_ast_input);
+    return { actual, browserParsed: JSON.stringify(JSON.parse(actual)), expected: JSON.stringify(vector.rich_navigation_expected) };
+  });
+  const result = Object.fromEntries(Object.entries(wire).map(([key, value]) => [key, JSON.parse(value)]));
+  expect(result.browserParsed).toEqual(result.actual);
+  expect(result.actual).toEqual(result.expected);
+  expect(result.actual.tab.map(selection => [selection.kind.focus.row, selection.kind.focus.column])).toEqual([
+    ["r0", "c0"], ["r0", "c2"], ["r0", "c3"], ["r1", "c2"], ["r2", "c0"], ["r2", "c1"], ["r2", "c2"],
+  ]);
+  const cases = result.actual.cases;
+  expect(cases[0].result.moved.kind.focus).toMatchObject({ row: "r1", column: "c2" });
+  expect(cases[1].result.moved.kind.focus).toMatchObject({ row: "r2", column: "c1" });
+  expect(cases[2].result.moved.kind.focus).toMatchObject({ row: "r2", column: "c3" });
+  expect(cases[3].result.moved.kind.focus).toMatchObject({ row: "r2", column: "c2" });
+  expect(cases[4].result.boundary).toBe("BottomEdge");
+  expect(result.actual.extended.moved.kind.anchor).toMatchObject({ row: "r0", column: "c2" });
+  expect(result.actual.extended.moved.resolved.cells).toHaveLength(9);
+});
+
 test("native rich checkpoints restore every mixed history cursor and future undo redo in Wasm", async ({ page }) => {
   await ready(page);
   const wire = await page.evaluate(async () => {

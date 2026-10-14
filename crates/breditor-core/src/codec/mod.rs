@@ -1,6 +1,14 @@
 //! Strict versioned codecs for untrusted persisted data.
 
 #[cfg(feature = "experimental-rich-content")]
+mod rich_clipboard_json;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_clipboard_json::{
+    RICH_CLIPBOARD_FORMAT, RICH_CLIPBOARD_FORMAT_VERSION, RichClipboardCodecError,
+    RichClipboardJsonCodec,
+};
+
+#[cfg(feature = "experimental-rich-content")]
 mod rich_selection_record;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_session_decode;

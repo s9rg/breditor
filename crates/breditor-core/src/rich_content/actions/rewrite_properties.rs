@@ -38,7 +38,7 @@ pub(super) fn rewrite(
     replace_node(context, document, path, &replacement)
 }
 
-pub(super) fn with_properties(
+pub(crate) fn with_properties(
     node: &NodeRef,
     changes: impl IntoIterator<Item = (&'static str, Option<PropertyValue>)>,
 ) -> Result<NodeRef, RichActionError> {

@@ -26,7 +26,7 @@ run(cargo, ["fmt", "--all", "--check"]);
 run(cargo, ["fmt", "--manifest-path", manifest, "--check"]);
 run(cargo, ["clippy", "--manifest-path", manifest, "--locked", "--all-targets", "--quiet"]);
 run(cargo, ["test", "--manifest-path", manifest, "--locked", "--quiet"]);
-run(cargo, ["clippy", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--lib", "--test", "rich_content_contracts", "--test", "rich_ast_contracts", "--test", "rich_table_actions", "--test", "rich_feature_actions", "--test", "rich_local_session", "--test", "rich_flow_actions", "--test", "rich_session_recovery", "--quiet"]);
+run(cargo, ["clippy", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--lib", "--test", "rich_content_contracts", "--test", "rich_ast_contracts", "--test", "rich_table_actions", "--test", "rich_feature_actions", "--test", "rich_local_session", "--test", "rich_flow_actions", "--test", "rich_session_recovery", "--test", "rich_grid_navigation", "--test", "rich_clipboard", "--quiet"]);
 run(cargo, ["test", "-p", "breditor-core", "--locked", "--lib", "--quiet"]);
 run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--lib", "--quiet"]);
 run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--doc", "--quiet"]);
@@ -35,7 +35,7 @@ run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experiment
 run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--test", "rich_table_actions", "--quiet"]);
 run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--test", "rich_feature_actions", "--quiet"]);
 run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--test", "rich_local_session", "--quiet"]);
-run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--test", "rich_flow_actions", "--test", "rich_session_recovery", "--quiet"]);
+run(cargo, ["test", "-p", "breditor-core", "--locked", "--features", "experimental-rich-content", "--test", "rich_flow_actions", "--test", "rich_session_recovery", "--test", "rich_grid_navigation", "--test", "rich_clipboard", "--quiet"]);
 run(cargo, ["clippy", "--manifest-path", manifest, "--locked", "--target", "wasm32-unknown-unknown", "--lib", "--quiet"], wasmEnv);
 run(cargo, ["build", "--manifest-path", manifest, "--locked", "--target", "wasm32-unknown-unknown", "--release", "--quiet"], wasmEnv);
 mkdirSync(web, { recursive: true });

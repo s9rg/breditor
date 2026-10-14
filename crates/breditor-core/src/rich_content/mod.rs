@@ -7,13 +7,16 @@
 
 pub mod actions;
 pub(crate) mod ast_properties;
+pub(crate) mod clipboard;
 mod drafts;
 mod flow_position;
+mod grid_destination;
 mod identity;
 mod image_binding;
 mod image_draft;
 mod list_draft;
 pub(crate) mod local_session;
+mod navigate_grid;
 mod rich_document;
 mod rich_grid_selection;
 mod rich_selection;
@@ -24,6 +27,10 @@ mod table_geometry;
 mod table_paste_draft;
 
 pub use ast_properties::{RichColumn, RichTableView};
+pub use clipboard::{
+    RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
+    RichClipboardKind,
+};
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use flow_position::{RichFlowParent, RichFlowPosition};
 pub use image_draft::ImageDraft;
@@ -31,6 +38,9 @@ pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use local_session::{
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
     RichPendingFormatsUpdate, RichSelectionUpdate,
+};
+pub use navigate_grid::{
+    GridBoundary, GridMove, GridNavigationMode, GridNavigationOutcome, navigate_grid,
 };
 pub use rich_document::{RichDocument, RichDocumentError};
 pub use rich_grid_selection::ResolvedRichGrid;

@@ -173,11 +173,48 @@ Typed multicell paste replaces independent base-cell bodies, with explicit
 header and relative merge intent, over an exactly matching merge-closed target.
 Grid clearing uses explicitly owned empty-block IDs and retains geometry and
 headers. Both operations have exact local inverses; these are core primitives,
-not a browser clipboard codec or controller.
+not browser clipboard event handlers.
 
 This owner provides single-user history, not collaborative selective undo.
 Typing-group policy, arbitrary cross-block text replacement and browser command
 integration remain implementation work.
+
+## Grid navigation and structured clipboard
+
+`navigate_grid.rs` provides pure logical arrows, next/previous displayed cell,
+row start/end, table start/end and directional extension. Tab visits each
+presentation master once in current row-major order. Arrows step outside the
+current span while retaining the logical focus row/column, including covered
+cells. Extension preserves anchor order and resolves complete merged closure.
+Boundaries are explicit results; no row, placeholder or ID is invented.
+Navigation publication uses selection-only history semantics and preserves redo.
+Physical keys, bidi layout and focus transfer remain browser policy.
+
+`RichClipboardJsonCodec` defines `breditor/rich-clipboard` version 1, with explicit
+text, flow and grid kinds. Its schema-bound Document V2 wrapper has a neutral
+clipboard document ID. Copy supports scalar-aligned inline ranges, partial
+direct-sibling flow ranges, partial sibling leading list heads, whole rich flow
+nodes and merge-closed grids. List ordinals and rich item tails remain intact.
+Grid copy retains every base-cell body, header flag, column width and active span,
+including image alt, size and caption content. Arbitrary cross-container text
+copy is still explicitly unsupported, not flattened into a guessed fragment.
+
+Clipboard geometry is a semantic copy of current active spans, recaptured over
+the copied axes. Inactive/retracted merge history is excluded; this envelope is
+not a collaboration backup. Wire IDs are source identities. Paste preparation
+requires a host allocator for fresh block/table/axis/image/merge identities and
+image binding generations, plus newly authored merge priority. Immutable asset
+references stay unchanged. Syntax, source reuse and duplicate new IDs are checked
+before drafts escape; historical namespace allocation and target admission are
+independent requirements. IDs consumed by failed preparation must never be reused.
+
+The default outer clipboard budget is 1 MiB; embedded document/resource limits
+also apply. Plain fallback uses reading-order text without list markers and quoted
+TSV for tables; images contribute alt/caption rather than URLs. It is not the
+lossless rich channel. HTML/custom-flavor browser events, asset resolution and
+file paste/drop are still integration work. Grid paste requires an exactly
+matching merge-closed target; growing a target is an explicit structural command,
+never implicit crop/tiling or automatic repair.
 
 ## Local rich recovery
 
@@ -249,8 +286,12 @@ On October 14, 2026, the reproducible script passed:
   ordering, partial numbered-list extraction and exact local inverses.
 - 10 local rich checkpoint/recovery workflows, including every mixed history
   cursor, current metadata, edits after restart, entry eviction and exact u64 revisions.
+- 6 merged-grid navigation workflows covering Tab order, focus lanes, directional
+  closure, explicit edges, reordered axes and metadata-only redo preservation.
+- 11 structured rich clipboard workflows covering canonical interchange, partial
+  text/list ranges, merged partitions, media, fresh identity allocation and reload history.
 - 27 native collaboration/history contracts.
-- 69 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- 75 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
@@ -270,9 +311,12 @@ On October 14, 2026, the reproducible script passed:
   rejection of old live-owner observation tokens.
 - Five repeated rich recovery runs per browser engine passed with exact Wasm JSON
   transport and independent in-browser parse/stringify agreement.
+- A four-group clipboard workflow with grid, image, whole-table and formatted
+  inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
+  by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 6,174,409 bytes, or 1,716,276 bytes under gzip, with
-SHA-256 `77c5feeb9e820fbc68569c6abc6f5db30c640aeff5f81a62024e97167f94e871`.
+The tested fixture Wasm is 6,459,841 bytes, or 1,779,311 bytes under gzip, with
+SHA-256 `ffd5abf4cdb77bba29cc615fa5a94bd5441747a86efefa1d8689aa5ba9cc13bf`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -291,9 +335,8 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Remaining rich-AST work includes arbitrary cross-block text replacement, grid
-navigation and structured clipboard
-interchange with fresh-ID allocation. Shared tree/AST
+Remaining rich-AST work includes arbitrary cross-block text replacement and
+cross-container copy planners. Shared tree/AST
 materialization, toolbar/input/clipboard controllers,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;

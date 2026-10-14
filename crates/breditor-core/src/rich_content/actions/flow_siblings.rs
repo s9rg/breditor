@@ -13,6 +13,15 @@ pub(super) struct FlowSiblings<'a> {
     pub(super) children: &'a [NodeRef],
 }
 
+pub(crate) fn copied(
+    document: &RichDocument,
+    first: &BlockId,
+    last: &BlockId,
+) -> Result<Vec<NodeRef>, RichActionError> {
+    let flow = FlowSiblings::capture(document, first, last)?;
+    Ok(flow.children[flow.first..=flow.last].to_vec())
+}
+
 impl<'a> FlowSiblings<'a> {
     pub(super) fn capture(
         document: &'a RichDocument,

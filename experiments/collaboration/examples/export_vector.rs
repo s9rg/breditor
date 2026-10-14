@@ -46,6 +46,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         a.undo()?;
     }
     let after_undo_all = a.checkpoint()?;
+    let mut vector = serde_json::json!({
+        "checkpoint":checkpoint,"initial":initial,"initial_version":initial_version,
+        "anchor":anchor,"anchor_position":anchor_position,"after_redo":after_redo,
+        "after_undo_all":after_undo_all,"remaining":a.view(),
+    });
+    let serde_json::Value::Object(rich) = rich_vectors()? else {
+        return Err("rich vectors object".into());
+    };
+    vector.as_object_mut().ok_or("journal vector object")?.extend(rich);
+    std::fs::write(path, serde_json::to_vec_pretty(&vector)?)?;
+    Ok(())
+}
+
+fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let mut rich_ast_input: serde_json::Value =
         serde_json::from_str(&breditor_collab_feasibility::rich_ast_fixture::binding()?)?;
     rich_ast_input["format"] = "breditor/document".into();
@@ -85,15 +99,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         serde_json::from_str(&breditor_collab_feasibility::rich_recovery_fixture::exercise(
             rich_flow_expected["checkpoint"].as_str().ok_or("rich checkpoint")?,
         )?)?;
+    let rich_clipboard_expected: serde_json::Value = serde_json::from_str(
+        &breditor_collab_feasibility::rich_clipboard_fixture::exercise(&rich_ast_input)?,
+    )?;
+    let rich_navigation_expected: serde_json::Value = serde_json::from_str(
+        &breditor_collab_feasibility::rich_navigation_fixture::exercise(&rich_ast_input)?,
+    )?;
     let vector = serde_json::json!({
-        "checkpoint": checkpoint,
-        "initial": initial,
-        "initial_version": initial_version,
-        "anchor": anchor,
-        "anchor_position": anchor_position,
-        "after_redo": after_redo,
-        "after_undo_all": after_undo_all,
-        "remaining": a.view(),
         "rich_ast_input": rich_ast_input,
         "rich_ast_expected": rich_ast_expected,
         "rich_actions_expected": rich_actions_expected,
@@ -104,7 +116,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rich_flow_expected":rich_flow_expected,
         "rich_paste_expected":rich_paste_expected,
         "rich_recovery_expected":rich_recovery_expected,
+        "rich_clipboard_expected":rich_clipboard_expected,
+        "rich_navigation_expected":rich_navigation_expected,
     });
-    std::fs::write(path, serde_json::to_vec_pretty(&vector)?)?;
-    Ok(())
+    Ok(vector)
 }

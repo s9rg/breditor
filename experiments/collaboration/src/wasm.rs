@@ -89,6 +89,18 @@ pub fn exercise_rich_paste(input: &str) -> Result<String, JsValue> {
     crate::rich_paste_fixture::exercise(input).map_err(js_error)
 }
 
+/// Run original rich clipboard interchange, fresh paste and recovered history in Rust.
+#[wasm_bindgen]
+pub fn exercise_rich_clipboard(input: &str) -> Result<String, JsValue> {
+    crate::rich_clipboard_fixture::exercise(input).map_err(js_error)
+}
+
+/// Run actual axis additions and merge-aware navigation in Rust.
+#[wasm_bindgen]
+pub fn exercise_rich_navigation(input: &str) -> Result<String, JsValue> {
+    crate::rich_navigation_fixture::exercise(input).map_err(js_error)
+}
+
 /// Resolve a bounded research selection fixture against its admitted rich AST.
 #[wasm_bindgen]
 pub fn resolve_rich_selection(input: &str, selection: &str) -> Result<String, JsValue> {

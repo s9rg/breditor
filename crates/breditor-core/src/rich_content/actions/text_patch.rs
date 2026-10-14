@@ -14,7 +14,7 @@ pub(super) struct TextPatch {
     pub(super) map: RichTextMap,
 }
 
-pub(super) fn fragment(node: &NodeRef) -> Result<TextFragment, RichActionError> {
+pub(crate) fn fragment(node: &NodeRef) -> Result<TextFragment, RichActionError> {
     let element = node
         .as_element()
         .filter(|node| matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading"))
@@ -31,7 +31,7 @@ pub(super) fn fragment(node: &NodeRef) -> Result<TextFragment, RichActionError> 
     .map_err(|_| RichActionError::TextPrimitive)
 }
 
-pub(super) fn block_node<'a>(
+pub(crate) fn block_node<'a>(
     document: &'a RichDocument,
     block: &BlockId,
 ) -> Result<&'a NodeRef, RichActionError> {
@@ -41,7 +41,7 @@ pub(super) fn block_node<'a>(
         .ok_or(RichActionError::MissingTarget)
 }
 
-pub(super) fn text_node(source: &NodeRef, text: &TextFragment) -> Result<NodeRef, RichActionError> {
+pub(crate) fn text_node(source: &NodeRef, text: &TextFragment) -> Result<NodeRef, RichActionError> {
     Ok(NodeRef::element(
         source
             .as_element()
