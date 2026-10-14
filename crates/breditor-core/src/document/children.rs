@@ -38,6 +38,11 @@ impl Children {
         self.0.to_vec()
     }
 
+    #[cfg(feature = "experimental-rich-content")]
+    pub(crate) fn as_slice(&self) -> &[NodeRef] {
+        &self.0
+    }
+
     pub(crate) fn try_from_nodes(nodes: Vec<NodeRef>) -> Result<Self, LocalInvariantError> {
         for (left_index, pair) in nodes.windows(2).enumerate() {
             if let (Some(left), Some(right)) = (pair[0].as_text(), pair[1].as_text())

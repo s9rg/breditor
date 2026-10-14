@@ -34,7 +34,7 @@ impl RichTextMap {
         })
     }
 
-    fn offset(
+    pub(super) fn offset(
         &self,
         offset: TextOffset,
         affinity: Affinity,
@@ -59,25 +59,108 @@ impl RichTextMap {
     }
 }
 
-pub(super) fn map_text(
-    old: &ElementNode,
-    new: &ElementNode,
-    point: &RichTextPoint,
-    maps: &[RichTextMap],
-) -> Result<RichTextPoint, RichSelectionError> {
-    let mut current = old;
-    let mut offset = point.offset();
-    for map in maps.iter().filter(|map| &map.block == point.block()) {
-        let before = map.before.as_element().ok_or(RichSelectionError::Invariant)?;
-        let after = map.after.as_element().ok_or(RichSelectionError::Invariant)?;
-        if !same_text(current, before) {
-            return Err(RichSelectionError::TextChanged);
+/// Witnessed split/join relation; inverse direction retains all original rich runs.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RichBoundaryMap {
+    pub(crate) left: BlockId,
+    pub(crate) right: BlockId,
+    pub(crate) offset: TextOffset,
+    pub(crate) joined: NodeRef,
+    pub(crate) left_node: NodeRef,
+    pub(crate) right_node: NodeRef,
+    pub(crate) splitting: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum RichPositionMap {
+    Text(RichTextMap),
+    Boundary(RichBoundaryMap),
+}
+
+impl RichPositionMap {
+    pub(crate) fn inverse(&self) -> Result<Self, RichSelectionError> {
+        match self {
+            Self::Text(map) => Ok(Self::Text(map.inverse()?)),
+            Self::Boundary(map) => {
+                let mut inverse = map.clone();
+                inverse.splitting = !inverse.splitting;
+                Ok(Self::Boundary(inverse))
+            }
         }
-        offset = map.offset(offset, point.affinity())?;
-        current = after;
     }
-    if !same_text(current, new) {
-        return Err(RichSelectionError::TextChanged);
+}
+
+fn element(node: &NodeRef) -> Result<&ElementNode, RichSelectionError> {
+    node.as_element().ok_or(RichSelectionError::Invariant)
+}
+
+fn boundary<'a>(
+    map: &'a RichBoundaryMap,
+    point: &RichTextPoint,
+) -> Result<Option<(RichTextPoint, &'a ElementNode, &'a ElementNode)>, RichSelectionError> {
+    if map.splitting && point.block() == &map.left {
+        let goes_right = point.offset() > map.offset
+            || (point.offset() == map.offset && point.affinity() == Affinity::After);
+        let (block, offset, node) = if goes_right {
+            (
+                &map.right,
+                TextOffset::try_new(point.offset().get() - map.offset.get())
+                    .map_err(|_| RichSelectionError::Offset)?,
+                &map.right_node,
+            )
+        } else {
+            (&map.left, point.offset(), &map.left_node)
+        };
+        return Ok(Some((
+            RichTextPoint::new(block.clone(), offset, point.affinity()),
+            element(&map.joined)?,
+            element(node)?,
+        )));
     }
-    Ok(RichTextPoint::new(point.block().clone(), offset, point.affinity()))
+    if !map.splitting && (point.block() == &map.left || point.block() == &map.right) {
+        let from_right = point.block() == &map.right;
+        let offset = if from_right {
+            point.offset().checked_add(map.offset.get()).map_err(|_| RichSelectionError::Offset)?
+        } else {
+            point.offset()
+        };
+        return Ok(Some((
+            RichTextPoint::new(map.left.clone(), offset, point.affinity()),
+            element(if from_right { &map.right_node } else { &map.left_node })?,
+            element(&map.joined)?,
+        )));
+    }
+    Ok(None)
+}
+
+pub(super) fn map_text<'a>(
+    old: &'a ElementNode,
+    point: &RichTextPoint,
+    maps: &'a [RichPositionMap],
+) -> Result<(RichTextPoint, &'a ElementNode), RichSelectionError> {
+    let mut current = old;
+    let mut point = point.clone();
+    for map in maps {
+        let update = match map {
+            RichPositionMap::Text(map) if &map.block == point.block() => Some((
+                RichTextPoint::new(
+                    point.block().clone(),
+                    map.offset(point.offset(), point.affinity())?,
+                    point.affinity(),
+                ),
+                element(&map.before)?,
+                element(&map.after)?,
+            )),
+            RichPositionMap::Boundary(map) => boundary(map, &point)?,
+            RichPositionMap::Text(_) => None,
+        };
+        if let Some((mapped, before, after)) = update {
+            if !same_text(current, before) {
+                return Err(RichSelectionError::TextChanged);
+            }
+            point = mapped;
+            current = after;
+        }
+    }
+    Ok((point, current))
 }

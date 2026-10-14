@@ -4,7 +4,7 @@ use super::{
     BlockId, CellId, RichDocument, RichSelection, RichSelectionError, RichSelectionKind,
     RichTableView, RichTextPoint,
     rich_selection::{block, text_length},
-    rich_text_mapping::{RichTextMap, map_text},
+    rich_text_mapping::{RichPositionMap, map_text},
 };
 use crate::{
     document::{ElementNode, NodeRef},
@@ -128,22 +128,28 @@ fn same_selection_kind(left: &ElementNode, right: &ElementNode) -> bool {
     let text_kind = |node: &ElementNode| {
         matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading")
     };
-    left.kind() == right.kind() || (text_kind(left) && text_kind(right))
+    let list_kind = |node: &ElementNode| {
+        matches!(node.kind().as_str(), "breditor/bullet-list" | "breditor/ordered-list")
+    };
+    left.kind() == right.kind()
+        || (text_kind(left) && text_kind(right))
+        || (list_kind(left) && list_kind(right))
 }
 
 fn move_text(
     before: &RichDocument,
     after: &RichDocument,
     point: &RichTextPoint,
-    maps: &[RichTextMap],
+    maps: &[RichPositionMap],
 ) -> Result<Result<RichTextPoint, RichSelectionLoss>, RichSelectionError> {
     let old = block(before, point.block())?;
-    if after.block_path(point.block()).is_some() {
-        let new = block(after, point.block())?;
-        if !same_selection_kind(old, new) {
+    let (mapped, witness) = map_text(old, point, maps)?;
+    if after.block_path(mapped.block()).is_some() {
+        let new = block(after, mapped.block())?;
+        if !same_selection_kind(old, new) || !same_text(witness, new) {
             return Err(RichSelectionError::TextChanged);
         }
-        return Ok(Ok(map_text(old, new, point, maps)?));
+        return Ok(Ok(mapped));
     }
     let Some(cell) = owning_cell(before, point.block()) else {
         return Ok(Err(RichSelectionLoss::TargetDeleted));
@@ -202,7 +208,7 @@ pub(crate) fn rebase_with_text_maps(
     before: &RichDocument,
     after: &RichDocument,
     selection: &RichSelection,
-    maps: &[RichTextMap],
+    maps: &[RichPositionMap],
 ) -> Result<RichSelectionMapping, RichSelectionError> {
     selection.resolve(before)?;
     if before.id() != after.id()

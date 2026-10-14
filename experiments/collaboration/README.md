@@ -145,24 +145,39 @@ coalescing equal-format runs. `set_heading.rs` converts paragraphs/headings or
 changes rank while preserving the block ID, text, formats and logical selection.
 Parent admission keeps captions paragraph-only.
 
-Text edits retain witnessed before/after block content and exact splice maps.
-Edit/group selection mapping composes those maps in authored order and validates
+Paragraph split/join and rich list wrap/unwrap, kind changes, indent/outdent and
+item split/join preserve stable IDs, formats and media ordering. Partial list
+extraction retains explicit suffix IDs and ordered-list starts. Fragment
+insertion/replacement accepts rich block drafts rather than flattening content.
+
+Text and boundary edits retain witnessed before/after content and exact maps.
+Edit/group selection mapping composes those maps in authored order, including
+changes of text-block identity, and validates
 the resulting scalar positions against the final tree. Direct structural rebasing
 still rejects changed text without the required witnesses. Deleted positions
 cannot be recovered by guessing an inverse offset; history retains both selections.
 
 `RichLocalSession` is the exclusive runtime owner of rich content, logical
-selection, publication revision and bounded chronological history. One dispatch
+selection, pending caret formats, publication revision and bounded chronological history. One dispatch
 is one explicit undo unit. Publication requires a current, same-owner opaque
 snapshot; stale work is rejected even for no-ops. Failed actions, selection
-updates and replay publish no partial state. Selection-only publication creates
-no undo entry and preserves redo; a new content group branches history.
+updates and replay publish no partial state. Selection/typing-state publication
+creates no undo entry and preserves redo; a new content group branches history.
+Groups whose final content and metadata are unchanged are true no-ops.
 Undo/redo re-executes the guarded recipes, verifies the exact resulting AST and
-restores saved selection values instead of reverse deletion fallback.
+restores saved selection and pending-format values instead of reverse deletion
+fallback. Plain typing derives formats from caret affinity unless an explicit
+pending override is present; an empty override means plain text.
+
+Typed multicell paste replaces independent base-cell bodies, with explicit
+header and relative merge intent, over an exactly matching merge-closed target.
+Grid clearing uses explicitly owned empty-block IDs and retains geometry and
+headers. Both operations have exact local inverses; these are core primitives,
+not a browser clipboard codec or controller.
 
 This owner is single-user runtime history, not durable restart or collaborative
-selective undo. Rich session codecs, typing-group policy, pending caret formats,
-cross-block/list planners and multicell paste remain implementation work.
+selective undo. Durable rich session codecs, typing-group policy, arbitrary
+cross-block text replacement and browser command integration remain implementation work.
 
 ## Rich selection contracts
 
@@ -204,10 +219,12 @@ On October 13, 2026, the reproducible script passed:
   schedules, merge closure, deleted-caret fallback and exact inverse bytes.
 - 13 functional table/image workflows covering whole-node CRUD, moves,
   merge/split/header, captions, asset replacement and mixed group undo/redo.
-- 12 rich text/runtime-owner workflows covering cell/caption edits, formatting,
-  heading conversion, witnessed maps, grouped history and exact saved selections.
+- 16 rich text/runtime-owner workflows covering cell/caption edits, formatting,
+  heading conversion, witnessed maps, grouped history, pending formats and exact saved selections.
+- 16 rich flow/list/fragment and multicell paste/clear workflows, including media
+  ordering, partial numbered-list extraction and exact local inverses.
 - 27 native collaboration/history contracts.
-- 60 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- 66 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
@@ -219,9 +236,12 @@ On October 13, 2026, the reproducible script passed:
 - A real six-action rich local-owner group with cell/caption typing, formatting,
   heading conversion, header and resize; moved selections, exact undo/redo,
   no-op redo preservation and stale queued-work rejection match native/Wasm.
+- A ten-group rich paragraph/list/media workflow and independent multicell
+  paste/clear workflows match native/Wasm, including caret identity changes,
+  pending formats, complete undo/redo and retained source-cell partitions.
 
-The tested fixture Wasm is 5,865,492 bytes, or 1,634,306 bytes under gzip, with
-SHA-256 `54f339665cf38c1b1fbbfd048e3cdad441fdb1a4af200382cc8d296180e095e3`.
+The tested fixture Wasm is 6,001,848 bytes, or 1,674,889 bytes under gzip, with
+SHA-256 `45e6cc6647a990590b7285334ab6fb68d01ea88e1839d8527f8c0f98bf3cd0a0`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -240,9 +260,10 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Remaining rich-AST work includes cross-block/list editing, pending caret formats,
-multicell paste and durable rich history/recipes. Shared tree/AST
-materialization, toolbar/input/clipboard,
+Remaining rich-AST work includes durable rich history/recipes, arbitrary
+cross-block text replacement, grid navigation and structured clipboard
+interchange with fresh-ID allocation. Shared tree/AST
+materialization, toolbar/input/clipboard controllers,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.

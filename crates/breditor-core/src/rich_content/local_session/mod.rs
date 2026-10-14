@@ -6,9 +6,12 @@
 mod dispatch;
 mod error;
 mod history_entry;
+mod insert_plain_text;
 mod redo;
+mod set_pending_formats;
 mod snapshot;
 mod state;
+mod typing_state;
 mod undo;
 
 pub use error::RichLocalSessionError;
@@ -32,6 +35,15 @@ pub enum RichSelectionUpdate {
     Set(Option<RichSelectionKind>),
 }
 
+/// Explicit pending typing-format policy for a complete atomic rich dispatch.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RichPendingFormatsUpdate {
+    /// Retain formats only through the mapped same-block/same-kind effective caret.
+    Map,
+    /// Validate and set these formats at the resulting caret, or clear derivation override.
+    Set(Option<crate::document::FormatSet>),
+}
+
 /// Observable publication outcome; no-op work changes neither revision nor history.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RichLocalOutcome {
@@ -39,6 +51,8 @@ pub enum RichLocalOutcome {
     Unchanged,
     /// Only selection changed; no undo entry was created or redo branch discarded.
     SelectionOnly,
+    /// Only pending typing state changed; no content undo or redo branch was altered.
+    TypingStateOnly,
     /// One complete content group and its exact selection/history values were published.
     ContentCommitted,
     /// One exact retained group was undone.
@@ -84,7 +98,7 @@ impl RichLocalSession {
         selection: Option<RichSelectionKind>,
         capacity: HistoryCapacity,
     ) -> Result<Self, RichLocalSessionError> {
-        let state = RichLocalState::try_new(&context, document, selection, Revision::ZERO)?;
+        let state = RichLocalState::try_new(&context, document, selection, None, Revision::ZERO)?;
         Ok(Self { context, state, entries: vec![], cursor: 0, capacity, token: Arc::new(()) })
     }
     /// Current admitted immutable document, selection and publication revision.

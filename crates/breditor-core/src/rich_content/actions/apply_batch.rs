@@ -21,14 +21,12 @@ impl RichBatchEdit {
         selection: &crate::rich_content::RichSelection,
     ) -> Result<crate::rich_content::RichSelectionMapping, crate::rich_content::RichSelectionError>
     {
-        let maps = self
-            .inverse
-            .iter()
-            .rev()
-            .filter_map(|inverse| {
-                inverse.text_map().map(crate::rich_content::rich_text_mapping::RichTextMap::inverse)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut maps = Vec::new();
+        for inverse in self.inverse.iter().rev() {
+            if let Some(map) = inverse.inverse_position_map()? {
+                maps.push(map);
+            }
+        }
         crate::rich_content::rich_selection_mapping::rebase_with_text_maps(
             &self.before,
             &self.document,

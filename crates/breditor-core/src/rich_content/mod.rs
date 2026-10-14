@@ -12,6 +12,7 @@ mod flow_position;
 mod identity;
 mod image_binding;
 mod image_draft;
+mod list_draft;
 mod local_session;
 mod rich_document;
 mod rich_grid_selection;
@@ -20,14 +21,16 @@ mod rich_selection_mapping;
 mod rich_text_mapping;
 mod table_draft;
 mod table_geometry;
+mod table_paste_draft;
 
 pub use ast_properties::{RichColumn, RichTableView};
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use flow_position::{RichFlowParent, RichFlowPosition};
 pub use image_draft::ImageDraft;
+pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use local_session::{
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
-    RichSelectionUpdate,
+    RichPendingFormatsUpdate, RichSelectionUpdate,
 };
 pub use rich_document::{RichDocument, RichDocumentError};
 pub use rich_grid_selection::ResolvedRichGrid;
@@ -38,6 +41,7 @@ pub use rich_selection_mapping::{
     RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
 };
 pub use table_draft::TableDraft;
+pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerge};
 
 pub use identity::{
     AssetGeneration, AssetId, BlockId, CellId, ChangeId, ColumnId, DocumentId, ImageId, MergeId,

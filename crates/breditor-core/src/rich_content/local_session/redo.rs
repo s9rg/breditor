@@ -31,6 +31,7 @@ impl RichLocalSession {
             &self.context,
             edit.into_parts().0,
             entry.after.selection.as_ref().map(|selection| selection.kind().clone()),
+            entry.after.pending_formats.clone(),
             self.state.revision.successor()?,
         )?;
         self.cursor += 1;

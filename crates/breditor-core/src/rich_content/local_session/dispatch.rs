@@ -2,7 +2,7 @@
 
 use super::{
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
-    RichSelectionUpdate, history_entry::RichHistoryEntry,
+    RichPendingFormatsUpdate, RichSelectionUpdate, history_entry::RichHistoryEntry,
 };
 use crate::rich_content::{
     RichSelection, RichSelectionKind,
@@ -24,6 +24,25 @@ impl RichLocalSession {
         actions: &[RichAction],
         selection_update: RichSelectionUpdate,
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
+        self.dispatch_with_pending_formats(
+            snapshot,
+            actions,
+            selection_update,
+            RichPendingFormatsUpdate::Map,
+        )
+    }
+
+    /// Publish one complete content/selection/typing-state group, with explicit pending-format policy.
+    ///
+    /// # Errors
+    /// Rejects stale observations, failed actions, invalid final selections/formats or revision overflow.
+    pub fn dispatch_with_pending_formats(
+        &mut self,
+        snapshot: &RichLocalSnapshot,
+        actions: &[RichAction],
+        selection_update: RichSelectionUpdate,
+        pending_update: RichPendingFormatsUpdate,
+    ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
         let edit = apply_batch(&self.context, &self.state.document, actions)?;
         let document = edit
@@ -38,15 +57,39 @@ impl RichLocalSession {
                 _ => self.state.selection.clone(),
             },
         };
-        if edit.is_none() && selection == self.state.selection {
+        let pending_formats = match pending_update {
+            RichPendingFormatsUpdate::Set(formats) => formats,
+            RichPendingFormatsUpdate::Map => super::typing_state::mapped(
+                &self.state,
+                &document,
+                selection.as_ref(),
+                edit.as_ref(),
+            ),
+        };
+        super::typing_state::validate(&self.context, selection.as_ref(), pending_formats.as_ref())?;
+        let content_changed = document.document() != self.state.document.document();
+        if !content_changed
+            && selection == self.state.selection
+            && pending_formats == self.state.pending_formats
+        {
             return Ok(RichLocalOutcome::Unchanged);
         }
-        let candidate =
-            RichLocalState { document, selection, revision: self.state.revision.successor()? };
-        let Some(edit) = edit else {
-            self.publish(candidate);
-            return Ok(RichLocalOutcome::SelectionOnly);
+        let selection_changed = selection != self.state.selection;
+        let candidate = RichLocalState {
+            document,
+            selection,
+            pending_formats,
+            revision: self.state.revision.successor()?,
         };
+        if !content_changed {
+            self.publish(candidate);
+            return Ok(if selection_changed {
+                RichLocalOutcome::SelectionOnly
+            } else {
+                RichLocalOutcome::TypingStateOnly
+            });
+        }
+        let edit = edit.ok_or(RichLocalSessionError::HistoryMismatch)?;
         let inverse = edit.into_parts().1;
         let entry = RichHistoryEntry {
             before: self.state.clone(),

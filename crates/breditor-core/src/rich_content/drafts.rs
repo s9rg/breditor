@@ -15,6 +15,18 @@ use std::collections::BTreeMap;
 /// Why an insertion draft cannot represent the declared structural shape.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum RichDraftError {
+    /// A rectangular paste or relative merge has invalid bounds, overlap or dimensions.
+    #[error("rich table paste must have bounded rectangular bodies and disjoint relative merges")]
+    PasteShape,
+    /// A rich list must contain at least one explicit item.
+    #[error("rich list draft must contain at least one item")]
+    EmptyList,
+    /// A list/item kind or its leading text shape is invalid.
+    #[error("rich list item must begin with a paragraph or heading")]
+    ListShape,
+    /// Numbered starts/tails must remain within the positive ordinal contract.
+    #[error("rich numbered list ordinal exceeds its checked contract")]
+    ListOrdinal,
     /// A cell needs one or more flow blocks, never a raw text leaf.
     #[error("a cell draft must contain at least one flow block")]
     EmptyCell,

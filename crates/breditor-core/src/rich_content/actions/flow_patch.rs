@@ -28,6 +28,26 @@ fn node_at_parent<'a>(
 }
 
 impl FlowPatch {
+    pub(super) fn rewrite_children(
+        document: &RichDocument,
+        parent: &RichFlowParent,
+        children: Vec<NodeRef>,
+    ) -> Result<Self, RichActionError> {
+        let expected = node_at_parent(document, parent)?;
+        let replacement = NodeRef::element(
+            expected
+                .as_element()
+                .ok_or(RichActionError::Rewrite)?
+                .try_with_children(children)
+                .map_err(|_| RichActionError::Rewrite)?,
+        );
+        Ok(Self {
+            scope: DocumentGuard::capture(document),
+            parent: parent.clone(),
+            expected: expected.clone(),
+            replacement,
+        })
+    }
     pub(super) fn insert(
         document: &RichDocument,
         position: &RichFlowPosition,

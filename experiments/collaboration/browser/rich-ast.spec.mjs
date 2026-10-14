@@ -79,6 +79,61 @@ test("real Rust rich owner groups typing formatting caption header resize and ex
   expect(cell.children[1].children[0].children[0].text).toBe("Caption 🙂");
 });
 
+test("rich paragraph list media and pending-format workflows replay exactly through the Rust owner", async ({ page }) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const { exercise_rich_flow } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    return { actual: JSON.parse(exercise_rich_flow(vector.rich_local_input)), expected: vector.rich_flow_expected };
+  });
+  expect(result.actual).toEqual(result.expected);
+  expect(result.actual.steps.map(step => step.name)).toEqual([
+    "split_paragraph", "join_paragraph", "insert_fragment", "wrap_rich_list", "indent_items",
+    "outdent_items", "split_item", "join_item", "partial_unlist", "pending_plain_typing",
+  ]);
+  const steps = Object.fromEntries(result.actual.steps.map(step => [step.name, step]));
+  expect(steps.split_paragraph.selection.kind.focus).toMatchObject({ block: "paragraph-right", offset: 2 });
+  expect(steps.join_paragraph.selection.kind.focus).toMatchObject({ block: "p", offset: 3 });
+  expect(steps.split_item.selection.kind.focus).toMatchObject({ block: "item-right", offset: 2 });
+  expect(steps.join_item.selection.kind.focus).toMatchObject({ block: "p", offset: 3 });
+  const partial = JSON.parse(steps.partial_unlist.document).root.children[0].children[0].children[0].children;
+  expect(partial.map(node => node.properties["breditor/block-id"])).toEqual(["list", "q", "suffix"]);
+  expect(partial[2].properties["breditor/start"]).toBe(5);
+  expect(result.actual.final.pending).toEqual([]);
+  expect(result.actual.undone.document).toBe(result.actual.initial.document);
+  expect(result.actual.undone.selection).toEqual(result.actual.initial.selection);
+  expect(result.actual.redone.document).toBe(result.actual.final.document);
+  expect(result.actual.redone.selection).toEqual(result.actual.final.selection);
+  expect(result.actual.redone.pending).toEqual([]);
+  expect(result.actual).toMatchObject({ undo_depth: 10, redo_depth: 0, revision: "31" });
+});
+
+test("rich table paste and cut-like clearing retain source partitions geometry and exact inverses", async ({ page }) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const { exercise_rich_paste } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    return { actual: JSON.parse(exercise_rich_paste(vector.rich_ast_input)), expected: vector.rich_paste_expected };
+  });
+  expect(result.actual).toEqual(result.expected);
+  const [paste, clear] = result.actual.cases;
+  for (const value of result.actual.cases) {
+    expect(value.undone).toBe(result.actual.initial);
+    expect(value.redone).toBe(value.changed);
+  }
+  expect(paste.view.tables[0].active).toEqual(["pasted-merge"]);
+  expect(paste.view.tables[0].cells[0].sources).toHaveLength(2);
+  expect(paste.view.tables[0].cells[2].sources).toHaveLength(1);
+  expect(paste.view.cells).toHaveLength(4);
+  expect(paste.view.images[0]).toMatchObject({ id: "pasted-image", asset: "pasted-asset" });
+  expect(paste.text.kind.focus).toMatchObject({ block: "paste-11", offset: 0 });
+  expect(clear.view.tables[0].active).toEqual(["merge-one"]);
+  expect(clear.view.tables[0].cells[0].sources).toHaveLength(4);
+  expect(clear.view.images).toEqual([]);
+  expect(clear.text.kind.focus).toMatchObject({ block: "empty-11", offset: 0 });
+  expect(clear.grid.resolved.cells).toHaveLength(4);
+});
+
 test("native and Wasm rich local action groups undo and redo exact document bytes", async ({ page }) => {
   await ready(page);
   const result = await page.evaluate(async () => {

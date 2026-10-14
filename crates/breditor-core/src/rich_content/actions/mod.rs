@@ -6,23 +6,37 @@
 //! and sending a root AST replacement to collaborators is never permitted.
 
 mod apply_batch;
+mod boundary_patch;
+mod branch_patch;
+mod clear_table_cells;
 mod delete_image;
 mod delete_table;
 mod delete_table_column;
 mod delete_table_row;
 mod delete_text;
 mod flow_patch;
+mod flow_siblings;
 mod guard;
+mod indent_list_items;
+mod insert_blocks;
 mod insert_image;
 mod insert_table;
 mod insert_table_column;
 mod insert_table_row;
 mod insert_text;
+mod join_list_items;
+mod join_text_blocks;
+mod list_boundary_patch;
+mod list_helpers;
+mod list_parts;
 mod merge_table_cells;
 mod move_axis;
 mod move_table_column;
 mod move_table_row;
 mod node_patch;
+mod outdent_list_items;
+mod paste_table_cells;
+mod replace_blocks;
 mod replace_image;
 mod replace_text;
 mod resize_image;
@@ -32,26 +46,40 @@ mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
 mod set_inline_format;
+mod set_list_kind;
 mod set_table_header;
+mod split_list_item;
 mod split_table_cell;
+mod split_text_block;
+mod table_body_rewrite;
 mod table_merges;
 mod table_patch;
 mod text_patch;
+mod unwrap_list;
+mod wrap_list;
 
 pub use apply_batch::{RichBatchEdit, apply_batch};
+pub use clear_table_cells::ClearTableCells;
 pub use delete_image::DeleteImage;
 pub use delete_table::DeleteTable;
 pub use delete_table_column::DeleteTableColumn;
 pub use delete_table_row::DeleteTableRow;
 pub use delete_text::DeleteText;
+pub use indent_list_items::IndentListItems;
+pub use insert_blocks::InsertBlocks;
 pub use insert_image::InsertImage;
 pub use insert_table::InsertTable;
 pub use insert_table_column::InsertTableColumn;
 pub use insert_table_row::InsertTableRow;
 pub use insert_text::InsertText;
+pub use join_list_items::JoinListItems;
+pub use join_text_blocks::JoinTextBlocks;
 pub use merge_table_cells::MergeTableCells;
 pub use move_table_column::MoveTableColumn;
 pub use move_table_row::MoveTableRow;
+pub use outdent_list_items::OutdentListItems;
+pub use paste_table_cells::PasteTableCells;
+pub use replace_blocks::ReplaceBlocks;
 pub use replace_image::ReplaceImage;
 pub use replace_text::ReplaceText;
 pub use resize_image::ResizeImage;
@@ -60,8 +88,13 @@ pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
 pub use set_inline_format::{RichFormatChange, SetInlineFormat};
+pub use set_list_kind::SetListKind;
 pub use set_table_header::SetTableHeader;
+pub use split_list_item::SplitListItem;
 pub use split_table_cell::SplitTableCell;
+pub use split_text_block::SplitTextBlock;
+pub use unwrap_list::UnwrapList;
+pub use wrap_list::WrapList;
 
 use super::{RichDocument, RichDocumentError};
 use crate::{schema::ValidationReport, state::EditorContext};
@@ -69,6 +102,32 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Replace a matching rich cell rectangle and translated non-destructive merge intent.
+    PasteTableCells(PasteTableCells),
+    /// Clear selected base bodies with explicit empty-block IDs, retaining geometry and headers.
+    ClearTableCells(ClearTableCells),
+    /// Insert an explicitly identified rich flow fragment in stable sibling space.
+    InsertBlocks(InsertBlocks),
+    /// Replace/remove an ordered rich flow range without flattening media or structure.
+    ReplaceBlocks(ReplaceBlocks),
+    /// Indent a contiguous range of rich list items without changing their bodies.
+    IndentListItems(IndentListItems),
+    /// Promote nested items or unlist a top-level item range, preserving order and ordinals.
+    OutdentListItems(OutdentListItems),
+    /// Split an item's leading text, moving its tail into one explicitly identified new item.
+    SplitListItem(SplitListItem),
+    /// Join adjacent items without placing later text before earlier rich content.
+    JoinListItems(JoinListItems),
+    /// Wrap a rich flow range without flattening media or nested bodies.
+    WrapList(WrapList),
+    /// Remove one list layer, retaining every item's full rich body.
+    UnwrapList(UnwrapList),
+    /// Change one stable list's bullet/numbered style or start.
+    SetListKind(SetListKind),
+    /// Split one rich text block with an explicit fresh right-block identity.
+    SplitTextBlock(SplitTextBlock),
+    /// Join two adjacent rich text blocks, retaining the left identity.
+    JoinTextBlocks(JoinTextBlocks),
     /// Convert a text block to a paragraph or ranked heading, preserving its identity.
     SetHeading(SetHeading),
     /// Insert canonical text at a stable rich text position.
@@ -118,13 +177,25 @@ pub enum RichAction {
 }
 
 impl RichAction {
-    fn text_map(&self) -> Option<&super::rich_text_mapping::RichTextMap> {
-        match self {
-            Self::InsertText(action) => Some(&action.patch.map),
-            Self::DeleteText(action) => Some(&action.patch.map),
-            Self::ReplaceText(action) => Some(&action.patch.map),
+    fn inverse_position_map(
+        &self,
+    ) -> Result<Option<super::rich_text_mapping::RichPositionMap>, super::RichSelectionError> {
+        use super::rich_text_mapping::RichPositionMap;
+        let map = match self {
+            Self::InsertText(action) => Some(RichPositionMap::Text(action.patch.map.clone())),
+            Self::DeleteText(action) => Some(RichPositionMap::Text(action.patch.map.clone())),
+            Self::ReplaceText(action) => Some(RichPositionMap::Text(action.patch.map.clone())),
+            Self::SplitTextBlock(action) => {
+                Some(RichPositionMap::Boundary(action.patch.map.clone()))
+            }
+            Self::JoinTextBlocks(action) => {
+                Some(RichPositionMap::Boundary(action.patch.map.clone()))
+            }
+            Self::SplitListItem(action) => action.patch.map.clone().map(RichPositionMap::Boundary),
+            Self::JoinListItems(action) => action.patch.map.clone().map(RichPositionMap::Boundary),
             _ => None,
-        }
+        };
+        map.map(|map| map.inverse()).transpose()
     }
     /// Apply a captured guarded action to an immutable rich snapshot.
     ///
@@ -137,6 +208,19 @@ impl RichAction {
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
         match self {
+            Self::PasteTableCells(action) => action.apply(context, document),
+            Self::ClearTableCells(action) => action.apply(context, document),
+            Self::InsertBlocks(action) => action.apply(context, document),
+            Self::ReplaceBlocks(action) => action.apply(context, document),
+            Self::IndentListItems(action) => action.apply(context, document),
+            Self::OutdentListItems(action) => action.apply(context, document),
+            Self::SplitListItem(action) => action.apply(context, document),
+            Self::JoinListItems(action) => action.apply(context, document),
+            Self::WrapList(action) => action.apply(context, document),
+            Self::UnwrapList(action) => action.apply(context, document),
+            Self::SetListKind(action) => action.apply(context, document),
+            Self::SplitTextBlock(action) => action.apply(context, document),
+            Self::JoinTextBlocks(action) => action.apply(context, document),
             Self::SetHeading(action) => action.apply(context, document),
             Self::InsertText(action) => action.apply(context, document),
             Self::DeleteText(action) => action.apply(context, document),
@@ -181,13 +265,7 @@ impl RichEdit {
         &self,
         selection: &super::RichSelection,
     ) -> Result<super::RichSelectionMapping, super::RichSelectionError> {
-        let maps = self
-            .inverse
-            .text_map()
-            .map(super::rich_text_mapping::RichTextMap::inverse)
-            .transpose()?
-            .into_iter()
-            .collect::<Vec<_>>();
+        let maps = self.inverse.inverse_position_map()?.into_iter().collect::<Vec<_>>();
         super::rich_selection_mapping::rebase_with_text_maps(
             &self.before,
             &self.document,
@@ -215,6 +293,18 @@ impl RichEdit {
 /// Payload-free failure of a captured local rich-content action.
 #[derive(Debug, thiserror::Error)]
 pub enum RichActionError {
+    /// Pasted body dimensions or replacement-ID counts do not match the complete target grid.
+    #[error("rich table paste dimensions must exactly match the target grid")]
+    PasteShape,
+    /// A selected first item has no preceding parent for indentation.
+    #[error("rich list item has no preceding indentation target")]
+    ListBoundary,
+    /// The target is not a valid ordered list/item range or required list shape.
+    #[error("rich list action target or item shape differs")]
+    ListShape,
+    /// Flow boundaries must be ordered direct siblings in the required adjacency.
+    #[error("rich flow boundaries must be ordered direct siblings")]
+    FlowRange,
     /// The target is not an admitted paragraph or heading text container.
     #[error("rich text action requires a paragraph or heading")]
     TextTarget,

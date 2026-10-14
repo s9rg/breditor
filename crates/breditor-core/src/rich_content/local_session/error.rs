@@ -3,6 +3,15 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// Pending typing formats/plain typing require one collapsed text caret.
+    #[error("rich typing state requires one collapsed text caret")]
+    TypingCaret,
+    /// Pending formats exceed an independent active format/property resource ceiling.
+    #[error("rich pending formats exceed active resource limits")]
+    TypingLimit,
+    /// A format fails the same compiled property/admission contract as document text.
+    #[error(transparent)]
+    Validation(#[from] crate::schema::ValidationReport),
     /// The observation belongs to an earlier publication or another live owner.
     #[error("rich local publication observation is stale or foreign")]
     StaleSnapshot,

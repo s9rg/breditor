@@ -71,6 +71,18 @@ pub fn exercise_rich_local_session(input: &str) -> Result<String, JsValue> {
     crate::rich_local_fixture::exercise(input).map_err(js_error)
 }
 
+/// Run rich paragraph/list/media history and pending caret formatting in Rust.
+#[wasm_bindgen]
+pub fn exercise_rich_flow(input: &str) -> Result<String, JsValue> {
+    crate::rich_flow_fixture::exercise(input).map_err(js_error)
+}
+
+/// Run rich multicell paste/clear and source-preserving merge geometry in Rust.
+#[wasm_bindgen]
+pub fn exercise_rich_paste(input: &str) -> Result<String, JsValue> {
+    crate::rich_paste_fixture::exercise(input).map_err(js_error)
+}
+
 /// Resolve a bounded research selection fixture against its admitted rich AST.
 #[wasm_bindgen]
 pub fn resolve_rich_selection(input: &str, selection: &str) -> Result<String, JsValue> {

@@ -13,7 +13,7 @@ use breditor_core::{
         RichSelectionUpdate, RichTextPoint, RowId, TableId,
         actions::{
             DeleteText, InsertText, ReplaceText, ResizeImage, RichAction, RichFormatChange,
-            SetHeading, SetInlineFormat, SetTableHeader, apply_batch,
+            SetHeading, SetInlineFormat, SetTableHeader, SplitTextBlock, apply_batch,
         },
     },
     schema::{CompiledSchema, DocumentLimits, SchemaId, SchemaVersion},
@@ -491,5 +491,132 @@ fn one_mixed_rich_dispatch_owns_cell_caption_header_resize_and_exact_selection_h
     owner.redo(&owner.snapshot())?;
     assert_eq!(bytes(&context, owner.state().document())?, changed);
     assert_eq!(owner.state().selection().ok_or("text")?.kind(), &after_selection);
+    Ok(())
+}
+
+#[test]
+fn explicit_plain_pending_formats_drive_typing_and_survive_exact_undo_redo() -> TestResult {
+    let context = context()?;
+    let original = original(&context)?;
+    let mut owner = RichLocalSession::try_new(
+        context.clone(),
+        original.clone(),
+        Some(caret("p", 1, Affinity::Before)?),
+        HistoryCapacity::default(),
+    )?;
+    assert!(!owner.state().effective_caret_formats()?.is_empty());
+    assert_eq!(
+        owner.set_pending_formats(&owner.snapshot(), Some(FormatSet::default()))?,
+        RichLocalOutcome::TypingStateOnly
+    );
+    assert_eq!(owner.undo_depth(), 0);
+    owner.insert_plain_text(&owner.snapshot(), "X")?;
+    assert_eq!(offset(owner.state().selection().ok_or("caret")?)?, (2, 2));
+    assert!(owner.state().pending_formats().ok_or("explicit plain")?.is_empty());
+    let first = bytes(&context, owner.state().document())?;
+    owner.insert_plain_text(&owner.snapshot(), "Y")?;
+    assert_eq!(content(&context, owner.state().document(), "p")?, "aXY🙂b");
+    owner.undo(&owner.snapshot())?;
+    assert_eq!(bytes(&context, owner.state().document())?, first);
+    assert!(owner.state().pending_formats().ok_or("pending")?.is_empty());
+    owner.undo(&owner.snapshot())?;
+    assert_eq!(bytes(&context, owner.state().document())?, bytes(&context, &original)?);
+    assert!(owner.state().pending_formats().ok_or("pending")?.is_empty());
+    owner.redo(&owner.snapshot())?;
+    assert_eq!(bytes(&context, owner.state().document())?, first);
+    assert!(owner.state().pending_formats().ok_or("pending")?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn pending_formats_clear_on_caret_context_changes_and_restore_at_history_boundaries() -> TestResult
+{
+    let context = context()?;
+    let mut owner = RichLocalSession::try_new(
+        context.clone(),
+        original(&context)?,
+        Some(caret("p", 1, Affinity::After)?),
+        HistoryCapacity::default(),
+    )?;
+    owner.set_pending_formats(&owner.snapshot(), Some(FormatSet::default()))?;
+    let split = RichAction::SplitTextBlock(SplitTextBlock::capture(
+        owner.state().document(),
+        &point("p", 1, Affinity::After)?,
+        &BlockId::try_new("right")?,
+        None,
+    )?);
+    owner.dispatch(&owner.snapshot(), &[split], RichSelectionUpdate::Map)?;
+    assert!(owner.state().pending_formats().is_none());
+    owner.undo(&owner.snapshot())?;
+    assert!(owner.state().pending_formats().is_some());
+    assert_eq!(owner.redo_depth(), 1);
+    owner.set_selection(&owner.snapshot(), Some(caret("p", 3, Affinity::After)?))?;
+    assert!(owner.state().pending_formats().is_none());
+    assert_eq!(owner.redo_depth(), 1);
+    owner.redo(&owner.snapshot())?;
+    assert!(owner.state().pending_formats().is_none());
+    Ok(())
+}
+
+#[test]
+fn pending_format_admission_rejects_unsupported_kinds_or_non_caret_context_atomically() -> TestResult
+{
+    let context = context()?;
+    let mut owner = RichLocalSession::try_new(
+        context.clone(),
+        original(&context)?,
+        Some(caret("p", 1, Affinity::After)?),
+        HistoryCapacity::default(),
+    )?;
+    let snapshot = owner.snapshot();
+    let unknown = FormatSet::try_from_formats(vec![Format::new(
+        QualifiedName::try_new("example/not-installed")?,
+        PropertyMap::default(),
+    )])?;
+    assert!(owner.set_pending_formats(&snapshot, Some(unknown)).is_err());
+    assert!(owner.state().pending_formats().is_none());
+    assert_eq!(owner.state().revision().get(), 0);
+    owner.set_selection(
+        &snapshot,
+        Some(RichSelectionKind::Node(BlockId::try_new("image-block")?)),
+    )?;
+    assert!(owner.set_pending_formats(&owner.snapshot(), Some(FormatSet::default())).is_err());
+    assert!(owner.state().pending_formats().is_none());
+    Ok(())
+}
+
+#[test]
+fn a_group_with_no_final_content_selection_or_typing_change_does_not_create_history() -> TestResult
+{
+    let context = context()?;
+    let mut owner = RichLocalSession::try_new(
+        context.clone(),
+        original(&context)?,
+        Some(caret("p", 3, Affinity::After)?),
+        HistoryCapacity::default(),
+    )?;
+    let observed = owner.snapshot();
+    let first = RichAction::InsertText(InsertText::capture(
+        owner.state().document(),
+        &point("p", 1, Affinity::After)?,
+        &fragment("X")?,
+    )?);
+    let staged = first.apply(&context, owner.state().document())?.ok_or("stage")?;
+    let second = RichAction::DeleteText(DeleteText::capture(
+        staged.document(),
+        &BlockId::try_new("p")?,
+        TextOffset::try_new(1)?,
+        TextOffset::try_new(2)?,
+    )?);
+    assert_eq!(
+        owner.dispatch(&observed, &[first, second], RichSelectionUpdate::Map)?,
+        RichLocalOutcome::Unchanged
+    );
+    assert_eq!(owner.state().revision().get(), 0);
+    assert_eq!((owner.undo_depth(), owner.redo_depth()), (0, 0));
+    assert_eq!(
+        owner.dispatch(&observed, &[], RichSelectionUpdate::Map)?,
+        RichLocalOutcome::Unchanged
+    );
     Ok(())
 }
