@@ -133,7 +133,36 @@ whether a reordered region remains valid. Merge/split retract observed
 geometrically overlapping intents, including known losing overlaps, so a split
 does not immediately revive one of them. Base-cell bodies remain unchanged.
 Asset replacement preserves the image ID, alt, size and caption; old upload
-tokens become stale. Ordinary caption typing still needs rich text actions.
+tokens become stale. Ordinary caption typing uses the rich text actions below.
+
+## Rich text editing and local owner
+
+`insert_text.rs`, `delete_text.rs` and `replace_text.rs` edit canonical fragments
+inside stable paragraphs/headings, including cells, lists and captions. Offsets
+are checked aggregate UTF-16 scalar boundaries; text and formats remain exact.
+`set_inline_format.rs` sets/removes one semantic format over a nonempty range,
+coalescing equal-format runs. `set_heading.rs` converts paragraphs/headings or
+changes rank while preserving the block ID, text, formats and logical selection.
+Parent admission keeps captions paragraph-only.
+
+Text edits retain witnessed before/after block content and exact splice maps.
+Edit/group selection mapping composes those maps in authored order and validates
+the resulting scalar positions against the final tree. Direct structural rebasing
+still rejects changed text without the required witnesses. Deleted positions
+cannot be recovered by guessing an inverse offset; history retains both selections.
+
+`RichLocalSession` is the exclusive runtime owner of rich content, logical
+selection, publication revision and bounded chronological history. One dispatch
+is one explicit undo unit. Publication requires a current, same-owner opaque
+snapshot; stale work is rejected even for no-ops. Failed actions, selection
+updates and replay publish no partial state. Selection-only publication creates
+no undo entry and preserves redo; a new content group branches history.
+Undo/redo re-executes the guarded recipes, verifies the exact resulting AST and
+restores saved selection values instead of reverse deletion fallback.
+
+This owner is single-user runtime history, not durable restart or collaborative
+selective undo. Rich session codecs, typing-group policy, pending caret formats,
+cross-block/list planners and multicell paste remain implementation work.
 
 ## Rich selection contracts
 
@@ -153,12 +182,13 @@ Deletion mapping prefers surviving original-axis neighbours. A deleted collapsed
 grid relocates both endpoints together. A text caret uses the preceding block end
 or following block start according to affinity. Hidden tables, absent neighbours
 and image-only cells without a text target produce explicit clearing reasons.
-Structural mapping rejects changed text in a surviving block; text edits need their
-own position map or causal anchors. Local history must retain before/after
+Structural-only mapping rejects changed text in a surviving block; admitted text
+edits provide their own witnessed maps and shared text needs causal anchors.
+Local history retains before/after
 selections to restore exact undo: reverse deletion fallback cannot infer the original.
 
-These are local research primitives, not collaborative inverse recipes or a
-durable rich session. The generic fingerprint-bearing Document V2 codec carries
+These are opt-in local primitives and a runtime owner, not collaborative inverse
+recipes or a durable rich session. The generic fingerprint-bearing Document V2 codec carries
 research AST fixtures only; new shipping rich-session/sync contracts remain a
 separate gate. No legacy Operation/session codec gains these action variants.
 
@@ -174,8 +204,10 @@ On October 13, 2026, the reproducible script passed:
   schedules, merge closure, deleted-caret fallback and exact inverse bytes.
 - 13 functional table/image workflows covering whole-node CRUD, moves,
   merge/split/header, captions, asset replacement and mixed group undo/redo.
+- 12 rich text/runtime-owner workflows covering cell/caption edits, formatting,
+  heading conversion, witnessed maps, grouped history and exact saved selections.
 - 27 native collaboration/history contracts.
-- 57 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- 60 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
@@ -184,9 +216,12 @@ On October 13, 2026, the reproducible script passed:
   local action/inverse/redo bytes, including all four axis edits and mapped rich
   selections and 11 whole-node/move/merge/split/header/image feature cases.
   The rich schema fingerprint has a locked vector.
+- A real six-action rich local-owner group with cell/caption typing, formatting,
+  heading conversion, header and resize; moved selections, exact undo/redo,
+  no-op redo preservation and stale queued-work rejection match native/Wasm.
 
-The tested fixture Wasm is 5,741,847 bytes, or 1,603,774 bytes under gzip, with
-SHA-256 `b85c8b271dedf7fc645421ac4278542490f0f636162df3a83bee5ddb3f3b149e`.
+The tested fixture Wasm is 5,865,492 bytes, or 1,634,306 bytes under gzip, with
+SHA-256 `54f339665cf38c1b1fbbfd048e3cdad441fdb1a4af200382cc8d296180e095e3`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -205,8 +240,8 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Remaining rich-AST work includes rich text/format/list editing, multicell paste,
-text-position maps and durable rich history/recipes. Shared tree/AST
+Remaining rich-AST work includes cross-block/list editing, pending caret formats,
+multicell paste and durable rich history/recipes. Shared tree/AST
 materialization, toolbar/input/clipboard,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;

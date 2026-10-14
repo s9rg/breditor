@@ -64,6 +64,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rich_features_expected: serde_json::Value = serde_json::from_str(
         &breditor_collab_feasibility::feature_action_fixture::exercise(&rich_ast_input)?,
     )?;
+    let mut rich_local_input: serde_json::Value =
+        serde_json::from_str(&breditor_collab_feasibility::rich_ast_fixture::binding()?)?;
+    rich_local_input["format"] = "breditor/document".into();
+    rich_local_input["formatVersion"] = 2.into();
+    rich_local_input["root"] = serde_json::from_str(include_str!(
+        "../../../crates/breditor-core/tests/fixtures/rich-local-root.json"
+    ))?;
+    let rich_local_input = rich_local_input.to_string();
+    let rich_local_expected: serde_json::Value = serde_json::from_str(
+        &breditor_collab_feasibility::rich_local_fixture::exercise(&rich_local_input)?,
+    )?;
     let vector = serde_json::json!({
         "checkpoint": checkpoint,
         "initial": initial,
@@ -78,6 +89,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rich_actions_expected": rich_actions_expected,
         "table_axes_expected":table_axes_expected,
         "rich_features_expected":rich_features_expected,
+        "rich_local_input":rich_local_input,
+        "rich_local_expected":rich_local_expected,
     });
     std::fs::write(path, serde_json::to_vec_pretty(&vector)?)?;
     Ok(())

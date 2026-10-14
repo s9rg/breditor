@@ -65,6 +65,12 @@ pub fn exercise_rich_features(input: &str) -> Result<String, JsValue> {
     crate::feature_action_fixture::exercise(input).map_err(js_error)
 }
 
+/// Run mixed rich typing/formatting/structure and saved-selection history in Rust.
+#[wasm_bindgen]
+pub fn exercise_rich_local_session(input: &str) -> Result<String, JsValue> {
+    crate::rich_local_fixture::exercise(input).map_err(js_error)
+}
+
 /// Resolve a bounded research selection fixture against its admitted rich AST.
 #[wasm_bindgen]
 pub fn resolve_rich_selection(input: &str, selection: &str) -> Result<String, JsValue> {

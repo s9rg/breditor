@@ -4,6 +4,7 @@ use super::{
     BlockId, CellId, RichDocument, RichSelection, RichSelectionError, RichSelectionKind,
     RichTableView, RichTextPoint,
     rich_selection::{block, text_length},
+    rich_text_mapping::{RichTextMap, map_text},
 };
 use crate::{
     document::{ElementNode, NodeRef},
@@ -26,7 +27,7 @@ pub enum RichSelectionLoss {
 pub enum RichSelectionMappingOutcome {
     /// Stable endpoints survived; snapshot paths or merge coverage may still change.
     Preserved,
-    /// A deleted cell endpoint moved to an explicit surviving neighbour.
+    /// A text offset changed or a deleted endpoint moved to an explicit neighbour.
     Relocated,
     /// No visible selection survived, with a machine-readable reason.
     Cleared(RichSelectionLoss),
@@ -117,24 +118,32 @@ fn caret_block(node: &NodeRef, affinity: Affinity) -> Option<&ElementNode> {
     }
 }
 
-fn same_text(left: &ElementNode, right: &ElementNode) -> bool {
+pub(super) fn same_text(left: &ElementNode, right: &ElementNode) -> bool {
     left.children().iter().filter_map(NodeRef::as_text).flat_map(|text| text.text().chars()).eq(
         right.children().iter().filter_map(NodeRef::as_text).flat_map(|text| text.text().chars()),
     )
+}
+
+fn same_selection_kind(left: &ElementNode, right: &ElementNode) -> bool {
+    let text_kind = |node: &ElementNode| {
+        matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading")
+    };
+    left.kind() == right.kind() || (text_kind(left) && text_kind(right))
 }
 
 fn move_text(
     before: &RichDocument,
     after: &RichDocument,
     point: &RichTextPoint,
+    maps: &[RichTextMap],
 ) -> Result<Result<RichTextPoint, RichSelectionLoss>, RichSelectionError> {
     let old = block(before, point.block())?;
     if after.block_path(point.block()).is_some() {
         let new = block(after, point.block())?;
-        if old.kind() != new.kind() || !same_text(old, new) {
+        if !same_selection_kind(old, new) {
             return Err(RichSelectionError::TextChanged);
         }
-        return Ok(Ok(point.clone()));
+        return Ok(Ok(map_text(old, new, point, maps)?));
     }
     let Some(cell) = owning_cell(before, point.block()) else {
         return Ok(Err(RichSelectionLoss::TargetDeleted));
@@ -186,6 +195,15 @@ pub fn rebase_rich_selection(
     after: &RichDocument,
     selection: &RichSelection,
 ) -> Result<RichSelectionMapping, RichSelectionError> {
+    rebase_with_text_maps(before, after, selection, &[])
+}
+
+pub(crate) fn rebase_with_text_maps(
+    before: &RichDocument,
+    after: &RichDocument,
+    selection: &RichSelection,
+    maps: &[RichTextMap],
+) -> Result<RichSelectionMapping, RichSelectionError> {
     selection.resolve(before)?;
     if before.id() != after.id()
         || before.document().schema_fingerprint() != after.document().schema_fingerprint()
@@ -197,7 +215,7 @@ pub fn rebase_rich_selection(
             let Some(_) = after.block_path(id) else {
                 return Ok(cleared(RichSelectionLoss::TargetDeleted));
             };
-            if block(before, id)?.kind() != block(after, id)?.kind() {
+            if !same_selection_kind(block(before, id)?, block(after, id)?) {
                 return Err(RichSelectionError::TargetKind);
             }
             let kind = RichSelectionKind::Node(id.clone());
@@ -211,11 +229,11 @@ pub fn rebase_rich_selection(
             };
         }
         RichSelectionKind::TextRange { anchor, focus } => {
-            let anchor = match move_text(before, after, anchor)? {
+            let anchor = match move_text(before, after, anchor, maps)? {
                 Ok(point) => point,
                 Err(reason) => return Ok(cleared(reason)),
             };
-            let focus = match move_text(before, after, focus)? {
+            let focus = match move_text(before, after, focus, maps)? {
                 Ok(point) => point,
                 Err(reason) => return Ok(cleared(reason)),
             };

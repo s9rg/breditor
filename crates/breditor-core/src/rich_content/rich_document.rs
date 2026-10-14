@@ -100,6 +100,12 @@ impl RichDocument {
         &self.document
     }
 
+    /// Transfer the underlying admitted immutable AST without copying its tree.
+    #[must_use]
+    pub fn into_document(self) -> Document {
+        self.document
+    }
+
     /// Host-scoped stable document ID, not authorization to join a room.
     #[must_use]
     pub const fn id(&self) -> &DocumentId {

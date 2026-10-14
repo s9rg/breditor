@@ -1,0 +1,67 @@
+{
+  "kind": "element",
+  "type": "breditor/document",
+  "entityId": null,
+  "properties": { "breditor/document-id": "room" },
+  "children": [
+    {
+      "kind": "element",
+      "type": "breditor/table",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "table-block",
+        "breditor/table-id": "t",
+        "breditor/columns": [{ "id": "c", "width": 120 }],
+        "breditor/merges": [],
+        "breditor/retracted-merges": []
+      },
+      "children": [
+        {
+          "kind": "element",
+          "type": "breditor/table-row",
+          "entityId": null,
+          "properties": { "breditor/block-id": "row", "breditor/row-id": "r" },
+          "children": [
+            {
+              "kind": "element",
+              "type": "breditor/table-cell",
+              "entityId": null,
+              "properties": { "breditor/block-id": "cell", "breditor/column-id": "c", "breditor/header": false },
+              "children": [
+                {
+                  "kind": "element",
+                  "type": "breditor/paragraph",
+                  "entityId": null,
+                  "properties": { "breditor/block-id": "p" },
+                  "children": [{ "kind": "text", "text": "a🙂b", "formats": [{ "type": "breditor/strong", "properties": {} }] }]
+                },
+                {
+                  "kind": "element",
+                  "type": "breditor/image",
+                  "entityId": null,
+                  "properties": {
+                    "breditor/block-id": "image-block",
+                    "breditor/image-id": "image",
+                    "breditor/asset-id": "asset",
+                    "breditor/asset-generation": "generation",
+                    "breditor/decorative": false,
+                    "breditor/alt-text": "Diagram"
+                  },
+                  "children": [
+                    {
+                      "kind": "element",
+                      "type": "breditor/paragraph",
+                      "entityId": null,
+                      "properties": { "breditor/block-id": "caption" },
+                      "children": [{ "kind": "text", "text": "xy🙂", "formats": [] }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -10,45 +10,56 @@ mod delete_image;
 mod delete_table;
 mod delete_table_column;
 mod delete_table_row;
+mod delete_text;
 mod flow_patch;
 mod guard;
 mod insert_image;
 mod insert_table;
 mod insert_table_column;
 mod insert_table_row;
+mod insert_text;
 mod merge_table_cells;
 mod move_axis;
 mod move_table_column;
 mod move_table_row;
 mod node_patch;
 mod replace_image;
+mod replace_text;
 mod resize_image;
 mod resize_table_column;
 mod rewrite_properties;
+mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
+mod set_inline_format;
 mod set_table_header;
 mod split_table_cell;
 mod table_merges;
 mod table_patch;
+mod text_patch;
 
 pub use apply_batch::{RichBatchEdit, apply_batch};
 pub use delete_image::DeleteImage;
 pub use delete_table::DeleteTable;
 pub use delete_table_column::DeleteTableColumn;
 pub use delete_table_row::DeleteTableRow;
+pub use delete_text::DeleteText;
 pub use insert_image::InsertImage;
 pub use insert_table::InsertTable;
 pub use insert_table_column::InsertTableColumn;
 pub use insert_table_row::InsertTableRow;
+pub use insert_text::InsertText;
 pub use merge_table_cells::MergeTableCells;
 pub use move_table_column::MoveTableColumn;
 pub use move_table_row::MoveTableRow;
 pub use replace_image::ReplaceImage;
+pub use replace_text::ReplaceText;
 pub use resize_image::ResizeImage;
 pub use resize_table_column::ResizeColumn;
+pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
+pub use set_inline_format::{RichFormatChange, SetInlineFormat};
 pub use set_table_header::SetTableHeader;
 pub use split_table_cell::SplitTableCell;
 
@@ -58,6 +69,16 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Convert a text block to a paragraph or ranked heading, preserving its identity.
+    SetHeading(SetHeading),
+    /// Insert canonical text at a stable rich text position.
+    InsertText(InsertText),
+    /// Delete a checked same-block text range without removing its block.
+    DeleteText(DeleteText),
+    /// Replace one rich text range as an atomic undo unit.
+    ReplaceText(ReplaceText),
+    /// Change one semantic format across a rich text range.
+    SetInlineFormat(SetInlineFormat),
     /// Replace an image's immutable asset and guard generation as one paired value.
     ReplaceImage(ReplaceImage),
     /// Add, remove or replace the whole optional paragraph caption.
@@ -97,6 +118,14 @@ pub enum RichAction {
 }
 
 impl RichAction {
+    fn text_map(&self) -> Option<&super::rich_text_mapping::RichTextMap> {
+        match self {
+            Self::InsertText(action) => Some(&action.patch.map),
+            Self::DeleteText(action) => Some(&action.patch.map),
+            Self::ReplaceText(action) => Some(&action.patch.map),
+            _ => None,
+        }
+    }
     /// Apply a captured guarded action to an immutable rich snapshot.
     ///
     /// # Errors
@@ -108,6 +137,11 @@ impl RichAction {
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
         match self {
+            Self::SetHeading(action) => action.apply(context, document),
+            Self::InsertText(action) => action.apply(context, document),
+            Self::DeleteText(action) => action.apply(context, document),
+            Self::ReplaceText(action) => action.apply(context, document),
+            Self::SetInlineFormat(action) => action.apply(context, document),
             Self::ReplaceImage(action) => action.apply(context, document),
             Self::SetImageCaption(action) => action.apply(context, document),
             Self::InsertTable(action) => action.apply(context, document),
@@ -147,7 +181,19 @@ impl RichEdit {
         &self,
         selection: &super::RichSelection,
     ) -> Result<super::RichSelectionMapping, super::RichSelectionError> {
-        super::rebase_rich_selection(&self.before, &self.document, selection)
+        let maps = self
+            .inverse
+            .text_map()
+            .map(super::rich_text_mapping::RichTextMap::inverse)
+            .transpose()?
+            .into_iter()
+            .collect::<Vec<_>>();
+        super::rich_selection_mapping::rebase_with_text_maps(
+            &self.before,
+            &self.document,
+            selection,
+            &maps,
+        )
     }
     /// Candidate snapshot; the caller's old snapshot remains untouched.
     #[must_use]
@@ -169,6 +215,15 @@ impl RichEdit {
 /// Payload-free failure of a captured local rich-content action.
 #[derive(Debug, thiserror::Error)]
 pub enum RichActionError {
+    /// The target is not an admitted paragraph or heading text container.
+    #[error("rich text action requires a paragraph or heading")]
+    TextTarget,
+    /// The range is reversed, outside the block or not scalar-aligned.
+    #[error("rich text range must be ordered and scalar-aligned within its block")]
+    TextRange,
+    /// A canonical fragment/run invariant failed without exposing its text.
+    #[error("rich text fragment invariant failed")]
+    TextPrimitive,
     /// A typed image asset/generation replacement violates its semantic contract.
     #[error(transparent)]
     ImageBinding(#[from] super::ImageBindingError),

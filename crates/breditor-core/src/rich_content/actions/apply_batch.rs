@@ -21,7 +21,20 @@ impl RichBatchEdit {
         selection: &crate::rich_content::RichSelection,
     ) -> Result<crate::rich_content::RichSelectionMapping, crate::rich_content::RichSelectionError>
     {
-        crate::rich_content::rebase_rich_selection(&self.before, &self.document, selection)
+        let maps = self
+            .inverse
+            .iter()
+            .rev()
+            .filter_map(|inverse| {
+                inverse.text_map().map(crate::rich_content::rich_text_mapping::RichTextMap::inverse)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        crate::rich_content::rich_selection_mapping::rebase_with_text_maps(
+            &self.before,
+            &self.document,
+            selection,
+            &maps,
+        )
     }
     /// Fully admitted candidate, never an intermediate partially applied tree.
     #[must_use]

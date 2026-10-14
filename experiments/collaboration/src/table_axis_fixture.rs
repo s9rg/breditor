@@ -126,7 +126,10 @@ fn point_json(point: &Point) -> Value {
         }
     }
 }
-fn selection_json(document: &RichDocument, selection: &RichSelection) -> Result<Value, Error> {
+pub(crate) fn selection_json(
+    document: &RichDocument,
+    selection: &RichSelection,
+) -> Result<Value, Error> {
     let kind = match selection.kind() {
         RichSelectionKind::Node(block) => json!({"kind":"node","block":block.as_str()}),
         RichSelectionKind::Grid { anchor, focus } => {

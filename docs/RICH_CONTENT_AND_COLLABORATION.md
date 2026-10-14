@@ -32,8 +32,9 @@ Work proceeds through these connected exits:
 
 Implemented checkpoints include an isolated, pinned Rust/Wasm replication
 coordinator, feature-gated rich geometry/image values, a separate sealed rich
-AST and stable-ID directory, guarded table/image actions, and a
-separate stable text/node/grid selection family. The
+AST and stable-ID directory, guarded table/image and rich text/format/heading
+actions, a separate stable text/node/grid selection family, and an exclusive
+single-user rich runtime history owner. The
 rich-AST/local-operation checkpoint is still in progress. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
 separate tested contracts from the still-unimplemented editor, relay and asset
@@ -165,17 +166,28 @@ edits add, replace or remove one explicitly identified paragraph.
 
 These actions are not wired into existing session/history codecs. Dependent
 steps are captured against staged snapshots; stale targets and tighter host
-limits reject publication. The remaining core work includes text/format/list
-editing inside the rich profile, multicell paste, text-position maps and durable
-rich history/recipes before checkpoint 3 can exit.
+limits reject publication. Rich paragraph/heading text insertion, deletion,
+replacement and inline formatting now use the same canonical fragments in
+cells, lists and captions. Heading conversion retains stable block identity
+and text positions. Witnessed text-splice maps compose through local groups.
+
+`RichLocalSession` owns synchronous rich content, selection, revision and bounded
+exact runtime history. Dispatch requires a current same-owner observation;
+failed work publishes nothing. One explicit group creates one undo unit, while
+selection-only changes retain redo. Replay verifies the exact AST and restores
+saved before/after selections. This is single-user runtime history, not persisted
+restart or shared selective undo. Cross-block/list planners, pending caret
+formats, multicell paste and durable rich history/recipes remain before
+checkpoint 3 can exit.
 
 `RichSelection` now validates text, node and grid selections against an exact
 immutable source tree. Text uses stable block-relative scalar-aligned UTF-16
 positions; grids retain directional base-cell endpoints and close the rectangle
 over complete merged presentation cells. Edit/group mapping relocates deleted
 endpoints to surviving original-axis neighbours or reports an explicit clearing
-reason. It rejects changed text in a surviving block rather than guessing an
-offset transform. History must retain before/after selections for exact restoration;
+reason. Direct structural rebasing rejects changed text rather than guessing an
+offset; admitted local text actions supply witnessed maps. Local history retains
+before/after selections for exact restoration;
 a deletion fallback is not reversible by inference. This separate family does not
 widen existing Selection/session codecs or provide shared causal text anchors.
 
@@ -547,10 +559,10 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused session should finish rich text/format/list editing, multicell
-paste and durable local recipes, then connect the same semantic planners and
-rich selections to the replication adapter. Schedule
-the full release after the remaining measured integration gates. Production
+The next focused session should finish cross-block/list editing, pending caret
+formats, multicell paste and durable local recipes, then connect the same
+planners and rich selections to the replication adapter. Schedule the full
+release after the remaining measured integration gates. Production
 follows combined qualification and a real pilot, not the existence of three
 toolbar buttons.
 The accepted Breditor-side WebKit repair remains in the baseline; document the

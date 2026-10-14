@@ -51,6 +51,34 @@ test("native and Wasm whole table/image move merge split header and caption acti
   expect(header.children.flatMap(row => row.children).every(cell => cell.properties["breditor/header"] === true)).toBe(true);
 });
 
+test("real Rust rich owner groups typing formatting caption header resize and exact selection history", async ({ page }) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const { exercise_rich_local_session } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    return { actual: JSON.parse(exercise_rich_local_session(vector.rich_local_input)), expected: vector.rich_local_expected };
+  });
+  expect(result.actual).toEqual(result.expected);
+  expect(result.actual.action_count).toBe(6);
+  expect(result.actual.undone).toBe(result.actual.initial);
+  expect(result.actual.redone).toBe(result.actual.changed);
+  expect(result.actual.before_selection.kind.anchor).toMatchObject({ block: "p", offset: 1 });
+  expect(result.actual.after_selection.kind.anchor).toMatchObject({ block: "caption", offset: 10 });
+  expect(result.actual.redo_selection).toEqual(result.actual.after_selection);
+  expect(result.actual.stale_rejected).toBe(true);
+  expect(result.actual.no_op_preserved_redo).toBe(true);
+  expect(result.actual).toMatchObject({ undo_depth: 1, redo_depth: 0, revision: "7" });
+  const cell = JSON.parse(result.actual.changed).root.children[0].children[0].children[0];
+  expect(cell.properties["breditor/header"]).toBe(true);
+  const heading = cell.children[0];
+  expect(heading.type).toBe("breditor/heading");
+  expect(heading.properties["breditor/level"]).toBe(2);
+  expect(heading.children.map(run => run.text).join("")).toBe("aX🙂b");
+  expect(heading.children.find(run => run.text.includes("🙂")).formats).toEqual([]);
+  expect(cell.children[1].properties).toMatchObject({ "breditor/width": 320, "breditor/height": 240 });
+  expect(cell.children[1].children[0].children[0].text).toBe("Caption 🙂");
+});
+
 test("native and Wasm rich local action groups undo and redo exact document bytes", async ({ page }) => {
   await ready(page);
   const result = await page.evaluate(async () => {
