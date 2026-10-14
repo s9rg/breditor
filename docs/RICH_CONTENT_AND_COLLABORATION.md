@@ -38,12 +38,16 @@ grid navigation and original structured clipboard/fresh-ID preparation, a separa
 stable text/node/grid selection family, and an exclusive single-user rich runtime
 history owner with pending caret formats and replay-proved local recovery. Atomic
 text-range replacement now covers one block, direct sibling flow and sibling
-leading list heads. A separately gated rich Wasm owner and low-level opt-in
-browser package expose these actions, typed construction drafts and semantic
-clipboard reads/pastes. The
+leading list heads. A separately gated rich Wasm owner and opt-in browser package
+expose these actions, typed construction drafts, a DOM editor, expandable toolbar,
+grid/node selection, event clipboard paths and an interactive combined local demo. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
-separate tested contracts from the remaining DOM editor, relay and asset
-storage. The default packages, schemas and codecs remain unchanged.
+separate tested contracts from the remaining shared rich replica and relay.
+Optional local IndexedDB checkpoints and content-addressed raster bytes now
+survive reload; file picker/paste/drop insert only after bytes are durable. The
+upload queue has explicit retry/cancel and late-epoch guards, but requires a host
+provider and does not constitute shared asset storage. The default packages,
+schemas and codecs remain unchanged.
 
 The central decision is to design collaboration before adding new structural
 operations. Stable content identities, table geometry, image assets, selections
@@ -223,11 +227,20 @@ Paste commands use fresh host namespaces and newly authored merge priority.
 
 `@breditor/experimental-rich-content` owns the matching Wasm handles, disposes
 results, exposes read/execute/recovery and permits an exact revision guard for
-work prepared from a prior view. It remains a low-level browser package: DOM
-input/rendering, toolbar controllers, native clipboard events, file paste/drop,
-asset resolution, IndexedDB acknowledgement and shared replication are separate
-implementation steps. `scripts/check-rich-browser.mjs` builds only the opt-in
-artifact and runs native plus real generated-Wasm browser workflows.
+work prepared from a prior view. Its DOM coordinator now renders the admitted
+AST and geometry, serializes commands, preserves logical node/grid selections,
+handles event clipboard paths and stages composition. Explicit input targets
+retain the real pre-edit caret; selected Enter and whole-flow paste publish one
+atomic history group. Custom toolbar controls and asset resolvers are host hooks.
+File paste/drop calls the optional admitted asset host. Its bounded IndexedDB
+store keeps SHA-256-addressed PNG/JPEG/WebP payloads as ArrayBuffers, not persisted
+Blob/File handles. The tested WebKit runtime rejects the latter before commit.
+Local session saves acknowledge transaction completion; the queue uploads only
+when the host supplies a provider. The shared rich replica, provider/relay
+integration and collaborative persistence remain implementation steps.
+`scripts/check-rich-browser.mjs` builds only the
+opt-in artifact and runs native plus real generated-Wasm browser workflows.
+Synthetic clipboard/composition tests do not certify OS clipboard or physical IME.
 
 ### Grid navigation and semantic clipboard
 
@@ -662,9 +675,12 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused session should finish remaining text-range planners, expose
-the rich owner/projection through the browser package, and connect the same
-semantic planners and rich selections to the replication adapter. Schedule the full
+The next focused sessions should connect the same semantic planners and rich
+selections to the shared rich replica, then integrate the reference relay,
+presence and host asset provider with durable collaborative recovery. Local asset
+bytes and local checkpoints are tested, not a substitute for shared causal state
+or selective undo. Arbitrary cross-container
+text ranges and typing coalescing remain separate support limits. Schedule the full
 release after the remaining measured integration gates. Production
 follows combined qualification and a real pilot, not the existence of three
 toolbar buttons.

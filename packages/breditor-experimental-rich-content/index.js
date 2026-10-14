@@ -1,6 +1,7 @@
 // Opt-in rich owner. Supply the already initialized matching module exactly once.
-// All logical mutation and retained history remain Rust-owned. No DOM, storage,
-// file upload or replication is implied by this low-level package boundary.
+// All logical mutation and retained history remain Rust-owned. Asset storage and
+// uploads are explicit host services, never command side effects.
+export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }

@@ -278,30 +278,59 @@ separate gate. No legacy Operation/session codec gains these action variants.
 
 `node scripts/check-rich-browser.mjs` passed on October 14, 2026:
 
-- 10 native public rich-owner workflows, 10 atomic range workflows and 2 canonical
+- 12 native public rich-owner workflows, 10 atomic range workflows and 2 canonical
   format-literal codec contracts.
 - 43 existing Wasm unit tests, the retained projection contract and 21 legacy
-  Wasm boundary tests with the opt-in feature enabled.
+  Wasm boundary tests with both default and opt-in feature sets. The rich-only
+  integration target explicitly requires its feature and is absent by default.
 - Strict native/wasm32 Clippy and generated TypeScript declarations, including
   closed per-command request types and decimal-string coordinates.
-- 33 tests against the assembled `@breditor/experimental-rich-content` package:
-  11 workflows each in Chromium, Firefox and WebKit. These cover table/image
+- 105 tests against the assembled `@breditor/experimental-rich-content` package:
+  35 workflows each in Chromium, Firefox and WebKit (11 owner, 13 DOM, 7 asset,
+  2 persistence and 2 combined demo). These cover table/image
   CRUD, axes/moves/merge/split/header/resize/clear/navigation, rich flow/nested lists,
   Enter, inline and typed-extension formatting, mixed sibling range replacement,
   fresh clipboard identities/spans, guarded publication and exact recovered history.
 - Repeated Unicode typing and restored undo/redo branches, including an actual
   page reload from a host-saved checkpoint.
+- Trusted keyboard/pointer input, live table/image controls, expandable toolbar,
+  rich cell/caption editing, atomic selected Enter/whole-flow paste, exact caret
+  undo, event clipboard paths and synthetic composition/cancellation.
+- The interactive `/demo` renders owned raster assets and exports/imports an
+  exact local session. The sample assets are not embedded in session JSON.
+- Durable PNG/JPEG/WebP admission, content-addressed deduplication and byte
+  budgets; explicit upload failure/retry/cancel and stale completion; file
+  picker/paste/drop; exact restored image history and retained bytes after deletion.
+- Actual session restart with a saved redo cursor, and disconnected cell/file
+  editing followed by a cached-shell reload without live resource fetches. The
+  harness supplies that shell; no production service worker is included.
 
-The rich-owner Wasm is 4,009,085 bytes, or 1,065,394 bytes under gzip, with SHA-256
-`38f8435250eb53cef6558f3f62a4eed0fe31fe95b88390f42d851d1491238df3`.
+The disconnected test blocks live HTTP requests and fulfils the recorded app shell
+from memory. It does not use Playwright's global offline switch for the WebKit
+file path: that switch also produced `NotReadableError` for a local canvas Blob.
+Physical OS network disconnection is not established by this harness. The
+Blob/File IndexedDB failure was independently reproduced during ordinary online
+asset tests; persisting ArrayBuffers repaired that tested storage path.
+
+The rich-owner Wasm is 4,037,333 bytes, or 1,074,520 bytes under gzip, with SHA-256
+`e4ec2dd187fb721e69dd02633067157d3021de1c3d1cba3b866fa667724c6557`.
 This opt-in release-mode artifact is not size-qualified for distribution. It has
 no Loro dependency and is distinct from the replication fixture below.
+
+The private local npm archive was extracted into a fresh target directory. Its
+installed module graph includes the DOM/asset/session modules, paired Wasm,
+generated helpers, declarations and licenses. A Node smoke test against that
+extracted archive created a real rich owner and restored exact future undo/redo;
+all browser/asset exports were present. This is packaging evidence, not publication
+or distribution-size qualification.
 
 Browser checks exercise the real public owner and typed command API, not a
 JavaScript content model. The matching package includes wasm-bindgen's generated
 helper modules. Its default editor ABI remains 5; rich ABI 1 uses explicit
-bootstrap V6. DOM input/toolbar controllers, native clipboard events, host assets,
-upload persistence and the shared rich replica remain implementation work.
+bootstrap V6. Local assets and checkpoint persistence are optional host services;
+shared rich replication, collaborative persistence and the provider/relay
+integration remain implementation work. Event clipboard/composition checks are not native OS
+clipboard acknowledgements or physical IME qualification.
 
 ## Verified replication fixture checkpoint
 
@@ -350,8 +379,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 6,482,790 bytes, or 1,783,996 bytes under gzip, with
-SHA-256 `f1b9e7e7d1c914ffb8864c97ce2a1a484dbef2d823b6e6f5c59c84634de6307d`.
+The tested fixture Wasm is 6,477,550 bytes, or 1,787,869 bytes under gzip, with
+SHA-256 `5e5f0292ef3e3307c0e05ddf6f4d93a9cd1366beae50ff5fbe87fa07a671d94f`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -372,14 +401,15 @@ it is not a portable backup import or permission to clone an active writer.
 
 The opt-in rich owner ABI 1 and explicit bootstrap V6 now expose typed local
 commands, history/recovery and semantic clipboard reads/pastes in the actual
-`breditor-wasm` crate. The separate low-level
-`@breditor/experimental-rich-content` wrapper manages its Wasm ownership and
-optional exact revision guard. `node scripts/check-rich-browser.mjs` builds and
+`breditor-wasm` crate. The separate
+`@breditor/experimental-rich-content` wrapper and DOM editor manage exclusive
+Wasm ownership, an expandable toolbar and optional exact revision guards.
+`node scripts/check-rich-browser.mjs` builds and
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-Shared tree/AST materialization, DOM toolbar/input/clipboard controllers,
-IndexedDB durability, upload queues and the authorized reference relay remain
+Shared tree/AST materialization, collaborative IndexedDB recovery and the
+authorized reference relay/asset-provider integration remain
 implementation gates. The fixture exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.

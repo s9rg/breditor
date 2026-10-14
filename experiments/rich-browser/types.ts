@@ -1,6 +1,6 @@
 // Compile against the actual paired generated declarations, not a handwritten Wasm stub.
 import * as wasm from "../../packages/breditor-experimental-rich-content/dist/breditor_wasm.js";
-import {compileRichProfile, type RichSelection, type RichCommandOutcome, type RichView} from "../../packages/breditor-experimental-rich-content/index.js";
+import {compileRichProfile, RichAssetStore, insertImageFiles, mountRichEditor, type RichSelection, type RichCommandOutcome, type RichView, type AssetUploader} from "../../packages/breditor-experimental-rich-content/index.js";
 function contract(bootstrap:string,document:string):void {
  const profile=compileRichProfile(wasm,bootstrap);
  const owner=profile.createEditor(document,"100");
@@ -19,3 +19,14 @@ function contract(bootstrap:string,document:string):void {
  restored.dispose();owner.dispose();profile.dispose();
 }
 void contract;
+async function assetsContract(root:HTMLElement,bootstrap:string,document:string):Promise<void> {
+ const profile=compileRichProfile(wasm,bootstrap);
+ const assets=await RichAssetStore.open("typed-assets",{limits:{maxPixels:1000}});
+ const editor=mountRichEditor(root,{core:profile.createEditor(document),resolveAsset:binding=>assets.resolve(binding.asset),onFiles:async(files,position)=>{await insertImageFiles(editor,assets,files,position);}});
+ const provider:AssetUploader=async(record,blob,signal)=>{void blob;void signal;return `receipt:${record.asset}`;};
+ await assets.flush(provider);
+ // @ts-expect-error Uploaded asset receipts are immutable strings, not image commands.
+ await assets.flush(async()=>({kind:"replaceImage"}));
+ editor.dispose();assets.close();profile.dispose();
+}
+void assetsContract;

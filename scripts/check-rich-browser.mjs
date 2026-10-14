@@ -17,6 +17,7 @@ const run=(command,args,env=native)=>execFileSync(command,args,{cwd:root,env,std
 run(cargo,["fmt","--all","--check"]);
 run(cargo,["clippy","-p","breditor-core","--locked","--features","experimental-rich-content","--lib","--test","rich_text_range","--test","rich_formats_payload","--offline","--","-D","warnings"]);
 run(cargo,["test","-p","breditor-core","--locked","--features","experimental-rich-content","--test","rich_text_range","--test","rich_formats_payload","--offline"]);
+run(cargo,["test","-p","breditor-wasm","--locked","--tests","--offline"]);
 run(cargo,["clippy","-p","breditor-wasm","--locked","--features","experimental-rich-content","--lib","--test","rich_editor","--offline","--","-D","warnings"]);
 run(cargo,["test","-p","breditor-wasm","--locked","--features","experimental-rich-content","--tests","--offline"]);
 run(cargo,["clippy","-p","breditor-wasm","--locked","--features","experimental-rich-content","--target","wasm32-unknown-unknown","--lib","--offline","--","-D","warnings"],wasm);
@@ -28,6 +29,7 @@ mkdirSync(packageOutput,{recursive:true});
 for(const name of ["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"])
  cpSync(resolve(web,name),resolve(packageOutput,name));
 cpSync(resolve(web,"snippets"),resolve(packageOutput,"snippets"),{recursive:true});
+run(resolve(root,"node_modules/.bin/tsc"),["-p","packages/breditor-experimental-rich-content/tsconfig.json"]);
 run(resolve(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--lib","ES2022,DOM,ESNext.Disposable","--module","NodeNext","experiments/rich-browser/types.ts"]);
 run(resolve(root,"node_modules/.bin/playwright"),["test","--config","experiments/rich-browser/playwright.config.mjs"]);
 const bytes=readFileSync(resolve(web,"breditor_wasm_bg.wasm"));
