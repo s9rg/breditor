@@ -1,6 +1,8 @@
 //! Exact guarded local table rewrite, never a shared root-replacement operation.
 
-use super::{RichActionError, guard::TargetGuard, rewrite_properties::replace_node};
+use super::{
+    RichAction, RichActionError, RichEdit, guard::TargetGuard, rewrite_properties::replace_node,
+};
 use crate::rich_content::{RichDocument, TableId, ast_properties};
 use crate::{
     document::{ElementNode, NodeRef, PropertyMap, PropertyValue},
@@ -66,6 +68,18 @@ pub(super) fn column_properties(node: &NodeRef) -> Result<Vec<PropertyValue>, Ri
 }
 
 impl TablePatch {
+    pub(super) fn edit(
+        &self,
+        context: &EditorContext,
+        document: &RichDocument,
+        inverse: RichAction,
+    ) -> Result<Option<RichEdit>, RichActionError> {
+        let candidate = self.apply(context, document)?;
+        if candidate.document().root() == document.document().root() {
+            return Ok(None);
+        }
+        Ok(Some(RichEdit { before: document.clone(), document: candidate, inverse }))
+    }
     pub(super) fn capture(
         document: &RichDocument,
         table: &TableId,

@@ -6,6 +6,7 @@
 
 pub mod actions;
 pub mod anchor;
+pub mod feature_action_fixture;
 mod register;
 pub mod rich_ast_fixture;
 pub mod rich_fixture;

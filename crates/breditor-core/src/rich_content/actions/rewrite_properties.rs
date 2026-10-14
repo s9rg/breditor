@@ -33,12 +33,16 @@ pub(super) fn rewrite(
     path: &NodePath,
     changes: impl IntoIterator<Item = (&'static str, Option<PropertyValue>)>,
 ) -> Result<RichDocument, RichActionError> {
-    let element = document
-        .document()
-        .node_at(path)
-        .ok()
-        .and_then(NodeRef::as_element)
-        .ok_or(RichActionError::Rewrite)?;
+    let node = document.document().node_at(path).ok().ok_or(RichActionError::Rewrite)?;
+    let replacement = with_properties(node, changes)?;
+    replace_node(context, document, path, &replacement)
+}
+
+pub(super) fn with_properties(
+    node: &NodeRef,
+    changes: impl IntoIterator<Item = (&'static str, Option<PropertyValue>)>,
+) -> Result<NodeRef, RichActionError> {
+    let element = node.as_element().ok_or(RichActionError::Rewrite)?;
     let mut properties: BTreeMap<_, _> =
         element.properties().iter().map(|(name, value)| (name.clone(), value.clone())).collect();
     for (local, value) in changes {
@@ -52,7 +56,7 @@ pub(super) fn rewrite(
     }
     let properties = PropertyMap::try_from_sorted(properties.into_iter().collect())
         .map_err(|_| RichActionError::Rewrite)?;
-    let replacement = NodeRef::element(
+    Ok(NodeRef::element(
         ElementNode::try_new(
             element.kind().clone(),
             element.entity_id().cloned(),
@@ -60,8 +64,7 @@ pub(super) fn rewrite(
             element.children().to_vec(),
         )
         .map_err(|_| RichActionError::Rewrite)?,
-    );
-    replace_node(context, document, path, &replacement)
+    ))
 }
 
 pub(super) fn replace_node(

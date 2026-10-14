@@ -6,25 +6,51 @@
 //! and sending a root AST replacement to collaborators is never permitted.
 
 mod apply_batch;
+mod delete_image;
+mod delete_table;
 mod delete_table_column;
 mod delete_table_row;
+mod flow_patch;
 mod guard;
+mod insert_image;
+mod insert_table;
 mod insert_table_column;
 mod insert_table_row;
+mod merge_table_cells;
+mod move_axis;
+mod move_table_column;
+mod move_table_row;
+mod node_patch;
+mod replace_image;
 mod resize_image;
 mod resize_table_column;
 mod rewrite_properties;
 mod set_image_alt;
+mod set_image_caption;
+mod set_table_header;
+mod split_table_cell;
+mod table_merges;
 mod table_patch;
 
 pub use apply_batch::{RichBatchEdit, apply_batch};
+pub use delete_image::DeleteImage;
+pub use delete_table::DeleteTable;
 pub use delete_table_column::DeleteTableColumn;
 pub use delete_table_row::DeleteTableRow;
+pub use insert_image::InsertImage;
+pub use insert_table::InsertTable;
 pub use insert_table_column::InsertTableColumn;
 pub use insert_table_row::InsertTableRow;
+pub use merge_table_cells::MergeTableCells;
+pub use move_table_column::MoveTableColumn;
+pub use move_table_row::MoveTableRow;
+pub use replace_image::ReplaceImage;
 pub use resize_image::ResizeImage;
 pub use resize_table_column::ResizeColumn;
 pub use set_image_alt::SetImageAlt;
+pub use set_image_caption::SetImageCaption;
+pub use set_table_header::SetTableHeader;
+pub use split_table_cell::SplitTableCell;
 
 use super::{RichDocument, RichDocumentError};
 use crate::{schema::ValidationReport, state::EditorContext};
@@ -32,6 +58,28 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Replace an image's immutable asset and guard generation as one paired value.
+    ReplaceImage(ReplaceImage),
+    /// Add, remove or replace the whole optional paragraph caption.
+    SetImageCaption(SetImageCaption),
+    /// Insert a whole explicitly drafted table in stable flow space.
+    InsertTable(InsertTable),
+    /// Remove a whole table with exact retained restoration data.
+    DeleteTable(DeleteTable),
+    /// Insert an asset-bound image and optional caption atomically.
+    InsertImage(InsertImage),
+    /// Remove an image flow node, without deleting shared asset bytes.
+    DeleteImage(DeleteImage),
+    /// Move one stable row and every owned body together.
+    MoveTableRow(MoveTableRow),
+    /// Move one stable column, its width and its per-row bodies together.
+    MoveTableColumn(MoveTableColumn),
+    /// Merge a complete grid without flattening base bodies.
+    MergeTableCells(MergeTableCells),
+    /// Retract observed merges covering one presentation cell.
+    SplitTableCell(SplitTableCell),
+    /// Set explicit header intent for selected base cells.
+    SetTableHeader(SetTableHeader),
     /// Insert one drafted stable row with its explicit cell bodies.
     InsertTableRow(InsertTableRow),
     /// Delete one row while retaining its exact subtree in the local inverse.
@@ -60,6 +108,17 @@ impl RichAction {
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
         match self {
+            Self::ReplaceImage(action) => action.apply(context, document),
+            Self::SetImageCaption(action) => action.apply(context, document),
+            Self::InsertTable(action) => action.apply(context, document),
+            Self::DeleteTable(action) => action.apply(context, document),
+            Self::InsertImage(action) => action.apply(context, document),
+            Self::DeleteImage(action) => action.apply(context, document),
+            Self::MoveTableRow(action) => action.apply(context, document),
+            Self::MoveTableColumn(action) => action.apply(context, document),
+            Self::MergeTableCells(action) => action.apply(context, document),
+            Self::SplitTableCell(action) => action.apply(context, document),
+            Self::SetTableHeader(action) => action.apply(context, document),
             Self::InsertTableRow(action) => action.apply(context, document),
             Self::DeleteTableRow(action) => action.apply(context, document),
             Self::InsertTableColumn(action) => action.apply(context, document),
@@ -110,6 +169,27 @@ impl RichEdit {
 /// Payload-free failure of a captured local rich-content action.
 #[derive(Debug, thiserror::Error)]
 pub enum RichActionError {
+    /// A typed image asset/generation replacement violates its semantic contract.
+    #[error(transparent)]
+    ImageBinding(#[from] super::ImageBindingError),
+    /// The parent is absent or is not a rich flow container.
+    #[error("rich flow parent is absent or has the wrong kind")]
+    FlowParent,
+    /// Deletion needs an explicit replacement to retain a nonempty flow container.
+    #[error("rich flow deletion requires an explicit replacement for the sole child")]
+    FlowWouldBeEmpty,
+    /// The command requires a validated grid selection rather than text/node selection.
+    #[error("rich action requires a grid selection")]
+    SelectionKind,
+    /// A new merge identity was already observed or retracted in this table.
+    #[error("rich merge identity is already present or retracted")]
+    MergeIdentityReuse,
+    /// Selection admission or mapping failed before publication.
+    #[error(transparent)]
+    Selection(#[from] super::RichSelectionError),
+    /// A checked geometry command failed before publication.
+    #[error(transparent)]
+    Geometry(#[from] super::TableGeometryError),
     /// New axes exceed one of the independent rich table ceilings.
     #[error("rich table axis/product ceiling exceeded")]
     TableLimit,

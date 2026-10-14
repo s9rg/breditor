@@ -59,6 +59,12 @@ pub fn exercise_table_axes(input: &str) -> Result<String, JsValue> {
     crate::table_axis_fixture::exercise(input).map_err(js_error)
 }
 
+/// Run whole table/image, move, merge/split, header and caption actions in Rust.
+#[wasm_bindgen]
+pub fn exercise_rich_features(input: &str) -> Result<String, JsValue> {
+    crate::feature_action_fixture::exercise(input).map_err(js_error)
+}
+
 /// Resolve a bounded research selection fixture against its admitted rich AST.
 #[wasm_bindgen]
 pub fn resolve_rich_selection(input: &str, selection: &str) -> Result<String, JsValue> {

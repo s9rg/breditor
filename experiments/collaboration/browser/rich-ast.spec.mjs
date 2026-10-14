@@ -15,6 +15,42 @@ async function ready(page) {
   await expect(page.locator("#status")).toHaveText("Ready for contract tests");
 }
 
+test("native and Wasm whole table/image move merge split header and caption actions match exactly", async ({ page }) => {
+  await ready(page);
+  const result = await page.evaluate(async () => {
+    const { exercise_rich_features } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    return { actual: JSON.parse(exercise_rich_features(vector.rich_ast_input)), expected: vector.rich_features_expected };
+  });
+  expect(result.actual).toEqual(result.expected);
+  expect(result.actual.cases.map(value => value.name)).toEqual([
+    "move_row", "move_column", "merge", "split", "header", "insert_table", "delete_table",
+    "insert_image", "delete_image", "replace_image", "caption",
+  ]);
+  for (const value of result.actual.cases) {
+    expect(value.undone).toBe(result.actual.initial);
+    expect(value.redone).toBe(value.changed);
+  }
+  const byName = Object.fromEntries(result.actual.cases.map(value => [value.name, value]));
+  expect(byName.move_row.view.tables[0].rows).toEqual(["r1", "r0"]);
+  expect(byName.move_column.view.tables[0].columns.map(column => column.id)).toEqual(["c1", "c0"]);
+  expect(byName.move_row.view.tables[0].active).toEqual([]);
+  expect(byName.merge.view.tables[0].active).toEqual(["merge-new"]);
+  expect(byName.merge.view.tables[0].cells[0].sources).toHaveLength(4);
+  expect(byName.split.view.tables[0].cells.every(cell => cell.row_span === 1 && cell.column_span === 1)).toBe(true);
+  expect(byName.insert_table.view.tables).toHaveLength(2);
+  expect(byName.delete_table.view.tables).toEqual([]);
+  expect(byName.delete_table.view.images).toEqual([]);
+  expect(byName.insert_image.view.images).toHaveLength(2);
+  expect(byName.delete_image.view.images).toEqual([]);
+  expect(byName.replace_image.view.images[0]).toMatchObject({ id: "covered-image", asset: "asset-new", generation: "generation-new", size: [640, 480] });
+  const caption = JSON.parse(byName.caption.changed).root.children[1].children[1].children[1].children[1].children[0];
+  expect(caption.properties["breditor/block-id"]).toBe("caption-new");
+  expect(caption.children[0].text).toBe("New caption 🙂");
+  const header = JSON.parse(byName.header.changed).root.children[1];
+  expect(header.children.flatMap(row => row.children).every(cell => cell.properties["breditor/header"] === true)).toBe(true);
+});
+
 test("native and Wasm rich local action groups undo and redo exact document bytes", async ({ page }) => {
   await ready(page);
   const result = await page.evaluate(async () => {

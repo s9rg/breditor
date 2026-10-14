@@ -254,7 +254,7 @@ fn context_axes<T>(
         .collect()
 }
 
-fn merge(table: &TableId, value: &PropertyValue) -> PropertyResult<MergeRegion> {
+pub(crate) fn merge(table: &TableId, value: &PropertyValue) -> PropertyResult<MergeRegion> {
     let object = closed_object(
         value,
         &[
@@ -301,6 +301,58 @@ fn merge(table: &TableId, value: &PropertyValue) -> PropertyResult<MergeRegion> 
         ChangeId::new(replica, exact_u64(object, "counter")?),
     );
     context.capture_merge(id, stamp, &bounds).map_err(|_| "invalid captured merge bounds")
+}
+
+pub(crate) fn merge_property(region: &MergeRegion) -> PropertyResult<PropertyValue> {
+    let stamp = region.stamp();
+    let fields = std::collections::BTreeMap::from([
+        ("id".to_owned(), PropertyValue::from_string(region.id().as_str())),
+        ("lamport".to_owned(), PropertyValue::from_string(stamp.lamport().to_string())),
+        (
+            "writer".to_owned(),
+            PropertyValue::from_string(stamp.change().replica().value().to_string()),
+        ),
+        ("counter".to_owned(), PropertyValue::from_string(stamp.change().counter().to_string())),
+        (
+            "rows".to_owned(),
+            PropertyValue::array(
+                region
+                    .row_context
+                    .iter()
+                    .map(|id| PropertyValue::from_string(id.as_str()))
+                    .collect(),
+            ),
+        ),
+        (
+            "columns".to_owned(),
+            PropertyValue::array(
+                region
+                    .column_context
+                    .iter()
+                    .map(|id| PropertyValue::from_string(id.as_str()))
+                    .collect(),
+            ),
+        ),
+        (
+            "first-row".to_owned(),
+            PropertyValue::from_string(region.row_context[region.row_start].as_str()),
+        ),
+        (
+            "last-row".to_owned(),
+            PropertyValue::from_string(region.row_context[region.row_end].as_str()),
+        ),
+        (
+            "first-column".to_owned(),
+            PropertyValue::from_string(region.column_context[region.column_start].as_str()),
+        ),
+        (
+            "last-column".to_owned(),
+            PropertyValue::from_string(region.column_context[region.column_end].as_str()),
+        ),
+    ]);
+    Ok(PropertyValue::object(
+        PropertyObject::try_from_map(fields).map_err(|_| "merge property invariant")?,
+    ))
 }
 
 pub(crate) fn table_view(node: &ElementNode) -> PropertyResult<RichTableView> {

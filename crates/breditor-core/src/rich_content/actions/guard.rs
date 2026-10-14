@@ -8,9 +8,48 @@ use crate::{
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct TargetGuard {
+    scope: DocumentGuard,
+    block: BlockId,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct DocumentGuard {
     document: DocumentId,
     schema: DurableSchemaBinding,
-    block: BlockId,
+}
+
+impl DocumentGuard {
+    pub(super) fn capture(document: &RichDocument) -> Self {
+        Self {
+            document: document.id().clone(),
+            schema: DurableSchemaBinding::new(
+                document.document().schema().clone(),
+                document.document().schema_fingerprint(),
+            ),
+        }
+    }
+    pub(super) fn check(
+        &self,
+        context: &EditorContext,
+        document: &RichDocument,
+    ) -> Result<(), RichActionError> {
+        if !context.schema().is_rich_content_profile()
+            || document.id() != &self.document
+            || context.schema().durable_binding() != self.schema
+            || document.document().schema() != self.schema.schema()
+            || document.document().schema_fingerprint() != self.schema.fingerprint()
+        {
+            return Err(RichActionError::Binding);
+        }
+        if !document.document().is_proven_for(context.schema(), context.limits()) {
+            Document::try_new(
+                context.schema(),
+                document.document().root().clone(),
+                context.limits(),
+            )?;
+        }
+        Ok(())
+    }
 }
 
 impl TargetGuard {
@@ -28,14 +67,7 @@ impl TargetGuard {
             ast_properties::string(node, "block-id").map_err(|_| RichActionError::Rewrite)?,
         )
         .map_err(|_| RichActionError::Rewrite)?;
-        Ok(Self {
-            document: document.id().clone(),
-            schema: DurableSchemaBinding::new(
-                document.document().schema().clone(),
-                document.document().schema_fingerprint(),
-            ),
-            block,
-        })
+        Ok(Self { scope: DocumentGuard::capture(document), block })
     }
 
     pub(super) fn check(
@@ -44,22 +76,8 @@ impl TargetGuard {
         document: &RichDocument,
         path: &NodePath,
     ) -> Result<(), RichActionError> {
-        if !context.schema().is_rich_content_profile()
-            || document.id() != &self.document
-            || context.schema().durable_binding() != self.schema
-            || document.document().schema() != self.schema.schema()
-            || document.document().schema_fingerprint() != self.schema.fingerprint()
-        {
-            return Err(RichActionError::Binding);
-        }
         // Even a no-op must honor a different compiled proof or stricter policy.
-        if !document.document().is_proven_for(context.schema(), context.limits()) {
-            Document::try_new(
-                context.schema(),
-                document.document().root().clone(),
-                context.limits(),
-            )?;
-        }
+        self.scope.check(context, document)?;
         let node = document
             .document()
             .node_at(path)

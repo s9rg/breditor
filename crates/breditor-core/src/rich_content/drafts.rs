@@ -30,6 +30,12 @@ pub enum RichDraftError {
     /// The stable node is absent or is not a flow block.
     #[error("rich flow-block source is absent or has the wrong kind")]
     FlowBlock,
+    /// Image captions are a single paragraph, not arbitrary flow or a heading.
+    #[error("an image caption draft must be a paragraph")]
+    Caption,
+    /// Draft rows/cells do not form one unique rectangular set of axes.
+    #[error("table draft axes must be unique and rectangular")]
+    AxisShape,
     /// A canonical AST constructor rejected an internal draft invariant.
     #[error("rich insertion draft invariant failed")]
     Invariant,
@@ -70,6 +76,15 @@ pub(crate) fn element(
 pub struct RichBlockDraft(NodeRef);
 
 impl RichBlockDraft {
+    pub(crate) fn from_node(node: NodeRef) -> Self {
+        Self(node)
+    }
+    pub(crate) fn node(&self) -> &NodeRef {
+        &self.0
+    }
+    pub(crate) fn into_node(self) -> NodeRef {
+        self.0
+    }
     /// Construct a paragraph from canonical text without normalizing Unicode.
     ///
     /// # Errors
@@ -188,6 +203,9 @@ pub struct TableRowDraft {
 }
 
 impl TableRowDraft {
+    pub(crate) fn node(&self) -> &NodeRef {
+        &self.node
+    }
     /// Construct a row; an empty cell sequence is valid only for a zero-column table.
     ///
     /// # Errors

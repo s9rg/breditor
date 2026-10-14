@@ -27,7 +27,9 @@ fn contract(_error: impl std::fmt::Display) -> Error {
     Error::Contract("table axis/selection fixture")
 }
 
-fn admitted(input: &str) -> Result<(EditorContext, DocumentJsonCodecV2, RichDocument), Error> {
+pub(crate) fn admitted(
+    input: &str,
+) -> Result<(EditorContext, DocumentJsonCodecV2, RichDocument), Error> {
     let schema = CompiledSchema::try_compile_rich_content_profile(
         SchemaId::new(
             QualifiedName::try_new("breditor-probe/rich-content").map_err(contract)?,

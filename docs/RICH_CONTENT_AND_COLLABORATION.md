@@ -7,9 +7,32 @@ shipping packages remain unchanged. It extends the requested scope to tables, im
 full collaboration in one interoperable editor. Implementation checkpoints are
 not permission to reduce collaboration to an online-only demo.
 
+## Functional completion goal
+
+The active goal is to finish the combined features functionally and prove their
+normal workflows with reproducible Rust, Wasm and browser tests. Accessibility,
+physical IME and exhaustive edge-case qualification follow in a later pass; the
+functional goal does not claim production release qualification.
+
+Work proceeds through these connected exits:
+
+1. Complete rich core commands, text/format/list/caption editing and exact local
+   history/reload. Table/image commands must operate on the same cell/block AST.
+2. Map those semantic commands to the shared replica and materialize the same
+   admitted AST. Prove simultaneous edits, offline merges and selective undo.
+3. Connect the opt-in browser editor, toolbar, grid/node selection, keyboard and
+   clipboard to the real matching Rust/Wasm owner. No DOM-owned content model.
+4. Add durable local persistence, upload queues, presence and the self-hostable
+   reference relay. Prove reconnect/reload and expose pending/saved state.
+5. Test a combined mixed-content workflow in Chromium, Firefox and WebKit,
+   including two collaborators, offline recovery, uploads and undo/redo. Commit
+   tested local checkpoints without pushing or publishing.
+
+## Current implementation
+
 Implemented checkpoints include an isolated, pinned Rust/Wasm replication
 coordinator, feature-gated rich geometry/image values, a separate sealed rich
-AST and stable-ID directory, guarded metadata and table-axis actions, and a
+AST and stable-ID directory, guarded table/image actions, and a
 separate stable text/node/grid selection family. The
 rich-AST/local-operation checkpoint is still in progress. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
@@ -132,11 +155,19 @@ Local image-size, alt/decorative and table-column-width actions now return exact
 inverses and support all-or-nothing groups. Row/column insertion and deletion
 also retain exact inverse subtrees, with whole-table stale guards. Typed drafts
 provide explicit IDs and bodies; deleting the final axis retains hidden table
-state. These actions are not wired into existing
-session/history codecs. Dependent steps are captured against staged snapshots;
-stale targets and tighter host limits reject publication. The core still needs
-whole table/image CRUD, axis moves, merge/split/header operations and durable rich recipes
-before checkpoint 3 can exit.
+state. Whole table/image insertion/removal now use stable flow parents and
+direct-child anchors, with explicit replacement drafts when removing a sole
+flow child. Row/column moves retain identities, widths and bodies. Merge/split
+retract observed overlapping intents without flattening base-cell content;
+header edits affect the complete selected grid. Asset replacement changes the
+asset/generation pair while preserving the image and caption. Whole-caption
+edits add, replace or remove one explicitly identified paragraph.
+
+These actions are not wired into existing session/history codecs. Dependent
+steps are captured against staged snapshots; stale targets and tighter host
+limits reject publication. The remaining core work includes text/format/list
+editing inside the rich profile, multicell paste, text-position maps and durable
+rich history/recipes before checkpoint 3 can exit.
 
 `RichSelection` now validates text, node and grid selections against an exact
 immutable source tree. Text uses stable block-relative scalar-aligned UTF-16
@@ -516,9 +547,9 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused session should finish whole table/image creation and deletion,
-axis moves, merge/split/header actions and durable local recipes, then connect the
-same semantic planners and rich selections to the replication adapter. Schedule
+The next focused session should finish rich text/format/list editing, multicell
+paste and durable local recipes, then connect the same semantic planners and
+rich selections to the replication adapter. Schedule
 the full release after the remaining measured integration gates. Production
 follows combined qualification and a real pilot, not the existence of three
 toolbar buttons.

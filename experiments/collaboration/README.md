@@ -121,6 +121,20 @@ unchanged, and inverse actions retain original bodies, headers, widths and asset
 Structural actions guard the whole captured table: a later table edit makes an
 old action or inverse stale, instead of allowing it to erase newer content.
 
+Whole table/image creation and removal use typed drafts and stable flow parents
+with direct-child before-anchors. Removing a sole child requires an explicitly
+owned replacement block. Image drafts carry semantic asset bindings and an
+optional paragraph caption, never URLs or upload state.
+
+Individually named actions now also support row/column moves, merge/split, grid
+header intent, image asset/generation replacement and whole-caption changes.
+Moves retain cell bodies, IDs and widths; the original merge context determines
+whether a reordered region remains valid. Merge/split retract observed
+geometrically overlapping intents, including known losing overlaps, so a split
+does not immediately revive one of them. Base-cell bodies remain unchanged.
+Asset replacement preserves the image ID, alt, size and caption; old upload
+tokens become stale. Ordinary caption typing still needs rich text actions.
+
 ## Rich selection contracts
 
 The separate `RichSelection` family supports directional text ranges, flow-node
@@ -158,18 +172,21 @@ On October 13, 2026, the reproducible script passed:
   typed-format admission, stale guards, atomic groups and exact local undo/redo.
 - 19 table-action/selection contracts, including 256 seeded row/column deletion
   schedules, merge closure, deleted-caret fallback and exact inverse bytes.
+- 13 functional table/image workflows covering whole-node CRUD, moves,
+  merge/split/header, captions, asset replacement and mixed group undo/redo.
 - 27 native collaboration/history contracts.
-- 54 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- 57 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
   formatting and writer IDs above JavaScript's safe-integer range.
 - Exact native/Wasm rich-AST exports, cell/image identity directories and grouped
   local action/inverse/redo bytes, including all four axis edits and mapped rich
-  selections. The rich schema fingerprint has a locked vector.
+  selections and 11 whole-node/move/merge/split/header/image feature cases.
+  The rich schema fingerprint has a locked vector.
 
-The tested fixture Wasm is 5,591,189 bytes, or 1,560,385 bytes under gzip, with
-SHA-256 `f754af7c73b347aebcc52ceab3c106412006180aed6d987d244787d4dfb63965`.
+The tested fixture Wasm is 5,741,847 bytes, or 1,603,774 bytes under gzip, with
+SHA-256 `b85c8b271dedf7fc645421ac4278542490f0f636162df3a83bee5ddb3f3b149e`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -188,9 +205,9 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Remaining rich-AST work includes whole table/image creation and deletion,
-axis moves, merge/split/header actions, durable rich recipes and complete
-format/list/caption planners. Shared tree/AST materialization, toolbar/input/clipboard,
+Remaining rich-AST work includes rich text/format/list editing, multicell paste,
+text-position maps and durable rich history/recipes. Shared tree/AST
+materialization, toolbar/input/clipboard,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.

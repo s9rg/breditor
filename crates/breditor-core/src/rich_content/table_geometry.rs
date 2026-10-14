@@ -120,15 +120,15 @@ impl CellBounds {
 /// Original merge intent, including the full axis context for move detection.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MergeRegion {
-    id: MergeId,
-    stamp: CausalStamp,
-    table: TableId,
-    row_context: Arc<[RowId]>,
-    column_context: Arc<[ColumnId]>,
-    row_start: usize,
-    row_end: usize,
-    column_start: usize,
-    column_end: usize,
+    pub(super) id: MergeId,
+    pub(super) stamp: CausalStamp,
+    pub(super) table: TableId,
+    pub(super) row_context: Arc<[RowId]>,
+    pub(super) column_context: Arc<[ColumnId]>,
+    pub(super) row_start: usize,
+    pub(super) row_end: usize,
+    pub(super) column_start: usize,
+    pub(super) column_end: usize,
 }
 
 impl MergeRegion {
@@ -304,6 +304,17 @@ fn interval<T: Ord>(
 }
 
 impl TableShape {
+    pub(crate) fn rectangle(&self, region: &MergeRegion) -> Option<(usize, usize, usize, usize)> {
+        if region.table != self.table {
+            return None;
+        }
+        let (r0, r1) =
+            interval(&self.rows, &region.row_context, region.row_start, region.row_end).ok()?;
+        let (c0, c1) =
+            interval(&self.columns, &region.column_context, region.column_start, region.column_end)
+                .ok()?;
+        Some((r0, r1, c0, c1))
+    }
     /// Validate current axes; empty axes are allowed as retained hidden state.
     ///
     /// # Errors

@@ -8,16 +8,21 @@
 pub mod actions;
 pub(crate) mod ast_properties;
 mod drafts;
+mod flow_position;
 mod identity;
 mod image_binding;
+mod image_draft;
 mod rich_document;
 mod rich_grid_selection;
 mod rich_selection;
 mod rich_selection_mapping;
+mod table_draft;
 mod table_geometry;
 
 pub use ast_properties::{RichColumn, RichTableView};
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
+pub use flow_position::{RichFlowParent, RichFlowPosition};
+pub use image_draft::ImageDraft;
 pub use rich_document::{RichDocument, RichDocumentError};
 pub use rich_grid_selection::ResolvedRichGrid;
 pub use rich_selection::{
@@ -26,6 +31,7 @@ pub use rich_selection::{
 pub use rich_selection_mapping::{
     RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
 };
+pub use table_draft::TableDraft;
 
 pub use identity::{
     AssetGeneration, AssetId, BlockId, CellId, ChangeId, ColumnId, DocumentId, ImageId, MergeId,
