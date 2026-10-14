@@ -354,11 +354,12 @@ On October 14, 2026, the reproducible script passed:
   closure, explicit edges, reordered axes and metadata-only redo preservation.
 - 11 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 retained native collaboration/history contracts and 35 shared rich-AST
+- 27 retained native collaboration/history contracts and 57 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
-- 120 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine
-  and 45 generated-Wasm shared-AST tests. The explicit test list now includes
-  `rich-replica.spec.mjs`; the old 75-test configuration did not exercise it.
+- 147 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine
+  and 72 generated-Wasm shared-AST/selection tests. The explicit test list includes
+  `rich-replica.spec.mjs` and `rich-selection.spec.mjs`; the old 75-test configuration
+  did not exercise those shared families.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
@@ -382,8 +383,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 7,146,252 bytes, or 1,972,768 bytes under gzip, with
-SHA-256 `c5f0af56de58de6d8948934d84eaf4bd44403f664b760fa2f11b848c837f900b`.
+The tested fixture Wasm is 7,682,786 bytes, or 2,085,607 bytes under gzip, with
+SHA-256 `122d4dd84004435f6350e375b0da09d94d65014ddff551d59d3f629b081262b2`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -436,14 +437,14 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V2 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V3 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional. V1 shared journals are rejected rather than silently replayed
-under the changed operation grouping and creation semantics. Local rich editor
+still provisional. V1/V2 shared journals are rejected rather than silently replayed
+without their required causal UI/history metadata. Local rich editor
 recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
@@ -451,8 +452,34 @@ and fingerprint, model revision 2 and pinned Loro 1.16.2 codec before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
 authentication or a writer lease. The reference relay must supply those checks.
-`apply_at` guards exact canonical causal versions; it does not freeze local
-selection/history metadata or replace the future shared observation contract.
+`apply_at` guards exact canonical causal versions; it does not freeze local UI
+or history metadata. `observe` and the guarded APIs additionally bind local
+selection, pending formats, history and the exact live owner publication. Serialized
+revision/version strings are not mutation authority; restored owners receive new
+opaque observation tokens.
+
+Shared text selections now retain causal anchors and original insertion affinity.
+Node selections keep stable flow IDs; grids keep directional table/row/column IDs
+and use Rust-derived merged closure. Deletion fallback chooses surviving original
+axes, never an unrelated concurrently inserted axis. Clearing exposes an explicit
+reason. Capturing an empty derived paragraph's selection activates no shared
+container, and local selection/pending-format changes leave updates and redo intact.
+
+Each history action owns before/after causal selection and pending-format recipes.
+Undo/Redo restores that action's recipe rather than the current mouse caret.
+Native text recreation reproduced a caret moving from offset 2 to the paragraph's
+end. A cursor-only delta projection now repairs recreated character references
+with Breditor's affinity rules; the engine still authors all content inverses.
+The adapter uses the pinned, already-transitive `loro-internal` delta API without
+unsafe access or a dependency source patch. Production promotion must review this
+engine-specific boundary and its work/memory budgets.
+
+`insert_plain_text` respects complete pending or affinity-derived formats and
+publishes the advanced caret in one content history group. An empty pending array
+explicitly types plain text rather than inheriting a neighbouring Strong mark.
+The Wasm boundary exposes independently disposable opaque observations, guarded
+dispatch, selection, pending formats, typing and history. Its JSON view includes
+decimal offsets/revisions, causal version words and original Rust table/grid geometry.
 
 Shared creation allows up to 64 flow records per command and 1,000 initial format
 annotations per text block. A table retains at most 256 historical merge identities,
@@ -484,7 +511,7 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-Complete shared paragraph/list/range planner coverage, causal rich selections and
+Complete shared paragraph/list/range planner coverage and
 cycle/conflict normalization remain implementation gates. The shared browser
 coordinator, collaborative IndexedDB/leases and authorized reference
 relay/presence/asset-provider integration are also unfinished. The fixture
@@ -494,11 +521,13 @@ Structured shared clipboard must allocate history-free primitives and authored
 merge stamps, rather than copy local history through the creation record API.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.
 
-One follow-up recovery run returned several zero path coordinates as `NaN`
-through Playwright's large-object transport in Firefox. The recovery test now
-compares the actual Wasm JSON wire and separately verifies browser parsing;
-five repeats per engine agreed. The earlier object-transport mismatch's origin
-is not established, and these passing runs are not an upstream browser repair claim.
+Follow-up Firefox large-object comparisons reported zero path/grid coordinates
+as `NaN`, including a native-expected zero in an axis test. Recovery and axis
+checks now compare the actual Wasm JSON wire with independent browser parsing;
+the axis check also verifies finite numbers before test-protocol transport. Five
+recovery repeats per engine and five axis repeats in Firefox agreed. The earlier
+object-comparison mismatch's origin is not established, and these passing runs
+are not an upstream browser repair claim.
 
 The pinned Wasm normal/build closure contains 139 packages. Loro's facade is MIT,
 but `im 15.1.0`, `bitmaps 2.1.0` and `sized-chunks 0.6.5` declare `MPL-2.0+`.

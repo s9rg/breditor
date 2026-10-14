@@ -326,11 +326,21 @@ test("rich table reorder updates snapshot paths and retracts spans without losin
 
 test("native and Wasm table axis edits preserve exact inverses and map node grid and caption selections", async ({ page }) => {
   await ready(page);
-  const result = await page.evaluate(async () => {
+  const wire = await page.evaluate(async () => {
     const { exercise_table_axes } = await import("/probe.js");
     const vector = await (await fetch("/native-vector.json")).json();
-    return { actual: JSON.parse(exercise_table_axes(vector.rich_ast_input)), expected: vector.table_axes_expected };
+    const actual = exercise_table_axes(vector.rich_ast_input), parsed = JSON.parse(actual);
+    function finite(value) {
+      if(typeof value === "number" && !Number.isFinite(value)) throw Error("Nonfinite axis coordinate inside browser JSON");
+      if(value && typeof value === "object") for(const child of Object.values(value)) finite(child);
+    }
+    finite(parsed); finite(vector.table_axes_expected);
+    // Compare the actual Wasm JSON boundary and browser parsing, not the test
+    // protocol's independent large-object number marshalling.
+    return { actual, browserParsed:JSON.stringify(parsed), expected:JSON.stringify(vector.table_axes_expected) };
   });
+  const result = Object.fromEntries(Object.entries(wire).map(([key,value])=>[key,JSON.parse(value)]));
+  expect(result.browserParsed).toEqual(result.actual);
   expect(result.actual).toEqual(result.expected);
   expect(result.actual.cases.map(value => value.name)).toEqual(["insert_row", "insert_column", "delete_row", "delete_column"]);
   for (const value of result.actual.cases) {

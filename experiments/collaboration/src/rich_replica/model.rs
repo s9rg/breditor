@@ -18,8 +18,15 @@ pub(super) fn tree(doc: &LoroDoc) -> LoroTree {
 }
 
 pub(super) fn existing_text(doc: &LoroDoc, block: &str) -> Option<LoroText> {
-    let root = ContainerID::new_root("texts", ContainerType::Map);
-    doc.try_get_text(ContainerID::new_mergeable(&root, block, ContainerType::Text))
+    doc.try_get_text(text_id(block))
+}
+
+pub(super) fn text_id(block: &str) -> ContainerID {
+    ContainerID::new_mergeable(
+        &ContainerID::new_root("texts", ContainerType::Map),
+        block,
+        ContainerType::Text,
+    )
 }
 
 pub(super) fn text(doc: &LoroDoc, block: &str) -> Result<LoroText, Error> {

@@ -53,6 +53,11 @@ pub fn event_offset(text: &LoroText, offset: u32) -> Result<usize, Error> {
 }
 
 impl TextAnchor {
+    pub(crate) fn empty(container: loro::ContainerID, affinity: Affinity) -> Self {
+        let side = if affinity == Affinity::Before { Side::Left } else { Side::Right };
+        Self { cursor: Cursor::new(None, container, side, 0).encode(), origin_unicode: 0 }
+    }
+
     /// Capture an insertion-affine cursor at a scalar boundary.
     ///
     /// # Errors

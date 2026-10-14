@@ -363,13 +363,33 @@ insertions expand spans without flattening cell bodies. Canonical column-width
 containers stay outside user history, preventing resize Undo from hiding a later
 remote width contribution.
 
-The private `breditor/rich-replica-journal` V2 reconstructs the original seed/join,
+Shared selections now use causal text anchors, stable node IDs and directional
+table/row/column grid endpoints. Rust resolves merged closure and safe fallback
+to surviving original axes. Empty normalization paragraphs need no shared
+container activation just to hold a caret. Selection and pending formats remain
+local, preserve redo and do not author content updates.
+
+Before/after selection and typing recipes belong to the original action. History
+restores them through concurrent edits rather than saving the mouse caret at Undo
+time. Native text recreation reproduced an interior caret returning at the end
+after Redo. The cursor-only history delta projection repairs recreated references
+using Breditor insertion affinity, while Loro still authors every content inverse.
+It uses the exact pinned, already-transitive internal delta API; production
+promotion must review that engine-specific boundary and its budgets.
+
+Opaque `SharedObservation` values guard the complete live publication, including
+local selection, pending formats and history. Stale/foreign observations reject
+before Wasm command JSON admission; restored owners have fresh authority. Shared
+caret typing now honors pending/derived formats and advances once in one history
+group. Null pending formats derive; an empty array explicitly types plain text.
+
+The private `breditor/rich-replica-journal` V3 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1 shared journals are rejected explicitly; local rich recovery and default
+V1/V2 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
@@ -377,13 +397,14 @@ envelope. Room ID, schema selector/fingerprint, model revision 2 and engine code
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
 Asynchronous content work can use `apply_at` with the exact causal version. This
-rejects stale coordinates before target/value admission, but is not the future
-selection/history observation token.
+rejects stale coordinates before target/value admission. Complete queued-work
+guards use an opaque observation instead; a content version does not freeze local
+selection or history.
 
 Complete shared paragraph/list/range planner coverage remains to implement.
 Structured shared clipboard must rekey history-free content and generate shared
 merge operations, rather than import local intent clocks or history.
-Causal rich selections, placement-conflict/cycle
+Placement-conflict/cycle
 normalization, the browser shared coordinator, leases, collaborative IndexedDB,
 presence and relay/provider integration are also unfinished. The full functional
 goal is unchanged; this adapter is not an end-user collaboration release.
@@ -746,8 +767,8 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused sessions should complete rich structural planner coverage and
-causal selections in the shared replica, connect the browser shared coordinator,
+The next focused sessions should complete rich paragraph/list/range planner coverage,
+connect the browser shared coordinator,
 then integrate the reference relay,
 presence and host asset provider with durable collaborative recovery. Local asset
 bytes and local checkpoints are tested, not a substitute for shared causal state

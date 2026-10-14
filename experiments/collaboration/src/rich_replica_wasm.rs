@@ -1,15 +1,42 @@
 //! Matching Wasm owner for shared rich-AST contracts, still isolated from shipping modules.
 use crate::{
     Error,
-    rich_replica::{Command, RichReplica},
+    rich_replica::{
+        Command, PendingFormatsUpdate, RichReplica, SelectionUpdate, SharedObservation,
+        selection::Selection,
+    },
 };
 use breditor_core::codec::DocumentJsonCodecV2;
+use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 fn error(value: impl std::fmt::Display) -> JsValue {
     JsValue::from_str(&value.to_string())
 }
 fn codec() -> Result<DocumentJsonCodecV2, JsValue> {
     Ok(DocumentJsonCodecV2::new(crate::rich_ast_fixture::schema().map_err(error)?))
+}
+
+/// Opaque exact live-publication observation with independently owned frozen read values.
+#[wasm_bindgen]
+pub struct RichSharedObservation {
+    inner: SharedObservation,
+}
+#[wasm_bindgen]
+impl RichSharedObservation {
+    /// Read the frozen shared view even after later publications or owner disposal.
+    pub fn view_json(&self) -> String {
+        self.inner.view_json().into()
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct Dispatch {
+    commands: Vec<Command>,
+    #[serde(default)]
+    selection_update: SelectionUpdate,
+    #[serde(default)]
+    pending_formats_update: PendingFormatsUpdate,
 }
 
 /// Exclusive shared writer whose exported content is an admitted Breditor rich AST.
@@ -19,6 +46,76 @@ pub struct RichReplicaProbe {
 }
 #[wasm_bindgen]
 impl RichReplicaProbe {
+    /// Capture content, selection, typing state and history with an exact opaque guard.
+    pub fn observe(&self) -> Result<RichSharedObservation, JsValue> {
+        Ok(RichSharedObservation { inner: self.inner.observe().map_err(error)? })
+    }
+    /// Read the current shared view; its serialized revision alone never authorizes a mutation.
+    pub fn view_json(&self) -> Result<String, JsValue> {
+        self.inner.view_json().map_err(error)
+    }
+    /// Reject stale/foreign publication guards before decoding the complete action/UI envelope.
+    pub fn dispatch(
+        &mut self,
+        observation: &RichSharedObservation,
+        input: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        if input.len() > 1024 * 1024 {
+            return Err(error(Error::Limit("rich action JSON bytes")));
+        }
+        let request: Dispatch = serde_json::from_str(input).map_err(|_| error(Error::Json))?;
+        self.inner
+            .apply_guarded(
+                &observation.inner,
+                request.commands,
+                request.selection_update,
+                request.pending_formats_update,
+            )
+            .map_err(error)
+    }
+    /// Set local directional text/node/grid selection without shared operations or content history.
+    pub fn set_selection(
+        &mut self,
+        observation: &RichSharedObservation,
+        input: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        if input.len() > 64 * 1024 {
+            return Err(error(Error::Limit("rich selection JSON bytes")));
+        }
+        let selection: Option<Selection> =
+            serde_json::from_str(input).map_err(|_| error(Error::Json))?;
+        self.inner.set_selection_guarded(&observation.inner, selection.as_ref()).map_err(error)
+    }
+    /// Set complete admitted pending caret formats; null derives and an empty array types plain.
+    pub fn set_pending_formats(
+        &mut self,
+        observation: &RichSharedObservation,
+        input: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        if input.len() > 64 * 1024 {
+            return Err(error(Error::Limit("rich pending JSON bytes")));
+        }
+        self.inner.set_pending_formats_json(input).map_err(error)
+    }
+    /// Type with current pending/derived formats and publish the advanced caret atomically.
+    pub fn insert_plain_text(
+        &mut self,
+        observation: &RichSharedObservation,
+        input: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.insert_plain_text_guarded(&observation.inner, input).map_err(error)
+    }
+    /// Guard selective Undo against every content, UI and history publication.
+    pub fn undo_observed(&mut self, observation: &RichSharedObservation) -> Result<bool, JsValue> {
+        self.inner.undo_guarded(&observation.inner).map_err(error)
+    }
+    /// Guard selective Redo and restore the original action's post-selection.
+    pub fn redo_observed(&mut self, observation: &RichSharedObservation) -> Result<bool, JsValue> {
+        self.inner.redo_guarded(&observation.inner).map_err(error)
+    }
     /// Seed a room once from a fingerprint-bound admitted Document V2.
     #[wasm_bindgen(constructor)]
     pub fn new(document: &str, writer: String) -> Result<Self, JsValue> {

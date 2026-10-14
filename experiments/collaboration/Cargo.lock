@@ -96,6 +96,7 @@ version = "0.1.0"
 dependencies = [
  "breditor-core",
  "loro",
+ "loro-internal",
  "serde",
  "serde_json",
  "sha2",

@@ -17,6 +17,8 @@ resolver = "3"
 [dependencies]
 breditor-core = { path = "../../crates/breditor-core", features = ["experimental-rich-content"] }
 loro = { version = "=1.16.2", default-features = false }
+# Isolate the already-transitive engine's read-only delta composition/transform API for cursor history.
+loro-internal = { version = "=1.16.2", default-features = false }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
 thiserror = "=2.0.20"

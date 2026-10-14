@@ -1,5 +1,10 @@
 //! Staged shared publication and same-writer selective history with exact journal replay.
-use super::{Command, initialize, materialize, model};
+use super::{
+    Command, PendingFormatsUpdate, SelectionUpdate, SharedObservation,
+    history_metadata::{self, Channel, Recipe, UndoManager},
+    initialize, materialize, model,
+    ui_state::UiState,
+};
 use crate::{Error, register::Stamp};
 use breditor_core::{
     codec::{DocumentJsonCodecV2, RichFormatsJsonCodec},
@@ -7,12 +12,15 @@ use breditor_core::{
     state::EditorContext,
 };
 use loro::{
-    ContainerID, ContainerType, ExportMode, LoroDoc, StyleConfig, ToJson, UndoManager,
-    VersionVector,
+    ContainerID, ContainerType, ExportMode, LoroDoc, StyleConfig, ToJson, VersionVector,
+    sync::Mutex,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::BTreeSet;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 const MAX_ENTRIES: usize = 1000;
 const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
@@ -28,20 +36,44 @@ enum Origin {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum Entry {
-    Local { commands: Vec<Command>, expected: Value },
-    Remote { bytes: Vec<u8> },
-    Undo { changed: bool, expected: Value },
-    Redo { changed: bool, expected: Value },
+    Local {
+        commands: Vec<Command>,
+        selection_update: SelectionUpdate,
+        pending_update: PendingFormatsUpdate,
+        before_ui: UiState,
+        after_ui: UiState,
+        history_key: String,
+        expected: Value,
+    },
+    Remote {
+        bytes: Vec<u8>,
+    },
+    Undo {
+        changed: bool,
+        before_ui: UiState,
+        after_ui: UiState,
+        popped: Vec<String>,
+        expected: Value,
+    },
+    Redo {
+        changed: bool,
+        before_ui: UiState,
+        after_ui: UiState,
+        popped: Vec<String>,
+        expected: Value,
+    },
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Journal {
+pub(super) struct Journal {
     format: String,
     version: u32,
     document: String,
     writer: String,
     origin: Origin,
     entries: Vec<Entry>,
+    pub(super) ui: UiState,
+    pub(super) publication: String,
 }
 
 fn writer_id(value: &str) -> Result<u64, Error> {
@@ -60,18 +92,30 @@ fn contract(_error: impl std::fmt::Display) -> Error {
     Error::Contract("rich replica schema admission")
 }
 
+fn publication(value: &str) -> Result<u64, Error> {
+    let number = value.parse::<u64>().map_err(|_| Error::Contract("shared publication decimal"))?;
+    if number.to_string() != value {
+        return Err(Error::Contract("canonical shared publication decimal"));
+    }
+    Ok(number)
+}
+
 /// An exclusive writer whose authoritative content is shared primitives, not a mutable AST.
 ///
 /// The AST is a validated immutable view. This in-progress adapter is isolated
 /// from shipping packages; relay authentication and writer leasing are external.
 pub struct RichReplica {
-    doc: LoroDoc,
-    undo: UndoManager,
-    codec: DocumentJsonCodecV2,
-    journal: Journal,
+    pub(super) doc: LoroDoc,
+    pub(super) undo: UndoManager,
+    pub(super) codec: DocumentJsonCodecV2,
+    pub(super) journal: Journal,
     header: Value,
-    document: RichDocument,
-    canonical: String,
+    pub(super) document: RichDocument,
+    pub(super) canonical: String,
+    token: Arc<()>,
+    metadata: Arc<Mutex<Channel>>,
+    recipes: BTreeMap<String, Recipe>,
+    cursors: super::history_cursors::HistoryCursors,
 }
 
 impl RichReplica {
@@ -90,11 +134,13 @@ impl RichReplica {
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: 2,
+            version: 3,
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
             entries: vec![],
+            ui: UiState::default(),
+            publication: "0".into(),
         };
         Self::from_journal(codec, journal)
     }
@@ -113,11 +159,13 @@ impl RichReplica {
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: 2,
+                version: 3,
                 document,
                 writer,
                 origin: Origin::Join { updates },
                 entries: vec![],
+                ui: UiState::default(),
+                publication: "0".into(),
             },
         )
     }
@@ -174,49 +222,38 @@ impl RichReplica {
             return Err(Error::Contract("rich replica document binding"));
         }
         let canonical = codec.encode(document.document()).map_err(contract)?;
-        let mut undo = UndoManager::new(&doc);
+        let undo = UndoManager::new(doc.inner());
         undo.set_merge_interval(0);
         undo.set_max_undo_steps(MAX_ENTRIES);
-        Ok(Self { doc, undo, codec, journal, header, document, canonical })
+        let metadata = history_metadata::connect(&undo);
+        Ok(Self {
+            doc,
+            undo,
+            codec,
+            journal,
+            header,
+            document,
+            canonical,
+            token: Arc::new(()),
+            metadata,
+            recipes: BTreeMap::new(),
+            cursors: super::history_cursors::HistoryCursors::default(),
+        })
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != 2 {
+        if journal.format != "breditor/rich-replica-journal" || journal.version != 3 {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
-        let mut candidate = Self::base(codec, journal.clone())?;
+        publication(&journal.publication)?;
+        let mut base = journal.clone();
+        base.ui = UiState::default();
+        let mut candidate = Self::base(codec, base)?;
         for entry in &journal.entries {
-            let before = candidate.doc.oplog_vv();
-            let expected = match entry {
-                Entry::Local { commands, expected } => {
-                    candidate.execute(commands)?;
-                    Some(expected)
-                }
-                Entry::Remote { bytes } => {
-                    candidate.import(bytes)?;
-                    None
-                }
-                Entry::Undo { changed, expected } => {
-                    if candidate.undo.undo()? != *changed {
-                        return Err(Error::ReplayMismatch);
-                    }
-                    Some(expected)
-                }
-                Entry::Redo { changed, expected } => {
-                    if candidate.undo.redo()? != *changed {
-                        return Err(Error::ReplayMismatch);
-                    }
-                    Some(expected)
-                }
-            };
-            if let Some(expected) = expected
-                && effects(&candidate.doc, &before)? != *expected
-            {
-                return Err(Error::ReplayMismatch);
-            }
+            candidate.replay(entry)?;
         }
         candidate.journal = journal;
         candidate.validate_adoption()?;
@@ -228,29 +265,56 @@ impl RichReplica {
     /// # Errors
     /// Invalid targets/values, limits or engine failures retain every published field.
     pub fn apply(&mut self, commands: Vec<Command>) -> Result<bool, Error> {
-        let mut candidate = Self::from_journal(self.codec.clone(), self.journal.clone())?;
+        self.apply_with_state(commands, SelectionUpdate::Map, PendingFormatsUpdate::Map)
+    }
+
+    /// Publish content plus admitted post-action selection/typing state as one atomic group.
+    /// # Errors
+    /// Any command, selection, format, history or checkpoint failure retains the original owner.
+    pub fn apply_with_state(
+        &mut self,
+        commands: Vec<Command>,
+        selection_update: SelectionUpdate,
+        pending_update: PendingFormatsUpdate,
+    ) -> Result<bool, Error> {
+        let mut candidate = self.staged()?;
         let before = candidate.doc.oplog_vv();
+        let before_ui = candidate.journal.ui.clone();
         let history = (candidate.undo_count(), candidate.redo_count());
-        candidate.execute(&commands)?;
+        let history_key = candidate.execute(&commands, &selection_update, &pending_update)?;
         candidate.refresh_document()?;
-        if before == candidate.doc.oplog_vv()
-            || (self.canonical == candidate.canonical
-                && history == (candidate.undo_count(), candidate.redo_count()))
+        if self.canonical == candidate.canonical
+            && before_ui == candidate.journal.ui
+            && history == (candidate.undo_count(), candidate.redo_count())
         {
             return Ok(false);
         }
         let expected = effects(&candidate.doc, &before)?;
-        candidate.journal.entries.push(Entry::Local { commands, expected });
-        candidate.validate_adoption()?;
-        *self = candidate;
+        let after_ui = candidate.journal.ui.clone();
+        candidate.journal.entries.push(Entry::Local {
+            commands,
+            selection_update,
+            pending_update,
+            before_ui,
+            after_ui,
+            history_key,
+            expected,
+        });
+        self.adopt(candidate)?;
         Ok(true)
     }
 
-    fn execute(&mut self, commands: &[Command]) -> Result<(), Error> {
+    fn execute(
+        &mut self,
+        commands: &[Command],
+        selection: &SelectionUpdate,
+        pending: &PendingFormatsUpdate,
+    ) -> Result<String, Error> {
         if commands.is_empty() || commands.len() > 64 {
             return Err(Error::Limit("rich shared action steps"));
         }
         self.refresh_document()?;
+        let before_ui = self.journal.ui.clone();
         self.validate_targets(commands)?;
         self.undo.pause();
         for command in commands {
@@ -260,13 +324,150 @@ impl RichReplica {
         self.undo.resume();
         self.refresh_document()?;
         let stamp = Stamp::next(&self.doc)?;
+        let history_key = stamp.key();
+        let meta = self.journal.ui.engine_meta(&self.doc, &history_key)?;
+        let mut marker = loro::UndoItemMeta::new();
+        marker.set_value(history_key.clone().into());
+        self.metadata.lock().push = marker;
+        let frontier = self.doc.state_frontiers();
+        let undo_count = self.undo_count();
         self.undo.group_start()?;
         for (ordinal, command) in commands.iter().enumerate() {
+            let previous = self.selection()?;
             command.apply(&self.doc, &self.codec, &self.document, stamp, ordinal)?;
             self.doc.commit();
             self.refresh_document()?;
+            self.journal.ui.normalize(&self.doc, &self.document, previous.as_ref())?;
         }
         self.undo.group_end();
+        if self.undo_count() != undo_count {
+            self.cursors.authored(
+                history_key.clone(),
+                frontier,
+                self.doc.state_frontiers(),
+                meta,
+            )?;
+        }
+        self.journal.ui.after(&self.codec, &self.doc, &self.document, selection, pending)?;
+        self.recipes.insert(
+            history_key.clone(),
+            Recipe { before: before_ui, after: self.journal.ui.clone() },
+        );
+        Ok(history_key)
+    }
+
+    fn replay(&mut self, entry: &Entry) -> Result<(), Error> {
+        let before = self.doc.oplog_vv();
+        let expected = match entry {
+            Entry::Local {
+                commands,
+                selection_update,
+                pending_update,
+                before_ui,
+                after_ui,
+                history_key,
+                expected,
+            } => {
+                self.journal.ui.clone_from(before_ui);
+                self.validate_ui()?;
+                if self.execute(commands, selection_update, pending_update)? != *history_key
+                    || self.journal.ui != *after_ui
+                {
+                    return Err(Error::ReplayMismatch);
+                }
+                Some(expected)
+            }
+            Entry::Remote { bytes } => {
+                let previous = self.selection()?;
+                self.import(bytes)?;
+                self.refresh_document()?;
+                self.journal.ui.normalize(&self.doc, &self.document, previous.as_ref())?;
+                None
+            }
+            Entry::Undo { changed, before_ui, after_ui, popped, expected }
+            | Entry::Redo { changed, before_ui, after_ui, popped, expected } => {
+                self.journal.ui.clone_from(before_ui);
+                self.validate_ui()?;
+                let result = self.perform_history(matches!(entry, Entry::Redo { .. }))?;
+                if result != (*changed, popped.clone()) || self.journal.ui != *after_ui {
+                    return Err(Error::ReplayMismatch);
+                }
+                Some(expected)
+            }
+        };
+        if let Some(expected) = expected
+            && effects(&self.doc, &before)? != *expected
+        {
+            return Err(Error::ReplayMismatch);
+        }
+        Ok(())
+    }
+
+    pub(super) fn staged(&self) -> Result<Self, Error> {
+        Self::from_journal(self.codec.clone(), self.journal.clone())
+    }
+
+    pub(super) fn adopt(&mut self, mut candidate: Self) -> Result<(), Error> {
+        candidate.journal.publication = publication(&self.journal.publication)?
+            .checked_add(1)
+            .ok_or(Error::Limit("shared publication revision"))?
+            .to_string();
+        candidate.validate_adoption()?;
+        *self = candidate;
+        Ok(())
+    }
+
+    /// Capture an independently disposable exact live publication, including local UI/history.
+    /// # Errors
+    /// Read admission or JSON encoding failure does not mutate causal state.
+    pub fn observe(&self) -> Result<SharedObservation, Error> {
+        Ok(SharedObservation { token: Arc::clone(&self.token), view: self.view_json()? })
+    }
+
+    /// Reject stale/foreign observations before payload admission; observations grant no transport authority.
+    /// # Errors
+    /// A prior publication, another owner or a restored owner has a different token.
+    pub fn check(&self, observation: &SharedObservation) -> Result<(), Error> {
+        if !Arc::ptr_eq(&self.token, &observation.token) {
+            return Err(Error::Contract("stale or foreign shared observation"));
+        }
+        Ok(())
+    }
+
+    /// Guard content, post-selection and pending formats against the complete observed publication.
+    /// # Errors
+    /// Old/foreign tokens reject before command, selection or format admission.
+    pub fn apply_guarded(
+        &mut self,
+        observation: &SharedObservation,
+        commands: Vec<Command>,
+        selection: SelectionUpdate,
+        pending: PendingFormatsUpdate,
+    ) -> Result<bool, Error> {
+        self.check(observation)?;
+        self.apply_with_state(commands, selection, pending)
+    }
+
+    /// Resolve current directional text/node/grid values without activating any shared container.
+    /// # Errors
+    /// Rejects missing causal history or malformed anchors rather than guessing coordinates.
+    pub fn selection(&self) -> Result<Option<super::selection::Selection>, Error> {
+        self.journal.ui.candidate(&self.doc, &self.document)
+    }
+
+    fn validate_ui(&self) -> Result<(), Error> {
+        let mut normalized = self.journal.ui.clone();
+        let selection = self.selection()?;
+        normalized.normalize(&self.doc, &self.document, selection.as_ref())?;
+        normalized.outcome = self.journal.ui.outcome;
+        if normalized != self.journal.ui {
+            return Err(Error::Contract("noncanonical shared UI checkpoint"));
+        }
+        if let Some(formats) = &self.journal.ui.pending
+            && super::ui_state::canonical_formats(&self.codec, formats)? != *formats
+        {
+            return Err(Error::Contract("canonical shared pending formats"));
+        }
         Ok(())
     }
 
@@ -437,6 +638,7 @@ impl RichReplica {
             }
         }
         self.refresh_document()?;
+        self.validate_ui()?;
         self.checkpoint()?;
         Ok(())
     }
@@ -452,7 +654,11 @@ impl RichReplica {
         {
             return Err(Error::WriterCollision);
         }
+        let before = self.doc.state_frontiers();
         self.doc.import(bytes)?;
+        let diff: loro_internal::undo::DiffBatch =
+            self.doc.diff(&before, &self.doc.state_frontiers())?.into();
+        self.cursors.imported(&diff)?;
         Ok(())
     }
     /// Import authorized engine changes atomically; pending causal dependencies are retained.
@@ -468,30 +674,79 @@ impl RichReplica {
         {
             return Ok(());
         }
-        let mut candidate = Self::from_journal(self.codec.clone(), self.journal.clone())?;
+        let mut candidate = self.staged()?;
+        let previous = candidate.selection()?;
         candidate.import(&bytes)?;
+        candidate.refresh_document()?;
+        candidate.journal.ui.normalize(&candidate.doc, &candidate.document, previous.as_ref())?;
         candidate.journal.entries.push(Entry::Remote { bytes });
-        candidate.validate_adoption()?;
-        *self = candidate;
+        self.adopt(candidate)?;
         Ok(())
     }
     fn history(&mut self, redo: bool) -> Result<bool, Error> {
-        let mut candidate = Self::from_journal(self.codec.clone(), self.journal.clone())?;
+        let mut candidate = self.staged()?;
         let before = candidate.doc.oplog_vv();
+        let before_ui = candidate.journal.ui.clone();
         let counts = (candidate.undo.undo_count(), candidate.undo.redo_count());
-        let changed = if redo { candidate.undo.redo()? } else { candidate.undo.undo()? };
+        let (changed, popped) = candidate.perform_history(redo)?;
         if !changed && counts == (candidate.undo.undo_count(), candidate.undo.redo_count()) {
             return Ok(false);
         }
         let expected = effects(&candidate.doc, &before)?;
+        let after_ui = candidate.journal.ui.clone();
         candidate.journal.entries.push(if redo {
-            Entry::Redo { changed, expected }
+            Entry::Redo { changed, before_ui, after_ui, popped, expected }
         } else {
-            Entry::Undo { changed, expected }
+            Entry::Undo { changed, before_ui, after_ui, popped, expected }
         });
-        candidate.validate_adoption()?;
-        *self = candidate;
+        self.adopt(candidate)?;
         Ok(changed)
+    }
+
+    fn perform_history(&mut self, redo: bool) -> Result<(bool, Vec<String>), Error> {
+        let previous = self.selection()?;
+        let opposites = self
+            .recipes
+            .iter()
+            .map(|(id, recipe)| {
+                let target = if redo { &recipe.before } else { &recipe.after };
+                Ok((id.clone(), target.engine_meta(&self.doc, id)?))
+            })
+            .collect::<Result<BTreeMap<_, _>, Error>>()?;
+        self.metadata.lock().popped.clear();
+        let frontier = self.doc.state_frontiers();
+        let changed = if redo { self.undo.redo()? } else { self.undo.undo()? };
+        self.refresh_document()?;
+        let metas = std::mem::take(&mut self.metadata.lock().popped);
+        let popped = metas
+            .iter()
+            .map(|meta| {
+                meta.value.as_string().map(|id| id.as_str().to_owned()).ok_or(Error::ReplayMismatch)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut repaired = None;
+        for id in &popped {
+            repaired = Some(self.cursors.pop(&self.doc, redo, id)?);
+        }
+        if let Some(id) = popped.last() {
+            if changed {
+                let opposite = opposites.get(id).ok_or(Error::ReplayMismatch)?.clone();
+                self.cursors.opposite(
+                    redo,
+                    id.clone(),
+                    frontier,
+                    self.doc.state_frontiers(),
+                    opposite,
+                )?;
+            }
+            let recipe = self.recipes.get_mut(id).ok_or(Error::ReplayMismatch)?;
+            let state = if redo { &mut recipe.after } else { &mut recipe.before };
+            let (meta, diff) = repaired.ok_or(Error::ReplayMismatch)?;
+            state.apply_engine_cursors(&self.doc, &meta, &diff)?;
+            self.journal.ui = state.clone();
+            self.journal.ui.normalize(&self.doc, &self.document, previous.as_ref())?;
+        }
+        Ok((changed, popped))
     }
     /// Undo this writer's group against current remote content.
     /// # Errors
@@ -499,11 +754,27 @@ impl RichReplica {
     pub fn undo(&mut self) -> Result<bool, Error> {
         self.history(false)
     }
+
+    /// Undo against the complete exact live publication, not just a shared content version.
+    /// # Errors
+    /// A stale/foreign token or history/admission failure preserves the original owner.
+    pub fn undo_guarded(&mut self, observation: &SharedObservation) -> Result<bool, Error> {
+        self.check(observation)?;
+        self.undo()
+    }
     /// Redo the original contribution and priority, not a new competing edit.
     /// # Errors
     /// Replay/engine/schema failure retains the original owner.
     pub fn redo(&mut self) -> Result<bool, Error> {
         self.history(true)
+    }
+
+    /// Redo against the complete exact live publication, including local selection/typing state.
+    /// # Errors
+    /// A stale/foreign token or history/admission failure preserves the original owner.
+    pub fn redo_guarded(&mut self, observation: &SharedObservation) -> Result<bool, Error> {
+        self.check(observation)?;
+        self.redo()
     }
     /// Export opaque causal updates for an authorized host transport.
     /// # Errors
