@@ -11,6 +11,7 @@ mod history_recipe;
 mod insert_plain_text;
 pub(crate) mod local_rewrite;
 mod redo;
+mod replace_range_plain_text;
 mod replace_selection_plain_text;
 mod replace_selection_text;
 mod set_pending_formats;

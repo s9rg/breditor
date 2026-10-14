@@ -74,3 +74,18 @@ impl RichFlowPosition {
         self.before.as_ref()
     }
 }
+
+impl RichDocument {
+    /// Resolve a direct flow-child before-anchor in this immutable snapshot.
+    ///
+    /// Captions and structural row/cell/list-item targets are not general flow children;
+    /// missing or unsupported targets return `None`. The returned coordinates
+    /// are checked again when a structural action is captured and published.
+    #[must_use]
+    pub fn flow_position_before(&self, block: &BlockId) -> Option<RichFlowPosition> {
+        let path = self.block_path(block)?;
+        let parent = path.parent()?;
+        let parent = RichFlowParent::at_path(self, &parent)?;
+        Some(RichFlowPosition::new(parent, Some(block.clone())))
+    }
+}

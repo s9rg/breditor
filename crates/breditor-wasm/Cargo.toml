@@ -44,5 +44,10 @@ wasm-bindgen.workspace = true
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
 
+[[test]]
+name = "rich_editor"
+path = "tests/rich_editor.rs"
+required-features = ["experimental-rich-content"]
+
 [lints]
 workspace = true

@@ -472,6 +472,70 @@ fn typed_extension_format_values_work_in_rich_cells_and_survive_history_recovery
 }
 
 #[test]
+fn explicit_input_target_keeps_the_actual_caret_in_undo_history() -> TestResult {
+    let profile = profile()?;
+    let mut editor = editor(&profile)?;
+    command(&mut editor, &select("3", "3"), "selection")?;
+    let actual = view(&editor)?["selection"].clone();
+    roundtrip(
+        &mut editor,
+        &action(
+            "replaceTextRange",
+            json!({"selection":{"kind":"text","anchor":point("1"),"focus":point("3")},"text":""}),
+        ),
+    )?;
+    assert!(read(editor.observe().document_json())?.contains("\"text\":\"ab\""));
+    command(&mut editor, &json!({"kind":"undo"}), "undo")?;
+    assert_eq!(view(&editor)?["selection"], actual);
+    assert_eq!(view(&editor)?["selection"]["focus"]["offset"], "3");
+    let recovered =
+        profile.restore_editor(&read(editor.checkpoint_json())?).take_editor().ok_or("restore")?;
+    assert_eq!(view(&recovered)?["selection"], actual);
+    Ok(())
+}
+
+#[test]
+fn selected_enter_and_whole_flow_paste_are_single_exact_history_units() -> TestResult {
+    let profile = profile()?;
+    let mut editor = editor(&profile)?;
+    command(&mut editor, &select("1", "3"), "selection")?;
+    let depth = view(&editor)?["undoDepth"].clone();
+    roundtrip(
+        &mut editor,
+        &action("insertParagraph", json!({"right":"enter-right","newItem":null})),
+    )?;
+    assert_eq!(view(&editor)?["undoDepth"].as_u64(), Some(depth.as_u64().ok_or("depth")? + 1));
+    assert_eq!(view(&editor)?["selection"]["focus"]["block"], "enter-right");
+    assert!(read(editor.observe().document_json())?.contains("\"text\":\"b\""));
+    command(&mut editor, &json!({"kind":"undo"}), "undo")?;
+    command(
+        &mut editor,
+        &json!({"kind":"setSelection","selection":{"kind":"node","block":"image-block"}}),
+        "selection",
+    )?;
+    let copied: Value = serde_json::from_str(&read(editor.observe().clipboard_json())?)?;
+    command(&mut editor, &select("1", "3"), "selection")?;
+    roundtrip(
+        &mut editor,
+        &action(
+            "pasteFlowAtText",
+            json!({"clipboardJson":copied["structuredJson"],"allocation":{"prefix":"at-caret","replica":"1","counter":"4","lamport":"10"},"right":"paste-right"}),
+        ),
+    )?;
+    assert_eq!(view(&editor)?["selection"]["focus"]["block"], "paste-right");
+    let after = read(editor.observe().document_json())?;
+    assert!(after.contains("at-caret:i:"));
+    let mut recovered =
+        profile.restore_editor(&read(editor.checkpoint_json())?).take_editor().ok_or("restore")?;
+    command(&mut recovered, &json!({"kind":"undo"}), "undo")?;
+    assert_eq!(view(&recovered)?["selection"]["anchor"]["offset"], "1");
+    assert_eq!(view(&recovered)?["selection"]["focus"]["offset"], "3");
+    command(&mut recovered, &json!({"kind":"redo"}), "redo")?;
+    assert_eq!(read(recovered.observe().document_json())?, after);
+    Ok(())
+}
+
+#[test]
 fn rich_profile_v6_is_explicit_and_existing_factories_remain_closed() -> TestResult {
     let profile = profile()?;
     let descriptor: Value = serde_json::from_str(&read(profile.descriptor_json())?)?;

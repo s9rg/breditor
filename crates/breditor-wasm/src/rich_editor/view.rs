@@ -2,7 +2,10 @@
 
 use super::{BreditorRichObservation, error, selection};
 use crate::BreditorError;
-use breditor_core::codec::{DocumentJsonCodecV2, RichFormatsJsonCodec};
+use breditor_core::{
+    codec::{DocumentJsonCodecV2, RichFormatsJsonCodec},
+    rich_content::ResolvedRichSelection,
+};
 use serde_json::json;
 
 pub(super) fn encode(observation: &BreditorRichObservation) -> Result<String, BreditorError> {
@@ -20,6 +23,17 @@ pub(super) fn encode(observation: &BreditorRichObservation) -> Result<String, Br
         .transpose()
         .map_err(|_| error::rejected("breditor_rich.formats_read"))?;
     let mut tables = Vec::new();
+    let resolved = state
+        .selection()
+        .map(|selection| selection.resolve(doc))
+        .transpose()
+        .map_err(|_| error::rejected("breditor_rich.view_read"))?;
+    let grid = match resolved {
+        Some(ResolvedRichSelection::Grid(grid)) => Some(
+            json!({"cells":grid.cells().iter().map(selection::cell).collect::<Vec<_>>(),"masters":grid.masters().iter().map(selection::cell).collect::<Vec<_>>()}),
+        ),
+        _ => None,
+    };
     for id in doc.table_ids() {
         let table = doc
             .table(id)
@@ -30,5 +44,5 @@ pub(super) fn encode(observation: &BreditorRichObservation) -> Result<String, Br
     }
     Ok(json!({"format":"breditor/rich-view","formatVersion":1,"documentJson":document,"revision":state.revision().get().to_string(),
         "selection":state.selection().map(|value|selection::encode(value.kind())),"pendingFormatsJson":pending,
-        "undoDepth":observation.undo_depth,"redoDepth":observation.redo_depth,"historyCapacity":observation.capacity,"tables":tables}).to_string())
+        "undoDepth":observation.undo_depth,"redoDepth":observation.redo_depth,"historyCapacity":observation.capacity,"tables":tables,"grid":grid}).to_string())
 }

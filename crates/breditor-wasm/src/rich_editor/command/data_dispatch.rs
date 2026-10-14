@@ -9,6 +9,13 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     match tag {
+        CommandTag::InsertParagraph => super::insert_paragraph::execute(owner, observation, input),
+        CommandTag::PasteFlowAtText => {
+            super::paste_flow_at_text::execute(owner, observation, input)
+        }
+        CommandTag::ReplaceTextRange => {
+            super::replace_text_range::execute(owner, observation, input)
+        }
         CommandTag::PasteInlineClipboard => {
             super::paste_inline_clipboard::execute(owner, observation, input)
         }

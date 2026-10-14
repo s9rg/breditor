@@ -13,9 +13,11 @@ mod delete_table_column;
 mod delete_table_row;
 mod drafts;
 mod indent_list_items;
+mod input_plan;
 mod insert_blocks;
 mod insert_formatted_text;
 mod insert_image;
+mod insert_paragraph;
 mod insert_plain_text;
 mod insert_table;
 mod insert_table_column;
@@ -27,12 +29,14 @@ mod move_table_column;
 mod move_table_row;
 mod navigate_grid;
 mod outdent_list_items;
+mod paste_flow_at_text;
 mod paste_flow_clipboard;
 mod paste_grid_clipboard;
 mod paste_inline_clipboard;
 mod redo;
 mod replace_blocks;
 mod replace_image;
+mod replace_text_range;
 mod resize_image;
 mod resize_table_column;
 mod set_heading;
@@ -63,6 +67,8 @@ use serde_json::value::RawValue;
 enum CommandTag {
     SetSelection,
     InsertPlainText,
+    InsertParagraph,
+    PasteFlowAtText,
     DeleteSelection,
     Undo,
     Redo,
@@ -80,6 +86,7 @@ enum CommandTag {
     ResizeTableColumn,
     SplitTableCell,
     ReplaceImage,
+    ReplaceTextRange,
     SetImageAlt,
     ResizeImage,
     SetImageCaption,
