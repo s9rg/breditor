@@ -36,10 +36,13 @@ AST and stable-ID directory, guarded table/image and rich text/format/heading
 actions, rich paragraph/list/fragment editing, multicell paste/clear, merge-aware
 grid navigation and original structured clipboard/fresh-ID preparation, a separate
 stable text/node/grid selection family, and an exclusive single-user rich runtime
-history owner with pending caret formats and replay-proved local recovery. The
-rich-AST/local-operation checkpoint is still in progress. The
+history owner with pending caret formats and replay-proved local recovery. Atomic
+text-range replacement now covers one block, direct sibling flow and sibling
+leading list heads. A separately gated rich Wasm owner and low-level opt-in
+browser package expose these actions, typed construction drafts and semantic
+clipboard reads/pastes. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
-separate tested contracts from the still-unimplemented editor, relay and asset
+separate tested contracts from the remaining DOM editor, relay and asset
 storage. The default packages, schemas and codecs remain unchanged.
 
 The central decision is to design collaboration before adding new structural
@@ -186,8 +189,45 @@ publication token and history. Replay verifies the exact AST and restores saved
 before/after selections and pending formats. Plain typing honors an explicit
 pending override or derives run formats from caret affinity. This is single-user
 history with a separate local restart codec, not shared selective undo.
-The remaining cross-block replacement and cross-container copy planners remain before
-checkpoint 3 can exit.
+Range replacement checks the final admitted tree once, not an oversized temporary
+insert-before-delete tree. It retains the first text block's identity/kind, its
+prefix and the last text block's formatted suffix. Sibling-list replacement keeps
+the final item's trailing rich flow and removes fully selected earlier flow.
+Witnessed maps relocate preserved suffix positions and collapsed deleted content;
+history restores exact saved selections. Plain range typing derives its style
+from the logical start, independent of drag direction. Arbitrary ranges across
+different cells/containers remain unsupported.
+
+### Opt in rich Wasm owner
+
+The `breditor-wasm` feature `experimental-rich-content` introduces rich owner ABI
+1 and explicit profile-bootstrap version 6. Existing factories, bootstrap versions
+1–5 and default ABI 5 keep their meanings. A rich profile compiles the sealed
+grammar and typed extension declarations; its descriptor binds the exact schema
+fingerprint. Factories create a new exclusive local owner or replay-admit a rich
+checkpoint with fresh observation authority.
+
+Each boundary action has its own documented file. Commands carry closed JSON
+fields, typed stable IDs, canonical decimal u64 strings and admitted format
+literals. Table/image/list/flow drafts supply all identities and rich bodies;
+there is no HTML-to-AST or anonymous-cell fallback. Per-command field validation
+distinguishes missing fields from present null. Unknown fields and duplicate keys
+are rejected before publication. Local merge priorities are caller-supplied
+semantic values; this boundary does not authenticate shared authors.
+
+Mutation outcomes and read encoding are separate. Observations expose canonical
+Document V2, stable selection, pending formats, history counts and Rust-derived
+table geometry through JSON strings. Clipboard reads expose structured content
+and plain text; they do not claim that the OS clipboard accepted a write.
+Paste commands use fresh host namespaces and newly authored merge priority.
+
+`@breditor/experimental-rich-content` owns the matching Wasm handles, disposes
+results, exposes read/execute/recovery and permits an exact revision guard for
+work prepared from a prior view. It remains a low-level browser package: DOM
+input/rendering, toolbar controllers, native clipboard events, file paste/drop,
+asset resolution, IndexedDB acknowledgement and shared replication are separate
+implementation steps. `scripts/check-rich-browser.mjs` builds only the opt-in
+artifact and runs native plus real generated-Wasm browser workflows.
 
 ### Grid navigation and semantic clipboard
 

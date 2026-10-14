@@ -1,0 +1,17 @@
+{
+  "name": "@breditor/experimental-rich-content",
+  "version": "0.3.0-alpha.22",
+  "private": true,
+  "description": "Opt-in Rust-backed rich content owner for Breditor tables, images and rich flow",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": ["index.js", "index.d.ts", "commands.d.ts", "dist", "README.md", "LICENSE", "LICENSE-MIT", "LICENSE-APACHE"],
+  "exports": {
+    ".": {"types": "./index.d.ts", "import": "./index.js"},
+    "./wasm": {"types":"./dist/breditor_wasm.d.ts", "import":"./dist/breditor_wasm.js"},
+    "./wasm-binary": "./dist/breditor_wasm_bg.wasm"
+  }
+}

@@ -1,0 +1,34 @@
+// Explicit opt-in functional qualification. No default package outputs or publication.
+import {execFileSync} from "node:child_process";
+import {cpSync,existsSync,mkdirSync,readFileSync} from "node:fs";
+import {dirname,resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {homedir} from "node:os";
+import {createHash} from "node:crypto";
+import {gzipSync} from "node:zlib";
+const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
+const bin=resolve(homedir(),".cargo/bin");
+const cargo=process.env.BREDITOR_CARGO??(existsSync(resolve(bin,"cargo"))?resolve(bin,"cargo"):"cargo");
+const bindgen=process.env.BREDITOR_WASM_BINDGEN??(existsSync(resolve(bin,"wasm-bindgen"))?resolve(bin,"wasm-bindgen"):"wasm-bindgen");
+const native={...process.env,CARGO_TARGET_DIR:resolve(root,"target/collaboration-native"),CARGO_PROFILE_DEV_DEBUG:"0",CARGO_PROFILE_TEST_DEBUG:"0",CARGO_INCREMENTAL:"0"};
+const target=resolve(root,"target/rich-browser-wasm"), web=resolve(root,"target/rich-browser-web");
+const wasm={...process.env,CARGO_TARGET_DIR:target};
+const run=(command,args,env=native)=>execFileSync(command,args,{cwd:root,env,stdio:"inherit"});
+run(cargo,["fmt","--all","--check"]);
+run(cargo,["clippy","-p","breditor-core","--locked","--features","experimental-rich-content","--lib","--test","rich_text_range","--test","rich_formats_payload","--offline","--","-D","warnings"]);
+run(cargo,["test","-p","breditor-core","--locked","--features","experimental-rich-content","--test","rich_text_range","--test","rich_formats_payload","--offline"]);
+run(cargo,["clippy","-p","breditor-wasm","--locked","--features","experimental-rich-content","--lib","--test","rich_editor","--offline","--","-D","warnings"]);
+run(cargo,["test","-p","breditor-wasm","--locked","--features","experimental-rich-content","--tests","--offline"]);
+run(cargo,["clippy","-p","breditor-wasm","--locked","--features","experimental-rich-content","--target","wasm32-unknown-unknown","--lib","--offline","--","-D","warnings"],wasm);
+run(cargo,["build","-p","breditor-wasm","--locked","--features","experimental-rich-content","--target","wasm32-unknown-unknown","--release","--offline"],wasm);
+mkdirSync(web,{recursive:true});
+run(bindgen,["--target","web","--out-dir",web,resolve(target,"wasm32-unknown-unknown/release/breditor_wasm.wasm")],wasm);
+const packageOutput=resolve(root,"packages/breditor-experimental-rich-content/dist");
+mkdirSync(packageOutput,{recursive:true});
+for(const name of ["breditor_wasm.js","breditor_wasm.d.ts","breditor_wasm_bg.wasm","breditor_wasm_bg.wasm.d.ts"])
+ cpSync(resolve(web,name),resolve(packageOutput,name));
+cpSync(resolve(web,"snippets"),resolve(packageOutput,"snippets"),{recursive:true});
+run(resolve(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--lib","ES2022,DOM,ESNext.Disposable","--module","NodeNext","experiments/rich-browser/types.ts"]);
+run(resolve(root,"node_modules/.bin/playwright"),["test","--config","experiments/rich-browser/playwright.config.mjs"]);
+const bytes=readFileSync(resolve(web,"breditor_wasm_bg.wasm"));
+console.log(JSON.stringify({checkpoint:"rich-owner-browser",wasmBytes:bytes.length,gzipBytes:gzipSync(bytes).length,sha256:createHash("sha256").update(bytes).digest("hex")}));

@@ -198,6 +198,16 @@ fn decode_configuration(
     Ok((schema, extensions))
 }
 
+/// V6 explicitly selects the sealed rich grammar; V1–V5 keep their existing meanings.
+#[cfg(feature = "experimental-rich-content")]
+pub(crate) fn decode_rich_schema(
+    json: &str,
+) -> Result<breditor_core::schema::CompiledSchema, BreditorError> {
+    let (schema, extensions) = decode_configuration(json, 6)?;
+    breditor_core::schema::CompiledSchema::try_compile_rich_content_profile(schema, &extensions)
+        .map_err(|_| profile_compilation())
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct ProfilePreflight {

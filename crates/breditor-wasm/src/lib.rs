@@ -33,6 +33,8 @@ mod observation;
 mod profile;
 mod projection;
 mod read_observation;
+#[cfg(feature = "experimental-rich-content")]
+mod rich_editor;
 mod selection;
 mod session_checkpoint_json;
 mod state_json;
@@ -56,6 +58,12 @@ pub use projection::debug_last_projection_child_count;
 #[cfg(feature = "diagnostic-projection-format-count")]
 pub use projection::debug_last_projection_format_count;
 pub use projection::{BreditorProjection, BreditorProjectionResult, BreditorProjectionUpdate};
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_editor::{
+    BREDITOR_RICH_ABI_VERSION, BreditorRichCommandResult, BreditorRichEditor,
+    BreditorRichEditorResult, BreditorRichObservation, BreditorRichProfile,
+    BreditorRichProfileResult,
+};
 pub use selection::{BreditorSelection, BreditorSelectionResult};
 pub use string_result::BreditorStringResult;
 pub use version::{BREDITOR_WASM_ABI_VERSION, breditor_version, breditor_wasm_abi_version};

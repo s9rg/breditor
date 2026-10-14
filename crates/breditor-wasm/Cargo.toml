@@ -32,6 +32,8 @@ experimental-text-blocks = ["breditor-core/experimental-structural-properties"]
 # Opt-in flat-list profile/Session V6 bridge; also retains the heading APIs.
 experimental-flat-lists = ["experimental-text-blocks"]
 experimental-nested-lists = ["experimental-flat-lists"]
+# Separate rich owner/clipboard boundary. Default ABI/modules remain unchanged.
+experimental-rich-content = ["breditor-core/experimental-rich-content"]
 
 [dependencies]
 breditor-core = { path = "../breditor-core", version = "=0.3.0-alpha.22" }

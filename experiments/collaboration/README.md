@@ -176,8 +176,14 @@ headers. Both operations have exact local inverses; these are core primitives,
 not browser clipboard event handlers.
 
 This owner provides single-user history, not collaborative selective undo.
-Typing-group policy, arbitrary cross-block text replacement and browser command
-integration remain implementation work.
+Atomic text replacement now supports same-block, direct-sibling flow and sibling
+leading-list-head ranges. It retains the first block's identity/kind and the
+last block's formatted suffix, checks only the final aggregate content budget,
+maps preserved suffix/deleted positions and restores exact selections through
+history. Sibling-list replacement retains the final item's trailing media.
+Plain typing derives range style from the logical start and collapsed style from
+focus affinity. Arbitrary cross-cell/container ranges and typing-group policy
+remain implementation work.
 
 ## Grid navigation and structured clipboard
 
@@ -268,7 +274,36 @@ collaborative inverse recipes. The generic fingerprint-bearing Document V2 codec
 carries rich ASTs; shipping rich-session/sync contracts remain a
 separate gate. No legacy Operation/session codec gains these action variants.
 
-## Verified checkpoint
+## Rich owner browser checkpoint
+
+`node scripts/check-rich-browser.mjs` passed on October 14, 2026:
+
+- 10 native public rich-owner workflows, 10 atomic range workflows and 2 canonical
+  format-literal codec contracts.
+- 43 existing Wasm unit tests, the retained projection contract and 21 legacy
+  Wasm boundary tests with the opt-in feature enabled.
+- Strict native/wasm32 Clippy and generated TypeScript declarations, including
+  closed per-command request types and decimal-string coordinates.
+- 33 tests against the assembled `@breditor/experimental-rich-content` package:
+  11 workflows each in Chromium, Firefox and WebKit. These cover table/image
+  CRUD, axes/moves/merge/split/header/resize/clear/navigation, rich flow/nested lists,
+  Enter, inline and typed-extension formatting, mixed sibling range replacement,
+  fresh clipboard identities/spans, guarded publication and exact recovered history.
+- Repeated Unicode typing and restored undo/redo branches, including an actual
+  page reload from a host-saved checkpoint.
+
+The rich-owner Wasm is 4,009,085 bytes, or 1,065,394 bytes under gzip, with SHA-256
+`38f8435250eb53cef6558f3f62a4eed0fe31fe95b88390f42d851d1491238df3`.
+This opt-in release-mode artifact is not size-qualified for distribution. It has
+no Loro dependency and is distinct from the replication fixture below.
+
+Browser checks exercise the real public owner and typed command API, not a
+JavaScript content model. The matching package includes wasm-bindgen's generated
+helper modules. Its default editor ABI remains 5; rich ABI 1 uses explicit
+bootstrap V6. DOM input/toolbar controllers, native clipboard events, host assets,
+upload persistence and the shared rich replica remain implementation work.
+
+## Verified replication fixture checkpoint
 
 On October 14, 2026, the reproducible script passed:
 
@@ -315,8 +350,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 6,459,841 bytes, or 1,779,311 bytes under gzip, with
-SHA-256 `ffd5abf4cdb77bba29cc615fa5a94bd5441747a86efefa1d8689aa5ba9cc13bf`.
+The tested fixture Wasm is 6,482,790 bytes, or 1,783,996 bytes under gzip, with
+SHA-256 `f1b9e7e7d1c914ffb8864c97ce2a1a484dbef2d823b6e6f5c59c84634de6307d`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -335,9 +370,15 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Remaining rich-AST work includes arbitrary cross-block text replacement and
-cross-container copy planners. Shared tree/AST
-materialization, toolbar/input/clipboard controllers,
+The opt-in rich owner ABI 1 and explicit bootstrap V6 now expose typed local
+commands, history/recovery and semantic clipboard reads/pastes in the actual
+`breditor-wasm` crate. The separate low-level
+`@breditor/experimental-rich-content` wrapper manages its Wasm ownership and
+optional exact revision guard. `node scripts/check-rich-browser.mjs` builds and
+checks this matching pair without widening the default packages.
+
+Remaining rich-AST work includes arbitrary cross-cell/container range planners.
+Shared tree/AST materialization, DOM toolbar/input/clipboard controllers,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.

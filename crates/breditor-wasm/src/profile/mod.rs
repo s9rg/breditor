@@ -8,6 +8,8 @@ mod descriptor;
 mod from_bootstrap_json;
 mod generation;
 
+#[cfg(feature = "experimental-rich-content")]
+pub(crate) use bootstrap_json_v2::decode_rich_schema;
 pub use compiled_profile::BreditorCompiledProfile;
 pub use compiled_profile_result::BreditorCompiledProfileResult;
 pub use descriptor::BreditorCompiledProfileDescriptor;
