@@ -90,7 +90,7 @@ impl RichReplica {
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: 1,
+            version: 2,
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
@@ -113,7 +113,7 @@ impl RichReplica {
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: 1,
+                version: 2,
                 document,
                 writer,
                 origin: Origin::Join { updates },
@@ -181,7 +181,7 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != 1 {
+        if journal.format != "breditor/rich-replica-journal" || journal.version != 2 {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
@@ -258,12 +258,14 @@ impl RichReplica {
         }
         self.doc.commit();
         self.undo.resume();
+        self.refresh_document()?;
         let stamp = Stamp::next(&self.doc)?;
         self.undo.group_start()?;
         for (ordinal, command) in commands.iter().enumerate() {
-            command.apply(&self.doc, stamp, ordinal)?;
+            command.apply(&self.doc, &self.codec, &self.document, stamp, ordinal)?;
+            self.doc.commit();
+            self.refresh_document()?;
         }
-        self.doc.commit();
         self.undo.group_end();
         Ok(())
     }
@@ -301,7 +303,23 @@ impl RichReplica {
             self.codec.limits().clone(),
         ));
         for command in commands {
+            if super::planning::handles(command) {
+                super::planning::validate(
+                    &self.codec,
+                    &self.doc,
+                    &self.document,
+                    &self.canonical,
+                    command,
+                )?;
+                continue;
+            }
             let block = match command {
+                Command::InsertBlocks(_)
+                | Command::InsertRow(_)
+                | Command::InsertColumn(_)
+                | Command::SetHeader(_)
+                | Command::MergeCells(_)
+                | Command::SplitCell(_) => unreachable!("planned creation command"),
                 Command::InsertText(value) => &value.block,
                 Command::DeleteText(value) => &value.block,
                 Command::SetFormat(value) => &value.block,
@@ -328,6 +346,12 @@ impl RichReplica {
                 .ok_or(Error::Contract("shared element target"))?;
             let kind = node.kind().as_str();
             match command {
+                Command::InsertBlocks(_)
+                | Command::InsertRow(_)
+                | Command::InsertColumn(_)
+                | Command::SetHeader(_)
+                | Command::MergeCells(_)
+                | Command::SplitCell(_) => unreachable!("planned creation command"),
                 Command::InsertText(_) | Command::DeleteText(_) | Command::SetFormat(_) => {
                     if kind != "breditor/paragraph" && kind != "breditor/heading" {
                         return Err(Error::Contract("shared text target kind"));

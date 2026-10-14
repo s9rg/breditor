@@ -2,13 +2,26 @@ import {test,expect} from "@playwright/test";
 
 function findBlock(node,block){return node.properties?.["breditor/block-id"]===block?node:node.children?.map(value=>findBlock(value,block)).find(Boolean);}
 
+test("new column width history never hides a later remote resize contribution",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const {a,b}=window.makePeers(),apply=window.sharedApply,sync=window.sharedSync;try{
+   apply(a,{kind:"insert_column",data:{block:"table-block",column:"created-width",width:240,before:"c"}});b.receive(a.updates());
+   apply(a,{kind:"resize_column",data:{block:"table-block",column:"created-width",width:320}});b.receive(a.updates());
+   apply(b,{kind:"resize_column",data:{block:"table-block",column:"created-width",width:640}});a.receive(b.updates());const before=a.document_json();
+   a.undo();sync(a,b);const undo=a.document_json();a.redo();sync(a,b);return {before,undo,redo:a.document_json()};
+  }finally{a.free();b.free();}
+ });
+ expect(result.undo).toBe(result.before);expect(result.redo).toBe(result.before);
+ expect(findBlock(JSON.parse(result.before).root,"table-block").properties["breditor/columns"][0].width).toBe(640);
+});
+
 test("original update envelopes reject wrong room and model before importing malformed engine bytes",async({page})=>{
  const result=await page.evaluate(()=>{
   const {a,b}=window.makePeers();try{
    const frame=a.update_frame(),joined=window.richShared.wasm.RichReplicaProbe.join_frame("room","303",frame);
    const same=joined.document_json()===a.document_json();joined.free();
    const before=b.document_json(),checkpoint=b.checkpoint(),failures=[];
-   for(const [field,value] of [["document","other-room"],["modelVersion",2],["engine",{name:"loro",version:"wrong-version"}]]){
+   for(const [field,value] of [["document","other-room"],["modelVersion",3],["engine",{name:"loro",version:"wrong-version"}]]){
     const wrong=JSON.parse(frame);wrong[field]=value;wrong.bytes=[255];try{b.receive_frame(JSON.stringify(wrong));}catch(error){failures.push(String(error));}
    }
    return {same,failures,unchanged:b.document_json()===before&&b.checkpoint()===checkpoint};
@@ -44,7 +57,102 @@ test.beforeEach(async({page})=>{
   window.sharedSync=(a,b)=>{const x=a.update_frame(),y=b.update_frame();a.receive_frame(y);b.receive_frame(x);if(a.document_json()!==b.document_json())throw Error("Shared ASTs diverged");};
   window.sharedApply=(owner,...commands)=>owner.apply(JSON.stringify(commands));
   window.sharedNode=(node,block)=>node.properties?.["breditor/block-id"]===block?node:node.children?.map(value=>window.sharedNode(value,block)).find(Boolean);
+  window.sharedCell=(owner,row,column)=>window.sharedNode(JSON.parse(owner.document_json()).root,row).children.find(cell=>cell.properties["breditor/column-id"]===column);
+  window.sharedParagraph=(block,text)=>({kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":block},children:[{kind:"text",text,formats:[{type:"breditor/strong",properties:{}}]}]});
+  window.sharedGrid=()=>{const {a,b}=window.makePeers();window.sharedApply(a,{kind:"insert_row",data:{block:"table-block",row_block:"new-row",row:"r2",before:"row"}},{kind:"insert_column",data:{block:"table-block",column:"c2",width:240,before:"c"}});window.sharedSync(a,b);return {a,b};};
+  window.sharedMerge=(owner,id,lastRow="new-row")=>({kind:"merge_cells",data:{block:"table-block",merge:id,anchor:window.sharedCell(owner,"new-row","c2").properties["breditor/block-id"],focus:window.sharedCell(owner,lastRow,"c").properties["breditor/block-id"]}});
  });
+});
+
+test("independent rich creation keeps remote content through creator Undo and Redo",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const {a,b}=window.makePeers(),apply=window.sharedApply,sync=window.sharedSync;try{
+   apply(a,{kind:"insert_blocks",data:{parent:null,before:"table-block",nodes:[window.sharedParagraph("a-new","Initial🙂")]}});
+   apply(b,{kind:"insert_blocks",data:{parent:null,before:"table-block",nodes:[window.sharedParagraph("b-new","Other")]}});sync(a,b);
+   apply(b,{kind:"insert_text",data:{block:"a-new",offset:0,text:"Remote "}});a.receive(b.updates());const before=a.document_json();
+   a.undo();sync(a,b);const undone=a.document_json();a.redo();sync(a,b);return {before,undone,after:a.document_json()};
+  }finally{a.free();b.free();}
+ });
+ expect(result.after).toBe(result.before);expect(findBlock(JSON.parse(result.undone).root,"a-new")).toBeUndefined();
+ expect(findBlock(JSON.parse(result.undone).root,"b-new").children.map(run=>run.text).join("")).toBe("Other");
+ expect(findBlock(JSON.parse(result.after).root,"a-new").children.map(run=>run.text).join("")).toBe("Remote Initial🙂");
+});
+
+test("independent new axes derive one shared editable cell and retain its rich body and header",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const {a,b}=window.makePeers(),apply=window.sharedApply,sync=window.sharedSync;try{
+   apply(a,{kind:"insert_row",data:{block:"table-block",row_block:"new-row",row:"r2",before:"row"}});
+   apply(b,{kind:"insert_column",data:{block:"table-block",column:"c2",width:240,before:"c"}});sync(a,b);
+   const cell=window.sharedCell(a,"new-row","c2"),block=cell.children[0].properties["breditor/block-id"];
+   apply(a,{kind:"insert_text",data:{block,offset:0,text:"A"}});apply(b,{kind:"insert_text",data:{block,offset:0,text:"B🙂"}});sync(a,b);
+   const combined=window.sharedCell(a,"new-row","c2").children[0].children.map(run=>run.text).join("");a.undo();sync(a,b);
+   apply(b,{kind:"insert_blocks",data:{parent:cell.properties["breditor/block-id"],before:null,nodes:[window.sharedParagraph("rich-cell","Rich")]}},{kind:"set_header",data:{cells:[cell.properties["breditor/block-id"]],header:true}});sync(a,b);
+   const before=a.document_json();a.undo();sync(a,b);const hidden=!window.sharedNode(JSON.parse(a.document_json()).root,"new-row");a.redo();sync(a,b);
+   return {combined,hidden,exact:a.document_json()===before,cell:window.sharedCell(a,"new-row","c2")};
+  }finally{a.free();b.free();}
+ });
+ expect(result.combined).toContain("A");expect(result.combined).toContain("B🙂");expect(result.hidden).toBe(true);expect(result.exact).toBe(true);
+ expect(result.cell.properties["breditor/header"]).toBe(true);expect(result.cell.children[0].children.map(run=>run.text).join("")).toBe("B🙂");
+ expect(findBlock(result.cell,"rich-cell").children[0].text).toBe("Rich");
+});
+
+test("whole tables images headings and lists decompose into one shared creation group",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const {a,b}=window.makePeers(),apply=window.sharedApply,sync=window.sharedSync;try{
+   const source=JSON.parse(a.document_json()).root,table=structuredClone(source.children[0]),image=structuredClone(window.sharedNode(source,"image-block"));
+   function rekey(node,prefix){for(const name of ["breditor/block-id","breditor/table-id","breditor/image-id","breditor/row-id","breditor/column-id","breditor/asset-generation"])if(typeof node.properties?.[name]==="string")node.properties[name]=`${prefix}-${node.properties[name]}`;for(const column of node.properties?.["breditor/columns"]??[])column.id=`${prefix}-${column.id}`;for(const child of node.children??[])if(child.kind==="element")rekey(child,prefix);}
+   rekey(table,"created");rekey(image,"standalone");const heading=window.sharedParagraph("heading-new","Title🙂");heading.type="breditor/heading";heading.properties["breditor/level"]=2;
+   const list={kind:"element",type:"breditor/ordered-list",entityId:null,properties:{"breditor/block-id":"list-new","breditor/start":3},children:[{kind:"element",type:"breditor/list-item",entityId:null,properties:{"breditor/block-id":"item-new"},children:[window.sharedParagraph("list-p","Item")]}]};
+   apply(a,{kind:"insert_blocks",data:{parent:null,before:null,nodes:[table,image,heading,list]}});const count=a.undo_count();b.receive(a.updates());
+   apply(b,{kind:"insert_text",data:{block:"created-caption",offset:0,text:"Remote "}});a.receive(b.updates());const before=a.document_json();a.undo();sync(a,b);const hidden=!window.sharedNode(JSON.parse(a.document_json()).root,"created-table-block");a.redo();sync(a,b);
+   return {count,hidden,exact:a.document_json()===before,after:JSON.parse(a.document_json()).root};
+  }finally{a.free();b.free();}
+ });
+ expect(result.count).toBe(1);expect(result.hidden).toBe(true);expect(result.exact).toBe(true);expect(findBlock(result.after,"heading-new").type).toBe("breditor/heading");
+ expect(findBlock(result.after,"list-new").properties["breditor/start"]).toBe(3);expect(findBlock(result.after,"standalone-image-block").type).toBe("breditor/image");
+});
+
+test("owned merge split and merged headers retain every covered cell body",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const {a,b}=window.sharedGrid(),apply=window.sharedApply,sync=window.sharedSync;try{
+   apply(a,window.sharedMerge(a,"m-a"));b.receive(a.updates());const first=window.sharedCell(a,"new-row","c2"),last=window.sharedCell(a,"new-row","c");
+   let rejected=false;const prior=a.checkpoint();try{apply(a,{kind:"set_header",data:{cells:[last.properties["breditor/block-id"]],header:true}});}catch{rejected=a.checkpoint()===prior;}
+   apply(a,{kind:"set_header",data:{cells:[first.properties["breditor/block-id"],last.properties["breditor/block-id"]],header:true}});
+   apply(b,{kind:"insert_text",data:{block:last.children[0].properties["breditor/block-id"],offset:0,text:"Covered🙂"}});sync(a,b);
+   apply(a,{kind:"split_cell",data:{cell:last.properties["breditor/block-id"]}});sync(a,b);const split=a.document_json();a.undo();sync(a,b);const merged=a.document_json();a.redo();sync(a,b);
+   return {rejected,exact:a.document_json()===split,split:JSON.parse(split).root,merged:JSON.parse(merged).root};
+  }finally{a.free();b.free();}
+ });
+ expect(result.rejected).toBe(true);expect(result.exact).toBe(true);const table=findBlock(result.split,"table-block");expect(table.properties["breditor/retracted-merges"]).toEqual(["m-a"]);
+ const cells=findBlock(result.split,"new-row").children;expect(cells.map(cell=>cell.properties["breditor/header"])).toEqual([true,true]);expect(cells[1].children[0].children.map(run=>run.text).join("")).toBe("Covered🙂");
+ expect(findBlock(result.merged,"table-block").properties["breditor/retracted-merges"]).toEqual([]);
+});
+
+test("independent splits retract observed losing merges without undoing the other writer",async({page})=>{
+ const result=await page.evaluate(()=>{
+  const {a,b}=window.sharedGrid(),apply=window.sharedApply,sync=window.sharedSync;try{
+   apply(a,window.sharedMerge(a,"m-a","row"));apply(b,window.sharedMerge(b,"m-b"));sync(a,b);
+   const split={kind:"split_cell",data:{cell:window.sharedCell(a,"new-row","c2").properties["breditor/block-id"]}};apply(a,split);apply(b,split);sync(a,b);
+   const both=a.document_json();a.undo();sync(a,b);const one=a.document_json();b.undo();sync(a,b);return {both,one,restored:a.document_json()};
+  }finally{a.free();b.free();}
+ });
+ for(const document of [result.both,result.one])expect(findBlock(JSON.parse(document).root,"table-block").properties["breditor/retracted-merges"]).toEqual(["m-a","m-b"]);
+ expect(findBlock(JSON.parse(result.restored).root,"table-block").properties["breditor/retracted-merges"]).toEqual([]);
+ expect(findBlock(JSON.parse(result.restored).root,"table-block").properties["breditor/merges"]).toHaveLength(2);
+});
+
+test("created axes and merge history replay after page reload with exact future operation bytes",async({page})=>{
+ const saved=await page.evaluate(()=>{
+  const {a,b}=window.sharedGrid(),apply=window.sharedApply,sync=window.sharedSync;try{
+   apply(a,window.sharedMerge(a,"m-reload","row"));b.receive(a.updates());
+   apply(b,{kind:"split_cell",data:{cell:window.sharedCell(b,"row","c").properties["breditor/block-id"]}});a.receive(b.updates());
+   const journal=a.checkpoint(),before=a.document_json();a.undo();sync(a,b);const undo=a.document_json(),undoBytes=Array.from(a.updates());a.redo();
+   return {journal,before,undo,undoBytes,redo:a.document_json(),redoBytes:Array.from(a.updates())};
+  }finally{a.free();b.free();}
+ });
+ await page.reload();await expect(page.locator("#status")).toHaveText("Ready for contract tests");
+ const restored=await page.evaluate(async saved=>{const wasm=await import("/probe.js"),owner=wasm.RichReplicaProbe.restore("room",saved.journal);try{const before=owner.document_json();owner.undo();const undo=owner.document_json(),undoBytes=Array.from(owner.updates());owner.redo();return {before,undo,undoBytes,redo:owner.document_json(),redoBytes:Array.from(owner.updates())};}finally{owner.free();}},saved);
+ expect(restored).toEqual({before:saved.before,undo:saved.undo,undoBytes:saved.undoBytes,redo:saved.redo,redoBytes:saved.redoBytes});
 });
 
 test("real shared Wasm materializes an identical admitted rich AST, not probe JSON",async({page})=>{

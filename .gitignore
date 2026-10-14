@@ -1,4 +1,5 @@
 /target/
+/experiments/collaboration/target/
 *.profraw
 node_modules/
 /packages/*/dist/

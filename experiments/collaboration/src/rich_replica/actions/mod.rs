@@ -2,21 +2,31 @@
 mod delete_block;
 mod delete_column;
 mod delete_text;
+mod insert_blocks;
+mod insert_column;
+mod insert_row;
 mod insert_text;
+mod merge_cells;
 mod move_block;
 mod move_column;
 mod replace_image;
 mod resize_column;
 mod resize_image;
 mod set_format;
+mod set_header;
 mod set_image_alt;
+mod split_cell;
 
 use crate::{Error, register::Stamp};
 pub use delete_block::DeleteBlock;
 pub use delete_column::DeleteColumn;
 pub use delete_text::DeleteText;
+pub use insert_blocks::InsertBlocks;
+pub use insert_column::InsertColumn;
+pub use insert_row::InsertRow;
 pub use insert_text::InsertText;
 use loro::LoroDoc;
+pub use merge_cells::MergeCells;
 pub use move_block::MoveBlock;
 pub use move_column::MoveColumn;
 pub use replace_image::ReplaceImage;
@@ -24,12 +34,26 @@ pub use resize_column::ResizeColumn;
 pub use resize_image::ResizeImage;
 use serde::{Deserialize, Serialize};
 pub use set_format::SetFormat;
+pub use set_header::SetHeader;
 pub use set_image_alt::SetImageAlt;
+pub use split_cell::SplitCell;
 
 /// One shared history group targets independent stable content identities.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Capture a merge-closed rectangle and own one non-destructive merge intent.
+    MergeCells(MergeCells),
+    /// Retract observed overlapping intents without redistributing cell text.
+    SplitCell(SplitCell),
+    /// Create fresh flow content and its independent descendants.
+    InsertBlocks(InsertBlocks),
+    /// Create a stable table row with canonical empty intersections.
+    InsertRow(InsertRow),
+    /// Create a stable table column with canonical empty intersections.
+    InsertColumn(InsertColumn),
+    /// Set each selected base cell's independently owned header flag.
+    SetHeader(SetHeader),
     /// Insert scalar-aligned text into a stable block.
     InsertText(InsertText),
     /// Delete scalar-aligned text without replacing its container.
@@ -56,6 +80,12 @@ pub enum Command {
 impl Command {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::MergeCells(value) => value.prepare(doc)?,
+            Self::SplitCell(value) => value.prepare(doc)?,
+            Self::InsertBlocks(value) => value.prepare(doc)?,
+            Self::InsertRow(value) => value.prepare(doc)?,
+            Self::InsertColumn(value) => value.prepare(doc)?,
+            Self::SetHeader(value) => value.prepare(doc)?,
             Self::InsertText(value) => {
                 super::model::text(doc, &value.block)?;
             }
@@ -93,12 +123,31 @@ impl Command {
                     .ensure_mergeable_map("placements")?
                     .ensure_mergeable_map(&value.column)?;
             }
-            Self::ResizeColumn(_) => {}
+            Self::ResizeColumn(value) => {
+                doc.get_map("columns")
+                    .ensure_mergeable_map(&value.block)?
+                    .ensure_mergeable_map("widths")?
+                    .ensure_mergeable_map(&value.column)?
+                    .ensure_mergeable_map("width")?;
+            }
         }
         Ok(())
     }
-    pub(super) fn apply(&self, doc: &LoroDoc, stamp: Stamp, ordinal: usize) -> Result<(), Error> {
+    pub(super) fn apply(
+        &self,
+        doc: &LoroDoc,
+        codec: &breditor_core::codec::DocumentJsonCodecV2,
+        document: &breditor_core::rich_content::RichDocument,
+        stamp: Stamp,
+        ordinal: usize,
+    ) -> Result<(), Error> {
         match self {
+            Self::MergeCells(value) => value.apply(doc, codec, document, stamp),
+            Self::SplitCell(value) => value.apply(doc, codec, document, stamp),
+            Self::InsertBlocks(value) => value.apply(doc, stamp, ordinal),
+            Self::InsertRow(value) => value.apply(doc, stamp, ordinal),
+            Self::InsertColumn(value) => value.apply(doc, stamp),
+            Self::SetHeader(value) => value.apply(doc, stamp),
             Self::InsertText(value) => value.apply(doc),
             Self::DeleteText(value) => value.apply(doc),
             Self::SetFormat(value) => value.apply(doc, stamp, ordinal),

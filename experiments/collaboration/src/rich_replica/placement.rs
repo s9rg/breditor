@@ -65,12 +65,37 @@ pub(super) fn seed(
     parent: Option<&str>,
     site_id: String,
 ) -> Result<(), Error> {
+    define(doc, block, parent, None, site_id)
+}
+
+/// Immutable birth occurrence. Visibility, not native tree creation, belongs to user history.
+pub(super) fn define(
+    doc: &LoroDoc,
+    block: &str,
+    parent: Option<&str>,
+    before: Option<&str>,
+    site_id: String,
+) -> Result<(), Error> {
+    let order = prepare(doc, parent)?;
+    let index = if let Some(before) = before {
+        let anchor = active(doc, before)?;
+        if site(doc, &anchor)?.parent.as_deref() != parent {
+            return Err(Error::Contract("shared creation before-anchor parent"));
+        }
+        order
+            .to_vec()
+            .iter()
+            .position(|value| value.as_string().is_some_and(|value| value.as_str() == anchor))
+            .ok_or(Error::Contract("shared creation before occurrence"))?
+    } else {
+        order.len()
+    };
     doc.get_map("sites").insert(
         &site_id,
         serde_json::to_string(&Site { block: block.into(), parent: parent.map(str::to_owned) })?,
     )?;
     metadata(doc, block)?.insert("origin-site", site_id.clone())?;
-    prepare(doc, parent)?.push(site_id)?;
+    order.insert(index, site_id)?;
     Ok(())
 }
 pub(super) fn children(doc: &LoroDoc, parent: Option<&str>) -> Result<Vec<String>, Error> {

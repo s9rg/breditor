@@ -41,6 +41,10 @@ impl Stamp {
         format!("{}:{}", self.writer, self.counter)
     }
 
+    pub(crate) const fn words(self) -> (u64, u64, u32) {
+        (self.lamport, self.writer, self.counter)
+    }
+
     pub(crate) fn contribution(self, value: LoroValue) -> LoroValue {
         loro_value!({
             "lamport": self.lamport.to_string(), "writer": self.writer.to_string(),

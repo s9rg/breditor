@@ -5,10 +5,13 @@
 
 pub mod actions;
 mod column_order;
+mod creation;
 mod initialize;
 mod materialize;
+mod merges;
 mod model;
 mod placement;
+mod planning;
 mod session;
 mod text;
 mod update_frame;

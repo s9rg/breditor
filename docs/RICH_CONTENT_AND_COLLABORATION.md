@@ -346,23 +346,44 @@ descendants follow their stable parent identity without copying text or metadata
 Deletion is an independently owned visibility effect: any surviving deletion
 keeps the node/axis hidden, even after another writer undoes its own deletion.
 
-The private `breditor/rich-replica-journal` V1 reconstructs the original seed/join,
+Shared creation separates permanent definitions and canonical containers from
+writer-owned births, initial text and marks. Whole paragraphs/headings, lists,
+tables and images are admitted before decomposition. Undo hides the creator's
+node/axis without erasing remote causal content; Redo restores it. Fresh IDs cannot
+replace hidden historical definitions. Independently inserted rows and columns
+derive one canonical intersection cell, which supports shared text, rich flow and
+header metadata.
+
+Merge/split use the existing core capture and merge-closed rectangle rules.
+Each shared merge action owns its own intent and verified authored stamp; each split
+owns retractions of observed overlapping intents, including known losers. A split
+does not retract an unknown concurrent merge, and Undo cannot remove another
+writer's split. Merged headers address all retained source cells. Interior axis
+insertions expand spans without flattening cell bodies. Canonical column-width
+containers stay outside user history, preventing resize Undo from hiding a later
+remote width contribution.
+
+The private `breditor/rich-replica-journal` V2 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
+V1 shared journals are rejected explicitly; local rich recovery and default
+shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision and engine codec
+envelope. Room ID, schema selector/fingerprint, model revision 2 and engine codec
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
 Asynchronous content work can use `apply_at` with the exact causal version. This
 rejects stale coordinates before target/value admission, but is not the future
 selection/history observation token.
 
-Shared creation/axis insertion, merge/split/header and complete list/range planner
-coverage remain to implement. Causal rich selections, placement-conflict/cycle
+Complete shared paragraph/list/range planner coverage remains to implement.
+Structured shared clipboard must rekey history-free content and generate shared
+merge operations, rather than import local intent clocks or history.
+Causal rich selections, placement-conflict/cycle
 normalization, the browser shared coordinator, leases, collaborative IndexedDB,
 presence and relay/provider integration are also unfinished. The full functional
 goal is unchanged; this adapter is not an end-user collaboration release.

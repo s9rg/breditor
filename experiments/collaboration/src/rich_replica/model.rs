@@ -150,3 +150,20 @@ pub(super) fn deleted(doc: &LoroDoc, block: &str) -> Result<bool, Error> {
     let raw = metadata(doc, block)?.get_deep_value().to_json_value();
     any_deleted(doc, raw.get("deletions"))
 }
+
+/// Seed/derived nodes exist independently of history; authored definitions need a live birth.
+pub(super) fn born(doc: &LoroDoc, raw: &Value) -> Result<bool, Error> {
+    match raw.get("birth-mode").and_then(Value::as_str) {
+        None | Some("derived") => Ok(true),
+        Some("authored") => any_deleted(doc, raw.get("births")),
+        Some(_) => Err(Error::Contract("shared birth mode")),
+    }
+}
+
+pub(super) fn optional_metadata(doc: &LoroDoc, block: &str) -> Option<LoroMap> {
+    doc.try_get_map(ContainerID::new_mergeable(
+        &ContainerID::new_root("metadata", ContainerType::Map),
+        block,
+        ContainerType::Map,
+    ))
+}

@@ -354,10 +354,10 @@ On October 14, 2026, the reproducible script passed:
   closure, explicit edges, reordered axes and metadata-only redo preservation.
 - 11 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 retained native collaboration/history contracts and 18 shared rich-AST
+- 27 retained native collaboration/history contracts and 35 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
-- 99 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine
-  and 24 new generated-Wasm shared-AST tests. The explicit test list now includes
+- 120 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine
+  and 45 generated-Wasm shared-AST tests. The explicit test list now includes
   `rich-replica.spec.mjs`; the old 75-test configuration did not exercise it.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
@@ -382,8 +382,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 6,941,668 bytes, or 1,916,540 bytes under gzip, with
-SHA-256 `484868783e2083731c4d815ae34f6fedfaa830b58989b738aff61bc6f6f751b2`.
+The tested fixture Wasm is 7,146,252 bytes, or 1,972,768 bytes under gzip, with
+SHA-256 `c5f0af56de58de6d8948934d84eaf4bd44403f664b760fa2f11b848c837f900b`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -405,6 +405,29 @@ future selective-history operation identities
 after restart. Browser checks exercise the real generated module, including an
 actual page reload from the same-writer journal.
 
+Shared commands now create whole paragraphs/headings, lists, tables and images,
+including rich descendants, from schema-admitted Document V2 element records.
+These records are decomposed once; they are not shared root replacements. Fresh
+block/table/image identities are checked against retained historical definitions,
+including definitions hidden by Undo. New rows and columns own their visibility
+claims, so Undo hides the creator's contribution without deleting remote text.
+Independently created axes derive one stable cell at their intersection. A derived
+cell supports text, rich flow children and per-source-cell header contributions.
+
+Shared merge/split commands reuse the original Rust capture, rectangle closure
+and overlap rules. Each shared merge action owns an independent intent record with its actual
+authored causal stamp. Splits own retractions of observed overlaps, including
+known losing intents; unknown concurrent merges remain eligible. Undoing one
+writer's split cannot retract another writer's split. Covered cell bodies are
+never flattened, and headers require the complete merged source-cell set. Interior
+row/column creation expands a merge under the existing stable-axis rules.
+
+The new-column width regression reproduces the container-activation failure:
+without permanent canonical width containers, Undo of A's resize hides B's later
+640-pixel contribution and reveals the initial 240-pixel width. Preparing those
+containers outside user history fixes the failure. Native and generated-Wasm
+tests retain B's width through both A's Undo and Redo.
+
 Two reproduced native tree-undo behaviors determined the design. Deletion Undo
 can recreate physical nodes, so stable block metadata/text must outlive physical
 tree IDs. Native move Undo can override a later remote move, so semantic moves
@@ -413,21 +436,29 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V1 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V2 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional.
+still provisional. V1 shared journals are rejected rather than silently replayed
+under the changed operation grouping and creation semantics. Local rich editor
+recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
-and fingerprint, model revision 1 and pinned Loro 1.16.2 codec before importing
+and fingerprint, model revision 2 and pinned Loro 1.16.2 codec before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
 authentication or a writer lease. The reference relay must supply those checks.
 `apply_at` guards exact canonical causal versions; it does not freeze local
 selection/history metadata or replace the future shared observation contract.
+
+Shared creation allows up to 64 flow records per command and 1,000 initial format
+annotations per text block. A table retains at most 256 historical merge identities,
+including identities hidden by Undo. These independent prototype ceilings require
+the later compaction and workload pass; visible geometry limits alone do not
+describe retained causal storage.
 
 ## Limits and remaining gates
 
@@ -453,12 +484,14 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-Complete shared structural/range planner coverage, causal rich selections and
+Complete shared paragraph/list/range planner coverage, causal rich selections and
 cycle/conflict normalization remain implementation gates. The shared browser
 coordinator, collaborative IndexedDB/leases and authorized reference
 relay/presence/asset-provider integration are also unfinished. The fixture
 exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.
+Structured shared clipboard must allocate history-free primitives and authored
+merge stamps, rather than copy local history through the creation record API.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.
 
 One follow-up recovery run returned several zero path coordinates as `NaN`

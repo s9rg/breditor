@@ -43,12 +43,23 @@ fn element(doc: &LoroDoc, block: &str, depth: usize) -> Result<Option<Value>, Er
         return Ok(None);
     }
     let meta = super::model::metadata(doc, block)?;
+    let raw = meta.get_deep_value().to_json_value();
+    if !super::model::born(doc, &raw)? {
+        return Ok(None);
+    }
     let mut kind = string(&meta, "type")?;
     let identity = object_string(&meta, "identity")?;
     let mut properties =
         identity.as_object().ok_or(Error::Contract("shared identity fields"))?.clone();
     properties.insert("breditor/block-id".into(), block.into());
-    let raw = meta.get_deep_value().to_json_value();
+    if raw.get("defaults").is_some() {
+        properties.extend(
+            object_string(&meta, "defaults")?
+                .as_object()
+                .ok_or(Error::Contract("shared immutable defaults"))?
+                .clone(),
+        );
+    }
     let empty = json!({});
     for patch in patches(doc, raw.get("effects").unwrap_or(&empty))? {
         for name in patch.removes {
@@ -73,6 +84,7 @@ fn element(doc: &LoroDoc, block: &str, depth: usize) -> Result<Option<Value>, Er
         }
     }
     if kind == "breditor/table" {
+        super::merges::project(doc, &raw, &mut properties)?;
         let columns = columns(doc, block)?;
         for row in &mut children {
             complete_row(doc, &properties, row, &columns)?;
@@ -125,27 +137,34 @@ fn columns(doc: &LoroDoc, block: &str) -> Result<Vec<Value>, Error> {
         if !seen.insert(column.clone()) {
             return Err(Error::Contract("duplicate shared column"));
         }
-        if super::model::any_deleted(
+        if !super::model::born(
+            doc,
+            source.get("definitions").and_then(|value| value.get(&column)).unwrap_or(&json!({})),
+        )? || super::model::any_deleted(
             doc,
             source.get("deletions").and_then(|value| value.get(&column)),
         )? {
             continue;
         }
-        let records = widths
-            .get(&column)
-            .and_then(|value| value.get("width"))
-            .and_then(Value::as_object)
-            .ok_or(Error::Contract("shared width contributions"))?;
+        let records =
+            widths.get(&column).and_then(|value| value.get("width")).and_then(Value::as_object);
         let mut chosen = None;
-        for (key, value) in records {
+        for (key, value) in records.into_iter().flatten() {
             let (stamp, value) = crate::register::read_contribution(doc, key, value)?;
             if chosen.as_ref().is_none_or(|(prior, _)| stamp > *prior) {
                 chosen = Some((stamp, value));
             }
         }
-        let encoded = chosen.ok_or(Error::Contract("missing shared width"))?.1;
-        let width: Value =
-            serde_json::from_str(encoded.as_str().ok_or(Error::Contract("shared width literal"))?)?;
+        let width = if let Some((_, encoded)) = chosen {
+            serde_json::from_str(encoded.as_str().ok_or(Error::Contract("shared width literal"))?)?
+        } else {
+            source
+                .get("definitions")
+                .and_then(|value| value.get(&column))
+                .and_then(|value| value.get("width"))
+                .cloned()
+                .ok_or(Error::Contract("missing shared width"))?
+        };
         output.push(json!({"id":column,"width":width}));
     }
     Ok(output)
@@ -188,6 +207,11 @@ fn complete_row(
             cell
         } else {
             let block = virtual_id("cell", &[table, &row_id, column]);
+            if super::model::optional_metadata(doc, &block).is_some() {
+                existing
+                    .push(element(doc, &block, 0)?.ok_or(Error::Contract("hidden derived cell"))?);
+                continue;
+            }
             let text = virtual_id("flow", &[&block]);
             json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[placeholder(&text,&super::text::block_runs(doc,&text)?)]})
         };
