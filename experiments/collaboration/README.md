@@ -175,9 +175,33 @@ Grid clearing uses explicitly owned empty-block IDs and retains geometry and
 headers. Both operations have exact local inverses; these are core primitives,
 not a browser clipboard codec or controller.
 
-This owner is single-user runtime history, not durable restart or collaborative
-selective undo. Durable rich session codecs, typing-group policy, arbitrary
-cross-block text replacement and browser command integration remain implementation work.
+This owner provides single-user history, not collaborative selective undo.
+Typing-group policy, arbitrary cross-block text replacement and browser command
+integration remain implementation work.
+
+## Local rich recovery
+
+The opt-in `RichSessionJsonCodec` uses the separate
+`breditor/rich-local-session` version 1 family; it does not reinterpret V7 or
+define a shared-update protocol. A fingerprint-bearing Document V2 holds the
+retained baseline. Chronological entries carry guarded element rewrites and
+saved before/after selection, pending formats and exact decimal revisions.
+The checkpoint retains current metadata, the undo/redo cursor and entry capacity.
+Text offsets also use exact decimal strings, not coerced JavaScript numbers.
+
+Every retained entry and inverse is replayed under the receiving host's active
+schema and limits before recovery returns a new exclusive owner. Current metadata
+is admitted against the content at the saved cursor. Old process-local snapshots
+cannot publish to the recovered owner. New edits can branch recovered history,
+and disabled/evicted history is not recreated.
+
+Recipes retain the smallest single changed element branch; groups affecting
+several siblings can retain a parent or root. This is exact local restart history,
+not a replication adapter or selective undo. The default checkpoint budget is
+16 MiB and 1000 retained entries, independently of document limits and runtime
+entry capacity. Encoding and decoding are bounded; production storage, write
+acknowledgement, compaction and measured replay cost remain separate work.
+Raster bytes and upload state are not embedded in this content checkpoint.
 
 ## Rich selection contracts
 
@@ -202,14 +226,14 @@ edits provide their own witnessed maps and shared text needs causal anchors.
 Local history retains before/after
 selections to restore exact undo: reverse deletion fallback cannot infer the original.
 
-These are opt-in local primitives and a runtime owner, not collaborative inverse
-recipes or a durable rich session. The generic fingerprint-bearing Document V2 codec carries
-research AST fixtures only; new shipping rich-session/sync contracts remain a
+These are opt-in local primitives with a separate local recovery codec, not
+collaborative inverse recipes. The generic fingerprint-bearing Document V2 codec
+carries rich ASTs; shipping rich-session/sync contracts remain a
 separate gate. No legacy Operation/session codec gains these action variants.
 
 ## Verified checkpoint
 
-On October 13, 2026, the reproducible script passed:
+On October 14, 2026, the reproducible script passed:
 
 - 703 default core unit tests and 1,217 opt-in core unit tests.
 - 11 rich-content contract tests, including 256 seeded merge schedules.
@@ -223,8 +247,10 @@ On October 13, 2026, the reproducible script passed:
   heading conversion, witnessed maps, grouped history, pending formats and exact saved selections.
 - 16 rich flow/list/fragment and multicell paste/clear workflows, including media
   ordering, partial numbered-list extraction and exact local inverses.
+- 10 local rich checkpoint/recovery workflows, including every mixed history
+  cursor, current metadata, edits after restart, entry eviction and exact u64 revisions.
 - 27 native collaboration/history contracts.
-- 66 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
+- 69 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
@@ -239,9 +265,14 @@ On October 13, 2026, the reproducible script passed:
 - A ten-group rich paragraph/list/media workflow and independent multicell
   paste/clear workflows match native/Wasm, including caret identity changes,
   pending formats, complete undo/redo and retained source-cell partitions.
+- Native rich checkpoints restored in Wasm at all 11 positions of the ten-group
+  rich list/media history, with exact future undo/redo, current metadata and
+  rejection of old live-owner observation tokens.
+- Five repeated rich recovery runs per browser engine passed with exact Wasm JSON
+  transport and independent in-browser parse/stringify agreement.
 
-The tested fixture Wasm is 6,001,848 bytes, or 1,674,889 bytes under gzip, with
-SHA-256 `45e6cc6647a990590b7285334ab6fb68d01ea88e1839d8527f8c0f98bf3cd0a0`.
+The tested fixture Wasm is 6,174,409 bytes, or 1,716,276 bytes under gzip, with
+SHA-256 `77c5feeb9e820fbc68569c6abc6f5db30c640aeff5f81a62024e97167f94e871`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -260,14 +291,20 @@ limits do not establish adversarial decoder memory/time bounds. Writer-collision
 checks are not authentication. The journal resumes an exclusively leased writer;
 it is not a portable backup import or permission to clone an active writer.
 
-Remaining rich-AST work includes durable rich history/recipes, arbitrary
-cross-block text replacement, grid navigation and structured clipboard
+Remaining rich-AST work includes arbitrary cross-block text replacement, grid
+navigation and structured clipboard
 interchange with fresh-ID allocation. Shared tree/AST
 materialization, toolbar/input/clipboard controllers,
 IndexedDB durability, upload queues and the authorized reference relay remain
 implementation gates. The fixture exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.
+
+One follow-up recovery run returned several zero path coordinates as `NaN`
+through Playwright's large-object transport in Firefox. The recovery test now
+compares the actual Wasm JSON wire and separately verifies browser parsing;
+five repeats per engine agreed. The earlier object-transport mismatch's origin
+is not established, and these passing runs are not an upstream browser repair claim.
 
 The pinned Wasm normal/build closure contains 139 packages. Loro's facade is MIT,
 but `im 15.1.0`, `bitmaps 2.1.0` and `sized-chunks 0.6.5` declare `MPL-2.0+`.

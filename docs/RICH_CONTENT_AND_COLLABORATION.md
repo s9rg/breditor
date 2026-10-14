@@ -35,7 +35,7 @@ coordinator, feature-gated rich geometry/image values, a separate sealed rich
 AST and stable-ID directory, guarded table/image and rich text/format/heading
 actions, rich paragraph/list/fragment editing, multicell paste/clear, a separate
 stable text/node/grid selection family, and an exclusive single-user rich runtime
-history owner with pending caret formats. The
+history owner with pending caret formats and replay-proved local recovery. The
 rich-AST/local-operation checkpoint is still in progress. The
 [reproducible checks and remaining gates](../experiments/collaboration/README.md)
 separate tested contracts from the still-unimplemented editor, relay and asset
@@ -183,9 +183,32 @@ selection/typing-state changes retain redo. Final-state no-op groups retain the
 publication token and history. Replay verifies the exact AST and restores saved
 before/after selections and pending formats. Plain typing honors an explicit
 pending override or derives run formats from caret affinity. This is single-user
-runtime history, not persisted restart or shared selective undo. Durable rich
-history/recipes and the remaining cross-block range/interchange/navigation planners remain before
+history with a separate local restart codec, not shared selective undo.
+The remaining cross-block range/interchange/navigation planners remain before
 checkpoint 3 can exit.
+
+### Local rich session checkpoint
+
+The opt-in local checkpoint family is `breditor/rich-local-session` version 1.
+It embeds a fingerprint-bearing Document V2 baseline, exact guarded branch
+recipes and saved before/after metadata, current metadata, history capacity and
+the undo/redo cursor. Revisions and aggregate UTF-16 offsets use canonical decimal
+u64 strings. Selection records use stable text-block, node and base-cell IDs,
+never snapshot paths. Null pending formats means derivation; an empty array means
+an explicit plain-text override.
+
+Recovery replays all retained entries and inverses under the active host context,
+admits saved selections/formats and restores the content at the chosen cursor.
+It issues fresh observation tokens; old live-owner snapshots remain foreign.
+New edits after recovery branch history normally. The default outer budgets are
+16 MiB and 1000 retained entries; the baseline additionally obeys its Document V2
+budget. These limits do not enlarge table or aggregate AST limits.
+
+Local recipes retain the smallest single changed element branch and use a parent
+or root when a group changes several siblings. They are exact local restart
+recipes, never shared root replacements. Asset bytes, upload status, storage
+acknowledgement and causal collaboration history are not part of this envelope.
+IndexedDB durability and measured compaction/replay budgets remain integration gates.
 
 `RichSelection` now validates text, node and grid selections against an exact
 immutable source tree. Text uses stable block-relative scalar-aligned UTF-16
@@ -198,11 +221,11 @@ before/after selections for exact restoration;
 a deletion fallback is not reversible by inference. This separate family does not
 widen existing Selection/session codecs or provide shared causal text anchors.
 
-Plan new rich-document, session and collaboration envelopes where that directory
-and geometry require them. Freeze their exact names/numbers before exposing the
-shipping rich session/sync API; do not reinterpret V7. The existing generic
-fingerprint-bearing Document V2 envelope currently carries research AST fixtures,
-not a newly declared shipping session/sync protocol. A semantic export and a
+Plan collaboration envelopes where that directory and geometry require them.
+The separate local session family above is additive; freeze future sync names
+and versions before exposing the shipping shared API, and do not reinterpret V7.
+The existing fingerprint-bearing Document V2 carries rich ASTs without creating
+a new shipping shared-document protocol. A semantic export and a
 collaboration backup are different products: the former preserves content/geometry, while the latter
 also preserves causal identity, pending work and durable selective history.
 
@@ -566,8 +589,8 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused session should finish durable local recipes and the remaining
-cross-block range, grid-navigation and structured-interchange planners, then connect the same
+The next focused session should finish the remaining cross-block range,
+grid-navigation and structured-interchange planners, then connect the same
 planners and rich selections to the replication adapter. Schedule the full
 release after the remaining measured integration gates. Production
 follows combined qualification and a real pilot, not the existence of three

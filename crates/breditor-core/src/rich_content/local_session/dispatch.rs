@@ -94,8 +94,8 @@ impl RichLocalSession {
         let entry = RichHistoryEntry {
             before: self.state.clone(),
             after: candidate.clone(),
-            forward: actions.to_vec(),
-            inverse,
+            forward: super::history_recipe::HistoryRecipe::Actions(actions.to_vec()),
+            inverse: super::history_recipe::HistoryRecipe::Actions(inverse),
         };
         self.entries.truncate(self.cursor);
         if self.capacity.get() == 0 {

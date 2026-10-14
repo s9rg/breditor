@@ -1,12 +1,15 @@
 //! Exclusive synchronous local rich owner, separate from collaboration and legacy codecs.
 //!
-//! One dispatch is one explicit history unit. This checkpoint owns runtime
-//! history only; a new replay-proved durable rich codec is a separate boundary.
+//! One dispatch is one explicit history unit. The separate opt-in local rich
+//! checkpoint codec proves exact retained history replay before restoring an owner.
 
 mod dispatch;
+pub(crate) mod durable;
 mod error;
 mod history_entry;
+mod history_recipe;
 mod insert_plain_text;
+pub(crate) mod local_rewrite;
 mod redo;
 mod set_pending_formats;
 mod snapshot;
@@ -65,7 +68,7 @@ pub enum RichLocalOutcome {
 ///
 /// Exclusive mutable methods serialize publication. There is intentionally no
 /// public Clone: independently mutable owners must not share observation tokens.
-/// This is not selective collaborative undo or a persisted rich-session protocol.
+/// The separate local codec restores retained history; this is not shared selective undo.
 pub struct RichLocalSession {
     context: EditorContext,
     state: RichLocalState,

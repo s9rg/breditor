@@ -13,7 +13,7 @@ mod identity;
 mod image_binding;
 mod image_draft;
 mod list_draft;
-mod local_session;
+pub(crate) mod local_session;
 mod rich_document;
 mod rich_grid_selection;
 mod rich_selection;

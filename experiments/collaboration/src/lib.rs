@@ -13,6 +13,7 @@ pub mod rich_fixture;
 pub mod rich_flow_fixture;
 pub mod rich_local_fixture;
 pub mod rich_paste_fixture;
+pub mod rich_recovery_fixture;
 pub mod session;
 pub mod table_axis_fixture;
 mod text_projection;

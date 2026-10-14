@@ -81,6 +81,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rich_paste_expected: serde_json::Value = serde_json::from_str(
         &breditor_collab_feasibility::rich_paste_fixture::exercise(&rich_ast_input)?,
     )?;
+    let rich_recovery_expected: serde_json::Value =
+        serde_json::from_str(&breditor_collab_feasibility::rich_recovery_fixture::exercise(
+            rich_flow_expected["checkpoint"].as_str().ok_or("rich checkpoint")?,
+        )?)?;
     let vector = serde_json::json!({
         "checkpoint": checkpoint,
         "initial": initial,
@@ -99,6 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rich_local_expected":rich_local_expected,
         "rich_flow_expected":rich_flow_expected,
         "rich_paste_expected":rich_paste_expected,
+        "rich_recovery_expected":rich_recovery_expected,
     });
     std::fs::write(path, serde_json::to_vec_pretty(&vector)?)?;
     Ok(())

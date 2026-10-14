@@ -1,5 +1,22 @@
 //! Strict versioned codecs for untrusted persisted data.
 
+#[cfg(feature = "experimental-rich-content")]
+mod rich_selection_record;
+#[cfg(feature = "experimental-rich-content")]
+mod rich_session_decode;
+#[cfg(feature = "experimental-rich-content")]
+mod rich_session_encoding;
+#[cfg(feature = "experimental-rich-content")]
+mod rich_session_error;
+#[cfg(feature = "experimental-rich-content")]
+mod rich_session_json;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_session_error::RichSessionCodecError;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_session_json::{
+    RICH_SESSION_FORMAT, RICH_SESSION_FORMAT_VERSION, RichSessionJsonCodec,
+};
+
 mod commit_encoding_v2;
 mod commit_encoding_v3;
 #[cfg(feature = "experimental-structural-properties")]

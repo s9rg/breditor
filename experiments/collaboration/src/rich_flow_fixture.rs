@@ -6,7 +6,7 @@ use crate::{
 };
 use breditor_core::{
     block::OrderedListStart,
-    codec::DocumentJsonCodecV2,
+    codec::{DocumentJsonCodecV2, RichSessionJsonCodec},
     document::{FormatSet, TextFragment, TextRun},
     position::{Affinity, TextOffset},
     rich_content::{
@@ -165,7 +165,7 @@ fn item_boundaries(
 /// Run ten actual rich owner history groups, preserving IDs, media, numbering and carets.
 ///
 /// # Errors
-/// Rejects invalid golden input, actions or exact owner replay. No durable codec is claimed.
+/// Rejects invalid golden input, actions, exact owner replay or checkpoint admission.
 pub fn exercise(input: &str) -> Result<String, Error> {
     let (context, codec, document) = admitted(input)?;
     let point = point("p", 3)?;
@@ -186,6 +186,8 @@ pub fn exercise(input: &str) -> Result<String, Error> {
     steps.push(capture(&owner, &codec, "pending_plain_typing")?);
     let count = owner.undo_depth();
     let final_state = capture(&owner, &codec, "final")?;
+    let checkpoint =
+        RichSessionJsonCodec::new(owner.context().clone()).encode(&owner).map_err(contract)?;
     for _ in 0..count {
         owner.undo(&owner.snapshot()).map_err(contract)?;
     }
@@ -195,5 +197,5 @@ pub fn exercise(input: &str) -> Result<String, Error> {
     }
     let redone = capture(&owner, &codec, "redone")?;
     Ok(json!({"initial":initial,"steps":steps,"final":final_state,"undone":undone,"redone":redone,
-        "undo_depth":owner.undo_depth(),"redo_depth":owner.redo_depth(),"revision":owner.state().revision().get().to_string()}).to_string())
+        "undo_depth":owner.undo_depth(),"redo_depth":owner.redo_depth(),"revision":owner.state().revision().get().to_string(),"checkpoint":checkpoint}).to_string())
 }

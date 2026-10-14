@@ -29,6 +29,7 @@ mod join_text_blocks;
 mod list_boundary_patch;
 mod list_helpers;
 mod list_parts;
+pub(crate) mod local_replay;
 mod merge_table_cells;
 mod move_axis;
 mod move_table_column;

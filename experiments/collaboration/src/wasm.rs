@@ -77,6 +77,12 @@ pub fn exercise_rich_flow(input: &str) -> Result<String, JsValue> {
     crate::rich_flow_fixture::exercise(input).map_err(js_error)
 }
 
+/// Replay-admit a native rich checkpoint and verify future undo/redo at every cursor.
+#[wasm_bindgen]
+pub fn exercise_rich_restore(input: &str) -> Result<String, JsValue> {
+    crate::rich_recovery_fixture::exercise(input).map_err(js_error)
+}
+
 /// Run rich multicell paste/clear and source-preserving merge geometry in Rust.
 #[wasm_bindgen]
 pub fn exercise_rich_paste(input: &str) -> Result<String, JsValue> {

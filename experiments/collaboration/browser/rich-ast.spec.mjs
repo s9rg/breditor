@@ -108,6 +108,38 @@ test("rich paragraph list media and pending-format workflows replay exactly thro
   expect(result.actual).toMatchObject({ undo_depth: 10, redo_depth: 0, revision: "31" });
 });
 
+test("native rich checkpoints restore every mixed history cursor and future undo redo in Wasm", async ({ page }) => {
+  await ready(page);
+  const wire = await page.evaluate(async () => {
+    const { exercise_rich_restore } = await import("/probe.js");
+    const vector = await (await fetch("/native-vector.json")).json();
+    const actual = exercise_rich_restore(vector.rich_flow_expected.checkpoint);
+    // The Wasm boundary returns JSON text. Keep that exact boundary over the
+    // test protocol, and independently check the browser's parse/stringify path.
+    return { actual, browserParsed: JSON.stringify(JSON.parse(actual)),
+      expected: JSON.stringify(vector.rich_recovery_expected),
+      before: JSON.stringify(vector.rich_flow_expected.initial),
+      after: JSON.stringify(vector.rich_flow_expected.final),
+      steps: JSON.stringify(vector.rich_flow_expected.steps) };
+  });
+  const result = Object.fromEntries(Object.entries(wire).map(([key, value]) => [key, JSON.parse(value)]));
+  expect(result.browserParsed).toEqual(result.actual);
+  expect(result.actual).toEqual(result.expected);
+  expect(result.actual.groups).toBe(10);
+  expect(result.actual.cases).toHaveLength(11);
+  for (const value of result.actual.cases) {
+    expect(value).toMatchObject({ canonical: true, foreign_rejected: true, undo_steps: value.cursor, redo_steps: 10 });
+    const boundary = value.cursor === 0 ? result.before : result.steps[value.cursor - 1];
+    expect(value.initial.document).toBe(boundary.document);
+    expect(value.initial.selection).toEqual(boundary.selection);
+    expect(value.undone.document).toBe(result.before.document);
+    expect(value.undone.selection).toEqual(result.before.selection);
+    expect(value.redone.document).toBe(result.after.document);
+    expect(value.redone.selection).toEqual(result.after.selection);
+    expect(value.redone.pending).toEqual([]);
+  }
+});
+
 test("rich table paste and cut-like clearing retain source partitions geometry and exact inverses", async ({ page }) => {
   await ready(page);
   const result = await page.evaluate(async () => {
