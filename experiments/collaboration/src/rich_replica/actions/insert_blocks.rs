@@ -19,6 +19,7 @@ impl InsertBlocks {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         if let Some(parent) = &self.parent {
             super::super::creation::activate_cell(doc, parent)?;
+            super::super::captions::prepare_parent(doc, Some(parent))?;
         }
         for node in &self.nodes {
             super::super::creation::prepare(
@@ -33,6 +34,12 @@ impl InsertBlocks {
     pub(super) fn apply(&self, doc: &LoroDoc, stamp: Stamp, ordinal: usize) -> Result<(), Error> {
         for node in &self.nodes {
             super::super::creation::publish(doc, node, stamp, ordinal)?;
+            super::super::captions::inserted(
+                doc,
+                self.parent.as_deref(),
+                super::super::creation::block(node)?,
+                stamp,
+            )?;
         }
         Ok(())
     }

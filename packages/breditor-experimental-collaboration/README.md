@@ -14,8 +14,8 @@ their Wasm graph are unchanged.
 ## Owner contract
 
 `new SharedRichEditor(raw, options)` transfers exclusive ownership of a matching
-generated Rust owner. Its descriptor must identify ABI 1, shared model 7 and
-journal 8. Never mutate, free or transfer `raw` again. Disposing the coordinator
+generated Rust owner. Its descriptor must identify ABI 1, shared model 9 and
+journal 10. Never mutate, free or transfer `raw` again. Disposing the coordinator
 frees its observation and owner and rejects every pending remote receipt.
 
 `view()` returns a detached immutable-publication snapshot. `dispatch`, `select`,
@@ -39,8 +39,8 @@ or unbounded catchup queue.
 `checkpointJson()` preserves the original seed/join, ordered imports, commands,
 selective history, causal UI anchors and future operation identities. Restore
 only under the same exclusively leased writer. It is not a portable content
-import or permission to clone a live writer. Shared model 6 and journal 7 are
-incompatible with the current causal source-routing contract.
+import or permission to clone a live writer. Earlier shared models and journals
+are incompatible with the current source-routing and caption-choice contract.
 
 ## DOM and toolbar
 
@@ -49,8 +49,26 @@ toolbar supplies headings, bold, nested lists, table creation, row/column CRUD
 and moves, merge/split, headers, widths and image metadata/replacement/removal.
 Hosts can replace or extend the typed `SharedToolbarControl[]` without bypassing
 Rust admission. Existing captions and cell bodies use the same text actions as
-paragraphs. Commands also expose whole-node moves; caption structure creation
-and removal still need dedicated shared semantic actions.
+paragraphs. Commands also expose whole-node moves. `set_image_caption` creates,
+replaces or removes a complete caption through an explicit writer-owned choice.
+The required `caption` field is a fresh `SharedParagraph` or null; omitted values,
+headings and nested flow reject. Use `paragraph(freshId, text)` to build a caption.
+Ordinary caption typing uses source-preserving text commands, not whole-caption
+replacement. The toolbar exposes Add caption and Remove caption.
+
+Concurrent replacements keep both paragraph sources and display one deterministic
+choice. Undo retracts only the author's choice; it can reveal the other caption
+or the original caption, including text edited while hidden. Explicit null owns
+absence even if already absent. Generic paragraph insertion/movement into an
+admitted empty image uses the same choice, so concurrent valid insertions do not
+produce an invalid two-caption image. Asset identity, generation, alt and size
+remain independent.
+
+Creation Undo hides the creator's initial text without deleting its original
+characters. Redo reveals that same seed around offline edits, so an offline
+prefix keeps its position. Later typing has independent provenance, including
+after the new paragraph is joined into another one. Normal text deletion/Redo
+continues to use the native engine's rebased gap policy.
 
 The controller maps native selections and beforeinput targets, stages composition
 as one source-preserving replacement, and does not restore a background editor's
@@ -104,7 +122,7 @@ or origins.
 
 The callbacks return matching generated Rust owners. `restore` must use native
 journal replay, not a document-only import. The session checks the journal's
-room, canonical decimal writer and V8 family both before and after restoration;
+room, canonical decimal writer and V9 family both before and after restoration;
 Rust checks the causal operations, schema and history. Factory/admission failures
 release the lock without replacing the durable checkpoint.
 
@@ -120,6 +138,10 @@ abandons unsaved in-memory work but preserves the last durable journal. Do not
 dispose the mounted editor before closing its persistent session when a final
 durable save is required. Abrupt tab loss releases the Web Lock automatically
 and recovers the last completed transaction, not an unacknowledged in-flight edit.
+The sample demo uses a separate `breditor-shared-demo-sessions-v10` database.
+Existing V8/V9 databases are preserved, not upgraded, overwritten or silently
+treated as document-only imports. Resume old journals with their matching old
+owner until an explicit migration workflow exists.
 
 The full collaboration goal still includes a permission-aware network relay,
 presence, server-authorized writer leases, cross-host

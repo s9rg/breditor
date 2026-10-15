@@ -34,6 +34,11 @@ impl TargetKinds {
     }
     pub fn record(&mut self, command: &Command) -> Result<(), Error> {
         match command {
+            Command::SetImageCaption(value) => {
+                if let Some(node) = &value.caption {
+                    self.node(node)?;
+                }
+            }
             Command::PasteFlowAtText(value) => {
                 self.insert(&value.right, "breditor/paragraph")?;
                 for node in &value.nodes {

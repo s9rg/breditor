@@ -34,3 +34,14 @@ test("quota failure stays explicit and can retry the newest complete checkpoint 
   const original=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(...args){if(this.name==="journals")throw new DOMException("Functional quota fixture","QuotaExceededError");return original.apply(this,args);};
   s.core.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Offline "}}]});let rejected=false;try{await s.flush();}catch{rejected=true;}const failed=s.state().status;s.core.dispatch({commands:[{kind:"insert_text",data:{block:"p",offset:0,text:"Latest "}}]});IDBObjectStore.prototype.put=original;await s.retry();const checkpoint=s.core.checkpointJson(),state=s.state();await s.close();return JSON.stringify({rejected,failed,state,errors:errors.length,checkpoint});}));expect(r).toMatchObject({rejected:true,failed:"failed",state:{status:"saved"}});expect(r.errors).toBeGreaterThan(0);expect(r.checkpoint).toContain("Latest ");expect(r.checkpoint).toContain("Offline ");
 });
+test("old private journals are rejected before restore without overwriting their stored bytes",async({page})=>{
+ const result=await page.evaluate(async()=>{const t=window.sharedTools,database=`old-journal-${crypto.randomUUID()}`,base={database,room:"room",writer:"101",create:()=>new t.wasm.RichReplicaProbe(t.vector.rich_local_input,"101"),restore:j=>t.wasm.RichReplicaProbe.restore("room",j)};
+  const first=await t.SharedPersistentSession.open(base),old=JSON.parse(first.core.checkpointJson());old.version=9;const bytes=JSON.stringify(old);await first.close();
+  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(database,1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  await new Promise((resolve,reject)=>{const tx=db.transaction("journals","readwrite");tx.objectStore("journals").put(bytes,["room","101"]);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});
+  let callbacks=0,error;try{await t.SharedPersistentSession.open({...base,create:()=>{callbacks++;throw Error("Must not replace an old journal");},restore:()=>{callbacks++;throw Error("Must reject the old family before replay");}});}catch(e){error=e.code;}
+  const retained=await new Promise((resolve,reject)=>{const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get(["room","101"]);let value;request.onsuccess=()=>value=request.result;tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(tx.error);});db.close();
+  // The rejected restore must release its writer lock, including across database names.
+  const fresh=await t.SharedPersistentSession.open({...base,database:`${database}-new`});await fresh.close();return{error,callbacks,exact:retained===bytes};});
+ expect(result).toEqual({error:"session_identity",callbacks:0,exact:true});
+});

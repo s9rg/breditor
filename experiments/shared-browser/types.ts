@@ -7,6 +7,8 @@ async function contract(root:HTMLElement,input:string,frame:string):Promise<void
  const core=new SharedRichEditor(raw),descriptor:SharedOwnerDescriptor=core.descriptor();
  const command:SharedCommand={kind:"insert_text",data:{block:"p",offset:0,text:"hello"}};
  core.dispatch({commands:[command]},core.view().revision);
+ // @ts-expect-error Whole captions are ordinary paragraphs, never headings or arbitrary flow.
+ core.dispatch({commands:[{kind:"set_image_caption",data:{block:"image",caption:{kind:"element",type:"breditor/heading",entityId:null,properties:{},children:[]}}}]});
  // @ts-expect-error Authored commands must not accept caller-supplied causal clocks.
  core.dispatch({commands:[{kind:"set_header",data:{cells:["c"],header:true,clock:"1:2:3"}}]});
  // @ts-expect-error Selection offsets are exact decimal strings, not browser numbers.

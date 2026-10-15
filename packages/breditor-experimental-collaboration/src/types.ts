@@ -6,6 +6,8 @@ type Position={parent:string|null;before:string|null};
 type ListStyle={kind:"bullet"}|{kind:"ordered";start:number};
 /** Fresh Document V2 candidates, not existing document subtrees or unchecked publication proof. */
 export interface SharedNode {kind:"element";type:string;entityId:null;properties:Readonly<Record<string,unknown>>;children:readonly (SharedNode|TextNode)[]}
+/** Captions are one ordinary paragraph with rich text runs, never nested flow. */
+export interface SharedParagraph extends SharedNode {type:"breditor/paragraph";children:readonly TextNode[]}
 /** Independent shared semantic commands. Rust validates every complete staged group. */
 export type SharedCommand=
  |Op<"paste_flow_at_text",{anchor:RichPoint;focus:RichPoint;right:string;nodes:readonly SharedNode[]}>
@@ -38,13 +40,14 @@ export type SharedCommand=
  |Op<"join_list_items",{container:string;left:string;right:string}>
  |Op<"replace_image",{block:string;asset:string;generation:string}>
  |Op<"set_image_alt",{block:string;text:string;decorative:boolean}>
+ |Op<"set_image_caption",{block:string;caption:SharedParagraph|null}>
  |Op<"resize_image",{block:string;size:readonly[number,number]|null}>;
 export interface SharedDispatch {commands:readonly SharedCommand[];selectionUpdate?:{kind:"map"}|{kind:"set";value:RichSelection|null};pendingFormatsUpdate?:{kind:"map"}|{kind:"set";value:readonly FormatLiteral[]|null}}
 export type PasteTarget={kind:"text"}|{kind:"grid"}|({kind:"flow"}&Position);
 export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"rowEnd"|"tableStart"|"tableEnd";
 export type NavigationResult={kind:"moved"|"unchanged"}|{kind:"boundary";boundary:string};
 export interface ClipboardContent {richJson:string;plainText:string}
-export interface SharedOwnerDescriptor {format:"breditor/shared-rich-owner";abiVersion:1;modelVersion:7;journalVersion:8;schema:{name:string;version:number};schemaFingerprint:string}
+export interface SharedOwnerDescriptor {format:"breditor/shared-rich-owner";abiVersion:1;modelVersion:9;journalVersion:10;schema:{name:string;version:number};schemaFingerprint:string}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
  descriptor_json():string;

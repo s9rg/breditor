@@ -35,9 +35,10 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
                 | Command::JoinTextBlocks(_) => {
                     matches!(kind.as_str(), "breditor/paragraph" | "breditor/heading")
                 }
-                Command::SetImageAlt(_) | Command::ReplaceImage(_) | Command::ResizeImage(_) => {
-                    kind == "breditor/image"
-                }
+                Command::SetImageAlt(_)
+                | Command::SetImageCaption(_)
+                | Command::ReplaceImage(_)
+                | Command::ResizeImage(_) => kind == "breditor/image",
                 Command::ResizeColumn(_) | Command::MoveColumn(_) | Command::DeleteColumn(_) => {
                     kind == "breditor/table"
                 }
@@ -63,6 +64,7 @@ fn primary(command: &Command) -> Result<&str, Error> {
         Command::SetFormat(value) => &value.block,
         Command::SetHeading(value) => &value.block,
         Command::SetImageAlt(value) => &value.block,
+        Command::SetImageCaption(value) => &value.block,
         Command::ReplaceImage(value) => &value.block,
         Command::ResizeImage(value) => &value.block,
         Command::ResizeColumn(value) => &value.block,
@@ -80,6 +82,7 @@ fn secondary(
     formats: &RichFormatsJsonCodec,
 ) -> Result<(), Error> {
     match command {
+        Command::SetImageCaption(value) => value.validate_draft(&owner.doc, &owner.codec)?,
         Command::JoinTextBlocks(value) => declared.require_text(&owner.document, &value.right)?,
         Command::ReplaceTextRange(value) => {
             declared.require_text(&owner.document, &value.focus.block)?;

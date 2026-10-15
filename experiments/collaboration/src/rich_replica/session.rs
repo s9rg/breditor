@@ -16,7 +16,7 @@ use std::{
 };
 
 const MAX_ENTRIES: usize = 1000;
-pub(super) const JOURNAL_VERSION: u32 = 8;
+pub(super) const JOURNAL_VERSION: u32 = 10;
 const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
 const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
@@ -311,6 +311,10 @@ impl RichReplica {
         let before_ui = self.journal.ui.clone();
         let before_selection = self.selection()?;
         self.validate_targets(commands)?;
+        // Semantic priority is captured at the admitted request basis. Immutable
+        // preparation (including initial characters) must not make a longer
+        // concurrently-created caption outrank another writer's equal-basis edit.
+        let stamp = Stamp::next(&self.doc)?;
         self.undo.pause();
         for command in commands {
             command.prepare(&self.doc)?;
@@ -318,7 +322,6 @@ impl RichReplica {
         self.doc.commit();
         self.undo.resume();
         self.refresh_document()?;
-        let stamp = Stamp::next(&self.doc)?;
         let history_key = stamp.key();
         let meta = self.journal.ui.engine_meta(&self.doc, &history_key)?;
         let mut marker = loro::UndoItemMeta::new();
@@ -328,7 +331,7 @@ impl RichReplica {
         let undo_count = self.undo_count();
         self.undo.group_start()?;
         for (ordinal, command) in commands.iter().enumerate() {
-            let command_stamp = Stamp::next(&self.doc)?;
+            let command_stamp = if ordinal == 0 { stamp } else { Stamp::next(&self.doc)? };
             command.apply(&self.doc, &self.codec, &self.document, command_stamp, ordinal)?;
             self.doc.commit();
             self.refresh_document()?;

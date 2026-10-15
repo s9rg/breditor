@@ -131,6 +131,10 @@ impl Index {
                 }
                 let length =
                     u32::try_from(insert.encode_utf16().count()).map_err(|_| Error::Offset)?;
+                if !super::provenance::visible(doc, &source, &values)? {
+                    start = start.checked_add(length).ok_or(Error::Offset)?;
+                    continue;
+                }
                 if let Some((stamp, fragment)) = selected {
                     continuation =
                         Some(super::continuation::Continuation::new(doc, stamp, fragment.clone())?);
@@ -176,13 +180,7 @@ impl Index {
                 start = start.checked_add(length).ok_or(Error::Offset)?;
             }
         }
-        for values in chunks.values() {
-            if let Some(first) = values.first()
-                && values.iter().any(|chunk| chunk.source != first.source)
-            {
-                return Err(Error::Contract("a text fragment must have one source"));
-            }
-        }
+        validate_sources(&chunks)?;
         Ok(Self { graph, chunks })
     }
     pub fn view(&self, block: &str) -> Result<View, Error> {
@@ -391,6 +389,17 @@ impl Index {
         }
         Ok(result)
     }
+}
+
+fn validate_sources(chunks: &BTreeMap<String, Vec<Chunk>>) -> Result<(), Error> {
+    for values in chunks.values() {
+        if let Some(first) = values.first()
+            && values.iter().any(|chunk| chunk.source != first.source)
+        {
+            return Err(Error::Contract("a text fragment must have one source"));
+        }
+    }
+    Ok(())
 }
 
 fn push_chunk(

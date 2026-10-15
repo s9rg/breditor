@@ -120,7 +120,9 @@ fn logical_grid_navigation_preserves_shared_bytes_redo_and_explicit_boundaries()
 
 #[test]
 fn explicit_paste_header_owns_intent_even_when_the_visible_value_was_already_equal() -> Result {
-    let (mut a, mut b) = peers()?;
+    // Equal-basis semantic priority is writer-tied, not a count of immutable
+    // preparation operations. Give the explicit false intent the higher writer.
+    let (mut b, mut a) = peers()?;
     a.apply(vec![Command::PasteTableCells(PasteTableCells {
         anchor: "cell".into(),
         focus: "cell".into(),

@@ -75,5 +75,6 @@ pub(in crate::rich_replica) fn insert_with_activation(
             markers::MarkerClock { stamp, activation: activation.unwrap_or(stamp), ordinal: 0 },
         )?;
     }
+    super::provenance::mark(&text, point.offset, length, None, stamp)?;
     Ok(())
 }

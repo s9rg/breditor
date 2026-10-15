@@ -1,7 +1,8 @@
 //! Immutable definitions and writer-owned births keep creation undo from erasing remote edits.
 //!
 //! Definitions, canonical containers and birth occurrences are infrastructure.
-//! Only visibility, initial text and its marks enter the creator's history group.
+//! Initial characters retain causal identity outside history. Their provenance
+//! gates visibility on the owned birth; only birth intent and marks enter history.
 use super::{model, placement, text::Annotation};
 use crate::{Error, register::Stamp};
 use loro::{LoroDoc, ToJson};
@@ -44,6 +45,7 @@ pub(super) fn prepare(
     if kind == "breditor/paragraph" || kind == "breditor/heading" {
         model::text(doc, block)?;
         super::text_flow::prepare_root(doc, block)?;
+        prepare_text(doc, node)?;
     } else {
         for child in
             node["children"].as_array().ok_or(Error::Contract("shared creation children"))?
@@ -168,11 +170,7 @@ pub(super) fn publish(
 
 fn publish_text(doc: &LoroDoc, node: &Value, stamp: Stamp, ordinal: usize) -> Result<(), Error> {
     let block = block(node)?;
-    let text = model::text(doc, block)?;
     let runs = node["children"].as_array().ok_or(Error::Contract("shared creation runs"))?;
-    for run in runs {
-        text.push_str(run["text"].as_str().ok_or(Error::Contract("shared creation text"))?)?;
-    }
     let mut index = ordinal.checked_mul(1000).ok_or(Error::Limit("creation mark ordinals"))?;
     let mut offset = 0_u32;
     for run in runs {
@@ -195,6 +193,27 @@ fn publish_text(doc: &LoroDoc, node: &Value, stamp: Stamp, ordinal: usize) -> Re
         }
         offset = offset.checked_add(length).ok_or(Error::Offset)?;
     }
+    Ok(())
+}
+
+fn prepare_text(doc: &LoroDoc, node: &Value) -> Result<(), Error> {
+    let block = block(node)?;
+    let text = model::text(doc, block)?;
+    let runs = node["children"].as_array().ok_or(Error::Contract("shared creation runs"))?;
+    doc.commit();
+    let stamp = Stamp::next(doc)?;
+    let mut length = 0_u32;
+    for run in runs {
+        let content = run["text"].as_str().ok_or(Error::Contract("shared creation text"))?;
+        text.push_str(content)?;
+        length = length
+            .checked_add(u32::try_from(content.encode_utf16().count()).map_err(|_| Error::Offset)?)
+            .ok_or(Error::Offset)?;
+    }
+    super::text_flow::provenance::mark(&text, 0, length, Some(block), stamp)?;
+    // Other prepare steps may materialize all sources before the outer commit.
+    // Every provenance clock must already resolve to retained causal history.
+    doc.commit();
     Ok(())
 }
 

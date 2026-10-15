@@ -63,6 +63,7 @@ fn element(
         return Ok(None);
     }
     let mut kind = string(&meta, "type")?;
+    let mut caption_choice = None;
     let identity = object_string(&meta, "identity")?;
     let mut properties =
         identity.as_object().ok_or(Error::Contract("shared identity fields"))?.clone();
@@ -83,6 +84,11 @@ fn element(
         for (name, value) in patch.sets {
             if name == "$type" {
                 kind = value.as_str().ok_or(Error::Contract("shared type intent"))?.into();
+            } else if name == "$caption" {
+                if kind != "breditor/image" {
+                    return Err(Error::Contract("shared caption owner kind"));
+                }
+                caption_choice = Some(value);
             } else {
                 properties.insert(name, value);
             }
@@ -100,6 +106,9 @@ fn element(
                 children.push(value);
             }
         }
+    }
+    if kind == "breditor/image" {
+        super::captions::project(&mut children, caption_choice)?;
     }
     if kind == "breditor/table" {
         super::merges::project(doc, &raw, &mut properties)?;

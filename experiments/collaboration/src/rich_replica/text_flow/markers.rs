@@ -60,7 +60,11 @@ pub(super) fn selected_with_clock(
 pub(super) fn formats(doc: &LoroDoc, values: &[(String, Value)]) -> Result<Vec<Value>, Error> {
     super::super::text::annotations(
         doc,
-        &values.iter().filter(|(key, _)| !key.starts_with(PREFIX)).cloned().collect::<Vec<_>>(),
+        &values
+            .iter()
+            .filter(|(key, _)| !key.starts_with(PREFIX) && !super::provenance::internal(key))
+            .cloned()
+            .collect::<Vec<_>>(),
     )
 }
 

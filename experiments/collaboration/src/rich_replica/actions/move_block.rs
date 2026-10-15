@@ -15,6 +15,9 @@ pub struct MoveBlock {
 }
 impl MoveBlock {
     pub(super) fn apply(&self, doc: &LoroDoc, stamp: Stamp, ordinal: usize) -> Result<(), Error> {
+        if self.before.as_deref() == Some(&self.block) {
+            return Ok(());
+        }
         super::super::placement::move_block(
             doc,
             &self.block,
@@ -22,6 +25,7 @@ impl MoveBlock {
             self.before.as_deref(),
             stamp,
             ordinal,
-        )
+        )?;
+        super::super::captions::inserted(doc, self.parent.as_deref(), &self.block, stamp)
     }
 }

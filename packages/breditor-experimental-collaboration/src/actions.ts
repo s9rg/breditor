@@ -1,13 +1,13 @@
 // Read-only UI preparation. Rust owns final semantic admission and all replicated state.
 import {id,isText,property,sourceCell,text,formatsAt,textTargets,type RichModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
 import type {SharedRichEditor} from "./core.js";
-import type {SharedCommand,SharedDispatch,SharedNode,RichSelection,RichPoint,RichCell,FormatLiteral} from "./types.js";
+import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral} from "./types.js";
 export interface ActionContext {core:SharedRichEditor;model:RichModel;revision:string;allocate:(kind:string)=>string;image?:{asset:string;alt:string}}
 export interface SharedToolbarControl {id:string;label:string;type?:"text"|"number";enabled:(context:ActionContext)=>boolean;value?:(context:ActionContext)=>string;run:(context:ActionContext,value?:string)=>void}
 export function publish(ctx:ActionContext,commands:readonly SharedCommand[],selection?:RichSelection|null):void{
  const request:SharedDispatch={commands};if(selection!==undefined)request.selectionUpdate={kind:"set",value:selection};ctx.core.dispatch(request,ctx.revision);
 }
-export function paragraph(block:string,value=""):SharedNode{return {kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":block},children:value?[{kind:"text",text:value,formats:[]}]:[]};}
+export function paragraph(block:string,value=""):SharedParagraph{return {kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":block},children:value?[{kind:"text",text:value,formats:[]}]:[]};}
 export function imageNode(block:string,image:string,asset:string,generation:string,alt:string,caption?:string,size?:{width:number;height:number}):SharedNode{
  const properties:Record<string,unknown>={"breditor/block-id":block,"breditor/image-id":image,"breditor/asset-id":asset,"breditor/asset-generation":generation,"breditor/alt-text":alt,"breditor/decorative":false};if(size){properties["breditor/width"]=size.width;properties["breditor/height"]=size.height;}
  return {kind:"element",type:"breditor/image",entityId:null,properties,children:caption?[paragraph(caption)]:[]};

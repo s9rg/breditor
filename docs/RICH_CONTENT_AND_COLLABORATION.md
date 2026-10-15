@@ -70,6 +70,22 @@ disconnect/reconnect/reload through the real DOM controller. Cross-device
 authorization, presence, the network relay and cross-host asset providers remain
 separate required integration work.
 
+Shared caption creation/replacement/removal now uses a writer-owned choice of
+retained paragraph identity or explicit absence. Two concurrent valid caption
+insertions no longer produce an invalid image; the other source stays retained
+and can reappear through selective Undo. Ordinary caption typing remains a text
+operation, and asset/alt/size fields remain independent. This caption contract
+advances the private shared projection/history to model 9/journal V10; older
+journals are preserved but require their matching old owner, not an implicit
+document-only import.
+
+Creation-time text now retains its character identities outside Undo. Owned
+birth visibility hides or reveals that seed; a later writer's text has separate
+provenance. This repairs creation Redo reversing the order of an offline prefix
+and also preserves remote text after the new paragraph is joined elsewhere.
+Initial text length does not raise a concurrent command's semantic priority:
+the first command captures its causal stamp before immutable preparation.
+
 The central decision is to design collaboration before adding new structural
 operations. Stable content identities, table geometry, image assets, selections
 and local undo must agree on one document model. Existing paragraph, heading,
@@ -401,17 +417,17 @@ before Wasm command JSON admission; restored owners have fresh authority. Shared
 caret typing now honors pending/derived formats and advances once in one history
 group. Null pending formats derive; an empty array explicitly types plain text.
 
-The private `breditor/rich-replica-journal` V8 reconstructs the original seed/join,
+The private `breditor/rich-replica-journal` V10 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1–V7 shared journals are rejected explicitly; local rich recovery and default
+V1–V9 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision 7 and the explicit
+envelope. Room ID, schema selector/fingerprint, model revision 9 and the explicit
 engine tag `1.16.2+breditor.deterministic-history.1`
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
@@ -449,7 +465,7 @@ also normalize at the final group boundary, retaining original-axis fallback
 witnesses rather than expanding them to newly created rows.
 Actual shared command contracts cover offline edits,
 concurrent cuts, composed groups, cross-source joins and exact future history
-after restart. The private model is revision 7 and its journal is V8; default
+after restart. The private model is revision 8 and its journal is V9; default
 shipping contracts remain unchanged. The opt-in browser DOM coordinator now
 connects to the shared owner. See the
 [text-fragment contract and limits](../experiments/collaboration/README.md#text-fragments-for-shared-paragraph-boundaries).
@@ -486,7 +502,7 @@ Empty normalized heads can become movable list content without changing identity
 Their canonical retained occurrences merge across writers and remain conditional
 at their original fallback slot. Relocation or deletion can expose a deterministic
 spare; older Undo states do not acquire phantom empty paragraphs. The private
-model revision 7/journal V8 includes this normalization change. Preparation scans
+model revision 9/journal V10 includes this normalization change. Preparation scans
 the potential item fallback slots before history begins, allowing a head deletion
 or fresh split followed by unlisting to remain one atomic action. It also scans
 at most 20,000 metadata owners; wrapping accepts at most 1,000 item identities and
@@ -894,9 +910,10 @@ do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
 The rich paragraph/list/range and clipboard planners now drive the opt-in shared
-browser coordinator. The next focused sessions should complete shared caption
-creation/removal intents, general placement-conflict normalization and the generic
-shared profile factory, then integrate the reference relay, presence and host
+browser coordinator. Shared caption creation/removal now owns an explicit retained
+paragraph choice. The next focused sessions should complete general placement
+conflict/cycle normalization and the generic shared profile factory, then
+integrate the reference relay, presence and host
 asset provider. Durable shared causal journals and local asset
 bytes now survive reload, but do not supply network acknowledgement or shared
 asset hosting. Arbitrary cross-container

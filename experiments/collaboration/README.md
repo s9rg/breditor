@@ -513,8 +513,8 @@ imports and declarations, renderer exports, licenses, and future Undo/Redo throu
 the matching real Wasm owner pass. The private owner fixture remains an external
 test input; the archive does not disguise it as a generic shipping factory.
 
-The tested fixture Wasm is 8,631,838 bytes, or 2,348,518 bytes under gzip, with
-SHA-256 `3377dc288f169627ff276a6c2b0fe3ef20842905eab7c67ffb68b49dd97b6b77`.
+The current fixture Wasm is 8,650,421 bytes, or 2,354,273 bytes under gzip, with
+SHA-256 `5560bec4702f6afd01db2c793d69c8a20a8a4088845fb831dde5ee383f7c0e80`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -567,20 +567,21 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V8 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V10 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional. V1–V7 shared journals are rejected rather than silently replayed
+still provisional. V1–V9 shared journals are rejected rather than silently replayed
 without source-based routing, causal UI/history metadata, deterministic engine
 history authoring, sequential command priorities, retained normalization origins and
-causal ownership of unmarked concurrent source appends. Local rich editor
+causal ownership of unmarked concurrent source appends, owned caption choices,
+retained creation-time characters and request-basis semantic priority. Local rich editor
 recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
-and fingerprint, model revision 7 and the explicit engine build tag
+and fingerprint, model revision 9 and the explicit engine build tag
 `1.16.2+breditor.deterministic-history.1` before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
@@ -644,7 +645,7 @@ atomic group. Each semantic command now has its own causal stamp and, when neede
 annotation claim, so later formatting outranks every run inserted by an earlier command.
 The group still has one history identity and one Undo boundary. The retained
 engine ordering patch makes retraction of these separate claims deterministic.
-The current private model is revision 7 and its journal is V8; shipping formats
+The current private model is revision 8 and its journal is V9; shipping formats
 are unchanged.
 
 Preparation reserves canonical deletion/placement containers outside user history
@@ -706,6 +707,66 @@ Browser contracts include native journal restoration after reload with exact
 future operations and full journals, including history that predates a retained
 normalization slot. The shared DOM coordinator now exposes these actions;
 general placement-conflict normalization remains an implementation gate.
+
+## Shared image caption choices
+
+`SetImageCaption` has its own action file and reuses the core whole-caption
+capture/admission contract. Its required `caption` field is one fresh paragraph
+draft or explicit null. Missing fields, reused historical identities, headings,
+nested flow, invalid formats and caller-supplied clocks reject atomically. Each
+new paragraph decomposes into the usual independently retained text sources;
+ordinary typing does not replace the caption node or its character identities.
+
+The shared `image-caption` field selects a retained paragraph ID or explicit
+absence. It is not an AST/text register and never changes the asset/generation,
+alt/decorative pair or dimensions. Concurrent replacements select one visible
+choice; retracting its author's contribution reveals the next active caption or
+the original. Nonselected sources, including edits made while hidden, remain in
+causal state and exact history. Explicit absence owns intent even if already
+absent. Generic insertion/movement of a paragraph into an admitted empty image
+authors the same choice instead of bypassing it.
+
+The pre-fix regression used only existing commands: clear an image's caption,
+let two disconnected writers each insert a fresh paragraph, then exchange their
+accepted updates. The merged two-caption image failed schema admission. The
+owned choice now projects one caption without rejecting either writer's source.
+Thirteen native contracts additionally cover metadata independence, rich formats,
+offline original-caption edits, causal selection recovery, composed
+image/caption/typing groups, exact future history, explicit absence and moves,
+retained seed provenance, remote joins and three-writer typing.
+
+This changes the private shared projection to model 9 and journal V10. Older
+shared frames/journals reject explicitly; existing shipping codecs, local rich
+history and image schema are unchanged. The sample demo uses a separate V10
+session database and preserves old V8/V9 data. No implicit journal migration or
+document-only recovery is performed. General structural placement conflict/cycle
+normalization remains a separate required implementation gate.
+
+The caption checkpoint passes 190 private native tests, native/wasm32 Clippy,
+the generated-owner and installed-consumer TypeScript contracts, and 69
+combined browser cases (23 per engine). Five caption cases per engine cover
+concurrent insertion, live toolbar removal/recreation and typing, strict/stale
+admission and a real page reload from an independent native caption journal.
+One journal compares eight future causal operation sets, complete views and
+exact journals after redo, typing, removal, undo and repeated redo. Package
+consumer verification uses actual installed archives and the real Wasm owner.
+
+Creation Redo also has an independent native/Wasm reload vector. The original
+regression creates `A🙂`, undoes creation, receives an offline `Remote ` prefix,
+then redoes creation. Native text deletion/reinsertion puts `A🙂` before that
+prefix at the collapsed gap; a separate engine-only control reproduces this.
+Creation now prepares original characters outside history and gates them on
+the creator's owned birth. Independent insertion-provenance annotations prevent
+inherited seed ownership from hiding remote characters, including interior
+typing by a third writer and text retained through a remote paragraph join.
+Native delete/Undo can restore seed provenance without erasing its ownership.
+No AST replacement or vendored-engine change implements this repair.
+
+The first command's semantic causal stamp is captured before immutable
+preparation; longer initial text cannot artificially win a concurrent caption
+choice. Later steps in a batch retain their actual sequential causal stamps.
+Ordinary text deletion/Redo still uses the native engine's rebased gap behavior;
+this creation repair does not claim a different general text-Redo tie policy.
 
 ## Shared semantic clipboard
 
@@ -891,7 +952,7 @@ Selection and pending-format normalization occurs once after the complete atomic
 group, not after intermediate commands. Original-axis deletion fallback does not
 select a row first created by the same group.
 The Wasm probe exposes these commands through guarded dispatch, now connected
-to the opt-in shared browser coordinator. Private shared model revision 7 and journal V8
+to the opt-in shared browser coordinator. Private shared model revision 9 and journal V10
 replace the earlier experimental model; shipping schemas/codecs are unchanged.
 
 ## Limits and remaining gates
@@ -920,6 +981,10 @@ checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
 General shared placement cycle/conflict normalization remains an implementation gate.
+Two disconnected writers can each move a root list into an item of the other
+list. Both actions admit separately; merging selects a cycle and currently
+renders the root fallback instead of either list. The causal content remains
+retained, but visible content loss makes this a functional release blocker.
 Cross-device writer authorization and reference
 relay/presence/asset-provider integration are also unfinished. The fixture
 exchanges engine bytes in one test host;

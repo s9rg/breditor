@@ -26,6 +26,7 @@ mod set_format;
 mod set_header;
 mod set_heading;
 mod set_image_alt;
+mod set_image_caption;
 mod set_list_kind;
 mod split_cell;
 mod split_list_item;
@@ -63,6 +64,7 @@ pub use set_format::SetFormat;
 pub use set_header::SetHeader;
 pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
+pub use set_image_caption::SetImageCaption;
 pub use set_list_kind::SetListKind;
 pub use split_cell::SplitCell;
 pub use split_list_item::SplitListItem;
@@ -124,6 +126,8 @@ pub enum Command {
     SetFormat(SetFormat),
     /// Set the paired description/decorative semantic field.
     SetImageAlt(SetImageAlt),
+    /// Select a fresh retained paragraph caption or explicit absence.
+    SetImageCaption(SetImageCaption),
     /// Replace the paired immutable asset/generation semantic field.
     ReplaceImage(ReplaceImage),
     /// Set or clear paired image dimensions.
@@ -175,6 +179,7 @@ impl Command {
             Self::SetImageAlt(value) => {
                 prepare_field(doc, &value.block, "image-alt")?;
             }
+            Self::SetImageCaption(value) => value.prepare(doc)?,
             Self::ReplaceImage(value) => {
                 prepare_field(doc, &value.block, "image-asset")?;
             }
@@ -197,6 +202,7 @@ impl Command {
                     super::creation::activate_cell(doc, parent)?;
                 }
                 super::placement::prepare(doc, value.parent.as_deref())?;
+                super::captions::prepare_parent(doc, value.parent.as_deref())?;
                 super::model::metadata(doc, &value.block)?.ensure_mergeable_map("placements")?;
             }
             Self::MoveColumn(value) => {
@@ -249,6 +255,7 @@ impl Command {
             Self::DeleteText(value) => value.apply(doc),
             Self::SetFormat(value) => value.apply(doc, stamp, ordinal),
             Self::SetImageAlt(value) => value.apply(doc, stamp),
+            Self::SetImageCaption(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::ReplaceImage(value) => value.apply(doc, stamp),
             Self::ResizeImage(value) => value.apply(doc, stamp),
             Self::ResizeColumn(value) => value.apply(doc, stamp),
