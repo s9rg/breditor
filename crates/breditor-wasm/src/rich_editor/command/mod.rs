@@ -14,7 +14,9 @@ mod delete_table;
 mod delete_table_column;
 mod delete_table_row;
 mod drafts;
+mod exit_task_item;
 mod indent_list_items;
+mod indent_task_items;
 mod input_plan;
 mod insert_blocks;
 mod insert_formatted_text;
@@ -34,6 +36,7 @@ mod move_table_column;
 mod move_table_row;
 mod navigate_grid;
 mod outdent_list_items;
+mod outdent_task_items;
 mod paste_flow_at_text;
 mod paste_flow_clipboard;
 mod paste_grid_clipboard;
@@ -78,6 +81,9 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    IndentTaskItems,
+    OutdentTaskItems,
+    ExitTaskItem,
     SplitTaskItem,
     JoinTaskItems,
     SetCodeBlock,

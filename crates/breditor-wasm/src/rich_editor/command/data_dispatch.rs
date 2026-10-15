@@ -9,6 +9,11 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     match tag {
+        CommandTag::IndentTaskItems => super::indent_task_items::execute(owner, observation, input),
+        CommandTag::OutdentTaskItems => {
+            super::outdent_task_items::execute(owner, observation, input)
+        }
+        CommandTag::ExitTaskItem => super::exit_task_item::execute(owner, observation, input),
         CommandTag::SplitTaskItem => super::split_task_item::execute(owner, observation, input),
         CommandTag::JoinTaskItems => super::join_task_items::execute(owner, observation, input),
         CommandTag::SetCodeBlock => super::set_code_block::execute(owner, observation, input),

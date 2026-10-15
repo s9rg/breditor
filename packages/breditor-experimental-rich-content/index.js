@@ -53,6 +53,7 @@ function compiledProfile(result) {
     if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1 || (descriptor.richLanguageVersion!==undefined&&descriptor.richLanguageVersion!==2)) {
       throw new RichCommandError("breditor_rich.abi", "Unsupported rich owner ABI");
     }
+    if(descriptor.richLanguageVersion===2&&descriptor.taskStructureVersion!==1)throw new RichCommandError("breditor_rich.structural_runtime","Use matching structural V2 Wasm with task structure V1 support");
     return new RichCoreProfile(raw, descriptor);
   } catch (error) { raw.free(); throw error; }
 }

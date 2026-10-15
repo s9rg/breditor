@@ -8,7 +8,7 @@ export type RichCommandOutcome = "content" | "selection" | "typing" | "undo" | "
 export interface RichPoint {block: string; offset: string; affinity: "before" | "after"}
 export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
-export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2}
+export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2;taskStructureVersion?:1}
 /** Exact Rust-derived property state; all-present mixed values remain active. */
 export type RichInlineFormatState = {kind:"unavailable"}|{kind:"unset"}|{kind:"uniform";format:import("./commands.js").FormatLiteral}|{kind:"mixed";presentEverywhere:boolean};
 /** Read binding only, never a compiled proof or a mutation observation token. */

@@ -77,6 +77,7 @@ fn v7_is_explicit_and_v6_factories_and_saved_fingerprints_are_not_widened() -> R
     let v2 = profile()?;
     let d: Value = serde_json::from_str(&read(v2.descriptor_json())?)?;
     assert_eq!(d["richLanguageVersion"], 2);
+    assert_eq!(d["taskStructureVersion"], 1);
     assert_eq!(BreditorRichProfile::from_bootstrap_json(&bootstrap(7)).status(), "error");
     assert_eq!(
         BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(7)).status(),
@@ -91,6 +92,7 @@ fn v7_is_explicit_and_v6_factories_and_saved_fingerprints_are_not_widened() -> R
         .ok_or("old")?;
     let old_d: Value = serde_json::from_str(&read(old.descriptor_json())?)?;
     assert!(old_d.get("richLanguageVersion").is_none());
+    assert!(old_d.get("taskStructureVersion").is_none());
     assert_ne!(d["schemaFingerprint"], old_d["schemaFingerprint"]);
     let e = owner(&v2)?;
     assert_eq!(old.create_editor(&read(e.observe().document_json())?, "100").status(), "error");
@@ -214,5 +216,121 @@ fn task_enter_is_one_group_keeps_completion_and_join_restores_both_items() -> Re
         action("joinTaskItems", json!({"container":"tasks","left":"a","right":"right-item"})),
         "content",
     )?;
+    command(&mut e, select("p", 0, 0), "selection")?;
+    let guarded = read(e.checkpoint_json())?;
+    command(
+        &mut e,
+        action(
+            "splitTaskItem",
+            json!({"point":{"block":"p","offset":"1","affinity":"after"},"newItem":"explicit-task","right":"explicit-head","rightHeading":2}),
+        ),
+        "error",
+    )?;
+    assert_eq!(read(e.checkpoint_json())?, guarded);
+    command(
+        &mut e,
+        action(
+            "splitTaskItem",
+            json!({"point":{"block":"p","offset":"0","affinity":"after"},"newItem":"explicit-task","right":"explicit-head","rightHeading":2}),
+        ),
+        "content",
+    )?;
+    exact_future(&p, &mut e)
+}
+
+#[test]
+fn task_indentation_commands_are_closed_and_recover_exact_future_history() -> Result {
+    let p = profile()?;
+    let mut e = owner(&p)?;
+    command(
+        &mut e,
+        action(
+            "wrapTaskList",
+            json!({"first":"p","last":"q","container":"tasks","items":[{"block":"a","checked":true},{"block":"b","checked":false}]}),
+        ),
+        "content",
+    )?;
+    let before = read(e.checkpoint_json())?;
+    for data in [
+        json!({"container":"tasks","first":"b","last":"b"}),
+        json!({"container":"tasks","first":"b","last":"b","nested":{"block":"nested"}}),
+        json!({"container":"tasks","first":"b","last":"b","nested":null}),
+        json!({"container":"tasks","first":"b","last":"b","nested":"nested","extra":true}),
+    ] {
+        command(&mut e, action("indentTaskItems", data), "error")?;
+        assert_eq!(read(e.checkpoint_json())?, before);
+    }
+    let document = read(e.observe().document_json())?;
+    command(
+        &mut e,
+        action(
+            "indentTaskItems",
+            json!({"container":"tasks","first":"b","last":"b","nested":"nested"}),
+        ),
+        "content",
+    )?;
+    let nested = read(e.checkpoint_json())?;
+    for data in [
+        json!({"container":"nested","first":"b","last":"b"}),
+        json!({"container":"nested","first":"b","last":"b","tail":"unused"}),
+        json!({"container":"nested","first":"b","last":"b","tail":null,"extra":true}),
+    ] {
+        command(&mut e, action("outdentTaskItems", data), "error")?;
+        assert_eq!(read(e.checkpoint_json())?, nested);
+    }
+    command(
+        &mut e,
+        action(
+            "outdentTaskItems",
+            json!({"container":"nested","first":"b","last":"b","tail":null}),
+        ),
+        "content",
+    )?;
+    assert_eq!(read(e.observe().document_json())?, document);
+    exact_future(&p, &mut e)
+}
+
+#[test]
+fn empty_task_exit_requires_closed_explicit_identity_and_retains_one_group_and_future_history()
+-> Result {
+    let p = profile()?;
+    let mut e = owner(&p)?;
+    command(
+        &mut e,
+        action(
+            "wrapTaskList",
+            json!({"first":"p","last":"q","container":"tasks","items":[{"block":"a","checked":true},{"block":"b","checked":true}]}),
+        ),
+        "content",
+    )?;
+    let full = read(e.checkpoint_json())?;
+    command(
+        &mut e,
+        action("exitTaskItem", json!({"container":"tasks","item":"b","tail":null})),
+        "error",
+    )?;
+    assert_eq!(read(e.checkpoint_json())?, full);
+    command(&mut e, select("q", 0, 4), "selection")?;
+    command(&mut e, json!({"kind":"deleteSelection"}), "content")?;
+    let before = read(e.checkpoint_json())?;
+    let depth = view(&e)?["undoDepth"].as_u64().ok_or("depth")?;
+    for data in [
+        json!({"container":"tasks","item":"b"}),
+        json!({"container":"tasks","item":"b","tail":null,"extra":true}),
+        json!({"container":"tasks","item":"b","tail":"unused"}),
+    ] {
+        command(&mut e, action("exitTaskItem", data), "error")?;
+        assert_eq!(read(e.checkpoint_json())?, before);
+    }
+    command(
+        &mut e,
+        action("exitTaskItem", json!({"container":"tasks","item":"b","tail":null})),
+        "content",
+    )?;
+    let state = view(&e)?;
+    assert_eq!(state["undoDepth"], depth + 1);
+    assert_eq!(state["selection"]["focus"]["block"], "q");
+    let document: Value = serde_json::from_str(&read(e.observe().document_json())?)?;
+    assert_eq!(document["root"]["children"][1]["properties"]["breditor/block-id"], "q");
     exact_future(&p, &mut e)
 }

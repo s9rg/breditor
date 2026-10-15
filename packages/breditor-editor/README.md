@@ -77,12 +77,22 @@ explicit language choice on reload: old factories do not migrate V2 checkpoints.
 The toolbar exposes wrapping, code conversion/language, rule and task controls.
 Code conversion defaults to rejecting formatted text; removing its inline styles
 requires an explicit choice. Code formatting controls are unavailable. Enter in
-code inserts LF; Enter in a task head splits into an unchecked right task while
+code inserts LF; Enter in a nonempty task, or one with a rich tail, splits into an
+unchecked right task while
 retaining the left completion and rich tail. Joining retains left completion;
 Undo restores both original states. Task checkboxes support pointer and Space.
+The existing Indent/Outdent controls and prose Tab/Shift+Tab use task-specific
+actions that preserve checked values and complete bodies. Browser Enter exits
+only a truly empty task with no rich tail; nested tasks promote one level, while
+top-level tasks leave their same prose block outside the list. Undo restores all
+completion metadata. Checkbox Tab navigation and composition keys stay separate.
+Native-widget keys cannot navigate or delete a still-selected grid. Backspace
+on a checkbox cannot navigate the browser away; Undo/Redo remains available for
+checkbox changes. Matching V2 Wasm
+declares `taskStructureVersion: 1`; older runtimes reject before host mutation.
 
-Shared model 11 remains V1-only. Task indent/outdent and empty-item exit, complete
-atomic navigation and broader selection/history/interchange work remain open.
+Shared model 11 remains V1-only. Complete atomic navigation, code-exit shortcuts
+and broader selection/history/interchange work remain open.
 See `docs/RICH_STRUCTURAL_V2.md` in the repository for the full contract boundary.
 
 Persistence and asset storage are explicit host services, not implicit SDK

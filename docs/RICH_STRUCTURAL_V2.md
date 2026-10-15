@@ -28,8 +28,11 @@ factories are `compileStructuralRichProfileV2` and
 
 Document format 2, local checkpoint format 1 and rich ABI 1 retain their existing
 meanings. The default V2 preset uses `breditor-editor/standard@2` and a distinct
-fingerprint. Only V2 descriptors add `richLanguageVersion: 2`; V1 descriptors
-remain unchanged. Old factories reject V7 and V2 checkpoints instead of migrating
+fingerprint. V2 descriptors add `richLanguageVersion: 2` and runtime capability
+`taskStructureVersion: 1`; V1 descriptors remain unchanged. The matching JavaScript
+wrapper rejects older V2 runtimes lacking those task commands before creating an
+owner or changing the host. The capability does not change schema identity or
+checkpoint encoding. Old factories reject V7 and V2 checkpoints instead of migrating
 or falling back. Keep the explicit language choice when reopening a saved session.
 
 ## Schema and identity
@@ -86,9 +89,11 @@ Every new action has its own documented file under
   bodies, explicit identities and checked values.
 - `insert_horizontal_rule.rs` and `delete_horizontal_rule.rs` own rule insertion
   and deletion. Deleting a sole flow child requires an explicit replacement.
-- `split_task_item.rs` and `join_task_items.rs` own task head boundaries. Enter
+- `split_task_item.rs` and `join_task_items.rs` own task head boundaries. Split
   retains left completion, creates an unchecked right task and moves the rich
   tail right. Join retains left completion; Undo restores both original values.
+- `indent_task_items.rs` and `outdent_task_items.rs` own task nesting and removal.
+  `exit_task_item.rs` separately guards exit from a truly empty task.
 
 Task wrapping takes one explicit item ID and checked value per leading prose
 block. Following non-prose flow stays in that task's body. No action manufactures
@@ -110,6 +115,46 @@ The local renderer uses semantic quote, code, rule and list elements. Task
 checkbox pointer and Space activation submit an explicit checked value from the
 current Rust view; the checkbox DOM is not document authority. Ordinary list
 controls do not implicitly convert task completion into another list type.
+
+## Task nesting and empty exit
+
+Indent moves a contiguous task range into the preceding task's trailing task
+list, preserving all completion values, descendant identities and rich bodies.
+If that trailing task list exists, `nested` must be null; otherwise supply its
+fresh identity. Earlier media, quotes, prose and ordinary lists keep their order.
+The first task cannot indent without a preceding task.
+
+Nested outdent promotes tasks into the outer task list. The last promoted task
+receives the remaining nested suffix and then any flow that followed the nested
+list in its former parent. This preserves depth-first reading order. Top-level
+outdent removes the selected task wrappers and keeps every body block in its
+actual document, quote, cell or ordinary-list-tail flow parent. A surviving prefix
+keeps the original container identity. A surviving suffix uses that identity when
+there is no prefix; provide a fresh `tail` identity exactly when both survive.
+Undo restores all removed completion values and identities, not a guessed reverse
+move. Ordinary list commands still reject task lists.
+
+Browser Enter selects `exitTaskItem` only at a collapsed, empty leading prose
+block with no rich tail. Nested exit promotes one level and retains completion;
+top-level exit leaves the same paragraph or heading identity and kind outside
+the task list. An empty head with media, quotes or nested content still splits
+and moves that complete tail right. The explicit `insertParagraph` and
+`splitTaskItem` commands remain split operations; headless callers request exit
+separately. Rust rechecks the empty-exit precondition and full publication guard.
+The explicit `splitTaskItem` point must match the current collapsed caret,
+including affinity, so its typing-format context cannot come from another point.
+Set the logical selection first when requesting a different split position.
+
+The existing Indent and Outdent controls prepare either ordinary-list or task
+commands for the selected owner. Tab and Shift+Tab prepare task indentation and
+outdent from prose. Focused native widgets do not route navigation or deletion
+into a still-selected grid or node. Backspace/Delete on checkboxes and buttons
+are cancelled to prevent document deletion and accidental browser navigation;
+text fields retain native value editing. Editor Undo/Redo stays available for
+checkbox changes. Code has no implicit task-indentation meaning. Composition keys and modified Tab keys
+are not task commands. Each accepted operation is one local history group and
+retains exact future Undo/Redo after checkpoint recovery. These are local V2
+contracts, not shared conflict rules or native input/accessibility qualification.
 
 ## Hard breaks in the existing language
 
@@ -138,10 +183,14 @@ replacement, rekeyed clipboard, task boundaries and exact future history.
 closed commands/drafts and recovered history. Installed vanilla/React scenarios
 live in `experiments/editor-browser/structural-v2.spec.mjs`. Shared profile tests
 prove early rejection of this not-yet-supported shared language.
+`crates/breditor-core/tests/rich_task_structure_v2.rs` checks nesting, actual flow
+parents, empty exit, checked values, ordering, active limits, atomic rejection and
+exact future history. Installed keyboard, toolbar and React regressions are in
+`experiments/editor-browser/task-structure.spec.mjs`.
 
 Next, define V2 shared operation/conflict and journal compatibility contracts.
-Task indent/outdent, empty-item exit, code exit-to-new-block shortcuts and complete
-atomic-block caret navigation still need explicit actions and integration.
+Code exit-to-new-block shortcuts and complete atomic-block caret navigation still
+need explicit actions and integration.
 Atomic-block navigation, general selections, typing coalescing, live read-only
 mode, bounded layout properties and sanitized foreign interchange remain in the
 active first-two-workstream goal. These local controls alone do not satisfy it.

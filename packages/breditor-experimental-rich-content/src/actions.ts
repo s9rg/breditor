@@ -2,6 +2,7 @@
 import type {FlowPosition,FormatLiteral,RichCell,RichCommand,RichCoreEditor,RichSelection,TableCellDraft,TableDraft} from "./core.js";
 import {formatsAt,id,isProse,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
+import {exitEmptyTask} from "./task_actions_v2.js";
 export interface ActionContext {model:RichModel;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
 export interface ToolbarControl {
  id:string;label:string;type?:"text"|"number";
@@ -66,6 +67,7 @@ export function bold(context:ActionContext):RichCommand|null {
 }
 export function enter(context:ActionContext):RichCommand|null {
  const selection=context.model.view.selection;if(selection?.kind!=="text")return null;
+ const exit=exitEmptyTask(context);if(exit)return exit;
  const value=context.model,a=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),f=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
  const point=a<f||(a===f&&BigInt(selection.anchor.offset)<=BigInt(selection.focus.offset))?selection.anchor:selection.focus;
  const parent=value.parents.get(point.block);

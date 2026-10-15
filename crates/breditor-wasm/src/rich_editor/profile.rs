@@ -68,6 +68,7 @@ impl BreditorRichProfile {
             "schema":{"name":self.schema.id().name().as_str(),"version":self.schema.id().version().get()},"schemaFingerprint":self.schema.fingerprint().to_string()});
         if self.schema.rich_content_revision() == Some(2) {
             value["richLanguageVersion"] = serde_json::json!(2);
+            value["taskStructureVersion"] = serde_json::json!(1);
         }
         BreditorStringResult::from_value(value.to_string())
     }

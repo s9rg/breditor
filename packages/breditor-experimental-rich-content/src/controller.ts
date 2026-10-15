@@ -6,6 +6,7 @@ import {paintSelection,render,requireRenderOptions,structuralBlockStylesV2,type 
 import {readNative,readTarget,restoreNative,isCurrentCaretTarget} from "./selection.js";
 import {standardInlineStylesV1} from "./standard_inline_v1.js";
 import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
+import {taskTab} from "./task_actions_v2.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
@@ -111,6 +112,16 @@ export class RichDomEditor {
  #key(event:KeyboardEvent):void {
   if(this.#composition||event.isComposing)return;
   const mod=event.metaKey||event.ctrlKey;
+  // A focused native widget owns navigation/deletion even if the logical editor
+  // selection is still a table grid or node. Keep editor Undo/Redo available so
+  // a checkbox activation remains an ordinary undoable document action.
+  const widget=(event.target as Element).closest("input,button,select,textarea");
+  if(widget&&!(mod&&!event.altKey&&["z","y"].includes(event.key.toLowerCase()))){
+   // A checkbox/button cannot delete text. Do not let an unhandled Backspace
+   // turn into browser-history navigation (observed in WebKit), nor a grid edit.
+   if(["Backspace","Delete"].includes(event.key)&&widget.matches("button,input[type=checkbox],input[type=radio]"))event.preventDefault();
+   return;
+  }
   if(mod&&event.key.toLowerCase()==="a")this.#logicalSelection=false;
   if(mod&&!event.altKey){const key=`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`,control=this.#controls.find(item=>item.control.shortcut===key);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   if(mod&&!event.altKey&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}
@@ -121,6 +132,10 @@ export class RichDomEditor {
    if(event.defaultPrevented)return;
   }
   const selection=this.#model.view.selection;
+  if(event.key==="Tab"&&!mod&&!event.altKey){
+   this.#attempt(()=>{this.#sync();const command=taskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.execute(command);}});
+   if(event.defaultPrevented)return;
+  }
   if(selection?.kind==="grid"){
    const moves:Record<string,string>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"};
    const movement=moves[event.key];

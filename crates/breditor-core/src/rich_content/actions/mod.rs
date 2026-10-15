@@ -16,10 +16,12 @@ mod delete_table;
 mod delete_table_column;
 mod delete_table_row;
 mod delete_text;
+mod exit_task_item;
 mod flow_patch;
 pub(crate) mod flow_siblings;
 mod guard;
 mod indent_list_items;
+mod indent_task_items;
 mod insert_blocks;
 mod insert_horizontal_rule;
 mod insert_image;
@@ -40,6 +42,7 @@ mod move_table_column;
 mod move_table_row;
 mod node_patch;
 mod outdent_list_items;
+mod outdent_task_items;
 mod paste_table_cells;
 mod replace_blocks;
 mod replace_image;
@@ -65,6 +68,7 @@ mod table_body_rewrite;
 mod table_merges;
 mod table_patch;
 mod task_list_helpers;
+mod task_parts;
 pub(crate) mod text_patch;
 mod text_range_list;
 mod unwrap_blockquote;
@@ -82,7 +86,9 @@ pub use delete_table::DeleteTable;
 pub use delete_table_column::DeleteTableColumn;
 pub use delete_table_row::DeleteTableRow;
 pub use delete_text::DeleteText;
+pub use exit_task_item::ExitTaskItem;
 pub use indent_list_items::IndentListItems;
+pub use indent_task_items::IndentTaskItems;
 pub use insert_blocks::InsertBlocks;
 pub use insert_horizontal_rule::InsertHorizontalRule;
 pub use insert_image::InsertImage;
@@ -97,6 +103,7 @@ pub use merge_table_cells::MergeTableCells;
 pub use move_table_column::MoveTableColumn;
 pub use move_table_row::MoveTableRow;
 pub use outdent_list_items::OutdentListItems;
+pub use outdent_task_items::OutdentTaskItems;
 pub use paste_table_cells::PasteTableCells;
 pub use replace_blocks::ReplaceBlocks;
 pub use replace_image::ReplaceImage;
@@ -130,6 +137,12 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Nest tasks with retained completion values and complete rich bodies.
+    IndentTaskItems(IndentTaskItems),
+    /// Promote/unlist tasks without losing ordered tails or exact inverse metadata.
+    OutdentTaskItems(OutdentTaskItems),
+    /// Exit one truly empty task, never silently dropping a trailing rich body.
+    ExitTaskItem(ExitTaskItem),
     /// Split a task head, retaining left completion and creating an unchecked right task.
     SplitTaskItem(SplitTaskItem),
     /// Join adjacent tasks with explicit left-completion precedence and exact inverse.
@@ -263,6 +276,9 @@ impl RichAction {
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
         match self {
+            Self::IndentTaskItems(action) => action.apply(context, document),
+            Self::OutdentTaskItems(action) => action.apply(context, document),
+            Self::ExitTaskItem(action) => action.apply(context, document),
             Self::SetCodeBlock(action) => action.apply(context, document),
             Self::SetCodeLanguage(action) => action.apply(context, document),
             Self::SetTaskChecked(action) => action.apply(context, document),
@@ -366,6 +382,9 @@ pub enum RichActionError {
     /// A task-state/list operation received an ordinary list or non-task identity.
     #[error("rich task action target has the wrong kind")]
     TaskTarget,
+    /// Empty-task exit must not discard text or any trailing rich flow.
+    #[error("rich task exit requires an empty head and no trailing flow")]
+    TaskNotEmpty,
     /// A quote unwrap requires an actual blockquote identity.
     #[error("rich quote action requires a blockquote")]
     QuoteTarget,

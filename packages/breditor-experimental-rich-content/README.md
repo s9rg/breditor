@@ -80,15 +80,25 @@ Enter remains structural outside code. Explicit `compileStructuralRichProfileV2`
 and `compileStandardStructuralRichProfileV2` accept bootstrap V7 for blockquotes,
 plain code, rules and tasks; ordinary factories retain V6/V1. The standard V2
 factory uses standard inline V1 and `createStructuralRichToolbarV2`. V2 descriptors
-add `richLanguageVersion: 2`; no saved document or checkpoint is migrated.
+add `richLanguageVersion: 2` and `taskStructureVersion: 1`; older V2 runtimes
+without the matching task commands reject before owner creation. No saved
+document or checkpoint is migrated.
 
 V2 typed commands include the separate wrap/unwrap, code/language, rule and task
-operations. Task Enter creates an unchecked right item and retains the left state
+operations. Task split creates an unchecked right item and retains the left state
 and exact rich tail; join keeps left completion, with both original states in its
-inverse. Checkboxes submit explicit native checked values. Code has no inline
+inverse. Checkboxes submit explicit native checked values. Task-specific indent
+and outdent preserve completion and complete bodies; a fresh nested/suffix ID is
+required only when a new container is necessary. Browser Enter selects a separate
+empty-exit action only for a collapsed empty head with no rich tail. Nested exit
+promotes one level; top-level exit retains the same prose block and keeps removed
+completion metadata in Undo. The same Indent/Outdent controls and prose
+Tab/Shift+Tab prepare these commands. Checkbox Tab navigation, code and composing
+keys have no implicit task-indent meaning. Explicit split commands still split.
+Code has no inline
 formats and its conversion form requires a declared formatting-loss policy.
-Partial code/prose joins reject. Shared V2, task indent/outdent/empty-item exit,
-complete atomic navigation and external rich interchange remain open.
+Partial code/prose joins reject. Shared V2, complete atomic navigation, code-exit
+shortcuts and external rich interchange remain open.
 
 `execute` returns `content`, `selection`, `typing`, `undo`, `redo` or `unchanged`.
 Failures throw `RichCommandError` with a stable payload-redacting code and publish
