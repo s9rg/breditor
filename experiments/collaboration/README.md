@@ -1006,8 +1006,10 @@ checkpoint and integrated receipt. Under a serialized room transaction, the
 relay must persist before guarded `commit_writer_group`. The old exact owner
 observation fences a concurrent or foreign candidate. Preparation/integration is
 not a server-durable acknowledgement. Failed persistence can drop the candidate
-without changing live content. Account roles, writer lease credentials,
-durable append/index recovery and network acknowledgement state remain work.
+without changing live content. The isolated `../relay` crate now supplies tested
+account-role/writer ownership transactions, ephemeral lease fencing, durable
+append and native replay recovery. Network account authentication, a listening
+service and browser acknowledgement integration remain work.
 
 Genesis has its own explicit kind and requires a dedicated creation-authority
 path. A reproduced relabeling case created a fresh paragraph seed with the same

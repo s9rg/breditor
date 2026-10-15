@@ -154,14 +154,27 @@ integration on an unpublished candidate. Missing dependencies are not imported
 into live history. Duplicates do not republish; ordinary actions cannot contain
 room-initialization writes. Candidate commit is fenced by the exact old owner
 observation so a relay can append durably before publication under a room lock.
-This does not yet implement account authentication, durable relay storage,
-server leases, a listening WebSocket service or the import-worker resource gate.
+Account authentication, a listening WebSocket service and the import-worker
+resource gate remain separate integration work.
 The atomic-writer checkpoint passes 229 private native contracts and 144 combined
 browser cases. Full regressions add all 309 legacy browser cases (453 total),
 703 default and 1,217 opt-in core tests, 137 doctests and rich integration tests.
 Generated/installed TypeScript, strict native/Wasm Clippy and the offline
 installed-package consumer also pass. This is functional checkpoint evidence,
 not completion of the remaining service or release gates.
+
+The isolated `experiments/relay` crate now owns durable room transactions. It
+persists account roles, server-allocated writer ownership and hashed resume
+credentials; ephemeral connection fences reject stale sessions and are cleared
+on restart or permission changes. Single-writer acceptance appends and syncs
+before publication/acknowledgement. Exact retries retain their original durable
+sequence across restart. Recovery checks the hash-chained log and replays native
+semantic admission, removing only an incomplete final record after successful
+replay. Complete corruption rejects without file mutation. File locks serialize
+process ownership; uncertain writes require recovery before further use. Nine
+native service tests and strict Clippy pass. This is a native authority library,
+not yet the listening/authenticating relay or an approved production storage
+budget; see `experiments/relay/README.md` for explicit limits and remaining work.
 
 ## Scope of the combined release
 

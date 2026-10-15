@@ -1,0 +1,103 @@
+# Breditor reference relay — durable room authority
+
+This isolated Rust crate implements the storage and ownership transactions for
+the reference relay. It is not yet a listening WebSocket service. It does not
+change the default editor dependency graph, private shared model 11, journal V12
+or Wasm ABI 1. Do not expose it as a public untrusted endpoint: account
+authentication, network framing and the resource-limited import worker are still
+separate implementation gates.
+
+Run the reproducible functional check from the repository root:
+
+```sh
+node scripts/check-relay.mjs
+```
+
+The check runs formatting, strict first-party Clippy, one real I/O-failure test
+and eight native room contract tests. The native tests use the same rich owner
+and single-writer admission used by the Wasm/browser checkpoint; no second CRDT
+or simplified document model is substituted.
+
+## Room and account authority
+
+`Room::create` admits the configured initial Document V2 and creates a new log
+without overwriting an existing file. The host-owned seed reserves causal writer
+`1`. The immutable initial account owner can durably grant Reader or Editor
+roles, or revoke access. The caller must authenticate an account before supplying
+its principal to this API; a causal writer string is never an account identity.
+
+Editors register distinct server-allocated writers. Registration persists the
+account/writer binding and the SHA-256 digest of a 256-bit OS-random resume
+credential before returning the secret. The browser must save this credential
+separately from its portable editor journal before authoring. The log never
+stores the clear credential or an active connection token. Losing an allocation
+reply may leave an unused writer; identities are never recycled.
+
+Resume requires both the same authenticated account and its writer credential.
+It creates a new random connection fence and invalidates the previous one.
+Restart invalidates every connection fence, but not writer ownership or offline
+edits. A stale disconnect cannot release a newer connection. Any role change
+fences that account's sessions; a later regrant still requires explicit resume.
+Permission rejection does not delete or alter a client's local journal.
+
+## Durable editing and recovery
+
+`Room::admit` validates the active account-bound lease, then uses native
+`prepare_writer_group` on an unpublished candidate. Missing causal dependencies
+remain pending at the client, outside accepted engine state and the durable log.
+Malformed, wrong-author, invalid and forked groups reject before append.
+
+The room appends the exact group, authenticated ownership and canonical receipt,
+then calls `sync_all` before committing the candidate or returning a durable
+receipt. The caller must serialize the whole room transaction, including grants
+and resumes. Socket transmission is not durability. A failed/uncertain write
+fences all subsequent reads and transactions until recovery; it does not issue
+an acknowledgement that memory alone cannot justify.
+
+Exact retries return the original accepted log sequence and canonical receipt
+without appending another record, including after a lost response and restart.
+Receipt identity is canonical operations, not possibly different binary packing.
+Full multi-author catchup frames are read-authorized server output, not accepted
+client write input.
+
+The private `breditor/relay-log` V1 file has bounded records, contiguous sequence
+numbers, a previous-record digest, a payload digest and an independently checked
+header digest. A damaged length cannot masquerade as an incomplete append. Open
+replays every complete record through permission/ownership/native semantic
+admission. Only after successful replay can it truncate an incomplete final
+record. A corrupt complete record rejects without modifying the file. A complete
+append whose reply was lost remains accepted and discoverable by exact retry.
+
+The log is locked exclusively with the standard-library file lock for its open
+lifetime. Unix creation requests mode 0600; initial creation syncs the file and
+its containing directory. Use an existing host-owned directory and a local
+filesystem with working lock/sync semantics. Do not unlink or replace an open
+log. These functional tests are not a power-loss certification for every storage
+device or network filesystem.
+
+## Tested workflows and limits
+
+The contracts exercise simultaneous offline table width/text and image alt/
+caption edits, original server-durable retry receipts, server restart, client
+journal restore and selective Undo/Redo through later remote edits. They also
+exercise own-stream gaps and foreign dependencies, Reader/Editor/revoked roles,
+cross-account writer claims, credential rejection, lease replacement, stale
+disconnects, competing log ownership, exact non-overwrite, incomplete header/
+payload tails, checksum corruption and plausible corrupt lengths. A real
+read-only file handle verifies write-error fencing.
+
+Current correctness budgets are 20 MiB per serialized log record, 256 MiB per
+room log, 4,096 total log records, 1,024 registered writers and 1,024 non-owner
+role entries. The stricter existing rich owner budgets also apply, including
+1,000 journal entries and bounded causal state. These are explicit rejection
+limits, not a rolling compaction implementation or throughput/SLA promise.
+
+Remaining functional integration: authenticated WebSocket host and browser
+reconnect coordinator, bounded network scheduling, presence transport/overlays,
+cross-host asset provider, import-worker isolation and promotion of the optional
+Rust/Wasm distribution. Local storage and writer transactions alone do not
+complete the full collaboration goal. Exhaustive adversarial, physical IME and
+accessibility qualification remain deferred as requested.
+
+Implementation references: [standard file locking and sync](https://doc.rust-lang.org/std/fs/struct.File.html),
+[OS-backed credential entropy](https://docs.rs/getrandom/0.4.3/getrandom/fn.fill.html).
