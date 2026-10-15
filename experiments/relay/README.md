@@ -4,8 +4,8 @@ This isolated Rust crate implements durable room authority and an optional
 loopback WebSocket reference host. It does not change the default editor
 dependency graph, private shared model 11, journal V12 or Wasm ABI 1. Do not
 expose it as a public untrusted endpoint: the resource-limited import worker,
-TLS/deployment qualification and the
-distributable browser reconnect coordinator are still separate integration gates.
+TLS/deployment qualification, network presence/assets and optional distribution
+promotion remain separate integration gates.
 
 Run the reproducible functional check from the repository root:
 
@@ -67,7 +67,8 @@ retained failing-before-fix browser reproduction, not just a write-denial test.
 `node scripts/check-shared-browser.mjs` builds this actual Rust process and runs
 real Wasm clients against it. The Node lifecycle fixture starts/stops Rust and
 owns temporary files; it neither authenticates nor merges/acknowledges documents.
-The browser socket fixture is test support, not a promoted reconnect API. The
+The browser socket fixture is test/admin support; the optional browser package
+now has its own `SharedRelaySync` reconnect API and durable registration helper. The
 interactive `/demo` still exchanges updates only within its own page.
 
 The final frozen-source check passes all 156 combined browser cases (52 each in
@@ -155,8 +156,7 @@ role entries. The stricter existing rich owner budgets also apply, including
 1,000 journal entries and bounded causal state. These are explicit rejection
 limits, not a rolling compaction implementation or throughput/SLA promise.
 
-Remaining functional integration: distributable browser reconnect coordinator,
-presence transport/overlays,
+Remaining functional integration: presence transport/overlays,
 cross-host asset provider, import-worker isolation and promotion of the optional
 Rust/Wasm distribution. Local storage and writer transactions alone do not
 complete the full collaboration goal. Exhaustive adversarial, physical IME and

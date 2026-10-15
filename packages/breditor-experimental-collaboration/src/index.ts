@@ -7,3 +7,7 @@ export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";
 export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files.js";
 export {SharedPersistentSession,type SharedSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";
+export {SharedRelaySync} from "./relay/sync.js";
+export {registerSharedRelayWriter} from "./relay/registration.js";
+export {SharedRelayError} from "./relay/validation.js";
+export type {SharedRelayIdentity,SharedRelayAuthentication,SharedRelayRegistrationOptions,SharedRelayRegistration,SharedRelayOptions,SharedRelayState,SharedRelayStatus} from "./relay/types.js";

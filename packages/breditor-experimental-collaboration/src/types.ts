@@ -77,3 +77,5 @@ export interface SharedRustOwner {
 }
 export interface SharedPublication {source:"local"|"remote";view:SharedView}
 export interface SharedEditorOptions {maxPendingFrames?:number;maxPendingBytes?:number;onError?:(error:unknown)=>void}
+/** Cancel only a queued remote publication; a synchronous admitted Rust commit cannot be rewound. */
+export interface SharedRemoteOptions {signal?:AbortSignal}

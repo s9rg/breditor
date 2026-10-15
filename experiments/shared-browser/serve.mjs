@@ -6,6 +6,7 @@ add("/probe.js",resolve(artifacts,"breditor_collab_feasibility.js"));add("/bredi
 add("/shared.js",resolve(shared,"index.js"));add("/rendering.js",resolve(local,"rendering.js"));add("/rich.js",resolve(local,"index.js"));add("/demo.mjs",resolve(root,"experiments/shared-browser/demo.mjs"));
 add("/demo_presence.mjs",resolve(root,"experiments/shared-browser/demo_presence.mjs"));
 add("/socket-fixture.mjs",resolve(root,"experiments/shared-browser/socket-fixture.mjs"));
+add("/relay-app-fixture.mjs",resolve(root,"experiments/shared-browser/relay-app-fixture.mjs"));
 function modules(directory,prefix){for(const file of readdirSync(directory,{withFileTypes:true})){if(file.isDirectory())modules(resolve(directory,file.name),`${prefix}/${file.name}`);else if(file.isFile()&&file.name.endsWith(".js"))add(`${prefix}/${file.name}`,resolve(directory,file.name));}}
 modules(resolve(shared,"dist"),"/dist");modules(resolve(local,"dist/browser"),"/dist/browser");
 const imports=`<script type="importmap">{"imports":{"@breditor/experimental-rich-content/rendering":"/rendering.js"}}</script>`;

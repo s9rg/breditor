@@ -66,9 +66,9 @@ origin-wide room/writer Web Lock before restoration. Reload preserves future
 selective history; another tab cannot clone that live writer through another
 database. Failed storage attempts remain explicit and can retry the latest
 complete checkpoint. The combined demo now uses both durable writers and proves
-disconnect/reconnect/reload through the real DOM controller. Integration of the
-reference relay into the distributable package, network presence transport and
-cross-host asset providers remains required work.
+disconnect/reconnect/reload through the real DOM controller. Combined network-
+demo integration, network presence transport and cross-host asset providers
+remain required work.
 
 Shared caption creation/replacement/removal now uses a writer-owned choice of
 retained paragraph identity or explicit absence. Two concurrent valid caption
@@ -154,9 +154,9 @@ integration on an unpublished candidate. Missing dependencies are not imported
 into live history. Duplicates do not republish; ordinary actions cannot contain
 room-initialization writes. Candidate commit is fenced by the exact old owner
 observation so a relay can append durably before publication under a room lock.
-The relay now has an optional account-authenticated loopback WebSocket host;
-the distributable reconnect adapter and import-worker resource gate remain
-separate integration work.
+The relay now has an optional account-authenticated loopback WebSocket host and
+a typed reconnect adapter in the optional browser package. Import-worker
+isolation remains separate integration work.
 The atomic-writer checkpoint passes 229 private native contracts and 144 combined
 browser cases. Full regressions add all 309 legacy browser cases (453 total),
 703 default and 1,217 opt-in core tests, 137 doctests and rich integration tests.
@@ -186,8 +186,7 @@ authority. Blocking native admission/fsync run outside async I/O workers. A
 reproduced takeover bug left old sockets readable after their writer was resumed;
 active lease validation now also gates catchup/clock, and takeover notifies old
 sessions before same-author future state can enter their history. The process
-is loopback-only; browser network support is currently an end-to-end test fixture,
-not a promoted reconnect API or a public deployment. Network presence/overlays,
+is loopback-only, not a qualified public deployment. Network presence/overlays,
 cross-host assets, import isolation and optional Rust/Wasm promotion remain gates.
 The listening-host checkpoint passes 156 combined three-engine browser cases,
 including twelve real Rust-process workflows, 229 native editor contracts and
@@ -195,6 +194,32 @@ twelve native relay tests. The earlier full 309-case legacy run brings this
 checkpoint to 465 browser cases. Installed archives, TypeScript and strict
 native/Wasm lints also pass. The old takeover behavior reproduces in all three
 engines; the rebuilt fix passes the retained regression and complete matrix.
+
+The optional package now provides `registerSharedRelayWriter` and
+`SharedRelaySync`. Registration waits for separate durable credential storage
+before returning an authoring identity. Sync verifies native writer prefixes
+before catchup, submits complete groups, checks canonical durable receipts and
+keeps local persistence separate from server acknowledgement. It automatically
+recovers transient disconnects and the same server endpoint after restart;
+permission loss, replaced leases and divergent history preserve local work and
+stop automatic reconnect. Pending dependencies stay observable and retry after
+server progress, including a catchup already present in the local CRDT. A save
+ticket cannot transmit a later authored group. Epoch/abort guards cancel queued
+old-connection frames without rewinding admitted content or disposing the core.
+A reproduced initial-connect cancellation race now creates a fresh startup
+instead of reusing a cancelled promise. Thirty-three focused real-process
+browser cases pass across Chromium, Firefox and WebKit; installed archives expose
+the same typed API and retain real Wasm future history. Network presence/overlays,
+cross-host assets, combined network-demo integration and Rust/Wasm distribution
+promotion remain required work.
+The complete reconnect checkpoint passes 189 shared browser cases, 229 native
+editor contracts, 12 native service tests, strict native/Wasm lints, generated
+and installed TypeScript, and the offline archive runtime. The expanded
+single-process shared run hit the historical WebKit pre-editor navigation stall
+at 188/189. Coverage-checked per-file WebKit processes, as already used by the
+legacy suite, then pass all 189 without retries or relaxed checks. Together with
+the unchanged 309-case legacy matrix, the functional evidence covers 498 browser
+cases. The historical engine/process reliability risk remains explicit.
 
 ## Scope of the combined release
 

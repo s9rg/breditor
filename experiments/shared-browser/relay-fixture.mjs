@@ -24,8 +24,8 @@ export async function createRelay({configuration, input, origin}) {
     const timer = setTimeout(()=>current.kill("SIGKILL"), 3000);
     try { await exit; } finally { clearTimeout(timer); }
   }
-  async function start() {
-    child = spawn(binary,["serve",log,auth,"127.0.0.1:0"],{cwd:root,stdio:["ignore","pipe","pipe"]});
+  async function start(bind="127.0.0.1:0") {
+    child = spawn(binary,["serve",log,auth,bind],{cwd:root,stdio:["ignore","pipe","pipe"]});
     const current = child;
     exit = new Promise(resolveExit=>{current.once("exit",(code,signal)=>resolveExit({code,signal}));current.once("error",()=>resolveExit({code:null,signal:null}));});
     address = await new Promise((resolveAddress,reject)=>{
@@ -41,6 +41,6 @@ export async function createRelay({configuration, input, origin}) {
   try {
     await execute(binary,["init",log,profile,document,"owner"],{cwd:root,timeout:10_000,maxBuffer:16_384});
     const url = await start();
-    return {url,tokens,async restart(){await stop();return start();},async dispose(){await stop();await rm(directory,{recursive:true,force:true});}};
+    return {url,tokens,async restart(){await stop();return start();},async offline(){await stop();},async online(){if(child)throw Error("Relay already online");return start(address);},async dispose(){await stop();await rm(directory,{recursive:true,force:true});}};
   } catch(error) { await stop();await rm(directory,{recursive:true,force:true});throw error; }
 }

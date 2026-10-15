@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,SharedPresence} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,SharedPresence,SharedRelaySync,registerSharedRelayWriter} from "@breditor/experimental-collaboration";
 import {render,model} from "@breditor/experimental-rich-content/rendering";
 const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
 wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
@@ -10,7 +10,7 @@ const a=new SharedRichEditor(new wasm.RichReplicaProbe(vector.rich_local_input,"
 a.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Packaged "}}]});
 a.undo();const checkpoint=a.checkpointJson(),b=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",checkpoint));
 a.redo();b.redo();assert.equal(a.checkpointJson(),b.checkpointJson());assert.equal(a.documentJson(),b.documentJson());
-for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,render,model])assert.equal(typeof api,"function");
+for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,render,model,SharedRelaySync,registerSharedRelayWriter])assert.equal(typeof api,"function");
 a.dispose();b.dispose();
 const v=vector.shared_profile,p=compileSharedProfile(wasm,v.configuration),custom=new SharedRichEditor(p.restore("room",v.checkpoint));p.free();
 const state=name=>{assert.deepEqual(custom.view(),JSON.parse(v[name].view));assert.equal(custom.checkpointJson(),v[name].checkpoint);};
@@ -18,3 +18,9 @@ state("current");custom.undo();state("undo");custom.redo();state("redo");custom.
 const q=compileSharedProfile(wasm,v.configuration),peer=new SharedRichEditor(q.join_frame("room","404",custom.updateFrame()));q.free();const presence=new SharedPresence(custom,{autoExpire:false});peer.select({kind:"node",block:"image-block"});presence.announce({writer:"404",session:"consumer-peer",label:"Peer"});const unchanged=custom.checkpointJson();presence.receive("404","consumer-peer","1",peer.presenceFrame());assert.equal(presence.view()[0].resolution.kind,"resolved");assert.equal(custom.checkpointJson(),unchanged);presence.dispose();peer.dispose();custom.dispose();
 const transport=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",vector.shared_writer.initialA));transport.dispatch({commands:[{kind:"insert_text",data:{block:"p",offset:0,text:"Packaged transport"}}]});const prior=transport.checkpointJson(),outgoing=transport.writerGroups("0");assert.equal(outgoing.groups.length,1);assert.equal(JSON.parse(outgoing.groups[0]).kind,"action");assert.equal(outgoing.through,transport.writerClock("9007199254740993").through);assert.equal(transport.checkpointJson(),prior);assert.deepEqual(transport.writerGroups(outgoing.through).groups,[]);transport.dispose();
 console.log("Installed shared package imports, configured factories, generated types and real Wasm future history passed");
+const offlineCore=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",vector.shared_writer.initialA)),beforeOffline=offlineCore.checkpointJson();
+const sync=new SharedRelaySync(offlineCore,{identity:{endpoint:"ws://127.0.0.1:1/ws",principal:"consumer",room:"room",writer:"9007199254740993",credential:"a".repeat(64)},getToken:()=>{throw Error("Offline consumer must not fetch a token");},autoConnect:false});
+assert.equal(sync.state().status,"offline");assert.equal(offlineCore.checkpointJson(),beforeOffline);
+const cancelled=offlineCore.receiveFrame("not-json",{signal:AbortSignal.abort()}).then(()=>"accepted",error=>error.code);assert.equal(await cancelled,"remote_cancelled");assert.equal(offlineCore.checkpointJson(),beforeOffline);
+sync.dispose();assert.equal(sync.state().status,"closed");offlineCore.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Transport disposal retains editor"}}]});assert.ok(offlineCore.documentJson().includes("Transport disposal retains editor"));offlineCore.dispose();
+console.log("Installed relay API, offline ownership and cancellable remote publication passed");

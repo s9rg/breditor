@@ -76,6 +76,12 @@ action. The remote queue allows at most 64 frames and 8 MiB in aggregate, with a
 frames reject independently; valid successors continue. There is no silent drop
 or unbounded catchup queue.
 
+`receiveFrame(frame, {signal})` can cancel a frame while it is still queued.
+Cancellation releases its byte/frame budget and does not decode, publish or add
+history. It cannot undo a synchronous Rust admission that already completed.
+Dispose and admission remove the abort listener. Reconnect uses this boundary to
+stop old connection callbacks, including frames held during composition.
+
 `checkpointJson()` preserves the original seed/join, ordered imports, commands,
 selective history, causal UI anchors and future operation identities. Restore
 only under the same exclusively leased writer. It is not a portable content
@@ -127,9 +133,112 @@ The isolated repository `experiments/relay` now supplies durable append/receipt
 storage, account roles, writer leases and an optional account-authenticated
 loopback WebSocket host. Browser-to-process tests exercise real Wasm groups and
 server/page restart. The separate native admission test bridge is still not a
-listening server or authenticator. The distributable browser reconnect adapter,
-bounded import worker and public deployment qualification remain work.
+listening server or authenticator. The browser reconnect adapter below now uses
+that host; the bounded import worker and public deployment qualification remain
+work.
 ABI 1, shared model 11, journal V12 and default shipping graphs remain unchanged.
+
+## Packaged relay reconnect
+
+`registerSharedRelayWriter` allocates a writer online before first authoring.
+Pass `endpoint` (`ws:`/`wss:` without credentials/query/fragment), authenticated
+`principal`, `room`, `getToken(signal)` and `saveIdentity(identity)`. The account
+bearer token comes from the callback; the returned writer resume credential is a
+different secret. `saveIdentity` must finish durable host storage before the
+helper returns. If it fails, no editor is created and the unused allocation is
+not recycled. Keep this record outside portable documents/journals and protect
+it as an application credential. The helper returns an opaque catchup frame and
+profile descriptor; the matching Rust profile still owns join admission.
+This adapter uses the reference host's 64-character lowercase-hex account and
+resume tokens. OAuth/JWT login adapters and public TLS deployment are not supplied.
+
+```ts
+const registration = await registerSharedRelayWriter({
+  endpoint, principal, room, getToken,
+  saveIdentity: identity => credentialStore.save(identity),
+});
+const {identity} = registration;
+const session = await SharedPersistentSession.open({
+  database, room, writer: identity.writer,
+  create: () => profile.join_frame(room, identity.writer, registration.frame),
+  restore: journal => profile.restore(room, journal),
+});
+const sync = new SharedRelaySync(session.core, {
+  identity, getToken, autoConnect: false,
+  persistLocal: () => session.flush(),
+  onState: state => showSaveState(state, session.state()),
+});
+await sync.connect();
+await sync.flush();
+```
+
+On later offline boots, load the separate identity and reopen the same exact
+journal through `SharedPersistentSession`; do not allocate another writer or
+replace missing history with a fresh AST. Construct sync offline if needed, then
+connect when the host can authenticate. Server-allocated editors join the host's
+existing seed; they do not use `profile.create` to submit another genesis. New
+room creation remains a host-authorized workflow.
+
+One `SharedRelaySync` may attach to a core at a time. It verifies schema/ABI/model
+bindings, checks the server's exact writer prefix against native local history,
+resumes the writer, checks the prefix again, then admits catchup through the
+existing safe remote queue. A server-ahead or divergent same-writer journal
+rejects before import rather than becoming this writer's fabricated local
+history. Only complete native action groups are submitted, never full multi-
+author updates. Canonical receipts must match the actual sent group and native
+prefix; socket writes and pending-dependency responses do not advance saved state.
+
+`persistLocal`, when configured, must resolve only after this core's complete
+current journal is durable. The send pump captures an author end before awaiting
+it; typing during that save waits for a later ticket. A rejected save stops
+publication as `local-save-failed`. After repairing/retrying storage, explicit
+`connect()` retries the send pump without discarding the core. Without this
+callback, transient in-memory editing is supported, but local durability remains
+unknown rather than being reported as saved.
+
+State separates exact decimal `localThrough`, `locallyDurableThrough` and
+`serverThrough`, plus the canonical server prefix and original receipt sequence
+when known. These are authored-operation ends, not complete local journal/UI
+revisions; use the persistent session's save state for that distinction.
+`waitingFor` exposes bounded missing author/dependency ends. A later server
+catchup retries pending work even if the local CRDT already contained those
+operations. No pending group is silently treated as acknowledged.
+
+`flush()` waits for the author end captured by that call, not future typing or
+all peers. It is bounded at 30 seconds and allows at most 16 waiting calls.
+Previously acknowledged work stays known when offline; new offline writes do
+not become server durable. `disconnect()` deliberately stops networking and
+cancels queued old-connection frames. `connect()` is also the explicit retry
+after a permission regrant or writer takeover. Transient network/storage failures
+reconnect with bounded backoff; `denied`, `fenced` and incompatible history stop
+automatic reconnect so a client cannot repeatedly steal a writer back.
+
+The transport retains at most one pending latest full-state frame in addition
+to one active core admission, coalesces superseded trusted snapshots, caps eight
+RPCs and socket buffered bytes at 8 MiB, and accepts 6 MiB wire messages. Default
+request/token/open timeout is 10 seconds (configurable 100 ms–30 seconds).
+Reconnect defaults to 500 ms–30 seconds (configurable minimum at least 50 ms).
+State/error callbacks run outside native publication and expose no credentials.
+Cancelling initial catchup invalidates its startup promise and socket; an
+immediate new connect starts a new lifecycle rather than reusing that promise.
+
+`sync.dispose()` stops networking only. Save/close its persistent session next,
+then dispose the mounted DOM editor, which owns its core. Permission loss,
+lease replacement and transport disposal never delete a local journal or
+dispose an independently owned core. Network presence, cross-host assets,
+pixel overlays, combined network-demo integration and optional Rust/Wasm
+distribution promotion remain separate gates.
+
+This checkpoint passes 189 combined browser cases (63 in each engine), 229
+native editor contracts, 12 native relay tests, strict native/Wasm lints,
+generated/installed TypeScript and offline archive runtime checks. The unchanged
+legacy Rust/Wasm suite has a prior complete 309-browser-case pass: 498 browser
+cases across both matrices. The expanded unisolated shared run passed 188/189
+and stalled in WebKit `page.goto` before editor/test code. The canonical runner
+now isolates every WebKit file, matching the existing legacy runner; all 189
+cases then pass with no retries or altered deadlines/assertions. Three runner
+guards prove complete file coverage and exact, non-overlapping filters. This
+does not establish a repair of the historical process-lifetime WebKit fault.
 
 ## Ephemeral causal presence
 
@@ -294,9 +403,9 @@ Existing V8/V9/V10/V11 databases are preserved, not upgraded, overwritten or sil
 treated as document-only imports. Resume old journals with their matching old
 owner until an explicit migration workflow exists.
 
-The full collaboration goal still includes integration of the isolated reference
-relay into this package/demo, network presence and cross-host asset providers.
-Native writer authorization and the listening loopback host now exist, but the
-browser socket fixture is not a promoted reconnect API. The bounded
+The full collaboration goal still includes combined network-demo integration,
+network presence and cross-host asset providers. The package now supplies its
+own typed reconnect coordinator; the lower-level browser socket fixture remains
+test/admin support. The bounded
 journal rebuild is a correctness reference, not a production throughput claim.
 See the repository collaboration plan and private owner contracts for limits.

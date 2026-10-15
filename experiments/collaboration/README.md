@@ -1040,6 +1040,28 @@ every WebKit spec once in fresh per-file processes: 453 browser cases in total.
 It additionally passes 703 default core tests, 1,217 opt-in core tests, 137
 doctests and all rich action/clipboard/recovery integration suites.
 
+## Packaged relay reconnect
+
+The optional browser package's relay adapter now uses these native groups end
+to end. Durable writer registration, exact prefix checks before catchup,
+local-save tickets, canonical server receipts and bounded automatic reconnect
+are implemented by `SharedRelaySync`. Network disconnect/permission loss does
+not dispose or reset the independently owned core. Its latest-snapshot drain
+cancels queued old-connection frames through the optional abort signal on
+`receiveFrame`; an admitted Rust publication is never rewound. Thirty-three
+focused Chromium/Firefox/WebKit cases exercise the actual Rust process and
+installed package types/runtime cover the exported API. See the optional package
+README for setup, limits and remaining network presence/assets/demo gates.
+The full checkpoint passes 189 combined browser cases, 229 native editor
+contracts, 12 native relay tests, strict native/Wasm lints, TypeScript and the
+offline installed archives. The earlier unchanged 309-case legacy run brings
+this to 498 browser cases across both matrices. An expanded unisolated shared
+run stalled in WebKit navigation before editor code at 188/189. The canonical
+shared runner now applies the same per-file process isolation as the legacy
+runner, preserving every case and all assertions/deadlines. Three plan guards
+reject missing files, duplicate plans and overlapping CLI filters. No historical
+WebKit runtime fix is inferred from this functional pass.
+
 ## Shared semantic clipboard
 
 `copy_clipboard_guarded` reads the current admitted selection into the original

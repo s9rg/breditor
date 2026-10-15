@@ -1,4 +1,4 @@
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,SharedPresence,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,SharedPresence,SharedRelaySync,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
 import {RichAssetStore} from "@breditor/experimental-rich-content";
 import {model} from "@breditor/experimental-rich-content/rendering";
 async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
@@ -21,3 +21,13 @@ function configuredConsumer(wasm:SharedProfileModule,config:SharedProfileConfigu
  void bad;
 }
 void configuredConsumer;
+async function relayConsumer(core:SharedRichEditor,identity:SharedRelayIdentity):Promise<void>{
+ const sync=new SharedRelaySync(core,{identity,getToken:()=>"a".repeat(64),autoConnect:false});const state:SharedRelayState=sync.state();const counter:string|null=state.serverThrough;void counter;
+ const pending=core.receiveFrame(core.updateFrame(),{signal:AbortSignal.abort()});await pending.catch(()=>{});sync.dispose();
+ await registerSharedRelayWriter({endpoint:identity.endpoint,principal:identity.principal,room:identity.room,getToken:()=>"a".repeat(64),saveIdentity:record=>{const credential:string=record.credential;void credential;}});
+ // @ts-expect-error A token provider is a callback, not a bearer token embedded as an option value.
+ new SharedRelaySync(core,{identity,getToken:"a".repeat(64)});
+ // @ts-expect-error Credentials are separate from portable document/journal records.
+ const bad:SharedRelayIdentity={...identity,documentJson:core.documentJson()};void bad;
+}
+void relayConsumer;

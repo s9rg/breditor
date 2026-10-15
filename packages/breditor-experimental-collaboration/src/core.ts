@@ -1,8 +1,8 @@
-import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedOwnerDescriptor,SharedPresenceResolution,SharedWriterClock,SharedWriterGroups,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
+import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedRemoteOptions,SharedOwnerDescriptor,SharedPresenceResolution,SharedWriterClock,SharedWriterGroups,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
 export class SharedEditorError extends Error {
  constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
 }
-interface Pending {frame:string;bytes:number;resolve:(changed:boolean)=>void;reject:(reason:unknown)=>void}
+interface Pending {frame:string;bytes:number;resolve:(changed:boolean)=>void;reject:(reason:unknown)=>void;cleanup:()=>void}
 const owners=new WeakSet<SharedRustOwner>();
 /** Owns the exact Rust observation and bounded remote queue; no replicated JS document exists. */
 export class SharedRichEditor {
@@ -54,16 +54,21 @@ export class SharedRichEditor {
  undo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.undo_observed(o),revision);}
  redo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.redo_observed(o),revision);}
  /** Resolves only after Rust admission. A hold queues bytes, not a guessed document mutation. */
- receiveFrame(frame:string):Promise<boolean>{
+ receiveFrame(frame:string,options:SharedRemoteOptions={}):Promise<boolean>{
   this.#live();if(typeof frame!=="string")return Promise.reject(new SharedEditorError("remote_type","A remote frame must be an exact JSON string"));const bytes=new TextEncoder().encode(frame).byteLength;
+  if(options.signal?.aborted)return Promise.reject(new SharedEditorError("remote_cancelled","Queued remote publication was cancelled"));
   if(bytes>5*1024*1024||this.#queue.length>=this.#maxFrames||this.#bytes+bytes>this.#maxBytes)return Promise.reject(new SharedEditorError("remote_queue_full","Pending remote updates exceed their bounded queue"));
-  return new Promise((resolve,reject)=>{this.#queue.push({frame,bytes,resolve,reject});this.#bytes+=bytes;this.#flush();});
+  return new Promise((resolve,reject)=>{
+   const signal=options.signal,entry:Pending={frame,bytes,resolve,reject,cleanup:()=>signal?.removeEventListener("abort",cancel)};
+   const cancel=()=>{const index=this.#queue.indexOf(entry);if(index<0)return;this.#queue.splice(index,1);this.#bytes-=bytes;entry.cleanup();reject(new SharedEditorError("remote_cancelled","Queued remote publication was cancelled"));};
+   this.#queue.push(entry);this.#bytes+=bytes;signal?.addEventListener("abort",cancel,{once:true});if(signal?.aborted)cancel();this.#flush();
+  });
  }
  pendingRemote():Readonly<{frames:number;bytes:number}>{this.#live();return {frames:this.#queue.length,bytes:this.#bytes};}
  #flush():void{
   if(!this.#raw||this.#holds||this.#publishing||this.#draining)return;this.#draining=true;
-  try{while(this.#raw&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame));next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
+  try{while(this.#raw&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;next.cleanup();try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame));next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
   finally{this.#draining=false;}
  }
- dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue)entry.reject(error);this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
+ dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
 }
