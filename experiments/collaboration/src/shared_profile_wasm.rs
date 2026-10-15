@@ -20,6 +20,10 @@ impl SharedRichProfile {
     pub fn descriptor_json(&self) -> String {
         self.inner.descriptor_json()
     }
+    /// Read the original read-only typed-format catalog from the compiled Rust schema.
+    pub fn inline_catalog_json(&self) -> String {
+        self.inner.inline_catalog_json()
+    }
     /// Seed one fresh document under the host's already-acquired exclusive writer lease.
     pub fn create(&self, document: &str, writer: String) -> Result<RichReplicaProbe, JsValue> {
         self.inner.create(document, writer).map(RichReplicaProbe::from_replica).map_err(error)

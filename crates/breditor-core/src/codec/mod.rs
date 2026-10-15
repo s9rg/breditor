@@ -1,5 +1,10 @@
 //! Strict versioned codecs for untrusted persisted data.
 
+mod inline_format_catalog;
+pub use inline_format_catalog::{
+    INLINE_FORMAT_CATALOG_FORMAT, INLINE_FORMAT_CATALOG_VERSION, encode_inline_format_catalog,
+};
+
 #[cfg(feature = "experimental-rich-content")]
 mod rich_formats_json;
 #[cfg(feature = "experimental-rich-content")]

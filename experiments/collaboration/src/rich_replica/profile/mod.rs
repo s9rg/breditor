@@ -57,6 +57,12 @@ impl SharedRichProfile {
             "schema":{"name":schema.id().name().as_str(),"version":schema.id().version().get()},
             "schemaFingerprint":schema.fingerprint().to_string(),"limits":limits::descriptor(self.limits())}).to_string()
     }
+    /// Read exact typed inline declarations for a schema-bound presentation compiler.
+    /// This contains no room/history or presentation callbacks and grants no authority.
+    #[must_use]
+    pub fn inline_catalog_json(&self) -> String {
+        breditor_core::codec::encode_inline_format_catalog(self.schema())
+    }
     /// Seed an admitted Document V2 using a separately leased writer identity.
     /// # Errors
     /// Rejects wrong schema, invalid content, writer identity or shared budgets.

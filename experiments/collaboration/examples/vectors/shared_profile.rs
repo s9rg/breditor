@@ -67,7 +67,7 @@ pub fn generate(input: &str) -> Result<Value> {
     a.redo()?;
     let redo_typed = capture(&a)?;
     Ok(
-        json!({"configuration":configuration,"descriptor":descriptor,"input":input,"checkpoint":checkpoint,
+        json!({"configuration":configuration,"descriptor":descriptor,"catalog":profile.inline_catalog_json(),"input":input,"checkpoint":checkpoint,
         "current":current,"undo":undo,"redo":redo,"typed":typed,"undo_typed":undo_typed,"redo_typed":redo_typed}),
     )
 }

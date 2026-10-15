@@ -41,6 +41,14 @@ impl BreditorRichProfile {
         BreditorStringResult::from_value(serde_json::json!({"kind":"rich","abiVersion":super::BREDITOR_RICH_ABI_VERSION,
             "schema":{"name":self.schema.id().name().as_str(),"version":self.schema.id().version().get()},"schemaFingerprint":self.schema.fingerprint().to_string()}).to_string())
     }
+    /// Read complete typed inline declarations without exposing the schema proof.
+    #[must_use]
+    #[wasm_bindgen(js_name=inlineCatalogJson)]
+    pub fn inline_catalog_json(&self) -> BreditorStringResult {
+        BreditorStringResult::from_value(breditor_core::codec::encode_inline_format_catalog(
+            &self.schema,
+        ))
+    }
     /// Create one local rich owner from Document V2 and a canonical decimal capacity.
     #[must_use]
     #[wasm_bindgen(js_name=createEditor)]

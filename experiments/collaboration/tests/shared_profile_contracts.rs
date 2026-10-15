@@ -61,6 +61,11 @@ fn json_configuration_matches_an_independently_compiled_typed_schema() -> Result
     let native = SharedRichProfile::from_schema(schema, DocumentLimits::default())?;
     assert_eq!(native.schema().fingerprint(), profile()?.schema().fingerprint());
     assert_eq!(native.descriptor_json(), profile()?.descriptor_json());
+    assert_eq!(native.inline_catalog_json(), profile()?.inline_catalog_json());
+    assert_eq!(
+        native.inline_catalog_json(),
+        breditor_core::codec::encode_inline_format_catalog(native.schema())
+    );
     Ok(())
 }
 
