@@ -8,14 +8,13 @@ const owners=new WeakSet<SharedRustOwner>();
 /** Owns the exact Rust observation and bounded remote queue; no replicated JS document exists. */
 export class SharedRichEditor {
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
- #listeners=new Set<(event:SharedPublication)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;
+ #listeners=new Set<(event:SharedPublication)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
  #options:SharedEditorOptions;#maxFrames:number;#maxBytes:number;
  constructor(raw:SharedRustOwner,options:SharedEditorOptions={}){
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
   this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
-  if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");
   this.#raw=raw;
-  try{if(typeof raw.descriptor_json!=="function")throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");this.#descriptor=raw.descriptor_json();const descriptor=JSON.parse(this.#descriptor) as SharedOwnerDescriptor;if(descriptor.format!=="breditor/shared-rich-owner"||descriptor.abiVersion!==1||descriptor.modelVersion!==11||descriptor.journalVersion!==12)throw new SharedEditorError("owner_abi","Unsupported shared Rust ABI/model/history revision");this.#observation=raw.observe();this.#view=this.#observation.view_json();const view=this.view();if(view.format!=="breditor/shared-rich-view"||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");owners.add(raw);}
+  try{if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");if(typeof raw.descriptor_json!=="function")throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");this.#descriptor=raw.descriptor_json();const descriptor=JSON.parse(this.#descriptor) as SharedOwnerDescriptor;if(descriptor.format!=="breditor/shared-rich-owner"||descriptor.abiVersion!==1||descriptor.modelVersion!==11||descriptor.journalVersion!==12)throw new SharedEditorError("owner_abi","Unsupported shared Rust ABI/model/history revision");this.#observation=raw.observe();this.#view=this.#observation.view_json();const view=this.view();if(view.format!=="breditor/shared-rich-view"||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");owners.add(raw);}
   catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
  }
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
@@ -23,7 +22,7 @@ export class SharedRichEditor {
  #report(error:unknown):void{try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed content. */}}
  #notify(source:"local"|"remote"):void{for(const listener of [...this.#listeners]){if(!this.#raw)break;try{listener({source,view:this.view()});}catch(error){this.#report(error);}}}
  #run<T>(source:"local"|"remote",work:(raw:SharedRustOwner,observation:unknown)=>T,revision?:string):T{
-  this.#check(revision);if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
+  this.#check(revision);if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
   const raw=this.#live(),before=this.#view;this.#publishing=true;
   try{const result=work(raw,this.#observation);const next=raw.observe(),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#notify(source);return result;}
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
@@ -47,7 +46,7 @@ export class SharedRichEditor {
  writerClock(writer:string):SharedWriterClock{const raw=this.#live();if(!raw.writer_clock)throw new SharedEditorError("writer_transport_unavailable","Use a Rust owner with single-writer transport support");if(typeof writer!=="string"||writer.length>20)throw new SharedEditorError("writer_identity","Expected a bounded decimal writer identity");return JSON.parse(raw.writer_clock(writer)) as SharedWriterClock;}
  subscribe(listener:(event:SharedPublication)=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  /** Hold remote publication across input/composition/callback queues. Release is idempotent. */
- holdRemotes():()=>void{this.#live();if(this.#holds>=128)throw new SharedEditorError("hold_limit","Too many nested remote holds");this.#holds++;let held=true;return()=>{if(!held)return;held=false;this.#holds--;this.#flush();};}
+ holdRemotes():()=>void{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#holds>=128)throw new SharedEditorError("hold_limit","Too many nested remote holds");this.#holds++;let held=true;return()=>{if(!held)return;held=false;this.#holds--;this.#flush();};}
  dispatch(request:SharedDispatch,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.dispatch(o,JSON.stringify(request)),revision);}
  select(selection:RichSelection|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_selection(o,JSON.stringify(selection)),revision);}
  setPendingFormats(formats:readonly FormatLiteral[]|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_pending_formats(o,JSON.stringify(formats)),revision);}
@@ -61,7 +60,7 @@ export class SharedRichEditor {
  redo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.redo_observed(o),revision);}
  /** Resolves only after Rust admission. A hold queues bytes, not a guessed document mutation. */
  receiveFrame(frame:string,options:SharedRemoteOptions={}):Promise<boolean>{
-  this.#live();if(typeof frame!=="string")return Promise.reject(new SharedEditorError("remote_type","A remote frame must be an exact JSON string"));const bytes=new TextEncoder().encode(frame).byteLength;
+  this.#live();if(this.#retired)return Promise.reject(new SharedEditorError("retired","The shared writer is retired before remote admission"));if(typeof frame!=="string")return Promise.reject(new SharedEditorError("remote_type","A remote frame must be an exact JSON string"));const bytes=new TextEncoder().encode(frame).byteLength;
   if(options.signal?.aborted)return Promise.reject(new SharedEditorError("remote_cancelled","Queued remote publication was cancelled"));
   if(bytes>5*1024*1024||this.#queue.length>=this.#maxFrames||this.#bytes+bytes>this.#maxBytes)return Promise.reject(new SharedEditorError("remote_queue_full","Pending remote updates exceed their bounded queue"));
   return new Promise((resolve,reject)=>{
@@ -72,9 +71,16 @@ export class SharedRichEditor {
  }
  pendingRemote():Readonly<{frames:number;bytes:number}>{this.#live();return {frames:this.#queue.length,bytes:this.#bytes};}
  #flush():void{
-  if(!this.#raw||this.#holds||this.#publishing||this.#draining)return;this.#draining=true;
-  try{while(this.#raw&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;next.cleanup();try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame));next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
+  if(!this.#raw||this.#retired||this.#holds||this.#publishing||this.#draining)return;this.#draining=true;
+  try{while(this.#raw&&!this.#retired&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;next.cleanup();try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame));next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
   finally{this.#draining=false;}
+ }
+ /** Permanent UI/transport retirement, not document read-only mode. Reads survive until explicit disposal. */
+ retire():void{
+  this.#live();if(this.#retired)return;this.#retired=true;
+  const pending=this.#queue;this.#queue=[];this.#bytes=0;
+  const error=new SharedEditorError("retired","The shared writer retired before queued remote admission");
+  for(const entry of pending){entry.cleanup();entry.reject(error);}
  }
  dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
 }

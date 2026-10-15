@@ -6,6 +6,8 @@ import type {SharedDispatch,SharedPublication,RichSelection,Navigation} from "./
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions extends RenderOptions {
  core:SharedRichEditor;toolbar?:readonly SharedToolbarControl[];label?:string;image?:{asset:string;alt:string};
+ /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
+ coreOwnership?:"transfer"|"borrow";
  onChange?:(event:SharedPublication)=>void|Promise<void>;onError?:(error:unknown)=>void;
  onFiles?:(files:readonly File[],position:{parent:string|null;before:string|null},revision:string)=>void|Promise<void>;
 }
@@ -118,7 +120,7 @@ export class SharedDomEditor {
   try{if(composition.original!==final){const point={block:composition.block,affinity:"after" as const};this.#perform(c=>{c.core.replace({kind:"text",anchor:{...point,offset:String(start)},focus:{...point,offset:String(oldEnd)}},final.slice(start,newEnd),c.revision);},true,composition.revision);}}
   catch(error){this.#report(error);}finally{for(const work of pending)this.#attempt(()=>this.#perform(work.run,work.focus,work.revision));this.#refresh(false);composition.release();}
  });}
- dispose():void{if(this.#disposed)return;this.#disposed=true;this.#unsubscribe();this.#abort.abort();this.#queue=[];this.#options.core.dispose();this.#composition?.release();this.#composition=undefined;this.#root.replaceChildren();delete this.#root.dataset["breditorShared"];}
+ dispose():void{if(this.#disposed)return;this.#disposed=true;this.#unsubscribe();this.#abort.abort();this.#queue=[];if(this.#options.coreOwnership!=="borrow")this.#options.core.dispose();this.#composition?.release();this.#composition=undefined;this.#root.replaceChildren();delete this.#root.dataset["breditorShared"];}
 }
 export const mountSharedEditor=(root:HTMLElement,options:SharedDomOptions):SharedDomEditor=>new SharedDomEditor(root,options);
 const styles=`[data-breditor-shared]{color:#173d37;font:15px system-ui,sans-serif}[data-breditor-shared] .breditor-shared-toolbar{display:flex;gap:5px;flex-wrap:wrap;align-items:end;background:#edf2ef;padding:10px;border:1px solid #b6c7bf}[data-breditor-shared] button{padding:5px 8px;background:white;border:1px solid #a5b9af;border-radius:4px;color:inherit}[data-breditor-shared] button:disabled{opacity:.4}[data-breditor-shared] label{display:grid;font-size:11px;gap:3px}[data-breditor-shared] input{width:100px;padding:5px}[data-breditor-shared] .breditor-shared-surface{min-height:220px;padding:18px;border:1px solid #b6c7bf;background:white;outline:none;white-space:pre-wrap}[data-breditor-shared] .breditor-shared-surface:focus{box-shadow:inset 0 0 0 2px #378a77}[data-breditor-shared] p{min-height:1em}[data-breditor-shared] table{border-collapse:collapse;margin:10px 0;table-layout:fixed}[data-breditor-shared] td,[data-breditor-shared] th{border:1px solid #819e90;min-width:90px;padding:8px;vertical-align:top}[data-breditor-shared] [data-selected]{background:#e0f4e9}[data-breditor-shared] [data-node-selected]{outline:2px solid #378a77}[data-breditor-shared] figure{margin:10px 0;border:1px solid #a5b9af;padding:10px}[data-breditor-shared] img{max-width:100%;display:block}[data-breditor-shared] [data-source-cell]+[data-source-cell]{border-top:1px dashed #a5b9af}`;

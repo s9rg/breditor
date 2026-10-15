@@ -57,10 +57,19 @@ Configured factories prove schema admission; they do not authenticate a user,
 lease a writer or persist data automatically. A host still supplies identity,
 durability, asset-byte storage and optional transport.
 
-Keep the writer lease while a failed local flush is retried. Do not treat a
-failed session close as successful disposal or discard unsaved state during a
-framework unmount. A durable shared React lifecycle remains subsequent SDK work.
-Server acknowledgement and uploaded assets are not the local journal save state.
+Keep the writer lease while a failed local flush is retried. A session close
+permanently retires publication before awaiting storage: failed closure retains
+checkpoint reads and the lease for retry or explicit discard, not further editing.
+`discardAndClose()` now returns a promise that waits for an already-started
+transaction and writer release. A database version change unblocks storage but
+retains the retired native journal rather than silently discarding unsaved work.
+
+The private editor SDK supplies `openSharedEditor` and the separate
+`@breditor/editor/collaboration/react` lifecycle. It borrows the DOM owner from
+the durable session, serializes React replacement and requires a failed-close
+recovery handoff. Low-level DOM mounts still transfer core ownership by default;
+`coreOwnership: 'borrow'` is explicit for a session-managed core. Server
+acknowledgement and uploaded assets are not the local journal save state.
 
 ## Source and compatibility
 
@@ -73,7 +82,7 @@ Configuration V1, ABI 1, model 11, journal 12, deterministic engine tag and
 existing serialized meanings are unchanged. A local rich checkpoint is not a
 shared journal. The default editor/Wasm graph remains independent of replication.
 
-Run `node scripts/check-editor-package.mjs` for clean minimal/full SDK installs
+Run `node scripts/check-editor-package.mjs` for clean local-only, shared-only and React SDK installs
 and production Vite pages. The application-network browser matrix uses the same
 strict assertions as the legacy installed matrix, but with this package's own
 runtime and coordinators. Native IME, accessibility, historical WebKit fault,

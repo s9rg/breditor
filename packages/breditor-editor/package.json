@@ -7,7 +7,8 @@
  "exports":{
   ".":{"types":"./dist/index.d.ts","import":"./dist/index.js"},
   "./react":{"types":"./dist/react.d.ts","import":"./dist/react.js"},
-  "./collaboration":{"types":"./dist/collaboration.d.ts","import":"./dist/collaboration.js"}
+  "./collaboration":{"types":"./dist/collaboration.d.ts","import":"./dist/collaboration.js"},
+  "./collaboration/react":{"types":"./dist/shared_react.d.ts","import":"./dist/shared_react.js"}
  },
  "dependencies":{"@breditor/experimental-rich-content":"0.3.0-alpha.22"},
  "peerDependencies":{"@breditor/collaboration":"0.3.0-alpha.22","react":"^19.2.8"},

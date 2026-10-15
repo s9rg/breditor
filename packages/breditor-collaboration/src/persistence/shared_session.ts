@@ -19,10 +19,15 @@ export class SharedPersistentSession {
  #db:IDBDatabase;#lease:SharedWriterLease;#options:SharedSessionOptions;#unsubscribe:()=>void;
  #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;
+ #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
  private constructor(db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor,recovered:boolean,options:SharedSessionOptions){
   this.#db=db;this.#lease=lease;this.core=core;this.recovered=recovered;this.#options=options;
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
-  db.onversionchange=()=>{this.#failed(new SharedEditorError("session_versionchange","Shared session storage changed; the writer was stopped"));this.discardAndClose();};
+  db.onversionchange=()=>{
+   // An upgrade must unblock its database, not silently destroy an unsaved native journal.
+   this.core.retire();db.close();
+   this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
+  };
  }
  static async open(options:SharedSessionOptions):Promise<SharedPersistentSession>{
   options={...options};
@@ -34,7 +39,7 @@ export class SharedPersistentSession {
    core=new SharedRichEditor(await(checkpoint===null?options.create():options.restore(checkpoint)),options.editor);
    checkCheckpoint(core.checkpointJson(),options.room,options.writer);
    const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options);session.save();
-   try{await session.flush();}catch(error){session.discardAndClose();throw error;}return session;
+   try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core?.dispose();db?.close();await lease.close();throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("session_closed","The persistent shared session is closed");this.#lease.assertLive();}
@@ -63,8 +68,17 @@ export class SharedPersistentSession {
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  /** Retry captures the newest complete owner journal, including edits after a failed write. */
  async retry():Promise<void>{this.#live();if(this.#running)await this.#running;this.save();await this.flush();}
- /** Stop the writer before releasing the lock. Failed saves retain the live owner and lease for retry. */
- async close():Promise<void>{if(this.#closed)return;this.save();await this.flush();this.discardAndClose();await this.#lease.close();}
+ /** Retire publications synchronously; failed saves retain the readable owner/lease for close retry. */
+ close():Promise<void>{
+  if(this.#closed)return this.#released??Promise.resolve();if(this.#closeRequest)return this.#closeRequest;
+  this.core.retire();
+  this.#closeRequest=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closeRequest=undefined;});
+  return this.#closeRequest;
+ }
  /** Explicitly abandon unsaved in-memory work without deleting the last durable journal. */
- discardAndClose():void{if(this.#closed)return;this.#closed=true;this.#unsubscribe();this.core.dispose();this.#pending=undefined;this.#db.close();void this.#lease.close().catch(error=>this.#report(error));this.#notify();}
+ discardAndClose():Promise<void>{
+  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#unsubscribe();this.core.dispose();this.#pending=undefined;this.#db.close();
+  // A transaction already started may still commit after db.close(); do not release the writer early.
+  this.#released=(this.#running??Promise.resolve()).then(()=>this.#lease.close()).catch(error=>this.#report(error));this.#notify();return this.#released;
+ }
 }

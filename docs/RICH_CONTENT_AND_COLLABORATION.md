@@ -44,7 +44,8 @@ matching shared Wasm is now included in the private collaboration archive and
 the private editor SDK supplies lazy initialization. Shared Rust/browser source
 now lives in the canonical optional collaboration crate/package. The application
 module excludes research probes; legacy qualification compiles the same source
-with its research surface. Shared React ownership, registry/API release strategy,
+with its research surface. The SDK now supplies durable shared vanilla/React
+ownership with explicit failed-save recovery. Registry/API release strategy,
 import-worker isolation, public authentication/TLS, measurements,
 a real pilot and the deferred reliability/accessibility pass remain release work.
 The private developer bootstrap supplies both demo tokens to its local page and

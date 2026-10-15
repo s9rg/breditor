@@ -4,6 +4,7 @@ import {createRequire} from "node:module";
 import {createElement} from "react";
 import {renderToString} from "react-dom/server";
 import {BreditorEditor} from "@breditor/editor/react";
+import {BreditorSharedEditor} from "@breditor/editor/collaboration/react";
 import {initializeLocalRuntime,createLocalProfile,emptyDocumentJson} from "@breditor/editor";
 import {initializeSharedRuntime,createSharedProfile,SharedRichEditor} from "@breditor/editor/collaboration";
 import * as applicationWasm from "@breditor/collaboration/wasm";
@@ -11,6 +12,7 @@ const require=createRequire(import.meta.url);
 assert.deepEqual(Object.keys(applicationWasm).sort(),["SharedEditorOwner","SharedObservation","SharedRichProfile","default","initSync"].sort());
 assert.equal(applicationWasm.SharedEditorOwner.prototype.undo,undefined);assert.equal(applicationWasm.SharedEditorOwner.prototype.apply,undefined);
 assert.match(renderToString(createElement(BreditorEditor)),/data-breditor-phase="starting"/);
+assert.match(renderToString(createElement(BreditorSharedEditor,{initialOptions:{database:"ssr",room:"room",writer:"101"},onCloseError:()=>{}})),/data-breditor-phase="starting"/);
 await initializeLocalRuntime(readFileSync(require.resolve("@breditor/experimental-rich-content/wasm-binary")));
 await initializeSharedRuntime(readFileSync(require.resolve("@breditor/collaboration/wasm-binary")));
 const local=await createLocalProfile(),shared=await createSharedProfile();try{

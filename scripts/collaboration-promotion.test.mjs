@@ -24,7 +24,7 @@ test("all promoted shared conformance files also run through the research compat
 });
 test("SDK shared entry uses the promoted optional package and application-only runtime",()=>{
  const pkg=JSON.parse(read("packages/breditor-editor/package.json"));assert.equal(pkg.peerDependenciesMeta["@breditor/collaboration"].optional,true);assert.equal(pkg.peerDependencies["@breditor/experimental-collaboration"],undefined);
- const source=read("packages/breditor-editor/src/collaboration.ts");assert.ok(source.includes('import("@breditor/collaboration/wasm")'));assert.ok(!source.includes("@breditor/experimental-collaboration"));
+ const source=read("packages/breditor-editor/src/shared_profile.ts");assert.ok(source.includes('import("@breditor/collaboration/wasm")'));assert.ok(!source.includes("@breditor/experimental-collaboration"));
 });
 test("application installed-network matrix preserves every existing case and strict deadline",()=>{
  const source=read("experiments/shared-browser/application-network.config.mjs");assert.ok(source.includes('from "./installed-network.config.mjs"'));assert.ok(source.includes('BREDITOR_SHARED_INSTALLED:"application"'));for(const setting of ["testMatch:","retries:","timeout:","projects:"])assert.equal(source.includes(setting),false);
