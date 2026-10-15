@@ -8,6 +8,7 @@
 mod apply_batch;
 mod boundary_patch;
 mod branch_patch;
+mod change_inline_formats;
 mod clear_table_cells;
 mod delete_image;
 mod delete_table;
@@ -322,6 +323,9 @@ pub enum RichActionError {
     /// A canonical fragment/run invariant failed without exposing its text.
     #[error("rich text fragment invariant failed")]
     TextPrimitive,
+    /// A compound format edit is empty or changes one kind more than once.
+    #[error("rich format changes require nonempty unique format kinds")]
+    FormatChanges,
     /// A typed image asset/generation replacement violates its semantic contract.
     #[error(transparent)]
     ImageBinding(#[from] super::ImageBindingError),

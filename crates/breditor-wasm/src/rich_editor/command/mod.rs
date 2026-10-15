@@ -3,6 +3,7 @@
 //! Raw payloads are decoded directly from JSON, not from serde's internally
 //! tagged content buffer. Present null fields remain distinct from missing ones.
 
+mod change_inline_formats;
 mod clear_table_cells;
 mod clipboard_ids;
 mod data_dispatch;
@@ -105,6 +106,7 @@ enum CommandTag {
     IndentListItems,
     InsertFormattedText,
     SetInlineFormat,
+    ChangeInlineFormats,
     SplitTextBlock,
     SplitListItem,
     InsertTableColumn,
@@ -165,6 +167,7 @@ pub(super) fn execute(
     observation: &RichLocalSnapshot,
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
+    owner.validate_observation(observation).map_err(|value| error::session(&value))?;
     if input.len() > 1024 * 1024 {
         return Err(error::rejected("breditor_rich.command_limit"));
     }

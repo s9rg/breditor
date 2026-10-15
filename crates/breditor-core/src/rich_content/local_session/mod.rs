@@ -19,6 +19,7 @@ mod snapshot;
 mod state;
 pub(crate) mod typing_state;
 mod undo;
+mod validate_observation;
 
 pub use error::RichLocalSessionError;
 pub use snapshot::RichLocalSnapshot;

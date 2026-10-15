@@ -7,6 +7,7 @@ import {render,model,refreshAssets} from "@breditor/experimental-rich-content/re
 import {createRichInlinePresentation,compileRichProfile,compileStandardRichProfileV1,createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import * as localWasm from "@breditor/experimental-rich-content/wasm";
 import {createInlineFormatRenderManifest,compileInlineFormatRecipes} from "@breditor/browser/presentation";
+import {assertLocalFormatBudget} from "./local-format-budget.mjs";
 const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
 wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
 const vector=JSON.parse(readFileSync(process.env.BREDITOR_PROBE_VECTOR,"utf8"));
@@ -18,7 +19,16 @@ try{const catalog=JSON.parse(localProfile.inlineCatalogJson()),binding=localProf
 }finally{localProfile.dispose();}
 const simpleConfiguration={format:"breditor/shared-rich-profile",formatVersion:1,schema:{name:"example/installed-presentation",version:1},extensions:[]};
 const standardSchema={name:"example/installed-standard",version:1},localStandard=compileStandardRichProfileV1(localWasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:standardSchema,extensions:[]})),sharedStandard=compileStandardSharedProfileV1(wasm,{format:"breditor/shared-rich-profile",formatVersion:1,schema:standardSchema,extensions:[]});
-try{assert.equal(localStandard.inlineCatalogJson(),sharedStandard.inline_catalog_json());assert.equal(createStandardRichInlinePresentationV1(localStandard.inlineCatalogJson()).recipesOuterToInner.length,12);}finally{localStandard.dispose();sharedStandard.free();}
+try{
+ assert.equal(localStandard.inlineCatalogJson(),sharedStandard.inline_catalog_json());assert.equal(createStandardRichInlinePresentationV1(localStandard.inlineCatalogJson()).recipesOuterToInner.length,12);
+ assertLocalFormatBudget(localStandard);
+ const binding=localStandard.descriptor(),local=localStandard.createEditor(JSON.stringify({format:"breditor/document",formatVersion:2,schema:binding.schema,schemaFingerprint:binding.schemaFingerprint,root:{kind:"element",type:"breditor/document",entityId:null,properties:{"breditor/document-id":"installed-standard"},children:[{kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":"p"},children:[{kind:"text",text:"a🙂b",formats:[{type:"breditor-inline/superscript",properties:{}}]}]}]}}));
+ try{
+  const before=local.documentJson();local.execute({kind:"changeInlineFormats",data:{changes:[{kind:"set",formatsJson:'[{"type":"breditor-inline/subscript","properties":{}}]'},{kind:"remove",format:"breditor-inline/superscript"}],targets:[{block:"p",start:"0",end:"4"}]}});
+  assert.equal(local.view().undoDepth,1);const after=local.documentJson();assert.ok(after.includes("breditor-inline/subscript"));assert.ok(!after.includes("breditor-inline/superscript"));local.execute({kind:"undo"});assert.equal(local.documentJson(),before);
+  const restored=localStandard.restoreEditor(local.checkpointJson());try{restored.execute({kind:"redo"});assert.equal(restored.documentJson(),after);restored.execute({kind:"undo"});assert.equal(restored.documentJson(),before);}finally{restored.dispose();}
+ }finally{local.dispose();}
+}finally{localStandard.dispose();sharedStandard.free();}
 const simple=compileSharedProfile(wasm,simpleConfiguration);
 const simpleCatalog=JSON.parse(simple.inline_catalog_json()),manifest=createInlineFormatRenderManifest({recipes:[{formatKind:"breditor/strong",element:"strong"}]});
 const presentation=createRichInlinePresentation(simple.inline_catalog_json(),manifest);

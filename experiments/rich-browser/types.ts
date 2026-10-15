@@ -11,6 +11,9 @@ function contract(bootstrap:string,document:string):void {
  const selection:RichSelection|null=view.selection;
  const outcome:RichCommandOutcome=owner.execute({kind:"setSelection",selection},view.revision);
  const copy=owner.clipboard();
+ owner.execute({kind:"changeInlineFormats",data:{changes:[{kind:"remove",format:"breditor/strong"}],targets:[{block:"p",start:"0",end:"1"}]}});
+ // @ts-expect-error Compound formatting keeps canonical decimal offsets.
+ owner.execute({kind:"changeInlineFormats",data:{changes:[{kind:"remove",format:"breditor/strong"}],targets:[{block:"p",start:0,end:"1"}]}});
  // @ts-expect-error Exact offsets use strings, not browser numbers.
  owner.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"p",offset:1,affinity:"after"},focus:{block:"p",offset:"1",affinity:"after"}}});
  // @ts-expect-error A fresh row requires explicit typed cell bodies.

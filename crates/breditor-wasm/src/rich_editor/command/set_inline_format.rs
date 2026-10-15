@@ -20,7 +20,7 @@ use serde::Deserialize;
 use std::collections::BTreeSet;
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
-enum Change {
+pub(super) enum Change {
     Set {
         #[serde(rename = "formatsJson")]
         formats_json: String,
@@ -31,12 +31,12 @@ enum Change {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Target {
-    block: String,
+pub(super) struct Target {
+    pub(super) block: String,
     #[serde(deserialize_with = "decimal")]
-    start: u64,
+    pub(super) start: u64,
     #[serde(deserialize_with = "decimal")]
-    end: u64,
+    pub(super) end: u64,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -50,19 +50,7 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     let record: Record = decode(input)?;
-    let change = match record.change {
-        Change::Remove { format } => {
-            RichFormatChange::Remove(checked(QualifiedName::try_new(format))?)
-        }
-        Change::Set { formats_json } => {
-            let formats =
-                checked(RichFormatsJsonCodec::new(owner.context().clone()).decode(&formats_json))?;
-            if formats.len() != 1 {
-                return Err(super::invalid());
-            }
-            RichFormatChange::Set(formats.iter().next().ok_or(super::invalid())?.clone())
-        }
-    };
+    let change = admit_change(owner, record.change)?;
     if record.targets.is_empty() {
         return Err(super::invalid());
     }
@@ -87,4 +75,23 @@ pub(super) fn execute(
     owner
         .dispatch(observation, &actions, RichSelectionUpdate::Map)
         .map_err(|value| error::session(&value))
+}
+
+pub(super) fn admit_change(
+    owner: &RichLocalSession,
+    change: Change,
+) -> Result<RichFormatChange, BreditorError> {
+    Ok(match change {
+        Change::Remove { format } => {
+            RichFormatChange::Remove(checked(QualifiedName::try_new(format))?)
+        }
+        Change::Set { formats_json } => {
+            let formats =
+                checked(RichFormatsJsonCodec::new(owner.context().clone()).decode(&formats_json))?;
+            if formats.len() != 1 {
+                return Err(super::invalid());
+            }
+            RichFormatChange::Set(formats.iter().next().ok_or(super::invalid())?.clone())
+        }
+    })
 }

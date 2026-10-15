@@ -8,7 +8,8 @@ test.beforeEach(async({page})=>{await page.goto("/");await expect(page.locator("
  const editor=api.mountRichEditor(host,{core:owner,inlinePresentation:presentation,onError:error=>errors.push(String(error))});
  const caret=(block,offset=0)=>({kind:"setSelection",selection:{kind:"text",anchor:{block,offset:String(offset),affinity:"after"},focus:{block,offset:String(offset),affinity:"after"}}});
  // The existing local command changes one format per explicit history unit.
- // Build the test seed through that real contract; only the later paste is one group.
+ // Seed formatting uses one unit per format; dedicated paste/compound tests
+ // below assert their own one-group contracts.
  const set=(block,start,end,formats)=>{for(const format of formats)editor.execute({kind:"setInlineFormat",data:{change:{kind:"set",formatsJson:JSON.stringify([format])},targets:[{block,start:String(start),end:String(end)}]}});};
  window.standardLocal={api,configuration,profile,owner,editor,host,presentation,errors,k:api.standardInlineKindsV1,p:api.standardInlinePropertiesV1,caret,set};
  });});
@@ -27,4 +28,19 @@ test("standard local caret formats drive trusted caption typing and exact saved 
 test("standard clipboard retains link color and size as one exact paste history group",async({page})=>{
  const result=await page.evaluate(()=>{const t=window.standardLocal,k=t.k,p=t.p;t.set("p",0,1,[{type:k.link,properties:{[p.href]:"https://example.test/copied",[p.newWindow]:true}},{type:k.textColor,properties:{[p.rgb24]:0xabcdef}},{type:k.textSize,properties:{[p.pixels]:48}}]);t.editor.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"p",offset:"1",affinity:"after"},focus:{block:"p",offset:"0",affinity:"after"}}});const copy=t.owner.clipboard();t.editor.execute(t.caret("caption",0));const before=t.owner.documentJson(),depth=t.owner.view().undoDepth;t.editor.execute({kind:"pasteInlineClipboard",data:{clipboardJson:copy.structuredJson}});const after=t.owner.documentJson(),delta=t.owner.view().undoDepth-depth,link=t.editor.surface.querySelector('figcaption a').getAttribute("href"),size=t.editor.surface.querySelector('figcaption .breditor-inline-text-size').getAttribute("style");t.editor.execute({kind:"undo"});const undo=t.owner.documentJson()===before;t.editor.execute({kind:"redo"});return {plain:copy.plainText,delta,link,size,undo,redo:t.owner.documentJson()===after,errors:t.errors};});
  expect(result).toEqual({plain:"a",delta:1,link:"https://example.test/copied",size:"font-size:48px",undo:true,redo:true,errors:[]});
+});
+
+test("compound formatting switches scripts in cells and captions with one exact recovered Undo group",async({page})=>{
+ const result=await page.evaluate(()=>{const t=window.standardLocal,k=t.k,p=t.p;t.set("p",0,4,[{type:k.superscript,properties:{}}]);t.set("caption",0,1,[{type:k.superscript,properties:{}}]);t.editor.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"p",offset:"4",affinity:"after"},focus:{block:"p",offset:"0",affinity:"before"}}});const before=t.owner.documentJson(),selection=t.owner.view().selection,depth=t.owner.view().undoDepth;
+  t.editor.execute({kind:"changeInlineFormats",data:{changes:[{kind:"set",formatsJson:JSON.stringify([{type:k.subscript,properties:{}}])},{kind:"remove",format:k.superscript},{kind:"set",formatsJson:JSON.stringify([{type:k.textSize,properties:{[p.pixels]:24}}])}],targets:[{block:"p",start:"0",end:"4"},{block:"caption",start:"0",end:"1"}]}});
+  const after=t.owner.documentJson(),delta=t.owner.view().undoDepth-depth,sub=[...t.editor.surface.querySelectorAll("sub")].map(n=>n.textContent),sup=t.editor.surface.querySelectorAll("sup").length,kept=JSON.stringify(selection)===JSON.stringify(t.owner.view().selection);t.editor.execute({kind:"undo"});const undo=t.owner.documentJson()===before,saved=t.owner.checkpointJson();t.editor.dispose();const restored=t.profile.restoreEditor(saved);try{restored.execute({kind:"redo"});const redo=restored.documentJson()===after;restored.execute({kind:"undo"});return {delta,sub,sup,kept,undo,redo,future:restored.documentJson()===before,errors:t.errors};}finally{restored.dispose();t.profile.dispose();}
+ });expect(result).toEqual({delta:1,sub:["a🙂b","x"],sup:0,kept:true,undo:true,redo:true,future:true,errors:[]});
+});
+
+test("late compound failures preserve live state and the original single-format command remains strict",async({page})=>{
+ const result=await page.evaluate(()=>{const t=window.standardLocal,k=t.k,change={kind:"remove",format:k.strong},target={block:"p",start:"0",end:"1"},before=t.owner.checkpointJson();let rejected=0;
+  for(const data of [{changes:[change,change],targets:[target]},{changes:[change],targets:[target,{block:"caption",start:"1",end:"0"}]},{changes:[change],targets:[target,target]},{changes:[change],targets:[{block:"p",start:"0",end:"2"}]}])try{t.owner.execute({kind:"changeInlineFormats",data});}catch{rejected++;}
+  try{t.owner.execute({kind:"setInlineFormat",data:{change:{kind:"set",formatsJson:JSON.stringify([{type:k.italic,properties:{}},{type:k.strong,properties:{}}])},targets:[target]}});}catch{rejected++;}
+  const unchanged=t.owner.checkpointJson()===before;t.editor.execute(t.caret("p",1));t.editor.execute({kind:"insertPlainText",text:"Q"});return {rejected,unchanged,live:t.editor.surface.querySelector('[data-rich-text="p"]').textContent,errors:t.errors};
+ });expect(result).toEqual({rejected:5,unchanged:true,live:"aQ🙂b",errors:[]});
 });

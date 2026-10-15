@@ -10,6 +10,94 @@ use serde_json::{Value, json};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn compound_formats_are_one_publication_with_exact_future_history_and_original_single_shape()
+-> TestResult {
+    let mut result = BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(6));
+    let profile = result.take_profile().ok_or("standard")?;
+    let mut owner = editor(&profile)?;
+    command(&mut owner, &select("0", "4"), "selection")?;
+    let literal = |kind: &str| json!({"kind":"set","formatsJson":json!([{"type":kind,"properties":{}}]).to_string()});
+    command(
+        &mut owner,
+        &action(
+            "setInlineFormat",
+            json!({"change":literal("breditor-inline/superscript"),"targets":[{"block":"p","start":"0","end":"4"}]}),
+        ),
+        "content",
+    )?;
+    let before = read(owner.observe().document_json())?;
+    let depth = view(&owner)?["undoDepth"].as_u64().ok_or("depth")?;
+    let revision = view(&owner)?["revision"].as_str().ok_or("revision")?.parse::<u64>()?;
+    let changes = json!([literal("breditor-inline/subscript"),{"kind":"remove","format":"breditor-inline/superscript"},{"kind":"set","formatsJson":"[{\"type\":\"breditor-inline/text-size\",\"properties\":{\"breditor-inline/pixels\":24}}]"}]);
+    let request = action(
+        "changeInlineFormats",
+        json!({"changes":changes,"targets":[{"block":"p","start":"0","end":"4"},{"block":"caption","start":"0","end":"1"}]}),
+    );
+    command(&mut owner, &request, "content")?;
+    assert_eq!(view(&owner)?["undoDepth"], depth + 1);
+    assert_eq!(view(&owner)?["revision"], (revision + 1).to_string());
+    let after = read(owner.observe().document_json())?;
+    assert!(!after.contains("breditor-inline/superscript"));
+    assert!(after.contains("breditor-inline/subscript"));
+    command(&mut owner, &json!({"kind":"undo"}), "undo")?;
+    assert_eq!(read(owner.observe().document_json())?, before);
+    let saved = read(owner.checkpoint_json())?;
+    let mut result = profile.restore_editor(&saved);
+    let mut restored = result.take_editor().ok_or("restored")?;
+    command(&mut restored, &json!({"kind":"redo"}), "redo")?;
+    assert_eq!(read(restored.observe().document_json())?, after);
+    command(&mut restored, &json!({"kind":"undo"}), "undo")?;
+    assert_eq!(read(restored.observe().document_json())?, before);
+    // The original command still requires exactly one literal.
+    let old = action(
+        "setInlineFormat",
+        json!({"change":{"kind":"set","formatsJson":"[{\"type\":\"breditor-inline/italic\",\"properties\":{}},{\"type\":\"breditor/strong\",\"properties\":{}}]"},"targets":[{"block":"p","start":"0","end":"1"}]}),
+    );
+    assert_eq!(restored.execute(&restored.observe(), &old.to_string()).status(), "error");
+    assert_eq!(read(restored.observe().document_json())?, before);
+    Ok(())
+}
+
+#[test]
+fn compound_format_bad_shapes_values_late_targets_and_stale_requests_are_atomic() -> TestResult {
+    let mut result = BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(6));
+    let profile = result.take_profile().ok_or("standard")?;
+    let mut owner = editor(&profile)?;
+    let change = json!({"kind":"remove","format":"breditor/strong"});
+    let target = json!({"block":"p","start":"0","end":"1"});
+    let before = read(owner.checkpoint_json())?;
+    for data in [
+        json!({"changes":[],"targets":[target]}),
+        json!({"changes":[change],"targets":[]}),
+        json!({"changes":[change,change],"targets":[target]}),
+        json!({"changes":[change],"targets":[target,target]}),
+        json!({"changes":[change],"targets":[target,{"block":"caption","start":"1","end":"0"}]}),
+        json!({"changes":[change],"targets":[target,{"block":"p","start":"1","end":"3"}]}),
+        json!({"changes":[change],"targets":[{"block":"p","start":"0","end":"2"}]}),
+        json!({"changes":[{"kind":"remove","format":"unknown/format"}],"targets":[target]}),
+        json!({"changes":[change,{"kind":"set","formatsJson":"[{\"type\":\"breditor-inline/text-size\",\"properties\":{\"breditor-inline/pixels\":97}}]"}],"targets":[target]}),
+        json!({"changes":[change],"targets":[target],"extra":true}),
+        json!({"changes":[change],"targets":vec![target.clone();1025]}),
+    ] {
+        assert_eq!(
+            owner
+                .execute(&owner.observe(), &action("changeInlineFormats", data).to_string())
+                .status(),
+            "error"
+        );
+        assert_eq!(read(owner.checkpoint_json())?, before);
+    }
+    let stale = owner.observe();
+    command(&mut owner, &select("0", "1"), "selection")?;
+    let current = read(owner.checkpoint_json())?;
+    let result = owner.execute(&stale, "not JSON");
+    assert_eq!(result.status(), "error");
+    assert_eq!(result.error().ok_or("error")?.code(), "breditor_rich.stale_observation");
+    assert_eq!(read(owner.checkpoint_json())?, current);
+    Ok(())
+}
+
+#[test]
 fn standard_factory_is_explicit_and_resolves_app_dependencies_before_compiling() -> TestResult {
     let mut result = BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(6));
     assert_eq!(result.status(), "profile");

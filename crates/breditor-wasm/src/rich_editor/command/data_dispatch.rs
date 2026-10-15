@@ -66,6 +66,9 @@ pub(super) fn execute(
             super::insert_formatted_text::execute(owner, observation, input)
         }
         CommandTag::SetInlineFormat => super::set_inline_format::execute(owner, observation, input),
+        CommandTag::ChangeInlineFormats => {
+            super::change_inline_formats::execute(owner, observation, input)
+        }
         CommandTag::SplitTextBlock => super::split_text_block::execute(owner, observation, input),
         CommandTag::SplitListItem => super::split_list_item::execute(owner, observation, input),
         _ => Err(super::invalid()),

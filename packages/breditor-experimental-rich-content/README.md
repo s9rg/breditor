@@ -328,6 +328,55 @@ decimal strings, never coerced browser numbers. Structural insertion addresses
 stable parents and direct-child before anchors. Host IDs must be fresh across
 historical deletions, not merely absent from the current document.
 
+### Compound inline formatting
+
+`changeInlineFormats` applies several explicit format changes across text
+intervals in one guarded publication and one content Undo unit. It is separate
+from `setInlineFormat`, which still accepts exactly one format change.
+For an explicitly selected standard profile:
+
+```js
+editor.execute({kind: 'changeInlineFormats', data: {
+  changes: [
+    {kind: 'set', formatsJson: JSON.stringify([
+      {type: 'breditor-inline/subscript', properties: {}}
+    ])},
+    {kind: 'remove', format: 'breditor-inline/superscript'}
+  ],
+  targets: [{block: 'paragraph-one', start: '0', end: '4'}]
+}});
+```
+
+Each set contains exactly one schema-admitted literal. Changes must be nonempty
+and use distinct declared kinds; a set and removal of the same kind is rejected.
+Targets must be nonempty, contain each block once, and specify nonempty,
+scalar-aligned UTF-16 intervals in paragraph/heading text blocks, including cell
+bodies and captions.
+Targets are explicit; this command does not infer them from the selection or
+change collapsed-caret pending formats.
+
+Changes are simultaneous within each selected run, so their array order does
+not affect the result. Only the final format set is admitted: switching from
+one format to another works even at a one-format-per-run limit. Unchanged kinds,
+text, block identities and selection endpoints are retained. A late failure in
+another target leaves the document, selection, pending state and history intact.
+
+Each target consumes one action regardless of how many format kinds change.
+Target count must fit the active operation ceiling (1,024 by default). Unique
+declared kinds bound the change count by the compiled schema; existing
+format/document limits and the 1 MiB command envelope still apply. Empty,
+duplicate, unknown and oversized requests
+reject rather than being truncated. Native hosts use
+`SetInlineFormat::capture_changes` with their normal guarded apply/dispatch.
+The existing local checkpoint representation remains unchanged, including exact
+future Undo/Redo after restore. This is not a new replicated command or a general
+cross-container replacement contract.
+
+Raw rich Wasm execution now validates its exact observation before parsing the
+request. Native `RichLocalSession::validate_observation` offers the same read-only
+preflight. Dispatch still checks the guard again; preflight does not rotate it
+or turn an observation into a reusable permit.
+
 ## Clipboard and recovery boundaries
 
 `clipboard()` returns null for no selection/collapsed text, otherwise a transfer

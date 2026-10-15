@@ -14,8 +14,8 @@ const target=resolve(root,"target/rich-browser-wasm"), web=resolve(root,"target/
 const wasm={...process.env,CARGO_TARGET_DIR:target};
 const run=(command,args,env=native)=>execFileSync(command,args,{cwd:root,env,stdio:"inherit"});
 run(cargo,["fmt","--all","--check"]);
-run(cargo,["clippy","-p","breditor-core","--locked","--features","experimental-rich-content","--lib","--test","rich_text_range","--test","rich_formats_payload","--offline","--","-D","warnings"]);
-run(cargo,["test","-p","breditor-core","--locked","--features","experimental-rich-content","--test","rich_text_range","--test","rich_formats_payload","--offline"]);
+run(cargo,["clippy","-p","breditor-core","--locked","--features","experimental-rich-content","--lib","--test","rich_text_range","--test","rich_formats_payload","--test","rich_format_changes","--test","standard_inline_v1","--offline","--","-D","warnings"]);
+run(cargo,["test","-p","breditor-core","--locked","--features","experimental-rich-content","--test","rich_text_range","--test","rich_formats_payload","--test","rich_format_changes","--test","standard_inline_v1","--offline"]);
 run(cargo,["test","-p","breditor-wasm","--locked","--tests","--offline"]);
 run(cargo,["clippy","-p","breditor-wasm","--locked","--features","experimental-rich-content","--lib","--test","rich_editor","--offline","--","-D","warnings"]);
 run(cargo,["test","-p","breditor-wasm","--locked","--features","experimental-rich-content","--tests","--offline"]);

@@ -1,18 +1,13 @@
-//! Change one semantic format across a checked nonempty range inside a rich text block.
+//! Guarded semantic formatting across a checked nonempty range inside a rich text block.
 
-use super::{
-    RichAction, RichActionError, RichEdit,
-    node_patch::NodePatch,
-    text_patch::{block_node, fragment, text_node},
-};
+use super::{RichAction, RichActionError, RichEdit, node_patch::NodePatch};
 use crate::{
-    document::{Format, FormatSet, TextFragment, TextRun},
+    document::Format,
     identity::QualifiedName,
     position::TextOffset,
     rich_content::{BlockId, RichDocument},
     state::EditorContext,
 };
-use std::collections::BTreeMap;
 
 /// Explicit semantic format change; properties are fully admitted before publication.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -43,53 +38,28 @@ impl SetInlineFormat {
         end: TextOffset,
         change: &RichFormatChange,
     ) -> Result<Self, RichActionError> {
-        if start >= end {
-            return Err(RichActionError::TextRange);
-        }
-        let source = block_node(document, block)?;
-        let (head, rest) =
-            fragment(source)?.split_at(start).map_err(|_| RichActionError::TextRange)?;
-        let (middle, tail) = rest
-            .split_at(
-                TextOffset::try_new(end.get() - start.get())
-                    .map_err(|_| RichActionError::TextRange)?,
-            )
-            .map_err(|_| RichActionError::TextRange)?;
-        let mut runs: Vec<(String, FormatSet)> = Vec::new();
-        for run in &middle {
-            let mut formats: BTreeMap<_, _> = run
-                .formats()
-                .iter()
-                .map(|format| (format.kind().clone(), format.clone()))
-                .collect();
-            match change {
-                RichFormatChange::Set(format) => {
-                    formats.insert(format.kind().clone(), format.clone());
-                }
-                RichFormatChange::Remove(kind) => {
-                    formats.remove(kind);
-                }
-            }
-            let formats = FormatSet::try_from_formats(formats.into_values().collect())
-                .map_err(|_| RichActionError::TextPrimitive)?;
-            match runs.last_mut() {
-                Some((text, previous)) if previous == &formats => text.push_str(run.text()),
-                _ => runs.push((run.text().to_owned(), formats)),
-            }
-        }
-        let formatted = TextFragment::try_from_runs(
-            runs.into_iter()
-                .map(|(text, formats)| {
-                    TextRun::try_new(text, formats).map_err(|_| RichActionError::TextPrimitive)
-                })
-                .collect::<Result<_, _>>()?,
-        )
-        .map_err(|_| RichActionError::TextPrimitive)?;
-        let text = head
-            .try_concat(&formatted)
-            .and_then(|text| text.try_concat(&tail))
-            .map_err(|_| RichActionError::TextPrimitive)?;
-        Ok(Self { patch: NodePatch::capture(document, block, text_node(source, &text)?)? })
+        Self::capture_changes(document, block, start, end, std::slice::from_ref(change))
+    }
+
+    /// Apply simultaneous changes to distinct format kinds, preserving all others.
+    ///
+    /// Each selected run is constructed once with its final canonical format set.
+    /// Array order has no semantic effect; duplicate kinds are rejected, including
+    /// a set and removal of the same kind. Text and positions remain unchanged.
+    /// The normal guarded `apply` checks the final schema and host limits.
+    ///
+    /// # Errors
+    /// Rejects empty/ambiguous changes, invalid ranges or non-text targets.
+    pub fn capture_changes(
+        document: &RichDocument,
+        block: &BlockId,
+        start: TextOffset,
+        end: TextOffset,
+        changes: &[RichFormatChange],
+    ) -> Result<Self, RichActionError> {
+        Ok(Self {
+            patch: super::change_inline_formats::capture(document, block, start, end, changes)?,
+        })
     }
 
     /// Publish canonical format runs without changing Unicode text or stable positions.
