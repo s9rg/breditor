@@ -14,8 +14,8 @@ their Wasm graph are unchanged.
 ## Owner contract
 
 `new SharedRichEditor(raw, options)` transfers exclusive ownership of a matching
-generated Rust owner. Its descriptor must identify ABI 1, shared model 9 and
-journal 10. Never mutate, free or transfer `raw` again. Disposing the coordinator
+generated Rust owner. Its descriptor must identify ABI 1, shared model 10 and
+journal 11. Never mutate, free or transfer `raw` again. Disposing the coordinator
 frees its observation and owner and rejects every pending remote receipt.
 
 `view()` returns a detached immutable-publication snapshot. `dispatch`, `select`,
@@ -40,7 +40,8 @@ or unbounded catchup queue.
 selective history, causal UI anchors and future operation identities. Restore
 only under the same exclusively leased writer. It is not a portable content
 import or permission to clone a live writer. Earlier shared models and journals
-are incompatible with the current source-routing and caption-choice contract.
+are incompatible with the current source-routing, caption-choice, creation
+provenance and placement-forest contracts.
 
 ## DOM and toolbar
 
@@ -69,6 +70,13 @@ characters. Redo reveals that same seed around offline edits, so an offline
 prefix keeps its position. Later typing has independent provenance, including
 after the new paragraph is joined into another one. Normal text deletion/Redo
 continues to use the native engine's rebased gap policy.
+
+Concurrent placement cycles suspend the lowest-priority authored edge and expose
+its next retained placement or immutable origin. Both subtrees remain reachable;
+Undo can reveal a suspended move. Axis-derived cells retain their implicit row
+ancestry without becoming authored occurrences. Local moves into their own
+descendants reject without publication. Concurrent kind/move grammar conflicts
+remain a separate integration gate.
 
 The controller maps native selections and beforeinput targets, stages composition
 as one source-preserving replacement, and does not restore a background editor's
@@ -138,8 +146,8 @@ abandons unsaved in-memory work but preserves the last durable journal. Do not
 dispose the mounted editor before closing its persistent session when a final
 durable save is required. Abrupt tab loss releases the Web Lock automatically
 and recovers the last completed transaction, not an unacknowledged in-flight edit.
-The sample demo uses a separate `breditor-shared-demo-sessions-v10` database.
-Existing V8/V9 databases are preserved, not upgraded, overwritten or silently
+The sample demo uses a separate `breditor-shared-demo-sessions-v11` database.
+Existing V8/V9/V10 databases are preserved, not upgraded, overwritten or silently
 treated as document-only imports. Resume old journals with their matching old
 owner until an explicit migration workflow exists.
 

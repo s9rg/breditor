@@ -14,6 +14,8 @@ mod shared_clipboard;
 mod shared_list;
 #[path = "vectors/shared_paste_at_text.rs"]
 mod shared_paste_at_text;
+#[path = "vectors/shared_placement.rs"]
+mod shared_placement;
 #[path = "vectors/shared_range.rs"]
 mod shared_range;
 
@@ -155,6 +157,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "shared_clipboard":shared_clipboard::generate(&rich_local_input)?,
         "shared_paste_at_text":shared_paste_at_text::generate(&rich_local_input)?,
         "shared_caption":shared_caption::generate(&rich_local_input)?,
+        "shared_placement":shared_placement::generate(&rich_local_input)?,
     });
     Ok(vector)
 }

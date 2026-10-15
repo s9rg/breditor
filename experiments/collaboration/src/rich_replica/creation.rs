@@ -130,7 +130,12 @@ pub(super) fn activate_cell(doc: &LoroDoc, block: &str) -> Result<(), Error> {
     if !block.starts_with(model::VIRTUAL_PREFIX) || cell["type"] != "breditor/table-cell" {
         return Err(Error::Contract("derived cell activation kind"));
     }
+    let (parent, _) = super::paragraphs::layout(&source["root"], block)?;
+    let parent = parent.ok_or(Error::Contract("derived cell row parent"))?;
     definition(doc, cell, "derived")?;
+    // Axis-derived cells have no authored occurrence, but remain descendants of
+    // their real row for cycle detection. This is immutable infrastructure.
+    model::metadata(doc, block)?.insert("virtual-parent", parent)?;
     placement::prepare(doc, Some(block))?;
     Ok(())
 }

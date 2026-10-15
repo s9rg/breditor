@@ -16,7 +16,7 @@ use std::{
 };
 
 const MAX_ENTRIES: usize = 1000;
-pub(super) const JOURNAL_VERSION: u32 = 10;
+pub(super) const JOURNAL_VERSION: u32 = 11;
 const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
 const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;

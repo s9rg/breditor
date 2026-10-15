@@ -11,6 +11,7 @@ pub(super) fn header(doc: &LoroDoc) -> Result<Value, Error> {
 
 pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
     let flows = super::text_flow::Projection::read(doc)?;
+    let placements = super::placement::Projection::read(doc)?;
     let mut value = header(doc)?;
     let document = value
         .pointer("/root/properties/breditor~1document-id")
@@ -18,13 +19,13 @@ pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
         .ok_or(Error::Contract("shared document identity"))?
         .to_owned();
     let mut children = vec![];
-    for block in super::placement::children(doc, None)? {
-        if let Some(node) = element(doc, &flows, &block, 0)? {
+    for block in placements.children(doc, None)? {
+        if let Some(node) = element(doc, &flows, &placements, &block, 0)? {
             children.push(node);
         }
     }
     let block = virtual_id("root", &[&document]);
-    let (fallback, explicit) = fallback(doc, &flows, &block)?;
+    let (fallback, explicit) = fallback(doc, &flows, &placements, &block)?;
     if children.is_empty() || explicit {
         children.insert(0, fallback);
     }
@@ -39,6 +40,7 @@ pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
 fn element(
     doc: &LoroDoc,
     flows: &super::text_flow::Projection,
+    placements: &super::placement::Projection,
     block: &str,
     depth: usize,
 ) -> Result<Option<Value>, Error> {
@@ -54,7 +56,7 @@ fn element(
     // empty paragraph when an older surrounding flow becomes visible again.
     if block.starts_with(super::model::VIRTUAL_PREFIX)
         && meta.get("origin-site").is_some()
-        && !super::placement::relocated(doc, block)?
+        && !placements.relocated(doc, block)?
     {
         return Ok(None);
     }
@@ -101,8 +103,8 @@ fn element(
         }
         children = flows.runs(doc, block)?;
     } else {
-        for child in super::placement::children(doc, Some(block))? {
-            if let Some(value) = element(doc, flows, &child, depth + 1)? {
+        for child in placements.children(doc, Some(block))? {
+            if let Some(value) = element(doc, flows, placements, &child, depth + 1)? {
                 children.push(value);
             }
         }
@@ -114,7 +116,7 @@ fn element(
         super::merges::project(doc, &raw, &mut properties)?;
         let columns = columns(doc, block)?;
         for row in &mut children {
-            complete_row(doc, flows, &properties, row, &columns)?;
+            complete_row(doc, flows, placements, &properties, row, &columns)?;
         }
         properties.insert("breditor/columns".into(), Value::Array(columns));
     }
@@ -128,7 +130,7 @@ fn element(
             .and_then(Value::as_str)
             .is_some_and(|kind| kind == "breditor/paragraph" || kind == "breditor/heading");
         let default = virtual_id("flow", &[block]);
-        let (fallback, explicit) = fallback(doc, flows, &default)?;
+        let (fallback, explicit) = fallback(doc, flows, placements, &default)?;
         if children.is_empty() || (kind == "breditor/list-item" && !leading_text) || explicit {
             children.insert(0, fallback);
         }
@@ -197,6 +199,7 @@ fn columns(doc: &LoroDoc, block: &str) -> Result<Vec<Value>, Error> {
 fn complete_row(
     doc: &LoroDoc,
     flows: &super::text_flow::Projection,
+    placements: &super::placement::Projection,
     table: &Map<String, Value>,
     row: &mut Value,
     columns: &[Value],
@@ -234,13 +237,13 @@ fn complete_row(
             let block = virtual_id("cell", &[table, &row_id, column]);
             if super::model::optional_metadata(doc, &block).is_some() {
                 existing.push(
-                    element(doc, flows, &block, 0)?
+                    element(doc, flows, placements, &block, 0)?
                         .ok_or(Error::Contract("hidden derived cell"))?,
                 );
                 continue;
             }
             let text = virtual_id("flow", &[&block]);
-            json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[fallback(doc,flows,&text)?.0]})
+            json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[fallback(doc,flows,placements,&text)?.0]})
         };
         existing.push(cell);
     }
@@ -251,6 +254,7 @@ fn complete_row(
 fn fallback(
     doc: &LoroDoc,
     flows: &super::text_flow::Projection,
+    placements: &super::placement::Projection,
     block: &str,
 ) -> Result<(Value, bool), Error> {
     // A normalization paragraph retained as movable structure is rendered through its
@@ -258,7 +262,7 @@ fn fallback(
     // a new deterministic empty identity; hidden causal text is not repurposed or copied.
     let mut available = block.to_owned();
     let mut ordinal = 0;
-    while occupied_fallback(doc, &available)? {
+    while occupied_fallback(doc, placements, &available)? {
         if ordinal >= 1000 {
             return Err(Error::Limit("shared normalization identities"));
         }
@@ -295,11 +299,15 @@ fn fallback(
     Ok((node, explicit))
 }
 
-fn occupied_fallback(doc: &LoroDoc, block: &str) -> Result<bool, Error> {
+fn occupied_fallback(
+    doc: &LoroDoc,
+    placements: &super::placement::Projection,
+    block: &str,
+) -> Result<bool, Error> {
     if super::model::optional_metadata(doc, block)
         .is_some_and(|meta| meta.get("origin-site").is_some())
     {
-        Ok(super::placement::relocated(doc, block)? || super::model::deleted(doc, block)?)
+        Ok(placements.relocated(doc, block)? || super::model::deleted(doc, block)?)
     } else {
         Ok(false)
     }

@@ -79,7 +79,8 @@ test("whole-flow paste retains normalized empty root and derived cell paragraphs
 });
 
 test("same-value explicit pasted headers own intent while preservation does not",async({page})=>{
- const r=JSON.parse(await page.evaluate(()=>{const t=window.clipboardTools,results=[];for(const header of[false,null]){const{a,b}=t.peers();try{
+ // The equal-basis false intent uses the higher writer, independently of preparation size.
+ const r=JSON.parse(await page.evaluate(()=>{const t=window.clipboardTools,results=[];for(const header of[false,null]){const peers=t.peers(),a=peers.b,b=peers.a;try{
   const paste=t.cellPaste("cell","header-body","Pasted");paste.data.cells[0][0].header=header;t.dispatch(a,[paste]);t.dispatch(b,[{kind:"set_header",data:{cells:["cell"],header:true}}]);t.sync(a,b);const values=[t.node(a,"cell").properties["breditor/header"]];t.history(a);t.sync(a,b);values.push(t.node(a,"cell").properties["breditor/header"]);t.history(a,true);t.sync(a,b);values.push(t.node(a,"cell").properties["breditor/header"]);results.push(values);
  }finally{a.free();b.free();}}return JSON.stringify(results);}));expect(r).toEqual([[false,true,false],[true,true,true]]);
 });

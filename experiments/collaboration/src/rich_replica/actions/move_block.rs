@@ -18,6 +18,14 @@ impl MoveBlock {
         if self.before.as_deref() == Some(&self.block) {
             return Ok(());
         }
+        if let Some(parent) = &self.parent {
+            let raw = super::super::materialize::envelope(doc)?;
+            let node = super::super::creation::find(&raw["root"], &self.block)
+                .ok_or(Error::Contract("visible move source"))?;
+            if super::super::creation::find(node, parent).is_some() {
+                return Err(Error::Contract("move destination inside source subtree"));
+            }
+        }
         super::super::placement::move_block(
             doc,
             &self.block,

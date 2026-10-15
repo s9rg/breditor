@@ -3,13 +3,11 @@
 //! Undo retracts this action's occurrence/selection, never moves a later remote
 //! occurrence back. The engine still provides replication and list ordering.
 use super::model::{metadata, string};
-use crate::{
-    Error,
-    register::{Stamp, read_contribution},
-};
-use loro::{ContainerID, ContainerType, LoroDoc, LoroMovableList, ToJson};
+use crate::{Error, register::Stamp};
+use loro::{ContainerID, ContainerType, LoroDoc, LoroMovableList};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+mod selection;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -39,32 +37,32 @@ fn site(doc: &LoroDoc, site: &str) -> Result<Site, Error> {
     Ok(serde_json::from_str(value.as_str())?)
 }
 fn active(doc: &LoroDoc, block: &str) -> Result<String, Error> {
-    let owner = metadata(doc, block)?;
-    let raw = owner.get_deep_value().to_json_value();
-    let mut chosen = None;
-    if let Some(values) = raw.get("placements") {
-        let values = values.as_object().ok_or(Error::Contract("shared placement contributions"))?;
-        if values.len() > 1000 {
-            return Err(Error::Limit("shared placement contributions"));
-        }
-        for (key, value) in values {
-            let (stamp, value) = read_contribution(doc, key, value)?;
-            if chosen.as_ref().is_none_or(|(prior, _)| stamp > *prior) {
-                chosen = Some((stamp, value));
-            }
-        }
+    Projection::read(doc)?.active(block).map(str::to_owned)
+}
+
+/// One pure forest choice per complete AST materialization.
+pub(super) struct Projection {
+    selected: BTreeMap<String, String>,
+}
+impl Projection {
+    pub fn read(doc: &LoroDoc) -> Result<Self, Error> {
+        Ok(Self { selected: selection::selected(doc)? })
     }
-    if let Some((_, value)) = chosen {
-        Ok(value.as_str().ok_or(Error::Contract("shared placement identity"))?.into())
-    } else {
-        string(&owner, "origin-site")
+    fn active(&self, block: &str) -> Result<&str, Error> {
+        self.selected
+            .get(block)
+            .map(String::as_str)
+            .ok_or(Error::Contract("shared placement identity"))
+    }
+    pub fn children(&self, doc: &LoroDoc, parent: Option<&str>) -> Result<Vec<String>, Error> {
+        children_with(doc, parent, self)
+    }
+    pub fn relocated(&self, doc: &LoroDoc, block: &str) -> Result<bool, Error> {
+        Ok(self.active(block)? != string(&metadata(doc, block)?, "origin-site")?)
     }
 }
 pub(super) fn origin_parent(doc: &LoroDoc, block: &str) -> Result<Option<String>, Error> {
     Ok(site(doc, &string(&metadata(doc, block)?, "origin-site")?)?.parent)
-}
-pub(super) fn relocated(doc: &LoroDoc, block: &str) -> Result<bool, Error> {
-    Ok(active(doc, block)? != string(&metadata(doc, block)?, "origin-site")?)
 }
 pub(super) fn seed(
     doc: &LoroDoc,
@@ -106,6 +104,13 @@ pub(super) fn define(
     Ok(())
 }
 pub(super) fn children(doc: &LoroDoc, parent: Option<&str>) -> Result<Vec<String>, Error> {
+    Projection::read(doc)?.children(doc, parent)
+}
+fn children_with(
+    doc: &LoroDoc,
+    parent: Option<&str>,
+    projection: &Projection,
+) -> Result<Vec<String>, Error> {
     let Some(order) = existing_order(doc, parent) else {
         return Ok(vec![]);
     };
@@ -120,7 +125,7 @@ pub(super) fn children(doc: &LoroDoc, parent: Option<&str>) -> Result<Vec<String
         if record.parent.as_deref() != parent {
             return Err(Error::Contract("shared occurrence parent"));
         }
-        if active(doc, &record.block)? == id && selected.insert(id.to_owned()) {
+        if projection.active(&record.block)? == id && selected.insert(id.to_owned()) {
             children.push(record.block);
         }
     }

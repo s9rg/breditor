@@ -86,6 +86,20 @@ and also preserves remote text after the new paragraph is joined elsewhere.
 Initial text length does not raise a concurrent command's semantic priority:
 the first command captures its causal stamp before immutable preparation.
 
+Owned placement choices now resolve cycles before AST traversal. Each cycle
+suspends its lowest-priority authored edge and exposes that node's next choice
+or immutable origin; it never discards either subtree. Undo can reactivate a
+suspended move. Newly derived table cells retain their implicit row ancestry
+for the same resolver. Local moves into their own descendants reject without
+publication. This advances the private owner to model 10/journal V11. Grammar
+conflicts between concurrent kind changes and moves remain a separate gate.
+
+The current functional checkpoint passes 196 private native collaboration tests,
+81 combined shared-editor browser cases and 309 legacy browser cases across
+Chromium, Firefox and WebKit, along with the default/opt-in core, Clippy,
+TypeScript and installed-package checks. This does not complete the relay,
+presence, cross-host asset provider or generic shared factory gates below.
+
 The central decision is to design collaboration before adding new structural
 operations. Stable content identities, table geometry, image assets, selections
 and local undo must agree on one document model. Existing paragraph, heading,
@@ -417,17 +431,17 @@ before Wasm command JSON admission; restored owners have fresh authority. Shared
 caret typing now honors pending/derived formats and advances once in one history
 group. Null pending formats derive; an empty array explicitly types plain text.
 
-The private `breditor/rich-replica-journal` V10 reconstructs the original seed/join,
+The private `breditor/rich-replica-journal` V11 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1–V9 shared journals are rejected explicitly; local rich recovery and default
+V1–V10 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision 9 and the explicit
+envelope. Room ID, schema selector/fingerprint, model revision 10 and the explicit
 engine tag `1.16.2+breditor.deterministic-history.1`
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
@@ -502,7 +516,7 @@ Empty normalized heads can become movable list content without changing identity
 Their canonical retained occurrences merge across writers and remain conditional
 at their original fallback slot. Relocation or deletion can expose a deterministic
 spare; older Undo states do not acquire phantom empty paragraphs. The private
-model revision 9/journal V10 includes this normalization change. Preparation scans
+model revision 10/journal V11 includes this normalization change. Preparation scans
 the potential item fallback slots before history begins, allowing a head deletion
 or fresh split followed by unlisting to remain one atomic action. It also scans
 at most 20,000 metadata owners; wrapping accepts at most 1,000 item identities and
@@ -546,8 +560,8 @@ identities, with the independent 1 MiB semantic clipboard limit still enforced.
 Hosts keep all allocated IDs consumed on failure. The browser shared event adapter
 uses the Rust namespace allocator and an atomic source-preserving flow paste;
 cross-host asset resolution remains separate integration work.
-Placement-conflict/cycle
-normalization, server-authorized leases,
+Placement cycles now resolve before traversal, including implicit derived-cell
+ancestry. Grammar-conflict normalization, server-authorized leases,
 presence and relay/provider integration are also unfinished. The full functional
 goal is unchanged; this adapter is not an end-user collaboration release.
 
@@ -911,8 +925,9 @@ do not delete user data or unrelated work to make tests pass.
 This is a multi-milestone product expansion, not a few-hour production promise.
 The rich paragraph/list/range and clipboard planners now drive the opt-in shared
 browser coordinator. Shared caption creation/removal now owns an explicit retained
-paragraph choice. The next focused sessions should complete general placement
-conflict/cycle normalization and the generic shared profile factory, then
+paragraph choice. Placement cycles now preserve both rich subtrees and exact
+future history. The next focused sessions should complete grammar-conflict
+normalization and the generic shared profile factory, then
 integrate the reference relay, presence and host
 asset provider. Durable shared causal journals and local asset
 bytes now survive reload, but do not supply network acknowledgement or shared

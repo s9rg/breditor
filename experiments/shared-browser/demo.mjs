@@ -3,7 +3,7 @@ import {SharedPersistentSession,mountSharedEditor,insertSharedImageFiles} from "
 import {RichAssetStore} from "/rich.js";
 await init();let connected=true;const state=document.querySelector("#state"),report=error=>{state.textContent=String(error);};
 try{
-const vector=await(await fetch("/native-vector.json")).json(),database="breditor-shared-demo-sessions-v10",base={database,room:"room",restore:j=>wasm.RichReplicaProbe.restore("room",j),onError:report};
+const vector=await(await fetch("/native-vector.json")).json(),database="breditor-shared-demo-sessions-v11",base={database,room:"room",restore:j=>wasm.RichReplicaProbe.restore("room",j),onError:report};
 const sessionA=await SharedPersistentSession.open({...base,writer:"101",create:()=>new wasm.RichReplicaProbe(vector.rich_local_input,"101")}),a=sessionA.core;
 let sessionB;try{sessionB=await SharedPersistentSession.open({...base,writer:"202",create:()=>wasm.RichReplicaProbe.join_frame("room","202",a.updateFrame())});}catch(error){await sessionA.close();throw error;}
 const b=sessionB.core,store=await RichAssetStore.open("breditor-shared-demo-assets");

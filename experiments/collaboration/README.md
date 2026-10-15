@@ -513,8 +513,8 @@ imports and declarations, renderer exports, licenses, and future Undo/Redo throu
 the matching real Wasm owner pass. The private owner fixture remains an external
 test input; the archive does not disguise it as a generic shipping factory.
 
-The current fixture Wasm is 8,650,421 bytes, or 2,354,273 bytes under gzip, with
-SHA-256 `5560bec4702f6afd01db2c793d69c8a20a8a4088845fb831dde5ee383f7c0e80`.
+The current fixture Wasm is 8,694,353 bytes, or 2,363,664 bytes under gzip, with
+SHA-256 `db8887a6852473bbac8eee7607cb54a204fc9a13fc5c4f971e707b918a3f7007`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -567,21 +567,22 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V10 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V11 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional. V1–V9 shared journals are rejected rather than silently replayed
+still provisional. V1–V10 shared journals are rejected rather than silently replayed
 without source-based routing, causal UI/history metadata, deterministic engine
 history authoring, sequential command priorities, retained normalization origins and
 causal ownership of unmarked concurrent source appends, owned caption choices,
-retained creation-time characters and request-basis semantic priority. Local rich editor
+retained creation-time characters, request-basis semantic priority and acyclic
+placement resolution with implicit derived-cell ancestry. Local rich editor
 recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
-and fingerprint, model revision 9 and the explicit engine build tag
+and fingerprint, model revision 10 and the explicit engine build tag
 `1.16.2+breditor.deterministic-history.1` before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
@@ -735,12 +736,12 @@ offline original-caption edits, causal selection recovery, composed
 image/caption/typing groups, exact future history, explicit absence and moves,
 retained seed provenance, remote joins and three-writer typing.
 
-This changes the private shared projection to model 9 and journal V10. Older
+The caption checkpoint changed the private shared projection to model 9 and journal V10. Older
 shared frames/journals reject explicitly; existing shipping codecs, local rich
-history and image schema are unchanged. The sample demo uses a separate V10
-session database and preserves old V8/V9 data. No implicit journal migration or
-document-only recovery is performed. General structural placement conflict/cycle
-normalization remains a separate required implementation gate.
+history and image schema are unchanged. It introduced a separate V10 sample
+database while preserving old V8/V9 data. The subsequent cycle checkpoint below
+advances the owner and demo to model 10/journal V11. No implicit journal migration
+or document-only recovery is performed.
 
 The caption checkpoint passes 190 private native tests, native/wasm32 Clippy,
 the generated-owner and installed-consumer TypeScript contracts, and 69
@@ -767,6 +768,51 @@ preparation; longer initial text cannot artificially win a concurrent caption
 choice. Later steps in a batch retain their actual sequential causal stamps.
 Ordinary text deletion/Redo still uses the native engine's rebased gap behavior;
 this creation repair does not claim a different general text-Redo tie policy.
+
+## Shared placement cycle repair
+
+Two separately valid offline moves can close a structural cycle: A nests its
+root list inside B's item while B nests its root list inside A's item. Previously
+the selected placement graph had no reachable root; both lists disappeared
+behind the normalized empty paragraph even though their causal data survived.
+This reproduces in native Rust and the generated Wasm owner without browser
+input or timing dependencies.
+
+The private model 10/journal V11 resolver now selects a complete acyclic forest
+before AST traversal. It suspends the lowest-priority authored edge in a cycle
+and tries that node's next contribution or immutable origin. Priority is the
+existing causal stamp with stable block-ID tie-breaking. It does not retract an
+intent, change its priority, write a repair operation or discard an immutable
+origin. Selective Undo can expose a previously suspended move. Original sibling
+occurrences still determine ordering, and normalization is independent of update
+delivery order. A local move into its own visible subtree rejects atomically.
+
+Derived table cells have no authored occurrence, so activating their metadata
+also retains the immutable row parent. Cycle detection includes that implicit
+edge. The cell remains axis-derived; no competing tree occurrence or user Undo
+step is created. One placement projection is shared by a complete AST
+materialization. The resolver bounds the metadata directory at 20,000 owners,
+each owner's placement contributions at 1,000 and all candidates at 100,000;
+production work/compaction budgets remain open.
+
+Six native contracts cover reciprocal cycles in both writer/delivery orders,
+three-writer cycles, repeated exact-history recovery, masked Undo/Redo, local
+descendant rejection, combined table/list/media moves, and a newly derived axis
+cell. Four browser cases per engine cover mounted editors, independent native
+journal reload/future causal operations, local guard preservation and the
+implicit-cell cycle. Grammar conflicts involving concurrent kind changes and
+moves remain separate work; this resolver establishes acyclicity, not arbitrary
+schema-conflict normalization. Older private journals require their matching
+owner, and the demo preserves V8/V9/V10 databases under their old names.
+
+This checkpoint passes all 196 private native tests, native/wasm32 Clippy, the
+generated-owner and installed-consumer TypeScript contracts, all 81 combined
+shared-browser cases and all 309 legacy browser cases across Chromium, Firefox
+and WebKit. The broad check also passes the 703 default core tests, 1,217 opt-in
+core tests, rich action/clipboard/recovery contracts and 137 doctests. Package
+consumers install actual local archives and run future history through the real
+Wasm owner. These are functional checks, not physical IME/accessibility,
+adversarial decoder, performance or production-release qualification.
 
 ## Shared semantic clipboard
 
@@ -952,7 +998,7 @@ Selection and pending-format normalization occurs once after the complete atomic
 group, not after intermediate commands. Original-axis deletion fallback does not
 select a row first created by the same group.
 The Wasm probe exposes these commands through guarded dispatch, now connected
-to the opt-in shared browser coordinator. Private shared model revision 9 and journal V10
+to the opt-in shared browser coordinator. Private shared model revision 10 and journal V11
 replace the earlier experimental model; shipping schemas/codecs are unchanged.
 
 ## Limits and remaining gates
@@ -980,11 +1026,9 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-General shared placement cycle/conflict normalization remains an implementation gate.
-Two disconnected writers can each move a root list into an item of the other
-list. Both actions admit separately; merging selects a cycle and currently
-renders the root fallback instead of either list. The causal content remains
-retained, but visible content loss makes this a functional release blocker.
+Placement cycles now normalize without hiding either subtree, including
+axis-derived cell ancestry. General grammar conflicts involving concurrent kind
+changes and placements remain an implementation gate.
 Cross-device writer authorization and reference
 relay/presence/asset-provider integration are also unfinished. The fixture
 exchanges engine bytes in one test host;
