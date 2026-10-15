@@ -5,6 +5,7 @@
   "description": "Opt-in Rust-backed rich content owner for Breditor tables, images and rich flow",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "dependencies": {"@breditor/browser":"0.3.0-alpha.22"},
   "sideEffects": false,
   "main": "./index.js",
   "types": "./index.d.ts",

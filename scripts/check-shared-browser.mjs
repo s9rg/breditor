@@ -7,6 +7,7 @@ run(cargo,["clippy","--manifest-path",manifest,"--locked","--target","wasm32-unk
 run(bindgen,["--target","web","--out-dir",web,resolve(target,"wasm32-unknown-unknown/release/breditor_collab_feasibility.wasm")],wasm);run(cargo,["run","--manifest-path",manifest,"--locked","--example","export_vector","--quiet","--",resolve(web,"native-vector.json")]);run(cargo,["build","--manifest-path",manifest,"--locked","--example","compare_engine_exports","--quiet"]);
 run(cargo,["build","--manifest-path",manifest,"--locked","--example","relay_contract_driver","--quiet"]);
 run(process.execPath,["scripts/check-relay.mjs"]);
+run("npm",["run","build","--workspace","@breditor/browser"]);
 run(resolve(root,"node_modules/.bin/tsc"),["-p","packages/breditor-experimental-rich-content/tsconfig.json"]);run(resolve(root,"node_modules/.bin/tsc"),["-p","packages/breditor-experimental-collaboration/tsconfig.json"]);
 run(resolve(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--lib","ES2022,DOM,ESNext.Disposable","--module","NodeNext","experiments/shared-browser/types.ts"]);
 for(const name of["LICENSE-MIT","LICENSE-APACHE"])cpSync(resolve(root,name),resolve(root,"packages/breditor-experimental-collaboration",name));

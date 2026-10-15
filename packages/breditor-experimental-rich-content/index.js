@@ -2,6 +2,7 @@
 // All logical mutation and retained history remain Rust-owned. Asset storage and
 // uploads are explicit host services, never command side effects.
 export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
+export {createRichInlinePresentation} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }
@@ -50,6 +51,7 @@ class RichCoreProfile {
   constructor(raw, descriptor) { this.#raw = raw; this.#descriptor = JSON.stringify(descriptor); }
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich profile is disposed"); return this.#raw; }
   descriptor() { this.#live(); return JSON.parse(this.#descriptor); }
+  inlineCatalogJson() { return read(this.#live().inlineCatalogJson()); }
   createEditor(documentJson, historyCapacity = "100") {
     const raw = transfer(this.#live().createEditor(documentJson, historyCapacity), "editor", "takeEditor");
     return new RichCoreEditor(raw);

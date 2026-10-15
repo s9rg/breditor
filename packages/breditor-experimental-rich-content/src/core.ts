@@ -27,6 +27,7 @@ export interface RichCoreEditor {
 }
 export interface RichCoreProfile {
   descriptor(): RichProfileDescriptor;
+  inlineCatalogJson(): string;
   createEditor(documentJson: string, historyCapacity?: string): RichCoreEditor;
   restoreEditor(checkpointJson: string): RichCoreEditor;
   dispose(): void;

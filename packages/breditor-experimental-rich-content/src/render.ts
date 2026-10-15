@@ -1,10 +1,16 @@
 // Render only the admitted Rust AST and its derived non-destructive table geometry.
 import type {FormatLiteral,RichCell} from "./core.js";
 import {cellKey,id,property,type AstNode,type ElementNode,type RichModel} from "./model.js";
+import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
 export interface AssetBinding {image:string;asset:string;generation:string}
 export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
  inlineTag?:(format:FormatLiteral)=>"span"|"strong"|"em"|"code";
+ inlinePresentation?:RichInlinePresentation;
+}
+/** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
+export function requireRenderOptions(value:RichModel,options:RenderOptions):void {
+ if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
 }
 const assetBindings=new WeakMap<HTMLElement,{bitmap:HTMLImageElement;binding:AssetBinding;attempt:number}>();
 function resolveImage(figure:HTMLElement,options:RenderOptions):void {
@@ -25,11 +31,16 @@ export function refreshAssets(surface:HTMLElement,options:RenderOptions):void {
  for(const figure of surface.querySelectorAll<HTMLElement>("figure[data-rich-image]"))resolveImage(figure,options);
 }
 export function render(surface:HTMLElement,value:RichModel,options:RenderOptions):void {
+ requireRenderOptions(value,options);
  const document=surface.ownerDocument;
  const flow=(node:AstNode):Node=>{
   if(node.kind==="text"){
    let result:Node=document.createTextNode(node.text);
-   for(const format of node.formats){const wrapper=document.createElement(options.inlineTag?.(format)??(format.type==="breditor/strong"?"strong":"span"));wrapper.dataset["richFormat"]=format.type;wrapper.append(result);result=wrapper;}
+   if(options.inlinePresentation){
+    for(const {recipe,attributes} of [...richInlineRecipes(options.inlinePresentation,node.formats)].reverse()){
+     const wrapper=document.createElement(recipe.element);wrapper.dataset["richFormat"]=recipe.formatKind;if(recipe.classes.length)wrapper.className=recipe.classes.join(" ");for(const attribute of attributes)wrapper.setAttribute(attribute.name,attribute.value);wrapper.append(result);result=wrapper;
+    }
+   }else for(const format of node.formats){const tag=options.inlineTag?.(format)??(format.type==="breditor/strong"?"strong":"span");if(!["span","strong","em","code"].includes(tag))throw new TypeError("Unsupported legacy inline tag");const wrapper=document.createElement(tag);wrapper.dataset["richFormat"]=format.type;wrapper.append(result);result=wrapper;}
    return result;
   }
   if(node.type==="breditor/table")return table(node);

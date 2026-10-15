@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "1c9850b77035e43621fa8fa34c884559bf1b6dc6",
+  "scope": "Compiled Rust inline catalog and the following schema-bound local/shared browser presentation checkpoint. The matching browser implementation commit is recorded in the readiness ledger after it is saved.",
+  "releaseQualified": false,
+  "browserSuites": [
+    {"command": "node scripts/check-shared-browser.mjs", "passed": 246, "engines": ["chromium", "firefox", "webkit"], "note": "Canonical shared suite; WebKit retains full coverage in isolated per-file processes."},
+    {"command": "node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs", "passed": 21, "engines": ["chromium", "firefox", "webkit"], "note": "Repeated after repairing local JS/Wasm pairing, using the three exact archives below. Shared Wasm is still explicitly host-supplied from the isolated workspace."},
+    {"command": "node scripts/check-rich-browser.mjs", "passed": 111, "engines": ["chromium", "firefox", "webkit"], "note": "Local owner, assets, history, clipboard and the new checked presentation. This is not physical IME or screen-reader qualification."},
+    {"command": "node scripts/check-collaboration-feasibility.mjs", "passed": 309, "engines": ["chromium", "firefox", "webkit"], "note": "Legacy native/Wasm contract matrix; WebKit runs per file, without omitting tests or weakening assertions."}
+  ],
+  "defaultBrowser": {"passed": 2195, "files": 58},
+  "native": {"defaultCoreTests": 703, "richCoreTests": 1217, "richCoreIntegrationTests": 132, "richDoctests": 137, "privateCollaborationTests": 229, "relayTests": 20, "newCoreCatalogTests": 3, "sharedProfileContracts": 8, "note": "These overlapping suites are not additive counts of unique capabilities. Native/Wasm strict lints, formatting, TypeScript and installed-consumer runtime checks also pass."},
+  "standaloneScripts": {"passed": 328, "skipped": 3, "failed": 0, "buildPairingTests": 5, "note": "Existing opt-in browser diagnostic tests were not enabled in the ordinary standalone script run."},
+  "packagingRepair": {
+    "reproduction": "An installed rich archive passed shared-owner tests while BreditorRichProfile.prototype.inlineCatalogJson was undefined in its stale bundled local Wasm.",
+    "fix": "Shared packaging and local qualification call one exact locked/offline rich Rust build and matching wasm-bindgen generation before copying and packing. Compile/bindgen failure cannot copy old output.",
+    "regression": "The offline installed runtime initializes the archive's local Wasm binary, compiles a rich profile, calls inlineCatalogJson and checks its exact schema binding. Five build-order/failure/CLI tests accompany it."
+  },
+  "artifacts": {
+    "packageVersion": "0.3.0-alpha.22",
+    "archives": [
+      {"name": "@breditor/browser", "bytes": 326348, "sha256": "4982e0f53139f062327f69df5101ffa3d4e1237565ecb1c5d2e819ae86df6181"},
+      {"name": "@breditor/experimental-rich-content", "bytes": 1146658, "sha256": "66b7766a38555e06555c3dafee03cbddb047e5d56d712ae97dd0a53c1311a813"},
+      {"name": "@breditor/experimental-collaboration", "bytes": 58435, "sha256": "1f35bd285e5d2aa34d969db1b684d83ae1d52679f57dc2459e5ee87b21678238"}
+    ],
+    "localRichWasm": {"bytes": 4054400, "gzipBytes": 1077729, "sha256": "1f40eb44e8b191d891c13cf8fa141dc8d40b5c19da7e3180f052fc6e547aec19"},
+    "sharedWasm": {"bytes": 9033769, "gzipBytes": 2440029, "sha256": "f7b3d7ddd8cce1a5ec2427d38a7bb9ef1075dd55614093f09eb748a05d725c7b"}
+  },
+  "remaining": [
+    "Standard rich profile, integrated formatting controls and Rust-derived mixed property state",
+    "Supported shared Rust/Wasm distribution without feasibility-only target files and package-root vanilla/React references",
+    "Missing everyday blocks, task lists, general selection editing, typing groups, genuine read-only and block-property contracts",
+    "Bounded HTML/Markdown import/export and realistic Office/Docs/Excel fixtures with explicit losses",
+    "Subsequent advanced parity and final release gates"
+  ],
+  "historicalWebKitFaultResolved": false,
+  "nativeImeOrScreenReaderQualified": false,
+  "published": false,
+  "publicDeployment": false
+}

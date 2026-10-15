@@ -2,7 +2,7 @@
 import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSelection,RichView} from "./core.js";
 import {bold,boundaryDelete,defaultToolbar,deleteSelection,enter,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {id,model,sourceCell,text,type RichModel} from "./model.js";
-import {paintSelection,render,type RenderOptions} from "./render.js";
+import {paintSelection,render,requireRenderOptions,type RenderOptions} from "./render.js";
 import {readNative,readTarget,restoreNative} from "./selection.js";
 
 export interface RichEditorOptions extends RenderOptions {
@@ -30,6 +30,7 @@ export class RichDomEditor {
  #namespace:string;#counter=0n;#logicalSelection=false;#controls:{control:ToolbarControl;button:HTMLButtonElement;input?:HTMLInputElement}[]=[];
  constructor(root:HTMLElement,options:RichEditorOptions){
   this.#root=root;this.#options=options;this.#model=model(options.core.view());this.#namespace=`br:${crypto.randomUUID()}`;this.#logicalSelection=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
+  requireRenderOptions(this.#model,options);
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Rich text editor");
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Rich text formatting");
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");

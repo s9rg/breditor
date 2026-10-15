@@ -18,6 +18,7 @@ import {
   isOwnedBrowserCompiledProfileDescriptor,
   wasmProfileGenerationIsLive,
   type BrowserCompiledProfileDescriptor,
+  type BrowserProfileFormatDescriptor,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
 
@@ -92,35 +93,8 @@ export function compileBrowserPresentation(
     throw new TypeError("browser presentation render manifest is not owned");
   }
 
-  const formats = profileDescriptor.formats;
-  const recipes = manifest.recipes;
-  if (recipes.length !== formats.length) {
-    throw new TypeError("browser presentation recipe coverage is incomplete");
-  }
-
-  const recipesByKind = new Map<string, InlineFormatRenderRecipe>();
-  for (const recipe of recipes) recipesByKind.set(recipe.formatKind, recipe);
-  for (const format of formats) {
-    const recipe = recipesByKind.get(format.kind);
-    if (recipe === undefined) {
-      throw new TypeError("browser presentation recipe coverage is incomplete");
-    }
-    if (
-      recipe.attributes === undefined
-        ? format.properties.length !== 0
-        : !inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
-          recipe.attributes,
-          format,
-        )
-    ) {
-      throw new TypeError(
-        "browser presentation attribute policy does not match the format descriptor",
-      );
-    }
-  }
-
-  requireUniqueDomSignatures(recipes);
-  const recipesOuterToInner = compileOuterToInnerOrder(recipes, recipesByKind);
+  const recipesOuterToInner = compileInlineFormatRecipes(profileDescriptor.formats, manifest);
+  const recipesByKind = new Map(manifest.recipes.map(recipe => [recipe.formatKind, recipe]));
   const identity = Object.freeze(
     Object.create(null) as BrowserPresentationIdentity,
   );
@@ -140,6 +114,42 @@ export function compileBrowserPresentation(
   OWNED_PRESENTATIONS.add(presentation);
   PRESENTATION_METADATA.set(presentation, metadata);
   return presentation;
+}
+
+/**
+ * Compile the same safe recipe contract for another Rust-backed editor owner.
+ *
+ * Inputs are read-only format declarations, not schema proofs. This checks exact
+ * coverage, policy compatibility, unique DOM signatures and deterministic order;
+ * the caller must independently bind its Rust catalog and admitted document.
+ * It does not mint a default editor generation or authorize a document/action.
+ */
+export function compileInlineFormatRecipes(
+  formats: readonly BrowserProfileFormatDescriptor[],
+  manifest: InlineFormatRenderManifest,
+): readonly InlineFormatRenderRecipe[] {
+  if (!isOwnedInlineFormatRenderManifest(manifest)) {
+    throw new TypeError("browser presentation render manifest is not owned");
+  }
+  const recipes = manifest.recipes;
+  if (recipes.length !== formats.length) {
+    throw new TypeError("browser presentation recipe coverage is incomplete");
+  }
+  const recipesByKind = new Map(recipes.map(recipe => [recipe.formatKind, recipe]));
+  const seen = new Set<string>();
+  for (const format of formats) {
+    const recipe = recipesByKind.get(format.kind);
+    if (seen.has(format.kind) || recipe === undefined) {
+      throw new TypeError("browser presentation recipe coverage is incomplete");
+    }
+    seen.add(format.kind);
+    if (recipe.attributes === undefined ? format.properties.length !== 0
+      : !inlineFormatRenderAttributePolicyMatchesFormatDescriptor(recipe.attributes, format)) {
+      throw new TypeError("browser presentation attribute policy does not match the format descriptor");
+    }
+  }
+  requireUniqueDomSignatures(recipes);
+  return compileOuterToInnerOrder(recipes, recipesByKind);
 }
 
 /** Whether a value was minted by the checked presentation compiler. */

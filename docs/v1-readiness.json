@@ -36,9 +36,9 @@
     {
       "id":"basic-inline-formatting","area":"Editing","status":"partial",
       "summary":"Bold, italic, underline, strike and inline code",
-      "current":"Default Showcase supports several marks. The rich/shared default toolbar exposes Bold; its render hook admits only span/strong/em/code. Underline is not a shipped integrated control.",
+      "current":"The rich/shared renderer now has a schema-bound checked presentation path for ordinary marks, reusing default policies. The default toolbar still exposes Bold; the complete standard profile, controls and mixed-state integration remain unfinished.",
       "acceptance":"Ship all everyday marks in the combined profile, renderer and toolbar; test mixed state, caret formats, clipboard, offline edits and selective Undo/Redo.",
-      "evidence":["packages/breditor-reference-highlight/src/showcase_profile.ts","packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-experimental-collaboration/src/toolbar.ts"],
+      "evidence":["packages/breditor-reference-highlight/src/showcase_profile.ts","packages/breditor-experimental-rich-content/src/inline_presentation.ts","packages/breditor-experimental-collaboration/src/toolbar.ts","experiments/shared-browser/inline-presentation.spec.mjs"],
       "sources":["tiptap-starter","ckeditor-styles","tiptap-source-starter"]
     },
     {
@@ -52,7 +52,7 @@
     {
       "id":"font-and-color","area":"Editing","status":"partial",
       "summary":"Font family, size, text and background color",
-      "current":"Default Showcase has bounded RGB24 text color, discrete text sizes and Highlight. Those policies are not integrated into the shared renderer; general font families/background colors are not complete.",
+      "current":"Default Showcase has RGB24 color, discrete sizes and Highlight. The rich/shared renderer now reuses the closed color and integer-token policies; standard controls, size CSS, font families and background-color workflows remain incomplete.",
       "acceptance":"Promote safe declarative presentations into the combined editor, define supported font/size/color domains and test interoperability.",
       "evidence":["packages/breditor-reference-highlight/src/color_showcase_profile.ts","packages/breditor-reference-highlight/src/size_showcase_profile.ts","packages/breditor-experimental-rich-content/src/render.ts"],
       "sources":["tiptap-catalog","ckeditor-overview"]
@@ -60,7 +60,7 @@
     {
       "id":"links","area":"Editing","status":"partial",
       "summary":"Links and automatic link detection",
-      "current":"Safe Link forms and typed values work in the default profile. The combined renderer has no anchor recipe; autolink is not an integrated feature.",
+      "current":"Default Link forms work, and the rich/shared renderer now supports the same checked anchor policy in cells/captions. A complete standard Link control and autolink remain unfinished.",
       "acceptance":"Use one safe URL policy for shared rendering, explicit link editing, clipboard/export and optional autolink, without interpreting arbitrary HTML.",
       "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/render.ts"],
       "sources":["tiptap-starter","ckeditor-overview"]

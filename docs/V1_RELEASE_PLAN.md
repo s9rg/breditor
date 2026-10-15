@@ -85,10 +85,11 @@ No competitor implementation was copied into Breditor.
 ## Most important integration gaps
 
 1. **One rich formatting path.** Default Link, color, text-size and richer toolbar
-   policies do not automatically work in the shared editor. Its current renderer
-   hook admits only `span`, `strong`, `em` and `code`; it has no safe anchor or
-   typed color/size recipe. Promote checked presentation and observable control
-   state into that path before advertising those features together.
+   policies do not automatically supply the complete shared product. A new
+   schema-bound rich presentation now reuses the default checked mark, anchor,
+   RGB24 color and integer-token policies. The standard profile, size CSS,
+   integrated controls and observable mixed property state still need to follow
+   before advertising those features together.
 2. **Complete editing grammar.** Add blockquotes, code blocks, horizontal rules,
    task lists and an explicit hard-break policy. Finish general selections across
    container boundaries and natural typing history groups. Unsupported ranges
@@ -114,6 +115,13 @@ does not itself supply an upload server, so compare complete workflows without
 pretending either core extension alone solves every hosting concern.
 
 ## Implementation order and reproducible exits
+
+The active implementation goal covers the first two workstreams: a unified
+installable rich editor, then everyday editing and external interchange. This
+includes the distribution, editing and interchange checkpoints below. Completion
+requires the installed mixed-content and offline/concurrent acceptance tests,
+not only Rust primitives or individual demo controls. Advanced review/document
+workflows and final V1 qualification remain subsequent work.
 
 ### First checkpoint unify the distributed editor
 

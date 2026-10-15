@@ -27,6 +27,13 @@ real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
 TypeScript sources are not part of the package.
 
+The additive `@breditor/browser/presentation` subpath exposes the closed render
+manifest, recipe compiler, attribute resolver and related types without booting
+an editor. The local/shared rich owners reuse those policies instead of copying
+URL, RGB24 or integer-token logic. This subpath consumes read-only declarations;
+it does not mint a Rust schema proof, default compiled-profile generation or
+command authority. Existing root/advanced exports and default ABI are unchanged.
+
 The `0.2.0` implementation requires Wasm ABI 3 and an exact matching Wasm
 package version before it reads the generated engine factory.
 Bootstrap owns

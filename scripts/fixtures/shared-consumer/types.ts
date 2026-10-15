@@ -1,5 +1,5 @@
 import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
-import {RichAssetStore} from "@breditor/experimental-rich-content";
+import {RichAssetStore,createRichInlinePresentation,type RichInlinePresentation} from "@breditor/experimental-rich-content";
 import {model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
 async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
  const core=new SharedRichEditor(raw),assets=await RichAssetStore.open("consumer-assets");
@@ -18,6 +18,7 @@ async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
 void consumer;
 function configuredConsumer(wasm:SharedProfileModule,config:SharedProfileConfiguration,input:string):void{
  const p=compileSharedProfile(wasm,config),a=new SharedRichEditor(p.create(input,"101"));
+ const presentation:RichInlinePresentation=createRichInlinePresentation(p.inline_catalog_json(),{recipes:[]});void presentation;
  const peer=new SharedRichEditor(p.join_frame("room","202",a.updateFrame()));
  p.free();const presence=new SharedPresence(a,{autoExpire:false});presence.announce({writer:"202",session:"typed-peer",label:"Peer"});presence.receive("202","typed-peer","1",peer.presenceFrame());const resolved:SharedPresenceResolution=a.resolvePresence(peer.presenceFrame());void resolved;presence.dispose();const groups=a.writerGroups("0");const through:string=groups.through;void through;void a.writerClock("101");a.undo();a.redo();a.dispose();peer.dispose();
  // @ts-expect-error Integer bounds must be explicit, including null for an unbounded side.

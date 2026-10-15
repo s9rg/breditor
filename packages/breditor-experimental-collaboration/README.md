@@ -51,6 +51,38 @@ inline tags. Configuration carries no executable callbacks, arbitrary block
 registrations or action-routing IDs: shared commands address format literals
 directly. The sealed table/image/nested-flow grammar remains unchanged.
 
+## Shared inline presentation
+
+The matching profile now exposes `inline_catalog_json()`: the original
+`breditor/inline-format-catalog` V1 record derived from the actual compiled Rust
+schema. It contains the complete selector/fingerprint, format revisions and
+exact Boolean/integer/string property domains, including the built-in Strong
+format. It carries no document, room, history or executable presentation code
+and is not a schema proof or permission to author changes.
+
+Use `createRichInlinePresentation(catalogJson, manifest)` from
+`@breditor/experimental-rich-content` and pass the resulting `inlinePresentation`
+to `mountSharedEditor`. The complete manifest has exactly one recipe per admitted
+format. It reuses `@breditor/browser/presentation` for checked tags, ordering and
+the existing closed safe-Link, RGB24 color and integer-token policies. It does
+not duplicate the URL/CSS policy or create a TypeScript content model. The exact
+paired browser dependency is included in installed-package checks.
+
+Catalogs are bounded and copied; declarations and presentation identity are
+immutable. Duplicate/missing recipes, incompatible property domains and ordering
+cycles reject. The selector and fingerprint must match the admitted document
+before mounting changes the host. Unsafe but schema-valid Link strings remain
+stored exactly and render as inert anchors without `href`, `target` or `rel`.
+Integer tokens need host CSS for their visual meaning; they never become arbitrary
+stored CSS. The legacy `inlineTag` option remains separate and cannot be combined
+with `inlinePresentation`.
+
+This is the checked rendering seam, not the complete everyday-formatting product:
+an official starter profile, integrated controls and mixed property state still
+need to be finished. The shared model, journal, default ABI and durable schema
+interpretation do not change. Use the matching generated module for the new
+catalog method; older modules do not provide it.
+
 ## Owner contract
 
 `new SharedRichEditor(raw, options)` transfers exclusive ownership of a matching

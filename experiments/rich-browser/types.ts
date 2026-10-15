@@ -3,6 +3,7 @@ import * as wasm from "../../packages/breditor-experimental-rich-content/dist/br
 import {compileRichProfile, RichAssetStore, insertImageFiles, mountRichEditor, type RichSelection, type RichCommandOutcome, type RichView, type AssetUploader} from "../../packages/breditor-experimental-rich-content/index.js";
 function contract(bootstrap:string,document:string):void {
  const profile=compileRichProfile(wasm,bootstrap);
+ const catalog:string=profile.inlineCatalogJson();void catalog;
  const owner=profile.createEditor(document,"100");
  const view:RichView=owner.view();
  const selection:RichSelection|null=view.selection;

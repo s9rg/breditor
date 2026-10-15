@@ -22,7 +22,7 @@ export interface SharedProfileDescriptor extends Omit<SharedOwnerDescriptor,"for
 }
 /** Independent compiled factory. Caller frees it after all create/restore callbacks finish. */
 export interface SharedRustProfile {
- descriptor_json():string;create(document:string,writer:string):SharedRustOwner;
+ descriptor_json():string;inline_catalog_json():string;create(document:string,writer:string):SharedRustOwner;
  join_frame(room:string,writer:string,frame:string):SharedRustOwner;
  restore(room:string,journal:string):SharedRustOwner;free():void;
 }

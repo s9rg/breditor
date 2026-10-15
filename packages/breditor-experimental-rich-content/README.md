@@ -5,8 +5,8 @@ rich paragraphs/headings/lists, table and image commands, logical selections,
 exact undo/redo, semantic clipboard interchange and replay-proved local recovery.
 It includes a DOM editing surface, expandable toolbar and a combined local demo.
 Optional durable asset and local-session stores are included; uploads require
-an explicit host provider. Shared rich replication and collaboration transport
-remain implementation gates. The default Breditor editor and its bootstrap/ABI
+an explicit host provider. Shared editing and the reference relay live in the
+sibling collaboration package. The default Breditor editor and its bootstrap/ABI
 contracts are unchanged.
 
 Build and test the matching module from the repository root:
@@ -15,7 +15,13 @@ Build and test the matching module from the repository root:
 node scripts/check-rich-browser.mjs
 ```
 
-This writes only private target artifacts and this package's opt-in `dist`.
+This writes private target artifacts and the opt-in `dist`, and rebuilds the
+paired `@breditor/browser` JavaScript presentation helpers. It does not rebuild
+or replace the default Wasm package. `scripts/build-rich-runtime.mjs` also builds
+the exact local rich Wasm before shared-package assembly; installed consumers
+check the local factory and its catalog API rather than trusting a warm output
+folder. A failed compilation or binding generation stops before copying a stale
+runtime into the package.
 The package is private; publishing is not authorized. Release packaging and size
 qualification remain separate from functional checks.
 
@@ -77,6 +83,33 @@ Read encoding is separate from successful mutation;
 `documentJson`, `view`, `clipboard` and `checkpointJson` do not mutate content.
 Dispose owners/profiles explicitly. Disposing a profile does not invalidate
 editors already created from it.
+
+## Schema bound inline presentation
+
+`profile.inlineCatalogJson()` reads the original `breditor/inline-format-catalog`
+V1 record from the compiled Rust schema. It includes exact schema identity,
+format revisions and typed property domains, not document content or a schema
+proof. A local and shared owner can use the same `createRichInlinePresentation`
+compiler and `inlinePresentation` option:
+
+```js
+import {createRichInlinePresentation} from '@breditor/experimental-rich-content';
+
+// Complete renderer for the earlier extensions: [] profile.
+const inlinePresentation = createRichInlinePresentation(profile.inlineCatalogJson(), {
+  recipes: [{formatKind: 'breditor/strong', element: 'strong'}]
+});
+```
+
+Extension profiles need exactly one compatible recipe per admitted format. The
+compiler reuses the default editor's checked tag/order and safe-Link, RGB24 color
+and integer-token policies through `@breditor/browser/presentation`. Tags and
+attributes are closed; arbitrary HTML, CSS and executable callbacks are not
+presentation declarations. Integer tokens need host CSS. Schema mismatch rejects
+before mounting changes the host; unsafe stored Link values become inert anchors
+without changing their canonical Rust value. Declarations are detached and frozen.
+The legacy `inlineTag` option remains separate and cannot be combined with this
+compiled presentation. Standard controls and mixed-state integration remain work.
 
 ## Mount the browser editor
 

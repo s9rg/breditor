@@ -5,6 +5,7 @@ export interface ElementNode {kind:"element";type:string;properties:Readonly<Rec
 export type AstNode=TextNode|ElementNode;
 export interface RichModel {
  readonly view:RichView;
+ readonly schema:Readonly<{name:string;version:number;fingerprint:string}>;
  readonly root:ElementNode;
  readonly nodes:ReadonlyMap<string,ElementNode>;
  readonly parents:ReadonlyMap<string,ElementNode>;
@@ -16,7 +17,7 @@ export const isText=(node:ElementNode):boolean=>node.type==="breditor/paragraph"
 export const text=(node:ElementNode):string=>node.children.map(child=>child.kind==="text"?child.text:"").join("");
 export const cellKey=(cell:RichCell):string=>JSON.stringify([cell.table,cell.row,cell.column]);
 export function model(view:RichView):RichModel {
- const root=(JSON.parse(view.documentJson) as {root:ElementNode}).root;
+ const document=JSON.parse(view.documentJson) as {root:ElementNode;schema:{name:string;version:number};schemaFingerprint:string},root=document.root;
  const nodes=new Map<string,ElementNode>(),parents=new Map<string,ElementNode>(),textBlocks:ElementNode[]=[];
  const walk=(node:ElementNode,parent?:ElementNode):void=>{
   if(node!==root){nodes.set(id(node),node);if(parent)parents.set(id(node),parent);}
@@ -24,7 +25,7 @@ export function model(view:RichView):RichModel {
   for(const child of node.children)if(child.kind==="element")walk(child,node);
  };
  walk(root);
- return {view,root,nodes,parents,textBlocks};
+ return {view,schema:{...document.schema,fingerprint:document.schemaFingerprint},root,nodes,parents,textBlocks};
 }
 export function textTargets(value:RichModel,selection:RichSelection|null=value.view.selection):{block:string;start:string;end:string}[] {
  if(selection?.kind!=="text")return [];

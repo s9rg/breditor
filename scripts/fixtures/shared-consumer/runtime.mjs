@@ -1,11 +1,25 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
+import {createRequire} from "node:module";
 import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter} from "@breditor/experimental-collaboration";
 import {render,model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
+import {createRichInlinePresentation,compileRichProfile} from "@breditor/experimental-rich-content";
+import * as localWasm from "@breditor/experimental-rich-content/wasm";
+import {createInlineFormatRenderManifest,compileInlineFormatRecipes} from "@breditor/browser/presentation";
 const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
 wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
 const vector=JSON.parse(readFileSync(process.env.BREDITOR_PROBE_VECTOR,"utf8"));
+const require=createRequire(import.meta.url);
+localWasm.initSync({module:readFileSync(require.resolve("@breditor/experimental-rich-content/wasm-binary"))});
+const localProfile=compileRichProfile(localWasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/installed-local",version:1},extensions:[]}));
+try{const catalog=JSON.parse(localProfile.inlineCatalogJson());assert.equal(catalog.schema.fingerprint,localProfile.descriptor().schemaFingerprint);assert.equal(catalog.formats[0].kind,"breditor/strong");}finally{localProfile.dispose();}
+const simpleConfiguration={format:"breditor/shared-rich-profile",formatVersion:1,schema:{name:"example/installed-presentation",version:1},extensions:[]};
+const simple=compileSharedProfile(wasm,simpleConfiguration);
+const simpleCatalog=JSON.parse(simple.inline_catalog_json()),manifest=createInlineFormatRenderManifest({recipes:[{formatKind:"breditor/strong",element:"strong"}]});
+const presentation=createRichInlinePresentation(simple.inline_catalog_json(),manifest);
+assert.equal(presentation.schema.fingerprint,simpleCatalog.schema.fingerprint);assert.ok(Object.isFrozen(presentation));
+assert.equal(compileInlineFormatRecipes(simpleCatalog.formats,manifest).length,1);simple.free();
 const a=new SharedRichEditor(new wasm.RichReplicaProbe(vector.rich_local_input,"101"));
 a.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Packaged "}}]});
 a.undo();const checkpoint=a.checkpointJson(),b=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",checkpoint));
