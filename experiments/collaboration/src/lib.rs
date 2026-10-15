@@ -28,6 +28,8 @@ mod validation;
 mod wasm;
 
 #[cfg(target_arch = "wasm32")]
+mod rich_clipboard_ids;
+#[cfg(target_arch = "wasm32")]
 mod rich_replica_wasm;
 
 /// Failures isolated before a candidate session replaces published state.

@@ -345,7 +345,7 @@ history across native/Wasm restoration with exact future operations and journals
 This repairs the isolated history-authoring contract, not the historical WebKit
 runtime fault or the unfinished end-user collaboration workflow.
 
-On October 14, 2026, the reproducible script passed:
+On October 15, 2026, the reproducible script passed:
 
 - 703 default core unit tests and 1,217 opt-in core unit tests.
 - 11 rich-content contract tests, including 256 seeded merge schedules.
@@ -363,26 +363,26 @@ On October 14, 2026, the reproducible script passed:
   cursor, current metadata, edits after restart, entry eviction and exact u64 revisions.
 - 6 merged-grid navigation workflows covering Tab order, focus lanes, directional
   closure, explicit edges, reordered axes and metadata-only redo preservation.
-- 11 structured rich clipboard workflows covering canonical interchange, partial
+- 12 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 retained native collaboration/history contracts and 110 shared rich-AST
+- 27 retained native collaboration/history contracts and 121 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
 - 21 isolated text-flow contracts covering original-source split/join, logical
   range edits, offline typing, causal boundary carets and selective routing history.
 - 3 direct engine history contracts that fail on the unpatched pinned dependency.
 - 3 native comparison-framing tests and 2 Node transport checks, including a
   real input pipe deliberately left open after its complete request frame.
-- 279 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
-  171 shared-AST/selection/paragraph/heading/range/list tests, 24 text-flow lowerer checks
+- 309 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
+  201 shared-AST/selection/paragraph/heading/range/list/clipboard tests, 24 text-flow lowerer checks
   and 9 direct engine-ordering checks.
   The explicit test list includes `rich-replica.spec.mjs`, `rich-selection.spec.mjs`,
   `rich-paragraphs.spec.mjs`, `rich-headings.spec.mjs`, `rich-ranges.spec.mjs`,
-  `rich-lists.spec.mjs` and `text-flow.spec.mjs`;
+  `rich-lists.spec.mjs`, `rich-clipboard.spec.mjs` and `text-flow.spec.mjs`;
   the old 75-test configuration did not exercise these additional families.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - After independently regenerating the native vectors, five repeats of each
-  engine-ordering, paragraph/heading/range/list journal, compound implicit-head
-  and no-op observation regression passed in every browser engine: 150 additional checks.
+  engine-ordering, combined clipboard journal, explicit-header intent and empty-flow
+  caret/history regression passed in every browser engine: 90 additional checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
   formatting and writer IDs above JavaScript's safe-integer range.
@@ -404,9 +404,15 @@ On October 14, 2026, the reproducible script passed:
 - A four-group clipboard workflow with grid, image, whole-table and formatted
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
+- Eleven shared clipboard contracts cover immutable reads, complete inline styles,
+  fresh table/image identities, actual merge clocks, concurrent grid replacements,
+  clear/undo, explicit same-value headers, conditional empty-flow paragraphs,
+  causal carets and exact same-writer restart. Ten matching browser workflows per
+  engine include a combined native journal with fresh table/image/grid paste,
+  offline original-body edits, reload and exact future clear/Undo/Redo operations.
 
-The tested fixture Wasm is 8,404,326 bytes, or 2,284,480 bytes under gzip, with
-SHA-256 `83e1a5e7b865392814d8acb234d6905065c7485acd46889b27797868f868a5ca`.
+The tested fixture Wasm is 8,570,915 bytes, or 2,331,010 bytes under gzip, with
+SHA-256 `81f1a4e1349c1a789cc2d69670818d0633e00368442a03b92383cc8ba5d2aecf`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -595,8 +601,60 @@ promotion, source-preserving item boundaries, concurrent presentation, independe
 empty-head retention, derived cells, spare-slot history, composed groups and no-ops.
 Browser contracts include native journal restoration after reload with exact
 future operations and full journals, including history that predates a retained
-normalization slot. The shared DOM coordinator, structured shared clipboard and
+normalization slot. The shared DOM coordinator and
 general placement-conflict normalization remain separate implementation gates.
+
+## Shared semantic clipboard
+
+`copy_clipboard_guarded` reads the current admitted selection into the original
+bounded `breditor/rich-clipboard` V1 envelope and plain Unicode text. A caret
+copies nothing. Copy changes neither shared content, selection, pending formats,
+history, redo nor the live observation. Stale or foreign observations reject first.
+
+`paste_clipboard_guarded` takes an explicit text, grid or stable flow target.
+Inline paste uses complete source formats and one advanced-caret history recipe.
+Flow paste rekeys every block, table, axis, image, asset generation and merge;
+immutable asset references remain unchanged. The additive core
+`RichClipboardFragment::rekeyed` returns an admitted semantic tree without an
+intermediate local edit or weakening the nonempty-document schema rule.
+Grid paste requires an exactly matching merge-closed rectangle, keeps its axes
+and column widths, and retains every covered source-cell body independently.
+There is no implicit crop, tiling or axis growth.
+
+The named `PasteBlocks`, `PasteTableCells` and `ClearTableCells` actions lower
+core-admitted results to independently owned births, placements, observed-body
+deletions, header choices, merge records and retractions. They never replace a
+shared table/root payload or import local history. New merge records use the
+actual authored action stamp; clocks used to admit clipboard rekeying are discarded.
+New table defaults contain no merge history. Inactive source records/retractions
+are not accepted as semantic flow. Clear preserves axes, headers and merges and
+creates explicit fresh empty paragraphs, including covered cells.
+Whole-flow paste also retains an implicit empty root/cell paragraph when the
+core insertion semantics keep it. Its canonical occurrence and causal caret
+survive the new content, Undo, Redo and same-writer restoration; a conditional
+fallback is not silently dropped when pasted content makes the container nonempty.
+
+An explicit header choice owns intent even when the visible value was already
+equal. `None` preserves the target's header without authoring a competing choice.
+Concurrent pastes keep both independently authored bodies in deterministic order;
+undo hides only its writer's fresh content and retracts its observed-body deletion.
+Edits to a replaced original body remain causal state and reappear when all
+replacements hiding it are undone. Clipboard copying never deletes asset bytes.
+
+The private Wasm owner exposes guarded `copy_clipboard` and `paste_clipboard`.
+Paste accepts a closed request with the semantic fragment, explicit target and
+ordered typed host-allocated IDs. Its outer request limit is 5 MiB and 20,000 IDs;
+the clipboard envelope independently remains capped at 1 MiB. All reservations,
+including unused ones, remain consumed by the host on failure. A stale guard is
+checked before parsing or ID admission. Other existing action, geometry and
+historical-state limits still apply. This is functional Rust/Wasm planning, not
+an OS clipboard acknowledgement, shared DOM event adapter or cross-host asset import.
+Clipboard parents, axes and targets must already be visible when the group is
+prepared; a batch that first creates a target or changes the required grid shape
+can reject atomically. Use an explicitly admitted target publication rather than
+assuming general sequential clipboard planning over not-yet-visible geometry.
+Preparation currently scans the target table to reserve canonical body/header
+fields outside history; it is not yet optimized to scan only the pasted rectangle.
 
 ## Shared heading conversion
 
@@ -737,7 +795,7 @@ replace the earlier experimental model; shipping schemas/codecs are unchanged.
 These are provisional probe limits, not public editor guarantees: 1,000 journal
 entries; 16 MiB serialized journal; 1 MiB opaque engine update in a 5 MiB JSON
 envelope; 4 MiB deep causal state (with independent core document limits);
-64 ordered command steps; 64 KiB inserted text; 10,000
+64 ordered command steps; 64 KiB per inline/range text insertion; 10,000
 formatted runs; 1,000 annotations per run and 50,000 total projected annotations.
 Geometry additionally caps 256 rows, 128 columns, 4,096 cells and 256 merge records.
 All independent limits apply. Hosts can tighten the core geometry ceilings.
@@ -762,8 +820,10 @@ coordinator, collaborative IndexedDB/leases and authorized reference
 relay/presence/asset-provider integration are also unfinished. The fixture
 exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.
-Structured shared clipboard must allocate history-free primitives and authored
-merge stamps, rather than copy local history through the creation record API.
+Shared semantic clipboard planning now allocates history-free primitives and
+authors merge stamps, rather than copying local history through the creation API.
+Connecting those operations to shared browser clipboard events remains part of
+the browser coordinator milestone.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.
 
 Follow-up Firefox large-object comparisons reported zero path/grid coordinates

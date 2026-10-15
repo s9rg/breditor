@@ -481,12 +481,24 @@ paragraph-history operation identities in native and Wasm despite equal views.
 A retained, narrowly patched `loro-internal` 1.16.2 now orders tied containers,
 map fields and pending marks explicitly. All three direct regressions fail on
 the unmodified registry source and pass with the patch. The complete native/Wasm
-checks and 279 Chromium/Firefox/WebKit cases pass, including exact restored future
+checks and 309 Chromium/Firefox/WebKit cases pass, including exact restored future
 operations/journals. See [patch provenance](../experiments/collaboration/vendor/BREDITOR_PATCH.md).
 This repairs engine history authoring, not the historical WebKit runtime fault.
 
-Structured shared clipboard must rekey history-free content and generate shared
-merge operations, rather than import local intent clocks or history.
+Structured shared clipboard now reuses the original semantic codec and fresh-ID
+preparation. Guarded reads preserve UI, observations and redo. Inline paste uses
+complete source formats and an advanced-caret history recipe; flow paste allocates
+fresh content/image/axis identities while keeping immutable asset references.
+Exact merge-closed grid paste retains source partitions and target axes/widths.
+Its merge records use actual shared action clocks, not copied local intent clocks.
+Clear/cut owns fresh empty bodies without removing headers, axes or merge geometry.
+Explicit same-value header choices own intent; an omitted choice preserves the target.
+Concurrent replacements retain both writers' bodies and selective Undo restores
+original content, including remote edits, only when no active replacement hides it.
+The private Wasm clipboard request is capped at 5 MiB and 20,000 typed reserved
+identities, with the independent 1 MiB semantic clipboard limit still enforced.
+Hosts keep all allocated IDs consumed on failure; the browser shared event adapter
+and cross-host asset resolution remain separate integration work.
 Placement-conflict/cycle
 normalization, the browser shared coordinator, leases, collaborative IndexedDB,
 presence and relay/provider integration are also unfinished. The full functional
@@ -850,8 +862,8 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused sessions should complete rich paragraph/list/range planner coverage,
-connect the browser shared coordinator,
+The next focused sessions should connect the existing rich paragraph/list/range and
+clipboard planners to the browser shared coordinator,
 then integrate the reference relay,
 presence and host asset provider with durable collaborative recovery. Local asset
 bytes and local checkpoints are tested, not a substitute for shared causal state

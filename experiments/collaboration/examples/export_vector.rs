@@ -6,6 +6,8 @@ use breditor_collab_feasibility::{
     session::Session,
 };
 
+#[path = "vectors/shared_clipboard.rs"]
+mod shared_clipboard;
 #[path = "vectors/shared_list.rs"]
 mod shared_list;
 #[path = "vectors/shared_range.rs"]
@@ -146,6 +148,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "shared_range":shared_range::generate(&rich_local_input)?,
         "shared_list":shared_list::generate(&rich_local_input)?,
         "shared_empty_list":shared_list::empty(&rich_local_input)?,
+        "shared_clipboard":shared_clipboard::generate(&rich_local_input)?,
     });
     Ok(vector)
 }

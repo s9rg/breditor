@@ -25,6 +25,29 @@ use breditor_core::{
 use serde_json::{Value, json};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+#[test]
+fn rekeyed_semantic_tree_is_admitted_without_an_intermediate_local_edit() -> TestResult {
+    let context = context()?;
+    let document = fixture(&context)?;
+    let fragment = copied(&context, &document, &grid(&document)?)?;
+    let original = RichClipboardJsonCodec::new(context.clone()).encode(&fragment)?;
+    let mut ids = Ids::default();
+    let fresh = fragment.rekeyed(&context, &mut ids)?;
+    assert_eq!(fresh.kind(), fragment.kind());
+    assert_eq!(fresh.plain_text()?, fragment.plain_text()?);
+    assert!(ids.counter > 0);
+    let codec = RichClipboardJsonCodec::new(context.clone());
+    let json = codec.encode(&fresh)?;
+    assert_ne!(json, original);
+    assert_eq!(codec.encode(&codec.decode(&json)?)?, json);
+    assert_eq!(codec.encode(&fragment)?, original);
+    let old_images: Vec<_> = fragment.document().image_ids().cloned().collect();
+    let new_images: Vec<_> = fresh.document().image_ids().cloned().collect();
+    assert_eq!(old_images.len(), new_images.len());
+    assert!(new_images.iter().all(|id| !old_images.contains(id)));
+    Ok(())
+}
+
 fn context() -> Result<EditorContext, Box<dyn std::error::Error>> {
     let schema = CompiledSchema::try_compile_rich_content_profile(
         SchemaId::new(

@@ -34,6 +34,23 @@ impl TargetKinds {
     }
     pub fn record(&mut self, command: &Command) -> Result<(), Error> {
         match command {
+            Command::PasteBlocks(value) => {
+                for node in &value.nodes {
+                    self.node(node)?;
+                }
+            }
+            Command::PasteTableCells(value) => {
+                for cell in value.cells.iter().flatten() {
+                    for node in &cell.body {
+                        self.node(node)?;
+                    }
+                }
+            }
+            Command::ClearTableCells(value) => {
+                for id in &value.empty {
+                    self.insert(id, "breditor/paragraph")?;
+                }
+            }
             Command::WrapList(value) => {
                 self.insert(&value.container, "breditor/bullet-list")?;
                 for item in &value.items {

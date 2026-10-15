@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: ".",
-  testMatch: ["contracts.spec.mjs", "rich-ast.spec.mjs", "rich-replica.spec.mjs", "rich-selection.spec.mjs", "rich-paragraphs.spec.mjs", "rich-headings.spec.mjs", "rich-ranges.spec.mjs", "rich-lists.spec.mjs", "text-flow.spec.mjs"],
+  testMatch: ["contracts.spec.mjs", "rich-ast.spec.mjs", "rich-replica.spec.mjs", "rich-selection.spec.mjs", "rich-paragraphs.spec.mjs", "rich-headings.spec.mjs", "rich-ranges.spec.mjs", "rich-lists.spec.mjs", "rich-clipboard.spec.mjs", "text-flow.spec.mjs"],
   outputDir: "../../../target/collaboration-browser-results",
   workers: 1,
   retries: 0,

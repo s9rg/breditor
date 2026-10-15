@@ -5,6 +5,11 @@
 
 pub mod actions;
 mod annotations;
+mod cell_bodies;
+mod clipboard;
+mod clipboard_flow;
+mod clipboard_grid;
+mod clipboard_plan;
 mod column_order;
 mod creation;
 mod history_cursors;
@@ -35,6 +40,7 @@ mod update_frame;
 mod view;
 
 pub use actions::Command;
+pub use clipboard::{ClipboardContent, PasteTarget};
 pub use observation::SharedObservation;
 pub use session::RichReplica;
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};

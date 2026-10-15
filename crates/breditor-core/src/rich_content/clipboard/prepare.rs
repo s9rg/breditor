@@ -13,6 +13,22 @@ use crate::{
 };
 
 impl RichClipboardFragment {
+    /// Allocate fresh content identities while retaining an admitted semantic clipboard tree.
+    ///
+    /// This prepares shared-action planning/export without inserting an intermediate local edit.
+    /// Immutable asset references remain unchanged. Consumed host IDs stay consumed on failure;
+    /// the receiving owner must still reject historical ID reuse before publication.
+    /// Clipboard merge clocks are semantic values, not shared-authoring proof.
+    ///
+    /// # Errors
+    /// Rejects allocation/source-ID reuse, incompatible receiving schemas or active limits.
+    pub fn rekeyed(
+        &self,
+        context: &EditorContext,
+        allocator: &mut dyn RichClipboardIdAllocator,
+    ) -> Result<Self, RichClipboardError> {
+        rekey::prepare(context, self, allocator)
+    }
     /// Read the canonical inline fragment without allocating irrelevant structural identities.
     ///
     /// # Errors

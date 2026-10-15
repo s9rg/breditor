@@ -1,4 +1,5 @@
 //! Shared semantic actions. Each mutation has its own named, documented source file.
+mod clear_table_cells;
 mod delete_block;
 mod delete_column;
 mod delete_text;
@@ -14,6 +15,8 @@ mod merge_cells;
 mod move_block;
 mod move_column;
 mod outdent_list_items;
+mod paste_blocks;
+mod paste_table_cells;
 mod replace_image;
 mod replace_text_range;
 mod resize_column;
@@ -30,6 +33,7 @@ mod unwrap_list;
 mod wrap_list;
 
 use crate::{Error, register::Stamp};
+pub use clear_table_cells::ClearTableCells;
 pub use delete_block::DeleteBlock;
 pub use delete_column::DeleteColumn;
 pub use delete_text::DeleteText;
@@ -46,6 +50,8 @@ pub use merge_cells::MergeCells;
 pub use move_block::MoveBlock;
 pub use move_column::MoveColumn;
 pub use outdent_list_items::OutdentListItems;
+pub use paste_blocks::PasteBlocks;
+pub use paste_table_cells::{PasteTableCells, PastedCell, PastedMerge};
 pub use replace_image::ReplaceImage;
 pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
 pub use resize_column::ResizeColumn;
@@ -66,6 +72,12 @@ pub use wrap_list::WrapList;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Paste freshly allocated flow, authoring new merge clocks rather than importing history.
+    PasteBlocks(PasteBlocks),
+    /// Paste an exact rich rectangle with independent owned source-cell bodies.
+    PasteTableCells(PasteTableCells),
+    /// Clear/cut a merge-closed rectangle without deleting axes or merge geometry.
+    ClearTableCells(ClearTableCells),
     /// Wrap sibling flow without copying any retained body.
     WrapList(WrapList),
     /// Remove one list layer, preserving nested and rich body order.
@@ -126,6 +138,9 @@ pub enum Command {
 impl Command {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::PasteBlocks(value) => value.prepare(doc)?,
+            Self::PasteTableCells(value) => value.prepare(doc)?,
+            Self::ClearTableCells(value) => value.prepare(doc)?,
             Self::WrapList(value) => value.prepare(doc)?,
             Self::UnwrapList(value) => value.prepare(doc)?,
             Self::SetListKind(value) => value.prepare(doc)?,
@@ -204,6 +219,9 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::PasteBlocks(value) => value.apply(doc, codec, document, stamp, ordinal),
+            Self::PasteTableCells(value) => value.apply(doc, codec, document, stamp),
+            Self::ClearTableCells(value) => value.apply(doc, codec, document, stamp),
             Self::WrapList(value) => value.apply(doc, codec, document, stamp),
             Self::UnwrapList(value) => value.apply(doc, codec, document, stamp),
             Self::SetListKind(value) => value.apply(doc, codec, document, stamp),

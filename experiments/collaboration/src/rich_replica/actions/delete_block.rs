@@ -10,7 +10,7 @@ pub struct DeleteBlock {
     pub block: String,
 }
 impl DeleteBlock {
-    pub(super) fn apply(&self, doc: &LoroDoc, stamp: Stamp) -> Result<(), Error> {
+    pub(in crate::rich_replica) fn apply(&self, doc: &LoroDoc, stamp: Stamp) -> Result<(), Error> {
         super::super::model::metadata(doc, &self.block)?
             .ensure_mergeable_map("deletions")?
             .insert(&stamp.key(), stamp.contribution(true.into()))?;

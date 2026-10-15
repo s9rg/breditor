@@ -38,6 +38,13 @@ struct Dispatch {
     #[serde(default)]
     pending_formats_update: PendingFormatsUpdate,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ClipboardPaste {
+    fragment: String,
+    target: crate::rich_replica::PasteTarget,
+    identities: Vec<crate::rich_clipboard_ids::AllocatedId>,
+}
 
 /// Exclusive shared writer whose exported content is an admitted Breditor rich AST.
 #[wasm_bindgen]
@@ -46,6 +53,36 @@ pub struct RichReplicaProbe {
 }
 #[wasm_bindgen]
 impl RichReplicaProbe {
+    /// Read selected rich/plain content without changing this observation or history.
+    pub fn copy_clipboard(&self, observation: &RichSharedObservation) -> Result<String, JsValue> {
+        serde_json::to_string(
+            &self.inner.copy_clipboard_guarded(&observation.inner).map_err(error)?,
+        )
+        .map_err(error)
+    }
+    /// Paste semantic content with explicit target policy and durable host-allocated IDs.
+    /// All supplied IDs remain consumed by the host on failure, including unused reservations.
+    pub fn paste_clipboard(
+        &mut self,
+        observation: &RichSharedObservation,
+        input: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        if input.len() > 5 * 1024 * 1024 {
+            return Err(error(Error::Limit("shared clipboard request bytes")));
+        }
+        let request: ClipboardPaste =
+            serde_json::from_str(input).map_err(|_| error(Error::Json))?;
+        let mut ids = crate::rich_clipboard_ids::Ids::new(request.identities).map_err(error)?;
+        self.inner
+            .paste_clipboard_guarded(
+                &observation.inner,
+                &request.fragment,
+                request.target,
+                &mut ids,
+            )
+            .map_err(error)
+    }
     /// Capture content, selection, typing state and history with an exact opaque guard.
     pub fn observe(&self) -> Result<RichSharedObservation, JsValue> {
         Ok(RichSharedObservation { inner: self.inner.observe().map_err(error)? })

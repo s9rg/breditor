@@ -9,7 +9,10 @@ use std::collections::BTreeSet;
 pub(super) fn handles(command: &Command) -> bool {
     matches!(
         command,
-        Command::InsertBlocks(_)
+        Command::PasteBlocks(_)
+            | Command::PasteTableCells(_)
+            | Command::ClearTableCells(_)
+            | Command::InsertBlocks(_)
             | Command::InsertRow(_)
             | Command::InsertColumn(_)
             | Command::SetHeader(_)
@@ -126,6 +129,15 @@ fn validate_geometry(
     let context =
         breditor_core::state::EditorContext::new(codec.schema().clone(), codec.limits().clone());
     match command {
+        Command::PasteBlocks(value) => {
+            value.preview(doc, codec, document, crate::register::Stamp::next(doc)?)?;
+        }
+        Command::PasteTableCells(value) => {
+            value.preview(doc, codec, document, crate::register::Stamp::next(doc)?)?;
+        }
+        Command::ClearTableCells(value) => {
+            value.preview(codec, document)?;
+        }
         Command::MergeCells(value) => {
             value
                 .capture(document, crate::register::Stamp::next(doc)?)?
