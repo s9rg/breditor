@@ -15,6 +15,7 @@ mod resize_column;
 mod resize_image;
 mod set_format;
 mod set_header;
+mod set_heading;
 mod set_image_alt;
 mod split_cell;
 mod split_text_block;
@@ -38,6 +39,7 @@ pub use resize_image::ResizeImage;
 use serde::{Deserialize, Serialize};
 pub use set_format::SetFormat;
 pub use set_header::SetHeader;
+pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use split_cell::SplitCell;
 pub use split_text_block::SplitTextBlock;
@@ -46,6 +48,8 @@ pub use split_text_block::SplitTextBlock;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Convert one text block's kind/rank without replacing text or another writer's intent.
+    SetHeading(SetHeading),
     /// Split one admitted flow text block without recreating character identities.
     SplitTextBlock(SplitTextBlock),
     /// Join adjacent admitted text blocks, retaining both original source containers.
@@ -88,6 +92,7 @@ pub enum Command {
 impl Command {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::SetHeading(value) => value.prepare(doc)?,
             Self::SplitTextBlock(value) => value.prepare(doc)?,
             Self::JoinTextBlocks(value) => value.prepare(doc)?,
             Self::MergeCells(value) => value.prepare(doc)?,
@@ -157,6 +162,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::SetHeading(value) => value.apply(doc, codec, document, stamp),
             Self::SplitTextBlock(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::JoinTextBlocks(value) => value.apply(doc, codec, document),
             Self::MergeCells(value) => value.apply(doc, codec, document, stamp),

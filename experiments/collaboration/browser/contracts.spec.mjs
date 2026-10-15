@@ -1,6 +1,17 @@
 import { test, expect } from "@playwright/test";
 import { caseNames } from "./scenarios.mjs";
 
+for (const scenario of ["containers","map-fields","text-marks"]) {
+ test(`engine history authoring order matches native: ${scenario}`,async({page})=>{
+  await page.goto("/");await expect(page.locator("#status")).toHaveText("Ready for contract tests");
+  const result=JSON.parse(await page.evaluate(async scenario=>{
+   const wasm=await import("/probe.js"),vector=await(await fetch("/native-vector.json")).json();
+   return JSON.stringify({actual:wasm.exercise_engine_history(scenario),expected:vector.engine_history_expected[scenario]});
+  },scenario));
+  expect(result.actual).toBe(result.expected);
+ });
+}
+
 for (const name of caseNames) {
   test(`matching Rust/Wasm: ${name}`, async ({ page }) => {
     const errors = [];

@@ -131,7 +131,7 @@ impl RichReplica {
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: 4,
+            version: 5,
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
@@ -156,7 +156,7 @@ impl RichReplica {
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: 4,
+                version: 5,
                 document,
                 writer,
                 origin: Origin::Join { updates },
@@ -239,7 +239,7 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != 4 {
+        if journal.format != "breditor/rich-replica-journal" || journal.version != 5 {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
@@ -336,6 +336,7 @@ impl RichReplica {
             self.refresh_document()?;
         }
         self.undo.group_end();
+        let authored = self.doc.state_frontiers() != frontier;
         if self.undo_count() != undo_count {
             self.cursors.authored(
                 history_key.clone(),
@@ -344,7 +345,9 @@ impl RichReplica {
                 meta,
             )?;
         }
-        self.journal.ui.normalize(&self.doc, &self.document, before_selection.as_ref())?;
+        if authored {
+            self.journal.ui.normalize(&self.doc, &self.document, before_selection.as_ref())?;
+        }
         self.journal.ui.after(&self.codec, &self.doc, &self.document, selection, pending)?;
         self.recipes.insert(
             history_key.clone(),
@@ -525,6 +528,7 @@ impl RichReplica {
                 Command::JoinTextBlocks(value) => &value.left,
                 Command::DeleteText(value) => &value.block,
                 Command::SetFormat(value) => &value.block,
+                Command::SetHeading(value) => &value.block,
                 Command::SetImageAlt(value) => &value.block,
                 Command::ReplaceImage(value) => &value.block,
                 Command::ResizeImage(value) => &value.block,
@@ -546,6 +550,7 @@ impl RichReplica {
                 Command::InsertText(_)
                 | Command::DeleteText(_)
                 | Command::SetFormat(_)
+                | Command::SetHeading(_)
                 | Command::SplitTextBlock(_)
                 | Command::JoinTextBlocks(_) => {
                     if kind != "breditor/paragraph" && kind != "breditor/heading" {

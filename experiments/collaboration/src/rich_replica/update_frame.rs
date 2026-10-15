@@ -46,8 +46,11 @@ pub(super) fn encode(
             version: codec.schema().id().version().get(),
         },
         schema_fingerprint: codec.schema().fingerprint().to_string(),
-        model_version: 3,
-        engine: Engine { name: "loro".into(), version: "1.16.2".into() },
+        model_version: 4,
+        engine: Engine {
+            name: "loro".into(),
+            version: "1.16.2+breditor.deterministic-history.1".into(),
+        },
         bytes,
     })?;
     if value.len() > MAX_FRAME_BYTES {
@@ -66,9 +69,9 @@ pub(super) fn decode(
     let frame: Frame = serde_json::from_str(input)?;
     if frame.format != "breditor/rich-replica-update"
         || frame.format_version != 1
-        || frame.model_version != 3
+        || frame.model_version != 4
         || frame.engine.name != "loro"
-        || frame.engine.version != "1.16.2"
+        || frame.engine.version != "1.16.2+breditor.deterministic-history.1"
     {
         return Err(Error::Contract("rich update protocol binding"));
     }

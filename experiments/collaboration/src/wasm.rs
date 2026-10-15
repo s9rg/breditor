@@ -8,6 +8,12 @@ use crate::{
 };
 use wasm_bindgen::prelude::*;
 
+/// Closed native/Wasm authoring vector for the pinned deterministic history patch.
+#[wasm_bindgen]
+pub fn exercise_engine_history(scenario: &str) -> Result<String, JsValue> {
+    crate::engine_history_fixture::exercise(scenario).map_err(js_error)
+}
+
 fn js_error(error: impl std::fmt::Display) -> JsValue {
     JsValue::from_str(&error.to_string())
 }

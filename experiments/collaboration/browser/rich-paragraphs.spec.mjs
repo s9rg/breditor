@@ -1,8 +1,5 @@
 import {test,expect} from "@playwright/test";
-import {execFileSync} from "node:child_process";
-import {dirname,resolve} from "node:path";
-import {fileURLToPath} from "node:url";
-const compareExports=resolve(dirname(fileURLToPath(import.meta.url)),"../../../target/collaboration-native/debug/examples/compare_engine_exports");
+import {compareEngineExports} from "./compare-exports.mjs";
 
 test.beforeEach(async({page})=>{
  await page.goto("/");await expect(page.locator("#status")).toHaveText("Ready for contract tests");
@@ -39,7 +36,7 @@ test("real shared paragraph split maps causal boundary affinities and preserves 
  expect(result.order).toEqual(["p","right","image-block"]);expect(result.right.type).toBe("breditor/heading");expect(result.right.properties["breditor/level"]).toBe(2);
  expect(result.right.children).toEqual([{kind:"text",text:"🙂b",formats:[{type:"breditor/strong",properties:{}}]}]);
  expect(result.after.selection.anchor).toMatchObject({block:"p",offset:"1"});expect(result.after.selection.focus).toMatchObject({block:"right",offset:"0"});
- expect(result.undo.selection.focus).toMatchObject({block:"p",offset:"1"});expect(result.redo.selection).toEqual(result.after.selection);expect(result.model).toBe(3);expect(result.journal).toBe(4);
+ expect(result.undo.selection.focus).toMatchObject({block:"p",offset:"1"});expect(result.redo.selection).toEqual(result.after.selection);expect(result.model).toBe(4);expect(result.journal).toBe(5);
 });
 
 test("offline text and inherited format annotations survive selective split and format Undo",async({page})=>{
@@ -127,7 +124,7 @@ test("native shared paragraph journal restores in Wasm with exact future source-
    try{return JSON.stringify({actual:{current,redo,typed,undo,retyped},expected,cases,transport:{native:native.document_json()===JSON.parse(vector.current).documentJson&&native.causal_version()===JSON.parse(vector.current).causalVersion,roundtrip:roundtrip.document_json()===a.document_json()&&roundtrip.causal_version()===a.causal_version()}});}finally{native.free();roundtrip.free();}
   }finally{a.free();}
  }));
- const decoded=execFileSync(compareExports,[],{input:JSON.stringify({cases:result.cases}),encoding:"utf8"}).trim().split("\n").map(JSON.parse);
+ const decoded=await compareEngineExports(result.cases);
  for(const value of decoded)expect(value).toMatchObject({operationsEqual:true,causalVersionEqual:true,stateEqual:true,firstOperationDifference:null});
  expect(result.actual).toEqual(result.expected);
  expect(result.transport).toEqual({native:true,roundtrip:true});

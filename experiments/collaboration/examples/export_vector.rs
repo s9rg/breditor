@@ -59,6 +59,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     vector["text_flow_expected"] = text_flow.into();
+    let mut engine_history = serde_json::Map::new();
+    for scenario in breditor_collab_feasibility::engine_history_fixture::SCENARIOS {
+        engine_history.insert(
+            scenario.into(),
+            breditor_collab_feasibility::engine_history_fixture::exercise(scenario)?.into(),
+        );
+    }
+    vector["engine_history_expected"] = engine_history.into();
     let serde_json::Value::Object(rich) = rich_vectors()? else {
         return Err("rich vectors object".into());
     };
@@ -114,6 +122,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         &breditor_collab_feasibility::rich_navigation_fixture::exercise(&rich_ast_input)?,
     )?;
     let shared_paragraph = shared_paragraph_vector(&rich_local_input)?;
+    let shared_heading = shared_heading_vector(&rich_local_input)?;
     let vector = serde_json::json!({
         "rich_ast_input": rich_ast_input,
         "rich_ast_expected": rich_ast_expected,
@@ -128,6 +137,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "rich_clipboard_expected":rich_clipboard_expected,
         "rich_navigation_expected":rich_navigation_expected,
         "shared_paragraph":shared_paragraph,
+        "shared_heading":shared_heading,
     });
     Ok(vector)
 }
@@ -192,5 +202,61 @@ fn shared_paragraph_vector(input: &str) -> Result<serde_json::Value, Box<dyn std
     let retyped = json!({"view":a.view_json()?,"bytes":a.updates()?,"checkpoint":a.checkpoint()?});
     Ok(
         json!({"checkpoint":checkpoint,"current":current,"bytes":bytes,"frame":frame,"redo":redo,"typed":typed,"undo":undo,"retyped":retyped}),
+    )
+}
+
+fn shared_heading_vector(input: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    use breditor_collab_feasibility::{
+        anchor::Affinity,
+        rich_replica::{
+            Command, RichReplica,
+            actions::{InsertText, SetHeading},
+            selection::{Selection, TextPoint},
+        },
+    };
+    use breditor_core::{
+        codec::DocumentJsonCodecV2,
+        extension::{ExtensionLimits, ExtensionSet},
+        identity::QualifiedName,
+        schema::{CompiledSchema, SchemaId, SchemaVersion},
+    };
+    use serde_json::json;
+    let value: serde_json::Value = serde_json::from_str(input)?;
+    let id = SchemaId::new(
+        QualifiedName::try_new(value["schema"]["name"].as_str().ok_or("shared schema")?)?,
+        SchemaVersion::try_new(u32::try_from(
+            value["schema"]["version"].as_u64().ok_or("shared schema version")?,
+        )?)?,
+    );
+    let codec = DocumentJsonCodecV2::new(CompiledSchema::try_compile_rich_content_profile(
+        id,
+        &ExtensionSet::try_new(vec![], ExtensionLimits::default())?,
+    )?);
+    let mut a = RichReplica::new(codec.clone(), input, "9007199254740993".into())?;
+    let mut b = RichReplica::join(codec, "room".into(), "9007199254740995".into(), a.updates()?)?;
+    let point = TextPoint { block: "p".into(), offset: 1, affinity: Affinity::After };
+    a.set_selection(Some(&Selection::TextRange { anchor: point.clone(), focus: point }))?;
+    a.set_pending_formats(Some(&[]))?;
+    a.apply(vec![Command::SetHeading(SetHeading { block: "p".into(), level: Some(2) })])?;
+    b.apply(vec![Command::InsertText(InsertText {
+        block: "p".into(),
+        offset: 1,
+        text: "X🙂".into(),
+    })])?;
+    a.receive(b.updates()?)?;
+    a.undo()?;
+    let checkpoint = a.checkpoint()?;
+    let current = json!({"view":a.view_json()?,"checkpoint":a.checkpoint()?,"bytes":a.updates()?});
+    a.redo()?;
+    let redo = json!({"view":a.view_json()?,"checkpoint":a.checkpoint()?,"bytes":a.updates()?});
+    a.apply(vec![Command::SetHeading(SetHeading { block: "p".into(), level: None })])?;
+    let paragraph =
+        json!({"view":a.view_json()?,"checkpoint":a.checkpoint()?,"bytes":a.updates()?});
+    a.undo()?;
+    let undo = json!({"view":a.view_json()?,"checkpoint":a.checkpoint()?,"bytes":a.updates()?});
+    a.redo()?;
+    let retyped = json!({"view":a.view_json()?,"checkpoint":a.checkpoint()?,"bytes":a.updates()?});
+    Ok(
+        json!({"checkpoint":checkpoint,"current":current,"redo":redo,"paragraph":paragraph,"undo":undo,"retyped":retyped}),
     )
 }

@@ -383,17 +383,18 @@ before Wasm command JSON admission; restored owners have fresh authority. Shared
 caret typing now honors pending/derived formats and advances once in one history
 group. Null pending formats derive; an empty array explicitly types plain text.
 
-The private `breditor/rich-replica-journal` V4 reconstructs the original seed/join,
+The private `breditor/rich-replica-journal` V5 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1–V3 shared journals are rejected explicitly; local rich recovery and default
+V1–V4 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision 3 and engine codec
+envelope. Room ID, schema selector/fingerprint, model revision 4 and the explicit
+engine tag `1.16.2+breditor.deterministic-history.1`
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
 Asynchronous content work can use `apply_at` with the exact causal version. This
@@ -428,12 +429,31 @@ also normalize at the final group boundary, retaining original-axis fallback
 witnesses rather than expanding them to newly created rows.
 Actual shared command contracts cover offline edits,
 concurrent cuts, composed groups, cross-source joins and exact future history
-after restart. The private model is revision 3 and its journal is V4; default
+after restart. The private model is revision 4 and its journal is V5; default
 shipping contracts remain unchanged. The browser DOM coordinator is not yet
 connected to the shared owner. See the
 [text-fragment contract and limits](../experiments/collaboration/README.md#text-fragments-for-shared-paragraph-boundaries).
 
-Shared selected-range replacement, heading and list planners remain to implement.
+Shared heading conversion now captures/adopts the core action and projects one
+writer-owned kind/rank contribution without replacing text sources or formats.
+Concurrent rank changes and masked Undo use the same selective ownership law as
+other fields. Visible normalized paragraphs retain explicit empty heading intent,
+including through concurrent flow insertion; undoing the kind does not discard
+another writer's text. Image captions remain paragraph-only. Native and browser
+checks cover derived cells, newly split targets, exact history/restart and atomic
+rejection. This does not connect the shared owner to the browser DOM coordinator.
+
+Shared selected-range replacement and list planners remain to implement.
+
+The latest verification also exposed engine diff ordering that authored different
+paragraph-history operation identities in native and Wasm despite equal views.
+A retained, narrowly patched `loro-internal` 1.16.2 now orders tied containers,
+map fields and pending marks explicitly. All three direct regressions fail on
+the unmodified registry source and pass with the patch. The complete native/Wasm
+checks and 225 Chromium/Firefox/WebKit cases pass, including exact restored future
+operations/journals. See [patch provenance](../experiments/collaboration/vendor/BREDITOR_PATCH.md).
+This repairs engine history authoring, not the historical WebKit runtime fault.
+
 Structured shared clipboard must rekey history-free content and generate shared
 merge operations, rather than import local intent clocks or history.
 Placement-conflict/cycle

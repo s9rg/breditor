@@ -13,6 +13,12 @@ crate-type = ["rlib", "cdylib"]
 # Prove replication/history before linking a new dependency into shipping crates.
 [workspace]
 resolver = "3"
+exclude = ["vendor/loro-internal-1.16.2"]
+
+# Reproducible engine authoring order for replay-proved same-writer history.
+# The published crates.io source remains untouched; see vendor/BREDITOR_PATCH.md.
+[patch.crates-io]
+loro-internal = { path = "vendor/loro-internal-1.16.2" }
 
 [dependencies]
 breditor-core = { path = "../../crates/breditor-core", features = ["experimental-rich-content"] }

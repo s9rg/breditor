@@ -24,9 +24,9 @@ pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
         }
     }
     let block = virtual_id("root", &[&document]);
-    let fallback = flows.runs(doc, &block)?;
-    if children.is_empty() || !fallback.is_empty() || flows.explicit(&block) {
-        children.insert(0, placeholder(&block, &fallback));
+    let (fallback, explicit) = fallback(doc, &flows, &block)?;
+    if children.is_empty() || explicit {
+        children.insert(0, fallback);
     }
     value
         .get_mut("root")
@@ -110,13 +110,9 @@ fn element(
             .and_then(Value::as_str)
             .is_some_and(|kind| kind == "breditor/paragraph" || kind == "breditor/heading");
         let default = virtual_id("flow", &[block]);
-        let fallback = flows.runs(doc, &default)?;
-        if children.is_empty()
-            || (kind == "breditor/list-item" && !leading_text)
-            || !fallback.is_empty()
-            || flows.explicit(&default)
-        {
-            children.insert(0, placeholder(&default, &fallback));
+        let (fallback, explicit) = fallback(doc, flows, &default)?;
+        if children.is_empty() || (kind == "breditor/list-item" && !leading_text) || explicit {
+            children.insert(0, fallback);
         }
     }
     Ok(Some(
@@ -226,9 +222,44 @@ fn complete_row(
                 continue;
             }
             let text = virtual_id("flow", &[&block]);
-            json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[placeholder(&text,&flows.runs(doc,&text)?)]})
+            json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[fallback(doc,flows,&text)?.0]})
         };
         existing.push(cell);
     }
     Ok(())
+}
+
+/// Normalized text keeps its identity/kind intent without becoming an authored tree occurrence.
+fn fallback(
+    doc: &LoroDoc,
+    flows: &super::text_flow::Projection,
+    block: &str,
+) -> Result<(Value, bool), Error> {
+    let runs = flows.runs(doc, block)?;
+    let mut explicit = !runs.is_empty() || flows.explicit(block);
+    let mut node = placeholder(block, &runs);
+    if let Some(meta) = super::model::optional_metadata(doc, block) {
+        let raw = meta.get_deep_value().to_json_value();
+        for patch in patches(doc, raw.get("effects").unwrap_or(&json!({})))? {
+            explicit = true;
+            let properties = node["properties"]
+                .as_object_mut()
+                .ok_or(Error::Contract("shared normalized text properties"))?;
+            for name in patch.removes {
+                properties.remove(&name);
+            }
+            let mut kind = None;
+            for (name, value) in patch.sets {
+                if name == "$type" {
+                    kind = Some(value);
+                } else {
+                    properties.insert(name, value);
+                }
+            }
+            if let Some(kind) = kind {
+                node["type"] = kind;
+            }
+        }
+    }
+    Ok((node, explicit))
 }

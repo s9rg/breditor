@@ -2,7 +2,9 @@
 use loro::{LoroDoc, ToJson, VersionVector};
 use serde::Deserialize;
 use serde_json::json;
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
+
+const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -18,12 +20,24 @@ struct Case {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let input = read_request(std::io::stdin().lock())?;
+    compare(input)
+}
+
+/// One newline-terminated request; completion must not depend on the pipe reaching EOF.
+fn read_request(reader: impl Read) -> Result<Input, Box<dyn std::error::Error>> {
     let mut input = String::new();
-    std::io::stdin().take(16 * 1024 * 1024 + 1).read_to_string(&mut input)?;
-    if input.len() > 16 * 1024 * 1024 {
+    BufReader::new(reader.take(u64::try_from(MAX_INPUT_BYTES + 1)?)).read_line(&mut input)?;
+    if input.len() > MAX_INPUT_BYTES {
         return Err("comparison input bytes".into());
     }
-    let input: Input = serde_json::from_str(&input)?;
+    if !input.ends_with('\n') {
+        return Err("comparison request needs a newline terminator".into());
+    }
+    Ok(serde_json::from_str(&input)?)
+}
+
+fn compare(input: Input) -> Result<(), Box<dyn std::error::Error>> {
     if input.cases.len() > 8 {
         return Err("comparison cases".into());
     }
@@ -49,6 +63,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Cursor, ErrorKind};
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    struct StillOpen(Cursor<&'static [u8]>);
+    impl Read for StillOpen {
+        fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
+            let length = self.0.read(output)?;
+            if length == 0 && !output.is_empty() {
+                return Err(ErrorKind::WouldBlock.into());
+            }
+            Ok(length)
+        }
+    }
+    #[test]
+    fn a_complete_frame_does_not_wait_for_eof() -> TestResult {
+        let input = read_request(StillOpen(Cursor::new(b"{\"cases\":[]}\n")))?;
+        assert!(input.cases.is_empty());
+        Ok(())
+    }
+    #[test]
+    fn a_frame_requires_its_explicit_terminator() {
+        assert!(read_request(Cursor::new(b"{\"cases\":[]}")).is_err());
+    }
+    #[test]
+    fn oversized_frames_stop_at_the_byte_limit() -> TestResult {
+        let error = read_request(Cursor::new(vec![b' '; MAX_INPUT_BYTES + 1]))
+            .err()
+            .ok_or("oversized comparison was accepted")?;
+        assert_eq!(error.to_string(), "comparison input bytes");
+        Ok(())
+    }
 }
 
 fn difference(

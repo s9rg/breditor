@@ -26,7 +26,7 @@ fn original_update_envelope_checks_room_schema_engine_and_model_before_import() 
     for (field, value) in [
         ("document", json!("other-room")),
         ("schemaFingerprint", json!("other-fingerprint")),
-        ("modelVersion", json!(4)),
+        ("modelVersion", json!(5)),
         ("engine", json!({"name":"loro","version":"other-version"})),
     ] {
         let mut wrong: Value = serde_json::from_str(&frame)?;

@@ -85,6 +85,21 @@ fn definition(doc: &LoroDoc, node: &Value, mode: &str) -> Result<(), Error> {
     Ok(())
 }
 
+/// A visible normalization paragraph can own kind intent without an authored tree occurrence.
+pub(super) fn activate_text(doc: &LoroDoc, block: &str) -> Result<(), Error> {
+    if model::optional_metadata(doc, block).is_some() {
+        return Ok(());
+    }
+    let source = super::materialize::envelope(doc)?;
+    let node = find(&source["root"], block).ok_or(Error::Contract("visible derived text"))?;
+    if !block.starts_with(model::VIRTUAL_PREFIX)
+        || !matches!(node["type"].as_str(), Some("breditor/paragraph" | "breditor/heading"))
+    {
+        return Err(Error::Contract("derived text activation kind"));
+    }
+    definition(doc, node, "derived")
+}
+
 /// A synthesized cell has axis-derived existence, never a second competing authored identity.
 pub(super) fn activate_cell(doc: &LoroDoc, block: &str) -> Result<(), Error> {
     if model::optional_metadata(doc, block).is_some() {
