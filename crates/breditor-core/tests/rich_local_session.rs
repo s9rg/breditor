@@ -2,7 +2,7 @@
 //! Functional rich text/format editing and exact owner-held selection/history workflows.
 
 use breditor_core::{
-    codec::DocumentJsonCodecV2,
+    codec::{DocumentJsonCodecV2, RichSessionJsonCodec},
     document::{Format, FormatSet, PropertyMap, TextFragment, TextRun},
     extension::{ExtensionLimits, ExtensionSet},
     identity::QualifiedName,
@@ -491,6 +491,62 @@ fn one_mixed_rich_dispatch_owns_cell_caption_header_resize_and_exact_selection_h
     owner.redo(&owner.snapshot())?;
     assert_eq!(bytes(&context, owner.state().document())?, changed);
     assert_eq!(owner.state().selection().ok_or("text")?.kind(), &after_selection);
+    Ok(())
+}
+
+#[test]
+fn derived_caret_style_survives_successive_typing_and_exact_history() -> TestResult {
+    let context = context()?;
+    for inherited_strong in [true, false] {
+        let strong = json!([{"type":"breditor/strong","properties":{}}]);
+        let (left, right) =
+            if inherited_strong { (strong, json!([])) } else { (json!([]), strong) };
+        let mut source: Value = serde_json::from_str(&bytes(&context, &original(&context)?)?)?;
+        *source
+            .pointer_mut("/root/children/0/children/0/children/0/children/0/children")
+            .ok_or("fixture paragraph")? = json!([
+            {"kind":"text","text":"a","formats":left},
+            {"kind":"text","text":"🙂b","formats":right}
+        ]);
+        let document = RichDocument::try_admit(
+            context.schema(),
+            DocumentJsonCodecV2::new(context.schema().clone()).decode(&source.to_string())?,
+            context.limits(),
+        )?;
+        let mut owner = RichLocalSession::try_new(
+            context.clone(),
+            document,
+            Some(caret("p", 1, Affinity::Before)?),
+            HistoryCapacity::default(),
+        )?;
+        let formats = owner.state().effective_caret_formats()?;
+        assert_eq!(!formats.is_empty(), inherited_strong);
+        assert!(owner.state().pending_formats().is_none());
+        for text in ["X", "Y", "🙂"] {
+            owner.insert_plain_text(&owner.snapshot(), text)?;
+            assert_eq!(owner.state().effective_caret_formats()?, formats);
+        }
+        let after = bytes(&context, owner.state().document())?;
+        assert_eq!(content(&context, owner.state().document(), "p")?, "aXY🙂🙂b");
+        let codec = RichSessionJsonCodec::new(context.clone());
+        let mut restored = codec.decode(&codec.encode(&owner)?)?;
+        for _ in 0..3 {
+            owner.undo(&owner.snapshot())?;
+            restored.undo(&restored.snapshot())?;
+            assert_eq!(codec.encode(&owner)?, codec.encode(&restored)?);
+        }
+        assert!(owner.state().pending_formats().is_none());
+        for _ in 0..3 {
+            owner.redo(&owner.snapshot())?;
+            restored.redo(&restored.snapshot())?;
+            assert_eq!(codec.encode(&owner)?, codec.encode(&restored)?);
+            assert_eq!(owner.state().effective_caret_formats()?, formats);
+        }
+        assert_eq!(bytes(&context, owner.state().document())?, after);
+        owner.set_selection(&owner.snapshot(), Some(caret("p", 7, Affinity::After)?))?;
+        assert!(owner.state().pending_formats().is_none());
+        assert_eq!(owner.state().effective_caret_formats()?.is_empty(), inherited_strong);
+    }
     Ok(())
 }
 

@@ -16,6 +16,8 @@ use std::collections::BTreeMap;
 
 impl RichReplica {
     /// Type at a shared caret or replace its selected range with admitted source-run formats.
+    /// Successful caret input retains the admitted formats for the next key;
+    /// deriving again at the new boundary would instead select the right run.
     /// # Errors
     /// Unsupported/non-text ranges, invalid input or failed publication preserve all owner state.
     pub fn insert_plain_text(&mut self, text: &str) -> Result<bool, Error> {
@@ -65,7 +67,7 @@ impl RichReplica {
         self.apply_with_state(
             commands,
             SelectionUpdate::Set(Some(Selection::TextRange { anchor: next.clone(), focus: next })),
-            PendingFormatsUpdate::Set(self.pending_formats().map(<[Value]>::to_vec)),
+            PendingFormatsUpdate::Set(Some(formats)),
         )
     }
     /// Guard caret input against every content, selection, pending-format and history publication.

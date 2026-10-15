@@ -16,6 +16,8 @@ use crate::{
 impl RichLocalSession {
     /// Insert plain input with effective pending/derived formats and advance the caret once.
     ///
+    /// Successful input pins its admitted effective styles at the advanced caret,
+    /// just like range typing, so a neighboring run cannot restyle the next key.
     /// Empty input is a true no-op. Range replacement and paragraph/list Enter use
     /// their separately planned actions, not this collapsed-caret typing helper.
     ///
@@ -33,8 +35,9 @@ impl RichLocalSession {
             return Ok(RichLocalOutcome::Unchanged);
         }
         let formats = self.state.effective_caret_formats()?;
-        let text: TextFragment =
-            TextRun::try_new(text, formats).map_err(|_| RichActionError::TextPrimitive)?.into();
+        let text: TextFragment = TextRun::try_new(text, formats.clone())
+            .map_err(|_| RichActionError::TextPrimitive)?
+            .into();
         let action =
             RichAction::InsertText(InsertText::capture(&self.state.document, &point, &text)?);
         let next = RichTextPoint::new(
@@ -52,7 +55,7 @@ impl RichLocalSession {
                 anchor: next.clone(),
                 focus: next,
             })),
-            RichPendingFormatsUpdate::Set(self.state.pending_formats.clone()),
+            RichPendingFormatsUpdate::Set(Some(formats)),
         )
     }
 }

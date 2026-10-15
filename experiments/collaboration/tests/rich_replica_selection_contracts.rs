@@ -145,6 +145,63 @@ fn deleted_emoji_caret_restores_scalar_alignment_through_repeated_history() -> T
 }
 
 #[test]
+fn derived_caret_style_survives_successive_typing_and_exact_restart() -> TestResult {
+    for inherited_strong in [true, false] {
+        let (left, right) = if inherited_strong {
+            (json!([strong()]), json!([]))
+        } else {
+            (json!([]), json!([strong()]))
+        };
+        let (seed, _) = peers()?;
+        let mut source: Value = serde_json::from_str(seed.document_json())?;
+        *source
+            .pointer_mut("/root/children/0/children/0/children/0/children/0/children")
+            .ok_or("fixture paragraph")? = json!([
+            {"kind":"text","text":"a","formats":left},
+            {"kind":"text","text":"🙂b","formats":right}
+        ]);
+        drop(seed);
+        let mut a = RichReplica::new(codec()?, &source.to_string(), "1".into())?;
+        let mut b = RichReplica::join(codec()?, "room".into(), "2".into(), a.updates()?)?;
+        a.set_selection(Some(&caret("p", 1, Affinity::Before)))?;
+        assert!(a.pending_formats().is_none());
+        for text in ["X", "Y", "🙂"] {
+            a.insert_plain_text(text)?;
+            let observation = a.observe()?;
+            assert_eq!(
+                serde_json::from_str::<Value>(&a.caret_formats_json_guarded(&observation)?)?,
+                left
+            );
+        }
+        b.apply(vec![insert("caption", 0, "Remote ")])?;
+        sync(&mut a, &mut b)?;
+        let after = a.document_json().to_owned();
+        let mut restored = RichReplica::restore(codec()?, "room", &a.checkpoint()?)?;
+        for _ in 0..3 {
+            a.undo()?;
+            restored.undo()?;
+            assert_eq!(a.view_json()?, restored.view_json()?);
+        }
+        assert!(a.pending_formats().is_none());
+        for _ in 0..3 {
+            a.redo()?;
+            restored.redo()?;
+            assert_eq!(a.view_json()?, restored.view_json()?);
+        }
+        assert_eq!(a.document_json(), after);
+        assert_eq!(a.updates()?, restored.updates()?);
+        a.set_selection(Some(&caret("p", 7, Affinity::After)))?;
+        assert!(a.pending_formats().is_none());
+        let observation = a.observe()?;
+        assert_eq!(
+            serde_json::from_str::<Value>(&a.caret_formats_json_guarded(&observation)?)?,
+            right
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn shared_plain_typing_derives_formats_and_explicit_plain_override_does_not_inherit_strong()
 -> TestResult {
     let (mut a, _) = peers()?;
