@@ -70,6 +70,18 @@ owns temporary files; it neither authenticates nor merges/acknowledges documents
 The browser socket fixture is test/admin support; the optional browser package
 now has its own `SharedRelaySync` reconnect API and durable registration helper. The
 interactive `/demo` still exchanges updates only within its own page.
+The separate `/network-demo` uses actual native networking. After the full
+functional build, run `npm run demo:shared:network`; it opens a private retained
+developer room with Alice/Bob accounts, uploaded images and authenticated peer
+overlays. The launcher and optional `network_demo` Rust example deliberately
+provision these local accounts; they are not public login/provisioning APIs.
+The frontend bootstrap includes both demo tokens and must stay loopback-only.
+
+The final integrated check passes 231 shared browser cases and six installed-
+archive mixed workflows, the native 229 editor/20 relay contracts and launcher
+restart retention. The full regression run also passes all 309 existing
+collaboration and 105 local rich browser cases, core suites and doctests.
+No default shipping graph, shared model, journal or existing Wasm ABI changes.
 
 ## Authenticated raster assets
 
@@ -233,10 +245,10 @@ role entries. The stricter existing rich owner budgets also apply, including
 1,000 journal entries and bounded causal state. These are explicit rejection
 limits, not a rolling compaction implementation or throughput/SLA promise.
 
-Remaining functional integration: combined network demo,
-import-worker isolation and promotion of the optional
-Rust/Wasm distribution. Local storage and writer transactions alone do not
-complete the full collaboration goal. Exhaustive adversarial, physical IME and
+Remaining release work: import-worker isolation, TLS/deployment qualification,
+promotion of the optional Rust/Wasm distribution and a real pilot. The combined
+network demo now integrates the functional editor, server, images and presence.
+Exhaustive adversarial, physical IME and
 accessibility qualification remain deferred as requested.
 
 Implementation references: [standard file locking and sync](https://doc.rust-lang.org/std/fs/struct.File.html),

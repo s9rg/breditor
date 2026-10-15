@@ -1,20 +1,19 @@
 # Breditor rich content and offline collaboration plan
 
-Status: implementation authorized October 13, 2026; replication feasibility is
-the first checkpoint. Japanese IME and spoken VoiceOver qualification are
-deferred at the user's request, not reported as passing. Existing formats and
-shipping packages remain unchanged. It extends the requested scope to tables, images and
-full collaboration in one interoperable editor. Implementation checkpoints are
-not permission to reduce collaboration to an online-only demo.
+Status: the functional feature goal is complete. Tables, images and offline
+collaboration work together through the opt-in editor and real reference relay.
+Production release qualification remains separate. Japanese IME, spoken
+VoiceOver and exhaustive edge-case qualification are deferred at the user's
+request, not reported as passing. Existing shipping formats/packages are unchanged.
 
-## Functional completion goal
+## Completed functional goal
 
-The active goal is to finish the combined features functionally and prove their
-normal workflows with reproducible Rust, Wasm and browser tests. Accessibility,
+The completed goal covers the combined features and their normal workflows,
+proved by reproducible Rust, Wasm and browser tests. Accessibility,
 physical IME and exhaustive edge-case qualification follow in a later pass; the
 functional goal does not claim production release qualification.
 
-Work proceeds through these connected exits:
+The implemented and tested exits are:
 
 1. Complete rich core commands, text/format/list/caption editing and exact local
    history/reload. Table/image commands must operate on the same cell/block AST.
@@ -28,7 +27,41 @@ Work proceeds through these connected exits:
    including two collaborators, offline recovery, uploads and undo/redo. Commit
    tested local checkpoints without pushing or publishing.
 
-## Current implementation
+## Current functional integration
+
+The opt-in editor now combines tables, images and offline shared editing through
+the actual Rust relay. `npm run demo:shared:network` starts a loopback-only
+retained developer room. Exact local journals, independent asset caches,
+server receipts and authenticated peer overlays use the same packaged APIs as
+applications. Local save, server acknowledgement and image upload states stay
+separate. Two-account and independent-context workflows cover offline edits,
+relay restart, page reload and selective Undo/Redo. The same mixed workflow also
+runs from installed npm archives without workspace links. The original same-page
+demo and shipping package contracts are preserved.
+
+This is functional integration, not production release qualification. The
+matching shared Rust/Wasm still comes from the isolated build; promotion of its
+distribution, import-worker isolation, public authentication/TLS, measurements,
+a real pilot and the deferred reliability/accessibility pass remain release work.
+The private developer bootstrap supplies both demo tokens to its local page and
+must never be exposed publicly.
+
+The final verification passes 231 shared-editor browser cases, six installed-
+archive mixed-workflow cases, 309 existing collaboration cases and 105 local
+rich-editor cases: 651 browser test runs across Chromium, Firefox and WebKit.
+It also passes 229 private native contracts, 20 native relay contracts, 703
+default and 1,217 opt-in core tests, 137 doctests, rich integration suites,
+strict native/Wasm lints, generated/installed TypeScript, archive runtime and
+launcher restart checks. No retries, deadline relaxations or assertion weakening
+were introduced. Per-file WebKit isolation preserves coverage; this does not
+establish a repair of the historical engine/process reliability risk.
+
+Reproduce with `node scripts/check-shared-browser.mjs`,
+`node scripts/check-collaboration-feasibility.mjs` and
+`node scripts/check-rich-browser.mjs`. Tested local checkpoints are saved;
+nothing is pushed, published or publicly deployed.
+
+## Implementation checkpoints
 
 Implemented checkpoints include an isolated, pinned Rust/Wasm replication
 coordinator, feature-gated rich geometry/image values, a separate sealed rich
@@ -1096,7 +1129,8 @@ future history. Kind/move and nested-table conflicts now retain content through
 compatible positions and reserved root occurrences. The configurable shared
 profile now supplies schema/format compilation and exact create/join/restore.
 The next focused sessions should promote its optional Rust/Wasm distribution and
-integrate the reference relay into the combined demo with network presence/overlays.
+qualify deployment, resource isolation and a real pilot. The combined network
+demo now integrates the reference relay, cross-host assets and peer overlays.
 Durable shared causal journals, server acknowledgement and independently hosted
 image bytes now have separate explicit contracts. Arbitrary cross-container
 text ranges and typing coalescing remain separate support limits. Schedule the full

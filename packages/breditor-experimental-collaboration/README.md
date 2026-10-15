@@ -225,8 +225,8 @@ immediate new connect starts a new lifecycle rather than reusing that promise.
 `sync.dispose()` stops networking only. Save/close its persistent session next,
 then dispose the mounted DOM editor, which owns its core. Permission loss,
 lease replacement and transport disposal never delete a local journal or
-dispose an independently owned core. Combined network-demo integration and optional Rust/Wasm
-distribution promotion remain separate gates.
+dispose an independently owned core. Optional Rust/Wasm distribution promotion
+and production deployment qualification remain separate gates.
 
 The prior reconnect checkpoint passed 189 combined browser cases (63 in each engine), 229
 native editor contracts, 12 native relay tests, strict native/Wasm lints,
@@ -393,6 +393,44 @@ image bytes in local IndexedDB. It sends no document data to an external service
 The first check includes the isolated offline package-consumer check; the second
 command can rerun that packaging proof without rebuilding matching artifacts.
 
+For the actual Rust relay, image hosting and authenticated peer overlays:
+
+```sh
+npm run demo:shared:network
+```
+
+Open `http://127.0.0.1:49781/network-demo`. The launcher starts an explicitly
+provisioned native host on loopback 49782 and an immutable frontend snapshot on
+49781. Each editor has its own exact journal, account/writer credential, asset
+cache and Undo history. Go offline, edit text/tables/images, reconnect, upload
+pending bytes, then reload. Local save, server acknowledgement and uploaded
+images have separate indicators. Single-account `?peer=alice` and `?peer=bob`
+pages fill the viewport and can run in separate browser contexts; the same
+origin-wide writer cannot be cloned into another live tab.
+
+The ignored private `target/network-demo-model11-journal12-v1` directory retains
+the log, images, account tokens and initial profile/document. Restart reuses
+them without replacing history; incompatible initial configuration rejects.
+Keep the directory and browser's exact IndexedDB journals/credentials when
+testing recovery. Clearing only browser history is not a way to restore an old
+writer. The sample deliberately gives its local frontend both demo account
+tokens. It is not an identity-provider login, multi-tenant service or public
+deployment; do not expose either listener outside loopback. The earlier `/demo`
+and existing live demo processes remain separate and unchanged.
+
+The canonical check also verifies launcher restart retention and runs the same
+mixed-content demo scenarios against npm archives installed without workspace
+links. `installed-network.config.mjs` uses those retained installed package
+paths, while the host explicitly supplies the matching generated Rust/Wasm.
+
+The final functional check passes 231 shared-editor browser cases plus six
+installed-archive mixed-workflow cases, 229 native editor and 20 native relay
+contracts, strict lints and generated/installed types. The broad regression run
+also passes 309 existing collaboration and 105 local rich browser cases, 703
+default and 1,217 opt-in core tests, 137 doctests and rich integration suites.
+That is 651 browser runs with zero retries or relaxed checks. This is a local
+functional checkpoint, not a published or production-qualified release.
+
 ## Durable shared sessions
 
 `SharedPersistentSession.open({database, room, writer, create, restore})` obtains
@@ -428,8 +466,8 @@ Existing V8/V9/V10/V11 databases are preserved, not upgraded, overwritten or sil
 treated as document-only imports. Resume old journals with their matching old
 owner until an explicit migration workflow exists.
 
-The full collaboration goal still includes combined network-demo integration,
-network presence and optional Rust/Wasm distribution promotion. The package now supplies its
+The combined network demo now integrates reconnect, shared assets and presence.
+Optional Rust/Wasm distribution promotion remains a release gate. The package supplies its
 own typed reconnect coordinator; the lower-level browser socket fixture remains
 test/admin support. The bounded
 journal rebuild is a correctness reference, not a production throughput claim.

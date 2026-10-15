@@ -12,6 +12,7 @@
   },
   "scripts": {
     "demo:lists": "vite --config vite.lists.config.ts --port 4187 --strictPort",
+    "demo:shared:network": "node scripts/demo-shared-relay.mjs",
     "build:demo:lists": "vite build --config vite.lists.config.ts",
     "test:demo:lists": "playwright test --config playwright.lists.config.ts",
     "typecheck:demo:lists": "tsc -p examples/lists/tsconfig.json && tsc -p tests/lists/tsconfig.json",

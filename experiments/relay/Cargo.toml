@@ -32,6 +32,11 @@ name = "breditor-collab-relay"
 path = "src/main.rs"
 required-features = ["server"]
 
+[[example]]
+name = "network_demo"
+path = "examples/network_demo.rs"
+required-features = ["server"]
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"

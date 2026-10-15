@@ -11,5 +11,7 @@ run(resolve(root,"node_modules/.bin/tsc"),["-p","packages/breditor-experimental-
 run(resolve(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--lib","ES2022,DOM,ESNext.Disposable","--module","NodeNext","experiments/shared-browser/types.ts"]);
 for(const name of["LICENSE-MIT","LICENSE-APACHE"])cpSync(resolve(root,name),resolve(root,"packages/breditor-experimental-collaboration",name));
 run(process.execPath,["--test","scripts/shared-browser-runs.test.mjs"]);
+run(process.execPath,["--test","experiments/shared-browser/network-host.test.mjs"]);
 run(process.execPath,["scripts/check-shared-browser-matrix.mjs"]);
 run(process.execPath,["scripts/check-shared-package.mjs"]);
+run(resolve(root,"node_modules/.bin/playwright"),["test","--config","experiments/shared-browser/installed-network.config.mjs"]);

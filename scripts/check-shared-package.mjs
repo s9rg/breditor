@@ -1,6 +1,6 @@
 // Local archives only. No publication or registry access, and no workspace resolution in the consumer.
 import {execFileSync} from "node:child_process";
-import {cpSync,mkdirSync,mkdtempSync} from "node:fs";
+import {cpSync,mkdirSync,mkdtempSync,writeFileSync} from "node:fs";
 import {resolve,dirname,join} from "node:path";
 import {tmpdir} from "node:os";
 import {fileURLToPath} from "node:url";
@@ -12,3 +12,4 @@ execFileSync(resolve(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--tar
 const artifacts=resolve(root,"target/collaboration-feasibility-web");
 execFileSync(process.execPath,["runtime.mjs"],{cwd:consumer,stdio:"inherit",env:{...process.env,BREDITOR_PROBE_MODULE:resolve(artifacts,"breditor_collab_feasibility.js"),BREDITOR_PROBE_BINARY:resolve(artifacts,"breditor_collab_feasibility_bg.wasm"),BREDITOR_PROBE_VECTOR:resolve(artifacts,"native-vector.json")}});
 console.log(`Retained local package proof: ${temporary}`);
+writeFileSync(resolve(root,"target/shared-installed-consumer.json"),JSON.stringify({consumer,archives:packs.map(pack=>resolve(archives,pack.filename))}));

@@ -1097,6 +1097,19 @@ installed archives. With the prior unchanged legacy matrix, retained evidence
 covers 534 browser cases. The canonical WebKit plan preserves every file once
 without retries or altered deadlines/assertions; it is not an engine repair claim.
 
+## Combined network demo
+
+The completed functional integration now includes the real network demo:
+`npm run demo:shared:network`. It uses separate durable writers/caches, native
+server acknowledgement, shared raster hosting and authenticated peer overlays.
+The final check passes 231 shared browser cases, six installed-archive mixed
+workflows, 229 private native and 20 relay contracts, strict native/Wasm lints,
+types and runtime checks. Broad regression also passes 309 existing collaboration
+and 105 local rich browser cases, 703 default/1,217 rich core tests and 137
+doctests: 651 browser runs overall, without retries or relaxed checks. Public
+release still needs distribution promotion, resource/TLS qualification, a real
+pilot and the deferred reliability/accessibility pass. Nothing is published.
+
 ## Shared semantic clipboard
 
 `copy_clipboard_guarded` reads the current admitted selection into the original
