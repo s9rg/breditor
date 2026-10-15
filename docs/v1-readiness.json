@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "44565f67a05a67338237cf9264ed8f6aa5d7d600",
+  "baselineCommit": "5e07105ad5a90b5568cd949f6c6dd229a800768f",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -68,17 +68,17 @@
     {
       "id":"blockquotes-code-rules","area":"Editing","status":"missing",
       "summary":"Blockquotes, code blocks and horizontal rules",
-      "current":"The admitted rich flow grammar contains paragraph, heading, lists, table and image, not these three common block kinds.",
+      "current":"The explicit native rich-language V2 now admits blockquotes, unformatted code with a bounded language and empty rules, with separate guarded actions, stable selections, explicit formatting loss and exact local history. Existing Wasm/SDK factories stay V1 and shared model 11 rejects V2 before import; integrated rendering, navigation, shared policies and migration remain open.",
       "acceptance":"Add original Rust contracts and separate actions for each kind, including code language/text rules, boundary navigation, shared conflict policy and migration.",
-      "evidence":["crates/breditor-core/src/rich_content/drafts.rs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/schema/rich_content_profile_v2.rs","crates/breditor-core/tests/rich_structural_v2.rs"],
       "sources":["tiptap-starter","tiptap-source-starter","ckeditor-digest"]
     },
     {
       "id":"line-and-block-navigation","area":"Editing","status":"partial",
       "summary":"Hard breaks and navigation around atomic blocks",
-      "current":"The shared input bridge inserts LF for insertLineBreak and supports node/grid navigation. That is not a separately specified hard-break node or a complete gap/drop/trailing-block experience.",
+      "current":"Local/shared native owners now have named guarded hard-break commands: one LF in one history group without a new block, retaining logical-start styles and peer edits. Browser Shift+Enter and explicit beforeinput replacement targets use distinct routes. Atomic-block arrows, deletion, gap/drop positions and trailing-text recovery remain incomplete.",
       "acceptance":"Specify soft-break semantics, create reachable text positions around every atom, and test Shift+Enter, arrows, deletion and empty-document recovery.",
-      "evidence":["packages/breditor-collaboration/src/controller.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/local_session/insert_hard_break.rs","crates/breditor-collaboration/src/rich_replica/insert_hard_break.rs","experiments/editor-browser/hard-break.spec.mjs"],
       "sources":["tiptap-starter","tiptap-source-starter"]
     },
     {
@@ -92,9 +92,9 @@
     {
       "id":"task-lists","area":"Lists","status":"missing",
       "summary":"Interactive task lists",
-      "current":"The sealed rich grammar has no task item or checked-state contract.",
+      "current":"The explicit native rich-language V2 now has task lists, prose-led task items and required Boolean checked state, with draft, wrap/unwrap and explicit set-checked actions retaining tails and exact local history. Browser controls, task keyboard behavior, V2 shared admission/conflicts and foreign interchange remain open.",
       "acceptance":"Add typed checked state with keyboard and pointer behavior, nesting, clipboard, conflict policy and author-local history.",
-      "evidence":["crates/breditor-core/src/rich_content/drafts.rs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/structural_drafts.rs","crates/breditor-core/src/rich_content/actions/set_task_checked.rs","crates/breditor-core/tests/rich_structural_v2.rs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {

@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `44565f6` (saved locally,
+The latest functional implementation checkpoint is `5e07105` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -82,6 +82,20 @@ SSR placeholders and production builds. Final qualification passes 51 installed
 SDK, 78 installed-network and 84 affected source browser runs, plus 28 SDK unit
 cases and the default package/type/script regressions. Exact archive hashes are
 retained in the linked checkpoint.
+The subsequent [native structural V2 contracts](RICH_STRUCTURAL_V2.md) add
+blockquote/code/rule/task drafts and nine separate actions, with explicit code
+format loss and exact local history. V1 grammar and fingerprints remain unchanged.
+These new blocks are not yet exposed by the SDK or shared model 11. Named hard
+break commands do work through the existing local/shared SDK. Regression tests
+reproduced a misrouted explicit line-break target and WebKit's tested Shift+Enter
+paragraph event; the repaired routes pass all 66 installed SDK and 78 application
+network cases. They are separate from the historical intermittent WebKit fault.
+The [qualification record](qualification/2026-10-15-structural-v2-hard-break.json)
+also passes all 303 shared source, 165 local source and 78 legacy installed browser
+cases, the complete shared compatibility gate, opt-in Rust/Wasm and default
+regressions. Its 690 overlapping browser runs do not qualify unfinished V2
+browser/shared blocks or full V1 readiness. Pre-fix failures and exact archive
+hashes are retained alongside the passing results.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
@@ -169,8 +183,9 @@ No competitor implementation was copied into Breditor.
    including Link, scalar fields and caret styles. They still need promotion into
    the public V1 distribution. Complete-map replacement is explicit; preserving
    other mixed properties during a field-only patch is not yet supported.
-2. **Complete editing grammar.** Add blockquotes, code blocks, horizontal rules,
-   task lists and an explicit hard-break policy. Finish general selections across
+2. **Complete editing grammar.** Integrate the new native V2 blockquote, code,
+   horizontal-rule and task contracts through Wasm, browser and shared owners.
+   Named hard breaks now have a one-LF policy. Finish general selections across
    container boundaries and natural typing history groups. Unsupported ranges
    currently reject; arbitrary flattening is not an acceptable shortcut.
 3. **Interchange.** Add sanitized rich HTML and Markdown adapters, then realistic

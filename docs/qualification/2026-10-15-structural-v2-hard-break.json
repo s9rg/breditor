@@ -1,0 +1,91 @@
+{
+  "date":"2026-10-15",
+  "sourceCheckpoint":"5e07105ad5a90b5568cd949f6c6dd229a800768f",
+  "scope":"Explicit native rich-language V2 structural foundation and named local/shared hard-break APIs, including repaired browser replacement-target routing and a tested WebKit Shift+Enter paragraph-event mismatch. Existing SDK/shared factories remain V1; the new block/task types are not yet integrated browser/shared features.",
+  "releaseQualified":false,
+  "goalComplete":false,
+  "nativeStructuralContracts":{
+    "factory":"CompiledSchema::try_compile_rich_content_profile_v2",
+    "revision":2,
+    "v1Unchanged":true,
+    "v1GoldenFingerprint":"sha256:6b9ac97d51e454591c16ae61a95f2cdd2fb91df67fe217f490a5024000aed958",
+    "nodes":["breditor/blockquote","breditor/code-block","breditor/horizontal-rule","breditor/task-list","breditor/task-item"],
+    "code":"Unformatted exact Unicode/LF/CR/tab text, optional case-preserving 1..64-byte ASCII language token, explicit RejectFormatted or RemoveFormats conversion policy, no nonempty pending inline styles. Prose split/join do not guess code language merge/exit rules.",
+    "tasks":"Required Boolean checked state, paragraph/heading head and retained rich tail; nested tasks are admitted. Checked changes set an explicit value, not a state-dependent toggle.",
+    "actions":["set_code_block.rs","set_code_language.rs","set_task_checked.rs","wrap_blockquote.rs","unwrap_blockquote.rs","wrap_task_list.rs","unwrap_task_list.rs","insert_horizontal_rule.rs","delete_horizontal_rule.rs"],
+    "admission":"Sealed revision/fingerprint proof, closed semantic properties and existing resource limits. Nested tables remain forbidden through quotes and task tails. Full candidate validation and exact inverses preserve atomic local history.",
+    "sharedBoundary":"Shared model 11 explicitly rejects V2 before seed parsing or engine import. Existing local Wasm/SDK and configured shared factories still select V1; no journal or saved document is silently migrated."
+  },
+  "hardBreak":{
+    "local":"RichLocalSession::insert_hard_break / Wasm {kind: insertHardBreak} with no payload",
+    "shared":"RichReplica::insert_hard_break_guarded / SharedRichEditor.hardBreak(revision?)",
+    "semantics":"Replace a supported text selection with one U+000A in one history group, preserving logical-start formats, stable block identity and peer contributions. The caret advances by one UTF-16 unit. No new AST/wire operation or line-ending normalization is introduced.",
+    "keyboard":"Unmodified Shift+Enter is owned at keydown for text selections, before browser paragraph translation. Composition keys, modified shortcuts and grid Enter remain separate. Explicit beforeinput replacement targets are still honored independently of the visible caret.",
+    "oldBindingCompatibility":"The shared coordinator uses the additive guarded Wasm method when available, otherwise the existing equivalent guarded insert_plain_text(observation, LF) call. Retirement fencing applies to both."
+  },
+  "reproductions":[
+    {"kind":"explicit-beforeinput-target","consumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-Pmea2Z/consumer","beforeFailures":3,"engines":["chromium","firefox","webkit"],"input":"Visible caret at p:0; synthetic insertLineBreak target covers the emoji at UTF-16 p:1..3 in a🙂b.","expected":"a\nb with caret 2","actualBefore":"\na🙂b with caret 1","cause":"The local bridge returned through its line-break branch before reading getTargetRanges.","repair":"Read the explicit target first; only a target at the current collapsed caret uses ordinary hard-break typing.","retainedEvidence":"target/hard-break-before-fix/hard-break-local-hard-brea-3d150-ther-than-the-visible-caret-{chromium,firefox,webkit}","qualification":"A deterministic synthetic API regression, not a native input-method observation."},
+    {"kind":"webkit-shift-enter","developmentMatrix":{"passed":58,"failed":2,"total":60},"engine":"webkit","input":"Automation Shift+Enter at p:1 in styled a🙂b, tested in local and durable shared installed editors.","expected":"One a\n🙂b text block","actualBefore":"p contains a; a newly created following paragraph contains 🙂b. The suffix moved; it was not deleted.","observedEvents":"WebKit dispatched insertParagraph with a collapsed target at offset 1; Chromium dispatched insertLineBreak for the same automation key sequence.","repair":"Resolve the Shift+Enter keyboard meaning before beforeinput, without a user-agent branch or replacement-target suppression.","retainedEvidence":["target/hard-break-before-fix/shift-enter-local-webkit","target/hard-break-before-fix/shift-enter-shared-webkit"],"qualification":"Separate from the historical intermittent WebKit engine fault; not physical Safari/IME qualification."},
+    {"kind":"default-disabled-feature-test-docs","before":"cargo check --workspace --all-targets with rich features disabled failed missing_docs in existing cfg-gated integration crates.","cause":"Whole-crate feature guards preceded their inner crate documentation, leaving disabled crates undocumented.","repair":"Place crate documentation before the guard in sixteen rich test files, including the new structural test. No assertions, feature guards, target coverage or warning policies were removed.","after":"The same complete default all-target check exits 0; final strict opt-in all-target Clippy also exits 0."}
+  ],
+  "nativeChecks":{
+    "workspaceCommand":"cargo test --workspace --locked --offline --features breditor-core/experimental-rich-content,breditor-wasm/experimental-rich-content --quiet",
+    "workspacePassed":2315,
+    "workspaceCountNote":"Sum of passing tests reported by the complete opt-in workspace run, including 136 doctests. This is not --all-features or a browser/Wasm-target execution count.",
+    "coreLibraryPassed":1218,
+    "newStructuralIntegrationPassed":16,
+    "wasmNativeLibraryPassed":44,
+    "richWasmBoundaryPassed":18,
+    "applicationSharedNativePassed":205,
+    "researchSharedNativePassed":235,
+    "strictNativeClippy":true,
+    "localAndApplicationWasmClippy":true,
+    "rustdocWarningsDenied":true,
+    "formatChecks":true,
+    "defaultAllTargetCheck":true,
+    "independentNativeConsumer":{"passed":true,"path":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-consumer-99qUwy","proof":"Copied-source configured profile, offline merge and exact recovered future history need no downstream engine override. Registry crate publication remains unqualified."}
+  },
+  "installedConsumers":{
+    "command":"node scripts/check-editor-package.mjs",
+    "passed":true,
+    "consumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-XzQ7ja/consumer",
+    "configurations":["Local-only without React/collaboration","Shared-only without React","Full React/shared, Node native catalogs/merge/history, SSR placeholders and six Vite production pages"],
+    "types":"Normal package-root ES2022,DOM types and separate advanced ESNext.Disposable binding checks pass. The matching generated modules and binaries are in the private archives, not supplied from repository target paths."
+  },
+  "browserSuites":[
+    {"command":"node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs","passed":66,"perEngine":22,"engines":["chromium","firefox","webkit"],"proof":"Final frozen installed archives pass in 1.6 minutes. Fifteen new hard-break runs cover explicit local/shared targets, trusted automation Shift+Enter, reverse selection, untouched synthetic composing keys, exact reload/history and offline peer/selective Undo. Existing SDK ownership, assets and React/durable lifecycle cases also pass."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/application-network.config.mjs","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"proof":"The same final installed application archives pass existing strict control, network, asset, presence, offline/reconnect and recovered selective-history assertions in 1.8 minutes."},
+    {"command":"node scripts/check-shared-browser-matrix.mjs (within check-shared-browser.mjs)","passed":303,"perEngine":101,"engines":["chromium","firefox","webkit"],"proof":"The full current source matrix passes once: Chromium/Firefox 202 cases in 4.2 minutes, then all 101 WebKit cases in the existing seventeen per-file processes. All discovered specs remain covered, with unchanged deadlines and no retry or follow-up run."},
+    {"command":"node_modules/.bin/playwright test --config experiments/rich-browser/playwright.config.mjs","passed":165,"perEngine":55,"engines":["chromium","firefox","webkit"],"proof":"The complete local-rich source matrix passes in 1.9 minutes against the rebuilt matching local Wasm. Source consumer types also pass. This is a browser/type run, not a claim that the entire check-rich-browser.mjs aggregate script ran."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs (within check-shared-browser.mjs)","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"proof":"Fresh legacy compatibility archives pass the same strict installed controls/network/assets/presence assertions in 1.8 minutes. The clean legacy consumer also passes installed native-vector equivalence and types. Application and research runtimes remain separate, not interchangeable modules."}
+  ],
+  "browserRunCountNote":"690 overlapping final installed/source suite executions, not unique features or a parity percentage. Every final suite terminates with exit 0. The earlier three-failure target reproduction and 58-pass/two-failure development run are retained separately and are not included as green qualification.",
+  "fullSharedCompatibilityGate":{"command":"node scripts/check-shared-browser.mjs","passed":true,"proof":"The complete aggregate exits 0: research native/Wasm lint and tests/build, native vectors/examples, relay gate, package builds/types/startup/matrix guards, all 303 source browser cases, fresh legacy archive installation/native-vector/type checks and 78 installed browser cases. No stage was skipped, retried or accepted after a timeout."},
+  "relayChecks":{"defaultNativePassed":17,"serverNativePassed":20,"nativeLintAndBuild":true,"command":"node scripts/check-relay.mjs (within check-shared-browser.mjs)"},
+  "retainedLogs":{"directory":"target/structural-v2-qualification","files":["opt-in-native.log","installed-sdk-application.log","shared-compatibility-gate.log","local-rich-browser.log","default-unit-script.log","wasm-native-consumer.log"],"note":"Captured tool output retained locally, not a complete CI log archive. The default unit/script capture truncates intermediate TAP output but retains unit and final script totals. Pre-fix browser trace ZIPs and error contexts are retained separately above."},
+  "budgets":"All browser cases retain 60-second deadlines, 300-second process suite deadlines and retries 0. No spec or assertion is dropped or weakened.",
+  "defaultChecks":{"browserPackageUnitPassed":2203,"referenceExtensionUnitPassed":57,"sdkUnitPassed":29,"typecheck":true,"scriptTests":{"total":356,"passed":353,"skipped":3,"note":"Three existing diagnostic browser cases remain opt-in."}},
+  "artifacts":{
+    "packageVersion":"0.3.0-alpha.22",
+    "archives":[
+      {"name":"@breditor/browser","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name":"@breditor/experimental-rich-content","bytes":1171786,"sha256":"636d51da09ba9b08e6b38d35be2a9086f8263a1b80da9c902be20af8152ea0e9"},
+      {"name":"@breditor/collaboration","bytes":2250970,"sha256":"5b258fba6de2fbcdfb58c820c16505ec8952ae1c588f62aac3287d6d198368a0"},
+      {"name":"@breditor/editor","bytes":17880,"sha256":"4bbb23048d91bf3320fd58ce3d460b56b20ad260efa63a30434caf0272fa7e40"}
+    ],
+    "localRichWasm":{"bytes":4105528,"gzipBytes":1090508,"sha256":"da4468850930abe1bb3e64be49d5cac3d9ed403c55b41218fcf585c033109979"},
+    "applicationSharedWasm":{"bytes":8073499,"gzipBytes":2197163,"sha256":"3aacc7ace92cf1a1d05818f54fbc3d244a1414ae8f7a83f5309bbb0b322ae92d"},
+    "legacyInstalled":{"consumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-8D1t8f/consumer","browserAndLocalRichArchives":"Byte-for-byte identical to their SDK archives above.","researchArchive":{"name":"@breditor/experimental-collaboration","bytes":2541369,"sha256":"a257cfecc06a27d89d063df13a62acd09dbbb9a7703b1b92f5000be74917c8fb"},"researchWasm":{"bytes":9141976,"gzipBytes":2471816,"sha256":"b256bd90753d0d81632c7234896a6813fe536c43aa03da98fcb67388866b1602"}},
+    "wasmApplicationSurface":{"javascriptExports":["SharedEditorOwner","SharedObservation","SharedRichProfile","default","initSync"],"wasmExports":51},
+    "gzipMethod":"Node gzipSync defaults; archive hashes are from the immutable installed-consumer manifest."
+  },
+  "limits":[
+    "The first two workstreams remain active. Native V2 is not yet a browser/shared block feature. V2 factory/commands, code formatting-state availability, task rendering/keyboard behavior, shared conflict/journal compatibility and migration need integration.",
+    "Atomic-block navigation, general cross-container selections, natural typing history, live read-only editing, bounded block layout/context UI and separate sanitized HTML/Markdown/Office interchange remain open.",
+    "All thirteen V1 gates remain open; feature status counts stay 8 implemented slices, 17 partial and 20 missing. The default browser archive is unchanged; existing serialized meanings, lockfiles and retained vendor source are unchanged.",
+    "Browser automation and clipboard-event payloads do not qualify physical native clipboard, IME, VoiceOver, mobile, historical WebKit repair, performance budgets or a public relay deployment. Those later gates were not attempted."
+  ],
+  "historicalWebKitFaultResolved":false,
+  "published":false,
+  "publicDeployment":false
+}
