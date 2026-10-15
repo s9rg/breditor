@@ -19,8 +19,13 @@ test("another tab cannot clone the same writer even under a different database n
  const database=`writer-lock-${Date.now()}`;await page.evaluate(async database=>{const t=window.sharedTools;t.session=await t.SharedPersistentSession.open({database,room:"room",writer:"9007199254740993",create:()=>new t.wasm.RichReplicaProbe(t.vector.rich_local_input,"9007199254740993"),restore:j=>t.wasm.RichReplicaProbe.restore("room",j)});},database);
  const other=await context.newPage();await other.goto("/");await expect(other.locator("#status")).toHaveText("Ready");
  expect(await other.evaluate(async database=>{const t=window.sharedTools;try{await t.SharedPersistentSession.open({database:`${database}-other`,room:"room",writer:"9007199254740993",create:()=>{throw Error("Factory must not run before lock acquisition");},restore:()=>{throw Error("Restore must not run");}});return"accepted";}catch(e){return e.code;}},database)).toBe("writer_in_use");
- // Closing the tab releases its Web Lock without an explicit application close.
- await page.close();const r=await other.evaluate(async database=>{const t=window.sharedTools,s=await t.SharedPersistentSession.open({database,room:"room",writer:"9007199254740993",create:()=>{throw Error("Saved session missing");},restore:j=>t.wasm.RichReplicaProbe.restore("room",j)});const recovered=s.recovered;await s.close();return recovered;},database);expect(r).toBe(true);await other.close();
+ const lock=`breditor:shared-writer:${JSON.stringify(["room","9007199254740993"])}`;
+ const held=()=>other.evaluate(async name=>(await navigator.locks.query()).held.some(value=>value.name===name),lock);
+ expect(await held()).toBe(true);
+ // Page-close acknowledgement is not Web Lock release acknowledgement in WebKit.
+ // Observe the browser's release; do not retry recovery or weaken exclusion.
+ await page.close();await expect.poll(held).toBe(false);
+ const r=await other.evaluate(async database=>{const t=window.sharedTools,s=await t.SharedPersistentSession.open({database,room:"room",writer:"9007199254740993",create:()=>{throw Error("Saved session missing");},restore:j=>t.wasm.RichReplicaProbe.restore("room",j)});const recovered=s.recovered;await s.close();return recovered;},database);expect(r).toBe(true);await other.close();
 });
 test("failed factory or wrong-writer restore releases the lease without overwriting a durable checkpoint",async({page})=>{
  const r=await page.evaluate(async()=>{const t=window.sharedTools,database=`failed-open-${crypto.randomUUID()}`,base={database,room:"room",writer:"101",create:()=>new t.wasm.RichReplicaProbe(t.vector.rich_local_input,"101"),restore:j=>t.wasm.RichReplicaProbe.restore("room",j)};

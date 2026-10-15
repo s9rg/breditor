@@ -6,10 +6,50 @@ clipboard and writer-local Undo/Redo. The DOM and TypeScript never own a second
 replicated document.
 
 This private workspace is an integration checkpoint, not a published package.
-The matching generated owner currently comes from the isolated collaboration
-fixture; a generic compiled-profile factory and optional Rust crate promotion
-remain required for application distribution. The default Breditor packages and
+The matching generated module currently comes from the isolated collaboration
+build. Its configurable shared-profile factory compiles application-selected
+schemas and typed formats; optional Rust/Wasm crate promotion remains required
+for application distribution. The default Breditor packages and
 their Wasm graph are unchanged.
+
+## Configurable shared profile
+
+`compileSharedProfile(wasm, configuration)` calls the matching Rust
+`SharedRichProfile.from_configuration_json` factory. The configuration is the
+original closed `breditor/shared-rich-profile` V1 shape, not a production V6
+bootstrap, document, update or journal. It declares `schema: {name, version}`,
+an `extensions` array and optional tightened `limits`.
+
+Each extension declares its exact `id`, `dependencies`, `conflicts` and `formats`.
+A format declares `kind`, positive `revision` and `properties`. Each property has
+a qualified `name`, `presence` (`required` or `optional`) and `valueType`.
+Types are `boolean`, `integer` with explicit nullable `minimum`/`maximum`, or
+`string` with `minimumUtf8Bytes`/`maximumUtf8Bytes`. Empty properties declare no
+typed properties. Extension relationships, reserved names, duplicate ownership,
+property domains and the complete fingerprint are proved by the existing core
+compiler. A caller-supplied fingerprint is not accepted as a schema declaration.
+
+The factory offers `create(documentJson, writer)`, `join_frame(room, writer,
+frame)` and `restore(room, journal)`. These return independently owned generated
+writers suitable for `SharedRichEditor` or `SharedPersistentSession` callbacks.
+Acquire the appropriate exclusive writer lease before calling them. Free the
+factory after those callbacks finish; existing writers keep their own compiled
+codec and remain usable. Its descriptor includes exact schema, ABI/model/history
+and all document budgets. No room, shared state or history belongs to the factory.
+
+Configuration is limited to 1 MiB, 64 extensions, 64 dependencies/conflicts per
+extension, 255 formats per extension and 32 properties per format, with the
+underlying aggregate compiler limits also enforced. Collection parsing stops at
+the limit before constructing an oversized typed collection. All twelve existing
+`DocumentLimits` settings may be lowered but not widened. Those limits apply to
+create, local edits, incoming changes and journal recovery; they are not a new
+network work/compaction budget. Unknown/duplicate configuration fields reject.
+
+Custom inline formats survive shared text, clipboard and exact history. The
+renderer uses safe spans by default; `inlineTag` can choose its supported safe
+inline tags. Configuration carries no executable callbacks, arbitrary block
+registrations or action-routing IDs: shared commands address format literals
+directly. The sealed table/image/nested-flow grammar remains unchanged.
 
 ## Owner contract
 
@@ -137,7 +177,7 @@ or origins.
 
 The callbacks return matching generated Rust owners. `restore` must use native
 journal replay, not a document-only import. The session checks the journal's
-room, canonical decimal writer and V9 family both before and after restoration;
+room, canonical decimal writer and V12 family both before and after restoration;
 Rust checks the causal operations, schema and history. Factory/admission failures
 release the lock without replacing the durable checkpoint.
 
@@ -153,13 +193,15 @@ abandons unsaved in-memory work but preserves the last durable journal. Do not
 dispose the mounted editor before closing its persistent session when a final
 durable save is required. Abrupt tab loss releases the Web Lock automatically
 and recovers the last completed transaction, not an unacknowledged in-flight edit.
-The sample demo uses a separate `breditor-shared-demo-sessions-v12` database.
+The sample demo uses the configurable factory and a separate
+`breditor-shared-demo-application-v12` database. The prior fixed-profile V12
+database is preserved rather than silently rebound to an application schema.
 Existing V8/V9/V10/V11 databases are preserved, not upgraded, overwritten or silently
 treated as document-only imports. Resume old journals with their matching old
 owner until an explicit migration workflow exists.
 
 The full collaboration goal still includes a permission-aware network relay,
-presence, server-authorized writer leases, cross-host
-asset providers and general placement-conflict/cycle normalization. The bounded
+presence, server-authorized writer leases and cross-host
+asset providers. The bounded
 journal rebuild is a correctness reference, not a production throughput claim.
 See the repository collaboration plan and private owner contracts for limits.

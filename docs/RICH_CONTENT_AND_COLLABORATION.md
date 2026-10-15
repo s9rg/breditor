@@ -105,8 +105,22 @@ TypeScript and installed-package checks. An earlier full run hit WebKit's interm
 array-length runtime error in the existing axis/history test; five focused repeats
 and the following complete matrix passed. Stage/stack diagnostics remain in that
 test; this is not confirmation that the historical runtime fault is fixed.
-This does not complete the relay,
-presence, cross-host asset provider or generic shared factory gates below.
+This does not complete the relay, presence or cross-host asset provider gates below.
+
+The shared owner now has an application-configured factory independent of the
+fixed fixture constructor. Native hosts bind an already compiled rich schema;
+Wasm hosts compile original bounded `breditor/shared-rich-profile` V1 declarations
+with exact extension identities and typed boolean/integer/string formats. All
+twelve document budgets can only tighten defaults. Create, join and exact
+same-writer restore clone the compiled codec; disposing the factory does not
+dispose its writers. Schema IDs alone cannot bypass fingerprint checks. This
+adds a configuration factory, not a new causal model or journal interpretation:
+private model 11/journal V12 and shipping contracts remain unchanged. Optional
+Rust/Wasm distribution packaging is still a separate gate.
+The factory checkpoint passes 211 private native contracts and 111 combined
+Chromium/Firefox/WebKit browser cases, strict native/Wasm Clippy, TypeScript and
+the installed offline archive's six exact future-history states. Tab-close
+recovery waits for observable browser lock release before one restore attempt.
 
 The central decision is to design collaboration before adding new structural
 operations. Stable content identities, table geometry, image assets, selections
@@ -935,8 +949,9 @@ The rich paragraph/list/range and clipboard planners now drive the opt-in shared
 browser coordinator. Shared caption creation/removal now owns an explicit retained
 paragraph choice. Placement cycles now preserve both rich subtrees and exact
 future history. Kind/move and nested-table conflicts now retain content through
-compatible positions and reserved root occurrences. The next focused sessions
-should complete the generic shared profile factory, then
+compatible positions and reserved root occurrences. The configurable shared
+profile now supplies schema/format compilation and exact create/join/restore.
+The next focused sessions should promote its optional Rust/Wasm distribution and
 integrate the reference relay, presence and host
 asset provider. Durable shared causal journals and local asset
 bytes now survive reload, but do not supply network acknowledgement or shared

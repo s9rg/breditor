@@ -1,4 +1,5 @@
 export {SharedRichEditor,SharedEditorError} from "./core.js";
+export {compileSharedProfile,type SharedProfileConfiguration,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
 export type * from "./types.js";
 export {SharedDomEditor,mountSharedEditor,type SharedDomOptions} from "./controller.js";
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";

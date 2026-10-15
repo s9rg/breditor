@@ -1,6 +1,6 @@
 // Check the browser contract against the real generated owner, not a mock Wasm stub.
-import {RichReplicaProbe} from "../../target/collaboration-feasibility-web/breditor_collab_feasibility.js";
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,type SharedRustOwner,type SharedCommand,type SharedOwnerDescriptor} from "../../packages/breditor-experimental-collaboration/index.js";
+import {RichReplicaProbe,SharedRichProfile} from "../../target/collaboration-feasibility-web/breditor_collab_feasibility.js";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,type SharedRustOwner,type SharedCommand,type SharedOwnerDescriptor,type SharedProfileConfiguration} from "../../packages/breditor-experimental-collaboration/index.js";
 import {RichAssetStore} from "../../packages/breditor-experimental-rich-content/index.js";
 async function contract(root:HTMLElement,input:string,frame:string):Promise<void>{
  const raw:SharedRustOwner=new RichReplicaProbe(input,"9007199254740993");
@@ -24,3 +24,12 @@ async function persistentContract(input:string):Promise<void>{
  session.core.type("saved");await session.flush();void session.state();await session.close();
 }
 void persistentContract;
+async function compiledProfileContract(configuration:SharedProfileConfiguration,input:string,frame:string):Promise<void>{
+ const profile=compileSharedProfile({SharedRichProfile},configuration);
+ const session=await SharedPersistentSession.open({database:"typed-application-profile",room:"room",writer:"101",create:()=>profile.create(input,"101"),restore:j=>profile.restore("room",j)});
+ const peer:SharedRustOwner=profile.join_frame("room","202",frame);peer.free();
+ await session.close();profile.free();
+ // @ts-expect-error Shared configuration is not a production V6 bootstrap or a caller fingerprint.
+ compileSharedProfile({SharedRichProfile},{format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/wrong",version:1},extensions:[]});
+}
+void compiledProfileContract;

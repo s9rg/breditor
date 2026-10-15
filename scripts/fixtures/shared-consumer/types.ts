@@ -1,4 +1,4 @@
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,type SharedRustOwner,type SharedCommand,type SharedSaveState} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule} from "@breditor/experimental-collaboration";
 import {RichAssetStore} from "@breditor/experimental-rich-content";
 import {model} from "@breditor/experimental-rich-content/rendering";
 async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
@@ -12,3 +12,12 @@ async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
  void model;void SharedPersistentSession;const state:SharedSaveState={status:"saved",revision:"0",error:null};void state;editor.dispose();assets.close();
 }
 void consumer;
+function configuredConsumer(wasm:SharedProfileModule,config:SharedProfileConfiguration,input:string):void{
+ const p=compileSharedProfile(wasm,config),a=new SharedRichEditor(p.create(input,"101"));
+ const peer=new SharedRichEditor(p.join_frame("room","202",a.updateFrame()));
+ p.free();a.undo();a.redo();a.dispose();peer.dispose();
+ // @ts-expect-error Integer bounds must be explicit, including null for an unbounded side.
+ const bad:SharedProfileConfiguration={format:"breditor/shared-rich-profile",formatVersion:1,schema:{name:"example/schema",version:1},extensions:[{id:{name:"example/format",version:1},dependencies:[],conflicts:[],formats:[{kind:"example/rank",revision:1,properties:[{name:"example/value",presence:"required",valueType:{kind:"integer",minimum:0}}]}]}]};
+ void bad;
+}
+void configuredConsumer;

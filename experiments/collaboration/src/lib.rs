@@ -32,6 +32,9 @@ mod rich_clipboard_ids;
 #[cfg(target_arch = "wasm32")]
 mod rich_replica_wasm;
 
+#[cfg(target_arch = "wasm32")]
+mod shared_profile_wasm;
+
 /// Failures isolated before a candidate session replaces published state.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

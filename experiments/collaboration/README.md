@@ -513,8 +513,8 @@ imports and declarations, renderer exports, licenses, and future Undo/Redo throu
 the matching real Wasm owner pass. The private owner fixture remains an external
 test input; the archive does not disguise it as a generic shipping factory.
 
-The current fixture Wasm is 8,746,804 bytes, or 2,386,054 bytes under gzip, with
-SHA-256 `b20314d805c286c6eab9fd307aeb0a37c5fcb4a55b612094ea2640d41a5f20af`.
+The current isolated Wasm is 8,964,201 bytes, or 2,421,433 bytes under gzip, with
+SHA-256 `1a2bb80326edd366a931f78d1fa12b5a12de3a291ff15a67c5a1f553e00b4221`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -863,6 +863,63 @@ The case now records its operation phase and stack so a recurrence distinguishes
 page work from RPC encoding. No assertions, retry policy or per-test timeouts
 were relaxed. The intermittent runtime fault remains open rather than being
 reclassified as a grammar defect or a verified engine repair.
+
+## Configurable shared profile factory
+
+`rich_replica::SharedRichProfile` binds an already compiled rich schema and
+document limits for native hosts. The generated `SharedRichProfile` class and
+browser `compileSharedProfile` helper compile original
+`breditor/shared-rich-profile` V1 configuration: exact schema identity, bounded
+extension relationships, typed format declarations and optional tightened host
+budgets. This is separate from production V6 bootstraps and from persisted
+document/update/journal protocols. No supplied fingerprint can substitute for
+compiler proof. The fixed `RichReplicaProbe` constructors remain available to
+old fixtures; factory-returned writers use the caller's actual compiled schema,
+not the fixture codec, while retaining the same generated owner API.
+
+The factory owns no room, writer, content or history. Create, bound-frame join
+and exact same-writer restore independently clone its codec, so factory disposal
+does not invalidate a returned writer. Hosts must obtain exclusive writer leases.
+The descriptor exposes the full schema binding, ABI/model/history and all twelve
+effective document budgets. Budgets may only tighten core defaults and apply to
+initial content, local mutation, incoming admission and journal recovery.
+The private causal model remains 11 and the journal remains V12; no existing
+durable family is reinterpreted.
+
+The JSON entry caps input at 1 MiB, 64 extensions, 64 dependencies and conflicts
+per extension, 255 formats per extension and 32 properties per format. Custom
+collection visitors reject overflow before constructing another typed element.
+Existing aggregate compiler limits still apply. Property types are boolean,
+bounded UTF-8 string and core-safe integer with both nullable bounds explicit.
+Unknown/duplicate fields, reserved identities, missing dependencies, duplicate
+format ownership and incompatible property domains reject without publishing a
+partial factory. Configuration declares no arbitrary block plugins, callbacks or
+action-routing IDs; shared format commands remain the execution path.
+
+Eight native contracts prove independent typed-schema fingerprint parity,
+custom-format collaborative history, owner lifetime, same-ID/different-schema
+rejection, all admission paths under tightened budgets and configuration bounds.
+The independent native vector records six future causal operation sets, views
+and exact journals using string, false and zero-valued typed properties. Five
+browser cases per engine exercise mounting, page reload, factory lifetime,
+fingerprint rejection and Web-Lock/IndexedDB recovery. Installed-archive runtime
+and generated-owner TypeScript contracts exercise the application factory too.
+
+The combined demo now uses an application profile and a separate
+`breditor-shared-demo-application-v12` database. Earlier fixed-profile V12 and
+older databases stay intact. The generated module still comes from the isolated
+feasibility build; promoting the optional Rust/Wasm distribution, the reference
+relay, presence, server writer authorization and cross-host assets remain work.
+
+The configurable-factory checkpoint passes 211 private native contracts, strict
+native/wasm32 Clippy, generated-owner and installed-consumer TypeScript, all 111
+combined browser cases, and an independently installed offline package consumer
+checking all six native future states. The tab-close recovery test now observes
+the exact Web Lock's release before attempting recovery once; WebKit page-close
+acknowledgement alone did not guarantee that asynchronous release. Five focused
+repeats pass, and exclusion remains asserted while the original writer is live.
+This corrects a test synchronization assumption, not the separate historical
+WebKit runtime fault. Default shipping source and dependency graphs are unchanged.
 
 ## Shared semantic clipboard
 

@@ -1,11 +1,11 @@
 import init,* as wasm from "/probe.js";
-import {SharedPersistentSession,mountSharedEditor,insertSharedImageFiles} from "/shared.js";
+import {SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile} from "/shared.js";
 import {RichAssetStore} from "/rich.js";
 await init();let connected=true;const state=document.querySelector("#state"),report=error=>{state.textContent=String(error);};
 try{
-const vector=await(await fetch("/native-vector.json")).json(),database="breditor-shared-demo-sessions-v12",base={database,room:"room",restore:j=>wasm.RichReplicaProbe.restore("room",j),onError:report};
-const sessionA=await SharedPersistentSession.open({...base,writer:"101",create:()=>new wasm.RichReplicaProbe(vector.rich_local_input,"101")}),a=sessionA.core;
-let sessionB;try{sessionB=await SharedPersistentSession.open({...base,writer:"202",create:()=>wasm.RichReplicaProbe.join_frame("room","202",a.updateFrame())});}catch(error){await sessionA.close();throw error;}
+const vector=await(await fetch("/native-vector.json")).json(),configuration=vector.shared_profile.configuration,profile=compileSharedProfile(wasm,configuration),database="breditor-shared-demo-application-v12",base={database,room:"room",restore:j=>profile.restore("room",j),onError:report};
+let sessionA,sessionB;try{sessionA=await SharedPersistentSession.open({...base,writer:"101",create:()=>profile.create(vector.shared_profile.input,"101")});sessionB=await SharedPersistentSession.open({...base,writer:"202",create:()=>profile.join_frame("room","202",sessionA.core.updateFrame())});}catch(error){await sessionA?.close();throw error;}finally{profile.free();}
+const a=sessionA.core;
 const b=sessionB.core,store=await RichAssetStore.open("breditor-shared-demo-assets");
 const initialA=a.updateFrame(),initialB=b.updateFrame();await Promise.all([a.receiveFrame(initialB),b.receiveFrame(initialA)]);await Promise.all([sessionA.flush(),sessionB.flush()]);
 const sessions=new Map([[a,sessionA],[b,sessionB]]),showState=()=>{state.textContent=`${connected?"Connected":"Disconnected"} · A ${sessionA.state().status} · B ${sessionB.state().status}`;};

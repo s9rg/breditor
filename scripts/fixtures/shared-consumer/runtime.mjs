@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile} from "@breditor/experimental-collaboration";
 import {render,model} from "@breditor/experimental-rich-content/rendering";
 const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
 wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
@@ -11,4 +11,8 @@ a.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"P
 a.undo();const checkpoint=a.checkpointJson(),b=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",checkpoint));
 a.redo();b.redo();assert.equal(a.checkpointJson(),b.checkpointJson());assert.equal(a.documentJson(),b.documentJson());
 for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,render,model])assert.equal(typeof api,"function");
-a.dispose();b.dispose();console.log("Installed shared package imports, generated types and real Wasm future history passed");
+a.dispose();b.dispose();
+const v=vector.shared_profile,p=compileSharedProfile(wasm,v.configuration),custom=new SharedRichEditor(p.restore("room",v.checkpoint));p.free();
+const state=name=>{assert.deepEqual(custom.view(),JSON.parse(v[name].view));assert.equal(custom.checkpointJson(),v[name].checkpoint);};
+state("current");custom.undo();state("undo");custom.redo();state("redo");custom.type("!");state("typed");custom.undo();state("undo_typed");custom.redo();state("redo_typed");assert.ok(custom.documentJson().includes('"example/priority":0'));custom.dispose();
+console.log("Installed shared package imports, configured factories, generated types and real Wasm future history passed");

@@ -51,6 +51,11 @@ struct ClipboardPaste {
 pub struct RichReplicaProbe {
     inner: RichReplica,
 }
+impl RichReplicaProbe {
+    pub(crate) fn from_replica(inner: RichReplica) -> Self {
+        Self { inner }
+    }
+}
 #[wasm_bindgen]
 impl RichReplicaProbe {
     /// Read the matching ABI, private projection/history revisions and immutable schema binding.
