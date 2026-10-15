@@ -8,10 +8,11 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdte
 mkdirSync(archives);cpSync(resolve(root,"scripts/fixtures/shared-consumer"),consumer,{recursive:true});
 // The rich archive also exports a local owner. Never pack new JS around stale local Wasm.
 execFileSync(process.execPath,["scripts/build-rich-runtime.mjs"],{cwd:root,stdio:"inherit"});
+execFileSync(process.execPath,["scripts/build-shared-runtime.mjs"],{cwd:root,stdio:"inherit"});
 const packs=JSON.parse(execFileSync("npm",["pack","--ignore-scripts","--json","--pack-destination",archives,"--workspace","@breditor/browser","--workspace","@breditor/experimental-rich-content","--workspace","@breditor/experimental-collaboration"],{cwd:root,encoding:"utf8"}));
 execFileSync("npm",["install","--offline","--ignore-scripts","--no-audit","--no-fund","--package-lock=false",...packs.map(pack=>resolve(archives,pack.filename))],{cwd:consumer,stdio:"inherit"});
 execFileSync(resolve(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM,ESNext.Disposable","types.ts"],{cwd:consumer,stdio:"inherit"});
 const artifacts=resolve(root,"target/collaboration-feasibility-web");
-execFileSync(process.execPath,["runtime.mjs"],{cwd:consumer,stdio:"inherit",env:{...process.env,BREDITOR_PROBE_MODULE:resolve(artifacts,"breditor_collab_feasibility.js"),BREDITOR_PROBE_BINARY:resolve(artifacts,"breditor_collab_feasibility_bg.wasm"),BREDITOR_PROBE_VECTOR:resolve(artifacts,"native-vector.json")}});
+execFileSync(process.execPath,["runtime.mjs"],{cwd:consumer,stdio:"inherit",env:{...process.env,BREDITOR_PROBE_VECTOR:resolve(artifacts,"native-vector.json")}});
 console.log(`Retained local package proof: ${temporary}`);
 writeFileSync(resolve(root,"target/shared-installed-consumer.json"),JSON.stringify({consumer,archives:packs.map(pack=>resolve(archives,pack.filename))}));

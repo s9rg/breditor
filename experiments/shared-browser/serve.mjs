@@ -4,7 +4,8 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),"../.."),artifacts=re
 const installed=process.env["BREDITOR_SHARED_INSTALLED"]==="1"?JSON.parse(readFileSync(resolve(root,"target/shared-installed-consumer.json"),"utf8")).consumer:undefined;
 const local=installed?resolve(installed,"node_modules/@breditor/experimental-rich-content"):resolve(root,"packages/breditor-experimental-rich-content"),shared=installed?resolve(installed,"node_modules/@breditor/experimental-collaboration"):resolve(root,"packages/breditor-experimental-collaboration");
 const resources=new Map(),add=(url,path,type="text/javascript; charset=utf-8")=>resources.set(url,[type,readFileSync(path)]);
-add("/probe.js",resolve(artifacts,"breditor_collab_feasibility.js"));add("/breditor_collab_feasibility_bg.wasm",resolve(artifacts,"breditor_collab_feasibility_bg.wasm"),"application/wasm");add("/native-vector.json",resolve(artifacts,"native-vector.json"),"application/json");
+const runtime=installed?resolve(shared,"dist/runtime"):artifacts,runtimeName=installed?"breditor_shared":"breditor_collab_feasibility";
+add("/probe.js",resolve(runtime,`${runtimeName}.js`));add(`/${runtimeName}_bg.wasm`,resolve(runtime,`${runtimeName}_bg.wasm`),"application/wasm");add("/native-vector.json",resolve(artifacts,"native-vector.json"),"application/json");
 add("/shared.js",resolve(shared,"index.js"));add("/rendering.js",resolve(local,"rendering.js"));add("/rich.js",resolve(local,"index.js"));add("/demo.mjs",resolve(root,"experiments/shared-browser/demo.mjs"));
 add("/demo_presence.mjs",resolve(root,"experiments/shared-browser/demo_presence.mjs"));
 add("/socket-fixture.mjs",resolve(root,"experiments/shared-browser/socket-fixture.mjs"));

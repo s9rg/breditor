@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {pathToFileURL} from "node:url";
 import {createRequire} from "node:module";
 import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,createStandardSharedToolbarV1,insertSharedImageFiles,compileSharedProfile,compileStandardSharedProfileV1,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter} from "@breditor/experimental-collaboration";
 import {render,model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
@@ -8,10 +7,10 @@ import {createRichInlinePresentation,compileRichProfile,compileStandardRichProfi
 import * as localWasm from "@breditor/experimental-rich-content/wasm";
 import {createInlineFormatRenderManifest,compileInlineFormatRecipes} from "@breditor/browser/presentation";
 import {assertLocalFormatBudget} from "./local-format-budget.mjs";
-const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
-wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
-const vector=JSON.parse(readFileSync(process.env.BREDITOR_PROBE_VECTOR,"utf8"));
+import * as wasm from "@breditor/experimental-collaboration/wasm";
 const require=createRequire(import.meta.url);
+wasm.initSync({module:readFileSync(require.resolve("@breditor/experimental-collaboration/wasm-binary"))});
+const vector=JSON.parse(readFileSync(process.env.BREDITOR_PROBE_VECTOR,"utf8"));
 localWasm.initSync({module:readFileSync(require.resolve("@breditor/experimental-rich-content/wasm-binary"))});
 const localProfile=compileRichProfile(localWasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/installed-local",version:1},extensions:[]}));
 try{const catalog=JSON.parse(localProfile.inlineCatalogJson()),binding=localProfile.descriptor();assert.equal(catalog.schema.fingerprint,binding.schemaFingerprint);assert.equal(catalog.formats[0].kind,"breditor/strong");

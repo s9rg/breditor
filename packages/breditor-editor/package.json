@@ -1,0 +1,17 @@
+{
+ "name":"@breditor/editor","version":"0.3.0-alpha.22","private":true,
+ "description":"Unified original Rust-backed rich editor candidate with optional React and collaboration",
+ "type":"module","license":"MIT OR Apache-2.0","sideEffects":false,
+ "main":"./dist/index.js","types":"./dist/index.d.ts",
+ "files":["dist","README.md","LICENSE-MIT","LICENSE-APACHE"],
+ "exports":{
+  ".":{"types":"./dist/index.d.ts","import":"./dist/index.js"},
+  "./react":{"types":"./dist/react.d.ts","import":"./dist/react.js"},
+  "./collaboration":{"types":"./dist/collaboration.d.ts","import":"./dist/collaboration.js"}
+ },
+ "dependencies":{"@breditor/experimental-rich-content":"0.3.0-alpha.22"},
+ "peerDependencies":{"@breditor/experimental-collaboration":"0.3.0-alpha.22","react":"^19.2.8"},
+ "peerDependenciesMeta":{"@breditor/experimental-collaboration":{"optional":true},"react":{"optional":true}},
+ "devDependencies":{"@types/react":"19.2.18","react":"19.2.8"},
+ "scripts":{"build:candidate":"tsc -p tsconfig.json","typecheck:candidate":"tsc -p tsconfig.json --noEmit","test:candidate":"vitest run --config vitest.config.ts"}
+}

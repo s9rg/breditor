@@ -4,6 +4,6 @@
  "type":"module","license":"MIT OR Apache-2.0","sideEffects":false,
  "main":"./index.js","types":"./index.d.ts",
  "files":["index.js","index.d.ts","dist","README.md","LICENSE-MIT","LICENSE-APACHE"],
- "exports":{".":{"types":"./index.d.ts","import":"./index.js"}},
+ "exports":{".":{"types":"./index.d.ts","import":"./index.js"},"./wasm":{"types":"./dist/runtime/breditor_shared.d.ts","import":"./dist/runtime/breditor_shared.js"},"./wasm-binary":"./dist/runtime/breditor_shared_bg.wasm"},
  "peerDependencies":{"@breditor/experimental-rich-content":"0.3.0-alpha.22"}
 }

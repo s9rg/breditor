@@ -1,0 +1,6 @@
+import {createSharedProfile,SharedRichEditor,mountSharedEditor,createStandardSharedToolbarV1} from "@breditor/editor/collaboration";
+import {createStandardRichInlinePresentationV1} from "@breditor/editor";
+import {seed,range} from "./seed.mjs";
+const errors=[],profile=await createSharedProfile(),binding=JSON.parse(profile.descriptor_json()),presentation=createStandardRichInlinePresentationV1(profile.inline_catalog_json()),a=new SharedRichEditor(profile.create(seed(binding),"101")),b=new SharedRichEditor(profile.join_frame("room","202",a.updateFrame()));
+const da=mountSharedEditor(document.querySelector("#a"),{core:a,inlinePresentation:presentation,toolbar:createStandardSharedToolbarV1(a,presentation),onError:error=>errors.push(String(error))}),db=mountSharedEditor(document.querySelector("#b"),{core:b,inlinePresentation:presentation,toolbar:createStandardSharedToolbarV1(b,presentation),onError:error=>errors.push(String(error))});
+window.sharedSdk={a,b,da,db,profile,SharedRichEditor,errors,range,sync:async()=>{const x=a.updateFrame(),y=b.updateFrame();await a.receiveFrame(y);await b.receiveFrame(x);if(a.documentJson()!==b.documentJson())throw Error("replicas differ");}};document.querySelector("#ready").textContent="Ready";

@@ -1,0 +1,46 @@
+import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement} from "react";
+import {openLocalEditor,type LocalEditor,type LocalEditorOptions} from "./local.js";
+import type {RichCommand,RichView,RichCommandOutcome} from "@breditor/experimental-rich-content";
+/** Initial configuration is applied once per sessionKey, like an uncontrolled input's defaultValue. */
+export interface BreditorEditorProps {
+ initialOptions?:Omit<LocalEditorOptions,"host"|"signal"|"onChange"|"onError">;
+ sessionKey?:string;className?:string;
+ onReady?:(editor:LocalEditor)=>void;
+ onChange?:(view:RichView,outcome:RichCommandOutcome)=>void;
+ onError?:(error:unknown)=>void;
+}
+export interface BreditorEditorHandle {
+ getEditor():LocalEditor|null;
+ focus():void;
+ checkpointJson():string|null;
+ execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued"|null;
+ retry():void;
+}
+/** Owns the original Rust/DOM coordinator. React never reconciles editable document children. */
+export const BreditorEditor=forwardRef<BreditorEditorHandle,BreditorEditorProps>(function BreditorEditor(props,ref):ReactElement{
+ const [host,setHost]=useState<HTMLDivElement|null>(null),[attempt,setAttempt]=useState(0),[phase,setPhase]=useState<"starting"|"ready"|"failed">("starting");
+ const current=useRef<LocalEditor|null>(null),callbacks=useRef(props),configuration=useRef(props.initialOptions),lane=useRef<Promise<void>>(Promise.resolve());
+ // Only the latest callbacks are read by subscriptions; a parent render must not reset Rust history.
+ useEffect(()=>{callbacks.current=props;configuration.current=props.initialOptions;});
+ useImperativeHandle(ref,()=>({getEditor:()=>current.current,focus:()=>current.current?.focus(),checkpointJson:()=>current.current?.checkpointJson()??null,execute:(command,focus,revision)=>current.current?.execute(command,focus,revision)??null,retry:()=>{if(current.current===null)setAttempt(value=>value+1);}}),[]);
+ useEffect(()=>{
+  if(!host)return;
+  const abort=new AbortController(),initial=configuration.current;let owned:LocalEditor|undefined;setPhase("starting");
+  const report=(error:unknown)=>{try{callbacks.current.onError?.(error);}catch{/* Reporting cannot rewind a native publication. */}};
+  const opening=lane.current.then(async()=>{
+   if(abort.signal.aborted)return;
+   try{
+    const editor=await openLocalEditor({...initial,host,signal:abort.signal,onChange:(view,outcome)=>callbacks.current.onChange?.(view,outcome),onError:report});
+    if(abort.signal.aborted){editor.dispose();return;}
+    owned=editor;current.current=editor;setPhase("ready");
+    try{callbacks.current.onReady?.(editor);}catch(error){report(error);}
+   }catch(error){if(!abort.signal.aborted){setPhase("failed");report(error);}}
+  });
+  lane.current=opening.catch(report);
+  return ()=>{abort.abort();if(current.current===owned)current.current=null;owned?.dispose();owned=undefined;};
+ },[host,props.sessionKey,attempt]);
+ return <section className={props.className} data-breditor-phase={phase} aria-busy={phase==="starting"}>
+  <div ref={setHost}/>
+  {phase==="failed"?<p role="alert">The editor could not start. <button type="button" onClick={()=>setAttempt(value=>value+1)}>Retry</button></p>:null}
+ </section>;
+});
