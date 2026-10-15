@@ -1,0 +1,81 @@
+{
+  "date":"2026-10-15",
+  "sourceCheckpoint":"44565f67a05a67338237cf9264ed8f6aa5d7d600",
+  "scope":"Durable shared vanilla/React SDK ownership, explicit failed-close recovery, permanent shutdown fencing and retained unsaved journals during database upgrade. Existing original Rust document, command, ABI and journal protocols are unchanged.",
+  "releaseQualified":false,
+  "goalComplete":false,
+  "entries":{
+    "local":"@breditor/editor",
+    "localReact":"@breditor/editor/react",
+    "shared":"@breditor/editor/collaboration",
+    "sharedReact":"@breditor/editor/collaboration/react",
+    "sharedFactory":"openSharedEditor",
+    "sharedComponent":"BreditorSharedEditor"
+  },
+  "ownership":{
+    "startup":"Claim one host, await shared runtime initialization, compile the original configured standard profile, acquire the origin-wide room/writer lease, restore the exact saved journal or create the first seed, complete its initial local save and mount a DOM coordinator borrowing that session's core.",
+    "seedPolicy":"Existing journals take precedence over document/frame/checkpoint/empty initial values. Fresh empty writers receive a native-admitted caret before their first save. Profile objects are freed after create/restore callbacks finish; the owner retains its codec.",
+    "cancellation":"An individual aborted runtime wait does not cancel another consumer's initialization. Late storage/factory results close safely before a failed opening returns. Original host nodes are restored; a failed cleanup hands off an exact checkpoint/close/discard recovery capability.",
+    "close":"UI and borrowed adapters stop before permanent coordinator retirement. No subsequent local or remote publication is admitted, including previously held queued frames. The exact checkpoint remains readable until its completed IndexedDB transaction and writer release.",
+    "failure":"A rejected close retains the retired native owner and exclusive writer lease for export and close retry. It does not silently discard state or reopen authoring. Explicit discard waits for an already-started transaction before releasing the writer and never deletes the stored journal.",
+    "versionChange":"A database upgrade closes its old connection and retires publication but keeps an unsaved native journal and lease. The application can export it, explicitly discard and restore into an admitted store. No unfamiliar database version is overwritten.",
+    "react":"React never reconciles editable children. Parent renders update callbacks without replacing native history; key changes serialize durable old close before new opening. StrictMode, unmount, late startup and failed retirement are covered. onCloseError is required, including for failed startup cleanup and after unmount.",
+    "domCompatibility":"Low-level SharedDomEditor still transfers core ownership by default. Session-managed mounts explicitly use coreOwnership borrow. A transferred owner is also freed when new queue-option admission rejects; an already-owned raw object is never freed by a rejected second transfer."
+  },
+  "unitChecks":{
+    "command":"npm run test:candidate --workspace @breditor/editor",
+    "passed":28,
+    "files":6,
+    "newCases":19,
+    "proof":"Runtime/host/local React regressions plus durable session coordination, queued retirement, duplicate ownership, pending transaction ordering, explicit discard, failed-close retry, version-change retention, shared React serial lifetime and headless startup recovery. These unit tests use controlled fake owners/storage; installed browser tests below use the actual packaged Rust/Wasm owner and IndexedDB/Web Locks."
+  },
+  "installedConsumers":{
+    "command":"node scripts/check-editor-package.mjs",
+    "passed":true,
+    "consumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-Pmea2Z/consumer",
+    "configurations":[
+      "Local root with neither React nor collaboration installed.",
+      "Shared SDK and native profile initialization without React installed.",
+      "Full React/shared install, Node native merge/history checks, SSR starting placeholders and six production Vite pages."
+    ],
+    "types":"Normal package-root consumers compile with ES2022,DOM. Advanced generated-binding private-constructor checks compile separately with ESNext.Disposable. No repository target runtime or workspace dependency link exists in the independent installed consumers."
+  },
+  "browserSuites":[
+    {"command":"node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs","passed":51,"perEngine":17,"engines":["chromium","firefox","webkit"],"proof":"Final frozen archives pass in 1.2 minutes. All previous SDK cases plus durable mixed-content/peer history and real reload, duplicate writer exclusion, cancelled-render rollback, quota-failed closure, rejected held remote frames, a real database upgrade with explicit journal recovery, shared React rerenders/key/unmount/reload, quota recovery and unmount during actual Wasm initialization."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/application-network.config.mjs","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"proof":"Final frozen archives pass in 1.5 minutes. Existing strict installed application presentation/control and independent network/asset/presence/offline/reconnect/restart/selective-history cases."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/playwright.config.mjs --project=chromium --project=firefox '(^|/)(persistence|relay-sync|shared)\\.spec\\.mjs$', followed by the same three WebKit files in separate processes","passed":84,"perEngine":28,"engines":["chromium","firefox","webkit"],"proof":"Affected source persistence, held-remotes/DOM and relay-sync regressions. The current application/research generated core and persistent-session JavaScript files compare byte-for-byte equal. This is an explicitly scoped regression run, not a new full 303-case source qualification."}
+  ],
+  "browserRunCountNote":"213 overlapping final suite executions, not unique features or a parity percentage. Earlier 48-case development and pre-documentation-freeze runs are excluded. Final installed suites finish together with terminal exit 0.",
+  "budgets":"Every case retains its 60-second deadline, 300-second process suite deadline and retries 0. Source WebKit retains its existing per-file process isolation; no spec/assertion is dropped or relaxed.",
+  "defaultChecks":{
+    "browserPackageUnitTests":2203,
+    "referenceExtensionUnitTests":57,
+    "typecheck":true,
+    "candidateTypecheck":true,
+    "scriptTests":{"total":356,"passed":353,"skipped":3,"note":"The three pre-existing diagnostic browser cases remain explicitly opt-in."},
+    "rustSourcesChanged":false,
+    "nativeQualification":"Native 203 application and 233 research tests, native/Wasm linting and independent copied-source consumption remain anchored by 2026-10-15-collaboration-source-promotion.json. Rust source/locks, retained engine and packaged Wasm bytes are unchanged in this SDK-only checkpoint; those native suites were not rerun for it."
+  },
+  "artifacts":{
+    "packageVersion":"0.3.0-alpha.22",
+    "archives":[
+      {"name":"@breditor/browser","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name":"@breditor/experimental-rich-content","bytes":1169568,"sha256":"3bac159ecc6375d5284348806b2360b02bdf6b858f9e2becbb6b44d3af5a9ce7"},
+      {"name":"@breditor/collaboration","bytes":2240994,"sha256":"dc86569cddde14f766c74838d318377ca7335c290492c82b01f95c372a24239f"},
+      {"name":"@breditor/editor","bytes":17551,"sha256":"8ee280eaa4ddc796e3d9d1d31833a024c3029170215cadc3728a393bbe0d0197"}
+    ],
+    "applicationSharedWasm":{"bytes":8044597,"gzipBytes":2188008,"sha256":"29d4248752baf7c126a789a7cc3fcfd8aae3b450978ea36c72039019e5e4fd46"},
+    "localRichWasm":{"bytes":4091608,"gzipBytes":1088619,"sha256":"7c724be7c4b03b7022421cf9fb63937172a5e746c146edb164eaab1af23a33b9"},
+    "wasmApplicationSurface":{"javascriptExports":["SharedEditorOwner","SharedObservation","SharedRichProfile","default","initSync"],"wasmExports":50}
+  },
+  "limits":[
+    "The first-two-workstream goal is still active. Structural blocks/tasks, broader selection/navigation, natural typing groups, live read-only mode and bounded block properties/context UI remain open; retirement is not read-only editing.",
+    "Public profile/API/package and registry crate publishing decisions, remaining rich source promotion and separate sanitized HTML/Markdown/Office interchange remain work. All thirteen V1 qualification gates stay open.",
+    "Autosave is not abrupt-process-exit durability, a server acknowledgement or an asset-byte backup. Applications own transport/authentication, separate asset storage, recovery handoff and explicit discard decisions.",
+    "SSR is an inert starting placeholder, not a static document renderer. Broader framework adapters remain open.",
+    "Browser automation keys and clipboard-event payloads do not qualify physical native clipboard, IME, VoiceOver, historical WebKit repair, supported mobile or measured performance. Those later checks were not attempted."
+  ],
+  "historicalWebKitFaultResolved":false,
+  "published":false,
+  "publicDeployment":false
+}

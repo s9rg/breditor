@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `0cf24f4` (saved locally,
+The latest functional implementation checkpoint is `44565f6` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -71,16 +71,26 @@ now keep the deterministic engine downstream without a consumer root override.
 Final application qualification passes 27 installed SDK and 78 installed-network
 browser runs, plus native, clean-consumer, type, script and default checks.
 This qualifies source/Git consumption, not registry crate publication.
+The subsequent [durable shared SDK checkpoint](qualification/2026-10-15-durable-shared-sdk.json)
+adds shared vanilla/React entry points with exact local storage and exclusive
+writer ownership. React replacement waits for old closure; failed closure hands
+off checkpoint recovery instead of discarding state. Shutdown rejects late local
+and remote publications while preserving reads until storage completes. Database
+upgrades now retain unsaved native journals. Separate local-only, shared-only
+without React and full React consumers pass normal types, native initialization,
+SSR placeholders and production builds. Final qualification passes 51 installed
+SDK, 78 installed-network and 84 affected source browser runs, plus 28 SDK unit
+cases and the default package/type/script regressions. Exact archive hashes are
+retained in the linked checkpoint.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
 The active first-two-workstream goal is not complete. Standard controls now use
 the Rust state reads, but applying a mixed format replaces its complete map;
-per-property-preserving mixed edits remain distinct work. Next are a durable
-shared-editor lifecycle and public API/publication decisions, everyday editing gaps and
-external interchange. The local React integration is a tested candidate; it does
-not yet own a durable shared session. The
+per-property-preserving mixed edits remain distinct work. Next are everyday Rust
+editing gaps, public API/publication decisions and external interchange. Local
+and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill
 the workstreams' acceptance conditions.
