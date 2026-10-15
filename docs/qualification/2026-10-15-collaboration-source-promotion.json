@@ -1,0 +1,94 @@
+{
+  "date":"2026-10-15",
+  "sourceCheckpoint":"0cf24f40ed57e729f9841c5292009b662071bd37",
+  "scope":"Canonical optional shared Rust/browser sources, a configured application-only Wasm surface and the SDK's promoted optional peer. The retained research manifests compile the same implementation with their original research exports.",
+  "releaseQualified":false,
+  "architecture":{
+    "rust":"crates/breditor-collaboration",
+    "browser":"packages/breditor-collaboration",
+    "defaultRustMembers":["breditor-core","breditor-wasm"],
+    "researchFeatureDefault":false,
+    "legacyCompatibility":"The feasibility Cargo manifest points to the canonical library with research enabled; the experimental npm package compiles the canonical TypeScript. Fourteen shared conformance files run through both manifests without duplicate test implementations.",
+    "applicationJavascriptExports":["SharedEditorOwner","SharedObservation","SharedRichProfile","default","initSync"],
+    "applicationWasmExports":50,
+    "excluded":"Fixed-schema probes, fixture exercise functions, raw engine imports/exports and unguarded research mutation methods.",
+    "constructorContract":"Generated types have private constructors. Native factories create admitted objects. An implicit JavaScript class constructor need not throw; that is not the admission proof.",
+    "versionsUnchanged":{"defaultAbi":5,"richAbi":1,"sharedAbi":1,"sharedModel":11,"sharedJournal":12}
+  },
+  "downstreamRepair":{
+    "reproduction":"An independent source consumer of the initial promotion resolved both Loro packages from the registry: Cargo ignores a dependency crate's patch table. The repository's patched deterministic ordering was therefore absent downstream.",
+    "repair":"Retain the exact Loro 1.16.2 facade and give both the canonical crate and facade explicit path dependencies on the retained engine. No downstream root patch is required.",
+    "nativeConsumer":"node scripts/check-collaboration-native-consumer.mjs",
+    "passed":true,
+    "proof":"The complete source tree is copied to an independent temporary directory. Host-filtered Cargo metadata proves both exact engine versions are path packages inside that copy, research is disabled and no package escapes into the repository. Native configured creation, offline exchange, selective history and exact restart pass.",
+    "registryPublicationQualified":false,
+    "publicationLimit":"This qualifies complete source/Git consumption, not a registry crate. Cargo rewrites path dependencies during packaging; a fork identity and registry publishing strategy remain open.",
+    "upstreamRevision":"af130d97d8b110add13283fc5bfc81d97a9a609f",
+    "facadeArchiveSha256":"8e86dea63b66576db244cbc3a40bdb17517263c93f318e2fbe08aca3be1192cb",
+    "facadeArchiveFiles":87,
+    "facadeDifferences":["Cargo.toml adds the relative path for the existing loro-internal 1.16.2 dependency; every other archive file is byte-for-byte identical."],
+    "internalSourceFiles":198,
+    "internalTreeSha256":"06e3c26e32cdc887ff8a064b08954a5083f24230148af305b521dce4049ca880",
+    "internalSourceUnchanged":true,
+    "internalTreeProof":"The pre-promotion experiments/collaboration/vendor/loro-internal-1.16.2 tree and the canonical crate's retained internal tree have identical Git object IDs. The deterministic ordering patch is unchanged; no third-party Rust source was edited during promotion."
+  },
+  "native":[
+    {"command":"cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --quiet","passed":203,"note":"Application-default native library plus all fourteen promoted conformance suites."},
+    {"command":"cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --quiet","passed":233,"note":"Research compatibility library, the same fourteen conformance suites and three retained legacy suites."},
+    {"command":"cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --all-targets --quiet","passed":true},
+    {"command":"cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --target wasm32-unknown-unknown --lib --quiet","passed":true},
+    {"command":"cargo clippy --manifest-path experiments/collaboration/Cargo.toml --locked --all-targets --quiet","passed":true},
+    {"command":"node scripts/check-relay.mjs","passed":true,"defaultTests":17,"serverFeatureTests":20},
+    {"command":"cargo fmt --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration --check; cargo fmt --manifest-path experiments/collaboration/Cargo.toml -p breditor-collab-feasibility --check","passed":true,"note":"First-party packages only; retained vendor formatting and the existing HasIdSpan warning remain unmodified."}
+  ],
+  "installedConsumers":{
+    "command":"node scripts/check-editor-package.mjs",
+    "passed":true,
+    "proof":"Fresh minimal/full npm installs use four candidate archives, no repository runtime or workspace links. The local root has neither optional peer installed. Full consumers pass Node runtime, package-root ES2022/DOM types, separate advanced generated-binding types, SSR placeholder and production Vite builds.",
+    "retainedConsumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-WQsKeD/consumer"
+  },
+  "browserSuites":[
+    {"command":"node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs","passed":27,"perEngine":9,"engines":["chromium","firefox","webkit"],"note":"Installed SDK: local/React lifecycle, mixed content, clipboard, assets, startup cancellation, offline shared merge, exact restart, selective history and caret-style continuity."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/application-network.config.mjs","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"note":"The existing strict installed presentation/control/network cases use the new application package and its actual configured runtime. Includes independent clients, retained image bytes, peer carets, offline/reconnect/restart and selective history. No probe shim, retries or relaxed assertions."},
+    {"command":"node scripts/check-shared-browser-matrix.mjs","passed":303,"perEngine":101,"engines":["chromium","firefox","webkit"],"note":"Fresh explicit run after the incomplete aggregate-deadline attempt. All 202 Chromium/Firefox cases pass together in 4.5 minutes; all 101 WebKit cases pass through the existing per-file isolation plan. No config, deadlines, assertions or automatic retries change. This uses the frozen 0cf24f4 research JS/runtime, before subsequent uncommitted SDK lifecycle work was compiled."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"note":"Fresh research compatibility archives pass all installed network/presentation/control cases in 1.6 minutes. Their independent consumer is breditor-shared-consumer-zQDzk9; it was created before subsequent SDK lifecycle sources were compiled."}
+  ],
+  "legacyCombinedGate":{"command":"node scripts/check-shared-browser.mjs","passed":false,"reason":"The unchanged Chromium/Firefox batch reached its 300-second aggregate deadline after 194 passing cases; eight cases did not run and WebKit/package stages were not reached. There was no failed individual assertion. This incomplete attempt is not counted as a passing matrix."},
+  "legacyCompletion":{"command":"node scripts/check-shared-browser-matrix.mjs && node scripts/check-shared-package.mjs && node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs","passed":true,"note":"Terminal exit 0. Completes the unchanged full source matrix, fresh legacy package install/native/types and installed browser cases. The earlier all-in-one attempt remains recorded as incomplete, not relabelled successful."},
+  "browserRunCountNote":"486 overlapping passing final suite executions, not unique capabilities. The incomplete 194-case attempt and earlier development runs are not added.",
+  "defaultChecks":{
+    "browserTests":2203,
+    "referenceExtensionTests":57,
+    "typecheck":true,
+    "sdkUnitTests":9,
+    "scriptTests":{"total":356,"passed":353,"skipped":3,"note":"The three pre-existing optional diagnostic browser tests retain their explicit opt-in requirement."},
+    "readinessGuardTests":25,
+    "defaultCargoLockUnchanged":true
+  },
+  "artifacts":{
+    "packageVersion":"0.3.0-alpha.22",
+    "archives":[
+      {"name":"@breditor/browser","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name":"@breditor/experimental-rich-content","bytes":1169568,"sha256":"3bac159ecc6375d5284348806b2360b02bdf6b858f9e2becbb6b44d3af5a9ce7"},
+      {"name":"@breditor/collaboration","bytes":2240362,"sha256":"aa2fdd411a71ac2e4eaaf600099c23e475fa5540eccfee422f0f866e372237a7"},
+      {"name":"@breditor/editor","bytes":12396,"sha256":"480c6ddf3b8265b0c5bce7f27178083bfeaa0a9b6d27c1e2561d04ab822c61ef"}
+    ],
+    "localRichWasm":{"bytes":4091608,"gzipBytes":1088619,"sha256":"7c724be7c4b03b7022421cf9fb63937172a5e746c146edb164eaab1af23a33b9"},
+    "applicationSharedWasm":{"bytes":8044597,"gzipBytes":2188008,"sha256":"29d4248752baf7c126a789a7cc3fcfd8aae3b450978ea36c72039019e5e4fd46"}
+  },
+  "developmentFailures":[
+    "The first application Wasm check found a clipboard ID helper still referencing a research-only validation module. It now uses the canonical shared identity helper.",
+    "An initial surface guard incorrectly required an empty JavaScript constructor to throw. The corrected guard checks private generated declarations, factory-only native exports and absence of unsafe research entry points.",
+    "Unfiltered offline Cargo metadata requested an uncached dependency for an unrelated architecture. The independent consumer now explicitly validates and runs the actual host target.",
+    "The first copied-source graph check confused macOS /var and /private/var aliases. Real-path normalization fixes that comparison while preserving package-containment rejection.",
+    "A read-only cargo fmt --all --check traversed retained third-party path dependencies and reported upstream formatting differences. Scoped first-party checks pass; no vendor formatting was applied."
+  ],
+  "remaining":[
+    "Shared React ownership and a durable coordinated SDK lifecycle, a coherent public profile/API contract and registry publication strategy remain open.",
+    "Everyday structural blocks/tasks, broader selections/navigation/history, read-only/block properties and foreign HTML/Markdown/Office interchange remain goal work.",
+    "All thirteen V1 qualification gates remain open; passing installed tests is not full feature parity, historical WebKit repair, native IME/accessibility or performance qualification."
+  ],
+  "historicalWebKitFaultResolved":false,
+  "published":false,
+  "publicDeployment":false
+}

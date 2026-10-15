@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `3de7251` (saved locally,
+The latest functional implementation checkpoint is `0cf24f4` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -61,14 +61,24 @@ until the caret context changes, including after exact history/restart. Final
 qualification passes 27 installed SDK, 303 shared source and 78 installed-network
 browser runs, the full opt-in core/shared native suites, Wasm boundary tests and
 the reference-relay gate. Typing coalescing remains open.
+The subsequent [collaboration source promotion](qualification/2026-10-15-collaboration-source-promotion.json)
+moves the shared Rust/browser implementation to canonical optional packages.
+The application Wasm exposes configured factories and guarded owners without
+research fixtures; the old qualification packages compile the same source with
+their original research surface. Independent native consumption also caught and
+repaired an ignored dependency-local Cargo patch: explicit retained path edges
+now keep the deterministic engine downstream without a consumer root override.
+Final application qualification passes 27 installed SDK and 78 installed-network
+browser runs, plus native, clean-consumer, type, script and default checks.
+This qualifies source/Git consumption, not registry crate publication.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
 The active first-two-workstream goal is not complete. Standard controls now use
 the Rust state reads, but applying a mixed format replaces its complete map;
-per-property-preserving mixed edits remain distinct work. Next are Rust-source/API
-promotion and a durable shared-editor lifecycle, everyday editing gaps and
+per-property-preserving mixed edits remain distinct work. Next are a durable
+shared-editor lifecycle and public API/publication decisions, everyday editing gaps and
 external interchange. The local React integration is a tested candidate; it does
 not yet own a durable shared session. The
 original local one-format command remains strict; compound edits use a separate
@@ -85,7 +95,7 @@ change. See [the exact functional boundary](RICH_CONTENT_AND_COLLABORATION.md).
 
 The default browser/Wasm packages and opt-in rich/shared packages remain distinct.
 The latter remain private, though matching generated runtimes are now packaged.
-Successful clean installation does not finish Rust-source/API promotion or make
+Successful clean installation does not freeze the public API or make
 the candidate a supported public V1 distribution.
 
 ## What parity means
@@ -184,17 +194,17 @@ workflows and final V1 qualification remain subsequent work.
 
 ### First checkpoint unify the distributed editor
 
-Promote the existing shared Rust owner and matching Wasm factory out of the
-feasibility-only distribution, preserving default package compatibility. Keep
+The shared Rust owner and matching application-only Wasm factory now have
+canonical optional sources, preserving default package compatibility. Keep
 collaboration and relay optional; applications should not need a relay merely
 to edit local tables and images. Agree on public package ownership and profile
 construction before freezing names or marking packages publishable.
 
-The packaged shared candidate still includes the experimental probe/fixture
-exports from its isolated Wasm source. Separate those test entry points from the
-supported application surface during Rust-source promotion; merely bundling the
-feasibility binary is not the final distribution contract. Preserve the old
-experimental qualification path rather than silently changing its exports.
+The promoted application candidate excludes probe/fixture exports. The retained
+experimental qualification path still exposes its original research APIs from
+the same source. Native source/Git consumers retain the patched engine through
+explicit path edges; registry crate packaging and public dependency identities
+still need their own qualification before publication.
 
 Add a complete safe inline presentation/control contract to the rich path,
 including links and mixed property values. Reuse existing semantics where
