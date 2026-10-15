@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `cb7c913` (saved locally,
+The latest functional implementation checkpoint is `8ac39ed` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -126,6 +126,20 @@ Final qualification passes 102 installed SDK, 78 application-network and 168 loc
 source browser cases plus 2,332 opt-in Rust tests, canonical shared native tests,
 strict native/Wasm lint, types, clean consumers and default regressions. No shared
 V2 feature or full shared research compatibility rerun is claimed for this checkpoint.
+The subsequent [native shared V2 foundation](qualification/2026-10-15-shared-structural-v2-foundation.json)
+selects model 12/journal 13 only through explicit native V2 profile factories.
+Original model 11/journal 12 and the browser factories retain their meanings.
+The new projection retains structural subtrees, code text and normalized task
+heads; separate actions own code conversion/language and task completion.
+Observed formatting loss is reversible without erasing foreign contributions.
+Its final native suite passes 220 cases, including 15 V2 contracts; 102 installed
+SDK and 78 application-network cases pass in all three engines. An old/new V1
+Wasm comparison matches 49 journal/view/lineage states, two cross-version restores
+and 12 future history steps. These browser checks qualify existing V1 sharing,
+not V2 integration. V2 task structural lowering and browser/relay factories remain
+open. One development `ReplayMismatch` in concurrent code/style history has not
+been reproduced again or explained, so it remains a V2 promotion blocker.
+No historical WebKit repair or broader research-suite rerun is claimed.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.

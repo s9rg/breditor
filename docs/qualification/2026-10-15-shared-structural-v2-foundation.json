@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "8ac39ed039655885164d8dc59ab8b90d6e366a81",
+  "scope": "Explicit native shared rich-language V2 foundation: separate causal model/journal, structural projection, code typing/conversion/language and task completion. Browser/relay V2 factories and the complete structural command family are not implemented. Existing installed V1 collaboration is regression-tested against the rebuilt application runtime.",
+  "releaseQualified": false,
+  "sharedStructuralV2Promoted": false,
+  "goalComplete": false,
+  "contracts": {
+    "original": "Original rich-language V1 factories and direct RichReplica constructors remain model 11/journal 12. V1 descriptors and genesis operations are unchanged. Document format 2 and local checkpoint format 1 retain their meanings.",
+    "nativeOptIn": "SharedRichProfile::from_schema_v2, from_configuration_json_v2 and from_standard_configuration_json_v2 explicitly select rich language 2, causal model 12 and journal 13. Configuration format 2 retains bounded closed declarations and tightening-only host limits. There is no automatic migration.",
+    "binding": "Compiled profile selects the protocol. V2 genesis has a causal model marker checked against the compiled profile before projection/adoption. Framed updates, authenticated writer groups, semantic lineage and presence derive their versions from that owner; wrong framed versions reject before opaque import. Raw engine updates are staged and validate their causal marker before publication.",
+    "projection": "Code owns causal text, not recursively interpreted text children. Quotes, task lists/items and rules retain structural identities. Empty task lists hide; missing task prose heads and empty quotes use deterministic normalized prose. Existing nested-table and image-caption grammar remains in force.",
+    "namedActions": ["set_code_block.rs", "set_code_language.rs", "set_task_checked.rs"],
+    "code": "Explicit rejectFormatted/removeFormats policy. Observed style removal authors writer-owned disables; code projection masks unseen concurrent styles. Prose conversion disables currently observed latent styles without deleting their foreign contributions. Kind and language fields have independent causal ownership. Unicode, tabs and LF/CR are exact; nonempty pending code styles reject.",
+    "taskCompletion": "Explicit Boolean completion with a true no-op for the matching value. Author-local Undo preserves another writer's completion and body edits.",
+    "sequentialGroups": "Target kinds follow earlier conversions in the same atomic batch. Code conversion followed by language changes is one history group; a later invalid format rejects the complete batch without publication.",
+    "browserSurface": "Application Wasm still exports the existing five JavaScript exports and 51 raw Wasm exports. No V2 Wasm profile factory or SDK/relay selector is exposed. Default browser archive is unchanged."
+  },
+  "nativeChecks": {
+    "command": "CARGO_TARGET_DIR=target/collaboration-native CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 /Users/s/.cargo/bin/cargo test --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "finalPassed": 220,
+    "existingContracts": 205,
+    "structuralV2Contracts": 15,
+    "researchFacadeFocusedPassed": 15,
+    "researchFacadeCommand": "CARGO_TARGET_DIR=target/collaboration-feasibility CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 /Users/s/.cargo/bin/cargo test --manifest-path experiments/collaboration/Cargo.toml --test rich_structural_v2_contracts",
+    "suiteFooters": 17,
+    "doctests": 0,
+    "strictNativeAllTargetClippy": true,
+    "strictActualApplicationWasmClippy": true,
+    "rustdocWarningsDenied": true,
+    "formatCheck": true,
+    "proof": "Explicit factory isolation, exact mixed AST seed/join/restart, code/task offline typing, causal selections/presence, writer group admission, marker tampering, crossed model/journal rejection, reversible multi-run format loss, kind/language independence, task conflicts, code pending-format rejection and exact future history after restore.",
+    "note": "No all-features or fresh full root-workspace test claim. Core/default sources were unchanged. A pre-existing retained dependency HasIdSpan warning remains; no vendor source was edited."
+  },
+  "v1RuntimeComparison": {
+    "command": "node scripts/compare-shared-v1-runtime.mjs target/shared-v1-before-model12-emHSgv target/promoted-shared-web",
+    "beforeWasmSha256": "7e9ac3a58323b0dbd6a6ffe997df913e8bc940530ece5e4785d841e3f35eef0e",
+    "afterWasmSha256": "5221e969d0a26d06099f9100a7620a64ba5087a5640c7b7932cb3e96d87b9ab6",
+    "passed": true,
+    "comparedStates": 49,
+    "crossVersionRestores": 2,
+    "futureHistorySteps": 12,
+    "proof": "Old/new V1 profile/owner descriptors, catalog, canonical documents, exact journal strings and expected effects, causal clocks, read views, presence and canonical writer lineage match. Both runtimes can restore the other's journals and continue exact future history. Opaque binary packing and payload digests are not treated as canonical semantic lineage. New-model commands reject against V1 without publication."
+  },
+  "installedConsumers": {
+    "command": "node scripts/check-editor-package.mjs",
+    "passed": true,
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-lh5r0A/consumer",
+    "minimal": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-lh5r0A/minimal",
+    "sharedOnly": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-lh5r0A/shared-only",
+    "configurations": ["Local without React/collaboration", "Shared without React", "Full React/shared with Node initialization, package-root normal/advanced/Wasm types and eight Vite production pages"]
+  },
+  "browserSuites": [
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs",
+      "passed": 102,
+      "perEngine": 34,
+      "engines": ["chromium", "firefox", "webkit"],
+      "duration": "2.1 minutes",
+      "scope": "Frozen clean-installed local V1/V2, optional shared V1, vanilla/React lifecycle, clipboard, assets, offline history, typing, hard breaks and exact reload. Not shared V2 coverage."
+    },
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/shared-browser/application-network.config.mjs",
+      "passed": 78,
+      "perEngine": 26,
+      "engines": ["chromium", "firefox", "webkit"],
+      "duration": "1.8 minutes",
+      "scope": "Installed application V1 networking, durable/offline/reconnect, assets, presence, standard controls and selective recovered history. Not shared V2 coverage."
+    }
+  ],
+  "browserPolicy": "Stock 60-second cases and 300-second process budget, retries zero. Separate owned localhost servers shut down after tests; the retained user demo was not changed. These are overlapping runs, not unique capability counts or a historical WebKit repair.",
+  "scriptChecks": {
+    "command":"npm run test:scripts",
+    "total":359,
+    "passed":356,
+    "failed":0,
+    "existingOptInSkips":3,
+    "developmentRepair":"The promotion guard initially detected 15 canonical conformance files but only 14 research shims. Added the missing structural V2 shim and updated the exact inventory; the final script run passes."
+  },
+  "artifacts": [
+    {"name":"application-shared-wasm","bytes":8090122,"sha256":"5221e969d0a26d06099f9100a7620a64ba5087a5640c7b7932cb3e96d87b9ab6"},
+    {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1227748,"sha256":"5dd4a10dc6c5dc1dbc0ede8defb94c8d1b35df845f7a6741173057327b0bb7f8"},
+    {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2258501,"sha256":"1f92cedb6d8be20eb8832c3f5e9786e675c3a5970a50e717dac19e2f11fbdb2c"},
+    {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":18898,"sha256":"942cbe0bc3689a52e35a1654bdc9568337fc43159e87d944cb0eb987bc83b8ff"}
+  ],
+  "openIssues": [
+    {
+      "id":"native-v2-concurrent-format-replay",
+      "status":"observed-not-confirmed-fixed",
+      "observation":"An initial full native invocation returned ReplayMismatch in unseen_remote_styles_are_masked_in_code_but_restored_by_selective_undo. No causal checkpoint was captured for that invocation.",
+      "followup":"20 isolated development repetitions and 12 pre-final V2-group invocations (12 to 14 cases as tests were added) passed. The final 15-case focused group and final 220-case complete suite also passed. Later passing runs are not a repair. Native debug builds now have explicit opt-in replay-effect tracing, and the observation blocks V2 promotion."
+    },
+    {
+      "id":"historical-intermittent-webkit-fault",
+      "status":"open",
+      "evidence":"docs/WEBKIT_FAULT_RECOVERY.md",
+      "note":"No new reproduction or root-cause repair in this checkpoint. Passing browser suites do not close this issue."
+    }
+  ],
+  "remaining": ["Shared V2 quote/task/rule command family including task split/join/nesting/exit", "Selected code replacement and full code/atomic boundary policy", "V2 Wasm, SDK and relay selectors with complete conflict/recovery coverage", "General selections, natural typing groups, live read-only and bounded layout controls", "Sanitized HTML/Markdown and realistic external paste with explicit losses", "Remaining V1 parity and release gates"],
+  "retainedLogs": "target/shared-structural-v2-qualification",
+  "reproductionLogs": ["target/shared-v2-format-repeat-1.log through target/shared-v2-format-repeat-20.log", "target/shared-v2-parallel-repeat-1.log through target/shared-v2-parallel-repeat-12.log"],
+  "readiness": "45 unequal feature groups remain 8 implemented slices, 17 partial and 20 missing, with all 13 qualification gates open. No publication, deployment, release tag or full-goal completion."
+}

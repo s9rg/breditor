@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "cb7c9131a5ee916eb1b87ae75f21dbd650a8fb96",
+  "baselineCommit": "8ac39ed039655885164d8dc59ab8b90d6e366a81",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -68,9 +68,9 @@
     {
       "id":"blockquotes-code-rules","area":"Editing","status":"missing",
       "summary":"Blockquotes, code blocks and horizontal rules",
-      "current":"Explicit rich-language V2 now runs through native Rust, bootstrap V7 Wasm and the local vanilla/React SDK, with semantic quote/code/rule rendering, bounded language controls, explicit formatting loss, unavailable code inline state and exact local history/reload. Existing defaults remain V1 and shared model 11 rejects V2 before import. Code exit, complete boundary navigation, shared conflict/journal policies, migration and foreign interchange remain open.",
+      "current":"Explicit local V2 has semantic rendering, bounded language controls, declared format loss and exact history/reload. A separate native shared V2 foundation selects model 12/journal 13, retains structural subtrees and code sources, and adds writer-owned code conversion/language plus observed-format removal. Original V1 factories and model 11 remain unchanged; 49 old/new V1 Wasm states and cross-version recovery match. V2 shared wrapper commands, selected code replacement, browser/relay factories, code exit/navigation and foreign interchange remain open. One development replay mismatch remains unexplained and blocks V2 promotion.",
       "acceptance":"Add original Rust contracts and separate actions for each kind, including code language/text rules, boundary navigation, shared conflict policy and migration.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/schema/rich_content_profile_v2.rs","crates/breditor-core/tests/rich_structural_v2.rs","crates/breditor-wasm/tests/rich_structural_v2.rs","experiments/editor-browser/structural-v2.spec.mjs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/schema/rich_content_profile_v2.rs","crates/breditor-core/tests/rich_structural_v2.rs","crates/breditor-wasm/tests/rich_structural_v2.rs","experiments/editor-browser/structural-v2.spec.mjs","crates/breditor-collaboration/src/rich_replica/protocol.rs","crates/breditor-collaboration/tests/rich_structural_v2_contracts.rs","scripts/compare-shared-v1-runtime.mjs"],
       "sources":["tiptap-starter","tiptap-source-starter","ckeditor-digest"]
     },
     {
@@ -92,9 +92,9 @@
     {
       "id":"task-lists","area":"Lists","status":"missing",
       "summary":"Interactive task lists",
-      "current":"Explicit local V2 tasks have pointer/Space checkboxes, separate Rust split/join/indent/outdent/empty-exit actions and owner-bound controls. Prose Tab/Shift+Tab and the stock Indent/Outdent buttons preserve completion, descendants and body order. Enter exits only a truly empty task without a rich tail; otherwise split creates an unchecked right task. Native-widget navigation/deletion cannot edit a still-selected grid or navigate away on checkbox Backspace, while checkbox Undo remains available. Installed vanilla/React tests cover exact reload/future history, internal clipboard and image bytes. Shared V2 admission/conflicts and foreign interchange remain open.",
+      "current":"Explicit local V2 tasks have pointer/Space checkboxes, named split/join/indent/outdent/empty-exit actions and exact installed vanilla/React history, reload, clipboard and image tests. Focused widget navigation cannot edit a retained grid or trigger checkbox Backspace browser navigation. The native shared V2 foundation now admits task subtrees and required normalized heads; a separate writer-owned completion action retains remote body edits and checked values under Undo. Shared task structural commands, V2 browser/relay integration and foreign interchange remain open. An unexplained native code/style replay observation blocks V2 promotion.",
       "acceptance":"Add typed checked state with keyboard and pointer behavior, nesting, clipboard, conflict policy and author-local history.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/structural_drafts.rs","crates/breditor-core/src/rich_content/actions/set_task_checked.rs","crates/breditor-core/src/rich_content/actions/split_task_item.rs","crates/breditor-core/src/rich_content/actions/join_task_items.rs","crates/breditor-core/src/rich_content/actions/indent_task_items.rs","crates/breditor-core/src/rich_content/actions/outdent_task_items.rs","crates/breditor-core/src/rich_content/actions/exit_task_item.rs","crates/breditor-core/tests/rich_task_structure_v2.rs","experiments/editor-browser/structural-v2.spec.mjs","experiments/editor-browser/task-structure.spec.mjs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/structural_drafts.rs","crates/breditor-core/src/rich_content/actions/set_task_checked.rs","crates/breditor-core/src/rich_content/actions/split_task_item.rs","crates/breditor-core/src/rich_content/actions/join_task_items.rs","crates/breditor-core/src/rich_content/actions/indent_task_items.rs","crates/breditor-core/src/rich_content/actions/outdent_task_items.rs","crates/breditor-core/src/rich_content/actions/exit_task_item.rs","crates/breditor-core/tests/rich_task_structure_v2.rs","experiments/editor-browser/structural-v2.spec.mjs","experiments/editor-browser/task-structure.spec.mjs","crates/breditor-collaboration/src/rich_replica/actions/set_task_checked.rs","crates/breditor-collaboration/tests/rich_structural_v2_contracts.rs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
