@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `fbf31cc` (saved locally,
+The latest functional implementation checkpoint is `17eb61e` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -43,14 +43,25 @@ history. It repairs pending-style loss from misrouted caret targets and redundan
 shared Undo entries from empty resets. It passes 165 local, 303 shared and 78
 fresh installed-archive browser runs, plus Rust/Wasm, type and package checks.
 The default browser archive remains byte-for-byte unchanged.
+The subsequent [SDK integration checkpoint](qualification/2026-10-15-editor-sdk.json)
+adds the private `@breditor/editor` local root, opt-in React and collaboration
+entries, cancellable startup and owner retirement. Collaboration now includes
+its matching generated Wasm; clean consumers no longer need a repository
+`target` module. A minimal install has neither optional peer. The React path
+retains Rust history across parent renders and handles StrictMode, late startup,
+key changes and failed-opening retry. Final qualification passes 21 new installed
+production-browser cases and 78 existing installed shared/network cases, plus
+SDK, default-browser, script, type, native-runtime and clean-install checks.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
 The active first-two-workstream goal is not complete. Standard controls now use
 the Rust state reads, but applying a mixed format replaces its complete map;
-per-property-preserving mixed edits remain distinct work. Next are distribution
-promotion and React integration, everyday editing gaps and external interchange. The
+per-property-preserving mixed edits remain distinct work. Next are Rust-source/API
+promotion and a durable shared-editor lifecycle, everyday editing gaps and
+external interchange. The local React integration is a tested candidate; it does
+not yet own a durable shared session. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill
 the workstreams' acceptance conditions.
@@ -64,9 +75,9 @@ suite executions, not 651 unique capabilities, and were run before this planning
 change. See [the exact functional boundary](RICH_CONTENT_AND_COLLABORATION.md).
 
 The default browser/Wasm packages and opt-in rich/shared packages remain distinct.
-The latter are private and still need a generated module from the isolated
-collaboration workspace. Successful installation tests do not make that module a
-supported application distribution.
+The latter remain private, though matching generated runtimes are now packaged.
+Successful clean installation does not finish Rust-source/API promotion or make
+the candidate a supported public V1 distribution.
 
 ## What parity means
 

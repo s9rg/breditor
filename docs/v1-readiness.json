@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "fbf31cc174a874b7d5245c7105a6c46e14dd85da",
+  "baselineCommit": "17eb61ea71280814f34042e3d4abcfa04d235bf9",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -300,9 +300,9 @@
     {
       "id":"framework-integrations","area":"Integration","status":"partial",
       "summary":"Framework integrations and static rendering",
-      "current":"A framework-neutral runtime and default React reference exist. A production rich/shared React integration, SSR/static renderer and broader framework examples are not complete.",
+      "current":"The private editor SDK candidate now supplies installed vanilla and local React entry points, with StrictMode-safe ownership, cancellation, failed-opening retry and history retained across parent renders. A clean ES2022 consumer and production pages pass in all three engines. SSR emits an inert starting placeholder, not a static document renderer. Shared durable React ownership, source/API promotion and broader framework examples remain open.",
       "acceptance":"Ship installed-package React and vanilla examples, stable lifecycle hooks and an inert data renderer; document adapter responsibility for other frameworks.",
-      "evidence":["examples/react/package.json","packages/breditor-experimental-collaboration/README.md","packages/breditor-browser/README.md"],
+      "evidence":["packages/breditor-editor/README.md","packages/breditor-editor/src/react.tsx","scripts/check-editor-package.mjs","experiments/editor-browser/editor.spec.mjs"],
       "sources":["tiptap-extension","ckeditor-overview"]
     },
     {
@@ -388,7 +388,7 @@
   ],
   "gates": [
     {"id":"catalog-coverage","status":"open","summary":"Finish the feature-by-feature baseline review","acceptance":"Expand grouped rows into versioned acceptance cases for every selected Tiptap/CKEditor capability. Group counts are not a parity percentage; record intentional differences and obtain approval for exclusions.","evidence":["docs/V1_RELEASE_PLAN.md"]},
-    {"id":"distribution","status":"open","summary":"Promote rich/shared Rust, Wasm and browser packages","acceptance":"Independent clean consumers install one supported paired profile and production module; no experiments path, manual target artifact or source-only link is required.","evidence":["packages/breditor-experimental-collaboration/package.json","scripts/check-shared-package.mjs"]},
+    {"id":"distribution","status":"open","summary":"Promote rich/shared Rust, Wasm and browser packages","acceptance":"Independent clean consumers install one supported paired profile and production module; no experiments path, manual target artifact or source-only link is required.","evidence":["packages/breditor-editor/README.md","scripts/check-editor-package.mjs","scripts/build-shared-runtime.mjs","scripts/check-shared-package.mjs"]},
     {"id":"compatibility","status":"open","summary":"Freeze V1 APIs and explicit migration contracts","acceptance":"Document source, ABI, schema, journal and asset compatibility separately; add supported old-version recovery/migration fixtures and deliberate rejection paths.","evidence":["docs/COMPATIBILITY.md","experiments/collaboration/README.md"]},
     {"id":"release-ci","status":"open","summary":"Cover every distributed feature in the release pipeline","acceptance":"Default verify:release alone is insufficient. Run default, rich, shared, relay and installed-consumer checks reproducibly in CI, retaining exact candidate hashes and failed runs.","evidence":["scripts/verify-release.mjs","scripts/check-shared-browser.mjs","scripts/check-rich-browser.mjs","scripts/check-collaboration-feasibility.mjs"]},
     {"id":"browser-reliability","status":"open","summary":"Qualify browser faults and native clipboard","acceptance":"Close or explicitly resolve the historical WebKit fault with a reproducible cause/fix or supported-environment policy, and qualify native Safari/Chrome plus repeated lifecycle/clipboard sessions. Passing isolated files is not an engine repair.","evidence":["docs/FEATURE_EXPANSION_BETA.md","docs/RICH_CONTENT_AND_COLLABORATION.md"]},

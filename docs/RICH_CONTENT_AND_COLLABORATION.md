@@ -40,8 +40,10 @@ runs from installed npm archives without workspace links. The original same-page
 demo and shipping package contracts are preserved.
 
 This is functional integration, not production release qualification. The
-matching shared Rust/Wasm still comes from the isolated build; promotion of its
-distribution, import-worker isolation, public authentication/TLS, measurements,
+matching shared Wasm is now included in the private collaboration archive and
+the private editor SDK supplies lazy initialization. Its Rust source remains in
+the isolated workspace; source/API promotion, shared React ownership,
+import-worker isolation, public authentication/TLS, measurements,
 a real pilot and the deferred reliability/accessibility pass remain release work.
 The private developer bootstrap supplies both demo tokens to its local page and
 must never be exposed publicly.

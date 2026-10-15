@@ -20,9 +20,11 @@ Existing default package, schema and ABI contracts are unchanged.
 
 The combined [rich content and collaboration implementation](docs/RICH_CONTENT_AND_COLLABORATION.md)
 has completed its functional goal, including real network and installed-archive
-tests. It is not production-qualified: matching shared Rust/Wasm still comes
-from the isolated build, and integration, compatibility and reliability work
-remains. The [V1 release plan](docs/V1_RELEASE_PLAN.md) and
+tests. A private [editor SDK candidate](packages/breditor-editor/README.md) now
+provides local vanilla/React entry points and an optional collaboration entry.
+Both matching Wasm runtimes install from archives; consumers no longer need a
+repository build artifact. Rust-source promotion, shared React ownership,
+compatibility and reliability work remain. The [V1 release plan](docs/V1_RELEASE_PLAN.md) and
 [capability audit](docs/v1-readiness.json) track feature parity with Tiptap and
 CKEditor, package promotion and explicit release gates. Run `npm run audit:v1`
 to inspect the remaining work; `npm run check:v1` fails while it remains open.

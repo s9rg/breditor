@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "17eb61ea71280814f34042e3d4abcfa04d235bf9",
+  "scope": "Private package-root local editor SDK, optional React and collaboration entries, matching bundled shared Wasm, original host rollback and cancellable runtime initialization. Native protocols, Rust sources and default package graphs retain their existing meanings.",
+  "releaseQualified": false,
+  "browserSuites": [
+    {"command":"node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs","passed":21,"perEngine":7,"engines":["chromium","firefox","webkit"],"note":"Final production Vite pages use only fresh installed archives. Covers mixed headings/nested lists/cells/captions, Link and size controls, synthetic clipboard payloads, exact checkpoints/reload, real retained asset bytes, React rerender/key/unmount, offline merge/selective Undo/future Redo, failed/synchronous-abort rollback and a delayed shared runtime download."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"note":"Existing presentation/controls, independent network contexts, peer carets, real image transport, offline/reconnect/restart and selective-history workflows now use the shared runtime from the installed archive, not a host-supplied target file."}
+  ],
+  "browserRunCountNote": "99 overlapping final suite executions, not unique capabilities or a parity percentage. No retries, skipped specs, relaxed deadlines or weakened assertions. Earlier development runs are not added. One new fixture's bare dynamic import inside page.evaluate was corrected to use its bundled import; it was not a library failure.",
+  "installedConsumers": {
+    "command":"node scripts/check-editor-package.mjs",
+    "passed":true,
+    "minimal":"Fresh offline archive installation without React or collaboration; package-root imports, ES2022/DOM TypeScript, matching local Wasm, typing, Undo and exact future Redo after restore.",
+    "full":"Fresh offline installation with optional peers; React SSR placeholder, ES2022/DOM types, packaged local/shared native profile/catalog equivalence, offline merge/selective Undo and exact future history, four production Vite entry pages.",
+    "existingShared":"node scripts/check-shared-package.mjs passes fresh package-root/generated-type/native-runtime, relay, asset and quota checks using the bundled matching shared module. Native vector input remains test data, not a consumer runtime."
+  },
+  "unitAndTypeChecks": [
+    {"command":"npm run test:candidate --workspace @breditor/editor","passed":9,"note":"Runtime reuse/retry/input identity, host exclusivity and rollback, per-consumer cancellation, React StrictMode, callback continuity, late owner disposal, retry and live-owner retention."},
+    {"command":"node --test --test-reporter=tap scripts/*.test.mjs","passed":335,"skipped":3,"note":"338 total including the three existing explicit opt-in diagnostic skips. Includes five runtime-build guards and two package-boundary guards."},
+    {"command":"npm run test --workspace @breditor/browser","passed":2203},
+    {"command":"npm run test --workspace @breditor/reference-highlight","passed":57},
+    {"command":"npm run typecheck","passed":true,"note":"All existing default workspace checks pass. Candidate/rich/shared types additionally compile in the clean-consumer check; candidate scripts remain opt-in so a default build does not require shared tooling."}
+  ],
+  "nativeScope":"Both matching Wasm runtimes rebuilt with locked offline Rust dependencies. Rust source did not change in this checkpoint; previous native/Wasm tests are recorded at the standard-control checkpoint and are not claimed as rerun here. The existing unused vendor HasIdSpan warning remains in unmodified code.",
+  "artifacts": {
+    "packageVersion":"0.3.0-alpha.22",
+    "archives":[
+      {"name":"@breditor/browser","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name":"@breditor/experimental-rich-content","bytes":1169568,"sha256":"3bac159ecc6375d5284348806b2360b02bdf6b858f9e2becbb6b44d3af5a9ce7"},
+      {"name":"@breditor/experimental-collaboration","bytes":2533181,"sha256":"21bbb069a8420f1f2d0ed1352407f534b94d53a4fd3cbf0a84b5ef1d16266d70"},
+      {"name":"@breditor/editor","bytes":12337,"sha256":"3a026ce668325cf5095b7a4520b5878113209431b105ffe5960f0cb7bb506a35"}
+    ],
+    "localRichWasm":{"bytes":4091608,"gzipBytes":1088619,"sha256":"7c724be7c4b03b7022421cf9fb63937172a5e746c146edb164eaab1af23a33b9"},
+    "sharedWasm":{"bytes":9115944,"gzipBytes":2464217,"sha256":"fb1f158f70db0d2dddba2c3d67a9338ea4fbd27a70f6ffd331e694ac71feca5c"},
+    "note":"Default browser and rich-content archives match the preceding checkpoint exactly. Shared binary output naming changes generated metadata, not the schema/model/journal protocol. Gzip byte counts use Node's default gzip policy, not Vite's report."
+  },
+  "remaining": [
+    "Rust shared source/API promotion, a coherent profile-definition surface and durable shared-editor/React ownership remain open; packaging the existing isolated source does not complete that acceptance.",
+    "The local React candidate is uncontrolled per sessionKey. Options do not replace live documents on rerender; save/export before deliberate key change or unmount. Local SDK persistence and asset-byte storage are explicit host services, not automatic autosave.",
+    "The optional collaboration entry exposes the existing shared lifecycle primitives and a lazy standard profile factory. The host must acquire the exclusive writer lease before constructing a live writer. Failed durable flush must not discard the live owner.",
+    "Complete everyday structural editing, task lists, hard breaks/navigation, general selections, natural typing groups, read-only/block policies, contextual controls and sanitized HTML/Markdown/Office interchange remain active first-two-workstream goal work.",
+    "Native clipboard, physical IME, screen readers, sustained performance, public deployment and final V1 qualification remain later work. The 45 grouped feature labels and all 13 qualification gates remain unchanged."
+  ],
+  "historicalWebKitFaultResolved":false,
+  "published":false,
+  "publicDeployment":false
+}
