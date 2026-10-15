@@ -8,6 +8,7 @@
 pub mod actions;
 pub(crate) mod ast_properties;
 pub(crate) mod clipboard;
+mod code_language;
 mod drafts;
 mod flow_position;
 mod grid_destination;
@@ -25,6 +26,7 @@ mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;
 mod standard_inline_v1;
+mod structural_drafts;
 mod table_draft;
 mod table_geometry;
 mod table_paste_draft;
@@ -34,6 +36,7 @@ pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
     RichClipboardKind,
 };
+pub use code_language::{CodeLanguage, CodeLanguageError};
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use flow_position::{RichFlowParent, RichFlowPosition};
 pub use image_draft::ImageDraft;
@@ -61,6 +64,7 @@ pub use standard_inline_v1::{
     STANDARD_INLINE_NEW_WINDOW_V1, STANDARD_INLINE_PIXELS_V1, STANDARD_INLINE_RGB24_V1,
     StandardInlineFormatV1, standard_inline_extension_v1,
 };
+pub use structural_drafts::{RichTaskItemDraft, RichTaskListDraft};
 pub use table_draft::TableDraft;
 pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerge};
 

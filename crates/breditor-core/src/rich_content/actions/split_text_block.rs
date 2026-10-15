@@ -34,6 +34,11 @@ impl SplitTextBlock {
         right_heading: Option<u8>,
     ) -> Result<Self, RichActionError> {
         let source = block_node(document, point.block())?;
+        if source.as_element().is_none_or(|node| {
+            !matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading")
+        }) {
+            return Err(RichActionError::TextTarget);
+        }
         let (head, tail) =
             fragment(source)?.split_at(point.offset()).map_err(|_| RichActionError::TextRange)?;
         let left_node = text_node(source, &head)?;

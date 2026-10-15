@@ -45,6 +45,13 @@ optional exact revision rejects asynchronous work prepared from an older view.
 Remote publications can be held across input/composition and remain bounded.
 Callback failures cannot rewind content already committed by Rust.
 
+`SharedRichEditor.hardBreak(revision?)` replaces the current text selection with
+one LF in one author-local history group, retaining logical-start formats and
+peer changes. Shift+Enter invokes it without splitting a paragraph. Explicit
+`beforeinput` replacement targets are honored separately. The additive guarded
+Wasm method uses the existing text protocol, not a new shared operation. A
+compatible older binding falls back to its equivalent guarded plain-text call.
+
 Original shared V1 configuration declares a schema name/version, an extension
 array and optional tightened document limits. Extensions declare exact IDs,
 dependencies, conflicts and typed inline formats. Properties have required or
@@ -81,6 +88,8 @@ compatibility/testing paths, not dependencies of this application package.
 Configuration V1, ABI 1, model 11, journal 12, deterministic engine tag and
 existing serialized meanings are unchanged. A local rich checkpoint is not a
 shared journal. The default editor/Wasm graph remains independent of replication.
+The native core's explicit rich-language V2 structural schema is not admitted by
+model 11; profile creation rejects it before seed parsing or engine import.
 
 Run `node scripts/check-editor-package.mjs` for clean local-only, shared-only and React SDK installs
 and production Vite pages. The application-network browser matrix uses the same

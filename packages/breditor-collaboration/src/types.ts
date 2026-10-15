@@ -70,6 +70,8 @@ export interface SharedRustOwner {
  set_selection(observation:unknown,input:string):boolean;
  set_pending_formats(observation:unknown,input:string):boolean;
  insert_plain_text(observation:unknown,text:string):boolean;
+ /** Additive capability; old matching owners can author the same LF through insert_plain_text. */
+ insert_hard_break?(observation:unknown):boolean;
  replace_plain_text(observation:unknown,selection:string,text:string):boolean;
  paste_clipboard_namespace(observation:unknown,fragment:string,target:string,prefix:string):boolean;
  paste_flow_at_text_namespace(observation:unknown,fragment:string,right:string,prefix:string):boolean;

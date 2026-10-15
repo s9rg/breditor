@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Functional rich text/format editing and exact owner-held selection/history workflows.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     codec::{DocumentJsonCodecV2, RichSessionJsonCodec},

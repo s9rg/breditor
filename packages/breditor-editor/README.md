@@ -58,6 +58,17 @@ receive the newly created owner and its standard controls; a toolbar bound to
 another owner rejects. `createLocalProfile()` exposes the matching headless
 native profile when an application needs to admit or construct its own seed.
 
+`execute({kind: 'insertHardBreak'})` replaces the current text selection with
+exactly one LF in one Undo group. Shift+Enter has that keyboard meaning, including
+inside list heads, cells and captions; ordinary Enter remains structural. A break
+retains the logical start's admitted typing formats, creates no block identity and
+does not normalize surrounding line endings. Explicit `beforeinput` replacement
+ranges remain distinct from the visible caret.
+
+The separate native rich-language V2 contracts for blockquotes, code, horizontal
+rules and tasks are not yet exposed by this SDK's V1 factory or shared model 11.
+See the repository's `docs/RICH_STRUCTURAL_V2.md` for that implementation boundary.
+
 Persistence and asset storage are explicit host services, not implicit SDK
 autosave. `RichLocalSessionStore` and `RichAssetStore` are exported. Supply
 `resolveAsset` and route `onFiles` to `editor.insertImageFiles(store, files,

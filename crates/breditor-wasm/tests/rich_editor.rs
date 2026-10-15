@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Black-box native contracts for the opt-in rich owner and its strict JSON boundary.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_wasm::{
     BreditorCompiledProfile, BreditorRichEditor, BreditorRichObservation, BreditorRichProfile,
@@ -8,6 +8,48 @@ use breditor_wasm::{
 use serde_json::{Value, json};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn explicit_hard_break_has_no_payload_one_history_group_and_exact_recovered_selection() -> TestResult
+{
+    let profile = profile()?;
+    let mut owner = editor(&profile)?;
+    let unselected = read(owner.checkpoint_json())?;
+    assert_eq!(owner.execute(&owner.observe(), r#"{"kind":"insertHardBreak"}"#).status(), "error");
+    assert_eq!(read(owner.checkpoint_json())?, unselected);
+    let stale = owner.observe();
+    command(&mut owner, &select("3", "1"), "selection")?;
+    let before = read(owner.checkpoint_json())?;
+    for request in [
+        r#"{"kind":"insertHardBreak","text":"\n"}"#,
+        r#"{"kind":"insertHardBreak","data":null}"#,
+        r#"{"kind":"insertHardBreak","selection":null}"#,
+        r#"{"kind":"insertHardBreak","formats":[]}"#,
+    ] {
+        assert_eq!(owner.execute(&owner.observe(), request).status(), "error");
+        assert_eq!(read(owner.checkpoint_json())?, before);
+    }
+    let rejected = owner.execute(&stale, r#"{"kind":"insertHardBreak"}"#);
+    assert_eq!(rejected.error().ok_or("stale")?.code(), "breditor_rich.stale_observation");
+    command(&mut owner, &json!({"kind":"insertHardBreak"}), "content")?;
+    let after = read(owner.observe().document_json())?;
+    let document: Value = serde_json::from_str(&after)?;
+    assert_eq!(
+        document["root"]["children"][0]["children"][0]["children"][0]["children"][0]["children"][0]
+            ["text"],
+        "a\nb"
+    );
+    assert_eq!(view(&owner)?["undoDepth"], 1);
+    assert_eq!(view(&owner)?["selection"]["focus"]["offset"], "2");
+    let checkpoint = read(owner.checkpoint_json())?;
+    let mut restored = profile.restore_editor(&checkpoint).take_editor().ok_or("restore")?;
+    command(&mut restored, &json!({"kind":"undo"}), "undo")?;
+    assert_eq!(view(&restored)?["selection"]["anchor"]["offset"], "3");
+    assert_eq!(view(&restored)?["selection"]["focus"]["offset"], "1");
+    command(&mut restored, &json!({"kind":"redo"}), "redo")?;
+    assert_eq!(read(restored.observe().document_json())?, after);
+    Ok(())
+}
 
 #[test]
 fn caret_format_reads_are_exact_frozen_affinity_aware_and_non_mutating() -> TestResult {

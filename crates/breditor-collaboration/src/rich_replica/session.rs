@@ -133,6 +133,9 @@ impl RichReplica {
         document_json: &str,
         writer: String,
     ) -> Result<Self, Error> {
+        if codec.schema().rich_content_revision() != Some(1) {
+            return Err(Error::Contract("shared model 11 requires rich-language V1"));
+        }
         let document = codec.decode(document_json).map_err(contract)?;
         let rich =
             RichDocument::try_admit(codec.schema(), document, codec.limits()).map_err(contract)?;
@@ -189,6 +192,9 @@ impl RichReplica {
     }
 
     fn base(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
+        if codec.schema().rich_content_revision() != Some(1) {
+            return Err(Error::Contract("shared model 11 requires rich-language V1"));
+        }
         crate::identity::validate_id(&journal.document)?;
         let doc = LoroDoc::new();
         doc.set_peer_id(writer_id(&journal.writer)?)?;

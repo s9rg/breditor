@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Public admission/directory regressions through the existing bounded codec.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     codec::{DocumentJsonCodecV2, DocumentV2CodecError},

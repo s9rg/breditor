@@ -27,7 +27,7 @@ impl RichTextPoint {
     pub const fn new(block: BlockId, offset: TextOffset, affinity: Affinity) -> Self {
         Self { block, offset, affinity }
     }
-    /// Stable paragraph/heading identity, including captions and cell text blocks.
+    /// Stable paragraph/heading/code identity, including captions and cell text blocks.
     #[must_use]
     pub const fn block(&self) -> &BlockId {
         &self.block
@@ -198,7 +198,10 @@ pub(super) fn text_length(node: &ElementNode) -> Result<TextOffset, RichSelectio
 
 fn text_point(document: &RichDocument, point: &RichTextPoint) -> Result<Point, RichSelectionError> {
     let node = block(document, point.block())?;
-    if !matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading") {
+    if !matches!(
+        node.kind().as_str(),
+        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+    ) {
         return Err(RichSelectionError::TargetKind);
     }
     let path = document.block_path(point.block()).ok_or(RichSelectionError::MissingTarget)?;
@@ -260,6 +263,10 @@ fn resolve_kind(
                     | "breditor/ordered-list"
                     | "breditor/image"
                     | "breditor/table"
+                    | "breditor/blockquote"
+                    | "breditor/code-block"
+                    | "breditor/horizontal-rule"
+                    | "breditor/task-list"
             ) {
                 return Err(RichSelectionError::TargetKind);
             }

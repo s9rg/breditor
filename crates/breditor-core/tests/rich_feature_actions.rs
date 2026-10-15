@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Functional whole-table/image, move, merge/split, header and caption workflows.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     codec::DocumentJsonCodecV2,

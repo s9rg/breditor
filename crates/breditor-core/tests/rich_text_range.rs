@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Atomic rich range typing/paste/deletion, precise suffix maps and exact recovered history.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     block::OrderedListStart,

@@ -51,6 +51,8 @@ export class SharedRichEditor {
  select(selection:RichSelection|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_selection(o,JSON.stringify(selection)),revision);}
  setPendingFormats(formats:readonly FormatLiteral[]|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_pending_formats(o,JSON.stringify(formats)),revision);}
  type(text:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.insert_plain_text(o,text),revision);}
+ /** One LF in the current text selection; old ABI owners retain their identical plain-input path. */
+ hardBreak(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.insert_hard_break?raw.insert_hard_break(o):raw.insert_plain_text(o,"\n"),revision);}
  replace(selection:Extract<RichSelection,{kind:"text"}>,text:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.replace_plain_text(o,JSON.stringify(selection),text),revision);}
  paste(fragment:string,target:PasteTarget,prefix:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.paste_clipboard_namespace(o,fragment,JSON.stringify(target),prefix),revision);}
  pasteAtText(fragment:string,right:string,prefix:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.paste_flow_at_text_namespace(o,fragment,right,prefix),revision);}

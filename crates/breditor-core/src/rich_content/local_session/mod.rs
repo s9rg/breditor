@@ -8,6 +8,7 @@ pub(crate) mod durable;
 mod error;
 mod history_entry;
 mod history_recipe;
+mod insert_hard_break;
 mod insert_plain_text;
 pub(crate) mod local_rewrite;
 mod redo;

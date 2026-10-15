@@ -73,6 +73,12 @@ editor.dispose();
 profile.dispose();
 ```
 
+`{kind: 'insertHardBreak'}` is a no-payload command that replaces the current
+supported text selection with one LF in one Undo group. It retains logical-start
+typing formats and does not split a block. Shift+Enter uses this contract; ordinary
+Enter remains structural. Native rich-language V2 block/task contracts are a
+separate foundation, not yet selected by this package's V1 profile factory.
+
 `execute` returns `content`, `selection`, `typing`, `undo`, `redo` or `unchanged`.
 Failures throw `RichCommandError` with a stable payload-redacting code and publish
 no partial state. A supplied expected content revision must match the current

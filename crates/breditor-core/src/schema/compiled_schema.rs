@@ -46,7 +46,9 @@ struct FlatListCapability;
 
 #[cfg(feature = "experimental-rich-content")]
 #[derive(Clone)]
-struct RichContentCapability;
+struct RichContentCapability {
+    revision: u32,
+}
 
 /// Cloneable crate-private handle to one process-local schema-proof allocation.
 ///
@@ -184,7 +186,33 @@ impl CompiledSchema {
         super::compiler::compile_rich_content_profile(schema_id, extensions)
     }
 
-    /// Whether this schema proves the exact sealed rich-content language.
+    /// Compile explicit rich-language V2 with blockquotes, plain-text code, rules and task lists.
+    ///
+    /// V1 remains unchanged. The new grammar has a distinct fingerprint even with
+    /// the same schema selector. This grants native AST/local editing admission,
+    /// not browser or replication support for the new kinds.
+    ///
+    /// # Errors
+    /// Rejects reserved schema identities, invalid extensions or compiler limits.
+    #[cfg(feature = "experimental-rich-content")]
+    pub fn try_compile_rich_content_profile_v2(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        super::compiler::compile_rich_content_profile_v2(schema_id, extensions)
+    }
+
+    /// Exact admitted rich-language revision; unrecognized lookalikes return `None`.
+    #[cfg(feature = "experimental-rich-content")]
+    #[must_use]
+    pub const fn rich_content_revision(&self) -> Option<u32> {
+        match &self.rich_content_capability {
+            Some(value) => Some(value.revision),
+            None => None,
+        }
+    }
+
+    /// Whether this schema proves one of the exact sealed rich-content languages.
     ///
     /// This read-only query does not grant editing or replication authority.
     #[cfg(feature = "experimental-rich-content")]
@@ -224,8 +252,8 @@ impl CompiledSchema {
         let flat_list_capability = super::compiler::supports_flat_list_operations(&definition)
             .then_some(FlatListCapability);
         #[cfg(feature = "experimental-rich-content")]
-        let rich_content_capability =
-            super::compiler::supports_rich_content(&definition).then_some(RichContentCapability);
+        let rich_content_capability = super::compiler::rich_content_revision(&definition)
+            .map(|revision| RichContentCapability { revision });
         Self {
             definition,
             fingerprint,

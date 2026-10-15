@@ -17,7 +17,12 @@ pub(super) struct TextPatch {
 pub(crate) fn fragment(node: &NodeRef) -> Result<TextFragment, RichActionError> {
     let element = node
         .as_element()
-        .filter(|node| matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading"))
+        .filter(|node| {
+            matches!(
+                node.kind().as_str(),
+                "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+            )
+        })
         .ok_or(RichActionError::TextTarget)?;
     TextFragment::try_from_runs(
         element

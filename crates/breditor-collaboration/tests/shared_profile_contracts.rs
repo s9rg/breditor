@@ -13,6 +13,31 @@ use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn structural_v2_is_not_silently_admitted_by_the_existing_model_eleven_owner() -> Result {
+    use breditor_collaboration::{Error, rich_replica::RichReplica};
+    use breditor_core::codec::DocumentJsonCodecV2;
+    let schema = CompiledSchema::try_compile_rich_content_profile_v2(
+        SchemaId::new(QualifiedName::try_new("example/structural")?, SchemaVersion::try_new(1)?),
+        &ExtensionSet::try_new(vec![], ExtensionLimits::default())?,
+    )?;
+    assert!(matches!(
+        SharedRichProfile::from_schema(schema.clone(), DocumentLimits::default()),
+        Err(Error::Contract("shared model 11 requires rich-language V1"))
+    ));
+    let codec = DocumentJsonCodecV2::new(schema);
+    // The grammar check happens before parsing a seed or inspecting/importing engine bytes.
+    assert!(matches!(
+        RichReplica::new(codec.clone(), "not JSON", "101".into()),
+        Err(Error::Contract("shared model 11 requires rich-language V1"))
+    ));
+    assert!(matches!(
+        RichReplica::join(codec, "room".into(), "101".into(), vec![]),
+        Err(Error::Contract("shared model 11 requires rich-language V1"))
+    ));
+    Ok(())
+}
+
+#[test]
 fn exact_caret_format_read_preserves_guard_and_rejects_stale_before_selection() -> Result {
     let profile = profile()?;
     let mut a = profile.create(&input(&profile)?, "101".into())?;

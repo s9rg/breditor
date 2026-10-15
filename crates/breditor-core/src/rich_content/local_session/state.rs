@@ -33,7 +33,12 @@ impl RichLocalState {
         };
         let selection =
             selection.map(|kind| RichSelection::try_new(&document, kind)).transpose()?;
-        super::typing_state::validate(context, selection.as_ref(), pending_formats.as_ref())?;
+        super::typing_state::validate(
+            context,
+            &document,
+            selection.as_ref(),
+            pending_formats.as_ref(),
+        )?;
         Ok(Self { document, selection, pending_formats, revision })
     }
     /// The one authoritative admitted immutable AST and directory.

@@ -75,3 +75,24 @@ fn rich_rule_one_fixture_schema_fingerprint_is_locked() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn rich_language_two_does_not_grant_legacy_editing_or_accept_a_revision_only_lookalike()
+-> TestResult {
+    let schema = CompiledSchema::try_compile_rich_content_profile_v2(
+        SchemaId::new(QualifiedName::try_new("example/structural")?, SchemaVersion::try_new(1)?),
+        &ExtensionSet::try_new(vec![], ExtensionLimits::default())?,
+    )?;
+    assert_eq!(schema.rich_content_revision(), Some(2));
+    assert!(!schema.supports_text_splice_operations());
+    assert!(!schema.supports_paragraph_structure_operations());
+    assert!(!schema.supports_base_text_operations());
+    assert!(!schema.supports_text_block_kind_operations());
+    assert!(!schema.supports_flat_list_operations());
+    assert!(!schema.supports_nested_list_reframe());
+    let mut unsupported = schema.definition().as_ref().clone();
+    unsupported.rich_content_contract = Some(3);
+    assert!(!supports_rich_content(&unsupported));
+    assert_ne!(schema.fingerprint(), fingerprint(&unsupported));
+    Ok(())
+}

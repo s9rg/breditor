@@ -3,6 +3,9 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// Code typing never retains semantic inline formatting overrides.
+    #[error("code blocks require plain pending typing formats")]
+    CodeFormats,
     /// Pending typing formats/plain typing require one collapsed text caret.
     #[error("rich typing state requires one collapsed text caret")]
     TypingCaret,

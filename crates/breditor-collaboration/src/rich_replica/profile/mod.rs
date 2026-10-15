@@ -27,10 +27,14 @@ impl SharedRichProfile {
     }
     /// Bind an already compiled rich schema without accepting caller fingerprints as proof.
     /// # Errors
-    /// Rejects non-rich grammar and budgets that widen the core defaults.
+    /// Rejects non-rich grammar, rich-language revisions other than V1 and budgets
+    /// that widen the core defaults. Model 11 does not admit native structural V2.
     pub fn from_schema(schema: CompiledSchema, limits: DocumentLimits) -> Result<Self, Error> {
         if !schema.is_rich_content_profile() {
             return Err(Error::Contract("shared profile rich grammar"));
+        }
+        if schema.rich_content_revision() != Some(1) {
+            return Err(Error::Contract("shared model 11 requires rich-language V1"));
         }
         limits::validate(&limits)?;
         Ok(Self { codec: DocumentJsonCodecV2::new(schema).with_limits(limits) })

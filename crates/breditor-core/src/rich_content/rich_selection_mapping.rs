@@ -108,7 +108,10 @@ fn owning_cell(document: &RichDocument, id: &BlockId) -> Option<CellId> {
 
 fn caret_block(node: &NodeRef, affinity: Affinity) -> Option<&ElementNode> {
     let element = node.as_element()?;
-    if matches!(element.kind().as_str(), "breditor/paragraph" | "breditor/heading") {
+    if matches!(
+        element.kind().as_str(),
+        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+    ) {
         return Some(element);
     }
     if affinity == Affinity::Before {
@@ -126,7 +129,10 @@ pub(super) fn same_text(left: &ElementNode, right: &ElementNode) -> bool {
 
 fn same_selection_kind(left: &ElementNode, right: &ElementNode) -> bool {
     let text_kind = |node: &ElementNode| {
-        matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading")
+        matches!(
+            node.kind().as_str(),
+            "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+        )
     };
     let list_kind = |node: &ElementNode| {
         matches!(node.kind().as_str(), "breditor/bullet-list" | "breditor/ordered-list")

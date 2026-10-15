@@ -12,6 +12,10 @@ pub enum RichFlowParent {
     Cell(CellId),
     /// One rich list item's leading text block and subsequent flow sequence.
     ListItem(BlockId),
+    /// One V2 blockquote's nonempty flow sequence.
+    Blockquote(BlockId),
+    /// One V2 task item's leading prose and trailing rich flow.
+    TaskItem(BlockId),
 }
 
 impl RichFlowParent {
@@ -30,6 +34,22 @@ impl RichFlowParent {
                         .is_some_and(|node| node.kind().as_str() == "breditor/list-item")
                 })
                 .cloned(),
+            Self::Blockquote(id) | Self::TaskItem(id) => document
+                .block_path(id)
+                .filter(|path| {
+                    let expected = if matches!(self, Self::Blockquote(_)) {
+                        "breditor/blockquote"
+                    } else {
+                        "breditor/task-item"
+                    };
+                    document
+                        .document()
+                        .node_at(path)
+                        .ok()
+                        .and_then(crate::document::NodeRef::as_element)
+                        .is_some_and(|node| node.kind().as_str() == expected)
+                })
+                .cloned(),
         }
     }
     pub(crate) fn at_path(document: &RichDocument, path: &NodePath) -> Option<Self> {
@@ -43,6 +63,12 @@ impl RichFlowParent {
                 .find(|(_, candidate)| *candidate == path)
                 .map(|(cell, _)| Self::Cell(cell.clone())),
             "breditor/list-item" => Some(Self::ListItem(
+                BlockId::try_new(super::ast_properties::string(element, "block-id").ok()?).ok()?,
+            )),
+            "breditor/blockquote" => Some(Self::Blockquote(
+                BlockId::try_new(super::ast_properties::string(element, "block-id").ok()?).ok()?,
+            )),
+            "breditor/task-item" => Some(Self::TaskItem(
                 BlockId::try_new(super::ast_properties::string(element, "block-id").ok()?).ok()?,
             )),
             _ => None,

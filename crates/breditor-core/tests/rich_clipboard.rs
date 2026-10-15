@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Structured rich copy/roundtrip/fresh paste with tables, media, lists and exact history.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     block::OrderedListStart,

@@ -406,7 +406,14 @@ mod nested_list_profile_tests;
 #[path = "rich_content_profile.rs"]
 mod rich_content_profile;
 #[cfg(feature = "experimental-rich-content")]
-pub(super) use rich_content_profile::{compile_rich_content_profile, supports_rich_content};
+#[path = "rich_content_profile_v2.rs"]
+mod rich_content_profile_v2;
+#[cfg(all(test, feature = "experimental-rich-content"))]
+pub(super) use rich_content_profile::supports_rich_content;
+#[cfg(feature = "experimental-rich-content")]
+pub(super) use rich_content_profile::{
+    compile_rich_content_profile, compile_rich_content_profile_v2, rich_content_revision,
+};
 #[cfg(all(test, feature = "experimental-rich-content"))]
 #[path = "rich_content_profile_tests.rs"]
 mod rich_content_profile_tests;

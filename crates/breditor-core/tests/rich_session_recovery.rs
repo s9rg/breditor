@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Normal rich restart workflows with replay-proved future undo and redo.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     codec::{DocumentJsonCodecV2, RichSessionJsonCodec},

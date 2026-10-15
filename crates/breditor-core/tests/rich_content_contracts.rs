@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Golden geometry/lifecycle contracts, independent of a CRDT or browser.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::rich_content::{
     AssetGeneration, AssetId, CausalStamp, CellBounds, CellId, ChangeId, ColumnId, ImageAlt,

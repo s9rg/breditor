@@ -25,6 +25,10 @@ function setup(){
 }
 beforeEach(()=>{for(const fn of Object.values(storage))fn.mockReset();});
 describe("shared writer retirement and durability",()=>{
+ it("hard break uses its guarded native capability or the identical old-ABI LF path",()=>{
+  const first=owner(),legacy=new SharedRichEditor(first.typed);legacy.hardBreak();expect(first.raw.insert_plain_text).toHaveBeenLastCalledWith(expect.anything(),"\n");legacy.dispose();
+  const second=owner(),hardBreak=vi.fn((observation:unknown)=>second.raw.insert_plain_text(observation,"\n"));Object.assign(second.raw,{insert_hard_break:hardBreak});const current=new SharedRichEditor(second.typed);current.hardBreak();expect(hardBreak).toHaveBeenCalledTimes(1);current.retire();expect(()=>current.hardBreak()).toThrow("retired");current.dispose();
+ });
  it("retirement rejects queued and new publications without disposing checkpoint reads",async()=>{
   const t=owner(),core=new SharedRichEditor(t.typed),release=core.holdRemotes(),queued=core.receiveFrame("queued");const rejected=expect(queued).rejects.toMatchObject({code:"retired"});
   core.retire();core.retire();await rejected;release();expect(()=>core.type("late")).toThrow("retired");await expect(core.receiveFrame("late")).rejects.toMatchObject({code:"retired"});expect(t.raw.receive_frame).not.toHaveBeenCalled();expect(core.pendingRemote()).toEqual({frames:0,bytes:0});expect(core.checkpointJson()).toContain('"writer":"101"');expect(t.raw.free).not.toHaveBeenCalled();core.dispose();expect(t.raw.free).toHaveBeenCalledTimes(1);

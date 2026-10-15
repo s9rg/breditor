@@ -34,6 +34,13 @@ impl JoinTextBlocks {
         }
         let left_node = block_node(document, left)?;
         let right_node = block_node(document, right)?;
+        if [left_node, right_node].iter().any(|node| {
+            node.as_element().is_none_or(|node| {
+                !matches!(node.kind().as_str(), "breditor/paragraph" | "breditor/heading")
+            })
+        }) {
+            return Err(RichActionError::TextTarget);
+        }
         let head = fragment(left_node)?;
         let text =
             head.try_concat(&fragment(right_node)?).map_err(|_| RichActionError::TextPrimitive)?;

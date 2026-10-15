@@ -157,7 +157,10 @@ pub(super) fn removed_text(
     let Some(element) = node.as_element() else {
         return Ok(());
     };
-    if matches!(element.kind().as_str(), "breditor/paragraph" | "breditor/heading") {
+    if matches!(
+        element.kind().as_str(),
+        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+    ) {
         let id = BlockId::try_new(
             ast_properties::string(element, "block-id").map_err(|_| RichActionError::Rewrite)?,
         )

@@ -273,6 +273,13 @@ impl RichReplicaProbe {
     ) -> Result<bool, JsValue> {
         self.inner.insert_plain_text_guarded(&observation.inner, input).map_err(error)
     }
+    /// Author exactly one LF under the current opaque observation and selective-history group.
+    pub fn insert_hard_break(
+        &mut self,
+        observation: &RichSharedObservation,
+    ) -> Result<bool, JsValue> {
+        self.inner.insert_hard_break_guarded(&observation.inner).map_err(error)
+    }
     /// Guard selective Undo against every content, UI and history publication.
     pub fn undo_observed(&mut self, observation: &RichSharedObservation) -> Result<bool, JsValue> {
         self.inner.undo_guarded(&observation.inner).map_err(error)

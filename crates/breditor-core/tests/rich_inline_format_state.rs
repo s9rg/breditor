@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Exact property-aware UI reads over the same Rust snapshot used by rich editing.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     codec::{DocumentJsonCodecV2, RichFormatsJsonCodec, RichSessionJsonCodec},

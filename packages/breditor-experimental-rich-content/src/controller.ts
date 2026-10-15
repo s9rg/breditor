@@ -107,6 +107,12 @@ export class RichDomEditor {
   if(mod&&event.key.toLowerCase()==="a")this.#logicalSelection=false;
   if(mod&&!event.altKey){const key=`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`,control=this.#controls.find(item=>item.control.shortcut===key);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   if(mod&&!event.altKey&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}
+  // Own the keyboard meaning before a browser can translate Shift+Enter into
+  // insertParagraph (observed in WebKit). Composition and grid navigation stay separate.
+  if(event.key==="Enter"&&event.shiftKey&&!mod&&!event.altKey){
+   this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="text"){event.preventDefault();this.execute({kind:"insertHardBreak"});}});
+   if(event.defaultPrevented)return;
+  }
   const selection=this.#model.view.selection;
   if(selection?.kind==="grid"){
    const moves:Record<string,string>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"};
@@ -124,10 +130,10 @@ export class RichDomEditor {
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}
    if(type==="insertParagraph"){const command=enter(this.#context());if(command)this.execute(command);return;}
-   if(type==="insertLineBreak"){this.execute({kind:"insertPlainText",text:"\n"});return;}
    const selection=this.#model.view.selection;
    if(selection?.kind!=="text")return;
    const ranges=event.getTargetRanges?.()??[],target=ranges[0]?readTarget(this.surface,ranges[0]):null;
+   if(type==="insertLineBreak"){this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:"\n"}}:{kind:"insertHardBreak"});return;}
    if(type==="insertText"||type==="insertReplacementText"){
     const input=event.data??"";this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:input}}:{kind:"insertPlainText",text:input});return;
    }

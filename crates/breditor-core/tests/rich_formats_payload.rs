@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Canonical schema-bound format literals, independent from document text budgets.
+#![cfg(feature = "experimental-rich-content")]
 use breditor_core::{
     codec::RichFormatsJsonCodec,
     extension::{ExtensionLimits, ExtensionSet},

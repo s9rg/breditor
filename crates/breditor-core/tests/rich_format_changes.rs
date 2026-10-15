@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Compound formatting changes final runs, never a sequence of transient run states.
+#![cfg(feature = "experimental-rich-content")]
 use breditor_core::{
     codec::{DocumentJsonCodecV2, RichSessionJsonCodec},
     document::{Format, PropertyMap},

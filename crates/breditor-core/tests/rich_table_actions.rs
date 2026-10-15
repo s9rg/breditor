@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Table-axis edits, immutable drafts and stable rich-selection contracts.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     codec::DocumentJsonCodecV2,

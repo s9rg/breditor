@@ -66,7 +66,12 @@ impl RichLocalSession {
                 edit.as_ref(),
             ),
         };
-        super::typing_state::validate(&self.context, selection.as_ref(), pending_formats.as_ref())?;
+        super::typing_state::validate(
+            &self.context,
+            &document,
+            selection.as_ref(),
+            pending_formats.as_ref(),
+        )?;
         let content_changed = document.document() != self.state.document.document();
         if !content_changed
             && selection == self.state.selection

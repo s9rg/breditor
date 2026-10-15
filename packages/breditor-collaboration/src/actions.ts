@@ -43,7 +43,7 @@ export function removeSelection(ctx:ActionContext):void{
 }
 export function enter(ctx:ActionContext):void{
  const s=ctx.model.view.selection;if(s?.kind!=="text")return;const[start,end]=ordered(ctx.model,s),node=ctx.model.nodes.get(start.block);if(!node)return;
- const parent=ctx.model.parents.get(start.block);if(parent?.type==="breditor/image"){ctx.core.type("\n",ctx.revision);return;}
+ const parent=ctx.model.parents.get(start.block);if(parent?.type==="breditor/image"){ctx.core.hardBreak(ctx.revision);return;}
  const list=listContext(ctx.model);
  if(list&&parent?.type==="breditor/list-item"&&parent.children[0]===node&&!text(node)&&start.block===end.block&&start.offset===end.offset){const outside=ctx.model.parents.get(id(list.list)),tail=outside?.type!=="breditor/list-item"&&list.last<list.items.length-1?ctx.allocate("list-tail"):null;publish(ctx,[{kind:"outdent_list_items",data:{container:id(list.list),first:id(parent),last:id(parent),fresh_tail:tail}}],caret(start.block));return;}
  const commands:SharedCommand[]=[];if(start.block!==end.block||start.offset!==end.offset)commands.push({kind:"replace_text_range",data:{anchor:s.anchor,focus:s.focus,runs:[]}});

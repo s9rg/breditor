@@ -20,6 +20,40 @@ use serde_json::{Value, json};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn guarded_hard_break_is_one_exact_selective_group_with_offline_peer_history() -> TestResult {
+    let (mut a, mut b) = peers()?;
+    a.set_selection(Some(&Selection::TextRange {
+        anchor: TextPoint { block: "p".into(), offset: 3, affinity: Affinity::After },
+        focus: TextPoint { block: "p".into(), offset: 1, affinity: Affinity::After },
+    }))?;
+    let observation = a.observe()?;
+    assert!(a.insert_hard_break_guarded(&observation)?);
+    let value: Value = serde_json::from_str(a.document_json())?;
+    assert_eq!(node_text(node_ref(&value["root"], "p")?), "a\nb");
+    assert_eq!(a.selection()?, Some(caret("p", 2, Affinity::After)));
+    let exact = a.checkpoint()?;
+    assert!(a.insert_hard_break_guarded(&observation).is_err());
+    assert_eq!(a.checkpoint()?, exact);
+    b.apply(vec![insert("caption", 0, "Peer ")])?;
+    a.receive(b.updates()?)?;
+    let mut restored = RichReplica::restore(codec()?, "room", &a.checkpoint()?)?;
+    for undo in [true, false, true, false] {
+        if undo {
+            a.undo()?;
+            restored.undo()?;
+        } else {
+            a.redo()?;
+            restored.redo()?;
+        }
+        assert_eq!(a.checkpoint()?, restored.checkpoint()?);
+        let value: Value = serde_json::from_str(a.document_json())?;
+        assert_eq!(node_text(node_ref(&value["root"], "p")?), if undo { "a🙂b" } else { "a\nb" });
+        assert!(node_text(node_ref(&value["root"], "caption")?).starts_with("Peer "));
+    }
+    Ok(())
+}
+
+#[test]
 fn pending_literal_json_rejects_duplicate_fields_and_independent_budgets_without_publication()
 -> TestResult {
     let (mut a, _) = peers()?;

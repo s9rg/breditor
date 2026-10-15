@@ -45,7 +45,14 @@ fn boolean(node: &ElementNode, local: &str) -> PropertyResult<bool> {
 pub(crate) fn required_properties(kind: &str) -> &'static [&'static str] {
     match kind {
         "breditor/document" => &["document-id"],
-        "breditor/paragraph" | "breditor/bullet-list" | "breditor/list-item" => &["block-id"],
+        "breditor/paragraph"
+        | "breditor/bullet-list"
+        | "breditor/list-item"
+        | "breditor/blockquote"
+        | "breditor/code-block"
+        | "breditor/horizontal-rule"
+        | "breditor/task-list" => &["block-id"],
+        "breditor/task-item" => &["block-id", "checked"],
         "breditor/heading" => &["block-id", "level"],
         "breditor/ordered-list" => &["block-id", "start"],
         "breditor/table" => &["block-id", "table-id", "columns", "merges", "retracted-merges"],
@@ -61,7 +68,8 @@ pub(crate) fn required_properties(kind: &str) -> &'static [&'static str] {
 pub(crate) fn allows_property(kind: &str, name: &QualifiedName) -> bool {
     name.namespace() == "breditor"
         && (required_properties(kind).contains(&name.local_name())
-            || (kind == "breditor/image" && matches!(name.local_name(), "width" | "height")))
+            || (kind == "breditor/image" && matches!(name.local_name(), "width" | "height"))
+            || (kind == "breditor/code-block" && name.local_name() == "language"))
 }
 
 pub(crate) fn validate_values(node: &ElementNode) -> PropertyResult<()> {
@@ -86,11 +94,29 @@ pub(crate) fn validate_values(node: &ElementNode) -> PropertyResult<()> {
                 return Err("ordered list final ordinal exceeds its ceiling");
             }
         }
-        "breditor/list-item" => {
+        "breditor/task-item" | "breditor/list-item" => {
+            if node.kind().as_str() == "breditor/task-item" {
+                boolean(node, "checked")?;
+            }
             if !node.children().get(0).and_then(crate::document::NodeRef::as_element).is_some_and(
                 |first| matches!(first.kind().as_str(), "breditor/paragraph" | "breditor/heading"),
             ) {
                 return Err("list item must begin with a paragraph or heading");
+            }
+        }
+        "breditor/code-block" => {
+            if let Some(value) = property(node, "language")
+                && !value.as_string().is_some_and(super::CodeLanguage::accepts)
+            {
+                return Err("invalid code language token");
+            }
+            if node
+                .children()
+                .iter()
+                .filter_map(crate::document::NodeRef::as_text)
+                .any(|text| !text.formats().is_empty())
+            {
+                return Err("code blocks cannot contain inline formats");
             }
         }
         "breditor/table-row" => {

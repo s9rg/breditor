@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Merge-aware logical grid movement, directional extension and owner history separation.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     codec::DocumentJsonCodecV2,

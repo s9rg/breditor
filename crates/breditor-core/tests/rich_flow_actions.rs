@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Functional rich paragraph/list boundaries, body ordering and exact owner history.
+#![cfg(feature = "experimental-rich-content")]
 
 use breditor_core::{
     block::OrderedListStart,

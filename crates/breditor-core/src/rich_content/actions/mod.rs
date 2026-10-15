@@ -10,6 +10,7 @@ mod boundary_patch;
 mod branch_patch;
 mod change_inline_formats;
 mod clear_table_cells;
+mod delete_horizontal_rule;
 mod delete_image;
 mod delete_table;
 mod delete_table_column;
@@ -20,6 +21,7 @@ pub(crate) mod flow_siblings;
 mod guard;
 mod indent_list_items;
 mod insert_blocks;
+mod insert_horizontal_rule;
 mod insert_image;
 mod insert_table;
 mod insert_table_column;
@@ -45,12 +47,15 @@ pub(crate) mod replace_text_range;
 mod resize_image;
 mod resize_table_column;
 pub(crate) mod rewrite_properties;
+mod set_code_block;
+mod set_code_language;
 mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
 mod set_inline_format;
 mod set_list_kind;
 mod set_table_header;
+mod set_task_checked;
 mod split_list_item;
 mod split_table_cell;
 mod split_text_block;
@@ -59,11 +64,16 @@ mod table_merges;
 mod table_patch;
 pub(crate) mod text_patch;
 mod text_range_list;
+mod unwrap_blockquote;
 mod unwrap_list;
+mod unwrap_task_list;
+mod wrap_blockquote;
 mod wrap_list;
+mod wrap_task_list;
 
 pub use apply_batch::{RichBatchEdit, apply_batch};
 pub use clear_table_cells::ClearTableCells;
+pub use delete_horizontal_rule::DeleteHorizontalRule;
 pub use delete_image::DeleteImage;
 pub use delete_table::DeleteTable;
 pub use delete_table_column::DeleteTableColumn;
@@ -71,6 +81,7 @@ pub use delete_table_row::DeleteTableRow;
 pub use delete_text::DeleteText;
 pub use indent_list_items::IndentListItems;
 pub use insert_blocks::InsertBlocks;
+pub use insert_horizontal_rule::InsertHorizontalRule;
 pub use insert_image::InsertImage;
 pub use insert_table::InsertTable;
 pub use insert_table_column::InsertTableColumn;
@@ -89,17 +100,24 @@ pub use replace_text::ReplaceText;
 pub use replace_text_range::ReplaceTextRange;
 pub use resize_image::ResizeImage;
 pub use resize_table_column::ResizeColumn;
+pub use set_code_block::{CodeFormatPolicy, SetCodeBlock};
+pub use set_code_language::SetCodeLanguage;
 pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
 pub use set_inline_format::{RichFormatChange, SetInlineFormat};
 pub use set_list_kind::SetListKind;
 pub use set_table_header::SetTableHeader;
+pub use set_task_checked::SetTaskChecked;
 pub use split_list_item::SplitListItem;
 pub use split_table_cell::SplitTableCell;
 pub use split_text_block::SplitTextBlock;
+pub use unwrap_blockquote::UnwrapBlockquote;
 pub use unwrap_list::UnwrapList;
+pub use unwrap_task_list::UnwrapTaskList;
+pub use wrap_blockquote::WrapBlockquote;
 pub use wrap_list::WrapList;
+pub use wrap_task_list::WrapTaskList;
 
 use super::{RichDocument, RichDocumentError};
 use crate::{schema::ValidationReport, state::EditorContext};
@@ -107,6 +125,24 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Convert one prose/code block with an explicit formatting-loss policy.
+    SetCodeBlock(SetCodeBlock),
+    /// Change an existing code block's inert optional language token.
+    SetCodeLanguage(SetCodeLanguage),
+    /// Set explicit task completion without changing its retained rich body.
+    SetTaskChecked(SetTaskChecked),
+    /// Wrap a rich sibling range in one explicitly identified blockquote.
+    WrapBlockquote(WrapBlockquote),
+    /// Remove one blockquote layer, preserving every ordered child subtree.
+    UnwrapBlockquote(UnwrapBlockquote),
+    /// Wrap prose-led groups in an explicitly identified checked task list.
+    WrapTaskList(WrapTaskList),
+    /// Remove one task-list layer with exact metadata retained for Undo.
+    UnwrapTaskList(UnwrapTaskList),
+    /// Insert one explicitly identified atomic rule in stable flow space.
+    InsertHorizontalRule(InsertHorizontalRule),
+    /// Delete one rule with an explicit replacement when its flow would be empty.
+    DeleteHorizontalRule(DeleteHorizontalRule),
     /// Atomically replace an admitted same-block or sibling-flow text range.
     ReplaceTextRange(ReplaceTextRange),
     /// Replace a matching rich cell rectangle and translated non-destructive merge intent.
@@ -216,6 +252,15 @@ impl RichAction {
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
         match self {
+            Self::SetCodeBlock(action) => action.apply(context, document),
+            Self::SetCodeLanguage(action) => action.apply(context, document),
+            Self::SetTaskChecked(action) => action.apply(context, document),
+            Self::WrapBlockquote(action) => action.apply(context, document),
+            Self::UnwrapBlockquote(action) => action.apply(context, document),
+            Self::WrapTaskList(action) => action.apply(context, document),
+            Self::UnwrapTaskList(action) => action.apply(context, document),
+            Self::InsertHorizontalRule(action) => action.apply(context, document),
+            Self::DeleteHorizontalRule(action) => action.apply(context, document),
             Self::ReplaceTextRange(action) => action.apply(context, document),
             Self::PasteTableCells(action) => action.apply(context, document),
             Self::ClearTableCells(action) => action.apply(context, document),
@@ -302,6 +347,18 @@ impl RichEdit {
 /// Payload-free failure of a captured local rich-content action.
 #[derive(Debug, thiserror::Error)]
 pub enum RichActionError {
+    /// The operation requires an existing code block rather than arbitrary prose/flow.
+    #[error("rich code action requires a code block")]
+    CodeTarget,
+    /// A task-state/list operation received an ordinary list or non-task identity.
+    #[error("rich task action target has the wrong kind")]
+    TaskTarget,
+    /// A quote unwrap requires an actual blockquote identity.
+    #[error("rich quote action requires a blockquote")]
+    QuoteTarget,
+    /// A rule deletion requires an actual horizontal-rule identity.
+    #[error("rich rule action requires a horizontal rule")]
+    RuleTarget,
     /// Pasted body dimensions or replacement-ID counts do not match the complete target grid.
     #[error("rich table paste dimensions must exactly match the target grid")]
     PasteShape,

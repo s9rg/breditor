@@ -39,14 +39,22 @@ pub(crate) fn resolved_caret_formats(
 
 pub(super) fn validate(
     context: &EditorContext,
+    document: &RichDocument,
     selection: Option<&RichSelection>,
     formats: Option<&FormatSet>,
 ) -> Result<(), RichLocalSessionError> {
     let Some(formats) = formats else {
         return Ok(());
     };
-    if caret(selection).is_none() {
-        return Err(RichLocalSessionError::TypingCaret);
+    let caret = caret(selection).ok_or(RichLocalSessionError::TypingCaret)?;
+    if !formats.is_empty()
+        && document
+            .block_path(caret.block())
+            .and_then(|path| document.document().node_at(path).ok())
+            .and_then(crate::document::NodeRef::as_element)
+            .is_some_and(|node| node.kind().as_str() == "breditor/code-block")
+    {
+        return Err(RichLocalSessionError::CodeFormats);
     }
     validate_formats(context, formats)
 }

@@ -11,7 +11,7 @@ use crate::schema::child_grammar::ChildGroup;
 // changes. It is encoded by compiler contract 6, leaving contracts 1–5 exact.
 const RICH_RULE_REVISION: u32 = 1;
 
-fn name(local: &str) -> QualifiedName {
+pub(super) fn name(local: &str) -> QualifiedName {
     QualifiedName::try_new(format!("breditor/{local}"))
         .unwrap_or_else(|_| unreachable!("trusted rich element name"))
 }
@@ -26,7 +26,7 @@ fn flow(include_tables: bool) -> ChildConstraint {
     ChildConstraint { groups: vec![ChildGroup { kinds, minimum: 1, maximum: None }] }
 }
 
-fn with_rich_content(mut spec: SchemaSpec) -> SchemaSpec {
+pub(super) fn with_rich_content(mut spec: SchemaSpec) -> SchemaSpec {
     spec.rich_content_contract = Some(RICH_RULE_REVISION);
     spec.elements[0].children = flow(true);
     // Rich validation supplies closed typed property rules, including heading
@@ -71,9 +71,35 @@ pub(in crate::schema) fn compile_rich_content_profile(
     compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
 }
 
+#[cfg(test)]
 pub(in crate::schema) fn supports_rich_content(definition: &CompiledSchemaDefinition) -> bool {
-    super::text_block_profile::supports_structural_profile(
+    rich_content_revision(definition).is_some()
+}
+
+pub(in crate::schema) fn rich_content_revision(
+    definition: &CompiledSchemaDefinition,
+) -> Option<u32> {
+    if super::text_block_profile::supports_structural_profile(
         definition,
         &with_rich_content(base_spec()),
-    )
+    ) {
+        Some(1)
+    } else if super::text_block_profile::supports_structural_profile(
+        definition,
+        &super::rich_content_profile_v2::specification(base_spec()),
+    ) {
+        Some(2)
+    } else {
+        None
+    }
+}
+
+pub(in crate::schema) fn compile_rich_content_profile_v2(
+    schema_id: SchemaId,
+    extensions: &ExtensionSet,
+) -> Result<CompiledSchema, SchemaCompilationError> {
+    let spec = super::rich_content_profile_v2::specification(base_text_profile_spec(
+        schema_id, extensions,
+    )?);
+    compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
 }

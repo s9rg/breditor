@@ -18,6 +18,8 @@ export interface ClipboardAllocation {prefix:string;replica:string;counter:strin
 export type RichCommand =
  |{kind:"setSelection";selection:RichSelection|null}
  |{kind:"insertPlainText";text:string}
+ /** Exactly one LF within text, distinct from paragraph/list Enter. */
+ |{kind:"insertHardBreak"}
  |{kind:"insertParagraph";data:{right:string;newItem:string|null}}
  |{kind:"pasteFlowAtText";data:{clipboardJson:string;allocation:ClipboardAllocation;right:string}}
  |{kind:"replaceTextRange";data:{selection:Extract<RichSelection,{kind:"text"}>;text:string}}

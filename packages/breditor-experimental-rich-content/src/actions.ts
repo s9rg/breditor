@@ -66,7 +66,7 @@ export function enter(context:ActionContext):RichCommand|null {
  const value=context.model,a=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),f=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
  const point=a<f||(a===f&&BigInt(selection.anchor.offset)<=BigInt(selection.focus.offset))?selection.anchor:selection.focus;
  const parent=value.parents.get(point.block);
- if(parent?.type==="breditor/image")return {kind:"insertPlainText",text:"\n"};
+ if(parent?.type==="breditor/image")return {kind:"insertHardBreak"};
  const right=context.allocate("p");
  if(parent?.type==="breditor/list-item"&&parent.children[0]?.kind==="element"&&id(parent.children[0])===point.block)
   return {kind:"insertParagraph",data:{right,newItem:context.allocate("item")}};

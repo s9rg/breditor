@@ -17,6 +17,7 @@ mod indent_list_items;
 mod input_plan;
 mod insert_blocks;
 mod insert_formatted_text;
+mod insert_hard_break;
 mod insert_image;
 mod insert_paragraph;
 mod insert_plain_text;
@@ -68,6 +69,7 @@ use serde_json::value::RawValue;
 enum CommandTag {
     SetSelection,
     InsertPlainText,
+    InsertHardBreak,
     InsertParagraph,
     PasteFlowAtText,
     DeleteSelection,
@@ -153,7 +155,10 @@ impl Command<'_> {
             CommandTag::InsertPlainText => 2,
             CommandTag::SetHeading => 12,
             CommandTag::SetPendingFormats => 16,
-            CommandTag::DeleteSelection | CommandTag::Undo | CommandTag::Redo => 0,
+            CommandTag::DeleteSelection
+            | CommandTag::Undo
+            | CommandTag::Redo
+            | CommandTag::InsertHardBreak => 0,
             _ => 32,
         };
         if fields != expected {
@@ -180,6 +185,7 @@ pub(super) fn execute(
         CommandTag::InsertPlainText => {
             insert_plain_text::execute(owner, observation, &value::<String>(command.text)?)
         }
+        CommandTag::InsertHardBreak => insert_hard_break::execute(owner, observation),
         CommandTag::DeleteSelection => delete_selection::execute(owner, observation),
         CommandTag::Undo => undo::execute(owner, observation),
         CommandTag::Redo => redo::execute(owner, observation),

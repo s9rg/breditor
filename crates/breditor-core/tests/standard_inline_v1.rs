@@ -1,5 +1,5 @@
-#![cfg(feature = "experimental-rich-content")]
 //! Native source-of-truth contracts for the optional standard inline preset.
+#![cfg(feature = "experimental-rich-content")]
 use breditor_core::{
     codec::{
         DocumentJsonCodecV2, RichFormatsJsonCodec, RichSessionJsonCodec,

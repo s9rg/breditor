@@ -15,6 +15,12 @@ use std::collections::BTreeMap;
 /// Why an insertion draft cannot represent the declared structural shape.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum RichDraftError {
+    /// A blockquote must retain one or more flow children.
+    #[error("a rich blockquote draft must contain flow content")]
+    EmptyBlockquote,
+    /// Code blocks admit text only, never semantic inline formats.
+    #[error("code block text must not contain inline formats")]
+    CodeFormats,
     /// A rectangular paste or relative merge has invalid bounds, overlap or dimensions.
     #[error("rich table paste must have bounded rectangular bodies and disjoint relative merges")]
     PasteShape,
@@ -136,6 +142,10 @@ impl RichBlockDraft {
                     | "breditor/ordered-list"
                     | "breditor/table"
                     | "breditor/image"
+                    | "breditor/blockquote"
+                    | "breditor/code-block"
+                    | "breditor/horizontal-rule"
+                    | "breditor/task-list"
             )
         }) {
             return Err(RichDraftError::FlowBlock);

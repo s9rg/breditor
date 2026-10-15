@@ -19,6 +19,7 @@ mod history_cursors;
 mod history_metadata;
 mod initialize;
 mod inline_format_state;
+mod insert_hard_break;
 mod insert_plain_text;
 mod list_structure;
 mod list_targets;
