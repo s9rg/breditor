@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "1f660eb34a41405bdabd6f584212a45d6ae3f07f",
+  "scope": "Explicit Rust-owned standard inline V1 extension, local/shared factories, schema-bound closed presentation, clean installed consumers and functional regression checks. Original constructors, schema meanings, default ABI and shared model/journal versions are unchanged.",
+  "releaseQualified": false,
+  "toolchain": {"rustc": "1.98.0 (88d9e12ae 2026-08-18)", "wasmBindgen": "0.2.127", "node": "22.14.0"},
+  "native": [
+    {"command": "cargo test -p breditor-core --locked --features experimental-rich-content --test standard_inline_v1 --offline --quiet", "passed": 5, "note": "Exact identities/revisions/domains, numeric boundaries, UTF-8 Link bounds, Boolean target, independent script literals, dependencies/duplicate claims, typed caption input and exact recovered history. Strict Clippy also passes."},
+    {"command": "cargo test -p breditor-core --locked --lib --offline --quiet", "passed": 703},
+    {"command": "cargo test -p breditor-core --locked --features experimental-rich-content --lib --offline --quiet", "passed": 1217},
+    {"command": "cargo test -p breditor-wasm --locked --features experimental-rich-content --tests --offline", "richEditorContractsPassed": 14, "note": "Default and rich Wasm boundary regressions also pass through check-rich-browser.mjs."},
+    {"command": "cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --quiet", "passed": 231, "sharedProfileContractsPassed": 10, "note": "The profile contracts are a subset, not ten additional tests. Native/Wasm build and lint stages completed before the initial browser attempt; no vendor code was changed."}
+  ],
+  "browserSuites": [
+    {"command": "node scripts/check-shared-browser-matrix.mjs", "passed": 261, "engines": ["chromium", "firefox", "webkit"], "note": "All 87 cases per engine; existing per-file WebKit isolation, no configured retries, unchanged assertions and deadlines. Chromium/Firefox's combined 174-case run passed in 4.9 minutes under its original five-minute limit."},
+    {"command": "node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs", "passed": 36, "engines": ["chromium", "firefox", "webkit"], "note": "All browser libraries resolve from the freshly installed archives below. Shared Wasm is still explicitly host-supplied from the isolated workspace."},
+    {"command": "node scripts/check-rich-browser.mjs", "passed": 123, "engines": ["chromium", "firefox", "webkit"], "note": "Complete local Rust/Wasm owner, DOM, assets, clipboard, typing, history and reload suite. Local seed formatting uses the original one-format-per-command contract; the tested clipboard paste is one history group."}
+  ],
+  "browserRunCountNote": "420 overlapping suite executions, not 420 unique capabilities or a readiness percentage.",
+  "installedRuntime": {"command": "node scripts/check-shared-package.mjs", "passed": true, "note": "Offline installation and TypeScript checks pass. The consumer initializes its installed local Wasm and the generated shared Wasm, explicitly compiles both standard profiles and compares their entire schema-bound catalogs. Both have twelve standard formats. The rich binary was rebuilt before packing, not copied from an older source checkpoint."},
+  "otherChecks": {"defaultBrowserTestsPassed": 2203, "defaultBrowserTestFiles": 59, "standaloneScriptTestsPassed": 328, "standaloneScriptTestsSkipped": 3, "hostStartupAndRestartTestsPassed": 4, "note": "Root and isolated formatting, native/Wasm lint, generated/consumer types, relay, coverage guard and real-host restart checks pass. Standalone skips are the existing explicit opt-in diagnostics, not omitted functional matrix cases."},
+  "earlierAttempts": [
+    {"result": "failed", "passed": 109, "failed": 1, "didNotRun": 64, "note": "Firefox grammar fixture timed out on Loading before its test body. The retained trace showed successful requests and Ready just after the five-second check, without a recorded startup exception. The exact Firefox fixture plus standard cases subsequently passed all nine focused tests with unchanged deadlines."},
+    {"result": "incomplete", "passed": 141, "didNotRun": 33, "note": "A second canonical run had no assertion failure but exceeded the unchanged five-minute suite limit before completing. These attempts are not counted as clean passes."}
+  ],
+  "testHostRepair": "The functional host previously fetched and parsed its 26 MB native reference fixture only after Wasm initialization. Independent initialization and fixture loading now start together; tests prove both start and either failure rejects startup. The complete matrix then passed without coverage or timeout changes. This is a test-host serialization repair, not a demonstrated fix for a browser engine fault or a product performance qualification.",
+  "artifacts": {
+    "packageVersion": "0.3.0-alpha.22",
+    "archives": [
+      {"name": "@breditor/browser", "bytes": 327732, "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name": "@breditor/experimental-rich-content", "bytes": 1156309, "sha256": "34e956cc525a5822feb895fd223a2f8162920125e217ab64e089be74b7f54957"},
+      {"name": "@breditor/experimental-collaboration", "bytes": 59826, "sha256": "c194d34d8c5b8ae8e561c10fa096402ab4af5606c54e1f62002922f216d40303"}
+    ],
+    "localRichWasm": {"bytes": 4073562, "gzipBytes": 1084077, "sha256": "daa1ce9b162b6da7e3a76ea75d32f9099db18687db9907c367150559ba45c72a"},
+    "sharedWasm": {"bytes": 9068712, "gzipBytes": 2451492, "sha256": "ee53516c75c7ac3aec38fe5a1f5cc11a9fc6e6d4ecbba42a1f477794fe78a302"}
+  },
+  "limits": [
+    "The preset must be explicitly selected. Its fingerprint differs from the ordinary profile; existing documents and journals are not silently rebound or migrated.",
+    "This is a declaration/presentation foundation, not the completed standard toolbar. Link forms, mixed property editing and complete keyboard/context controls remain active goal work.",
+    "Subscript and superscript are independent admitted literals. An exclusive control must explicitly remove/add them in one history group; admission does not erase either format implicitly.",
+    "V1 has four font-family presets, integer pixel sizes 8 through 96, RGB24 colors and a required 1..2048 UTF-8-byte Link URL plus Boolean target. There are no arbitrary CSS strings or embedded font files.",
+    "The reused safeLinkV1 renderer activates only absolute credential-free HTTP(S) URLs. Relative, mailto and tel destinations are not active links under this policy; schema-valid unsupported strings remain inert data.",
+    "The existing local setInlineFormat command still changes exactly one format. Atomic compound local format editing is not added by this checkpoint.",
+    "New standard offline cases exchange original update frames directly. Existing relay/network cases remain passing; these do not establish a complete production relay distribution for every standard/custom profile.",
+    "Private packages, host-supplied shared Wasm, distribution promotion, everyday editing and foreign interchange remain unfinished. No readiness feature label or qualification gate is closed here.",
+    "Playwright checks do not qualify native clipboard, physical IME, screen readers, mobile, sustained performance or public deployment."
+  ],
+  "historicalWebKitFaultResolved": false,
+  "published": false,
+  "publicDeployment": false
+}

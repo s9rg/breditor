@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "81aeb0cbf6e78b643d3054da417e9e0d1927fbe7",
+  "baselineCommit": "1f660eb34a41405bdabd6f584212a45d6ae3f07f",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -36,31 +36,31 @@
     {
       "id":"basic-inline-formatting","area":"Editing","status":"partial",
       "summary":"Bold, italic, underline, strike and inline code",
-      "current":"The rich/shared renderer now has a schema-bound checked presentation path for ordinary marks, reusing default policies. Both owners expose Rust-derived exact/mixed property-state reads. The default toolbar still exposes Bold; the complete standard profile, controls and their state integration remain unfinished.",
+      "current":"The explicit Rust standard inline V1 profile declares every ordinary mark, and its checked renderer works with local/shared owners and installed archives. Both owners expose Rust-derived exact/mixed reads. The default rich/shared toolbar still exposes Bold; complete standard controls and their state integration remain unfinished.",
       "acceptance":"Ship all everyday marks in the combined profile, renderer and toolbar; test mixed state, caret formats, clipboard, offline edits and selective Undo/Redo.",
-      "evidence":["packages/breditor-reference-highlight/src/showcase_profile.ts","packages/breditor-experimental-rich-content/src/inline_presentation.ts","crates/breditor-core/src/rich_content/inline_format_state.rs","packages/breditor-experimental-collaboration/src/toolbar.ts","experiments/shared-browser/inline-presentation.spec.mjs","docs/qualification/2026-10-15-rich-inline-state.json"],
+      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-experimental-rich-content/src/standard_inline_v1.ts","crates/breditor-core/src/rich_content/inline_format_state.rs","packages/breditor-experimental-collaboration/src/toolbar.ts","experiments/shared-browser/standard-profile.spec.mjs","docs/qualification/2026-10-15-standard-inline-v1.json"],
       "sources":["tiptap-starter","ckeditor-styles","tiptap-source-starter"]
     },
     {
       "id":"subscript-superscript","area":"Editing","status":"missing",
       "summary":"Subscript and superscript",
-      "current":"Typed formats provide a foundation, not integrated subscript/superscript behavior or controls.",
+      "current":"The explicit standard V1 profile now declares independent subscript/superscript literals and both render in local/shared editors. Integrated exclusive controls and complete script workflows remain missing; admission deliberately does not silently remove the other literal.",
       "acceptance":"Define mutually compatible script formats, semantic presentation and exact history/interchange behavior.",
-      "evidence":["packages/breditor-experimental-rich-content/src/render.ts"],
+      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","experiments/rich-browser/standard-profile.spec.mjs","experiments/shared-browser/standard-profile.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-styles"]
     },
     {
       "id":"font-and-color","area":"Editing","status":"partial",
       "summary":"Font family, size, text and background color",
-      "current":"Default Showcase has RGB24 color, discrete sizes and Highlight. The rich/shared renderer now reuses the closed color and integer-token policies; standard controls, size CSS, font families and background-color workflows remain incomplete.",
+      "current":"The explicit standard rich/shared profile and renderer now support RGB24 text/background colors, integer 8..96 pixel sizes and four font-family presets, including installed consumers. Complete mixed-value controls and foreign interchange remain unfinished; this does not support arbitrary CSS or embedded fonts.",
       "acceptance":"Promote safe declarative presentations into the combined editor, define supported font/size/color domains and test interoperability.",
-      "evidence":["packages/breditor-reference-highlight/src/color_showcase_profile.ts","packages/breditor-reference-highlight/src/size_showcase_profile.ts","packages/breditor-experimental-rich-content/src/render.ts"],
+      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-browser/src/scalar_style_policy.test.ts","packages/breditor-experimental-rich-content/src/standard_inline_v1.ts","docs/qualification/2026-10-15-standard-inline-v1.json"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
       "id":"links","area":"Editing","status":"partial",
       "summary":"Links and automatic link detection",
-      "current":"Default Link forms work, and the rich/shared renderer now supports the same checked anchor policy in cells/captions. A complete standard Link control and autolink remain unfinished.",
+      "current":"Default Link forms work. The explicit Rust standard rich/shared profile now declares the bounded URL and Boolean target, reusing the checked anchor policy in cells/captions; local structural clipboard preserves the typed values. A complete standard Link control, foreign interchange and autolink remain unfinished.",
       "acceptance":"Use one safe URL policy for shared rendering, explicit link editing, clipboard/export and optional autolink, without interpreting arbitrary HTML.",
       "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/render.ts"],
       "sources":["tiptap-starter","ckeditor-overview"]

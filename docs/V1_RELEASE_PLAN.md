@@ -19,21 +19,28 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `81aeb0c` (saved locally,
-not yet pushed). Schema-bound presentation and Rust-derived exact/mixed
-formatting-state reads now work in both local and shared owners. The
+The latest functional implementation checkpoint is `1f660eb` (saved locally,
+not yet pushed). The explicitly selected standard inline V1 preset now declares
+all twelve formats in Rust and supplies checked rendering for both local and
+shared owners. Its original profile constructors remain unchanged. The
 [presentation checkpoint](qualification/2026-10-15-inline-presentation.json)
 records the archive-pairing repair and its 687-run matrix. The subsequent
 [formatting-state checkpoint](qualification/2026-10-15-rich-inline-state.json)
-passes 249 shared, 24 installed-archive and 114 local browser runs, plus the
-recorded Rust/Wasm, type and packaging checks. These overlapping runs are not
-unique capability counts. The ledger now anchors that exact implementation;
-its feature labels and all 13 qualification gates remain unchanged.
+records the Rust-derived exact/mixed reads at `81aeb0c`. The new
+[standard-preset checkpoint](qualification/2026-10-15-standard-inline-v1.json)
+passes 261 shared, 36 installed-archive and 123 local browser runs, plus the
+recorded Rust/Wasm, default-browser, type and packaging checks. Its qualification
+record also retains the earlier failed/incomplete attempts and the test-host
+startup repair. These overlapping runs are not unique capability counts. The
+ledger anchors this implementation; feature labels and all 13 qualification
+gates remain unchanged because their complete acceptance is still open.
 
-The active first-two-workstream goal is not complete. The next checkpoint is
-the versioned standard profile and its actual controls, followed by distribution
-promotion, everyday editing gaps and external interchange. Rendering and state
-queries alone do not fulfill those acceptance conditions.
+The active first-two-workstream goal is not complete. Next are atomic compound
+format editing and actual standard controls using the Rust state reads, followed
+by distribution promotion, everyday editing gaps and external interchange. The
+existing local one-format command must not silently become a multi-format
+command. Declarations, rendering and state queries alone do not fulfill the
+workstreams' acceptance conditions.
 
 The combined editor implements nested lists, tables with rich cell bodies and
 grid operations, block raster images, durable offline journals/uploads,
@@ -103,8 +110,9 @@ No competitor implementation was copied into Breditor.
 1. **One rich formatting path.** Default Link, color, text-size and richer toolbar
    policies do not automatically supply the complete shared product. A new
    schema-bound rich presentation now reuses the default checked mark, anchor,
-   RGB24 color and integer-token policies. The standard profile, size CSS and
-   integrated controls still need to follow. Rust-derived exact/mixed
+   RGB24 color and integer-token policies. The explicit standard profile now
+   adds bounded pixel-size CSS, background color and four font-family presets.
+   Integrated controls still need to follow. Rust-derived exact/mixed
    property-state reads now exist for local and shared owners; controls must use
    them consistently before advertising those features together.
 2. **Complete editing grammar.** Add blockquotes, code blocks, horizontal rules,
