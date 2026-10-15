@@ -10,14 +10,14 @@ use std::collections::BTreeMap;
 
 /// A text-flow selection anchor with separate logical, source and fragment identities.
 ///
-/// This is not the existing shared editor's serialized selection contract. The
-/// browser/coordinator must adopt a new model/checkpoint revision before using it.
+/// This is part of the private shared journal V4. Browser read selections expose
+/// admitted logical block coordinates; sources and fragment identities stay Rust-owned.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlowAnchor {
-    point: Point,
-    anchor: TextAnchor,
-    end_binding: Option<TextAnchor>,
+    pub(super) point: Point,
+    pub(super) anchor: TextAnchor,
+    pub(super) end_binding: Option<TextAnchor>,
     seen: BTreeMap<String, String>,
 }
 impl FlowAnchor {
@@ -30,18 +30,39 @@ impl FlowAnchor {
         offset: u32,
         affinity: Affinity,
     ) -> Result<Self, Error> {
-        let point = super::point(doc, block, offset, affinity)?;
-        let text = super::super::model::existing_text(doc, &point.source).ok_or(Error::Anchor)?;
+        let point = if super::prepared(doc, block) {
+            super::point(doc, block, offset, affinity)?
+        } else {
+            if offset != 0 {
+                return Err(Error::Offset);
+            }
+            Point {
+                block: block.into(),
+                source: block.into(),
+                offset,
+                fragment: super::graph::empty(block),
+                affinity,
+                empty: true,
+            }
+        };
+        let text = super::super::model::existing_text(doc, &point.source);
         let end_binding = if !point.empty
             && affinity == Affinity::After
             && offset == super::view(doc, block)?.len()?
         {
-            Some(TextAnchor::capture(&text, point.offset, Affinity::Before)?)
+            Some(TextAnchor::capture(
+                text.as_ref().ok_or(Error::Anchor)?,
+                point.offset,
+                Affinity::Before,
+            )?)
         } else {
             None
         };
         Ok(Self {
-            anchor: TextAnchor::capture(&text, point.offset, affinity)?,
+            anchor: text.as_ref().map_or_else(
+                || Ok(TextAnchor::empty(super::super::model::text_id(&point.source), affinity)),
+                |text| TextAnchor::capture(text, point.offset, affinity),
+            )?,
             point,
             seen: super::cuts::witness(doc),
             end_binding,
@@ -51,6 +72,21 @@ impl FlowAnchor {
     /// # Errors
     /// Rejects unavailable causal history or malformed routing rather than guessing by text diff.
     pub fn resolve(&self, doc: &LoroDoc) -> Result<(String, u32), Error> {
+        if !super::prepared(doc, &self.point.block) {
+            let offset =
+                if let Some(text) = super::super::model::existing_text(doc, &self.point.source) {
+                    self.anchor.resolve(doc, &text)?
+                } else {
+                    let cursor = self.anchor.engine_cursor()?;
+                    if cursor.container != super::super::model::text_id(&self.point.source)
+                        || cursor.id.is_some()
+                    {
+                        return Err(Error::Anchor);
+                    }
+                    0
+                };
+            return Ok((self.point.block.clone(), offset));
+        }
         let index = Index::read(doc)?;
         let text =
             super::super::model::existing_text(doc, &self.point.source).ok_or(Error::Anchor)?;
@@ -61,7 +97,7 @@ impl FlowAnchor {
             && let Some(right) =
                 super::cuts::follow(doc, &self.point.block, &self.point.source, offset, &self.seen)?
         {
-            return index.fragment_point(&super::graph::empty(&right), offset);
+            return index.fragment_end(&super::graph::empty(&right));
         }
         if self.point.empty {
             return index.fragment_point(&self.point.fragment, offset);

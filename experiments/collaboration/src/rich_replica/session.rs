@@ -11,10 +11,7 @@ use breditor_core::{
     rich_content::{BlockId, RichDocument},
     state::EditorContext,
 };
-use loro::{
-    ContainerID, ContainerType, ExportMode, LoroDoc, StyleConfig, ToJson, VersionVector,
-    sync::Mutex,
-};
+use loro::{ContainerID, ContainerType, ExportMode, LoroDoc, ToJson, VersionVector, sync::Mutex};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -134,7 +131,7 @@ impl RichReplica {
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: 3,
+            version: 4,
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
@@ -159,7 +156,7 @@ impl RichReplica {
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: 3,
+                version: 4,
                 document,
                 writer,
                 origin: Origin::Join { updates },
@@ -188,7 +185,7 @@ impl RichReplica {
         let doc = LoroDoc::new();
         doc.set_peer_id(writer_id(&journal.writer)?)?;
         doc.set_record_timestamp(false);
-        doc.config_default_text_style(Some(StyleConfig::default()));
+        super::text_flow::configure(&doc);
         model::tree(&doc);
         doc.get_map("texts");
         doc.get_map("columns");
@@ -242,7 +239,7 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != 3 {
+        if journal.format != "breditor/rich-replica-journal" || journal.version != 4 {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
@@ -315,6 +312,7 @@ impl RichReplica {
         }
         self.refresh_document()?;
         let before_ui = self.journal.ui.clone();
+        let before_selection = self.selection()?;
         self.validate_targets(commands)?;
         self.undo.pause();
         for command in commands {
@@ -333,11 +331,9 @@ impl RichReplica {
         let undo_count = self.undo_count();
         self.undo.group_start()?;
         for (ordinal, command) in commands.iter().enumerate() {
-            let previous = self.selection()?;
             command.apply(&self.doc, &self.codec, &self.document, stamp, ordinal)?;
             self.doc.commit();
             self.refresh_document()?;
-            self.journal.ui.normalize(&self.doc, &self.document, previous.as_ref())?;
         }
         self.undo.group_end();
         if self.undo_count() != undo_count {
@@ -348,6 +344,7 @@ impl RichReplica {
                 meta,
             )?;
         }
+        self.journal.ui.normalize(&self.doc, &self.document, before_selection.as_ref())?;
         self.journal.ui.after(&self.codec, &self.doc, &self.document, selection, pending)?;
         self.recipes.insert(
             history_key.clone(),
@@ -503,6 +500,7 @@ impl RichReplica {
             self.codec.schema().clone(),
             self.codec.limits().clone(),
         ));
+        let mut declared = super::target_kinds::TargetKinds::default();
         for command in commands {
             if super::planning::handles(command) {
                 super::planning::validate(
@@ -512,6 +510,7 @@ impl RichReplica {
                     &self.canonical,
                     command,
                 )?;
+                declared.record(command)?;
                 continue;
             }
             let block = match command {
@@ -522,6 +521,8 @@ impl RichReplica {
                 | Command::MergeCells(_)
                 | Command::SplitCell(_) => unreachable!("planned creation command"),
                 Command::InsertText(value) => &value.block,
+                Command::SplitTextBlock(value) => &value.block,
+                Command::JoinTextBlocks(value) => &value.left,
                 Command::DeleteText(value) => &value.block,
                 Command::SetFormat(value) => &value.block,
                 Command::SetImageAlt(value) => &value.block,
@@ -534,18 +535,7 @@ impl RichReplica {
                 Command::DeleteColumn(value) => &value.block,
             };
             let block = BlockId::try_new(block).map_err(contract)?;
-            let path = self
-                .document
-                .block_path(&block)
-                .ok_or(Error::Contract("visible shared action target"))?;
-            let node = self
-                .document
-                .document()
-                .node_at(path)
-                .map_err(contract)?
-                .as_element()
-                .ok_or(Error::Contract("shared element target"))?;
-            let kind = node.kind().as_str();
+            let kind = declared.kind(&self.document, &block)?;
             match command {
                 Command::InsertBlocks(_)
                 | Command::InsertRow(_)
@@ -553,7 +543,11 @@ impl RichReplica {
                 | Command::SetHeader(_)
                 | Command::MergeCells(_)
                 | Command::SplitCell(_) => unreachable!("planned creation command"),
-                Command::InsertText(_) | Command::DeleteText(_) | Command::SetFormat(_) => {
+                Command::InsertText(_)
+                | Command::DeleteText(_)
+                | Command::SetFormat(_)
+                | Command::SplitTextBlock(_)
+                | Command::JoinTextBlocks(_) => {
                     if kind != "breditor/paragraph" && kind != "breditor/heading" {
                         return Err(Error::Contract("shared text target kind"));
                     }
@@ -571,12 +565,19 @@ impl RichReplica {
                 Command::MoveBlock(value) => {
                     if let Some(parent) = &value.parent {
                         let parent = BlockId::try_new(parent).map_err(contract)?;
-                        if self.document.block_path(&parent).is_none() {
+                        if declared.kind(&self.document, &parent).is_err() {
                             return Err(Error::Contract("visible shared move parent"));
                         }
                     }
                 }
                 Command::DeleteBlock(_) => {}
+            }
+            if let Command::JoinTextBlocks(value) = command {
+                let right = declared
+                    .kind(&self.document, &BlockId::try_new(&value.right).map_err(contract)?)?;
+                if right != "breditor/paragraph" && right != "breditor/heading" {
+                    return Err(Error::Contract("shared join right text kind"));
+                }
             }
             if let Command::SetFormat(value) = command {
                 formats.decode(&json!([value.format]).to_string()).map_err(contract)?;
@@ -587,6 +588,7 @@ impl RichReplica {
                     return Err(Error::Contract("visible shared column target"));
                 }
             }
+            declared.record(command)?;
         }
         Ok(())
     }
@@ -616,9 +618,18 @@ impl RichReplica {
         for (name, value) in root.iter() {
             let kind = match name.as_str() {
                 "nodes" => ContainerType::Tree,
-                "binding" | "texts" | "columns" | "metadata" | "orders" | "sites" => {
-                    ContainerType::Map
-                }
+                "binding"
+                | "texts"
+                | "columns"
+                | "metadata"
+                | "orders"
+                | "sites"
+                | "text-flow-definitions"
+                | "text-flow-orders"
+                | "text-flow-effects"
+                | "text-flow-sites"
+                | "text-flow-cuts"
+                | "annotation-ownership" => ContainerType::Map,
                 _ => return Err(Error::Contract("rich shared root name")),
             };
             if value.as_container() != Some(&ContainerID::new_root(name, kind)) {

@@ -4,6 +4,7 @@
 //! A semantic Document V2 is a validated export, never a mutable shared root register.
 
 pub mod actions;
+mod annotations;
 mod column_order;
 mod creation;
 mod history_cursors;
@@ -14,12 +15,14 @@ mod materialize;
 mod merges;
 mod model;
 mod observation;
+mod paragraphs;
 mod placement;
 mod planning;
 pub mod selection;
 mod session;
 mod set_pending_formats;
 mod set_selection;
+mod target_kinds;
 mod text;
 pub mod text_flow;
 mod ui_state;

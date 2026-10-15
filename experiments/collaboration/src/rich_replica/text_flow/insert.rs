@@ -19,6 +19,17 @@ pub fn insert(
     affinity: Affinity,
     content: &str,
 ) -> Result<(), Error> {
+    insert_with_activation(doc, block, offset, affinity, content, None)
+}
+
+pub(in crate::rich_replica) fn insert_with_activation(
+    doc: &LoroDoc,
+    block: &str,
+    offset: u32,
+    affinity: Affinity,
+    content: &str,
+    activation: Option<Stamp>,
+) -> Result<(), Error> {
     if content.len() > 64 * 1024 {
         return Err(Error::Limit("text-flow insertion bytes"));
     }
@@ -55,7 +66,14 @@ pub fn insert(
         position += count;
     }
     if needs_marker {
-        markers::mark(doc, &point.source, point.offset, length, &point.fragment, stamp, 0)?;
+        markers::mark(
+            doc,
+            &point.source,
+            point.offset,
+            length,
+            &point.fragment,
+            markers::MarkerClock { stamp, activation: activation.unwrap_or(stamp), ordinal: 0 },
+        )?;
     }
     Ok(())
 }

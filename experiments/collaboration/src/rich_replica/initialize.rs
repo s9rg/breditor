@@ -4,7 +4,7 @@ use super::{
     text::Annotation,
 };
 use crate::{Error, register::Stamp};
-use loro::{LoroDoc, TreeID};
+use loro::{LoroDoc, ToJson, TreeID};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
@@ -23,6 +23,11 @@ pub(super) fn seed(doc: &LoroDoc, envelope: &Value) -> Result<(), Error> {
         .ok_or(Error::Contract("shared seed children"))?
     {
         element(doc, child, None, stamp, &mut marks)?;
+    }
+    let sources = doc.get_map("texts").get_deep_value().to_json_value();
+    for block in sources.as_object().ok_or(Error::Contract("shared text source directory"))?.keys()
+    {
+        super::text_flow::prepare_root(doc, block)?;
     }
     doc.commit();
     let stamp = Stamp::next(doc)?;

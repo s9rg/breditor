@@ -1,5 +1,5 @@
 //! Delete shared text items without destroying the canonical text container.
-use crate::{Error, anchor::event_offset};
+use crate::Error;
 use loro::LoroDoc;
 use serde::{Deserialize, Serialize};
 /// Scalar-aligned shared text deletion.
@@ -15,13 +15,6 @@ pub struct DeleteText {
 }
 impl DeleteText {
     pub(super) fn apply(&self, doc: &LoroDoc) -> Result<(), Error> {
-        let text = super::super::model::text(doc, &self.block)?;
-        event_offset(&text, self.offset)?;
-        event_offset(&text, self.offset.checked_add(self.length).ok_or(Error::Offset)?)?;
-        text.delete_utf16(
-            usize::try_from(self.offset).map_err(|_| Error::Offset)?,
-            usize::try_from(self.length).map_err(|_| Error::Offset)?,
-        )?;
-        Ok(())
+        super::super::text_flow::delete(doc, &self.block, self.offset, self.length)
     }
 }

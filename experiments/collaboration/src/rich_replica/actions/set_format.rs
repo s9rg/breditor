@@ -20,14 +20,24 @@ pub struct SetFormat {
 }
 impl SetFormat {
     pub(super) fn apply(&self, doc: &LoroDoc, stamp: Stamp, ordinal: usize) -> Result<(), Error> {
-        super::super::text::mark(
-            doc,
-            &self.block,
-            self.offset,
-            self.length,
-            &super::super::text::Annotation { format: self.format.clone(), enabled: self.enabled },
-            stamp,
-            ordinal,
-        )
+        if self.length == 0 {
+            return Err(Error::Contract("empty shared format range"));
+        }
+        let chunks =
+            super::super::text_flow::intervals(doc, &self.block, self.offset, self.length)?;
+        let annotation =
+            super::super::text::Annotation { format: self.format.clone(), enabled: self.enabled };
+        for chunk in chunks {
+            super::super::text::mark(
+                doc,
+                &chunk.source,
+                chunk.start,
+                chunk.length,
+                &annotation,
+                stamp,
+                ordinal,
+            )?;
+        }
+        Ok(())
     }
 }

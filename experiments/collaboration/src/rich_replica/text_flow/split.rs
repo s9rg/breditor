@@ -1,7 +1,7 @@
 //! Split logical text without moving or recreating its original character IDs.
 use super::{
     cuts::{self, Cut},
-    graph::{self, Origin},
+    graph,
     index::Index,
     markers,
 };
@@ -14,8 +14,9 @@ use loro::{LoroDoc, VersionVector};
 
 /// A prepared split; permanent definitions are outside the caller's undo group.
 ///
-/// This lowerer changes text routing only. The coordinator must separately admit
-/// and publish the right paragraph's structural birth in the same history group.
+/// The coordinator publishes the admitted right paragraph's structural birth and
+/// these routing effects together. Its empty insertion source belongs to that
+/// new paragraph, rather than an offset in a mutable neighbouring source.
 pub struct PreparedSplit {
     version: VersionVector,
     target: String,
@@ -25,11 +26,10 @@ pub struct PreparedSplit {
     cut: Cut,
 }
 impl PreparedSplit {
-    /// Validate a scalar-aligned cut and prepare its immutable routing definitions.
-    ///
+    /// Validate a scalar cut and prepare immutable routing definitions outside undo.
     /// # Errors
-    /// Rejects missing/non-top roots, historical right identities, invalid offsets
-    /// and malformed causal data. Preparation must run on a disposable candidate.
+    /// Rejects invalid offsets, missing/non-top roots and historical right identities.
+    /// Preparation must run on a disposable candidate.
     pub fn prepare(doc: &LoroDoc, left: &str, offset: u32, right: &str) -> Result<Self, Error> {
         crate::actions::validate_id(right)?;
         let index = Index::read(doc)?;
@@ -38,33 +38,52 @@ impl PreparedSplit {
         {
             return Err(Error::Contract("fresh text-flow split identity"));
         }
+        index.point(doc, left, offset, Affinity::After)?;
+        Self::reserve(doc, right)?;
+        Self::plan(doc, left, offset, right)
+    }
+
+    /// Reserve an initially unbound tail fragment. The actual action chooses its
+    /// one source after earlier commands in the atomic group have executed.
+    pub(in crate::rich_replica) fn reserve(doc: &LoroDoc, right: &str) -> Result<(), Error> {
+        graph::prepare_root(doc, right)?;
+        graph::prepare_fragment(doc, &graph::tail(right), None, &graph::root(right))?;
+        cuts::prepare(doc, right)
+    }
+
+    pub(in crate::rich_replica) fn plan(
+        doc: &LoroDoc,
+        left: &str,
+        offset: u32,
+        right: &str,
+    ) -> Result<Self, Error> {
+        let index = Index::read(doc)?;
         let view = index.view(left)?;
-        if view.owner != left {
-            return Err(Error::Contract("split requires top text root"));
+        let target = index.view(right)?;
+        if view.owner != left || target.owner != right || !target.is_empty() || left == right {
+            return Err(Error::Contract(
+                "split requires a top root and an empty reserved right root",
+            ));
         }
         let point = index.point(doc, left, offset, Affinity::After)?;
-        let origin_text =
-            super::super::model::existing_text(doc, &point.source).ok_or(Error::Anchor)?;
-        let origin = Origin {
+        let source = super::super::model::existing_text(doc, &point.source).ok_or(Error::Anchor)?;
+        let cut = Cut {
+            left: left.into(),
+            right: right.into(),
             source: point.source.clone(),
-            anchor: Some(TextAnchor::capture(&origin_text, point.offset, Affinity::After)?),
+            anchor: TextAnchor::capture(&source, point.offset, Affinity::After)?,
         };
         let mut assignments = vec![];
         let mut moves = vec![];
-        let fragment = graph::tail(right);
         if offset < view.len()? {
             let tail = index.intervals(left, offset, view.len()? - offset)?;
-            // The first fragment may contain several formatting/ownership runs.
-            // Assign only its suffix. Following sibling roots/fragments retain
-            // their identity and are moved as subtrees, not flattened strings.
             let first = tail.first().ok_or(Error::Offset)?.fragment.clone();
             let full = index.chunks.get(&first).ok_or(Error::Anchor)?;
-            let partial = tail[0].start != full[0].start;
-            if partial {
+            if tail[0].start == full[0].start {
+                moves.push(first.clone());
+            } else {
                 assignments =
                     tail.iter().take_while(|chunk| chunk.fragment == first).cloned().collect();
-            } else {
-                moves.push(first.clone());
             }
             let top = graph::root(left);
             let mut current = first;
@@ -85,45 +104,48 @@ impl PreparedSplit {
                 current = parent.into();
             }
         }
-        let cut = Cut {
-            left: left.into(),
-            right: right.into(),
-            source: origin.source.clone(),
-            anchor: origin.anchor.clone().ok_or(Error::Anchor)?,
-        };
-        graph::prepare_root(doc, right, Some(origin))?;
-        cuts::prepare(doc, right)?;
-        if !assignments.is_empty() {
-            graph::prepare_fragment(doc, &fragment, &point.source, &graph::root(right))?;
-        }
         Ok(Self {
             version: doc.oplog_vv(),
             target: graph::root(right),
             assignments,
             moves,
-            fragment,
+            fragment: graph::tail(right),
             cut,
         })
     }
-    /// Apply only routing/ownership effects under the caller's explicit undo group.
-    ///
+
+    /// Apply routing and ownership under the caller's explicit undo group.
     /// # Errors
-    /// Stale plans reject before writes. Other failures require discarding the
-    /// staged document; this low-level API is not an atomic publication boundary.
+    /// Stale plans reject before writes. Other failures require discarding the staged owner.
     pub fn apply(&self, doc: &LoroDoc) -> Result<(), Error> {
         if doc.oplog_vv() != self.version {
             return Err(Error::Contract("stale text-flow split"));
         }
+        self.apply_staged(doc)
+    }
+    pub(in crate::rich_replica) fn apply_staged(&self, doc: &LoroDoc) -> Result<(), Error> {
+        self.apply_owned(doc, Stamp::next(doc)?)
+    }
+    pub(in crate::rich_replica) fn apply_owned(
+        &self,
+        doc: &LoroDoc,
+        activation: Stamp,
+    ) -> Result<(), Error> {
         let stamp = Stamp::next(doc)?;
         cuts::write(doc, &self.cut, stamp)?;
         for chunk in &self.assignments {
-            markers::mark(doc, &chunk.source, chunk.start, chunk.length, &self.fragment, stamp, 0)?;
+            markers::mark(
+                doc,
+                &chunk.source,
+                chunk.start,
+                chunk.length,
+                &self.fragment,
+                markers::MarkerClock { stamp, activation, ordinal: 0 },
+            )?;
         }
         for (ordinal, node) in self.moves.iter().enumerate() {
             graph::move_node(doc, node, &self.target, stamp, ordinal)?;
         }
-        // An end split has no characters to move. Its structural birth is still
-        // meaningful, but no synthetic character is added to make history nonempty.
         Ok(())
     }
 }

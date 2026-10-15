@@ -354,14 +354,14 @@ On October 14, 2026, the reproducible script passed:
   closure, explicit edges, reordered axes and metadata-only redo preservation.
 - 11 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 retained native collaboration/history contracts and 57 shared rich-AST
+- 27 retained native collaboration/history contracts and 74 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
 - 21 isolated text-flow contracts covering original-source split/join, logical
   range edits, offline typing, causal boundary carets and selective routing history.
-- 171 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
-  72 generated-Wasm shared-AST/selection tests and 24 text-flow lowerer checks.
-  The explicit test list includes `rich-replica.spec.mjs`, `rich-selection.spec.mjs`
-  and `text-flow.spec.mjs`; the old 75-test configuration did not exercise these
+- 195 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
+  96 generated-Wasm shared-AST/selection/paragraph tests and 24 text-flow lowerer checks.
+  The explicit test list includes `rich-replica.spec.mjs`, `rich-selection.spec.mjs`,
+  `rich-paragraphs.spec.mjs` and `text-flow.spec.mjs`; the old 75-test configuration did not exercise these
   additional families.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - 137 Rust documentation tests.
@@ -386,8 +386,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 7,993,968 bytes, or 2,172,057 bytes under gzip, with
-SHA-256 `6e80085763956c417dcaa736785a61eb141d11b61bd4cbe7969e27e4cbe0afb4`.
+The tested fixture Wasm is 8,039,429 bytes, or 2,188,448 bytes under gzip, with
+SHA-256 `90a92191f056299a646f8b9962bee51e90a6fadff9c18b3ac769b68ba6060956`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -440,18 +440,18 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V3 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V4 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional. V1/V2 shared journals are rejected rather than silently replayed
-without their required causal UI/history metadata. Local rich editor
+still provisional. V1–V3 shared journals are rejected rather than silently replayed
+without source-based text routing and causal UI/history metadata. Local rich editor
 recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
-and fingerprint, model revision 2 and pinned Loro 1.16.2 codec before importing
+and fingerprint, model revision 3 and pinned Loro 1.16.2 codec before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
 authentication or a writer lease. The reference relay must supply those checks.
@@ -492,7 +492,7 @@ describe retained causal storage.
 
 ## Text fragments for shared paragraph boundaries
 
-The isolated `rich_replica::text_flow` lowerer removes the assumption that a
+`RichReplica` now uses `rich_replica::text_flow` for every text action, removing the assumption that a
 paragraph owns one text container. A paragraph instead owns an ordered tree of
 stable fragments. Every rendered chunk records its original source, scalar-aligned
 UTF-16 interval, fragment ID and typed formats. Split assigns existing characters
@@ -521,6 +521,33 @@ floating edge scoped to that character's current fragment: right-side typing
 cannot pull the observed left caret across the seam, while an unobserved original
 end still follows the split and subsequent typing. Anchor witnesses and all
 source identities survive engine export/import.
+
+The real `split_text_block` and `join_text_blocks` commands capture and admit the
+original Rust core actions, then compare their materialized result with that
+immutable semantic preview. Structural births, placements and source routing
+belong to one explicit history group. Caption splitting, invalid scalar cuts,
+wrong ranks and cross-parent joins reject without publishing content, UI,
+history or stale-guard changes. Earlier creations can declare text targets for
+later steps: one group can insert text, split, type into the new paragraph and
+join it again. Split chooses its current parent and source after prior commands,
+including a preceding move. A reserved tail fragment binds to one actual source;
+empty right paragraphs have their own canonical source. Active cuts also retain
+an empty normalization paragraph when a split creates a second empty paragraph.
+
+Native undo reproduced a retained fragment attribute on an offline-inserted
+character after removing that attribute from the original characters. Inherited
+attributes therefore do not prove that their action is still active. Explicit
+writer-owned activation claims now gate both fragment and format annotations.
+Undo retracts the claim globally; Redo restores its original priority. This keeps
+offline text in its correct paragraph when a split is undone and removes undone
+formatting from inherited inserted text without deleting that text. One claim
+belongs to the complete atomic group, while each routing step retains its own
+priority. This avoids platform-dependent ordering of separate activation-field
+deletions during native undo. Source-aware history repairs both the floating
+caret and its end binding when native history
+recreates character IDs. A full materialization builds one shared source index
+rather than rescanning every source separately for each paragraph.
+
 Unobserved insertions exactly at a cut inherit the engine's fragment annotation
 at both edges; observed insertions explicitly select their logical paragraph.
 This seam policy does not promise that a concurrent insertion uses a remote
@@ -530,9 +557,16 @@ The lowerer has separate documented files for split, join, insert, delete and
 format. Prepared actions reject stale engine versions before writing. They must
 run on a disposable staged document: they do not themselves provide atomic AST
 publication, schema admission, transport authorization or durable undo-stack
-recovery. The coordinator must admit sibling/grammar rules and publish structural
-births with these routing effects in one action. Its existing history-cursor
-repair must also be adapted to source identities.
+recovery. `RichReplica` supplies the atomic publication, core grammar admission,
+paired source-cursor repair and replay-proved private V4 history around them.
+Transport authorization remains a host responsibility.
+
+Native and Wasm opaque engine exports may encode map-value dictionaries in a
+different order while retaining identical causal operations and state. The
+paragraph recovery vector therefore compares complete decoded operation JSON,
+version vectors, materialized state and exact private journals at each future
+history step. It separately verifies native-frame import and Wasm-frame
+round-trip. Raw engine packing is not a canonical document/version format.
 
 The lowerer independently caps 20,000 graph nodes, 50,000 placement sites,
 20,000 source runs, 100,000 projected attributes, 1,000 cut owners and 10,000 cut
@@ -543,17 +577,23 @@ Twenty-one native contracts exercise scalar cuts, source-preserving split/rejoin
 offline typing/formatting, concurrent cuts/joins, reversed source order, empty
 paragraphs, causal boundary carets, selective history and export/import. Eight
 closed scenarios also run through the actual compiled Wasm lowerer and compare
-with independently generated native JSON. The lowerer is **not yet connected to
-`RichReplica` commands, its shared selection/history contract or the browser
-editor**. Existing model revision 2 rejects its separate root family. Promotion
-requires a new shared model/checkpoint version; the current V3 journal and
-shipping contracts remain unchanged.
+with independently generated native JSON. Seventeen additional contracts exercise
+the actual shared paragraph commands, including concurrent cuts in both writer/
+delivery orders, inherited-annotation undo, independent source containers,
+normalized cells, new axis-derived cells and exact restored future history.
+Selection and pending-format normalization occurs once after the complete atomic
+group, not after intermediate commands. Original-axis deletion fallback does not
+select a row first created by the same group.
+The Wasm probe exposes these commands through guarded dispatch; the browser DOM
+coordinator is still unfinished. Private shared model revision 3 and journal V4
+replace the earlier experimental model; shipping schemas/codecs are unchanged.
 
 ## Limits and remaining gates
 
 These are provisional probe limits, not public editor guarantees: 1,000 journal
-entries; 16 MiB serialized journal; 1 MiB imported frame; 2 MiB replicated and
-materialized views; 64 ordered command steps; 64 KiB inserted text; 10,000
+entries; 16 MiB serialized journal; 1 MiB opaque engine update in a 5 MiB JSON
+envelope; 4 MiB deep causal state (with independent core document limits);
+64 ordered command steps; 64 KiB inserted text; 10,000
 formatted runs; 1,000 annotations per run and 50,000 total projected annotations.
 Geometry additionally caps 256 rows, 128 columns, 4,096 cells and 256 merge records.
 All independent limits apply. Hosts can tighten the core geometry ceilings.
@@ -573,7 +613,7 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-Complete shared paragraph/list/range planner coverage and
+Shared range-replacement, heading and list planners, and
 cycle/conflict normalization remain implementation gates. The shared browser
 coordinator, collaborative IndexedDB/leases and authorized reference
 relay/presence/asset-provider integration are also unfinished. The fixture

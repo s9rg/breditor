@@ -43,6 +43,7 @@ pub(super) fn prepare(
     let kind = node["type"].as_str().ok_or(Error::Contract("shared creation kind"))?;
     if kind == "breditor/paragraph" || kind == "breditor/heading" {
         model::text(doc, block)?;
+        super::text_flow::prepare_root(doc, block)?;
     } else {
         for child in
             node["children"].as_array().ok_or(Error::Contract("shared creation children"))?

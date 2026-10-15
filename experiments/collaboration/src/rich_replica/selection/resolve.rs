@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(in crate::rich_replica) enum AnchoredSelection {
-    Text { anchor: AnchoredPoint, focus: AnchoredPoint },
+    Text { anchor: Box<AnchoredPoint>, focus: Box<AnchoredPoint> },
     Node { block: String },
-    Grid { anchor: CellContext, focus: CellContext },
+    Grid { anchor: Box<CellContext>, focus: Box<CellContext> },
 }
 pub(in crate::rich_replica) fn capture(
     doc: &LoroDoc,
@@ -20,13 +20,13 @@ pub(in crate::rich_replica) fn capture(
     selection.admit(document)?;
     Ok(match selection {
         Selection::TextRange { anchor, focus } => AnchoredSelection::Text {
-            anchor: AnchoredPoint::capture(doc, document, anchor)?,
-            focus: AnchoredPoint::capture(doc, document, focus)?,
+            anchor: Box::new(AnchoredPoint::capture(doc, document, anchor)?),
+            focus: Box::new(AnchoredPoint::capture(doc, document, focus)?),
         },
         Selection::Node { block } => AnchoredSelection::Node { block: block.clone() },
         Selection::Grid { anchor, focus } => AnchoredSelection::Grid {
-            anchor: CellContext::capture(document, anchor.clone())?,
-            focus: CellContext::capture(document, focus.clone())?,
+            anchor: Box::new(CellContext::capture(document, anchor.clone())?),
+            focus: Box::new(CellContext::capture(document, focus.clone())?),
         },
     })
 }
@@ -47,7 +47,7 @@ pub(in crate::rich_replica) fn resolve(
                 Err(loss) => return Ok(Err(loss)),
             };
             (
-                AnchoredSelection::Text { anchor, focus },
+                AnchoredSelection::Text { anchor: Box::new(anchor), focus: Box::new(focus) },
                 Selection::TextRange { anchor: ap, focus: fp },
             )
         }
@@ -82,8 +82,8 @@ pub(in crate::rich_replica) fn resolve(
             };
             (
                 AnchoredSelection::Grid {
-                    anchor: CellContext::capture(document, a.clone())?,
-                    focus: CellContext::capture(document, f.clone())?,
+                    anchor: Box::new(CellContext::capture(document, a.clone())?),
+                    focus: Box::new(CellContext::capture(document, f.clone())?),
                 },
                 Selection::Grid { anchor: a, focus: f },
             )

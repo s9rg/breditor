@@ -52,8 +52,11 @@ impl UiState {
         let mut meta = loro::UndoItemMeta::new();
         meta.set_value(key.into());
         if let Some(AnchoredSelection::Text { anchor, focus }) = &self.selection {
-            meta.add_cursor(&anchor.current_engine_cursor(doc)?);
-            meta.add_cursor(&focus.current_engine_cursor(doc)?);
+            for cursor in
+                anchor.flow.engine_cursors(doc)?.into_iter().chain(focus.flow.engine_cursors(doc)?)
+            {
+                meta.add_cursor(&cursor);
+            }
         }
         Ok(meta)
     }
@@ -64,11 +67,12 @@ impl UiState {
         diff: &loro_internal::undo::DiffBatch,
     ) -> Result<(), Error> {
         if let Some(AnchoredSelection::Text { anchor, focus }) = &mut self.selection {
-            if meta.cursors.len() != 2 {
+            let split = anchor.flow.history_cursor_count();
+            if meta.cursors.len() != split + focus.flow.history_cursor_count() {
                 return Err(Error::ReplayMismatch);
             }
-            anchor.repair_history_cursor(doc, &meta.cursors[0], diff)?;
-            focus.repair_history_cursor(doc, &meta.cursors[1], diff)?;
+            anchor.flow.repair_history_cursors(doc, &meta.cursors[..split], diff)?;
+            focus.flow.repair_history_cursors(doc, &meta.cursors[split..], diff)?;
         } else if !meta.cursors.is_empty() {
             return Err(Error::ReplayMismatch);
         }

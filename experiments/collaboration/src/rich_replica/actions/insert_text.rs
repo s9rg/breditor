@@ -1,5 +1,5 @@
-//! Insert into one stable shared text container, never an AST replacement register.
-use crate::{Error, anchor::event_offset};
+//! Insert into a logical block through its stable source fragment, never an AST replacement.
+use crate::{Error, anchor::Affinity, register::Stamp};
 use loro::LoroDoc;
 use serde::{Deserialize, Serialize};
 /// Scalar-aligned shared text insertion.
@@ -14,10 +14,14 @@ pub struct InsertText {
     pub text: String,
 }
 impl InsertText {
-    pub(super) fn apply(&self, doc: &LoroDoc) -> Result<(), Error> {
-        let text = super::super::model::text(doc, &self.block)?;
-        event_offset(&text, self.offset)?;
-        text.insert_utf16(usize::try_from(self.offset).map_err(|_| Error::Offset)?, &self.text)?;
-        Ok(())
+    pub(super) fn apply(&self, doc: &LoroDoc, activation: Stamp) -> Result<(), Error> {
+        super::super::text_flow::insert_with_activation(
+            doc,
+            &self.block,
+            self.offset,
+            Affinity::After,
+            &self.text,
+            Some(activation),
+        )
     }
 }

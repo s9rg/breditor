@@ -383,17 +383,17 @@ before Wasm command JSON admission; restored owners have fresh authority. Shared
 caret typing now honors pending/derived formats and advances once in one history
 group. Null pending formats derive; an empty array explicitly types plain text.
 
-The private `breditor/rich-replica-journal` V3 reconstructs the original seed/join,
+The private `breditor/rich-replica-journal` V4 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1/V2 shared journals are rejected explicitly; local rich recovery and default
+V1–V3 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision 2 and engine codec
+envelope. Room ID, schema selector/fingerprint, model revision 3 and engine codec
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
 Asynchronous content work can use `apply_at` with the exact causal version. This
@@ -401,7 +401,7 @@ rejects stale coordinates before target/value admission. Complete queued-work
 guards use an opaque observation instead; a content version does not freeze local
 selection or history.
 
-The isolated text-flow lowerer now represents paragraphs as ordered trees of
+The shared text-flow model now represents paragraphs as ordered trees of
 stable source fragments. Split assigns character ownership and moves following
 subtrees; join reparents a text root. Original text-container and character IDs
 are retained, so offline edits need not be copied into a new paragraph. Logical
@@ -411,15 +411,29 @@ selection normalizes concurrent text-root joins into a cycle-free forest.
 Separate empty fragments and causal cut witnesses distinguish deliberately empty
 paragraphs and unseen end splits without synthetic characters.
 
-Native and generated-Wasm fixtures exercise this lowerer separately. It is not
-yet part of `RichReplica` publication or the browser editor. Integration must
-combine structural births with routing, adapt source-based selection/history
-cursors, admit the original core's paragraph/list grammar, and revise the shared
-model/checkpoint before accepting its new root family. The existing shared
-model revision 2 and V3 journal remain unchanged. See the
+`RichReplica` now routes all text commands through those sources. Real shared
+text-block split/join commands reuse the original core's grammar and compare the
+materialized result with its exact semantic preview. Structural births and routing
+publish in one action; earlier creations can declare text targets for subsequent
+steps in that group. Empty right paragraphs retain their own canonical sources,
+and active cuts keep both empty paragraphs in normalized cells. History repairs
+both floating source cursors and end bindings after native character recreation.
+
+Native undo left an inherited routing annotation on offline-inserted text after
+unmarking the original characters. Explicit action-owned activation now gates
+both routing and format annotations, so undoing either retracts its copied marks
+without erasing that text. Activation is owned once by the complete atomic group;
+per-step routing priority remains separate. Logical selection and pending formats
+also normalize at the final group boundary, retaining original-axis fallback
+witnesses rather than expanding them to newly created rows.
+Actual shared command contracts cover offline edits,
+concurrent cuts, composed groups, cross-source joins and exact future history
+after restart. The private model is revision 3 and its journal is V4; default
+shipping contracts remain unchanged. The browser DOM coordinator is not yet
+connected to the shared owner. See the
 [text-fragment contract and limits](../experiments/collaboration/README.md#text-fragments-for-shared-paragraph-boundaries).
 
-Complete shared paragraph/list/range planner coverage remains to implement.
+Shared selected-range replacement, heading and list planners remain to implement.
 Structured shared clipboard must rekey history-free content and generate shared
 merge operations, rather than import local intent clocks or history.
 Placement-conflict/cycle

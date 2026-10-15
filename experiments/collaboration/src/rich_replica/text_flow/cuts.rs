@@ -39,9 +39,7 @@ pub(super) fn follow(
     offset: u32,
     seen: &BTreeMap<String, String>,
 ) -> Result<Option<String>, Error> {
-    let raw = doc.get_map("text-flow-cuts").get_deep_value().to_json_value();
-    let raw = raw.as_object().ok_or(Error::Contract("text-flow cuts"))?;
-    if raw.len() > 1000 || seen.len() > 1000 {
+    if seen.len() > 1000 {
         return Err(Error::Limit("text-flow cut witnesses"));
     }
     let mut witness = BTreeMap::new();
@@ -55,30 +53,13 @@ pub(super) fn follow(
     }
     let text = super::super::model::existing_text(doc, source).ok_or(Error::Anchor)?;
     let mut cuts = vec![];
-    let mut total = 0;
-    for (right, entries) in raw {
-        let entries = entries.as_object().ok_or(Error::Contract("text-flow cut contributions"))?;
-        for (key, value) in entries {
-            total += 1;
-            if total > 10_000 {
-                return Err(Error::Limit("text-flow cut contributions"));
-            }
-            let (stamp, value) = read_contribution(doc, key, value)?;
-            let (_, writer, counter) = stamp.words();
-            if witness.get(&writer).copied().unwrap_or(0) > counter {
-                continue;
-            }
-            let encoded = value.as_str().ok_or(Error::Contract("text-flow cut value"))?;
-            if encoded.len() > 4096 {
-                return Err(Error::Limit("text-flow cut bytes"));
-            }
-            let cut: Cut = serde_json::from_str(encoded)?;
-            if cut.right != *right {
-                return Err(Error::Contract("text-flow cut owner"));
-            }
-            if cut.source == source && cut.anchor.resolve(doc, &text)? == offset {
-                cuts.push((stamp, cut));
-            }
+    for (stamp, cut) in active(doc)? {
+        let (_, writer, counter) = stamp.words();
+        if witness.get(&writer).copied().unwrap_or(0) > counter {
+            continue;
+        }
+        if cut.source == source && cut.anchor.resolve(doc, &text)? == offset {
+            cuts.push((stamp, cut));
         }
     }
     cuts.sort_by_key(|entry| std::cmp::Reverse(entry.0));
@@ -93,4 +74,37 @@ pub(super) fn follow(
         selected = Some(cut.right.clone());
     }
     Err(Error::Contract("text-flow cut cycle"))
+}
+
+pub(super) fn active(doc: &LoroDoc) -> Result<Vec<(Stamp, Cut)>, Error> {
+    let raw = doc.get_map("text-flow-cuts").get_deep_value().to_json_value();
+    let raw = raw.as_object().ok_or(Error::Contract("text-flow cuts"))?;
+    if raw.len() > 1000 {
+        return Err(Error::Limit("text-flow cut owners"));
+    }
+    let mut cuts = vec![];
+    let mut total = 0;
+    for (right, entries) in raw {
+        let entries = entries.as_object().ok_or(Error::Contract("text-flow cut contributions"))?;
+        for (key, value) in entries {
+            total += 1;
+            if total > 10_000 {
+                return Err(Error::Limit("text-flow cut contributions"));
+            }
+            let (stamp, value) = read_contribution(doc, key, value)?;
+            let encoded = value.as_str().ok_or(Error::Contract("text-flow cut value"))?;
+            if encoded.len() > 4096 {
+                return Err(Error::Limit("text-flow cut bytes"));
+            }
+            let cut: Cut = serde_json::from_str(encoded)?;
+            if cut.right != *right {
+                return Err(Error::Contract("text-flow cut owner"));
+            }
+            crate::actions::validate_id(&cut.left)?;
+            crate::actions::validate_id(&cut.right)?;
+            crate::actions::validate_id(&cut.source)?;
+            cuts.push((stamp, cut));
+        }
+    }
+    Ok(cuts)
 }

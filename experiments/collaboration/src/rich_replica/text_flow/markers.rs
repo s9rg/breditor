@@ -9,12 +9,20 @@ use serde_json::Value;
 
 const PREFIX: &str = "breditor_fragment:";
 
+/// Priority belongs to the marker's step; activation belongs to its complete atomic group.
+#[derive(Clone, Copy)]
+pub(super) struct MarkerClock {
+    pub stamp: Stamp,
+    pub activation: Stamp,
+    pub ordinal: usize,
+}
+
 pub(super) fn selected(doc: &LoroDoc, values: &[(String, Value)]) -> Result<Option<String>, Error> {
     let mut chosen = None;
     for (key, value) in values {
         let Some(id) = key.strip_prefix(PREFIX) else { continue };
         let parts: Vec<_> = id.split('_').collect();
-        if parts.len() != 3 {
+        if parts.len() != 4 {
             return Err(Error::Contract("text-flow marker identity"));
         }
         let ordinal =
@@ -27,6 +35,14 @@ pub(super) fn selected(doc: &LoroDoc, values: &[(String, Value)]) -> Result<Opti
         }
         let (stamp, value) = read_contribution(doc, &format!("{}:{}", parts[0], parts[1]), value)?;
         let fragment = value.as_str().ok_or(Error::Contract("text-flow marker value"))?.to_owned();
+        let activation =
+            parts[3].parse::<u32>().map_err(|_| Error::Contract("text-flow activation counter"))?;
+        if activation.to_string() != parts[3] || activation > stamp.words().2 {
+            return Err(Error::Contract("text-flow activation group"));
+        }
+        if !super::super::annotations::active(doc, &format!("{}:{activation}", parts[0]))? {
+            continue;
+        }
         if chosen.as_ref().is_none_or(|(prior, index, _)| (stamp, ordinal) > (*prior, *index)) {
             chosen = Some((stamp, ordinal, fragment));
         }
@@ -47,8 +63,7 @@ pub(super) fn mark(
     offset: u32,
     length: u32,
     fragment: &str,
-    stamp: Stamp,
-    ordinal: usize,
+    clock: MarkerClock,
 ) -> Result<(), Error> {
     if length == 0 {
         return Err(Error::Contract("empty text-flow assignment"));
@@ -58,7 +73,13 @@ pub(super) fn mark(
     let end = offset.checked_add(length).ok_or(Error::Offset)?;
     event_offset(&text, offset)?;
     event_offset(&text, end)?;
-    let key = format!("{PREFIX}{}_{ordinal}", stamp.key().replace(':', "_"));
+    let MarkerClock { stamp, activation, ordinal } = clock;
+    if stamp.words().1 != activation.words().1 || activation.words().2 > stamp.words().2 {
+        return Err(Error::Contract("text-flow marker activation writer"));
+    }
+    let key =
+        format!("{PREFIX}{}_{ordinal}_{}", stamp.key().replace(':', "_"), activation.words().2);
+    super::super::annotations::claim(doc, activation)?;
     text.mark_utf16(
         usize::try_from(offset).map_err(|_| Error::Offset)?
             ..usize::try_from(end).map_err(|_| Error::Offset)?,

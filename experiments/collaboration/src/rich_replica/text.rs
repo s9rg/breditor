@@ -33,6 +33,7 @@ pub(super) fn mark(
     event_offset(&text, offset)?;
     event_offset(&text, end)?;
     let key = format!("breditor_format_{}_{ordinal}", stamp.key().replace(':', "_"));
+    super::annotations::claim(doc, stamp)?;
     text.mark_utf16(
         usize::try_from(offset).map_err(|_| Error::Offset)?
             ..usize::try_from(end).map_err(|_| Error::Offset)?,
@@ -111,6 +112,9 @@ pub(super) fn annotations(
             .and_then(Value::as_str)
             .ok_or(Error::Contract("shared format kind"))?
             .to_owned();
+        if !super::annotations::active(doc, &stamp.key())? {
+            continue;
+        }
         if formats
             .get(&kind)
             .is_none_or(|(previous, index, _)| (stamp, ordinal) > (*previous, *index))

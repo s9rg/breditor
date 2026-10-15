@@ -10,6 +10,7 @@ pub(super) fn header(doc: &LoroDoc) -> Result<Value, Error> {
 }
 
 pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
+    let flows = super::text_flow::Projection::read(doc)?;
     let mut value = header(doc)?;
     let document = value
         .pointer("/root/properties/breditor~1document-id")
@@ -18,13 +19,13 @@ pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
         .to_owned();
     let mut children = vec![];
     for block in super::placement::children(doc, None)? {
-        if let Some(node) = element(doc, &block, 0)? {
+        if let Some(node) = element(doc, &flows, &block, 0)? {
             children.push(node);
         }
     }
     let block = virtual_id("root", &[&document]);
-    let fallback = super::text::block_runs(doc, &block)?;
-    if children.is_empty() || !fallback.is_empty() {
+    let fallback = flows.runs(doc, &block)?;
+    if children.is_empty() || !fallback.is_empty() || flows.explicit(&block) {
         children.insert(0, placeholder(&block, &fallback));
     }
     value
@@ -35,7 +36,12 @@ pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
     Ok(value)
 }
 
-fn element(doc: &LoroDoc, block: &str, depth: usize) -> Result<Option<Value>, Error> {
+fn element(
+    doc: &LoroDoc,
+    flows: &super::text_flow::Projection,
+    block: &str,
+    depth: usize,
+) -> Result<Option<Value>, Error> {
     if depth > 64 {
         return Err(Error::Limit("shared node depth"));
     }
@@ -75,10 +81,13 @@ fn element(doc: &LoroDoc, block: &str, depth: usize) -> Result<Option<Value>, Er
     }
     let mut children = vec![];
     if kind == "breditor/paragraph" || kind == "breditor/heading" {
-        children = super::text::block_runs(doc, block)?;
+        if flows.joined(block)? {
+            return Ok(None);
+        }
+        children = flows.runs(doc, block)?;
     } else {
         for child in super::placement::children(doc, Some(block))? {
-            if let Some(value) = element(doc, &child, depth + 1)? {
+            if let Some(value) = element(doc, flows, &child, depth + 1)? {
                 children.push(value);
             }
         }
@@ -87,7 +96,7 @@ fn element(doc: &LoroDoc, block: &str, depth: usize) -> Result<Option<Value>, Er
         super::merges::project(doc, &raw, &mut properties)?;
         let columns = columns(doc, block)?;
         for row in &mut children {
-            complete_row(doc, &properties, row, &columns)?;
+            complete_row(doc, flows, &properties, row, &columns)?;
         }
         properties.insert("breditor/columns".into(), Value::Array(columns));
     }
@@ -101,10 +110,11 @@ fn element(doc: &LoroDoc, block: &str, depth: usize) -> Result<Option<Value>, Er
             .and_then(Value::as_str)
             .is_some_and(|kind| kind == "breditor/paragraph" || kind == "breditor/heading");
         let default = virtual_id("flow", &[block]);
-        let fallback = super::text::block_runs(doc, &default)?;
+        let fallback = flows.runs(doc, &default)?;
         if children.is_empty()
             || (kind == "breditor/list-item" && !leading_text)
             || !fallback.is_empty()
+            || flows.explicit(&default)
         {
             children.insert(0, placeholder(&default, &fallback));
         }
@@ -172,6 +182,7 @@ fn columns(doc: &LoroDoc, block: &str) -> Result<Vec<Value>, Error> {
 
 fn complete_row(
     doc: &LoroDoc,
+    flows: &super::text_flow::Projection,
     table: &Map<String, Value>,
     row: &mut Value,
     columns: &[Value],
@@ -208,12 +219,14 @@ fn complete_row(
         } else {
             let block = virtual_id("cell", &[table, &row_id, column]);
             if super::model::optional_metadata(doc, &block).is_some() {
-                existing
-                    .push(element(doc, &block, 0)?.ok_or(Error::Contract("hidden derived cell"))?);
+                existing.push(
+                    element(doc, flows, &block, 0)?
+                        .ok_or(Error::Contract("hidden derived cell"))?,
+                );
                 continue;
             }
             let text = virtual_id("flow", &[&block]);
-            json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[placeholder(&text,&super::text::block_runs(doc,&text)?)]})
+            json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":block,"breditor/column-id":column,"breditor/header":false},"children":[placeholder(&text,&flows.runs(doc,&text)?)]})
         };
         existing.push(cell);
     }

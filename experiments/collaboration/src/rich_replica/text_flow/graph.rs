@@ -2,7 +2,6 @@
 use super::super::model;
 use crate::{
     Error,
-    anchor::TextAnchor,
     register::{Stamp, read_contribution},
 };
 use loro::{ContainerID, ContainerType, LoroDoc, LoroMap, LoroMovableList, ToJson};
@@ -12,17 +11,10 @@ use std::collections::{BTreeMap, BTreeSet};
 const MAX_NODES: usize = 20_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct Origin {
-    pub source: String,
-    pub anchor: Option<TextAnchor>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(super) enum Definition {
-    Root { block: String, empty: Origin },
-    Fragment { source: String, parent: String },
+    Root { block: String },
+    Fragment { source: Option<String>, parent: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,18 +72,10 @@ fn define(doc: &LoroDoc, id: &str, definition: &Definition) -> Result<(), Error>
     Ok(())
 }
 
-pub(super) fn prepare_root(
-    doc: &LoroDoc,
-    block: &str,
-    origin: Option<Origin>,
-) -> Result<(), Error> {
+pub(super) fn prepare_root(doc: &LoroDoc, block: &str) -> Result<(), Error> {
     crate::actions::validate_id(block)?;
     let id = root(block);
-    let supplied = origin.is_some();
-    let origin = origin.unwrap_or_else(|| Origin { source: block.into(), anchor: None });
-    // An already activated split root has a custom origin. Ordinary callers
-    // must preserve that immutable definition, not replace it with offset zero.
-    if !supplied && doc.get_map("text-flow-definitions").get(&id).is_some() {
+    if doc.get_map("text-flow-definitions").get(&id).is_some() {
         let graph = Graph::read(doc)?;
         if !matches!(graph.definitions.get(&id), Some(Definition::Root { block: own, .. }) if own == block)
         {
@@ -99,23 +83,25 @@ pub(super) fn prepare_root(
         }
         return Ok(());
     }
-    crate::actions::validate_id(&origin.source)?;
-    model::text(doc, &origin.source)?;
     model::text(doc, block)?;
-    define(doc, &id, &Definition::Root { block: block.into(), empty: origin.clone() })?;
+    define(doc, &id, &Definition::Root { block: block.into() })?;
     order(doc, &id)?;
-    prepare_fragment(doc, &empty(block), &origin.source, &id)?;
-    prepare_fragment(doc, &birth(block), block, &id)?;
+    prepare_fragment(doc, &empty(block), Some(block), &id)?;
+    prepare_fragment(doc, &birth(block), Some(block), &id)?;
     Ok(())
 }
 
 pub(super) fn prepare_fragment(
     doc: &LoroDoc,
     node: &str,
-    source: &str,
+    source: Option<&str>,
     parent: &str,
 ) -> Result<(), Error> {
-    define(doc, node, &Definition::Fragment { source: source.into(), parent: parent.into() })?;
+    define(
+        doc,
+        node,
+        &Definition::Fragment { source: source.map(str::to_owned), parent: parent.into() },
+    )?;
     let site = model::virtual_id("text-origin", &[node, parent]);
     let record = serde_json::to_string(&Site { node: node.into(), parent: parent.into() })?;
     let sites = doc.get_map("text-flow-sites");
@@ -203,16 +189,17 @@ impl Graph {
         let mut candidates = vec![];
         for (node, definition) in &definitions {
             match definition {
-                Definition::Root { block, empty } => {
+                Definition::Root { block } => {
                     crate::actions::validate_id(block)?;
-                    crate::actions::validate_id(&empty.source)?;
                     if root(block) != *node {
                         return Err(Error::Contract("text-flow root identity"));
                     }
                     candidates.push((None, node.clone(), None));
                 }
                 Definition::Fragment { source, parent } => {
-                    crate::actions::validate_id(source)?;
+                    if let Some(source) = source {
+                        crate::actions::validate_id(source)?;
+                    }
                     let id = model::virtual_id("text-origin", &[node, parent]);
                     let record = site(&id)?;
                     if record.node != *node || record.parent != *parent {

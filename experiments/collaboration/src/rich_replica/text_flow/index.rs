@@ -91,7 +91,7 @@ impl Index {
             .definitions
             .values()
             .filter_map(|value| match value {
-                Definition::Fragment { source, .. } => Some(source.clone()),
+                Definition::Fragment { source, .. } => source.clone(),
                 Definition::Root { .. } => None,
             })
             .collect();
@@ -121,7 +121,7 @@ impl Index {
                 }
                 let fragment =
                     markers::selected(doc, &values)?.unwrap_or_else(|| graph::birth(&source));
-                if !matches!(graph.definitions.get(&fragment), Some(Definition::Fragment { source: own, .. }) if *own == source)
+                if !matches!(graph.definitions.get(&fragment), Some(Definition::Fragment { source: own, .. }) if own.as_ref().is_none_or(|own| *own == source))
                 {
                     return Err(Error::Contract("text-flow marker source identity"));
                 }
@@ -138,6 +138,13 @@ impl Index {
                     });
                 }
                 start = start.checked_add(length).ok_or(Error::Offset)?;
+            }
+        }
+        for values in chunks.values() {
+            if let Some(first) = values.first()
+                && values.iter().any(|chunk| chunk.source != first.source)
+            {
+                return Err(Error::Contract("a text fragment must have one source"));
             }
         }
         Ok(Self { graph, chunks })
@@ -173,19 +180,14 @@ impl Index {
         // Before zero is an explicit left-root boundary. It must remain there
         // even when a split moves the paragraph's entire birth fragment away.
         if length == 0 || (offset == 0 && affinity == Affinity::Before) {
-            let Some(Definition::Root { empty: origin, .. }) =
-                self.graph.definitions.get(&graph::root(block))
+            let Some(Definition::Root { .. }) = self.graph.definitions.get(&graph::root(block))
             else {
                 return Err(Error::Contract("text-flow empty origin"));
             };
-            let text =
-                super::super::model::existing_text(doc, &origin.source).ok_or(Error::Anchor)?;
-            let offset =
-                origin.anchor.as_ref().map_or(Ok(0), |anchor| anchor.resolve(doc, &text))?;
             return Ok(Point {
                 block: block.into(),
-                source: origin.source.clone(),
-                offset,
+                source: block.into(),
+                offset: 0,
                 fragment: graph::empty(block),
                 affinity,
                 empty: true,
@@ -315,6 +317,9 @@ impl Index {
                 })?;
         }
         Err(Error::Anchor)
+    }
+    pub fn fragment_end(&self, fragment: &str) -> Result<(String, u32), Error> {
+        self.fragment_point(fragment, u32::MAX)
     }
     pub fn intervals(&self, block: &str, offset: u32, length: u32) -> Result<Vec<Chunk>, Error> {
         let view = self.view(block)?;

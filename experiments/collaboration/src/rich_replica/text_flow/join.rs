@@ -27,6 +27,9 @@ impl PreparedJoin {
         if doc.oplog_vv() != self.version {
             return Err(Error::Contract("stale text-flow join"));
         }
+        self.apply_staged(doc)
+    }
+    pub(in crate::rich_replica) fn apply_staged(&self, doc: &LoroDoc) -> Result<(), Error> {
         graph::move_node(doc, &self.right, &self.left, Stamp::next(doc)?, 0)
     }
 }

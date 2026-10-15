@@ -113,6 +113,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let rich_navigation_expected: serde_json::Value = serde_json::from_str(
         &breditor_collab_feasibility::rich_navigation_fixture::exercise(&rich_ast_input)?,
     )?;
+    let shared_paragraph = shared_paragraph_vector(&rich_local_input)?;
     let vector = serde_json::json!({
         "rich_ast_input": rich_ast_input,
         "rich_ast_expected": rich_ast_expected,
@@ -126,6 +127,70 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "rich_recovery_expected":rich_recovery_expected,
         "rich_clipboard_expected":rich_clipboard_expected,
         "rich_navigation_expected":rich_navigation_expected,
+        "shared_paragraph":shared_paragraph,
     });
     Ok(vector)
+}
+
+fn shared_paragraph_vector(input: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    use breditor_collab_feasibility::rich_replica::{
+        Command, RichReplica,
+        actions::{JoinTextBlocks, SplitTextBlock},
+        selection::{Selection, TextPoint},
+    };
+    use breditor_core::{
+        codec::DocumentJsonCodecV2,
+        extension::{ExtensionLimits, ExtensionSet},
+        identity::QualifiedName,
+        schema::{CompiledSchema, SchemaId, SchemaVersion},
+    };
+    use serde_json::json;
+    let value: serde_json::Value = serde_json::from_str(input)?;
+    let id = SchemaId::new(
+        QualifiedName::try_new(value["schema"]["name"].as_str().ok_or("shared schema")?)?,
+        SchemaVersion::try_new(u32::try_from(
+            value["schema"]["version"].as_u64().ok_or("shared schema version")?,
+        )?)?,
+    );
+    let codec = DocumentJsonCodecV2::new(CompiledSchema::try_compile_rich_content_profile(
+        id,
+        &ExtensionSet::try_new(vec![], ExtensionLimits::default())?,
+    )?);
+    let caret = |block: &str, offset| {
+        let point = TextPoint { block: block.into(), offset, affinity: Affinity::After };
+        Selection::TextRange { anchor: point.clone(), focus: point }
+    };
+    let mut a = RichReplica::new(codec.clone(), input, "9007199254740993".into())?;
+    a.set_selection(Some(&caret("p", 1)))?;
+    a.apply(vec![Command::SplitTextBlock(SplitTextBlock {
+        block: "p".into(),
+        offset: 1,
+        right: "right".into(),
+        right_heading: None,
+    })])?;
+    let mut b = RichReplica::join(codec, "room".into(), "9007199254740995".into(), a.updates()?)?;
+    a.apply(vec![Command::JoinTextBlocks(JoinTextBlocks {
+        left: "p".into(),
+        right: "right".into(),
+    })])?;
+    b.set_selection(Some(&caret("right", 2)))?;
+    b.insert_plain_text("remote🙂")?;
+    a.receive(b.updates()?)?;
+    a.undo()?;
+    let checkpoint = a.checkpoint()?;
+    let current = a.view_json()?;
+    let bytes = a.updates()?;
+    let frame = a.update_frame()?;
+    a.redo()?;
+    let redo = json!({"view":a.view_json()?,"bytes":a.updates()?,"checkpoint":a.checkpoint()?});
+    a.set_selection(Some(&caret("p", 12)))?;
+    a.insert_plain_text("!")?;
+    let typed = json!({"view":a.view_json()?,"bytes":a.updates()?,"checkpoint":a.checkpoint()?});
+    a.undo()?;
+    let undo = json!({"view":a.view_json()?,"bytes":a.updates()?,"checkpoint":a.checkpoint()?});
+    a.redo()?;
+    let retyped = json!({"view":a.view_json()?,"bytes":a.updates()?,"checkpoint":a.checkpoint()?});
+    Ok(
+        json!({"checkpoint":checkpoint,"current":current,"bytes":bytes,"frame":frame,"redo":redo,"typed":typed,"undo":undo,"retyped":retyped}),
+    )
 }
