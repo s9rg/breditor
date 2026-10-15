@@ -25,6 +25,16 @@ impl BreditorRichProfile {
 }
 #[wasm_bindgen]
 impl BreditorRichProfile {
+    /// Explicitly compose standard inline V1 with bounded V6 application declarations.
+    /// Existing fromBootstrapJson and all stored document/history meanings are unchanged.
+    #[must_use]
+    #[wasm_bindgen(js_name=fromStandardBootstrapJsonV1)]
+    pub fn from_standard_bootstrap_json_v1(input: &str) -> BreditorRichProfileResult {
+        match crate::profile::decode_standard_rich_schema_v1(input) {
+            Ok(schema) => BreditorRichProfileResult::success(Self { schema: Arc::new(schema) }),
+            Err(error) => BreditorRichProfileResult::failure(error),
+        }
+    }
     /// Strictly compile typed schema/extensions with profile-bootstrap version 6.
     #[must_use]
     #[wasm_bindgen(js_name=fromBootstrapJson)]

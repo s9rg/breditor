@@ -24,6 +24,7 @@ mod rich_range_mapping;
 mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;
+mod standard_inline_v1;
 mod table_draft;
 mod table_geometry;
 mod table_paste_draft;
@@ -54,6 +55,11 @@ pub use rich_selection::{
 };
 pub use rich_selection_mapping::{
     RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
+};
+pub use standard_inline_v1::{
+    STANDARD_INLINE_EXTENSION_V1_NAME, STANDARD_INLINE_FAMILY_V1, STANDARD_INLINE_HREF_V1,
+    STANDARD_INLINE_NEW_WINDOW_V1, STANDARD_INLINE_PIXELS_V1, STANDARD_INLINE_RGB24_V1,
+    StandardInlineFormatV1, standard_inline_extension_v1,
 };
 pub use table_draft::TableDraft;
 pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerge};

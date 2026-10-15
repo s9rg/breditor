@@ -12,6 +12,10 @@ pub struct SharedRichProfile {
 }
 #[wasm_bindgen]
 impl SharedRichProfile {
+    /// Opt into the original standard inline V1 preset without changing ordinary V1 config.
+    pub fn from_standard_configuration_json_v1(input: &str) -> Result<Self, JsValue> {
+        Ok(Self { inner: Profile::from_standard_configuration_json_v1(input).map_err(error)? })
+    }
     /// Compile strict bounded original V1 configuration; never trust a supplied fingerprint.
     pub fn from_configuration_json(input: &str) -> Result<Self, JsValue> {
         Ok(Self { inner: Profile::from_configuration_json(input).map_err(error)? })

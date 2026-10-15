@@ -26,10 +26,18 @@ export interface SharedRustProfile {
  join_frame(room:string,writer:string,frame:string):SharedRustOwner;
  restore(room:string,journal:string):SharedRustOwner;free():void;
 }
-export interface SharedProfileModule {SharedRichProfile:{from_configuration_json(input:string):SharedRustProfile}}
+export interface SharedProfileModule {SharedRichProfile:{from_configuration_json(input:string):SharedRustProfile;from_standard_configuration_json_v1?(input:string):SharedRustProfile}}
 /** Compile application-selected formats/budgets with matching Rust; no fixed probe schema. */
 export function compileSharedProfile(wasm:SharedProfileModule,configuration:SharedProfileConfiguration):SharedRustProfile {
  const profile=wasm.SharedRichProfile.from_configuration_json(JSON.stringify(configuration));
+ return admitProfile(profile);
+}
+/** Standard V1 is added in Rust before dependency resolution, never by editing a descriptor. */
+export function compileStandardSharedProfileV1(wasm:SharedProfileModule,configuration:SharedProfileConfiguration):SharedRustProfile {
+ if(typeof wasm.SharedRichProfile.from_standard_configuration_json_v1!=="function")throw new SharedEditorError("standard_profile_unavailable","Use a matching Rust module with standard inline V1 support");
+ return admitProfile(wasm.SharedRichProfile.from_standard_configuration_json_v1(JSON.stringify(configuration)));
+}
+function admitProfile(profile:SharedRustProfile):SharedRustProfile {
  try{const d=JSON.parse(profile.descriptor_json()) as SharedProfileDescriptor;
   if(d.format!=="breditor/shared-rich-profile-descriptor"||d.formatVersion!==1||d.abiVersion!==1||d.modelVersion!==11||d.journalVersion!==12)throw new SharedEditorError("profile_abi","Unsupported shared profile ABI/model/history revision");
   return profile;

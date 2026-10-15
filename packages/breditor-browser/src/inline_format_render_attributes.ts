@@ -46,6 +46,18 @@ export interface InlineFormatRenderSafeTextColorV1Policy {
   readonly kind: "safeTextColorV1";
 }
 
+/** RGB24 data only; neither the channel nor CSS syntax comes from document text. */
+export interface InlineFormatRenderSafeRgb24V1Policy {
+  readonly kind:"safeRgb24V1";
+  readonly propertyName:string;
+  readonly channel:"text"|"background";
+}
+/** A closed 8..96 integer CSS-pixel domain, never an arbitrary style string. */
+export interface InlineFormatRenderSafeTextSizeV1Policy {
+  readonly kind:"safeTextSizeV1";
+  readonly propertyName:string;
+}
+
 /** One integer-to-inert-token entry in a closed renderer policy. */
 export interface InlineFormatRenderSafeIntegerTokenV1Entry {
   readonly value: number;
@@ -63,6 +75,8 @@ export interface InlineFormatRenderSafeIntegerTokenV1Policy {
 export type InlineFormatRenderAttributePolicy =
   | InlineFormatRenderSafeLinkV1Policy
   | InlineFormatRenderSafeTextColorV1Policy
+  | InlineFormatRenderSafeRgb24V1Policy
+  | InlineFormatRenderSafeTextSizeV1Policy
   | InlineFormatRenderSafeIntegerTokenV1Policy;
 
 /** Prevalidated fields retained only for detached, frozen policies we create. */
@@ -131,6 +145,15 @@ export function createInlineFormatRenderAttributePolicy(
     }
     return Object.freeze({ kind: policyKind });
   }
+  if(policyKind==="safeRgb24V1"||policyKind==="safeTextSizeV1"){
+    const record=readExactDataRecord(value,policyKind==="safeRgb24V1"?["kind","propertyName","channel"]:["kind","propertyName"],"inline-format scalar style policy");
+    const propertyName=record["propertyName"];
+    if(!isQualifiedName(propertyName))throw new TypeError("inline-format scalar style property name is invalid");
+    if(policyKind==="safeTextSizeV1")return Object.freeze({kind:policyKind,propertyName});
+    const channel=record["channel"];
+    if(channel!=="text"&&channel!=="background")throw new TypeError("inline-format RGB24 channel is invalid");
+    return Object.freeze({kind:policyKind,propertyName,channel});
+  }
   if (policyKind === "safeIntegerTokenV1") {
     const record = readExactDataRecord(
       value,
@@ -195,6 +218,8 @@ export function inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
     if (isExactSafeTextColorV1Policy(policy)) {
       return formatMatchesSafeTextColorV1(format);
     }
+    const style=scalarStyleFields(policy);
+    if(style!==null)return formatMatchesRequiredInteger(format,style.propertyName,style.minimum,style.maximum);
     const integerToken = safeIntegerTokenPolicyFields(policy);
     if (integerToken !== null) {
       return formatMatchesSafeIntegerTokenV1(format, integerToken);
@@ -248,6 +273,17 @@ export function resolveInlineFormatRenderAttributes(
   properties: readonly InlineFormatPropertyProjection[],
 ): readonly InlineFormatRenderAttribute[] {
   try {
+    const scalarStyle=scalarStyleFields(policy);
+    if(scalarStyle!==null){
+      if(exactDenseArrayLength(properties,1)!==1)return EMPTY_ATTRIBUTES;
+      const property=ownArrayValue(properties,0);
+      if(!hasExactOwnDataKeys(property,["name","value"])||ownDataValue(property,"name")!==scalarStyle.propertyName)return EMPTY_ATTRIBUTES;
+      const value=ownDataValue(property,"value");
+      if(!isSafeInteger(value)||value<scalarStyle.minimum||value>scalarStyle.maximum)return EMPTY_ATTRIBUTES;
+      const style=scalarStyle.kind==="safeTextSizeV1"?`font-size:${value}px`:
+        (scalarStyle.channel==="background"?"background-":"")+canonicalSafeTextColorStyle(value)!;
+      return Object.freeze([Object.freeze({name:"style" as const,value:style})]);
+    }
     if (isExactSafeTextColorV1Policy(policy)) {
       const propertyCount = exactDenseArrayLength(
         properties,
@@ -411,6 +447,14 @@ export function inlineFormatRenderAttributesAreCanonicalForPolicy(
   value: unknown,
 ): value is readonly InlineFormatRenderAttribute[] {
   try {
+    const style=scalarStyleFields(policy);
+    if(style!==null){
+      if(exactDenseArrayLength(value,1)!==1)return false;
+      const attribute=readExactRenderAttribute(ownArrayValue(value,0));
+      if(attribute?.name!=="style")return false;
+      if(style.kind==="safeTextSizeV1")return isCanonicalTextSizeStyle(attribute.value);
+      return isCanonicalRgbStyle(attribute.value,style.channel==="background"?"background-color:#":"color:#");
+    }
     if (isExactSafeTextColorV1Policy(policy)) {
       return inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(value);
     }
@@ -435,6 +479,33 @@ interface SafeLinkPolicyFields {
 interface SafeIntegerTokenPolicyFields {
   readonly propertyName: string;
   readonly tokens: readonly InlineFormatRenderSafeIntegerTokenV1Entry[];
+}
+
+type ScalarStyleFields = {kind:"safeRgb24V1";propertyName:string;channel:"text"|"background";minimum:0;maximum:16777215}|
+  {kind:"safeTextSizeV1";propertyName:string;minimum:8;maximum:96};
+function scalarStyleFields(policy:InlineFormatRenderAttributePolicy):ScalarStyleFields|null{
+  const kind=ownDataValue(policy,"kind");
+  if(kind!=="safeRgb24V1"&&kind!=="safeTextSizeV1")return null;
+  if(!hasExactOwnDataKeys(policy,kind==="safeRgb24V1"?["kind","propertyName","channel"]:["kind","propertyName"]))return null;
+  const propertyName=ownDataValue(policy,"propertyName");if(!isQualifiedName(propertyName))return null;
+  if(kind==="safeTextSizeV1")return {kind,propertyName,minimum:8,maximum:96};
+  const channel=ownDataValue(policy,"channel");
+  return channel==="text"||channel==="background"?{kind,propertyName,channel,minimum:0,maximum:16777215}:null;
+}
+function isCanonicalRgbStyle(value:string,prefix:string):boolean{
+  if(value.length!==prefix.length+6)return false;
+  for(let index=0;index<prefix.length;index++)if(stringCharCodeAt(value,index)!==stringCharCodeAt(prefix,index))return false;
+  for(let index=prefix.length;index<value.length;index++){
+    const unit=stringCharCodeAt(value,index);if(!((unit>=0x30&&unit<=0x39)||(unit>=0x61&&unit<=0x66)))return false;
+  }
+  return true;
+}
+function isCanonicalTextSizeStyle(value:string):boolean{
+  const prefix="font-size:";if(value.length!==13&&value.length!==14)return false;
+  for(let index=0;index<prefix.length;index++)if(stringCharCodeAt(value,index)!==stringCharCodeAt(prefix,index))return false;
+  const end=value.length-2;if(stringCharCodeAt(value,end)!==0x70||stringCharCodeAt(value,end+1)!==0x78)return false;
+  let number=0;for(let index=prefix.length;index<end;index++){const unit=stringCharCodeAt(value,index);if(unit<0x30||unit>0x39)return false;number=number*10+unit-0x30;}
+  return number>=8&&number<=96&&value===`font-size:${number}px`;
 }
 
 const ABSENT_OR_DUPLICATE = Symbol("absent or duplicate property");
@@ -510,6 +581,10 @@ function formatMatchesSafeIntegerTokenV1(
   format: BrowserProfileFormatDescriptor,
   policy: SafeIntegerTokenPolicyFields,
 ): boolean {
+  const first=policy.tokens[0],last=policy.tokens[policy.tokens.length-1];
+  return first!==undefined&&last!==undefined&&formatMatchesRequiredInteger(format,policy.propertyName,first.value,last.value);
+}
+function formatMatchesRequiredInteger(format:BrowserProfileFormatDescriptor,propertyName:string,minimum:number,maximum:number):boolean{
   if (!hasExactOwnDataKeys(format, ["kind", "revision", "properties"])) {
     return false;
   }
@@ -530,20 +605,16 @@ function formatMatchesSafeIntegerTokenV1(
   const property = ownArrayValue(properties, 0);
   if (
     !hasExactOwnDataKeys(property, ["name", "presence", "valueType"]) ||
-    ownDataValue(property, "name") !== policy.propertyName ||
+    ownDataValue(property, "name") !== propertyName ||
     ownDataValue(property, "presence") !== "required"
   ) {
     return false;
   }
   const valueType = ownDataValue(property, "valueType");
-  const first = policy.tokens[0];
-  const last = policy.tokens[policy.tokens.length - 1];
-  return first !== undefined &&
-    last !== undefined &&
-    hasExactOwnDataKeys(valueType, ["kind", "minimum", "maximum"]) &&
+  return hasExactOwnDataKeys(valueType, ["kind", "minimum", "maximum"]) &&
     ownDataValue(valueType, "kind") === "integer" &&
-    ownDataValue(valueType, "minimum") === first.value &&
-    ownDataValue(valueType, "maximum") === last.value;
+    ownDataValue(valueType, "minimum") === minimum &&
+    ownDataValue(valueType, "maximum") === maximum;
 }
 
 function safeIntegerTokenForValue(

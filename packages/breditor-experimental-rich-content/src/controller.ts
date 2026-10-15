@@ -4,6 +4,7 @@ import {bold,boundaryDelete,defaultToolbar,deleteSelection,enter,positionAfter,t
 import {id,model,sourceCell,text,type RichModel} from "./model.js";
 import {paintSelection,render,requireRenderOptions,type RenderOptions} from "./render.js";
 import {readNative,readTarget,restoreNative} from "./selection.js";
+import {standardInlineStylesV1} from "./standard_inline_v1.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
@@ -34,7 +35,7 @@ export class RichDomEditor {
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Rich text editor");
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Rich text formatting");
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");
-  const style=document.createElement("style");style.textContent=styles;root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.surface,this.status);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1;root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbar){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);

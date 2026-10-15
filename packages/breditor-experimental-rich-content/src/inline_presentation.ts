@@ -68,6 +68,10 @@ export function createRichInlinePresentation(catalogJson:string,manifest:unknown
 export function requireRichInlinePresentation(presentation:RichInlinePresentation,schema:RichInlineSchema):void {
  requireValue(owned.has(presentation)&&presentation.schema.name===schema.name&&presentation.schema.version===schema.version&&presentation.schema.fingerprint===schema.fingerprint,"presentation and document schema differ");
 }
+/** Internal immutable declaration read for versioned standard presentation checks. */
+export function richInlineFormatDescriptor(presentation:RichInlinePresentation,kind:string):BrowserProfileFormatDescriptor|undefined {
+ const metadata=owned.get(presentation);requireValue(metadata,"presentation identity is not owned");return metadata.formats.get(kind);
+}
 function validProperty(value:unknown,type:BrowserProfileFormatPropertyValueType):value is string|number|boolean {
  if(type.kind==="boolean")return typeof value==="boolean";
  if(type.kind==="integer")return typeof value==="number"&&Number.isSafeInteger(value)&&(type.minimum===null||value>=type.minimum)&&(type.maximum===null||value<=type.maximum);

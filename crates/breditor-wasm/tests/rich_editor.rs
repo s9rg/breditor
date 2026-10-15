@@ -10,6 +10,35 @@ use serde_json::{Value, json};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn standard_factory_is_explicit_and_resolves_app_dependencies_before_compiling() -> TestResult {
+    let mut result = BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(6));
+    assert_eq!(result.status(), "profile");
+    let standard = result.take_profile().ok_or("standard")?;
+    let plain = profile()?;
+    let catalog: Value = serde_json::from_str(&read(standard.inline_catalog_json())?)?;
+    assert_eq!(catalog["formats"].as_array().ok_or("formats")?.len(), 12);
+    assert_ne!(read(standard.descriptor_json())?, read(plain.descriptor_json())?);
+    let mut app: Value = serde_json::from_str(&bootstrap(6))?;
+    app["extensions"] = json!([{"id":{"name":"example/review","version":1},"dependencies":[{"name":"breditor-inline/standard","version":1}],"conflicts":[],"inlineFormats":[{"kind":"example/review","revision":1}],"inlineFormatPropertyContracts":[],"inlineFormatToggles":[],"inlineFormatSets":[]}]);
+    assert_eq!(BreditorRichProfile::from_bootstrap_json(&app.to_string()).status(), "error");
+    let mut result = BreditorRichProfile::from_standard_bootstrap_json_v1(&app.to_string());
+    assert_eq!(result.status(), "profile");
+    let app = result.take_profile().ok_or("app")?;
+    assert_eq!(
+        serde_json::from_str::<Value>(&read(app.inline_catalog_json())?)?["formats"]
+            .as_array()
+            .ok_or("formats")?
+            .len(),
+        13
+    );
+    assert_eq!(
+        BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(5)).status(),
+        "error"
+    );
+    Ok(())
+}
+
+#[test]
 fn property_state_reads_are_frozen_observations_and_do_not_rotate_mutation_authority() -> TestResult
 {
     let profile = profile()?;

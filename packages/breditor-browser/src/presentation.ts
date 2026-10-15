@@ -13,6 +13,8 @@ export {
   resolveInlineFormatRenderAttributes,
   type InlineFormatRenderAttribute,
   type InlineFormatRenderAttributePolicy,
+  type InlineFormatRenderSafeRgb24V1Policy,
+  type InlineFormatRenderSafeTextSizeV1Policy,
 } from "./inline_format_render_attributes.js";
 export type {
   BrowserProfileFormatDescriptor,

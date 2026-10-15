@@ -18,6 +18,13 @@ pub struct SharedRichProfile {
     codec: DocumentJsonCodecV2,
 }
 impl SharedRichProfile {
+    /// Explicitly compose standard inline V1 before resolving application dependencies.
+    /// # Errors
+    /// Duplicate/conflicting declarations, invalid budgets or incompatible rich input reject.
+    pub fn from_standard_configuration_json_v1(input: &str) -> Result<Self, Error> {
+        let (schema, limits) = configuration::compile_with_standard(input, true)?;
+        Self::from_schema(schema, limits)
+    }
     /// Bind an already compiled rich schema without accepting caller fingerprints as proof.
     /// # Errors
     /// Rejects non-rich grammar and budgets that widen the core defaults.

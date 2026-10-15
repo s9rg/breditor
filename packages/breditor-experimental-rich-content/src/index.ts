@@ -6,3 +6,4 @@ export {defaultAssetLimits,type AssetInfo,type AssetLimits,type AssetStatus,type
 export {insertImageFiles} from "./assets/insert_image_files.js";
 export {RichLocalSessionStore} from "./persistence/local_session_store.js";
 export {createRichInlinePresentation,type RichInlinePresentation,type RichInlineSchema} from "./inline_presentation.js";
+export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./standard_inline_v1.js";

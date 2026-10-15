@@ -125,6 +125,63 @@ edits. The result is not action authority; mutations still need their normal gua
 The complete JSON read is limited to 64 KiB. An oversized uniform value fails
 explicitly; it is never truncated or reported as an absent format.
 
+## Standard inline profile version 1
+
+`compileStandardRichProfileV1(wasm, bootstrapJson)` explicitly installs the
+Rust-owned `breditor-inline/standard@1` extension before resolving the V6
+application extension graph. The ordinary `compileRichProfile` constructor
+still installs no preset. Application extensions can depend on the standard
+extension; duplicate identities or format claims reject instead of overriding it.
+
+```js
+import {
+  compileStandardRichProfileV1, createStandardRichInlinePresentationV1
+} from '@breditor/experimental-rich-content';
+
+const standard = compileStandardRichProfileV1(wasm, JSON.stringify({
+  format: 'breditor/profile-bootstrap', formatVersion: 6,
+  schema: {name: 'example/standard-editor', version: 1}, extensions: []
+}));
+const inlinePresentation = createStandardRichInlinePresentationV1(
+  standard.inlineCatalogJson()
+);
+```
+
+Create the document using `standard.descriptor()` and pass the presentation to
+`mountRichEditor`. A plain-profile document or checkpoint has a different schema
+fingerprint; changing constructors is not a migration and must not be implemented
+by overwriting a saved fingerprint. Owners already created from a factory remain
+valid after the factory is disposed.
+
+The twelve V1 formats have fixed semantic identities and domains:
+
+- Bold, italic, underline, strike, inline code, subscript and superscript are
+  property-free. Bold retains the existing `breditor/strong` identity.
+- Link requires `breditor-inline/href` (1–2048 UTF-8 bytes) and the Boolean
+  `breditor-inline/new-window`. The existing closed HTTP(S) render policy keeps
+  unsafe schema-valid strings as inert data.
+- Text and background color require integer `breditor-inline/rgb24` in
+  `0..=16777215`; renderers emit only canonical RGB styles.
+- Text size requires integer `breditor-inline/pixels` in `8..=96`; rendering
+  emits a canonical pixel size, not document-provided CSS text.
+- Font family requires integer `breditor-inline/family`: 1 system, 2 sans-serif,
+  3 serif, 4 monospace. These are font-stack presets, not embedded/downloaded fonts.
+
+`standardInlineKindsV1` and `standardInlinePropertiesV1` expose the names for typed
+commands. Native hosts can compose `standard_inline_extension_v1()` into their
+own extension set. The manifest contains no action callbacks or DOM policy.
+Subscript and superscript are independent admitted literals; changing one does
+not silently remove the other. Exclusive script controls need an explicit group.
+
+The standard renderer pins every standard format revision to 1. Additional
+application recipes use its optional second argument, an ordinary complete
+`{recipes: [...]}` declaration for those extra formats. Complete coverage and
+all existing inert-manifest guards still apply. Both mounted controllers include
+the fixed font CSS; standalone render hosts can apply `standardInlineStylesV1`.
+An incompatible preset needs a new explicit version rather than changing V1.
+Complete standard toolbar/property controls remain active implementation work;
+the preset currently works through the typed owner commands and custom controls.
+
 ## Mount the browser editor
 
 ```js

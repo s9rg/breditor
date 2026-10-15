@@ -34,6 +34,14 @@ URL, RGB24 or integer-token logic. This subpath consumes read-only declarations;
 it does not mint a Rust schema proof, default compiled-profile generation or
 command authority. Existing root/advanced exports and default ABI are unchanged.
 
+Two additive closed style policies support the explicit rich standard preset:
+`safeRgb24V1` binds one required `0..=16777215` integer property to text or
+background color, and `safeTextSizeV1` binds one required `8..=96` integer property
+to a pixel size. Their emitted styles and inverse DOM-admission guards are exact;
+document strings cannot supply CSS. Both require a canonical span/class recipe
+and an exact matching Rust format domain. The earlier `safeTextColorV1` contract
+for `example/text-color@1` retains its original exact binding and meaning.
+
 The `0.2.0` implementation requires Wasm ABI 3 and an exact matching Wasm
 package version before it reads the generated engine factory.
 Bootstrap owns

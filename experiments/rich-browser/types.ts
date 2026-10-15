@@ -1,8 +1,9 @@
 // Compile against the actual paired generated declarations, not a handwritten Wasm stub.
 import * as wasm from "../../packages/breditor-experimental-rich-content/dist/breditor_wasm.js";
-import {compileRichProfile, RichAssetStore, insertImageFiles, mountRichEditor, type RichSelection, type RichCommandOutcome, type RichView, type AssetUploader} from "../../packages/breditor-experimental-rich-content/index.js";
+import {compileRichProfile,compileStandardRichProfileV1,createStandardRichInlinePresentationV1,RichAssetStore,insertImageFiles,mountRichEditor,type RichSelection,type RichCommandOutcome,type RichView,type AssetUploader} from "../../packages/breditor-experimental-rich-content/index.js";
 function contract(bootstrap:string,document:string):void {
  const profile=compileRichProfile(wasm,bootstrap);
+ const standard=compileStandardRichProfileV1(wasm,bootstrap);createStandardRichInlinePresentationV1(standard.inlineCatalogJson());standard.dispose();
  const catalog:string=profile.inlineCatalogJson();void catalog;
  const owner=profile.createEditor(document,"100");
  const view:RichView=owner.view();

@@ -10,6 +10,8 @@ mod generation;
 
 #[cfg(feature = "experimental-rich-content")]
 pub(crate) use bootstrap_json_v2::decode_rich_schema;
+#[cfg(feature = "experimental-rich-content")]
+pub(crate) use bootstrap_json_v2::decode_standard_rich_schema_v1;
 pub use compiled_profile::BreditorCompiledProfile;
 pub use compiled_profile_result::BreditorCompiledProfileResult;
 pub use descriptor::BreditorCompiledProfileDescriptor;

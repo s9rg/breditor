@@ -1,4 +1,4 @@
-import {model,id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreNative,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
+import {model,id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreNative,standardInlineStylesV1,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
 import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
 import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
@@ -25,7 +25,7 @@ export class SharedDomEditor {
  constructor(root:HTMLElement,options:SharedDomOptions){
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
   requireRenderOptions(this.#model,options);
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles;root.dataset["breditorShared"]="";
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1;root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Shared rich text editor");
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Shared rich text controls");this.status=d.createElement("p");this.status.setAttribute("role","status");
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbar,...moveSharedToolbar]){

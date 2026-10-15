@@ -2,7 +2,7 @@ import type {RichCommand} from "./commands.js";
 export type {RichCommand,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
-  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown};
+  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown};
 }
 export type RichCommandOutcome = "content" | "selection" | "typing" | "undo" | "redo" | "unchanged";
 export interface RichPoint {block: string; offset: string; affinity: "before" | "after"}

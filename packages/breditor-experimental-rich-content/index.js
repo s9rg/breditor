@@ -3,6 +3,7 @@
 // uploads are explicit host services, never command side effects.
 export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 export {createRichInlinePresentation} from "./dist/browser/index.js";
+export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }
@@ -36,7 +37,15 @@ export function compileRichProfile(wasm, bootstrapJson) {
   if (typeof wasm?.BreditorRichProfile?.fromBootstrapJson !== "function") {
     throw new RichCommandError("breditor_rich.module", "Use an initialized experimental-rich-content Wasm module");
   }
-  const raw = transfer(wasm.BreditorRichProfile.fromBootstrapJson(bootstrapJson), "profile", "takeProfile");
+  return compiledProfile(wasm.BreditorRichProfile.fromBootstrapJson(bootstrapJson));
+}
+/** Explicit versioned standard preset; the ordinary V6 constructor is unchanged. */
+export function compileStandardRichProfileV1(wasm, bootstrapJson) {
+  if(typeof wasm?.BreditorRichProfile?.fromStandardBootstrapJsonV1!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with standard inline V1 support");
+  return compiledProfile(wasm.BreditorRichProfile.fromStandardBootstrapJsonV1(bootstrapJson));
+}
+function compiledProfile(result) {
+  const raw = transfer(result, "profile", "takeProfile");
   try {
     const descriptor = JSON.parse(read(raw.descriptorJson()));
     if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1) {

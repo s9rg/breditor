@@ -174,6 +174,13 @@ fn decode_configuration(
     json: &str,
     version: u32,
 ) -> Result<(SchemaId, ExtensionSet), BreditorError> {
+    decode_configuration_with_extension(json, version, None)
+}
+fn decode_configuration_with_extension(
+    json: &str,
+    version: u32,
+    additional: Option<ExtensionManifest>,
+) -> Result<(SchemaId, ExtensionSet), BreditorError> {
     if json.len() > MAX_PROFILE_BOOTSTRAP_V2_JSON_BYTES {
         return Err(BreditorError::new(
             PROFILE_BOOTSTRAP_LIMIT_CODE,
@@ -191,8 +198,11 @@ fn decode_configuration(
         qualified_name(record.schema.name)?,
         SchemaVersion::try_new(record.schema.version).map_err(|_| invalid_bootstrap())?,
     );
-    let manifests =
+    let mut manifests =
         record.extensions.into_iter().map(extension_manifest).collect::<Result<Vec<_>, _>>()?;
+    if let Some(manifest) = additional {
+        manifests.push(manifest);
+    }
     let extensions = ExtensionSet::try_new(manifests, ExtensionLimits::default())
         .map_err(|_| profile_compilation())?;
     Ok((schema, extensions))
@@ -204,6 +214,20 @@ pub(crate) fn decode_rich_schema(
     json: &str,
 ) -> Result<breditor_core::schema::CompiledSchema, BreditorError> {
     let (schema, extensions) = decode_configuration(json, 6)?;
+    breditor_core::schema::CompiledSchema::try_compile_rich_content_profile(schema, &extensions)
+        .map_err(|_| profile_compilation())
+}
+
+/// Explicit preset composition occurs before dependency resolution; V6 itself is unchanged.
+#[cfg(feature = "experimental-rich-content")]
+pub(crate) fn decode_standard_rich_schema_v1(
+    json: &str,
+) -> Result<breditor_core::schema::CompiledSchema, BreditorError> {
+    let (schema, extensions) = decode_configuration_with_extension(
+        json,
+        6,
+        Some(breditor_core::rich_content::standard_inline_extension_v1()),
+    )?;
     breditor_core::schema::CompiledSchema::try_compile_rich_content_profile(schema, &extensions)
         .map_err(|_| profile_compilation())
 }

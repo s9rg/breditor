@@ -142,6 +142,12 @@ fn extension(value: Extension) -> Result<ExtensionManifest, Error> {
 pub(super) fn compile(
     input: &str,
 ) -> Result<(CompiledSchema, breditor_core::schema::DocumentLimits), Error> {
+    compile_with_standard(input, false)
+}
+pub(super) fn compile_with_standard(
+    input: &str,
+    standard: bool,
+) -> Result<(CompiledSchema, breditor_core::schema::DocumentLimits), Error> {
     if input.len() > MAX_BYTES {
         return Err(Error::Limit("shared profile JSON bytes"));
     }
@@ -154,11 +160,13 @@ pub(super) fn compile(
         name(config.schema.name)?,
         SchemaVersion::try_new(config.schema.version).map_err(rejected)?,
     );
-    let extensions = ExtensionSet::try_new(
-        config.extensions.0.into_iter().map(extension).collect::<Result<_, _>>()?,
-        ExtensionLimits::default(),
-    )
-    .map_err(rejected)?;
+    let mut manifests =
+        config.extensions.0.into_iter().map(extension).collect::<Result<Vec<_>, _>>()?;
+    if standard {
+        manifests.push(breditor_core::rich_content::standard_inline_extension_v1());
+    }
+    let extensions =
+        ExtensionSet::try_new(manifests, ExtensionLimits::default()).map_err(rejected)?;
     let schema =
         CompiledSchema::try_compile_rich_content_profile(id, &extensions).map_err(rejected)?;
     Ok((schema, limits))

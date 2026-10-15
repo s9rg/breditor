@@ -89,11 +89,48 @@ Node/grid selections return unavailable rather than claiming command support.
 owners may omit it, and the API reports that instead of guessing from DOM spans.
 The complete JSON read has a 64 KiB budget; oversized values fail without truncation.
 
-This is the checked rendering/state seam, not the complete everyday-formatting
-product: an official starter profile and integrated controls still need to be
-finished. The shared model, journal, default ABI and durable schema
+The explicit standard preset below now supplies ordinary format declarations and
+rendering. Integrated toolbar/property controls still need to be finished. The
+shared model, journal, default ABI and existing durable schema
 interpretation do not change. Use the matching generated module for the new
 catalog and state methods; older modules do not provide them.
+
+## Standard shared inline profile version 1
+
+`compileStandardSharedProfileV1` composes the same Rust-owned
+`breditor-inline/standard@1` manifest as the local owner, before resolving
+application dependencies. The ordinary shared V1 configuration and
+`compileSharedProfile` keep their existing meaning; there is no implicit preset
+or new configuration flag.
+
+```js
+import {compileStandardSharedProfileV1} from '@breditor/experimental-collaboration';
+import {createStandardRichInlinePresentationV1} from '@breditor/experimental-rich-content';
+
+const profile = compileStandardSharedProfileV1(wasm, {
+  format: 'breditor/shared-rich-profile', formatVersion: 1,
+  schema: {name: 'example/standard-editor', version: 1}, extensions: []
+});
+const inlinePresentation = createStandardRichInlinePresentationV1(
+  profile.inline_catalog_json()
+);
+```
+
+Create/join/restore owners through this profile and pass the presentation to
+`mountSharedEditor`. The same schema name/version and extensions produce the same
+inline catalog and fingerprint in local and shared Wasm. Their local versus
+selective shared histories remain different contracts. A room/checkpoint with
+another fingerprint cannot be reinterpreted by choosing a different constructor.
+The writer lease and credential rules in the owner contract still apply.
+
+The standard formats cover ordinary marks and scripts, required Link URL/target,
+RGB24 text/background colors, integer 8–96 pixel text size, and four font-stack
+presets. Their full names/domains are documented in the sibling rich-content
+package. The controller includes the fixed font CSS. Additional application
+formats require explicit extra recipes; duplicate/missing declarations reject.
+Existing shared `set_format`, pending typing, clipboard and selective history
+carry these literals without a new model or journal interpretation. Complete
+toolbar/property editing and script-exclusivity controls remain implementation work.
 
 ## Owner contract
 

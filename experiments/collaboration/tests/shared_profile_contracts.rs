@@ -11,6 +11,44 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn explicit_standard_factory_composes_native_manifest_before_custom_dependencies() -> Result {
+    let mut input = json!({"format":"breditor/shared-rich-profile","formatVersion":1,"schema":{"name":"example/standard-rich","version":1},"extensions":[]});
+    let standard = SharedRichProfile::from_standard_configuration_json_v1(&input.to_string())?;
+    let native = CompiledSchema::try_compile_rich_content_profile(
+        SchemaId::new(QualifiedName::try_new("example/standard-rich")?, SchemaVersion::try_new(1)?),
+        &ExtensionSet::try_new(
+            vec![breditor_core::rich_content::standard_inline_extension_v1()],
+            ExtensionLimits::default(),
+        )?,
+    )?;
+    assert_eq!(standard.schema().fingerprint(), native.fingerprint());
+    assert_eq!(
+        serde_json::from_str::<Value>(&standard.inline_catalog_json())?["formats"]
+            .as_array()
+            .ok_or("formats")?
+            .len(),
+        12
+    );
+    assert_ne!(
+        SharedRichProfile::from_configuration_json(&input.to_string())?.schema().fingerprint(),
+        standard.schema().fingerprint()
+    );
+    input["extensions"] = json!([{"id":{"name":"example/review","version":1},"dependencies":[{"name":"breditor-inline/standard","version":1}],"conflicts":[],"formats":[{"kind":"example/review","revision":1,"properties":[]}]}]);
+    assert!(SharedRichProfile::from_configuration_json(&input.to_string()).is_err());
+    let composed = SharedRichProfile::from_standard_configuration_json_v1(&input.to_string())?;
+    assert_eq!(
+        serde_json::from_str::<Value>(&composed.inline_catalog_json())?["formats"]
+            .as_array()
+            .ok_or("formats")?
+            .len(),
+        13
+    );
+    input["standard"] = json!(true);
+    assert!(SharedRichProfile::from_standard_configuration_json_v1(&input.to_string()).is_err());
+    Ok(())
+}
 fn config() -> Value {
     json!({"format":"breditor/shared-rich-profile","formatVersion":1,"schema":{"name":"example/shared-product","version":7},"extensions":[{
     "id":{"name":"example/links","version":1},"dependencies":[],"conflicts":[],"formats":[{

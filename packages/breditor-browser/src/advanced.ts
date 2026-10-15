@@ -507,6 +507,8 @@ export {
   type InlineFormatRenderSafeIntegerTokenV1Policy,
   type InlineFormatRenderSafeLinkV1Policy,
   type InlineFormatRenderSafeTextColorV1Policy,
+  type InlineFormatRenderSafeRgb24V1Policy,
+  type InlineFormatRenderSafeTextSizeV1Policy,
 } from "./inline_format_render_attributes.js";
 export {
   browserPresentationMatchesProfile,

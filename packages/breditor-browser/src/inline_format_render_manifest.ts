@@ -182,10 +182,12 @@ export function createInlineFormatRenderManifest(
           );
         }
       } else if (attributes !== undefined) {
+        const scalarClass=attributes.kind==="safeRgb24V1"?(attributes.channel==="text"?"breditor-inline-text-color":"breditor-inline-background-color"):attributes.kind==="safeTextSizeV1"?"breditor-inline-text-size":null;
         if (
-          attributes.kind !== "safeIntegerTokenV1" ||
+          (attributes.kind !== "safeIntegerTokenV1" && scalarClass===null) ||
           element !== "span" ||
-          classes.length !== 1
+          classes.length !== 1 ||
+          (scalarClass!==null&&classes[0]!==scalarClass)
         ) {
           throw new TypeError(
             "inline-format render attributes require a closed compatible recipe",
