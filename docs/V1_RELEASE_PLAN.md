@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `964c77d` (saved locally,
+The latest functional implementation checkpoint is `cb7c913` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -103,14 +103,29 @@ format loss, unavailable inline formatting inside code and exact local history.
 Separate task split/join actions retain completion and rich tails. Task checkbox
 pointer/Space, internal clipboard, real asset reload and React ownership are
 tested against clean-installed archives. Defaults and old factories remain V1;
-shared model 11 still rejects V2. Task indent/outdent/empty exit, complete atomic
-navigation and shared V2 conflict/journal contracts remain unfinished.
+shared model 11 still rejects V2. At that checkpoint, task indent/outdent/empty
+exit and complete atomic navigation were unfinished; shared V2 contracts remain open.
 The [local structural SDK qualification](qualification/2026-10-15-structural-v2-local-sdk.json)
 retains the exact evidence and failed/incomplete attempts. In particular, an
 earlier existing V1 WebKit reload rejected a schema integer during presentation
 startup. Numeric-only diagnostics were added without weakening admission;
 neither those diagnostics nor later passing runs establish a historical WebKit
 repair. See [the retained startup observation](WEBKIT_FAULT_RECOVERY.md).
+The subsequent [local task editing checkpoint](qualification/2026-10-15-task-structure-v2.json)
+adds separate native indent, outdent and empty-exit actions, closed Wasm commands,
+prose Tab/Shift+Tab and task-aware stock controls. Exact inverses retain completion,
+rich tails and source identities. Nested promotion preserves depth-first reading
+order; top-level exit leaves the same prose block outside the task list. Focused
+widgets no longer navigate or delete a still-selected grid, and checkbox Backspace
+cannot trigger browser-history navigation in WebKit. These two deterministic
+keyboard faults have retained reproductions; they are not the historical
+intermittent fault. The V2 runtime declares task command capability separately
+from schema identity. A previous V2 checkpoint retains byte-exact recovered future
+history in the new runtime, while an old-module/new-wrapper pairing rejects early.
+Final qualification passes 102 installed SDK, 78 application-network and 168 local
+source browser cases plus 2,332 opt-in Rust tests, canonical shared native tests,
+strict native/Wasm lint, types, clean consumers and default regressions. No shared
+V2 feature or full shared research compatibility rerun is claimed for this checkpoint.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.

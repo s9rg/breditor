@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "964c77d345a69f4253feec0615d536d4fd0bd720",
+  "baselineCommit": "cb7c9131a5ee916eb1b87ae75f21dbd650a8fb96",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -92,9 +92,9 @@
     {
       "id":"task-lists","area":"Lists","status":"missing",
       "summary":"Interactive task lists",
-      "current":"Explicit local V2 tasks now have pointer/Space checkboxes, owner-bound wrap/unlist/completion controls and separate Rust split/join actions. Enter creates an unchecked right task, retains left completion and moves the rich tail; join retains left completion and exact Undo restores both original states. Installed vanilla/React tests cover nested task clipboard, real image bytes and exact reload/future history. Task indent/outdent, empty-item exit, V2 shared admission/conflicts and foreign interchange remain open.",
+      "current":"Explicit local V2 tasks have pointer/Space checkboxes, separate Rust split/join/indent/outdent/empty-exit actions and owner-bound controls. Prose Tab/Shift+Tab and the stock Indent/Outdent buttons preserve completion, descendants and body order. Enter exits only a truly empty task without a rich tail; otherwise split creates an unchecked right task. Native-widget navigation/deletion cannot edit a still-selected grid or navigate away on checkbox Backspace, while checkbox Undo remains available. Installed vanilla/React tests cover exact reload/future history, internal clipboard and image bytes. Shared V2 admission/conflicts and foreign interchange remain open.",
       "acceptance":"Add typed checked state with keyboard and pointer behavior, nesting, clipboard, conflict policy and author-local history.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/structural_drafts.rs","crates/breditor-core/src/rich_content/actions/set_task_checked.rs","crates/breditor-core/src/rich_content/actions/split_task_item.rs","crates/breditor-core/src/rich_content/actions/join_task_items.rs","crates/breditor-core/tests/rich_structural_v2.rs","experiments/editor-browser/structural-v2.spec.mjs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/structural_drafts.rs","crates/breditor-core/src/rich_content/actions/set_task_checked.rs","crates/breditor-core/src/rich_content/actions/split_task_item.rs","crates/breditor-core/src/rich_content/actions/join_task_items.rs","crates/breditor-core/src/rich_content/actions/indent_task_items.rs","crates/breditor-core/src/rich_content/actions/outdent_task_items.rs","crates/breditor-core/src/rich_content/actions/exit_task_item.rs","crates/breditor-core/tests/rich_task_structure_v2.rs","experiments/editor-browser/structural-v2.spec.mjs","experiments/editor-browser/task-structure.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {

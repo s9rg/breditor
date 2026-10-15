@@ -1,0 +1,264 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "cb7c9131a5ee916eb1b87ae75f21dbd650a8fb96",
+  "scope": "Local rich-language V2 task nesting, promotion and truly empty item exit through named Rust actions, closed Wasm commands and installed vanilla/React controls. Includes repaired native-widget keyboard ownership and an additive task-runtime capability check. Shared V2 is not implemented.",
+  "releaseQualified": false,
+  "goalComplete": false,
+  "contracts": {
+    "actions": [
+      "indent_task_items.rs",
+      "outdent_task_items.rs",
+      "exit_task_item.rs"
+    ],
+    "indent": "Move a contiguous task range into the preceding task's trailing task list, retaining checked state, identities and all rich body blocks. Require a fresh nested ID iff no trailing task list exists; otherwise require explicit null.",
+    "outdent": "Nested promotion retains task completion. The last promoted item receives the remaining nested suffix followed by later parent flow, preserving depth-first reading order. Top-level removal retains every body block in its actual flow parent; its exact inverse retains task identity/completion. Require a fresh suffix ID iff both prefix and suffix survive.",
+    "emptyExit": "Only a collapsed empty leading prose head with no rich tail selects browser exit. Nested exit promotes one level; top-level exit preserves the same paragraph/heading identity and kind. Empty heads with media, quotes or nested tasks still split, moving the entire rich tail right. Explicit insertParagraph/splitTaskItem remain split commands.",
+    "explicitSplit": "The supplied point must match the current collapsed caret, including affinity, so pending typing styles do not come from another context. Mismatched points reject without publication.",
+    "keyboard": "The same stock Indent/Outdent controls prepare ordinary-list or task actions. Prose Tab/Shift+Tab routes task commands; code, modified/composing keys and native widget navigation remain separate. Focused widgets cannot navigate/delete a logically retained grid/node. Backspace/Delete on checkboxes/buttons are cancelled to prevent document deletion and WebKit browser-back navigation. Editor Undo/Redo remains available for checkbox changes.",
+    "runtime": "V2 descriptors add taskStructureVersion:1; matching wrappers reject older V2 runtimes before owner creation/host mutation. V1 descriptors remain unchanged. Schema fingerprints, Document V2 and local checkpoint V1 encoding do not change.",
+    "compatibility": "Default ABI 5, rich ABI 1, original V1 grammar/factories and shared model 11/journal 12 retain their meanings. Shared profiles still reject structural V2 before engine import. Every new action and Wasm parser has its own documented file."
+  },
+  "nativeChecks": {
+    "workspacePassed": 2332,
+    "suiteFooters": 136,
+    "doctestsIncluded": 136,
+    "taskStructureIntegrationPassed": 8,
+    "structuralIntegrationPassed": 19,
+    "wasmNativeLibraryPassed": 44,
+    "existingRichWasmBoundaryPassed": 18,
+    "structuralWasmBoundaryPassed": 6,
+    "canonicalSharedNativePassed": 205,
+    "strictAllTargetNativeClippy": true,
+    "localWasmClippy": true,
+    "applicationSharedWasmClippy": true,
+    "rustdocWarningsDenied": true,
+    "formatChecks": true,
+    "defaultAllTargetCheck": true,
+    "taskProof": "Mixed checked values, create/append nesting, nested prefix/suffix/parent-tail ordering, top-level body preservation, first/middle/last/sole exits, heading identity, quote/cell/ordinary-list-tail flow parents, wrong kinds, required/unused IDs, stale/duplicate/late-batch rejection, active budgets and exact future checkpoint history.",
+    "note": "No --all-features or physical-input claim. A pre-existing third-party unused HasIdSpan warning remains; retained vendor source was not edited."
+  },
+  "installedConsumers": {
+    "command": "node scripts/check-editor-package.mjs",
+    "passed": true,
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/consumer",
+    "minimal": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/minimal",
+    "sharedOnly": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/shared-only",
+    "archives": [
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-editor-0.3.0-alpha.22.tgz"
+    ],
+    "configurations": [
+      "Local-only without React/collaboration",
+      "Shared-only without React",
+      "Full React/shared with Node native initialization/SSR, normal and advanced types, and eight Vite production pages"
+    ],
+    "types": "Closed nullable task DTOs and rejection of the ordinary-list nested-kind DTO are checked from installed package roots."
+  },
+  "browserSuites": [
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs",
+      "passed": 102,
+      "perEngine": 34,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "duration": "1.9 minutes",
+      "proof": "All eighteen new task cases plus existing installed local/shared clipboard, assets, offline/selective history, ownership, hard-break, structural V2 and exact reload/React cases pass against the frozen archives. Includes widget/grid focus, checkbox Backspace page retention and one-step checkbox Undo."
+    },
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/shared-browser/application-network.config.mjs",
+      "passed": 78,
+      "perEngine": 26,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "duration": "1.5 minutes",
+      "proof": "The same installed application archives retain standard controls, independent browser networking, assets, presence, offline/reconnect and exact recovered selective history. This qualifies V1 collaboration compatibility, not V2 sharing."
+    },
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/rich-browser/playwright.config.mjs",
+      "passed": 168,
+      "perEngine": 56,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "duration": "1.4 minutes",
+      "proof": "Complete local-rich source regressions pass against the matching rebuilt local Wasm, including original text/node/grid and toolbar/selection/history contracts."
+    }
+  ],
+  "browserRunCountNote": "348 overlapping final suite executions, not unique features or a parity percentage. Final stages ran sequentially with exit 0. Earlier development failures and follow-ups below are separate, not counted as final green qualification.",
+  "budgets": "Unchanged 60-second case limits, 300-second process limits, five-second readiness assertions and retries 0. No case/assertion was removed, relaxed or accepted after a timeout.",
+  "reproductions": [
+    {
+      "kind": "empty-task-enter",
+      "engine": "chromium",
+      "before": "The previous installed V2 SDK split a truly empty last task instead of exiting it: expected its same prose block outside the task list, observed zero such blocks.",
+      "repair": "Separate native ExitTaskItem validates no text/tail, then guarded outdent/unlist preserves source metadata in the inverse. Browser Enter selects that action only for the admitted empty shape.",
+      "trace": "target/task-structure-before-fix/empty-enter-chromium/",
+      "manifest": "target/task-structure-before-fix/installed-consumer.json"
+    },
+    {
+      "kind": "focused-checkbox-grid-tab",
+      "engine": "chromium",
+      "before": "With a two-column logical grid still selected and a task checkbox holding DOM focus, automation Tab changed both grid endpoints from column c to nav-col.",
+      "repair": "Native widget keys return before document/grid keyboard routing; task Tab applies only to editor prose.",
+      "trace": "target/task-structure-before-fix/checkbox-grid-tab/"
+    },
+    {
+      "kind": "webkit-checkbox-backspace-navigation",
+      "engine": "webkit",
+      "developmentMatrix": {
+        "passed": 17,
+        "failed": 1,
+        "total": 18
+      },
+      "before": "After document routing was fenced, unhandled checkbox Backspace performed browser-back navigation, destroying the execution context.",
+      "repair": "Cancel Backspace/Delete on non-text checkbox/radio/button controls without dispatching a document edit. Text fields retain native deletion; editor Undo/Redo remains available.",
+      "trace": "target/task-structure-before-fix/checkbox-backspace-navigation-webkit/",
+      "qualification": "A deterministic browser-default interaction, not the historical intermittent WebKit fault or an engine repair."
+    }
+  ],
+  "developmentNotes": [
+    {
+      "kind": "fixture-ancestor-correction",
+      "matrix": {
+        "passed": 15,
+        "failed": 3,
+        "total": 18
+      },
+      "before": "The new toolbar test assumed the nested list's direct parent was the task item; the renderer has an existing data-task-body wrapper.",
+      "correction": "Resolve the closest task ancestor. Completion, ordering, fresh-ID, document/history and owner assertions remain unchanged.",
+      "trace": "target/task-structure-development/toolbar-parent-chromium/",
+      "after": "All eighteen task cases passed before the separately added widget/grid regression."
+    },
+    {
+      "kind": "native-fixture-envelope-correction",
+      "before": "The initial new fixture finder traversed children of the document envelope rather than its root.",
+      "correction": "Traverse the actual root; exact source-node and history assertions were retained. Borrow/style findings were repaired without lint suppression."
+    },
+    {
+      "kind": "unit-runner-setup",
+      "before": "An npm test command did not match the SDK's candidate script; invoking its relative Vitest config from the repository root then selected root diagnostics under jsdom.",
+      "correction": "SDK tests ran from their package root (29 passed). Root diagnostics ran under the checked-in Node configuration (332 passed). No production or test assertions were changed for these setup errors."
+    },
+    {
+      "kind": "explicit-caret-probe",
+      "before": "An initial cross-version probe supplied a split point without moving the logical caret to it and was correctly rejected.",
+      "correction": "Set the required exact caret explicitly. The final probe below uses the unchanged strict split contract; the tracked native boundary case also proves rejection leaves the checkpoint unchanged."
+    }
+  ],
+  "crossVersionInstalledProof": {
+    "oldConsumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/consumer",
+    "current": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/consumer",
+    "sameSchemaFingerprint": true,
+    "exactOldCheckpointRestore": true,
+    "comparedFutureStates": 8,
+    "explicitTaskSplitAccepted": true,
+    "newTaskUndoExact": true,
+    "oldV2ModuleRejectedBeforeOwnerCreation": true,
+    "scope": "Two independent installed generated Wasm modules in Node, not a downstream Rust consumer or cross-module class mixing. Previous V2 checkpoint bytes and eight future Undo/Redo states match exactly; current explicit split and task-indent Undo are exact. A deliberate old-Wasm/new-wrapper pairing rejects before owner creation."
+  },
+  "defaultChecks": {
+    "sdkUnitPassed": 29,
+    "browserPackageUnitPassed": 2203,
+    "referenceExtensionUnitPassed": 57,
+    "rootDiagnosticsPassed": 332,
+    "types": true,
+    "scriptTests": {
+      "total": 359,
+      "passed": 356,
+      "skipped": 3,
+      "note": "Three existing opt-in browser diagnostics remain skipped."
+    },
+    "runtimeCapabilityTests": {
+      "passed": 3,
+      "scope": "Matching and old/incompatible runtime descriptors, both explicit V2 factories, V1 descriptor preservation and exact native-profile/result cleanup."
+    }
+  },
+  "artifacts": {
+    "packageVersion": "0.3.0-alpha.22",
+    "archives": [
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "bytes": 1227748,
+        "sha256": "5dd4a10dc6c5dc1dbc0ede8defb94c8d1b35df845f7a6741173057327b0bb7f8"
+      },
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "bytes": 2250872,
+        "sha256": "27350894e193275a48a25e842751a701c9e7495527d1e1eaec77716800dc60ce"
+      },
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-aUtNDw/archives/breditor-editor-0.3.0-alpha.22.tgz",
+        "bytes": 18898,
+        "sha256": "942cbe0bc3689a52e35a1654bdc9568337fc43159e87d944cb0eb987bc83b8ff"
+      }
+    ],
+    "localRichWasm": {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+      "bytes": 4243793,
+      "sha256": "aba1c96e8ce898075e9a025ee2c3b4acdd0cb67960208025a254a8d578b8a0f1",
+      "gzipBytes": 1139546
+    },
+    "applicationSharedWasm": {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 8069525,
+      "sha256": "7e9ac3a58323b0dbd6a6ffe997df913e8bc940530ece5e4785d841e3f35eef0e",
+      "gzipBytes": 2197199
+    },
+    "defaultBrowserArchiveUnchanged": true,
+    "gzipMethod": "Node gzipSync defaults; these bytes are not an approved size/performance budget."
+  },
+  "sharedQualificationScope": {
+    "fullResearchCompatibilityGateRerun": false,
+    "currentProof": [
+      "205 canonical shared native tests",
+      "Strict actual application Wasm Clippy and packaged runtime surface",
+      "78 installed application-network cases",
+      "Existing shared cases within the 102-case installed SDK matrix"
+    ],
+    "priorFullGate": "docs/qualification/2026-10-15-structural-v2-local-sdk.json",
+    "note": "The prior 303-source/78-research-installed gate is historical evidence, not a new run or a claim of shared structural V2."
+  },
+  "retainedLogs": {
+    "directory": "target/task-structure-v2-qualification",
+    "note": "Locally captured tool output and separate preserved traces, not a complete CI log archive.",
+    "files": [
+      "final-native.log",
+      "rust-wasm-pack.log",
+      "canonical-shared-native.log",
+      "final-browser.log",
+      "default-unit-script.log",
+      "sdk-units.log",
+      "diagnostics.log",
+      "development-browser.log",
+      "widget-grid-tab-red.log",
+      "widget-before-backspace-fix.log",
+      "unit-runner-setup.log",
+      "cross-version.log"
+    ]
+  },
+  "limits": [
+    "The original first-two-workstream goal remains active. Shared structural V2 needs original operation/conflict, projection, frame/journal and recovery contracts before admission.",
+    "Code exit shortcuts, complete atomic navigation, general selections, natural typing groups, live read-only mode, bounded layout/context UI and sanitized HTML/Markdown/Office interchange remain open.",
+    "All thirteen V1 gates remain open. Feature status labels remain 8 implemented slices, 17 partial and 20 missing; local task completion does not satisfy the shared/interchange acceptance.",
+    "Synthetic composition events and automation keyboard/clipboard payloads do not qualify physical IME, accessibility, clipboard, touch/mobile or historical WebKit reliability. Final performance/public deployment/release qualification remains later.",
+    "No lockfiles, retained vendor source, existing serialized meanings, public deployment or registry publication changed."
+  ],
+  "historicalWebKitFaultResolved": false,
+  "published": false,
+  "publicDeployment": false
+}
