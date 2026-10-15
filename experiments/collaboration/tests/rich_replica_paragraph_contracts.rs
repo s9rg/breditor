@@ -312,7 +312,7 @@ fn a_split_id_cannot_be_reused_after_undo_and_old_shared_contracts_reject() -> T
     let before = a.checkpoint()?;
     assert!(a.apply(vec![split("p", 3, "right")]).is_err());
     assert_eq!(a.checkpoint()?, before);
-    for version in 1..5 {
+    for version in 1..6 {
         let mut old: Value = serde_json::from_str(&before)?;
         old["version"] = json!(version);
         assert!(RichReplica::restore(codec()?, "room", &old.to_string()).is_err());

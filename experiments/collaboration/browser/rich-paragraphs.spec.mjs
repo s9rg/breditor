@@ -36,7 +36,7 @@ test("real shared paragraph split maps causal boundary affinities and preserves 
  expect(result.order).toEqual(["p","right","image-block"]);expect(result.right.type).toBe("breditor/heading");expect(result.right.properties["breditor/level"]).toBe(2);
  expect(result.right.children).toEqual([{kind:"text",text:"🙂b",formats:[{type:"breditor/strong",properties:{}}]}]);
  expect(result.after.selection.anchor).toMatchObject({block:"p",offset:"1"});expect(result.after.selection.focus).toMatchObject({block:"right",offset:"0"});
- expect(result.undo.selection.focus).toMatchObject({block:"p",offset:"1"});expect(result.redo.selection).toEqual(result.after.selection);expect(result.model).toBe(4);expect(result.journal).toBe(5);
+ expect(result.undo.selection.focus).toMatchObject({block:"p",offset:"1"});expect(result.redo.selection).toEqual(result.after.selection);expect(result.model).toBe(5);expect(result.journal).toBe(6);
 });
 
 test("offline text and inherited format annotations survive selective split and format Undo",async({page})=>{

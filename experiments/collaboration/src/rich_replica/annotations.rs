@@ -2,9 +2,9 @@
 //!
 //! Native undo can unmark original characters while an offline insertion keeps
 //! an inherited attribute. Attribute presence therefore cannot be action life.
-//! One unique register claim gates every copied annotation from the complete
-//! atomic group. This also avoids platform-dependent ordering of two activation
-//! field deletions when native undo retracts formatting and routing together.
+//! One unique register claim gates every copied annotation from a semantic
+//! command. A batch retains one history identity but commands have separate
+//! causal priorities; deterministic engine ordering retracts all of their claims.
 use crate::{
     Error,
     register::{Stamp, read_contribution},

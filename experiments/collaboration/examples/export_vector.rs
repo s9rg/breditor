@@ -6,6 +6,9 @@ use breditor_collab_feasibility::{
     session::Session,
 };
 
+#[path = "vectors/shared_range.rs"]
+mod shared_range;
+
 fn insert(offset: u32, text: &str) -> Command {
     Command::InsertText(InsertText { target: TextTarget::Body, offset, text: text.into() })
 }
@@ -138,6 +141,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "rich_navigation_expected":rich_navigation_expected,
         "shared_paragraph":shared_paragraph,
         "shared_heading":shared_heading,
+        "shared_range":shared_range::generate(&rich_local_input)?,
     });
     Ok(vector)
 }

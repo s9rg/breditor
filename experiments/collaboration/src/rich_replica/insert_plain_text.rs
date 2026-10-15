@@ -15,11 +15,14 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 impl RichReplica {
-    /// Type at a collapsed shared caret with the admitted pending or source-run formats.
+    /// Type at a shared caret or replace its selected range with admitted source-run formats.
     /// # Errors
-    /// Non-carets, invalid text/limits or failed staged publication preserve content/history/UI.
+    /// Unsupported/non-text ranges, invalid input or failed publication preserve all owner state.
     pub fn insert_plain_text(&mut self, text: &str) -> Result<bool, Error> {
         let selection = self.selection()?.ok_or(Error::Contract("shared typing requires caret"))?;
+        if selection.caret().is_none() {
+            return self.replace_plain_selection(text, &selection);
+        }
         let point = selection.caret().ok_or(Error::Contract("shared typing requires caret"))?;
         if text.is_empty() {
             return Ok(false);
@@ -76,7 +79,7 @@ impl RichReplica {
         self.check(observation)?;
         self.insert_plain_text(text)
     }
-    fn effective_formats(&self, selection: &Selection) -> Result<Vec<Value>, Error> {
+    pub(super) fn effective_formats(&self, selection: &Selection) -> Result<Vec<Value>, Error> {
         if let Some(formats) = self.pending_formats() {
             return Ok(formats.to_vec());
         }

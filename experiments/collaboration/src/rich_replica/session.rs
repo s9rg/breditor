@@ -131,7 +131,7 @@ impl RichReplica {
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: 5,
+            version: 6,
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
@@ -156,7 +156,7 @@ impl RichReplica {
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: 5,
+                version: 6,
                 document,
                 writer,
                 origin: Origin::Join { updates },
@@ -239,7 +239,7 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != 5 {
+        if journal.format != "breditor/rich-replica-journal" || journal.version != 6 {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
@@ -331,7 +331,8 @@ impl RichReplica {
         let undo_count = self.undo_count();
         self.undo.group_start()?;
         for (ordinal, command) in commands.iter().enumerate() {
-            command.apply(&self.doc, &self.codec, &self.document, stamp, ordinal)?;
+            let command_stamp = Stamp::next(&self.doc)?;
+            command.apply(&self.doc, &self.codec, &self.document, command_stamp, ordinal)?;
             self.doc.commit();
             self.refresh_document()?;
         }
@@ -524,6 +525,7 @@ impl RichReplica {
                 | Command::MergeCells(_)
                 | Command::SplitCell(_) => unreachable!("planned creation command"),
                 Command::InsertText(value) => &value.block,
+                Command::ReplaceTextRange(value) => &value.anchor.block,
                 Command::SplitTextBlock(value) => &value.block,
                 Command::JoinTextBlocks(value) => &value.left,
                 Command::DeleteText(value) => &value.block,
@@ -548,6 +550,7 @@ impl RichReplica {
                 | Command::MergeCells(_)
                 | Command::SplitCell(_) => unreachable!("planned creation command"),
                 Command::InsertText(_)
+                | Command::ReplaceTextRange(_)
                 | Command::DeleteText(_)
                 | Command::SetFormat(_)
                 | Command::SetHeading(_)
@@ -578,11 +581,10 @@ impl RichReplica {
                 Command::DeleteBlock(_) => {}
             }
             if let Command::JoinTextBlocks(value) = command {
-                let right = declared
-                    .kind(&self.document, &BlockId::try_new(&value.right).map_err(contract)?)?;
-                if right != "breditor/paragraph" && right != "breditor/heading" {
-                    return Err(Error::Contract("shared join right text kind"));
-                }
+                declared.require_text(&self.document, &value.right)?;
+            }
+            if let Command::ReplaceTextRange(value) = command {
+                declared.require_text(&self.document, &value.focus.block)?;
             }
             if let Command::SetFormat(value) = command {
                 formats.decode(&json!([value.format]).to_string()).map_err(contract)?;

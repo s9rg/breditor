@@ -18,6 +18,8 @@ mod observation;
 mod paragraphs;
 mod placement;
 mod planning;
+mod range_plan;
+mod replace_plain_text_range;
 pub mod selection;
 mod session;
 mod set_pending_formats;

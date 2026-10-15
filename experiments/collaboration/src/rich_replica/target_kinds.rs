@@ -8,6 +8,13 @@ use std::collections::BTreeMap;
 #[derive(Default)]
 pub(super) struct TargetKinds(BTreeMap<String, String>);
 impl TargetKinds {
+    pub fn require_text(&self, document: &RichDocument, id: &str) -> Result<(), Error> {
+        let block = BlockId::try_new(id).map_err(|_| Error::Contract("shared text identity"))?;
+        match self.kind(document, &block)?.as_str() {
+            "breditor/paragraph" | "breditor/heading" => Ok(()),
+            _ => Err(Error::Contract("shared text target kind")),
+        }
+    }
     pub fn kind(&self, document: &RichDocument, block: &BlockId) -> Result<String, Error> {
         if let Some(path) = document.block_path(block) {
             return Ok(document

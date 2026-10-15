@@ -9,7 +9,7 @@ use serde_json::Value;
 
 const PREFIX: &str = "breditor_fragment:";
 
-/// Priority belongs to the marker's step; activation belongs to its complete atomic group.
+/// Priority belongs to the marker's step; activation belongs to its semantic command.
 #[derive(Clone, Copy)]
 pub(super) struct MarkerClock {
     pub stamp: Stamp,

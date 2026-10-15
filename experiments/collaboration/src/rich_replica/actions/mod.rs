@@ -11,6 +11,7 @@ mod merge_cells;
 mod move_block;
 mod move_column;
 mod replace_image;
+mod replace_text_range;
 mod resize_column;
 mod resize_image;
 mod set_format;
@@ -34,6 +35,7 @@ pub use merge_cells::MergeCells;
 pub use move_block::MoveBlock;
 pub use move_column::MoveColumn;
 pub use replace_image::ReplaceImage;
+pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
 pub use resize_column::ResizeColumn;
 pub use resize_image::ResizeImage;
 use serde::{Deserialize, Serialize};
@@ -48,6 +50,8 @@ pub use split_text_block::SplitTextBlock;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Replace a rich selected range without recreating its retained suffix characters.
+    ReplaceTextRange(ReplaceTextRange),
     /// Convert one text block's kind/rank without replacing text or another writer's intent.
     SetHeading(SetHeading),
     /// Split one admitted flow text block without recreating character identities.
@@ -92,6 +96,7 @@ pub enum Command {
 impl Command {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::ReplaceTextRange(value) => value.prepare(doc)?,
             Self::SetHeading(value) => value.prepare(doc)?,
             Self::SplitTextBlock(value) => value.prepare(doc)?,
             Self::JoinTextBlocks(value) => value.prepare(doc)?,
@@ -162,6 +167,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::ReplaceTextRange(value) => value.apply(doc, codec, document, stamp),
             Self::SetHeading(value) => value.apply(doc, codec, document, stamp),
             Self::SplitTextBlock(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::JoinTextBlocks(value) => value.apply(doc, codec, document),

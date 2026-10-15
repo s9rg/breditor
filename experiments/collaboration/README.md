@@ -340,7 +340,7 @@ clipboard acknowledgements or physical IME qualification.
 
 The engine-ordering regression has a failing unpatched baseline and passing
 patched checks. Three direct contracts cover tied container identities, map keys
-and pending text marks. The complete script also verifies paragraph and heading
+and pending text marks. The complete script also verifies paragraph, heading and range
 history across native/Wasm restoration with exact future operations and journals.
 This repairs the isolated history-authoring contract, not the historical WebKit
 runtime fault or the unfinished end-user collaboration workflow.
@@ -365,23 +365,23 @@ On October 14, 2026, the reproducible script passed:
   closure, explicit edges, reordered axes and metadata-only redo preservation.
 - 11 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 retained native collaboration/history contracts and 83 shared rich-AST
+- 27 retained native collaboration/history contracts and 94 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
 - 21 isolated text-flow contracts covering original-source split/join, logical
   range edits, offline typing, causal boundary carets and selective routing history.
 - 3 direct engine history contracts that fail on the unpatched pinned dependency.
 - 3 native comparison-framing tests and 2 Node transport checks, including a
   real input pipe deliberately left open after its complete request frame.
-- 225 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
-  117 shared-AST/selection/paragraph/heading tests, 24 text-flow lowerer checks
+- 246 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
+  138 shared-AST/selection/paragraph/heading/range tests, 24 text-flow lowerer checks
   and 9 direct engine-ordering checks.
   The explicit test list includes `rich-replica.spec.mjs`, `rich-selection.spec.mjs`,
-  `rich-paragraphs.spec.mjs`, `rich-headings.spec.mjs` and `text-flow.spec.mjs`;
+  `rich-paragraphs.spec.mjs`, `rich-headings.spec.mjs`, `rich-ranges.spec.mjs` and `text-flow.spec.mjs`;
   the old 75-test configuration did not exercise these additional families.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - After independently regenerating the native vectors, five repeats of each
-  engine-ordering, paragraph/heading journal and no-op observation regression
-  passed in every browser engine: 90 additional checks.
+  engine-ordering, paragraph/heading/range journal and no-op observation regression
+  passed in every browser engine: 105 additional checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
   formatting and writer IDs above JavaScript's safe-integer range.
@@ -404,8 +404,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 8,068,132 bytes, or 2,207,148 bytes under gzip, with
-SHA-256 `b662986640cdad2a3ac7965cd2e99f53a5f68d4d94d3ac1d57e083d59d7f411a`.
+The tested fixture Wasm is 8,166,040 bytes, or 2,230,882 bytes under gzip, with
+SHA-256 `69a92db15ff6cc16fe0f33ef0f50bed96a002d8976430c58c1acd4b95c798c69`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -458,19 +458,19 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V5 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V6 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional. V1–V4 shared journals are rejected rather than silently replayed
-without source-based routing, causal UI/history metadata and deterministic engine
-history authoring. Local rich editor
+still provisional. V1–V5 shared journals are rejected rather than silently replayed
+without source-based routing, causal UI/history metadata, deterministic engine
+history authoring and sequential command priorities. Local rich editor
 recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
-and fingerprint, model revision 4 and the explicit engine build tag
+and fingerprint, model revision 5 and the explicit engine build tag
 `1.16.2+breditor.deterministic-history.1` before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
@@ -510,6 +510,44 @@ annotations per text block. A table retains at most 256 historical merge identit
 including identities hidden by Undo. These independent prototype ceilings require
 the later compaction and workload pass; visible geometry limits alone do not
 describe retained causal storage.
+
+## Shared selected range replacement
+
+`rich_replica::actions::ReplaceTextRange` admits the core's immutable semantic
+preview and verifies the exact materialized result before publication. It supports
+one text block, direct sibling flows and sibling leading list heads. The first
+block keeps its identity and kind; selected intermediate media/subtrees are hidden
+with writer-owned deletion contributions. Retained tails from the last list item
+move into the first item without rebuilding them. Arbitrary cross-cell/container
+ranges remain rejected.
+
+Only observed selected characters are deleted. Joining the last source into the
+first preserves its original character identities and rich suffix formats;
+offline insertions in that source survive delivery and selective Undo/Redo. Rich
+inserted runs declare complete desired formats, including explicit plain text.
+Selected `insert_plain_text` derives formats at the logical start, replaces once,
+collapses to the insertion end and saves the original directional selection for
+Undo. Empty input deletes a noncollapsed range.
+
+Earlier creation/split commands and later formatting can compose in the same
+atomic group. Each semantic command now has its own causal stamp and, when needed,
+annotation claim, so later formatting outranks every run inserted by an earlier command.
+The group still has one history identity and one Undo boundary. The retained
+engine ordering patch makes retraction of these separate claims deterministic.
+This changes the private model to revision 5 and journal to V6; shipping formats
+are unchanged.
+
+Preparation reserves canonical deletion/placement containers outside user history
+for known metadata identities, bounded at 20,000. It scans retained metadata;
+that is a correctness-reference cost, not a production latency guarantee. One
+range accepts at most 1,000 input runs, 64 KiB of inserted text and 1,000 format
+contributions, in addition to the independent core/causal/journal limits.
+
+Eleven native contracts cover rich runs, retained suffixes, sibling media,
+numbered-list tails, cell/caption typing, selective history, exact restart,
+composed groups and atomic rejection. Browser contracts also restore a native
+journal after page reload and compare full future causal operations, views and
+journals rather than opaque binary packing.
 
 ## Shared heading conversion
 
@@ -589,9 +627,10 @@ writer-owned activation claims now gate both fragment and format annotations.
 Undo retracts the claim globally; Redo restores its original priority. This keeps
 offline text in its correct paragraph when a split is undone and removes undone
 formatting from inherited inserted text without deleting that text. One claim
-belongs to the complete atomic group, while each routing step retains its own
-priority. This avoids platform-dependent ordering of separate activation-field
-deletions during native undo. Source-aware history repairs both the floating
+belongs to each semantic command, while the complete batch retains one history
+identity. Sequential command stamps preserve later-command priority; the retained
+engine patch orders activation-field deletions deterministically during native
+undo. Source-aware history repairs both the floating
 caret and its end binding when native history
 recreates character IDs. A full materialization builds one shared source index
 rather than rescanning every source separately for each paragraph.
@@ -606,7 +645,7 @@ format. Prepared actions reject stale engine versions before writing. They must
 run on a disposable staged document: they do not themselves provide atomic AST
 publication, schema admission, transport authorization or durable undo-stack
 recovery. `RichReplica` supplies the atomic publication, core grammar admission,
-paired source-cursor repair and private V5 recovery with exact effect checks around them.
+paired source-cursor repair and private V6 recovery with exact effect checks around them.
 Transport authorization remains a host responsibility.
 
 Native and Wasm opaque engine exports may encode map-value dictionaries in a
@@ -641,7 +680,7 @@ Selection and pending-format normalization occurs once after the complete atomic
 group, not after intermediate commands. Original-axis deletion fallback does not
 select a row first created by the same group.
 The Wasm probe exposes these commands through guarded dispatch; the browser DOM
-coordinator is still unfinished. Private shared model revision 4 and journal V5
+coordinator is still unfinished. Private shared model revision 5 and journal V6
 replace the earlier experimental model; shipping schemas/codecs are unchanged.
 
 ## Limits and remaining gates
@@ -669,7 +708,7 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-Shared range-replacement and list planners, and
+Shared list planners and
 cycle/conflict normalization remain implementation gates. The shared browser
 coordinator, collaborative IndexedDB/leases and authorized reference
 relay/presence/asset-provider integration are also unfinished. The fixture
