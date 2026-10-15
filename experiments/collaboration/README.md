@@ -1008,8 +1008,10 @@ observation fences a concurrent or foreign candidate. Preparation/integration is
 not a server-durable acknowledgement. Failed persistence can drop the candidate
 without changing live content. The isolated `../relay` crate now supplies tested
 account-role/writer ownership transactions, ephemeral lease fencing, durable
-append and native replay recovery. Network account authentication, a listening
-service and browser acknowledgement integration remain work.
+append and native replay recovery. Its optional loopback WebSocket host now
+authenticates accounts and exercises real Wasm/server/page recovery. A promoted
+browser reconnect API, network presence/assets and public-host admission
+isolation remain integration work.
 
 Genesis has its own explicit kind and requires a dedicated creation-authority
 path. A reproduced relabeling case created a fresh paragraph seed with the same

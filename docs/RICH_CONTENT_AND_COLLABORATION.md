@@ -66,9 +66,9 @@ origin-wide room/writer Web Lock before restoration. Reload preserves future
 selective history; another tab cannot clone that live writer through another
 database. Failed storage attempts remain explicit and can retry the latest
 complete checkpoint. The combined demo now uses both durable writers and proves
-disconnect/reconnect/reload through the real DOM controller. Cross-device
-authorization, network presence transport, the network relay and cross-host asset providers remain
-separate required integration work.
+disconnect/reconnect/reload through the real DOM controller. Integration of the
+reference relay into the distributable package, network presence transport and
+cross-host asset providers remains required work.
 
 Shared caption creation/replacement/removal now uses a writer-owned choice of
 retained paragraph identity or explicit absence. Two concurrent valid caption
@@ -154,8 +154,9 @@ integration on an unpublished candidate. Missing dependencies are not imported
 into live history. Duplicates do not republish; ordinary actions cannot contain
 room-initialization writes. Candidate commit is fenced by the exact old owner
 observation so a relay can append durably before publication under a room lock.
-Account authentication, a listening WebSocket service and the import-worker
-resource gate remain separate integration work.
+The relay now has an optional account-authenticated loopback WebSocket host;
+the distributable reconnect adapter and import-worker resource gate remain
+separate integration work.
 The atomic-writer checkpoint passes 229 private native contracts and 144 combined
 browser cases. Full regressions add all 309 legacy browser cases (453 total),
 703 default and 1,217 opt-in core tests, 137 doctests and rich integration tests.
@@ -172,9 +173,28 @@ sequence across restart. Recovery checks the hash-chained log and replays native
 semantic admission, removing only an incomplete final record after successful
 replay. Complete corruption rejects without file mutation. File locks serialize
 process ownership; uncertain writes require recovery before further use. Nine
-native service tests and strict Clippy pass. This is a native authority library,
-not yet the listening/authenticating relay or an approved production storage
-budget; see `experiments/relay/README.md` for explicit limits and remaining work.
+native storage tests and strict Clippy pass. This is not an approved production
+storage budget; see `experiments/relay/README.md` for explicit limits and
+remaining work.
+
+The optional reference host uses account token digests and exact browser-Origin
+allowlists. It authenticates a socket separately from room roles and server-owned
+writer leases; submissions cannot select an account/writer/lease through payload
+fields. Bounded coalesced catchup, durable acknowledgements, pending dependency
+responses, owner role changes and writer resume share the serialized room
+authority. Blocking native admission/fsync run outside async I/O workers. A
+reproduced takeover bug left old sockets readable after their writer was resumed;
+active lease validation now also gates catchup/clock, and takeover notifies old
+sessions before same-author future state can enter their history. The process
+is loopback-only; browser network support is currently an end-to-end test fixture,
+not a promoted reconnect API or a public deployment. Network presence/overlays,
+cross-host assets, import isolation and optional Rust/Wasm promotion remain gates.
+The listening-host checkpoint passes 156 combined three-engine browser cases,
+including twelve real Rust-process workflows, 229 native editor contracts and
+twelve native relay tests. The earlier full 309-case legacy run brings this
+checkpoint to 465 browser cases. Installed archives, TypeScript and strict
+native/Wasm lints also pass. The old takeover behavior reproduces in all three
+engines; the rebuilt fix passes the retained regression and complete matrix.
 
 ## Scope of the combined release
 
@@ -989,8 +1009,12 @@ Measure CRDT update/snapshot growth, pending-dependency memory and catchup cost
 before choosing their independent byte/time ceilings. Presence and uploads must
 not consume an unbounded shared content queue.
 
-Development builds use scoped `target/collaboration-*` caches with debug data and
-incremental compilation disabled. Check available storage before larger builds;
+Development builds use scoped `target/collaboration-*` caches and a separate
+`target/relay-native` for the relay's independent workspace/lockfile, with debug
+data and incremental compilation disabled. Sharing the native cache reproduced
+incompatible Rust type identities despite one resolved dependency version;
+rebuilding only the affected crate repaired the exact 19-test failure. That
+suite stays green after the separately cached relay build. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.

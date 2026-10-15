@@ -123,9 +123,12 @@ The host holds its room serialization lock, authenticates the account and curren
 lease, persists the accepted record durably, then calls guarded
 `commit_writer_group`. A preparation, integrated receipt or socket write is not
 a disk acknowledgement. The core guard rejects stale or foreign candidates.
-The network service, durable append/receipt storage, authentication adapter,
-writer-lease registry and bounded import worker remain implementation work.
-The native admission test bridge is not a listening server or authenticator.
+The isolated repository `experiments/relay` now supplies durable append/receipt
+storage, account roles, writer leases and an optional account-authenticated
+loopback WebSocket host. Browser-to-process tests exercise real Wasm groups and
+server/page restart. The separate native admission test bridge is still not a
+listening server or authenticator. The distributable browser reconnect adapter,
+bounded import worker and public deployment qualification remain work.
 ABI 1, shared model 11, journal V12 and default shipping graphs remain unchanged.
 
 ## Ephemeral causal presence
@@ -291,8 +294,9 @@ Existing V8/V9/V10/V11 databases are preserved, not upgraded, overwritten or sil
 treated as document-only imports. Resume old journals with their matching old
 owner until an explicit migration workflow exists.
 
-The full collaboration goal still includes a permission-aware network relay,
-network presence integration, server-authorized writer leases and cross-host
-asset providers. The bounded
+The full collaboration goal still includes integration of the isolated reference
+relay into this package/demo, network presence and cross-host asset providers.
+Native writer authorization and the listening loopback host now exist, but the
+browser socket fixture is not a promoted reconnect API. The bounded
 journal rebuild is a correctness reference, not a production throughput claim.
 See the repository collaboration plan and private owner contracts for limits.

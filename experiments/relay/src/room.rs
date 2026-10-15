@@ -237,7 +237,11 @@ impl Room {
         Ok(Lease { writer: writer.into(), token })
     }
 
-    fn check_lease(&self, principal: &str, lease: &Lease) -> Result<()> {
+    /// Check that this authenticated writer session still owns its connection fence before
+    /// sending author-sensitive catchup as well as before accepting writes.
+    /// # Errors
+    /// Rejects revoked permissions, foreign ownership, replaced fences or uncertain storage.
+    pub fn validate_lease(&self, principal: &str, lease: &Lease) -> Result<()> {
         self.owns(principal, &lease.writer)?;
         if self.leases.get(&lease.writer) == Some(&lease.token) {
             Ok(())
@@ -293,7 +297,7 @@ impl Room {
     /// Rejects revoked/stale/foreign authority, malformed/forked/invalid groups, bounded history,
     /// uncertain storage or I/O failure. No acknowledgement is issued on an uncertain append.
     pub fn admit(&mut self, principal: &str, lease: &Lease, frame: &str) -> Result<Admission> {
-        self.check_lease(principal, lease)?;
+        self.validate_lease(principal, lease)?;
         match self.replica.prepare_writer_group(&lease.writer, frame)? {
             WriterGroupPreparation::Pending { writer, missing } => {
                 Ok(Admission::Pending { writer, missing })

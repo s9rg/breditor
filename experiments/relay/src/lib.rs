@@ -9,6 +9,8 @@ mod credentials;
 mod log;
 mod protocol;
 mod room;
+#[cfg(feature = "server")]
+pub mod server;
 
 pub use access::Role;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};

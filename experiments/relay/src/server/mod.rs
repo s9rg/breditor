@@ -1,0 +1,77 @@
+//! Loopback reference WebSocket host. All native transactions and blocking fsync run off the
+//! async I/O workers, inside the same serialized room authority. Public untrusted hosting still
+//! requires the planned resource-limited import worker, TLS and deployment qualification.
+mod authentication;
+mod connection;
+mod wire;
+use crate::{Error, Result, Room};
+pub use authentication::Authentication;
+use axum::{
+    Router,
+    extract::{State, WebSocketUpgrade},
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+    routing::get,
+};
+use std::sync::{Arc, Mutex};
+use tokio::sync::{Semaphore, watch};
+
+#[derive(Clone)]
+pub(super) struct Host {
+    room: Arc<Mutex<Room>>,
+    authentication: Arc<Authentication>,
+    changed: watch::Sender<u64>,
+    connections: Arc<Semaphore>,
+}
+impl Host {
+    pub async fn transaction<T: Send + 'static>(
+        &self,
+        f: impl FnOnce(&mut Room) -> Result<T> + Send + 'static,
+    ) -> Result<T> {
+        let room = self.room.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
+            f(&mut room)
+        })
+        .await
+        .map_err(|_| Error::NeedsRecovery)?
+    }
+    pub fn notify(&self) {
+        self.changed.send_modify(|n| *n = n.wrapping_add(1));
+    }
+}
+
+/// Build an authenticated, exact-Origin, bounded reference room router.
+/// `/health` reveals only the live service version; `/ws` requires a first-message account handshake.
+/// The server holds at most 64 live upgrades and coalesces catchup notifications without keeping
+/// an unbounded per-peer frame queue. A newly authorized reader receives the latest full state.
+pub fn router(room: Room, authentication: Authentication) -> Router {
+    let (changed, _) = watch::channel(0);
+    let host = Host {
+        room: Arc::new(Mutex::new(room)),
+        authentication: Arc::new(authentication),
+        changed,
+        connections: Arc::new(Semaphore::new(64)),
+    };
+    Router::new()
+        .route("/health", get(|| async { "breditor-relay-v1" }))
+        .route("/ws", get(upgrade))
+        .with_state(host)
+}
+async fn upgrade(State(host): State<Host>, headers: HeaderMap, ws: WebSocketUpgrade) -> Response {
+    if !headers
+        .get("origin")
+        .and_then(|h| h.to_str().ok())
+        .is_some_and(|o| host.authentication.origin(o))
+    {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let Ok(permit) = host.connections.clone().try_acquire_owned() else {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
+    ws.max_message_size(wire::MAX_MESSAGE)
+        .max_frame_size(wire::MAX_MESSAGE)
+        .write_buffer_size(64 * 1024)
+        .max_write_buffer_size(wire::MAX_MESSAGE + 64 * 1024)
+        .on_upgrade(move |socket| connection::run(host, socket, permit))
+}
