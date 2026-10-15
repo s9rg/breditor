@@ -9,12 +9,12 @@ use crate::{BreditorError, rich_editor::selection::CellRecord};
 use breditor_core::{
     block::OrderedListStart,
     codec::RichFormatsJsonCodec,
-    document::{TextFragment, TextRun},
+    document::{FormatSet, TextFragment, TextRun},
     rich_content::{
-        AssetGeneration, AssetId, BlockId, ColumnId, ImageAlt, ImageBinding, ImageDraft, ImageId,
-        ImageSize, RichBlockDraft, RichFlowParent, RichFlowPosition, RichListDraft,
-        RichListItemDraft, RichListKind, RowId, TableCellDraft, TableColumnDraft, TableDraft,
-        TableId, TableRowDraft,
+        AssetGeneration, AssetId, BlockId, CodeLanguage, ColumnId, ImageAlt, ImageBinding,
+        ImageDraft, ImageId, ImageSize, RichBlockDraft, RichFlowParent, RichFlowPosition,
+        RichListDraft, RichListItemDraft, RichListKind, RichTaskItemDraft, RichTaskListDraft,
+        RowId, TableCellDraft, TableColumnDraft, TableDraft, TableId, TableRowDraft,
     },
     state::EditorContext,
 };
@@ -28,6 +28,10 @@ pub(super) enum FlowRecord {
     List(ListRecord),
     Image(ImageRecord),
     Table(TableRecord),
+    Blockquote(QuoteRecord),
+    CodeBlock(CodeRecord),
+    HorizontalRule(RuleRecord),
+    TaskList(TaskListRecord),
 }
 impl FlowRecord {
     pub(super) fn draft(self, context: &EditorContext) -> Result<RichBlockDraft, BreditorError> {
@@ -40,6 +44,48 @@ impl FlowRecord {
             )),
             Self::Image(record) => Ok(record.draft(context)?.into()),
             Self::Table(record) => Ok(record.draft(context)?.into()),
+            Self::Blockquote(record) => checked(RichBlockDraft::blockquote(
+                &checked(BlockId::try_new(record.block))?,
+                record.body.into_iter().map(|v| v.draft(context)).collect::<Result<_, _>>()?,
+            )),
+            Self::CodeBlock(record) => {
+                let language =
+                    record.language.map(CodeLanguage::try_new).map(checked).transpose()?;
+                let text = if record.text.is_empty() {
+                    TextFragment::empty()
+                } else {
+                    checked(TextRun::try_new(record.text, FormatSet::default()))?.into()
+                };
+                checked(RichBlockDraft::code_block(
+                    &checked(BlockId::try_new(record.block))?,
+                    language.as_ref(),
+                    &text,
+                ))
+            }
+            Self::HorizontalRule(record) => {
+                checked(RichBlockDraft::horizontal_rule(&checked(BlockId::try_new(record.block))?))
+            }
+            Self::TaskList(record) => {
+                let items = record
+                    .items
+                    .into_iter()
+                    .map(|item| {
+                        let mut body = item.body.into_iter();
+                        let head = body.next().ok_or(super::invalid())?.draft(context)?;
+                        checked(RichTaskItemDraft::try_new(
+                            &checked(BlockId::try_new(item.block))?,
+                            item.checked,
+                            head,
+                            body.map(|v| v.draft(context)).collect::<Result<_, _>>()?,
+                        ))
+                    })
+                    .collect::<Result<_, BreditorError>>()?;
+                Ok(checked(RichTaskListDraft::try_new(
+                    &checked(BlockId::try_new(record.block))?,
+                    items,
+                ))?
+                .into())
+            }
             Self::List(record) => {
                 let items = record
                     .items
@@ -63,6 +109,38 @@ impl FlowRecord {
             }
         }
     }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct QuoteRecord {
+    block: String,
+    body: Vec<FlowRecord>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CodeRecord {
+    block: String,
+    text: String,
+    #[serde(deserialize_with = "nullable")]
+    language: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct RuleRecord {
+    block: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct TaskListRecord {
+    block: String,
+    items: Vec<TaskItemRecord>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TaskItemRecord {
+    block: String,
+    checked: bool,
+    body: Vec<FlowRecord>,
 }
 pub(super) fn fragment(
     context: &EditorContext,
@@ -241,6 +319,8 @@ enum ParentRecord {
     Document,
     Cell { cell: CellRecord },
     ListItem { block: String },
+    Blockquote { block: String },
+    TaskItem { block: String },
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -257,6 +337,12 @@ impl PositionRecord {
                 ParentRecord::Cell { cell } => RichFlowParent::Cell(cell.into_cell()?),
                 ParentRecord::ListItem { block } => {
                     RichFlowParent::ListItem(checked(BlockId::try_new(block))?)
+                }
+                ParentRecord::Blockquote { block } => {
+                    RichFlowParent::Blockquote(checked(BlockId::try_new(block))?)
+                }
+                ParentRecord::TaskItem { block } => {
+                    RichFlowParent::TaskItem(checked(BlockId::try_new(block))?)
                 }
             },
             self.before.map(BlockId::try_new).map(checked).transpose()?,

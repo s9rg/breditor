@@ -1,6 +1,6 @@
 // Browser command preparation only. The Rust owner checks and commits each complete semantic action.
 import type {FlowPosition,FormatLiteral,RichCell,RichCommand,RichCoreEditor,RichSelection,TableCellDraft,TableDraft} from "./core.js";
-import {formatsAt,id,isText,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
+import {formatsAt,id,isProse,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 export interface ActionContext {model:RichModel;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
 export interface ToolbarControl {
@@ -26,6 +26,8 @@ export function positionAfter(context:ActionContext):FlowPosition {
  if(parent?.type==="breditor/table-cell"){
   const cell=sourceCell(value,id(node));if(cell)target={kind:"cell",cell};
  }else if(parent?.type==="breditor/list-item")target={kind:"listItem",block:id(parent)};
+ else if(parent?.type==="breditor/blockquote")target={kind:"blockquote",block:id(parent)};
+ else if(parent?.type==="breditor/task-item")target={kind:"taskItem",block:id(parent)};
  return {parent:target,before:next?.kind==="element"?id(next):null};
 }
 export function selectedCell(context:ActionContext):RichCell|undefined {
@@ -35,9 +37,9 @@ export function selectedCell(context:ActionContext):RichCell|undefined {
 export function emptyCell(context:ActionContext,column:string):TableCellDraft {
  return {block:context.allocate("cell"),column,header:false,body:[{kind:"paragraph",block:context.allocate("p"),text:"",formatsJson:"[]"}]};
 }
-function listContext(value:RichModel):{list:ElementNode;items:ElementNode[];first:number;last:number}|undefined {
+function listContext(value:RichModel,task=false):{list:ElementNode;items:ElementNode[];first:number;last:number}|undefined {
  const selection=value.view.selection;if(selection?.kind!=="text")return undefined;
- const itemOf=(block:string):ElementNode|undefined=>{let node=value.nodes.get(block);while(node){if(node.type==="breditor/list-item")return node;node=value.parents.get(id(node));}return undefined;};
+ const itemOf=(block:string):ElementNode|undefined=>{let node=value.nodes.get(block);while(node){if(node.type===(task?"breditor/task-item":"breditor/list-item"))return node;if(node.type===(task?"breditor/list-item":"breditor/task-item"))return undefined;node=value.parents.get(id(node));}return undefined;};
  const a=itemOf(selection.anchor.block),f=itemOf(selection.focus.block);if(!a||!f)return undefined;
  const list=value.parents.get(id(a));if(!list||value.parents.get(id(f))!==list)return undefined;
  const items=list.children.filter((node):node is ElementNode=>node.kind==="element");
@@ -48,6 +50,7 @@ function formats(context:ActionContext):readonly FormatLiteral[] {
  return context.model.view.pendingFormatsJson!==null?JSON.parse(context.model.view.pendingFormatsJson) as FormatLiteral[]:formatsAt(context.model,selection.focus);
 }
 export function bold(context:ActionContext):RichCommand|null {
+ if(!textEnabled(context))return null;
  const selection=context.model.view.selection;if(selection?.kind!=="text")return null;
  if(selection.anchor.block===selection.focus.block&&selection.anchor.offset===selection.focus.offset){
   const current=formats(context),active=current.some(value=>value.type==="breditor/strong");
@@ -66,9 +69,9 @@ export function enter(context:ActionContext):RichCommand|null {
  const value=context.model,a=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),f=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
  const point=a<f||(a===f&&BigInt(selection.anchor.offset)<=BigInt(selection.focus.offset))?selection.anchor:selection.focus;
  const parent=value.parents.get(point.block);
- if(parent?.type==="breditor/image")return {kind:"insertHardBreak"};
+ if(parent?.type==="breditor/image"||value.nodes.get(point.block)?.type==="breditor/code-block")return {kind:"insertHardBreak"};
  const right=context.allocate("p");
- if(parent?.type==="breditor/list-item"&&parent.children[0]?.kind==="element"&&id(parent.children[0])===point.block)
+ if((parent?.type==="breditor/list-item"||parent?.type==="breditor/task-item")&&parent.children[0]?.kind==="element"&&id(parent.children[0])===point.block)
   return {kind:"insertParagraph",data:{right,newItem:context.allocate("item")}};
  return {kind:"insertParagraph",data:{right,newItem:null}};
 }
@@ -76,15 +79,15 @@ export function boundaryDelete(context:ActionContext,backward:boolean):RichComma
  const value=context.model,selection=value.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset)return null;
  const node=value.nodes.get(selection.focus.block),parent=node?value.parents.get(id(node)):undefined;if(!node||!parent)return null;
  const offset=Number(selection.focus.offset);if(backward?offset!==0:offset!==text(node).length)return null;
- const list=listContext(value);
- if(list&&parent.type==="breditor/list-item"&&parent.children[0]===node){
+ const list=listContext(value)??listContext(value,true);
+ if(list&&(parent.type==="breditor/list-item"||parent.type==="breditor/task-item")&&parent.children[0]===node){
   const current=list.first,other=backward?current-1:current+1;
   const a=list.items[Math.min(current,other)],b=list.items[Math.max(current,other)];
-  return a&&b?{kind:"joinListItems",data:{container:id(list.list),left:id(a),right:id(b)}}:null;
+  return a&&b?{kind:list.list.type==="breditor/task-list"?"joinTaskItems":"joinListItems",data:{container:id(list.list),left:id(a),right:id(b)}}:null;
  }
  const position=parent.children.indexOf(node),other=parent.children[position+(backward?-1:1)];
  if(other?.kind!=="element")return null;
- if(isText(other))return {kind:"joinTextBlocks",data:{left:id(backward?other:node),right:id(backward?node:other)}};
+ if(isProse(other)&&isProse(node))return {kind:"joinTextBlocks",data:{left:id(backward?other:node),right:id(backward?node:other)}};
  return {kind:"setSelection",selection:{kind:"node",block:id(other)}};
 }
 export function deleteSelection(context:ActionContext):RichCommand|null {
@@ -96,6 +99,7 @@ export function deleteSelection(context:ActionContext):RichCommand|null {
  const replacement=parent.children.length===1?{kind:"paragraph" as const,block:context.allocate("p"),text:"",formatsJson:"[]"}:null;
  if(node.type==="breditor/image")return {kind:"deleteImage",data:{image:String(property(node,"image-id")),replacement}};
  if(node.type==="breditor/table")return {kind:"deleteTable",data:{table:String(property(node,"table-id")),replacement}};
+ if(node.type==="breditor/horizontal-rule")return {kind:"deleteHorizontalRule",data:{block:id(node),replacement}};
  return {kind:"replaceBlocks",data:{first:id(node),last:id(node),blocks:replacement?[replacement]:[]}};
 }
 function listCommand(context:ActionContext,start:number|null):RichCommand|null {
@@ -105,11 +109,27 @@ function listCommand(context:ActionContext,start:number|null):RichCommand|null {
  const first=aIndex<=fIndex?selection.anchor.block:selection.focus.block,last=aIndex<=fIndex?selection.focus.block:selection.anchor.block,parent=value.parents.get(first);
  if(!parent||parent!==value.parents.get(last))return null;
  const begin=parent.children.findIndex(node=>node.kind==="element"&&id(node)===first),end=parent.children.findIndex(node=>node.kind==="element"&&id(node)===last);
- const heads=parent.children.slice(begin,end+1).filter((node):node is ElementNode=>node.kind==="element"&&isText(node));
+ const heads=parent.children.slice(begin,end+1).filter((node):node is ElementNode=>node.kind==="element"&&isProse(node));
  return {kind:"wrapList",data:{first,last,container:context.allocate("list"),items:heads.map(()=>context.allocate("item")),start}};
 }
-const textEnabled=(context:ActionContext):boolean=>context.model.view.selection?.kind==="text";
-const flowTextEnabled=(context:ActionContext):boolean=>textEnabled(context)&&context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type!=="breditor/image";
+const textEnabled=(context:ActionContext):boolean=>{
+ const value=context.model,s=value.view.selection;if(s?.kind!=="text")return false;
+ const a=value.textBlocks.findIndex(n=>id(n)===s.anchor.block),f=value.textBlocks.findIndex(n=>id(n)===s.focus.block);
+ return a>=0&&f>=0&&value.textBlocks.slice(Math.min(a,f),Math.max(a,f)+1).every(isProse);
+};
+const flowTextEnabled=(context:ActionContext):boolean=>{
+ if(!textEnabled(context))return false;
+ const value=context.model,selection=value.view.selection;if(selection?.kind!=="text")return false;
+ // Task heads are mandatory prose. Ordinary-list wrapping cannot replace them
+ // without an explicit policy for the task's completion state and rich tail.
+ for(const point of [selection.anchor,selection.focus]){
+  const node=value.nodes.get(point.block),parent=value.parents.get(point.block);
+  if(parent?.type==="breditor/image"||parent?.type==="breditor/task-item"&&parent.children[0]===node)return false;
+ }
+ return true;
+};
+const anyTextEnabled=(context:ActionContext):boolean=>context.model.view.selection?.kind==="text";
+const headingEnabled=(context:ActionContext):boolean=>anyTextEnabled(context)&&context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type!=="breditor/image";
 const gridEnabled=(context:ActionContext):boolean=>context.model.view.selection?.kind==="grid";
 const tableEnabled=(context:ActionContext):boolean=>selectedTable(context.model)!==undefined;
 const imageEnabled=(context:ActionContext):boolean=>selectedImage(context.model)!==undefined;
@@ -135,8 +155,8 @@ export const defaultToolbar:readonly ToolbarControl[]=[
  {id:"undo",label:"Undo",enabled:c=>c.model.view.undoDepth>0,command:()=>({kind:"undo"})},
  {id:"redo",label:"Redo",enabled:c=>c.model.view.redoDepth>0,command:()=>({kind:"redo"})},
  {id:"bold",label:"Bold",enabled:textEnabled,command:bold},
- {id:"heading",label:"Heading 2",enabled:flowTextEnabled,command:c=>{const node=selectedText(c.model);return node?{kind:"setHeading",block:id(node),level:2}:null;}},
- {id:"paragraph",label:"Paragraph",enabled:textEnabled,command:c=>{const node=selectedText(c.model);return node?{kind:"setHeading",block:id(node),level:null}:null;}},
+ {id:"heading",label:"Heading 2",enabled:headingEnabled,command:c=>{const node=selectedText(c.model);return node?{kind:"setHeading",block:id(node),level:2}:null;}},
+ {id:"paragraph",label:"Paragraph",enabled:anyTextEnabled,command:c=>{const node=selectedText(c.model);return node?{kind:"setHeading",block:id(node),level:null}:null;}},
  {id:"bullet",label:"Bullet list",enabled:flowTextEnabled,command:c=>listCommand(c,null)},
  {id:"numbered",label:"Numbered list",enabled:flowTextEnabled,command:c=>listCommand(c,1)},
  {id:"unlist",label:"Remove list",enabled:c=>listContext(c.model)!==undefined,command:c=>{const list=listContext(c.model);return list?{kind:"unwrapList",data:{list:id(list.list)}}:null;}},

@@ -13,7 +13,8 @@ export interface RichModel {
 }
 export const property=(node:ElementNode,name:string):unknown=>node.properties[`breditor/${name}`];
 export const id=(node:ElementNode):string=>String(property(node,"block-id"));
-export const isText=(node:ElementNode):boolean=>node.type==="breditor/paragraph"||node.type==="breditor/heading";
+export const isProse=(node:ElementNode):boolean=>node.type==="breditor/paragraph"||node.type==="breditor/heading";
+export const isText=(node:ElementNode):boolean=>isProse(node)||node.type==="breditor/code-block";
 export const text=(node:ElementNode):string=>node.children.map(child=>child.kind==="text"?child.text:"").join("");
 export const cellKey=(cell:RichCell):string=>JSON.stringify([cell.table,cell.row,cell.column]);
 export function model(view:RichView):RichModel {

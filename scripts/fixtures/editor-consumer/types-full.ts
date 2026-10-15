@@ -3,6 +3,7 @@ import {BreditorEditor,type BreditorEditorHandle} from "@breditor/editor/react";
 import {createSharedProfile,openSharedEditor,type SharedProfileConfiguration} from "@breditor/editor/collaboration";
 import {BreditorSharedEditor,type BreditorSharedEditorHandle} from "@breditor/editor/collaboration/react";
 const handle=createRef<BreditorEditorHandle>();createElement(BreditorEditor,{ref:handle,sessionKey:"doc",initialOptions:{initial:{kind:"empty"}},onReady:editor=>editor.focus()});
+createElement(BreditorEditor,{initialOptions:{richLanguage:2,initial:{kind:"empty"}}});
 const configuration:SharedProfileConfiguration={format:"breditor/shared-rich-profile",formatVersion:1,schema:{name:"example/typed",version:1},extensions:[]};void createSharedProfile(configuration);
 void handle.current?.checkpointJson();
 const sharedHandle=createRef<BreditorSharedEditorHandle>();

@@ -4,6 +4,9 @@ export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAsset
 export class RichCommandError extends Error {readonly code: string; constructor(code: string, message: string)}
 export function compileRichProfile(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export function compileStandardRichProfileV1(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
+export function compileStructuralRichProfileV2(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
+export function compileStandardStructuralRichProfileV2(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
+export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
 export {RichLocalSessionStore} from "./dist/browser/index.js";
 export {createRichInlinePresentation,type RichInlinePresentation,type RichInlineSchema} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";

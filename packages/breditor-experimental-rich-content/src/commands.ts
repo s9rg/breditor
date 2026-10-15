@@ -10,12 +10,27 @@ export interface TableCellDraft {block:string;column:string;header:boolean;body:
 export interface TableRowDraft {block:string;id:string;cells:readonly TableCellDraft[]}
 export interface TableDraft {block:string;table:string;columns:readonly TableColumnDraft[];rows:readonly TableRowDraft[]}
 export type FlowDraft = ({kind:"paragraph"}&TextDraft)|({kind:"heading";level:number}&TextDraft)
+ |{kind:"blockquote";block:string;body:readonly FlowDraft[]}
+ |{kind:"codeBlock";block:string;text:string;language:string|null}
+ |{kind:"horizontalRule";block:string}
+ |{kind:"taskList";block:string;items:readonly {block:string;checked:boolean;body:readonly FlowDraft[]}[]}
  |{kind:"list";block:string;start:number|null;items:readonly {block:string;body:readonly FlowDraft[]}[]}
  |({kind:"image"}&ImageDraft)|({kind:"table"}&TableDraft);
-export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCell}|{kind:"listItem";block:string};before:string|null}
+export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCell}|{kind:"listItem"|"blockquote"|"taskItem";block:string};before:string|null}
 /** Use a unique prefix for every authored paste, including failed/undone ones. */
 export interface ClipboardAllocation {prefix:string;replica:string;counter:string;lamport:string}
 export type RichCommand =
+ |{kind:"setCodeBlock";data:{block:string;language:string|null;formatPolicy:"rejectFormatted"|"removeFormats"}}
+ |{kind:"setCodeLanguage";data:{block:string;language:string|null}}
+ |{kind:"setTaskChecked";data:{item:string;checked:boolean}}
+ |{kind:"wrapBlockquote";data:{first:string;last:string;wrapper:string}}
+ |{kind:"unwrapBlockquote";data:{wrapper:string}}
+ |{kind:"wrapTaskList";data:{first:string;last:string;container:string;items:readonly {block:string;checked:boolean}[]}}
+ |{kind:"unwrapTaskList";data:{list:string}}
+ |{kind:"insertHorizontalRule";data:{position:FlowPosition;block:string}}
+ |{kind:"deleteHorizontalRule";data:{block:string;replacement:FlowDraft|null}}
+ |{kind:"splitTaskItem";data:{point:RichPoint;newItem:string;right:string;rightHeading:number|null}}
+ |{kind:"joinTaskItems";data:{container:string;left:string;right:string}}
  |{kind:"setSelection";selection:RichSelection|null}
  |{kind:"insertPlainText";text:string}
  /** Exactly one LF within text, distinct from paragraph/list Enter. */

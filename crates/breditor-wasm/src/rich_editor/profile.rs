@@ -18,6 +18,22 @@ pub struct BreditorRichProfile {
     schema: Arc<CompiledSchema>,
 }
 
+#[wasm_bindgen]
+impl BreditorRichProfile {
+    /// Compile explicit bootstrap V7 into rich-language V2, without standard inline additions.
+    /// V6 and all existing factories keep their original grammar and fingerprints.
+    #[must_use]
+    #[wasm_bindgen(js_name=fromStructuralBootstrapJsonV2)]
+    pub fn from_structural_bootstrap_json_v2(input: &str) -> BreditorRichProfileResult {
+        Self::structural(input, false)
+    }
+    /// Compile bootstrap V7 into structural V2 with the bounded standard inline V1 preset.
+    #[must_use]
+    #[wasm_bindgen(js_name=fromStandardStructuralBootstrapJsonV2)]
+    pub fn from_standard_structural_bootstrap_json_v2(input: &str) -> BreditorRichProfileResult {
+        Self::structural(input, true)
+    }
+}
 impl BreditorRichProfile {
     pub(super) fn context(&self) -> EditorContext {
         EditorContext::new(self.schema.as_ref().clone(), DocumentLimits::default())
@@ -48,8 +64,12 @@ impl BreditorRichProfile {
     #[must_use]
     #[wasm_bindgen(js_name=descriptorJson)]
     pub fn descriptor_json(&self) -> BreditorStringResult {
-        BreditorStringResult::from_value(serde_json::json!({"kind":"rich","abiVersion":super::BREDITOR_RICH_ABI_VERSION,
-            "schema":{"name":self.schema.id().name().as_str(),"version":self.schema.id().version().get()},"schemaFingerprint":self.schema.fingerprint().to_string()}).to_string())
+        let mut value = serde_json::json!({"kind":"rich","abiVersion":super::BREDITOR_RICH_ABI_VERSION,
+            "schema":{"name":self.schema.id().name().as_str(),"version":self.schema.id().version().get()},"schemaFingerprint":self.schema.fingerprint().to_string()});
+        if self.schema.rich_content_revision() == Some(2) {
+            value["richLanguageVersion"] = serde_json::json!(2);
+        }
+        BreditorStringResult::from_value(value.to_string())
     }
     /// Read complete typed inline declarations without exposing the schema proof.
     #[must_use]
@@ -95,6 +115,14 @@ impl BreditorRichProfile {
             Err(_) => BreditorRichEditorResult::failure(error::rejected(
                 "breditor_rich.checkpoint_rejected",
             )),
+        }
+    }
+}
+impl BreditorRichProfile {
+    fn structural(input: &str, standard: bool) -> BreditorRichProfileResult {
+        match crate::profile::decode_structural_rich_schema_v2(input, standard) {
+            Ok(schema) => BreditorRichProfileResult::success(Self { schema: Arc::new(schema) }),
+            Err(error) => BreditorRichProfileResult::failure(error),
         }
     }
 }

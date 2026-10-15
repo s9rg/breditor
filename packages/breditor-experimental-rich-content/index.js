@@ -5,6 +5,7 @@ export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAsset
 export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1} from "./dist/browser/index.js";
+export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }
@@ -49,11 +50,22 @@ function compiledProfile(result) {
   const raw = transfer(result, "profile", "takeProfile");
   try {
     const descriptor = JSON.parse(read(raw.descriptorJson()));
-    if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1) {
+    if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1 || (descriptor.richLanguageVersion!==undefined&&descriptor.richLanguageVersion!==2)) {
       throw new RichCommandError("breditor_rich.abi", "Unsupported rich owner ABI");
     }
     return new RichCoreProfile(raw, descriptor);
   } catch (error) { raw.free(); throw error; }
+}
+
+/** Bootstrap V7 selects structural V2 explicitly; ordinary V6 factories never widen. */
+export function compileStructuralRichProfileV2(wasm,bootstrapJson){
+ if(typeof wasm?.BreditorRichProfile?.fromStructuralBootstrapJsonV2!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with structural V2 support");
+ return compiledProfile(wasm.BreditorRichProfile.fromStructuralBootstrapJsonV2(bootstrapJson));
+}
+/** Structural V2 with the same bounded standard inline V1 manifest. */
+export function compileStandardStructuralRichProfileV2(wasm,bootstrapJson){
+ if(typeof wasm?.BreditorRichProfile?.fromStandardStructuralBootstrapJsonV2!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with standard structural V2 support");
+ return compiledProfile(wasm.BreditorRichProfile.fromStandardStructuralBootstrapJsonV2(bootstrapJson));
 }
 
 class RichCoreProfile {
@@ -64,18 +76,19 @@ class RichCoreProfile {
   inlineCatalogJson() { return read(this.#live().inlineCatalogJson()); }
   createEditor(documentJson, historyCapacity = "100") {
     const raw = transfer(this.#live().createEditor(documentJson, historyCapacity), "editor", "takeEditor");
-    return new RichCoreEditor(raw);
+    return new RichCoreEditor(raw,this.#descriptor);
   }
   restoreEditor(checkpointJson) {
     const raw = transfer(this.#live().restoreEditor(checkpointJson), "editor", "takeEditor");
-    return new RichCoreEditor(raw);
+    return new RichCoreEditor(raw,this.#descriptor);
   }
   dispose() { this.#raw?.free(); this.#raw = undefined; }
 }
 
 class RichCoreEditor {
-  #raw; #observation;
-  constructor(raw) { this.#raw = raw; this.#observation = raw.observe(); }
+  #raw; #observation; #language;
+  constructor(raw,descriptor) { this.#raw = raw; this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe(); }
+  richLanguageVersion(){this.#live();return this.#language;}
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich editor is disposed"); return this.#raw; }
   /** Optional exact revision guard for a toolbar/async host operation prepared from view(). */
   execute(command, expectedRevision) {

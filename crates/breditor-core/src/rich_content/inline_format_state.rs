@@ -14,7 +14,7 @@ use crate::{
 /// Complete state of one declared inline format over applicable selected text.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichInlineFormatState {
-    /// No text selection, unsupported node/grid selection, or no selected characters.
+    /// No text selection, unsupported node/grid/code selection, or no selected characters.
     /// An empty paragraph's collapsed caret is applicable and is not this branch.
     Unavailable,
     /// Applicable text exists, but the format is absent everywhere.
@@ -58,6 +58,8 @@ pub enum RichInlineFormatStateError {
 /// Node/grid selections intentionally return `Unavailable`: this does not claim
 /// that a formatting command supports those selections. The immutable AST is
 /// authoritative; no DOM or independently mutable text projection is consulted.
+/// A code caret or text interval crossing code is unavailable: code is not an
+/// absent format that can be toggled on, nor silently omitted from a mixed read.
 ///
 /// The context must be the one admitting this document. Independently compiled
 /// contexts must first re-admit the document under their own proof and budgets.
@@ -87,7 +89,10 @@ pub fn inspect_inline_format(
         if caret.is_none() {
             return Err(super::RichLocalSessionError::TypingCaret.into());
         }
-        super::local_session::typing_state::validate_formats(context, pending)?;
+        super::local_session::typing_state::validate(context, document, selection, Some(pending))?;
+    }
+    if context.schema().rich_content_revision() == Some(2) && contains_code(document, selection)? {
+        return Ok(RichInlineFormatState::Unavailable);
     }
     if caret.is_some() {
         let Some(ResolvedRichSelection::TextRange { focus, .. }) = resolved else {
@@ -143,6 +148,29 @@ pub fn inspect_inline_format(
         }
     }
     Ok(scan.finish())
+}
+
+fn contains_code(
+    document: &RichDocument,
+    selection: Option<&RichSelection>,
+) -> Result<bool, RichInlineFormatStateError> {
+    let Some(RichSelectionKind::TextRange { anchor, focus }) = selection.map(RichSelection::kind)
+    else {
+        return Ok(false);
+    };
+    let a = document.block_path(anchor.block()).ok_or(RichInlineFormatStateError::Invariant)?;
+    let f = document.block_path(focus.block()).ok_or(RichInlineFormatStateError::Invariant)?;
+    let (first, last) = if a <= f { (a, f) } else { (f, a) };
+    Ok(document.block_entries().any(|(_, path)| {
+        path >= first
+            && path <= last
+            && document
+                .document()
+                .node_at(path)
+                .ok()
+                .and_then(crate::document::NodeRef::as_element)
+                .is_some_and(|node| node.kind().as_str() == "breditor/code-block")
+    }))
 }
 
 #[derive(Default)]

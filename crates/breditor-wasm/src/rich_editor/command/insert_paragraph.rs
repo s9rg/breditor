@@ -10,7 +10,7 @@ use breditor_core::{
     rich_content::{
         BlockId, RichLocalOutcome, RichLocalSession, RichLocalSnapshot, RichPendingFormatsUpdate,
         RichSelectionKind, RichSelectionUpdate, RichTextPoint,
-        actions::{ReplaceTextRange, RichAction, SplitListItem, SplitTextBlock},
+        actions::{ReplaceTextRange, RichAction, SplitListItem, SplitTaskItem, SplitTextBlock},
     },
 };
 use serde::Deserialize;
@@ -40,13 +40,22 @@ pub(super) fn execute(
     let mut plan = Plan::new(owner);
     plan.add(RichAction::ReplaceTextRange(replace))?;
     let path = plan.document.block_path(point.block()).ok_or(super::invalid())?;
+    let item_kind = path
+        .parent()
+        .and_then(|parent| plan.document.document().node_at(&parent).ok())
+        .and_then(breditor_core::document::NodeRef::as_element)
+        .map(|parent| parent.kind().as_str());
     let list_head = path.last_index() == Some(0)
-        && path
-            .parent()
-            .and_then(|parent| plan.document.document().node_at(&parent).ok())
-            .and_then(breditor_core::document::NodeRef::as_element)
-            .is_some_and(|parent| parent.kind().as_str() == "breditor/list-item");
-    let action = if list_head {
+        && matches!(item_kind, Some("breditor/list-item" | "breditor/task-item"));
+    let action = if list_head && item_kind == Some("breditor/task-item") {
+        RichAction::SplitTaskItem(checked(SplitTaskItem::capture(
+            &plan.document,
+            &point,
+            item.as_ref().ok_or(super::invalid())?,
+            &right,
+            None,
+        ))?)
+    } else if list_head {
         RichAction::SplitListItem(checked(SplitListItem::capture(
             &plan.document,
             &point,

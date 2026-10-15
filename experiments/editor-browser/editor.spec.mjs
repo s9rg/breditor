@@ -1,4 +1,20 @@
 import {test,expect} from "@playwright/test";
+// Observe startup rejection metadata without preventing errors or retrying startup.
+// Only the closed numeric schema diagnostic is retained, never document content.
+test.beforeEach(async({page})=>{
+ await page.addInitScript(()=>{
+  window.richStartupFailures=[];
+  addEventListener("unhandledrejection",event=>{
+   const cause=event.reason?.cause;
+   if(cause?.format==="breditor/rich-integer-domain-failure")window.richStartupFailures.push(cause);
+  });
+ });
+});
+test.afterEach(async({page},testInfo)=>{
+ if(testInfo.status===testInfo.expectedStatus||page.isClosed())return;
+ const failures=await page.evaluate(()=>window.richStartupFailures??[]).catch(()=>[]);
+ if(failures.length)await testInfo.attach("rich-startup-numeric-domain",{body:JSON.stringify(failures),contentType:"application/json"});
+});
 const block=(page,id)=>page.locator(`[data-rich-text="${id}"]`);
 async function ready(page,path="/"){await page.goto(path);await expect(page.locator("#ready")).toHaveText("Ready");}
 test("installed vanilla entry loads only local Wasm and edits headings nested lists cells and links with exact reload",async({page})=>{

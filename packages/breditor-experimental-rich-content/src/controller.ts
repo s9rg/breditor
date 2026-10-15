@@ -2,7 +2,7 @@
 import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSelection,RichView} from "./core.js";
 import {bold,boundaryDelete,defaultToolbar,deleteSelection,enter,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {id,model,sourceCell,text,type RichModel} from "./model.js";
-import {paintSelection,render,requireRenderOptions,type RenderOptions} from "./render.js";
+import {paintSelection,render,requireRenderOptions,structuralBlockStylesV2,type RenderOptions} from "./render.js";
 import {readNative,readTarget,restoreNative,isCurrentCaretTarget} from "./selection.js";
 import {standardInlineStylesV1} from "./standard_inline_v1.js";
 import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
@@ -37,7 +37,7 @@ export class RichDomEditor {
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Rich text editor");
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Rich text formatting");
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles;root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.surface,this.status);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2;root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbar){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
@@ -49,6 +49,7 @@ export class RichDomEditor {
   this.surface.addEventListener("input",()=>{if(!this.#composition)this.#reconcile();},{signal:this.#abort.signal});
   this.surface.addEventListener("keydown",event=>this.#key(event),{signal:this.#abort.signal});
   this.surface.addEventListener("pointerdown",event=>this.#pick(event),{signal:this.#abort.signal});
+  this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal:this.#abort.signal});
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal:this.#abort.signal});
   this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal:this.#abort.signal});
   this.surface.addEventListener("paste",event=>this.#paste(event),{signal:this.#abort.signal});
@@ -100,6 +101,12 @@ export class RichDomEditor {
   if(button){event.preventDefault();const cell=JSON.parse(button.dataset["selectCell"]!) as Extract<RichSelection,{kind:"grid"}>["focus"],prior=this.#model.view.selection;const anchor=event.shiftKey&&prior?.kind==="grid"&&prior.anchor.table===cell.table?prior.anchor:cell;this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"grid",anchor,focus:cell}}));}
   else if(node||(figure&&!target.closest("[data-rich-text]"))){event.preventDefault();const block=node?.dataset["selectNode"]??figure?.dataset["richBlock"];if(block)this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"node",block}}));}
   else this.#logicalSelection=false;
+ }
+ #taskCheck(event:MouseEvent):void {
+  const target=event.target as Element,check=target.closest<HTMLInputElement>("input[data-task-check]");if(!check||!this.surface.contains(check))return;
+  event.preventDefault();if(this.#composition)return;
+  const item=check.dataset["taskCheck"],node=item?this.#model.nodes.get(item):undefined;if(!node||node.type!=="breditor/task-item")return;
+  this.#attempt(()=>{this.execute({kind:"setTaskChecked",data:{item:id(node),checked:node.properties["breditor/checked"]!==true}});[...this.surface.querySelectorAll<HTMLInputElement>("input[data-task-check]")].find(input=>input.dataset["taskCheck"]===item)?.focus({preventScroll:true});});
  }
  #key(event:KeyboardEvent):void {
   if(this.#composition||event.isComposing)return;

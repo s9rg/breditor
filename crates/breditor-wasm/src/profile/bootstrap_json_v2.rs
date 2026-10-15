@@ -232,6 +232,21 @@ pub(crate) fn decode_standard_rich_schema_v1(
         .map_err(|_| profile_compilation())
 }
 
+/// Bootstrap V7 explicitly selects rich-language V2; V6 retains its exact V1 grammar.
+#[cfg(feature = "experimental-rich-content")]
+pub(crate) fn decode_structural_rich_schema_v2(
+    json: &str,
+    standard: bool,
+) -> Result<breditor_core::schema::CompiledSchema, BreditorError> {
+    let (schema, extensions) = decode_configuration_with_extension(
+        json,
+        7,
+        standard.then(breditor_core::rich_content::standard_inline_extension_v1),
+    )?;
+    breditor_core::schema::CompiledSchema::try_compile_rich_content_profile_v2(schema, &extensions)
+        .map_err(|_| profile_compilation())
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct ProfilePreflight {

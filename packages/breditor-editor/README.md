@@ -65,9 +65,25 @@ retains the logical start's admitted typing formats, creates no block identity a
 does not normalize surrounding line endings. Explicit `beforeinput` replacement
 ranges remain distinct from the visible caret.
 
-The separate native rich-language V2 contracts for blockquotes, code, horizontal
-rules and tasks are not yet exposed by this SDK's V1 factory or shared model 11.
-See the repository's `docs/RICH_STRUCTURAL_V2.md` for that implementation boundary.
+### Explicit structural V2 candidate
+
+Pass `richLanguage: 2` to `openLocalEditor` (or React `initialOptions`) to select
+blockquotes, unformatted code with a bounded language, horizontal rules and tasks.
+`createStructuralLocalProfileV2()` supplies the matching headless profile. Omitted
+or `1` keeps all V1 defaults; unknown versions reject. The V2 default is
+`breditor-editor/standard@2`; custom bootstrap JSON must use version 7. Keep that
+explicit language choice on reload: old factories do not migrate V2 checkpoints.
+
+The toolbar exposes wrapping, code conversion/language, rule and task controls.
+Code conversion defaults to rejecting formatted text; removing its inline styles
+requires an explicit choice. Code formatting controls are unavailable. Enter in
+code inserts LF; Enter in a task head splits into an unchecked right task while
+retaining the left completion and rich tail. Joining retains left completion;
+Undo restores both original states. Task checkboxes support pointer and Space.
+
+Shared model 11 remains V1-only. Task indent/outdent and empty-item exit, complete
+atomic navigation and broader selection/history/interchange work remain open.
+See `docs/RICH_STRUCTURAL_V2.md` in the repository for the full contract boundary.
 
 Persistence and asset storage are explicit host services, not implicit SDK
 autosave. `RichLocalSessionStore` and `RichAssetStore` are exported. Supply

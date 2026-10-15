@@ -37,7 +37,7 @@ pub(crate) fn resolved_caret_formats(
     }
 }
 
-pub(super) fn validate(
+pub(crate) fn validate(
     context: &EditorContext,
     document: &RichDocument,
     selection: Option<&RichSelection>,

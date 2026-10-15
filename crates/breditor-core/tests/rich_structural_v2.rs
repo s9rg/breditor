@@ -10,15 +10,17 @@ use breditor_core::{
     rich_content::{
         BlockId, CausalStamp, CodeLanguage, RichBlockDraft, RichClipboardError,
         RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind, RichDocument,
-        RichFlowParent, RichFlowPosition, RichLocalOutcome, RichLocalSession,
-        RichLocalSessionError, RichSelection, RichSelectionKind, RichSelectionUpdate,
-        RichTaskItemDraft, RichTaskListDraft, RichTextPoint,
+        RichFlowParent, RichFlowPosition, RichInlineFormatState, RichLocalOutcome,
+        RichLocalSession, RichLocalSessionError, RichSelection, RichSelectionKind,
+        RichSelectionUpdate, RichTaskItemDraft, RichTaskListDraft, RichTextPoint,
         actions::{
             CodeFormatPolicy, DeleteHorizontalRule, InsertBlocks, InsertHorizontalRule,
-            JoinTextBlocks, RichAction, RichActionError, RichFormatChange, SetCodeBlock,
-            SetCodeLanguage, SetInlineFormat, SetTaskChecked, SplitTextBlock, UnwrapBlockquote,
-            UnwrapTaskList, WrapBlockquote, WrapTaskList,
+            JoinTaskItems, JoinTextBlocks, ReplaceTextRange, RichAction, RichActionError,
+            RichFormatChange, SetCodeBlock, SetCodeLanguage, SetInlineFormat, SetTaskChecked,
+            SplitTaskItem, SplitTextBlock, UnwrapBlockquote, UnwrapTaskList, WrapBlockquote,
+            WrapTaskList,
         },
+        inspect_inline_format,
     },
     schema::{CompiledSchema, DocumentLimits, SchemaId, SchemaVersion, ValidationCode},
     session::HistoryCapacity,
@@ -26,6 +28,119 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+#[test]
+fn task_split_and_join_retain_completion_tails_selection_and_exact_future_history() -> TestResult {
+    let c = context(true)?;
+    let mut task = node(
+        "task-item",
+        "task",
+        vec![
+            prose("head", "a🙂b", true),
+            node("blockquote", "quote", vec![prose("tail", "tail", false)]),
+        ],
+    );
+    task["properties"]["breditor/checked"] = json!(true);
+    let document = admit(&c, root(vec![node("task-list", "tasks", vec![task])]))?;
+    let original = value(&c, &document)?;
+    let mut session = RichLocalSession::try_new(
+        c.clone(),
+        document,
+        Some(caret("head", 3)?),
+        HistoryCapacity::default(),
+    )?;
+    let split = SplitTaskItem::capture(
+        session.state().document(),
+        &RichTextPoint::new(id("head")?, TextOffset::try_new(1)?, Affinity::After),
+        &id("fresh-task")?,
+        &id("right")?,
+        None,
+    )?;
+    dispatch(&mut session, RichAction::SplitTaskItem(split))?;
+    let body = value(&c, session.state().document())?;
+    let list = &body["root"]["children"][0]["children"];
+    assert_eq!(list[0]["properties"]["breditor/checked"], true);
+    assert_eq!(list[1]["properties"]["breditor/checked"], false);
+    assert_eq!(list[1]["children"][0]["children"][0]["text"], "🙂b");
+    assert_eq!(list[1]["children"][1]["properties"]["breditor/block-id"], "quote");
+    let RichSelectionKind::TextRange { focus, .. } =
+        session.state().selection().ok_or("selection")?.kind()
+    else {
+        return Err("text selection".into());
+    };
+    assert_eq!(focus.block().as_str(), "right");
+    assert_eq!(focus.offset().get(), 2);
+    let join = JoinTaskItems::capture(
+        session.state().document(),
+        &id("tasks")?,
+        &id("task")?,
+        &id("fresh-task")?,
+    )?;
+    dispatch(&mut session, RichAction::JoinTaskItems(join))?;
+    let joined = value(&c, session.state().document())?;
+    assert_eq!(joined, original);
+    assert_eq!(
+        joined["root"]["children"][0]["children"][0]["properties"]["breditor/checked"],
+        true
+    );
+    assert_eq!(joined["root"]["children"][0]["children"].as_array().ok_or("items")?.len(), 1);
+    future(&mut session)
+}
+
+#[test]
+fn partial_cross_block_code_replacement_rejects_instead_of_guessing_language_or_style_loss()
+-> TestResult {
+    let c = context(true)?;
+    let document = admit(
+        &c,
+        root(vec![
+            prose("p", "A", false),
+            node("code-block", "code", vec![json!({"kind":"text","text":"a🙂b","formats":[]})]),
+        ]),
+    )?;
+    for reverse in [false, true] {
+        let a = RichTextPoint::new(id("p")?, TextOffset::ZERO, Affinity::After);
+        let f = RichTextPoint::new(id("code")?, TextOffset::try_new(1)?, Affinity::After);
+        let (anchor, focus) = if reverse { (f, a) } else { (a, f) };
+        let selection =
+            RichSelection::try_new(&document, RichSelectionKind::TextRange { anchor, focus })?;
+        assert!(matches!(
+            ReplaceTextRange::capture(&document, &selection, &TextFragment::empty()),
+            Err(RichActionError::FlowRange)
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn code_format_controls_are_unavailable_for_carets_ranges_and_cross_code_intervals() -> TestResult {
+    let c = context(true)?;
+    let code = node("code-block", "code", vec![json!({"kind":"text","text":"a🙂b","formats":[]})]);
+    let document =
+        admit(&c, root(vec![prose("before", "A", true), code, prose("after", "B", true)]))?;
+    let kind = QualifiedName::try_new("breditor/strong")?;
+    let point = |block: &str, offset: u64| -> Result<_, Box<dyn std::error::Error>> {
+        Ok(RichTextPoint::new(id(block)?, TextOffset::try_new(offset)?, Affinity::After))
+    };
+    for selection in [
+        caret("code", 0)?,
+        caret("code", 4)?,
+        RichSelectionKind::TextRange { anchor: point("code", 3)?, focus: point("code", 1)? },
+        RichSelectionKind::TextRange { anchor: point("after", 1)?, focus: point("before", 0)? },
+    ] {
+        let selection = RichSelection::try_new(&document, selection)?;
+        assert_eq!(
+            inspect_inline_format(&c, &document, Some(&selection), None, &kind)?,
+            RichInlineFormatState::Unavailable
+        );
+    }
+    let selection = RichSelection::try_new(&document, caret("before", 0)?)?;
+    assert!(matches!(
+        inspect_inline_format(&c, &document, Some(&selection), None, &kind)?,
+        RichInlineFormatState::Uniform(_)
+    ));
+    Ok(())
+}
 fn id(value: &str) -> Result<BlockId, Box<dyn std::error::Error>> {
     Ok(BlockId::try_new(value)?)
 }

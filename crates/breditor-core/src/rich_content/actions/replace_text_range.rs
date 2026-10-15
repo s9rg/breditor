@@ -48,6 +48,16 @@ impl ReplaceTextRange {
         let (start, end) = ordered(document, anchor, focus)?;
         let first = text_patch::block_node(document, start.block())?;
         let last = text_patch::block_node(document, end.block())?;
+        // A partial code/prose or differently labelled code join needs an explicit
+        // conversion policy. Same-block code edits and whole intervening flow deletion
+        // remain separate, well-defined operations.
+        if start.block() != end.block()
+            && [first, last].iter().any(|node| {
+                node.as_element().is_some_and(|node| node.kind().as_str() == "breditor/code-block")
+            })
+        {
+            return Err(RichActionError::FlowRange);
+        }
         let original = text_patch::fragment(first)?;
         let prefix = original.split_at(start.offset()).map_err(|_| RichActionError::TextRange)?.0;
         let suffix = text_patch::fragment(last)?

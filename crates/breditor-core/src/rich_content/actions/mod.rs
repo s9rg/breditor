@@ -28,6 +28,7 @@ mod insert_table_column;
 mod insert_table_row;
 mod insert_text;
 mod join_list_items;
+mod join_task_items;
 mod join_text_blocks;
 mod list_boundary_patch;
 mod list_helpers;
@@ -58,10 +59,12 @@ mod set_table_header;
 mod set_task_checked;
 mod split_list_item;
 mod split_table_cell;
+mod split_task_item;
 mod split_text_block;
 mod table_body_rewrite;
 mod table_merges;
 mod table_patch;
+mod task_list_helpers;
 pub(crate) mod text_patch;
 mod text_range_list;
 mod unwrap_blockquote;
@@ -88,6 +91,7 @@ pub use insert_table_column::InsertTableColumn;
 pub use insert_table_row::InsertTableRow;
 pub use insert_text::InsertText;
 pub use join_list_items::JoinListItems;
+pub use join_task_items::JoinTaskItems;
 pub use join_text_blocks::JoinTextBlocks;
 pub use merge_table_cells::MergeTableCells;
 pub use move_table_column::MoveTableColumn;
@@ -111,6 +115,7 @@ pub use set_table_header::SetTableHeader;
 pub use set_task_checked::SetTaskChecked;
 pub use split_list_item::SplitListItem;
 pub use split_table_cell::SplitTableCell;
+pub use split_task_item::SplitTaskItem;
 pub use split_text_block::SplitTextBlock;
 pub use unwrap_blockquote::UnwrapBlockquote;
 pub use unwrap_list::UnwrapList;
@@ -125,6 +130,10 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Split a task head, retaining left completion and creating an unchecked right task.
+    SplitTaskItem(SplitTaskItem),
+    /// Join adjacent tasks with explicit left-completion precedence and exact inverse.
+    JoinTaskItems(JoinTaskItems),
     /// Convert one prose/code block with an explicit formatting-loss policy.
     SetCodeBlock(SetCodeBlock),
     /// Change an existing code block's inert optional language token.
@@ -236,6 +245,8 @@ impl RichAction {
                 Some(RichPositionMap::Boundary(action.patch.map.clone()))
             }
             Self::SplitListItem(action) => action.patch.map.clone().map(RichPositionMap::Boundary),
+            Self::SplitTaskItem(action) => action.patch.map.clone().map(RichPositionMap::Boundary),
+            Self::JoinTaskItems(action) => action.patch.map.clone().map(RichPositionMap::Boundary),
             Self::JoinListItems(action) => action.patch.map.clone().map(RichPositionMap::Boundary),
             _ => None,
         };
@@ -269,6 +280,8 @@ impl RichAction {
             Self::IndentListItems(action) => action.apply(context, document),
             Self::OutdentListItems(action) => action.apply(context, document),
             Self::SplitListItem(action) => action.apply(context, document),
+            Self::SplitTaskItem(action) => action.apply(context, document),
+            Self::JoinTaskItems(action) => action.apply(context, document),
             Self::JoinListItems(action) => action.apply(context, document),
             Self::WrapList(action) => action.apply(context, document),
             Self::UnwrapList(action) => action.apply(context, document),

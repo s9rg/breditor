@@ -7,6 +7,7 @@ mod change_inline_formats;
 mod clear_table_cells;
 mod clipboard_ids;
 mod data_dispatch;
+mod delete_horizontal_rule;
 mod delete_image;
 mod delete_selection;
 mod delete_table;
@@ -18,6 +19,7 @@ mod input_plan;
 mod insert_blocks;
 mod insert_formatted_text;
 mod insert_hard_break;
+mod insert_horizontal_rule;
 mod insert_image;
 mod insert_paragraph;
 mod insert_plain_text;
@@ -25,6 +27,7 @@ mod insert_table;
 mod insert_table_column;
 mod insert_table_row;
 mod join_list_items;
+mod join_task_items;
 mod join_text_blocks;
 mod merge_table_cells;
 mod move_table_column;
@@ -41,6 +44,8 @@ mod replace_image;
 mod replace_text_range;
 mod resize_image;
 mod resize_table_column;
+mod set_code_block;
+mod set_code_language;
 mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
@@ -49,14 +54,20 @@ mod set_list_kind;
 mod set_pending_formats;
 mod set_selection;
 mod set_table_header;
+mod set_task_checked;
 mod split_list_item;
 mod split_support;
 mod split_table_cell;
+mod split_task_item;
 mod split_text_block;
 mod support;
 mod undo;
+mod unwrap_blockquote;
 mod unwrap_list;
+mod unwrap_task_list;
+mod wrap_blockquote;
 mod wrap_list;
+mod wrap_task_list;
 
 use super::error;
 use crate::BreditorError;
@@ -67,6 +78,17 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    SplitTaskItem,
+    JoinTaskItems,
+    SetCodeBlock,
+    SetCodeLanguage,
+    SetTaskChecked,
+    WrapBlockquote,
+    UnwrapBlockquote,
+    WrapTaskList,
+    UnwrapTaskList,
+    InsertHorizontalRule,
+    DeleteHorizontalRule,
     SetSelection,
     InsertPlainText,
     InsertHardBreak,

@@ -100,3 +100,34 @@ checkpoint. The new recovery blocker has a reproducer and negative-control proof
 the intermittent startup and original editing triggers still require explanation.
 Startup rejection has no live owner to export, so the runtime backup UI is not
 a remedy for it. No validation was relaxed, retry added, or timeout raised.
+
+## October 15 local structural SDK qualification
+
+A later 84-case installed SDK attempt passed 83 cases but rejected WebKit
+startup after the existing V1 inherited-style test reloaded its saved session.
+All eighteen new structural V2 executions passed in that attempt. The failed
+page had fetched its matching modules and Wasm successfully; the trace records
+`TypeError: Rich inline presentation: invalid integer domain`, not merely an
+expired readiness assertion. The failure is in the schema presentation boundary,
+before the reopened editor becomes ready. The rejected value and failed numeric
+predicate were not captured, so neither an engine cause nor a document/format
+cause has been established.
+
+The original trace, error context and installed-consumer manifest are retained at
+`target/structural-v2-local-development/webkit-v1-typing-reload-startup/`.
+The captured local Wasm is 4,217,856 bytes with SHA-256
+`93fcccb3a48ccd2713174c8602db3d9d3a27ad80d19da974c691b19162de12fb`.
+
+The same integer rejection now includes an immutable diagnostic cause containing
+only type, numeric value/bits, schema bounds and predicate results. Supplied
+strings, format literals and document text are excluded. The original admission
+predicate still decides rejection; diagnostic rechecks do not admit the value,
+retry construction or substitute another runtime. The installed test attaches
+this metadata on failure without suppressing the unhandled rejection.
+
+Forty fresh-context typing/history/reload follow-ups against that diagnostic
+candidate passed without reproducing the rejection. This is a negative
+investigation result, not repair proof. Integer-bound and diagnostic-redaction
+regressions are in the local presentation browser suite. The historical fault
+and this unexplained startup observation remain open regardless of subsequent
+passing qualification runs.

@@ -30,6 +30,29 @@ test("local presentation catalog retains the compiled binding and has no executa
  expect(result).toEqual({same:true,format:"breditor/inline-format-catalog",formats:[{kind:"breditor/strong",revision:1,properties:[]}],binding:true,keys:["format","formatVersion","formats","schema"],abi:"5"});
 });
 
+test("catalog integer rejection retains strict bounds and records only bounded numeric schema metadata",async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const {createRichInlinePresentation}=await import("/rich.js"),profile=window.rich.compileRichProfile(window.rich.wasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/integer-domain",version:1},extensions:[]}));
+  try{
+   const catalog=JSON.parse(profile.inlineCatalogJson()),manifest={recipes:[{formatKind:"breditor/strong",element:"strong"}]},accepted=[],rejected=[];
+   for(const version of [1,2,65536,0xffffffff]){
+    const input=structuredClone(catalog);input.schema.version=version;accepted.push(createRichInlinePresentation(JSON.stringify(input),manifest).schema.version);
+   }
+   for(const version of [0,-1,1.5,0x100000000,"private-catalog-text",null]){
+    const input=structuredClone(catalog);input.schema.version=version;
+    try{createRichInlinePresentation(JSON.stringify(input),manifest);throw Error("invalid schema version accepted");}catch(error){
+     if(!(error instanceof TypeError))throw error;
+     const cause=error.cause;rejected.push({message:error.message,format:cause?.format,version:cause?.formatVersion,type:cause?.observedType,decimal:cause?.decimal,bits:cause?.bits,minimum:cause?.minimum,maximum:cause?.maximum,accepted:cause?.originalAccepted,frozen:Object.isFrozen(cause),bounded:JSON.stringify(cause).length<512,redacted:!JSON.stringify(cause).includes("private-catalog-text")});
+    }
+   }
+   return {accepted,rejected};
+  }finally{profile.dispose();}
+ });
+ expect(result.accepted).toEqual([1,2,65536,0xffffffff]);expect(result.rejected).toHaveLength(6);
+ for(const failure of result.rejected)expect(failure).toMatchObject({message:"Rich inline presentation: invalid integer domain",format:"breditor/rich-integer-domain-failure",version:1,minimum:"1",maximum:"4294967295",accepted:false,frozen:true,bounded:true,redacted:true});
+ expect(result.rejected[4]).toMatchObject({type:"string",decimal:null,bits:null});expect(result.rejected[5]).toMatchObject({type:"object",decimal:null,bits:null});
+});
+
 test("local Rust property-state reads preserve exact history and restored pending plain typing",async({page})=>{
  const result=await page.evaluate(()=>{const profile=window.rich.compileRichProfile(window.rich.wasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/local-state",version:1},extensions:[]})),binding=profile.descriptor();
   const canonical=value=>Array.isArray(value)?value.map(canonical):value!==null&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;

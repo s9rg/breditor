@@ -25,7 +25,21 @@ function record(value:unknown,keys:readonly string[]):Record<string,unknown>{
  requireValue(actual.length===keys.length&&actual.every(key=>keys.includes(key)),"unexpected or missing field");return result;
 }
 function name(value:unknown):string{requireValue(typeof value==="string"&&value.length<=128&&qualified.test(value),"invalid qualified name");return value;}
-function integer(value:unknown,minimum:number,maximum:number):number{requireValue(typeof value==="number"&&Number.isSafeInteger(value)&&value>=minimum&&value<=maximum,"invalid integer domain");return value;}
+function integer(value:unknown,minimum:number,maximum:number):number{
+ const accepted=typeof value==="number"&&Number.isSafeInteger(value)&&value>=minimum&&value<=maximum;
+ if(!accepted){
+  // Keep the rejection unchanged. Diagnostics contain schema-domain numbers only,
+  // never supplied strings, format literals, document content or a retry result.
+  const number=typeof value==="number",bits=new DataView(new ArrayBuffer(8));if(number)bits.setFloat64(0,value,false);
+  throw new TypeError("Rich inline presentation: invalid integer domain",{cause:Object.freeze({
+   format:"breditor/rich-integer-domain-failure",formatVersion:1,observedType:typeof value,
+   decimal:number?String(value):null,bits:number?[bits.getUint32(0,false),bits.getUint32(4,false)]:null,
+   minimum:String(minimum),maximum:String(maximum),safe:number&&Number.isSafeInteger(value),
+   lower:number&&value>=minimum,upper:number&&value<=maximum,originalAccepted:accepted,
+  })});
+ }
+ return value as number;
+}
 function domain(value:unknown):BrowserProfileFormatPropertyValueType {
  requireValue(typeof value==="object"&&value!==null,"invalid property domain");
  const kind=(value as Record<string,unknown>)["kind"];

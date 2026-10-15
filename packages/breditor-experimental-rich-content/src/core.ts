@@ -2,13 +2,13 @@ import type {RichCommand} from "./commands.js";
 export type {RichCommand,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
-  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown};
+  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown};
 }
 export type RichCommandOutcome = "content" | "selection" | "typing" | "undo" | "redo" | "unchanged";
 export interface RichPoint {block: string; offset: string; affinity: "before" | "after"}
 export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
-export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string}
+export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2}
 /** Exact Rust-derived property state; all-present mixed values remain active. */
 export type RichInlineFormatState = {kind:"unavailable"}|{kind:"unset"}|{kind:"uniform";format:import("./commands.js").FormatLiteral}|{kind:"mixed";presentEverywhere:boolean};
 /** Read binding only, never a compiled proof or a mutation observation token. */
@@ -22,6 +22,8 @@ export interface RichView {
     cells: readonly {base: RichCell; master: RichCell; rowSpan: number; columnSpan: number; sources: readonly RichCell[]}[]}[];
 }
 export interface RichCoreEditor {
+  /** Read-only grammar revision, not mutation authority. Legacy owners may omit it. */
+  richLanguageVersion?():1|2;
   supportsStandardInlineControls?():boolean;
   caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;

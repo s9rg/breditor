@@ -9,6 +9,23 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     match tag {
+        CommandTag::SplitTaskItem => super::split_task_item::execute(owner, observation, input),
+        CommandTag::JoinTaskItems => super::join_task_items::execute(owner, observation, input),
+        CommandTag::SetCodeBlock => super::set_code_block::execute(owner, observation, input),
+        CommandTag::SetCodeLanguage => super::set_code_language::execute(owner, observation, input),
+        CommandTag::SetTaskChecked => super::set_task_checked::execute(owner, observation, input),
+        CommandTag::WrapBlockquote => super::wrap_blockquote::execute(owner, observation, input),
+        CommandTag::UnwrapBlockquote => {
+            super::unwrap_blockquote::execute(owner, observation, input)
+        }
+        CommandTag::WrapTaskList => super::wrap_task_list::execute(owner, observation, input),
+        CommandTag::UnwrapTaskList => super::unwrap_task_list::execute(owner, observation, input),
+        CommandTag::InsertHorizontalRule => {
+            super::insert_horizontal_rule::execute(owner, observation, input)
+        }
+        CommandTag::DeleteHorizontalRule => {
+            super::delete_horizontal_rule::execute(owner, observation, input)
+        }
         CommandTag::InsertParagraph => super::insert_paragraph::execute(owner, observation, input),
         CommandTag::PasteFlowAtText => {
             super::paste_flow_at_text::execute(owner, observation, input)
