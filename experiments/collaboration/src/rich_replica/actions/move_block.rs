@@ -18,12 +18,18 @@ impl MoveBlock {
         if self.before.as_deref() == Some(&self.block) {
             return Ok(());
         }
-        if let Some(parent) = &self.parent {
-            let raw = super::super::materialize::envelope(doc)?;
-            let node = super::super::creation::find(&raw["root"], &self.block)
-                .ok_or(Error::Contract("visible move source"))?;
-            if super::super::creation::find(node, parent).is_some() {
-                return Err(Error::Contract("move destination inside source subtree"));
+        let raw = super::super::materialize::envelope(doc)?;
+        let node = super::super::creation::find(&raw["root"], &self.block)
+            .ok_or(Error::Contract("visible move source"))?;
+        if let Some(parent) = &self.parent
+            && super::super::creation::find(node, parent).is_some()
+        {
+            return Err(Error::Contract("move destination inside source subtree"));
+        }
+        if let Some(before) = &self.before {
+            let (parent, _) = super::super::paragraphs::layout(&raw["root"], before)?;
+            if parent != self.parent {
+                return Err(Error::Contract("visible move before-anchor parent"));
             }
         }
         super::super::placement::move_block(
@@ -34,6 +40,13 @@ impl MoveBlock {
             stamp,
             ordinal,
         )?;
-        super::super::captions::inserted(doc, self.parent.as_deref(), &self.block, stamp)
+        super::super::captions::inserted(doc, self.parent.as_deref(), &self.block, stamp)?;
+        doc.commit();
+        let after = super::super::materialize::envelope(doc)?;
+        let (parent, before) = super::super::paragraphs::layout(&after["root"], &self.block)?;
+        if parent != self.parent || before != self.before {
+            return Err(Error::Contract("local move conflicts with rich grammar"));
+        }
+        Ok(())
     }
 }

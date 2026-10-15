@@ -45,7 +45,7 @@ mod view;
 
 pub use actions::Command;
 /// Private shared projection revision; incompatible causal interpretations must reject old frames.
-pub const MODEL_VERSION: u32 = 10;
+pub const MODEL_VERSION: u32 = 11;
 pub use clipboard::{ClipboardContent, PasteTarget};
 pub use clipboard_namespace::ClipboardNamespace;
 pub use navigate_grid::GridNavigationResult;

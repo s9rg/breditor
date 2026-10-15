@@ -82,10 +82,10 @@ fn element(
     let id = tree.create(parent)?;
     tree.get_meta(id)?.insert("block", block.clone())?;
     let meta = doc.get_map("metadata").ensure_mergeable_map(&block)?;
+    meta.insert("type", kind)?;
     let parent_block =
         parent.map(|parent| super::model::string(&tree.get_meta(parent)?, "block")).transpose()?;
     super::placement::seed(doc, &block, parent_block.as_deref(), format!("birth:{id}"))?;
-    meta.insert("type", kind)?;
     meta.insert(
         "entity",
         node.get("entityId").ok_or(Error::Contract("shared entity"))?.to_string(),

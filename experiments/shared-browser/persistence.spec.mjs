@@ -36,7 +36,7 @@ test("quota failure stays explicit and can retry the newest complete checkpoint 
 });
 test("old private journals are rejected before restore without overwriting their stored bytes",async({page})=>{
  const result=await page.evaluate(async()=>{const t=window.sharedTools,database=`old-journal-${crypto.randomUUID()}`,base={database,room:"room",writer:"101",create:()=>new t.wasm.RichReplicaProbe(t.vector.rich_local_input,"101"),restore:j=>t.wasm.RichReplicaProbe.restore("room",j)};
-  const first=await t.SharedPersistentSession.open(base),old=JSON.parse(first.core.checkpointJson());old.version=10;const bytes=JSON.stringify(old);await first.close();
+  const first=await t.SharedPersistentSession.open(base),old=JSON.parse(first.core.checkpointJson());old.version=11;const bytes=JSON.stringify(old);await first.close();
   const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(database,1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
   await new Promise((resolve,reject)=>{const tx=db.transaction("journals","readwrite");tx.objectStore("journals").put(bytes,["room","101"]);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});
   let callbacks=0,error;try{await t.SharedPersistentSession.open({...base,create:()=>{callbacks++;throw Error("Must not replace an old journal");},restore:()=>{callbacks++;throw Error("Must reject the old family before replay");}});}catch(e){error=e.code;}

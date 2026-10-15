@@ -91,13 +91,21 @@ suspends its lowest-priority authored edge and exposes that node's next choice
 or immutable origin; it never discards either subtree. Undo can reactivate a
 suspended move. Newly derived table cells retain their implicit row ancestry
 for the same resolver. Local moves into their own descendants reject without
-publication. This advances the private owner to model 10/journal V11. Grammar
-conflicts between concurrent kind changes and moves remain a separate gate.
+publication. Kind/move conflicts now preserve kind intent and choose a compatible
+retained placement. Immutable root occurrences are reserved outside user history
+for flow blocks whose original context becomes incompatible. Nested tables
+similarly suspend an ancestor move or expose the inner table at its reserved root.
+Hidden content and nonselected captions remain hidden. These contracts advance
+the private owner to model 11/journal V12; local invalid moves still reject.
 
-The current functional checkpoint passes 196 private native collaboration tests,
-81 combined shared-editor browser cases and 309 legacy browser cases across
+The grammar checkpoint passes 203 private native collaboration tests,
+96 combined shared-editor browser cases and a complete 309-case legacy browser run across
 Chromium, Firefox and WebKit, along with the default/opt-in core, Clippy,
-TypeScript and installed-package checks. This does not complete the relay,
+TypeScript and installed-package checks. An earlier full run hit WebKit's intermittent
+array-length runtime error in the existing axis/history test; five focused repeats
+and the following complete matrix passed. Stage/stack diagnostics remain in that
+test; this is not confirmation that the historical runtime fault is fixed.
+This does not complete the relay,
 presence, cross-host asset provider or generic shared factory gates below.
 
 The central decision is to design collaboration before adding new structural
@@ -431,17 +439,17 @@ before Wasm command JSON admission; restored owners have fresh authority. Shared
 caret typing now honors pending/derived formats and advances once in one history
 group. Null pending formats derive; an empty array explicitly types plain text.
 
-The private `breditor/rich-replica-journal` V11 reconstructs the original seed/join,
+The private `breditor/rich-replica-journal` V12 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1–V10 shared journals are rejected explicitly; local rich recovery and default
+V1–V11 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision 10 and the explicit
+envelope. Room ID, schema selector/fingerprint, model revision 11 and the explicit
 engine tag `1.16.2+breditor.deterministic-history.1`
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
@@ -516,7 +524,7 @@ Empty normalized heads can become movable list content without changing identity
 Their canonical retained occurrences merge across writers and remain conditional
 at their original fallback slot. Relocation or deletion can expose a deterministic
 spare; older Undo states do not acquire phantom empty paragraphs. The private
-model revision 10/journal V11 includes this normalization change. Preparation scans
+model revision 11/journal V12 includes this normalization change. Preparation scans
 the potential item fallback slots before history begins, allowing a head deletion
 or fresh split followed by unlisting to remain one atomic action. It also scans
 at most 20,000 metadata owners; wrapping accepts at most 1,000 item identities and
@@ -561,7 +569,7 @@ Hosts keep all allocated IDs consumed on failure. The browser shared event adapt
 uses the Rust namespace allocator and an atomic source-preserving flow paste;
 cross-host asset resolution remains separate integration work.
 Placement cycles now resolve before traversal, including implicit derived-cell
-ancestry. Grammar-conflict normalization, server-authorized leases,
+ancestry and kind/move compatibility. Server-authorized leases,
 presence and relay/provider integration are also unfinished. The full functional
 goal is unchanged; this adapter is not an end-user collaboration release.
 
@@ -926,8 +934,9 @@ This is a multi-milestone product expansion, not a few-hour production promise.
 The rich paragraph/list/range and clipboard planners now drive the opt-in shared
 browser coordinator. Shared caption creation/removal now owns an explicit retained
 paragraph choice. Placement cycles now preserve both rich subtrees and exact
-future history. The next focused sessions should complete grammar-conflict
-normalization and the generic shared profile factory, then
+future history. Kind/move and nested-table conflicts now retain content through
+compatible positions and reserved root occurrences. The next focused sessions
+should complete the generic shared profile factory, then
 integrate the reference relay, presence and host
 asset provider. Durable shared causal journals and local asset
 bytes now survive reload, but do not supply network acknowledgement or shared

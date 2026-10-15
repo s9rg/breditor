@@ -4,7 +4,7 @@
 //! text container. Splitting assigns existing characters to a fragment; joining
 //! reparents a text root. Neither operation copies, deletes or reinserts text.
 //! Loro remains responsible for character identities, causal replication and
-//! selective undo. `RichReplica` model revision 10 uses these roots for all text
+//! selective undo. `RichReplica` model revision 11 uses these roots for all text
 //! actions and paragraph boundaries. Creation-time characters retain identity
 //! outside history and their provenance follows owned birth visibility. The
 //! separate low-level fixture API still requires a staged caller.

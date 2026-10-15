@@ -7,6 +7,8 @@ use crate::{Error, register::Stamp};
 use loro::{ContainerID, ContainerType, LoroDoc, LoroMovableList};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+mod escape;
+mod grammar;
 mod selection;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,10 +38,6 @@ fn site(doc: &LoroDoc, site: &str) -> Result<Site, Error> {
         .ok_or(Error::Contract("shared placement record"))?;
     Ok(serde_json::from_str(value.as_str())?)
 }
-fn active(doc: &LoroDoc, block: &str) -> Result<String, Error> {
-    Projection::read(doc)?.active(block).map(str::to_owned)
-}
-
 /// One pure forest choice per complete AST materialization.
 pub(super) struct Projection {
     selected: BTreeMap<String, String>,
@@ -83,7 +81,8 @@ pub(super) fn define(
 ) -> Result<(), Error> {
     let order = prepare(doc, parent)?;
     let index = if let Some(before) = before {
-        let anchor = active(doc, before)?;
+        doc.commit();
+        let anchor = selection::anchor_site(doc, before, parent)?;
         if site(doc, &anchor)?.parent.as_deref() != parent {
             return Err(Error::Contract("shared creation before-anchor parent"));
         }
@@ -100,6 +99,7 @@ pub(super) fn define(
         serde_json::to_string(&Site { block: block.into(), parent: parent.map(str::to_owned) })?,
     )?;
     metadata(doc, block)?.insert("origin-site", site_id.clone())?;
+    escape::reserve(doc, block, parent, &site_id)?;
     order.insert(index, site_id)?;
     Ok(())
 }
@@ -143,7 +143,12 @@ pub(super) fn move_block(
         return Ok(());
     }
     let order = prepare(doc, parent)?;
-    let before = before.map(|block| active(doc, block)).transpose()?;
+    // Lowerers can have earlier semantic writes in the same Undo group. The
+    // read-only forest validates causal clocks, so flush before consulting it.
+    if before.is_some() {
+        doc.commit();
+    }
+    let before = before.map(|block| selection::anchor_site(doc, block, parent)).transpose()?;
     let index = if let Some(before) = before {
         let record = site(doc, &before)?;
         if record.parent.as_deref() != parent {

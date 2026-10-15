@@ -143,7 +143,7 @@ fn element(
 fn columns(doc: &LoroDoc, block: &str) -> Result<Vec<Value>, Error> {
     let root = ContainerID::new_root("columns", ContainerType::Map);
     let owner = ContainerID::new_mergeable(&root, block, ContainerType::Map);
-    let values = super::column_order::selected(doc, block)?;
+    let values = super::column_order::visible(doc, block)?;
     if values.len() > 128 {
         return Err(Error::Limit("shared columns"));
     }
@@ -162,15 +162,6 @@ fn columns(doc: &LoroDoc, block: &str) -> Result<Vec<Value>, Error> {
     for (column, _) in values {
         if !seen.insert(column.clone()) {
             return Err(Error::Contract("duplicate shared column"));
-        }
-        if !super::model::born(
-            doc,
-            source.get("definitions").and_then(|value| value.get(&column)).unwrap_or(&json!({})),
-        )? || super::model::any_deleted(
-            doc,
-            source.get("deletions").and_then(|value| value.get(&column)),
-        )? {
-            continue;
         }
         let records =
             widths.get(&column).and_then(|value| value.get("width")).and_then(Value::as_object);

@@ -47,7 +47,7 @@ export type PasteTarget={kind:"text"}|{kind:"grid"}|({kind:"flow"}&Position);
 export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"rowEnd"|"tableStart"|"tableEnd";
 export type NavigationResult={kind:"moved"|"unchanged"}|{kind:"boundary";boundary:string};
 export interface ClipboardContent {richJson:string;plainText:string}
-export interface SharedOwnerDescriptor {format:"breditor/shared-rich-owner";abiVersion:1;modelVersion:10;journalVersion:11;schema:{name:string;version:number};schemaFingerprint:string}
+export interface SharedOwnerDescriptor {format:"breditor/shared-rich-owner";abiVersion:1;modelVersion:11;journalVersion:12;schema:{name:string;version:number};schemaFingerprint:string}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
  descriptor_json():string;

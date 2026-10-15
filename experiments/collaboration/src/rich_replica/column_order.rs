@@ -71,6 +71,42 @@ pub(super) fn selected(doc: &LoroDoc, block: &str) -> Result<Vec<(String, usize)
     }
     Ok(result)
 }
+
+/// Shared table projection and grammar visibility use the same owned axis lives.
+pub(super) fn visible(doc: &LoroDoc, block: &str) -> Result<Vec<(String, usize)>, Error> {
+    let values = selected(doc, block)?;
+    if values.len() > 128 {
+        return Err(Error::Limit("shared columns"));
+    }
+    let owner = doc
+        .try_get_map(ContainerID::new_mergeable(
+            &ContainerID::new_root("columns", ContainerType::Map),
+            block,
+            ContainerType::Map,
+        ))
+        .ok_or(Error::Contract("shared column owner"))?;
+    let source = owner.get_deep_value().to_json_value();
+    let mut output = vec![];
+    let mut seen = std::collections::BTreeSet::new();
+    for (column, index) in values {
+        if !seen.insert(column.clone()) {
+            return Err(Error::Contract("duplicate shared column"));
+        }
+        if super::model::born(
+            doc,
+            source
+                .get("definitions")
+                .and_then(|value| value.get(&column))
+                .unwrap_or(&serde_json::json!({})),
+        )? && !super::model::any_deleted(
+            doc,
+            source.get("deletions").and_then(|value| value.get(&column)),
+        )? {
+            output.push((column, index));
+        }
+    }
+    Ok(output)
+}
 pub(super) fn move_column(
     doc: &LoroDoc,
     block: &str,

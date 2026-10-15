@@ -10,6 +10,8 @@ use breditor_collab_feasibility::{
 mod shared_caption;
 #[path = "vectors/shared_clipboard.rs"]
 mod shared_clipboard;
+#[path = "vectors/shared_grammar.rs"]
+mod shared_grammar;
 #[path = "vectors/shared_list.rs"]
 mod shared_list;
 #[path = "vectors/shared_paste_at_text.rs"]
@@ -158,6 +160,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "shared_paste_at_text":shared_paste_at_text::generate(&rich_local_input)?,
         "shared_caption":shared_caption::generate(&rich_local_input)?,
         "shared_placement":shared_placement::generate(&rich_local_input)?,
+        "shared_grammar":shared_grammar::generate(&rich_local_input)?,
     });
     Ok(vector)
 }

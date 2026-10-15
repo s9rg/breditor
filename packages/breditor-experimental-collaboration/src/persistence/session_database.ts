@@ -14,7 +14,7 @@ export function openSessionDatabase(name:string):Promise<IDBDatabase>{
 export function checkCheckpoint(value:string,room:string,writer:string):void{
  if(typeof value!=="string"||new TextEncoder().encode(value).length>MAX_CHECKPOINT_BYTES)throw new SharedEditorError("session_budget","Shared journal exceeds its 16 MiB storage budget");
  const header=JSON.parse(value) as {format?:unknown;version?:unknown;document?:unknown;writer?:unknown};
- if(header.format!=="breditor/rich-replica-journal"||header.version!==11||header.document!==room||header.writer!==writer)throw new SharedEditorError("session_identity","Shared journal does not belong to the leased room/writer/model");
+ if(header.format!=="breditor/rich-replica-journal"||header.version!==12||header.document!==room||header.writer!==writer)throw new SharedEditorError("session_identity","Shared journal does not belong to the leased room/writer/model");
  // This checks storage identity, not causal admission. The matching Rust restore owns that proof.
 }
 export function readCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promise<string|null>{

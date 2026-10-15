@@ -143,12 +143,15 @@ test("independent splits retract observed losing merges without undoing the othe
 
 test("created axes and merge history replay after page reload with exact future operation bytes",async({page})=>{
  const saved=await page.evaluate(()=>{
-  const {a,b}=window.sharedGrid(),apply=window.sharedApply,sync=window.sharedSync;try{
-   apply(a,window.sharedMerge(a,"m-reload","row"));b.receive(a.updates());
-   apply(b,{kind:"split_cell",data:{cell:window.sharedCell(b,"row","c").properties["breditor/block-id"]}});a.receive(b.updates());
-   const journal=a.checkpoint(),before=a.document_json();a.undo();sync(a,b);const undo=a.document_json(),undoBytes=Array.from(a.updates());a.redo();
-   return {journal,before,undo,undoBytes,redo:a.document_json(),redoBytes:Array.from(a.updates())};
-  }finally{a.free();b.free();}
+  // Retain operation/stack evidence if the intermittent runtime fault recurs.
+  // Completion before a transport error distinguishes page work from RPC encoding.
+  let phase="grid";const mark=value=>{phase=value;console.debug(`shared-axis-reload: ${value}`);};
+  try{mark("grid");const {a,b}=window.sharedGrid(),apply=window.sharedApply,sync=window.sharedSync;try{
+   mark("merge");apply(a,window.sharedMerge(a,"m-reload","row"));mark("receive merge");b.receive(a.updates());
+   mark("split");apply(b,{kind:"split_cell",data:{cell:window.sharedCell(b,"row","c").properties["breditor/block-id"]}});mark("receive split");a.receive(b.updates());
+   mark("checkpoint");const journal=a.checkpoint(),before=a.document_json();mark("undo");a.undo();mark("sync undo");sync(a,b);mark("undo export");const undo=a.document_json(),undoBytes=Array.from(a.updates());mark("redo");a.redo();
+   mark("redo export");const result={journal,before,undo,undoBytes,redo:a.document_json(),redoBytes:Array.from(a.updates())};mark(`complete (${undoBytes.length}/${result.redoBytes.length} bytes)`);return result;
+  }finally{mark("dispose");a.free();b.free();}}catch(error){throw Error(`shared-axis-reload at ${phase}: ${error?.stack??String(error)}`);}
  });
  await page.reload();await expect(page.locator("#status")).toHaveText("Ready for contract tests");
  const restored=await page.evaluate(async saved=>{const wasm=await import("/probe.js"),owner=wasm.RichReplicaProbe.restore("room",saved.journal);try{const before=owner.document_json();owner.undo();const undo=owner.document_json(),undoBytes=Array.from(owner.updates());owner.redo();return {before,undo,undoBytes,redo:owner.document_json(),redoBytes:Array.from(owner.updates())};}finally{owner.free();}},saved);
