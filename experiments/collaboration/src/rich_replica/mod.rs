@@ -44,6 +44,7 @@ pub mod text_flow;
 mod ui_state;
 mod update_frame;
 mod view;
+mod writer_transport;
 
 pub use actions::Command;
 /// Private shared projection revision; incompatible causal interpretations must reject old frames.
@@ -56,3 +57,6 @@ pub use presence::PresenceResolution;
 pub use profile::SharedRichProfile;
 pub use session::RichReplica;
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
+pub use writer_transport::{
+    PreparedWriterGroup, WriterClock, WriterDependency, WriterGroupPreparation, WriterReceipt,
+};

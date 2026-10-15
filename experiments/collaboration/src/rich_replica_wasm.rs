@@ -58,6 +58,18 @@ impl RichReplicaProbe {
 }
 #[wasm_bindgen]
 impl RichReplicaProbe {
+    /// Export complete, single-writer action windows under the exact live observation.
+    pub fn writer_groups(
+        &self,
+        observation: &RichSharedObservation,
+        after: &str,
+    ) -> Result<String, JsValue> {
+        self.inner.writer_groups_guarded(&observation.inner, after).map_err(error)
+    }
+    /// Read an applied author's exact counter and canonical prefix digest, never a credential.
+    pub fn writer_clock(&self, writer: &str) -> Result<String, JsValue> {
+        serde_json::to_string(&self.inner.writer_clock(writer).map_err(error)?).map_err(error)
+    }
     /// Capture read-only ephemeral causal selection under the exact current observation.
     pub fn presence_frame(&self, observation: &RichSharedObservation) -> Result<String, JsValue> {
         self.inner.presence_frame_guarded(&observation.inner).map_err(error)

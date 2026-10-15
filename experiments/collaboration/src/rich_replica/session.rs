@@ -110,6 +110,7 @@ pub struct RichReplica {
     metadata: Arc<Mutex<Channel>>,
     recipes: BTreeMap<String, Recipe>,
     cursors: super::history_cursors::HistoryCursors,
+    pub(super) writer_windows: Vec<super::writer_transport::Window>,
 }
 
 impl RichReplica {
@@ -230,7 +231,7 @@ impl RichReplica {
         undo.set_merge_interval(0);
         undo.set_max_undo_steps(MAX_ENTRIES);
         let metadata = history_metadata::connect(&undo);
-        Ok(Self {
+        let mut owner = Self {
             doc,
             undo,
             codec,
@@ -242,7 +243,10 @@ impl RichReplica {
             metadata,
             recipes: BTreeMap::new(),
             cursors: super::history_cursors::HistoryCursors::default(),
-        })
+            writer_windows: Vec::new(),
+        };
+        owner.note_writer_window(&VersionVector::default(), true)?;
+        Ok(owner)
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
@@ -369,6 +373,7 @@ impl RichReplica {
 
     fn replay(&mut self, entry: &Entry) -> Result<(), Error> {
         let before = self.doc.oplog_vv();
+        let applied_before = self.doc.state_vv();
         let expected = match entry {
             Entry::Local {
                 commands,
@@ -411,6 +416,7 @@ impl RichReplica {
         {
             return Err(Error::ReplayMismatch);
         }
+        self.note_writer_window(&applied_before, false)?;
         Ok(())
     }
 
@@ -419,6 +425,7 @@ impl RichReplica {
     }
 
     pub(super) fn adopt(&mut self, mut candidate: Self) -> Result<(), Error> {
+        candidate.note_writer_window(&self.doc.state_vv(), false)?;
         candidate.journal.publication = publication(&self.journal.publication)?
             .checked_add(1)
             .ok_or(Error::Limit("shared publication revision"))?

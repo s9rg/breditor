@@ -28,7 +28,7 @@ async function compiledProfileContract(configuration:SharedProfileConfiguration,
  const profile=compileSharedProfile({SharedRichProfile},configuration);
  const session=await SharedPersistentSession.open({database:"typed-application-profile",room:"room",writer:"101",create:()=>profile.create(input,"101"),restore:j=>profile.restore("room",j)});
  const peer:SharedRustOwner=profile.join_frame("room","202",frame);peer.free();
- const presence=new SharedPresence(session.core,{autoExpire:false});presence.announce({writer:"202",session:"typed-peer",label:"Peer"});presence.dispose();void session.core.presenceFrame();await session.close();profile.free();
+ const presence=new SharedPresence(session.core,{autoExpire:false});presence.announce({writer:"202",session:"typed-peer",label:"Peer"});presence.dispose();void session.core.presenceFrame();const batch=session.core.writerGroups("0",session.core.view().revision);const counter:string=batch.through;void session.core.writerClock("101");void counter;await session.close();profile.free();
  // @ts-expect-error Shared configuration is not a production V6 bootstrap or a caller fingerprint.
  compileSharedProfile({SharedRichProfile},{format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/wrong",version:1},extensions:[]});
 }

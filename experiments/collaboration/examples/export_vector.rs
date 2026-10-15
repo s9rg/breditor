@@ -24,6 +24,8 @@ mod shared_presence;
 mod shared_profile;
 #[path = "vectors/shared_range.rs"]
 mod shared_range;
+#[path = "vectors/shared_writer.rs"]
+mod shared_writer;
 
 fn insert(offset: u32, text: &str) -> Command {
     Command::InsertText(InsertText { target: TextTarget::Body, offset, text: text.into() })
@@ -167,6 +169,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "shared_grammar":shared_grammar::generate(&rich_local_input)?,
         "shared_profile":shared_profile::generate(&rich_local_input)?,
         "shared_presence":shared_presence::generate(&rich_local_input)?,
+        "shared_writer":shared_writer::generate(&rich_local_input)?,
     });
     Ok(vector)
 }

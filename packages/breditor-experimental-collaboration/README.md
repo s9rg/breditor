@@ -83,6 +83,51 @@ import or permission to clone a live writer. Earlier shared models and journals
 are incompatible with the current source-routing, caption-choice, creation
 provenance and placement-forest contracts.
 
+## Single writer relay transport
+
+`supportsWriterTransport()` detects the matching optional Rust capability.
+`writerGroups(after, revision?)` returns an immutable-publication batch of complete
+local action/Undo/Redo groups starting at an acknowledged author counter. It
+does not export other writers' operations or UI-only changes. A multi-command
+dispatch remains one group; history recovery reconstructs the same boundaries
+from the existing journal. No transport cache is persisted or substituted for
+the original replay proof. Mid-group/future counters reject; a stale optional
+publication revision rejects before counter admission.
+
+`after` is an exact decimal engine author counter, not a document publication
+revision or text offset. `writerClock(writer)` reads its applied exclusive end
+and canonical operation-prefix digest. Batches use original
+`breditor/shared-writer-groups` V1, with at most 64 opaque group strings and 8 MiB.
+Follow `through` while `hasMore` is true. A single group uses
+`breditor/shared-writer-group` V1, capped at 1 MiB of engine bytes and 5 MiB of JSON.
+Each binds room, schema, model, engine, writer, start/end, required foreign applied
+counters, payload digest, previous-prefix digest and canonical group digest.
+Canonical operation hashes do not treat variable binary packing as identity.
+
+These group strings are outbound relay input, not arguments to `receiveFrame`.
+Full-state `updateFrame`/`receiveFrame` remain the separate trusted-server catchup
+path. Genesis is explicitly tagged for a dedicated creation-authority handshake;
+an ordinary edit cannot rewrite room initialization even if its header value
+would remain unchanged. Account roles and writer leases are not proved by a
+writer ID or digest.
+
+The Rust relay boundary offers `prepare_writer_group(authenticated_writer,
+frame)`, returning an unpublished candidate, exact duplicate receipt, or missing
+dependencies. Unknown dependencies stay outside the live engine/history; a
+partially integrated or invalid group cannot poison another author's next
+admission. Actual engine origins/ranges and full integration are checked. Old
+known ranges must match canonical lineage; divergent same-writer history rejects.
+
+`PreparedWriterGroup` exposes immutable candidate content/checkpoint/receipt.
+The host holds its room serialization lock, authenticates the account and current
+lease, persists the accepted record durably, then calls guarded
+`commit_writer_group`. A preparation, integrated receipt or socket write is not
+a disk acknowledgement. The core guard rejects stale or foreign candidates.
+The network service, durable append/receipt storage, authentication adapter,
+writer-lease registry and bounded import worker remain implementation work.
+The native admission test bridge is not a listening server or authenticator.
+ABI 1, shared model 11, journal V12 and default shipping graphs remain unchanged.
+
 ## Ephemeral causal presence
 
 `core.presenceFrame()` captures the exact current Rust observation into an opaque

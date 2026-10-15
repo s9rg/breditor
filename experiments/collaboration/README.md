@@ -513,8 +513,8 @@ imports and declarations, renderer exports, licenses, and future Undo/Redo throu
 the matching real Wasm owner pass. The private owner fixture remains an external
 test input; the archive does not disguise it as a generic shipping factory.
 
-The current isolated Wasm is 9,010,924 bytes, or 2,435,943 bytes under gzip, with
-SHA-256 `f3ded07b48e9b68c409ed74a081aa810cd8a1b5768e3939971033098d5bae993`.
+The current isolated Wasm is 9,040,335 bytes, or 2,441,879 bytes under gzip, with
+SHA-256 `a599c57c6ac49104387bd12f52c3833c1fad7a49803658201d4c3d422ebfdd1d`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -972,6 +972,69 @@ cases total with the shared suite. Default core 703 tests, opt-in core 1,217 tes
 137 doctests and the rich action/clipboard/navigation/recovery contracts pass on
 the same frozen source. These functional checks do not complete the network,
 distribution, physical accessibility or broader production-reliability gates.
+
+## Atomic single writer relay groups
+
+Trusted full-state updates can carry several writers and cannot establish who
+authored a submission. The separate original writer-group V1 protocol contains
+only one author's complete publication window. Rust derives windows from the
+same seed/join and local action/Undo/Redo replay used by journal V12. Remote
+imports and UI-only publications do not produce local outgoing groups. This
+adds a derived read cache, not another saved history or a causal interpretation
+change. Old ABI 1/model 11/journal V12 contracts remain unchanged.
+
+`writer_groups_guarded(observation, after)` requires a current exact observation
+and an acknowledged author boundary. It caps one batch at 64 groups/8 MiB,
+returns explicit continuation and never splits an authored group. Each opaque
+inner group caps engine bytes at 1 MiB/JSON at 5 MiB and binds room, schema,
+model, pinned engine, author and range. It carries checked foreign dependencies,
+binary payload integrity, a canonical prior-prefix digest and a canonical group
+digest. Exact operation JSON, rather than variable binary packing, defines
+lineage. Decimal writer/counter values do not pass through JS floating point.
+`writer_clock` reads applied progress and its canonical prefix without mutation.
+
+`prepare_writer_group` takes the writer authenticated by the host, not an account
+claim from the payload. It checks the actual engine range contains that author
+alone. Missing own/foreign dependencies remain external to the live engine;
+an isolated partial import, malformed group or failed AST admission cannot poison
+later valid dependency imports. Known groups must match retained canonical
+history; duplicates do not add publication/history, and forks reject. Pending
+queue, fairness and admission-work budgets belong to the service layer.
+
+Preparation returns an exclusive candidate exposing immutable document,
+checkpoint and integrated receipt. Under a serialized room transaction, the
+relay must persist before guarded `commit_writer_group`. The old exact owner
+observation fences a concurrent or foreign candidate. Preparation/integration is
+not a server-durable acknowledgement. Failed persistence can drop the candidate
+without changing live content. Account roles, writer lease credentials,
+durable append/index recovery and network acknowledgement state remain work.
+
+Genesis has its own explicit kind and requires a dedicated creation-authority
+path. A reproduced relabeling case created a fresh paragraph seed with the same
+room/header and changed its kind to action. Header-value equality alone admitted
+it. Ordinary group admission now inspects the actual canonical operation span
+and rejects room-binding writes even when their final value would be unchanged.
+The regression retains this exact fresh-identity reproduction.
+
+Ten native contracts cover semantic grouping, true author-only bytes, wide IDs,
+out-of-order dependencies and own gaps, duplicate/fork handling, partial-import
+isolation, staged guards, exact recovery, bounded continuation, private UI and
+genesis separation. Independent native vectors and the newline-framed Rust test
+bridge check real Wasm groups against native lineage and eleven admission
+outcomes, with replay after every step. The bridge is not the reference network
+relay or an authentication mechanism. Browser types retain optional capability
+detection for older ordinary-editing owners; installed archives exercise the
+same real generated owner.
+
+This checkpoint passes all 229 private native tests, strict native/wasm32
+Clippy, generated and installed-consumer TypeScript, all 144 combined browser
+cases (48 each in Chromium, Firefox and WebKit), and the offline installed
+package consumer with its real matching Wasm. No retries or relaxed assertions
+are used by this combined matrix.
+The full regression check also passes all 309 legacy browser cases, preserving
+every WebKit spec once in fresh per-file processes: 453 browser cases in total.
+It additionally passes 703 default core tests, 1,217 opt-in core tests, 137
+doctests and all rich action/clipboard/recovery integration suites.
 
 ## Shared semantic clipboard
 

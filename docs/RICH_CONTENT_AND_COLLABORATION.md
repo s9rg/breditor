@@ -145,6 +145,24 @@ operations. Stable content identities, table geometry, image assets, selections
 and local undo must agree on one document model. Existing paragraph, heading,
 flat-list and nested-list contracts remain supported by their current factories.
 
+The relay foundation now separates trusted whole-state catchup from single-writer
+submissions. Rust reconstructs complete authored action/Undo/Redo boundaries
+from the original journal and exports bounded group strings, causal dependencies,
+payload integrity and canonical operation lineage. Preparation validates actual
+author/range, room/schema/model/engine binding, lineage and full semantic
+integration on an unpublished candidate. Missing dependencies are not imported
+into live history. Duplicates do not republish; ordinary actions cannot contain
+room-initialization writes. Candidate commit is fenced by the exact old owner
+observation so a relay can append durably before publication under a room lock.
+This does not yet implement account authentication, durable relay storage,
+server leases, a listening WebSocket service or the import-worker resource gate.
+The atomic-writer checkpoint passes 229 private native contracts and 144 combined
+browser cases. Full regressions add all 309 legacy browser cases (453 total),
+703 default and 1,217 opt-in core tests, 137 doctests and rich integration tests.
+Generated/installed TypeScript, strict native/Wasm Clippy and the offline
+installed-package consumer also pass. This is functional checkpoint evidence,
+not completion of the remaining service or release gates.
+
 ## Scope of the combined release
 
 Tables include insertion/removal; row and column insertion, removal and

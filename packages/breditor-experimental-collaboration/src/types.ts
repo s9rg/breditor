@@ -53,10 +53,14 @@ export type SharedPresenceResolution=
  |{kind:"resolved";writer:string;selection:RichSelection|null}
  |{kind:"pending";writer:string}
  |{kind:"cleared";writer:string;reason:"target_deleted"|"hidden_table"|"no_text_target"};
+export interface SharedWriterClock {writer:string;through:string;prefixDigest:string}
+/** Frozen complete local action windows. Group strings carry their own strict protocol binding. */
+export interface SharedWriterGroups {format:"breditor/shared-writer-groups";formatVersion:1;writer:string;from:string;through:string;hasMore:boolean;groups:readonly string[]}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
  /** Additive capability: older matching owners may omit the separate presence channel. */
  presence_frame?(observation:unknown):string;resolve_presence?(frame:string):string;
+ writer_groups?(observation:unknown,after:string):string;writer_clock?(writer:string):string;
  descriptor_json():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;
