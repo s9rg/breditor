@@ -46,7 +46,7 @@ export class SharedRelayAssets {
    const headers=new Headers({"Authorization":`Bearer ${token}`,"X-Breditor-Principal":this.#options.principal});
    const result=await run(headers,controller.signal);this.#live();if(controller.signal.aborted)throw new SharedRelayError("asset_cancelled");return result;
   }catch(error){if(error instanceof SharedRelayError)throw error;throw new SharedRelayError(controller.signal.aborted?"asset_cancelled":"asset_transfer_failed");}
-  finally{clearTimeout(timer);signal?.removeEventListener("abort",abort);this.#active.delete(controller);release?.();}
+  finally{clearTimeout(timer);signal?.removeEventListener("abort",abort);controller.abort();this.#active.delete(controller);release?.();}
  }
  #url(asset:string):string{return new URL(encodeURIComponent(digest(asset)),this.#base).href;}
  /** Compatible with RichAssetStore.flush; exact retries return the same stable storage reference. */

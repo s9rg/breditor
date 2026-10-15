@@ -1,4 +1,4 @@
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,SharedPresence,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
 import {RichAssetStore} from "@breditor/experimental-rich-content";
 import {model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
 async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
@@ -11,6 +11,7 @@ async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
  core.dispatch({commands:[{kind:"resize_image",data:{block:"image",size:"240"}}]});
  await assets.cacheRemote("sha256:"+"0".repeat(64),new Blob(),"remote-receipt");
  const remote=new SharedRelayAssets({endpoint:"ws://127.0.0.1:1/ws",principal:"consumer",getToken:()=>"a".repeat(64),store:assets});
+ const presence=new SharedPresence(core),overlay=new SharedPresenceOverlay({editor,presence});overlay.refresh();overlay.dispose();presence.dispose();
  await assets.flush(remote.uploader);editor.refreshAssets();refreshAssets(editor.surface,{resolveAsset:binding=>remote.resolve(binding.asset)});remote.dispose();
  void model;void SharedPersistentSession;const state:SharedSaveState={status:"saved",revision:"0",error:null};void state;editor.dispose();assets.close();
 }

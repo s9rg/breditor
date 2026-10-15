@@ -22,6 +22,10 @@ pub(super) enum Request {
         group: String,
     },
     Sync,
+    Presence {
+        sequence: String,
+        frame: String,
+    },
     Clock {
         writer: String,
     },

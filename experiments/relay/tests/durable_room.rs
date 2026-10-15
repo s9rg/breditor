@@ -326,3 +326,47 @@ fn corrupt_length_cannot_disguise_a_complete_accepted_record_as_an_incomplete_ta
     assert_eq!(fs::read(&files.path)?, corrupt);
     Ok(())
 }
+
+#[test]
+fn presence_is_authenticated_ephemeral_and_fenced_without_document_or_log_writes() -> Result {
+    let files = Files::new()?;
+    let (p, mut room) = start(&files)?;
+    let (alice, a) = join(&p, &mut room, "alice")?;
+    let (bob, b) = join(&p, &mut room, "bob")?;
+    room.grant("owner", "reader", Some(Role::Reader))?;
+    let frame = a.presence_frame_guarded(&a.observe()?)?;
+    let log = fs::read(&files.path)?;
+    let document = room.catchup("owner")?;
+    assert!(matches!(room.publish_presence("bob", &bob.lease, "1", &frame), Err(Error::Lease)));
+    assert!(matches!(
+        room.publish_presence("reader", &alice.lease, "1", &frame),
+        Err(Error::Permission)
+    ));
+    assert!(room.publish_presence("alice", &alice.lease, "9007199254740993", &frame)?);
+    assert!(!room.publish_presence("alice", &alice.lease, "9007199254740992", &frame)?);
+    let peers = room.presence_snapshot("reader", None)?;
+    assert_eq!(peers.len(), 1);
+    assert_eq!(peers[0].label, "alice");
+    assert_eq!(peers[0].writer, alice.lease.writer);
+    assert_ne!(peers[0].session, alice.lease.token);
+    assert_eq!(fs::read(&files.path)?, log);
+    assert_eq!(room.catchup("owner")?, document);
+    let renewed = room.resume("alice", &alice.lease.writer, &alice.credential)?;
+    assert!(room.presence_snapshot("reader", None)?.is_empty());
+    assert!(room.publish_presence("alice", &alice.lease, "9007199254740994", &frame).is_err());
+    assert!(room.publish_presence("alice", &renewed, "1", &frame)?);
+    let next = room.presence_snapshot("reader", None)?;
+    assert_ne!(next[0].session, peers[0].session);
+    room.release(&alice.lease);
+    assert_eq!(room.presence_snapshot("reader", None)?.len(), 1);
+    let bframe = b.presence_frame_guarded(&b.observe()?)?;
+    room.publish_presence("bob", &bob.lease, "1", &bframe)?;
+    room.grant("owner", "alice", None)?;
+    assert_eq!(room.presence_snapshot("reader", None)?.len(), 1);
+    room.release(&bob.lease);
+    assert!(room.presence_snapshot("reader", None)?.is_empty());
+    drop(room);
+    let (mut recovered, _) = Room::open(&files.path)?;
+    assert!(recovered.presence_snapshot("owner", None)?.is_empty());
+    Ok(())
+}

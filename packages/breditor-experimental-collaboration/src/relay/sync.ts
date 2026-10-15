@@ -2,6 +2,7 @@ import {SharedRichEditor} from "../core.js";
 import type {SharedWriterClock} from "../types.js";
 import {checkCheckpoint} from "../persistence/session_database.js";
 import {RelayChannel} from "./channel.js";
+import {RelayPresence} from "./presence.js";
 import {accountToken} from "./registration.js";
 import {SharedRelayError,checkClock,checkDescriptor,clock,counter,decimal,descriptor,digest,frame,groupMetadata,identity,object,prefixAt,timeout,writer} from "./validation.js";
 import type {SharedRelayIdentity,SharedRelayOptions,SharedRelayState,SharedRelayStatus} from "./types.js";
@@ -22,6 +23,7 @@ export class SharedRelaySync {
  #latest:string|undefined;#drain:Run|undefined;#pump:Run|undefined;#pumpAgain=false;#scheduled=false;
  #notifyQueued=false;#reported:string|null=null;#localFailure=false;#waiters=new Set<Waiter>();
  #assetHintQueued=false;#assetHints=false;
+ #presence:RelayPresence|undefined;#presenceEnabled=false;
  #milliseconds:number;#minimum:number;#maximum:number;
  #missing:{writer:string;counter:string}[]=[];
 
@@ -33,6 +35,7 @@ export class SharedRelaySync {
   if(!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   checkCheckpoint(core.checkpointJson(),this.#identity.room,this.#identity.writer);
   this.#local=core.writerClock(this.#identity.writer).through;
+  if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
   this.#unsubscribe=core.subscribe(()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}});
   attached.add(core);
   this.#wanted=options.autoConnect!==false;
@@ -52,6 +55,7 @@ export class SharedRelaySync {
  #stop():void{
   this.#epoch++;this.#ready=false;this.#latest=undefined;this.#drain=undefined;this.#pump=undefined;this.#pumpAgain=false;this.#missing=[];this.#connecting=undefined;
   this.#abort?.abort();this.#abort=undefined;const channel=this.#channel;this.#channel=undefined;channel?.close();
+  this.#presence?.stop();this.#presenceEnabled=false;
  }
  #fail(error:SharedRelayError,epoch:number):void{
   if(!this.#active(epoch))return;this.#stop();this.#error=error.code;
@@ -64,6 +68,7 @@ export class SharedRelaySync {
   if(!this.#active(epoch))return;
   try{if(event["kind"]==="error"){this.#fail(new SharedRelayError(String(event["code"])),epoch);return;}
    if(event["kind"]==="assetsChanged"){if(!this.#assetHints)throw new SharedRelayError("protocol_error");this.#assetsChanged(epoch);return;}
+   if(event["kind"]==="presence"){if(!this.#presenceEnabled)throw new SharedRelayError("protocol_error");this.#presence?.receive(event["peers"]);return;}
    if(event["kind"]!=="catchup")throw new SharedRelayError("protocol_error");this.#latest=frame(event["frame"]);if(this.#ready)void this.#drainFrames(epoch).catch(()=>{});}
   catch{this.#fail(new SharedRelayError("protocol_error"),epoch);}
  }
@@ -85,10 +90,12 @@ export class SharedRelaySync {
   const token=await accountToken(this.#options.getToken,abort.signal,this.#milliseconds);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   const channel=await RelayChannel.open(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),abort.signal);
   if(!this.#active(epoch)){channel.close();throw new SharedRelayError("disconnected");}this.#channel=channel;
-  const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token,...(this.#options.onAssetsChanged?{capabilities:["assets"]}:{})});
+  const wanted=[...(this.#options.onAssetsChanged?["assets"]:[]),...(this.#presence?["presence"]:[])];
+  const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token,...(wanted.length?{capabilities:wanted}:{})});
   if(authenticated["kind"]!=="authenticated")throw new SharedRelayError("protocol_error");checkDescriptor(this.#core,descriptor(authenticated["descriptor"]));
-  const capabilities=authenticated["capabilities"]??[];if(!Array.isArray(capabilities)||capabilities.some(c=>c!=="assets")||capabilities.length>1)throw new SharedRelayError("protocol_error");
+  const capabilities=authenticated["capabilities"]??[];if(!Array.isArray(capabilities)||capabilities.some(c=>c!=="assets"&&c!=="presence")||capabilities.length>2||new Set(capabilities).size!==capabilities.length)throw new SharedRelayError("protocol_error");
   this.#assetHints=!!this.#options.onAssetsChanged&&capabilities.includes("assets");
+  this.#presenceEnabled=!!this.#presence&&capabilities.includes("presence");
   this.#latest=frame(authenticated["frame"]);
   // Never import a server's own-author future and then pretend it belongs to this local journal.
   await this.#readClock(channel);const resumed=await channel.request({kind:"resume",writer:this.#identity.writer,credential:this.#identity.credential});
@@ -96,7 +103,7 @@ export class SharedRelaySync {
   const current=await this.#readClock(channel);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   if(this.#acked&&BigInt(current.through)<BigInt(this.#acked.through))throw new SharedRelayError("server_rollback");
   if(current.through!==this.#acked?.through)this.#sequence=null;this.#acked=current;this.#ready=true;this.#localFailure=false;this.#error=null;this.#reported=null;this.#attempts=0;this.#status="syncing";this.#notify();
-  await this.#drainFrames(epoch);if(this.#active(epoch)){this.#refresh();this.#schedulePump();if(this.#assetHints)this.#assetsChanged(epoch);}
+  await this.#drainFrames(epoch);if(this.#active(epoch)){this.#refresh();this.#schedulePump();if(this.#assetHints)this.#assetsChanged(epoch);if(this.#presenceEnabled)this.#presence?.start(channel);}
  }
  async #readClock(channel:RelayChannel):Promise<SharedWriterClock>{const result=await channel.request({kind:"clock",writer:this.#identity.writer});if(result["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(result["clock"],this.#identity.writer);checkClock(this.#core,current);return current;}
  #drainFrames(epoch:number):Promise<void>{
@@ -145,5 +152,5 @@ export class SharedRelaySync {
  /** Deliberate offline mode cancels queued (not yet admitted) remote frames. */
  disconnect():void{if(this.#closed)return;this.#wanted=false;clearTimeout(this.#retry);this.#retry=undefined;this.#stop();this.#status="offline";this.#error=null;this.#rejectWaiters(new SharedRelayError("disconnected"));this.#notify();}
  /** Stops networking only. Close the persistent session separately after its final local save. */
- dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";this.#unsubscribe();attached.delete(this.#core);this.#notify();}
+ dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";this.#unsubscribe();this.#presence?.dispose();attached.delete(this.#core);this.#notify();}
 }

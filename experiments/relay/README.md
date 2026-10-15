@@ -4,7 +4,7 @@ This isolated Rust crate implements durable room authority and an optional
 loopback WebSocket reference host. It does not change the default editor
 dependency graph, private shared model 11, journal V12 or Wasm ABI 1. Do not
 expose it as a public untrusted endpoint: the resource-limited import worker,
-TLS/deployment qualification, network presence and optional distribution
+TLS/deployment qualification and optional distribution
 promotion remain separate integration gates.
 
 Run the reproducible functional check from the repository root:
@@ -128,6 +128,37 @@ takeover regression failed on the old binary in all three engines, then passed
 on the rebuilt fixed service and in the final full matrix. No test retries or
 relaxed assertions were introduced.
 
+## Authenticated ephemeral presence
+
+`capabilities: ["presence"]` opts a socket into latest peer snapshots and the
+`presence` request (`sequence`, opaque `frame`). Publishing requires the current
+authenticated writer lease. Native read-only resolution verifies room/schema/
+engine and the frame's actual writer; a payload cannot impersonate another
+account or writer. Missing document dependencies may stay pending without
+importing content. Snapshots require current Reader permission and validate an
+active writer fence when the connection has one.
+
+Peer labels come from authenticated principal metadata. Each resume creates a
+different public hash-derived session epoch, not a disclosed lease token.
+Sequences are canonical unsigned decimal strings, including values above JS's
+safe-integer range. Old/duplicate sequences do not renew expiry. Thirty-second
+expiry releases frame/display bytes while retaining the high sequence for that
+active session. Role changes, current disconnect and resume remove that epoch;
+a stale disconnect cannot clear its successor. Restart clears all presence.
+None of these operations append the log, change content or consume history.
+
+The room retains at most 64 active peers, 256 KiB per frame and 2 MiB aggregate
+frame bytes, plus at most 1,024 bounded live-session sequence records. Watch
+notifications coalesce complete latest snapshots; a five-second tick also
+prunes expiry. Presence is best-effort ephemeral state, not durable edit
+acknowledgement or an unbounded event stream.
+
+The complete presence checkpoint passes 225 shared browser cases (75 per
+engine), including 81 real-process relay/asset/presence cases; 229 native editor
+and 20 unique native relay contracts; strict native/Wasm lints; generated and
+installed TypeScript; and real-Wasm installed archive runtime checks. All WebKit
+files run once in fresh processes, with no retries or altered assertions/deadlines.
+
 ## Room and account authority
 
 `Room::create` admits the configured initial Document V2 and creates a new log
@@ -202,8 +233,8 @@ role entries. The stricter existing rich owner budgets also apply, including
 1,000 journal entries and bounded causal state. These are explicit rejection
 limits, not a rolling compaction implementation or throughput/SLA promise.
 
-Remaining functional integration: presence transport/overlays,
-combined network demo, import-worker isolation and promotion of the optional
+Remaining functional integration: combined network demo,
+import-worker isolation and promotion of the optional
 Rust/Wasm distribution. Local storage and writer transactions alone do not
 complete the full collaboration goal. Exhaustive adversarial, physical IME and
 accessibility qualification remain deferred as requested.

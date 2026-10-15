@@ -1,4 +1,5 @@
 import type {SharedProfileDescriptor} from "../profile.js";
+import type {SharedPresence} from "../presence.js";
 
 /** Separate host-protected credential record. Never place this in a portable document/journal. */
 export interface SharedRelayIdentity {
@@ -36,4 +37,6 @@ export interface SharedRelayOptions {
  /** Coalesced availability hint, not an edit or durable document acknowledgement. Refresh only
   * currently rendered asset bindings; reconnect invokes this too, so missed hints are harmless. */
  onAssetsChanged?:()=>void;
+ /** Opt-in ephemeral registry for this same core. The sync adapter does not dispose it. */
+ presence?:SharedPresence;
 }

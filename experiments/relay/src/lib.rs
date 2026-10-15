@@ -8,12 +8,14 @@ mod access;
 pub mod assets;
 mod credentials;
 mod log;
+mod presence;
 mod protocol;
 mod room;
 #[cfg(feature = "server")]
 pub mod server;
 
 pub use access::Role;
+pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
 pub use room::Room;
 

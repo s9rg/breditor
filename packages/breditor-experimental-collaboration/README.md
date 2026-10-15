@@ -225,8 +225,7 @@ immediate new connect starts a new lifecycle rather than reusing that promise.
 `sync.dispose()` stops networking only. Save/close its persistent session next,
 then dispose the mounted DOM editor, which owns its core. Permission loss,
 lease replacement and transport disposal never delete a local journal or
-dispose an independently owned core. Network presence,
-pixel overlays, combined network-demo integration and optional Rust/Wasm
+dispose an independently owned core. Combined network-demo integration and optional Rust/Wasm
 distribution promotion remain separate gates.
 
 The prior reconnect checkpoint passed 189 combined browser cases (63 in each engine), 229
@@ -282,9 +281,35 @@ durable journal queue or the upload queue.
 
 The combined demo shows semantic peer selections in a separate output above each
 editor, with connection-scoped sessions and heartbeats. These outputs do not
-change native selections or document DOM content. Pixel cursor/range overlays
-and a network-authenticated presence transport remain integration work. The
-same-page demo establishes neither account authorization nor a server lease.
+change native selections or document DOM content. The separate overlay and
+negotiated relay transport below now expose these selections across clients.
+The same-page demo still establishes neither account authorization nor a server lease.
+
+Pass an independently owned `SharedPresence` for the same core as
+`new SharedRelaySync(core, {identity, getToken, presence})` to opt into the native
+relay's presence capability. Current server-authenticated writer/session/label
+metadata supplies registry membership. Snapshots coalesce outside publication;
+the outbound pump keeps one latest selection, sends at most once per 100 ms and
+heartbeats every five seconds. Causal packets may remain pending until content
+catchup. Presence never enters `receiveFrame`, local persistence, edit receipts
+or asset uploads. Disconnect/permission loss clears network peers; reconnect
+uses a new public session epoch. Sync disposal does not dispose the registry.
+
+`new SharedPresenceOverlay({editor, presence})` paints remote text/caret, node
+and merge-aware grid selections in a separate fixed-position DOM layer. It
+never wraps text, installs a native selection or changes Rust state. Labels use
+text content and a fixed palette; the layer ignores pointer input. Layout,
+resize, scrolling, image loads and admitted DOM changes coalesce into animation
+frames. `refresh()` handles additional host-only layout changes. Paint is capped
+at 256 rectangles per peer and 2,048 total, clipped to the surface and viewport;
+it is not an exhaustive nested-host-layout/accessibility qualification. Dispose
+the overlay before its independent editor/registry. It owns neither of them.
+
+The complete presence checkpoint passes 225 browser cases (75 per engine), 229
+native editor and 20 native relay contracts, strict native/Wasm lints, generated
+and installed TypeScript and real-Wasm installed archive checks. The prior
+unchanged 309-case legacy pass brings retained browser evidence to 534 cases.
+This does not qualify the historical WebKit process-lifetime reliability risk.
 
 ## DOM and toolbar
 

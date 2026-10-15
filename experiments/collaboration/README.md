@@ -1082,6 +1082,21 @@ unchanged 309-case legacy matrix brings retained evidence to 519 browser cases;
 every shared WebKit file runs once in its own process without retries or
 relaxed deadlines/assertions.
 
+## Network presence and overlays
+
+The real reference relay also now supports negotiated ephemeral presence under
+current account/writer leases. Native origin checks, public session epochs,
+exact sequences, expiry and revocation remain outside the document log. The
+browser pump and separate text/node/grid overlay pass 15 focused real-process
+three-engine cases; three native contracts cover the corresponding authority
+and expiry boundaries. Combined network-demo integration and optional
+distribution promotion remain work.
+The complete presence checkpoint passes 225 shared browser cases, 229 native
+editor and 20 native relay contracts, strict native/Wasm lints, TypeScript and
+installed archives. With the prior unchanged legacy matrix, retained evidence
+covers 534 browser cases. The canonical WebKit plan preserves every file once
+without retries or altered deadlines/assertions; it is not an engine repair claim.
+
 ## Shared semantic clipboard
 
 `copy_clipboard_guarded` reads the current admitted selection into the original

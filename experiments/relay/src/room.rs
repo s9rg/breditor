@@ -34,6 +34,7 @@ pub struct Room {
     writers: BTreeMap<String, Writer>,
     leases: BTreeMap<String, String>,
     receipts: BTreeMap<(String, String, String), DurableReceipt>,
+    presence: crate::presence::Presence,
 }
 
 impl Room {
@@ -66,6 +67,7 @@ impl Room {
             writers: BTreeMap::new(),
             leases: BTreeMap::new(),
             receipts: BTreeMap::new(),
+            presence: crate::presence::Presence::default(),
         })
     }
 
@@ -97,6 +99,7 @@ impl Room {
             writers: BTreeMap::new(),
             leases: BTreeMap::new(),
             receipts: BTreeMap::new(),
+            presence: crate::presence::Presence::default(),
         };
         for record in records {
             result.replay(record)?;
@@ -230,6 +233,11 @@ impl Room {
         // Permission changes and admission are in the same room serialization domain. Even a
         // later regrant requires a new resume; no stale socket silently regains write authority.
         self.leases.retain(|id, _| self.writers.get(id).is_none_or(|w| w.principal != principal));
+        for (writer, record) in &self.writers {
+            if record.principal == principal {
+                self.presence.remove(writer);
+            }
+        }
         if let Some(role) = role {
             self.roles.insert(principal, role);
         } else {
@@ -289,6 +297,7 @@ impl Room {
         }
         let token = credentials::issue()?;
         self.leases.insert(writer.into(), token.clone());
+        self.presence.remove(writer);
         Ok(Lease { writer: writer.into(), token })
     }
 
@@ -309,7 +318,62 @@ impl Room {
     pub fn release(&mut self, lease: &Lease) {
         if self.leases.get(&lease.writer) == Some(&lease.token) {
             self.leases.remove(&lease.writer);
+            self.presence.remove(&lease.writer);
         }
+    }
+
+    /// Publish the latest ephemeral selection for a currently leased authenticated writer.
+    /// Rust validates the opaque frame without importing content or mutating document history.
+    /// # Errors
+    /// Rejects revoked/replaced authority, wrong origin/binding, malformed frames and budgets.
+    pub fn publish_presence(
+        &mut self,
+        principal: &str,
+        lease: &Lease,
+        sequence: &str,
+        frame: &str,
+    ) -> Result<bool> {
+        self.validate_lease(principal, lease)?;
+        let resolved = self.replica.resolve_presence_frame(frame)?;
+        let writer = match resolved {
+            breditor_collab_feasibility::rich_replica::PresenceResolution::Resolved {
+                writer,
+                ..
+            }
+            | breditor_collab_feasibility::rich_replica::PresenceResolution::Pending { writer }
+            | breditor_collab_feasibility::rich_replica::PresenceResolution::Cleared {
+                writer,
+                ..
+            } => writer,
+        };
+        if writer != lease.writer {
+            return Err(Error::Lease);
+        }
+        self.presence.publish(
+            crate::PresencePeer {
+                writer,
+                session: crate::presence::session(&lease.token),
+                label: principal.into(),
+                sequence: sequence.into(),
+                frame: frame.into(),
+            },
+            std::time::Instant::now(),
+        )
+    }
+    /// Read current authenticated peers, pruning expired display bytes. No presence survives
+    /// restart or enters the log. A supplied writer lease fences author-sensitive connections.
+    /// # Errors
+    /// Rejects missing current read permission, a replaced lease or uncertain room storage.
+    pub fn presence_snapshot(
+        &mut self,
+        principal: &str,
+        lease: Option<&Lease>,
+    ) -> Result<Vec<crate::PresencePeer>> {
+        self.reader(principal)?;
+        if let Some(lease) = lease {
+            self.validate_lease(principal, lease)?;
+        }
+        Ok(self.presence.snapshot(std::time::Instant::now()))
     }
 
     /// Read a trusted full-state catchup under current account permissions. Clients must not use

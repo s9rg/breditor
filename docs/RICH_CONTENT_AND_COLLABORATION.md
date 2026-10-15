@@ -247,6 +247,26 @@ archives. Together with the prior unchanged 309-case legacy pass, the retained
 functional evidence covers 519 browser cases. Every shared WebKit spec runs
 once in a fresh process without retries or changed deadlines/assertions.
 
+The native relay now carries bounded ephemeral peer presence under actual
+account/writer lease authority. Read-only native admission verifies frame origin
+and room/schema/engine; public session epochs never expose private lease tokens.
+Current disconnect, resume and revocation remove the old peer, restart clears
+presence, and duplicate sequences cannot refresh expiry. Browser sync negotiates
+this channel independently from edits and assets, coalesces snapshots and sends
+one latest selection with a five-second heartbeat. `SharedPresenceOverlay` paints
+text, node and merge-aware grid selections in a separate pointer-transparent
+layer; it tracks layout/scrolling without replacing text or native selection.
+Fifteen focused real-process browser cases and three native presence contracts
+cover ordinary text/node/grid display, pending causal catchup, restart/reload,
+role loss, session replacement, exact sequences/expiry and read-only overlays.
+The combined network demo and optional Rust/Wasm distribution promotion remain
+the next integration gates; public hosting still needs resource isolation and TLS.
+The complete presence checkpoint passes 225 shared browser cases (75 per
+engine), 229 native editor and 20 native relay contracts, strict native/Wasm
+lints, TypeScript and installed archives. The prior unchanged 309-case legacy
+matrix brings retained evidence to 534 browser cases. No retries, deadline or
+assertion changes were introduced; the historical WebKit risk remains open.
+
 ## Scope of the combined release
 
 Tables include insertion/removal; row and column insertion, removal and
