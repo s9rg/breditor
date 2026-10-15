@@ -21,6 +21,7 @@ export class SharedRelaySync {
  #connecting:Promise<void>|undefined;#retry:ReturnType<typeof setTimeout>|undefined;#attempts=0;
  #latest:string|undefined;#drain:Run|undefined;#pump:Run|undefined;#pumpAgain=false;#scheduled=false;
  #notifyQueued=false;#reported:string|null=null;#localFailure=false;#waiters=new Set<Waiter>();
+ #assetHintQueued=false;#assetHints=false;
  #milliseconds:number;#minimum:number;#maximum:number;
  #missing:{writer:string;counter:string}[]=[];
 
@@ -61,8 +62,14 @@ export class SharedRelaySync {
  }
  #event(event:Record<string,unknown>,epoch:number):void{
   if(!this.#active(epoch))return;
-  try{if(event["kind"]==="error"){this.#fail(new SharedRelayError(String(event["code"])),epoch);return;}if(event["kind"]!=="catchup")throw new SharedRelayError("protocol_error");this.#latest=frame(event["frame"]);if(this.#ready)void this.#drainFrames(epoch).catch(()=>{});}
+  try{if(event["kind"]==="error"){this.#fail(new SharedRelayError(String(event["code"])),epoch);return;}
+   if(event["kind"]==="assetsChanged"){if(!this.#assetHints)throw new SharedRelayError("protocol_error");this.#assetsChanged(epoch);return;}
+   if(event["kind"]!=="catchup")throw new SharedRelayError("protocol_error");this.#latest=frame(event["frame"]);if(this.#ready)void this.#drainFrames(epoch).catch(()=>{});}
   catch{this.#fail(new SharedRelayError("protocol_error"),epoch);}
+ }
+ #assetsChanged(epoch:number):void{
+  if(this.#assetHintQueued)return;this.#assetHintQueued=true;
+  queueMicrotask(()=>{this.#assetHintQueued=false;if(this.#active(epoch))try{this.#options.onAssetsChanged?.();}catch{/* Availability observers cannot create or rewind edits. */}});
  }
 
  /** Explicit connect/retry. A fenced/denied session never automatically steals its writer back. */
@@ -78,8 +85,10 @@ export class SharedRelaySync {
   const token=await accountToken(this.#options.getToken,abort.signal,this.#milliseconds);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   const channel=await RelayChannel.open(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),abort.signal);
   if(!this.#active(epoch)){channel.close();throw new SharedRelayError("disconnected");}this.#channel=channel;
-  const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token});
+  const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token,...(this.#options.onAssetsChanged?{capabilities:["assets"]}:{})});
   if(authenticated["kind"]!=="authenticated")throw new SharedRelayError("protocol_error");checkDescriptor(this.#core,descriptor(authenticated["descriptor"]));
+  const capabilities=authenticated["capabilities"]??[];if(!Array.isArray(capabilities)||capabilities.some(c=>c!=="assets")||capabilities.length>1)throw new SharedRelayError("protocol_error");
+  this.#assetHints=!!this.#options.onAssetsChanged&&capabilities.includes("assets");
   this.#latest=frame(authenticated["frame"]);
   // Never import a server's own-author future and then pretend it belongs to this local journal.
   await this.#readClock(channel);const resumed=await channel.request({kind:"resume",writer:this.#identity.writer,credential:this.#identity.credential});
@@ -87,7 +96,7 @@ export class SharedRelaySync {
   const current=await this.#readClock(channel);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   if(this.#acked&&BigInt(current.through)<BigInt(this.#acked.through))throw new SharedRelayError("server_rollback");
   if(current.through!==this.#acked?.through)this.#sequence=null;this.#acked=current;this.#ready=true;this.#localFailure=false;this.#error=null;this.#reported=null;this.#attempts=0;this.#status="syncing";this.#notify();
-  await this.#drainFrames(epoch);if(this.#active(epoch)){this.#refresh();this.#schedulePump();}
+  await this.#drainFrames(epoch);if(this.#active(epoch)){this.#refresh();this.#schedulePump();if(this.#assetHints)this.#assetsChanged(epoch);}
  }
  async #readClock(channel:RelayChannel):Promise<SharedWriterClock>{const result=await channel.request({kind:"clock",writer:this.#identity.writer});if(result["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(result["clock"],this.#identity.writer);checkClock(this.#core,current);return current;}
  #drainFrames(epoch:number):Promise<void>{

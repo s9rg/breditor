@@ -5,6 +5,7 @@
 //! neither a browser-selected writer ID nor a full-state import. Networking and deployment are
 //! separate adapters; a [`Room`] requires exclusive mutable access across each transaction.
 mod access;
+pub mod assets;
 mod credentials;
 mod log;
 mod protocol;

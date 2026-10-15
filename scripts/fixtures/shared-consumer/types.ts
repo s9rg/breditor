@@ -1,6 +1,6 @@
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,SharedPresence,SharedRelaySync,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,SharedPresence,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
 import {RichAssetStore} from "@breditor/experimental-rich-content";
-import {model} from "@breditor/experimental-rich-content/rendering";
+import {model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
 async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
  const core=new SharedRichEditor(raw),assets=await RichAssetStore.open("consumer-assets");
  const command:SharedCommand={kind:"set_image_alt",data:{block:"image",text:"Diagram",decorative:false}};
@@ -9,6 +9,9 @@ async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
  core.dispatch({commands:[{kind:"set_image_caption",data:{block:"image",caption:{kind:"element",type:"breditor/table",entityId:null,properties:{},children:[]}}}]});
  // @ts-expect-error Each shared command remains a closed typed record in the installed archive.
  core.dispatch({commands:[{kind:"resize_image",data:{block:"image",size:"240"}}]});
+ await assets.cacheRemote("sha256:"+"0".repeat(64),new Blob(),"remote-receipt");
+ const remote=new SharedRelayAssets({endpoint:"ws://127.0.0.1:1/ws",principal:"consumer",getToken:()=>"a".repeat(64),store:assets});
+ await assets.flush(remote.uploader);editor.refreshAssets();refreshAssets(editor.surface,{resolveAsset:binding=>remote.resolve(binding.asset)});remote.dispose();
  void model;void SharedPersistentSession;const state:SharedSaveState={status:"saved",revision:"0",error:null};void state;editor.dispose();assets.close();
 }
 void consumer;

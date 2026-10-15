@@ -33,4 +33,7 @@ export interface SharedRelayOptions {
  persistLocal?:()=>Promise<void>;
  autoConnect?:boolean;requestTimeoutMs?:number;reconnectMinimumMs?:number;reconnectMaximumMs?:number;
  onState?:(state:SharedRelayState)=>void;onError?:(error:Error&{readonly code:string})=>void;
+ /** Coalesced availability hint, not an edit or durable document acknowledgement. Refresh only
+  * currently rendered asset bindings; reconnect invokes this too, so missed hints are harmless. */
+ onAssetsChanged?:()=>void;
 }

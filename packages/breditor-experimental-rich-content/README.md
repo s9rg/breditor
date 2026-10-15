@@ -178,6 +178,16 @@ it does not delete assets. No garbage collection is implemented because history,
 offline peers and backups may still reference them. Session JSON is not a portable
 asset-byte backup.
 
+`cacheRemote(asset, blob, storageRef)` admits a downloaded raster through the
+same decode/dimension/digest checks, then verifies the expected content key
+before any storage transaction. A newly cached remote record starts uploaded,
+not pending; an existing local record keeps its status and cancellation epoch.
+This prevents download/re-upload loops and late downloads overriding a cancel.
+The transport still owns authorization, response bounds and durable receipt
+validation. The optional collaboration package supplies `SharedRelayAssets`
+for its reference Rust host. The read-only rendering subpath also exports
+`refreshAssets(surface, options)` for image-only retries without rebuilding text.
+
 ## Optional exact local checkpoint persistence
 
 `RichLocalSessionStore.open(name)` stores exact checkpoint strings with a 16 MiB

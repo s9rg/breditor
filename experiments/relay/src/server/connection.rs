@@ -95,6 +95,7 @@ async fn dispatch(
 
 pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemaphorePermit) {
     let mut changed = host.changed.subscribe();
+    let mut assets_changed = host.assets_changed.subscribe();
     let Ok(Some(Ok(Message::Text(input)))) =
         tokio::time::timeout(Duration::from_secs(5), socket.recv()).await
     else {
@@ -106,14 +107,18 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
     let Ok(envelope) = Envelope::decode(&input) else {
         return;
     };
-    let Request::Authenticate { principal, token } = envelope.request else {
+    let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return;
     };
+    if capabilities.len() > 1 || capabilities.iter().any(|c| c != "assets") {
+        return;
+    }
+    let assets_enabled = host.assets.is_some() && capabilities.iter().any(|c| c == "assets");
     let authentication = host.authentication.authenticate(&principal, &token);
     let accepted = match authentication {
         Ok(()) => {
             let p = principal.clone();
-            host.transaction(move |room| Ok(json!({"kind":"authenticated","frame":room.catchup(&p)?,"descriptor":room.descriptor(&p)?}))).await
+            host.transaction(move |room| Ok(json!({"kind":"authenticated","frame":room.catchup(&p)?,"descriptor":room.descriptor(&p)?,"capabilities":if assets_enabled {vec!["assets"]} else {vec![]}}))).await
         }
         Err(e) => Err(e),
     };
@@ -156,6 +161,21 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
                 match snapshot(&host, &principal, lease.as_ref()).await {
                     Ok(value) => if !send(&mut socket, None, value).await { break; },
                     Err(error) => { send(&mut socket, None, wire::error(&error)).await; break; }
+                }
+            }
+            update = assets_changed.changed(), if assets_enabled => {
+                if update.is_err() { break; }
+                assets_changed.borrow_and_update();
+                let p = principal.clone();
+                let l = lease.clone();
+                let permitted = host.transaction(move |room| {
+                    room.reader(&p)?;
+                    if let Some(lease) = l { room.validate_lease(&p,&lease)?; }
+                    Ok(())
+                }).await;
+                match permitted {
+                    Ok(()) => if !send(&mut socket,None,json!({"kind":"assetsChanged"})).await { break; },
+                    Err(e) => { send(&mut socket,None,wire::error(&e)).await; break; }
                 }
             }
         }

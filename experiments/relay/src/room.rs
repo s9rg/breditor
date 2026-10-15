@@ -29,6 +29,7 @@ pub struct Room {
     profile: SharedRichProfile,
     replica: RichReplica,
     owner: String,
+    asset_binding: String,
     roles: BTreeMap<String, Role>,
     writers: BTreeMap<String, Writer>,
     leases: BTreeMap<String, String>,
@@ -43,13 +44,16 @@ impl Room {
         access::principal(owner)?;
         let profile = SharedRichProfile::from_configuration_json(configuration)?;
         let replica = profile.create(document, "1".into())?;
+        let journal = replica.checkpoint()?;
+        let asset_binding =
+            Self::bind_assets(configuration, replica.document_id(), owner, &journal)?;
         let log = Log::create(
             path,
             Event::Seed {
                 configuration: configuration.into(),
                 room: replica.document_id().into(),
                 owner: owner.into(),
-                journal: replica.checkpoint()?,
+                journal,
             },
         )?;
         Ok(Self {
@@ -57,6 +61,7 @@ impl Room {
             profile,
             replica,
             owner: owner.into(),
+            asset_binding,
             roles: BTreeMap::new(),
             writers: BTreeMap::new(),
             leases: BTreeMap::new(),
@@ -76,6 +81,7 @@ impl Room {
             return Err(Error::Contract("first relay record must seed room"));
         };
         access::principal(&owner)?;
+        let asset_binding = Self::bind_assets(&configuration, &room, &owner, &journal)?;
         let profile = SharedRichProfile::from_configuration_json(&configuration)?;
         let replica = profile.restore(&room, &journal)?;
         if replica.writer() != "1" || replica.undo_count() != 0 || replica.redo_count() != 0 {
@@ -86,6 +92,7 @@ impl Room {
             profile,
             replica,
             owner,
+            asset_binding,
             roles: BTreeMap::new(),
             writers: BTreeMap::new(),
             leases: BTreeMap::new(),
@@ -129,7 +136,7 @@ impl Room {
         Ok(())
     }
 
-    fn reader(&self, principal: &str) -> Result<()> {
+    pub(crate) fn reader(&self, principal: &str) -> Result<()> {
         self.log.ready()?;
         access::principal(principal)?;
         if principal == self.owner || self.roles.contains_key(principal) {
@@ -138,13 +145,61 @@ impl Room {
             Err(Error::Permission)
         }
     }
-    fn editor(&self, principal: &str) -> Result<()> {
+    pub(crate) fn editor(&self, principal: &str) -> Result<()> {
         self.reader(principal)?;
         if principal == self.owner || self.roles.get(principal) == Some(&Role::Editor) {
             Ok(())
         } else {
             Err(Error::Permission)
         }
+    }
+
+    fn bind_assets(configuration: &str, room: &str, owner: &str, journal: &str) -> Result<String> {
+        Ok(crate::assets::asset_id(&serde_json::to_vec(&(
+            "breditor/room-asset-binding/1",
+            configuration,
+            room,
+            owner,
+            journal,
+        ))?))
+    }
+    /// Immutable seed/authority identity for a separate asset store. This is not a credential.
+    #[must_use]
+    pub fn asset_binding(&self) -> &str {
+        &self.asset_binding
+    }
+
+    /// Persist separately admitted bytes under current editor permission. Does not append a
+    /// document action or change history. The caller serializes this with role changes.
+    /// # Errors
+    /// Rejects missing write permission, wrong store binding and storage errors.
+    pub fn put_asset(
+        &self,
+        principal: &str,
+        store: &mut crate::assets::AssetStore,
+        asset: crate::assets::PreparedAsset,
+    ) -> Result<crate::assets::AssetReceipt> {
+        self.editor(principal)?;
+        if store.binding() != self.asset_binding {
+            return Err(Error::Contract("asset store room binding"));
+        }
+        store.put(asset)
+    }
+    /// Read verified bytes under current reader permission, independently of document history.
+    /// Revocation prevents future reads; it cannot erase a reader's already cached offline bytes.
+    /// # Errors
+    /// Rejects missing read permission, wrong store binding and storage corruption/failure.
+    pub fn read_asset(
+        &self,
+        principal: &str,
+        store: &crate::assets::AssetStore,
+        asset: &str,
+    ) -> Result<Option<crate::assets::StoredAsset>> {
+        self.reader(principal)?;
+        if store.binding() != self.asset_binding {
+            return Err(Error::Contract("asset store room binding"));
+        }
+        store.get(asset)
     }
     fn owns(&self, principal: &str, writer: &str) -> Result<()> {
         self.editor(principal)?;

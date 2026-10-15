@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,SharedPresence,SharedRelaySync,registerSharedRelayWriter} from "@breditor/experimental-collaboration";
-import {render,model} from "@breditor/experimental-rich-content/rendering";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,SharedPresence,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter} from "@breditor/experimental-collaboration";
+import {render,model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
 const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
 wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
 const vector=JSON.parse(readFileSync(process.env.BREDITOR_PROBE_VECTOR,"utf8"));
@@ -10,7 +10,7 @@ const a=new SharedRichEditor(new wasm.RichReplicaProbe(vector.rich_local_input,"
 a.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Packaged "}}]});
 a.undo();const checkpoint=a.checkpointJson(),b=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",checkpoint));
 a.redo();b.redo();assert.equal(a.checkpointJson(),b.checkpointJson());assert.equal(a.documentJson(),b.documentJson());
-for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,render,model,SharedRelaySync,registerSharedRelayWriter])assert.equal(typeof api,"function");
+for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,render,model,refreshAssets,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter])assert.equal(typeof api,"function");
 a.dispose();b.dispose();
 const v=vector.shared_profile,p=compileSharedProfile(wasm,v.configuration),custom=new SharedRichEditor(p.restore("room",v.checkpoint));p.free();
 const state=name=>{assert.deepEqual(custom.view(),JSON.parse(v[name].view));assert.equal(custom.checkpointJson(),v[name].checkpoint);};
@@ -24,3 +24,7 @@ assert.equal(sync.state().status,"offline");assert.equal(offlineCore.checkpointJ
 const cancelled=offlineCore.receiveFrame("not-json",{signal:AbortSignal.abort()}).then(()=>"accepted",error=>error.code);assert.equal(await cancelled,"remote_cancelled");assert.equal(offlineCore.checkpointJson(),beforeOffline);
 sync.dispose();assert.equal(sync.state().status,"closed");offlineCore.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Transport disposal retains editor"}}]});assert.ok(offlineCore.documentJson().includes("Transport disposal retains editor"));offlineCore.dispose();
 console.log("Installed relay API, offline ownership and cancellable remote publication passed");
+let tokenCalls=0;
+const assets=new SharedRelayAssets({endpoint:"ws://127.0.0.1:1/ws",principal:"consumer",getToken:()=>{tokenCalls++;throw Error("Offline assets must not authenticate");},store:{resolve:async()=>undefined,cacheRemote:async()=>{throw Error("No remote bytes");},flush:async()=>{}}});
+assets.setOnline(false);assert.equal(await assets.resolve("sha256:"+"0".repeat(64)),undefined);assert.equal(await assets.resolve("custom:host-asset"),undefined);assert.equal(tokenCalls,0);assets.dispose();await assert.rejects(assets.resolve("custom:host-asset"),e=>e.code==="closed");
+console.log("Installed asset provider offline lifecycle and rendering refresh exports passed");

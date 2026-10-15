@@ -1,6 +1,7 @@
 //! Loopback reference WebSocket host. All native transactions and blocking fsync run off the
 //! async I/O workers, inside the same serialized room authority. Public untrusted hosting still
 //! requires the planned resource-limited import worker, TLS and deployment qualification.
+mod assets;
 mod authentication;
 mod connection;
 mod wire;
@@ -22,6 +23,9 @@ pub(super) struct Host {
     authentication: Arc<Authentication>,
     changed: watch::Sender<u64>,
     connections: Arc<Semaphore>,
+    assets: Option<Arc<Mutex<crate::assets::AssetStore>>>,
+    assets_changed: watch::Sender<u64>,
+    asset_operations: Arc<Semaphore>,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -46,16 +50,45 @@ impl Host {
 /// The server holds at most 64 live upgrades and coalesces catchup notifications without keeping
 /// an unbounded per-peer frame queue. A newly authorized reader receives the latest full state.
 pub fn router(room: Room, authentication: Authentication) -> Router {
+    build(room, authentication, None)
+}
+/// Attach an explicitly opened durable asset store to the room. HTTP reads/writes authenticate
+/// the same accounts and recheck current room roles; a digest URL never grants access by itself.
+/// # Errors
+/// Rejects a store bound to another immutable room seed/authority.
+pub fn router_with_assets(
+    room: Room,
+    authentication: Authentication,
+    assets: crate::assets::AssetStore,
+) -> Result<Router> {
+    if room.asset_binding() != assets.binding() {
+        return Err(Error::Contract("asset store room binding"));
+    }
+    Ok(build(room, authentication, Some(assets)))
+}
+fn build(
+    room: Room,
+    authentication: Authentication,
+    assets: Option<crate::assets::AssetStore>,
+) -> Router {
     let (changed, _) = watch::channel(0);
+    let (assets_changed, _) = watch::channel(0);
     let host = Host {
         room: Arc::new(Mutex::new(room)),
         authentication: Arc::new(authentication),
         changed,
         connections: Arc::new(Semaphore::new(64)),
+        assets: assets.map(|store| Arc::new(Mutex::new(store))),
+        assets_changed,
+        asset_operations: Arc::new(Semaphore::new(4)),
     };
     Router::new()
         .route("/health", get(|| async { "breditor-relay-v1" }))
         .route("/ws", get(upgrade))
+        .route(
+            "/assets/{asset}",
+            get(assets::download).put(assets::upload).options(assets::preflight),
+        )
         .with_state(host)
 }
 async fn upgrade(State(host): State<Host>, headers: HeaderMap, ws: WebSocketUpgrade) -> Response {

@@ -19,4 +19,5 @@ for (const args of [
   ["clippy", "--manifest-path", manifest, "--locked", "--features", "server", "--all-targets", "--quiet"],
   ["test", "--manifest-path", manifest, "--locked", "--features", "server", "--quiet"],
   ["build", "--manifest-path", manifest, "--locked", "--features", "server", "--bin", "breditor-collab-relay", "--quiet"],
+  ["run", "--manifest-path", manifest, "--locked", "--example", "raster_fixtures", "--quiet", "--", resolve(root,"target/relay-raster-fixtures.json")],
 ]) execFileSync(cargo, args, {cwd: root, env, stdio: "inherit"});

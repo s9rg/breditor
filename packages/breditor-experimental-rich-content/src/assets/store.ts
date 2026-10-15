@@ -44,6 +44,14 @@ export class RichAssetStore {
     const record = await ingestFile(this.#db, file, this.limits);
     this.#notify(record); return assetInfo(record);
   }
+  /** Cache independently verified remote bytes without echoing them into the upload queue.
+   * An existing local record (including a cancellation epoch) is never rewritten by a download. */
+  async cacheRemote(asset: string, file: Blob, storageRef: string): Promise<AssetInfo> {
+    this.#live();
+    if (!/^sha256:[0-9a-f]{64}$/.test(asset) || typeof storageRef !== "string" || !storageRef || storageRef.length > 4096) throw Error("Invalid remote asset identity/receipt");
+    const record = await ingestFile(this.#db, file, this.limits, {asset,storageRef});
+    this.#notify(record); return assetInfo(record);
+  }
   async get(asset: string): Promise<AssetInfo | undefined> {
     this.#live(); const record = await readAsset(this.#db, asset);
     return record ? assetInfo(record) : undefined;

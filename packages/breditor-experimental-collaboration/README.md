@@ -225,11 +225,11 @@ immediate new connect starts a new lifecycle rather than reusing that promise.
 `sync.dispose()` stops networking only. Save/close its persistent session next,
 then dispose the mounted DOM editor, which owns its core. Permission loss,
 lease replacement and transport disposal never delete a local journal or
-dispose an independently owned core. Network presence, cross-host assets,
+dispose an independently owned core. Network presence,
 pixel overlays, combined network-demo integration and optional Rust/Wasm
 distribution promotion remain separate gates.
 
-This checkpoint passes 189 combined browser cases (63 in each engine), 229
+The prior reconnect checkpoint passed 189 combined browser cases (63 in each engine), 229
 native editor contracts, 12 native relay tests, strict native/Wasm lints,
 generated/installed TypeScript and offline archive runtime checks. The unchanged
 legacy Rust/Wasm suite has a prior complete 309-browser-case pass: 498 browser
@@ -404,8 +404,64 @@ treated as document-only imports. Resume old journals with their matching old
 owner until an explicit migration workflow exists.
 
 The full collaboration goal still includes combined network-demo integration,
-network presence and cross-host asset providers. The package now supplies its
+network presence and optional Rust/Wasm distribution promotion. The package now supplies its
 own typed reconnect coordinator; the lower-level browser socket fixture remains
 test/admin support. The bounded
 journal rebuild is a correctness reference, not a production throughput claim.
 See the repository collaboration plan and private owner contracts for limits.
+
+## Cross host image assets
+
+`SharedRelayAssets({endpoint, principal, getToken, store, requestTimeoutMs?})`
+adapts a host-owned `RichAssetStore` to the reference relay's authenticated HTTP
+asset API. The endpoint is the same pinned room WebSocket endpoint; its sibling
+`assets/` path uses HTTP(S). No token, URL or resume credential enters the AST.
+Construction starts no timers or transfers. Rendering with `resolve(asset)` is
+local-first; only a missing canonical SHA-256 reference triggers a GET. Custom
+asset schemes stay with the surrounding host. Credentials are omitted from
+cookies, URL queries and portable records; redirects reject.
+
+```ts
+const cache = await RichAssetStore.open(assetDatabase);
+const assets = new SharedRelayAssets({endpoint, principal, getToken, store: cache});
+const editor = mountSharedEditor(root, {
+  core: session.core,
+  resolveAsset: binding => assets.resolve(binding.asset),
+});
+const sync = new SharedRelaySync(session.core, {
+  identity, getToken, persistLocal: () => session.flush(),
+  onAssetsChanged: () => editor.refreshAssets(),
+});
+// After insertSharedImageFiles has durably stored local bytes:
+await assets.flush();
+```
+
+`flush()` explicitly drains pending uploads with the existing cache queue. Its
+`uploader` is also compatible with `cache.flush(assets.uploader)`. It validates
+the server's independent durable asset receipt against actual local metadata;
+failed/cancelled records need `cache.retry(asset)` before another drain. Document
+server acknowledgement and uploaded image bytes are distinct saved states.
+
+Downloaded bytes are streamed under the 10 MiB ceiling, then decoded and hashed
+again by `cache.cacheRemote`. A new remote cache record starts uploaded with no
+local upload attempt; an existing pending/cancelled/failed epoch is preserved.
+Other peers' bytes never echo as new uploads. Concurrent resolutions coalesce by
+asset; four requests run with at most 64 queued, under the configured overall
+100 ms–30 s deadline (default 10 s). Missing assets are not permanently negatively
+cached. `onAssetsChanged` opts into negotiated coalesced availability hints and
+also runs after reconnect; it is not a document publication or upload receipt.
+
+`editor.refreshAssets()` retries only the current image elements. It leaves
+text DOM, composition, native/logical selections, document revisions and history
+untouched. Per-element attempts fence late results after refresh, replacement
+or deletion. An upload completing after deletion cannot recreate a node; Undo
+can resolve the retained bytes normally. `setOnline(false)` aborts provider work
+while preserving local resolution. `dispose()` aborts only this provider; close
+the host cache separately after other owners no longer need its object URLs.
+
+The complete asset checkpoint passes 210 shared browser cases (70 per engine),
+229 native editor contracts and 17 unique native relay contracts, strict
+native/Wasm lints, generated and installed TypeScript, and real-Wasm archive
+runtime checks. The prior unchanged 309-case legacy matrix brings the retained
+browser evidence to 519 cases. WebKit runs every spec once in fresh per-file
+processes; deadlines, assertions and zero retries remain unchanged.

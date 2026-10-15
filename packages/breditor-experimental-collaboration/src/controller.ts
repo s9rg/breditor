@@ -1,4 +1,4 @@
-import {model,id,text,sourceCell,render,paintSelection,readNative,readTarget,restoreNative,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
+import {model,id,text,sourceCell,render,paintSelection,refreshAssets,readNative,readTarget,restoreNative,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
 import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
 import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
@@ -72,6 +72,8 @@ export class SharedDomEditor {
  view():ReturnType<SharedRichEditor["view"]>{this.#live();return this.#options.core.view();}
  checkpointJson():string{this.#live();return this.#options.core.checkpointJson();}
  focus():void{this.#live();this.surface.focus();restoreNative(this.surface,this.#model.view.selection);}
+ /** Read-only retry after independently transferred image bytes become available. */
+ refreshAssets():void{this.#live();refreshAssets(this.surface,this.#options);}
  #pick(event:PointerEvent):void{const target=event.target as Element,cell=target.closest<HTMLElement>("[data-select-cell]"),node=target.closest<HTMLElement>("[data-select-node]"),figure=target.closest<HTMLElement>("[data-rich-image]");
   if(cell){event.preventDefault();const focus=JSON.parse(cell.dataset["selectCell"]!) as Extract<RichSelection,{kind:"grid"}>["focus"],prior=this.#model.view.selection,anchor=event.shiftKey&&prior?.kind==="grid"&&prior.anchor.table===focus.table?prior.anchor:focus;this.#attempt(()=>this.select({kind:"grid",anchor,focus}));}
   else if(node||(figure&&!target.closest("[data-rich-text]"))){event.preventDefault();const block=node?.dataset["selectNode"]??figure?.dataset["richBlock"];if(block)this.#attempt(()=>this.select({kind:"node",block}));}else this.#logical=false;

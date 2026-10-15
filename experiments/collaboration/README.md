@@ -1062,6 +1062,26 @@ runner, preserving every case and all assertions/deadlines. Three plan guards
 reject missing files, duplicate plans and overlapping CLI filters. No historical
 WebKit runtime fix is inferred from this functional pass.
 
+## Cross host raster assets
+
+The optional native relay now has a separate immutable room-bound asset store
+and authenticated PNG/JPEG/WebP GET/PUT routes. `SharedRelayAssets` connects the
+durable browser queue and verified download cache; asset completion never
+creates document operations or rewrites an image binding. Negotiated availability
+hints refresh only current image DOM without replacing text or selections.
+Five native asset contracts and 21 focused three-engine browser cases prove
+exact encoded bytes, independent contexts, restart/reload, idempotent uploads,
+role checks, late completion after deletion/Undo and bounded batch downloads.
+See the relay/package READMEs for storage, decode, transfer and lifecycle limits.
+This does not complete network presence, the combined network demo or optional
+Rust/Wasm distribution promotion.
+The complete asset checkpoint passes 210 combined browser cases, 229 private
+native editor and 17 native relay contracts, strict native/Wasm lints, generated
+and installed TypeScript and real-Wasm archive runtime checks. The prior
+unchanged 309-case legacy matrix brings retained evidence to 519 browser cases;
+every shared WebKit file runs once in its own process without retries or
+relaxed deadlines/assertions.
+
 ## Shared semantic clipboard
 
 `copy_clipboard_guarded` reads the current admitted selection into the original

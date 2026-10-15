@@ -4,7 +4,7 @@ This isolated Rust crate implements durable room authority and an optional
 loopback WebSocket reference host. It does not change the default editor
 dependency graph, private shared model 11, journal V12 or Wasm ABI 1. Do not
 expose it as a public untrusted endpoint: the resource-limited import worker,
-TLS/deployment qualification, network presence/assets and optional distribution
+TLS/deployment qualification, network presence and optional distribution
 promotion remain separate integration gates.
 
 Run the reproducible functional check from the repository root:
@@ -14,7 +14,7 @@ node scripts/check-relay.mjs
 ```
 
 The check runs formatting, strict first-party Clippy, one real I/O-failure test,
-eight native room contract tests, three server account/protocol tests, and builds
+eight native room contract tests, five asset contracts, three server account/protocol tests, and builds
 the actual optional server binary. The native tests use the same rich owner
 and single-writer admission used by the Wasm/browser checkpoint; no second CRDT
 or simplified document model is substituted.
@@ -71,13 +71,59 @@ The browser socket fixture is test/admin support; the optional browser package
 now has its own `SharedRelaySync` reconnect API and durable registration helper. The
 interactive `/demo` still exchanges updates only within its own page.
 
-The final frozen-source check passes all 156 combined browser cases (52 each in
-Chromium, Firefox and WebKit), including the 12 real process/relay cases; 229
-native editor contracts; the 12 unique native relay tests; strict first-party
+## Authenticated raster assets
+
+The CLI opens a separate `LOG.assets` directory beside its room log. Embedders
+can instead open `assets::AssetStore` explicitly and pass it to
+`server::router_with_assets`; the original `router` has no asset storage side
+effect. A store binds the immutable initial configuration, room, owner and seed
+journal. It cannot attach to a different authority merely because its document
+name matches. Asset operations never append document actions or alter Undo.
+
+`PUT /assets/{sha256:hex}` and `GET /assets/{sha256:hex}` require an exact allowed
+Origin, `Authorization: Bearer TOKEN` and `X-Breditor-Principal`. Editor permission
+is required to upload; Reader permission suffices to download. The host checks
+permission before consuming an upload body and again under the room lock before
+publishing bytes. Revocation prevents future transfers, not access to bytes
+already cached offline. Digests and URLs are not access credentials. CORS
+preflight allows only these methods/headers for configured Origins; no cookies
+or public asset listing are supplied.
+
+Native admission verifies the exact encoded digest, PNG/JPEG/WebP signature,
+declared dimensions and full raster decode. The exact original bytes are kept,
+not a lossy re-encoding. `breditor/relay-asset-receipt` V1 binds asset, MIME, byte
+length, width, height and duplicate status. Encoded files are capped at 10 MiB,
+dimensions at 16,384, pixels at 32 million, and retained room assets at 1,024 and
+256 MiB. Four HTTP asset operations may run concurrently. These are correctness
+budgets, not a public-host memory/CPU guarantee: the decoder's allocation limit
+is [best effort](https://docs.rs/image/0.25.10/image/struct.Limits.html), and the
+resource-limited worker remains a public deployment gate.
+
+The private directory uses an exclusive lock, a room manifest and immutable
+`BRASSET1` records. Creation requests Unix directory mode 0700 and file mode 0600.
+A complete staging file is synced, atomically hard-linked without overwrite to
+its content key, and the directory synced before acknowledgement. Exact retries
+revalidate existing bytes without spending the budget twice. An uncertain write
+fences the store until reopen. Recovery validates all complete records before
+removing only recognized uncommitted staging files; unknown files, corrupt
+records and incomplete initial manifests reject without a destructive reset.
+Use local filesystem lock/link/sync semantics and back up the log and asset
+directory together. Complete unreferenced bytes remain retained for offline
+peers, history and backups; no garbage collection is implemented.
+
+Clients may negotiate `capabilities: ["assets"]` during socket authentication.
+Only opted-in sessions receive coalesced `assetsChanged` hints after durable
+publication. The hint carries no document action or asset list. Current account
+permission and writer lease are checked before sending it. A reconnect or a
+later GET recovers missed hints; they are not durable upload acknowledgements.
+
+The asset checkpoint passes all 210 combined browser cases (70 each in
+Chromium, Firefox and WebKit), including 66 real-process relay/asset cases; 229
+native editor contracts; 17 unique native relay tests; strict first-party
 native/Wasm lints; generated/installed TypeScript; and the offline installed
 package consumer. The earlier full regression check also passed all 309 legacy
 browser cases, 703 default core tests, 1,217 opt-in core tests, 137 doctests and
-rich integration suites. That is 465 browser cases across both matrices. The
+rich integration suites. That is 519 browser cases across both matrices. The
 takeover regression failed on the old binary in all three engines, then passed
 on the rebuilt fixed service and in the final full matrix. No test retries or
 relaxed assertions were introduced.
@@ -157,7 +203,7 @@ role entries. The stricter existing rich owner budgets also apply, including
 limits, not a rolling compaction implementation or throughput/SLA promise.
 
 Remaining functional integration: presence transport/overlays,
-cross-host asset provider, import-worker isolation and promotion of the optional
+combined network demo, import-worker isolation and promotion of the optional
 Rust/Wasm distribution. Local storage and writer transactions alone do not
 complete the full collaboration goal. Exhaustive adversarial, physical IME and
 accessibility qualification remain deferred as requested.

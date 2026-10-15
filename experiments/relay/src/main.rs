@@ -1,6 +1,7 @@
 //! Loopback-only reference relay CLI. No deployment or publication is performed by this binary.
 use breditor_collab_relay::{
     Room,
+    assets::AssetStore,
     server::{self, Authentication},
 };
 use serde_json::json;
@@ -31,9 +32,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if !address.ip().is_loopback() { return Err("reference relay currently requires loopback binding".into()); }
             let auth = Authentication::from_json(&bounded(auth, 256 * 1024)?)?;
             let (room, recovery) = Room::open(Path::new(log))?;
+            let assets = AssetStore::open(Path::new(&format!("{log}.assets")),room.asset_binding())?;
+            let router = server::router_with_assets(room,auth,assets)?;
             let listener = tokio::net::TcpListener::bind(address).await?;
             println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"recovery":recovery}));
-            axum::serve(listener, server::router(room, auth)).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
+            axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
         }
         _ => return Err("usage: breditor-collab-relay token | init LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS".into()),
     }

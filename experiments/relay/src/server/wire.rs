@@ -7,13 +7,28 @@ pub(super) const MAX_MESSAGE: usize = 6 * 1024 * 1024;
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub(super) enum Request {
-    Authenticate { principal: String, token: String },
+    Authenticate {
+        principal: String,
+        token: String,
+        #[serde(default)]
+        capabilities: Vec<String>,
+    },
     Register,
-    Resume { writer: String, credential: String },
-    Submit { group: String },
+    Resume {
+        writer: String,
+        credential: String,
+    },
+    Submit {
+        group: String,
+    },
     Sync,
-    Clock { writer: String },
-    Grant { principal: String, role: Option<Role> },
+    Clock {
+        writer: String,
+    },
+    Grant {
+        principal: String,
+        role: Option<Role>,
+    },
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

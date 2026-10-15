@@ -49,8 +49,9 @@ typed formatting, paired image metadata, writer-owned moves/deletions and exact
 selective-history restart have native and generated-Wasm functional checks.
 Optional local IndexedDB checkpoints and content-addressed raster bytes now
 survive reload; file picker/paste/drop insert only after bytes are durable. The
-upload queue has explicit retry/cancel and late-epoch guards, but requires a host
-provider and does not constitute shared asset storage. The default packages,
+upload queue has explicit retry/cancel and late-epoch guards. An optional native
+relay asset store and packaged authenticated provider now transfer verified
+content-addressed bytes between independent browser caches. The default packages,
 schemas and codecs remain unchanged.
 
 The separate `@breditor/experimental-collaboration` browser coordinator now
@@ -67,7 +68,7 @@ selective history; another tab cannot clone that live writer through another
 database. Failed storage attempts remain explicit and can retry the latest
 complete checkpoint. The combined demo now uses both durable writers and proves
 disconnect/reconnect/reload through the real DOM controller. Combined network-
-demo integration, network presence transport and cross-host asset providers
+demo integration and network presence transport
 remain required work.
 
 Shared caption creation/replacement/removal now uses a writer-owned choice of
@@ -220,6 +221,31 @@ at 188/189. Coverage-checked per-file WebKit processes, as already used by the
 legacy suite, then pass all 189 without retries or relaxed checks. Together with
 the unchanged 309-case legacy matrix, the functional evidence covers 498 browser
 cases. The historical engine/process reliability risk remains explicit.
+
+The reference host now stores original PNG/JPEG/WebP bytes in an exclusively
+locked private directory bound to its immutable room seed/authority. Editor
+uploads and Reader downloads use authenticated, exact-Origin HTTP routes;
+native decode/digest admission precedes durable immutable-file publication.
+Restart revalidates complete records, exact retries preserve the storage budget,
+and corruption rejects without deleting complete files. Asset receipts remain
+independent of document acknowledgements, logs and history.
+`SharedRelayAssets` connects the existing offline queue and local cache to this
+host. Verified downloads begin uploaded without echoing new uploads; existing
+cancellation epochs remain unchanged. Negotiated coalesced availability hints
+refresh only current image elements, leaving text DOM and selection untouched.
+The 21 focused browser cases cover independent contexts, all three raster
+formats, restart/reload, late upload after deletion and Undo, permissions,
+digest rejection and a ten-image bounded download. Five native asset contracts
+cover exact bytes, recovery, ownership/binding and corruption retention.
+Network presence/overlays, combined network-demo integration and optional
+Rust/Wasm distribution promotion remain work. Physical IME, accessibility and
+exhaustive adversarial qualification remain deferred.
+The complete asset checkpoint passes all 210 shared browser cases (70 per
+engine), 229 native editor and 17 unique native relay contracts, strict
+native/Wasm lints, generated/installed TypeScript and real-Wasm installed
+archives. Together with the prior unchanged 309-case legacy pass, the retained
+functional evidence covers 519 browser cases. Every shared WebKit spec runs
+once in a fresh process without retries or changed deadlines/assertions.
 
 ## Scope of the combined release
 
@@ -1050,10 +1076,9 @@ future history. Kind/move and nested-table conflicts now retain content through
 compatible positions and reserved root occurrences. The configurable shared
 profile now supplies schema/format compilation and exact create/join/restore.
 The next focused sessions should promote its optional Rust/Wasm distribution and
-integrate the reference relay, network presence/overlays and host
-asset provider. Durable shared causal journals and local asset
-bytes now survive reload, but do not supply network acknowledgement or shared
-asset hosting. Arbitrary cross-container
+integrate the reference relay into the combined demo with network presence/overlays.
+Durable shared causal journals, server acknowledgement and independently hosted
+image bytes now have separate explicit contracts. Arbitrary cross-container
 text ranges and typing coalescing remain separate support limits. Schedule the full
 release after the remaining measured integration gates. Production
 follows combined qualification and a real pilot, not the existence of three

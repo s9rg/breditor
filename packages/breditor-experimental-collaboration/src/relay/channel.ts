@@ -30,7 +30,7 @@ export class RelayChannel {
    const e=object(JSON.parse(raw));if(Object.keys(e).sort().join(",")!=="format,formatVersion,id,result"||e["format"]!=="breditor/relay"||e["formatVersion"]!==1)throw new SharedRelayError("protocol_error");
    const result=object(e["result"]),kind=string(result["kind"],32);let error:SharedRelayError|undefined;
    if(kind==="error"){const code=string(result["code"],64);if(!codes.has(code))throw new SharedRelayError("protocol_error");error=new SharedRelayError(code);}
-   if(e["id"]===null){if(kind!=="catchup"&&kind!=="error")throw new SharedRelayError("protocol_error");this.#onEvent(result);return;}
+   if(e["id"]===null){if(kind!=="catchup"&&kind!=="error"&&kind!=="assetsChanged")throw new SharedRelayError("protocol_error");this.#onEvent(result);return;}
    const id=string(e["id"],64),pending=this.#pending.get(id);if(!pending)throw new SharedRelayError("protocol_error");
    this.#pending.delete(id);clearTimeout(pending.timer);if(error)pending.reject(error);else pending.resolve(result);
   }catch(error){this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("protocol_error"));}

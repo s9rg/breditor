@@ -6,6 +6,24 @@ export interface RenderOptions {
  resolveAsset?:(binding:AssetBinding)=>string|undefined|Promise<string|undefined>;
  inlineTag?:(format:FormatLiteral)=>"span"|"strong"|"em"|"code";
 }
+const assetBindings=new WeakMap<HTMLElement,{bitmap:HTMLImageElement;binding:AssetBinding;attempt:number}>();
+function resolveImage(figure:HTMLElement,options:RenderOptions):void {
+ const record=assetBindings.get(figure);if(!record)return;
+ const attempt=++record.attempt,{bitmap,binding}=record;
+ const live=()=>assetBindings.get(figure)===record&&record.attempt===attempt&&figure.isConnected;
+ const apply=(url:string|undefined):void=>{if(!live())return;if(url){bitmap.src=url;figure.dataset["assetState"]="ready";}else if(!bitmap.hasAttribute("src"))figure.dataset["assetState"]="unresolved";};
+ try{
+  const resolved=options.resolveAsset?.({...binding});
+  if(typeof resolved==="string"){bitmap.src=resolved;figure.dataset["assetState"]="ready";}
+  else if(resolved)void Promise.resolve(resolved).then(apply).catch(()=>{if(live()&&!bitmap.hasAttribute("src"))figure.dataset["assetState"]="error";});
+  else if(!bitmap.hasAttribute("src"))figure.dataset["assetState"]="unresolved";
+ }catch{if(!bitmap.hasAttribute("src"))figure.dataset["assetState"]="error";}
+}
+/** Retry only current immutable image bindings. Text, selection, composition and Rust history are
+ * untouched. Per-element attempts fence a delayed resolver after replacement/removal/refresh. */
+export function refreshAssets(surface:HTMLElement,options:RenderOptions):void {
+ for(const figure of surface.querySelectorAll<HTMLElement>("figure[data-rich-image]"))resolveImage(figure,options);
+}
 export function render(surface:HTMLElement,value:RichModel,options:RenderOptions):void {
  const document=surface.ownerDocument;
  const flow=(node:AstNode):Node=>{
@@ -31,10 +49,7 @@ export function render(surface:HTMLElement,value:RichModel,options:RenderOptions
   const bitmap=document.createElement("img");bitmap.alt=String(property(node,"alt-text"));bitmap.draggable=false;
   const width=property(node,"width"),height=property(node,"height");if(typeof width==="number"&&typeof height==="number"){bitmap.width=width;bitmap.height=height;}
   const binding={image:String(property(node,"image-id")),asset:String(property(node,"asset-id")),generation:String(property(node,"asset-generation"))};
-  const resolved=options.resolveAsset?.(binding);
-  if(typeof resolved==="string")bitmap.src=resolved;
-  else if(resolved)void Promise.resolve(resolved).then(url=>{if(url&&bitmap.isConnected)bitmap.src=url;}).catch(()=>{if(bitmap.isConnected)figure.dataset["assetState"]="error";});
-  else figure.dataset["assetState"]="unresolved";
+  assetBindings.set(figure,{bitmap,binding,attempt:0});resolveImage(figure,options);
   figure.append(bitmap);
   const pick=document.createElement("button");pick.type="button";pick.dataset["selectNode"]=id(node);pick.textContent="Select image";figure.append(pick);
   if(node.children.length){const caption=document.createElement("figcaption");caption.contentEditable="true";for(const child of node.children)caption.append(flow(child));figure.append(caption);}
