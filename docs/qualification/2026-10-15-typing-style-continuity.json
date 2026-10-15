@@ -1,0 +1,57 @@
+{
+  "date":"2026-10-15",
+  "sourceCheckpoint":"3de72514c628ef8a4164a1cc62cbf9dc9ca8f0f0",
+  "scope":"Retain admitted inherited caret formats across successive ordinary typing in the local native caret helper and shared owner, using the existing pending-format/history state. The local browser already uses the correct range-aware helper and its runtime bytes are unchanged.",
+  "releaseQualified":false,
+  "reproduction":{
+    "beforeCheckpoint":"17eb61ea71280814f34042e3d4abcfa04d235bf9",
+    "seed":"A paragraph with strong a followed by plain emoji+b, caret at UTF-16 offset 1 with before affinity and no explicit pending override.",
+    "input":["X","Y"],
+    "before":"The retained pre-fix installed shared runtime produces strong aX, followed by plain Y+emoji+b.",
+    "after":"The repaired installed runtime produces strong aXY, followed by plain emoji+b.",
+    "cause":"Typing resolves the intended source-run formats, advances the caret with after affinity, but previously retained null pending state. The next read resolves the right run instead of the styles just used for typing.",
+    "repair":"Pin the admitted effective formats, including an empty plain set, in the same atomic content/advanced-caret publication. Ordinary context changes still clear the override. Range typing already follows this policy.",
+    "nativeEvidence":["crates/breditor-core/tests/rich_local_session.rs","experiments/collaboration/tests/rich_replica_selection_contracts.rs"],
+    "developmentNote":"An initial uniformly styled sample did not establish a run boundary, and an initial later caret split an emoji. Those fixture mistakes were corrected. Both explicit-boundary native tests then failed with an empty effective format set before the repair; assertions and budgets were not relaxed."
+  },
+  "native":[
+    {"command":"cargo test -p breditor-core --features experimental-rich-content --locked --offline --quiet","passed":true,"libraryTests":1217,"doctests":136,"note":"Every integration test also passes, including the 17 local-session contracts. New tests cover both strong-to-plain and plain-to-strong inheritance, multiple scalar/emoji inputs, exact checkpoint future history and explicit context reset."},
+    {"command":"cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --quiet","passed":233,"note":"All private shared regressions, including 23 selection/typing contracts. New cases include an offline peer caption edit, convergence, selective Undo/Redo, restart equality and exact authored updates."},
+    {"command":"cargo test -p breditor-wasm --features experimental-rich-content --locked --offline --tests --quiet","passed":true,"libraryTests":44,"richEditorContracts":17,"projectionTests":1,"boundaryTests":21},
+    {"command":"cargo clippy -p breditor-core --features experimental-rich-content --locked --offline --lib --test rich_local_session -- -D warnings","passed":true},
+    {"command":"cargo clippy --manifest-path experiments/collaboration/Cargo.toml --locked --offline --all-targets","passed":true},
+    {"command":"cargo clippy --manifest-path experiments/collaboration/Cargo.toml --locked --target wasm32-unknown-unknown --lib --quiet","passed":true,"note":"Completed by the shared-browser qualification runner before browser execution. The existing vendor HasIdSpan warning remains unmodified."},
+    {"command":"node scripts/check-relay.mjs","passed":true,"defaultTests":17,"serverFeatureTests":20,"note":"Includes default/server linting, server/example builds and raster fixture generation. These overlap and are not 37 distinct product capabilities."},
+    {"command":"cargo fmt --all --check; cargo fmt --manifest-path experiments/collaboration/Cargo.toml --all --check","passed":true}
+  ],
+  "browserSuites":[
+    {"command":"node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs","passed":27,"perEngine":9,"engines":["chromium","firefox","webkit"],"note":"Final installed production SDK pages. New cases use browser-automation keystrokes, exact reload, offline peer edits, selective history and restarted typing; moving into the neighboring plain run then types plain. Existing lifecycle, React, clipboard, assets and mixed-content cases remain included."},
+    {"command":"node scripts/check-shared-browser-matrix.mjs","passed":303,"perEngine":101,"engines":["chromium","firefox","webkit"],"note":"Full source matrix after rebuilding the matching shared runtime. Chromium/Firefox pass all 202 cases together in 4.6 minutes. All 101 WebKit cases pass through the existing fresh-per-file process plan. Every discovered spec is included; no retries or deadline changes."},
+    {"command":"node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"note":"Final fresh installed archives pass the existing presentation, controls, independent network clients, retained image bytes, peer carets, offline/reconnect/restart and selective-history workflows in 2.0 minutes. These three archives match the corresponding SDK-qualification hashes exactly."}
+  ],
+  "browserRunCountNote":"408 overlapping final suite executions, not unique capabilities or a feature-parity percentage. Earlier development/SDK-checkpoint runs are not added. No retries, dropped specs, relaxed assertions or changed deadlines.",
+  "combinedGate":{"command":"node scripts/check-shared-browser.mjs","passed":true,"note":"Terminal exit 0 after native and Wasm lint/test/build stages, reference-relay checks, native vector/export-driver checks, generated/consumer types, matrix coverage/startup/launcher tests, the full source browser matrix and fresh installed package/network qualification. Existing retained user demo state was not restarted or migrated."},
+  "installedConsumers":{"command":"node scripts/check-editor-package.mjs","passed":true,"note":"Fresh local/shared native binaries and independent minimal/full Node, ES2022/DOM types, SSR placeholder and production Vite consumers pass. Runtime and SDK build guards additionally pass all seven tests."},
+  "artifacts":{
+    "packageVersion":"0.3.0-alpha.22",
+    "archives":[
+      {"name":"@breditor/browser","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name":"@breditor/experimental-rich-content","bytes":1169568,"sha256":"3bac159ecc6375d5284348806b2360b02bdf6b858f9e2becbb6b44d3af5a9ce7"},
+      {"name":"@breditor/experimental-collaboration","bytes":2533040,"sha256":"7f81353d3f96c07f4896b5fb96da00689d8d824a8813b1ffcfc568faf4f6b990"},
+      {"name":"@breditor/editor","bytes":12337,"sha256":"3a026ce668325cf5095b7a4520b5878113209431b105ffe5960f0cb7bb506a35"}
+    ],
+    "localRichWasm":{"bytes":4091608,"gzipBytes":1088619,"sha256":"7c724be7c4b03b7022421cf9fb63937172a5e746c146edb164eaab1af23a33b9"},
+    "sharedWasm":{"bytes":9115780,"gzipBytes":2464085,"sha256":"549db286c4ad5a3fffbd3400bbea807495bbfe333dfea3d9bc361105249efee4"},
+    "legacyQualificationWasm":{"bytes":9116116,"gzipBytes":2464123,"sha256":"5f446129391013856a8fbba4183b56ca715b83090c3e406108413013afdad3c5"},
+    "note":"Default browser, rich-content and SDK archives remain identical to the SDK integration checkpoint. The packaged shared binary contains this repair. Source browser qualification uses the separately generated legacy-named probe module; installed SDK/network checks use the bundled module."
+  },
+  "limits":[
+    "Typing style continuity is not natural typing coalescing. Each existing input publication retains its original history grouping; broader typing/composition/remote boundaries remain goal work.",
+    "Existing schema, format, document, command and history budgets remain enforced. No wire fields, schema interpretation, ABI, model 11 or journal 12 revision changes. Old checkpoints are not silently reinterpreted or rewritten.",
+    "Full source/API promotion, durable shared React ownership, remaining everyday structural editing and foreign interchange are still incomplete. All 13 V1 qualification gates remain open.",
+    "This repair is not the historical intermittent WebKit fault. Native clipboard, physical input, accessibility, performance and public deployment are not qualified by these automated cases."
+  ],
+  "historicalWebKitFaultResolved":false,
+  "published":false,
+  "publicDeployment":false
+}

@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `17eb61e` (saved locally,
+The latest functional implementation checkpoint is `3de7251` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -52,6 +52,15 @@ retains Rust history across parent renders and handles StrictMode, late startup,
 key changes and failed-opening retry. Final qualification passes 21 new installed
 production-browser cases and 78 existing installed shared/network cases, plus
 SDK, default-browser, script, type, native-runtime and clean-install checks.
+The subsequent [caret-style repair](qualification/2026-10-15-typing-style-continuity.json)
+reproduces and fixes inherited-format loss at
+strong/plain run boundaries in the local Rust caret helper and shared owner.
+The local browser already used the correct range-aware helper and its Wasm
+binary stays unchanged. Both native owners now retain the admitted typing style
+until the caret context changes, including after exact history/restart. Final
+qualification passes 27 installed SDK, 303 shared source and 78 installed-network
+browser runs, the full opt-in core/shared native suites, Wasm boundary tests and
+the reference-relay gate. Typing coalescing remains open.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
@@ -180,6 +189,12 @@ feasibility-only distribution, preserving default package compatibility. Keep
 collaboration and relay optional; applications should not need a relay merely
 to edit local tables and images. Agree on public package ownership and profile
 construction before freezing names or marking packages publishable.
+
+The packaged shared candidate still includes the experimental probe/fixture
+exports from its isolated Wasm source. Separate those test entry points from the
+supported application surface during Rust-source promotion; merely bundling the
+feasibility binary is not the final distribution contract. Preserve the old
+experimental qualification path rather than silently changing its exports.
 
 Add a complete safe inline presentation/control contract to the rich path,
 including links and mixed property values. Reuse existing semantics where

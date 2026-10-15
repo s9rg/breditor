@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "17eb61ea71280814f34042e3d4abcfa04d235bf9",
+  "baselineCommit": "3de72514c628ef8a4164a1cc62cbf9dc9ca8f0f0",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -124,9 +124,9 @@
     {
       "id":"history","area":"Editing","status":"partial",
       "summary":"Undo, Redo and natural typing groups",
-      "current":"Exact local and selective shared history/reload are implemented. Compound local formatting now has one publication and Undo group across explicit text intervals, including exact future history after restore. Natural typing coalescing and the final integrated boundary policy remain unfinished.",
+      "current":"Exact local and selective shared history/reload are implemented. Compound local formatting has one publication and Undo group across explicit text intervals. The local Rust caret helper and shared typing now retain inherited strong/plain styles across successive keys at a run boundary; native tests cover context reset, offline peer edits and exact future history after restore. Installed SDK browser tests cover reload and selective history. Natural typing coalescing and the final integrated boundary policy remain unfinished.",
       "acceptance":"Define typing/paste/composition/format/move grouping, preserve remote work under local Undo, and test future Redo after recovery.",
-      "evidence":["crates/breditor-core/src/rich_content/local_session/undo.rs","crates/breditor-core/tests/rich_format_changes.rs","experiments/shared-browser/network-demo.spec.mjs","docs/qualification/2026-10-15-compound-inline-formatting.json"],
+      "evidence":["crates/breditor-core/src/rich_content/local_session/undo.rs","crates/breditor-core/tests/rich_format_changes.rs","crates/breditor-core/tests/rich_local_session.rs","experiments/collaboration/tests/rich_replica_selection_contracts.rs","experiments/editor-browser/editor.spec.mjs","experiments/shared-browser/network-demo.spec.mjs","docs/qualification/2026-10-15-compound-inline-formatting.json"],
       "sources":["tiptap-starter","ckeditor-digest"]
     },
     {
