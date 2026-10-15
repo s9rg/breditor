@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "1f660eb34a41405bdabd6f584212a45d6ae3f07f",
+  "baselineCommit": "5ea87757ebbdc314fb6a5c44b336d7f2f9d587b8",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -36,7 +36,7 @@
     {
       "id":"basic-inline-formatting","area":"Editing","status":"partial",
       "summary":"Bold, italic, underline, strike and inline code",
-      "current":"The explicit Rust standard inline V1 profile declares every ordinary mark, and its checked renderer works with local/shared owners and installed archives. Both owners expose Rust-derived exact/mixed reads. The default rich/shared toolbar still exposes Bold; complete standard controls and their state integration remain unfinished.",
+      "current":"The explicit Rust standard inline V1 profile declares every ordinary mark, and its checked renderer works with local/shared owners and installed archives. Both owners expose Rust-derived exact/mixed reads. A separate compound local command now commits simultaneous format changes as one guarded history unit. Complete standard controls and their state integration remain unfinished.",
       "acceptance":"Ship all everyday marks in the combined profile, renderer and toolbar; test mixed state, caret formats, clipboard, offline edits and selective Undo/Redo.",
       "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-experimental-rich-content/src/standard_inline_v1.ts","crates/breditor-core/src/rich_content/inline_format_state.rs","packages/breditor-experimental-collaboration/src/toolbar.ts","experiments/shared-browser/standard-profile.spec.mjs","docs/qualification/2026-10-15-standard-inline-v1.json"],
       "sources":["tiptap-starter","ckeditor-styles","tiptap-source-starter"]
@@ -44,7 +44,7 @@
     {
       "id":"subscript-superscript","area":"Editing","status":"missing",
       "summary":"Subscript and superscript",
-      "current":"The explicit standard V1 profile now declares independent subscript/superscript literals and both render in local/shared editors. Integrated exclusive controls and complete script workflows remain missing; admission deliberately does not silently remove the other literal.",
+      "current":"The explicit standard V1 profile declares independent subscript/superscript literals and both render in local/shared editors. The new compound local command can explicitly switch scripts atomically in cells/captions with exact history. Stock exclusive controls and complete interchange workflows remain missing; admission never silently removes the other literal.",
       "acceptance":"Define mutually compatible script formats, semantic presentation and exact history/interchange behavior.",
       "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","experiments/rich-browser/standard-profile.spec.mjs","experiments/shared-browser/standard-profile.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-styles"]
@@ -124,9 +124,9 @@
     {
       "id":"history","area":"Editing","status":"partial",
       "summary":"Undo, Redo and natural typing groups",
-      "current":"Exact local and selective shared history/reload are implemented. Natural typing coalescing and the final integrated boundary policy are not qualified.",
+      "current":"Exact local and selective shared history/reload are implemented. Compound local formatting now has one publication and Undo group across explicit text intervals, including exact future history after restore. Natural typing coalescing and the final integrated boundary policy remain unfinished.",
       "acceptance":"Define typing/paste/composition/format/move grouping, preserve remote work under local Undo, and test future Redo after recovery.",
-      "evidence":["crates/breditor-core/src/rich_content/local_session/undo.rs","experiments/shared-browser/network-demo.spec.mjs","experiments/collaboration/README.md"],
+      "evidence":["crates/breditor-core/src/rich_content/local_session/undo.rs","crates/breditor-core/tests/rich_format_changes.rs","experiments/shared-browser/network-demo.spec.mjs","docs/qualification/2026-10-15-compound-inline-formatting.json"],
       "sources":["tiptap-starter","ckeditor-digest"]
     },
     {

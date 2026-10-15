@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "5ea87757ebbdc314fb6a5c44b336d7f2f9d587b8",
+  "scope": "Simultaneous local Rust inline-format changes, a separate strict rich Wasm command, and read-only observation preflight before request parsing. Existing single-format commands, schemas, local checkpoint representation, default ABI and shared model/journal meanings remain unchanged.",
+  "releaseQualified": false,
+  "toolchain": {"rustc": "1.98.0 (88d9e12ae 2026-08-18)", "wasmBindgen": "0.2.127", "node": "22.14.0"},
+  "native": [
+    {"command": "cargo test -p breditor-core --locked --features experimental-rich-content --test rich_format_changes --offline --quiet", "passed": 6, "note": "Final-run admission at a one-format/one-action limit, order independence, Unicode/scalar ranges, exact selection endpoints and future recovered history, late schema failure atomicity, no-op observation retention, single-capture equivalence and read-only stale/foreign observation preflight."},
+    {"command": "cargo test -p breditor-core --locked --lib --offline --quiet", "passed": 703},
+    {"command": "cargo test -p breditor-core --locked --features experimental-rich-content --lib --offline --quiet", "passed": 1217},
+    {"command": "cargo test -p breditor-wasm --locked --features experimental-rich-content --lib --test rich_editor --offline --quiet", "libraryTestsPassed": 44, "richEditorContractsPassed": 16, "note": "Includes exact one-publication/one-history behavior, schema/shape/late-target failures, preserved original one-format shape and stale-guard precedence. The quota unit explicitly permits several changed kinds within one target/action."},
+    {"command": "cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --quiet", "passed": 231, "note": "Native collaboration regressions pass against the changed core. The existing unused HasIdSpan vendor warning remains; no vendor source was edited."}
+  ],
+  "browserSuites": [
+    {"command": "node scripts/check-rich-browser.mjs", "passed": 129, "engines": ["chromium", "firefox", "webkit"], "note": "Final stable-source rerun passed. Covers compound script/size changes in a cell and caption, one Undo group, exact saved future Redo, unchanged logical selection, late rejection and continued input. The script now also runs the compound core and standard-preset native contracts."},
+    {"command": "node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs", "passed": 36, "engines": ["chromium", "firefox", "webkit"], "note": "Fresh installed browser libraries with unchanged engine coverage/deadlines and zero configured retries. These are existing shared presentation/network workflows, not a new replicated compound-format command."}
+  ],
+  "browserRunCountNote": "165 overlapping suite executions in the final checkpoint qualification, not a feature count. An earlier 129-local/36-installed pass also succeeded before adding the separate installed quota fixture; it is not added to this count. The full 261-case shared source matrix remains recorded at the prior standard-preset checkpoint, not claimed as rerun here.",
+  "installedRuntime": {
+    "command": "node scripts/check-shared-package.mjs",
+    "passed": true,
+    "note": "Fresh offline consumer copies and runs the quota fixture, uses package-root imports and its installed local Wasm binary, compares local/shared standard catalogs and verifies compound future Undo/Redo after restore. Four formats across 257 paragraphs produce one publication and one history group, then Undo/Redo restore exact documents. This proves the operation ceiling counts target patches rather than multiplying targets by format keys. That larger fixture tests live Undo/Redo; the separate small fixture tests checkpoint restore. Shared Wasm remains host-supplied and unchanged from the previous checkpoint."
+  },
+  "guardRepair": {
+    "reproduction": "Capture an observation, publish a selection change, then submit malformed JSON with the old observation.",
+    "before": "The rich boundary reported breditor_rich.command_json because parsing preceded the eventual dispatch guard. No content was published.",
+    "after": "Read-only validate_observation runs before length/JSON admission and reports breditor_rich.stale_observation. Final dispatch still checks authority. Frozen observation reads are unchanged."
+  },
+  "otherChecks": "Root formatting, strict native/Wasm Clippy, generated/consumer TypeScript, default and rich Wasm boundary regressions, ordinary text-range/format/preset tests and the standalone script suite pass. The standalone suite retains its three explicit opt-in diagnostic skips. Default-browser source/archive is unchanged; its previous 2,203-unit result is not claimed as a newly executed suite here.",
+  "artifacts": {
+    "packageVersion": "0.3.0-alpha.22",
+    "archives": [
+      {"name": "@breditor/browser", "bytes": 327732, "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name": "@breditor/experimental-rich-content", "bytes": 1161253, "sha256": "1375bd2bf4a10738e05b791a79430fa87dfda541e05c205c6088f8f9f0b7aa8e"},
+      {"name": "@breditor/experimental-collaboration", "bytes": 59826, "sha256": "c194d34d8c5b8ae8e561c10fa096402ab4af5606c54e1f62002922f216d40303"}
+    ],
+    "localRichWasm": {"bytes": 4089986, "gzipBytes": 1088218, "sha256": "c41eea59364949383b66c7b0076e8c64e77896da10a55702569a3db8d0457a06"},
+    "retainedSharedWasm": {"sourceCheckpoint": "1f660eb34a41405bdabd6f584212a45d6ae3f07f", "bytes": 9068712, "sha256": "ee53516c75c7ac3aec38fe5a1f5cc11a9fc6e6d4ecbba42a1f477794fe78a302"}
+  },
+  "limits": [
+    "The new command takes explicit nonempty scalar-aligned text intervals, one per block. It does not infer a document-wide selection, modify node/grid selections or change collapsed-caret pending formats.",
+    "Changes are simultaneous within each run and kinds must be unique and declared. Every set still carries exactly one complete schema-valid format; per-property patching is not added.",
+    "Each target uses one action under the existing context ceiling, 1,024 by default. Existing schema, format/document and 1 MiB command limits remain. The command rejects instead of truncating.",
+    "The additive command requires a matching rich Wasm build. The unchanged ABI number alone does not advertise this feature on an older module; the clean-package check pairs the current binary and wrapper. Runtime capability negotiation remains distribution work.",
+    "Compound local edits are not a new shared operation. Shared selective history retains its existing explicit dispatch contract.",
+    "Complete mixed-state forms/toolbar, distribution promotion, structural editing, natural typing groups, read-only mode and foreign interchange remain active goal work. No readiness label or qualification gate closes here.",
+    "Native clipboard, physical IME, screen readers, mobile, sustained performance and public-deployment qualification remain outside this functional checkpoint."
+  ],
+  "historicalWebKitFaultResolved": false,
+  "published": false,
+  "publicDeployment": false
+}

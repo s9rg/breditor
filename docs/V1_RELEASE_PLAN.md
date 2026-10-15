@@ -19,28 +19,34 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `1f660eb` (saved locally,
-not yet pushed). The explicitly selected standard inline V1 preset now declares
+The latest functional implementation checkpoint is `5ea8775` (saved locally,
+not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
 [presentation checkpoint](qualification/2026-10-15-inline-presentation.json)
 records the archive-pairing repair and its 687-run matrix. The subsequent
 [formatting-state checkpoint](qualification/2026-10-15-rich-inline-state.json)
-records the Rust-derived exact/mixed reads at `81aeb0c`. The new
+records the Rust-derived exact/mixed reads at `81aeb0c`. The
 [standard-preset checkpoint](qualification/2026-10-15-standard-inline-v1.json)
 passes 261 shared, 36 installed-archive and 123 local browser runs, plus the
 recorded Rust/Wasm, default-browser, type and packaging checks. Its qualification
 record also retains the earlier failed/incomplete attempts and the test-host
-startup repair. These overlapping runs are not unique capability counts. The
-ledger anchors this implementation; feature labels and all 13 qualification
+startup repair. The subsequent
+[compound-format checkpoint](qualification/2026-10-15-compound-inline-formatting.json)
+adds simultaneous local formatting, one history group across explicit text
+targets and early stale-observation rejection. It passes 129 local and 36
+installed browser runs, plus the recorded Rust/Wasm and clean-consumer checks.
+The earlier full shared matrix remains attached to its original checkpoint.
+These overlapping runs are not unique capability counts. The ledger anchors
+the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
-The active first-two-workstream goal is not complete. Next are atomic compound
-format editing and actual standard controls using the Rust state reads, followed
+The active first-two-workstream goal is not complete. Next are actual standard
+controls and complete mixed-property editing using the Rust state reads, followed
 by distribution promotion, everyday editing gaps and external interchange. The
-existing local one-format command must not silently become a multi-format
-command. Declarations, rendering and state queries alone do not fulfill the
-workstreams' acceptance conditions.
+original local one-format command remains strict; compound edits use a separate
+command. Declarations, rendering and command primitives alone do not fulfill
+the workstreams' acceptance conditions.
 
 The combined editor implements nested lists, tables with rich cell bodies and
 grid operations, block raster images, durable offline journals/uploads,
