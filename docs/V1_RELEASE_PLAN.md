@@ -13,11 +13,27 @@ no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is ado
 
 ## Current checkpoint
 
-The audit baseline is
+The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
+
+The latest functional implementation checkpoint is `81aeb0c` (saved locally,
+not yet pushed). Schema-bound presentation and Rust-derived exact/mixed
+formatting-state reads now work in both local and shared owners. The
+[presentation checkpoint](qualification/2026-10-15-inline-presentation.json)
+records the archive-pairing repair and its 687-run matrix. The subsequent
+[formatting-state checkpoint](qualification/2026-10-15-rich-inline-state.json)
+passes 249 shared, 24 installed-archive and 114 local browser runs, plus the
+recorded Rust/Wasm, type and packaging checks. These overlapping runs are not
+unique capability counts. The ledger now anchors that exact implementation;
+its feature labels and all 13 qualification gates remain unchanged.
+
+The active first-two-workstream goal is not complete. The next checkpoint is
+the versioned standard profile and its actual controls, followed by distribution
+promotion, everyday editing gaps and external interchange. Rendering and state
+queries alone do not fulfill those acceptance conditions.
 
 The combined editor implements nested lists, tables with rich cell bodies and
 grid operations, block raster images, durable offline journals/uploads,

@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "81aeb0cbf6e78b643d3054da417e9e0d1927fbe7",
+  "scope": "Original Rust exact-property formatting-state query, bounded read encoding, local frozen-observation and shared guarded APIs, and installed consumer checks. No persisted document, shared model, journal or default ABI meaning changes.",
+  "releaseQualified": false,
+  "toolchain": {"rustc": "1.98.0 (88d9e12ae 2026-08-18)", "wasmBindgen": "0.2.127", "node": "22.14.0"},
+  "native": [
+    {"command": "cargo test -p breditor-core --locked --features experimental-rich-content --test rich_inline_format_state --offline --quiet", "passed": 9, "note": "Exact maps, full versus partial mixed presence, focus affinity, pending plain override, empty/nontext modes, cross-cell path order, stale/foreign contexts, history/observation immutability, closed encoding and the 64 KiB output ceiling."},
+    {"command": "cargo test -p breditor-core --locked --lib --offline --quiet", "passed": 703},
+    {"command": "cargo test -p breditor-core --locked --features experimental-rich-content --lib --offline", "passed": 1217},
+    {"command": "cargo test -p breditor-wasm --locked --features experimental-rich-content --test rich_editor --offline", "passed": 13, "note": "Includes frozen reads after later publication and retained live mutation authority."},
+    {"command": "cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --test shared_profile_contracts", "passed": 9, "note": "Includes a stale shared observation rejecting before malformed kind parsing and exact restored state."}
+  ],
+  "browserSuites": [
+    {"command": "node scripts/check-shared-browser.mjs", "passed": 249, "engines": ["chromium", "firefox", "webkit"], "note": "Complete canonical shared matrix; preserves per-file WebKit isolation and unchanged deadlines/assertions."},
+    {"command": "node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs", "passed": 24, "engines": ["chromium", "firefox", "webkit"], "note": "All three browser libraries come from the exact installed archives below; shared Wasm remains explicitly host-supplied from the isolated workspace."},
+    {"command": "node scripts/check-rich-browser.mjs", "passed": 114, "engines": ["chromium", "firefox", "webkit"], "note": "Complete local owner/DOM/assets/clipboard/history/recovery matrix with the new state API."}
+  ],
+  "installedRuntime": "The offline clean consumer initializes its installed local Wasm binary and calls inlineFormatState, as well as the new guarded method on the shared owner. Type checks and future exact history checks pass without workspace library links.",
+  "otherChecks": "Root and isolated-workspace formatting, native/Wasm Clippy, generated/consumer TypeScript, all 230 private native editor tests, relay checks, coverage/real-host restart guards and the standalone script suite pass. The standalone script suite retains its three explicit opt-in diagnostic skips. Existing native local typing/range/recovery regressions also pass.",
+  "artifacts": {
+    "packageVersion": "0.3.0-alpha.22",
+    "archives": [
+      {"name": "@breditor/browser", "bytes": 326348, "sha256": "4982e0f53139f062327f69df5101ffa3d4e1237565ecb1c5d2e819ae86df6181"},
+      {"name": "@breditor/experimental-rich-content", "bytes": 1151905, "sha256": "b88cf44363447474413e12f7fd5f5b545bdd9631a54458c539443c29d76d3f02"},
+      {"name": "@breditor/experimental-collaboration", "bytes": 59026, "sha256": "83009920363f869848af05caf31686d005b855fadf555f1a031d665a715eb3a5"}
+    ],
+    "localRichWasm": {"bytes": 4069007, "gzipBytes": 1081948, "sha256": "afc3c93aa85ccb8573a76fb5516781474ec8b24096f139b8e654e5ffc8635398"},
+    "sharedWasm": {"bytes": 9078961, "gzipBytes": 2451386, "sha256": "295eb582958c147751f4ceb0f58bfd4bea18c90206f42fc09a81eabe8c68e7ff"}
+  },
+  "limits": [
+    "The state query does not add mutation support for general cross-container ranges. Node/grid selections and non-caret ranges containing no characters report unavailable.",
+    "Uniform means complete property-map agreement. Mixed values can still be present everywhere; this is not yet an integrated per-field toolbar editing contract.",
+    "A complete encoded state read is bounded to 64 KiB and oversized values fail instead of truncating.",
+    "Standard profile and complete controls, distribution promotion, everyday editing gaps and foreign interchange remain active goal work.",
+    "Playwright engine tests do not establish native clipboard, physical IME, screen-reader, mobile, sustained performance or public-deployment qualification."
+  ],
+  "historicalWebKitFaultResolved": false,
+  "published": false,
+  "publicDeployment": false
+}
