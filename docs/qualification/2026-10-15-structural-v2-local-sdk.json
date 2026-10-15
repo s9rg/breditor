@@ -1,0 +1,299 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "964c77d345a69f4253feec0615d536d4fd0bd720",
+  "scope": "Explicit local rich-language V2 through the original Rust owner, matching Wasm, package-root vanilla and React SDK. Quotes, code, rules and interactive task lists are local features; shared model 11 remains V1-only.",
+  "releaseQualified": false,
+  "goalComplete": false,
+  "contracts": {
+    "selector": "openLocalEditor({richLanguage:2}) / React initialOptions.richLanguage:2; explicit headless createStructuralLocalProfileV2",
+    "bootstrapVersion": 7,
+    "richLanguageVersion": 2,
+    "defaultSchema": "breditor-editor/standard@2",
+    "defaultAbi": 5,
+    "richAbi": 1,
+    "documentFormat": 2,
+    "localCheckpointFormat": 1,
+    "compatibility": "Omitted/1 selects the unchanged V1 preset and bootstrap V6. Unknown SDK language versions reject. Old factories and fingerprints do not migrate V2 documents/checkpoints. Shared model 11/journal 12 reject V2 before seed parsing or engine import.",
+    "code": "Plain exact Unicode/tab/LF/CR; bounded inert nullable language; default conversion rejects formatted text and explicit removeFormats is one undoable action. Code caret/interval inline state is unavailable; partial cross-block replacements with code endpoints reject. Enter/Shift+Enter insert LF; prose conversion is explicit.",
+    "tasks": "Required Boolean checked state, leading prose and complete rich tails. Checkbox pointer/Space sets an explicit owner-derived value. Split retains left completion, creates an unchecked right task and moves the tail right. Join retains left completion; exact inverse restores both original values and all identities.",
+    "admission": "Every new Rust action and Wasm parser has a separate named documented file. Closed fields, scalar boundaries, explicit IDs, full candidate validation, stale guards, original budgets and exact inverses remain authoritative. No DOM-owned document, operation rewrite or peer AST replacement is introduced."
+  },
+  "nativeChecks": {
+    "workspacePassed": 2322,
+    "suiteFooters": 135,
+    "doctestsIncluded": 136,
+    "coreLibraryPassed": 1218,
+    "newStructuralIntegrationPassed": 19,
+    "wasmNativeLibraryPassed": 44,
+    "existingRichWasmBoundaryPassed": 18,
+    "newStructuralWasmBoundaryPassed": 4,
+    "canonicalSharedNativePassed": 205,
+    "strictNativeAllTargetClippy": true,
+    "localWasmClippy": true,
+    "applicationSharedWasmClippy": true,
+    "rustdocWarningsDenied": true,
+    "formatChecks": true,
+    "defaultAllTargetCheck": true,
+    "note": "Actual Wasm-target Clippy and generated runtime builds are separate from native boundary tests. A pre-existing unused HasIdSpan import warning remains in retained third-party source; vendor files were not edited.",
+    "researchSharedNativePassed": 235
+  },
+  "installedConsumers": {
+    "command": "node scripts/check-editor-package.mjs",
+    "passed": true,
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/consumer",
+    "minimal": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/minimal",
+    "sharedOnly": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/shared-only",
+    "archives": [
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-editor-0.3.0-alpha.22.tgz"
+    ],
+    "configurations": [
+      "Local-only without React/collaboration, including a real structural V2 owner and exact recovered future history",
+      "Shared-only without React",
+      "Full React/shared, normal and advanced Wasm types, SSR/native initialization and eight Vite production pages"
+    ],
+    "note": "Immutable candidate archives include matching generated modules and binaries; consumers do not import repository target paths."
+  },
+  "browserSuites": [
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs",
+      "passed": 84,
+      "perEngine": 28,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "duration": "2.1 minutes",
+      "proof": "All eighteen new V2 cases plus existing local/shared ownership, typing, hard breaks, assets, clipboard, durable history/reload and React cases pass against the frozen clean-installed candidate. This includes explicit task-head ordinary-list control rejection."
+    },
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/shared-browser/application-network.config.mjs",
+      "passed": 78,
+      "perEngine": 26,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "duration": "1.9 minutes",
+      "proof": "The identical installed application archives pass standard controls, independent browser networking, assets, presence, offline/reconnect and recovered selective history. This is V1 collaboration compatibility, not V2 sharing."
+    },
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/rich-browser/playwright.config.mjs",
+      "passed": 168,
+      "perEngine": 56,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "duration": "1.7 minutes",
+      "proof": "Complete local-rich source suite, including strict integer bounds and redacted diagnostic causes, passes against the matching local Wasm."
+    },
+    {
+      "command": "node scripts/check-shared-browser-matrix.mjs (within check-shared-browser.mjs)",
+      "passed": 303,
+      "perEngine": 101,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "proof": "The separate final sequential attempt passes Chromium/Firefox 202 cases in 4.5 minutes, then all 101 WebKit cases in the existing seventeen per-file processes. Discovered-spec coverage guard, original deadlines and retries 0 are unchanged."
+    },
+    {
+      "command": "node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs (within check-shared-browser.mjs)",
+      "passed": 78,
+      "perEngine": 26,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "duration": "1.8 minutes",
+      "proof": "Fresh legacy compatibility archives pass installed types/native-vector equivalence and the original standard controls, networking, asset, presence and selective-history assertions. Their research runtime is not the application runtime."
+    }
+  ],
+  "earlierAttempts": [
+    {
+      "kind": "code-inline-state-reproduction",
+      "before": "A native V2 code caret reported Unset instead of Unavailable.",
+      "repair": "Validate pending formats against the actual admitted document and reject code applicability for the whole ordered selection interval. Same-block code editing remains supported; partial code-endpoint cross-block replacement is explicitly rejected.",
+      "tests": [
+        "crates/breditor-core/tests/rich_structural_v2.rs",
+        "crates/breditor-wasm/tests/rich_structural_v2.rs",
+        "experiments/editor-browser/structural-v2.spec.mjs"
+      ]
+    },
+    {
+      "kind": "minimal-consumer-expectation",
+      "before": "The first development package check compared a saved checkpoint with the same owner after Undo/Redo. Publication revisions legitimately advanced.",
+      "repair": "Compare original/restored owners after identical future operations, retaining exact complete checkpoint assertions. This was a proof-fixture correction, not a runtime repair."
+    },
+    {
+      "kind": "react-development-fixture",
+      "passed": 17,
+      "failed": 1,
+      "total": 18,
+      "before": "Chromium's initial focused edit from a null logical selection asynchronously established the first caret, advancing revision before the snapshot comparison; document/history content was unchanged.",
+      "repair": "Establish an explicit admitted caret before editing and saving. Exact checkpoint and identical-owner assertions remain unchanged.",
+      "trace": "target/structural-v2-local-development/react-null-selection-initial-focus/"
+    },
+    {
+      "kind": "webkit-v1-startup",
+      "passed": 83,
+      "failed": 1,
+      "total": 84,
+      "newV2Passed": 18,
+      "error": "TypeError: Rich inline presentation: invalid integer domain",
+      "phase": "After the existing V1 inherited-style test reloaded its saved session, before ready; matching resources fetched successfully.",
+      "trace": "target/structural-v2-local-development/webkit-v1-typing-reload-startup/",
+      "diagnostics": "Original rejection predicate unchanged. Immutable numeric-only cause records type, numeric bits/value, bounds and predicate rechecks; no supplied strings, format literals or document content. Failing cases in editor.spec.mjs attach this metadata without suppressing the error.",
+      "followup": {
+        "freshContextTypingHistoryReloadAttempts": 40,
+        "passed": 40,
+        "reproduced": false,
+        "meaning": "Negative investigation result only; no root cause or repair claim."
+      },
+      "resolved": false,
+      "capturedLocalWasmSha256": "93fcccb3a48ccd2713174c8602db3d9d3a27ad80d19da974c691b19162de12fb"
+    },
+    {
+      "kind": "shared-gate-incomplete",
+      "passed": 168,
+      "didNotRun": 34,
+      "caseAssertionFailures": 0,
+      "processDeadlineSeconds": 300,
+      "before": "The Chromium/Firefox batch exceeded the unchanged global deadline while other diagnostics/builds overlapped it.",
+      "meaning": "Incomplete, not passing. The later sequential follow-up is a separate run; the timeout remains recorded."
+    }
+  ],
+  "budgets": "Browser cases retain 60-second deadlines, 300-second process deadlines and retries 0; readiness expectations retain five seconds. No spec/assertion is dropped or relaxed. Final stages are sequential and earlier failed/incomplete attempts are not counted as green qualification.",
+  "defaultChecks": {
+    "sdkUnitPassed": 29,
+    "browserPackageUnitPassed": 2203,
+    "referenceExtensionUnitPassed": 57,
+    "typecheck": true,
+    "scriptTests": {
+      "total": 356,
+      "passed": 353,
+      "skipped": 3,
+      "note": "Three existing browser-diagnostic cases remain opt-in."
+    }
+  },
+  "artifacts": {
+    "packageVersion": "0.3.0-alpha.22",
+    "archives": [
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "bytes": 1217544,
+        "sha256": "56d3b93eb3bdf5270077e0f6d73d45bd3a834d363acd97702358d424f869c023"
+      },
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "bytes": 2250641,
+        "sha256": "46528856e2d5fad7a3303093c383f30ab6a056740b2b4a6b1ad1d328ce3c3e7f"
+      },
+      {
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-8zVRem/archives/breditor-editor-0.3.0-alpha.22.tgz",
+        "bytes": 18623,
+        "sha256": "3adae79d42015c4c7ee3723ddb848afe0302648b1b02395495674d674ea2fe8d"
+      }
+    ],
+    "localRichWasm": {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+      "bytes": 4217856,
+      "sha256": "93fcccb3a48ccd2713174c8602db3d9d3a27ad80d19da974c691b19162de12fb",
+      "gzipBytes": 1131390
+    },
+    "applicationSharedWasm": {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 8073847,
+      "sha256": "56c92f117cd027e6dac7b392d0125d99a6164e076c2f69b00c1abfaa0058f0df",
+      "gzipBytes": 2196897
+    },
+    "defaultBrowserArchiveUnchanged": true,
+    "gzipMethod": "Node gzipSync defaults; this records artifacts, not an approved size/performance budget.",
+    "legacyInstalled": {
+      "manifest": {
+        "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-ud2L86/consumer",
+        "archives": [
+          "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-ud2L86/archives/breditor-browser-0.3.0-alpha.22.tgz",
+          "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-ud2L86/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+          "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-ud2L86/archives/breditor-experimental-collaboration-0.3.0-alpha.22.tgz"
+        ]
+      },
+      "archives": [
+        {
+          "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-ud2L86/archives/breditor-browser-0.3.0-alpha.22.tgz",
+          "bytes": 327732,
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-ud2L86/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+          "bytes": 1217544,
+          "sha256": "56d3b93eb3bdf5270077e0f6d73d45bd3a834d363acd97702358d424f869c023"
+        },
+        {
+          "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-shared-consumer-ud2L86/archives/breditor-experimental-collaboration-0.3.0-alpha.22.tgz",
+          "bytes": 2544557,
+          "sha256": "397a5edb00280b2b6114b360cdfbaa7615b7aab19595f61b497dae84d98fe77b"
+        }
+      ],
+      "researchWasm": {
+        "path": "target/shared-package-web/breditor_shared_bg.wasm",
+        "bytes": 9157117,
+        "sha256": "7eb2f85b7f39d994e334926cd5efe0cf2ed431aa838420a9d81a60d9848bb88f",
+        "gzipBytes": 2475287
+      }
+    },
+    "legacyArchivePairing": "Browser and local-rich archive hashes exactly match the final SDK consumer archives. Application and research collaboration modules are distinct."
+  },
+  "retainedLogs": {
+    "directory": "target/structural-v2-local-sdk-qualification",
+    "note": "Captured tool output, not a complete CI log archive. Some intermediate output was truncated; terminal counts/status and preserved traces are retained separately.",
+    "files": [
+      "native.log",
+      "canonical-shared-native.log",
+      "default-unit-script.log",
+      "development-installed-initial.log",
+      "development-installed-react.log",
+      "installed-webkit-startup-failure.log",
+      "diagnostic-clean-install.log",
+      "startup-reproduction-attempts.log",
+      "shared-gate-timeout.log",
+      "sequential-final.log",
+      "artifacts.json"
+    ]
+  },
+  "limits": [
+    "The first two V1 workstreams remain active. Local structural V2 does not supply shared V2 operations, conflict policy, journal compatibility or migration.",
+    "Task indent/outdent and empty-item exit, code exit shortcuts and complete atomic navigation still need original actions and integration.",
+    "General selections, natural typing groups, live read-only mode, bounded block layout/context UI and sanitized HTML/Markdown/Office interchange remain open.",
+    "All thirteen V1 gates remain open and feature labels remain 8 implemented slices, 17 partial and 20 missing; no parity percentage is implied.",
+    "Automation and clipboard-event payloads do not qualify physical clipboard, IME, VoiceOver, touch/mobile, historical WebKit repair, public deployment or performance budgets. No lockfiles, retained vendor sources or existing serialized meanings were changed."
+  ],
+  "historicalWebKitFaultResolved": false,
+  "published": false,
+  "publicDeployment": false,
+  "fullSharedCompatibilityGate": {
+    "command": "node scripts/check-shared-browser.mjs",
+    "passed": true,
+    "proof": "The final separate sequential attempt exits 0 after all stages: research native/Wasm lint/tests/build, vectors/examples, relay gate, package/types/startup/matrix guards, all 303 source browser cases, clean legacy installation/types/native-vector checks and all 78 installed cases. The earlier global-timeout attempt remains recorded, not retroactively passing."
+  },
+  "relayChecks": {
+    "defaultNativePassed": 17,
+    "serverNativePassed": 20,
+    "nativeLintAndBuild": true,
+    "command": "node scripts/check-relay.mjs (within check-shared-browser.mjs)"
+  },
+  "browserRunCountNote": "711 overlapping final installed/source browser executions, not unique capabilities or a parity percentage. Every final suite exits 0 in the separate sequential attempt. Earlier development failures, the original 83-pass/one-failure WebKit attempt, the 168-pass/incomplete shared attempt and forty negative diagnostic follow-ups are recorded separately, not counted as final green qualification."
+}

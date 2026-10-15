@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `5e07105` (saved locally,
+The latest functional implementation checkpoint is `964c77d` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -85,7 +85,7 @@ retained in the linked checkpoint.
 The subsequent [native structural V2 contracts](RICH_STRUCTURAL_V2.md) add
 blockquote/code/rule/task drafts and nine separate actions, with explicit code
 format loss and exact local history. V1 grammar and fingerprints remain unchanged.
-These new blocks are not yet exposed by the SDK or shared model 11. Named hard
+At that checkpoint the new blocks were not exposed by the SDK or shared model 11. Named hard
 break commands do work through the existing local/shared SDK. Regression tests
 reproduced a misrouted explicit line-break target and WebKit's tested Shift+Enter
 paragraph event; the repaired routes pass all 66 installed SDK and 78 application
@@ -96,14 +96,29 @@ cases, the complete shared compatibility gate, opt-in Rust/Wasm and default
 regressions. Its 690 overlapping browser runs do not qualify unfinished V2
 browser/shared blocks or full V1 readiness. Pre-fix failures and exact archive
 hashes are retained alongside the passing results.
+The subsequent local structural V2 checkpoint exposes bootstrap V7 and explicit
+`richLanguage: 2` through the headless, vanilla and React SDK. Semantic quote,
+code, rule and task controls retain the native contract, including explicit code
+format loss, unavailable inline formatting inside code and exact local history.
+Separate task split/join actions retain completion and rich tails. Task checkbox
+pointer/Space, internal clipboard, real asset reload and React ownership are
+tested against clean-installed archives. Defaults and old factories remain V1;
+shared model 11 still rejects V2. Task indent/outdent/empty exit, complete atomic
+navigation and shared V2 conflict/journal contracts remain unfinished.
+The [local structural SDK qualification](qualification/2026-10-15-structural-v2-local-sdk.json)
+retains the exact evidence and failed/incomplete attempts. In particular, an
+earlier existing V1 WebKit reload rejected a schema integer during presentation
+startup. Numeric-only diagnostics were added without weakening admission;
+neither those diagnostics nor later passing runs establish a historical WebKit
+repair. See [the retained startup observation](WEBKIT_FAULT_RECOVERY.md).
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
 The active first-two-workstream goal is not complete. Standard controls now use
 the Rust state reads, but applying a mixed format replaces its complete map;
-per-property-preserving mixed edits remain distinct work. Next are everyday Rust
-editing gaps, public API/publication decisions and external interchange. Local
+per-property-preserving mixed edits remain distinct work. Next are shared V2
+contracts, everyday Rust editing gaps, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill

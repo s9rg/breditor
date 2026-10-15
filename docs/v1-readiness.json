@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "5e07105ad5a90b5568cd949f6c6dd229a800768f",
+  "baselineCommit": "964c77d345a69f4253feec0615d536d4fd0bd720",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -68,9 +68,9 @@
     {
       "id":"blockquotes-code-rules","area":"Editing","status":"missing",
       "summary":"Blockquotes, code blocks and horizontal rules",
-      "current":"The explicit native rich-language V2 now admits blockquotes, unformatted code with a bounded language and empty rules, with separate guarded actions, stable selections, explicit formatting loss and exact local history. Existing Wasm/SDK factories stay V1 and shared model 11 rejects V2 before import; integrated rendering, navigation, shared policies and migration remain open.",
+      "current":"Explicit rich-language V2 now runs through native Rust, bootstrap V7 Wasm and the local vanilla/React SDK, with semantic quote/code/rule rendering, bounded language controls, explicit formatting loss, unavailable code inline state and exact local history/reload. Existing defaults remain V1 and shared model 11 rejects V2 before import. Code exit, complete boundary navigation, shared conflict/journal policies, migration and foreign interchange remain open.",
       "acceptance":"Add original Rust contracts and separate actions for each kind, including code language/text rules, boundary navigation, shared conflict policy and migration.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/schema/rich_content_profile_v2.rs","crates/breditor-core/tests/rich_structural_v2.rs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/schema/rich_content_profile_v2.rs","crates/breditor-core/tests/rich_structural_v2.rs","crates/breditor-wasm/tests/rich_structural_v2.rs","experiments/editor-browser/structural-v2.spec.mjs"],
       "sources":["tiptap-starter","tiptap-source-starter","ckeditor-digest"]
     },
     {
@@ -92,9 +92,9 @@
     {
       "id":"task-lists","area":"Lists","status":"missing",
       "summary":"Interactive task lists",
-      "current":"The explicit native rich-language V2 now has task lists, prose-led task items and required Boolean checked state, with draft, wrap/unwrap and explicit set-checked actions retaining tails and exact local history. Browser controls, task keyboard behavior, V2 shared admission/conflicts and foreign interchange remain open.",
+      "current":"Explicit local V2 tasks now have pointer/Space checkboxes, owner-bound wrap/unlist/completion controls and separate Rust split/join actions. Enter creates an unchecked right task, retains left completion and moves the rich tail; join retains left completion and exact Undo restores both original states. Installed vanilla/React tests cover nested task clipboard, real image bytes and exact reload/future history. Task indent/outdent, empty-item exit, V2 shared admission/conflicts and foreign interchange remain open.",
       "acceptance":"Add typed checked state with keyboard and pointer behavior, nesting, clipboard, conflict policy and author-local history.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/structural_drafts.rs","crates/breditor-core/src/rich_content/actions/set_task_checked.rs","crates/breditor-core/tests/rich_structural_v2.rs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/structural_drafts.rs","crates/breditor-core/src/rich_content/actions/set_task_checked.rs","crates/breditor-core/src/rich_content/actions/split_task_item.rs","crates/breditor-core/src/rich_content/actions/join_task_items.rs","crates/breditor-core/tests/rich_structural_v2.rs","experiments/editor-browser/structural-v2.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
