@@ -18,6 +18,26 @@ pub struct BreditorRichObservation {
 }
 #[wasm_bindgen]
 impl BreditorRichObservation {
+    /// Exact effective caret formats, including affinity and an explicit plain override.
+    /// Non-caret or oversized reads fail without changing the frozen observation.
+    #[must_use]
+    #[wasm_bindgen(js_name=caretFormatsJson)]
+    pub fn caret_formats_json(&self) -> BreditorStringResult {
+        let value = self.inner.state().effective_caret_formats().ok().and_then(|formats| {
+            breditor_core::codec::RichFormatsJsonCodec::new(self.context.clone())
+                .with_max_json_bytes(64 * 1024)
+                .encode(&formats)
+                .ok()
+        });
+        value.map_or_else(
+            || {
+                BreditorStringResult::from_error(error::rejected(
+                    "breditor_rich.caret_formats_read",
+                ))
+            },
+            BreditorStringResult::from_value,
+        )
+    }
     /// Exact property-aware state at this frozen observation, even after later edits.
     #[must_use]
     #[wasm_bindgen(js_name=inlineFormatStateJson)]

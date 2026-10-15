@@ -13,6 +13,38 @@ use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn exact_caret_format_read_preserves_guard_and_rejects_stale_before_selection() -> Result {
+    let profile = profile()?;
+    let mut a = profile.create(&input(&profile)?, "101".into())?;
+    assert!(a.caret_formats_json_guarded(&a.observe()?).is_err());
+    let selection = serde_json::from_value(
+        json!({"kind":"text","anchor":{"block":"p","offset":"1","affinity":"after"},"focus":{"block":"p","offset":"1","affinity":"after"}}),
+    )?;
+    a.set_selection(Some(&selection))?;
+    let observation = a.observe()?;
+    let before = a.checkpoint()?;
+    let inherited = a.caret_formats_json_guarded(&observation)?;
+    assert_eq!(
+        serde_json::from_str::<Value>(&inherited)?,
+        json!([{"type":"example/link","properties":{"example/href":"https://example.test/"}}])
+    );
+    assert_eq!(a.checkpoint()?, before);
+    a.check(&observation)?;
+    a.set_pending_formats_json("[]")?;
+    assert_eq!(a.caret_formats_json_guarded(&a.observe()?)?, "[]");
+    assert!(
+        a.caret_formats_json_guarded(&observation)
+            .err()
+            .ok_or("stale")?
+            .to_string()
+            .contains("stale or foreign")
+    );
+    let restored = profile.restore("room", &a.checkpoint()?)?;
+    assert_eq!(restored.caret_formats_json_guarded(&restored.observe()?)?, "[]");
+    Ok(())
+}
+
+#[test]
 fn explicit_standard_factory_composes_native_manifest_before_custom_dependencies() -> Result {
     let mut input = json!({"format":"breditor/shared-rich-profile","formatVersion":1,"schema":{"name":"example/standard-rich","version":1},"extensions":[]});
     let standard = SharedRichProfile::from_standard_configuration_json_v1(&input.to_string())?;

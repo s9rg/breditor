@@ -6,6 +6,7 @@
 pub mod actions;
 mod annotations;
 mod captions;
+mod caret_formats;
 mod cell_bodies;
 mod clipboard;
 mod clipboard_flow;

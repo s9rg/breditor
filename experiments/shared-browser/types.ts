@@ -1,7 +1,7 @@
 // Check the browser contract against the real generated owner, not a mock Wasm stub.
 import {RichReplicaProbe,SharedRichProfile} from "../../target/collaboration-feasibility-web/breditor_collab_feasibility.js";
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,SharedPresence,SharedRelaySync,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedOwnerDescriptor,type SharedProfileConfiguration} from "../../packages/breditor-experimental-collaboration/index.js";
-import {RichAssetStore} from "../../packages/breditor-experimental-rich-content/index.js";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,createStandardSharedToolbarV1,insertSharedImageFiles,compileSharedProfile,SharedPresence,SharedRelaySync,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedOwnerDescriptor,type SharedProfileConfiguration,type SharedToolbarControl} from "../../packages/breditor-experimental-collaboration/index.js";
+import {RichAssetStore,type RichInlinePresentation} from "../../packages/breditor-experimental-rich-content/index.js";
 async function contract(root:HTMLElement,input:string,frame:string):Promise<void>{
  const raw:SharedRustOwner=new RichReplicaProbe(input,"9007199254740993");
  const core=new SharedRichEditor(raw),descriptor:SharedOwnerDescriptor=core.descriptor();
@@ -44,3 +44,5 @@ async function relayContract(core:SharedRichEditor,session:SharedPersistentSessi
  const numeric:number=state.serverThrough;void numeric;sync.dispose();
 }
 void relayContract;
+function toolbarContract(core:SharedRichEditor,presentation:RichInlinePresentation):void {const controls:readonly SharedToolbarControl[]=createStandardSharedToolbarV1(core,presentation);const supported:boolean=core.supportsStandardInlineControls();void supported;void core.caretFormats();void controls;}
+void toolbarContract;

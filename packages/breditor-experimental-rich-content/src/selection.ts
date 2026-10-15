@@ -37,6 +37,12 @@ export function readTarget(surface:HTMLElement,range:StaticRange):Extract<RichSe
  const anchor=point(surface,range.startContainer,range.startOffset,"start"),focus=range.startContainer===range.endContainer&&range.startOffset===range.endOffset&&anchor?{...anchor}:point(surface,range.endContainer,range.endOffset,"end");
  return anchor&&focus?{kind:"text",anchor,focus}:null;
 }
+/** A browser target at the current caret is typing, not range replacement.
+ * Compare coordinates only: the logical caret retains its native affinity/pending styles.
+ */
+export function isCurrentCaretTarget(selection:RichSelection|null,target:Extract<RichSelection,{kind:"text"}>):boolean {
+ return selection?.kind==="text"&&selection.anchor.block===selection.focus.block&&selection.anchor.offset===selection.focus.offset&&target.anchor.block===target.focus.block&&target.anchor.offset===target.focus.offset&&target.focus.block===selection.focus.block&&target.focus.offset===selection.focus.offset;
+}
 function endpoint(surface:HTMLElement,value:RichPoint):[Node,number]|null {
  const block=[...surface.querySelectorAll<HTMLElement>(blockSelector)].find(node=>node.dataset["richText"]===value.block);
  if(!block)return null;

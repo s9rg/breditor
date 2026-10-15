@@ -63,6 +63,7 @@ export interface SharedRustOwner {
  presence_frame?(observation:unknown):string;resolve_presence?(frame:string):string;
  writer_groups?(observation:unknown,after:string):string;writer_clock?(writer:string):string;
  inline_format_state_json?(observation:unknown,kind:string):string;
+ caret_formats_json?(observation:unknown):string;
  descriptor_json():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;

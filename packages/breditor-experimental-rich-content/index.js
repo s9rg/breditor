@@ -4,6 +4,7 @@
 export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
+export {createStandardRichToolbarV1} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }
@@ -95,6 +96,8 @@ class RichCoreEditor {
   }
   view() { this.#live(); return JSON.parse(read(this.#observation.viewJson())); }
   documentJson() { this.#live(); return read(this.#observation.documentJson()); }
+  supportsStandardInlineControls() { const raw=this.#live();return typeof raw.inlineControlsVersion==="function"&&raw.inlineControlsVersion()==="1"&&typeof this.#observation.caretFormatsJson==="function"; }
+  caretFormats() { this.#live();if(typeof this.#observation.caretFormatsJson!=="function")throw new RichCommandError("breditor_rich.caret_formats_read","Use a matching Wasm module with caret-format reads");return JSON.parse(read(this.#observation.caretFormatsJson())); }
   inlineFormatState(kind) {
     this.#live();
     if(typeof kind!=="string"||kind.length>128)throw new RichCommandError("breditor_rich.inline_state","Expected a bounded declared format kind");

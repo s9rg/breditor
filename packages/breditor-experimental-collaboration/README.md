@@ -89,8 +89,8 @@ Node/grid selections return unavailable rather than claiming command support.
 owners may omit it, and the API reports that instead of guessing from DOM spans.
 The complete JSON read has a 64 KiB budget; oversized values fail without truncation.
 
-The explicit standard preset below now supplies ordinary format declarations and
-rendering. Integrated toolbar/property controls still need to be finished. The
+The explicit standard preset below supplies ordinary format declarations,
+rendering and opt-in toolbar/property controls. The
 shared model, journal, default ABI and existing durable schema
 interpretation do not change. Use the matching generated module for the new
 catalog and state methods; older modules do not provide them.
@@ -129,8 +129,44 @@ presets. Their full names/domains are documented in the sibling rich-content
 package. The controller includes the fixed font CSS. Additional application
 formats require explicit extra recipes; duplicate/missing declarations reject.
 Existing shared `set_format`, pending typing, clipboard and selective history
-carry these literals without a new model or journal interpretation. Complete
-toolbar/property editing and script-exclusivity controls remain implementation work.
+carry these literals without a new model or journal interpretation.
+
+## Standard shared toolbar
+
+Pass `createStandardSharedToolbarV1(core, inlinePresentation)` from this package
+as the mounted editor's `toolbar` option. It includes the existing structural
+and move controls, ordinary marks, Link, RGB24 colors, bounded size and font
+presets, explicit script switching and standard reset actions. It requires the
+matching Rust caret/state reads and the standard schema-bound presentation.
+They are bound to that owner; mounting them with another owner rejects before
+changing the host, even when both owners have the same schema.
+Ordinary shared factories, model 11 and journal 12 keep their existing meaning.
+
+The same field widgets and Rust-derived state semantics serve local and shared
+editors. Mixed values stay blank; applying replaces the entire selected format.
+A mixed Link requires both URL and target, not an implicit property patch.
+Cmd/Ctrl-K opens Link; Enter applies and Escape discards a draft and returns
+focus. The sibling rich package documents all shortcuts and property limits.
+Dirty drafts reject remote publications and selection-only changes rather than
+applying to an unobserved selection. Escape resets the form to current values.
+
+`core.caretFormats()` checks the current opaque observation before reading exact
+affinity/pending formats, including application formats. Non-carets and output
+beyond 64 KiB reject; reads never publish. Caret controls preserve custom formats
+and respect an explicit plain override. Clear standard formatting removes only
+the twelve standard kinds. Range changes use one existing shared dispatch and
+one selective Undo group. Disabled annotation literals carry valid placeholder
+properties only to satisfy the original closed command shape; Undo restores
+the original complete values, not those placeholders. Absent-format resets do
+not author disabled annotations or history groups and preserve the Redo branch.
+Existing command/document budgets apply; oversized requests reject rather than truncate.
+
+Normal browser targets matching the current caret now use typing rather than
+replacement, retaining pending styles across successive keystrokes. Actual
+replacement ranges still use the separate range operation. The toolbar tests
+also cover offline changes, merge, selective Undo and exact future history after
+restart. These controls do not add contextual/floating menus, foreign converters
+or natural typing coalescing.
 
 ## Owner contract
 

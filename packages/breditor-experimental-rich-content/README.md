@@ -109,7 +109,7 @@ presentation declarations. Integer tokens need host CSS. Schema mismatch rejects
 before mounting changes the host; unsafe stored Link values become inert anchors
 without changing their canonical Rust value. Declarations are detached and frozen.
 The legacy `inlineTag` option remains separate and cannot be combined with this
-compiled presentation. Standard controls and their mixed-state integration remain work.
+compiled presentation. The opt-in standard toolbar below uses this same binding.
 
 `editor.inlineFormatState(formatKind)` reads Rust-derived state without changing
 the document, selection, pending typing formats, history or publication guard.
@@ -171,7 +171,7 @@ The twelve V1 formats have fixed semantic identities and domains:
 commands. Native hosts can compose `standard_inline_extension_v1()` into their
 own extension set. The manifest contains no action callbacks or DOM policy.
 Subscript and superscript are independent admitted literals; changing one does
-not silently remove the other. Exclusive script controls need an explicit group.
+not silently remove the other. The standard toolbar switches scripts with an explicit group.
 
 The standard renderer pins every standard format revision to 1. Additional
 application recipes use its optional second argument, an ordinary complete
@@ -179,8 +179,49 @@ application recipes use its optional second argument, an ordinary complete
 all existing inert-manifest guards still apply. Both mounted controllers include
 the fixed font CSS; standalone render hosts can apply `standardInlineStylesV1`.
 An incompatible preset needs a new explicit version rather than changing V1.
-Complete standard toolbar/property controls remain active implementation work;
-the preset currently works through the typed owner commands and custom controls.
+
+## Standard inline toolbar
+
+`createStandardRichToolbarV1(core, inlinePresentation)` returns the existing
+structural controls plus the twelve standard inline formats, reset actions and
+Clear standard formatting. Pass it as the `toolbar` option alongside the same
+`core` and `inlinePresentation`. The returned declarations can be filtered or
+reordered; ordinary profile constructors and the default toolbar are unchanged.
+The factory checks the compiled presentation and matching Rust capabilities
+before mounting. An older Wasm module rejects rather than silently losing state.
+Standard controls are bound to that owner; mounting them with another owner
+rejects before changing the host. Custom owner-neutral controls remain reusable.
+
+Rust supplies active, mixed and unavailable state. Color, size, font and Link
+fields show a blank mixed value rather than choosing one of the selected values.
+Applying a format replaces its complete property map. In particular, a mixed
+Link requires an explicit URL and target; this is not a per-property patch API.
+Links accept only absolute credential-free HTTP(S) URLs without whitespace.
+Stored schema-valid unsafe strings remain inert until explicitly replaced.
+
+Cmd/Ctrl-B, I and U toggle marks; Cmd/Ctrl-Shift-X toggles strike and Cmd/Ctrl-K
+opens Link. Alt-modified shortcuts are not intercepted. Enter submits a field;
+Escape discards its draft and returns focus to the editor. A dirty form rejects
+if content, selection, pending styles or history changed after editing began,
+including selection-only changes with unchanged document bytes. Escape resets it to current state.
+The draft stamp is only a UI comparison; Rust observations still authorize writes.
+
+`core.caretFormats()` reads the exact effective caret format set, including custom
+formats and focus affinity. It rejects a non-caret or output beyond 64 KiB without
+truncation. Standard caret controls preserve those custom formats; Clear standard
+formatting removes only the standard kinds. Range controls use one compound
+history group. Subscript/Superscript explicitly remove the opposite kind in that
+group, without changing the underlying schema's independent-literal contract.
+Resetting absent formats is a true no-op that preserves history and pending state.
+Existing command/document budgets apply; oversized selections reject rather than truncate.
+Typing at a browser target matching the current caret uses ordinary typing and
+retains pending styles; distinct replacement targets retain their range semantics.
+
+Custom controls can add `fields`, `read` and `shortcut`. Field IDs map to strings
+in the optional third `command(context, value, fields)` argument. Existing
+single-field/two-argument controls remain supported; a widget admits at most
+eight fields. Context/floating menus,
+natural typing coalescing and foreign interchange remain separate work.
 
 ## Mount the browser editor
 

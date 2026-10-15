@@ -1,12 +1,16 @@
 // Browser command preparation only. The Rust owner checks and commits each complete semantic action.
-import type {FlowPosition,FormatLiteral,RichCell,RichCommand,RichSelection,TableCellDraft,TableDraft} from "./core.js";
+import type {FlowPosition,FormatLiteral,RichCell,RichCommand,RichCoreEditor,RichSelection,TableCellDraft,TableDraft} from "./core.js";
 import {formatsAt,id,isText,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
+import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 export interface ActionContext {model:RichModel;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
 export interface ToolbarControl {
  id:string;label:string;type?:"text"|"number";
+ /** Optional binding for controls that read one particular owner. Not mutation authority. */
+ owner?:RichCoreEditor;
+ fields?:readonly RichToolbarField[];shortcut?:string;read?:(context:ActionContext)=>RichToolbarReading;
  enabled:(context:ActionContext)=>boolean;
  value?:(context:ActionContext)=>string;
- command:(context:ActionContext,value?:string)=>RichCommand|null;
+ command:(context:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>RichCommand|null;
 }
 export function positionAfter(context:ActionContext):FlowPosition {
  const value=context.model,selection=value.view.selection;

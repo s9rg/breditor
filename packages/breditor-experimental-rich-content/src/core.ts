@@ -22,6 +22,8 @@ export interface RichView {
     cells: readonly {base: RichCell; master: RichCell; rowSpan: number; columnSpan: number; sources: readonly RichCell[]}[]}[];
 }
 export interface RichCoreEditor {
+  supportsStandardInlineControls?():boolean;
+  caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
   view(): RichView;
   documentJson(): string;

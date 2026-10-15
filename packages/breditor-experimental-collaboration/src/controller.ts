@@ -3,6 +3,7 @@ import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
 import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 import type {SharedDispatch,SharedPublication,RichSelection,Navigation} from "./types.js";
+import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions extends RenderOptions {
  core:SharedRichEditor;toolbar?:readonly SharedToolbarControl[];label?:string;image?:{asset:string;alt:string};
  onChange?:(event:SharedPublication)=>void|Promise<void>;onError?:(error:unknown)=>void;
@@ -20,19 +21,18 @@ function sameSelection(a:RichSelection|null,b:RichSelection|null):boolean{
 export class SharedDomEditor {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  #root:HTMLElement;#options:SharedDomOptions;#model:RichModel;#abort=new AbortController();#unsubscribe:()=>void;
- #disposed=false;#busy=false;#logical=false;#queue:Work[]=[];#composition:Composition|undefined;
- #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl;button:HTMLButtonElement;input?:HTMLInputElement}[]=[];
+ #disposed=false;#busy=false;#logical=false;#queue:Work[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;
+ #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl;view:RichControlView<ActionContext>}[]=[];
  constructor(root:HTMLElement,options:SharedDomOptions){
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
   requireRenderOptions(this.#model,options);
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1;root.dataset["breditorShared"]="";
+  for(const control of options.toolbar??[...defaultSharedToolbar,...moveSharedToolbar])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles;root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Shared rich text editor");
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Shared rich text controls");this.status=d.createElement("p");this.status.setAttribute("role","status");
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbar,...moveSharedToolbar]){
-   if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);const button=d.createElement("button");button.type="button";button.textContent=control.type?`Apply ${control.label}`:control.label;button.dataset["sharedAction"]=control.id;
-   let input:HTMLInputElement|undefined;if(control.type){const label=d.createElement("label");label.textContent=control.label;input=d.createElement("input");input.type=control.type;input.dataset["sharedField"]=control.id;input.setAttribute("aria-label",control.label);label.append(input);this.toolbar.append(label);}
-   button.addEventListener("pointerdown",event=>this.#attempt(()=>{if(!input)event.preventDefault();this.#sync();}),{signal:this.#abort.signal});button.addEventListener("click",()=>this.#attempt(()=>this.#perform(c=>control.run(c,input?.value))),{signal:this.#abort.signal});
-   this.toolbar.append(button);this.#controls.push(input?{control,button,input}:{control,button});
+   if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);
+   const view=mountToolbarControl(this.toolbar,control,{prefix:"shared",signal:this.#abort.signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});this.#controls.push({control,view});
   }
   root.replaceChildren(style,this.toolbar,this.surface,this.status);render(this.surface,this.#model,options);this.#refreshControls();
   this.#unsubscribe=options.core.subscribe(event=>{if(!this.#busy&&!this.#composition)this.#refresh(false);try{void Promise.resolve(options.onChange?.(event)).catch(error=>this.#report(error));}catch(error){this.#report(error);}});
@@ -50,9 +50,10 @@ export class SharedDomEditor {
  #live():void{if(this.#disposed)throw new SharedEditorError("disposed","The shared DOM editor is disposed");}
  #allocate=(kind:string):string=>`${this.#prefix}:${kind}:${this.#counter++}`;
  #context():ActionContext{const value:ActionContext={core:this.#options.core,model:this.#model,revision:this.#model.view.revision,allocate:this.#allocate};if(this.#options.image)value.image=this.#options.image;return value;}
- #report(error:unknown):void{if(this.#disposed)return;this.status.textContent=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
- #attempt(run:()=>void):void{try{run();}catch(error){this.#report(error);this.#refresh(false);}}
- #refreshControls():void{const context=this.#context();for(const {control,button,input}of this.#controls){const enabled=control.enabled(context);button.disabled=!enabled;if(input){input.disabled=!enabled;if(input!==input.ownerDocument.activeElement)input.value=enabled?control.value?.(context)??"":"";}}}
+ #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
+ #alreadyReported(error:unknown):boolean{return this.#reportedError!==undefined&&this.#reportedError.error===error;}
+ #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
+ #refreshControls():void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of this.#controls)view.refresh(context,control.enabled(context),stamp);}
  #refresh(focus:boolean):void{
   if(this.#disposed||this.#composition)return;const previous=this.#model.view.documentJson,active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
   this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
@@ -65,7 +66,7 @@ export class SharedDomEditor {
   this.#live();if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision});if(this.#busy||this.#composition)return;
   const release=this.#options.core.holdRemotes();this.#busy=true;let error:unknown,drained=0;
   try{while(!this.#disposed&&this.#queue.length){if(++drained>128){this.#queue=[];throw Error("Shared editor callback command loop exceeded its bound");}const next=this.#queue.shift()!;
-   try{if(next.revision!==this.#options.core.view().revision)throw new SharedEditorError("stale_observation","Queued work was prepared from an older publication");next.run(this.#context());this.#refresh(next.focus);}catch(e){error??=e;this.#report(e);this.#refresh(false);}
+   try{if(next.revision!==this.#options.core.view().revision)throw new SharedEditorError("stale_observation","Queued work was prepared from an older publication");next.run(this.#context());this.#refresh(next.focus);}catch(e){error??=e;this.#refresh(false);this.#report(e);}
   }}finally{this.#busy=false;release();}if(error!==undefined)throw error;
  }
  execute(request:SharedDispatch,focus=true,revision=this.#model.view.revision):void{const frozen=JSON.parse(JSON.stringify(request)) as SharedDispatch;this.#perform(c=>{c.core.dispatch(frozen,c.revision);},focus,revision);}
@@ -80,7 +81,8 @@ export class SharedDomEditor {
   else if(node||(figure&&!target.closest("[data-rich-text]"))){event.preventDefault();const block=node?.dataset["selectNode"]??figure?.dataset["richBlock"];if(block)this.#attempt(()=>this.select({kind:"node",block}));}else this.#logical=false;
  }
  #key(event:KeyboardEvent):void{if(this.#composition||event.isComposing)return;const mod=event.metaKey||event.ctrlKey,key=event.key.toLowerCase();if(mod&&key==="a")this.#logical=false;
-  if(mod&&["z","y","b"].includes(key)){event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{if(key==="b")bold(c);else if(key==="y"||event.shiftKey)c.core.redo(c.revision);else c.core.undo(c.revision);});});return;}
+  if(mod&&!event.altKey){const shortcut=`${event.shiftKey?"shift+":""}${key}`,control=this.#controls.find(item=>item.control.shortcut===shortcut);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
+  if(mod&&!event.altKey&&["z","y","b"].includes(key)){event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{if(key==="b")bold(c);else if(key==="y"||event.shiftKey)c.core.redo(c.revision);else c.core.undo(c.revision);});});return;}
   const s=this.#model.view.selection;if(s?.kind==="grid"){
    const moves:Record<string,Navigation>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"},move=moves[event.key];
    if(move){this.#attempt(()=>this.#perform(c=>{const result=c.core.navigate(move,event.key!=="Tab"&&event.shiftKey,c.revision);if(event.key!=="Tab"||result.kind!=="boundary")event.preventDefault();}));return;}
@@ -89,9 +91,10 @@ export class SharedDomEditor {
   if((s?.kind==="node"||s?.kind==="grid")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>this.#perform(removeSelection));}
  }
  #input(event:InputEvent):void{if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{this.#sync();const kind=event.inputType;
+  const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}if(kind==="insertParagraph"){enter(c);return;}
    const s=c.model.view.selection;if(s?.kind!=="text")return;const range=event.getTargetRanges?.()[0],target=range?readTarget(this.surface,range):null;
-   if(kind==="insertText"||kind==="insertReplacementText"||kind==="insertLineBreak"){const value=kind==="insertLineBreak"?"\n":event.data??"";if(target)c.core.replace(target,value,c.revision);else c.core.type(value,c.revision);return;}
+   if(kind==="insertText"||kind==="insertReplacementText"||kind==="insertLineBreak"){const value=kind==="insertLineBreak"?"\n":event.data??"";if(target&&!isCurrentCaretTarget(s,target))c.core.replace(target,value,c.revision);else c.core.type(value,c.revision);return;}
    if(kind.startsWith("delete")){const backward=kind.includes("Backward");if(boundaryDelete(c,backward))return;if(s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset){c.core.replace(s,"",c.revision);return;}if(target&&(target.anchor.block!==target.focus.block||target.anchor.offset!==target.focus.offset)){c.core.replace(target,"",c.revision);return;}
     const n=c.model.nodes.get(s.focus.block);if(!n)return;const content=text(n),offset=Number(s.focus.offset),segments=[...new Intl.Segmenter(undefined,{granularity:kind.includes("Word")?"word":"grapheme"}).segment(content)],start=backward?segments.filter(v=>v.index<offset).at(-1)?.index??0:offset,end=backward?offset:segments.find(v=>v.index>offset)?.index??content.length;
     c.core.replace({kind:"text",anchor:{...s.focus,offset:String(start)},focus:{...s.focus,offset:String(end)}},"",c.revision);

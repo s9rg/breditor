@@ -1,6 +1,6 @@
 // Compile against the actual paired generated declarations, not a handwritten Wasm stub.
 import * as wasm from "../../packages/breditor-experimental-rich-content/dist/breditor_wasm.js";
-import {compileRichProfile,compileStandardRichProfileV1,createStandardRichInlinePresentationV1,RichAssetStore,insertImageFiles,mountRichEditor,type RichSelection,type RichCommandOutcome,type RichView,type AssetUploader} from "../../packages/breditor-experimental-rich-content/index.js";
+import {compileRichProfile,compileStandardRichProfileV1,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,RichAssetStore,insertImageFiles,mountRichEditor,type RichCoreEditor,type RichInlinePresentation,type ToolbarControl,type RichSelection,type RichCommandOutcome,type RichView,type AssetUploader} from "../../packages/breditor-experimental-rich-content/index.js";
 function contract(bootstrap:string,document:string):void {
  const profile=compileRichProfile(wasm,bootstrap);
  const standard=compileStandardRichProfileV1(wasm,bootstrap);createStandardRichInlinePresentationV1(standard.inlineCatalogJson());standard.dispose();
@@ -36,3 +36,9 @@ async function assetsContract(root:HTMLElement,bootstrap:string,document:string)
  editor.dispose();assets.close();profile.dispose();
 }
 void assetsContract;
+function toolbarContract(core:RichCoreEditor,presentation:RichInlinePresentation):void {
+ const controls:readonly ToolbarControl[]=createStandardRichToolbarV1(core,presentation);
+ const capability:boolean=core.supportsStandardInlineControls?.()??false;const formats=core.caretFormats?.();void capability;void formats;
+ const extra:ToolbarControl={id:"host-field",label:"Host field",fields:[{id:"choice",label:"Choice",type:"select",options:[{value:"one",label:"One"}]}],enabled:()=>true,command:(_context,_value,fields)=>{const value:string|undefined=fields?.["choice"];void value;return null;}};void controls;void extra;
+}
+void toolbarContract;

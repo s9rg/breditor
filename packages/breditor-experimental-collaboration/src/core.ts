@@ -33,6 +33,8 @@ export class SharedRichEditor {
  documentJson():string{return this.view().documentJson;}
  /** Read the same core property-state contract under the current opaque observation. */
  supportsInlineFormatState():boolean{return typeof this.#live().inline_format_state_json==="function";}
+ supportsStandardInlineControls():boolean{return this.supportsInlineFormatState()&&typeof this.#live().caret_formats_json==="function";}
+ caretFormats():readonly FormatLiteral[]{const raw=this.#live();if(!raw.caret_formats_json)throw new SharedEditorError("caret_formats_unavailable","Use a matching Rust owner with caret-format reads");return JSON.parse(raw.caret_formats_json(this.#observation)) as FormatLiteral[];}
  inlineFormatState(kind:string):RichInlineFormatStateRead{const raw=this.#live();if(!raw.inline_format_state_json)throw new SharedEditorError("inline_state_unavailable","Use a matching Rust owner with formatting-state support");if(typeof kind!=="string"||kind.length>128)throw new SharedEditorError("inline_state_kind","Expected a bounded declared format kind");return JSON.parse(raw.inline_format_state_json(this.#observation,kind)) as RichInlineFormatStateRead;}
  checkpointJson():string{return this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}

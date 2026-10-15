@@ -17,6 +17,12 @@ impl BreditorRichEditor {
 }
 #[wasm_bindgen]
 impl BreditorRichEditor {
+    /// Additive UI capability, independent from the unchanged rich ABI revision.
+    #[must_use]
+    #[wasm_bindgen(js_name=inlineControlsVersion)]
+    pub fn inline_controls_version(&self) -> String {
+        "1".to_owned()
+    }
     /// Capture one exact independently disposable rich observation.
     #[must_use]
     pub fn observe(&self) -> BreditorRichObservation {

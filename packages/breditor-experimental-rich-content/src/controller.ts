@@ -3,8 +3,9 @@ import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSele
 import {bold,boundaryDelete,defaultToolbar,deleteSelection,enter,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {id,model,sourceCell,text,type RichModel} from "./model.js";
 import {paintSelection,render,requireRenderOptions,type RenderOptions} from "./render.js";
-import {readNative,readTarget,restoreNative} from "./selection.js";
+import {readNative,readTarget,restoreNative,isCurrentCaretTarget} from "./selection.js";
 import {standardInlineStylesV1} from "./standard_inline_v1.js";
+import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
@@ -28,23 +29,20 @@ export class RichDomEditor {
  readonly toolbar:HTMLDivElement;
  readonly status:HTMLParagraphElement;
  #root:HTMLElement;#options:RichEditorOptions;#model:RichModel;#abort=new AbortController();#queue:Work[]=[];#busy=false;#disposed=false;#composition:Composition|undefined;
- #namespace:string;#counter=0n;#logicalSelection=false;#controls:{control:ToolbarControl;button:HTMLButtonElement;input?:HTMLInputElement}[]=[];
+ #namespace:string;#counter=0n;#logicalSelection=false;#controls:{control:ToolbarControl;view:RichControlView<ActionContext>}[]=[];
  constructor(root:HTMLElement,options:RichEditorOptions){
   this.#root=root;this.#options=options;this.#model=model(options.core.view());this.#namespace=`br:${crypto.randomUUID()}`;this.#logicalSelection=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
   requireRenderOptions(this.#model,options);
+  for(const control of options.toolbar??defaultToolbar)if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Rich text editor");
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Rich text formatting");
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1;root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.surface,this.status);
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles;root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbar){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
-   const button=document.createElement("button");button.type="button";button.dataset["richAction"]=control.id;button.textContent=control.type?`Apply ${control.label}`:control.label;
-   let input:HTMLInputElement|undefined;
-   if(control.type){const label=document.createElement("label");label.textContent=control.label;input=document.createElement("input");input.type=control.type;input.dataset["richField"]=control.id;input.setAttribute("aria-label",control.label);label.append(input);this.toolbar.append(label);}
-   button.addEventListener("pointerdown",event=>{if(!input)event.preventDefault();this.#sync();},{signal:this.#abort.signal});
-   button.addEventListener("click",()=>this.#attempt(()=>{const command=control.command(this.#context(),input?.value);if(command)this.execute(command);} ),{signal:this.#abort.signal});
-   this.toolbar.append(button);this.#controls.push(input?{control,button,input}:{control,button});
+   const view=mountToolbarControl(this.toolbar,control,{prefix:"rich",signal:this.#abort.signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>{const command=control.command(this.#context(),value,fields);if(command)this.execute(command);}});
+   this.#controls.push({control,view});
   }
   render(this.surface,this.#model,options);this.#refreshControls();
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal:this.#abort.signal});
@@ -66,7 +64,7 @@ export class RichDomEditor {
  #attempt(work:()=>void):void {try{work();}catch(error){this.#report(error);this.#reconcile();}}
  #report(error:unknown):void {this.status.textContent=error instanceof Error?error.message:"Rich editor operation failed";try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
  #refreshControls():void {
-  const context=this.#context();for(const {control,button,input} of this.#controls){const enabled=control.enabled(context);button.disabled=!enabled;if(input){input.disabled=!enabled;if(input!==input.ownerDocument.activeElement)input.value=enabled?control.value?.(context)??"":"";}}
+  const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view} of this.#controls)view.refresh(context,control.enabled(context),stamp);
  }
  #reconcile():void {if(this.#disposed||this.#composition)return;this.#model=model(this.#options.core.view());render(this.surface,this.#model,this.#options);restoreNative(this.surface,this.#model.view.selection);this.#refreshControls();}
  #sync():void {
@@ -107,7 +105,8 @@ export class RichDomEditor {
   if(this.#composition||event.isComposing)return;
   const mod=event.metaKey||event.ctrlKey;
   if(mod&&event.key.toLowerCase()==="a")this.#logicalSelection=false;
-  if(mod&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}
+  if(mod&&!event.altKey){const key=`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`,control=this.#controls.find(item=>item.control.shortcut===key);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
+  if(mod&&!event.altKey&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}
   const selection=this.#model.view.selection;
   if(selection?.kind==="grid"){
    const moves:Record<string,string>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"};
@@ -121,6 +120,7 @@ export class RichDomEditor {
   if(this.#composition||event.isComposing)return;
   event.preventDefault();this.#attempt(()=>{
    this.#sync();const type=event.inputType;
+   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[type],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}
    if(type==="insertParagraph"){const command=enter(this.#context());if(command)this.execute(command);return;}
@@ -129,7 +129,7 @@ export class RichDomEditor {
    if(selection?.kind!=="text")return;
    const ranges=event.getTargetRanges?.()??[],target=ranges[0]?readTarget(this.surface,ranges[0]):null;
    if(type==="insertText"||type==="insertReplacementText"){
-    const input=event.data??"";this.execute(target?{kind:"replaceTextRange",data:{selection:target,text:input}}:{kind:"insertPlainText",text:input});return;
+    const input=event.data??"";this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:input}}:{kind:"insertPlainText",text:input});return;
    }
    if(type.startsWith("delete")){
     const backward=type.includes("Backward"),boundary=boundaryDelete(this.#context(),backward);

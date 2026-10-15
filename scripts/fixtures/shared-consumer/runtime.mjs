@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {createRequire} from "node:module";
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,compileStandardSharedProfileV1,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,createStandardSharedToolbarV1,insertSharedImageFiles,compileSharedProfile,compileStandardSharedProfileV1,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter} from "@breditor/experimental-collaboration";
 import {render,model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
-import {createRichInlinePresentation,compileRichProfile,compileStandardRichProfileV1,createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
+import {createRichInlinePresentation,compileRichProfile,compileStandardRichProfileV1,createStandardRichInlinePresentationV1,createStandardRichToolbarV1} from "@breditor/experimental-rich-content";
 import * as localWasm from "@breditor/experimental-rich-content/wasm";
 import {createInlineFormatRenderManifest,compileInlineFormatRecipes} from "@breditor/browser/presentation";
 import {assertLocalFormatBudget} from "./local-format-budget.mjs";
@@ -24,6 +24,8 @@ try{
  assertLocalFormatBudget(localStandard);
  const binding=localStandard.descriptor(),local=localStandard.createEditor(JSON.stringify({format:"breditor/document",formatVersion:2,schema:binding.schema,schemaFingerprint:binding.schemaFingerprint,root:{kind:"element",type:"breditor/document",entityId:null,properties:{"breditor/document-id":"installed-standard"},children:[{kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":"p"},children:[{kind:"text",text:"a🙂b",formats:[{type:"breditor-inline/superscript",properties:{}}]}]}]}}));
  try{
+  const presentation=createStandardRichInlinePresentationV1(localStandard.inlineCatalogJson());assert.equal(local.supportsStandardInlineControls(),true);assert.ok(createStandardRichToolbarV1(local,presentation).some(c=>c.id==="link"));assert.throws(()=>createStandardRichToolbarV1({supportsStandardInlineControls:()=>false},presentation));
+  local.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:"p",offset:"1",affinity:"before"},focus:{block:"p",offset:"1",affinity:"before"}}});assert.deepEqual(local.caretFormats(),[{type:"breditor-inline/superscript",properties:{}}]);
   const before=local.documentJson();local.execute({kind:"changeInlineFormats",data:{changes:[{kind:"set",formatsJson:'[{"type":"breditor-inline/subscript","properties":{}}]'},{kind:"remove",format:"breditor-inline/superscript"}],targets:[{block:"p",start:"0",end:"4"}]}});
   assert.equal(local.view().undoDepth,1);const after=local.documentJson();assert.ok(after.includes("breditor-inline/subscript"));assert.ok(!after.includes("breditor-inline/superscript"));local.execute({kind:"undo"});assert.equal(local.documentJson(),before);
   const restored=localStandard.restoreEditor(local.checkpointJson());try{restored.execute({kind:"redo"});assert.equal(restored.documentJson(),after);restored.execute({kind:"undo"});assert.equal(restored.documentJson(),before);}finally{restored.dispose();}
@@ -39,7 +41,7 @@ assert.equal(a.supportsInlineFormatState(),true);assert.equal(a.inlineFormatStat
 a.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Packaged "}}]});
 a.undo();const checkpoint=a.checkpointJson(),b=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",checkpoint));
 a.redo();b.redo();assert.equal(a.checkpointJson(),b.checkpointJson());assert.equal(a.documentJson(),b.documentJson());
-for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,render,model,refreshAssets,SharedRelaySync,SharedRelayAssets,SharedPresenceOverlay,registerSharedRelayWriter])assert.equal(typeof api,"function");
+for(const api of[SharedPersistentSession,mountSharedEditor,createStandardSharedToolbarV1,createStandardRichToolbarV1,insertSharedImageFiles,render,model,refreshAssets,SharedRelaySync,SharedRelayAssets,SharedPresenceOverlay,registerSharedRelayWriter])assert.equal(typeof api,"function");
 a.dispose();b.dispose();
 const v=vector.shared_profile,p=compileSharedProfile(wasm,v.configuration),custom=new SharedRichEditor(p.restore("room",v.checkpoint));p.free();
 const state=name=>{assert.deepEqual(custom.view(),JSON.parse(v[name].view));assert.equal(custom.checkpointJson(),v[name].checkpoint);};

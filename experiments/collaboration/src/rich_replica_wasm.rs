@@ -66,6 +66,13 @@ impl RichReplicaProbe {
     ) -> Result<String, JsValue> {
         self.inner.inline_format_state_json_guarded(&observation.inner, kind).map_err(error)
     }
+    /// Exact read-only effective caret styles; an older module lacks this capability.
+    pub fn caret_formats_json(
+        &self,
+        observation: &RichSharedObservation,
+    ) -> Result<String, JsValue> {
+        self.inner.caret_formats_json_guarded(&observation.inner).map_err(error)
+    }
     /// Export complete, single-writer action windows under the exact live observation.
     pub fn writer_groups(
         &self,

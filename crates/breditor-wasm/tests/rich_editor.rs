@@ -10,6 +10,40 @@ use serde_json::{Value, json};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn caret_format_reads_are_exact_frozen_affinity_aware_and_non_mutating() -> TestResult {
+    let profile = profile()?;
+    let mut owner = editor(&profile)?;
+    assert_eq!(owner.inline_controls_version(), "1");
+    assert_eq!(owner.observe().caret_formats_json().status(), "error");
+    command(
+        &mut owner,
+        &action(
+            "setInlineFormat",
+            json!({"change":{"kind":"remove","format":"breditor/strong"},"targets":[{"block":"p","start":"1","end":"4"}]}),
+        ),
+        "content",
+    )?;
+    let mut select_caret = select("1", "1");
+    select_caret["selection"]["focus"]["affinity"] = json!("before");
+    let inherited = command(&mut owner, &select_caret, "selection")?;
+    let strong = r#"[{"type":"breditor/strong","properties":{}}]"#;
+    let before = read(owner.checkpoint_json())?;
+    assert_eq!(read(inherited.caret_formats_json())?, strong);
+    assert_eq!(read(owner.checkpoint_json())?, before);
+    command(&mut owner, &json!({"kind":"setPendingFormats","formats":[]}), "typing")?;
+    assert_eq!(read(owner.observe().caret_formats_json())?, "[]");
+    assert_eq!(read(inherited.caret_formats_json())?, strong);
+    select_caret["selection"]["focus"]["affinity"] = json!("after");
+    command(&mut owner, &select_caret, "selection")?;
+    assert_eq!(read(owner.observe().caret_formats_json())?, "[]");
+    command(&mut owner, &select("0", "1"), "selection")?;
+    let before = read(owner.checkpoint_json())?;
+    assert_eq!(owner.observe().caret_formats_json().status(), "error");
+    assert_eq!(read(owner.checkpoint_json())?, before);
+    Ok(())
+}
+
+#[test]
 fn compound_formats_are_one_publication_with_exact_future_history_and_original_single_shape()
 -> TestResult {
     let mut result = BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(6));

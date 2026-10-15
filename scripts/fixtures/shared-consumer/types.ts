@@ -1,5 +1,5 @@
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,compileSharedProfile,compileStandardSharedProfileV1,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
-import {RichAssetStore,createRichInlinePresentation,compileStandardRichProfileV1,createStandardRichInlinePresentationV1,type RichInlinePresentation} from "@breditor/experimental-rich-content";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,createStandardSharedToolbarV1,compileSharedProfile,compileStandardSharedProfileV1,SharedPresence,SharedPresenceOverlay,SharedRelaySync,SharedRelayAssets,registerSharedRelayWriter,type SharedRelayIdentity,type SharedRelayState,type SharedRustOwner,type SharedCommand,type SharedSaveState,type SharedProfileConfiguration,type SharedProfileModule,type SharedPresenceResolution} from "@breditor/experimental-collaboration";
+import {RichAssetStore,createRichInlinePresentation,compileStandardRichProfileV1,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,type RichCoreEditor,type RichInlinePresentation} from "@breditor/experimental-rich-content";
 import {model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
 async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
  const core=new SharedRichEditor(raw),assets=await RichAssetStore.open("consumer-assets");
@@ -38,3 +38,5 @@ async function relayConsumer(core:SharedRichEditor,identity:SharedRelayIdentity)
  const bad:SharedRelayIdentity={...identity,documentJson:core.documentJson()};void bad;
 }
 void relayConsumer;
+function toolbarConsumer(core:SharedRichEditor,local:RichCoreEditor,presentation:RichInlinePresentation):void {const shared=createStandardSharedToolbarV1(core,presentation),single=createStandardRichToolbarV1(local,presentation);void shared;void single;void core.caretFormats();void local.caretFormats?.();}
+void toolbarConsumer;
