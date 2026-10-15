@@ -83,6 +83,52 @@ import or permission to clone a live writer. Earlier shared models and journals
 are incompatible with the current source-routing, caption-choice, creation
 provenance and placement-forest contracts.
 
+## Ephemeral causal presence
+
+`core.presenceFrame()` captures the exact current Rust observation into an opaque
+`breditor/shared-rich-presence` V1 packet. `core.resolvePresence(frame)` is a
+read-only mapping into the current text/node/grid selection family. Neither call
+imports document operations, publishes UI, consumes Undo/Redo or changes the live
+observation. Text ranges retain direction, UTF-16 scalar alignment, affinity and
+original source routing through split/join/history. Structural deletion uses the
+existing explicit clearing/fallback rules. Missing applied causal dependencies
+return `pending` until content arrives, rather than guessing numeric offsets.
+Explicit absence clears without waiting for unrelated document catchup.
+
+Presence packets bind room, originating writer, schema fingerprint (including
+schema identity), shared model and exact engine revision. They contain causal
+anchors, not account credentials, display metadata or shared-document payloads.
+The separate limit is 256 KiB and at most 1,024 canonical decimal causal clocks.
+`supportsPresence()` detects this additive capability; older matching owners
+can still use ordinary editing, but presence methods reject as unavailable.
+No model, journal or existing owner ABI is reinterpreted.
+
+`new SharedPresence(core, options)` manages the latest opaque packet for each
+host-announced peer. Call `announce({writer, session, label, palette?})` only from
+the host's authenticated connection/lease metadata. Then call
+`receive(writer, session, sequence, frame)`. Sequences are exact decimal strings,
+including above the JavaScript safe-integer range. Replaced sessions fence late
+packets and old disconnects. Duplicate/out-of-order packets do not refresh expiry
+or revive an expired selection. `remove(writer, session)` removes a current peer;
+`sweep()` expires packet/display bytes but retains its high sequence until the
+host removes or replaces that session.
+
+Defaults are 64 peers, 2 MiB of latest packet bytes and 30-second receipt-based
+expiry; host settings may tighten these bounds. A monotonic clock and optional
+manual expiry support deterministic tests. Causal publications remap retained
+presence automatically, including pending-to-resolved transitions. Membership
+and packet mutations reject reentrant callbacks; content-driven notifications
+drain through a bounded publication loop. Errors cannot rewind admitted content.
+`view()` returns detached peer snapshots. Disposing presence does not dispose its
+independently owned editor. Presence is never sent through `receiveFrame`, the
+durable journal queue or the upload queue.
+
+The combined demo shows semantic peer selections in a separate output above each
+editor, with connection-scoped sessions and heartbeats. These outputs do not
+change native selections or document DOM content. Pixel cursor/range overlays
+and a network-authenticated presence transport remain integration work. The
+same-page demo establishes neither account authorization nor a server lease.
+
 ## DOM and toolbar
 
 `mountSharedEditor(root, {core, ...options})` mounts the real owner. The default
@@ -201,7 +247,7 @@ treated as document-only imports. Resume old journals with their matching old
 owner until an explicit migration workflow exists.
 
 The full collaboration goal still includes a permission-aware network relay,
-presence, server-authorized writer leases and cross-host
+network presence integration, server-authorized writer leases and cross-host
 asset providers. The bounded
 journal rebuild is a correctness reference, not a production throughput claim.
 See the repository collaboration plan and private owner contracts for limits.

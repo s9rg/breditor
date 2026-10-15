@@ -70,7 +70,7 @@ pub(super) struct Journal {
     pub(super) publication: String,
 }
 
-fn writer_id(value: &str) -> Result<u64, Error> {
+pub(super) fn writer_id(value: &str) -> Result<u64, Error> {
     let id = value.parse::<u64>().map_err(|_| Error::Contract("shared writer"))?;
     if id == 0 || id == u64::MAX || id.to_string() != value {
         return Err(Error::Contract("canonical shared writer"));
@@ -113,6 +113,16 @@ pub struct RichReplica {
 }
 
 impl RichReplica {
+    /// Immutable document identity bound by seed, frame join or exact journal recovery.
+    #[must_use]
+    pub fn document_id(&self) -> &str {
+        &self.journal.document
+    }
+    /// Exact exclusively owned causal writer; this identity is not account authorization.
+    #[must_use]
+    pub fn writer(&self) -> &str {
+        &self.journal.writer
+    }
     /// Seed a new shared document exactly once under the host's exclusive writer.
     ///
     /// # Errors

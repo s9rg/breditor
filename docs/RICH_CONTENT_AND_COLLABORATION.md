@@ -67,7 +67,7 @@ selective history; another tab cannot clone that live writer through another
 database. Failed storage attempts remain explicit and can retry the latest
 complete checkpoint. The combined demo now uses both durable writers and proves
 disconnect/reconnect/reload through the real DOM controller. Cross-device
-authorization, presence, the network relay and cross-host asset providers remain
+authorization, network presence transport, the network relay and cross-host asset providers remain
 separate required integration work.
 
 Shared caption creation/replacement/removal now uses a writer-owned choice of
@@ -105,7 +105,7 @@ TypeScript and installed-package checks. An earlier full run hit WebKit's interm
 array-length runtime error in the existing axis/history test; five focused repeats
 and the following complete matrix passed. Stage/stack diagnostics remain in that
 test; this is not confirmation that the historical runtime fault is fixed.
-This does not complete the relay, presence or cross-host asset provider gates below.
+This does not complete the relay, network presence or cross-host asset provider gates below.
 
 The shared owner now has an application-configured factory independent of the
 fixed fixture constructor. Native hosts bind an already compiled rich schema;
@@ -121,6 +121,24 @@ The factory checkpoint passes 211 private native contracts and 111 combined
 Chromium/Firefox/WebKit browser cases, strict native/Wasm Clippy, TypeScript and
 the installed offline archive's six exact future-history states. Tab-close
 recovery waits for observable browser lock release before one restore attempt.
+
+Presence now has a separate read-only Rust causal-anchor channel. Capture and
+resolution preserve exact publication/history state; text, node and grid
+selections use the existing source-routing and structural fallback laws. Missing
+applied dependencies return pending until document catchup; absence clears
+immediately. The browser registry keeps bounded latest-per-writer packets,
+monotonic expiry, exact decimal sequences and host-announced session fencing.
+Old packets cannot revive expired carets or remove a replacement session.
+The combined demo displays semantic peer selections outside the document DOM
+and renews them with connection-scoped heartbeats. Network authorization and
+transport, pixel cursor/range overlays and cross-host asset hosting remain work.
+This is additive capability discovery, not a causal model/journal migration.
+The presence checkpoint passes 219 private native contracts, 135 combined
+three-engine browser cases, strict native/Wasm Clippy, TypeScript and installed
+offline archive checks. The full regression check adds all 309 legacy browser
+cases (444 browser cases in total), 703 default core tests, 1,217 opt-in core
+tests, 137 doctests and the rich action/clipboard/recovery contracts. The broader
+release and service integration gates remain.
 
 The central decision is to design collaboration before adding new structural
 operations. Stable content identities, table geometry, image assets, selections
@@ -584,7 +602,7 @@ uses the Rust namespace allocator and an atomic source-preserving flow paste;
 cross-host asset resolution remains separate integration work.
 Placement cycles now resolve before traversal, including implicit derived-cell
 ancestry and kind/move compatibility. Server-authorized leases,
-presence and relay/provider integration are also unfinished. The full functional
+network presence and relay/provider integration are also unfinished. The full functional
 goal is unchanged; this adapter is not an end-user collaboration release.
 
 Candidate under test: Loro 1.16.2 in the isolated
@@ -952,7 +970,7 @@ future history. Kind/move and nested-table conflicts now retain content through
 compatible positions and reserved root occurrences. The configurable shared
 profile now supplies schema/format compilation and exact create/join/restore.
 The next focused sessions should promote its optional Rust/Wasm distribution and
-integrate the reference relay, presence and host
+integrate the reference relay, network presence/overlays and host
 asset provider. Durable shared causal journals and local asset
 bytes now survive reload, but do not supply network acknowledgement or shared
 asset hosting. Arbitrary cross-container

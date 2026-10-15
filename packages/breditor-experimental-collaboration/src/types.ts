@@ -48,8 +48,15 @@ export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"
 export type NavigationResult={kind:"moved"|"unchanged"}|{kind:"boundary";boundary:string};
 export interface ClipboardContent {richJson:string;plainText:string}
 export interface SharedOwnerDescriptor {format:"breditor/shared-rich-owner";abiVersion:1;modelVersion:11;journalVersion:12;schema:{name:string;version:number};schemaFingerprint:string}
+/** Read-only mapping of an opaque presence packet, never an authorization credential. */
+export type SharedPresenceResolution=
+ |{kind:"resolved";writer:string;selection:RichSelection|null}
+ |{kind:"pending";writer:string}
+ |{kind:"cleared";writer:string;reason:"target_deleted"|"hidden_table"|"no_text_target"};
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
+ /** Additive capability: older matching owners may omit the separate presence channel. */
+ presence_frame?(observation:unknown):string;resolve_presence?(frame:string):string;
  descriptor_json():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;

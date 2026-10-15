@@ -18,6 +18,8 @@ mod shared_list;
 mod shared_paste_at_text;
 #[path = "vectors/shared_placement.rs"]
 mod shared_placement;
+#[path = "vectors/shared_presence.rs"]
+mod shared_presence;
 #[path = "vectors/shared_profile.rs"]
 mod shared_profile;
 #[path = "vectors/shared_range.rs"]
@@ -164,6 +166,7 @@ fn rich_vectors() -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         "shared_placement":shared_placement::generate(&rich_local_input)?,
         "shared_grammar":shared_grammar::generate(&rich_local_input)?,
         "shared_profile":shared_profile::generate(&rich_local_input)?,
+        "shared_presence":shared_presence::generate(&rich_local_input)?,
     });
     Ok(vector)
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
-import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile} from "@breditor/experimental-collaboration";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,compileSharedProfile,SharedPresence} from "@breditor/experimental-collaboration";
 import {render,model} from "@breditor/experimental-rich-content/rendering";
 const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
 wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
@@ -14,5 +14,6 @@ for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFile
 a.dispose();b.dispose();
 const v=vector.shared_profile,p=compileSharedProfile(wasm,v.configuration),custom=new SharedRichEditor(p.restore("room",v.checkpoint));p.free();
 const state=name=>{assert.deepEqual(custom.view(),JSON.parse(v[name].view));assert.equal(custom.checkpointJson(),v[name].checkpoint);};
-state("current");custom.undo();state("undo");custom.redo();state("redo");custom.type("!");state("typed");custom.undo();state("undo_typed");custom.redo();state("redo_typed");assert.ok(custom.documentJson().includes('"example/priority":0'));custom.dispose();
+state("current");custom.undo();state("undo");custom.redo();state("redo");custom.type("!");state("typed");custom.undo();state("undo_typed");custom.redo();state("redo_typed");assert.ok(custom.documentJson().includes('"example/priority":0'));
+const q=compileSharedProfile(wasm,v.configuration),peer=new SharedRichEditor(q.join_frame("room","404",custom.updateFrame()));q.free();const presence=new SharedPresence(custom,{autoExpire:false});peer.select({kind:"node",block:"image-block"});presence.announce({writer:"404",session:"consumer-peer",label:"Peer"});const unchanged=custom.checkpointJson();presence.receive("404","consumer-peer","1",peer.presenceFrame());assert.equal(presence.view()[0].resolution.kind,"resolved");assert.equal(custom.checkpointJson(),unchanged);presence.dispose();peer.dispose();custom.dispose();
 console.log("Installed shared package imports, configured factories, generated types and real Wasm future history passed");

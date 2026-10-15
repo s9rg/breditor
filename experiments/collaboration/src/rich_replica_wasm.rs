@@ -58,6 +58,15 @@ impl RichReplicaProbe {
 }
 #[wasm_bindgen]
 impl RichReplicaProbe {
+    /// Capture read-only ephemeral causal selection under the exact current observation.
+    pub fn presence_frame(&self, observation: &RichSharedObservation) -> Result<String, JsValue> {
+        self.inner.presence_frame_guarded(&observation.inner).map_err(error)
+    }
+    /// Resolve authorized host presence without changing document, local UI or history.
+    pub fn resolve_presence(&self, frame: &str) -> Result<String, JsValue> {
+        serde_json::to_string(&self.inner.resolve_presence_frame(frame).map_err(error)?)
+            .map_err(error)
+    }
     /// Read the matching ABI, private projection/history revisions and immutable schema binding.
     pub fn descriptor_json(&self) -> String {
         self.inner.descriptor_json()

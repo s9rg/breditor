@@ -1,4 +1,4 @@
-import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedOwnerDescriptor,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
+import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedOwnerDescriptor,SharedPresenceResolution,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
 export class SharedEditorError extends Error {
  constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
 }
@@ -32,6 +32,10 @@ export class SharedRichEditor {
  documentJson():string{return this.view().documentJson;}
  checkpointJson():string{return this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
+ /** Separate read capability; neither method publishes, imports content or changes local UI. */
+ supportsPresence():boolean{const raw=this.#live();return typeof raw.presence_frame==="function"&&typeof raw.resolve_presence==="function";}
+ presenceFrame():string{const raw=this.#live();if(!raw.presence_frame)throw new SharedEditorError("presence_unavailable","Use a Rust owner with the causal presence capability");return raw.presence_frame(this.#observation);}
+ resolvePresence(frame:string):SharedPresenceResolution{const raw=this.#live();if(!raw.resolve_presence)throw new SharedEditorError("presence_unavailable","Use a Rust owner with the causal presence capability");return JSON.parse(raw.resolve_presence(frame)) as SharedPresenceResolution;}
  subscribe(listener:(event:SharedPublication)=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  /** Hold remote publication across input/composition/callback queues. Release is idempotent. */
  holdRemotes():()=>void{this.#live();if(this.#holds>=128)throw new SharedEditorError("hold_limit","Too many nested remote holds");this.#holds++;let held=true;return()=>{if(!held)return;held=false;this.#holds--;this.#flush();};}

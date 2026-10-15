@@ -4,6 +4,7 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),"../.."),artifacts=re
 const resources=new Map(),add=(url,path,type="text/javascript; charset=utf-8")=>resources.set(url,[type,readFileSync(path)]);
 add("/probe.js",resolve(artifacts,"breditor_collab_feasibility.js"));add("/breditor_collab_feasibility_bg.wasm",resolve(artifacts,"breditor_collab_feasibility_bg.wasm"),"application/wasm");add("/native-vector.json",resolve(artifacts,"native-vector.json"),"application/json");
 add("/shared.js",resolve(shared,"index.js"));add("/rendering.js",resolve(local,"rendering.js"));add("/rich.js",resolve(local,"index.js"));add("/demo.mjs",resolve(root,"experiments/shared-browser/demo.mjs"));
+add("/demo_presence.mjs",resolve(root,"experiments/shared-browser/demo_presence.mjs"));
 function modules(directory,prefix){for(const file of readdirSync(directory,{withFileTypes:true})){if(file.isDirectory())modules(resolve(directory,file.name),`${prefix}/${file.name}`);else if(file.isFile()&&file.name.endsWith(".js"))add(`${prefix}/${file.name}`,resolve(directory,file.name));}}
 modules(resolve(shared,"dist"),"/dist");modules(resolve(local,"dist/browser"),"/dist/browser");
 const imports=`<script type="importmap">{"imports":{"@breditor/experimental-rich-content/rendering":"/rendering.js"}}</script>`;

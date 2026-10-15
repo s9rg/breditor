@@ -513,8 +513,8 @@ imports and declarations, renderer exports, licenses, and future Undo/Redo throu
 the matching real Wasm owner pass. The private owner fixture remains an external
 test input; the archive does not disguise it as a generic shipping factory.
 
-The current isolated Wasm is 8,964,201 bytes, or 2,421,433 bytes under gzip, with
-SHA-256 `1a2bb80326edd366a931f78d1fa12b5a12de3a291ff15a67c5a1f553e00b4221`.
+The current isolated Wasm is 9,010,924 bytes, or 2,435,943 bytes under gzip, with
+SHA-256 `f3ded07b48e9b68c409ed74a081aa810cd8a1b5768e3939971033098d5bae993`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -920,6 +920,58 @@ acknowledgement alone did not guarantee that asynchronous release. Five focused
 repeats pass, and exclusion remains asserted while the original writer is live.
 This corrects a test synchronization assumption, not the separate historical
 WebKit runtime fault. Default shipping source and dependency graphs are unchanged.
+
+## Separate causal presence channel
+
+`presence_frame_guarded` freezes the current exact observation's private causal
+selection into original `breditor/shared-rich-presence` V1. Read-only
+`resolve_presence_frame` returns an admitted current text/node/grid selection,
+pending causal dependencies or an explicit structural clearing reason. It does
+not import updates, publish UI, consume history or replace a live observation.
+Text preserves Unicode boundaries, affinity, direction and original source IDs
+through structural split/join and Undo/Redo. Node/grid selection follows the
+same deletion/hidden-table laws as local causal UI. Explicit absence clears even
+before unrelated content catchup. Packets bind room, writer, full schema
+fingerprint, model and engine revision; they are capped separately at 256 KiB
+and 1,024 checked decimal clocks over the applied state version, not pending ops.
+
+The browser `SharedPresence` registry stores one latest opaque frame per
+host-announced writer/session. It enforces canonical wide sequences, stale and
+duplicate suppression, monotonic receipt expiry and replacement-session fencing.
+Expiry clears packet bytes and display state but retains the high sequence;
+an old packet cannot revive a caret. An old disconnect cannot remove a new
+session. Defaults cap 64 peers, 2 MiB of frame bytes and a 30-second TTL; hosts
+can tighten limits. Core causal publications refresh mapping without changing
+the local caret. Registry lifetime is independent of the editor. Publication
+callbacks use a bounded notification loop rather than recursive refresh.
+
+The host must establish peer identity/session metadata through its actual
+authentication/lease boundary; an opaque presence packet supplies no authority.
+No presence data enters the content import queue, journal, Undo or asset queue.
+The matching Wasm owner exposes this as an optional additive capability, so an
+older ordinary-editing owner is not falsely treated as presence-capable. ABI 1,
+model 11, journal V12 and default shipping graphs remain unchanged.
+
+Eight native contracts cover Unicode/direction/affinity, source-preserving
+structural history, pending catchup, immediate absence, node/grid loss, exact
+read purity and binding/budget rejection. An independent native vector supplies
+opaque packets and seven mapped/future states for real Wasm comparison, including
+exact journals/views and independently compared causal operations. Browser tests
+also cover bounded peer lifecycle, sequence/session fencing, pending refresh,
+capability absence, disposal and queued notifications. The combined demo uses
+connection-scoped sessions and heartbeats to show semantic selections in separate
+outputs across disconnect/reconnect/reload. Pixel caret/range overlays, network
+authorization/transport and server leases remain separate integration work.
+
+The presence checkpoint passes 219 private native tests, strict native/wasm32
+Clippy, generated and installed-consumer TypeScript, all 135 combined
+Chromium/Firefox/WebKit cases and installed-archive runtime checks of both
+configurable future history and the separate read-only presence channel.
+The full feasibility check also passes all 309 legacy browser cases: 444 browser
+cases total with the shared suite. Default core 703 tests, opt-in core 1,217 tests,
+137 doctests and the rich action/clipboard/navigation/recovery contracts pass on
+the same frozen source. These functional checks do not complete the network,
+distribution, physical accessibility or broader production-reliability gates.
 
 ## Shared semantic clipboard
 
