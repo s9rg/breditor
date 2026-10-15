@@ -5,6 +5,50 @@ use loro::{ExportMode, LoroDoc, UndoManager};
 use serde_json::json;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+#[test]
+fn unobserved_append_at_original_source_end_follows_an_interior_split() -> TestResult {
+    let a = seed()?;
+    let b = fork(&a, 22)?;
+    split(&a, "a", 2, "right")?;
+    insert(&b, "a", 6, Affinity::After, "!")?;
+    b.commit();
+    sync(&a, &b)?;
+    assert_eq!(text(&a, "a")?, "ab", "{:?}", model::text(&a, "a")?.to_delta());
+    assert_eq!(text(&a, "right")?, "🙂cd!");
+    Ok(())
+}
+
+#[test]
+fn restored_original_text_does_not_inherit_a_nearby_unrelated_fragment() -> TestResult {
+    for append_before_undo in [false, true] {
+        let a = seed()?;
+        let c = fork(&a, 33)?;
+        let mut undo = UndoManager::new(&a);
+        undo.pause();
+        let cut = PreparedSplit::prepare(&a, "a", 4, "right-a")?;
+        a.commit();
+        undo.resume();
+        cut.apply(&a)?;
+        a.commit();
+        let b = fork(&a, 22)?;
+        split(&b, "a", 2, "right-b")?;
+        sync(&a, &b)?;
+        insert(&c, "a", 6, Affinity::After, "!")?;
+        c.commit();
+        if append_before_undo {
+            a.import(&c.export(ExportMode::all_updates())?)?;
+        }
+        undo.undo()?;
+        a.commit();
+        if !append_before_undo {
+            a.import(&c.export(ExportMode::all_updates())?)?;
+        }
+        assert_eq!(text(&a, "a")?, "abcd!");
+        assert_eq!(text(&a, "right-b")?, "🙂");
+    }
+    Ok(())
+}
+
 fn seed() -> Result<LoroDoc, crate::Error> {
     let doc = LoroDoc::new();
     doc.set_peer_id(11)?;

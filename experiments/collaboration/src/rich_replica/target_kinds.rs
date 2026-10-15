@@ -34,6 +34,12 @@ impl TargetKinds {
     }
     pub fn record(&mut self, command: &Command) -> Result<(), Error> {
         match command {
+            Command::PasteFlowAtText(value) => {
+                self.insert(&value.right, "breditor/paragraph")?;
+                for node in &value.nodes {
+                    self.node(node)?;
+                }
+            }
             Command::PasteBlocks(value) => {
                 for node in &value.nodes {
                     self.node(node)?;

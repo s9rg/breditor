@@ -8,6 +8,12 @@ use breditor_core::rich_content::ResolvedRichSelection;
 use serde_json::json;
 
 impl RichReplica {
+    /// Immutable binding for the opt-in browser coordinator, independent of live observations.
+    #[must_use]
+    pub fn descriptor_json(&self) -> String {
+        json!({"format":"breditor/shared-rich-owner","abiVersion":1,"modelVersion":super::MODEL_VERSION,"journalVersion":super::session::JOURNAL_VERSION,
+            "schema":{"name":self.codec.schema().id().name().as_str(),"version":self.codec.schema().id().version().get()},"schemaFingerprint":self.codec.schema().fingerprint().to_string()}).to_string()
+    }
     /// Read content, causal/version strings, selection, pending formats and original core geometry.
     /// # Errors
     /// Read admission/serialization failure has no shared or local mutation.

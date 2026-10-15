@@ -332,8 +332,9 @@ Browser checks exercise the real public owner and typed command API, not a
 JavaScript content model. The matching package includes wasm-bindgen's generated
 helper modules. Its default editor ABI remains 5; rich ABI 1 uses explicit
 bootstrap V6. Local assets and checkpoint persistence are optional host services;
-shared rich replication, collaborative persistence and the provider/relay
-integration remain implementation work. Event clipboard/composition checks are not native OS
+shared replication now has a separate opt-in browser coordinator and exact
+IndexedDB recovery. Provider/relay integration remains implementation work.
+Event clipboard/composition checks are not native OS
 clipboard acknowledgements or physical IME qualification.
 
 ## Verified replication fixture checkpoint
@@ -365,14 +366,14 @@ On October 15, 2026, the reproducible script passed:
   closure, explicit edges, reordered axes and metadata-only redo preservation.
 - 12 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 retained native collaboration/history contracts and 121 shared rich-AST
+- 27 retained native collaboration/history contracts and 124 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
-- 21 isolated text-flow contracts covering original-source split/join, logical
+- 23 isolated text-flow contracts covering original-source split/join, logical
   range edits, offline typing, causal boundary carets and selective routing history.
 - 3 direct engine history contracts that fail on the unpatched pinned dependency.
 - 3 native comparison-framing tests and 2 Node transport checks, including a
   real input pipe deliberately left open after its complete request frame.
-- 309 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
+- At the preceding clipboard checkpoint, 309 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
   201 shared-AST/selection/paragraph/heading/range/list/clipboard tests, 24 text-flow lowerer checks
   and 9 direct engine-ordering checks.
   The explicit test list includes `rich-replica.spec.mjs`, `rich-selection.spec.mjs`,
@@ -380,7 +381,7 @@ On October 15, 2026, the reproducible script passed:
   `rich-lists.spec.mjs`, `rich-clipboard.spec.mjs` and `text-flow.spec.mjs`;
   the old 75-test configuration did not exercise these additional families.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
-- After independently regenerating the native vectors, five repeats of each
+- At the preceding clipboard checkpoint, after independently regenerating the native vectors, five repeats of each
   engine-ordering, combined clipboard journal, explicit-header intent and empty-flow
   caret/history regression passed in every browser engine: 90 additional checks.
 - 137 Rust documentation tests.
@@ -404,15 +405,116 @@ On October 15, 2026, the reproducible script passed:
 - A four-group clipboard workflow with grid, image, whole-table and formatted
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
-- Eleven shared clipboard contracts cover immutable reads, complete inline styles,
+- Fourteen shared clipboard contracts cover immutable reads, complete inline styles,
   fresh table/image identities, actual merge clocks, concurrent grid replacements,
   clear/undo, explicit same-value headers, conditional empty-flow paragraphs,
   causal carets and exact same-writer restart. Ten matching browser workflows per
   engine include a combined native journal with fresh table/image/grid paste,
   offline original-body edits, reload and exact future clear/Undo/Redo operations.
 
-The tested fixture Wasm is 8,570,915 bytes, or 2,331,010 bytes under gzip, with
-SHA-256 `81f1a4e1349c1a789cc2d69670818d0633e00368442a03b92383cc8ba5d2aecf`.
+## Shared browser integration and causal source repair
+
+`node scripts/check-shared-browser.mjs` builds the matching private Wasm owner,
+native vectors and optional browser modules, checks their generated declaration
+contract and runs the combined DOM/session/demo matrix in Chromium, Firefox and
+WebKit. The new `@breditor/experimental-collaboration` package adopts exclusive
+Rust ownership; it does not introduce a JavaScript CRDT or mutable shared AST.
+Its read-only renderer dependency is the additive `experimental-rich-content/rendering`
+subpath. The default package entry points remain unchanged.
+
+The coordinator connects shared table/list/image controls, native input and
+selection, source-preserving selected-flow paste, semantic clipboard and file
+paste/drop to the guarded Rust actions. Remote updates have bounded queues and
+explicit admission receipts. Background rendering cannot move another editor's
+native caret. Synthetic composition holds remote publication until its one Rust
+commit; this is functional event-path evidence, not physical IME qualification.
+
+Selected-flow paste exposed a native source-routing defect, independent of the
+historical WebKit runtime issue. Reproduction: seed `ab🙂cd`, split at UTF-16
+offset 2 while an offline writer appends `!` at original offset 6, then exchange
+updates. Loro can leave the concurrent EOF append outside the split's expanded
+annotation, incorrectly projecting it into the left paragraph. The failing
+native regression is `unobserved_append_at_original_source_end_follows_an_interior_split`.
+
+Model 7 follows the preceding active source interval only for unmarked characters
+absent from the routing action's causal past. Character IDs and the action's
+version vector distinguish an unseen append from restored original text; nearby
+observed text resets continuation. The independent
+`restored_original_text_does_not_inherit_a_nearby_unrelated_fragment` contract
+guards that distinction. Rich paste now deletes the selection, splits retained
+sources and publishes fresh flow in one Undo group using distinct actual causal
+stamps for its dependent phases. Journal V8 and model 7 explicitly reject older
+interpretations rather than silently replaying different source ownership.
+
+`SharedPersistentSession` acquires an origin-wide room/writer Web Lock before
+reading or restoring a journal. Factory/admission failure releases the lock;
+another tab cannot bypass exclusion by choosing a different database. Complete
+journals persist on completed IndexedDB transactions with one in-flight and one
+coalesced pending write. Saved/pending/failed states, explicit retry and final
+flush distinguish local durability from relay acknowledgement. A reproduced
+retry race now waits for the failed attempt to settle before restarting the
+newest checkpoint. Abrupt tab loss restores the last completed write, not an
+unacknowledged in-memory edit. Cross-device writer authorization is still a
+reference-relay responsibility.
+
+The interactive `/demo` on `experiments/shared-browser/serve.mjs` uses two durable
+writers with disconnect/reconnect, automatic local save, exact reload history,
+journal export and host image bytes. No external service receives document data.
+The host is not the authenticated reference relay. See the optional package
+README for the adoption, queue, toolbar, clipboard, asset and lifecycle contracts.
+
+The October 15 integration check passed all 177 private native contracts, native
+and wasm32 Clippy, actual generated-owner TypeScript declarations and 51 combined
+browser tests (17 per engine). The existing single-user rich-owner matrix also
+passed all 105 cases with its unchanged Wasm hash. The new browser families cover
+native input, table growth/moves/merge/header/clear/split, nested lists/headings,
+selected rich paste, captions and paired image metadata, durable raster paste/drop,
+bounded remote queues, cross-tab writer exclusion, quota failure/retry and actual
+page reload with exact future history. These are functional workflows, not a
+claim of exhaustive adversarial, accessibility or physical input qualification.
+
+Five additional repeats of the selected-flow clipboard repair, exact native
+selected-flow replay, quota retry and combined demo passed in every engine:
+60 focused integration checks. The unbounded single-process 309-case matrix was not fully green:
+both an overlapping-jobs run and a standalone run finished 308/309, each timing
+out in WebKit navigation before the same test's editing setup. The first trace
+recorded no HTTP events; the affected test then passed five isolated repeats.
+The traces are preserved under the ignored
+`target/collaboration-browser-evidence/shared-session-navigation-timeout` and
+`shared-session-navigation-timeout-isolated` directories. No timeout, assertion
+or retry setting was relaxed.
+
+An independent empty-page control completed 63 fresh WebKit contexts and timed
+out opening context 64, without loading Breditor, any editor JavaScript, a
+network resource or Wasm. Reproduce with
+`node scripts/diagnose-webkit-context-lifetime.mjs` (a nonzero exit records the
+control failure). This reproduces a browser/automation lifecycle boundary, not
+an editor operation or proof about the separate historical runtime fault.
+
+The canonical `check-collaboration-browser.mjs` runner now starts a fresh WebKit
+process for each configured test file. Chromium and Firefox still run their full
+configured matrix. Two schedule tests verify every configured file is retained
+exactly once per engine and reject missing/duplicate/glob plans. This is bounded
+test-process isolation, not a retry, timeout increase or editor workaround. The
+underlying WebKit startup reliability gate remains open; these functional checks
+do not establish a repair for the historical WebKit runtime issue.
+
+With this coverage-preserving process isolation, all 309 collaboration browser
+cases passed: 206 Chromium/Firefox cases plus all 103 WebKit cases in the ten
+configured files. Together with the 51 combined integration cases and the 105
+unchanged single-user cases, the functional checkpoint passes 465 browser cases.
+The 60 focused integration repeats, five isolated paragraph-replay repeats and
+two browser-run coverage-plan tests also passed. The empty-page lifecycle control
+remains an expected failing diagnostic, not a passing editor test.
+
+`node scripts/check-shared-package.mjs` packs both optional packages locally and
+installs them into a fresh offline consumer without workspace links. Installed
+imports and declarations, renderer exports, licenses, and future Undo/Redo through
+the matching real Wasm owner pass. The private owner fixture remains an external
+test input; the archive does not disguise it as a generic shipping factory.
+
+The tested fixture Wasm is 8,631,838 bytes, or 2,348,518 bytes under gzip, with
+SHA-256 `3377dc288f169627ff276a6c2b0fe3ef20842905eab7c67ffb68b49dd97b6b77`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -465,19 +567,20 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V7 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V8 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional. V1–V6 shared journals are rejected rather than silently replayed
+still provisional. V1–V7 shared journals are rejected rather than silently replayed
 without source-based routing, causal UI/history metadata, deterministic engine
-history authoring, sequential command priorities and retained normalization origins. Local rich editor
+history authoring, sequential command priorities, retained normalization origins and
+causal ownership of unmarked concurrent source appends. Local rich editor
 recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
-and fingerprint, model revision 6 and the explicit engine build tag
+and fingerprint, model revision 7 and the explicit engine build tag
 `1.16.2+breditor.deterministic-history.1` before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
@@ -541,7 +644,7 @@ atomic group. Each semantic command now has its own causal stamp and, when neede
 annotation claim, so later formatting outranks every run inserted by an earlier command.
 The group still has one history identity and one Undo boundary. The retained
 engine ordering patch makes retraction of these separate claims deterministic.
-The current private model is revision 6 and its journal is V7; shipping formats
+The current private model is revision 7 and its journal is V8; shipping formats
 are unchanged.
 
 Preparation reserves canonical deletion/placement containers outside user history
@@ -601,8 +704,8 @@ promotion, source-preserving item boundaries, concurrent presentation, independe
 empty-head retention, derived cells, spare-slot history, composed groups and no-ops.
 Browser contracts include native journal restoration after reload with exact
 future operations and full journals, including history that predates a retained
-normalization slot. The shared DOM coordinator and
-general placement-conflict normalization remain separate implementation gates.
+normalization slot. The shared DOM coordinator now exposes these actions;
+general placement-conflict normalization remains an implementation gate.
 
 ## Shared semantic clipboard
 
@@ -647,8 +750,9 @@ ordered typed host-allocated IDs. Its outer request limit is 5 MiB and 20,000 ID
 the clipboard envelope independently remains capped at 1 MiB. All reservations,
 including unused ones, remain consumed by the host on failure. A stale guard is
 checked before parsing or ID admission. Other existing action, geometry and
-historical-state limits still apply. This is functional Rust/Wasm planning, not
-an OS clipboard acknowledgement, shared DOM event adapter or cross-host asset import.
+historical-state limits still apply. The optional shared DOM adapter now connects
+these operations to browser events; this does not acknowledge the OS clipboard
+or import cross-host asset bytes.
 Clipboard parents, axes and targets must already be visible when the group is
 prepared; a batch that first creates a target or changes the required grid shape
 can reject atomically. Use an explicitly admitted target publication rather than
@@ -786,8 +890,8 @@ normalized cells, new axis-derived cells and exact restored future history.
 Selection and pending-format normalization occurs once after the complete atomic
 group, not after intermediate commands. Original-axis deletion fallback does not
 select a row first created by the same group.
-The Wasm probe exposes these commands through guarded dispatch; the browser DOM
-coordinator is still unfinished. Private shared model revision 6 and journal V7
+The Wasm probe exposes these commands through guarded dispatch, now connected
+to the opt-in shared browser coordinator. Private shared model revision 7 and journal V8
 replace the earlier experimental model; shipping schemas/codecs are unchanged.
 
 ## Limits and remaining gates
@@ -815,15 +919,15 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-General shared placement cycle/conflict normalization remains an implementation gate. The shared browser
-coordinator, collaborative IndexedDB/leases and authorized reference
+General shared placement cycle/conflict normalization remains an implementation gate.
+Cross-device writer authorization and reference
 relay/presence/asset-provider integration are also unfinished. The fixture
 exchanges engine bytes in one test host;
 it does not implement a production transport or an end-user collaborative editor.
 Shared semantic clipboard planning now allocates history-free primitives and
 authors merge stamps, rather than copying local history through the creation API.
-Connecting those operations to shared browser clipboard events remains part of
-the browser coordinator milestone.
+The separate `@breditor/experimental-collaboration` package connects those
+operations to shared browser clipboard events and the existing read-only renderer.
 Physical Japanese IME and spoken VoiceOver are deferred at the user's request.
 
 Follow-up Firefox large-object comparisons reported zero path/grid coordinates

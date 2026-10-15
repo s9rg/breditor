@@ -1,0 +1,9 @@
+{
+ "name":"@breditor/experimental-collaboration","version":"0.3.0-alpha.22","private":true,
+ "description":"Opt-in shared Rust rich editor coordinator with bounded remote publication",
+ "type":"module","license":"MIT OR Apache-2.0","sideEffects":false,
+ "main":"./index.js","types":"./index.d.ts",
+ "files":["index.js","index.d.ts","dist","README.md","LICENSE-MIT","LICENSE-APACHE"],
+ "exports":{".":{"types":"./index.d.ts","import":"./index.js"}},
+ "peerDependencies":{"@breditor/experimental-rich-content":"0.3.0-alpha.22"}
+}

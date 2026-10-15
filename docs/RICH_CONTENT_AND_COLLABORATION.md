@@ -53,6 +53,23 @@ upload queue has explicit retry/cancel and late-epoch guards, but requires a hos
 provider and does not constitute shared asset storage. The default packages,
 schemas and codecs remain unchanged.
 
+The separate `@breditor/experimental-collaboration` browser coordinator now
+adopts the matching shared Rust owner. Its expandable toolbar, input/selection
+bridge, semantic clipboard and durable file insertion use the same causal
+commands exercised by native tests. Atomic rich paste at a text selection retains
+original suffix character IDs and owns one history group. A reproduced native
+EOF-append routing defect is repaired by causal character ownership in shared
+model 7/journal V8, not by special-casing WebKit or replacing the shared AST.
+
+Shared sessions now save complete journals in IndexedDB and acquire an
+origin-wide room/writer Web Lock before restoration. Reload preserves future
+selective history; another tab cannot clone that live writer through another
+database. Failed storage attempts remain explicit and can retry the latest
+complete checkpoint. The combined demo now uses both durable writers and proves
+disconnect/reconnect/reload through the real DOM controller. Cross-device
+authorization, presence, the network relay and cross-host asset providers remain
+separate required integration work.
+
 The central decision is to design collaboration before adding new structural
 operations. Stable content identities, table geometry, image assets, selections
 and local undo must agree on one document model. Existing paragraph, heading,
@@ -240,8 +257,9 @@ File paste/drop calls the optional admitted asset host. Its bounded IndexedDB
 store keeps SHA-256-addressed PNG/JPEG/WebP payloads as ArrayBuffers, not persisted
 Blob/File handles. The tested WebKit runtime rejects the latter before commit.
 Local session saves acknowledge transaction completion; the queue uploads only
-when the host supplies a provider. The shared rich replica, provider/relay
-integration and collaborative persistence remain implementation steps.
+when the host supplies a provider. Shared replication and exact collaborative
+persistence now use a separate optional coordinator; provider/relay integration
+remains an implementation step.
 `scripts/check-rich-browser.mjs` builds only the
 opt-in artifact and runs native plus real generated-Wasm browser workflows.
 Synthetic clipboard/composition tests do not certify OS clipboard or physical IME.
@@ -383,17 +401,17 @@ before Wasm command JSON admission; restored owners have fresh authority. Shared
 caret typing now honors pending/derived formats and advances once in one history
 group. Null pending formats derive; an empty array explicitly types plain text.
 
-The private `breditor/rich-replica-journal` V7 reconstructs the original seed/join,
+The private `breditor/rich-replica-journal` V8 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1–V6 shared journals are rejected explicitly; local rich recovery and default
+V1–V7 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision 6 and the explicit
+envelope. Room ID, schema selector/fingerprint, model revision 7 and the explicit
 engine tag `1.16.2+breditor.deterministic-history.1`
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
@@ -431,9 +449,9 @@ also normalize at the final group boundary, retaining original-axis fallback
 witnesses rather than expanding them to newly created rows.
 Actual shared command contracts cover offline edits,
 concurrent cuts, composed groups, cross-source joins and exact future history
-after restart. The private model is revision 6 and its journal is V7; default
-shipping contracts remain unchanged. The browser DOM coordinator is not yet
-connected to the shared owner. See the
+after restart. The private model is revision 7 and its journal is V8; default
+shipping contracts remain unchanged. The opt-in browser DOM coordinator now
+connects to the shared owner. See the
 [text-fragment contract and limits](../experiments/collaboration/README.md#text-fragments-for-shared-paragraph-boundaries).
 
 Shared heading conversion now captures/adopts the core action and projects one
@@ -443,7 +461,7 @@ other fields. Visible normalized paragraphs retain explicit empty heading intent
 including through concurrent flow insertion; undoing the kind does not discard
 another writer's text. Image captions remain paragraph-only. Native and browser
 checks cover derived cells, newly split targets, exact history/restart and atomic
-rejection. This does not connect the shared owner to the browser DOM coordinator.
+rejection. The shared DOM toolbar now exposes the same heading commands.
 
 Shared selected-range replacement now reuses the core preview for one text block,
 direct sibling flows and sibling leading list heads. It retains original suffix
@@ -468,22 +486,34 @@ Empty normalized heads can become movable list content without changing identity
 Their canonical retained occurrences merge across writers and remain conditional
 at their original fallback slot. Relocation or deletion can expose a deterministic
 spare; older Undo states do not acquire phantom empty paragraphs. The private
-model revision 6/journal V7 covers this normalization change. Preparation scans
+model revision 7/journal V8 includes this normalization change. Preparation scans
 the potential item fallback slots before history begins, allowing a head deletion
 or fresh split followed by unlisting to remain one atomic action. It also scans
 at most 20,000 metadata owners; wrapping accepts at most 1,000 item identities and
 each normalization family has at most 1,000 spare slots. Production work and
-compaction budgets remain open. These commands are not yet connected to the shared
-browser DOM coordinator.
+compaction budgets remain open. These commands now drive the shared browser
+toolbar and native Enter paths.
 
 The latest verification also exposed engine diff ordering that authored different
 paragraph-history operation identities in native and Wasm despite equal views.
 A retained, narrowly patched `loro-internal` 1.16.2 now orders tied containers,
 map fields and pending marks explicitly. All three direct regressions fail on
-the unmodified registry source and pass with the patch. The complete native/Wasm
-checks and 309 Chromium/Firefox/WebKit cases pass, including exact restored future
+the unmodified registry source and pass with the patch. At that engine-ordering
+checkpoint, native/Wasm checks and 309 Chromium/Firefox/WebKit cases passed, including exact restored future
 operations/journals. See [patch provenance](../experiments/collaboration/vendor/BREDITOR_PATCH.md).
 This repairs engine history authoring, not the historical WebKit runtime fault.
+The latest shared-browser integration adds 51 passing combined cases and 60
+focused repeats, while the unbounded single-process regression matrix finished 308/309
+because of a reproduced WebKit pre-edit navigation timeout. Its traces and five
+passing isolated test repeats are retained; the startup reliability gate stays open.
+An empty-page control independently stalls at the 64th fresh WebKit context
+without loading an editor or Wasm. The functional runner now uses fresh WebKit
+processes per configured file, with explicit coverage-plan tests and unchanged
+assertions/timeouts/retries; this repairs test isolation, not the underlying engine.
+All 309 cases pass with that explicit process isolation. Including the 51 new
+combined cases and 105 existing single-user cases, the functional browser
+checkpoint passes 465 cases. The empty-page lifecycle diagnostic still fails
+independently and does not qualify the underlying WebKit engine for production.
 
 Structured shared clipboard now reuses the original semantic codec and fresh-ID
 preparation. Guarded reads preserve UI, observations and redo. Inline paste uses
@@ -497,10 +527,11 @@ Concurrent replacements retain both writers' bodies and selective Undo restores
 original content, including remote edits, only when no active replacement hides it.
 The private Wasm clipboard request is capped at 5 MiB and 20,000 typed reserved
 identities, with the independent 1 MiB semantic clipboard limit still enforced.
-Hosts keep all allocated IDs consumed on failure; the browser shared event adapter
-and cross-host asset resolution remain separate integration work.
+Hosts keep all allocated IDs consumed on failure. The browser shared event adapter
+uses the Rust namespace allocator and an atomic source-preserving flow paste;
+cross-host asset resolution remains separate integration work.
 Placement-conflict/cycle
-normalization, the browser shared coordinator, leases, collaborative IndexedDB,
+normalization, server-authorized leases,
 presence and relay/provider integration are also unfinished. The full functional
 goal is unchanged; this adapter is not an end-user collaboration release.
 
@@ -862,12 +893,13 @@ incremental compilation disabled. Check available storage before larger builds;
 do not delete user data or unrelated work to make tests pass.
 
 This is a multi-milestone product expansion, not a few-hour production promise.
-The next focused sessions should connect the existing rich paragraph/list/range and
-clipboard planners to the browser shared coordinator,
-then integrate the reference relay,
-presence and host asset provider with durable collaborative recovery. Local asset
-bytes and local checkpoints are tested, not a substitute for shared causal state
-or selective undo. Arbitrary cross-container
+The rich paragraph/list/range and clipboard planners now drive the opt-in shared
+browser coordinator. The next focused sessions should complete shared caption
+creation/removal intents, general placement-conflict normalization and the generic
+shared profile factory, then integrate the reference relay, presence and host
+asset provider. Durable shared causal journals and local asset
+bytes now survive reload, but do not supply network acknowledgement or shared
+asset hosting. Arbitrary cross-container
 text ranges and typing coalescing remain separate support limits. Schedule the full
 release after the remaining measured integration gates. Production
 follows combined qualification and a real pilot, not the existence of three

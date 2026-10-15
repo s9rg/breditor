@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {pathToFileURL} from "node:url";
+import {SharedRichEditor,SharedPersistentSession,mountSharedEditor,insertSharedImageFiles} from "@breditor/experimental-collaboration";
+import {render,model} from "@breditor/experimental-rich-content/rendering";
+const wasm=await import(pathToFileURL(process.env.BREDITOR_PROBE_MODULE).href);
+wasm.initSync({module:readFileSync(process.env.BREDITOR_PROBE_BINARY)});
+const vector=JSON.parse(readFileSync(process.env.BREDITOR_PROBE_VECTOR,"utf8"));
+const a=new SharedRichEditor(new wasm.RichReplicaProbe(vector.rich_local_input,"101"));
+a.dispatch({commands:[{kind:"insert_text",data:{block:"caption",offset:0,text:"Packaged "}}]});
+a.undo();const checkpoint=a.checkpointJson(),b=new SharedRichEditor(wasm.RichReplicaProbe.restore("room",checkpoint));
+a.redo();b.redo();assert.equal(a.checkpointJson(),b.checkpointJson());assert.equal(a.documentJson(),b.documentJson());
+for(const api of[SharedPersistentSession,mountSharedEditor,insertSharedImageFiles,render,model])assert.equal(typeof api,"function");
+a.dispose();b.dispose();console.log("Installed shared package imports, generated types and real Wasm future history passed");

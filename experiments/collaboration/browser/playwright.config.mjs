@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: ".",
   testMatch: ["contracts.spec.mjs", "rich-ast.spec.mjs", "rich-replica.spec.mjs", "rich-selection.spec.mjs", "rich-paragraphs.spec.mjs", "rich-headings.spec.mjs", "rich-ranges.spec.mjs", "rich-lists.spec.mjs", "rich-clipboard.spec.mjs", "text-flow.spec.mjs"],
   outputDir: "../../../target/collaboration-browser-results",
+  // The canonical runner isolates WebKit per file: the independent macOS empty-page
+  // control stalls at context 64. See scripts/check-collaboration-browser.mjs.
   workers: 1,
   retries: 0,
   timeout: 60_000,

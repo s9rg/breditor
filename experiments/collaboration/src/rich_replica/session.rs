@@ -16,6 +16,7 @@ use std::{
 };
 
 const MAX_ENTRIES: usize = 1000;
+pub(super) const JOURNAL_VERSION: u32 = 8;
 const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
 const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
@@ -127,7 +128,7 @@ impl RichReplica {
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: 7,
+            version: JOURNAL_VERSION,
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
@@ -152,7 +153,7 @@ impl RichReplica {
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: 7,
+                version: JOURNAL_VERSION,
                 document,
                 writer,
                 origin: Origin::Join { updates },
@@ -235,7 +236,7 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != 7 {
+        if journal.format != "breditor/rich-replica-journal" || journal.version != JOURNAL_VERSION {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {

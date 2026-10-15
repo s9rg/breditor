@@ -6,7 +6,7 @@ use crate::{
         selection::Selection,
     },
 };
-use breditor_core::codec::DocumentJsonCodecV2;
+use breditor_core::{codec::DocumentJsonCodecV2, rich_content::GridMove};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 fn error(value: impl std::fmt::Display) -> JsValue {
@@ -53,6 +53,86 @@ pub struct RichReplicaProbe {
 }
 #[wasm_bindgen]
 impl RichReplicaProbe {
+    /// Read the matching ABI, private projection/history revisions and immutable schema binding.
+    pub fn descriptor_json(&self) -> String {
+        self.inner.descriptor_json()
+    }
+    /// Replace selected text with rich flow in one original-source-preserving Undo group.
+    pub fn paste_flow_at_text_namespace(
+        &mut self,
+        observation: &RichSharedObservation,
+        fragment: &str,
+        right: &str,
+        prefix: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        let mut ids = crate::rich_replica::ClipboardNamespace::try_new(prefix).map_err(error)?;
+        self.inner
+            .paste_flow_at_text_guarded(&observation.inner, fragment, right, &mut ids)
+            .map_err(error)
+    }
+    /// Replace a native beforeinput target range with one exact text/selection history group.
+    pub fn replace_plain_text(
+        &mut self,
+        observation: &RichSharedObservation,
+        selection: &str,
+        text: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        if selection.len() > 64 * 1024 {
+            return Err(error(Error::Limit("rich selection JSON bytes")));
+        }
+        let selection: Selection =
+            serde_json::from_str(selection).map_err(|_| error(Error::Json))?;
+        self.inner.replace_plain_text_guarded(&observation.inner, &selection, text).map_err(error)
+    }
+    /// Prepare IDs inside Rust from one fresh, permanently consumed host paste prefix.
+    pub fn paste_clipboard_namespace(
+        &mut self,
+        observation: &RichSharedObservation,
+        fragment: &str,
+        target: &str,
+        prefix: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        if target.len() > 64 * 1024 {
+            return Err(error(Error::Limit("clipboard target JSON bytes")));
+        }
+        let target = serde_json::from_str(target).map_err(|_| error(Error::Json))?;
+        let mut ids = crate::rich_replica::ClipboardNamespace::try_new(prefix).map_err(error)?;
+        self.inner
+            .paste_clipboard_guarded(&observation.inner, fragment, target, &mut ids)
+            .map_err(error)
+    }
+    /// Navigate admitted merged geometry; return explicit edges without inventing content.
+    pub fn navigate_grid(
+        &mut self,
+        observation: &RichSharedObservation,
+        movement: &str,
+        extend: bool,
+    ) -> Result<String, JsValue> {
+        self.inner.check(&observation.inner).map_err(error)?;
+        let movement = match movement {
+            "next" => GridMove::Next,
+            "previous" => GridMove::Previous,
+            "left" => GridMove::Left,
+            "right" => GridMove::Right,
+            "up" => GridMove::Up,
+            "down" => GridMove::Down,
+            "rowStart" => GridMove::RowStart,
+            "rowEnd" => GridMove::RowEnd,
+            "tableStart" => GridMove::TableStart,
+            "tableEnd" => GridMove::TableEnd,
+            _ => return Err(error(Error::Contract("shared grid movement"))),
+        };
+        serde_json::to_string(
+            &self
+                .inner
+                .navigate_grid_guarded(&observation.inner, movement, extend)
+                .map_err(error)?,
+        )
+        .map_err(error)
+    }
     /// Read selected rich/plain content without changing this observation or history.
     pub fn copy_clipboard(&self, observation: &RichSharedObservation) -> Result<String, JsValue> {
         serde_json::to_string(

@@ -1,0 +1,6 @@
+{
+ "extends":"../../tsconfig.base.json",
+ "compilerOptions":{"rootDir":"src","outDir":"dist","declarationMap":false,"stripInternal":false,
+ "paths":{"@breditor/experimental-rich-content/rendering":["../breditor-experimental-rich-content/rendering.d.ts"]}},
+ "include":["src/**/*.ts"]
+}

@@ -7,6 +7,19 @@ use super::{
 use crate::{Error, anchor::Affinity};
 
 impl RichReplica {
+    /// Replace a browser-supplied admitted text target range without first publishing a UI selection.
+    /// # Errors
+    /// Rejects stale/foreign guards, invalid ranges and failed staging without a partial publication.
+    pub fn replace_plain_text_guarded(
+        &mut self,
+        observation: &super::SharedObservation,
+        selection: &Selection,
+        text: &str,
+    ) -> Result<bool, Error> {
+        self.check(observation)?;
+        selection.admit(&self.document)?;
+        self.replace_plain_selection(text, selection)
+    }
     pub(super) fn replace_plain_selection(
         &mut self,
         text: &str,

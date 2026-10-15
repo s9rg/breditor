@@ -2,7 +2,7 @@
 use breditor_collab_feasibility::{
     anchor::Affinity,
     rich_replica::{
-        Command, PasteTarget, RichReplica,
+        ClipboardNamespace, Command, GridNavigationResult, PasteTarget, RichReplica,
         actions::{
             ClearTableCells, DeleteBlock, InsertColumn, InsertText, MergeCells, PasteTableCells,
             PastedCell, SetHeader,
@@ -22,6 +22,101 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn flow_paste_at_a_range_is_one_group_and_preserves_remote_suffix_characters() -> Result {
+    let (mut a, mut b) = peers()?;
+    let fragment = copy(&mut a, &Selection::Node { block: "image-block".into() })?;
+    select(&mut a, &text_selection("p", 3, 1))?;
+    let depth = a.undo_count();
+    let o = a.observe()?;
+    assert!(a.paste_flow_at_text_guarded(
+        &o,
+        &fragment,
+        "pasted-suffix",
+        &mut ClipboardNamespace::try_new("flow-at-range")?
+    )?);
+    assert_eq!(a.undo_count(), depth + 1);
+    assert_eq!(a.selection()?, Some(text_selection("pasted-suffix", 0, 0)));
+    b.apply(vec![
+        Command::InsertText(InsertText { block: "p".into(), offset: 4, text: "!".into() }),
+        insert("caption", "R"),
+    ])?;
+    sync(&mut a, &mut b)?;
+    assert_eq!(text(node(&raw(&a)?["root"], "p").ok_or("prefix")?), "a");
+    assert_eq!(text(node(&raw(&a)?["root"], "pasted-suffix").ok_or("suffix")?), "b!");
+    assert_eq!(text(node(&raw(&a)?["root"], "caption").ok_or("caption")?), "Rxy🙂");
+    let mut r = restore(&a)?;
+    a.undo()?;
+    r.undo()?;
+    assert_eq!(a.checkpoint()?, r.checkpoint()?);
+    assert_eq!(text(node(&raw(&a)?["root"], "p").ok_or("p")?), "a🙂b!");
+    a.redo()?;
+    r.redo()?;
+    assert_eq!(a.checkpoint()?, r.checkpoint()?);
+    Ok(())
+}
+
+#[test]
+fn rich_flow_paste_at_an_empty_normalization_caret_keeps_both_empty_text_sources() -> Result {
+    let (mut a, _) = peers()?;
+    let fragment = copy(&mut a, &Selection::Node { block: "image-block".into() })?;
+    a.apply(vec![Command::DeleteBlock(DeleteBlock { block: "table-block".into() })])?;
+    let value = raw(&a)?;
+    let head =
+        value["root"]["children"][0]["properties"]["breditor/block-id"].as_str().ok_or("head")?;
+    select(&mut a, &text_selection(head, 0, 0))?;
+    let before = a.document_json().to_owned();
+    let o = a.observe()?;
+    a.paste_flow_at_text_guarded(
+        &o,
+        &fragment,
+        "empty-suffix",
+        &mut ClipboardNamespace::try_new("empty-flow-at-text")?,
+    )?;
+    let value = raw(&a)?;
+    let types = value["root"]["children"]
+        .as_array()
+        .ok_or("body")?
+        .iter()
+        .map(|n| n["type"].as_str().ok_or("kind"))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    assert_eq!(types, vec!["breditor/paragraph", "breditor/image", "breditor/paragraph"]);
+    let mut r = restore(&a)?;
+    a.undo()?;
+    r.undo()?;
+    assert_eq!(a.document_json(), before);
+    assert_eq!(a.checkpoint()?, r.checkpoint()?);
+    Ok(())
+}
+
+#[test]
+fn logical_grid_navigation_preserves_shared_bytes_redo_and_explicit_boundaries() -> Result {
+    use breditor_core::rich_content::GridMove;
+    let (mut a, _) = peers()?;
+    a.apply(vec![insert("p", "Undoable")])?;
+    a.undo()?;
+    select(&mut a, &grid())?;
+    let bytes = a.updates()?;
+    let redo = a.redo_count();
+    let o = a.observe()?;
+    assert_eq!(
+        a.navigate_grid_guarded(&o, GridMove::Previous, false)?,
+        GridNavigationResult::Boundary { boundary: "beforeTable" }
+    );
+    a.check(&o)?;
+    assert_eq!(a.navigate_grid_guarded(&o, GridMove::RowEnd, false)?, GridNavigationResult::Moved);
+    assert_eq!(a.updates()?, bytes);
+    assert_eq!(a.redo_count(), redo);
+    assert!(a.check(&o).is_err());
+    let o = a.observe()?;
+    assert_eq!(
+        a.navigate_grid_guarded(&o, GridMove::Next, false)?,
+        GridNavigationResult::Boundary { boundary: "afterTable" }
+    );
+    a.check(&o)?;
+    Ok(())
+}
 
 #[test]
 fn explicit_paste_header_owns_intent_even_when_the_visible_value_was_already_equal() -> Result {

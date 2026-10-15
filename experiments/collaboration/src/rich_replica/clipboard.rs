@@ -161,7 +161,7 @@ impl RichReplica {
             PendingFormatsUpdate::Set(None),
         )
     }
-    fn fresh_clipboard_nodes(
+    pub(super) fn fresh_clipboard_nodes(
         &self,
         fragment: &RichClipboardFragment,
         allocator: &mut dyn RichClipboardIdAllocator,

@@ -44,6 +44,7 @@ run(bindgen, ["--target", "web", "--out-dir", web, resolve(wasmTarget, "wasm32-u
 run(cargo, ["run", "--manifest-path", manifest, "--locked", "--example", "export_vector", "--quiet", "--", resolve(web, "native-vector.json")]);
 run(cargo, ["build", "--manifest-path", manifest, "--locked", "--example", "compare_engine_exports", "--quiet"]);
 run(process.execPath, ["--test", "scripts/test-collaboration-compare.mjs"]);
-run(resolve(root, "node_modules/.bin/playwright"), ["test", "--config", "experiments/collaboration/browser/playwright.config.mjs"]);
+run(process.execPath, ["--test", "scripts/collaboration-browser-runs.test.mjs"]);
+run(process.execPath, ["scripts/check-collaboration-browser.mjs"]);
 const wasm = readFileSync(resolve(web, "breditor_collab_feasibility_bg.wasm"));
 console.log(JSON.stringify({ checkpoint: "collaboration-feasibility", wasmBytes: wasm.length, gzipBytes: gzipSync(wasm).length, sha256: createHash("sha256").update(wasm).digest("hex") }));

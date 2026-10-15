@@ -98,10 +98,12 @@ impl Index {
         let mut chunks: BTreeMap<String, Vec<Chunk>> = BTreeMap::new();
         let mut annotations = 0;
         let mut run_count = 0;
+        let mut chunk_count = 0;
         for source in sources {
             let text = super::super::model::existing_text(doc, &source)
                 .ok_or(Error::Contract("missing text-flow source"))?;
             let mut start = 0u32;
+            let mut continuation = None;
             for run in text.to_delta() {
                 run_count += 1;
                 if run_count > 20_000 {
@@ -119,23 +121,57 @@ impl Index {
                 if annotations > 100_000 {
                     return Err(Error::Limit("text-flow annotations"));
                 }
-                let fragment =
-                    markers::selected(doc, &values)?.unwrap_or_else(|| graph::birth(&source));
+                let selected = markers::selected_with_clock(doc, &values)?;
+                let fragment = selected
+                    .as_ref()
+                    .map_or_else(|| graph::birth(&source), |(_, fragment)| fragment.clone());
                 if !matches!(graph.definitions.get(&fragment), Some(Definition::Fragment { source: own, .. }) if own.as_ref().is_none_or(|own| *own == source))
                 {
                     return Err(Error::Contract("text-flow marker source identity"));
                 }
                 let length =
                     u32::try_from(insert.encode_utf16().count()).map_err(|_| Error::Offset)?;
-                if length != 0 {
-                    chunks.entry(fragment.clone()).or_default().push(Chunk {
-                        source: source.clone(),
+                if let Some((stamp, fragment)) = selected {
+                    continuation =
+                        Some(super::continuation::Continuation::new(doc, stamp, fragment.clone())?);
+                    push_chunk(
+                        &mut chunks,
+                        &source,
                         start,
-                        length,
-                        fragment,
-                        text: insert,
-                        formats: markers::formats(doc, &values)?,
-                    });
+                        &insert,
+                        &fragment,
+                        markers::formats(doc, &values)?,
+                        &mut chunk_count,
+                    )?;
+                } else if continuation.is_some() {
+                    let formats = markers::formats(doc, &values)?;
+                    for segment in super::continuation::segments(
+                        &mut continuation,
+                        &text,
+                        start,
+                        &insert,
+                        &graph::birth(&source),
+                    )? {
+                        push_chunk(
+                            &mut chunks,
+                            &source,
+                            segment.start,
+                            &segment.text,
+                            &segment.fragment,
+                            formats.clone(),
+                            &mut chunk_count,
+                        )?;
+                    }
+                } else {
+                    push_chunk(
+                        &mut chunks,
+                        &source,
+                        start,
+                        &insert,
+                        &fragment,
+                        markers::formats(doc, &values)?,
+                        &mut chunk_count,
+                    )?;
                 }
                 start = start.checked_add(length).ok_or(Error::Offset)?;
             }
@@ -355,6 +391,44 @@ impl Index {
         }
         Ok(result)
     }
+}
+
+fn push_chunk(
+    chunks: &mut BTreeMap<String, Vec<Chunk>>,
+    source: &str,
+    start: u32,
+    content: &str,
+    fragment: &str,
+    formats: Vec<Value>,
+    count: &mut usize,
+) -> Result<(), Error> {
+    if content.is_empty() {
+        return Ok(());
+    }
+    let length = u32::try_from(content.encode_utf16().count()).map_err(|_| Error::Offset)?;
+    let entries = chunks.entry(fragment.into()).or_default();
+    if let Some(last) = entries.last_mut()
+        && last.source == source
+        && last.start.checked_add(last.length) == Some(start)
+        && last.formats == formats
+    {
+        last.text.push_str(content);
+        last.length = last.length.checked_add(length).ok_or(Error::Offset)?;
+        return Ok(());
+    }
+    *count += 1;
+    if *count > 20_000 {
+        return Err(Error::Limit("text-flow source chunks"));
+    }
+    entries.push(Chunk {
+        source: source.into(),
+        start,
+        length,
+        fragment: fragment.into(),
+        text: content.into(),
+        formats,
+    });
+    Ok(())
 }
 
 fn slice(text: &str, offset: u32, length: u32) -> Result<String, Error> {

@@ -8,9 +8,10 @@
   "sideEffects": false,
   "main": "./index.js",
   "types": "./index.d.ts",
-  "files": ["index.js", "index.d.ts", "commands.d.ts", "dist", "README.md", "LICENSE", "LICENSE-MIT", "LICENSE-APACHE"],
+  "files": ["index.js", "index.d.ts", "commands.d.ts", "rendering.js", "rendering.d.ts", "dist", "README.md", "LICENSE", "LICENSE-MIT", "LICENSE-APACHE"],
   "exports": {
     ".": {"types": "./index.d.ts", "import": "./index.js"},
+    "./rendering": {"types":"./rendering.d.ts", "import":"./rendering.js"},
     "./wasm": {"types":"./dist/breditor_wasm.d.ts", "import":"./dist/breditor_wasm.js"},
     "./wasm-binary": "./dist/breditor_wasm_bg.wasm"
   }

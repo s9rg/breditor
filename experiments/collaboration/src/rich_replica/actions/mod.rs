@@ -16,6 +16,7 @@ mod move_block;
 mod move_column;
 mod outdent_list_items;
 mod paste_blocks;
+mod paste_flow_at_text;
 mod paste_table_cells;
 mod replace_image;
 mod replace_text_range;
@@ -51,6 +52,7 @@ pub use move_block::MoveBlock;
 pub use move_column::MoveColumn;
 pub use outdent_list_items::OutdentListItems;
 pub use paste_blocks::PasteBlocks;
+pub use paste_flow_at_text::PasteFlowAtText;
 pub use paste_table_cells::{PasteTableCells, PastedCell, PastedMerge};
 pub use replace_image::ReplaceImage;
 pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
@@ -72,6 +74,8 @@ pub use wrap_list::WrapList;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Replace selected text with fresh rich flow while routing the original suffix source.
+    PasteFlowAtText(PasteFlowAtText),
     /// Paste freshly allocated flow, authoring new merge clocks rather than importing history.
     PasteBlocks(PasteBlocks),
     /// Paste an exact rich rectangle with independent owned source-cell bodies.
@@ -138,6 +142,7 @@ pub enum Command {
 impl Command {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::PasteFlowAtText(value) => value.prepare(doc)?,
             Self::PasteBlocks(value) => value.prepare(doc)?,
             Self::PasteTableCells(value) => value.prepare(doc)?,
             Self::ClearTableCells(value) => value.prepare(doc)?,
@@ -219,6 +224,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::PasteFlowAtText(value) => value.apply(doc, codec, document, stamp),
             Self::PasteBlocks(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::PasteTableCells(value) => value.apply(doc, codec, document, stamp),
             Self::ClearTableCells(value) => value.apply(doc, codec, document, stamp),

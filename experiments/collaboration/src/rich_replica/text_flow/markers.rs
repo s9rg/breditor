@@ -18,6 +18,13 @@ pub(super) struct MarkerClock {
 }
 
 pub(super) fn selected(doc: &LoroDoc, values: &[(String, Value)]) -> Result<Option<String>, Error> {
+    Ok(selected_with_clock(doc, values)?.map(|(_, fragment)| fragment))
+}
+
+pub(super) fn selected_with_clock(
+    doc: &LoroDoc,
+    values: &[(String, Value)],
+) -> Result<Option<(Stamp, String)>, Error> {
     let mut chosen = None;
     for (key, value) in values {
         let Some(id) = key.strip_prefix(PREFIX) else { continue };
@@ -47,7 +54,7 @@ pub(super) fn selected(doc: &LoroDoc, values: &[(String, Value)]) -> Result<Opti
             chosen = Some((stamp, ordinal, fragment));
         }
     }
-    Ok(chosen.map(|(_, _, fragment)| fragment))
+    Ok(chosen.map(|(stamp, _, fragment)| (stamp, fragment)))
 }
 
 pub(super) fn formats(doc: &LoroDoc, values: &[(String, Value)]) -> Result<Vec<Value>, Error> {
