@@ -6,14 +6,10 @@ use super::{
     ui_state::UiState,
 };
 use crate::{Error, register::Stamp};
-use breditor_core::{
-    codec::{DocumentJsonCodecV2, RichFormatsJsonCodec},
-    rich_content::{BlockId, RichDocument},
-    state::EditorContext,
-};
+use breditor_core::{codec::DocumentJsonCodecV2, rich_content::RichDocument};
 use loro::{ContainerID, ContainerType, ExportMode, LoroDoc, ToJson, VersionVector, sync::Mutex};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
@@ -131,7 +127,7 @@ impl RichReplica {
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: 6,
+            version: 7,
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
@@ -156,7 +152,7 @@ impl RichReplica {
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: 6,
+                version: 7,
                 document,
                 writer,
                 origin: Origin::Join { updates },
@@ -239,7 +235,7 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != 6 {
+        if journal.format != "breditor/rich-replica-journal" || journal.version != 7 {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
@@ -500,104 +496,7 @@ impl RichReplica {
     }
 
     fn validate_targets(&self, commands: &[Command]) -> Result<(), Error> {
-        let formats = RichFormatsJsonCodec::new(EditorContext::new(
-            self.codec.schema().clone(),
-            self.codec.limits().clone(),
-        ));
-        let mut declared = super::target_kinds::TargetKinds::default();
-        for command in commands {
-            if super::planning::handles(command) {
-                super::planning::validate(
-                    &self.codec,
-                    &self.doc,
-                    &self.document,
-                    &self.canonical,
-                    command,
-                )?;
-                declared.record(command)?;
-                continue;
-            }
-            let block = match command {
-                Command::InsertBlocks(_)
-                | Command::InsertRow(_)
-                | Command::InsertColumn(_)
-                | Command::SetHeader(_)
-                | Command::MergeCells(_)
-                | Command::SplitCell(_) => unreachable!("planned creation command"),
-                Command::InsertText(value) => &value.block,
-                Command::ReplaceTextRange(value) => &value.anchor.block,
-                Command::SplitTextBlock(value) => &value.block,
-                Command::JoinTextBlocks(value) => &value.left,
-                Command::DeleteText(value) => &value.block,
-                Command::SetFormat(value) => &value.block,
-                Command::SetHeading(value) => &value.block,
-                Command::SetImageAlt(value) => &value.block,
-                Command::ReplaceImage(value) => &value.block,
-                Command::ResizeImage(value) => &value.block,
-                Command::ResizeColumn(value) => &value.block,
-                Command::MoveBlock(value) => &value.block,
-                Command::DeleteBlock(value) => &value.block,
-                Command::MoveColumn(value) => &value.block,
-                Command::DeleteColumn(value) => &value.block,
-            };
-            let block = BlockId::try_new(block).map_err(contract)?;
-            let kind = declared.kind(&self.document, &block)?;
-            match command {
-                Command::InsertBlocks(_)
-                | Command::InsertRow(_)
-                | Command::InsertColumn(_)
-                | Command::SetHeader(_)
-                | Command::MergeCells(_)
-                | Command::SplitCell(_) => unreachable!("planned creation command"),
-                Command::InsertText(_)
-                | Command::ReplaceTextRange(_)
-                | Command::DeleteText(_)
-                | Command::SetFormat(_)
-                | Command::SetHeading(_)
-                | Command::SplitTextBlock(_)
-                | Command::JoinTextBlocks(_) => {
-                    if kind != "breditor/paragraph" && kind != "breditor/heading" {
-                        return Err(Error::Contract("shared text target kind"));
-                    }
-                }
-                Command::SetImageAlt(_) | Command::ReplaceImage(_) | Command::ResizeImage(_) => {
-                    if kind != "breditor/image" {
-                        return Err(Error::Contract("shared image target kind"));
-                    }
-                }
-                Command::ResizeColumn(_) | Command::MoveColumn(_) | Command::DeleteColumn(_) => {
-                    if kind != "breditor/table" {
-                        return Err(Error::Contract("shared table target kind"));
-                    }
-                }
-                Command::MoveBlock(value) => {
-                    if let Some(parent) = &value.parent {
-                        let parent = BlockId::try_new(parent).map_err(contract)?;
-                        if declared.kind(&self.document, &parent).is_err() {
-                            return Err(Error::Contract("visible shared move parent"));
-                        }
-                    }
-                }
-                Command::DeleteBlock(_) => {}
-            }
-            if let Command::JoinTextBlocks(value) = command {
-                declared.require_text(&self.document, &value.right)?;
-            }
-            if let Command::ReplaceTextRange(value) = command {
-                declared.require_text(&self.document, &value.focus.block)?;
-            }
-            if let Command::SetFormat(value) = command {
-                formats.decode(&json!([value.format]).to_string()).map_err(contract)?;
-            }
-            if let Command::ResizeColumn(value) = command {
-                let raw: Value = serde_json::from_str(&self.canonical)?;
-                if !find_column(&raw["root"], block.as_str(), &value.column) {
-                    return Err(Error::Contract("visible shared column target"));
-                }
-            }
-            declared.record(command)?;
-        }
-        Ok(())
+        super::target_validation::validate(self, commands)
     }
 
     fn refresh_document(&mut self) -> Result<(), Error> {
@@ -653,6 +552,14 @@ impl RichReplica {
             crate::actions::validate_id(&block)?;
             if block.starts_with(model::VIRTUAL_PREFIX) || !blocks.insert(block) {
                 return Err(Error::Contract("historical shared block identity"));
+            }
+        }
+        let metadata = self.doc.get_map("metadata").get_deep_value().to_json_value();
+        for (block, value) in
+            metadata.as_object().ok_or(Error::Contract("shared metadata directory"))?
+        {
+            if block.starts_with(model::VIRTUAL_PREFIX) && value.get("origin-site").is_some() {
+                super::list_structure::validate_retained(&self.doc, block)?;
             }
         }
         self.refresh_document()?;
@@ -858,18 +765,4 @@ impl RichReplica {
     pub fn redo_count(&self) -> usize {
         self.undo.redo_count()
     }
-}
-
-fn find_column(node: &Value, block: &str, column: &str) -> bool {
-    if node.pointer("/properties/breditor~1block-id").and_then(Value::as_str) == Some(block) {
-        return node
-            .pointer("/properties/breditor~1columns")
-            .and_then(Value::as_array)
-            .is_some_and(|columns| {
-                columns.iter().any(|value| value.get("id").and_then(Value::as_str) == Some(column))
-            });
-    }
-    node.get("children")
-        .and_then(Value::as_array)
-        .is_some_and(|children| children.iter().any(|child| find_column(child, block, column)))
 }

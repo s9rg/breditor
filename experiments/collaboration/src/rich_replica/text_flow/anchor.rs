@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 /// A text-flow selection anchor with separate logical, source and fragment identities.
 ///
-/// This is part of the private shared journal V6. Browser read selections expose
+/// This is part of the private shared journal V7. Browser read selections expose
 /// admitted logical block coordinates; sources and fragment identities stay Rust-owned.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

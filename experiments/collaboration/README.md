@@ -340,7 +340,7 @@ clipboard acknowledgements or physical IME qualification.
 
 The engine-ordering regression has a failing unpatched baseline and passing
 patched checks. Three direct contracts cover tied container identities, map keys
-and pending text marks. The complete script also verifies paragraph, heading and range
+and pending text marks. The complete script also verifies paragraph, heading, range and list
 history across native/Wasm restoration with exact future operations and journals.
 This repairs the isolated history-authoring contract, not the historical WebKit
 runtime fault or the unfinished end-user collaboration workflow.
@@ -365,23 +365,24 @@ On October 14, 2026, the reproducible script passed:
   closure, explicit edges, reordered axes and metadata-only redo preservation.
 - 11 structured rich clipboard workflows covering canonical interchange, partial
   text/list ranges, merged partitions, media, fresh identity allocation and reload history.
-- 27 retained native collaboration/history contracts and 94 shared rich-AST
+- 27 retained native collaboration/history contracts and 110 shared rich-AST
   contracts with actual Document V2 materialization and selective history.
 - 21 isolated text-flow contracts covering original-source split/join, logical
   range edits, offline typing, causal boundary carets and selective routing history.
 - 3 direct engine history contracts that fail on the unpatched pinned dependency.
 - 3 native comparison-framing tests and 2 Node transport checks, including a
   real input pipe deliberately left open after its complete request frame.
-- 246 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
-  138 shared-AST/selection/paragraph/heading/range tests, 24 text-flow lowerer checks
+- 279 Chromium/Firefox/WebKit tests, including 24 partition schedules per engine,
+  171 shared-AST/selection/paragraph/heading/range/list tests, 24 text-flow lowerer checks
   and 9 direct engine-ordering checks.
   The explicit test list includes `rich-replica.spec.mjs`, `rich-selection.spec.mjs`,
-  `rich-paragraphs.spec.mjs`, `rich-headings.spec.mjs`, `rich-ranges.spec.mjs` and `text-flow.spec.mjs`;
+  `rich-paragraphs.spec.mjs`, `rich-headings.spec.mjs`, `rich-ranges.spec.mjs`,
+  `rich-lists.spec.mjs` and `text-flow.spec.mjs`;
   the old 75-test configuration did not exercise these additional families.
 - Strict native and wasm32 Clippy checks and both Rust workspace formatting checks.
 - After independently regenerating the native vectors, five repeats of each
-  engine-ordering, paragraph/heading/range journal and no-op observation regression
-  passed in every browser engine: 105 additional checks.
+  engine-ordering, paragraph/heading/range/list journal, compound implicit-head
+  and no-op observation regression passed in every browser engine: 150 additional checks.
 - 137 Rust documentation tests.
 - Native-to-Wasm restoration with exact future operation identities, including
   formatting and writer IDs above JavaScript's safe-integer range.
@@ -404,8 +405,8 @@ On October 14, 2026, the reproducible script passed:
   inline paste matches native/Wasm through restored undo/redo. A 3×4 table created
   by actual axis commands proves merged-cell navigation and retained focus lanes.
 
-The tested fixture Wasm is 8,166,040 bytes, or 2,230,882 bytes under gzip, with
-SHA-256 `69a92db15ff6cc16fe0f33ef0f50bed96a002d8976430c58c1acd4b95c798c69`.
+The tested fixture Wasm is 8,404,326 bytes, or 2,284,480 bytes under gzip, with
+SHA-256 `83e1a5e7b865392814d8acb234d6905065c7485acd46889b27797868f868a5ca`.
 This is a release-mode feasibility build, not a size-tuned shipping artifact or
 an accepted shipping size budget.
 
@@ -458,19 +459,19 @@ by active presence, not by the last shared boolean: undoing A's deletion cannot
 retract B's independent deletion. Caption/cell text and paired metadata are
 separate from those structural effects.
 
-The shared rich journal is a private V6 family with 1,000 events, 16 MiB serialized
+The shared rich journal is a private V7 family with 1,000 events, 16 MiB serialized
 bytes and 1 MiB imported engine frames. Its independently bounded causal view is
 4 MiB; the AST additionally obeys the supplied core limits. Normalization IDs use
 architecture-independent length-prefixed SHA-256 inputs under the reserved
 `breditor-virtual:` prefix. Seed imports with that prefix are not yet supported
 as portable recovery branches. Rebuild/compaction and decoder-work budgets are
-still provisional. V1–V5 shared journals are rejected rather than silently replayed
+still provisional. V1–V6 shared journals are rejected rather than silently replayed
 without source-based routing, causal UI/history metadata, deterministic engine
-history authoring and sequential command priorities. Local rich editor
+history authoring, sequential command priorities and retained normalization origins. Local rich editor
 recovery and the shipping contracts are unchanged.
 
 `breditor/rich-replica-update` V1 binds the document ID, complete schema selector
-and fingerprint, model revision 5 and the explicit engine build tag
+and fingerprint, model revision 6 and the explicit engine build tag
 `1.16.2+breditor.deterministic-history.1` before importing
 its opaque bytes. The engine payload is capped at 1 MiB; the current JSON envelope
 uses a byte array and has an independent 5 MiB ceiling. Binding checks are not
@@ -534,7 +535,7 @@ atomic group. Each semantic command now has its own causal stamp and, when neede
 annotation claim, so later formatting outranks every run inserted by an earlier command.
 The group still has one history identity and one Undo boundary. The retained
 engine ordering patch makes retraction of these separate claims deterministic.
-This changes the private model to revision 5 and journal to V6; shipping formats
+The current private model is revision 6 and its journal is V7; shipping formats
 are unchanged.
 
 Preparation reserves canonical deletion/placement containers outside user history
@@ -548,6 +549,54 @@ numbered-list tails, cell/caption typing, selective history, exact restart,
 composed groups and atomic rejection. Browser contracts also restore a native
 journal after page reload and compare full future causal operations, views and
 journals rather than opaque binary packing.
+
+## Shared list commands
+
+Seven independently named Rust actions now wrap/unwrap rich flow, set list kind,
+indent/outdent item intervals and split/join items. Each obtains an admitted core
+semantic preview and verifies the exact final materialized AST before publishing.
+Fresh wrapper/item definitions and canonical containers are infrastructure;
+writer-owned births, placements, style and removals form one selective history
+group. Existing text, images, tables and nested lists move by stable identity.
+No list action copies existing body text into a replacement container.
+
+Kind and numbered start are one paired `list-kind` contribution. Concurrent
+presentation changes and masked Undo retain each writer's own intent. Indent
+either supplies an explicitly identified compatible nested list or appends to an
+existing one. Outdent preserves numbered suffix ordinals and the core's depth-first
+order, including flow following a nested list. Item Enter routes original suffix
+characters into a fresh head and moves the rich tail. Adjacent-item join combines
+leading text only when the left item has no rich tail; otherwise the right head
+remains a later body block after that tail. Offline text follows its original source.
+
+A synthesized empty paragraph uses a canonical retained occurrence when a
+list operation reparents it. Its identity is bound to its original document,
+cell or item normalization slot. Independent writers retaining that same paragraph
+share one occurrence, not duplicate peer-local tree births. At its origin it stays
+conditional on the parent's fallback rule; relocation renders it as ordinary
+structure. If the slot is occupied elsewhere or hidden, normalization chooses a
+fresh deterministic spare without reusing hidden text. Undoing older surrounding
+edits therefore does not leak an extra empty paragraph into the restored state.
+Selecting an empty paragraph still activates no content containers.
+
+Preparation and structural directories are bounded at 20,000 metadata/nodes.
+Wrap takes at most 1,000 item identities; a normalization family has at most 1,000
+spare slots. These are independent prototype ceilings, not production latency or
+compaction guarantees. List preparation currently scans retained metadata and
+reserves canonical fields and conditional item fallback slots before the atomic
+group. A preceding head deletion or fresh item split can therefore synthesize
+a head that a later unlist step reparents within the same Undo boundary. These
+reserved slots do not render beside intact heads or leak into older Undo states.
+Invalid shapes or ordinals, unused fresh identities and later-command failures
+reject the complete group without publishing partial content or history.
+
+Sixteen native contracts cover media order, numbered prefix/tails, nesting and
+promotion, source-preserving item boundaries, concurrent presentation, independent
+empty-head retention, derived cells, spare-slot history, composed groups and no-ops.
+Browser contracts include native journal restoration after reload with exact
+future operations and full journals, including history that predates a retained
+normalization slot. The shared DOM coordinator, structured shared clipboard and
+general placement-conflict normalization remain separate implementation gates.
 
 ## Shared heading conversion
 
@@ -645,7 +694,7 @@ format. Prepared actions reject stale engine versions before writing. They must
 run on a disposable staged document: they do not themselves provide atomic AST
 publication, schema admission, transport authorization or durable undo-stack
 recovery. `RichReplica` supplies the atomic publication, core grammar admission,
-paired source-cursor repair and private V6 recovery with exact effect checks around them.
+paired source-cursor repair and private V7 recovery with exact effect checks around them.
 Transport authorization remains a host responsibility.
 
 Native and Wasm opaque engine exports may encode map-value dictionaries in a
@@ -680,7 +729,7 @@ Selection and pending-format normalization occurs once after the complete atomic
 group, not after intermediate commands. Original-axis deletion fallback does not
 select a row first created by the same group.
 The Wasm probe exposes these commands through guarded dispatch; the browser DOM
-coordinator is still unfinished. Private shared model revision 5 and journal V6
+coordinator is still unfinished. Private shared model revision 6 and journal V7
 replace the earlier experimental model; shipping schemas/codecs are unchanged.
 
 ## Limits and remaining gates
@@ -708,8 +757,7 @@ Wasm ownership, an expandable toolbar and optional exact revision guards.
 checks this matching pair without widening the default packages.
 
 Remaining rich-AST work includes arbitrary cross-cell/container range planners.
-Shared list planners and
-cycle/conflict normalization remain implementation gates. The shared browser
+General shared placement cycle/conflict normalization remains an implementation gate. The shared browser
 coordinator, collaborative IndexedDB/leases and authorized reference
 relay/presence/asset-provider integration are also unfinished. The fixture
 exchanges engine bytes in one test host;

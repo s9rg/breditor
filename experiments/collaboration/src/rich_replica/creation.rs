@@ -100,6 +100,24 @@ pub(super) fn activate_text(doc: &LoroDoc, block: &str) -> Result<(), Error> {
     definition(doc, node, "derived")
 }
 
+/// Reserve a canonical, conditional empty head before a batch first makes it visible.
+/// The normalization adapter proves its parent/slot identity before calling this helper.
+pub(super) fn reserve_normalized_text(doc: &LoroDoc, block: &str) -> Result<(), Error> {
+    if !block.starts_with(model::VIRTUAL_PREFIX) {
+        return Err(Error::Contract("reserved normalization text identity"));
+    }
+    if let Some(meta) = model::optional_metadata(doc, block) {
+        if !matches!(
+            model::string(&meta, "type")?.as_str(),
+            "breditor/paragraph" | "breditor/heading"
+        ) {
+            return Err(Error::Contract("reserved normalization text kind"));
+        }
+        return Ok(());
+    }
+    definition(doc, &model::placeholder(block, &[]), "derived")
+}
+
 /// A synthesized cell has axis-derived existence, never a second competing authored identity.
 pub(super) fn activate_cell(doc: &LoroDoc, block: &str) -> Result<(), Error> {
     if model::optional_metadata(doc, block).is_some() {

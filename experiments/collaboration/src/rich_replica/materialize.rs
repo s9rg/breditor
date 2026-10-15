@@ -49,6 +49,15 @@ fn element(
         return Ok(None);
     }
     let meta = super::model::metadata(doc, block)?;
+    // A retained normalization origin stays conditional on its parent's fallback rule.
+    // Only a relocation renders it as ordinary structure. Undo must not leave a phantom
+    // empty paragraph when an older surrounding flow becomes visible again.
+    if block.starts_with(super::model::VIRTUAL_PREFIX)
+        && meta.get("origin-site").is_some()
+        && !super::placement::relocated(doc, block)?
+    {
+        return Ok(None);
+    }
     let raw = meta.get_deep_value().to_json_value();
     if !super::model::born(doc, &raw)? {
         return Ok(None);
@@ -235,6 +244,19 @@ fn fallback(
     flows: &super::text_flow::Projection,
     block: &str,
 ) -> Result<(Value, bool), Error> {
+    // A normalization paragraph retained as movable structure is rendered through its
+    // occurrence, never a second time at its original fallback slot. Vacated parents get
+    // a new deterministic empty identity; hidden causal text is not repurposed or copied.
+    let mut available = block.to_owned();
+    let mut ordinal = 0;
+    while occupied_fallback(doc, &available)? {
+        if ordinal >= 1000 {
+            return Err(Error::Limit("shared normalization identities"));
+        }
+        available = virtual_id("flow-spare", &[block, &ordinal.to_string()]);
+        ordinal += 1;
+    }
+    let block = available.as_str();
     let runs = flows.runs(doc, block)?;
     let mut explicit = !runs.is_empty() || flows.explicit(block);
     let mut node = placeholder(block, &runs);
@@ -262,4 +284,14 @@ fn fallback(
         }
     }
     Ok((node, explicit))
+}
+
+fn occupied_fallback(doc: &LoroDoc, block: &str) -> Result<bool, Error> {
+    if super::model::optional_metadata(doc, block)
+        .is_some_and(|meta| meta.get("origin-site").is_some())
+    {
+        Ok(super::placement::relocated(doc, block)? || super::model::deleted(doc, block)?)
+    } else {
+        Ok(false)
+    }
 }

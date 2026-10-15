@@ -9,6 +9,7 @@ use crate::{
 };
 use loro::{ContainerID, ContainerType, LoroDoc, LoroMovableList, ToJson};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -59,6 +60,12 @@ fn active(doc: &LoroDoc, block: &str) -> Result<String, Error> {
         string(&owner, "origin-site")
     }
 }
+pub(super) fn origin_parent(doc: &LoroDoc, block: &str) -> Result<Option<String>, Error> {
+    Ok(site(doc, &string(&metadata(doc, block)?, "origin-site")?)?.parent)
+}
+pub(super) fn relocated(doc: &LoroDoc, block: &str) -> Result<bool, Error> {
+    Ok(active(doc, block)? != string(&metadata(doc, block)?, "origin-site")?)
+}
 pub(super) fn seed(
     doc: &LoroDoc,
     block: &str,
@@ -103,6 +110,7 @@ pub(super) fn children(doc: &LoroDoc, parent: Option<&str>) -> Result<Vec<String
         return Ok(vec![]);
     };
     let mut children = vec![];
+    let mut selected = BTreeSet::new();
     if order.len() > 20_000 {
         return Err(Error::Limit("shared placement occurrences"));
     }
@@ -112,7 +120,7 @@ pub(super) fn children(doc: &LoroDoc, parent: Option<&str>) -> Result<Vec<String
         if record.parent.as_deref() != parent {
             return Err(Error::Contract("shared occurrence parent"));
         }
-        if active(doc, &record.block)? == id {
+        if active(doc, &record.block)? == id && selected.insert(id.to_owned()) {
             children.push(record.block);
         }
     }

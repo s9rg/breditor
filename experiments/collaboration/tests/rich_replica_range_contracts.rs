@@ -212,7 +212,10 @@ fn list_head_replacement_keeps_the_last_items_media_tail_and_list_numbering() ->
     image["properties"]["breditor/block-id"] = json!("tail-image");
     image["properties"]["breditor/image-id"] = json!("tail-image-id");
     image["children"] = json!([]);
-    let list = json!({"kind":"element","type":"breditor/ordered-list","entityId":null,"properties":{"breditor/block-id":"list","breditor/start":3},"children":[{"kind":"element","type":"breditor/list-item","entityId":null,"properties":{"breditor/block-id":"item-a"},"children":[paragraph("head-a","First")]},{"kind":"element","type":"breditor/list-item","entityId":null,"properties":{"breditor/block-id":"item-b"},"children":[paragraph("head-b","Last🙂"),image]}]});
+    let mut second = image.clone();
+    second["properties"]["breditor/block-id"] = json!("tail-image-2");
+    second["properties"]["breditor/image-id"] = json!("tail-image-id-2");
+    let list = json!({"kind":"element","type":"breditor/ordered-list","entityId":null,"properties":{"breditor/block-id":"list","breditor/start":3},"children":[{"kind":"element","type":"breditor/list-item","entityId":null,"properties":{"breditor/block-id":"item-a"},"children":[paragraph("head-a","First")]},{"kind":"element","type":"breditor/list-item","entityId":null,"properties":{"breditor/block-id":"item-b"},"children":[paragraph("head-b","Last🙂"),image,second]}]});
     a.apply(vec![create(None, vec![list])])?;
     let before = a.document_json().to_owned();
     a.apply(vec![replace(("head-a", 2), ("head-b", 2), plain("X"))])?;
@@ -222,6 +225,10 @@ fn list_head_replacement_keeps_the_last_items_media_tail_and_list_numbering() ->
         "tail-image"
     );
     assert_eq!(node(&value(&a)["root"], "list").ok_or("list")?["properties"]["breditor/start"], 3);
+    assert_eq!(
+        node(&value(&a)["root"], "item-a").ok_or("item")?["children"][2]["properties"]["breditor/block-id"],
+        "tail-image-2"
+    );
     a.undo()?;
     assert_eq!(a.document_json(), before);
     a.redo()?;

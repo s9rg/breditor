@@ -2,14 +2,18 @@
 mod delete_block;
 mod delete_column;
 mod delete_text;
+mod indent_list_items;
 mod insert_blocks;
 mod insert_column;
 mod insert_row;
 mod insert_text;
+mod join_list_items;
 mod join_text_blocks;
+mod list_style;
 mod merge_cells;
 mod move_block;
 mod move_column;
+mod outdent_list_items;
 mod replace_image;
 mod replace_text_range;
 mod resize_column;
@@ -18,22 +22,30 @@ mod set_format;
 mod set_header;
 mod set_heading;
 mod set_image_alt;
+mod set_list_kind;
 mod split_cell;
+mod split_list_item;
 mod split_text_block;
+mod unwrap_list;
+mod wrap_list;
 
 use crate::{Error, register::Stamp};
 pub use delete_block::DeleteBlock;
 pub use delete_column::DeleteColumn;
 pub use delete_text::DeleteText;
+pub use indent_list_items::IndentListItems;
 pub use insert_blocks::InsertBlocks;
 pub use insert_column::InsertColumn;
 pub use insert_row::InsertRow;
 pub use insert_text::InsertText;
+pub use join_list_items::JoinListItems;
 pub use join_text_blocks::JoinTextBlocks;
+pub use list_style::{ListStyle, NestedList};
 use loro::LoroDoc;
 pub use merge_cells::MergeCells;
 pub use move_block::MoveBlock;
 pub use move_column::MoveColumn;
+pub use outdent_list_items::OutdentListItems;
 pub use replace_image::ReplaceImage;
 pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
 pub use resize_column::ResizeColumn;
@@ -43,13 +55,31 @@ pub use set_format::SetFormat;
 pub use set_header::SetHeader;
 pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
+pub use set_list_kind::SetListKind;
 pub use split_cell::SplitCell;
+pub use split_list_item::SplitListItem;
 pub use split_text_block::SplitTextBlock;
+pub use unwrap_list::UnwrapList;
+pub use wrap_list::WrapList;
 
-/// One shared history group targets independent stable content identities.
+/// One shared semantic command; ordered batches form one writer-local history group.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Wrap sibling flow without copying any retained body.
+    WrapList(WrapList),
+    /// Remove one list layer, preserving nested and rich body order.
+    UnwrapList(UnwrapList),
+    /// Own a paired bullet/numbered presentation choice.
+    SetListKind(SetListKind),
+    /// Nest a retained item interval under its preceding sibling.
+    IndentListItems(IndentListItems),
+    /// Promote or unlist retained items, including numbered suffixes.
+    OutdentListItems(OutdentListItems),
+    /// Split an item's leading text and move its rich tail.
+    SplitListItem(SplitListItem),
+    /// Join adjacent items without violating media reading order.
+    JoinListItems(JoinListItems),
     /// Replace a rich selected range without recreating its retained suffix characters.
     ReplaceTextRange(ReplaceTextRange),
     /// Convert one text block's kind/rank without replacing text or another writer's intent.
@@ -96,6 +126,13 @@ pub enum Command {
 impl Command {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::WrapList(value) => value.prepare(doc)?,
+            Self::UnwrapList(value) => value.prepare(doc)?,
+            Self::SetListKind(value) => value.prepare(doc)?,
+            Self::IndentListItems(value) => value.prepare(doc)?,
+            Self::OutdentListItems(value) => value.prepare(doc)?,
+            Self::SplitListItem(value) => value.prepare(doc)?,
+            Self::JoinListItems(value) => value.prepare(doc)?,
             Self::ReplaceTextRange(value) => value.prepare(doc)?,
             Self::SetHeading(value) => value.prepare(doc)?,
             Self::SplitTextBlock(value) => value.prepare(doc)?,
@@ -167,6 +204,13 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::WrapList(value) => value.apply(doc, codec, document, stamp),
+            Self::UnwrapList(value) => value.apply(doc, codec, document, stamp),
+            Self::SetListKind(value) => value.apply(doc, codec, document, stamp),
+            Self::IndentListItems(value) => value.apply(doc, codec, document, stamp),
+            Self::OutdentListItems(value) => value.apply(doc, codec, document, stamp),
+            Self::SplitListItem(value) => value.apply(doc, codec, document, stamp),
+            Self::JoinListItems(value) => value.apply(doc, codec, document, stamp),
             Self::ReplaceTextRange(value) => value.apply(doc, codec, document, stamp),
             Self::SetHeading(value) => value.apply(doc, codec, document, stamp),
             Self::SplitTextBlock(value) => value.apply(doc, codec, document, stamp, ordinal),

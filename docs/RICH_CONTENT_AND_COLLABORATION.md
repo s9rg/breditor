@@ -383,17 +383,17 @@ before Wasm command JSON admission; restored owners have fresh authority. Shared
 caret typing now honors pending/derived formats and advances once in one history
 group. Null pending formats derive; an empty array explicitly types plain text.
 
-The private `breditor/rich-replica-journal` V6 reconstructs the original seed/join,
+The private `breditor/rich-replica-journal` V7 reconstructs the original seed/join,
 ordered local/import/history events and their exact authored causal effects.
 Resume requires the original exclusively leased writer and matching room/schema.
 It is separate from local exact-history recovery and is not a portable backup or
 a server acknowledgement. The reference rebuilds the journal on each mutation;
 compaction and production work budgets are not established by these tests.
-V1–V5 shared journals are rejected explicitly; local rich recovery and default
+V1–V6 shared journals are rejected explicitly; local rich recovery and default
 shipping formats remain unchanged.
 
 Shared updates now have an original private `breditor/rich-replica-update` V1
-envelope. Room ID, schema selector/fingerprint, model revision 5 and the explicit
+envelope. Room ID, schema selector/fingerprint, model revision 6 and the explicit
 engine tag `1.16.2+breditor.deterministic-history.1`
 are checked before opaque engine import. The header does not authenticate a
 sender or acquire a writer lease; those remain reference-host responsibilities.
@@ -431,7 +431,7 @@ also normalize at the final group boundary, retaining original-axis fallback
 witnesses rather than expanding them to newly created rows.
 Actual shared command contracts cover offline edits,
 concurrent cuts, composed groups, cross-source joins and exact future history
-after restart. The private model is revision 5 and its journal is V6; default
+after restart. The private model is revision 6 and its journal is V7; default
 shipping contracts remain unchanged. The browser DOM coordinator is not yet
 connected to the shared owner. See the
 [text-fragment contract and limits](../experiments/collaboration/README.md#text-fragments-for-shared-paragraph-boundaries).
@@ -454,15 +454,34 @@ typing/deletion, composed creation/split/format groups and exact restored future
 operations have native/Wasm contracts. Sequential commands have separate causal
 priorities so later formatting reliably wins, while the batch remains one Undo
 unit. Preparation scans at most 20,000 retained metadata owners; this reference
-implementation has not established production latency. Shared list planners and
-arbitrary cross-cell/container replacement remain unfinished.
+implementation has not established production latency. Arbitrary cross-cell/container
+replacement remains unfinished.
+
+Shared list commands now wrap/unwrap, change presentation, indent/outdent and
+split/join items using admitted core previews. Existing rich bodies move by stable
+identity; item boundaries retain original source characters. Numbered tail starts,
+nested trailing flow and media reading order follow the core rules. Kind/start
+are one writer-owned contribution. Sequential composition, selective history,
+offline typing and exact future recovery have native and browser contracts.
+
+Empty normalized heads can become movable list content without changing identity.
+Their canonical retained occurrences merge across writers and remain conditional
+at their original fallback slot. Relocation or deletion can expose a deterministic
+spare; older Undo states do not acquire phantom empty paragraphs. The private
+model revision 6/journal V7 covers this normalization change. Preparation scans
+the potential item fallback slots before history begins, allowing a head deletion
+or fresh split followed by unlisting to remain one atomic action. It also scans
+at most 20,000 metadata owners; wrapping accepts at most 1,000 item identities and
+each normalization family has at most 1,000 spare slots. Production work and
+compaction budgets remain open. These commands are not yet connected to the shared
+browser DOM coordinator.
 
 The latest verification also exposed engine diff ordering that authored different
 paragraph-history operation identities in native and Wasm despite equal views.
 A retained, narrowly patched `loro-internal` 1.16.2 now orders tied containers,
 map fields and pending marks explicitly. All three direct regressions fail on
 the unmodified registry source and pass with the patch. The complete native/Wasm
-checks and 246 Chromium/Firefox/WebKit cases pass, including exact restored future
+checks and 279 Chromium/Firefox/WebKit cases pass, including exact restored future
 operations/journals. See [patch provenance](../experiments/collaboration/vendor/BREDITOR_PATCH.md).
 This repairs engine history authoring, not the historical WebKit runtime fault.
 

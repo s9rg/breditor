@@ -21,7 +21,7 @@ test("original update envelopes reject wrong room and model before importing mal
    const frame=a.update_frame(),joined=window.richShared.wasm.RichReplicaProbe.join_frame("room","303",frame);
    const same=joined.document_json()===a.document_json();joined.free();
    const before=b.document_json(),checkpoint=b.checkpoint(),failures=[];
-   for(const [field,value] of [["document","other-room"],["modelVersion",6],["engine",{name:"loro",version:"wrong-version"}]]){
+   for(const [field,value] of [["document","other-room"],["modelVersion",7],["engine",{name:"loro",version:"wrong-version"}]]){
     const wrong=JSON.parse(frame);wrong[field]=value;wrong.bytes=[255];try{b.receive_frame(JSON.stringify(wrong));}catch(error){failures.push(String(error));}
    }
    return {same,failures,unchanged:b.document_json()===before&&b.checkpoint()===checkpoint};

@@ -34,6 +34,33 @@ impl TargetKinds {
     }
     pub fn record(&mut self, command: &Command) -> Result<(), Error> {
         match command {
+            Command::WrapList(value) => {
+                self.insert(&value.container, "breditor/bullet-list")?;
+                for item in &value.items {
+                    self.insert(item, "breditor/list-item")?;
+                }
+            }
+            Command::IndentListItems(value) => {
+                if let Some(nested) = &value.new_nested {
+                    self.insert(&nested.block, "breditor/bullet-list")?;
+                }
+            }
+            Command::OutdentListItems(value) => {
+                if let Some(tail) = &value.fresh_tail {
+                    self.insert(tail, "breditor/bullet-list")?;
+                }
+            }
+            Command::SplitListItem(value) => {
+                self.insert(&value.new_item, "breditor/list-item")?;
+                self.insert(
+                    &value.right,
+                    if value.right_heading.is_some() {
+                        "breditor/heading"
+                    } else {
+                        "breditor/paragraph"
+                    },
+                )?;
+            }
             Command::InsertBlocks(value) => {
                 for node in &value.nodes {
                     self.node(node)?;
