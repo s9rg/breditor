@@ -1,0 +1,404 @@
+{
+  "format": "breditor/v1-readiness",
+  "formatVersion": 1,
+  "reviewedAt": "2026-10-15",
+  "baselineCommit": "85b21d1b21187dfc999decf2754686bab8d05eef",
+  "coverage": "grouped-audit-not-exhaustive",
+  "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
+  "sources": [
+    {"id":"tiptap-starter","url":"https://tiptap.dev/docs/editor/extensions/functionality/starterkit","note":"Current 3.x everyday editing baseline."},
+    {"id":"tiptap-catalog","url":"https://tiptap.dev/docs/editor/extensions/overview","note":"Grouped capability inventory, including plan-labelled additions; not all are free or included in StarterKit."},
+    {"id":"tiptap-extension","url":"https://tiptap.dev/docs/editor/core-concepts/extensions","note":"Node, mark, command, shortcut and decoration extensibility."},
+    {"id":"tiptap-table","url":"https://tiptap.dev/docs/editor/extensions/nodes/table","note":"Table commands, selections and optional resizing."},
+    {"id":"tiptap-image","url":"https://tiptap.dev/docs/editor/extensions/nodes/image","note":"Image presentation and optional inline/resize behavior; upload is a separate integration."},
+    {"id":"tiptap-offline","url":"https://tiptap.dev/docs/guides/offline-support","note":"Yjs and IndexedDB offline integration; not Breditor's protocol."},
+    {"id":"tiptap-source-starter","url":"https://raw.githubusercontent.com/ueberdosis/tiptap/main/packages/starter-kit/src/starter-kit.ts","note":"Inspected optional extension assembly; includes Underline, Link and structural helpers."},
+    {"id":"tiptap-source-table","url":"https://raw.githubusercontent.com/ueberdosis/tiptap/main/packages/extension-table/src/table/table.ts","note":"Inspected command surface, table plugin wiring and separate HTML/Markdown converters."},
+    {"id":"ckeditor-overview","url":"https://ckeditor.com/docs/ckeditor5/latest/features/index.html","note":"Modern comparison target for the FCKeditor lineage; configurable UI and integrations."},
+    {"id":"ckeditor-digest","url":"https://ckeditor.com/docs/ckeditor5/latest/features/feature-digest.html","note":"More than 150 features/subfeatures, with premium labels. Rows below group related capabilities rather than copy that count."},
+    {"id":"ckeditor-styles","url":"https://ckeditor.com/docs/ckeditor5/latest/features/basic-styles.html","note":"Basic formatting baseline."},
+    {"id":"ckeditor-tables","url":"https://ckeditor.com/docs/ckeditor5/latest/features/tables/tables.html","note":"Rich table workflow, including capabilities beyond basic geometry."},
+    {"id":"ckeditor-office","url":"https://ckeditor.com/docs/ckeditor5/latest/features/pasting/paste-from-office.html","note":"External document paste is a dedicated feature, not internal clipboard equivalence."},
+    {"id":"ckeditor-markdown","url":"https://ckeditor.com/docs/ckeditor5/latest/features/markdown.html","note":"Alternative data output pipeline."},
+    {"id":"ckeditor-source-clipboard","url":"https://raw.githubusercontent.com/ckeditor/ckeditor5/master/packages/ckeditor5-clipboard/src/clipboardpipeline.ts","note":"Inspected separate input transformation, model insertion and output transformation stages. No source copied."},
+    {"id":"ckeditor-license","url":"https://ckeditor.com/docs/ckeditor5/latest/getting-started/licensing/license-and-legal.html","note":"Open-source and commercial feature boundaries must be evaluated separately."},
+    {"id":"ckeditor4-support","url":"https://ckeditor.com/docs/ckeditor4/latest/support/licensing/extended-support-model.html","note":"Legacy CKEditor 4 reached ordinary EOL in June 2023; not the modern baseline."}
+  ],
+  "features": [
+    {
+      "id":"paragraphs-headings","area":"Editing","status":"implemented",
+      "summary":"Paragraph and heading editing",
+      "current":"Rust rich actions and the shared editor support paragraphs, ranked headings, split/join and retained identity.",
+      "acceptance":"Keep all six heading ranks, text formatting, local/shared history and recovery consistent in one installed V1 editor.",
+      "evidence":["crates/breditor-core/src/rich_content/actions/set_heading.rs","experiments/shared-browser/shared.spec.mjs"],
+      "sources":["tiptap-starter","ckeditor-overview"]
+    },
+    {
+      "id":"basic-inline-formatting","area":"Editing","status":"partial",
+      "summary":"Bold, italic, underline, strike and inline code",
+      "current":"Default Showcase supports several marks. The rich/shared default toolbar exposes Bold; its render hook admits only span/strong/em/code. Underline is not a shipped integrated control.",
+      "acceptance":"Ship all everyday marks in the combined profile, renderer and toolbar; test mixed state, caret formats, clipboard, offline edits and selective Undo/Redo.",
+      "evidence":["packages/breditor-reference-highlight/src/showcase_profile.ts","packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-experimental-collaboration/src/toolbar.ts"],
+      "sources":["tiptap-starter","ckeditor-styles","tiptap-source-starter"]
+    },
+    {
+      "id":"subscript-superscript","area":"Editing","status":"missing",
+      "summary":"Subscript and superscript",
+      "current":"Typed formats provide a foundation, not integrated subscript/superscript behavior or controls.",
+      "acceptance":"Define mutually compatible script formats, semantic presentation and exact history/interchange behavior.",
+      "evidence":["packages/breditor-experimental-rich-content/src/render.ts"],
+      "sources":["tiptap-catalog","ckeditor-styles"]
+    },
+    {
+      "id":"font-and-color","area":"Editing","status":"partial",
+      "summary":"Font family, size, text and background color",
+      "current":"Default Showcase has bounded RGB24 text color, discrete text sizes and Highlight. Those policies are not integrated into the shared renderer; general font families/background colors are not complete.",
+      "acceptance":"Promote safe declarative presentations into the combined editor, define supported font/size/color domains and test interoperability.",
+      "evidence":["packages/breditor-reference-highlight/src/color_showcase_profile.ts","packages/breditor-reference-highlight/src/size_showcase_profile.ts","packages/breditor-experimental-rich-content/src/render.ts"],
+      "sources":["tiptap-catalog","ckeditor-overview"]
+    },
+    {
+      "id":"links","area":"Editing","status":"partial",
+      "summary":"Links and automatic link detection",
+      "current":"Safe Link forms and typed values work in the default profile. The combined renderer has no anchor recipe; autolink is not an integrated feature.",
+      "acceptance":"Use one safe URL policy for shared rendering, explicit link editing, clipboard/export and optional autolink, without interpreting arbitrary HTML.",
+      "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/render.ts"],
+      "sources":["tiptap-starter","ckeditor-overview"]
+    },
+    {
+      "id":"blockquotes-code-rules","area":"Editing","status":"missing",
+      "summary":"Blockquotes, code blocks and horizontal rules",
+      "current":"The admitted rich flow grammar contains paragraph, heading, lists, table and image, not these three common block kinds.",
+      "acceptance":"Add original Rust contracts and separate actions for each kind, including code language/text rules, boundary navigation, shared conflict policy and migration.",
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs"],
+      "sources":["tiptap-starter","tiptap-source-starter","ckeditor-digest"]
+    },
+    {
+      "id":"line-and-block-navigation","area":"Editing","status":"partial",
+      "summary":"Hard breaks and navigation around atomic blocks",
+      "current":"The shared input bridge inserts LF for insertLineBreak and supports node/grid navigation. That is not a separately specified hard-break node or a complete gap/drop/trailing-block experience.",
+      "acceptance":"Specify soft-break semantics, create reachable text positions around every atom, and test Shift+Enter, arrows, deletion and empty-document recovery.",
+      "evidence":["packages/breditor-experimental-collaboration/src/controller.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "sources":["tiptap-starter","tiptap-source-starter"]
+    },
+    {
+      "id":"nested-lists","area":"Lists","status":"implemented",
+      "summary":"Bullet and numbered nested lists",
+      "current":"Rich and shared paths implement indentation, outdentation, item split/join and list conversion with retained content.",
+      "acceptance":"Retain the same list contract in the V1 installable profile and native/browser mixed-content tests.",
+      "evidence":["docs/NESTED_LISTS.md","crates/breditor-core/src/rich_content/actions/indent_list_items.rs","experiments/shared-browser/shared.spec.mjs"],
+      "sources":["tiptap-starter","ckeditor-digest"]
+    },
+    {
+      "id":"task-lists","area":"Lists","status":"missing",
+      "summary":"Interactive task lists",
+      "current":"The sealed rich grammar has no task item or checked-state contract.",
+      "acceptance":"Add typed checked state with keyboard and pointer behavior, nesting, clipboard, conflict policy and author-local history.",
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"list-properties","area":"Lists","status":"partial",
+      "summary":"List numbering and marker properties",
+      "current":"Positive ordered-list starts are supported. Reversed numbering, marker families and legal multilevel counters are not an integrated feature set.",
+      "acceptance":"Define each numbering/style domain, restart/continuation behavior and deterministic nested export before claiming advanced list parity.",
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-rich-content/src/render.ts"],
+      "sources":["ckeditor-digest"]
+    },
+    {
+      "id":"block-layout","area":"Editing","status":"missing",
+      "summary":"Alignment, block indent, direction and line height controls",
+      "current":"The current combined toolbar has list indentation but no complete block layout property family.",
+      "acceptance":"Add bounded semantic block properties, direction-aware selection/layout and safe rendering/interchange, not arbitrary stored CSS.",
+      "evidence":["packages/breditor-experimental-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "sources":["tiptap-catalog","ckeditor-overview"]
+    },
+    {
+      "id":"general-selections","area":"Editing","status":"partial",
+      "summary":"Text, node, grid and document-wide editing selections",
+      "current":"Stable text/node/grid selections exist. Rich range replacement covers one block, sibling flow and sibling list heads, not arbitrary cross-container ranges.",
+      "acceptance":"Specify and implement document-wide Select All, deletion, replacement and formatting across lists, tables, captions and atoms in both directions.",
+      "evidence":["crates/breditor-core/src/rich_content/actions/replace_text_range.rs","packages/breditor-experimental-collaboration/src/controller.ts","crates/breditor-core/tests/rich_text_range.rs"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"history","area":"Editing","status":"partial",
+      "summary":"Undo, Redo and natural typing groups",
+      "current":"Exact local and selective shared history/reload are implemented. Natural typing coalescing and the final integrated boundary policy are not qualified.",
+      "acceptance":"Define typing/paste/composition/format/move grouping, preserve remote work under local Undo, and test future Redo after recovery.",
+      "evidence":["crates/breditor-core/src/rich_content/local_session/undo.rs","experiments/shared-browser/network-demo.spec.mjs","experiments/collaboration/README.md"],
+      "sources":["tiptap-starter","ckeditor-digest"]
+    },
+    {
+      "id":"internal-clipboard","area":"Interchange","status":"implemented",
+      "summary":"Breditor structural clipboard",
+      "current":"Original rich JSON and plain text support copied text, flow and table grids with fresh identities. This is not Office or generic HTML paste.",
+      "acceptance":"Keep exact source preservation, one-step cut/paste history and cross-peer clipboard behavior in the installed V1 editor.",
+      "evidence":["crates/breditor-core/tests/rich_clipboard.rs","packages/breditor-experimental-collaboration/src/controller.ts","experiments/shared-browser/shared.spec.mjs"],
+      "sources":["ckeditor-source-clipboard"]
+    },
+    {
+      "id":"html-interchange","area":"Interchange","status":"partial",
+      "summary":"Sanitized HTML import and semantic export",
+      "current":"Default clipboard emits checked HTML and flattens an admitted HTML subset to plain text. Combined paste consumes original rich JSON/plain text, not general rich HTML.",
+      "acceptance":"Build separate import/export adapters with declared loss diagnostics, resource bounds, URL policy, asset references and rich round-trip fixtures.",
+      "evidence":["packages/breditor-browser/src/clipboard_html.ts","packages/breditor-browser/src/clipboard_fragment.ts","packages/breditor-experimental-collaboration/src/controller.ts"],
+      "sources":["ckeditor-source-clipboard","tiptap-source-table"]
+    },
+    {
+      "id":"markdown","area":"Interchange","status":"missing",
+      "summary":"Markdown import, export and paste",
+      "current":"There is no combined Markdown data adapter; canonical Breditor JSON remains distinct.",
+      "acceptance":"Choose a versioned Markdown subset, preserve representable semantics, report losses for merges/styles/media and test round trips.",
+      "evidence":["packages/breditor-experimental-collaboration/src/index.ts"],
+      "sources":["ckeditor-markdown","tiptap-source-table"]
+    },
+    {
+      "id":"office-paste","area":"Interchange","status":"missing",
+      "summary":"Word, Google Docs and spreadsheet rich paste",
+      "current":"Internal fragments and plain text do not preserve foreign formatting, list structure or spreadsheet tables.",
+      "acceptance":"Maintain real producer fixtures and sanitization/loss policies; test lists, styles, tables, links and images through the same Rust admission boundary.",
+      "evidence":["packages/breditor-experimental-collaboration/src/controller.ts","packages/breditor-browser/src/clipboard_html.ts"],
+      "sources":["ckeditor-office","tiptap-catalog"]
+    },
+    {
+      "id":"table-commands","area":"Tables","status":"implemented",
+      "summary":"Table geometry, cell bodies and grid operations",
+      "current":"Creation/removal, row/column edits/moves, headers, merge/split, width values, rich cells and grid navigation/clipboard are functionally tested.",
+      "acceptance":"Preserve the complete command set, rich content and selective history under the production package and all supported engines.",
+      "evidence":["crates/breditor-core/src/rich_content/actions/merge_table_cells.rs","experiments/shared-browser/shared.spec.mjs","experiments/shared-browser/network-demo.spec.mjs"],
+      "sources":["tiptap-table","tiptap-source-table","ckeditor-tables"]
+    },
+    {
+      "id":"advanced-tables","area":"Tables","status":"partial",
+      "summary":"Table presentation and advanced interaction",
+      "current":"Width/header controls exist. Drag resize, table captions and style/property panels are incomplete. Nested tables are intentionally outside the current admitted rich grammar.",
+      "acceptance":"Resolve nested-table policy explicitly; add captions, accessible resize handles, table/cell presentation and interoperable rich paste without losing source partitions.",
+      "evidence":["packages/breditor-experimental-collaboration/src/toolbar.ts","packages/breditor-experimental-rich-content/src/render.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "sources":["tiptap-table","ckeditor-tables"]
+    },
+    {
+      "id":"raster-images","area":"Images","status":"implemented",
+      "summary":"Block raster images and durable assets",
+      "current":"PNG/JPEG/WebP file admission, paste/drop, alt/decorative, captions, dimensions, replacement/removal, offline uploads and cross-host bytes are implemented.",
+      "acceptance":"Preserve byte-first durability, binding epochs, cancelled uploads and independent document/asset save indicators in the V1 package.",
+      "evidence":["experiments/shared-browser/relay-assets.spec.mjs","experiments/shared-browser/captions.spec.mjs","packages/breditor-experimental-rich-content/src/assets/store.ts"],
+      "sources":["tiptap-image","ckeditor-overview"]
+    },
+    {
+      "id":"advanced-images","area":"Images","status":"partial",
+      "summary":"Image layouts, handles, links and external sources",
+      "current":"Numeric dimensions and block captions work. Inline/wrapped images, drag handles, image links, responsive variants and safe remote-URL ingestion are not a complete product workflow.",
+      "acceptance":"Define supported layouts and ingestion policy, then test resize gestures, responsive output, link/alt behavior and asset lifecycle. Do not turn remote URLs into implicit server fetches.",
+      "evidence":["packages/breditor-experimental-rich-content/src/render.ts","packages/breditor-experimental-collaboration/src/toolbar.ts"],
+      "sources":["tiptap-image","ckeditor-overview"]
+    },
+    {
+      "id":"shared-editing","area":"Collaboration","status":"implemented",
+      "summary":"Simultaneous rich editing and selective history",
+      "current":"Rust replicas and the reference relay integrate concurrent text, list, table and image edits while retaining author-local Undo/Redo.",
+      "acceptance":"Keep the native contracts and independent-browser mixed workflow passing against the final released artifacts.",
+      "evidence":["experiments/shared-browser/network-demo.spec.mjs","experiments/shared-browser/grammar.spec.mjs","experiments/shared-browser/placements.spec.mjs"],
+      "sources":["tiptap-offline","ckeditor-digest"]
+    },
+    {
+      "id":"offline-recovery","area":"Collaboration","status":"implemented",
+      "summary":"Offline editing, reconnect and exact reload",
+      "current":"Exclusive writer ownership, durable local journals, queued uploads, reconnect and restart recovery work through real browser/network tests.",
+      "acceptance":"Qualify supported history/document limits and operational recovery, not only the normal offline/reconnect path.",
+      "evidence":["experiments/shared-browser/persistence.spec.mjs","experiments/shared-browser/relay-sync.spec.mjs","experiments/shared-browser/network-demo.spec.mjs"],
+      "sources":["tiptap-offline"]
+    },
+    {
+      "id":"presence","area":"Collaboration","status":"implemented",
+      "summary":"Authenticated peer carets and selections",
+      "current":"Lease-bound ephemeral presence resolves causal text/node/grid anchors and paints a separate read-only overlay.",
+      "acceptance":"Retain expiry, fencing and read-only behavior; qualify overlay placement and accessibility in the supported layouts.",
+      "evidence":["experiments/shared-browser/relay-presence.spec.mjs","packages/breditor-experimental-collaboration/src/presence_overlay.ts"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"roles-and-auth","area":"Collaboration","status":"partial",
+      "summary":"Permissions and application authentication",
+      "current":"Reference-room Reader/Editor authority and revocation are enforced. The local demo bootstrap is not public login, tenant provisioning or TLS deployment.",
+      "acceptance":"Provide host identity adapters, room lifecycle, secure credential storage, observable denial/revocation and deployment guidance with independent authorization tests.",
+      "evidence":["experiments/relay/README.md","packages/breditor-experimental-collaboration/src/relay/types.ts"],
+      "sources":["ckeditor-digest"]
+    },
+    {
+      "id":"read-only-mode","area":"Integration","status":"missing",
+      "summary":"Read-only and restricted editing UI",
+      "current":"A relay Reader role is not a read-only DOM editor contract. SharedDomOptions has no complete read-only/restricted-editing mode.",
+      "acceptance":"Enforce read-only consistently for keyboard, beforeinput, clipboard, API, toolbar, composition and remote updates; define editable-region restrictions separately.",
+      "evidence":["packages/breditor-experimental-collaboration/src/controller.ts"],
+      "sources":["ckeditor-digest"]
+    },
+    {
+      "id":"extension-sdk","area":"Integration","status":"partial",
+      "summary":"Composable feature and custom-node SDK",
+      "current":"Typed inline declarations, profile fingerprints and custom toolbar callbacks exist. Shared structural grammar is sealed; arbitrary custom blocks/node views are not a supported extension SDK.",
+      "acceptance":"Stabilize Breditor-owned schema/action/render/converter capabilities, dependencies, failure isolation and conformance tests without adopting another editor's protocol.",
+      "evidence":["docs/EXTENSION_ARCHITECTURE.md","packages/breditor-experimental-collaboration/src/profile.ts","packages/breditor-experimental-rich-content/src/render.ts"],
+      "sources":["tiptap-extension","ckeditor-overview"]
+    },
+    {
+      "id":"toolbar-and-context-ui","area":"Integration","status":"partial",
+      "summary":"Expandable toolbars, context menus and selection UI",
+      "current":"Both paths have extensible toolbars, but the shared path does not reuse the default compiled action-state/form system or provide a complete contextual/floating menu experience.",
+      "acceptance":"One command/state contract must drive buttons, keyboard, forms and context menus with active/mixed/disabled state and consistent focus return.",
+      "evidence":["packages/breditor-browser/src/toolbar.ts","packages/breditor-experimental-collaboration/src/controller.ts","packages/breditor-experimental-collaboration/src/toolbar.ts"],
+      "sources":["tiptap-catalog","ckeditor-overview"]
+    },
+    {
+      "id":"find-replace","area":"Productivity","status":"missing",
+      "summary":"Find and replace",
+      "current":"There is no integrated document search/decorations/replacement workflow.",
+      "acceptance":"Define literal/Unicode search, navigation and replace-all as one bounded semantic action, excluding hidden or noneditable content by explicit policy.",
+      "evidence":["packages/breditor-experimental-collaboration/src/index.ts"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"input-rules","area":"Productivity","status":"missing",
+      "summary":"Markdown shortcuts and automatic text transformations",
+      "current":"Explicit semantic commands are implemented; typed pattern recognition and reversible input rules are not an integrated feature.",
+      "acceptance":"Add deterministic opt-in rules with composition exclusion, remote-edit boundaries and one-step Undo behavior.",
+      "evidence":["packages/breditor-experimental-collaboration/src/controller.ts"],
+      "sources":["tiptap-extension","ckeditor-overview"]
+    },
+    {
+      "id":"mentions-slash","area":"Productivity","status":"missing",
+      "summary":"Mentions and slash commands",
+      "current":"There is no supported suggestion session or durable mention entity contract.",
+      "acceptance":"Specify entity identity, async suggestion cancellation, accessible menus and command execution through Rust rather than DOM mutation.",
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-collaboration/src/index.ts"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"writing-utilities","area":"Productivity","status":"missing",
+      "summary":"Counts, placeholder, fullscreen and outline",
+      "current":"No unified public utility package supplies these workflows for the combined editor.",
+      "acceptance":"Derive counts/outline from admitted AST snapshots, keep placeholders out of content, and preserve focus/selection through fullscreen transitions.",
+      "evidence":["packages/breditor-experimental-collaboration/src/index.ts"],
+      "sources":["tiptap-catalog","ckeditor-overview"]
+    },
+    {
+      "id":"drag-and-drop","area":"Integration","status":"partial",
+      "summary":"Block rearrangement and drop feedback",
+      "current":"File drop and typed block/axis moves exist; a general block drag handle, semantic drop target and drop cursor UI are incomplete.",
+      "acceptance":"Move retained IDs rather than copy/delete; add keyboard equivalents and test invalid/cyclic/cross-container targets and shared Undo.",
+      "evidence":["packages/breditor-experimental-collaboration/src/controller.ts","experiments/shared-browser/placements.spec.mjs"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"widgets-and-embeds","area":"Extended parity","status":"missing",
+      "summary":"Media, details, emoji, math and diagrams",
+      "current":"Unicode text is supported, but that is not a typed emoji picker, equation, collapsible section, audio/video or diagram widget.",
+      "acceptance":"Use separate original node contracts, inert/sandboxed renderers and explicit providers. Define import/export and collaboration for each admitted widget.",
+      "evidence":["crates/breditor-core/src/rich_content/drafts.rs","packages/breditor-experimental-rich-content/src/render.ts"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"framework-integrations","area":"Integration","status":"partial",
+      "summary":"Framework integrations and static rendering",
+      "current":"A framework-neutral runtime and default React reference exist. A production rich/shared React integration, SSR/static renderer and broader framework examples are not complete.",
+      "acceptance":"Ship installed-package React and vanilla examples, stable lifecycle hooks and an inert data renderer; document adapter responsibility for other frameworks.",
+      "evidence":["examples/react/package.json","packages/breditor-experimental-collaboration/README.md","packages/breditor-browser/README.md"],
+      "sources":["tiptap-extension","ckeditor-overview"]
+    },
+    {
+      "id":"comments","area":"Extended parity","status":"missing",
+      "summary":"Threaded comments and review annotations",
+      "current":"Internal format/provenance annotations and presence anchors are not a comment product: no durable discussion, resolution or review sidebar API exists.",
+      "acceptance":"Design durable mapped anchors, thread permissions, resolution/orphan policy, offline merging and independent comment history before building UI.",
+      "evidence":["experiments/collaboration/src/rich_replica/annotations.rs","packages/breditor-experimental-collaboration/src/index.ts"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"tracked-changes","area":"Extended parity","status":"missing",
+      "summary":"Suggestions and tracked changes",
+      "current":"Operation provenance/selective Undo is not accept/reject review mode.",
+      "acceptance":"Define suggestions for text, formatting, lists, tables and images with attribution, permissions, concurrent accept/reject and explicit export semantics.",
+      "evidence":["experiments/collaboration/README.md"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"version-history","area":"Extended parity","status":"partial",
+      "summary":"Named versions, comparison and restore",
+      "current":"Exact journals and recovery exist; there is no named revision browser, semantic diff or shared restore-as-new-change workflow.",
+      "acceptance":"Separate user-facing document versions from runtime journals and GC; restore without reusing old writer identity or overwriting concurrent work.",
+      "evidence":["docs/SESSION_BACKUPS.md","experiments/shared-browser/persistence.spec.mjs"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"document-conversion","area":"Extended parity","status":"missing",
+      "summary":"Word, PDF and other office document conversion",
+      "current":"Breditor JSON backup/export is not DOCX/PDF/ODT conversion or layout fidelity.",
+      "acceptance":"Choose self-hostable adapters, licensing and fidelity targets; preserve document/asset bindings and report unsupported content instead of silently dropping it.",
+      "evidence":["packages/breditor-experimental-collaboration/src/index.ts"],
+      "sources":["tiptap-catalog","ckeditor-overview","ckeditor-license"]
+    },
+    {
+      "id":"pagination","area":"Extended parity","status":"missing",
+      "summary":"Pages, page breaks and print layout",
+      "current":"The editor is a continuous flow surface, not a paginated document layout engine.",
+      "acceptance":"Keep page layout separate from canonical rich flow where possible; define deterministic print/export expectations for tables, captions and images.",
+      "evidence":["packages/breditor-experimental-rich-content/src/render.ts"],
+      "sources":["tiptap-catalog","ckeditor-digest"]
+    },
+    {
+      "id":"document-utilities","area":"Extended parity","status":"missing",
+      "summary":"Templates, merge fields, footnotes and bookmarks",
+      "current":"Stable internal block IDs are not user bookmarks, references, template fields or footnotes.",
+      "acceptance":"Design reference integrity, field/value trust, permissions and shared history; define behavior when referenced content is moved or removed.",
+      "evidence":["crates/breditor-core/src/rich_content/rich_document.rs"],
+      "sources":["ckeditor-digest"]
+    },
+    {
+      "id":"ai-and-language-tools","area":"Extended parity","status":"missing",
+      "summary":"AI assistance and integrated spelling or grammar review",
+      "current":"Browser-native spelling behavior is not a provider, review UI or semantic AI command integration.",
+      "acceptance":"Define explicit host providers and privacy boundaries; generated edits must use ordinary guarded commands with stale-result rejection and reviewable history.",
+      "evidence":["packages/breditor-experimental-collaboration/src/index.ts","packages/breditor-experimental-collaboration/src/core.ts"],
+      "sources":["tiptap-catalog","ckeditor-overview"]
+    },
+    {
+      "id":"html-source-and-email","area":"Extended parity","status":"missing",
+      "summary":"Source editing, general HTML and email layouts",
+      "current":"Canonical schema-bound AST editing deliberately does not preserve arbitrary HTML/CSS, full-page metadata or email layout markup.",
+      "acceptance":"Resolve the compatibility scope explicitly. Any source UI must import through a bounded allowlist and loss report; never store executable HTML as trusted editor state.",
+      "evidence":["packages/breditor-browser/src/clipboard_html.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "sources":["ckeditor-digest"]
+    },
+    {
+      "id":"multiple-roots","area":"Extended parity","status":"missing",
+      "summary":"Multiple editable roots in one document",
+      "current":"Multiple independent editor instances exist, but they do not establish a shared multi-root document selection/history contract.",
+      "acceptance":"Specify root identity, cross-root selections, shared ordering and one history owner before advertising multi-root parity.",
+      "evidence":["packages/breditor-experimental-collaboration/src/controller.ts","crates/breditor-core/src/rich_content/rich_document.rs"],
+      "sources":["ckeditor-overview","ckeditor-digest"]
+    },
+    {
+      "id":"localization-and-bidi","area":"Integration","status":"partial",
+      "summary":"Localized UI, bidirectional content and language metadata",
+      "current":"Unicode text is retained, but shared controls are English and RTL/bidirectional editing, localized commands and text-part language are not qualified as a supported product surface.",
+      "acceptance":"Separate UI language from content direction, localize control strings and qualify mixed-direction navigation/selection with language metadata.",
+      "evidence":["packages/breditor-experimental-collaboration/src/toolbar.ts","packages/breditor-experimental-collaboration/src/controller.ts"],
+      "sources":["ckeditor-overview","ckeditor-digest"]
+    }
+  ],
+  "gates": [
+    {"id":"catalog-coverage","status":"open","summary":"Finish the feature-by-feature baseline review","acceptance":"Expand grouped rows into versioned acceptance cases for every selected Tiptap/CKEditor capability. Group counts are not a parity percentage; record intentional differences and obtain approval for exclusions.","evidence":["docs/V1_RELEASE_PLAN.md"]},
+    {"id":"distribution","status":"open","summary":"Promote rich/shared Rust, Wasm and browser packages","acceptance":"Independent clean consumers install one supported paired profile and production module; no experiments path, manual target artifact or source-only link is required.","evidence":["packages/breditor-experimental-collaboration/package.json","scripts/check-shared-package.mjs"]},
+    {"id":"compatibility","status":"open","summary":"Freeze V1 APIs and explicit migration contracts","acceptance":"Document source, ABI, schema, journal and asset compatibility separately; add supported old-version recovery/migration fixtures and deliberate rejection paths.","evidence":["docs/COMPATIBILITY.md","experiments/collaboration/README.md"]},
+    {"id":"release-ci","status":"open","summary":"Cover every distributed feature in the release pipeline","acceptance":"Default verify:release alone is insufficient. Run default, rich, shared, relay and installed-consumer checks reproducibly in CI, retaining exact candidate hashes and failed runs.","evidence":["scripts/verify-release.mjs","scripts/check-shared-browser.mjs","scripts/check-rich-browser.mjs","scripts/check-collaboration-feasibility.mjs"]},
+    {"id":"browser-reliability","status":"open","summary":"Qualify browser faults and native clipboard","acceptance":"Close or explicitly resolve the historical WebKit fault with a reproducible cause/fix or supported-environment policy, and qualify native Safari/Chrome plus repeated lifecycle/clipboard sessions. Passing isolated files is not an engine repair.","evidence":["docs/FEATURE_EXPANSION_BETA.md","docs/RICH_CONTENT_AND_COLLABORATION.md"]},
+    {"id":"accessibility-input-mobile","status":"open","summary":"Qualify physical input, accessibility and touch","acceptance":"On the final integrated artifact, complete real IME, screen-reader, keyboard-only and supported mobile/touch testing. Earlier bounded or synthetic cases do not certify V1.","evidence":["docs/FEATURE_EXPANSION_BETA.md","packages/breditor-experimental-collaboration/src/controller.ts"]},
+    {"id":"performance-and-size","status":"open","summary":"Approve measured latency, memory and download budgets","acceptance":"Set supported document/table/image/history/peer sizes and measure startup, typing, paste, Undo, reconnect and long-session memory on named hardware/browser versions. Do not silently raise existing default budgets.","evidence":["docs/SIZE_BUDGETS.md","scripts/check-size-budgets.mjs","packages/breditor-experimental-rich-content/src/render.ts"]},
+    {"id":"public-relay-hardening","status":"open","summary":"Qualify safe public relay deployment","acceptance":"Provide import/decode work isolation, TLS/identity/tenant integration, abuse limits, observability and deployment tests. Loopback demo tokens and best-effort decoder limits are not public production isolation.","evidence":["experiments/relay/README.md"]},
+    {"id":"storage-lifecycle","status":"open","summary":"Handle history limits, backup and compaction","acceptance":"Define document lifetime at current journal/log/asset bounds, safe compaction and asset retention, restore drills and credential/writer recovery without cloning a live author.","evidence":["experiments/relay/README.md","packages/breditor-experimental-collaboration/README.md"]},
+    {"id":"dependency-and-license-review","status":"open","summary":"Audit the actual V1 dependency and license graph","acceptance":"Generate and review notices/SBOM for browser, Wasm and native relay artifacts, including the pinned replication patch and decoders; verify reproducibility and vulnerability response ownership.","evidence":["scripts/check-package-licenses.mjs","packages/breditor-wasm/THIRD_PARTY_NOTICES.md","experiments/relay/Cargo.toml"]},
+    {"id":"integration-docs-and-support","status":"open","summary":"Ship coherent SDK documentation and support policy","acceptance":"Publish one install/quickstart, capability/support matrix, host asset/auth responsibilities, security reporting, troubleshooting, upgrade guide and contribution policy that match the actual archives.","evidence":["README.md","docs/COMPATIBILITY.md","CONTRIBUTING.md"]},
+    {"id":"pilot","status":"open","summary":"Complete a real application pilot","acceptance":"Run sustained mixed-content use with independent collaborators, disconnects, reloads and backup restoration; record incidents, data integrity and supported operating limits.","evidence":["experiments/shared-browser/network-demo.spec.mjs"]},
+    {"id":"final-rc","status":"open","summary":"Approve the exact release candidate","acceptance":"After all required scope and qualification work, tag a reviewed RC, verify clean installs and every gate against immutable hashes, then obtain separate publication/deployment approval.","evidence":["docs/V1_RELEASE_PLAN.md","scripts/verify-release.mjs"]}
+  ]
+}

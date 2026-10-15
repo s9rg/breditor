@@ -58,8 +58,11 @@ establish a repair of the historical engine/process reliability risk.
 
 Reproduce with `node scripts/check-shared-browser.mjs`,
 `node scripts/check-collaboration-feasibility.mjs` and
-`node scripts/check-rich-browser.mjs`. Tested local checkpoints are saved;
-nothing is pushed, published or publicly deployed.
+`node scripts/check-rich-browser.mjs`. The completed functional checkpoints
+through `85b21d1` were pushed to the existing GitHub repository on October 15,
+2026, at the user's request. Nothing is registry-published or publicly deployed.
+The [V1 release plan](V1_RELEASE_PLAN.md) tracks the next integration, parity
+and qualification work; earlier checkpoint notes retain their historical scope.
 
 ## Implementation checkpoints
 

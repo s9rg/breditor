@@ -11,40 +11,36 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
-Experimental headings and flat lists have separately built browser demos. Flat lists now have
-gated Rust editing, exact retained undo/redo, explicit Session V6 recovery, and
-an experimental high-level browser owner integrating projection, input, toolbar
-and persistence. The default packaged demo remains paragraph-only. Clipboard interchange
-is selected text, not structural list/heading rich paste. See
-[Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
+The current source version is `0.3.0-alpha.22`. Default browser/Wasm packages
+provide the supported paragraph and typed inline-format profile described below.
+Separate private opt-in packages now implement headings and nested lists, rich
+tables, block raster images, exact local history, and full offline-capable shared
+editing with a native reference relay, durable assets and peer selections.
+Existing default package, schema and ABI contracts are unchanged.
 
-The explicit source-level `BreditorBrowserEditor.openFlatLists` factory supports
-Session V6 autosave, reopen and backup restoration with exact history recovery.
-Its shared lifecycle preserves host ownership and startup rollback; the ordinary
-`open` factory still rejects list profiles. The separate
-[list demo](examples/lists/README.md) now includes autosave, download and
-independent backup recovery. It is not qualified as a packaged release.
+The combined [rich content and collaboration implementation](docs/RICH_CONTENT_AND_COLLABORATION.md)
+has completed its functional goal, including real network and installed-archive
+tests. It is not production-qualified: matching shared Rust/Wasm still comes
+from the isolated build, and integration, compatibility and reliability work
+remains. The [V1 release plan](docs/V1_RELEASE_PLAN.md) and
+[capability audit](docs/v1-readiness.json) track feature parity with Tiptap and
+CKEditor, package promotion and explicit release gates. Run `npm run audit:v1`
+to inspect the remaining work; `npm run check:v1` fails while it remains open.
 
-A private, self-contained `@breditor/experimental-flat-lists` package now pairs
-that browser runtime with its experimental Wasm engine. The
-[installed-package demo workflow](examples/lists/README.md#installed-opt-in-package-demo)
-tests the actual installed archive while leaving the default packages unchanged.
-This opt-in path is not a registry publication or a completed beta release gate.
+Start the loopback-only combined developer demo after following its
+[toolchain and setup instructions](packages/breditor-experimental-collaboration/README.md):
 
-The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
-end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
-later. The list toolbar/controller scenarios pass in Chromium, Firefox and
-WebKit with real Wasm and synthetic input. These checks do not qualify physical
-typing, OS input methods, accessibility or a finished list-enabled beta.
+```sh
+npm run demo:shared:network
+```
 
-The next expansion combines tables, images and full offline-capable
-collaboration. The [rich content and collaboration plan](docs/RICH_CONTENT_AND_COLLABORATION.md)
-defines shared identity, selections, table conflicts, asset lifecycle, local
-undo and mixed-feature acceptance gates. The [isolated Rust/Wasm checkpoint](experiments/collaboration/README.md)
-now proves selective history, offline cell text merging, rich geometry and image
-binding contracts. The combined editor UI, asset storage and reference server
-are not implemented yet; existing shipping features and protocols are unchanged.
+This demo supplies local development credentials and must not be exposed
+publicly. The default React demo below remains a separate, narrower integration.
+Earlier [heading/flat-list beta evidence](docs/FEATURE_EXPANSION_BETA.md),
+[nested-list contracts](docs/NESTED_LISTS.md) and
+[structural-block boundaries](docs/STRUCTURAL_BLOCKS.md) retain their own
+artifact-specific qualification limits. No registry publication or V1 release
+is implied by these functional checkpoints.
 
 ## Run the browser demo
 

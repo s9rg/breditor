@@ -29,6 +29,8 @@
     "test:demo:headings": "playwright test --config playwright.headings.config.ts",
     "test:headings:experimental": "node scripts/build-experimental-heading.mjs",
     "verify:release": "node scripts/verify-release.mjs",
+    "audit:v1": "node scripts/check-v1-readiness.mjs",
+    "check:v1": "node scripts/check-v1-readiness.mjs --require-ready",
     "clean": "npm run clean --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "demo": "npm run build && npm run dev --workspace @breditor/example-react",

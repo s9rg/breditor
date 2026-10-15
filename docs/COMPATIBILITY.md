@@ -1,5 +1,18 @@
 # Breditor compatibility policy
 
+## V1 preparation and opt-in scope
+
+The source is not a V1 release. The [V1 plan](V1_RELEASE_PLAN.md) and
+[capability audit](v1-readiness.json) track the integration and qualification
+work before any broader compatibility promise. The private rich-content and
+collaboration packages implement additional functionality without widening
+the default package promises below. Their matching shared factory still uses
+an isolated generated module; private ABI 1/model 11/journal V12 must not be
+confused with the default ABI 5 or the older document/session wire families.
+No automatic migration or stable arbitrary-node plugin contract is implied.
+
+## Current default package policy
+
 Current alpha.22 addition: explicit session-backup startup and a recovery picker
 open an independent editor with autosave disabled. Rust validates the matching
 schema and replay history; the current editor and saved slot remain untouched.
