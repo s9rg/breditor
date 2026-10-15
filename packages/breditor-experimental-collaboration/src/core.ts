@@ -1,4 +1,5 @@
 import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedRemoteOptions,SharedOwnerDescriptor,SharedPresenceResolution,SharedWriterClock,SharedWriterGroups,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
+import type {RichInlineFormatStateRead} from "./types.js";
 export class SharedEditorError extends Error {
  constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
 }
@@ -30,6 +31,9 @@ export class SharedRichEditor {
  view():SharedView{this.#live();return JSON.parse(this.#view) as SharedView;}
  descriptor():SharedOwnerDescriptor{this.#live();return JSON.parse(this.#descriptor) as SharedOwnerDescriptor;}
  documentJson():string{return this.view().documentJson;}
+ /** Read the same core property-state contract under the current opaque observation. */
+ supportsInlineFormatState():boolean{return typeof this.#live().inline_format_state_json==="function";}
+ inlineFormatState(kind:string):RichInlineFormatStateRead{const raw=this.#live();if(!raw.inline_format_state_json)throw new SharedEditorError("inline_state_unavailable","Use a matching Rust owner with formatting-state support");if(typeof kind!=="string"||kind.length>128)throw new SharedEditorError("inline_state_kind","Expected a bounded declared format kind");return JSON.parse(raw.inline_format_state_json(this.#observation,kind)) as RichInlineFormatStateRead;}
  checkpointJson():string{return this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
  /** Separate read capability; neither method publishes, imports content or changes local UI. */

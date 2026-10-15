@@ -9,6 +9,10 @@ export interface RichPoint {block: string; offset: string; affinity: "before" | 
 export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
 export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string}
+/** Exact Rust-derived property state; all-present mixed values remain active. */
+export type RichInlineFormatState = {kind:"unavailable"}|{kind:"unset"}|{kind:"uniform";format:import("./commands.js").FormatLiteral}|{kind:"mixed";presentEverywhere:boolean};
+/** Read binding only, never a compiled proof or a mutation observation token. */
+export interface RichInlineFormatStateRead {format:"breditor/rich-inline-format-state";formatVersion:1;schema:{name:string;version:number;fingerprint:string};formatKind:string;state:RichInlineFormatState}
 export interface RichView {
   format: "breditor/rich-view"; formatVersion: 1; revision: string; documentJson: string;
   selection: RichSelection | null; pendingFormatsJson: string | null;
@@ -21,6 +25,7 @@ export interface RichCoreEditor {
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
   view(): RichView;
   documentJson(): string;
+  inlineFormatState(kind:string):RichInlineFormatStateRead;
   clipboard(): {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string} | null;
   checkpointJson(): string;
   dispose(): void;

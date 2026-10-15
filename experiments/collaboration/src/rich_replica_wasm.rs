@@ -58,6 +58,14 @@ impl RichReplicaProbe {
 }
 #[wasm_bindgen]
 impl RichReplicaProbe {
+    /// Read exact formatting properties under the current complete publication guard.
+    pub fn inline_format_state_json(
+        &self,
+        observation: &RichSharedObservation,
+        kind: &str,
+    ) -> Result<String, JsValue> {
+        self.inner.inline_format_state_json_guarded(&observation.inner, kind).map_err(error)
+    }
     /// Export complete, single-writer action windows under the exact live observation.
     pub fn writer_groups(
         &self,

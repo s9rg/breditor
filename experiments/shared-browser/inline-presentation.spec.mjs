@@ -49,3 +49,23 @@ test("catalog admission is bounded and canonical and presentation declarations a
  }finally{t.dispose();}});
  expect(result).toEqual({rejected:10,getterCalls:0,frozen:true,href:"https://example.test/detached",errors:[]});
 });
+
+test("shared Rust property-state reads distinguish mixed values and presence through remote edits and restart",async({page})=>{
+ const result=await page.evaluate(async()=>{const {fixture}=await import("/inline-presentation-fixture.mjs"),t=fixture(window.sharedTools),point=(offset,affinity="after")=>({block:"p",offset:String(offset),affinity}),select=(core,a,b)=>core.select({kind:"text",anchor:point(a),focus:point(b)}),read=core=>core.inlineFormatState("example/link");try{
+  t.set(t.a,"p",0,1,"example/link",{"example/href":"https://a.test/","example/new-window":false});
+  t.set(t.a,"p",1,2,"example/link",{"example/href":"https://b.test/","example/new-window":true});
+  select(t.a,0,3);const differing=read(t.a).state;
+  select(t.a,4,0);const partial=read(t.a).state;
+  t.a.select({kind:"text",anchor:point(1),focus:point(1,"before")});const before=read(t.a).state;
+  t.a.select({kind:"text",anchor:point(1),focus:point(1)});const after=read(t.a).state;
+  t.a.setPendingFormats([]);const plain=read(t.a).state;
+  select(t.a,0,3);await t.synchronize();
+  t.set(t.b,"p",0,1,"example/link",{"example/href":"https://remote.test/","example/new-window":false});await t.synchronize();
+  const observed=t.a.checkpointJson(),current=read(t.a),unchanged=t.a.checkpointJson()===observed;let rejected=false;try{t.a.inlineFormatState("example/unknown");}catch{rejected=true;}
+  const failedUnchanged=t.a.checkpointJson()===observed;
+  t.da.dispose();const restored=new window.sharedTools.SharedRichEditor(t.profile.restore("room",observed));try{
+   return {supported:restored.supportsInlineFormatState(),differing,partial,before,after,plain,current:current.state,binding:current.schema.fingerprint===JSON.parse(t.catalog).schema.fingerprint,unchanged,rejected,failedUnchanged,reloaded:JSON.stringify(restored.inlineFormatState("example/link"))===JSON.stringify(current),errors:t.errors};
+  }finally{restored.dispose();}
+ }finally{t.dispose();}});
+ expect(result).toEqual({supported:true,differing:{kind:"mixed",presentEverywhere:true},partial:{kind:"mixed",presentEverywhere:false},before:{kind:"uniform",format:{type:"example/link",properties:{"example/href":"https://a.test/","example/new-window":false}}},after:{kind:"uniform",format:{type:"example/link",properties:{"example/href":"https://b.test/","example/new-window":true}}},plain:{kind:"unset"},current:{kind:"mixed",presentEverywhere:true},binding:true,unchanged:true,rejected:true,failedUnchanged:true,reloaded:true,errors:[]});
+});

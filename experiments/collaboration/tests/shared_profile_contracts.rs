@@ -34,6 +34,42 @@ fn insert(text: &str) -> Command {
 }
 
 #[test]
+fn inline_state_uses_the_core_contract_without_changing_observation_history_or_future_bytes()
+-> Result {
+    let profile = profile()?;
+    let mut a = profile.create(&input(&profile)?, "101".into())?;
+    let selection = serde_json::from_value(
+        json!({"kind":"text","anchor":{"block":"p","offset":"0","affinity":"after"},"focus":{"block":"p","offset":"4","affinity":"after"}}),
+    )?;
+    a.set_selection(Some(&selection))?;
+    let observation = a.observe()?;
+    let before = a.checkpoint()?;
+    let value: Value =
+        serde_json::from_str(&a.inline_format_state_json_guarded(&observation, "example/link")?)?;
+    assert_eq!(value["schema"]["fingerprint"], profile.schema().fingerprint().to_string());
+    assert_eq!(
+        value["state"],
+        json!({"kind":"uniform","format":{"type":"example/link","properties":{"example/href":"https://example.test/"}}})
+    );
+    assert_eq!(a.checkpoint()?, before);
+    a.check(&observation)?;
+    assert!(a.inline_format_state_json_guarded(&observation, "example/unknown").is_err());
+    assert_eq!(a.checkpoint()?, before);
+    a.apply(vec![insert("X")])?;
+    let error = a
+        .inline_format_state_json_guarded(&observation, "malformed")
+        .err()
+        .ok_or("stale read must fail")?;
+    assert!(error.to_string().contains("stale or foreign"));
+    let restored = profile.restore("room", &a.checkpoint()?)?;
+    assert_eq!(
+        restored.inline_format_state_json_guarded(&restored.observe()?, "example/link")?,
+        a.inline_format_state_json_guarded(&a.observe()?, "example/link")?
+    );
+    Ok(())
+}
+
+#[test]
 fn json_configuration_matches_an_independently_compiled_typed_schema() -> Result {
     let id = SchemaId::new(
         QualifiedName::try_new("example/shared-product")?,

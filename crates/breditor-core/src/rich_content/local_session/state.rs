@@ -3,7 +3,6 @@
 use super::RichLocalSessionError;
 use crate::{
     document::FormatSet,
-    position::Point,
     rich_content::{RichDocument, RichSelection, RichSelectionKind},
     state::{EditorContext, Revision},
 };
@@ -70,17 +69,7 @@ impl RichLocalState {
         else {
             return Err(RichLocalSessionError::TypingCaret);
         };
-        match focus {
-            Point::Text { text_path, .. } => self
-                .document
-                .document()
-                .node_at(&text_path)
-                .ok()
-                .and_then(crate::document::NodeRef::as_text)
-                .map(|text| text.formats().clone())
-                .ok_or(RichLocalSessionError::HistoryMismatch),
-            Point::Children { .. } => Ok(FormatSet::default()),
-        }
+        super::typing_state::resolved_caret_formats(&self.document, &focus, None)
     }
     /// Monotonic u64 publication revision; browser transport must use exact words/strings.
     #[must_use]

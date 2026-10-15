@@ -14,6 +14,7 @@ mod grid_destination;
 mod identity;
 mod image_binding;
 mod image_draft;
+mod inline_format_state;
 mod list_draft;
 pub(crate) mod local_session;
 mod navigate_grid;
@@ -35,6 +36,9 @@ pub use clipboard::{
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use flow_position::{RichFlowParent, RichFlowPosition};
 pub use image_draft::ImageDraft;
+pub use inline_format_state::{
+    RichInlineFormatState, RichInlineFormatStateError, inspect_inline_format,
+};
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use local_session::{
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,

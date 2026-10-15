@@ -118,6 +118,11 @@ impl RichDocument {
         self.directory.blocks.get(id)
     }
 
+    /// Internal immutable directory scan; ID order is not visual document order.
+    pub(super) fn block_entries(&self) -> impl Iterator<Item = (&BlockId, &NodePath)> {
+        self.directory.blocks.iter()
+    }
+
     /// Snapshot-local path of a base cell, even when covered by a merge.
     #[must_use]
     pub fn cell_path(&self, id: &CellId) -> Option<&NodePath> {

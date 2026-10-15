@@ -87,9 +87,10 @@ No competitor implementation was copied into Breditor.
 1. **One rich formatting path.** Default Link, color, text-size and richer toolbar
    policies do not automatically supply the complete shared product. A new
    schema-bound rich presentation now reuses the default checked mark, anchor,
-   RGB24 color and integer-token policies. The standard profile, size CSS,
-   integrated controls and observable mixed property state still need to follow
-   before advertising those features together.
+   RGB24 color and integer-token policies. The standard profile, size CSS and
+   integrated controls still need to follow. Rust-derived exact/mixed
+   property-state reads now exist for local and shared owners; controls must use
+   them consistently before advertising those features together.
 2. **Complete editing grammar.** Add blockquotes, code blocks, horizontal rules,
    task lists and an explicit hard-break policy. Finish general selections across
    container boundaries and natural typing history groups. Unsupported ranges

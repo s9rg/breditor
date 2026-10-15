@@ -7,6 +7,7 @@ mod clipboard;
 mod command;
 mod editor;
 mod error;
+mod inline_format_state;
 mod observation;
 mod profile;
 mod result;

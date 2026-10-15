@@ -29,3 +29,21 @@ test("local presentation catalog retains the compiled binding and has no executa
  }finally{profile.dispose();}});
  expect(result).toEqual({same:true,format:"breditor/inline-format-catalog",formats:[{kind:"breditor/strong",revision:1,properties:[]}],binding:true,keys:["format","formatVersion","formats","schema"],abi:"5"});
 });
+
+test("local Rust property-state reads preserve exact history and restored pending plain typing",async({page})=>{
+ const result=await page.evaluate(()=>{const profile=window.rich.compileRichProfile(window.rich.wasm,JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"example/local-state",version:1},extensions:[]})),binding=profile.descriptor();
+  const canonical=value=>Array.isArray(value)?value.map(canonical):value!==null&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+  const owner=profile.createEditor(JSON.stringify({format:"breditor/document",formatVersion:2,schema:binding.schema,schemaFingerprint:binding.schemaFingerprint,root:canonical(window.rich.root)}));try{
+  const point=offset=>({block:"p",offset:String(offset),affinity:"after"});
+  owner.execute({kind:"setSelection",selection:{kind:"text",anchor:point(0),focus:point(4)}});
+  const initial=owner.inlineFormatState("breditor/strong");
+  owner.execute({kind:"setInlineFormat",data:{change:{kind:"remove",format:"breditor/strong"},targets:[{block:"p",start:"0",end:"1"}]}});
+  const partial=owner.inlineFormatState("breditor/strong").state;
+  owner.execute({kind:"setSelection",selection:{kind:"text",anchor:point(3),focus:point(3)}});owner.execute({kind:"setPendingFormats",formats:[]});
+  const before=owner.checkpointJson(),plain=owner.inlineFormatState("breditor/strong").state,unchanged=owner.checkpointJson()===before;
+  let rejected=false;try{owner.inlineFormatState("example/unknown");}catch{rejected=true;}const failedUnchanged=owner.checkpointJson()===before;
+  const restored=profile.restoreEditor(before);try{return {initial:initial.state,binding:initial.schema.fingerprint===profile.descriptor().schemaFingerprint,partial,plain,unchanged,rejected,failedUnchanged,reloaded:JSON.stringify(restored.inlineFormatState("breditor/strong"))===JSON.stringify(owner.inlineFormatState("breditor/strong"))};}finally{restored.dispose();}
+  }finally{owner.dispose();profile.dispose();}
+ });
+ expect(result).toEqual({initial:{kind:"uniform",format:{type:"breditor/strong",properties:{}}},binding:true,partial:{kind:"mixed",presentEverywhere:false},plain:{kind:"unset"},unchanged:true,rejected:true,failedUnchanged:true,reloaded:true});
+});

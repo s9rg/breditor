@@ -1,7 +1,8 @@
 {
   "date": "2026-10-15",
-  "sourceCheckpoint": "1c9850b77035e43621fa8fa34c884559bf1b6dc6",
-  "scope": "Compiled Rust inline catalog and the following schema-bound local/shared browser presentation checkpoint. The matching browser implementation commit is recorded in the readiness ledger after it is saved.",
+  "sourceCheckpoint": "312eedbeb553fa940d987997ac5baf1007e2b641",
+  "coreCatalogCheckpoint": "1c9850b77035e43621fa8fa34c884559bf1b6dc6",
+  "scope": "Compiled Rust inline catalog and schema-bound local/shared browser presentation, including the corrected installed local JS/Wasm pairing.",
   "releaseQualified": false,
   "browserSuites": [
     {"command": "node scripts/check-shared-browser.mjs", "passed": 246, "engines": ["chromium", "firefox", "webkit"], "note": "Canonical shared suite; WebKit retains full coverage in isolated per-file processes."},

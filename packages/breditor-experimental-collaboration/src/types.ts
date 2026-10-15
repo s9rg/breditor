@@ -1,5 +1,6 @@
 import type {RichView,RichSelection,RichPoint,FormatLiteral,TextNode} from "@breditor/experimental-rich-content/rendering";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
+export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string}};
 type Op<K extends string,D>=Readonly<{kind:K;data:D}>;
 type Position={parent:string|null;before:string|null};
@@ -61,6 +62,7 @@ export interface SharedRustOwner {
  /** Additive capability: older matching owners may omit the separate presence channel. */
  presence_frame?(observation:unknown):string;resolve_presence?(frame:string):string;
  writer_groups?(observation:unknown,after:string):string;writer_clock?(writer:string):string;
+ inline_format_state_json?(observation:unknown,kind:string):string;
  descriptor_json():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;

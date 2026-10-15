@@ -9,11 +9,32 @@ use crate::{
     state::EditorContext,
 };
 
-pub(super) fn caret(selection: Option<&RichSelection>) -> Option<&RichTextPoint> {
+pub(crate) fn caret(selection: Option<&RichSelection>) -> Option<&RichTextPoint> {
     let RichSelectionKind::TextRange { anchor, focus } = selection?.kind() else {
         return None;
     };
     (anchor.block() == focus.block() && anchor.offset() == focus.offset()).then_some(focus)
+}
+
+/// Shared exact caret lookup for typing and read-only formatting state.
+pub(crate) fn resolved_caret_formats(
+    document: &RichDocument,
+    focus: &crate::position::Point,
+    pending: Option<&FormatSet>,
+) -> Result<FormatSet, RichLocalSessionError> {
+    if let Some(formats) = pending {
+        return Ok(formats.clone());
+    }
+    match focus {
+        crate::position::Point::Text { text_path, .. } => document
+            .document()
+            .node_at(text_path)
+            .ok()
+            .and_then(crate::document::NodeRef::as_text)
+            .map(|text| text.formats().clone())
+            .ok_or(RichLocalSessionError::HistoryMismatch),
+        crate::position::Point::Children { .. } => Ok(FormatSet::default()),
+    }
 }
 
 pub(super) fn validate(

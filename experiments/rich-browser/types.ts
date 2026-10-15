@@ -6,6 +6,7 @@ function contract(bootstrap:string,document:string):void {
  const catalog:string=profile.inlineCatalogJson();void catalog;
  const owner=profile.createEditor(document,"100");
  const view:RichView=owner.view();
+ const inline=owner.inlineFormatState("breditor/strong");const formatKind:string=inline.formatKind;void formatKind;
  const selection:RichSelection|null=view.selection;
  const outcome:RichCommandOutcome=owner.execute({kind:"setSelection",selection},view.revision);
  const copy=owner.clipboard();

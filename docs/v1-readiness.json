@@ -36,7 +36,7 @@
     {
       "id":"basic-inline-formatting","area":"Editing","status":"partial",
       "summary":"Bold, italic, underline, strike and inline code",
-      "current":"The rich/shared renderer now has a schema-bound checked presentation path for ordinary marks, reusing default policies. The default toolbar still exposes Bold; the complete standard profile, controls and mixed-state integration remain unfinished.",
+      "current":"The rich/shared renderer now has a schema-bound checked presentation path for ordinary marks, reusing default policies. Both owners expose Rust-derived exact/mixed property-state reads. The default toolbar still exposes Bold; the complete standard profile, controls and their state integration remain unfinished.",
       "acceptance":"Ship all everyday marks in the combined profile, renderer and toolbar; test mixed state, caret formats, clipboard, offline edits and selective Undo/Redo.",
       "evidence":["packages/breditor-reference-highlight/src/showcase_profile.ts","packages/breditor-experimental-rich-content/src/inline_presentation.ts","packages/breditor-experimental-collaboration/src/toolbar.ts","experiments/shared-browser/inline-presentation.spec.mjs"],
       "sources":["tiptap-starter","ckeditor-styles","tiptap-source-starter"]

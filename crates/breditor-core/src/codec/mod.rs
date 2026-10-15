@@ -11,6 +11,14 @@ mod rich_formats_json;
 pub use rich_formats_json::{RichFormatsCodecError, RichFormatsJsonCodec};
 
 #[cfg(feature = "experimental-rich-content")]
+mod rich_inline_format_state;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_inline_format_state::{
+    RICH_INLINE_FORMAT_STATE_FORMAT, RICH_INLINE_FORMAT_STATE_VERSION,
+    encode_rich_inline_format_state,
+};
+
+#[cfg(feature = "experimental-rich-content")]
 mod rich_clipboard_json;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_clipboard_json::{

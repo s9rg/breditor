@@ -147,7 +147,7 @@ impl Serialize for FormatSetEncoding<'_> {
     }
 }
 
-struct FormatEncoding<'a>(&'a Format);
+pub(super) struct FormatEncoding<'a>(pub(super) &'a Format);
 
 impl Serialize for FormatEncoding<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

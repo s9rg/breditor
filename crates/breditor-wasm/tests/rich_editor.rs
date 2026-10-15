@@ -9,6 +9,34 @@ use serde_json::{Value, json};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+#[test]
+fn property_state_reads_are_frozen_observations_and_do_not_rotate_mutation_authority() -> TestResult
+{
+    let profile = profile()?;
+    let mut owner = editor(&profile)?;
+    let selected = command(&mut owner, &select("0", "4"), "selection")?;
+    let read_state = |observation: &BreditorRichObservation| -> TestResult<Value> {
+        Ok(serde_json::from_str::<Value>(&read(
+            observation.inline_format_state_json("breditor/strong"),
+        )?)?["state"]
+            .clone())
+    };
+    let uniform = json!({"kind":"uniform","format":{"type":"breditor/strong","properties":{}}});
+    assert_eq!(read_state(&selected)?, uniform);
+    let input = json!({"kind":"setInlineFormat","data":{"change":{"kind":"remove","format":"breditor/strong"},"targets":[{"block":"p","start":"0","end":"1"}]}});
+    let mut result = owner.execute(&selected, &input.to_string());
+    assert_eq!(result.status(), "content");
+    let next = result.take_observation().ok_or("next")?;
+    assert_eq!(read_state(&selected)?, uniform); // Prior reads remain frozen, not current-owner guesses.
+    assert_eq!(read_state(&next)?, json!({"kind":"mixed","presentEverywhere":false}));
+    let before = read(owner.checkpoint_json())?;
+    assert_eq!(next.inline_format_state_json("example/unknown").status(), "error");
+    assert_eq!(read(owner.checkpoint_json())?, before);
+    let result = owner.execute(&next, &json!({"kind":"undo"}).to_string());
+    assert_eq!(result.status(), "undo");
+    Ok(())
+}
+
 fn profile() -> TestResult<BreditorRichProfile> {
     let mut result = BreditorRichProfile::from_bootstrap_json(&bootstrap(6));
     assert_eq!(result.status(), "profile");

@@ -86,6 +86,11 @@ class RichCoreEditor {
   }
   view() { this.#live(); return JSON.parse(read(this.#observation.viewJson())); }
   documentJson() { this.#live(); return read(this.#observation.documentJson()); }
+  inlineFormatState(kind) {
+    this.#live();
+    if(typeof kind!=="string"||kind.length>128)throw new RichCommandError("breditor_rich.inline_state","Expected a bounded declared format kind");
+    return JSON.parse(read(this.#observation.inlineFormatStateJson(kind)));
+  }
   clipboard() { this.#live(); const value = read(this.#observation.clipboardJson(), true); return value === null ? null : JSON.parse(value); }
   checkpointJson() { return read(this.#live().checkpointJson()); }
   dispose() { this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }

@@ -18,6 +18,15 @@ pub struct BreditorRichObservation {
 }
 #[wasm_bindgen]
 impl BreditorRichObservation {
+    /// Exact property-aware state at this frozen observation, even after later edits.
+    #[must_use]
+    #[wasm_bindgen(js_name=inlineFormatStateJson)]
+    pub fn inline_format_state_json(&self, kind: &str) -> BreditorStringResult {
+        match super::inline_format_state::encode(self, kind) {
+            Ok(value) => BreditorStringResult::from_value(value),
+            Err(error) => BreditorStringResult::from_error(error),
+        }
+    }
     /// Read a semantic structured/plain transfer for this selection; collapsed/cleared selection is absent.
     #[must_use]
     #[wasm_bindgen(js_name=clipboardJson)]

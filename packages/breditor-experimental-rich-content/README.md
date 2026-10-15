@@ -109,7 +109,21 @@ presentation declarations. Integer tokens need host CSS. Schema mismatch rejects
 before mounting changes the host; unsafe stored Link values become inert anchors
 without changing their canonical Rust value. Declarations are detached and frozen.
 The legacy `inlineTag` option remains separate and cannot be combined with this
-compiled presentation. Standard controls and mixed-state integration remain work.
+compiled presentation. Standard controls and their mixed-state integration remain work.
+
+`editor.inlineFormatState(formatKind)` reads Rust-derived state without changing
+the document, selection, pending typing formats, history or publication guard.
+The read includes its exact schema binding and queried kind. Its `state` is
+`unavailable`, `unset`, `uniform` with the complete semantic format, or `mixed`
+with `presentEverywhere`. Different Link URLs can be mixed while every character
+still has a Link. Partial presence is a different mixed state. A collapsed caret
+uses focus affinity and an explicit pending override, including `[]` for plain
+typing. Unknown kinds reject instead of appearing absent. Empty selected fragments
+and node/grid selections are unavailable; this query does not broaden command
+selection support. Raw local observations retain their frozen read after later
+edits. The result is not action authority; mutations still need their normal guard.
+The complete JSON read is limited to 64 KiB. An oversized uniform value fails
+explicitly; it is never truncated or reported as an absent format.
 
 ## Mount the browser editor
 

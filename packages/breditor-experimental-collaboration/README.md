@@ -77,11 +77,23 @@ Integer tokens need host CSS for their visual meaning; they never become arbitra
 stored CSS. The legacy `inlineTag` option remains separate and cannot be combined
 with `inlinePresentation`.
 
-This is the checked rendering seam, not the complete everyday-formatting product:
-an official starter profile, integrated controls and mixed property state still
-need to be finished. The shared model, journal, default ABI and durable schema
+`core.inlineFormatState(kind)` now reads the same original Rust property-state
+contract as the local owner: a schema-bound `unavailable`, `unset`, `uniform` or
+`mixed` result. `mixed.presentEverywhere` distinguishes different values on fully
+formatted text from partial format presence. Causal selection resolves in Rust;
+caret focus affinity and admitted pending overrides are respected. The current
+opaque observation is checked before kind parsing. Reads do not rotate it or
+change history, content, pending state or update bytes. Unknown kinds reject.
+Node/grid selections return unavailable rather than claiming command support.
+`supportsInlineFormatState()` detects this additive capability; older matching
+owners may omit it, and the API reports that instead of guessing from DOM spans.
+The complete JSON read has a 64 KiB budget; oversized values fail without truncation.
+
+This is the checked rendering/state seam, not the complete everyday-formatting
+product: an official starter profile and integrated controls still need to be
+finished. The shared model, journal, default ABI and durable schema
 interpretation do not change. Use the matching generated module for the new
-catalog method; older modules do not provide it.
+catalog and state methods; older modules do not provide them.
 
 ## Owner contract
 

@@ -3,6 +3,7 @@ import {RichAssetStore,createRichInlinePresentation,type RichInlinePresentation}
 import {model,refreshAssets} from "@breditor/experimental-rich-content/rendering";
 async function consumer(raw:SharedRustOwner,root:HTMLElement):Promise<void>{
  const core=new SharedRichEditor(raw),assets=await RichAssetStore.open("consumer-assets");
+ if(core.supportsInlineFormatState()){const read=core.inlineFormatState("breditor/strong");const binding:string=read.schema.fingerprint;void binding;}
  const command:SharedCommand={kind:"set_image_alt",data:{block:"image",text:"Diagram",decorative:false}};
  core.dispatch({commands:[command]});const editor=mountSharedEditor(root,{core,resolveAsset:value=>assets.resolve(value.asset)});
  // @ts-expect-error Captions cannot contain nested tables or arbitrary flow drafts.
