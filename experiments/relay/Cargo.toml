@@ -11,7 +11,7 @@ description = "Opt-in durable reference host for Breditor rich collaboration"
 resolver = "3"
 
 [patch.crates-io]
-loro-internal = { path = "../collaboration/vendor/loro-internal-1.16.2" }
+loro-internal = { path = "../../crates/breditor-collaboration/vendor/loro-internal-1.16.2" }
 
 [dependencies]
 breditor-collab-feasibility = { path = "../collaboration" }

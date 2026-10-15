@@ -41,8 +41,10 @@ demo and shipping package contracts are preserved.
 
 This is functional integration, not production release qualification. The
 matching shared Wasm is now included in the private collaboration archive and
-the private editor SDK supplies lazy initialization. Its Rust source remains in
-the isolated workspace; source/API promotion, shared React ownership,
+the private editor SDK supplies lazy initialization. Shared Rust/browser source
+now lives in the canonical optional collaboration crate/package. The application
+module excludes research probes; legacy qualification compiles the same source
+with its research surface. Shared React ownership, registry/API release strategy,
 import-worker isolation, public authentication/TLS, measurements,
 a real pilot and the deferred reliability/accessibility pass remain release work.
 The private developer bootstrap supplies both demo tokens to its local page and
@@ -571,7 +573,7 @@ also preserves causal identity, pending work and durable selective history.
 
 ### Shared rich AST adapter
 
-`experiments/collaboration/src/rich_replica` now owns a staged rich replica.
+`crates/breditor-collaboration/src/rich_replica` owns the staged rich replica.
 Genesis admits one Document V2 under the supplied compiled rich schema, then
 decomposes it into stable keyed metadata/text and independently ordered structural
 occurrences. Later commands never replace a complete shared AST. Each candidate

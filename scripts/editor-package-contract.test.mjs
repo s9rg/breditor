@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
 test("candidate editor root keeps optional React/shared entries separate and remains private",()=>{
- const p=JSON.parse(read("packages/breditor-editor/package.json"));assert.equal(p.private,true);for(const peer of ["react","@breditor/experimental-collaboration"])assert.equal(p.peerDependenciesMeta[peer].optional,true);
+ const p=JSON.parse(read("packages/breditor-editor/package.json"));assert.equal(p.private,true);for(const peer of ["react","@breditor/collaboration"])assert.equal(p.peerDependenciesMeta[peer].optional,true);
  for(const entry of [".","./react","./collaboration"])assert.ok(p.exports[entry].types&&p.exports[entry].import);
  assert.deepEqual(Object.keys(p.dependencies),["@breditor/experimental-rich-content"]);assert.ok(!("build" in p.scripts)&&!("typecheck" in p.scripts));
  const source=read("packages/breditor-editor/src/index.ts");assert.ok(!source.includes('from "react"')&&!source.includes('from "@breditor/experimental-collaboration"'));

@@ -6,10 +6,13 @@ import {renderToString} from "react-dom/server";
 import {BreditorEditor} from "@breditor/editor/react";
 import {initializeLocalRuntime,createLocalProfile,emptyDocumentJson} from "@breditor/editor";
 import {initializeSharedRuntime,createSharedProfile,SharedRichEditor} from "@breditor/editor/collaboration";
+import * as applicationWasm from "@breditor/collaboration/wasm";
 const require=createRequire(import.meta.url);
+assert.deepEqual(Object.keys(applicationWasm).sort(),["SharedEditorOwner","SharedObservation","SharedRichProfile","default","initSync"].sort());
+assert.equal(applicationWasm.SharedEditorOwner.prototype.undo,undefined);assert.equal(applicationWasm.SharedEditorOwner.prototype.apply,undefined);
 assert.match(renderToString(createElement(BreditorEditor)),/data-breditor-phase="starting"/);
 await initializeLocalRuntime(readFileSync(require.resolve("@breditor/experimental-rich-content/wasm-binary")));
-await initializeSharedRuntime(readFileSync(require.resolve("@breditor/experimental-collaboration/wasm-binary")));
+await initializeSharedRuntime(readFileSync(require.resolve("@breditor/collaboration/wasm-binary")));
 const local=await createLocalProfile(),shared=await createSharedProfile();try{
  assert.equal(local.inlineCatalogJson(),shared.inline_catalog_json());
  const a=new SharedRichEditor(shared.create(emptyDocumentJson(local.descriptor(),"sdk-room","p"),"101")),b=new SharedRichEditor(shared.join_frame("sdk-room","202",a.updateFrame()));

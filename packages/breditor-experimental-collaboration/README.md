@@ -8,12 +8,15 @@ replicated document.
 This private workspace is an integration checkpoint, not a published package.
 Its matching generated module and binary are included as the `./wasm` and
 `./wasm-binary` exports. `node scripts/build-shared-runtime.mjs` builds them
-from the isolated Rust workspace before packing; installed applications no
+from the legacy qualification manifest before packing; installed applications no
 longer need a repository `target` file. Its configurable shared-profile factory
-compiles application-selected schemas and typed formats. Rust-source promotion
-and public release qualification remain open. The default Breditor packages and
-their Wasm graph are unchanged. The private `@breditor/editor/collaboration`
-entry adds lazy packaged-runtime initialization and a matching standard factory.
+compiles application-selected schemas and typed formats. Canonical source now
+lives in `crates/breditor-collaboration` and `packages/breditor-collaboration/src`;
+this package compiles that same browser source for compatibility. New SDK users
+select `@breditor/collaboration`, whose application-only Wasm excludes probes.
+The private `@breditor/editor/collaboration` entry uses that package, not this
+legacy module. Public release qualification remains open. Default Breditor
+packages and their Wasm graph are unchanged.
 
 ## Configurable shared profile
 

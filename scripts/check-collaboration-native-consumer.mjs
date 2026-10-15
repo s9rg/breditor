@@ -1,0 +1,19 @@
+/** Copy an independent native source candidate and prove it needs no downstream engine override. */
+import {execFileSync} from "node:child_process";
+import {cpSync,mkdtempSync,writeFileSync} from "node:fs";
+import {tmpdir,homedir} from "node:os";
+import {resolve,dirname,join} from "node:path";
+import {fileURLToPath} from "node:url";
+import assert from "node:assert/strict";
+import {assertNativeConsumerGraph} from "./collaboration-native-graph.mjs";
+const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdtempSync(join(tmpdir(),"breditor-native-consumer-")),source=resolve(temporary,"source"),consumer=resolve(temporary,"consumer");
+for(const name of ["Cargo.toml","Cargo.lock","README.md","LICENSE-MIT","LICENSE-APACHE"])cpSync(resolve(root,name),resolve(source,name),{recursive:true});
+for(const name of ["breditor-core","breditor-wasm","breditor-collaboration"])cpSync(resolve(root,"crates",name),resolve(source,"crates",name),{recursive:true});
+cpSync(resolve(root,"scripts/fixtures/collaboration-native-consumer"),consumer,{recursive:true});cpSync(resolve(root,"crates/breditor-collaboration/Cargo.lock"),resolve(consumer,"Cargo.lock"));
+const cargo=process.env.BREDITOR_CARGO??resolve(homedir(),".cargo/bin/cargo"),env={...process.env,CARGO_TARGET_DIR:resolve(root,"target/promoted-native-consumer"),CARGO_PROFILE_DEV_DEBUG:"0",CARGO_PROFILE_TEST_DEBUG:"0",CARGO_INCREMENTAL:"0"};
+const host=execFileSync(cargo,["--version","--verbose"],{encoding:"utf8"}).match(/^host: (\S+)$/m)?.[1];assert.ok(host,"Cargo must identify the native host");
+console.log(`Independent native source candidate: ${temporary}`);
+const metadata=JSON.parse(execFileSync(cargo,["metadata","--offline","--format-version","1","--filter-platform",host],{cwd:consumer,env,encoding:"utf8"}));
+assertNativeConsumerGraph(metadata,source,consumer);
+execFileSync(cargo,["run","--locked","--offline","--quiet","--target",host],{cwd:consumer,env,stdio:"inherit"});
+writeFileSync(resolve(root,"target/collaboration-native-consumer.json"),JSON.stringify({temporary,consumer,source}));console.log(`Retained independent native source candidate: ${temporary}`);

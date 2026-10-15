@@ -9,16 +9,21 @@ description = "Isolated native and Wasm contract checks for Breditor collaborati
 
 [lib]
 crate-type = ["rlib", "cdylib"]
+path = "../../crates/breditor-collaboration/src/lib.rs"
+
+[features]
+default = ["research"]
+# Compatibility qualification compiles the canonical source with its old probes.
+research = []
 
 # Prove replication/history before linking a new dependency into shipping crates.
 [workspace]
 resolver = "3"
-exclude = ["vendor/loro-internal-1.16.2"]
 
 # Reproducible engine authoring order for replay-proved same-writer history.
 # The published crates.io source remains untouched; see vendor/BREDITOR_PATCH.md.
 [patch.crates-io]
-loro-internal = { path = "vendor/loro-internal-1.16.2" }
+loro-internal = { path = "../../crates/breditor-collaboration/vendor/loro-internal-1.16.2" }
 
 [dependencies]
 breditor-core = { path = "../../crates/breditor-core", features = ["experimental-rich-content"] }

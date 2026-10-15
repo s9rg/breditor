@@ -1,0 +1,14 @@
+{
+ "name":"@breditor/collaboration","version":"0.3.0-alpha.22","private":true,
+ "description":"Optional original Rust-backed shared rich editor application runtime",
+ "type":"module","license":"MIT OR Apache-2.0","sideEffects":false,
+ "main":"./dist/index.js","types":"./dist/index.d.ts",
+ "files":["dist","README.md","LICENSE-MIT","LICENSE-APACHE"],
+ "exports":{
+  ".":{"types":"./dist/index.d.ts","import":"./dist/index.js"},
+  "./wasm":{"types":"./dist/runtime/breditor_shared.d.ts","import":"./dist/runtime/breditor_shared.js"},
+  "./wasm-binary":"./dist/runtime/breditor_shared_bg.wasm"
+ },
+ "dependencies":{"@breditor/experimental-rich-content":"0.3.0-alpha.22"},
+ "scripts":{"build:candidate":"tsc -p tsconfig.json","typecheck:candidate":"tsc -p tsconfig.json --noEmit"}
+}

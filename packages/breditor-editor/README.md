@@ -7,8 +7,8 @@ local editing does not load a replication engine or require a relay.
 
 This is a private `0.3.0-alpha.22` candidate, not a registry release or a frozen
 V1 API. The implementation still depends on the opt-in rich-content package.
-Collaboration now includes its matching Wasm binary, but its Rust source remains
-in the isolated collaboration workspace pending promotion.
+Collaboration uses the separate `@breditor/collaboration` application package,
+with canonical Rust/browser source and a matching module without research probes.
 
 ## Local editor
 
@@ -77,7 +77,7 @@ export function DocumentEditor({documentId}: {documentId: string}) {
   return <BreditorEditor
     ref={editor}
     sessionKey={documentId}
-    initialOptions={{initial: {kind: 'empty'}, label: 'Document'}}
+    initialOptions={{initial: {kind: 'empty', documentId}, label: 'Document'}}
     onError={console.error}
   />;
 }
@@ -99,9 +99,12 @@ Server rendering emits a starting placeholder without initializing Wasm.
 
 ## Optional collaboration
 
-Install the exact matching `@breditor/experimental-collaboration` candidate and
+Install the exact matching `@breditor/collaboration` candidate and
 use `@breditor/editor/collaboration`. Its generated module and binary are now
 inside that archive. Importing the local root never imports this entry.
+The original experimental package remains a separate compatibility/probe path,
+not an SDK dependency. Its generated module is not interchangeable with the
+application module's export surface.
 
 ```js
 import {createSharedProfile} from '@breditor/editor/collaboration';

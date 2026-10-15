@@ -1,13 +1,18 @@
 # Breditor collaboration feasibility checkpoint
 
-This isolated experimental Rust workspace exercises ownership, recovery and rich-content
-contracts before introducing a CRDT dependency into shipping Breditor packages.
+This isolated compatibility workspace exercises ownership, recovery and rich-content
+contracts without introducing a CRDT dependency into default Breditor packages.
+Its manifest now compiles the one canonical implementation in
+`crates/breditor-collaboration/src/lib.rs` with the explicit `research` feature.
+Application builds use the canonical manifest without probe exports; the legacy
+module and test entry points remain available here.
 It pins `loro = 1.16.2` and `wasm-bindgen = 0.2.127`, and exercises the actual
 opt-in `breditor-core::rich_content` values in matching WebAssembly.
 The collaboration workspace overrides `loro-internal` with the retained 1.16.2
 source and a narrow deterministic-history patch. See
-[patch provenance and scope](vendor/BREDITOR_PATCH.md). Shipping packages do not
-use this override.
+[patch provenance and scope](../../crates/breditor-collaboration/vendor/BREDITOR_PATCH.md).
+The optional application and relay builds use the same retained patch; the
+default editor/Wasm workspace does not.
 
 Run from the repository root:
 

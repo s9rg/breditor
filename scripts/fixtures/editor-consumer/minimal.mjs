@@ -4,6 +4,7 @@ import {createRequire} from "node:module";
 import {initializeLocalRuntime,createLocalProfile,emptyDocumentJson} from "@breditor/editor";
 const require=createRequire(import.meta.url);
 assert.equal(existsSync("node_modules/@breditor/experimental-collaboration"),false);
+assert.equal(existsSync("node_modules/@breditor/collaboration"),false);
 assert.equal(existsSync("node_modules/react"),false);
 await initializeLocalRuntime(readFileSync(require.resolve("@breditor/experimental-rich-content/wasm-binary")));
 const profile=await createLocalProfile();try{
