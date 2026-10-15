@@ -166,6 +166,9 @@ impl UiState {
             .as_ref()
             .and_then(Selection::caret)
             .ok_or(Error::Contract("shared pending formats require caret"))?;
+        if selection::kind(document, &point.block)? == "breditor/code-block" && !value.is_empty() {
+            return Err(Error::Contract("shared code does not admit pending formats"));
+        }
         self.pending = Some(canonical_formats(codec, value)?);
         self.context = Some(PendingContext {
             block: point.block.clone(),

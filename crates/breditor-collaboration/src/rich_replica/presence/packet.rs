@@ -37,7 +37,7 @@ impl Packet {
             format_version: 1,
             document: owner.document_id().into(),
             writer: owner.writer().into(),
-            model_version: super::super::MODEL_VERSION,
+            model_version: owner.model_version(),
             engine: ENGINE.into(),
             schema_fingerprint: owner.codec.schema().fingerprint().to_string(),
             clocks: owner
@@ -58,7 +58,7 @@ impl Packet {
     pub fn ready(&self, owner: &RichReplica) -> Result<bool, Error> {
         if self.format != "breditor/shared-rich-presence"
             || self.format_version != 1
-            || self.model_version != super::super::MODEL_VERSION
+            || self.model_version != owner.model_version()
             || self.engine != ENGINE
             || self.document != owner.document_id()
             || self.schema_fingerprint != owner.codec.schema().fingerprint().to_string()

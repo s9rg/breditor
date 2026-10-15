@@ -4,7 +4,7 @@ use super::{
     text::Annotation,
 };
 use crate::{Error, register::Stamp};
-use loro::{LoroDoc, ToJson, TreeID};
+use loro::{LoroDoc, LoroMap, ToJson, TreeID};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
@@ -54,6 +54,30 @@ fn paired(properties: &mut Map<String, Value>, names: &[&str], removes: Vec<Stri
             .collect(),
         removes,
     }
+}
+
+fn text_properties(
+    doc: &LoroDoc,
+    effects: &LoroMap,
+    kind: &str,
+    properties: &mut Map<String, Value>,
+    stamp: Stamp,
+) -> Result<(), Error> {
+    if super::protocol::Protocol::read(doc)?.text(kind) {
+        let mut patch = paired(properties, &["breditor/level"], vec![]);
+        patch.sets.insert("$type".into(), kind.into());
+        crate::register::write(effects, "text-kind", stamp, serde_json::to_string(&patch)?.into())?;
+    }
+    if kind == "breditor/code-block" {
+        let patch = paired(properties, &["breditor/language"], vec![]);
+        crate::register::write(
+            effects,
+            "code-language",
+            stamp,
+            serde_json::to_string(&patch)?.into(),
+        )?;
+    }
+    Ok(())
 }
 
 #[allow(clippy::type_complexity)]
@@ -110,16 +134,7 @@ fn element(
             }
         }
     }
-    if kind == "breditor/paragraph" || kind == "breditor/heading" {
-        let mut patch = paired(&mut properties, &["breditor/level"], vec![]);
-        patch.sets.insert("$type".into(), kind.into());
-        crate::register::write(
-            &effects,
-            "text-kind",
-            stamp,
-            serde_json::to_string(&patch)?.into(),
-        )?;
-    }
+    text_properties(doc, &effects, kind, &mut properties, stamp)?;
     if let Some(columns) = properties.remove("breditor/columns") {
         seed_columns(doc, &block, &columns, stamp)?;
     }
@@ -135,7 +150,7 @@ fn element(
         .get("children")
         .and_then(Value::as_array)
         .ok_or(Error::Contract("shared element children"))?;
-    if kind == "breditor/paragraph" || kind == "breditor/heading" {
+    if super::protocol::Protocol::read(doc)?.text(kind) {
         let text = super::model::text(doc, &block)?;
         let mut offset = 0_u32;
         for run in children {

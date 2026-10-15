@@ -26,7 +26,7 @@ pub(super) fn operations(
     let changes = owner.doc.export_json_in_id_span(IdSpan::new(writer, from, through));
     let value = json!({"format":"breditor/shared-writer-lineage","formatVersion":1,
         "document":owner.document_id(),"schemaFingerprint":owner.codec.schema().fingerprint().to_string(),
-        "modelVersion":super::super::MODEL_VERSION,"engine":super::ENGINE,
+        "modelVersion":owner.model_version(),"engine":super::ENGINE,
         "writer":writer.to_string(),"from":from.to_string(),"through":through.to_string(),"changes":changes});
     Ok(bytes(&serde_json::to_vec(&value)?))
 }

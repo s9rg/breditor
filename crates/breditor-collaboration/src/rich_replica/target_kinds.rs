@@ -16,6 +16,9 @@ impl TargetKinds {
         }
     }
     pub fn kind(&self, document: &RichDocument, block: &BlockId) -> Result<String, Error> {
+        if let Some(kind) = self.0.get(block.as_str()) {
+            return Ok(kind.clone());
+        }
         if let Some(path) = document.block_path(block) {
             return Ok(document
                 .document()
@@ -34,6 +37,16 @@ impl TargetKinds {
     }
     pub fn record(&mut self, command: &Command) -> Result<(), Error> {
         match command {
+            Command::SetCodeBlock(value) => {
+                self.0.insert(value.block.clone(), "breditor/code-block".into());
+            }
+            Command::SetHeading(value) => {
+                self.0.insert(
+                    value.block.clone(),
+                    if value.level.is_some() { "breditor/heading" } else { "breditor/paragraph" }
+                        .into(),
+                );
+            }
             Command::SetImageCaption(value) => {
                 if let Some(node) = &value.caption {
                     self.node(node)?;

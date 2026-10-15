@@ -27,6 +27,7 @@ struct Info {
 }
 pub(super) struct Grammar {
     info: BTreeMap<String, Info>,
+    protocol: super::super::protocol::Protocol,
 }
 
 impl Grammar {
@@ -81,7 +82,7 @@ impl Grammar {
             };
             info.insert(block.clone(), Info { kind, active, caption, column, columns });
         }
-        Ok(Self { info })
+        Ok(Self { info, protocol: super::super::protocol::Protocol::read(doc)? })
     }
     pub fn violation(&self, parents: &Parents) -> Result<Option<Violation>, Error> {
         for (block, parent) in parents {
@@ -93,7 +94,7 @@ impl Grammar {
                 .as_deref()
                 .map(|id| self.get(id).map(|value| value.kind.as_str()))
                 .transpose()?;
-            if !allows(parent_kind, kind) {
+            if !allows(self.protocol, parent_kind, kind) {
                 return Ok(Some(Violation::Parent(block.clone())));
             }
             if kind == "breditor/table" {
@@ -153,10 +154,19 @@ impl Grammar {
     }
 }
 
-fn allows(parent: Option<&str>, kind: &str) -> bool {
+fn allows(protocol: super::super::protocol::Protocol, parent: Option<&str>, kind: &str) -> bool {
+    if protocol == super::super::protocol::Protocol::StructuralV2 {
+        match parent {
+            Some("breditor/blockquote" | "breditor/task-item") => {
+                return protocol.flow(kind);
+            }
+            Some("breditor/task-list") => return kind == "breditor/task-item",
+            _ => {}
+        }
+    }
     match parent {
-        None | Some("breditor/list-item") => super::escape::flow(kind),
-        Some("breditor/table-cell") => kind != "breditor/table" && super::escape::flow(kind),
+        None | Some("breditor/list-item") => protocol.flow(kind),
+        Some("breditor/table-cell") => kind != "breditor/table" && protocol.flow(kind),
         Some("breditor/image") => kind == "breditor/paragraph",
         Some("breditor/table") => kind == "breditor/table-row",
         Some("breditor/table-row") => kind == "breditor/table-cell",

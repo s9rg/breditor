@@ -42,6 +42,9 @@ impl SetHeading {
         else {
             return Ok(());
         };
+        if super::super::selection::kind(document, &self.block)? == "breditor/code-block" {
+            super::super::structural_text::remove_observed_formats(doc, &self.block, stamp)?;
+        }
         let mut sets = BTreeMap::from([(
             "$type".into(),
             json!(if self.level.is_some() { "breditor/heading" } else { "breditor/paragraph" }),

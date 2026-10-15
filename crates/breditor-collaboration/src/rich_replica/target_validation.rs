@@ -26,11 +26,23 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
             let block = BlockId::try_new(primary(command)?).map_err(contract)?;
             let kind = declared.kind(&owner.document, &block)?;
             let expected = match command {
-                Command::InsertText(_)
-                | Command::ReplaceTextRange(_)
-                | Command::DeleteText(_)
+                Command::InsertText(_) | Command::DeleteText(_) | Command::SetHeading(_) => {
+                    owner.protocol.text(&kind)
+                }
+                Command::SetCodeBlock(_) => {
+                    owner.protocol == super::protocol::Protocol::StructuralV2
+                        && owner.protocol.text(&kind)
+                }
+                Command::SetCodeLanguage(_) => {
+                    owner.protocol == super::protocol::Protocol::StructuralV2
+                        && kind == "breditor/code-block"
+                }
+                Command::SetTaskChecked(_) => {
+                    owner.protocol == super::protocol::Protocol::StructuralV2
+                        && kind == "breditor/task-item"
+                }
+                Command::ReplaceTextRange(_)
                 | Command::SetFormat(_)
-                | Command::SetHeading(_)
                 | Command::SplitTextBlock(_)
                 | Command::JoinTextBlocks(_) => {
                     matches!(kind.as_str(), "breditor/paragraph" | "breditor/heading")
@@ -56,6 +68,9 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
 }
 fn primary(command: &Command) -> Result<&str, Error> {
     Ok(match command {
+        Command::SetCodeBlock(value) => &value.block,
+        Command::SetCodeLanguage(value) => &value.block,
+        Command::SetTaskChecked(value) => &value.block,
         Command::InsertText(value) => &value.block,
         Command::ReplaceTextRange(value) => &value.anchor.block,
         Command::SplitTextBlock(value) => &value.block,

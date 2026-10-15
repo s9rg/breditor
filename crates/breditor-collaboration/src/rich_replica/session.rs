@@ -102,6 +102,7 @@ pub struct RichReplica {
     pub(super) doc: LoroDoc,
     pub(super) undo: UndoManager,
     pub(super) codec: DocumentJsonCodecV2,
+    pub(super) protocol: super::protocol::Protocol,
     pub(super) journal: Journal,
     header: Value,
     pub(super) document: RichDocument,
@@ -133,16 +134,23 @@ impl RichReplica {
         document_json: &str,
         writer: String,
     ) -> Result<Self, Error> {
-        if codec.schema().rich_content_revision() != Some(1) {
-            return Err(Error::Contract("shared model 11 requires rich-language V1"));
-        }
+        super::protocol::Protocol::require_original(&codec)?;
+        Self::new_bound(codec, document_json, writer)
+    }
+
+    pub(super) fn new_bound(
+        codec: DocumentJsonCodecV2,
+        document_json: &str,
+        writer: String,
+    ) -> Result<Self, Error> {
+        let protocol = super::protocol::Protocol::from_codec(&codec)?;
         let document = codec.decode(document_json).map_err(contract)?;
         let rich =
             RichDocument::try_admit(codec.schema(), document, codec.limits()).map_err(contract)?;
         let canonical = codec.encode(rich.document()).map_err(contract)?;
         let journal = Journal {
             format: "breditor/rich-replica-journal".into(),
-            version: JOURNAL_VERSION,
+            version: protocol.journal(),
             document: rich.id().as_str().into(),
             writer,
             origin: Origin::Seed { document_json: canonical },
@@ -163,11 +171,22 @@ impl RichReplica {
         writer: String,
         updates: Vec<u8>,
     ) -> Result<Self, Error> {
+        super::protocol::Protocol::require_original(&codec)?;
+        Self::join_bound(codec, document, writer, updates)
+    }
+
+    pub(super) fn join_bound(
+        codec: DocumentJsonCodecV2,
+        document: String,
+        writer: String,
+        updates: Vec<u8>,
+    ) -> Result<Self, Error> {
+        let protocol = super::protocol::Protocol::from_codec(&codec)?;
         Self::from_journal(
             codec,
             Journal {
                 format: "breditor/rich-replica-journal".into(),
-                version: JOURNAL_VERSION,
+                version: protocol.journal(),
                 document,
                 writer,
                 origin: Origin::Join { updates },
@@ -187,14 +206,13 @@ impl RichReplica {
         writer: String,
         input: &str,
     ) -> Result<Self, Error> {
+        super::protocol::Protocol::require_original(&codec)?;
         let bytes = super::update_frame::decode(&codec, &document, input)?;
         Self::join(codec, document, writer, bytes)
     }
 
     fn base(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if codec.schema().rich_content_revision() != Some(1) {
-            return Err(Error::Contract("shared model 11 requires rich-language V1"));
-        }
+        let protocol = super::protocol::Protocol::from_codec(&codec)?;
         crate::identity::validate_id(&journal.document)?;
         let doc = LoroDoc::new();
         doc.set_peer_id(writer_id(&journal.writer)?)?;
@@ -211,6 +229,7 @@ impl RichReplica {
             Origin::Seed { document_json } => {
                 let admitted = codec.decode(document_json).map_err(contract)?;
                 let canonical = codec.encode(&admitted).map_err(contract)?;
+                protocol.seed(&doc)?;
                 initialize::seed(&doc, &serde_json::from_str(&canonical)?)?;
             }
             Origin::Join { updates } => {
@@ -224,6 +243,7 @@ impl RichReplica {
                 doc.import(updates)?;
             }
         }
+        protocol.require(&doc)?;
         let header = materialize::header(&doc)?;
         let value = materialize::envelope(&doc)?;
         let admitted = codec.decode(&value.to_string()).map_err(contract)?;
@@ -241,6 +261,7 @@ impl RichReplica {
             doc,
             undo,
             codec,
+            protocol,
             journal,
             header,
             document,
@@ -256,7 +277,10 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
-        if journal.format != "breditor/rich-replica-journal" || journal.version != JOURNAL_VERSION {
+        let protocol = super::protocol::Protocol::from_codec(&codec)?;
+        if journal.format != "breditor/rich-replica-journal"
+            || journal.version != protocol.journal()
+        {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
@@ -420,6 +444,15 @@ impl RichReplica {
         if let Some(expected) = expected
             && effects(&self.doc, &before)? != *expected
         {
+            // Explicit native debug aid; effects can include document content.
+            // Never compiled into browser or native release builds.
+            #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
+            if std::env::var_os("BREDITOR_REPLAY_TRACE").is_some() {
+                eprintln!(
+                    "REPLAY EXPECTED: {expected}\nREPLAY ACTUAL: {}",
+                    effects(&self.doc, &before)?
+                );
+            }
             return Err(Error::ReplayMismatch);
         }
         self.note_writer_window(&applied_before, false)?;
@@ -527,6 +560,7 @@ impl RichReplica {
     }
 
     fn refresh_document(&mut self) -> Result<(), Error> {
+        self.protocol.require(&self.doc)?;
         if materialize::header(&self.doc)? != self.header {
             return Err(Error::Contract("immutable shared document binding"));
         }
@@ -543,6 +577,7 @@ impl RichReplica {
     }
 
     fn validate_adoption(&mut self) -> Result<(), Error> {
+        self.protocol.require(&self.doc)?;
         if self.journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
@@ -763,6 +798,15 @@ impl RichReplica {
     /// # Errors
     /// Rejects incompatible bindings, altered effects, wrong document or budgets.
     pub fn restore(codec: DocumentJsonCodecV2, document: &str, bytes: &str) -> Result<Self, Error> {
+        super::protocol::Protocol::require_original(&codec)?;
+        Self::restore_bound(codec, document, bytes)
+    }
+
+    pub(super) fn restore_bound(
+        codec: DocumentJsonCodecV2,
+        document: &str,
+        bytes: &str,
+    ) -> Result<Self, Error> {
         if bytes.len() > MAX_JOURNAL_BYTES {
             return Err(Error::Limit("rich journal bytes"));
         }
@@ -781,6 +825,16 @@ impl RichReplica {
     #[must_use]
     pub const fn document(&self) -> &RichDocument {
         &self.document
+    }
+    /// Causal projection semantics selected by the immutable compiled profile.
+    #[must_use]
+    pub const fn model_version(&self) -> u32 {
+        self.protocol.model()
+    }
+    /// Exact replay contract; journals from other causal models cannot be relabeled.
+    #[must_use]
+    pub const fn journal_version(&self) -> u32 {
+        self.protocol.journal()
     }
     /// Writer-local undo depth; remote work never adds a step.
     #[must_use]

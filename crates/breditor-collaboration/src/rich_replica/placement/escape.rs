@@ -3,18 +3,6 @@ use super::{Site, metadata, prepare, site, string};
 use crate::Error;
 use loro::LoroDoc;
 
-pub(super) fn flow(kind: &str) -> bool {
-    matches!(
-        kind,
-        "breditor/paragraph"
-            | "breditor/heading"
-            | "breditor/bullet-list"
-            | "breditor/ordered-list"
-            | "breditor/table"
-            | "breditor/image"
-    )
-}
-
 /// Reserve outside user history, including for currently unborn authored flow.
 pub(super) fn reserve(
     doc: &LoroDoc,
@@ -23,7 +11,7 @@ pub(super) fn reserve(
     origin: &str,
 ) -> Result<(), Error> {
     let meta = metadata(doc, block)?;
-    if !flow(&string(&meta, "type")?) {
+    if !super::super::protocol::Protocol::read(doc)?.flow(&string(&meta, "type")?) {
         return Ok(());
     }
     let id = if parent.is_none() {

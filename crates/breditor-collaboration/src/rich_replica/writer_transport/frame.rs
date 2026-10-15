@@ -92,7 +92,7 @@ pub(super) fn encode(owner: &RichReplica, window: &super::Window) -> Result<Stri
             version: schema.id().version().get(),
         },
         schema_fingerprint: schema.fingerprint().to_string(),
-        model_version: super::super::MODEL_VERSION,
+        model_version: owner.model_version(),
         engine: Engine { name: "loro".into(), version: super::ENGINE.into() },
         kind: window.kind,
         writer: owner.writer().into(),
@@ -126,7 +126,7 @@ pub(super) fn decode(
     let schema = owner.codec.schema();
     if frame.format != "breditor/shared-writer-group"
         || frame.format_version != 1
-        || frame.model_version != super::super::MODEL_VERSION
+        || frame.model_version != owner.model_version()
         || frame.engine.name != "loro"
         || frame.engine.version != super::ENGINE
     {

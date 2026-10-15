@@ -97,11 +97,15 @@ fn element(
         }
     }
     let mut children = vec![];
-    if kind == "breditor/paragraph" || kind == "breditor/heading" {
+    let protocol = super::protocol::Protocol::read(doc)?;
+    if protocol.text(&kind) {
         if flows.joined(block)? {
             return Ok(None);
         }
         children = flows.runs(doc, block)?;
+        if protocol == super::protocol::Protocol::StructuralV2 {
+            project_text_properties(&kind, &mut properties, &mut children)?;
+        }
     } else {
         for child in placements.children(doc, Some(block))? {
             if let Some(value) = element(doc, flows, placements, &child, depth + 1)? {
@@ -120,10 +124,35 @@ fn element(
         }
         properties.insert("breditor/columns".into(), Value::Array(columns));
     }
-    if (kind == "breditor/bullet-list" || kind == "breditor/ordered-list") && children.is_empty() {
+    if !normalize_body(doc, flows, placements, block, &kind, protocol, &mut children)? {
         return Ok(None);
     }
-    if kind == "breditor/table-cell" || kind == "breditor/list-item" {
+    Ok(Some(
+        json!({"kind":"element","type":kind,"entityId":object_string(&meta,"entity")?,"properties":properties,"children":children}),
+    ))
+}
+
+fn normalize_body(
+    doc: &LoroDoc,
+    flows: &super::text_flow::Projection,
+    placements: &super::placement::Projection,
+    block: &str,
+    kind: &str,
+    protocol: super::protocol::Protocol,
+    children: &mut Vec<Value>,
+) -> Result<bool, Error> {
+    let structural = protocol == super::protocol::Protocol::StructuralV2;
+    if (kind == "breditor/bullet-list"
+        || kind == "breditor/ordered-list"
+        || (structural && kind == "breditor/task-list"))
+        && children.is_empty()
+    {
+        return Ok(false);
+    }
+    if kind == "breditor/table-cell"
+        || kind == "breditor/list-item"
+        || (structural && matches!(kind, "breditor/task-item" | "breditor/blockquote"))
+    {
         let leading_text = children
             .first()
             .and_then(|node| node.get("type"))
@@ -131,13 +160,40 @@ fn element(
             .is_some_and(|kind| kind == "breditor/paragraph" || kind == "breditor/heading");
         let default = virtual_id("flow", &[block]);
         let (fallback, explicit) = fallback(doc, flows, placements, &default)?;
-        if children.is_empty() || (kind == "breditor/list-item" && !leading_text) || explicit {
+        if children.is_empty()
+            || (matches!(kind, "breditor/list-item" | "breditor/task-item") && !leading_text)
+            || explicit
+        {
             children.insert(0, fallback);
         }
     }
-    Ok(Some(
-        json!({"kind":"element","type":kind,"entityId":object_string(&meta,"entity")?,"properties":properties,"children":children}),
-    ))
+    Ok(true)
+}
+
+/// Kind and language are independent writer-owned fields. Inapplicable values
+/// stay causal (so selective Undo works) but never leak into the admitted AST.
+fn project_text_properties(
+    kind: &str,
+    properties: &mut Map<String, Value>,
+    runs: &mut Vec<Value>,
+) -> Result<(), Error> {
+    if kind == "breditor/code-block" {
+        properties.remove("breditor/level");
+        let mut text = String::new();
+        for run in runs.iter() {
+            text.push_str(
+                run["text"].as_str().ok_or(Error::Contract("shared code text projection"))?,
+            );
+        }
+        *runs = if text.is_empty() {
+            vec![]
+        } else {
+            vec![json!({"kind":"text","text":text,"formats":[]})]
+        };
+    } else {
+        properties.remove("breditor/language");
+    }
+    Ok(())
 }
 
 fn columns(doc: &LoroDoc, block: &str) -> Result<Vec<Value>, Error> {
@@ -286,6 +342,20 @@ fn fallback(
                 node["type"] = kind;
             }
         }
+    }
+    if super::protocol::Protocol::read(doc)? == super::protocol::Protocol::StructuralV2 {
+        let kind =
+            node["type"].as_str().ok_or(Error::Contract("shared normalized kind"))?.to_owned();
+        let mut runs =
+            node["children"].as_array().ok_or(Error::Contract("shared normalized runs"))?.clone();
+        project_text_properties(
+            &kind,
+            node["properties"]
+                .as_object_mut()
+                .ok_or(Error::Contract("shared normalized properties"))?,
+            &mut runs,
+        )?;
+        node["children"] = Value::Array(runs);
     }
     Ok((node, explicit))
 }

@@ -4,7 +4,9 @@ The opt-in Rust core, Wasm boundary and explicitly selected local SDK support
 blockquotes, plain-text code, horizontal rules and tasks. Select native contracts
 with `CompiledSchema::try_compile_rich_content_profile_v2`, or open the local SDK
 with `richLanguage: 2`. Existing defaults stay V1. Shared model 11 still rejects V2
-before seed parsing or engine import; this is not a shared structural release.
+before seed parsing or engine import. An explicitly selected native shared V2
+profile now has its own model and replay contract; it is not yet exposed through
+the browser SDK or relay configuration.
 
 ## Explicit local profile
 
@@ -173,6 +175,55 @@ is honored without first moving the visible logical caret. Installed regression
 tests cover both paths; synthetic events and automation keys are not native IME
 qualification or a repair claim for the historical intermittent WebKit fault.
 
+## Native shared structural foundation
+
+The optional Rust collaboration crate has explicit
+`SharedRichProfile::from_schema_v2`, `from_configuration_json_v2` and
+`from_standard_configuration_json_v2` factories. Configuration format 2 compiles
+the sealed V2 grammar with the same bounded declarations and tightened host
+budgets. The standard factory composes standard inline V1. Use that profile's
+`create`, `join_frame` and `restore`; the original direct `RichReplica`
+constructors and V1 profile factories remain V1-only.
+
+The native profile selects causal model 12 and journal 13. It does not relabel
+model 11/journal 12, migrate old state or change Document format 2. V2 descriptors
+add `richLanguageVersion: 2`; original descriptors are unchanged. Updates,
+single-writer group lineage, presence and replay all derive their model from the
+compiled profile. Wrong versions reject before opaque engine import. V2 genesis
+adds a causal model marker checked against that profile before projection and
+publication; remote removal or relabeling rejects atomically. V1 genesis writes
+no additional marker operation.
+
+Seed, insert, move and delete can retain quotes, code, rules and task subtrees.
+Code uses causal text sources, not recursively interpreted element children.
+Empty task lists stay hidden; a task without a leading prose block receives a
+stable normalized head, and empty quotes receive normalized prose. Nested-table
+and image-caption restrictions still apply through these containers.
+
+Separate shared `set_code_block.rs`, `set_code_language.rs` and
+`set_task_checked.rs` actions admit the original core result before lowering and
+compare the final AST with it. Code kind and language use independent
+writer-owned fields. Formatting removal authors reversible annotation disables
+instead of deleting foreign contributions; projection also masks unseen
+concurrent styles while code is visible. Explicit conversion back to prose
+disables currently observed latent styles, preserving the visible plain-code
+semantics. Selective Undo retains the other writer's language, text, styles and
+task completion. Setting an already matching task value remains a complete no-op.
+Code caret typing retains exact Unicode, tabs and line endings and rejects
+nonempty pending styles.
+
+Shared task wrapping, split/join, indent/outdent/empty exit, quote wrapper commands
+and explicit rule commands still need native lowering. Same-block selected code
+replacement and the full code boundary policy also remain open. V2 Wasm
+factories, SDK selection and relay configuration are deliberately absent until
+the complete command, conflict and recovery contracts are ready. One development
+run reported `ReplayMismatch` in concurrent style/code history; subsequent focused
+and complete runs passed without identifying its cause. This observation remains
+open and prevents V2 promotion. Native debug builds can opt into
+`BREDITOR_REPLAY_TRACE=1` to print differing engine effects; these may contain
+document content, so use controlled fixtures. The trace is absent from Wasm and
+native release builds.
+
 ## Tests and remaining integration
 
 `crates/breditor-core/tests/rich_structural_v2.rs` covers V1 isolation, malformed
@@ -182,13 +233,19 @@ replacement, rekeyed clipboard, task boundaries and exact future history.
 `crates/breditor-wasm/tests/rich_structural_v2.rs` checks explicit V7 factories,
 closed commands/drafts and recovered history. Installed vanilla/React scenarios
 live in `experiments/editor-browser/structural-v2.spec.mjs`. Shared profile tests
-prove early rejection of this not-yet-supported shared language.
+prove that original factories still reject V2. The separate
+`crates/breditor-collaboration/tests/rich_structural_v2_contracts.rs` covers the
+explicit native V2 profile, exact mixed AST projection, independent writer fields,
+offline selection/history, wrong-model rejection and exact future replay.
+`scripts/compare-shared-v1-runtime.mjs` compares two actual V1 Wasm runtimes,
+including byte-exact journals and semantic lineage plus cross-version recovery.
 `crates/breditor-core/tests/rich_task_structure_v2.rs` checks nesting, actual flow
 parents, empty exit, checked values, ordering, active limits, atomic rejection and
 exact future history. Installed keyboard, toolbar and React regressions are in
 `experiments/editor-browser/task-structure.spec.mjs`.
 
-Next, define V2 shared operation/conflict and journal compatibility contracts.
+Next, finish the shared structural command family and investigate the retained
+replay observation before exposing V2 browser/relay factories.
 Code exit-to-new-block shortcuts and complete atomic-block caret navigation still
 need explicit actions and integration.
 Atomic-block navigation, general selections, typing coalescing, live read-only

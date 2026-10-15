@@ -22,12 +22,15 @@ mod replace_image;
 mod replace_text_range;
 mod resize_column;
 mod resize_image;
+mod set_code_block;
+mod set_code_language;
 mod set_format;
 mod set_header;
 mod set_heading;
 mod set_image_alt;
 mod set_image_caption;
 mod set_list_kind;
+mod set_task_checked;
 mod split_cell;
 mod split_list_item;
 mod split_text_block;
@@ -60,12 +63,15 @@ pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
 pub use resize_column::ResizeColumn;
 pub use resize_image::ResizeImage;
 use serde::{Deserialize, Serialize};
+pub use set_code_block::{CodeFormatPolicy, SetCodeBlock};
+pub use set_code_language::SetCodeLanguage;
 pub use set_format::SetFormat;
 pub use set_header::SetHeader;
 pub use set_heading::SetHeading;
 pub use set_image_alt::SetImageAlt;
 pub use set_image_caption::SetImageCaption;
 pub use set_list_kind::SetListKind;
+pub use set_task_checked::SetTaskChecked;
 pub use split_cell::SplitCell;
 pub use split_list_item::SplitListItem;
 pub use split_text_block::SplitTextBlock;
@@ -76,6 +82,12 @@ pub use wrap_list::WrapList;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Explicit structural V2 code conversion with declared observed-format loss.
+    SetCodeBlock(SetCodeBlock),
+    /// Update a V2 code language independently of kind and text.
+    SetCodeLanguage(SetCodeLanguage),
+    /// Set V2 task completion independently of its rich body.
+    SetTaskChecked(SetTaskChecked),
     /// Replace selected text with fresh rich flow while routing the original suffix source.
     PasteFlowAtText(PasteFlowAtText),
     /// Paste freshly allocated flow, authoring new merge clocks rather than importing history.
@@ -146,6 +158,9 @@ pub enum Command {
 impl Command {
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::SetCodeBlock(value) => value.prepare(doc)?,
+            Self::SetCodeLanguage(value) => value.prepare(doc)?,
+            Self::SetTaskChecked(value) => value.prepare(doc)?,
             Self::PasteFlowAtText(value) => value.prepare(doc)?,
             Self::PasteBlocks(value) => value.prepare(doc)?,
             Self::PasteTableCells(value) => value.prepare(doc)?,
@@ -230,6 +245,9 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::SetCodeBlock(value) => value.apply(doc, codec, document, stamp),
+            Self::SetCodeLanguage(value) => value.apply(doc, codec, document, stamp),
+            Self::SetTaskChecked(value) => value.apply(doc, codec, document, stamp),
             Self::PasteFlowAtText(value) => value.apply(doc, codec, document, stamp),
             Self::PasteBlocks(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::PasteTableCells(value) => value.apply(doc, codec, document, stamp),

@@ -16,6 +16,7 @@ use breditor_core::{
 #[derive(Clone)]
 pub struct SharedRichProfile {
     codec: DocumentJsonCodecV2,
+    protocol: super::protocol::Protocol,
 }
 impl SharedRichProfile {
     /// Explicitly compose standard inline V1 before resolving application dependencies.
@@ -37,7 +38,40 @@ impl SharedRichProfile {
             return Err(Error::Contract("shared model 11 requires rich-language V1"));
         }
         limits::validate(&limits)?;
-        Ok(Self { codec: DocumentJsonCodecV2::new(schema).with_limits(limits) })
+        Ok(Self {
+            codec: DocumentJsonCodecV2::new(schema).with_limits(limits),
+            protocol: super::protocol::Protocol::Original,
+        })
+    }
+    /// Explicit native structural V2 profile, with causal model 12 and journal 13.
+    ///
+    /// This does not migrate V1 state. Browser and relay V2 support are separate
+    /// capabilities; callers must not substitute this profile into V1 transports.
+    /// # Errors
+    /// Rejects other rich revisions and budgets that widen the core defaults.
+    pub fn from_schema_v2(schema: CompiledSchema, limits: DocumentLimits) -> Result<Self, Error> {
+        if schema.rich_content_revision() != Some(2) {
+            return Err(Error::Contract("shared model 12 requires rich-language V2"));
+        }
+        limits::validate(&limits)?;
+        Ok(Self {
+            codec: DocumentJsonCodecV2::new(schema).with_limits(limits),
+            protocol: super::protocol::Protocol::StructuralV2,
+        })
+    }
+    /// Compile bounded configuration format 2 without automatically adding inline formats.
+    /// # Errors
+    /// Rejects V1 configuration, unknown fields and invalid declarations or budgets.
+    pub fn from_configuration_json_v2(input: &str) -> Result<Self, Error> {
+        let (schema, limits) = configuration::compile_revision(input, false, 2)?;
+        Self::from_schema_v2(schema, limits)
+    }
+    /// Compose standard inline V1 declarations with structural rich-language V2.
+    /// # Errors
+    /// Rejects conflicting declarations and any configuration other than format 2.
+    pub fn from_standard_configuration_json_v2(input: &str) -> Result<Self, Error> {
+        let (schema, limits) = configuration::compile_revision(input, true, 2)?;
+        Self::from_schema_v2(schema, limits)
     }
     /// Compile original bounded `breditor/shared-rich-profile` V1 configuration.
     ///
@@ -63,10 +97,14 @@ impl SharedRichProfile {
     #[must_use]
     pub fn descriptor_json(&self) -> String {
         let schema = self.schema();
-        serde_json::json!({"format":"breditor/shared-rich-profile-descriptor","formatVersion":1,
-            "abiVersion":1,"modelVersion":super::MODEL_VERSION,"journalVersion":super::session::JOURNAL_VERSION,
+        let mut descriptor = serde_json::json!({"format":"breditor/shared-rich-profile-descriptor","formatVersion":1,
+            "abiVersion":1,"modelVersion":self.protocol.model(),"journalVersion":self.protocol.journal(),
             "schema":{"name":schema.id().name().as_str(),"version":schema.id().version().get()},
-            "schemaFingerprint":schema.fingerprint().to_string(),"limits":limits::descriptor(self.limits())}).to_string()
+            "schemaFingerprint":schema.fingerprint().to_string(),"limits":limits::descriptor(self.limits())});
+        if self.protocol == super::protocol::Protocol::StructuralV2 {
+            descriptor["richLanguageVersion"] = serde_json::json!(2);
+        }
+        descriptor.to_string()
     }
     /// Read exact typed inline declarations for a schema-bound presentation compiler.
     /// This contains no room/history or presentation callbacks and grants no authority.
@@ -78,7 +116,7 @@ impl SharedRichProfile {
     /// # Errors
     /// Rejects wrong schema, invalid content, writer identity or shared budgets.
     pub fn create(&self, document: &str, writer: String) -> Result<RichReplica, Error> {
-        RichReplica::new(self.codec.clone(), document, writer)
+        RichReplica::new_bound(self.codec.clone(), document, writer)
     }
     /// Join a room/model/engine/schema-bound update with a new exclusive writer.
     /// # Errors
@@ -89,12 +127,13 @@ impl SharedRichProfile {
         writer: String,
         frame: &str,
     ) -> Result<RichReplica, Error> {
-        RichReplica::join_frame(self.codec.clone(), room, writer, frame)
+        let bytes = super::update_frame::decode(&self.codec, &room, frame)?;
+        RichReplica::join_bound(self.codec.clone(), room, writer, bytes)
     }
     /// Replay-admit exact history after reacquiring the same writer's exclusive lease.
     /// # Errors
     /// Rejects mismatched profiles, rooms, old journals or divergent future history.
     pub fn restore(&self, room: &str, journal: &str) -> Result<RichReplica, Error> {
-        RichReplica::restore(self.codec.clone(), room, journal)
+        RichReplica::restore_bound(self.codec.clone(), room, journal)
     }
 }

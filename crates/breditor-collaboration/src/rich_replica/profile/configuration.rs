@@ -148,11 +148,19 @@ pub(super) fn compile_with_standard(
     input: &str,
     standard: bool,
 ) -> Result<(CompiledSchema, breditor_core::schema::DocumentLimits), Error> {
+    compile_revision(input, standard, 1)
+}
+
+pub(super) fn compile_revision(
+    input: &str,
+    standard: bool,
+    revision: u32,
+) -> Result<(CompiledSchema, breditor_core::schema::DocumentLimits), Error> {
     if input.len() > MAX_BYTES {
         return Err(Error::Limit("shared profile JSON bytes"));
     }
     let config: Configuration = serde_json::from_str(input).map_err(rejected)?;
-    if config.format != "breditor/shared-rich-profile" || config.format_version != 1 {
+    if config.format != "breditor/shared-rich-profile" || config.format_version != revision {
         return Err(rejected(()));
     }
     let limits = config.limits.compile()?;
@@ -167,7 +175,11 @@ pub(super) fn compile_with_standard(
     }
     let extensions =
         ExtensionSet::try_new(manifests, ExtensionLimits::default()).map_err(rejected)?;
-    let schema =
-        CompiledSchema::try_compile_rich_content_profile(id, &extensions).map_err(rejected)?;
+    let schema = match revision {
+        1 => CompiledSchema::try_compile_rich_content_profile(id, &extensions),
+        2 => CompiledSchema::try_compile_rich_content_profile_v2(id, &extensions),
+        _ => return Err(rejected(())),
+    }
+    .map_err(rejected)?;
     Ok((schema, limits))
 }

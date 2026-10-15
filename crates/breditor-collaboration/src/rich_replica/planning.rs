@@ -196,18 +196,9 @@ fn insert_flow(
     if value.nodes.is_empty() || value.nodes.len() > 64 {
         return Err(Error::Limit("shared inserted flow blocks"));
     }
+    let protocol = super::protocol::Protocol::read(doc)?;
     for node in &value.nodes {
-        if !matches!(
-            node["type"].as_str(),
-            Some(
-                "breditor/paragraph"
-                    | "breditor/heading"
-                    | "breditor/bullet-list"
-                    | "breditor/ordered-list"
-                    | "breditor/table"
-                    | "breditor/image"
-            )
-        ) {
+        if !node["type"].as_str().is_some_and(|kind| protocol.flow(kind)) {
             return Err(Error::Contract("shared inserted flow kind"));
         }
         creation::fresh_entities(doc, node)?;
@@ -215,10 +206,12 @@ fn insert_flow(
     let parent = if let Some(parent) = &value.parent {
         let node = find_mut(&mut preview["root"], parent)
             .ok_or(Error::Contract("visible shared creation parent"))?;
-        if !matches!(
+        let allowed = matches!(
             node["type"].as_str(),
             Some("breditor/table-cell" | "breditor/list-item" | "breditor/image")
-        ) {
+        ) || (protocol == super::protocol::Protocol::StructuralV2
+            && matches!(node["type"].as_str(), Some("breditor/blockquote" | "breditor/task-item")));
+        if !allowed {
             return Err(Error::Contract("shared creation flow parent"));
         }
         node

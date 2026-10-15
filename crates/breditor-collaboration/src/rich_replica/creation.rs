@@ -42,7 +42,7 @@ pub(super) fn prepare(
     tree.get_meta(id)?.insert("block", block)?;
     placement::define(doc, block, parent, before, format!("birth:{id}"))?;
     let kind = node["type"].as_str().ok_or(Error::Contract("shared creation kind"))?;
-    if kind == "breditor/paragraph" || kind == "breditor/heading" {
+    if super::protocol::Protocol::read(doc)?.text(kind) {
         model::text(doc, block)?;
         super::text_flow::prepare_root(doc, block)?;
         prepare_text(doc, node)?;
@@ -151,7 +151,7 @@ pub(super) fn publish(
         .ensure_mergeable_map("births")?
         .insert(&stamp.key(), stamp.contribution(true.into()))?;
     let kind = node["type"].as_str().ok_or(Error::Contract("shared creation kind"))?;
-    if kind == "breditor/paragraph" || kind == "breditor/heading" {
+    if super::protocol::Protocol::read(doc)?.text(kind) {
         publish_text(doc, node, stamp, ordinal)?;
     } else {
         for child in

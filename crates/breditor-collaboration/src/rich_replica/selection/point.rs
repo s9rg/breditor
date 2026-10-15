@@ -38,7 +38,7 @@ impl AnchoredPoint {
         let id = BlockId::try_new(&block).map_err(|_| Error::Contract("shared anchored block"))?;
         if document.block_path(&id).is_some() {
             let kind = super::kind(document, &block)?;
-            if kind != "breditor/paragraph" && kind != "breditor/heading" {
+            if !super::super::protocol::Protocol::read(doc)?.text(&kind) {
                 return Err(Error::Contract("shared anchored text kind"));
             }
             let point = TextPoint { block: block.clone(), offset, affinity: self.affinity };
@@ -96,7 +96,10 @@ fn caret(
     affinity: crate::anchor::Affinity,
 ) -> Option<&breditor_core::document::ElementNode> {
     let element = node.as_element()?;
-    if matches!(element.kind().as_str(), "breditor/paragraph" | "breditor/heading") {
+    if matches!(
+        element.kind().as_str(),
+        "breditor/paragraph" | "breditor/heading" | "breditor/code-block"
+    ) {
         return Some(element);
     }
     if affinity == crate::anchor::Affinity::Before {
