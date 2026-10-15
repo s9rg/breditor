@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `5ea8775` (saved locally,
+The latest functional implementation checkpoint is `fbf31cc` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -36,14 +36,21 @@ startup repair. The subsequent
 adds simultaneous local formatting, one history group across explicit text
 targets and early stale-observation rejection. It passes 129 local and 36
 installed browser runs, plus the recorded Rust/Wasm and clean-consumer checks.
-The earlier full shared matrix remains attached to its original checkpoint.
+The subsequent [standard-control checkpoint](qualification/2026-10-15-standard-inline-controls.json)
+adds owner-bound local/shared controls for all standard kinds, mixed-value forms,
+exact native caret reads, keyboard submission, stale-draft rejection and recovered
+history. It repairs pending-style loss from misrouted caret targets and redundant
+shared Undo entries from empty resets. It passes 165 local, 303 shared and 78
+fresh installed-archive browser runs, plus Rust/Wasm, type and package checks.
+The default browser archive remains byte-for-byte unchanged.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
-The active first-two-workstream goal is not complete. Next are actual standard
-controls and complete mixed-property editing using the Rust state reads, followed
-by distribution promotion, everyday editing gaps and external interchange. The
+The active first-two-workstream goal is not complete. Standard controls now use
+the Rust state reads, but applying a mixed format replaces its complete map;
+per-property-preserving mixed edits remain distinct work. Next are distribution
+promotion and React integration, everyday editing gaps and external interchange. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill
 the workstreams' acceptance conditions.
@@ -118,9 +125,10 @@ No competitor implementation was copied into Breditor.
    schema-bound rich presentation now reuses the default checked mark, anchor,
    RGB24 color and integer-token policies. The explicit standard profile now
    adds bounded pixel-size CSS, background color and four font-family presets.
-   Integrated controls still need to follow. Rust-derived exact/mixed
-   property-state reads now exist for local and shared owners; controls must use
-   them consistently before advertising those features together.
+   Opt-in local/shared controls now use Rust-derived exact/mixed state consistently,
+   including Link, scalar fields and caret styles. They still need promotion into
+   the public V1 distribution. Complete-map replacement is explicit; preserving
+   other mixed properties during a field-only patch is not yet supported.
 2. **Complete editing grammar.** Add blockquotes, code blocks, horizontal rules,
    task lists and an explicit hard-break policy. Finish general selections across
    container boundaries and natural typing history groups. Unsupported ranges

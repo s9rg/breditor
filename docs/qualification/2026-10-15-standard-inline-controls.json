@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "fbf31cc174a874b7d5245c7105a6c46e14dd85da",
+  "scope": "Opt-in owner-bound standard inline toolbars for local and shared rich editors, shared field widgets, exact native caret-format reads, normal-caret input routing and no-op reset planning. Existing default factories, schemas, ABI meanings, shared model 11 and journal 12 remain unchanged.",
+  "releaseQualified": false,
+  "toolchain": {"rustc": "1.98.0 (88d9e12ae 2026-08-18)", "wasmBindgen": "0.2.127", "node": "22.14.0"},
+  "native": [
+    {"command": "node scripts/check-rich-browser.mjs", "defaultWasmLibraryTests": 43, "richWasmLibraryTests": 44, "richEditorContracts": 17, "projectionTestsPerConfiguration": 1, "boundaryTestsPerConfiguration": 21, "coreIntegrationTests": 23, "note": "Default/rich configurations, strict native and Wasm Clippy, native format/range/preset contracts, generated consumer types and a fresh local Wasm build all pass. The new read preserves frozen local observations, native focus affinity, explicit pending plain and mutation authority; non-carets reject."},
+    {"command": "cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --quiet", "passed": 232, "sharedProfileContracts": 11, "note": "All private collaboration regressions pass. The new caret read checks the opaque observation before selection inspection, does not change checkpoints or authority, rejects stale/non-caret reads, and retains pending plain through restore."},
+    {"command": "cargo clippy --manifest-path experiments/collaboration/Cargo.toml --locked --all-targets --offline --quiet", "passed": true},
+    {"command": "cargo clippy --manifest-path experiments/collaboration/Cargo.toml --locked --target wasm32-unknown-unknown --lib --offline --quiet", "passed": true, "note": "The existing unused HasIdSpan import warning remains in unmodified vendor code. Root and private-workspace formatting also pass."}
+  ],
+  "browserSuites": [
+    {"command": "node scripts/check-rich-browser.mjs", "passed": 165, "perEngine": 55, "engines": ["chromium", "firefox", "webkit"], "note": "Final full run includes the local owner-binding check with its corrected presentation fixture."},
+    {"command": "node scripts/check-shared-browser-matrix.mjs", "passed": 303, "perEngine": 101, "engines": ["chromium", "firefox", "webkit"], "note": "Canonical coverage guard includes the new spec. Chromium/Firefox pass together (202 cases, 4.3 minutes); every WebKit file passes in its existing fresh process. No retries, skipped specs or deadline changes."},
+    {"command": "node_modules/.bin/playwright test --config experiments/shared-browser/installed-network.config.mjs", "passed": 78, "perEngine": 26, "engines": ["chromium", "firefox", "webkit"], "note": "Final clean installed archives, without workspace links, pass standard controls and presentation, offline/shared history, independent network clients, reconnect, asset bytes and recovery workflows. Shared Wasm remains explicitly host-supplied."}
+  ],
+  "browserRunCountNote": "546 overlapping suite executions in final qualification, not unique capabilities or a parity percentage. Earlier development runs are not added to this count. New fixture mistakes were corrected for canonical document keys, native outcome/affinity and block identities, publication revisions, nested-caption focus, Firefox's cloned synthetic clipboard stores and a missing local presentation reference; no assertion deadlines or retry policies were relaxed.",
+  "installedRuntime": {
+    "command": "node scripts/check-shared-package.mjs",
+    "passed": true,
+    "note": "Three fresh private archives install offline into a retained independent consumer. Package-root imports, generated TypeScript, matching local Wasm, standard toolbar/caret capabilities, rejection of an older capability surface, native catalog parity and exact recovered future history pass. The existing four-formats-by-257-paragraph quota regression remains included."
+  },
+  "repairs": [
+    {"reproduction": "At a styled caret, enable an inline control and type successive browser-automation keystrokes in a browser that supplies a collapsed beforeinput target.", "before": "The shared coordinator treated the matching caret target as range replacement. The first character was styled, but replacement cleared the pending override for the following input.", "after": "Matching caret coordinates route to normal typing and retain logical affinity/pending formats. Distinct browser replacement targets still replace their actual ranges. Local and shared controllers use the same coordinate-only helper; native protocols are unchanged."},
+    {"reproduction": "Reset an absent shared format while a Redo branch is retained.", "before": "A redundant disabled annotation could create an unnecessary shared history group. A direct native probe confirmed an absent removal changed Undo depth from 0 to 1.", "after": "Standard reset planning consults Rust presence state and skips absent kinds. Empty caret/range resets preserve exact checkpoints and future Redo. The original low-level disabled-annotation command retains its intentional semantics."}
+  ],
+  "controlContracts": [
+    "Rust exact/mixed/unavailable state drives all twelve standard kinds. Mixed scalar fields stay blank; partial mark presence is visibly mixed rather than guessed from DOM spans.",
+    "One field submission replaces one complete format map. A mixed Link requires an explicit URL and target. The existing closed HTTP(S) policy rejects unsafe editing values, while unsafe stored values remain inert data.",
+    "Exact native caret reads preserve application formats and explicit plain overrides. Clear standard formatting removes only standard kinds. Script activation explicitly removes the opposite kind in one history group.",
+    "Keyboard actions, Enter/Escape, dirty-form rejection after remote/selection-only changes, editable nested-caption focus, exact Undo/Redo/reload, internal clipboard and offline selective history are exercised.",
+    "Standard declarations bind to their creating owner. A foreign owner with the same schema rejects before host/document mutation. Owner-neutral custom controls remain reusable; existing two-argument and single-field controls remain supported.",
+    "A dirty form compares complete view data, not only document bytes. That stamp is not mutation authority: opaque Rust observations still admit every write. Alt-modified editor shortcuts are not intercepted."
+  ],
+  "otherChecks": "Standalone script regressions pass with the three existing explicit opt-in diagnostic skips; shared consumer types and all 25 readiness-guard tests pass. The readiness guard still reports NOT RELEASE READY. Default browser source and archive are unchanged; its earlier unit-test count is not claimed as rerun here.",
+  "artifacts": {
+    "packageVersion": "0.3.0-alpha.22",
+    "archives": [
+      {"name": "@breditor/browser", "bytes": 327732, "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name": "@breditor/experimental-rich-content", "bytes": 1169568, "sha256": "3bac159ecc6375d5284348806b2360b02bdf6b858f9e2becbb6b44d3af5a9ce7"},
+      {"name": "@breditor/experimental-collaboration", "bytes": 61630, "sha256": "38a3a2d991174541c9b7ad43ac71d7a8966fcb3760931c7daf1ede511d7ad2b8"}
+    ],
+    "localRichWasm": {"bytes": 4091608, "gzipBytes": 1088619, "sha256": "7c724be7c4b03b7022421cf9fb63937172a5e746c146edb164eaab1af23a33b9"},
+    "sharedWasm": {"bytes": 9116280, "gzipBytes": 2464247, "sha256": "6e21f808d6663ec7bcb32d6d757fd1af02dbfe393502406f63f5e238329a0036"}
+  },
+  "limits": [
+    "Applying a format is complete-map replacement, not a per-property patch preserving other mixed values. Foreign interchange and autolink remain unfinished.",
+    "Caret reads reject non-carets and output beyond 64 KiB without truncation. Node/grid inline controls are unavailable. Existing command, schema, document, action and history budgets still apply.",
+    "The preset supports RGB24 colors, integer 8..96 pixel sizes, four font stacks and the bounded safe Link domain, not arbitrary CSS, custom downloaded fonts or general URLs. A toolbar widget admits at most eight fields.",
+    "Both toolbar factories require matching native capabilities and an explicitly selected standard profile/presentation. The unchanged ABI number alone does not advertise this capability; older modules reject before mounting.",
+    "Public distribution promotion, React integration, structural editing gaps, natural typing groups, read-only mode, contextual menus and sanitized foreign interchange remain active first-two-workstream goal work. Feature labels and all 13 qualification gates remain unchanged.",
+    "Synthetic clipboard/composition events and automated browser keystrokes do not qualify native OS clipboard, physical IME, screen readers, mobile, sustained performance or public deployment. Those later release checks remain open."
+  ],
+  "historicalWebKitFaultResolved": false,
+  "published": false,
+  "publicDeployment": false
+}

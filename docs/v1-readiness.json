@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "5ea87757ebbdc314fb6a5c44b336d7f2f9d587b8",
+  "baselineCommit": "fbf31cc174a874b7d5245c7105a6c46e14dd85da",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -36,33 +36,33 @@
     {
       "id":"basic-inline-formatting","area":"Editing","status":"partial",
       "summary":"Bold, italic, underline, strike and inline code",
-      "current":"The explicit Rust standard inline V1 profile declares every ordinary mark, and its checked renderer works with local/shared owners and installed archives. Both owners expose Rust-derived exact/mixed reads. A separate compound local command now commits simultaneous format changes as one guarded history unit. Complete standard controls and their state integration remain unfinished.",
+      "current":"The explicit standard profile now has local/shared stock controls driven by Rust exact/mixed state, including marks, caret overrides, keyboard submission and one-group formatting history. Tests cover clipboard, exact reload, offline merge and selective Undo. Public distribution promotion and the remaining integrated V1 workflows are still open.",
       "acceptance":"Ship all everyday marks in the combined profile, renderer and toolbar; test mixed state, caret formats, clipboard, offline edits and selective Undo/Redo.",
-      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-experimental-rich-content/src/standard_inline_v1.ts","crates/breditor-core/src/rich_content/inline_format_state.rs","packages/breditor-experimental-collaboration/src/toolbar.ts","experiments/shared-browser/standard-profile.spec.mjs","docs/qualification/2026-10-15-standard-inline-v1.json"],
+      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","crates/breditor-core/src/rich_content/inline_format_state.rs","packages/breditor-experimental-collaboration/src/standard_toolbar.ts","experiments/rich-browser/standard-toolbar-checks.mjs","experiments/shared-browser/standard-toolbar.spec.mjs"],
       "sources":["tiptap-starter","ckeditor-styles","tiptap-source-starter"]
     },
     {
       "id":"subscript-superscript","area":"Editing","status":"missing",
       "summary":"Subscript and superscript",
-      "current":"The explicit standard V1 profile declares independent subscript/superscript literals and both render in local/shared editors. The new compound local command can explicitly switch scripts atomically in cells/captions with exact history. Stock exclusive controls and complete interchange workflows remain missing; admission never silently removes the other literal.",
+      "current":"The experimental standard profile now has explicit script-switching controls in local/shared editors, with one Undo group and exact recovered history in cells/captions. The model still admits independent literals and never silently normalizes them. V1 promotion and complete foreign interchange remain open.",
       "acceptance":"Define mutually compatible script formats, semantic presentation and exact history/interchange behavior.",
-      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","experiments/rich-browser/standard-profile.spec.mjs","experiments/shared-browser/standard-profile.spec.mjs"],
+      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","experiments/rich-browser/standard-toolbar-checks.mjs","experiments/shared-browser/standard-profile.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-styles"]
     },
     {
       "id":"font-and-color","area":"Editing","status":"partial",
       "summary":"Font family, size, text and background color",
-      "current":"The explicit standard rich/shared profile and renderer now support RGB24 text/background colors, integer 8..96 pixel sizes and four font-family presets, including installed consumers. Complete mixed-value controls and foreign interchange remain unfinished; this does not support arbitrary CSS or embedded fonts.",
+      "current":"The standard profile now has local/shared mixed-value forms and reset controls for RGB24 text/background colors, integer 8..96 pixel sizes and four font-family presets. Empty resets preserve exact history and Redo. Arbitrary CSS/embedded fonts are unsupported; distribution promotion and foreign interchange remain open.",
       "acceptance":"Promote safe declarative presentations into the combined editor, define supported font/size/color domains and test interoperability.",
-      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-browser/src/scalar_style_policy.test.ts","packages/breditor-experimental-rich-content/src/standard_inline_v1.ts","docs/qualification/2026-10-15-standard-inline-v1.json"],
+      "evidence":["crates/breditor-core/src/rich_content/standard_inline_v1.rs","packages/breditor-browser/src/scalar_style_policy.test.ts","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","experiments/rich-browser/standard-toolbar-checks.mjs"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
       "id":"links","area":"Editing","status":"partial",
       "summary":"Links and automatic link detection",
-      "current":"Default Link forms work. The explicit Rust standard rich/shared profile now declares the bounded URL and Boolean target, reusing the checked anchor policy in cells/captions; local structural clipboard preserves the typed values. A complete standard Link control, foreign interchange and autolink remain unfinished.",
+      "current":"Default and explicit standard rich/shared Link forms reuse the same safe URL policy. Standard forms handle mixed URL/target state, Enter/Escape, stale drafts and exact Undo/Redo/reload. Applying replaces the complete Link map, with an explicit mixed target; per-property-preserving edits, foreign interchange and autolink remain open.",
       "acceptance":"Use one safe URL policy for shared rendering, explicit link editing, clipboard/export and optional autolink, without interpreting arbitrary HTML.",
-      "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/render.ts"],
+      "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","experiments/rich-browser/standard-toolbar-checks.mjs"],
       "sources":["tiptap-starter","ckeditor-overview"]
     },
     {
@@ -244,9 +244,9 @@
     {
       "id":"toolbar-and-context-ui","area":"Integration","status":"partial",
       "summary":"Expandable toolbars, context menus and selection UI",
-      "current":"Both paths have extensible toolbars, but the shared path does not reuse the default compiled action-state/form system or provide a complete contextual/floating menu experience.",
+      "current":"Local/shared standard controls now share field widgets and Rust-derived state, keyboard actions, editor focus return and stale-draft rejection. Owner-bound controls reject another editor before host mutation; custom owner-neutral controls remain reusable. Default compiled action-state APIs remain distinct, and contextual/floating menus are unfinished.",
       "acceptance":"One command/state contract must drive buttons, keyboard, forms and context menus with active/mixed/disabled state and consistent focus return.",
-      "evidence":["packages/breditor-browser/src/toolbar.ts","packages/breditor-experimental-collaboration/src/controller.ts","packages/breditor-experimental-collaboration/src/toolbar.ts"],
+      "evidence":["packages/breditor-browser/src/toolbar.ts","packages/breditor-experimental-rich-content/src/toolbar_control_view.ts","packages/breditor-experimental-collaboration/src/controller.ts","experiments/shared-browser/standard-toolbar.spec.mjs"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
