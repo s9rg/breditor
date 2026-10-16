@@ -1,5 +1,5 @@
 /** Read-only task gesture preparation; native guarded actions own all admission and history. */
-import {id,isProse,text,taskContext} from "@breditor/experimental-rich-content/rendering";
+import {id,isProse,text,taskContext,isStructuralRichLanguage} from "@breditor/experimental-rich-content/rendering";
 import type {ActionContext} from "./actions.js";
 import type {SharedCommand} from "./types.js";
 export function indentSharedTasks(c:ActionContext):SharedCommand|undefined {
@@ -17,7 +17,7 @@ export function exitEmptySharedTask(c:ActionContext):SharedCommand|undefined {
  return {kind:"exit_task_item",data:{container:id(t.container),item:id(item),fresh_tail:t.first>0&&t.last<t.items.length-1?c.allocate("tasks"):null}};
 }
 export function sharedTaskTab(c:ActionContext,backward:boolean):SharedCommand|undefined {
- const s=c.model.view.selection;if(c.core.richLanguageVersion()!==2||s?.kind!=="text")return;
+ const s=c.model.view.selection;if(!isStructuralRichLanguage(c.core.richLanguageVersion())||s?.kind!=="text")return;
  const a=c.model.nodes.get(s.anchor.block),f=c.model.nodes.get(s.focus.block);if(!a||!f||!isProse(a)||!isProse(f))return;
  return backward?outdentSharedTasks(c):indentSharedTasks(c);
 }

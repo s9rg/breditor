@@ -8,3 +8,7 @@ export {standardInlineControls,standardSelectionInlineControls,selectionFormatCh
 export {taskContext} from "./dist/browser/task_actions_v2.js";
 export {nearestStructuralV2,replaceableFlowV2,structuralIntervalV2} from "./dist/browser/structural_context_v2.js";
 export {flowEdgeEligible,selectedFlowAtom} from "./dist/browser/flow_controls.js";
+export {applyBlockLayout} from "./dist/browser/block_layout_presentation.js";
+export {blockLayoutControls,blockLayoutShortcut} from "./dist/browser/block_layout_controls.js";
+export {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
+export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";

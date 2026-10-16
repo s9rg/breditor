@@ -10,6 +10,17 @@ use breditor_collab_feasibility::rich_replica::{
     RichReplica, SharedRichProfile, WriterGroupPreparation,
 };
 use std::{collections::BTreeMap, path::Path};
+mod layout_v3;
+#[cfg(test)]
+mod layout_v3_tests;
+
+/// Durable seed tags select their exact compiler; configuration content never selects a grammar.
+#[derive(Clone, Copy)]
+enum ProfileSeed {
+    Original,
+    StructuralV2(bool),
+    LayoutV3(bool),
+}
 
 const MAX_WRITERS: usize = 1024;
 const MAX_PRINCIPALS: usize = 1024;
@@ -44,7 +55,7 @@ impl Room {
     pub fn create(path: &Path, configuration: &str, document: &str, owner: &str) -> Result<Self> {
         access::principal(owner)?;
         let profile = SharedRichProfile::from_configuration_json(configuration)?;
-        Self::create_bound(path, configuration, document, owner, profile, None)
+        Self::create_bound(path, configuration, document, owner, profile, ProfileSeed::Original)
     }
 
     /// Create an explicitly selected structural V2 room using configuration format 2.
@@ -59,7 +70,14 @@ impl Room {
     ) -> Result<Self> {
         access::principal(owner)?;
         let profile = SharedRichProfile::from_configuration_json_v2(configuration)?;
-        Self::create_bound(path, configuration, document, owner, profile, Some(false))
+        Self::create_bound(
+            path,
+            configuration,
+            document,
+            owner,
+            profile,
+            ProfileSeed::StructuralV2(false),
+        )
     }
 
     /// Compose standard inline V1 with an explicit structural V2 durable room.
@@ -73,7 +91,14 @@ impl Room {
     ) -> Result<Self> {
         access::principal(owner)?;
         let profile = SharedRichProfile::from_standard_configuration_json_v2(configuration)?;
-        Self::create_bound(path, configuration, document, owner, profile, Some(true))
+        Self::create_bound(
+            path,
+            configuration,
+            document,
+            owner,
+            profile,
+            ProfileSeed::StructuralV2(true),
+        )
     }
 
     fn create_bound(
@@ -82,20 +107,27 @@ impl Room {
         document: &str,
         owner: &str,
         profile: SharedRichProfile,
-        standard: Option<bool>,
+        profile_seed: ProfileSeed,
     ) -> Result<Self> {
         let replica = profile.create(document, "1".into())?;
         let journal = replica.checkpoint()?;
         let asset_binding =
             Self::bind_assets(configuration, replica.document_id(), owner, &journal)?;
-        let seed = match standard {
-            None => Event::Seed {
+        let seed = match profile_seed {
+            ProfileSeed::Original => Event::Seed {
                 configuration: configuration.into(),
                 room: replica.document_id().into(),
                 owner: owner.into(),
                 journal,
             },
-            Some(standard_inline_v1) => Event::SeedStructuralV2 {
+            ProfileSeed::StructuralV2(standard_inline_v1) => Event::SeedStructuralV2 {
+                configuration: configuration.into(),
+                standard_inline_v1,
+                room: replica.document_id().into(),
+                owner: owner.into(),
+                journal,
+            },
+            ProfileSeed::LayoutV3(standard_inline_v1) => Event::SeedLayoutV3 {
                 configuration: configuration.into(),
                 standard_inline_v1,
                 room: replica.document_id().into(),
@@ -126,21 +158,34 @@ impl Room {
     pub fn open(path: &Path) -> Result<(Self, Recovery)> {
         let (log, mut records, recovery) = Log::open(path)?;
         let seed = records.remove(0);
-        let (configuration, room, owner, journal, standard) = match seed.event {
+        let (configuration, room, owner, journal, profile_seed) = match seed.event {
             Event::Seed { configuration, room, owner, journal } => {
-                (configuration, room, owner, journal, None)
+                (configuration, room, owner, journal, ProfileSeed::Original)
             }
             Event::SeedStructuralV2 { configuration, standard_inline_v1, room, owner, journal } => {
-                (configuration, room, owner, journal, Some(standard_inline_v1))
+                (configuration, room, owner, journal, ProfileSeed::StructuralV2(standard_inline_v1))
+            }
+            Event::SeedLayoutV3 { configuration, standard_inline_v1, room, owner, journal } => {
+                (configuration, room, owner, journal, ProfileSeed::LayoutV3(standard_inline_v1))
             }
             _ => return Err(Error::Contract("first relay record must seed room")),
         };
         access::principal(&owner)?;
         let asset_binding = Self::bind_assets(&configuration, &room, &owner, &journal)?;
-        let profile = match standard {
-            None => SharedRichProfile::from_configuration_json(&configuration)?,
-            Some(false) => SharedRichProfile::from_configuration_json_v2(&configuration)?,
-            Some(true) => SharedRichProfile::from_standard_configuration_json_v2(&configuration)?,
+        let profile = match profile_seed {
+            ProfileSeed::Original => SharedRichProfile::from_configuration_json(&configuration)?,
+            ProfileSeed::StructuralV2(false) => {
+                SharedRichProfile::from_configuration_json_v2(&configuration)?
+            }
+            ProfileSeed::StructuralV2(true) => {
+                SharedRichProfile::from_standard_configuration_json_v2(&configuration)?
+            }
+            ProfileSeed::LayoutV3(false) => {
+                SharedRichProfile::from_configuration_json_v3(&configuration)?
+            }
+            ProfileSeed::LayoutV3(true) => {
+                SharedRichProfile::from_standard_configuration_json_v3(&configuration)?
+            }
         };
         let replica = profile.restore(&room, &journal)?;
         if replica.writer() != "1" || replica.undo_count() != 0 || replica.redo_count() != 0 {
@@ -167,7 +212,7 @@ impl Room {
 
     fn replay(&mut self, record: Record) -> Result<()> {
         match record.event {
-            Event::Seed { .. } | Event::SeedStructuralV2 { .. } => {
+            Event::Seed { .. } | Event::SeedStructuralV2 { .. } | Event::SeedLayoutV3 { .. } => {
                 return Err(Error::Contract("duplicate relay seed"));
             }
             Event::Grant { actor, principal, role } => {

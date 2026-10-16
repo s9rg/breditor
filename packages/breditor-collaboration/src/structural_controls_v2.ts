@@ -16,7 +16,11 @@ function ordinaryListAllowed(c:ActionContext):boolean {
  return [s.anchor,s.focus].every(point=>{const n=c.model.nodes.get(point.block),parent=c.model.parents.get(point.block);return parent?.type!=="breditor/image"&&!(parent?.type==="breditor/task-item"&&parent.children[0]===n);});
 }
 export function createStructuralSharedToolbarV2(core:SharedRichEditor,presentation:RichInlinePresentation):readonly SharedToolbarControl[]{
- if(core.richLanguageVersion()!==2)throw Error("Structural V2 controls require an explicitly selected V2 owner");
+ return structuralSharedControlsForOwner(core,presentation,2);
+}
+/** Internal composition, not permission for the public V2 constructor to select V3. */
+export function structuralSharedControlsForOwner(core:SharedRichEditor,presentation:RichInlinePresentation,language:2|3):readonly SharedToolbarControl[]{
+ if(core.richLanguageVersion()!==language)throw Error(`Structural controls require an explicitly selected V${language} owner`);
  const controls:SharedToolbarControl[]=[
   {id:"blockquote",label:"Blockquote",enabled:c=>structuralIntervalV2(c.model)!==undefined,run:c=>{const r=structuralIntervalV2(c.model);if(r)publish(c,[{kind:"wrap_blockquote",data:{first:r.first,last:r.last,wrapper:c.allocate("quote")}}]);}},
   {id:"unquote",label:"Remove quote",enabled:c=>!!nearest(c.model,"blockquote"),run:c=>{const n=nearest(c.model,"blockquote");if(n)publish(c,[{kind:"unwrap_blockquote",data:{wrapper:id(n)}}]);}},

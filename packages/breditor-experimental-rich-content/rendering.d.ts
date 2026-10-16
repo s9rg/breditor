@@ -9,3 +9,7 @@ export type {RichInlinePresentation} from "./dist/browser/inline_presentation.js
 export {taskContext} from "./dist/browser/task_actions_v2.js";
 export * from "./dist/browser/structural_context_v2.js";
 export {flowEdgeEligible,selectedFlowAtom} from "./dist/browser/flow_controls.js";
+export * from "./dist/browser/block_layout_presentation.js";
+export * from "./dist/browser/block_layout_controls.js";
+export * from "./dist/browser/block_layout_serialization.js";
+export * from "./dist/browser/rich_language.js";

@@ -18,7 +18,11 @@ function codeAllowed(c:ActionContext):boolean {
 }
 /** Bind all standard and new structural controls to one explicitly compiled V2 owner. */
 export function createStructuralRichToolbarV2(core:RichCoreEditor,presentation:RichInlinePresentation):readonly ToolbarControl[]{
- if(core.richLanguageVersion?.()!==2)throw Error("Structural V2 controls require an explicitly selected V2 owner");
+ return structuralRichControlsForOwner(core,presentation,2);
+}
+/** Internal composition preserves the public V2 constructor's exact language guard. */
+export function structuralRichControlsForOwner(core:RichCoreEditor,presentation:RichInlinePresentation,language:2|3):readonly ToolbarControl[]{
+ if(core.richLanguageVersion?.()!==language)throw Error(`Structural controls require an explicitly selected V${language} owner`);
  const controls:ToolbarControl[]=[
   {id:"blockquote",label:"Blockquote",enabled:c=>interval(c)!==undefined,command:c=>{const r=interval(c);return r?{kind:"wrapBlockquote",data:{first:r.first,last:r.last,wrapper:c.allocate("quote")}}:null;}},
   {id:"unquote",label:"Remove quote",enabled:c=>nearest(c.model,"blockquote")!==undefined,command:c=>{const n=nearest(c.model,"blockquote");return n?{kind:"unwrapBlockquote",data:{wrapper:id(n)}}:null;}},

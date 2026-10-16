@@ -132,6 +132,22 @@ shared journal. The default editor/Wasm graph remains independent of replication
 The native core's explicit rich-language V2 structural schema is not admitted by
 model 11; profile creation rejects it before seed parsing or engine import.
 
+## Explicit layout V3 candidate
+
+`compileLayoutSharedProfileV3` and `compileStandardLayoutSharedProfileV3` select
+configuration 3/model 13/journal 14. `SharedPersistentSession.open` must also
+explicitly select `richLanguage: 3`. Defaults and V2 entry points remain strict.
+`createLayoutSharedToolbarV3` composes structural and independent layout controls
+for that owner. `core.changeSelectionLayout(patch, revision?)` lets Rust derive
+targets; `core.blockLayoutState()` reports independent mixed/inherited fields.
+The low-level `set_block_layout` command retains strict raw `patch_json`, including
+duplicate keys for native rejection. It is not admitted by old models.
+
+The reference relay has separate `create_layout_v3` and
+`create_standard_layout_v3` factories with a new `seedLayoutV3` durable record.
+They never reinterpret existing logs. See `docs/RICH_BLOCK_LAYOUT.md` for bounds,
+independent concurrent registers, selective history and browser qualification.
+
 ## Explicit structural V2 candidate
 
 `compileStructuralSharedProfileV2(wasm, configuration)` compiles bounded format 2

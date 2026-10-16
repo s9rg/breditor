@@ -83,12 +83,47 @@ retains the logical start's admitted typing formats, creates no block identity a
 does not normalize surrounding line endings. Explicit `beforeinput` replacement
 ranges remain distinct from the visible caret.
 
+### Explicit block layout V3
+
+Use `richLanguage: 3` in local/shared openings or either React component's
+`initialOptions` to add bounded native block layout to the V2 structural grammar.
+Defaults remain language 1; existing V2 profiles and saved content are not
+upgraded. The V3 standard schema is `breditor-editor/standard@3` and shared
+storage binds model 13/journal 14. Custom configurations must use the corresponding
+explicit V3 factory contract, not relabel an old checkpoint.
+
+The V3 toolbar adds Alignment, Text direction, Block indentation, Line spacing
+percent and Reset block layout. Each control retains mixed state independently;
+Inherit clears only that property. Indentation is a logical block margin, not
+list/task nesting. Control/Command+Shift+L/E/R/J apply physical Left, Center,
+physical Right and Justify even with an empty custom toolbar. Code blocks,
+captions and native node/grid coverage use the same Rust layout transaction.
+
+```js
+const editor = await openLocalEditor({host, richLanguage: 3});
+editor.execute({
+  kind: 'changeSelectionLayout',
+  data: {alignment: 'start', direction: 'rtl', indent: 2, lineHeightPercent: 150}
+});
+// null removes a property; omitted fields remain unchanged.
+editor.execute({kind: 'changeSelectionLayout', data: {indent: null}});
+```
+
+Headless factories are `createLayoutLocalProfileV3` and
+`createLayoutSharedProfileV3`. Shared owners expose
+`core.changeSelectionLayout(patch, revision?)`; both owners expose native
+`blockLayoutState()` and `supportsBlockLayout()`. Custom toolbars can compose
+`createLayoutRichToolbarV3` or `createLayoutSharedToolbarV3` with their matching
+owner. Numeric values must be finite primitives; arbitrary CSS and objects that
+serialize into null are rejected. See `docs/RICH_BLOCK_LAYOUT.md` in the repository
+for bounds, independent shared fields, history and qualification scope.
+
 ### Natural local typing history
 
 Pass `history: 'typing-v1'` to `openLocalEditor` or React `initialOptions` for native
 typing/deletion bursts. Omitted history or `'explicit'` keeps the original
 per-dispatch behavior. Matching Wasm is required; there is no JavaScript history
-fallback. Local V1 and structural V2 both support the mode. Shared sessions have
+fallback. Local V1, structural V2 and layout V3 support the mode. Shared sessions have
 the separate opt-in policy described below.
 
 The mode groups adjacent same-context user input within 750 ms, up to 64 original

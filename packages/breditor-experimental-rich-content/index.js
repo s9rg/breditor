@@ -1,11 +1,13 @@
 // Opt-in rich owner. Supply the already initialized matching module exactly once.
 // All logical mutation and retained history remain Rust-owned. Asset storage and
 // uploads are explicit host services, never command side effects.
+import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1} from "./dist/browser/index.js";
 export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
+export {createLayoutRichToolbarV3} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
 
@@ -114,7 +116,7 @@ class RichCoreEditor {
     if (expectedRevision !== undefined && expectedRevision !== this.#observation.revision) {
       throw new RichCommandError("breditor_rich.stale_observation", "The command was prepared from an older rich view");
     }
-    const input = typeof command === "string" ? command : JSON.stringify(command);
+    const input = typeof command === "string" ? command : JSON.stringify(command?.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command);
     const result = raw.execute(this.#observation, input);
     try {
       const status = result.status;

@@ -27,7 +27,7 @@ function contract(host:HTMLElement,editor:LocalEditor):void {
  // @ts-expect-error Task nesting does not reuse the ordinary list kind/start DTO.
  editor.execute({kind:"indentTaskItems",data:{container:"tasks",first:"task",last:"task",nested:{block:"nested",start:null}}});
  // @ts-expect-error Unknown grammar versions never silently use V1.
- void openLocalEditor({...options,richLanguage:3});
+ void openLocalEditor({...options,richLanguage:4});
  // @ts-expect-error Code conversion requires an explicit formatting-loss policy.
  editor.execute({kind:"setCodeBlock",data:{block:"p",language:null}});
  // @ts-expect-error UTF-16 positions remain exact decimal strings, not lossy numeric DTOs.

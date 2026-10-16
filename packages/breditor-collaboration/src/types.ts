@@ -33,6 +33,8 @@ export type SharedCommand=
  |Op<"replace_text_range",{anchor:RichPoint;focus:RichPoint;runs:readonly {text:string;formats:readonly FormatLiteral[]}[]}>
  |Op<"set_format",{block:string;offset:number;length:number;format:FormatLiteral;enabled:boolean}>
  |Op<"set_heading",{block:string;level:number|null}>
+ /** Explicit V3 only; preserve raw strict intent JSON so Rust can reject duplicate keys. */
+ |Op<"set_block_layout",{block:string;patch_json:string}>
  |Op<"set_code_block",{block:string;language:string|null;format_policy:"reject_formatted"|"remove_formats"}>
  |Op<"set_code_language",{block:string;language:string|null}>
  |Op<"set_task_checked",{block:string;checked:boolean}>

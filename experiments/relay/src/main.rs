@@ -35,6 +35,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Room::create_standard_structural_v2(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
             println!("{}", json!({"kind":"created","richLanguageVersion":2}));
         }
+        ["init-v3", log, config, document, owner] => {
+            Room::create_layout_v3(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
+            println!("{}", json!({"kind":"created","richLanguageVersion":3}));
+        }
+        ["init-standard-v3", log, config, document, owner] => {
+            Room::create_standard_layout_v3(Path::new(log), &bounded(config, 256 * 1024)?, &bounded(document, 4 * 1024 * 1024)?, owner)?;
+            println!("{}", json!({"kind":"created","richLanguageVersion":3}));
+        }
         ["serve", log, auth, bind] => {
             let address: SocketAddr = bind.parse()?;
             if !address.ip().is_loopback() { return Err("reference relay currently requires loopback binding".into()); }
@@ -46,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"recovery":recovery}));
             axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
         }
-        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS".into()),
+        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS".into()),
     }
     Ok(())
 }

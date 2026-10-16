@@ -192,6 +192,22 @@ configuration and preset choice. Open replays that recorded policy; it never
 infers an upgrade from document content, relabels an old seed or overwrites a log.
 Older binaries reject the unfamiliar seed kind rather than treating it as V1.
 
+### Explicit layout V3 rooms
+
+`Room::create_layout_v3` (`init-v3`) selects configuration 3/model 13/journal 14.
+`create_standard_layout_v3` (`init-standard-v3`) also composes standard inline
+V1, matching the explicit V3 editor SDK preset. The new `seedLayoutV3` durable
+record retains the exact configuration and preset choice. Original and
+`seedStructuralV2` records keep their prior compilers and wire meanings; opening
+a room never selects a new grammar by inspecting its content. Wrong-version
+creation and incompatible writer groups reject before modifying the log.
+
+V3 layout retains independently owned alignment, direction, indentation and
+line-height fields. Offline edits to different fields merge, selective history
+preserves peer text/fields, and restart retains the room's asset binding and
+durable receipts. The same account, lease, frame, storage and asset limits apply;
+this opt-in mode does not authorize public deployment.
+
 Registration, authority, asset storage and ephemeral presence keep their original
 service contracts. Structural writer groups still require matching native
 language/model/history/schema admission before durable append. Clients verify

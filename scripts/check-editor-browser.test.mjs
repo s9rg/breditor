@@ -45,3 +45,6 @@ test("native selection formatting retains a dedicated complete three-engine proc
 test("native V3 layout and durable recovery retain every engine in a dedicated process",()=>{
  assert.deepEqual(editorBrowserRuns(["layout-headless.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["layout-headless.spec.mjs"],["shared-structural-network.spec.mjs"]]);
 });
+test("V3 visual and structure matrices have separate budgets without hiding any engine",()=>{
+ assert.deepEqual(editorBrowserRuns(["layout-visual.spec.mjs","layout-structure.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["layout-structure.spec.mjs"],["layout-visual.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});

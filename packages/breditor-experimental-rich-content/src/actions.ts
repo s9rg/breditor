@@ -1,3 +1,4 @@
+import {isStructuralRichLanguage} from "./rich_language.js";
 // Browser command preparation only. The Rust owner checks and commits each complete semantic action.
 import type {FlowPosition,FormatLiteral,RichCell,RichCommand,RichCoreEditor,RichSelection,TableCellDraft,TableDraft} from "./core.js";
 import {formatsAt,id,isProse,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
@@ -101,7 +102,7 @@ export function deleteSelection(context:ActionContext,movement:"before"|"after"=
  if(selection?.kind==="text")return {kind:"deleteSelection"};
  if(selection?.kind==="grid")return {kind:"clearTableCells",data:{emptyBlocks:(value.view.grid?.cells??[]).map(()=>context.allocate("p"))}};
  if(selection?.kind!=="node")return null;
- if(context.core?.richLanguageVersion?.()===2&&context.core.supportsAtomEditing?.()===true&&selectedFlowAtom(value))return {kind:"deleteAtom",data:{paragraph:context.allocate("p"),movement}};
+ if(isStructuralRichLanguage(context.core?.richLanguageVersion?.())&&context.core.supportsAtomEditing?.()===true&&selectedFlowAtom(value))return {kind:"deleteAtom",data:{paragraph:context.allocate("p"),movement}};
  const node=value.nodes.get(selection.block),parent=node?value.parents.get(id(node)):undefined;if(!node||!parent)return null;
  const replacement=parent.children.length===1?{kind:"paragraph" as const,block:context.allocate("p"),text:"",formatsJson:"[]"}:null;
  if(node.type==="breditor/image")return {kind:"deleteImage",data:{image:String(property(node,"image-id")),replacement}};

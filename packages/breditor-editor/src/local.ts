@@ -1,4 +1,4 @@
-import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
+import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
 import {refreshAssets} from "@breditor/experimental-rich-content/rendering";
 import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -10,8 +10,8 @@ export const layoutProfileBootstrapJsonV3=JSON.stringify({format:"breditor/profi
 export type LocalInitial={kind:"empty";documentId?:string;blockId?:string}|{kind:"document";documentJson:string}|{kind:"checkpoint";checkpointJson:string}|{kind:"typingCheckpoint";checkpointJson:string};
 export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"> {
  host:HTMLElement;initial?:LocalInitial;profileBootstrapJson?:string;additionalInlinePresentation?:unknown;
- /** Explicit local structural grammar; omitted/1 preserves all V1 defaults. */
- richLanguage?:1|2;
+ /** Explicit native grammar; omitted/1 preserves V1, 2 selects structure, 3 adds layout. */
+ richLanguage?:1|2|3;
  /** Initial live host policy, reapplied after checkpoint restore; not serialized permission. */
  readOnly?:boolean;
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */
@@ -37,7 +37,7 @@ export async function createLocalProfile(bootstrapJson=standardProfileBootstrapJ
 export async function createStructuralLocalProfileV2(bootstrapJson=structuralProfileBootstrapJsonV2,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
  return compileStandardStructuralRichProfileV2(await initializeLocalRuntime(runtimeInput),bootstrapJson);
 }
-/** Explicit headless layout V3. Browser controls and rendering require the matching V3 integration. */
+/** Explicit native layout V3 factory, also used by the matching visual V3 integration. */
 export async function createLayoutLocalProfileV3(bootstrapJson=layoutProfileBootstrapJsonV3,runtimeInput?:RuntimeInput):Promise<RichCoreProfile>{
  return compileStandardLayoutRichProfileV3(await initializeLocalRuntime(runtimeInput),bootstrapJson);
 }
@@ -56,7 +56,7 @@ class LocalEditorOwner implements LocalEditor {
 /** One native local owner per host. Failed/cancelled openings retain the original host contents. */
 export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalEditor>{
  options={...options};
- if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new TypeError("Expected richLanguage 1 or 2");
+ if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
  if(options.initial?.kind==="typingCheckpoint"&&options.history==="explicit")throw new TypeError("A typing checkpoint requires its declared natural history policy");
@@ -64,8 +64,8 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
  let profile:RichCoreProfile|undefined,core:RichCoreEditor|undefined,dom:RichDomEditor|undefined;
  try{
   const runtime=await awaitInitialization(initializeLocalRuntime(options.runtimeInput),options.signal);claim.assert();
-  const structural=options.richLanguage===2;
-  profile=structural?compileStandardStructuralRichProfileV2(runtime,options.profileBootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,options.profileBootstrapJson??standardProfileBootstrapJson);
+  const language=options.richLanguage??1;
+  profile=language===3?compileStandardLayoutRichProfileV3(runtime,options.profileBootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,options.profileBootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,options.profileBootstrapJson??standardProfileBootstrapJson);
   const presentation=createStandardRichInlinePresentationV1(profile.inlineCatalogJson(),options.additionalInlinePresentation);
   const blockId=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
   if(initial.kind==="typingCheckpoint"){
@@ -78,7 +78,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
    core.enableTypingHistory();
   }
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use a matching native owner with read-only enforcement");core.setReadOnly(options.readOnly);}
-  const standard=structural?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation);
+  const standard=language===3?createLayoutRichToolbarV3(core,presentation):language===2?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation);
   const toolbar=options.toolbar?.(core,standard)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
   claim.assert();dom=mountRichEditor(options.host,{...options,core,...render,toolbar});claim.assert();

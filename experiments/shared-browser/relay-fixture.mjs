@@ -11,7 +11,7 @@ const binary = resolve(root, "target/relay-native/debug/breditor-collab-relay");
 const execute = promisify(execFile);
 
 export async function createRelay({configuration, input, origin,richLanguage=1,standardInline=false}) {
-  if(richLanguage!==1&&richLanguage!==2)throw Error("Expected an explicit relay test language");
+  if(richLanguage!==1&&richLanguage!==2&&richLanguage!==3)throw Error("Expected an explicit relay test language");
   const directory = await mkdtemp(join(tmpdir(), "breditor-network-relay-"));
   const log = join(directory, "room.log"), profile = join(directory, "profile.json"), document = join(directory, "document.json"), auth = join(directory, "auth.json");
   const tokens = Object.fromEntries(["owner", "alice", "bob", "reader", "ungranted"].map((principal,i) => [principal,String(i+1).repeat(64)]));
@@ -40,7 +40,7 @@ export async function createRelay({configuration, input, origin,richLanguage=1,s
     return `ws://${address}/ws`;
   }
   try {
-    const mode=richLanguage===2?(standardInline?"init-standard-v2":"init-v2"):"init";
+    const mode=richLanguage===3?(standardInline?"init-standard-v3":"init-v3"):richLanguage===2?(standardInline?"init-standard-v2":"init-v2"):"init";
     await execute(binary,[mode,log,profile,document,"owner"],{cwd:root,timeout:10_000,maxBuffer:16_384});
     const url = await start();
     return {url,tokens,async restart(){await stop();return start();},async offline(){await stop();},async online(){if(child)throw Error("Relay already online");return start(address);},async dispose(){await stop();await rm(directory,{recursive:true,force:true});}};

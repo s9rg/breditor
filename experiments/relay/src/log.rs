@@ -30,6 +30,13 @@ pub(crate) enum Event {
         owner: String,
         journal: String,
     },
+    SeedLayoutV3 {
+        configuration: String,
+        standard_inline_v1: bool,
+        room: String,
+        owner: String,
+        journal: String,
+    },
     Grant {
         actor: String,
         principal: String,

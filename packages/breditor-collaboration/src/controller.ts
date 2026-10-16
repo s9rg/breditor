@@ -1,3 +1,4 @@
+import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rendering";
 import {model,id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreNative,standardInlineStylesV1,structuralBlockStylesV2,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
 import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
@@ -7,6 +8,7 @@ import {sharedTaskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
+import {blockLayoutShortcut} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions extends RenderOptions {
  core:SharedRichEditor;toolbar?:readonly SharedToolbarControl[];label?:string;image?:{asset:string;alt:string};
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
@@ -109,14 +111,14 @@ export class SharedDomEditor {
  }
  #taskCheck(event:MouseEvent):void{
   const check=(event.target as Element).closest<HTMLInputElement>("input[data-task-check]");if(!check||!this.surface.contains(check))return;
-  event.preventDefault();if(this.#composition||this.#model.view.readOnly===true||this.#options.core.richLanguageVersion()!==2)return;
+  event.preventDefault();if(this.#composition||this.#model.view.readOnly===true||!isStructuralRichLanguage(this.#options.core.richLanguageVersion()))return;
   const item=check.dataset["taskCheck"],node=item?this.#model.nodes.get(item):undefined;if(!node||node.type!=="breditor/task-item")return;
   this.#attempt(()=>{this.#perform(c=>{c.core.dispatch({commands:[{kind:"set_task_checked",data:{block:id(node),checked:node.properties["breditor/checked"]!==true}}]},c.revision);});[...this.surface.querySelectorAll<HTMLInputElement>("input[data-task-check]")].find(input=>input.dataset["taskCheck"]===item)?.focus({preventScroll:true});});
  }
  /** A custom V2 toolbar must not remove Rust-owned selection-format keyboard semantics. */
  #selectionFormat(action:string|undefined):boolean {
   const {core,inlinePresentation}=this.#options;
-  if(!action||core.richLanguageVersion()!==2||!core.supportsSelectionFormatting()||!inlinePresentation)return false;
+  if(!action||!isStructuralRichLanguage(core.richLanguageVersion())||!core.supportsSelectionFormatting()||!inlinePresentation)return false;
   const control=standardSelectionInlineControls(core,inlinePresentation).find(c=>c.id===action);
   if(!control||control.fields)return false;
   if(control.read().kind!=="unavailable"){const changes=selectionFormatChanges(control.changes({}));if(changes.length)this.#perform(c=>{c.core.changeSelectionFormats(changes,c.revision);});}
@@ -130,12 +132,17 @@ export class SharedDomEditor {
    return;
   }
   if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&[...event.key].length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(key))){event.preventDefault();return;}
+  const alignment=blockLayoutShortcut(event);
+  if(alignment&&this.#options.core.supportsBlockLayout()){
+   event.preventDefault();if(this.#model.view.readOnly===true)return;
+   this.#attempt(()=>{this.#sync();if(this.#options.core.blockLayoutState().blocks!=="0")this.#perform(c=>{c.core.changeSelectionLayout({alignment},c.revision);});});return;
+  }
   // No DOM range exists for a logical atom; a first printable key may have no
   // beforeinput. Cancel its default and send only the native replacement intent.
-  if(!mod&&!event.altKey&&[...event.key].length===1&&this.#options.core.richLanguageVersion()===2&&this.#options.core.supportsAtomEditing()&&selectedFlowAtom(this.#model)){
+  if(!mod&&!event.altKey&&[...event.key].length===1&&isStructuralRichLanguage(this.#options.core.richLanguageVersion())&&this.#options.core.supportsAtomEditing()&&selectedFlowAtom(this.#model)){
    event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{const paragraph=c.allocate("p");if(c.model.view.historyGrouping==="typing-v1")c.core.replaceAtomTypingText(paragraph,event.key,this.#clock(),c.revision);else c.core.replaceAtomPlainText(paragraph,event.key,c.revision);});});return;
   }
-  if(this.#options.core.richLanguageVersion()===2&&this.#options.core.supportsFlowNavigation()){
+  if(isStructuralRichLanguage(this.#options.core.richLanguageVersion())&&this.#options.core.supportsFlowNavigation()){
    if(event.altKey&&!mod&&!event.shiftKey&&(event.key==="PageUp"||event.key==="PageDown")){
     // Refused ranges/boundaries still belong to this reserved logical shortcut.
     // Letting the browser PageDown default run would move/collapse the range.
@@ -144,7 +151,7 @@ export class SharedDomEditor {
    if(event.key==="Enter"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();if(selectedFlowAtom(this.#model)){event.preventDefault();this.#perform(c=>{c.core.insertParagraphAdjacent(c.allocate("p"),event.shiftKey?"before":"after",c.revision);});}});if(event.defaultPrevented)return;}
   }
   // Independent of toolbar composition; never turn a selected range into code loss.
-  if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&this.#options.core.richLanguageVersion()===2){
+  if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&isStructuralRichLanguage(this.#options.core.richLanguageVersion())){
    event.preventDefault();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;
     if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset||this.#model.nodes.get(s.focus.block)?.type!=="breditor/code-block")return;
     this.#perform(c=>{c.core.exitCodeBlock(c.allocate("p"),c.revision);});
@@ -153,7 +160,7 @@ export class SharedDomEditor {
   if(mod&&key==="a")this.#logical=false;
   if(mod&&!event.altKey){const shortcut=`${event.shiftKey?"shift+":""}${key}`,control=this.#controls.find(item=>item.control.shortcut===shortcut);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   const nativeShortcut=({b:"bold",i:"italic",u:"underline","shift+x":"strike"} as Record<string,string>)[`${event.shiftKey?"shift+":""}${key}`];
-  if(mod&&!event.altKey&&nativeShortcut&&this.#options.core.richLanguageVersion()===2&&this.#options.core.supportsSelectionFormatting()&&this.#options.inlinePresentation){event.preventDefault();this.#attempt(()=>{this.#sync();this.#selectionFormat(nativeShortcut);});return;}
+  if(mod&&!event.altKey&&nativeShortcut&&isStructuralRichLanguage(this.#options.core.richLanguageVersion())&&this.#options.core.supportsSelectionFormatting()&&this.#options.inlinePresentation){event.preventDefault();this.#attempt(()=>{this.#sync();this.#selectionFormat(nativeShortcut);});return;}
   if(mod&&!event.altKey&&["z","y","b"].includes(key)){event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{if(key==="b")bold(c);else if(key==="y"||event.shiftKey)c.core.redo(c.revision);else c.core.undo(c.revision);});});return;}
   // WebKit can report insertParagraph for Shift+Enter. Resolve the keyboard
   // contract here without changing composition, grid Enter or beforeinput targets.
@@ -171,9 +178,9 @@ export class SharedDomEditor {
   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
   if(this.#selectionFormat(action))return;
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}
-   if((kind==="insertParagraph"||kind==="insertLineBreak")&&c.core.richLanguageVersion()===2&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
+   if((kind==="insertParagraph"||kind==="insertLineBreak")&&isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
    if(kind==="insertParagraph"){enter(c);return;}
-   if(c.core.richLanguageVersion()===2&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
+   if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
     if(kind.startsWith("delete")){c.core.deleteAtom(c.allocate("p"),kind.includes("Backward")?"before":"after",c.revision);return;}
     if(kind==="insertText"||kind==="insertReplacementText"){const value=event.data??"";if(value){const paragraph=c.allocate("p");if(kind==="insertText"&&c.model.view.historyGrouping==="typing-v1")c.core.replaceAtomTypingText(paragraph,value,this.#clock(),c.revision);else c.core.replaceAtomPlainText(paragraph,value,c.revision);}return;}
    }
@@ -192,7 +199,7 @@ export class SharedDomEditor {
    // Clipboard stores are event-scoped. Capture strings before preparing/queuing work,
    // and never interpret an empty or unsupported transfer as a selection deletion.
    const fragment=transfer.getData("application/x-breditor-rich+json"),plain=transfer.getData("text/plain");if(!fragment&&!plain)return;
-   this.#sync();this.#perform(c=>{if(!fragment){if(c.core.richLanguageVersion()===2&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}const kind=(JSON.parse(fragment) as {kind:string}).kind,s=c.model.view.selection,prefix=c.allocate("paste");if(kind==="text")c.core.paste(fragment,{kind:"text"},prefix,c.revision);else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);else if(s?.kind==="text")c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);});});
+   this.#sync();this.#perform(c=>{if(!fragment){if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}const kind=(JSON.parse(fragment) as {kind:string}).kind,s=c.model.view.selection,prefix=c.allocate("paste");if(kind==="text")c.core.paste(fragment,{kind:"text"},prefix,c.revision);else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);else if(s?.kind==="text")c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);});});
  }
  #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
  #startComposition():void{if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block)return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};});}

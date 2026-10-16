@@ -1,3 +1,4 @@
+import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rendering";
 // Read-only UI preparation. Rust owns final semantic admission and all replicated state.
 import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,selectedFlowAtom,type RichModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
 import {exitEmptySharedTask} from "./task_actions_v2.js";
@@ -40,7 +41,7 @@ export function bold(ctx:ActionContext):void{
 export function removeSelection(ctx:ActionContext,movement:"before"|"after"="after"):void{
  const s=ctx.model.view.selection;if(s?.kind==="text"){ctx.core.replace(s,"",ctx.revision);return;}
  if(s?.kind==="node"){
-  if(ctx.core.richLanguageVersion()===2&&ctx.core.supportsAtomEditing()&&selectedFlowAtom(ctx.model)){ctx.core.deleteAtom(ctx.allocate("p"),movement,ctx.revision);return;}
+  if(isStructuralRichLanguage(ctx.core.richLanguageVersion())&&ctx.core.supportsAtomEditing()&&selectedFlowAtom(ctx.model)){ctx.core.deleteAtom(ctx.allocate("p"),movement,ctx.revision);return;}
   const node=ctx.model.nodes.get(s.block),parent=ctx.model.parents.get(s.block);
   if(node?.type==="breditor/horizontal-rule")publish(ctx,[{kind:"delete_horizontal_rule",data:{block:s.block,replacement:parent?.children.length===1?paragraph(ctx.allocate("p")):null}}]);
   else publish(ctx,[{kind:"delete_block",data:{block:s.block}}]);return;

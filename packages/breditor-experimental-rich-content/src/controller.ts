@@ -1,3 +1,4 @@
+import {isStructuralRichLanguage} from "./rich_language.js";
 // One DOM coordinator around the exclusive Rust owner. Rendering and callbacks cannot publish reentrantly.
 import type {FlowPosition,RichCommand,RichCommandOutcome,RichCoreEditor,RichSelection,RichView} from "./core.js";
 import {bold,boundaryDelete,defaultToolbar,deleteSelection,enter,positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
@@ -9,6 +10,8 @@ import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./t
 import {taskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 import {standardSelectionInlineControls,selectionFormatChanges} from "./standard_inline_controls.js";
+import {blockLayoutShortcut} from "./block_layout_controls.js";
+import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
@@ -89,7 +92,9 @@ export class RichDomEditor {
  execute(command:RichCommand,focus=true,expectedRevision=this.#model.view.revision):RichCommandOutcome|"queued" {
   this.#live();
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
-  this.#queue.push({command:JSON.parse(JSON.stringify(command)) as RichCommand,revision:expectedRevision,focus});
+  // Validate layout before the queue's detached JSON snapshot can turn nonfinite values into Clear.
+  const intent=command.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command;
+  this.#queue.push({command:JSON.parse(JSON.stringify(intent)) as RichCommand,revision:expectedRevision,focus});
   if(this.#busy||this.#composition)return "queued";
   this.#busy=true;let first:RichCommandOutcome|undefined,drained=0;
   try {while(this.#queue.length){
@@ -151,7 +156,7 @@ export class RichDomEditor {
  /** Bare/custom V2 toolbars retain native formatting without a JS interval fallback. */
  #selectionFormat(action:string|undefined):boolean {
   const {core,inlinePresentation}=this.#options;
-  if(!action||core.richLanguageVersion?.()!==2||core.supportsSelectionFormatting?.()!==true||!inlinePresentation)return false;
+  if(!action||!isStructuralRichLanguage(core.richLanguageVersion?.())||core.supportsSelectionFormatting?.()!==true||!inlinePresentation)return false;
   const control=standardSelectionInlineControls(core,inlinePresentation).find(c=>c.id===action);
   if(!control||control.fields)return false;
   if(control.read().kind!=="unavailable"){const changes=selectionFormatChanges(control.changes({}));if(changes.length)this.execute({kind:"changeSelectionFormats",data:{changes}});}
@@ -172,13 +177,18 @@ export class RichDomEditor {
    return;
   }
   if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&[...event.key].length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(event.key.toLowerCase()))){event.preventDefault();return;}
+  const alignment=blockLayoutShortcut(event);
+  if(alignment&&this.#options.core.supportsBlockLayout?.()===true){
+   event.preventDefault();if(this.#model.view.readOnly===true)return;
+   this.#attempt(()=>{this.#sync();const state=this.#options.core.blockLayoutState?.();if(state&&state.blocks!=="0")this.execute({kind:"changeSelectionLayout",data:{alignment}});});return;
+  }
   // Logical node selections deliberately have no DOM range. Firefox/WebKit
   // (and Chromium images) may therefore emit no beforeinput for a printable key.
   // Own this first key only; cancelling its default prevents duplicate insertion.
-  if(!mod&&!event.altKey&&[...event.key].length===1&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
+  if(!mod&&!event.altKey&&[...event.key].length===1&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
    event.preventDefault();this.#attempt(()=>{this.#sync();const paragraph=this.#allocate("p");this.execute(this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceAtomTypingText",data:{paragraph,text:event.key,clockMs:this.#clock()}}:{kind:"replaceAtomPlainText",data:{paragraph,text:event.key}});});return;
   }
-  if(this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsFlowNavigation?.()===true){
+  if(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsFlowNavigation?.()===true){
    if(event.altKey&&!mod&&!event.shiftKey&&(event.key==="PageUp"||event.key==="PageDown")){
     // This reserved logical shortcut owns the default even at a boundary/range:
     // otherwise native PageDown can collapse/move a range after Rust refuses it.
@@ -188,7 +198,7 @@ export class RichDomEditor {
   }
   // Native code exit also works with an empty/custom toolbar. A range is not
   // replaced, and focused native widgets/composition retain their own keys.
-  if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&this.#options.core.richLanguageVersion?.()===2){
+  if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())){
    event.preventDefault();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;
     if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset||this.#model.nodes.get(s.focus.block)?.type!=="breditor/code-block")return;
     if(this.#options.core.supportsCodeExit?.()!==true)throw Error("Use a matching native code-exit owner");
@@ -198,7 +208,7 @@ export class RichDomEditor {
   if(mod&&event.key.toLowerCase()==="a")this.#logicalSelection=false;
   if(mod&&!event.altKey){const key=`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`,control=this.#controls.find(item=>item.control.shortcut===key);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   const nativeShortcut=({b:"bold",i:"italic",u:"underline","shift+x":"strike"} as Record<string,string>)[`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`];
-  if(mod&&!event.altKey&&nativeShortcut&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsSelectionFormatting?.()===true&&this.#options.inlinePresentation){event.preventDefault();this.#attempt(()=>{this.#sync();this.#selectionFormat(nativeShortcut);});return;}
+  if(mod&&!event.altKey&&nativeShortcut&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsSelectionFormatting?.()===true&&this.#options.inlinePresentation){event.preventDefault();this.#attempt(()=>{this.#sync();this.#selectionFormat(nativeShortcut);});return;}
   if(mod&&!event.altKey&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}
   // Own the keyboard meaning before a browser can translate Shift+Enter into
   // insertParagraph (observed in WebKit). Composition and grid navigation stay separate.
@@ -229,10 +239,10 @@ export class RichDomEditor {
    if(this.#selectionFormat(action))return;
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}
-   if((type==="insertParagraph"||type==="insertLineBreak")&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
+   if((type==="insertParagraph"||type==="insertLineBreak")&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
    if(type==="insertParagraph"){const command=enter(this.#context());if(command)this.execute(command);return;}
    const selection=this.#model.view.selection;
-   if(this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
+   if(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
     if(type.startsWith("delete")){this.execute({kind:"deleteAtom",data:{paragraph:this.#allocate("p"),movement:type.includes("Backward")?"before":"after"}});return;}
     if(type==="insertText"||type==="insertReplacementText"){const input=event.data??"";if(input)this.execute(type==="insertText"&&this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceAtomTypingText",data:{paragraph:this.#allocate("p"),text:input,clockMs:this.#clock()}}:{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:input}});return;}
    }
@@ -276,7 +286,7 @@ export class RichDomEditor {
     else if(kind==="grid"&&this.#model.view.selection?.kind==="grid")this.execute({kind:"pasteGridClipboard",data:{clipboardJson:clipboard,allocation}});
     else if(this.#model.view.selection?.kind==="text")this.execute({kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right:this.#allocate("p")}});
     else this.execute({kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(this.#context())}});
-   }else {const plain=event.clipboardData!.getData("text/plain");if(!plain)return;this.execute(this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain});}
+   }else {const plain=event.clipboardData!.getData("text/plain");if(!plain)return;this.execute(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain});}
   });
  }
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
