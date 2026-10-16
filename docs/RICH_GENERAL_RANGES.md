@@ -587,10 +587,65 @@ the internal scope mapper. Live receipt now uses the same mapper, preserves
 document scope, and includes newly observed peer roots in subsequent Copy and
 replacement. The original selection getter still rejects document scope.
 
-Whole-root rich paste, composition, browser Copy/Cut retention (including empty
-plain text), selection painting, explicit presence/toolbar behavior and immutable
-durable storage routing remain required. Original DOM and persistent-session APIs
-do not yet accept the extended facade.
+## Durable document selection sessions
+
+`SharedPersistentSession.openDocument` explicitly binds a document-aware core and
+its recovery family for the session's lifetime. Its separate `restoreDocument`
+callback handles only stored document journals; `restore` retains its original
+ordinary/natural and original/general dispatch meanings. The exclusive causal
+writer lease is acquired before reading or replaying any saved state. General
+ranges are included in document mode, while history grouping remains an explicit
+independent choice.
+
+Shared storage uses the closed `breditor/shared-document-checkpoint-record` V1
+with `history`, `richLanguage` and opaque `checkpointJson`. Original readers and
+`open` refuse that record. The new reader can admit an old record for an explicit
+upgrade, but only the matching old Rust factory replays it before the core selects
+document mode. The first completed transaction commits the new family atomically;
+a failed upgrade preserves the exact old record. Unknown records, mismatched
+languages and natural-to-explicit downgrades do not start a replacement writer.
+
+A failed shared close keeps the readable, retired native owner and its exclusive
+lease. Retrying saves its exact newest journal before releasing the writer. Local
+transaction durability remains distinct from a relay receipt.
+
+## Local document selection facade and storage
+
+Local profiles expose `createDocumentEditor`, `restoreDocumentEditor` and
+`restoreDocumentTypingEditor` as separate capabilities. Their
+`RichDocumentCoreEditor` uses `breditor/rich-document-view` and the corresponding
+document checkpoint family even after the selection becomes a normal caret.
+The named `selectDocument`, `copyDocument`, `replaceDocumentPlainText` and
+`replaceDocumentTypingText` methods submit native guarded requests; original
+`setSelection` DTOs stay closed. Older modules can still create ordinary editors
+without pretending to provide document selection.
+
+`restoreOriginalAsDocumentEditor(checkpoint, history)` explicitly replays the
+caller-declared old history family and returns the new facade. It preserves old
+Undo/Redo rather than importing an AST or guessing a family from JSON. Original
+restore factories continue refusing new document-family checkpoints.
+
+`RichDocumentSessionStore.open(name, {richLanguage, history})` binds its declared
+language and ordinary/natural history. It writes the closed
+`breditor/local-document-checkpoint-record` V1 at `current:document-v1` in the
+existing `checkpoint` object store. The original `RichLocalSessionStore` keeps
+its byte-identical string at `current`; neither family overwrites the other key.
+The separate `loadLegacy` read supports an explicit old-family upgrade, not a
+fallback from an invalid document record. Header checks select storage identity;
+the matching native profile still proves schema and exact history replay.
+
+Both local stores share the bounded queue: at most 64 pending writes and 32 MiB
+of pending native payload, with the existing configurable 16 MiB checkpoint
+ceiling. An aborted write retains the preceding committed value; a later save
+can retry the current native checkpoint without disposing the owner.
+
+The [document persistence checkpoint](qualification/2026-10-16-document-selection-persistence.json)
+covers actual local/shared release Wasm through the source facades and transaction
+coordinators, with IndexedDB and exclusive-lock fixtures. Whole-root rich paste,
+composition, browser Copy/Cut retention (including empty plain text), selection
+painting, document-specific relay composition and explicit presence/toolbar
+behavior remain required. Original DOM entry points do not yet accept the
+extended facades.
 
 ## Remaining integration
 

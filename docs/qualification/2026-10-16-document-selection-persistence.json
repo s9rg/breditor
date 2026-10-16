@@ -1,0 +1,191 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "sourceCommit": "ff78a72",
+  "sharedSessionCommit": "650aa91",
+  "nativeRuntimeSourceCommit": "3cded08",
+  "scope": "Separate local/shared document-selection facades and durable recovery paths; not completed DOM/React or native clipboard integration.",
+  "contracts": {
+    "sharedFactory": "SharedPersistentSession.openDocument",
+    "sharedRestoreDispatch": "restoreDocument handles only explicitly declared stored document journals. Original restore keeps ordinary/natural and original/general dispatch, including explicit atomic upgrades.",
+    "sharedRecord": {
+      "format": "breditor/shared-document-checkpoint-record",
+      "formatVersion": 1,
+      "fields": [
+        "history",
+        "richLanguage",
+        "checkpointJson"
+      ]
+    },
+    "sharedLifecycle": "Acquire the exclusive room/writer lease before reading or restoring. Failed initial conversion retains old bytes. Failed close retains a readable retired owner and its lease until retry or explicit discard.",
+    "localFactories": [
+      "createDocumentEditor",
+      "restoreDocumentEditor",
+      "restoreDocumentTypingEditor",
+      "restoreOriginalAsDocumentEditor"
+    ],
+    "localFactoryPolicy": "Separate document view/save family for the facade lifetime; old history is replayed only by the caller-declared original factory, never an AST import or JSON family sniff.",
+    "localStore": "RichDocumentSessionStore.open(name,{richLanguage,history})",
+    "localRecord": {
+      "format": "breditor/local-document-checkpoint-record",
+      "formatVersion": 1,
+      "key": "current:document-v1",
+      "objectStore": "checkpoint",
+      "fields": [
+        "history",
+        "richLanguage",
+        "checkpointJson"
+      ]
+    },
+    "localLegacyKey": "The old RichLocalSessionStore keeps its exact string at current. Neither family overwrites the other's key. loadLegacy is a separate explicit read, never fallback from a bad document record.",
+    "localQueue": {
+      "maximumPendingWrites": 64,
+      "maximumPendingNativePayloadBytes": 33554432,
+      "maximumCheckpointBytes": 16777216
+    },
+    "admission": "Storage checks declared family, history, language and budgets. Matching Rust factories remain the authority for schema, full closed codecs and exact replay.",
+    "originalDefaultsApisAndStoredMeaningsPreserved": true
+  },
+  "focusedTests": {
+    "sdkTests": 192,
+    "sdkFiles": 26,
+    "newSharedStorageTests": 8,
+    "newLocalStorageTests": 6,
+    "localSharedAndEditorBuildTypesPassed": true,
+    "positiveAndNegativeDocumentConsumerTypesPassed": true,
+    "readinessSchemaPassed": true,
+    "readinessRemainsIncomplete": true
+  },
+  "actualSharedPersistence": {
+    "format": "breditor/document-session-functional-probe",
+    "formatVersion": 1,
+    "sharedWasmSha256": "09377c6084f180d98a9c6a5e220e490119474904221dd16b26d8bcd44fb9f74d",
+    "trials": 12,
+    "exactRestores": 18,
+    "exactFutureCheckpoints": 48,
+    "failedUpgrades": 6,
+    "failedCloseRetries": 6,
+    "blockedClones": 18,
+    "oldFactoryRefusals": 18,
+    "pureCopies": 12,
+    "queuedRemotePublications": 12,
+    "legacyRestoreCalls": 18,
+    "documentRestoreCalls": 18,
+    "passed": true,
+    "scope": "Actual release shared Wasm with compiled source document persistence: original/general upgrades, three languages, both histories, mixed/hidden-only documents, exact restart, queued peers, aborted upgrades and failed-close retention/retry. IndexedDB and exclusive-lock API fixtures; not installed/browser storage or Web Locks qualification. Local SDK/DOM/React/rich whole-document paste remain incomplete."
+  },
+  "actualLocalFacadeAndPersistence": {
+    "format": "breditor/local-document-session-functional-probe",
+    "formatVersion": 1,
+    "localWasmSha256": "778f1eb53bc2a737d8958726567af1178ae71c8580a1c299fe69acbf795013d1",
+    "previousLocalWasmSha256": "8703e74722a9579f960a4b96aac5e672e68dc8a4f1e066e931896ff1738af92d",
+    "trials": 10,
+    "exactRestores": 10,
+    "exactFutureCheckpoints": 40,
+    "failedSaveRetries": 10,
+    "legacyKeysPreserved": 20,
+    "pureCopies": 10,
+    "guardedRefusals": 65,
+    "previousRuntimeRefusals": 1,
+    "passed": true,
+    "scope": "Actual local release Wasm through explicit facade and source persistence: three languages, both history families, original Redo upgrade, mixed/hidden-only whole selection, first-key typing, exact reload/future Undo/Redo, aborted writes and separate legacy/document keys. fake-indexeddb; not installed/browser storage, DOM, clipboard or whole-document rich-paste acceptance."
+  },
+  "originalLocalCompatibility": {
+    "format": "breditor/document-selection-native-probe",
+    "formatVersion": 1,
+    "currentLocalWasmSha256": "778f1eb53bc2a737d8958726567af1178ae71c8580a1c299fe69acbf795013d1",
+    "previousLocalWasmSha256": "8703e74722a9579f960a4b96aac5e672e68dc8a4f1e066e931896ff1738af92d",
+    "trials": 8,
+    "exactDocumentFamilyRestores": 8,
+    "exactFutureCheckpoints": 32,
+    "byteIdenticalOriginalCheckpoints": 12,
+    "originalFamilyRefusals": 8,
+    "passed": true,
+    "scope": "Direct real Wasm native document selection, semantic Copy, plain deletion/replacement, hidden-only documents and exact explicit/natural history. Byte comparisons with previous actual runtime cover original text/node/grid selection histories. Shared lowering, SDK/storage/controller/React routing and whole-document rich paste remain required; no release acceptance inferred."
+  },
+  "reproduce": [
+    "node_modules/.bin/tsc -p packages/breditor-experimental-rich-content/tsconfig.json",
+    "node_modules/.bin/tsc -p packages/breditor-collaboration/tsconfig.json",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node_modules/.bin/tsc -p packages/breditor-editor/tsconfig.json --noEmit",
+    "node_modules/.bin/tsc --noEmit --strict --target ES2022 --module NodeNext --lib ES2022,DOM,ESNext.Disposable scripts/fixtures/editor-consumer/types-document.ts",
+    "node scripts/probe-document-session.mjs target/block-layout-shared-qualification/document-selection-sdk-shared-final-web",
+    "node scripts/probe-local-document-session.mjs target/block-layout-shared-qualification/document-selection-paired-local-final-web target/block-layout-shared-qualification/caption-code-local-final-web"
+  ],
+  "artifacts": [
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-storage-tests.log",
+      "bytes": 619,
+      "sha256": "068fef54ccd21af2ecdd1c6c74de75428d9e2aafa37400d288102ca1d1c64196"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-storage-functional.json",
+      "bytes": 894,
+      "sha256": "8ed9016457f2ab048cddf3147a47a159c97a58d1a0351a7594184d1240c467f3"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-local-storage-tests.log",
+      "bytes": 619,
+      "sha256": "bdf236ba44b92b42e5b1e770c8a7bfe6ac4ae76846b3cd5712194b7e8f121502"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-local-storage-functional.json",
+      "bytes": 885,
+      "sha256": "09bf9136c8da1d7015446b348b5a26a1b2e8760edd365d090ed8d0f2931289c5"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-local-storage-raw-compatibility.json",
+      "bytes": 837,
+      "sha256": "27b2e368f9323ed258cec2bde617d627edbddc03f583c86300b702b46a833ce0"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-persistence-final-tests.log",
+      "bytes": 619,
+      "sha256": "6aae34aa785c8a64f41e27c951ec80e8b8f8f2718a994a0c9045538b381e60c5"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-persistence-local-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-persistence-shared-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-persistence-editor-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-persistence-consumer-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-persistence-readiness-schema.log",
+      "bytes": 3980,
+      "sha256": "f3cbd59c61a5b51638efb1481394926d7080f62f641972ab7ea42f9ff7d23a95"
+    }
+  ],
+  "remainingForDocumentSelection": [
+    "Native whole-root rich clipboard paste and explicit post-paste caret/floor policy",
+    "Local/shared DOM and React explicit entry points, selection painting, Select All, input/Enter/composition and Copy/Cut/paste",
+    "Compose document-family persistent cores with relay sync without changing original transport bindings",
+    "Explicit document-scope presence and toolbar behavior"
+  ],
+  "remainingForGoal": [
+    "Finish document selection end to end",
+    "Separate sanitized HTML/Markdown and realistic Word/Google Docs/Excel interchange with explicit losses",
+    "Focused integrated functional tests"
+  ],
+  "readiness": {
+    "promotedRows": [],
+    "goalComplete": false,
+    "wholeDocumentFeatureComplete": false,
+    "releaseReady": false,
+    "pushedOrPublished": false
+  }
+}
