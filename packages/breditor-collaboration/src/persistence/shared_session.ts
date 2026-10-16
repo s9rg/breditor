@@ -6,7 +6,7 @@ import {checkCheckpoint,openSessionDatabase,readSessionCheckpoint,writeSessionCh
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
  /** Explicit journal language. Omitted/1 preserves the original model 11/journal 12 storage guard. */
- richLanguage?:1|2;
+ richLanguage?:1|2|3;
  /** Requested immutable history mode; an explicit opt-in may upgrade a legacy stored journal. */
  history?:SharedHistoryPolicy;
  /** Called only while this origin holds the exclusive causal writer lock. */
@@ -35,7 +35,7 @@ export class SharedPersistentSession {
  }
  static async open(options:SharedSessionOptions):Promise<SharedPersistentSession>{
   options={...options};
-  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new SharedEditorError("session_identity","Expected richLanguage 1 or 2");
+  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new SharedEditorError("session_identity","Expected richLanguage 1, 2 or 3");
   if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new SharedEditorError("session_history","Expected history explicit or typing-v1");
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
   const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor|undefined;

@@ -11,7 +11,7 @@ export function editorBrowserRuns(discovered){
  if(!discovered.includes(network)||discovered.length<2)throw Error("Missing installed SDK editing/network coverage");
  // Bound process size, not coverage: every batch still uses all configured
  // engines with the original per-case/global deadline and zero retries.
- const standalone=discovered.filter(name=>name.startsWith("shared-typing-")||name==="code-exit.spec.mjs"||name==="flow-navigation.spec.mjs"||name==="atom-edit.spec.mjs"||name==="selection-formatting.spec.mjs").sort();
+ const standalone=discovered.filter(name=>name.startsWith("shared-typing-")||name==="code-exit.spec.mjs"||name==="flow-navigation.spec.mjs"||name==="atom-edit.spec.mjs"||name==="selection-formatting.spec.mjs"||name==="layout-headless.spec.mjs").sort();
  const editing=discovered.filter(name=>name!==network&&!standalone.includes(name)).sort(),runs=[];
  for(let start=0;start<editing.length;start+=4)runs.push(editing.slice(start,start+4));
  return [...runs,...standalone.map(name=>[name]),[network]];

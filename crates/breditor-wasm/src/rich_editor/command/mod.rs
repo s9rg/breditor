@@ -5,6 +5,7 @@
 
 mod change_inline_formats;
 mod change_selection_formats;
+mod change_selection_layout;
 mod clear_table_cells;
 mod clipboard_ids;
 mod data_dispatch;
@@ -91,6 +92,7 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    ChangeSelectionLayout,
     ChangeSelectionFormats,
     DeleteAtom,
     ReplaceAtomPlainText,
@@ -234,6 +236,11 @@ pub(super) fn execute(
         return Err(error::rejected("breditor_rich.read_only"));
     }
     match command.kind {
+        CommandTag::ChangeSelectionLayout => change_selection_layout::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
         CommandTag::ChangeSelectionFormats => change_selection_formats::execute(
             owner,
             observation,

@@ -12,15 +12,16 @@ export function openSessionDatabase(name:string):Promise<IDBDatabase>{
   request.onsuccess=()=>{if(blocked)request.result.close();else resolve(request.result);};
  });
 }
-export function checkCheckpoint(value:string,room:string,writer:string,language:1|2=1,history:SharedHistoryPolicy="explicit"):void{
+export function checkCheckpoint(value:string,room:string,writer:string,language:1|2|3=1,history:SharedHistoryPolicy="explicit"):void{
  if(typeof value!=="string"||new TextEncoder().encode(value).length>MAX_CHECKPOINT_BYTES)throw new SharedEditorError("session_budget","Shared journal exceeds its 16 MiB storage budget");
  const decoded:unknown=JSON.parse(value);
  if(!decoded||typeof decoded!=="object"||Array.isArray(decoded))throw new SharedEditorError("session_identity","Expected a shared journal object");
  const valueHeader=decoded as {format?:unknown;formatVersion?:unknown;modelVersion?:unknown;journalVersion?:unknown;version?:unknown;document?:unknown;writer?:unknown;journal?:{format?:unknown;version?:unknown;document?:unknown;writer?:unknown}};
  const grouped=history==="typing-v1",header=grouped?valueHeader.journal:valueHeader;
- if((language!==1&&language!==2)||(history!=="explicit"&&!grouped)||!header||
-  grouped&&(valueHeader.format!=="breditor/shared-typing-session"||valueHeader.formatVersion!==1||valueHeader.modelVersion!==(language===2?12:11)||valueHeader.journalVersion!==(language===2?13:12))||
-  header.format!==(grouped?"breditor/rich-replica-typing-journal":"breditor/rich-replica-journal")||header.version!==(grouped?1:language===2?13:12)||header.document!==room||header.writer!==writer)throw new SharedEditorError("session_identity","Shared journal does not belong to the leased room/writer/model/history");
+ const model=language===3?13:language===2?12:11,journal=language===3?14:language===2?13:12;
+ if((language!==1&&language!==2&&language!==3)||(history!=="explicit"&&!grouped)||!header||
+  grouped&&(valueHeader.format!=="breditor/shared-typing-session"||valueHeader.formatVersion!==1||valueHeader.modelVersion!==model||valueHeader.journalVersion!==journal)||
+  header.format!==(grouped?"breditor/rich-replica-typing-journal":"breditor/rich-replica-journal")||header.version!==(grouped?1:journal)||header.document!==room||header.writer!==writer)throw new SharedEditorError("session_identity","Shared journal does not belong to the leased room/writer/model/history");
  // This checks storage identity, not causal admission. The matching Rust restore owns that proof.
 }
 export interface StoredSessionCheckpoint {history:SharedHistoryPolicy;json:string}

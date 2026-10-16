@@ -6,6 +6,8 @@ export function compileRichProfile(wasm:RichWasmModule,bootstrapJson:string):Ric
 export function compileStandardRichProfileV1(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export function compileStructuralRichProfileV2(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export function compileStandardStructuralRichProfileV2(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
+export function compileLayoutRichProfileV3(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
+export function compileStandardLayoutRichProfileV3(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";

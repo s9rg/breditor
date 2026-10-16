@@ -15,7 +15,16 @@ export class SharedRichEditor {
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
   this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
   this.#raw=raw;
-  try{if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");if(typeof raw.descriptor_json!=="function")throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");this.#descriptor=raw.descriptor_json();const descriptor=JSON.parse(this.#descriptor) as SharedOwnerDescriptor;if(descriptor.format!=="breditor/shared-rich-owner"||sharedProtocolLanguage(descriptor)===undefined)throw new SharedEditorError("owner_abi","Unsupported shared Rust ABI/model/history revision");this.#observation=raw.observe();this.#view=this.#observation.view_json();const view=this.view();if(view.format!=="breditor/shared-rich-view"||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");owners.add(raw);}
+  try{
+   if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");
+   if(typeof raw.descriptor_json!=="function")throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");
+   this.#descriptor=raw.descriptor_json();const descriptor=JSON.parse(this.#descriptor) as SharedOwnerDescriptor;
+   if(descriptor.format!=="breditor/shared-rich-owner"||sharedProtocolLanguage(descriptor)===undefined)throw new SharedEditorError("owner_abi","Unsupported shared Rust ABI/model/history revision");
+   if(this.richLanguageVersion()===3&&!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");
+   this.#observation=raw.observe();this.#view=this.#observation.view_json();const view=this.view();
+   if(view.format!=="breditor/shared-rich-view"||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");
+   owners.add(raw);
+  }
   catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
  }
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
@@ -31,7 +40,7 @@ export class SharedRichEditor {
  }
  view():SharedView{this.#live();return JSON.parse(this.#view) as SharedView;}
  descriptor():SharedOwnerDescriptor{this.#live();return JSON.parse(this.#descriptor) as SharedOwnerDescriptor;}
- richLanguageVersion():1|2{return this.descriptor().richLanguageVersion===2?2:1;}
+ richLanguageVersion():1|2|3{const language=sharedProtocolLanguage(this.descriptor());if(language===undefined)throw new SharedEditorError("owner_abi","Unsupported shared native language");return language;}
  documentJson():string{return this.view().documentJson;}
  /** Read the same core property-state contract under the current opaque observation. */
  supportsInlineFormatState():boolean{return typeof this.#live().inline_format_state_json==="function";}
@@ -42,6 +51,9 @@ export class SharedRichEditor {
  supportsFlowNavigation():boolean{const raw=this.#live();return typeof raw.flow_navigation_version==="function"&&raw.flow_navigation_version()==="1"&&typeof raw.navigate_flow==="function"&&typeof raw.insert_paragraph_adjacent==="function";}
  supportsAtomEditing():boolean{const raw=this.#live();return typeof raw.atom_edit_version==="function"&&raw.atom_edit_version()==="1"&&typeof raw.delete_atom==="function"&&typeof raw.replace_atom_plain_text==="function"&&typeof raw.replace_atom_typing_text==="function";}
  supportsSelectionFormatting():boolean{const raw=this.#live();return typeof raw.selection_formatting_version==="function"&&raw.selection_formatting_version()==="1"&&typeof raw.selection_coverage_json==="function"&&typeof raw.selection_format_state_json==="function"&&typeof raw.change_selection_formats==="function";}
+ supportsBlockLayout():boolean{const raw=this.#live();return this.richLanguageVersion()===3&&typeof raw.block_layout_version==="function"&&raw.block_layout_version()==="1"&&typeof raw.block_layout_state_json==="function"&&typeof raw.change_selection_layout==="function";}
+ blockLayoutState():import("@breditor/experimental-rich-content").RichBlockLayoutStateRead{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(this.#live().block_layout_state_json!(this.#observation)) as import("@breditor/experimental-rich-content").RichBlockLayoutStateRead;}
+ changeSelectionLayout(patch:import("@breditor/experimental-rich-content").RichBlockLayoutPatch,revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");return raw.change_selection_layout!(o,JSON.stringify(patch));},revision);}
  selectionCoverage(scope:"selection"|"document"="selection"):import("@breditor/experimental-rich-content").RichSelectionCoverageRead{if(!this.supportsSelectionFormatting())throw new SharedEditorError("selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(this.#live().selection_coverage_json!(this.#observation,scope)) as import("@breditor/experimental-rich-content").RichSelectionCoverageRead;}
  selectionFormatState(kind:string):import("@breditor/experimental-rich-content").RichSelectionFormatStateRead{if(!this.supportsSelectionFormatting())throw new SharedEditorError("selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(this.#live().selection_format_state_json!(this.#observation,kind)) as import("@breditor/experimental-rich-content").RichSelectionFormatStateRead;}
  changeSelectionFormats(changes:readonly import("@breditor/experimental-rich-content").RichSelectionFormatChange[],revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!this.supportsSelectionFormatting())throw new SharedEditorError("selection_formatting_unavailable","Use a matching native selection-formatting owner");return raw.change_selection_formats!(o,JSON.stringify({changes}));},revision);}

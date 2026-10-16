@@ -13,6 +13,14 @@ pub struct SharedRichProfile {
 }
 #[wasm_bindgen]
 impl SharedRichProfile {
+    /// Explicit bounded layout V3, causal model13 and journal14; never an implicit migration.
+    pub fn from_configuration_json_v3(input: &str) -> Result<Self, JsValue> {
+        Ok(Self { inner: Profile::from_configuration_json_v3(input).map_err(error)? })
+    }
+    /// Compose standard inline V1 with layout V3 using explicit configuration format3.
+    pub fn from_standard_configuration_json_v3(input: &str) -> Result<Self, JsValue> {
+        Ok(Self { inner: Profile::from_standard_configuration_json_v3(input).map_err(error)? })
+    }
     /// Explicit structural V2; original factories never select model 12/journal 13.
     pub fn from_configuration_json_v2(input: &str) -> Result<Self, JsValue> {
         Ok(Self { inner: Profile::from_configuration_json_v2(input).map_err(error)? })

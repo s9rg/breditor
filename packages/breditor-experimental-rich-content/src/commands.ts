@@ -22,6 +22,7 @@ export interface ClipboardAllocation {prefix:string;replica:string;counter:strin
 /** Full admitted literals are retained for removals; Rust chooses all selected targets. */
 export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{kind:"patch";formatsJson:string;properties:readonly string[]};
 export type RichCommand =
+ |{kind:"changeSelectionLayout";data:import("./core.js").RichBlockLayoutPatch}
  |{kind:"changeSelectionFormats";data:{changes:readonly RichSelectionFormatChange[]}}
  |{kind:"deleteAtom";data:{paragraph:string;movement:"before"|"after"}}
  |{kind:"replaceAtomPlainText";data:{paragraph:string;text:string}}

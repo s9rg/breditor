@@ -4,6 +4,7 @@
 //! every publication. Read/encoding failures are separate from committed mutations.
 
 mod atom_edit;
+mod block_layout;
 mod clipboard;
 mod close_typing_group;
 mod command;

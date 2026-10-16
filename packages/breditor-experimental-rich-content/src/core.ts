@@ -2,13 +2,21 @@ import type {RichCommand} from "./commands.js";
 export type {RichCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
-  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown};
+  readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown;fromLayoutBootstrapJsonV3?(input:string):unknown;fromStandardLayoutBootstrapJsonV3?(input:string):unknown};
 }
 export type RichCommandOutcome = "content" | "selection" | "typing" | "undo" | "redo" | "unchanged";
 export interface RichPoint {block: string; offset: string; affinity: "before" | "after"}
 export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
-export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2;taskStructureVersion?:1}
+export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3;taskStructureVersion?:1;blockLayoutVersion?:1}
+/** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
+export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
+export type RichLayoutFieldState<T>={kind:"unavailable"}|{kind:"mixed"}|{kind:"uniform";value:T|null};
+export interface RichBlockLayoutStateRead {
+ format:"breditor/rich-block-layout-state";formatVersion:1;schema:{name:string;version:number;fingerprint:string};blocks:string;
+ alignment:RichLayoutFieldState<NonNullable<RichBlockLayoutPatch["alignment"]>>;direction:RichLayoutFieldState<NonNullable<RichBlockLayoutPatch["direction"]>>;
+ indent:RichLayoutFieldState<number>;lineHeightPercent:RichLayoutFieldState<number>;
+}
 /** Exact Rust-derived property state; all-present mixed values remain active. */
 export type RichInlineFormatState = {kind:"unavailable"}|{kind:"unset"}|{kind:"uniform";format:import("./commands.js").FormatLiteral}|{kind:"mixed";presentEverywhere:boolean};
 /** Read binding only, never a compiled proof or a mutation observation token. */
@@ -41,7 +49,7 @@ export interface RichView {
 }
 export interface RichCoreEditor {
   /** Read-only grammar revision, not mutation authority. Legacy owners may omit it. */
-  richLanguageVersion?():1|2;
+  richLanguageVersion?():1|2|3;
   supportsStandardInlineControls?():boolean;
   supportsInlinePropertyPatches?():boolean;
   supportsReadOnly?():boolean;
@@ -53,6 +61,8 @@ export interface RichCoreEditor {
   /** Separate native whole-atom deletion/plain/first-key replacement capability. */
   supportsAtomEditing?():boolean;
   supportsSelectionFormatting?():boolean;
+  supportsBlockLayout?():boolean;
+  blockLayoutState?():RichBlockLayoutStateRead;
   selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
   selectionFormatState?(kind:string):RichSelectionFormatStateRead;
   enableTypingHistory?(expectedRevision?:string):boolean;

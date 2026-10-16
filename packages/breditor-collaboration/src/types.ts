@@ -97,6 +97,9 @@ export interface SharedRustOwner {
  selection_coverage_json?(observation:unknown,scope:string):string;
  selection_format_state_json?(observation:unknown,kind:string):string;
  change_selection_formats?(observation:unknown,input:string):boolean;
+ block_layout_version?():string;
+ block_layout_state_json?(observation:unknown):string;
+ change_selection_layout?(observation:unknown,input:string):boolean;
  typing_history_version?():string;
  enable_typing_history?(observation:unknown):boolean;
  close_typing_group?(observation:unknown):boolean;

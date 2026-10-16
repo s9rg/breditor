@@ -42,3 +42,6 @@ test("native atom-edit checks retain a dedicated complete three-engine process",
 test("native selection formatting retains a dedicated complete three-engine process",()=>{
  assert.deepEqual(editorBrowserRuns(["selection-formatting.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["selection-formatting.spec.mjs"],["shared-structural-network.spec.mjs"]]);
 });
+test("native V3 layout and durable recovery retain every engine in a dedicated process",()=>{
+ assert.deepEqual(editorBrowserRuns(["layout-headless.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["layout-headless.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});

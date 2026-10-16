@@ -48,14 +48,15 @@ export function compileStandardRichProfileV1(wasm, bootstrapJson) {
   if(typeof wasm?.BreditorRichProfile?.fromStandardBootstrapJsonV1!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with standard inline V1 support");
   return compiledProfile(wasm.BreditorRichProfile.fromStandardBootstrapJsonV1(bootstrapJson));
 }
-function compiledProfile(result) {
+function compiledProfile(result,language=1) {
   const raw = transfer(result, "profile", "takeProfile");
   try {
     const descriptor = JSON.parse(read(raw.descriptorJson()));
-    if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1 || (descriptor.richLanguageVersion!==undefined&&descriptor.richLanguageVersion!==2)) {
+    if (descriptor.kind !== "rich" || descriptor.abiVersion !== 1 || (language===1?descriptor.richLanguageVersion!==undefined:descriptor.richLanguageVersion!==language) || ![1,2,3].includes(language)) {
       throw new RichCommandError("breditor_rich.abi", "Unsupported rich owner ABI");
     }
-    if(descriptor.richLanguageVersion===2&&descriptor.taskStructureVersion!==1)throw new RichCommandError("breditor_rich.structural_runtime","Use matching structural V2 Wasm with task structure V1 support");
+    if((language===2||language===3)&&descriptor.taskStructureVersion!==1)throw new RichCommandError("breditor_rich.structural_runtime","Use matching structural Wasm with task structure V1 support");
+    if(language===3?descriptor.blockLayoutVersion!==1:descriptor.blockLayoutVersion!==undefined)throw new RichCommandError("breditor_rich.layout_runtime","Use the matching explicitly selected layout profile");
     return new RichCoreProfile(raw, descriptor);
   } catch (error) { raw.free(); throw error; }
 }
@@ -63,12 +64,21 @@ function compiledProfile(result) {
 /** Bootstrap V7 selects structural V2 explicitly; ordinary V6 factories never widen. */
 export function compileStructuralRichProfileV2(wasm,bootstrapJson){
  if(typeof wasm?.BreditorRichProfile?.fromStructuralBootstrapJsonV2!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with structural V2 support");
- return compiledProfile(wasm.BreditorRichProfile.fromStructuralBootstrapJsonV2(bootstrapJson));
+ return compiledProfile(wasm.BreditorRichProfile.fromStructuralBootstrapJsonV2(bootstrapJson),2);
 }
 /** Structural V2 with the same bounded standard inline V1 manifest. */
 export function compileStandardStructuralRichProfileV2(wasm,bootstrapJson){
  if(typeof wasm?.BreditorRichProfile?.fromStandardStructuralBootstrapJsonV2!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with standard structural V2 support");
- return compiledProfile(wasm.BreditorRichProfile.fromStandardStructuralBootstrapJsonV2(bootstrapJson));
+ return compiledProfile(wasm.BreditorRichProfile.fromStandardStructuralBootstrapJsonV2(bootstrapJson),2);
+}
+/** Bootstrap V8 selects bounded layout V3; earlier factories and defaults stay strict. */
+export function compileLayoutRichProfileV3(wasm,bootstrapJson){
+ if(typeof wasm?.BreditorRichProfile?.fromLayoutBootstrapJsonV3!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with layout V3 support");
+ return compiledProfile(wasm.BreditorRichProfile.fromLayoutBootstrapJsonV3(bootstrapJson),3);
+}
+export function compileStandardLayoutRichProfileV3(wasm,bootstrapJson){
+ if(typeof wasm?.BreditorRichProfile?.fromStandardLayoutBootstrapJsonV3!=="function")throw new RichCommandError("breditor_rich.module","Use a matching Wasm module with standard layout V3 support");
+ return compiledProfile(wasm.BreditorRichProfile.fromStandardLayoutBootstrapJsonV3(bootstrapJson),3);
 }
 
 class RichCoreProfile {
@@ -95,7 +105,7 @@ class RichCoreProfile {
 
 class RichCoreEditor {
   #raw; #observation; #language;
-  constructor(raw,descriptor) { this.#raw = raw; this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe(); }
+  constructor(raw,descriptor) { this.#raw = raw;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich editor is disposed"); return this.#raw; }
   /** Optional exact revision guard for a toolbar/async host operation prepared from view(). */
@@ -123,6 +133,8 @@ class RichCoreEditor {
   supportsFlowNavigation(){const raw=this.#live();return typeof raw.flowNavigationVersion==="function"&&raw.flowNavigationVersion()==="1";}
   supportsAtomEditing(){const raw=this.#live();return typeof raw.atomEditVersion==="function"&&raw.atomEditVersion()==="1";}
   supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}
+  supportsBlockLayout(){const raw=this.#live();return this.#language===3&&typeof raw.blockLayoutVersion==="function"&&raw.blockLayoutVersion()==="1"&&typeof this.#observation.blockLayoutStateJson==="function";}
+  blockLayoutState(){this.#live();if(!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(read(this.#observation.blockLayoutStateJson()));}
   selectionCoverage(scope="selection"){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionCoverageJson(scope)));}
   selectionFormatState(kind){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionFormatStateJson(kind)));}
   supportsTypingHistory(){const raw=this.#live();return typeof raw.typingHistoryVersion==="function"&&raw.typingHistoryVersion()==="1"&&typeof raw.enableTypingHistory==="function"&&typeof raw.closeTypingGroup==="function";}

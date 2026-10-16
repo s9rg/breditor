@@ -20,6 +20,18 @@ pub struct BreditorRichProfile {
 
 #[wasm_bindgen]
 impl BreditorRichProfile {
+    /// Compile explicit bootstrap V8 into bounded layout V3 without inline additions.
+    #[must_use]
+    #[wasm_bindgen(js_name=fromLayoutBootstrapJsonV3)]
+    pub fn from_layout_bootstrap_json_v3(input: &str) -> BreditorRichProfileResult {
+        Self::layout(input, false)
+    }
+    /// Compile explicit V8 layout with the original bounded standard inline V1 preset.
+    #[must_use]
+    #[wasm_bindgen(js_name=fromStandardLayoutBootstrapJsonV3)]
+    pub fn from_standard_layout_bootstrap_json_v3(input: &str) -> BreditorRichProfileResult {
+        Self::layout(input, true)
+    }
     /// Compile explicit bootstrap V7 into rich-language V2, without standard inline additions.
     /// V6 and all existing factories keep their original grammar and fingerprints.
     #[must_use]
@@ -66,9 +78,12 @@ impl BreditorRichProfile {
     pub fn descriptor_json(&self) -> BreditorStringResult {
         let mut value = serde_json::json!({"kind":"rich","abiVersion":super::BREDITOR_RICH_ABI_VERSION,
             "schema":{"name":self.schema.id().name().as_str(),"version":self.schema.id().version().get()},"schemaFingerprint":self.schema.fingerprint().to_string()});
-        if self.schema.rich_content_revision() == Some(2) {
-            value["richLanguageVersion"] = serde_json::json!(2);
+        if matches!(self.schema.rich_content_revision(), Some(2 | 3)) {
+            value["richLanguageVersion"] = serde_json::json!(self.schema.rich_content_revision());
             value["taskStructureVersion"] = serde_json::json!(1);
+        }
+        if self.schema.rich_content_revision() == Some(3) {
+            value["blockLayoutVersion"] = serde_json::json!(1);
         }
         BreditorStringResult::from_value(value.to_string())
     }
@@ -120,6 +135,12 @@ impl BreditorRichProfile {
     }
 }
 impl BreditorRichProfile {
+    fn layout(input: &str, standard: bool) -> BreditorRichProfileResult {
+        match crate::profile::decode_layout_rich_schema_v3(input, standard) {
+            Ok(schema) => BreditorRichProfileResult::success(Self { schema: Arc::new(schema) }),
+            Err(error) => BreditorRichProfileResult::failure(error),
+        }
+    }
     fn structural(input: &str, standard: bool) -> BreditorRichProfileResult {
         match crate::profile::decode_structural_rich_schema_v2(input, standard) {
             Ok(schema) => BreditorRichProfileResult::success(Self { schema: Arc::new(schema) }),
