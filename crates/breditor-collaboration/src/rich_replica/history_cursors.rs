@@ -96,6 +96,21 @@ impl HistoryCursors {
         self.undo.compose(diff)?;
         self.redo.compose(diff)
     }
+    pub fn extend(&mut self, key: &str, after: Frontiers) -> Result<(), Error> {
+        let item = self
+            .undo
+            .rows
+            .iter_mut()
+            .rev()
+            .find_map(|row| row.items.last_mut())
+            .ok_or(Error::ReplayMismatch)?;
+        if item.key != key {
+            return Err(Error::ReplayMismatch);
+        }
+        item.after = after;
+        self.redo = Stack::default();
+        Ok(())
+    }
     pub fn pop(
         &mut self,
         doc: &LoroDoc,

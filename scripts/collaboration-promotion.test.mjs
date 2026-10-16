@@ -19,7 +19,7 @@ test("native dependencies retain the ordering patch without a downstream root ov
  assert.match(read("crates/breditor-collaboration/vendor/loro-1.16.2/Cargo.toml"),/\[dependencies\.loro-internal\]\nversion = "1\.16\.2"\npath = "\.\.\/loro-internal-1\.16\.2"/);
 });
 test("all promoted shared conformance files also run through the research compatibility manifest",()=>{
- const names=readdirSync(new URL("../crates/breditor-collaboration/tests",import.meta.url)).filter(name=>name.endsWith(".rs"));assert.equal(names.length,19);
+ const names=readdirSync(new URL("../crates/breditor-collaboration/tests",import.meta.url)).filter(name=>name.endsWith(".rs"));assert.equal(names.length,20);
  for(const name of names){const shim=read(`experiments/collaboration/tests/${name}`);assert.match(shim,/extern crate breditor_collab_feasibility as breditor_collaboration;/);assert.ok(shim.includes(`../../../crates/breditor-collaboration/tests/${name}`));assert.ok(shim.split("\n").length<10);assert.ok(!read(`crates/breditor-collaboration/tests/${name}`).includes("breditor_collab_feasibility"));}
 });
 test("SDK shared entry uses the promoted optional package and application-only runtime",()=>{

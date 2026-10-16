@@ -58,6 +58,12 @@ impl PreparedWriterGroup {
     pub fn checkpoint(&self) -> Result<String, Error> {
         self.candidate.checkpoint()
     }
+    /// Exact grouped candidate recovery, explicitly separate from the original journal factory.
+    /// # Errors
+    /// Rejects disabled grouping or existing whole-envelope/resource limits.
+    pub fn typing_checkpoint(&self) -> Result<String, Error> {
+        self.candidate.typing_checkpoint()
+    }
     /// Admitted candidate server catchup frame; preparation does not broadcast it.
     /// # Errors
     /// Rejects existing full-state frame budgets or engine encoding failures.

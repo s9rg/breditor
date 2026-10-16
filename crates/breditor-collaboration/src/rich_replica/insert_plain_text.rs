@@ -30,10 +30,19 @@ impl RichReplica {
         if text.is_empty() {
             return Ok(false);
         }
+        let (commands, selection, pending) = self.plan_plain_caret_input(text, point)?;
+        self.apply_with_state(commands, selection, pending)
+    }
+    pub(super) fn plan_plain_caret_input(
+        &self,
+        text: &str,
+        point: &TextPoint,
+    ) -> Result<(Vec<Command>, SelectionUpdate, PendingFormatsUpdate), Error> {
         if text.len() > 64 * 1024 {
             return Err(Error::Limit("shared typing bytes"));
         }
         let length = u32::try_from(text.encode_utf16().count()).map_err(|_| Error::Offset)?;
+        let selection = Selection::TextRange { anchor: point.clone(), focus: point.clone() };
         let formats = self.effective_formats(&selection)?;
         let desired = formats
             .iter()
@@ -65,11 +74,11 @@ impl RichReplica {
             offset: point.offset.checked_add(length).ok_or(Error::Offset)?,
             affinity: Affinity::After,
         };
-        self.apply_with_state(
+        Ok((
             commands,
             SelectionUpdate::Set(Some(Selection::TextRange { anchor: next.clone(), focus: next })),
             PendingFormatsUpdate::Set(Some(formats)),
-        )
+        ))
     }
     /// Guard caret input against every content, selection, pending-format and history publication.
     /// # Errors

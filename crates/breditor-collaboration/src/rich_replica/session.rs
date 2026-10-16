@@ -15,9 +15,9 @@ use std::{
     sync::Arc,
 };
 
-const MAX_ENTRIES: usize = 1000;
+pub(super) const MAX_ENTRIES: usize = 1000;
 pub(super) const JOURNAL_VERSION: u32 = 12;
-const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
+pub(super) const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
 const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
 
@@ -29,7 +29,7 @@ enum Origin {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-enum Entry {
+pub(super) enum Entry {
     Local {
         commands: Vec<Command>,
         selection_update: SelectionUpdate,
@@ -59,15 +59,30 @@ enum Entry {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Journal {
-    format: String,
-    version: u32,
-    document: String,
+pub(super) struct Journal<Entries = Vec<Entry>> {
+    pub(super) format: String,
+    pub(super) version: u32,
+    pub(super) document: String,
     writer: String,
     origin: Origin,
-    entries: Vec<Entry>,
+    pub(super) entries: Entries,
     pub(super) ui: UiState,
     pub(super) publication: String,
+}
+
+impl<Entries> Journal<Entries> {
+    pub(super) fn map_entries(self, convert: impl FnOnce(Entries) -> Vec<Entry>) -> Journal {
+        Journal {
+            format: self.format,
+            version: self.version,
+            document: self.document,
+            writer: self.writer,
+            origin: self.origin,
+            entries: convert(self.entries),
+            ui: self.ui,
+            publication: self.publication,
+        }
+    }
 }
 
 pub(super) fn writer_id(value: &str) -> Result<u64, Error> {
@@ -111,6 +126,8 @@ pub struct RichReplica {
     metadata: Arc<Mutex<Channel>>,
     recipes: BTreeMap<String, Recipe>,
     cursors: super::history_cursors::HistoryCursors,
+    pub(super) history_keys: super::history_keys::HistoryKeys,
+    pub(super) typing: Option<super::typing_history::TypingHistory>,
     pub(super) writer_windows: Vec<super::writer_transport::Window>,
     pub(super) read_only: bool,
     pub(super) read_only_revision: Option<String>,
@@ -277,6 +294,8 @@ impl RichReplica {
             metadata,
             recipes: BTreeMap::new(),
             cursors: super::history_cursors::HistoryCursors::default(),
+            history_keys: super::history_keys::HistoryKeys::default(),
+            typing: None,
             writer_windows: Vec::new(),
             read_only: false,
             read_only_revision: None,
@@ -286,10 +305,21 @@ impl RichReplica {
     }
 
     fn from_journal(codec: DocumentJsonCodecV2, journal: Journal) -> Result<Self, Error> {
+        Self::from_journal_parts(codec, journal, None, false)
+    }
+    pub(super) fn from_journal_parts(
+        codec: DocumentJsonCodecV2,
+        journal: Journal,
+        joins: Option<Vec<u32>>,
+        leave_open: bool,
+    ) -> Result<Self, Error> {
         let protocol = super::protocol::Protocol::from_codec(&codec)?;
-        if journal.format != "breditor/rich-replica-journal"
-            || journal.version != protocol.journal()
-        {
+        let (format, version) = if joins.is_some() {
+            (super::typing_history::JOURNAL_FORMAT, super::typing_history::JOURNAL_VERSION)
+        } else {
+            ("breditor/rich-replica-journal", protocol.journal())
+        };
+        if journal.format != format || journal.version != version {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
@@ -299,8 +329,24 @@ impl RichReplica {
         let mut base = journal.clone();
         base.ui = UiState::default();
         let mut candidate = Self::base(codec, base)?;
-        for entry in &journal.entries {
-            candidate.replay(entry)?;
+        candidate.typing =
+            joins.map(|joins| super::typing_history::TypingHistory { joins, continuation: None });
+        if let Some(history) = &candidate.typing {
+            history.validate(&journal)?;
+        }
+        for (index, entry) in journal.entries.iter().enumerate() {
+            let joining = |at: usize| {
+                candidate.typing.as_ref().is_some_and(|history| {
+                    u32::try_from(at).is_ok_and(|at| history.joins.binary_search(&at).is_ok())
+                })
+            };
+            let join = joining(index);
+            let keep_open =
+                joining(index + 1) || (leave_open && index + 1 == journal.entries.len());
+            if keep_open && !matches!(entry, Entry::Local { .. }) {
+                return Err(Error::ReplayMismatch);
+            }
+            candidate.replay(entry, join, keep_open)?;
         }
         candidate.journal = journal;
         candidate.validate_adoption()?;
@@ -324,12 +370,23 @@ impl RichReplica {
         selection_update: SelectionUpdate,
         pending_update: PendingFormatsUpdate,
     ) -> Result<bool, Error> {
+        self.apply_with_state_inner(commands, selection_update, pending_update, None)
+    }
+    pub(super) fn apply_with_state_inner(
+        &mut self,
+        commands: Vec<Command>,
+        selection_update: SelectionUpdate,
+        pending_update: PendingFormatsUpdate,
+        typing: Option<super::typing_history::Request>,
+    ) -> Result<bool, Error> {
         self.require_writable()?;
-        let mut candidate = self.staged()?;
+        let join = typing.as_ref().is_some_and(|request| request.join);
+        let mut candidate = self.staged_for_typing(join)?;
         let before = candidate.doc.oplog_vv();
         let before_ui = candidate.journal.ui.clone();
         let history = (candidate.undo_count(), candidate.redo_count());
-        let history_key = candidate.execute(&commands, &selection_update, &pending_update)?;
+        let history_key =
+            candidate.execute(&commands, &selection_update, &pending_update, join, false)?;
         candidate.refresh_document()?;
         if self.canonical == candidate.canonical
             && before_ui == candidate.journal.ui
@@ -348,6 +405,14 @@ impl RichReplica {
             history_key,
             expected,
         });
+        if join {
+            let index = u32::try_from(candidate.journal.entries.len() - 1)
+                .map_err(|_| Error::Limit("shared typing entry index"))?;
+            candidate.typing.as_mut().ok_or(Error::ReplayMismatch)?.joins.push(index);
+        }
+        if let Some(request) = typing {
+            candidate.typing_after(request)?;
+        }
         self.adopt(candidate)?;
         Ok(true)
     }
@@ -357,6 +422,8 @@ impl RichReplica {
         commands: &[Command],
         selection: &SelectionUpdate,
         pending: &PendingFormatsUpdate,
+        join: bool,
+        keep_open: bool,
     ) -> Result<String, Error> {
         if commands.is_empty() || commands.len() > 64 {
             return Err(Error::Limit("rich shared action steps"));
@@ -369,12 +436,37 @@ impl RichReplica {
         // preparation (including initial characters) must not make a longer
         // concurrently-created caption outrank another writer's equal-basis edit.
         let stamp = Stamp::next(&self.doc)?;
-        self.undo.pause();
-        for command in commands {
-            command.prepare(&self.doc)?;
-        }
-        self.doc.commit();
-        self.undo.resume();
+        let group_key = if join {
+            // These three preparations only validate when the permanent root
+            // already exists. Do not pause an open group or fork every replayed
+            // keystroke. Verify that no preparation operation was authored.
+            let before = self.doc.oplog_vv();
+            for command in commands {
+                let block = match command {
+                    Command::InsertText(value) => &value.block,
+                    Command::DeleteText(value) => &value.block,
+                    Command::SetFormat(value) => &value.block,
+                    _ => return Err(Error::Contract("shared typing join action")),
+                };
+                if !super::text_flow::prepared(&self.doc, block) {
+                    return Err(Error::Contract("shared typing join preparation"));
+                }
+                command.prepare(&self.doc)?;
+            }
+            self.doc.commit();
+            if self.doc.oplog_vv() != before {
+                return Err(Error::Contract("shared typing join preparation"));
+            }
+            Some(self.history_keys.undo.last().ok_or(Error::ReplayMismatch)?.key.clone())
+        } else {
+            self.undo.pause();
+            for command in commands {
+                command.prepare(&self.doc)?;
+            }
+            self.doc.commit();
+            self.undo.resume();
+            None
+        };
         self.refresh_document()?;
         let history_key = stamp.key();
         let meta = self.journal.ui.engine_meta(&self.doc, &history_key)?;
@@ -383,22 +475,34 @@ impl RichReplica {
         self.metadata.lock().push = marker;
         let frontier = self.doc.state_frontiers();
         let undo_count = self.undo_count();
-        self.undo.group_start()?;
+        if !join {
+            self.undo.group_start()?;
+        }
         for (ordinal, command) in commands.iter().enumerate() {
             let command_stamp = if ordinal == 0 { stamp } else { Stamp::next(&self.doc)? };
             command.apply(&self.doc, &self.codec, &self.document, command_stamp, ordinal)?;
             self.doc.commit();
             self.refresh_document()?;
         }
-        self.undo.group_end();
+        if !keep_open {
+            self.undo.group_end();
+        }
         let authored = self.doc.state_frontiers() != frontier;
         if self.undo_count() != undo_count {
+            if join {
+                return Err(Error::ReplayMismatch);
+            }
             self.cursors.authored(
                 history_key.clone(),
                 frontier,
                 self.doc.state_frontiers(),
                 meta,
             )?;
+            self.history_keys.authored(history_key.clone());
+        } else if join && authored {
+            let key = group_key.as_deref().ok_or(Error::ReplayMismatch)?;
+            self.cursors.extend(key, self.doc.state_frontiers())?;
+            self.history_keys.extend(key)?;
         }
         if authored {
             self.journal.ui.normalize(&self.doc, &self.document, before_selection.as_ref())?;
@@ -408,10 +512,14 @@ impl RichReplica {
             history_key.clone(),
             Recipe { before: before_ui, after: self.journal.ui.clone() },
         );
+        if let Some(key) = group_key {
+            self.recipes.get_mut(&key).ok_or(Error::ReplayMismatch)?.after =
+                self.journal.ui.clone();
+        }
         Ok(history_key)
     }
 
-    fn replay(&mut self, entry: &Entry) -> Result<(), Error> {
+    fn replay(&mut self, entry: &Entry, join: bool, keep_open: bool) -> Result<(), Error> {
         let before = self.doc.oplog_vv();
         let applied_before = self.doc.state_vv();
         let expected = match entry {
@@ -426,7 +534,8 @@ impl RichReplica {
             } => {
                 self.journal.ui.clone_from(before_ui);
                 self.validate_ui()?;
-                if self.execute(commands, selection_update, pending_update)? != *history_key
+                if self.execute(commands, selection_update, pending_update, join, keep_open)?
+                    != *history_key
                     || self.journal.ui != *after_ui
                 {
                     return Err(Error::ReplayMismatch);
@@ -470,7 +579,15 @@ impl RichReplica {
     }
 
     pub(super) fn staged(&self) -> Result<Self, Error> {
-        let mut candidate = Self::from_journal(self.codec.clone(), self.journal.clone())?;
+        self.staged_for_typing(false)
+    }
+    fn staged_for_typing(&self, leave_open: bool) -> Result<Self, Error> {
+        let mut candidate = Self::from_journal_parts(
+            self.codec.clone(),
+            self.journal.clone(),
+            self.typing.as_ref().map(|history| history.joins.clone()),
+            leave_open,
+        )?;
         candidate.read_only = self.read_only;
         candidate.read_only_revision.clone_from(&self.read_only_revision);
         Ok(candidate)
@@ -639,7 +756,13 @@ impl RichReplica {
         }
         self.refresh_document()?;
         self.validate_ui()?;
-        self.checkpoint()?;
+        self.history_keys.validate(self.undo.undo_count(), self.undo.redo_count())?;
+        if let Some(history) = &self.typing {
+            history.validate(&self.journal)?;
+            self.typing_checkpoint()?;
+        } else {
+            self.checkpoint()?;
+        }
         Ok(())
     }
 
@@ -725,6 +848,7 @@ impl RichReplica {
                 meta.value.as_string().map(|id| id.as_str().to_owned()).ok_or(Error::ReplayMismatch)
             })
             .collect::<Result<Vec<_>, _>>()?;
+        self.history_keys.popped(redo, &popped, changed)?;
         let mut repaired = None;
         for id in &popped {
             repaired = Some(self.cursors.pop(&self.doc, redo, id)?);
@@ -802,6 +926,9 @@ impl RichReplica {
     /// # Errors
     /// Rejects the independent journal byte budget.
     pub fn checkpoint(&self) -> Result<String, Error> {
+        if self.typing.is_some() {
+            return Err(Error::Contract("use explicit shared typing checkpoint"));
+        }
         let value = serde_json::to_string(&self.journal)?;
         if value.len() > MAX_JOURNAL_BYTES {
             return Err(Error::Limit("rich journal bytes"));

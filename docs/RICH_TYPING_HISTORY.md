@@ -3,9 +3,10 @@
 The local Rust owner can combine adjacent user typing into natural Undo units
 while preserving every original edit record, revision and inverse. The native
 local owner now reaches additive Wasm commands and opt-in local vanilla/React
-editing. Shared grouping remains unfinished, so the full history feature is
-still partial. Existing owners, checkpoints and browser defaults retain explicit
-history.
+editing. Shared Rust grouping now uses explicit native engine spans and a separate
+replay family; its Wasm/SDK/DOM integration remains unfinished. The full history
+feature stays partial. Existing owners, checkpoints and browser defaults retain
+explicit history.
 
 ## Native local API
 
@@ -126,44 +127,74 @@ Document-level selection events only sync while this editor owns focus: a
 temporary range left by background rendering cannot overwrite the Rust caret.
 The same fix applies to explicit history; it is not a Rust or engine repair.
 
-## Remaining shared integration requirements
+## Native shared groups
 
-Shared grouping must preserve author-owned causal contributions and the original
-model/journal meanings. Its native aggregate Undo/Redo needs staged atomic
-publication, bounded group membership, exact recovery and remote-text/format
-retention, including hidden or deleted contributions. Underlying wall-clock
-merging must remain disabled. A separately versioned history envelope must keep
-causal update frames and the original replay journal intact.
+The shared Rust owner exposes guarded `enable_typing_history_guarded`,
+`insert_typing_text_guarded`, `delete_typing_range_guarded` and
+`close_typing_group_guarded` methods, each in its own documented action file.
+The same 750 ms, 64-input, caret/style/direction and separator rules apply.
+Enabling preserves existing Undo/Redo as explicit units and changes no causal
+operation. Recovery closes continuation and restores no read-only permission.
 
-The next shared implementation follows these decisions; they are not a current
-shared grouping capability:
+One natural burst is one explicit native engine group, not a loop issuing Undo
+once per keystroke. Every input retains its actual forward commands, history key,
+before/after UI and expected causal effects. The first group key owns its initial
+caret recipe; later inputs extend its cursor span and final UI recipe. Native
+Undo/Redo acts on the complete span and publishes atomically once. Actual popped
+keys and original input counts mirror both native stacks, including invisible
+items consumed without an opposite contribution. Wall-clock merging remains
+disabled; no engine/vendor source is changed.
 
-- Partition actual writer-owned history keys, not command counts or journal
-  positions. A remote deletion may make a contribution invisible: one engine
-  Undo can consume multiple keys and produce only one opposite-stack item.
-- Mirror every popped key, including skipped keys, before assigning the actual
-  opposite contribution to a group. Continue through the retained group of the
-  last engine-effective contribution, without blindly issuing another call for a key
-  already consumed. An entirely invisible newest group follows the existing
-  engine policy of searching older history for an effective contribution.
-- Stage all required original history operations, preserving each original
-  entry and its replay checks, then publish once. A false content-change result
-  can still consume invisible history and invalidate the publication guard.
-  A truly empty history call remains a no-op.
-- Recover the exact live key stacks by original journal replay and separately
-  admit a bounded partition over those keys. Keep the new recovery family
-  explicit, reject silent flattening, and close active continuation on recovery.
-  Do not encode timing hints as causal operations or lease permissions.
-- Keep original engine wall-clock merging disabled. Effective remote admission,
-  selection/pending-style changes, host policy, explicit edits and history calls
-  fence continuation; unchanged retries do not author a new history unit.
+This replaces the earlier proposed repeated-Undo approach. If a peer deletes the
+beginning of a burst while its end remains visible, a second engine call could
+skip that invisible beginning and undo an older unrelated group. Tracking popped
+keys does not prevent that mutation. A single native span retracts the entire
+burst before the engine considers another group. An entirely engine-invisible
+group retains the existing policy of searching older history for an effective
+contribution. Materialized text being absent does not establish invisibility:
+format ownership can still produce an effective inverse.
 
-`rich_history_visibility_contracts.rs` proves the existing invisible-key behavior
-in both shared languages, including a three-key input sequence whose middle key
-is remotely deleted. Two engine Undo calls consume all three keys; a naive third
-call removes an older unrelated edit. Exact recovered future history and the
-false-result/publication distinction are also tested. These are prerequisites,
-not acceptance of shared natural typing.
+Joined insertion/deletion/format steps require an already prepared permanent
+text root. Their preparation is checked to author no operation; the coordinator
+never pauses an open group or includes new infrastructure in its span. Effective
+selection, pending-style, host-policy, explicit-action, history and remote
+publications close continuation. Exact duplicate incoming frames and true no-ops
+retain it. Prepared writer admission preserves the same fence and provides a
+separate grouped checkpoint method.
+
+### Separate shared replay family
+
+`typing_checkpoint()` and `SharedRichProfile::restore_typing()` use the explicit
+`breditor/shared-typing-session` version 1 envelope. It binds the existing causal
+model and original journal version, but contains a separately tagged
+`breditor/rich-replica-typing-journal` version 1 and bounded join indices. A join
+names a local input immediately following another local input; indices are sorted
+and unique and cannot cross a remote or history entry. No burst exceeds 64 inputs.
+Native replay still checks every saved forward and inverse effect, key and UI.
+
+The new family is necessary because grouped native inverses differ from the old
+per-step inverse sequence. It does not claim its inner events are an independently
+valid original journal. Original `checkpoint()` rejects an enabled owner rather
+than flattening it, and original restore factories reject both the envelope and
+its tagged inner journal. Old journals keep their original interpretation.
+Enabling an old owner replays its retained original units without grouping them.
+Forward event records remain byte-equivalent to explicit authoring up to grouped
+history; causal update frames, model semantics and writer lineage are unchanged.
+
+The entire envelope retains the original 16 MiB byte ceiling and 1000 journal-entry
+limit. Join collection allocation is bounded, as is journal-entry decoding.
+Unknown or duplicate typed record fields, wrong room/profile/model bindings,
+invalid partitions and divergent replay reject before exposing an owner. Join
+metadata declares history boundaries; it is not evidence of physical keystrokes,
+trusted timestamps or authorization. The append-only journal lifetime and storage
+compaction work remain unchanged.
+
+`rich_history_visibility_contracts.rs` retains the original explicit-mode
+reproductions. `rich_typing_history_contracts.rs` checks the grouped implementation,
+including partial/complete invisibility, old forward-record equivalence, exact
+future recovery, native step ceilings and atomic late revision failures.
+
+## Remaining shared product integration
 
 Shared Wasm, SDK/React and DOM integration must carry the same explicit capability,
 guarded command/recovery and real intent-boundary principles without weakening

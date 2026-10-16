@@ -15,8 +15,8 @@ use breditor_core::{
 /// The host must still acquire an exclusive writer lease before create/join/restore.
 #[derive(Clone)]
 pub struct SharedRichProfile {
-    codec: DocumentJsonCodecV2,
-    protocol: super::protocol::Protocol,
+    pub(super) codec: DocumentJsonCodecV2,
+    pub(super) protocol: super::protocol::Protocol,
 }
 impl SharedRichProfile {
     /// Explicitly compose standard inline V1 before resolving application dependencies.
