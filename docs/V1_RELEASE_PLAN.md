@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `a85f46d` (saved locally,
+The latest functional implementation checkpoint is `e73805b` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -151,16 +151,31 @@ repairs that case while preserving explicit multi-command groups; dependency
 sources and protocols are unchanged. Final qualification passes 240 canonical
 native cases, 35 focused research cases and 180 installed/browser network cases.
 V1's 49 runtime states and the first native V2 checkpoint's sixteen future states
-remain compatible. Shared V2 Wasm/SDK/relay integration, the earlier unrecorded
-native observation and the historical WebKit fault remain open.
+remain compatible. At that checkpoint, shared V2 Wasm/SDK/relay integration
+remained open, alongside the earlier unrecorded native observation and the
+historical WebKit fault.
+The subsequent [shared structural SDK integration](qualification/2026-10-15-shared-structural-v2-sdk.json)
+exposes explicit V2 application factories, owner-bound controls, durable
+vanilla/React sessions and separate V2 relay seed records. Original V1 defaults,
+frames and journals retain their meanings. The final clean-installed matrix
+passes 141 cases, including 39 new shared V2 cases; the existing application V1
+network matrix passes 78. All run in Chromium, Firefox and WebKit with unchanged
+deadlines and zero retries. Two functional failures have retained reproductions
+and repairs: an empty-gap cursor advanced past empty text during Undo, and remote
+publication invalidated asynchronous image insertion. Final evidence also
+passes 2,332 root Rust tests, 242 canonical shared tests, 61 focused research tests,
+22 relay tests, 40 SDK unit tests and default/type/compatibility regressions.
+The private V2 candidate is not a supported release promotion. The older
+unrecorded replay observation and historical WebKit fault remain open.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
 The active first-two-workstream goal is not complete. Standard controls now use
 the Rust state reads, but applying a mixed format replaces its complete map;
-per-property-preserving mixed edits remain distinct work. Next are shared V2
-browser/relay integration, everyday Rust editing gaps, public API/publication decisions and external interchange. Local
+per-property-preserving mixed edits remain distinct work. Next are general
+selections, code/atomic navigation, natural typing history, read-only/layout
+contracts, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill
@@ -240,9 +255,9 @@ No competitor implementation was copied into Breditor.
    including Link, scalar fields and caret styles. They still need promotion into
    the public V1 distribution. Complete-map replacement is explicit; preserving
    other mixed properties during a field-only patch is not yet supported.
-2. **Complete editing grammar.** Integrate the new native V2 blockquote, code,
-   horizontal-rule and task contracts through Wasm, browser and shared owners.
-   Named hard breaks now have a one-LF policy. Finish general selections across
+2. **Complete editing grammar.** Explicit V2 blockquote, code, horizontal-rule
+   and task contracts now reach Wasm, local/shared SDKs and the reference relay.
+   Named hard breaks have a one-LF policy. Finish code/atomic navigation and general selections across
    container boundaries and natural typing history groups. Unsupported ranges
    currently reject; arbitrary flattening is not an acceptable shortcut.
 3. **Interchange.** Add sanitized rich HTML and Markdown adapters, then realistic

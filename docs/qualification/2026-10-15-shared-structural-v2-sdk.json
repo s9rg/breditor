@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "e73805b26ec880e26b2c4333b442919942419a99",
+  "scope": "Explicit shared structural V2 through application Wasm, clean-installed vanilla/React SDK, durable storage and reference relay. Includes two reproduced functional repairs: empty-gap history cursors and remote publication during asynchronous image ingestion.",
+  "releaseQualified": false,
+  "goalComplete": false,
+  "sharedStructuralV2ReleasePromoted": false,
+  "contracts": {
+    "originalCompatibility": "Original factories/configuration format 1 remain rich language 1/model 11/journal 12. Default ABI 5, rich ABI 1, Document 2 and local checkpoint 1 retain their meanings. No automatic document, room or history migration; no default limits are widened.",
+    "explicitRuntime": "Application SharedRichProfile exposes from_configuration_json_v2 and from_standard_configuration_json_v2. Browser helpers compileStructuralSharedProfileV2 and compileStandardStructuralSharedProfileV2 require those distinct native methods. New validation accepts exact ABI/language/model/journal tuples, never independent version ranges. Existing V1 descriptors remain unchanged. Generated application surface stays five JavaScript exports, with 53 raw Wasm exports including the two additive factories and no research entry points.",
+    "sdk": "openSharedEditor and shared React initialOptions select structural grammar only with richLanguage:2. That explicit selector uses breditor-editor/standard@2 with configuration format 2 by default; omitting it still uses original V1. createStructuralSharedProfileV2 supplies a headless factory. Local and shared controls reuse read-only structural targeting; no JS replicated document or copied semantic transaction is introduced.",
+    "editing": "Native task completion, wrapping/unwrapping, split/join, indent/outdent/empty exit, quote wrappers, code conversion/language and explicit rules are available through owner-bound shared controls. Pointer/Space checkbox behavior, task Enter/Tab, code LF, structured clipboard, atomic guards and selective recovered history are tested. Native widget navigation cannot edit a retained grid. Unsupported code/general cross-container selections still reject.",
+    "durability": "SharedPersistentSession defaults to journal 12 and requires explicit V2 for journal 13. The selected owner must match. Crossed saved journals reject without overwrite or fresh-history fallback. initial:{kind:'resume'} requires an exact existing durable journal and cannot seed a previously allocated writer. Credentials and asset bytes remain separate stores.",
+    "relay": "Room::create_structural_v2 and create_standard_structural_v2, exposed as init-v2/init-standard-v2, write a distinct seedStructuralV2 record with exact configuration/preset choice. Open follows the recorded seed policy. Original create/init and Seed records remain V1-only. Old-model groups reject without durable append. Existing authentication, writer leases, receipts, asset and ephemeral-presence service contracts are unchanged. This remains a loopback reference host, not public deployment.",
+    "imageIntent": "insertSharedImageFiles snapshots the bounded file list and position, rejects an already stale revision before ingestion, holds the existing bounded remote queue across asynchronous byte storage, and releases on every exit. The original revision still rejects local UI/history changes. Failed insertion never deletes independently stored bytes. No retry silently changes the target or intent."
+  },
+  "repairs": [
+    {
+      "id": "empty-gap-history-cursor",
+      "reproduction": "Delete all text in a selected task head, exit the empty task, then Undo. The new installed Chromium workflow failed with invalid or unresolvable stable text anchor. A minimal native public-API reproduction failed identically and retained its checkpoint.",
+      "cause": "The retained recipe still named original deleted characters, while its current history basis had normalized to an empty right-affine gap. Cursor repair advanced every Right basis by one scalar, including a basis with no character ID, requesting offset 1 in empty text.",
+      "repair": "Advance only a character-bound Right basis. No vendor edit, cursor encoding, journal revision or native operation change.",
+      "proof": "The unchanged native task reproduction passes exact future history. An original V1 both-affinity regression passes subsequent heading Undo/Redo and byte-exact recovered history. Final installed task exit/Undo passes in all three engines.",
+      "tests": ["deleting_all_task_head_text_then_exiting_keeps_restorable_history_cursors", "empty_text_gap_history_does_not_advance_past_a_nonexistent_character"],
+      "beforeLog": "target/shared-structural-v2-integration-qualification/breditor-task-empty-cursor.log",
+      "traceLog": "target/shared-structural-v2-integration-qualification/breditor-task-empty-cursor-traced.log"
+    },
+    {
+      "id": "image-ingestion-remote-publication",
+      "reproduction": "The first all-engine V2 real-network run passed five cases and failed WebKit independent-context image insertion with stale_observation. Remote catchup could publish during asynchronous asset ingestion, invalidating the original revision before insertion.",
+      "controlledBefore": "The retained pre-repair installed consumer fails a controlled real-relay ingestion barrier: after the peer edit is durably accepted, no publication is held in the remote queue while ingestion is paused (count 0 instead of 1). This expected failing invocation exits 1, without retries or relaxed assertions.",
+      "beforeConsumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-6S2M7w/consumer",
+      "beforeCommand": "BREDITOR_EDITOR_CONSUMER=/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-6S2M7w/consumer node_modules/.bin/playwright test -c experiments/editor-browser/playwright.config.mjs shared-structural-network.spec.mjs --project=chromium --grep 'image ingestion retains'",
+      "repair": "Hold only bounded remote publications until the original guarded image action commits; local UI/history changes remain stale. Snapshot the file list before awaits and always release the hold.",
+      "proof": "Three unit tests cover ordering, local-staleness rejection, known-stale rejection, file-list mutation and storage-failure release. The real-relay barrier then passes in Chromium/Firefox/WebKit, retaining the foreign caption and allowing selective image Undo. Independent-context assets/presence and relay restart also pass in all three engines.",
+      "beforeLog": "target/shared-structural-v2-integration-qualification/breditor-shared-v2-image-hold-before.log",
+      "initialWebkitTrace": "target/shared-structural-v2-integration-qualification/traces/initial-image-race-webkit/trace.zip"
+    }
+  ],
+  "nativeChecks": {
+    "rootCommand": "CARGO_TARGET_DIR=target/shared-v2-root-regression /Users/s/.cargo/bin/cargo test --offline --workspace --features breditor-wasm/experimental-rich-content",
+    "rootPassed": 2332,
+    "rootSuiteFooters": 136,
+    "rootDoctestsIncluded": 136,
+    "canonicalSharedCommand": "BREDITOR_REPLAY_TRACE=1 CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "canonicalSharedPassed": 242,
+    "canonicalSuiteFootersIncludingZeroDoctests": 18,
+    "focusedResearchPassed": 61,
+    "focusedResearchFiles": ["rich_replica_selection_contracts", "rich_structural_v2_contracts", "rich_structural_v2_structure_contracts"],
+    "relayCommand": "CARGO_TARGET_DIR=target/relay-native /Users/s/.cargo/bin/cargo test --offline --manifest-path experiments/relay/Cargo.toml --features server",
+    "relayPassed": 22,
+    "strictCanonicalAllTargetClippy": true,
+    "strictActualApplicationReleaseWasmClippy": true,
+    "strictRelayAllTargetServerClippy": true,
+    "canonicalRustdocWarningsDenied": true,
+    "canonicalResearchAndRelayFormatChecks": true,
+    "note": "No --all-features or complete research compatibility/browser gate is claimed. The pre-existing retained dependency HasIdSpan warning remains; vendor sources are unchanged."
+  },
+  "compatibility": {
+    "v1RealWasm": {"passed":true,"comparedCheckpoints":49,"crossVersionRestores":2,"futureHistorySteps":12,"beforeSha256":"7e9ac3a58323b0dbd6a6ffe997df913e8bc940530ece5e4785d841e3f35eef0e","afterSha256":"de496995f794c2eef158ad9b78af610dabc0717079d6d77d4caf23b421902876","proof":"Exact V1 journals/expected effects and semantic document/view/presence/writer-lineage states match, including cross-version recovery. Opaque variable binary packing/payloadDigest are not canonical semantic lineage."},
+    "initialNativeV2": {"passed":true,"captureSource":"8ac39ed039655885164d8dc59ab8b90d6e366a81","futureStates":16,"fixture":"scripts/fixtures/shared-structural-v2-compat","proof":"Byte-exact old model 12/journal 13 checkpoint and sixteen future history/edit checkpoints, using independent target outputs for both workspace graphs."},
+    "clockRegression": {"passed":true,"clocks":["normal","frozen","backward"],"proof":"Two explicit dispatches stay separate, one multi-command batch stays grouped, Undo/Redo and checkpoint-after-Undo recovery remain exact in the final Wasm."}
+  },
+  "installedQualification": {
+    "command": "node scripts/check-editor-browser.mjs",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RDP8qR/consumer",
+    "minimal": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RDP8qR/minimal",
+    "sharedOnly": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RDP8qR/shared-only",
+    "cleanInstall": true,
+    "configurations": ["Local without React/collaboration", "Shared without React", "Full React/shared Node initialization, SSR and normal/advanced/Wasm package-root types"],
+    "productionPages": 11,
+    "editingCases": 132,
+    "editingPerEngine": 44,
+    "editingDuration": "3.7 minutes",
+    "networkCases": 9,
+    "networkPerEngine": 3,
+    "networkDuration": "48.6 seconds",
+    "engines": ["chromium", "firefox", "webkit"],
+    "newSharedV2CasesWithinMatrix": 39,
+    "existingInstalledCasesRetained": 102,
+    "coverageGuard": "Every discovered SDK spec appears exactly once across editing and network child processes. Both use the original three-engine configuration, 60-second cases, 300-second process budget and zero retries; no project/deadline/retry overrides."
+  },
+  "existingApplicationV1BrowserRegression": {"command":"node_modules/.bin/playwright test -c experiments/shared-browser/application-network.config.mjs","passed":78,"perEngine":26,"duration":"1.9 minutes","engines":["chromium","firefox","webkit"],"scope":"Installed V1 standard controls, networking, offline/reconnect, history, presence and assets against the final installed candidate archives."},
+  "otherChecks": {
+    "sdkUnitPassed": 40,
+    "defaultBrowserUnitPassed": 2203,
+    "defaultBrowserTypes": true,
+    "scriptSuite": {"total":363,"passed":360,"failed":0,"existingOptInSkips":3},
+    "defaultBrowserArchiveByteUnchanged": true
+  },
+  "artifacts": [
+    {"name":"application-shared-wasm","bytes":8305360,"sha256":"de496995f794c2eef158ad9b78af610dabc0717079d6d77d4caf23b421902876"},
+    {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1228025,"sha256":"7bf9265c58e81324ba13bf3f3c34de5c9e63544ab496e3f5a7146c5510b32aba"},
+    {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2305496,"sha256":"9e300d7bede8bea0b27eac25e9196a9df807d85f6b0d4f8475182d853321dd6c"},
+    {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":19953,"sha256":"5961d131a5448a8acbb3d8f1c2d28eb40b98589ba8eac549c1b0090d69dc583f"}
+  ],
+  "openIssues": [
+    {"id":"native-v2-concurrent-format-replay","status":"observed-not-confirmed-fixed","note":"The earlier code/style ReplayMismatch has no saved failing checkpoint. The clock and empty-gap repairs establish concrete mechanisms, but do not prove that invocation's cause. It remains open before release promotion."},
+    {"id":"historical-intermittent-webkit-fault","status":"open","evidence":"docs/WEBKIT_FAULT_RECOVERY.md","note":"The reproduced asynchronous image race is repaired; it is not a root-cause repair claim for the older integer-domain startup fault."}
+  ],
+  "remaining": ["General document-wide/cross-container selection and code/atomic boundary navigation", "Natural typing history, field-preserving mixed edits, live read-only and bounded layout/context controls", "Separate sanitized HTML/Markdown and real Office/Docs/Excel paste with explicit losses", "Public API/package support decisions and remaining V1 parity/release gates"],
+  "retainedLogs": "target/shared-structural-v2-integration-qualification",
+  "readiness": "First-two-workstream goal is active and incomplete. Feature labels stay 8 implemented slices/17 partial/20 missing across 45 unequal groups until their complete acceptance passes; all 13 release gates remain open. Private alpha.22; no push, tag, publication or deployment. Owned test servers closed; retained user demo unchanged."
+}
