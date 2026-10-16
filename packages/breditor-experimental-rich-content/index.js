@@ -10,6 +10,7 @@ export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
 export {createLayoutRichToolbarV3} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
+export {RichDocumentSessionStore} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }
@@ -102,12 +103,24 @@ class RichCoreProfile {
     const profile=this.#live();if(!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use a matching native owner with typing-history recovery");
     return new RichCoreEditor(transfer(profile.restoreTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor);
   }
+  supportsDocumentSelection(){const p=this.#live();return p.documentSelectionVersion?.()==="1"&&typeof p.restoreDocumentEditor==="function"&&typeof p.restoreDocumentTypingEditor==="function";}
+  #documentProfile(){if(!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use matching native document-selection recovery");return this.#live();}
+  createDocumentEditor(documentJson,historyCapacity="100"){
+    const p=this.#documentProfile();return new RichCoreEditor(transfer(p.createEditor(documentJson,historyCapacity),"editor","takeEditor"),this.#descriptor,"document-v1");
+  }
+  restoreDocumentEditor(checkpointJson){return new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");}
+  restoreDocumentTypingEditor(checkpointJson){return new RichCoreEditor(transfer(this.#documentProfile().restoreDocumentTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");}
+  restoreOriginalAsDocumentEditor(checkpointJson,history="explicit"){
+    const p=this.#documentProfile();if(history!=="explicit"&&history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
+    if(history==="typing-v1"&&!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use matching native original typing-history recovery");
+    return new RichCoreEditor(transfer(history==="typing-v1"?p.restoreTypingEditor(checkpointJson):p.restoreEditor(checkpointJson),"editor","takeEditor"),this.#descriptor,"document-v1");
+  }
   dispose() { this.#raw?.free(); this.#raw = undefined; }
 }
 
 class RichCoreEditor {
-  #raw; #observation; #language;
-  constructor(raw,descriptor) { this.#raw = raw;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
+  #raw; #observation; #language; #selectionPolicy;
+  constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich editor is disposed"); return this.#raw; }
   /** Optional exact revision guard for a toolbar/async host operation prepared from view(). */
@@ -117,7 +130,9 @@ class RichCoreEditor {
       throw new RichCommandError("breditor_rich.stale_observation", "The command was prepared from an older rich view");
     }
     const input = typeof command === "string" ? command : JSON.stringify(command?.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command);
-    const result = raw.execute(this.#observation, input);
+    return this.#publish(raw.execute(this.#observation,input));
+  }
+  #publish(result){
     try {
       const status = result.status;
       if (status === "error") throw failure(result);
@@ -127,7 +142,18 @@ class RichCoreEditor {
       return status;
     } finally { result.free(); }
   }
-  view() { this.#live(); return JSON.parse(read(this.#observation.viewJson())); }
+  view() { this.#live();return JSON.parse(read(this.#selectionPolicy==="document-v1"?this.#observation.documentViewJson():this.#observation.viewJson())); }
+  selectionPolicy(){this.#live();return this.#selectionPolicy;}
+  supportsDocumentSelection(){const r=this.#live();return r.documentSelectionVersion?.()==="1"&&r.documentTypingVersion?.()==="1"&&r.generalCopyVersion?.()==="1"&&[r.selectDocument,r.replaceDocumentPlainText,r.replaceDocumentTypingText,r.documentCheckpointJson,this.#observation.documentViewJson,this.#observation.generalClipboardJson].every(method=>typeof method==="function");}
+  #documentCommand(method,input,revision){
+    const r=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The document intent was prepared from an older rich view");
+    if(this.#selectionPolicy!=="document-v1"||!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use an explicitly selected document facade with matching native capabilities");
+    return this.#publish(input===undefined?r[method](this.#observation):r[method](this.#observation,JSON.stringify(input)));
+  }
+  selectDocument(revision){return this.#documentCommand("selectDocument",undefined,revision);}
+  replaceDocumentPlainText(paragraph,text,revision){return this.#documentCommand("replaceDocumentPlainText",{paragraph,text},revision);}
+  replaceDocumentTypingText(paragraph,text,clockMs,revision){return this.#documentCommand("replaceDocumentTypingText",{paragraph,text,clockMs},revision);}
+  copyDocument(){this.#live();if(this.#selectionPolicy!=="document-v1"||!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use an explicitly selected document facade with matching native capabilities");return this.generalClipboard();}
   documentJson() { this.#live(); return read(this.#observation.documentJson()); }
   supportsStandardInlineControls() { const raw=this.#live();return typeof raw.inlineControlsVersion==="function"&&raw.inlineControlsVersion()==="1"&&typeof this.#observation.caretFormatsJson==="function"; }
   supportsInlinePropertyPatches() { const raw=this.#live();return typeof raw.inlinePropertyPatchesVersion==="function"&&raw.inlinePropertyPatchesVersion()==="1"; }
@@ -171,6 +197,6 @@ class RichCoreEditor {
     return JSON.parse(read(this.#observation.inlineFormatStateJson(kind)));
   }
   clipboard() { this.#live(); const value = read(this.#observation.clipboardJson(), true); return value === null ? null : JSON.parse(value); }
-  checkpointJson() { return read(this.#live().checkpointJson()); }
+  checkpointJson() { const raw=this.#live();return read(this.#selectionPolicy==="document-v1"?raw.documentCheckpointJson():raw.checkpointJson()); }
   dispose() { this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }
 }

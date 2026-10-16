@@ -8,6 +8,9 @@ export type RichCommandOutcome = "content" | "selection" | "typing" | "undo" | "
 export interface RichPoint {block: string; offset: string; affinity: "before" | "after"}
 export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
+export type RichSelectionPolicy="original"|"document-v1";
+export type RichHistoryPolicy="explicit"|"typing-v1";
+export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
 export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3;taskStructureVersion?:1;blockLayoutVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
 export interface RichBlockLayoutPatch {alignment?:"start"|"center"|"end"|"justify"|"left"|"right"|null;direction?:"ltr"|"rtl"|"auto"|null;indent?:number|null;lineHeightPercent?:number|null}
@@ -51,7 +54,12 @@ export interface RichView {
   tables: readonly {id: string; hidden: boolean; rows: readonly string[]; columns: readonly {id: string; width: number}[];
     cells: readonly {base: RichCell; master: RichCell; rowSpan: number; columnSpan: number; sources: readonly RichCell[]}[]}[];
 }
-export interface RichCoreEditor {
+/** Separate extended read family; original rich views remain closed text/node/grid DTOs. */
+export interface RichDocumentView extends Omit<RichView,"format"|"selection"> {format:"breditor/rich-document-view";selection:RichDocumentSelection|null}
+export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "document-v1"?RichDocumentView:RichView;
+export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
+  selectionPolicy?():P;
+  supportsDocumentSelection?():boolean;
   /** Read-only grammar revision, not mutation authority. Legacy owners may omit it. */
   richLanguageVersion?():1|2|3;
   supportsStandardInlineControls?():boolean;
@@ -87,12 +95,21 @@ export interface RichCoreEditor {
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;
   caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
-  view(): RichView;
+  view(): RichEditorView<P>;
   documentJson(): string;
   inlineFormatState(kind:string):RichInlineFormatStateRead;
   clipboard(): {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string} | null;
   checkpointJson(): string;
   dispose(): void;
+}
+/** Named explicit facade; no old command or checkpoint getter is reinterpreted. */
+export interface RichDocumentCoreEditor extends RichCoreEditor<"document-v1"> {
+  selectionPolicy():"document-v1";
+  supportsDocumentSelection():boolean;
+  selectDocument(expectedRevision?:string):RichCommandOutcome;
+  copyDocument():ReturnType<RichCoreEditor["clipboard"]>;
+  replaceDocumentPlainText(paragraph:string,text:string,expectedRevision?:string):RichCommandOutcome;
+  replaceDocumentTypingText(paragraph:string,text:string,clockMs:string,expectedRevision?:string):RichCommandOutcome;
 }
 export interface RichCoreProfile {
   descriptor(): RichProfileDescriptor;
@@ -101,5 +118,11 @@ export interface RichCoreProfile {
   restoreEditor(checkpointJson: string): RichCoreEditor;
   supportsTypingHistory?():boolean;
   restoreTypingEditor?(checkpointJson:string):RichCoreEditor;
+  supportsDocumentSelection?():boolean;
+  createDocumentEditor?(documentJson:string,historyCapacity?:string):RichDocumentCoreEditor;
+  restoreDocumentEditor?(checkpointJson:string):RichDocumentCoreEditor;
+  restoreDocumentTypingEditor?(checkpointJson:string):RichDocumentCoreEditor;
+  /** Explicit old-family replay followed by new-family observation/save routing; not an AST import. */
+  restoreOriginalAsDocumentEditor?(checkpointJson:string,history?:RichHistoryPolicy):RichDocumentCoreEditor;
   dispose(): void;
 }

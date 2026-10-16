@@ -27,3 +27,18 @@ async function documentSession(raw:SharedRustOwner):Promise<void>{
  SharedPersistentSession.openDocument({database:"explicit-document",room:"room",writer:"303",create:()=>raw,restore:()=>raw});
 }
 void documentSession;
+import type {RichCoreProfile,RichCoreEditor,RichView,RichDocumentView as LocalDocumentView} from "@breditor/experimental-rich-content";
+import {RichDocumentSessionStore} from "@breditor/experimental-rich-content";
+async function localDocument(profile:RichCoreProfile):Promise<void>{
+ if(!profile.createDocumentEditor||!profile.restoreDocumentEditor||!profile.restoreOriginalAsDocumentEditor)throw Error("Missing explicit capability");
+ const core=profile.createDocumentEditor("native document"),view:LocalDocumentView=core.view();void view;core.selectDocument();core.copyDocument();core.replaceDocumentPlainText("fresh","Q");core.replaceDocumentTypingText("fresh2","Q","1");
+ profile.restoreDocumentEditor(core.checkpointJson());profile.restoreOriginalAsDocumentEditor("original checkpoint","typing-v1");
+ // @ts-expect-error document views cannot masquerade as original local views
+ const oldView:RichView=core.view();void oldView;
+ // @ts-expect-error original DOM controllers have not opted into document scope
+ const oldCore:RichCoreEditor=core;void oldCore;
+ // @ts-expect-error original setSelection command stays closed
+ core.execute({kind:"setSelection",selection:{kind:"document"}});
+ const store=await RichDocumentSessionStore.open("explicit-local-document",{richLanguage:3,history:"typing-v1"});await store.save(core.checkpointJson());await store.load();store.close();
+}
+void localDocument;

@@ -13,6 +13,7 @@ export {createLayoutRichToolbarV3} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
 export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
 export {RichLocalSessionStore} from "./dist/browser/index.js";
+export {RichDocumentSessionStore,type RichDocumentSessionStoreOptions} from "./dist/browser/index.js";
 export {createRichInlinePresentation,type RichInlinePresentation,type RichInlineSchema} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1,type RichToolbarField,type RichToolbarReading} from "./dist/browser/index.js";

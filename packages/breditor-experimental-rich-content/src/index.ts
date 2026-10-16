@@ -5,6 +5,7 @@ export {RichAssetStore,type RichAssetOptions} from "./assets/store.js";
 export {defaultAssetLimits,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./assets/types.js";
 export {insertImageFiles} from "./assets/insert_image_files.js";
 export {RichLocalSessionStore} from "./persistence/local_session_store.js";
+export {RichDocumentSessionStore,type RichDocumentSessionStoreOptions} from "./persistence/document_session_store.js";
 export {createRichInlinePresentation,type RichInlinePresentation,type RichInlineSchema} from "./inline_presentation.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./standard_inline_v1.js";
 export {createStandardRichToolbarV1} from "./standard_toolbar.js";
