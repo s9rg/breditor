@@ -24,6 +24,7 @@ export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{
 export type RichCommand =
  |{kind:"replaceGeneralRangeText";data:{selection:Extract<RichSelection,{kind:"text"}>;runs:readonly {text:string;formatsJson:string}[];prefix:string}}
  |{kind:"pasteGeneralInlineClipboard";data:{selection:Extract<RichSelection,{kind:"text"}>;clipboardJson:string;prefix:string}}
+ |{kind:"insertGeneralParagraph";data:{selection:Extract<RichSelection,{kind:"text"}>;prefix:string}}
  |{kind:"pasteGeneralFlowClipboard";data:{selection:Extract<RichSelection,{kind:"text"}>;clipboardJson:string;allocation:ClipboardAllocation;prefix:string;right:string}}
  |{kind:"replaceGeneralRangePlainText";data:{selection:Extract<RichSelection,{kind:"text"}>;text:string;prefix:string}}
  |{kind:"replaceGeneralRangeTypingText";data:{selection:Extract<RichSelection,{kind:"text"}>;text:string;prefix:string;clockMs:string}}

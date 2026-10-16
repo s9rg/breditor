@@ -36,6 +36,7 @@ mod history_keys;
 mod history_metadata;
 mod initialize;
 mod inline_format_state;
+mod insert_general_paragraph;
 mod insert_hard_break;
 mod insert_paragraph_adjacent;
 mod insert_plain_text;

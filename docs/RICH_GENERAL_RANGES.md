@@ -407,10 +407,39 @@ results and clean-install artifacts. Its source-facade probe compares local and
 shared documents and exact future history; browser and OS clipboard qualification
 remain separate.
 
+## Native general paragraph editing
+
+`insertGeneralParagraph` takes only an explicit text `selection` and a fresh
+`prefix`. Rust derives the exact empty floors, suffix paragraph and optional
+item identities. `RichGeneralParagraphPlan` first trims the general coverage,
+then inspects the retained source. A leading ordinary-list head splits into a
+new list item; a leading task head creates an unchecked right task while
+retaining the left completion. Other prose splits in its existing flow owner.
+The right text block is a paragraph, retaining the suffix formats and inherited
+V3 layout. Partial tables, images, lists and tasks retain the general range
+preservation contract.
+
+The local session publishes the two captured phases together, retaining the
+actual before-selection and pending formats for Undo. Its final pending style
+comes from native input planning at the selected logical start. The shared
+adapter lowers the same plan into one additive `insert_general_paragraph_v1`
+command in explicit general history; it never publishes an intermediate
+selection or a root AST replacement. Original command tags and saved records
+are unchanged. Older runtimes reject the new tag rather than reinterpret it.
+
+The separate local `generalParagraphVersion()` and shared
+`general_paragraph_version()` capabilities declare this behavior. General-mode
+controllers route cross-block Enter, including browser-provided cross-block
+targets, through the matching native command. Caption/code starts use one
+general plain LF replacement instead of a structural split. Existing same-block
+and collapsed-caret Enter, including empty-item exit, retain their original
+routes. A missing structural capability refuses the requested cross-range split
+without falling back to an original multi-step edit.
+
 ## Remaining integration
 
-Caption/code structured-paste policy, cross-range paragraph/key transformations,
-whole-document selection, remaining installed editing/transport acceptance and
+Caption/code structured-paste policy, whole-document selection,
+remaining installed editing/transport acceptance and
 relay V2 integration remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.

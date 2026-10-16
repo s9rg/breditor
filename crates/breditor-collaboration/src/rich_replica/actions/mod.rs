@@ -9,6 +9,7 @@ mod indent_list_items;
 mod indent_task_items;
 mod insert_blocks;
 mod insert_column;
+mod insert_general_paragraph_v1;
 mod insert_horizontal_rule;
 mod insert_row;
 mod insert_text;
@@ -62,6 +63,7 @@ pub use indent_list_items::IndentListItems;
 pub use indent_task_items::IndentTaskItems;
 pub use insert_blocks::InsertBlocks;
 pub use insert_column::InsertColumn;
+pub use insert_general_paragraph_v1::InsertGeneralParagraphV1;
 pub use insert_horizontal_rule::InsertHorizontalRule;
 pub use insert_row::InsertRow;
 pub use insert_text::InsertText;
@@ -110,6 +112,8 @@ pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Additive general paragraph Enter with native list/task policy and one exact history unit.
+    InsertGeneralParagraphV1(InsertGeneralParagraphV1),
     /// Additive atomic general-range flow paste; requires explicitly enabled general history.
     PasteGeneralFlowAtTextV1(PasteGeneralFlowAtTextV1),
     /// Patch independently owned bounded layout fields under explicit shared model 13.
@@ -236,6 +240,7 @@ impl Command {
         document: &breditor_core::rich_content::RichDocument,
     ) -> Result<(), Error> {
         match self {
+            Self::InsertGeneralParagraphV1(value) => value.prepare(doc, codec, document)?,
             Self::PasteGeneralFlowAtTextV1(value) => value.prepare(doc, codec, document)?,
             Self::SetBlockLayout(value) => value.prepare(doc)?,
             Self::InsertHorizontalRule(value) => value.prepare(doc)?,
@@ -336,6 +341,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::InsertGeneralParagraphV1(value) => value.apply(doc, codec, document, stamp),
             Self::PasteGeneralFlowAtTextV1(value) => value.apply(doc, codec, document, stamp),
             Self::SetBlockLayout(value) => value.apply(doc, codec, document, stamp),
             Self::InsertHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),

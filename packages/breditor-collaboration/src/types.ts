@@ -83,6 +83,8 @@ export interface SharedRustOwner {
  general_range_version?():string;
  general_inline_paste_version?():string;
  general_flow_paste_version?():string;
+ general_paragraph_version?():string;
+ insert_general_paragraph?(observation:unknown,input:string):boolean;
  paste_general_flow_clipboard?(observation:unknown,input:string):boolean;
  general_copy_version?():string;
  copy_general_clipboard?(observation:unknown):string;

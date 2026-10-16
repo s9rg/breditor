@@ -26,6 +26,7 @@ mod indent_task_items;
 mod input_plan;
 mod insert_blocks;
 mod insert_formatted_text;
+mod insert_general_paragraph;
 mod insert_hard_break;
 mod insert_horizontal_rule;
 mod insert_image;
@@ -99,6 +100,7 @@ use serde_json::value::RawValue;
 enum CommandTag {
     PasteGeneralInlineClipboard,
     PasteGeneralFlowClipboard,
+    InsertGeneralParagraph,
     ReplaceGeneralRangeText,
     ReplaceGeneralRangePlainText,
     ReplaceGeneralRangeTypingText,
@@ -246,6 +248,11 @@ pub(super) fn execute(
         return Err(error::rejected("breditor_rich.read_only"));
     }
     match command.kind {
+        CommandTag::InsertGeneralParagraph => insert_general_paragraph::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
         CommandTag::PasteGeneralFlowClipboard => paste_general_flow_clipboard::execute(
             owner,
             observation,

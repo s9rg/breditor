@@ -11,19 +11,20 @@ const range=(anchor=point("a"),focus=point("b","2")):Extract<RichSelection,{kind
 const element=(type:string,block:string,children:unknown[]=[],properties:Record<string,unknown>={})=>({kind:"element",type:`breditor/${type}`,entityId:null,properties:{"breditor/block-id":block,...properties},children});
 const paragraph=(block:string)=>element("paragraph",block,[{kind:"text",text:"seed",formats:[]}]);
 const documentJson=JSON.stringify({format:"breditor/document",formatVersion:2,schema:{name:"test/dom",version:1},schemaFingerprint:"native fixture",root:element("document","root",[paragraph("a"),paragraph("b")])});
-function fixture(mode:"local"|"shared",general=true,natural=false,selection:RichSelection=range(),clipboardCapable=true){
+function fixture(mode:"local"|"shared",general=true,natural=false,selection:RichSelection=range(),clipboardCapable=true,source=documentJson){
  let revision=1;const calls:{kind:string;data:Record<string,unknown>}[]=[];
- const view=()=>({format:"breditor/rich-view",formatVersion:1,revision:String(revision),documentJson,selection,pendingFormatsJson:null,undoDepth:0,redoDepth:0,historyCapacity:100,grid:null,tables:[],...(natural?{historyGrouping:"typing-v1"}:{}),...(mode==="shared"&&general?{rangeEditing:"general-v1"}:{})} as RichView);
+ const view=()=>({format:"breditor/rich-view",formatVersion:1,revision:String(revision),documentJson:source,selection,pendingFormatsJson:null,undoDepth:0,redoDepth:0,historyCapacity:100,grid:null,tables:[],...(natural?{historyGrouping:"typing-v1"}:{}),...(mode==="shared"&&general?{rangeEditing:"general-v1"}:{})} as RichView);
  const changed=(kind:string,data:Record<string,unknown>={})=>{calls.push({kind,data});revision++;return true;};
  const host=document.createElement("div");document.body.append(host);
  const clipboard=()=>({plainText:"native general selected text",structuredJson:"native general opaque table shape"});
  if(mode==="local"){
   const core={view,supportsGeneralRanges:()=>true,supportsGeneralFlowPaste:()=>clipboardCapable,supportsGeneralInlinePaste:()=>clipboardCapable,supportsGeneralCopy:()=>clipboardCapable,generalClipboard:clipboard,clipboard:()=>({plainText:"original",structuredJson:"original"}),supportsTypingHistory:()=>true,closeTypingGroup:()=>false,execute:vi.fn(command=>{if(command.kind==="setSelection"){selection=command.selection;revision++;return "selection";}changed(command.kind,command.data??{});return "content";}),dispose:vi.fn()} as unknown as RichCoreEditor;
-  const dom=new RichDomEditor(host,{core,toolbar:[],...(general?{rangeEditing:"general-v1"}:{})});return {dom,calls,host,core};
+  Object.assign(core,{supportsGeneralParagraph:()=>clipboardCapable});const dom=new RichDomEditor(host,{core,toolbar:[],...(general?{rangeEditing:"general-v1"}:{})});return {dom,calls,host,core};
  }
  const raw={descriptor_json:()=>JSON.stringify({format:"breditor/shared-rich-owner",abiVersion:1,modelVersion:11,journalVersion:12}),observe:()=>({view_json:()=>JSON.stringify({...view(),format:"breditor/shared-rich-view"}),free:()=>{}}),free:vi.fn(),general_range_version:()=>"1",enable_general_ranges:()=>false,general_checkpoint:()=>"general",general_typing_checkpoint:()=>"natural-general",
   general_copy_version:()=>clipboardCapable?"1":"0",copy_general_clipboard:()=>JSON.stringify({plainText:clipboard().plainText,richJson:clipboard().structuredJson}),copy_clipboard:()=>JSON.stringify({plainText:"original",richJson:"original"}),
   general_flow_paste_version:()=>clipboardCapable?"1":"0",paste_general_flow_clipboard:(_o:unknown,json:string)=>changed("pasteGeneralFlowClipboard",JSON.parse(json)),
+  general_paragraph_version:()=>clipboardCapable?"1":"0",insert_general_paragraph:(_o:unknown,json:string)=>changed("insertGeneralParagraph",JSON.parse(json)),
   general_inline_paste_version:()=>clipboardCapable?"1":"0",paste_general_inline_clipboard:(_o:unknown,json:string)=>changed("pasteGeneralInlineClipboard",JSON.parse(json)),replace_general_range_text:(_o:unknown,json:string)=>changed("replaceGeneralRangeText",JSON.parse(json)),replace_general_range_plain_text:(_o:unknown,json:string)=>changed("replaceGeneralRangePlainText",JSON.parse(json)),replace_general_range_typing_text:(_o:unknown,json:string)=>changed("replaceGeneralRangeTypingText",JSON.parse(json)),typing_history_version:()=>"1",enable_typing_history:()=>false,close_typing_group:()=>false,typing_checkpoint:()=>"natural",insert_typing_text:(_o:unknown,json:string)=>changed("insertTypingText",JSON.parse(json)),delete_typing_range:(_o:unknown,json:string)=>changed("deleteTypingRange",JSON.parse(json)),
   set_selection:(_o:unknown,json:string)=>{selection=JSON.parse(json);revision++;return true;},insert_plain_text:(_o:unknown,text:string)=>changed("insertPlainText",{text}),replace_plain_text:(_o:unknown,json:string,text:string)=>changed("replaceTextRange",{selection:JSON.parse(json),text}),insert_hard_break:()=>changed("insertHardBreak")};
  const core=new SharedRichEditor(raw as unknown as SharedRustOwner),dom=new SharedDomEditor(host,{core,toolbar:[]});return {dom,calls,host,core};
@@ -36,6 +37,12 @@ function input(dom:RichDomEditor|SharedDomEditor,type:string,text:string|null=nu
 afterEach(()=>{document.getSelection()?.removeAllRanges();document.body.replaceChildren();vi.restoreAllMocks();});
 describe("guarded general DOM routing (synthetic events, not browser acceptance)",()=>{
  for(const mode of ["local","shared"] as const){
+  it(`${mode}: caption/code cross-range Enter uses native LF without requiring a structural split capability`,()=>{
+   for(const caption of [true,false]){const first=caption?element("image","image",[paragraph("a")],{"breditor/image-id":"img","breditor/asset-id":"asset","breditor/asset-generation":"gen","breditor/decorative":false,"breditor/alt-text":"Description"}):element("code-block","a",[{kind:"text",text:"seed",formats:[]}]),source=JSON.stringify({...JSON.parse(documentJson),root:element("document","root",[first,paragraph("b")])}),t=fixture(mode,true,false,range(),false,source);try{input(t.dom,"insertParagraph");expect(t.calls).toEqual([{kind:"replaceGeneralRangePlainText",data:{selection:range(),text:"\n",prefix:expect.any(String)}}]);}finally{t.dom.dispose();}}
+  });
+  it(`${mode}: cross-range Enter is one native request and honors a browser target without staging UI`,()=>{
+   for(const capable of [true,false])for(const explicit of [true,false]){const actual=explicit?range(point("b"),point("b")):range(),t=fixture(mode,true,false,actual,capable);try{input(t.dom,"insertParagraph",null,explicit?range():undefined);if(capable)expect(t.calls).toEqual([{kind:"insertGeneralParagraph",data:{selection:range(),prefix:expect.any(String)}}]);else{expect(t.calls).toEqual([]);expect(t.dom.status.textContent).toContain("matching native general paragraph");}}finally{t.dom.dispose();}}
+  });
   it(`${mode}: cross-range composition commits its final text once, or cancels without deleting`,()=>{
    const frames:FrameRequestCallback[]=[];vi.spyOn(window,"requestAnimationFrame").mockImplementation(callback=>{frames.push(callback);return frames.length;});
    for(const text of ["日本🙂",""]){const t=fixture(mode);try{

@@ -48,10 +48,11 @@ export function removeSelection(ctx:ActionContext,movement:"before"|"after"="aft
  }
  if(s?.kind==="grid")publish(ctx,[{kind:"clear_table_cells",data:{anchor:cellBlock(ctx.model,s.anchor),focus:cellBlock(ctx.model,s.focus),empty:(ctx.model.view.grid?.cells??[]).map(()=>ctx.allocate("empty"))}}]);
 }
-export function enter(ctx:ActionContext):void{
- const s=ctx.model.view.selection;if(s?.kind!=="text")return;const[start,end]=ordered(ctx.model,s),node=ctx.model.nodes.get(start.block);if(!node)return;
- if(node.type==="breditor/code-block"){ctx.core.hardBreak(ctx.revision);return;}
- const parent=ctx.model.parents.get(start.block);if(parent?.type==="breditor/image"){ctx.core.hardBreak(ctx.revision);return;}
+export function enter(ctx:ActionContext,target?:Extract<RichSelection,{kind:"text"}>):void{
+ const s=target??ctx.model.view.selection;if(s?.kind!=="text")return;const[start,end]=ordered(ctx.model,s),node=ctx.model.nodes.get(start.block);if(!node)return;
+ const cross=ctx.model.view.rangeEditing==="general-v1"&&s.anchor.block!==s.focus.block,parent=ctx.model.parents.get(start.block);
+ if(node.type==="breditor/code-block"||parent?.type==="breditor/image"){if(cross)ctx.core.replaceGeneralRangePlainText(s,"\n",ctx.allocate("range"),ctx.revision);else ctx.core.hardBreak(ctx.revision);return;}
+ if(cross){ctx.core.insertGeneralParagraph(s,ctx.allocate("range"),ctx.revision);return;}
  if(parent?.type==="breditor/task-item"&&parent.children[0]===node){const exit=exitEmptySharedTask(ctx);if(exit){publish(ctx,[exit],caret(start.block));return;}}
  const list=listContext(ctx.model);
  if(list&&parent?.type==="breditor/list-item"&&parent.children[0]===node&&!text(node)&&start.block===end.block&&start.offset===end.offset){const outside=ctx.model.parents.get(id(list.list)),tail=outside?.type!=="breditor/list-item"&&list.last<list.items.length-1?ctx.allocate("list-tail"):null;publish(ctx,[{kind:"outdent_list_items",data:{container:id(list.list),first:id(parent),last:id(parent),fresh_tail:tail}}],caret(start.block));return;}

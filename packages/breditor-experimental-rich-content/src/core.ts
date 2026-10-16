@@ -68,6 +68,8 @@ export interface RichCoreEditor {
   supportsGeneralInlinePaste?():boolean;
   /** Atomic native rich-flow paste at a general text range with a retained prose start. */
   supportsGeneralFlowPaste?():boolean;
+  /** Native paragraph/list/task Enter over a general prose selection. */
+  supportsGeneralParagraph?():boolean;
   /** Pure native general Copy, preserving partial table shape without unselected content. */
   supportsGeneralCopy?():boolean;
   generalClipboard?():ReturnType<RichCoreEditor["clipboard"]>;

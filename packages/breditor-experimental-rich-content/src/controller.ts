@@ -246,7 +246,7 @@ export class RichDomEditor {
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}
    if((type==="insertParagraph"||type==="insertLineBreak")&&isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
-   if(type==="insertParagraph"){const command=enter(this.#context());if(command)this.execute(command);return;}
+   if(type==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=this.#general&&range?readTarget(this.surface,range):null;const command=enter(this.#context(),this.#general,target&&target.anchor.block!==target.focus.block?target:undefined);if(command)this.execute(command);return;}
    const selection=this.#model.view.selection;
    if(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
     if(type.startsWith("delete")){this.execute({kind:"deleteAtom",data:{paragraph:this.#allocate("p"),movement:type.includes("Backward")?"before":"after"}});return;}

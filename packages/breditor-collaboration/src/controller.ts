@@ -179,7 +179,7 @@ export class SharedDomEditor {
   if(this.#selectionFormat(action))return;
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
-   if(kind==="insertParagraph"){enter(c);return;}
+   if(kind==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=c.model.view.rangeEditing==="general-v1"&&range?readTarget(this.surface,range):null;enter(c,target&&target.anchor.block!==target.focus.block?target:undefined);return;}
    if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
     if(kind.startsWith("delete")){c.core.deleteAtom(c.allocate("p"),kind.includes("Backward")?"before":"after",c.revision);return;}
     if(kind==="insertText"||kind==="insertReplacementText"){const value=event.data??"";if(value){const paragraph=c.allocate("p");if(kind==="insertText"&&c.model.view.historyGrouping==="typing-v1")c.core.replaceAtomTypingText(paragraph,value,this.#clock(),c.revision);else c.core.replaceAtomPlainText(paragraph,value,c.revision);}return;}

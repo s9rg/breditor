@@ -13,3 +13,5 @@ function generalInline(owner:SharedEditorOwner,observation:SharedObservation):vo
 void generalInline;
 function generalCopy(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.general_copy_version();const content:string=owner.copy_general_clipboard(observation);void version;void content;}
 void generalCopy;
+function generalParagraph(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.general_paragraph_version();const changed:boolean=owner.insert_general_paragraph(observation,'{"selection":{},"prefix":"fresh"}');void version;void changed;}
+void generalParagraph;

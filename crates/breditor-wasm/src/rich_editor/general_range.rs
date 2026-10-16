@@ -3,6 +3,13 @@ use super::BreditorRichEditor;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 impl BreditorRichEditor {
+    /// String1 supports native paragraph/list/task Enter over general prose ranges.
+    #[allow(clippy::unused_self)]
+    #[must_use]
+    #[wasm_bindgen(js_name=generalParagraphVersion)]
+    pub fn general_paragraph_version(&self) -> String {
+        "1".to_owned()
+    }
     /// String1 supports atomic general-range rich flow paste at retained prose starts.
     #[allow(clippy::unused_self)]
     #[must_use]

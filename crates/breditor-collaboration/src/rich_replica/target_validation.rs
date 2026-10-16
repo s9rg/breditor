@@ -14,8 +14,10 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
     ));
     let mut declared = TargetKinds::default();
     for command in commands {
-        if matches!(command, Command::PasteGeneralFlowAtTextV1(_))
-            && (!owner.general_ranges_enabled() || commands.len() != 1)
+        if matches!(
+            command,
+            Command::PasteGeneralFlowAtTextV1(_) | Command::InsertGeneralParagraphV1(_)
+        ) && (!owner.general_ranges_enabled() || commands.len() != 1)
         {
             return Err(Error::Contract(
                 "general compound requires its explicit history family and sole command",

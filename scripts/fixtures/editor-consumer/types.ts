@@ -4,6 +4,7 @@ function contract(host:HTMLElement,editor:LocalEditor):void {
  const changed:boolean=editor.setReadOnly(false,editor.view().revision);void changed;
  void openLocalEditor({...options,history:"typing-v1"});void openLocalEditor({...options,initial:{kind:"typingCheckpoint",checkpointJson:"declared grouped checkpoint"}});
  void openLocalEditor({...options,rangeEditing:"general-v1"});
+ editor.execute({kind:"insertGeneralParagraph",data:{selection:{kind:"text",anchor:{block:"a",offset:"1",affinity:"after"},focus:{block:"b",offset:"2",affinity:"after"}},prefix:"fresh"}});
  void openLocalEditor({...options,toolbar:(core,standard)=>{const capable=core.supportsGeneralCopy?.();const copy=core.generalClipboard?.();void capable;void copy;return standard;}});
  // @ts-expect-error Range policy is explicit, never inferred from truthiness.
  void openLocalEditor({...options,rangeEditing:true});

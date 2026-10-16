@@ -70,13 +70,15 @@ export function bold(context:ActionContext):RichCommand|null {
  });
  return {kind:"setInlineFormat",data:{targets,change:active?{kind:"remove",format:"breditor/strong"}:{kind:"set",formatsJson:'[{"type":"breditor/strong","properties":{}}]'}}};
 }
-export function enter(context:ActionContext):RichCommand|null {
- const selection=context.model.view.selection;if(selection?.kind!=="text")return null;
- const exit=exitEmptyTask(context);if(exit)return exit;
+export function enter(context:ActionContext,general=false,target?:Extract<RichSelection,{kind:"text"}>):RichCommand|null {
+ const selection=target??context.model.view.selection;if(selection?.kind!=="text")return null;
+ const cross=selection.anchor.block!==selection.focus.block;
+ const exit=target?null:exitEmptyTask(context);if(exit)return exit;
  const value=context.model,a=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),f=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
  const point=a<f||(a===f&&BigInt(selection.anchor.offset)<=BigInt(selection.focus.offset))?selection.anchor:selection.focus;
  const parent=value.parents.get(point.block);
- if(parent?.type==="breditor/image"||value.nodes.get(point.block)?.type==="breditor/code-block")return {kind:"insertHardBreak"};
+ if(parent?.type==="breditor/image"||value.nodes.get(point.block)?.type==="breditor/code-block")return general&&cross?{kind:"replaceGeneralRangePlainText",data:{selection,text:"\n",prefix:context.allocate("range")}}:{kind:"insertHardBreak"};
+ if(general&&cross){if(context.core?.supportsGeneralParagraph?.()!==true)throw Error("Use matching native general paragraph editing");return {kind:"insertGeneralParagraph",data:{selection,prefix:context.allocate("range")}};}
  const right=context.allocate("p");
  if((parent?.type==="breditor/list-item"||parent?.type==="breditor/task-item")&&parent.children[0]?.kind==="element"&&id(parent.children[0])===point.block)
   return {kind:"insertParagraph",data:{right,newItem:context.allocate("item")}};

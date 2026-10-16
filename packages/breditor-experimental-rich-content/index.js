@@ -137,6 +137,7 @@ class RichCoreEditor {
   supportsGeneralRanges(){const raw=this.#live();return typeof raw.generalRangeVersion==="function"&&raw.generalRangeVersion()==="1";}
   supportsGeneralInlinePaste(){const raw=this.#live();return this.supportsGeneralRanges()&&typeof raw.generalInlinePasteVersion==="function"&&raw.generalInlinePasteVersion()==="1";}
   supportsGeneralFlowPaste(){const raw=this.#live();return this.supportsGeneralRanges()&&typeof raw.generalFlowPasteVersion==="function"&&raw.generalFlowPasteVersion()==="1";}
+  supportsGeneralParagraph(){const raw=this.#live();return this.supportsGeneralRanges()&&typeof raw.generalParagraphVersion==="function"&&raw.generalParagraphVersion()==="1";}
   supportsGeneralCopy(){const raw=this.#live();return typeof raw.generalCopyVersion==="function"&&raw.generalCopyVersion()==="1"&&typeof this.#observation.generalClipboardJson==="function";}
   generalClipboard(){this.#live();if(!this.supportsGeneralCopy())throw new Error("Use matching native general clipboard copy");const value=read(this.#observation.generalClipboardJson(),true);return value===null?null:JSON.parse(value);}
   supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}

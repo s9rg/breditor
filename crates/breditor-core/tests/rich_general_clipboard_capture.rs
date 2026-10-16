@@ -188,13 +188,25 @@ fn partial_caption_is_text_only_but_fully_enclosed_image_keeps_asset_and_alt() -
 }
 #[test]
 fn partial_ordered_list_retains_selected_item_ordinal_without_borrowing_earlier_items() -> Result {
-    let mut root=fixture::root();
-    let list=&mut root["children"][4];list["type"]=json!("breditor/ordered-list");list["properties"]["breditor/start"]=json!(5);
-    list["children"].as_array_mut().ok_or("items")?.push(fixture::element("list-item","second-item",vec![fixture::paragraph("second-head","Second")]));
-    let(c,d)=setup(root)?;
-    let value=copy(&c,&d,"second-head",1,"code",1)?;
-    let list=&value["document"]["root"]["children"][0];assert_eq!(list["type"],"breditor/ordered-list");assert_eq!(list["properties"]["breditor/start"],6);assert_eq!(list["children"].as_array().ok_or("copied items")?.len(),1);
-    let copied=texts(&value["document"]["root"]);assert_eq!(copied["second-head"],"econd");assert!(!copied.contains_key("head"));assert!(!copied.contains_key("nested-text"));
+    let mut root = fixture::root();
+    let list = &mut root["children"][4];
+    list["type"] = json!("breditor/ordered-list");
+    list["properties"]["breditor/start"] = json!(5);
+    list["children"].as_array_mut().ok_or("items")?.push(fixture::element(
+        "list-item",
+        "second-item",
+        vec![fixture::paragraph("second-head", "Second")],
+    ));
+    let (c, d) = setup(root)?;
+    let value = copy(&c, &d, "second-head", 1, "code", 1)?;
+    let list = &value["document"]["root"]["children"][0];
+    assert_eq!(list["type"], "breditor/ordered-list");
+    assert_eq!(list["properties"]["breditor/start"], 6);
+    assert_eq!(list["children"].as_array().ok_or("copied items")?.len(), 1);
+    let copied = texts(&value["document"]["root"]);
+    assert_eq!(copied["second-head"], "econd");
+    assert!(!copied.contains_key("head"));
+    assert!(!copied.contains_key("nested-text"));
     Ok(())
 }
 #[test]
