@@ -8,9 +8,10 @@ text at the selection's logical beginning.
 
 The local foundation, explicit shared semantic history and guarded Wasm/source
 facade commands are implemented. Explicit root SDK options and durable general
-sessions now connect native plain input to vanilla/React controllers. Rich
-clipboard, cross-range paragraph transformations, document-wide Select All and
-transport V2 integration remain required before the general-selection feature is ready.
+sessions now connect native plain input to vanilla/React controllers. General
+rich clipboard, cross-range paragraph Enter, explicit caption/code text paste
+and transport V2 have functional checkpoints below. Document-wide Select All,
+external interchange and final integrated qualification remain required.
 
 ## Original joins and protected boundaries
 
@@ -384,8 +385,9 @@ request takes `selection`, `clipboardJson`, `prefix` and `right`, and saves the
 additive `paste_general_flow_at_text_v1` command only in explicitly selected
 general history. Older runtimes reject the unknown command rather than
 reinterpreting an original paste entry. Prior commands and journal meanings are
-unchanged. Flow paste beginning in a caption or code block remains unsupported;
-those targets reject atomically rather than flattening the clipboard.
+unchanged. The structured flow-paste command itself still rejects caption/code
+starts. The separately selected text-with-losses policy below handles those
+targets before any mutation; failed structured paste never triggers it.
 
 General-mode DOM Copy and Cut use the native general read. Cut submits one
 general deletion only after the event clipboard retains the supplied plain
@@ -440,6 +442,38 @@ The [functional paragraph checkpoint](qualification/2026-10-16-general-paragraph
 records the native matrices, controller contracts and actual release-Wasm
 comparisons, including exact recovery and typing groups on both sides of Enter.
 
+## Explicit caption/code text paste
+
+The approved policy inserts the clipboard's text into a caption/code start and
+reports formatting loss. `RichClipboardFragment::project_text_for_selection`
+uses native general-range planning to resolve the logical start, including
+backward ranges. An admitted flow/grid clipboard produces a bounded text/loss
+report only for captions and code; prose returns no projection and keeps its
+structured route. Inline clipboard fragments retain their existing contract.
+
+The separate `clipboardTextPolicyVersion()` / `clipboard_text_policy_version()`
+capability pairs with the native `projectClipboardText` / `project_clipboard_text`
+read. Local reads use their frozen observation; shared reads reject stale or
+foreign observations before parsing. Read-only projection is allowed but does
+not authorize editing. The clipboard remains schema-bound and opaque to
+JavaScript. Native reading order supplies quoted TSV for tables and alt/caption
+text for images, never asset URLs or credentials. Empty textual content and
+projections over 64 KiB reject instead of deleting the selected content.
+
+The projection declares `breditor/rich-clipboard-text-projection` V1 with
+`target`, `text` and deterministic `losses`: block structure, inline formatting,
+block properties, table geometry and embedded content as applicable. This is a
+read report, not a saved edit or a mutation token. Controllers submit one plain
+replacement under the same publication guard, using the native destination's
+input style. They show a formatting-loss status and invoke `onPasteLoss(report)`
+only after success. Conversion/edit failures publish no successful-loss notice
+and never retry with the external plain MIME payload. Vanilla and React adapters
+expose the callback; React forwards the latest callback without reopening history.
+
+The [caption/code functional checkpoint](qualification/2026-10-16-caption-code-text-paste-functional.json)
+records actual paired release Wasm, directional targets, exact explicit/natural
+recovery and future histories. It is not browser/OS clipboard acceptance.
+
 ## Remaining integration
 
 The [transport V2 functional checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
@@ -447,11 +481,9 @@ now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
 general explicit/natural journal recovery after host restart, and peer-preserving
 selective Undo/Redo. It does not change original writer digests or migrate rooms.
 
-Caption/code structured-paste implementation, whole-document selection,
+Whole-document selection,
 remaining installed editing/transport acceptance and external interchange
-remain required. The approved caption/code policy inserts text and explicitly
-reports formatting loss; it must not be a silent retry after failed rich paste.
-Native IME/accessibility and
+remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 

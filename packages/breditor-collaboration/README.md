@@ -150,9 +150,22 @@ Shared DOM plain typing, replacement, selected deletion, Shift+Enter and plain
 paste follow the observed general mode. Cross-cell browser text ranges retain
 partial endpoints; cell-picker grids remain explicit. Native general rich Copy,
 inline/flow paste and cross-range paragraph Enter are implemented with separate
-capability checks. Caption/code flow-paste and whole-document Select All remain
-required. A general session must not bypass a relay's journal or digest guard. See the
+capability checks. Caption/code flow/grid paste uses separately declared native
+text conversion with an explicit formatting-loss notice; structured paste never
+silently falls back. Whole-document Select All remains required. A general
+session must not bypass a relay's journal or digest guard. See the
 [native contract](../../docs/RICH_GENERAL_RANGES.md).
+
+### Caption/code paste losses
+
+`supportsClipboardTextPolicy()` requires the exact native V1 policy and its
+guarded read. `projectClipboardText(selection, clipboardJson, revision)` returns
+a native text/loss report for caption/code starts, or null for prose. It is a
+pure read, including in read-only mode; mutation still requires the matching
+publication and write policy. The controller performs one explicit plain edit,
+then shows the loss notice and calls `onPasteLoss(report)`. It never uses a failed
+structured paste to select conversion. Empty or oversized projected text rejects
+without deleting selection. See the [functional checkpoint](../../docs/qualification/2026-10-16-caption-code-text-paste-functional.json).
 
 ### Explicit writer transport V2
 

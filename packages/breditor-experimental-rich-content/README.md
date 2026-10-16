@@ -470,6 +470,15 @@ per authored paste plus exact `replica`, `counter` and `lamport` strings. Consum
 namespaces remain consumed even when publication fails. Assets retain immutable
 references while copied image nodes receive fresh binding generations.
 
+The additive `supportsClipboardTextPolicy()` / `projectClipboardText(selection,
+clipboardJson, revision)` pair selects native text-with-losses conversion for
+rich flow/grid paste into captions/code. Prose returns null and keeps structured
+paste. Controllers submit one guarded text edit, show a formatting-loss status,
+and call optional `onPasteLoss(report)` only after success. No failed rich edit
+is retried as plain text. Empty projected text and text over 64 KiB reject; inline
+fragments keep their existing rich-paste semantics. Projection is a pure native
+read, not editing authority. See the [caption/code functional checkpoint](../../docs/qualification/2026-10-16-caption-code-text-paste-functional.json).
+
 Original range commands cover one text block, direct sibling flow or sibling
 leading list heads. They still reject arbitrary cross-cell/container ranges. Grid
 navigation stops at table boundaries without silently creating rows. Each content

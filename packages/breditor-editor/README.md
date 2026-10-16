@@ -17,9 +17,13 @@ Pass `rangeEditing: 'general-v1'` to local or shared openings, or to React
 retains original routing. The option is immutable per owner/React `sessionKey`.
 Cross-cell browser text selections retain their partial endpoints; explicit
 cell-picker grid selections are unchanged. Typing, replacement, selected
-deletion, Shift+Enter and plain paste use the Rust general planner. Rich
-clipboard, cross-range Enter, whole-document Select All and composition across
-blocks remain unfinished.
+deletion, Shift+Enter and plain paste use the Rust general planner. Native general
+rich Copy/Cut/paste, atomic cross-range Enter and cross-block composition routing
+have functional checkpoints. Rich blocks pasted into captions/code use native
+text conversion with a visible formatting-loss notice and optional
+`onPasteLoss(report)` callback, also available as a live React prop. Failed rich
+paste never triggers a silent plain-text retry. Whole-document Select All,
+external interchange and final integrated qualification remain unfinished.
 
 Local saves keep their existing checkpoint families; reapply the range option
 after reload. Shared general sessions use separately declared ordinary/natural

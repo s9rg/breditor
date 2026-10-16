@@ -550,8 +550,11 @@ The [2026-10-16 transport checkpoint](qualification/2026-10-16-writer-transport-
 completes explicit Wasm/SDK/reference-relay V2 integration with real offline
 authors, exact restart recovery and peer-preserving Undo/Redo. General rich
 clipboard and cross-structure paragraph checkpoints are also retained. Remaining
-functional work includes caption/code text-with-losses paste, whole-document
-selection and external interchange. These focused results do not promote V1
+functional work includes whole-document selection and external interchange.
+The subsequent [caption/code checkpoint](qualification/2026-10-16-caption-code-text-paste-functional.json)
+implements the approved native text-with-losses policy with visible notices,
+latest React callbacks, 32 paired Wasm scenarios and exact history recovery.
+These focused results do not promote V1
 readiness rows or replace final installed/browser/release acceptance.
 
 The active implementation goal covers the first two workstreams: a unified

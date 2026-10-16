@@ -1,0 +1,65 @@
+{
+  "format":"breditor/functional-checkpoint",
+  "formatVersion":1,
+  "date":"2026-10-16",
+  "sourceCommit":"016d3a8",
+  "policy":"Insert native projected text into caption/code starts and explicitly report formatting loss; never retry a failed rich edit as plain text.",
+  "native":{
+    "newWasmProjectionTests":2,
+    "newSharedGuardTest":1,
+    "coreClipboardRegressionTests":9,
+    "wasmClipboardAndParagraphRegressionTests":10,
+    "sharedClipboardRegressionTests":9,
+    "strictCoreAndWasmAllTargetsClippyPassed":true,
+    "strictSharedLibraryAndChangedTestClippyPassed":true,
+    "existingVendoredWarningUnchanged":true,
+    "exactProjectionTextByteBoundary":65536,
+    "emptyTextRefusesWithoutDeletingSelection":true
+  },
+  "sdk":{
+    "tests":174,
+    "testFiles":23,
+    "typesPassed":true,
+    "generatedRuntimeSurfacePassed":true,
+    "scope":"Synthetic local/shared controller routing, failed conversion/publication, pure guarded facade reads and latest React callbacks. Not browser/native clipboard qualification."
+  },
+  "releaseRuntimeProbe":{
+    "localWasmSha256":"8703e74722a9579f960a4b96aac5e672e68dc8a4f1e066e931896ff1738af92d",
+    "sharedWasmSha256":"9cdc26ed6624714b2da27b52b254929de1ea6b5720ae0528fa97cc761ce300eb",
+    "trials":32,
+    "exactLocalSharedDocuments":160,
+    "exactRestores":64,
+    "exactFutureCheckpoints":256,
+    "pureReads":64,
+    "guardedRefusals":4,
+    "passed":true,
+    "scope":"Table/grid/image/formatted-quote clipboard into code or cross-cell captions, both directions and explicit/natural histories. Original structured/inline paste contracts are unchanged."
+  },
+  "transportRegression":{
+    "historyPolicies":2,
+    "exactJournalRestores":4,
+    "twoWriterDocumentComparisons":16,
+    "durableFlushes":20,
+    "wrongModeRegistrationRefusals":2,
+    "passed":true,
+    "scope":"Re-ran actual two-writer Wasm/SDK/native-relay workflow against this new shared runtime; this does not imply native clipboard or installed browser acceptance."
+  },
+  "reproduce":[
+    "CARGO_INCREMENTAL=0 node scripts/build-rich-runtime.mjs",
+    "CARGO_INCREMENTAL=0 node scripts/build-collaboration-runtime.mjs",
+    "node node_modules/typescript/bin/tsc -p packages/breditor-experimental-rich-content/tsconfig.json",
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "node scripts/probe-caption-code-text-paste.mjs target/rich-browser-web target/promoted-shared-web"
+  ],
+  "artifacts":[
+    {"path":"target/block-layout-shared-qualification/caption-code-functional.json","bytes":734,"sha256":"6bac06b14c64e88747c30a93a2d3b55baea85e7afa758ee77fe428e0f360cbf4"},
+    {"path":"target/block-layout-shared-qualification/caption-code-wasm-regressions.log","bytes":1504,"sha256":"6595ae1ed9a111b62569e3e6bffd31ee41a9f2494150b8503e526c2334d00b70"},
+    {"path":"target/block-layout-shared-qualification/caption-code-core-regressions.log","bytes":1460,"sha256":"10e5c84507a85ab44456f35f09cd1f9aa436788f7ebf6472237946883e6aa259"},
+    {"path":"target/block-layout-shared-qualification/caption-code-shared-regressions.log","bytes":2244,"sha256":"670f89109609c82087b68f666aba082e7f123cb5102355f99e8f8d4fdff6a54a"},
+    {"path":"target/block-layout-shared-qualification/caption-code-sdk-tests.log","bytes":619,"sha256":"311d58123d4d8758b7cb48d2f8a4fe80ba357510ae024bf6fa8c714c663668a8"},
+    {"path":"target/block-layout-shared-qualification/caption-code-transport-regression.json","bytes":767,"sha256":"3c44f3ed471a03a6201ed2c562115f10367b5c545fa713d649869f8060aaaf89"}
+  ],
+  "preservedRuntimeDirectories":["target/block-layout-shared-qualification/caption-code-local-final-web","target/block-layout-shared-qualification/caption-code-shared-final-web"],
+  "readiness":{"promotedRows":[],"goalComplete":false,"releaseReady":false,"pushedOrPublished":false},
+  "remaining":["Whole-document selection","Separate sanitized HTML/Markdown and Word/Docs/Excel interchange","Final installed/browser/input/accessibility/performance/release qualification"]
+}
