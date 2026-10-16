@@ -1,6 +1,6 @@
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement} from "react";
 import {openLocalEditor,type LocalEditor,type LocalEditorOptions} from "./local.js";
-import type {RichCommand,RichView,RichCommandOutcome} from "@breditor/experimental-rich-content";
+import type {RichCommand,RichView,RichCommandOutcome,RichClipboardTextProjection} from "@breditor/experimental-rich-content";
 /** Initial configuration is applied once per sessionKey, like an uncontrolled input's defaultValue. */
 export interface BreditorEditorProps {
  initialOptions?:Omit<LocalEditorOptions,"host"|"signal"|"onChange"|"onError">;
@@ -10,6 +10,7 @@ export interface BreditorEditorProps {
  onReady?:(editor:LocalEditor)=>void;
  onChange?:(view:RichView,outcome:RichCommandOutcome)=>void;
  onError?:(error:unknown)=>void;
+ onPasteLoss?:(report:RichClipboardTextProjection)=>void;
 }
 export interface BreditorEditorHandle {
  getEditor():LocalEditor|null;
@@ -36,7 +37,7 @@ export const BreditorEditor=forwardRef<BreditorEditorHandle,BreditorEditorProps>
    if(abort.signal.aborted)return;
    try{
     const policy=callbacks.current.readOnly;
-    const editor=await openLocalEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,onChange:(view,outcome)=>callbacks.current.onChange?.(view,outcome),onError:report});
+    const editor=await openLocalEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,onChange:(view,outcome)=>callbacks.current.onChange?.(view,outcome),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial?.onPasteLoss)?.(loss),onError:report});
     if(abort.signal.aborted){editor.dispose();return;}
     try{if(callbacks.current.readOnly!==undefined)editor.setReadOnly(callbacks.current.readOnly);}catch(error){editor.dispose();throw error;}
     owned=editor;current.current=editor;setPhase("ready");

@@ -23,11 +23,11 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
-fn range(a: &str, x: u64, b: &str, y: u64) -> Result<RichSelectionKind> {
+fn range(anchor: &str, start: u64, focus: &str, end: u64) -> Result<RichSelectionKind> {
     let p = |id: &str, n| -> Result<_> {
         Ok(RichTextPoint::new(BlockId::try_new(id)?, TextOffset::try_new(n)?, Affinity::After))
     };
-    Ok(RichSelectionKind::TextRange { anchor: p(a, x)?, focus: p(b, y)? })
+    Ok(RichSelectionKind::TextRange { anchor: p(anchor, start)?, focus: p(focus, end)? })
 }
 fn context(name: &str) -> Result<EditorContext> {
     let schema = CompiledSchema::try_compile_rich_content_profile_v3(

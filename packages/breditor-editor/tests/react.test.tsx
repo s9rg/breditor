@@ -40,8 +40,8 @@ describe("React Rust-owner lifecycle",()=>{
  });
  it("parent callbacks update without resetting history; sessionKey retires the previous owner",async()=>{
   const first=editor(),second=editor(),a=vi.fn(),b=vi.fn();mocks.open.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
-  await act(async()=>root.render(<BreditorEditor sessionKey="one" initialOptions={{label:"First"}} onChange={a}/>));await settle();const options=mocks.open.mock.calls[0]![0];
-  await act(async()=>root.render(<BreditorEditor sessionKey="one" initialOptions={{label:"Ignored until a new key"}} onChange={b}/>));options.onChange({},"content");expect(a).not.toHaveBeenCalled();expect(b).toHaveBeenCalledTimes(1);expect(mocks.open).toHaveBeenCalledTimes(1);
+  await act(async()=>root.render(<BreditorEditor sessionKey="one" initialOptions={{label:"First"}} onChange={a} onPasteLoss={a}/>));await settle();const options=mocks.open.mock.calls[0]![0];
+  await act(async()=>root.render(<BreditorEditor sessionKey="one" initialOptions={{label:"Ignored until a new key"}} onChange={b} onPasteLoss={b}/>));options.onChange({},"content");options.onPasteLoss({losses:["block-structure"]});expect(a).not.toHaveBeenCalled();expect(b).toHaveBeenCalledTimes(2);expect(mocks.open).toHaveBeenCalledTimes(1);
   await act(async()=>root.render(<BreditorEditor sessionKey="two" onChange={b}/>));await settle();expect(first.dispose).toHaveBeenCalledTimes(1);expect(mocks.open).toHaveBeenCalledTimes(2);expect(second.dispose).not.toHaveBeenCalled();
  });
  it("late startup after unmount is disposed and never announced ready",async()=>{

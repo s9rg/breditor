@@ -60,6 +60,7 @@ mod plan_general_range_plain_text;
 mod planning;
 mod presence;
 mod profile;
+mod project_clipboard_text;
 mod projection_cache;
 mod protocol;
 mod range_plan;

@@ -69,6 +69,7 @@ export type PasteTarget={kind:"text"}|{kind:"grid"}|({kind:"flow"}&Position);
 export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"rowEnd"|"tableStart"|"tableEnd";
 export type NavigationResult={kind:"moved"|"unchanged"}|{kind:"boundary";boundary:string};
 export interface ClipboardContent {richJson:string;plainText:string}
+export type {RichClipboardTextProjection} from "@breditor/experimental-rich-content";
 export type SharedOwnerDescriptor=SharedProtocolBinding&{format:"breditor/shared-rich-owner";schema:{name:string;version:number};schemaFingerprint:string};
 /** Read-only mapping of an opaque presence packet, never an authorization credential. */
 export type SharedPresenceResolution=
@@ -89,6 +90,7 @@ export interface SharedRustOwner {
  insert_general_paragraph?(observation:unknown,input:string):boolean;
  paste_general_flow_clipboard?(observation:unknown,input:string):boolean;
  general_copy_version?():string;
+ clipboard_text_policy_version?():string;project_clipboard_text?(observation:unknown,input:string):string;
  copy_general_clipboard?(observation:unknown):string;
  paste_general_inline_clipboard?(observation:unknown,input:string):boolean;
  enable_general_ranges?(observation:unknown):boolean;

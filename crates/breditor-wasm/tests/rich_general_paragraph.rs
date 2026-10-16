@@ -11,6 +11,8 @@ fn read(mut result: BreditorStringResult) -> Result<String> {
 fn range(a: &str, x: &str, b: &str, y: &str) -> Value {
     json!({"kind":"text","anchor":{"block":a,"offset":x,"affinity":"after"},"focus":{"block":b,"offset":y,"affinity":"after"}})
 }
+// Owned JSON keeps nested test commands readable; production DTOs remain independently guarded.
+#[allow(clippy::needless_pass_by_value)]
 fn run(a: &mut BreditorRichEditor, command: Value, status: &str) {
     assert_eq!(a.execute(&a.observe(), &command.to_string()).status(), status);
 }

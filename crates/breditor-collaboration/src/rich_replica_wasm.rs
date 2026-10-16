@@ -1,6 +1,7 @@
 //! Thin Wasm ownership boundary over the canonical shared rich editor.
 mod atom_edit;
 mod block_layout;
+mod clipboard_text_projection;
 mod copy_general_clipboard;
 mod exit_code_block;
 mod flow_navigation;

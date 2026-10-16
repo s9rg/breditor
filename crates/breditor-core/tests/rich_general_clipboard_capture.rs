@@ -17,7 +17,7 @@ use breditor_core::{
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
-fn setup(root: Value) -> Result<(EditorContext, RichDocument)> {
+fn setup(root: &Value) -> Result<(EditorContext, RichDocument)> {
     let schema = CompiledSchema::try_compile_rich_content_profile_v3(
         SchemaId::new(QualifiedName::try_new("example/general-copy")?, SchemaVersion::try_new(1)?),
         &ExtensionSet::try_new(vec![standard_inline_extension_v1()], ExtensionLimits::default())?,
@@ -31,19 +31,25 @@ fn setup(root: Value) -> Result<(EditorContext, RichDocument)> {
     )?;
     Ok((c, d))
 }
-fn selection(d: &RichDocument, a: &str, x: u64, b: &str, y: u64) -> Result<RichSelection> {
+fn selection(
+    document: &RichDocument,
+    anchor: &str,
+    start: u64,
+    focus: &str,
+    end: u64,
+) -> Result<RichSelection> {
     let p = |id: &str, n| -> Result<_> {
         Ok(RichTextPoint::new(BlockId::try_new(id)?, TextOffset::try_new(n)?, Affinity::After))
     };
     Ok(RichSelection::try_new(
-        d,
-        RichSelectionKind::TextRange { anchor: p(a, x)?, focus: p(b, y)? },
+        document,
+        RichSelectionKind::TextRange { anchor: p(anchor, start)?, focus: p(focus, end)? },
     )?)
 }
 fn encoded(c: &EditorContext, f: &RichClipboardFragment) -> Result<Value> {
     Ok(serde_json::from_str(&RichClipboardJsonCodec::new(c.clone()).encode(f)?)?)
 }
-fn texts(root: &Value) -> BTreeMap<String, String> {
+fn texts(root: &Value) -> Result<BTreeMap<String, String>> {
     let mut out = BTreeMap::new();
     let mut todo = vec![root];
     while let Some(n) = todo.pop() {
@@ -52,13 +58,16 @@ fn texts(root: &Value) -> BTreeMap<String, String> {
         {
             let value = n["children"]
                 .as_array()
-                .unwrap()
+                .ok_or("text children")?
                 .iter()
-                .map(|t| t["text"].as_str().unwrap())
-                .collect::<String>();
+                .map(|t| t["text"].as_str().ok_or("text run"))
+                .collect::<std::result::Result<String, _>>()?;
             assert!(
                 out.insert(
-                    n["properties"]["breditor/block-id"].as_str().unwrap().to_owned(),
+                    n["properties"]["breditor/block-id"]
+                        .as_str()
+                        .ok_or("block identity")?
+                        .to_owned(),
                     value
                 )
                 .is_none()
@@ -67,21 +76,32 @@ fn texts(root: &Value) -> BTreeMap<String, String> {
             todo.extend(children);
         }
     }
-    out
+    Ok(out)
 }
-fn copy(c: &EditorContext, d: &RichDocument, a: &str, x: u64, b: &str, y: u64) -> Result<Value> {
+fn copy(
+    context: &EditorContext,
+    document: &RichDocument,
+    anchor: &str,
+    start: u64,
+    focus: &str,
+    end: u64,
+) -> Result<Value> {
     encoded(
-        c,
-        &RichClipboardFragment::copy_general_selection(c, d, &selection(d, a, x, b, y)?)?
-            .ok_or("copy absent")?,
+        context,
+        &RichClipboardFragment::copy_general_selection(
+            context,
+            document,
+            &selection(document, anchor, start, focus, end)?,
+        )?
+        .ok_or("copy absent")?,
     )
 }
 #[test]
 fn exhaustive_cross_block_corpus_is_direction_independent_and_has_exact_selected_text() -> Result {
-    let (c, d) = setup(fixture::root())?;
+    let (c, d) = setup(&fixture::root())?;
     let source: Value =
         serde_json::from_str(&DocumentJsonCodecV2::new(c.schema().clone()).encode(d.document())?)?;
-    let source_text = texts(&source["root"]);
+    let source_text = texts(&source["root"])?;
     let whole = RichSelectionCoverage::document(&d)?;
     let blocks: Vec<_> = whole.text().iter().map(|s| (s.block().as_str(), s.end().get())).collect();
     let codec = RichClipboardJsonCodec::new(c.clone());
@@ -103,22 +123,22 @@ fn exhaustive_cross_block_corpus_is_direction_independent_and_has_exact_selected
                 assert_eq!(bytes, codec.encode(&backward)?, "direction {a}:{x} {b}:{y}");
                 assert_eq!(bytes, codec.encode(&codec.decode(&bytes)?)?);
                 let value: Value = serde_json::from_str(&bytes)?;
-                let copied = texts(&value["document"]["root"]);
+                let copied = texts(&value["document"]["root"])?;
                 let expected: BTreeMap<_, _> = coverage
                     .text()
                     .iter()
-                    .map(|s| {
+                    .map(|s| -> Result<_> {
                         let raw = &source_text[s.block().as_str()];
                         let units: Vec<_> = raw.encode_utf16().collect();
-                        (
+                        Ok((
                             s.block().as_str().to_owned(),
                             String::from_utf16(
-                                &units[s.start().get() as usize..s.end().get() as usize],
-                            )
-                            .unwrap(),
-                        )
+                                &units[usize::try_from(s.start().get())?
+                                    ..usize::try_from(s.end().get())?],
+                            )?,
+                        ))
                     })
-                    .collect();
+                    .collect::<Result<_>>()?;
                 for (id, text) in &copied {
                     assert_eq!(
                         text,
@@ -147,7 +167,7 @@ fn exhaustive_cross_block_corpus_is_direction_independent_and_has_exact_selected
 }
 #[test]
 fn partial_table_retains_axes_headers_merges_and_neutral_empty_unselected_bodies() -> Result {
-    let (c, d) = setup(fixture::root())?;
+    let (c, d) = setup(&fixture::root())?;
     let value = copy(&c, &d, "p-0-0", 1, "p-1-1", 3)?;
     let table = &value["document"]["root"]["children"][0];
     assert_eq!(table["type"], "breditor/table");
@@ -175,12 +195,12 @@ fn partial_table_retains_axes_headers_merges_and_neutral_empty_unselected_bodies
 }
 #[test]
 fn partial_caption_is_text_only_but_fully_enclosed_image_keeps_asset_and_alt() -> Result {
-    let (c, d) = setup(fixture::root())?;
+    let (c, d) = setup(&fixture::root())?;
     let partial = copy(&c, &d, "caption", 1, "q1", 2)?;
     let text = partial.to_string();
     assert!(!text.contains("asset-generation"));
     assert!(!text.contains("Diagram"));
-    assert_eq!(texts(&partial["document"]["root"])["caption"], "y🙂");
+    assert_eq!(texts(&partial["document"]["root"])?["caption"], "y🙂");
     let whole = copy(&c, &d, "p-2-1", 1, "q1", 2)?;
     assert!(whole.to_string().contains("asset-generation"));
     assert!(whole.to_string().contains("Diagram"));
@@ -197,13 +217,13 @@ fn partial_ordered_list_retains_selected_item_ordinal_without_borrowing_earlier_
         "second-item",
         vec![fixture::paragraph("second-head", "Second")],
     ));
-    let (c, d) = setup(root)?;
+    let (c, d) = setup(&root)?;
     let value = copy(&c, &d, "second-head", 1, "code", 1)?;
     let list = &value["document"]["root"]["children"][0];
     assert_eq!(list["type"], "breditor/ordered-list");
     assert_eq!(list["properties"]["breditor/start"], 6);
     assert_eq!(list["children"].as_array().ok_or("copied items")?.len(), 1);
-    let copied = texts(&value["document"]["root"]);
+    let copied = texts(&value["document"]["root"])?;
     assert_eq!(copied["second-head"], "econd");
     assert!(!copied.contains_key("head"));
     assert!(!copied.contains_key("nested-text"));
@@ -214,9 +234,9 @@ fn synthetic_cell_floor_skips_source_ids_and_original_caret_node_grid_contracts_
     let mut root = fixture::root();
     root["children"][3]["children"][1]["properties"]["breditor/block-id"] =
         json!("clipboard:general-floor:0");
-    let (c, d) = setup(root)?;
+    let (c, d) = setup(&root)?;
     let v = copy(&c, &d, "p-0-0", 1, "p-1-1", 3)?;
-    assert!(!texts(&v["document"]["root"]).contains_key("clipboard:general-floor:0"));
+    assert!(!texts(&v["document"]["root"])?.contains_key("clipboard:general-floor:0"));
     for s in [
         selection(&d, "q1", 2, "q1", 2)?,
         RichSelection::try_new(&d, RichSelectionKind::Node(BlockId::try_new("image")?))?,
@@ -224,8 +244,8 @@ fn synthetic_cell_floor_skips_source_ids_and_original_caret_node_grid_contracts_
         let old = RichClipboardFragment::copy_selection(&c, &d, &s)?;
         let new = RichClipboardFragment::copy_general_selection(&c, &d, &s)?;
         assert_eq!(
-            old.as_ref().map(|f| encoded(&c, f).unwrap()),
-            new.as_ref().map(|f| encoded(&c, f).unwrap())
+            old.as_ref().map(|f| encoded(&c, f)).transpose()?,
+            new.as_ref().map(|f| encoded(&c, f)).transpose()?
         );
     }
     Ok(())

@@ -12,9 +12,11 @@ mod plain_text;
 mod prepare;
 mod rekey;
 mod semantic_table;
+mod text_projection;
 
 pub use error::RichClipboardError;
 pub use rekey::{RichClipboardIdAllocator, RichClipboardIdentityKind};
+pub use text_projection::RichClipboardTextProjection;
 
 use super::{DocumentId, RichDocument};
 use crate::{

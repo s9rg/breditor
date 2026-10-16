@@ -10,6 +10,10 @@ function owner(readOnly=false,natural=false){
  return {raw,core:()=>new SharedRichEditor(raw as unknown as SharedRustOwner)};
 }
 describe("explicit general-range facade",()=>{
+ it("clipboard text projection is a separate pure read, requiring the exact capability and current guard",()=>{
+  const a=owner(true),c=a.core();expect(c.supportsClipboardTextPolicy()).toBe(false);expect(()=>c.projectClipboardText(selection,"opaque","0")).toThrow("older shared publication");expect(()=>c.projectClipboardText(selection,"opaque")).toThrow("matching native clipboard text policy");
+  const result={format:"breditor/rich-clipboard-text-projection",formatVersion:1,target:"caption",text:"native text",losses:["block-structure"]},project=vi.fn(()=>JSON.stringify(result));Object.assign(a.raw,{clipboard_text_policy_version:()=>"1",project_clipboard_text:project});const before=c.view();expect(c.projectClipboardText(selection,"opaque","1")).toEqual(result);expect(JSON.parse(project.mock.calls[0]![1] as string)).toEqual({selection,clipboardJson:"opaque"});expect(c.view()).toEqual(before);expect(a.raw.dispatch).not.toHaveBeenCalled();Object.assign(a.raw,{clipboard_text_policy_version:()=>"2"});expect(c.supportsClipboardTextPolicy()).toBe(false);c.dispose();
+ });
  it("general paragraph editing requires its native capability and forwards one closed observed target",()=>{
   const a=owner(),c=a.core();expect(c.supportsGeneralParagraph()).toBe(false);expect(()=>c.insertGeneralParagraph(selection,"fresh")).toThrow("matching native general paragraph");const method=vi.fn((o:unknown,input:string)=>a.raw.replace_general_range_text(o,input));Object.assign(a.raw,{general_paragraph_version:()=>"1",insert_general_paragraph:method});c.enableGeneralRanges();c.insertGeneralParagraph(selection,"fresh","2");expect(JSON.parse(method.mock.calls[0]![1])).toEqual({selection,prefix:"fresh"});expect(()=>c.insertGeneralParagraph(selection,"fresh","2")).toThrow("older shared publication");expect(a.raw.dispatch).not.toHaveBeenCalled();c.dispose();
   const b=owner(true),d=b.core();expect(()=>d.insertGeneralParagraph(selection,"fresh","1")).toThrow("read-only");d.dispose();

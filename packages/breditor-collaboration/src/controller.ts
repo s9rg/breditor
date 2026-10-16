@@ -4,6 +4,7 @@ import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
 import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 import type {SharedDispatch,SharedPublication,RichSelection,Navigation} from "./types.js";
+import type {RichClipboardTextProjection} from "./types.js";
 import {sharedTaskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
@@ -14,6 +15,8 @@ export interface SharedDomOptions extends RenderOptions {
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
  coreOwnership?:"transfer"|"borrow";
  onChange?:(event:SharedPublication)=>void|Promise<void>;onError?:(error:unknown)=>void;
+ /** Explicit caption/code text conversion, reported only after successful guarded publication. */
+ onPasteLoss?:(report:RichClipboardTextProjection)=>void;
  onFiles?:(files:readonly File[],position:{parent:string|null;before:string|null},revision:string)=>void|Promise<void>;
 }
 interface Work {run:(context:ActionContext)=>void;revision:string;focus:boolean;boundary:boolean}
@@ -208,16 +211,22 @@ export class SharedDomEditor {
    // Clipboard stores are event-scoped. Capture strings before preparing/queuing work,
    // and never interpret an empty or unsupported transfer as a selection deletion.
    const fragment=transfer.getData("application/x-breditor-rich+json"),plain=transfer.getData("text/plain");if(!fragment&&!plain)return;
+   let projection:RichClipboardTextProjection|undefined;
    this.#sync();this.#perform(c=>{
     const s=c.model.view.selection,general=c.model.view.rangeEditing==="general-v1";
     if(!fragment){if(general&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,plain,c.allocate("range"),c.revision);else if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}
     const kind=(JSON.parse(fragment) as {kind:string}).kind,prefix=c.allocate("paste");
     if(kind==="text"){if(general&&s?.kind==="text")c.core.pasteGeneralInlineClipboard(s,fragment,prefix,c.revision);else c.core.paste(fragment,{kind:"text"},prefix,c.revision);}
     else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);
-    else if(s?.kind==="text"){if(general)c.core.pasteGeneralFlowClipboard(s,fragment,c.allocate("right"),prefix,c.revision);else c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);}
+    else if(s?.kind==="text"){
+     const converted=c.core.supportsClipboardTextPolicy()?c.core.projectClipboardText(s,fragment,c.revision):null;
+     if(converted){if(general)c.core.replaceGeneralRangePlainText(s,converted.text,prefix,c.revision);else c.core.replace(s,converted.text,c.revision);projection=converted;}
+     else if(general)c.core.pasteGeneralFlowClipboard(s,fragment,c.allocate("right"),prefix,c.revision);else c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);
+    }
     else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);
-   });});
+   });if(projection)this.#pasteLoss(projection);});
  }
+ #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=`Pasted text into ${report.target}; formatting loss: ${report.losses.join(", ")}.`;try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
  #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
  #startComposition():void{if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text")return;const cross=s.anchor.block!==s.focus.block;if(cross&&this.#model.view.rangeEditing!=="general-v1")return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes(),...(cross?{target:structuredClone(s)}:{})};});}
  #endComposition(committedText:string):void{const composition=this.#composition;if(!composition)return;this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{

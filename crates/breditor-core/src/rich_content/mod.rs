@@ -51,7 +51,7 @@ pub use block_layout_patch::{RichBlockLayoutPatch, RichLayoutChange};
 pub use block_layout_state::{RichBlockLayoutState, RichLayoutFieldState, inspect_block_layout};
 pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
-    RichClipboardKind,
+    RichClipboardKind, RichClipboardTextProjection,
 };
 pub use code_language::{CodeLanguage, CodeLanguageError};
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};

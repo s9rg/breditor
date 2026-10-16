@@ -46,10 +46,10 @@ describe("durable React writer ownership",()=>{
  });
  it("parent renders use latest callbacks without reopening or resetting history",async()=>{
   const owned=editor(),first=vi.fn(),latest=vi.fn(),save=vi.fn();mocks.open.mockResolvedValue(owned);
-  await act(async()=>root.render(<BreditorSharedEditor initialOptions={options} onChange={first} onCloseError={()=>{}}/>));await settle();
+  await act(async()=>root.render(<BreditorSharedEditor initialOptions={options} onChange={first} onPasteLoss={first} onCloseError={()=>{}}/>));await settle();
   const initial=mocks.open.mock.calls[0]![0];
-  await act(async()=>root.render(<BreditorSharedEditor initialOptions={{...options,writer:"202"}} onChange={latest} onSaveState={save} onCloseError={()=>{}}/>));
-  initial.onChange({source:"local"});initial.onSaveState({status:"saved"});expect(first).not.toHaveBeenCalled();expect(latest).toHaveBeenCalledTimes(1);expect(save).toHaveBeenCalledTimes(1);expect(mocks.open).toHaveBeenCalledTimes(1);
+  await act(async()=>root.render(<BreditorSharedEditor initialOptions={{...options,writer:"202"}} onChange={latest} onPasteLoss={latest} onSaveState={save} onCloseError={()=>{}}/>));
+  initial.onChange({source:"local"});initial.onPasteLoss({losses:["block-structure"]});initial.onSaveState({status:"saved"});expect(first).not.toHaveBeenCalled();expect(latest).toHaveBeenCalledTimes(2);expect(save).toHaveBeenCalledTimes(1);expect(mocks.open).toHaveBeenCalledTimes(1);
  });
  it("key change cannot open its replacement before the previous flush releases the lease",async()=>{
   const first=editor(),second=editor();let finish!:()=>void;vi.mocked(first.close).mockImplementation(()=>new Promise<void>(resolve=>{finish=resolve;}));mocks.open.mockResolvedValueOnce(first).mockResolvedValueOnce(second);

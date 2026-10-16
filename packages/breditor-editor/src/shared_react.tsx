@@ -1,7 +1,7 @@
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement} from "react";
 import {openSharedEditor,type SharedEditorSession,type SharedEditorSessionOptions} from "./shared_session.js";
 import {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
-import type {SharedDispatch,SharedPublication,SharedSaveState} from "@breditor/collaboration";
+import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextProjection} from "@breditor/collaboration";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
@@ -12,6 +12,7 @@ export interface BreditorSharedEditorProps {
  onSaveState?:(state:SharedSaveState)=>void;
  onClosing?:(editor:SharedEditorSession)=>void;
  onError?:(error:unknown)=>void;
+ onPasteLoss?:(report:RichClipboardTextProjection)=>void;
  /** Required recovery handoff, including after unmount. Keep/export this writer or explicitly discard it. */
  onCloseError:(error:unknown,editor:SharedEditorRecovery)=>void;
 }
@@ -65,7 +66,7 @@ export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,Breditor
     if(abort.signal.aborted)return;
     const policy=callbacks.current.readOnly;
     const editor=await openSharedEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
-     onChange:event=>callbacks.current.onChange?.(event),
+     onChange:event=>callbacks.current.onChange?.(event),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),
      onSaveState:state=>callbacks.current.onSaveState?.(state),onClosing:editor=>callbacks.current.onClosing?.(editor),onError:report});
     if(abort.signal.aborted){await retire(editor);return;}
     try{if(callbacks.current.readOnly!==undefined)editor.setReadOnly(callbacks.current.readOnly);}catch(error){await retire(editor);throw error;}

@@ -24,6 +24,8 @@ export interface RichInlineFormatStateRead {format:"breditor/rich-inline-format-
 /** Distinct coverage-aware state; the original node/grid-unavailable family is not widened. */
 export interface RichSelectionFormatStateRead extends Omit<RichInlineFormatStateRead,"format"> {format:"breditor/rich-selection-format-state"}
 export type RichCoverageDomain={kind:"document"}|{kind:"cell";table:string;row:string;column:string}|{kind:"caption";image:string};
+/** Native explicit conversion read; host reporting is separate from the guarded content edit. */
+export interface RichClipboardTextProjection {format:"breditor/rich-clipboard-text-projection";formatVersion:1;target:"caption"|"code";text:string;losses:readonly ("block-structure"|"inline-formatting"|"block-properties"|"table-geometry"|"embedded-content")[]}
 /** Immutable native read only. No offsets, IDs or read bindings grant mutation authority. */
 export interface RichSelectionCoverageRead {
  format:"breditor/rich-selection-coverage";formatVersion:1;schema:{name:string;version:number;fingerprint:string};document:string;
@@ -73,6 +75,8 @@ export interface RichCoreEditor {
   /** Pure native general Copy, preserving partial table shape without unselected content. */
   supportsGeneralCopy?():boolean;
   generalClipboard?():ReturnType<RichCoreEditor["clipboard"]>;
+  supportsClipboardTextPolicy?():boolean;
+  projectClipboardText?(selection:Extract<RichSelection,{kind:"text"}>,clipboardJson:string,revision?:string):RichClipboardTextProjection|null;
   supportsSelectionFormatting?():boolean;
   supportsBlockLayout?():boolean;
   blockLayoutState?():RichBlockLayoutStateRead;

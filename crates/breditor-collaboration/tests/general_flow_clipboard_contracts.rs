@@ -11,9 +11,9 @@ use breditor_collaboration::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
-fn range(a: &str, x: u32, b: &str, y: u32) -> Selection {
+fn range(anchor: &str, start: u32, focus: &str, end: u32) -> Selection {
     let p = |id: &str, offset| TextPoint { block: id.into(), offset, affinity: Affinity::After };
-    Selection::TextRange { anchor: p(a, x), focus: p(b, y) }
+    Selection::TextRange { anchor: p(anchor, start), focus: p(focus, end) }
 }
 fn setup() -> Result<(SharedRichProfile, RichReplica)> {
     let p=SharedRichProfile::from_standard_configuration_json_v3(&json!({"format":"breditor/shared-rich-profile","formatVersion":3,"schema":{"name":"example/general-flow","version":1},"extensions":[]}).to_string())?;
@@ -38,6 +38,38 @@ fn restore(p: &SharedRichProfile, a: &RichReplica, s: &str) -> Result<RichReplic
 fn clipboard(a: &mut RichReplica, block: &str) -> Result<String> {
     a.set_selection(Some(&Selection::Node { block: block.into() }))?;
     Ok(a.copy_general_clipboard_guarded(&a.observe()?)?.ok_or("clipboard")?.rich_json)
+}
+#[test]
+fn text_projection_uses_exact_native_guard_without_widening_structured_paste() -> Result {
+    let (_p, mut a) = setup()?;
+    let (_p2, b) = setup()?;
+    let clip = clipboard(&mut a, "table")?;
+    let input = json!({"selection":range("caption",1,"p-2-2",3),"clipboardJson":clip}).to_string();
+    let observation = a.observe()?;
+    let exact = a.checkpoint()?;
+    let projection = a.project_clipboard_text_guarded(&observation, &input)?.ok_or("projection")?;
+    assert_eq!(projection.target(), "caption");
+    assert!(projection.losses().contains(&"table-geometry"));
+    assert!(!projection.text().is_empty());
+    assert_eq!(a.checkpoint()?, exact);
+    assert!(a.project_clipboard_text_guarded(&b.observe()?, "bad").is_err());
+    a.set_read_only_guarded(&observation, true)?;
+    assert!(a.project_clipboard_text_guarded(&observation, "bad").is_err());
+    assert_eq!(
+        a.project_clipboard_text_guarded(&a.observe()?, &input)?.ok_or("read-only projection")?,
+        projection
+    );
+    let exact = a.checkpoint()?;
+    for bad in [
+        "bad".to_owned(),
+        json!({"selection":range("caption",1,"caption",1),"clipboardJson":clip,"extra":true})
+            .to_string(),
+        json!({"selection":range("missing",0,"missing",0),"clipboardJson":clip}).to_string(),
+    ] {
+        assert!(a.project_clipboard_text_guarded(&a.observe()?, &bad).is_err());
+        assert_eq!(a.checkpoint()?, exact);
+    }
+    Ok(())
 }
 #[test]
 fn flow_paste_is_one_exact_history_unit_across_cells_nested_lists_tasks_and_deleted_actual_caret()

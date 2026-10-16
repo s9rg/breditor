@@ -6,6 +6,7 @@
 mod atom_edit;
 mod block_layout;
 mod clipboard;
+mod clipboard_text_projection;
 mod close_typing_group;
 mod command;
 mod editor;

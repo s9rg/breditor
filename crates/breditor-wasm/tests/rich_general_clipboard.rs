@@ -127,7 +127,9 @@ fn general_copy_is_frozen_pure_read_with_shape_and_no_unselected_cell_assets() -
 }
 fn run(a: &mut BreditorRichEditor, command: &Value, expected: &str) -> Result {
     let r = a.execute(&a.observe(), &command.to_string());
-    assert_eq!(r.status(), expected);
+    if r.status() != expected {
+        return Err(format!("Expected {expected}, got {} for {command}", r.status()).into());
+    }
     Ok(())
 }
 #[test]
@@ -168,7 +170,7 @@ fn clipboard_paste_keeps_real_before_ui_and_exact_existing_local_replay_families
             for kind in ["undo", "redo", "undo", "redo"] {
                 run(&mut a, &json!({"kind":kind}), kind)?;
                 run(&mut b, &json!({"kind":kind}), kind)?;
-                assert!(read(a.checkpoint_json())? == read(b.checkpoint_json())?);
+                assert_eq!(read(a.checkpoint_json())?, read(b.checkpoint_json())?);
                 if kind == "undo" {
                     assert_eq!(read(a.observe().document_json())?, source);
                     let v: Value = serde_json::from_str(&read(a.observe().view_json())?)?;
@@ -188,7 +190,7 @@ fn strict_outer_and_embedded_payloads_refuse_without_consuming_the_current_obser
     let request = json!({"kind":"pasteGeneralInlineClipboard","data":{"selection":target("p-0-0","1","p-1-1","3"),"clipboardJson":clip.to_string(),"prefix":"clipboard-floor"}});
     let exact = read(a.checkpoint_json())?;
     for clipboard in [
-        "".to_owned(),
+        String::new(),
         "{".into(),
         clip.to_string().replacen("\"kind\":\"text\"", "\"kind\":\"text\",\"unknown\":true", 1),
         clip.to_string().replacen(
@@ -200,7 +202,7 @@ fn strict_outer_and_embedded_payloads_refuse_without_consuming_the_current_obser
         let mut bad = request.clone();
         bad["data"]["clipboardJson"] = json!(clipboard);
         run(&mut a, &bad, "error")?;
-        assert!(read(a.checkpoint_json())? == exact);
+        assert_eq!(read(a.checkpoint_json())?, exact);
     }
     for (field, value) in [
         ("unknown", json!(true)),
@@ -211,7 +213,7 @@ fn strict_outer_and_embedded_payloads_refuse_without_consuming_the_current_obser
         let mut bad = request.clone();
         bad["data"][field] = value;
         run(&mut a, &bad, "error")?;
-        assert!(read(a.checkpoint_json())? == exact);
+        assert_eq!(read(a.checkpoint_json())?, exact);
     }
     let observation = a.observe();
     let duplicate = format!(
@@ -219,7 +221,7 @@ fn strict_outer_and_embedded_payloads_refuse_without_consuming_the_current_obser
         request["data"], request["data"]
     );
     assert_eq!(a.execute(&observation, &duplicate).status(), "error");
-    assert!(read(a.checkpoint_json())? == exact);
+    assert_eq!(read(a.checkpoint_json())?, exact);
     run(&mut a, &request, "content")?;
     assert_eq!(a.execute(&observation, "bad").status(), "error");
     Ok(())
@@ -231,15 +233,115 @@ fn read_only_and_wrong_kind_or_code_rejection_never_fall_back_to_plain_text() ->
     let request = json!({"kind":"pasteGeneralInlineClipboard","data":{"selection":target("code","1","code","2"),"clipboardJson":clip.to_string(),"prefix":"clipboard-floor"}});
     let exact = read(a.checkpoint_json())?;
     run(&mut a, &request, "error")?;
-    assert!(read(a.checkpoint_json())? == exact);
+    assert_eq!(read(a.checkpoint_json())?, exact);
     clip["kind"] = json!("flow");
     let mut wrong = request.clone();
     wrong["data"]["clipboardJson"] = json!(clip.to_string());
     run(&mut a, &wrong, "error")?;
-    assert!(read(a.checkpoint_json())? == exact);
+    assert_eq!(read(a.checkpoint_json())?, exact);
     read(a.set_read_only(&a.observe(), true))?;
     let exact = read(a.checkpoint_json())?;
     run(&mut a, &json!({"kind":"pasteGeneralInlineClipboard","data":"malformed"}), "error")?;
-    assert!(read(a.checkpoint_json())? == exact);
+    assert_eq!(read(a.checkpoint_json())?, exact);
+    Ok(())
+}
+
+#[test]
+fn explicit_caption_code_projection_is_pure_bounded_and_direction_independent() -> Result {
+    let (_p, mut a, binding) = setup()?;
+    assert_eq!(a.clipboard_text_policy_version(), "1");
+    for donor in ["table", "list", "image"] {
+        run(
+            &mut a,
+            &json!({"kind":"setSelection","selection":{"kind":"node","block":donor}}),
+            "selection",
+        )?;
+        let transfer: Value = serde_json::from_str(&read(a.observe().general_clipboard_json())?)?;
+        let clip = transfer["structuredJson"].as_str().ok_or("clipboard")?;
+        for (block, other, name) in [("caption", "p-2-2", "caption"), ("code", "code", "code")] {
+            for backward in [false, true] {
+                let selection = if backward {
+                    target(other, "3", block, "1")
+                } else {
+                    target(block, "1", other, "3")
+                };
+                let exact = read(a.checkpoint_json())?;
+                let report: Value =
+                    serde_json::from_str(&read(a.observe().project_clipboard_text(
+                        &json!({"selection":selection,"clipboardJson":clip}).to_string(),
+                    ))?)?;
+                assert_eq!(report["format"], "breditor/rich-clipboard-text-projection");
+                assert_eq!(report["target"], name);
+                assert_eq!(report["text"], transfer["plainText"]);
+                assert!(
+                    report["losses"]
+                        .as_array()
+                        .ok_or("losses")?
+                        .contains(&json!("block-structure"))
+                );
+                if donor == "table" {
+                    assert!(
+                        report["losses"]
+                            .as_array()
+                            .ok_or("losses")?
+                            .contains(&json!("table-geometry"))
+                    );
+                }
+                if donor == "image" {
+                    assert!(
+                        report["losses"]
+                            .as_array()
+                            .ok_or("losses")?
+                            .contains(&json!("embedded-content"))
+                    );
+                }
+                assert_eq!(read(a.checkpoint_json())?, exact);
+            }
+        }
+        let prose = json!({"selection":target("q1","1","q2","1"),"clipboardJson":clip}).to_string();
+        assert_eq!(read(a.observe().project_clipboard_text(&prose))?, "null");
+    }
+    read(a.set_read_only(&a.observe(), true))?;
+    let clip = clipboard(&binding).to_string();
+    let input = json!({"selection":target("caption","1","caption","1"),"clipboardJson":clip});
+    assert!(a.observe().project_clipboard_text(&input.to_string()).take_value().is_none());
+    for bad in [
+        json!({"selection":target("caption","2","caption","2"),"clipboardJson":"bad"}),
+        json!({"selection":target("missing","0","missing","0"),"clipboardJson":"bad"}),
+        json!({"selection":target("caption","1","caption","1"),"clipboardJson":"bad","extra":true}),
+    ] {
+        let exact = read(a.checkpoint_json())?;
+        assert!(a.observe().project_clipboard_text(&bad.to_string()).take_value().is_none());
+        assert_eq!(read(a.checkpoint_json())?, exact);
+    }
+    Ok(())
+}
+
+#[test]
+fn text_projection_reports_styles_and_rejects_empty_or_oversized_text_before_editing() -> Result {
+    let (_p, mut a, binding) = setup()?;
+    let mut clip = clipboard(&binding);
+    clip["kind"] = json!("flow");
+    let project = |editor: &BreditorRichEditor, fragment: &Value| {
+        editor.observe().project_clipboard_text(&json!({"selection":target("code","1","code","1"),"clipboardJson":fragment.to_string()}).to_string())
+    };
+    let report: Value = serde_json::from_str(&read(project(&a, &clip))?)?;
+    assert_eq!(report["text"], "Q🙂");
+    assert!(report["losses"].as_array().ok_or("losses")?.contains(&json!("inline-formatting")));
+    read(a.set_read_only(&a.observe(), true))?;
+    let before = read(a.checkpoint_json())?;
+    for size in [64 * 1024, 64 * 1024 + 1, 0] {
+        let text = if size == 0 {
+            vec![]
+        } else {
+            vec![json!({"kind":"text","text":"x".repeat(size),"formats":[]})]
+        };
+        clip["document"]["root"]["children"][0]["children"] = json!(text);
+        assert_eq!(project(&a, &clip).take_value().is_some(), size == 64 * 1024);
+        assert_eq!(read(a.checkpoint_json())?, before);
+    }
+    assert!(
+        a.observe().project_clipboard_text(&"x".repeat(2 * 1024 * 1024 + 1)).take_value().is_none()
+    );
     Ok(())
 }

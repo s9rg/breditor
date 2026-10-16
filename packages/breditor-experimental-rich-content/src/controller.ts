@@ -12,6 +12,7 @@ import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 import {standardSelectionInlineControls,selectionFormatChanges} from "./standard_inline_controls.js";
 import {blockLayoutShortcut} from "./block_layout_controls.js";
 import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
+import type {RichClipboardTextProjection} from "./core.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
@@ -21,6 +22,8 @@ export interface RichEditorOptions extends RenderOptions {
  label?:string;
  onChange?:(view:RichView,outcome:RichCommandOutcome)=>void;
  onError?:(error:unknown)=>void;
+ /** Called only after an explicitly selected caption/code text paste successfully publishes. */
+ onPasteLoss?:(report:RichClipboardTextProjection)=>void;
  onFiles?:(files:readonly File[],position:FlowPosition)=>void|Promise<void>;
 }
 function sameSelection(a:RichSelection|null,b:RichSelection|null):boolean {
@@ -295,12 +298,17 @@ export class RichDomEditor {
    if(clipboard){const kind=(JSON.parse(clipboard) as {kind:string}).kind,allocation={prefix:this.#allocate("paste"),...this.#context().stamp()};
     if(kind==="text"){const selection=this.#model.view.selection;if(this.#general&&selection?.kind==="text"){if(this.#options.core.supportsGeneralInlinePaste?.()!==true)throw Error("Use matching native general inline clipboard paste");this.execute({kind:"pasteGeneralInlineClipboard",data:{selection,clipboardJson:clipboard,prefix:allocation.prefix}});}else this.execute({kind:"pasteInlineClipboard",data:{clipboardJson:clipboard}});}
     else if(kind==="grid"&&this.#model.view.selection?.kind==="grid")this.execute({kind:"pasteGridClipboard",data:{clipboardJson:clipboard,allocation}});
-    else if(this.#model.view.selection?.kind==="text"){const selection=this.#model.view.selection,right=this.#allocate("p");if(this.#general){if(this.#options.core.supportsGeneralFlowPaste?.()!==true)throw Error("Use matching native general rich-flow clipboard paste");this.execute({kind:"pasteGeneralFlowClipboard",data:{selection,clipboardJson:clipboard,allocation,prefix:allocation.prefix,right}});}else this.execute({kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right}});}
+    else if(this.#model.view.selection?.kind==="text"){
+     const selection=this.#model.view.selection,core=this.#options.core,projection=core.supportsClipboardTextPolicy?.()===true?core.projectClipboardText!(selection,clipboard,this.#model.view.revision):null;
+     if(projection){this.execute(this.#general?{kind:"replaceGeneralRangePlainText",data:{selection,text:projection.text,prefix:allocation.prefix}}:{kind:"insertPlainText",text:projection.text});this.#pasteLoss(projection);}
+     else {const right=this.#allocate("p");if(this.#general){if(core.supportsGeneralFlowPaste?.()!==true)throw Error("Use matching native general rich-flow clipboard paste");this.execute({kind:"pasteGeneralFlowClipboard",data:{selection,clipboardJson:clipboard,allocation,prefix:allocation.prefix,right}});}else this.execute({kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right}});}
+    }
     else this.execute({kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(this.#context())}});
    }else {const plain=event.clipboardData!.getData("text/plain");if(!plain)return;const selection=this.#model.view.selection;this.execute(this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText",data:{selection,text:plain,prefix:this.#allocate("range")}}:isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain});}
   });
  }
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
+ #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=`Pasted text into ${report.target}; formatting loss: ${report.losses.join(", ")}.`;try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
  #startComposition():void {if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind!=="text")return;const cross=selection.anchor.block!==selection.focus.block;if(cross&&!this.#general)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false,...(cross?{target:structuredClone(selection)}:{})};});}
  #endComposition(committedText:string):void {
   const composition=this.#composition;if(!composition)return;composition.finishing=true;

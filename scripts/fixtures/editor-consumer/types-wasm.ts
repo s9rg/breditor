@@ -17,3 +17,5 @@ function generalParagraph(owner:SharedEditorOwner,observation:SharedObservation)
 void generalParagraph;
 function atomicTransport(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.writer_transport_v2_version();const groups:string=owner.writer_groups_v2(observation,"0");const clock:string=owner.writer_clock_v2("101");void version;void groups;void clock;}
 void atomicTransport;
+function textPolicy(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.clipboard_text_policy_version();const read:string=owner.project_clipboard_text(observation,'{"selection":{},"clipboardJson":"opaque"}');void version;void read;}
+void textPolicy;

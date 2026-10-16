@@ -1,6 +1,7 @@
 import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedRemoteOptions,SharedOwnerDescriptor,SharedPresenceResolution,SharedWriterClock,SharedWriterGroups,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
 import type {RichInlineFormatStateRead} from "./types.js";
 import type {SharedWriterGroupsV2} from "./types.js";
+import type {RichClipboardTextProjection} from "./types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 export class SharedEditorError extends Error {
@@ -129,6 +130,9 @@ export class SharedRichEditor {
  /** Explicit read capability, independent of range authoring policy and read-only state. */
  supportsGeneralCopy():boolean{const raw=this.#live();return typeof raw.general_copy_version==="function"&&raw.general_copy_version()==="1"&&typeof raw.copy_general_clipboard==="function";}
  copyGeneral():ClipboardContent|null{const raw=this.#live();if(!this.supportsGeneralCopy())throw new SharedEditorError("general_copy_unavailable","Use matching native general clipboard copy");return JSON.parse(raw.copy_general_clipboard!(this.#observation)) as ClipboardContent|null;}
+ supportsClipboardTextPolicy():boolean{const raw=this.#live();return typeof raw.clipboard_text_policy_version==="function"&&raw.clipboard_text_policy_version()==="1"&&typeof raw.project_clipboard_text==="function";}
+ /** Pure native policy read; callers still submit its text with the same revision guard. */
+ projectClipboardText(selection:Extract<RichSelection,{kind:"text"}>,clipboardJson:string,revision?:string):RichClipboardTextProjection|null{this.#check(revision);const raw=this.#live();if(!this.supportsClipboardTextPolicy())throw new SharedEditorError("clipboard_text_policy_unavailable","Use matching native clipboard text policy");return JSON.parse(raw.project_clipboard_text!(this.#observation,JSON.stringify({selection,clipboardJson}))) as RichClipboardTextProjection|null;}
  undo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.undo_observed(o),revision);}
  redo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.redo_observed(o),revision);}
  /** Resolves only after Rust admission. A hold queues bytes, not a guessed document mutation. */
