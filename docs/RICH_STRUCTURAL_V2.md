@@ -377,7 +377,10 @@ with the same 60-second cases, 300-second process budget and zero retries.
 Continue tracing the retained unrecorded replay observation before release promotion.
 Code exit now has separate guarded local/shared entry points, exact recovered
 history and installed keyboard/toolbar integration; its persisted action remains
-the existing insertion family. Complete atomic-block navigation, general
+the existing insertion family. [Logical flow navigation](RICH_FLOW_NAVIGATION.md)
+now preserves atom stops, cell/caption domains, read-only access and Redo;
+separate native commands insert plain paragraphs before/after selected atoms in
+their actual flow parent. Complete physical/bidi atomic-block navigation, general
 selections, typing responsiveness, bounded layout properties and sanitized
 foreign interchange remain in the active first-two-workstream goal. Native
 typing grouping and live read-only mode are implemented candidates; these

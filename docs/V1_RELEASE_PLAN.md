@@ -277,14 +277,29 @@ from executing an unrelated page entry. Neither changes native admission or
 establishes a repair of the older WebKit/replay observations. Complete atomic
 navigation and general selections remain open; no readiness labels are promoted.
 
+The subsequent [logical navigation checkpoint](qualification/2026-10-16-flow-navigation.json)
+adds native selection-only flow movement and separate paragraph creation beside
+selected images, visible tables and rules. Cell/caption domains, transparent
+list/task/quote order, read-only access, Redo and original insertion histories are
+retained. Explicit V2 controls and keyboard routes reach vanilla/React; original
+V1 defaults remain unchanged. It reproduces and repairs an uncancelled paging
+default that collapsed selected ranges. The completed rerun passes all 408
+installed SDK and 78 serial application cases, 2,372 root Rust tests, 292 shared
+tests and 77 SDK units. Actual old/new Wasm passes 64 cross-version restores and
+256 future comparisons. An earlier full attempt reproduced the historical WebKit
+integer-domain startup error during a code-exit reload; that trace remains open,
+and the passing rerun is not an engine repair. Physical/bidi arrows, full atom
+editing/recovery, general selections and hidden-only recovery remain unfinished.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
 commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
 Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are shared
-typing responsiveness, general selections, atomic-block navigation, bounded layout
-contracts, public API/publication decisions and external interchange. Local
+typing responsiveness, general selections, physical/bidi navigation and atom
+editing, bounded layout contracts, public API/publication decisions and external
+interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill

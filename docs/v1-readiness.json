@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-16",
-  "baselineCommit": "30d82ef0ee3a2505efdfb9d123f6fb1d92dea945",
+  "baselineCommit": "b3c19a86567978f82c9373e6455752c19f1f92aa",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -76,9 +76,9 @@
     {
       "id":"line-and-block-navigation","area":"Editing","status":"partial",
       "summary":"Hard breaks and navigation around atomic blocks",
-      "current":"Local/shared native owners have named guarded hard-break commands: one LF in one history group without a new block, retaining logical-start styles and peer edits. Shift+Enter and explicit beforeinput targets use distinct routes. Separate structural V2 code exit creates reachable plain text after a whole code block without source conversion. Atomic-block arrows, deletion, gap/drop positions and trailing-text recovery around other atoms remain incomplete.",
+      "current":"Local/shared native hard breaks retain one LF without a new block, and V2 code exit retains the whole source. Native logical before/after navigation now keeps atom stops, transparent list/task/quote order, cell/caption domains, selected ranges, read-only policy and Redo. Separate original-family insertion creates plain text before/after a selected image, visible table or rule, including atom-only documents and rich flow parents. Explicit V2 controls, logical Alt PageUp/PageDown and atom Enter/Shift Enter reach installed vanilla/React. A reproduced uncancelled paging default that collapsed ranges is repaired. Physical/bidi arrows, full deletion/recovery, gap/drop positions, general selection and hidden-only recovery remain incomplete.",
       "acceptance":"Specify soft-break semantics, create reachable text positions around every atom, and test Shift+Enter, arrows, deletion and empty-document recovery.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/local_session/insert_hard_break.rs","crates/breditor-collaboration/src/rich_replica/insert_hard_break.rs","experiments/editor-browser/hard-break.spec.mjs"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/local_session/insert_hard_break.rs","crates/breditor-collaboration/src/rich_replica/insert_hard_break.rs","experiments/editor-browser/hard-break.spec.mjs","docs/RICH_FLOW_NAVIGATION.md","crates/breditor-core/src/rich_content/navigate_flow.rs","crates/breditor-core/src/rich_content/local_session/insert_paragraph_adjacent.rs","crates/breditor-core/tests/rich_flow_navigation.rs","crates/breditor-collaboration/tests/flow_navigation_contracts.rs","experiments/editor-browser/flow-navigation.spec.mjs","scripts/probe-flow-navigation-compatibility.mjs","docs/qualification/2026-10-16-flow-navigation.json"],
       "sources":["tiptap-starter","tiptap-source-starter"]
     },
     {
