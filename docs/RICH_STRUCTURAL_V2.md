@@ -212,17 +212,68 @@ task completion. Setting an already matching task value remains a complete no-op
 Code caret typing retains exact Unicode, tabs and line endings and rejects
 nonempty pending styles.
 
-Shared task wrapping, split/join, indent/outdent/empty exit, quote wrapper commands
-and explicit rule commands still need native lowering. Same-block selected code
-replacement and the full code boundary policy also remain open. V2 Wasm
-factories, SDK selection and relay configuration are deliberately absent until
-the complete command, conflict and recovery contracts are ready. One development
-run reported `ReplayMismatch` in concurrent style/code history; subsequent focused
-and complete runs passed without identifying its cause. This observation remains
-open and prevents V2 promotion. Native debug builds can opt into
+Shared task wrapping/unwrapping, split/join, indent/outdent/empty exit, quote
+wrapping/unwrapping and explicit rule insertion/deletion now have separate,
+documented native action files under `rich_replica/actions`. Each admits the
+core action's complete result before publishing owned births, placements, text
+routes or deletion contributions, then compares the final AST with that result.
+Same-block selected code replacement supports both selection directions and
+preserves concurrent suffix edits. Styled insertion and cross-code endpoints
+still reject; general container-crossing selection and code exit are not implied.
+
+Task wrapping requires explicit initial completion for every fresh item. Split
+keeps left completion and starts the right item unchecked. Join preserves both
+rich bodies and left completion; a left rich tail keeps the right head as its
+own body block rather than moving its text ahead of that tail. Selective Undo
+retains foreign text and completion, including on a removed task that reappears.
+Concurrent nesting keeps one visible body; undoing a winning placement can reveal
+another writer's placement. Top-level removal uses the actual quote, cell or
+ordinary-list-tail parent. Truly empty exit never discards rich tails.
+
+New V2 infrastructure uses a separate `prepare_v2` path. Existing V1 and initial
+V2 journal operations retain their original identities. Conditional task/quote
+heads are retained before wrapper removal. Rule insertion/replacement resolves
+its owned placement at application time so an earlier command in the same group
+can move children safely. A sole rule still needs an explicit fresh replacement;
+full-candidate limits apply to the final AST, not an unobservable intermediate
+tree. The [native compatibility fixture](../scripts/fixtures/shared-structural-v2-compat/README.md)
+captures the first V2 implementation and verifies its journal plus sixteen exact
+future history/edit states in the new implementation.
+
+V2 Wasm factories, SDK selection and relay configuration remain absent pending
+the complete browser conflict and recovery contract. One development run reported
+`ReplayMismatch` in concurrent style/code history without a saved checkpoint.
+The clock regression below establishes a separate reproducible cause, but does
+not identify that unrecorded invocation; it remains open for V2 promotion. Native
+debug builds can opt into
 `BREDITOR_REPLAY_TRACE=1` to print differing engine effects; these may contain
 document content, so use controlled fixtures. The trace is absent from Wasm and
 native release builds.
+
+## Clock independent shared history
+
+Shared history boundaries come from authored semantic groups, not elapsed wall
+time. The pinned undo engine's zero merge interval still merges separate groups
+when its clock delta is negative. This caused two dispatches to become one live
+Undo step while recovery under a normal clock rebuilt two. Saving after that
+merged Undo reliably reproduced `ReplayMismatch` during recovery.
+
+Breditor now sets the private engine merge interval to the minimum signed value,
+disabling its time-based branch while retaining explicit grouping inside one
+multi-command edit. No dependency source or wire format changes. The real Wasm
+regression replaces only `Date.now` in its own Node process; it never changes
+system time or the user's browser. Normal, frozen and backward clocks must retain
+two separate dispatches, one multi-command group, both Undo/Redo steps and exact
+checkpoint recovery, including a checkpoint saved after Undo.
+
+```sh
+node scripts/probe-shared-history-clock.mjs --require-stable packages/breditor-collaboration/dist/runtime
+```
+
+`scripts/check-editor-package.mjs` runs this regression against the rebuilt
+application runtime before packing. The older runtime fails the same assertion.
+This deterministic repair is not a repair claim for the historical intermittent
+WebKit fault or the earlier unrecorded native code/style observation.
 
 ## Tests and remaining integration
 
@@ -237,6 +288,9 @@ prove that original factories still reject V2. The separate
 `crates/breditor-collaboration/tests/rich_structural_v2_contracts.rs` covers the
 explicit native V2 profile, exact mixed AST projection, independent writer fields,
 offline selection/history, wrong-model rejection and exact future replay.
+`rich_structural_v2_structure_contracts.rs` covers named structural actions,
+offline text and completion, concurrent placement ownership, actual cell/list
+parents, normalized heads, multi-command rules and atomic final-state limits.
 `scripts/compare-shared-v1-runtime.mjs` compares two actual V1 Wasm runtimes,
 including byte-exact journals and semantic lineage plus cross-version recovery.
 `crates/breditor-core/tests/rich_task_structure_v2.rs` checks nesting, actual flow
@@ -244,8 +298,8 @@ parents, empty exit, checked values, ordering, active limits, atomic rejection a
 exact future history. Installed keyboard, toolbar and React regressions are in
 `experiments/editor-browser/task-structure.spec.mjs`.
 
-Next, finish the shared structural command family and investigate the retained
-replay observation before exposing V2 browser/relay factories.
+Next, expose and qualify explicit shared V2 Wasm, SDK and relay selection while
+continuing to trace the retained unrecorded replay observation.
 Code exit-to-new-block shortcuts and complete atomic-block caret navigation still
 need explicit actions and integration.
 Atomic-block navigation, general selections, typing coalescing, live read-only

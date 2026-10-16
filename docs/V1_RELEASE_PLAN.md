@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `8ac39ed` (saved locally,
+The latest functional implementation checkpoint is `a85f46d` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -136,10 +136,23 @@ Its final native suite passes 220 cases, including 15 V2 contracts; 102 installe
 SDK and 78 application-network cases pass in all three engines. An old/new V1
 Wasm comparison matches 49 journal/view/lineage states, two cross-version restores
 and 12 future history steps. These browser checks qualify existing V1 sharing,
-not V2 integration. V2 task structural lowering and browser/relay factories remain
-open. One development `ReplayMismatch` in concurrent code/style history has not
+not V2 integration. At that foundation, V2 task structural lowering and
+browser/relay factories remained open. One development `ReplayMismatch` in concurrent code/style history has not
 been reproduced again or explained, so it remains a V2 promotion blocker.
 No historical WebKit repair or broader research-suite rerun is claimed.
+The subsequent [native shared structural actions](qualification/2026-10-15-shared-structural-v2-actions.json)
+add eleven named task, quote and rule actions, plus same-block selected code
+replacement. Offline text, completion, normalized heads and rich flow order
+survive selective history and restart. Compound rule replacement now resolves its
+owned placement after earlier commands in the same group. A separate real-Wasm
+regression reproduced incorrect Undo grouping and saved-history replay failure
+under a backward clock. Disabling only the engine's time-based merge branch
+repairs that case while preserving explicit multi-command groups; dependency
+sources and protocols are unchanged. Final qualification passes 240 canonical
+native cases, 35 focused research cases and 180 installed/browser network cases.
+V1's 49 runtime states and the first native V2 checkpoint's sixteen future states
+remain compatible. Shared V2 Wasm/SDK/relay integration, the earlier unrecorded
+native observation and the historical WebKit fault remain open.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
@@ -147,7 +160,7 @@ gates remain unchanged because their complete acceptance is still open.
 The active first-two-workstream goal is not complete. Standard controls now use
 the Rust state reads, but applying a mixed format replaces its complete map;
 per-property-preserving mixed edits remain distinct work. Next are shared V2
-contracts, everyday Rust editing gaps, public API/publication decisions and external interchange. Local
+browser/relay integration, everyday Rust editing gaps, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill

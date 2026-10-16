@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "a85f46da966ec753e3b9969533026c934d7e08e4",
+  "scope": "Native shared V2 task, quote and rule action family, same-block selected code replacement, exact older-journal compatibility, and a deterministic shared Undo/recovery repair under backward wall time. Rebuilt installed browser checks cover existing local V1/V2 and shared V1, not shared V2 integration.",
+  "releaseQualified": false,
+  "sharedStructuralV2Promoted": false,
+  "goalComplete": false,
+  "contracts": {
+    "versions": "Document 2/local checkpoint 1/default ABI 5/rich ABI 1 are unchanged. Original V1 shared factories remain model 11/journal 12. Explicit native V2 remains model 12/journal 13; no automatic migration, V2 Wasm/SDK/relay factory or new browser surface.",
+    "namedActions": ["wrap_blockquote.rs", "unwrap_blockquote.rs", "wrap_task_list.rs", "unwrap_task_list.rs", "indent_task_items.rs", "outdent_task_items.rs", "exit_task_item.rs", "split_task_item.rs", "join_task_items.rs", "insert_horizontal_rule.rs", "delete_horizontal_rule.rs"],
+    "lowering": "Each action admits the complete Rust core result, lowers to owned births/placements/deletion contributions and original text routes, then verifies the final AST against that core result. Earlier V1 and V2 preparation is unchanged; new structural infrastructure has a separate V2-only path.",
+    "tasks": "Fresh wrapping requires explicit checked defaults. Split retains left completion, creates an unchecked right task and routes the original suffix/tail. Join preserves left completion and complete rich reading order; with a left rich tail it does not concatenate the right head ahead of that tail. Indent/outdent/empty exit retain actual flow parents, normalized heads, completion and source identities. Foreign text and checked contributions survive selective Undo. Concurrent placements have one visible winner and winner Undo can reveal another writer's placement.",
+    "quotesAndRules": "Wrapping/unwrapping retains original bodies. A rule birth or replacement resolves owned placement at application time, after earlier commands may have moved flow. Sole-child rule deletion requires an explicit fresh semantic replacement. Final candidate limits do not require old and replacement subtrees to fit simultaneously.",
+    "codeSelection": "Plain same-block UTF-16/scalar-aligned selected code replacement works in both directions with offline suffix edits and exact future history. Styled insertion and cross-code endpoints reject. This is not general cross-container selection or a code-exit policy.",
+    "originalModelIsolation": "All fourteen V2 commands reject against original model 11 before target or value work, including deliberately invalid targets/values. Existing V1 journal operations and old V2 operations retain their meanings.",
+    "paste": "Existing semantic PasteBlocks resolves only actual document, cell, ordinary-list-item, V2 quote or task-item flow parents. No foreign HTML/Office adapter is implied."
+  },
+  "deterministicRepairs": [
+    {
+      "id": "rule-placement-after-earlier-commands",
+      "reproduction": "Wrap a new quote, insert a rule in it, then replace that rule with fresh flow in one authored group. Infrastructure birth ordering was prepared before preceding commands moved children, so final AST verification failed.",
+      "repair": "Insert/replacement adds its owned placement at actual semantic application time, with a bounded-order-disjoint fixed ordinal that is identical on native and Wasm. No identity or text copying.",
+      "regression": "new_quote_and_rule_then_explicit_rule_replacement_compose_in_one_group"
+    },
+    {
+      "id": "shared-wall-clock-undo-boundaries",
+      "reproduction": "The pinned undo engine compares wall-clock delta < merge interval. Interval zero still merges distinct groups when time decreases. In real older Wasm, two dispatches become one live Undo step; normal-clock restoration rebuilds two. Saving after that merged Undo reliably rejects recovery with journal replay differs from the saved operation identities/effects.",
+      "repair": "Breditor sets the private engine time interval to i64::MIN, disabling that branch while retaining explicit group_start/group_end coalescing within one authored multi-command edit. No vendor source, OS time, user-browser settings or wire format is changed.",
+      "regression": "node scripts/probe-shared-history-clock.mjs --require-stable WASM_DIRECTORY",
+      "beforeRuntimeSha256": "7e9ac3a58323b0dbd6a6ffe997df913e8bc940530ece5e4785d841e3f35eef0e",
+      "beforeExit": 1,
+      "afterRuntimeSha256": "3cbac09b7aa00d092c3d4b6d954500410f5b425e8ea31c7e1003385ffadc6836",
+      "afterExit": 0,
+      "proof": "Normal, frozen and backward Date.now in an isolated Node process each retain one two-command batch, two separate dispatches, both Undo and Redo steps, recovery before Undo and recovery from a checkpoint saved after Undo. The SDK packaging check runs the real rebuilt-Wasm assertion in a child process before packing.",
+      "limit": "This identifies the controlled clock failure, not the earlier unrecorded native code/style invocation or historical intermittent WebKit fault."
+    }
+  ],
+  "nativeChecks": {
+    "command": "BREDITOR_REPLAY_TRACE=1 CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "passed": 240,
+    "originalContracts": 205,
+    "v2FoundationAndCodeContracts": 16,
+    "v2StructuralActionContracts": 19,
+    "suiteFootersIncludingZeroDoctests": 18,
+    "researchFocusedCommand": "CARGO_TARGET_DIR=target/shared-research-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path experiments/collaboration/Cargo.toml --test rich_structural_v2_contracts --test rich_structural_v2_structure_contracts",
+    "researchFocusedPassed": 35,
+    "canonicalFocusedRepetitions": 6,
+    "casesPerFocusedRepetition": 35,
+    "focusedRepetitionFailures": 0,
+    "repeatLogs": "target/shared-structural-v2-actions-qualification/clock-repeat-1.log through clock-repeat-6.log",
+    "repetitionLimit": "These 210 overlapping executions do not identify the earlier unrecorded invocation or prove a historical browser fault repaired.",
+    "strictNativeAllTargetClippy": true,
+    "strictApplicationReleaseWasmClippy": true,
+    "rustdocWarningsDenied": true,
+    "canonicalResearchAndFixtureFormatChecks": true,
+    "note": "A pre-existing retained dependency HasIdSpan warning remains. No vendor edit or fresh full core/default/research gate is claimed."
+  },
+  "compatibility": {
+    "v1": {
+      "command": "node scripts/compare-shared-v1-runtime.mjs target/shared-v1-before-model12-emHSgv packages/breditor-collaboration/dist/runtime",
+      "passed": true,
+      "comparedCheckpoints": 49,
+      "crossVersionRestores": 2,
+      "futureHistorySteps": 12,
+      "proof": "Real old/new V1 profile/owner documents, read views, exact journals, expected effects, causal clocks, presence and canonical semantic writer lineage match under the tested normal-clock sequences. Opaque binary packing and payloadDigest are not semantic lineage."
+    },
+    "nativeV2": {
+      "fixture": "scripts/fixtures/shared-structural-v2-compat",
+      "captureSource": "8ac39ed039655885164d8dc59ab8b90d6e366a81",
+      "passed": true,
+      "futureStates": 16,
+      "proof": "Capture uses only APIs available at the first native V2 implementation. New source restores the exact model 12/journal 13 checkpoint and matches sixteen future checkpoint strings through ordinary list preparation, independent code/language, completion, foreign text and Undo/Redo.",
+      "buildIsolation": "The old capture, current fixture runner, canonical native conformance, research and application Wasm each use dedicated target outputs. A development build that shared an unhashed collaboration rlib across independent workspace graphs produced incompatible cached Core type identities. Clean isolated targets pass without source/API changes or deleting caches."
+    }
+  },
+  "installedConsumers": {
+    "command": "node scripts/check-editor-package.mjs",
+    "passed": true,
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-jSRSYC/consumer",
+    "configurations": ["Local without React/collaboration", "Shared without React", "Full React/shared, Node initialization, package-root normal/advanced/Wasm types and eight production Vite pages"],
+    "runtimeSurface": "Five JavaScript exports and 51 raw Wasm exports; no research or V2 factory exports."
+  },
+  "browserSuites": [
+    {"command":"node_modules/.bin/playwright test -c experiments/editor-browser/playwright.config.mjs","passed":102,"perEngine":34,"engines":["chromium","firefox","webkit"],"duration":"2.2 minutes","scope":"Clean-installed local V1/V2 and optional shared V1, vanilla/React, clipboard, assets, task controls, offline history, typing, hard breaks and exact reload. Not shared V2."},
+    {"command":"node_modules/.bin/playwright test -c experiments/shared-browser/application-network.config.mjs","passed":78,"perEngine":26,"engines":["chromium","firefox","webkit"],"duration":"2.0 minutes","scope":"Installed shared V1 offline/reconnect, presence, uploads, standard controls and selective recovered history. Not shared V2."}
+  ],
+  "browserPolicy": "Stock 60-second cases, 300-second process budgets, zero retries. Dedicated owned servers on 49784/49785 close after tests. User demo unchanged. Overlapping runs are not unique capability counts or a historical WebKit repair.",
+  "scriptChecks": {"command":"npm run test:scripts","total":361,"passed":358,"failed":0,"existingOptInSkips":3},
+  "artifacts": [
+    {"name":"application-shared-wasm","bytes":8303658,"sha256":"3cbac09b7aa00d092c3d4b6d954500410f5b425e8ea31c7e1003385ffadc6836"},
+    {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1227748,"sha256":"5dd4a10dc6c5dc1dbc0ede8defb94c8d1b35df845f7a6741173057327b0bb7f8"},
+    {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2299652,"sha256":"365feb9258208349ff15f30a68c591c5966c7442f854bce1a35294a5e1b42d16"},
+    {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":18898,"sha256":"942cbe0bc3689a52e35a1654bdc9568337fc43159e87d944cb0eb987bc83b8ff"}
+  ],
+  "openIssues": [
+    {"id":"native-v2-concurrent-format-replay","status":"observed-not-confirmed-fixed","note":"The earlier unseen_remote_styles_are_masked_in_code_but_restored_by_selective_undo failure has no captured checkpoint. The clock regression establishes a real repairable replay-failure mechanism but cannot establish that invocation's cause. New focused failure diagnostics include checkpoints; this retained observation remains open for promotion."},
+    {"id":"historical-intermittent-webkit-fault","status":"open","evidence":"docs/WEBKIT_FAULT_RECOVERY.md","note":"No root-cause repair established by this checkpoint."}
+  ],
+  "remaining": ["Explicit shared V2 Wasm/SDK/relay factories and full installed browser conflict/recovery tests", "General selections, code/atomic boundary navigation and natural typing history", "Field-preserving mixed formatting, live read-only, bounded layout and contextual controls", "Sanitized HTML/Markdown and realistic Office/Docs/Excel paste with explicit losses", "Remaining V1 feature parity and release gates"],
+  "retainedLogs": "target/shared-structural-v2-actions-qualification",
+  "readiness": "45 unequal groups remain 8 implemented slices, 17 partial and 20 missing; all 13 release gates stay open. Private alpha.22, no publication, deployment, tag, push or full-goal completion."
+}
