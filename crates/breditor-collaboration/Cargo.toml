@@ -47,3 +47,7 @@ missing_docs = "deny"
 [lints.clippy]
 all = { level = "deny", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
+
+[[example]]
+name = "general_range_checkpoint_probe"
+required-features = ["research"]
