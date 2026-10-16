@@ -3,6 +3,7 @@
 //! One dispatch retains one explicit history record. Natural user-input grouping
 //! is separately enabled and persisted; original checkpoints/defaults stay exact.
 
+mod change_selection_formats;
 mod close_typing_group;
 mod delete_atom;
 mod delete_typing_range;

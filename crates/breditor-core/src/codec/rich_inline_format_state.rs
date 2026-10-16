@@ -15,6 +15,10 @@ use serde::Serialize;
 pub const RICH_INLINE_FORMAT_STATE_FORMAT: &str = "breditor/rich-inline-format-state";
 /// Exact read envelope and closed state variants.
 pub const RICH_INLINE_FORMAT_STATE_VERSION: u32 = 1;
+/// Separate selection-coverage read; original node/grid-unavailable read semantics stay exact.
+pub const RICH_SELECTION_FORMAT_STATE_FORMAT: &str = "breditor/rich-selection-format-state";
+/// Independent selection-format read version, not an original read-family upgrade.
+pub const RICH_SELECTION_FORMAT_STATE_VERSION: u32 = 1;
 const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Serialize)]
@@ -59,6 +63,32 @@ pub fn encode_rich_inline_format_state(
     kind: &QualifiedName,
     value: &RichInlineFormatState,
 ) -> Result<String, RichFormatsCodecError> {
+    encode(context, kind, value, RICH_INLINE_FORMAT_STATE_FORMAT, RICH_INLINE_FORMAT_STATE_VERSION)
+}
+
+/// Encode the distinct text/node/grid selection-format read using exact native property values.
+/// # Errors
+/// Rejects unknown kinds, invalid uniform values and the same 64 KiB read budget.
+pub fn encode_rich_selection_format_state(
+    context: &EditorContext,
+    kind: &QualifiedName,
+    value: &RichInlineFormatState,
+) -> Result<String, RichFormatsCodecError> {
+    encode(
+        context,
+        kind,
+        value,
+        RICH_SELECTION_FORMAT_STATE_FORMAT,
+        RICH_SELECTION_FORMAT_STATE_VERSION,
+    )
+}
+fn encode(
+    context: &EditorContext,
+    kind: &QualifiedName,
+    value: &RichInlineFormatState,
+    format: &'static str,
+    version: u32,
+) -> Result<String, RichFormatsCodecError> {
     if !context.schema().is_rich_content_profile() {
         return Err(RichFormatsCodecError::UnsupportedContext);
     }
@@ -83,8 +113,8 @@ pub fn encode_rich_inline_format_state(
     };
     let schema = context.schema();
     let read = Read {
-        format: RICH_INLINE_FORMAT_STATE_FORMAT,
-        format_version: RICH_INLINE_FORMAT_STATE_VERSION,
+        format,
+        format_version: version,
         schema: Binding {
             name: schema.id().name().as_str(),
             version: schema.id().version().get(),

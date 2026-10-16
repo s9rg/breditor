@@ -8,6 +8,7 @@ export {RichLocalSessionStore} from "./persistence/local_session_store.js";
 export {createRichInlinePresentation,type RichInlinePresentation,type RichInlineSchema} from "./inline_presentation.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./standard_inline_v1.js";
 export {createStandardRichToolbarV1} from "./standard_toolbar.js";
+export {createSelectionRichToolbarV1} from "./selection_toolbar.js";
 export {createStructuralRichToolbarV2} from "./structural_controls_v2.js";
 export {createFlowNavigationControls,flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 export type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";

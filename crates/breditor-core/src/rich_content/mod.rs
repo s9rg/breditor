@@ -27,6 +27,9 @@ mod rich_range_mapping;
 mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;
+mod selection_coverage;
+mod selection_format_change;
+mod selection_format_state;
 mod standard_inline_v1;
 mod structural_drafts;
 mod table_draft;
@@ -64,6 +67,11 @@ pub use rich_selection::{
 pub use rich_selection_mapping::{
     RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
 };
+pub use selection_coverage::{
+    RichCoverageDomain, RichCoverageExtent, RichCoveredNode, RichCoveredText, RichSelectionCoverage,
+};
+pub use selection_format_change::RichSelectionFormatChange;
+pub use selection_format_state::inspect_selection_format;
 pub use standard_inline_v1::{
     STANDARD_INLINE_EXTENSION_V1_NAME, STANDARD_INLINE_FAMILY_V1, STANDARD_INLINE_HREF_V1,
     STANDARD_INLINE_NEW_WINDOW_V1, STANDARD_INLINE_PIXELS_V1, STANDARD_INLINE_RGB24_V1,

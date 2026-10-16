@@ -2,6 +2,7 @@
 mod atom_edit;
 mod exit_code_block;
 mod flow_navigation;
+mod selection_formatting;
 mod typing;
 use crate::{
     Error,

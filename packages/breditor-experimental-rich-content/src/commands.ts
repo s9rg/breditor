@@ -19,7 +19,10 @@ export type FlowDraft = ({kind:"paragraph"}&TextDraft)|({kind:"heading";level:nu
 export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCell}|{kind:"listItem"|"blockquote"|"taskItem";block:string};before:string|null}
 /** Use a unique prefix for every authored paste, including failed/undone ones. */
 export interface ClipboardAllocation {prefix:string;replica:string;counter:string;lamport:string}
+/** Full admitted literals are retained for removals; Rust chooses all selected targets. */
+export type RichSelectionFormatChange={kind:"set"|"remove";formatsJson:string}|{kind:"patch";formatsJson:string;properties:readonly string[]};
 export type RichCommand =
+ |{kind:"changeSelectionFormats";data:{changes:readonly RichSelectionFormatChange[]}}
  |{kind:"deleteAtom";data:{paragraph:string;movement:"before"|"after"}}
  |{kind:"replaceAtomPlainText";data:{paragraph:string;text:string}}
  |{kind:"replaceAtomTypingText";data:{paragraph:string;text:string;clockMs:string}}

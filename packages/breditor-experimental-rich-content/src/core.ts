@@ -1,5 +1,5 @@
 import type {RichCommand} from "./commands.js";
-export type {RichCommand,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
+export type {RichCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
   readonly BreditorRichProfile: {fromBootstrapJson(input: string): unknown;fromStandardBootstrapJsonV1?(input:string):unknown;fromStructuralBootstrapJsonV2?(input:string):unknown;fromStandardStructuralBootstrapJsonV2?(input:string):unknown};
@@ -13,6 +13,16 @@ export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {na
 export type RichInlineFormatState = {kind:"unavailable"}|{kind:"unset"}|{kind:"uniform";format:import("./commands.js").FormatLiteral}|{kind:"mixed";presentEverywhere:boolean};
 /** Read binding only, never a compiled proof or a mutation observation token. */
 export interface RichInlineFormatStateRead {format:"breditor/rich-inline-format-state";formatVersion:1;schema:{name:string;version:number;fingerprint:string};formatKind:string;state:RichInlineFormatState}
+/** Distinct coverage-aware state; the original node/grid-unavailable family is not widened. */
+export interface RichSelectionFormatStateRead extends Omit<RichInlineFormatStateRead,"format"> {format:"breditor/rich-selection-format-state"}
+export type RichCoverageDomain={kind:"document"}|{kind:"cell";table:string;row:string;column:string}|{kind:"caption";image:string};
+/** Immutable native read only. No offsets, IDs or read bindings grant mutation authority. */
+export interface RichSelectionCoverageRead {
+ format:"breditor/rich-selection-coverage";formatVersion:1;schema:{name:string;version:number;fingerprint:string};document:string;
+ scope:"none"|"document"|"text"|"node"|"grid";backward:boolean|null;selectedUtf16:string;
+ nodes:readonly {block:string;parent:string|null;kind:string;extent:"whole"|"partial";domain:RichCoverageDomain;hiddenTable:boolean}[];
+ text:readonly {block:string;kind:string;start:string;end:string;domain:RichCoverageDomain}[];
+}
 export interface RichView {
   format: "breditor/rich-view"; formatVersion: 1; revision: string; documentJson: string;
   /** Omitted means the original editable default. This live host policy is not document permission. */
@@ -42,6 +52,9 @@ export interface RichCoreEditor {
   supportsFlowNavigation?():boolean;
   /** Separate native whole-atom deletion/plain/first-key replacement capability. */
   supportsAtomEditing?():boolean;
+  supportsSelectionFormatting?():boolean;
+  selectionCoverage?(scope?:"selection"|"document"):RichSelectionCoverageRead;
+  selectionFormatState?(kind:string):RichSelectionFormatStateRead;
   enableTypingHistory?(expectedRevision?:string):boolean;
   closeTypingGroup?(expectedRevision?:string):boolean;
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;

@@ -7,6 +7,7 @@ export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInl
 export {createStandardRichToolbarV1} from "./dist/browser/index.js";
 export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
 export {createFlowNavigationControls} from "./dist/browser/index.js";
+export {createSelectionRichToolbarV1} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }
@@ -121,6 +122,9 @@ class RichCoreEditor {
   supportsCodeExit(){const raw=this.#live();return typeof raw.codeExitVersion==="function"&&raw.codeExitVersion()==="1";}
   supportsFlowNavigation(){const raw=this.#live();return typeof raw.flowNavigationVersion==="function"&&raw.flowNavigationVersion()==="1";}
   supportsAtomEditing(){const raw=this.#live();return typeof raw.atomEditVersion==="function"&&raw.atomEditVersion()==="1";}
+  supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}
+  selectionCoverage(scope="selection"){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionCoverageJson(scope)));}
+  selectionFormatState(kind){this.#live();if(!this.supportsSelectionFormatting())throw new RichCommandError("breditor_rich.selection_formatting_unavailable","Use a matching native selection-formatting owner");return JSON.parse(read(this.#observation.selectionFormatStateJson(kind)));}
   supportsTypingHistory(){const raw=this.#live();return typeof raw.typingHistoryVersion==="function"&&raw.typingHistoryVersion()==="1"&&typeof raw.enableTypingHistory==="function"&&typeof raw.closeTypingGroup==="function";}
   #typingPolicy(method,revision){
     const raw=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The history intent was prepared from an older rich view");

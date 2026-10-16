@@ -4,6 +4,7 @@
 //! tagged content buffer. Present null fields remain distinct from missing ones.
 
 mod change_inline_formats;
+mod change_selection_formats;
 mod clear_table_cells;
 mod clipboard_ids;
 mod data_dispatch;
@@ -90,6 +91,7 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    ChangeSelectionFormats,
     DeleteAtom,
     ReplaceAtomPlainText,
     ReplaceAtomTypingText,
@@ -232,6 +234,11 @@ pub(super) fn execute(
         return Err(error::rejected("breditor_rich.read_only"));
     }
     match command.kind {
+        CommandTag::ChangeSelectionFormats => change_selection_formats::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
         CommandTag::DeleteAtom => {
             delete_atom::execute(owner, observation, command.data.ok_or(invalid())?.get())
         }

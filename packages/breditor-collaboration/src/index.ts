@@ -6,6 +6,7 @@ export type * from "./types.js";
 export {SharedDomEditor,mountSharedEditor,type SharedDomOptions} from "./controller.js";
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 export {createStandardSharedToolbarV1} from "./standard_toolbar.js";
+export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
 export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";

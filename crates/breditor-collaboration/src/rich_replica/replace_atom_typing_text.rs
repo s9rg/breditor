@@ -36,6 +36,6 @@ impl RichReplica {
             isolated: separator(text),
         };
         let (commands, selection, pending) = self.plan_atom_replacement(paragraph, text)?;
-        self.apply_with_state_inner(commands, selection, pending, Some(request))
+        self.apply_with_state_inner(commands, selection, pending, Some(request), None)
     }
 }

@@ -60,6 +60,11 @@ impl RichFormatPropertyPatch {
     pub fn kind(&self) -> &QualifiedName {
         self.template.kind()
     }
+    /// Complete immutable template; callers must admit it before using named fields.
+    #[must_use]
+    pub const fn template(&self) -> &Format {
+        &self.template
+    }
 
     /// Merge named fields into an existing value; this does not grant admission.
     /// # Errors

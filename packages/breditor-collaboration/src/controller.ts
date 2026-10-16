@@ -6,6 +6,7 @@ import type {SharedDispatch,SharedPublication,RichSelection,Navigation} from "./
 import {sharedTaskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
+import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions extends RenderOptions {
  core:SharedRichEditor;toolbar?:readonly SharedToolbarControl[];label?:string;image?:{asset:string;alt:string};
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
@@ -112,6 +113,15 @@ export class SharedDomEditor {
   const item=check.dataset["taskCheck"],node=item?this.#model.nodes.get(item):undefined;if(!node||node.type!=="breditor/task-item")return;
   this.#attempt(()=>{this.#perform(c=>{c.core.dispatch({commands:[{kind:"set_task_checked",data:{block:id(node),checked:node.properties["breditor/checked"]!==true}}]},c.revision);});[...this.surface.querySelectorAll<HTMLInputElement>("input[data-task-check]")].find(input=>input.dataset["taskCheck"]===item)?.focus({preventScroll:true});});
  }
+ /** A custom V2 toolbar must not remove Rust-owned selection-format keyboard semantics. */
+ #selectionFormat(action:string|undefined):boolean {
+  const {core,inlinePresentation}=this.#options;
+  if(!action||core.richLanguageVersion()!==2||!core.supportsSelectionFormatting()||!inlinePresentation)return false;
+  const control=standardSelectionInlineControls(core,inlinePresentation).find(c=>c.id===action);
+  if(!control||control.fields)return false;
+  if(control.read().kind!=="unavailable"){const changes=selectionFormatChanges(control.changes({}));if(changes.length)this.#perform(c=>{c.core.changeSelectionFormats(changes,c.revision);});}
+  return true;
+ }
  #key(event:KeyboardEvent):void{if(this.#composition||event.isComposing)return;const mod=event.metaKey||event.ctrlKey,key=event.key.toLowerCase();
   if(mod&&!["Backspace","Delete"].includes(event.key)||["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown","Tab","Enter","Escape"].includes(event.key))this.#boundary();
   const widget=(event.target as Element).closest("input,button,select,textarea");
@@ -142,6 +152,8 @@ export class SharedDomEditor {
   }
   if(mod&&key==="a")this.#logical=false;
   if(mod&&!event.altKey){const shortcut=`${event.shiftKey?"shift+":""}${key}`,control=this.#controls.find(item=>item.control.shortcut===shortcut);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
+  const nativeShortcut=({b:"bold",i:"italic",u:"underline","shift+x":"strike"} as Record<string,string>)[`${event.shiftKey?"shift+":""}${key}`];
+  if(mod&&!event.altKey&&nativeShortcut&&this.#options.core.richLanguageVersion()===2&&this.#options.core.supportsSelectionFormatting()&&this.#options.inlinePresentation){event.preventDefault();this.#attempt(()=>{this.#sync();this.#selectionFormat(nativeShortcut);});return;}
   if(mod&&!event.altKey&&["z","y","b"].includes(key)){event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{if(key==="b")bold(c);else if(key==="y"||event.shiftKey)c.core.redo(c.revision);else c.core.undo(c.revision);});});return;}
   // WebKit can report insertParagraph for Shift+Enter. Resolve the keyboard
   // contract here without changing composition, grid Enter or beforeinput targets.
@@ -157,6 +169,7 @@ export class SharedDomEditor {
  #input(event:InputEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{this.#sync();const kind=event.inputType;
   if(kind!=="insertText"&&!kind.startsWith("delete"))this.#boundary();
   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
+  if(this.#selectionFormat(action))return;
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&c.core.richLanguageVersion()===2&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
    if(kind==="insertParagraph"){enter(c);return;}

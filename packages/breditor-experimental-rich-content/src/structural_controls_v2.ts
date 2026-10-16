@@ -3,6 +3,7 @@ import type {RichCoreEditor} from "./core.js";
 import {id,isProse,property,selectedText,type ElementNode} from "./model.js";
 import {positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {createStandardRichToolbarV1} from "./standard_toolbar.js";
+import {createSelectionRichToolbarV1} from "./selection_toolbar.js";
 import type {RichInlinePresentation} from "./inline_presentation.js";
 import {taskContext,indentTasks,outdentTasks} from "./task_actions_v2.js";
 import {createFlowNavigationControls} from "./flow_controls.js";
@@ -29,7 +30,7 @@ export function createStructuralRichToolbarV2(core:RichCoreEditor,presentation:R
   {id:"task-checked",label:"Task completed",enabled:c=>nearest(c.model,"task-item")!==undefined,read:c=>{const n=nearest(c.model,"task-item");return n?{kind:"uniform",pressed:property(n,"checked")===true}:{kind:"unavailable"};},command:c=>{const n=nearest(c.model,"task-item");return n?{kind:"setTaskChecked",data:{item:id(n),checked:property(n,"checked")!==true}}:null;}},
   {id:"horizontal-rule",label:"Horizontal rule",enabled:c=>c.model.view.selection!==null,command:c=>({kind:"insertHorizontalRule",data:{position:positionAfter(c),block:c.allocate("rule")}})},
  ];
- const standard=createStandardRichToolbarV1(core,presentation).map(control=>{
+ const standard=(core.supportsSelectionFormatting?.()===true?createSelectionRichToolbarV1(core,presentation):createStandardRichToolbarV1(core,presentation)).map(control=>{
   if(control.id!=="indent"&&control.id!=="outdent")return control;
   const backward=control.id==="outdent";
   return {...control,owner:core,enabled:(c:ActionContext)=>{const t=taskContext(c.model);return t?(backward||t.first>0):control.enabled(c);},command:(c:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>taskContext(c.model)?(backward?outdentTasks(c):indentTasks(c)):control.command(c,value,fields)};

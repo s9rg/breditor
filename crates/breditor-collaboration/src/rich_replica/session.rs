@@ -391,7 +391,7 @@ impl RichReplica {
         selection_update: SelectionUpdate,
         pending_update: PendingFormatsUpdate,
     ) -> Result<bool, Error> {
-        self.apply_with_state_inner(commands, selection_update, pending_update, None)
+        self.apply_with_state_inner(commands, selection_update, pending_update, None, None)
     }
     pub(super) fn apply_with_state_inner(
         &mut self,
@@ -399,6 +399,7 @@ impl RichReplica {
         selection_update: SelectionUpdate,
         pending_update: PendingFormatsUpdate,
         typing: Option<super::typing_history::Request>,
+        expected: Option<&breditor_core::rich_content::RichDocument>,
     ) -> Result<bool, Error> {
         self.require_writable()?;
         let join = typing.as_ref().is_some_and(|request| request.join);
@@ -409,6 +410,9 @@ impl RichReplica {
         let history_key =
             candidate.execute(&commands, &selection_update, &pending_update, join, false)?;
         candidate.refresh_document()?;
+        if expected.is_some_and(|expected| candidate.document.document() != expected.document()) {
+            return Err(Error::Contract("selection formatting lowering differs from core"));
+        }
         if self.canonical == candidate.canonical
             && before_ui == candidate.journal.ui
             && history == (candidate.undo_count(), candidate.redo_count())

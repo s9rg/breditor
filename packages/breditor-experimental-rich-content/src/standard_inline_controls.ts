@@ -1,22 +1,32 @@
 /** DOM-free standard control semantics. Rust supplies state and effective caret formats. */
 import {resolveInlineFormatRenderAttributes} from "@breditor/browser/presentation";
-import type {FormatLiteral,RichInlineFormatState,RichInlineFormatStateRead} from "./core.js";
+import type {FormatLiteral,RichInlineFormatState,RichInlineFormatStateRead,RichSelectionFormatStateRead,RichSelectionFormatChange} from "./core.js";
 import {requireRichInlinePresentation,richInlineFormatDescriptor,type RichInlinePresentation} from "./inline_presentation.js";
 import {createStandardRichInlinePresentationV1,standardInlineKindsV1 as k,standardInlinePropertiesV1 as p} from "./standard_inline_v1.js";
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 export type StandardInlineChange={kind:"set";format:FormatLiteral}|{kind:"remove";format:string}|{kind:"patch";format:FormatLiteral;properties:readonly string[]};
 export interface StandardInlineReader {inlineFormatState(kind:string):RichInlineFormatStateRead;caretFormats?():readonly FormatLiteral[];supportsStandardInlineControls?():boolean;supportsInlinePropertyPatches?():boolean}
+export interface StandardSelectionInlineReader extends Omit<StandardInlineReader,"inlineFormatState"> {supportsSelectionFormatting?():boolean;selectionFormatState?(kind:string):RichSelectionFormatStateRead}
 export interface StandardInlineControl {
  readonly id:string;readonly label:string;readonly shortcut?:string;readonly fields?:readonly RichToolbarField[];readonly mixedHint?:string;
  read():RichToolbarReading;changes(values:Readonly<Record<string,string>>):readonly StandardInlineChange[];
 }
 export function standardInlineControls(core:StandardInlineReader,presentation:RichInlinePresentation):readonly StandardInlineControl[]{
+ return compileControls(core,presentation,"breditor/rich-inline-format-state");
+}
+/** Explicit native selection-state controls; never widen the original read-family contract. */
+export function standardSelectionInlineControls(core:StandardSelectionInlineReader,presentation:RichInlinePresentation):readonly StandardInlineControl[]{
+ if(core.supportsSelectionFormatting?.()!==true||!core.selectionFormatState)throw Error("Use a matching native selection-formatting owner");
+ const read=core.selectionFormatState.bind(core);
+ return compileControls({inlineFormatState:read,supportsStandardInlineControls:()=>core.supportsStandardInlineControls?.()===true,caretFormats:()=>{if(!core.caretFormats)throw Error("Caret format capability is unavailable");return core.caretFormats();},supportsInlinePropertyPatches:()=>true},presentation,"breditor/rich-selection-format-state");
+}
+function compileControls(core:Omit<StandardInlineReader,"inlineFormatState">&{inlineFormatState(kind:string):RichInlineFormatStateRead|RichSelectionFormatStateRead},presentation:RichInlinePresentation,expected:RichInlineFormatStateRead["format"]|RichSelectionFormatStateRead["format"]):readonly StandardInlineControl[]{
  if(core.supportsStandardInlineControls?.()!==true||!core.caretFormats)throw Error("Use a matching Rust owner with standard inline-control capabilities");
  requireRichInlinePresentation(presentation,presentation.schema);
  const names=new Set<string>(Object.values(k)),all=presentation.recipesOuterToInner.map(recipe=>richInlineFormatDescriptor(presentation,recipe.formatKind)!).sort((a,b)=>a.kind<b.kind?-1:1),extra=presentation.recipesOuterToInner.filter(recipe=>!names.has(recipe.formatKind));
  // Reuse the versioned compiler's exact native-domain checks, not a second schema.
  createStandardRichInlinePresentationV1(JSON.stringify({format:"breditor/inline-format-catalog",formatVersion:1,schema:presentation.schema,formats:all}),extra.length?{recipes:extra}:undefined);
- const state=(kind:string):RichInlineFormatState=>{const r=core.inlineFormatState(kind),s=presentation.schema;if(r.format!=="breditor/rich-inline-format-state"||r.formatVersion!==1||r.formatKind!==kind||r.schema.name!==s.name||r.schema.version!==s.version||r.schema.fingerprint!==s.fingerprint)throw Error("Toolbar and Rust schema bindings differ");return r.state;};state(k.strong);
+ const state=(kind:string):RichInlineFormatState=>{const r=core.inlineFormatState(kind),s=presentation.schema;if(r.format!==expected||r.formatVersion!==1||r.formatKind!==kind||r.schema.name!==s.name||r.schema.version!==s.version||r.schema.fingerprint!==s.fingerprint)throw Error("Toolbar and Rust schema bindings differ");return r.state;};state(k.strong);
  const literal=(type:string,properties:Readonly<Record<string,unknown>>={}):FormatLiteral=>({type,properties});
  const set=(format:FormatLiteral):StandardInlineChange=>({kind:"set",format});
  const remove=(format:string):StandardInlineChange=>({kind:"remove",format});
@@ -55,4 +65,8 @@ export function pendingStandardFormats(core:StandardInlineReader,changes:readonl
 export function standardRemovalLiteral(kind:string):FormatLiteral {
  const properties=kind===k.link?{[p.href]:"https://example.invalid/",[p.newWindow]:false}:kind===k.textColor||kind===k.backgroundColor?{[p.rgb24]:0}:kind===k.textSize?{[p.pixels]:8}:kind===k.fontFamily?{[p.family]:1}:{};
  return {type:kind,properties};
+}
+/** Intent literals only; every interval and final semantic result is derived in Rust. */
+export function selectionFormatChanges(changes:readonly StandardInlineChange[]):readonly RichSelectionFormatChange[]{
+ return changes.map(change=>change.kind==="remove"?{kind:"remove",formatsJson:JSON.stringify([standardRemovalLiteral(change.format)])}:{kind:change.kind,formatsJson:JSON.stringify([change.format]),...(change.kind==="patch"?{properties:change.properties}:{})}) as readonly RichSelectionFormatChange[];
 }

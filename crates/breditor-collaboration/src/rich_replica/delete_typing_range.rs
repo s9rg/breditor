@@ -82,6 +82,7 @@ impl RichReplica {
             })),
             PendingFormatsUpdate::Set(None),
             Some(request),
+            None,
         )
     }
 }

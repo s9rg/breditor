@@ -2,6 +2,7 @@
 import {id,isProse,property,selectedText,nearestStructuralV2 as nearest,replaceableFlowV2,structuralIntervalV2,taskContext,type ElementNode,type RichInlinePresentation} from "@breditor/experimental-rich-content/rendering";
 import {publish,positionAfter,type ActionContext,type SharedToolbarControl} from "./actions.js";
 import {createStandardSharedToolbarV1} from "./standard_toolbar.js";
+import {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 import {indentSharedTasks,outdentSharedTasks} from "./task_actions_v2.js";
 import type {SharedRichEditor} from "./core.js";
 import {createSharedFlowNavigationControls} from "./flow_controls.js";
@@ -27,7 +28,7 @@ export function createStructuralSharedToolbarV2(core:SharedRichEditor,presentati
   {id:"task-checked",label:"Task completed",enabled:c=>!!nearest(c.model,"task-item"),read:c=>{const n=nearest(c.model,"task-item");return n?{kind:"uniform",pressed:property(n,"checked")===true}:{kind:"unavailable"};},run:c=>{const n=nearest(c.model,"task-item");if(n)publish(c,[{kind:"set_task_checked",data:{block:id(n),checked:property(n,"checked")!==true}}]);}},
   {id:"horizontal-rule",label:"Horizontal rule",enabled:c=>c.model.view.selection!==null,run:c=>publish(c,[{kind:"insert_horizontal_rule",data:{...positionAfter(c),block:c.allocate("rule")}}])},
  ];
- const standard=createStandardSharedToolbarV1(core,presentation).map(control=>{
+ const standard=(core.supportsSelectionFormatting()?createSelectionSharedToolbarV1(core,presentation):createStandardSharedToolbarV1(core,presentation)).map(control=>{
   if(control.id==="bullet"||control.id==="numbered")return {...control,enabled:(c:ActionContext)=>ordinaryListAllowed(c)&&control.enabled(c)};
   if(control.id==="table")return {...control,enabled:(c:ActionContext)=>{const position=positionAfter(c);let parent=position.parent?c.model.nodes.get(position.parent):undefined;const flow=!parent||["breditor/list-item","breditor/task-item","breditor/blockquote"].includes(parent.type);while(parent){if(parent.type==="breditor/table")return false;parent=c.model.parents.get(id(parent));}return flow;}};
   if(control.id!=="indent"&&control.id!=="outdent")return control;

@@ -313,13 +313,24 @@ The independent event probe reproduces the pre-repair delivery gap in six
 engine/owner combinations and verifies all six repaired combinations. Default
 regressions, strict native/Wasm lint and exact older-runtime history pass.
 
+The next [native selection coverage contract](RICH_SELECTION_COVERAGE.md) adds
+Rust-derived formatting across text ranges, whole nodes and merged-cell grids,
+including captions and retained base-cell bodies. Separate state reads preserve
+the original Node/Grid-unavailable inline-state contract. V2 stock controls and
+empty-toolbar shortcuts use native intent; local and shared lowering retain
+original saved actions and exact future history. The 45-case installed
+three-engine slice passes, as do 48 real cross-version restores and 144 future
+comparisons. Code and any resource failure refuse the whole edit; shared
+lowering retains the 64-command ceiling. Coverage is not a visual-order range,
+document-wide Select All mutation or general cross-container replacement.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
 commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
 Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are shared
-typing responsiveness, general selections, physical/bidi navigation, native atom
+typing responsiveness, general selection replacement, physical/bidi navigation, native atom
 clipboard/input qualification, bounded layout contracts, public API/publication
 decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The

@@ -29,6 +29,6 @@ impl RichReplica {
         let selection = self.selection()?.ok_or(Error::Contract("shared typing requires caret"))?;
         let point = selection.caret().ok_or(Error::Contract("shared typing requires caret"))?;
         let (commands, selection, pending) = self.plan_plain_caret_input(text, point)?;
-        self.apply_with_state_inner(commands, selection, pending, Some(request))
+        self.apply_with_state_inner(commands, selection, pending, Some(request), None)
     }
 }

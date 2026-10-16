@@ -174,14 +174,14 @@ fn contains_code(
 }
 
 #[derive(Default)]
-struct Scan {
+pub(super) struct Scan {
     observed: bool,
     absent: bool,
     first: Option<Format>,
     different: bool,
 }
 impl Scan {
-    fn observe(&mut self, format: Option<&Format>) {
+    pub(super) fn observe(&mut self, format: Option<&Format>) {
         self.observed = true;
         if let Some(format) = format {
             if let Some(first) = &self.first {
@@ -193,7 +193,7 @@ impl Scan {
             self.absent = true;
         }
     }
-    fn finish(self) -> RichInlineFormatState {
+    pub(super) fn finish(self) -> RichInlineFormatState {
         if !self.observed {
             RichInlineFormatState::Unavailable
         } else if self.different || (self.absent && self.first.is_some()) {

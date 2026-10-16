@@ -15,8 +15,19 @@ mod rich_inline_format_state;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_inline_format_state::{
     RICH_INLINE_FORMAT_STATE_FORMAT, RICH_INLINE_FORMAT_STATE_VERSION,
-    encode_rich_inline_format_state,
+    RICH_SELECTION_FORMAT_STATE_FORMAT, RICH_SELECTION_FORMAT_STATE_VERSION,
+    encode_rich_inline_format_state, encode_rich_selection_format_state,
 };
+#[cfg(feature = "experimental-rich-content")]
+mod rich_selection_coverage;
+#[cfg(feature = "experimental-rich-content")]
+mod rich_selection_format_changes;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_selection_coverage::{
+    RICH_SELECTION_COVERAGE_FORMAT, RICH_SELECTION_COVERAGE_VERSION, encode_rich_selection_coverage,
+};
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_selection_format_changes::decode_rich_selection_format_changes;
 
 #[cfg(feature = "experimental-rich-content")]
 mod rich_clipboard_json;

@@ -18,6 +18,7 @@ mod profile;
 mod restore_typing_editor;
 mod result;
 mod selection;
+mod selection_formatting;
 mod view;
 
 pub use editor::BreditorRichEditor;

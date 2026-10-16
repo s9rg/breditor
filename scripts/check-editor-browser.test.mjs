@@ -39,3 +39,6 @@ test("dynamic SDK imports cannot execute another installed fixture page's bootst
 test("native atom-edit checks retain a dedicated complete three-engine process",()=>{
  assert.deepEqual(editorBrowserRuns(["atom-edit.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["atom-edit.spec.mjs"],["shared-structural-network.spec.mjs"]]);
 });
+test("native selection formatting retains a dedicated complete three-engine process",()=>{
+ assert.deepEqual(editorBrowserRuns(["selection-formatting.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["selection-formatting.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});

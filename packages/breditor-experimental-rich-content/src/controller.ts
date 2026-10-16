@@ -8,6 +8,7 @@ import {standardInlineStylesV1} from "./standard_inline_v1.js";
 import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
 import {taskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
+import {standardSelectionInlineControls,selectionFormatChanges} from "./standard_inline_controls.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
@@ -147,6 +148,15 @@ export class RichDomEditor {
   const item=check.dataset["taskCheck"],node=item?this.#model.nodes.get(item):undefined;if(!node||node.type!=="breditor/task-item")return;
   this.#attempt(()=>{this.execute({kind:"setTaskChecked",data:{item:id(node),checked:node.properties["breditor/checked"]!==true}});[...this.surface.querySelectorAll<HTMLInputElement>("input[data-task-check]")].find(input=>input.dataset["taskCheck"]===item)?.focus({preventScroll:true});});
  }
+ /** Bare/custom V2 toolbars retain native formatting without a JS interval fallback. */
+ #selectionFormat(action:string|undefined):boolean {
+  const {core,inlinePresentation}=this.#options;
+  if(!action||core.richLanguageVersion?.()!==2||core.supportsSelectionFormatting?.()!==true||!inlinePresentation)return false;
+  const control=standardSelectionInlineControls(core,inlinePresentation).find(c=>c.id===action);
+  if(!control||control.fields)return false;
+  if(control.read().kind!=="unavailable"){const changes=selectionFormatChanges(control.changes({}));if(changes.length)this.execute({kind:"changeSelectionFormats",data:{changes}});}
+  return true;
+ }
  #key(event:KeyboardEvent):void {
   if(this.#composition||event.isComposing)return;
   const mod=event.metaKey||event.ctrlKey;
@@ -187,6 +197,8 @@ export class RichDomEditor {
   }
   if(mod&&event.key.toLowerCase()==="a")this.#logicalSelection=false;
   if(mod&&!event.altKey){const key=`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`,control=this.#controls.find(item=>item.control.shortcut===key);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
+  const nativeShortcut=({b:"bold",i:"italic",u:"underline","shift+x":"strike"} as Record<string,string>)[`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`];
+  if(mod&&!event.altKey&&nativeShortcut&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsSelectionFormatting?.()===true&&this.#options.inlinePresentation){event.preventDefault();this.#attempt(()=>{this.#sync();this.#selectionFormat(nativeShortcut);});return;}
   if(mod&&!event.altKey&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}
   // Own the keyboard meaning before a browser can translate Shift+Enter into
   // insertParagraph (observed in WebKit). Composition and grid navigation stay separate.
@@ -214,6 +226,7 @@ export class RichDomEditor {
    this.#sync();const type=event.inputType;
    if(type!=="insertText"&&!type.startsWith("delete"))this.#boundary();
    const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[type],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
+   if(this.#selectionFormat(action))return;
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}
    if((type==="insertParagraph"||type==="insertLineBreak")&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
