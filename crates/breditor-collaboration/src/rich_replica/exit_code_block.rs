@@ -25,7 +25,7 @@ impl RichReplica {
     ) -> Result<bool, Error> {
         self.check(observation)?;
         self.require_writable()?;
-        if self.protocol != super::protocol::Protocol::StructuralV2 {
+        if !self.protocol.structural() {
             return Err(Error::Contract("code exit requires structural V2"));
         }
         let selection = self.selection()?.ok_or(Error::Contract("code exit requires caret"))?;

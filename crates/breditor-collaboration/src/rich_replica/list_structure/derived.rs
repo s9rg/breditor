@@ -50,8 +50,7 @@ fn base(doc: &LoroDoc, parent: Option<&str>) -> Result<String, Error> {
     if let Some(parent) = parent {
         let kind = model::string(&model::metadata(doc, parent)?, "type")?;
         let original = matches!(kind.as_str(), "breditor/table-cell" | "breditor/list-item");
-        let structural = super::super::protocol::Protocol::read(doc)?
-            == super::super::protocol::Protocol::StructuralV2
+        let structural = super::super::protocol::Protocol::read(doc)?.structural()
             && matches!(kind.as_str(), "breditor/task-item" | "breditor/blockquote");
         if !original && !structural {
             return Err(Error::Contract("retained normalization parent kind"));

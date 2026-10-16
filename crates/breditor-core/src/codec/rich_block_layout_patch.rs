@@ -111,3 +111,40 @@ pub fn decode_rich_block_layout_patch(
         convert(r.line_height_percent, RichLineHeight::try_new)?,
     )?)
 }
+
+/// Encode one typed native intent canonically for exact shared command/journal replay.
+///
+/// Keep fields are absent, Clear fields are null. Only closed native values are
+/// emitted; this never serializes caller targets or an arbitrary property map.
+/// # Errors
+/// Rejects non-V3 context or a bounded serialization failure.
+pub fn encode_rich_block_layout_patch(
+    context: &EditorContext,
+    patch: &RichBlockLayoutPatch,
+) -> Result<String, RichBlockLayoutCodecError> {
+    if context.schema().rich_content_revision() != Some(3) {
+        return Err(RichBlockLayoutCodecError::UnsupportedContext);
+    }
+    let mut values = serde_json::Map::new();
+    encode_field(&mut values, "alignment", patch.alignment(), RichBlockAlignment::as_str);
+    encode_field(&mut values, "direction", patch.direction(), RichBlockDirection::as_str);
+    encode_field(&mut values, "indent", patch.indent(), RichBlockIndent::get);
+    encode_field(&mut values, "lineHeightPercent", patch.line_height(), RichLineHeight::get);
+    serde_json::to_string(&values).map_err(|e| JsonFailure::from_serde(&e).into())
+}
+fn encode_field<T, U: serde::Serialize>(
+    values: &mut serde_json::Map<String, serde_json::Value>,
+    name: &str,
+    change: RichLayoutChange<T>,
+    convert: impl FnOnce(T) -> U,
+) {
+    match change {
+        RichLayoutChange::Keep => {}
+        RichLayoutChange::Clear => {
+            values.insert(name.into(), serde_json::Value::Null);
+        }
+        RichLayoutChange::Set(value) => {
+            values.insert(name.into(), serde_json::json!(convert(value)));
+        }
+    }
+}

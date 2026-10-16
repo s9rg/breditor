@@ -81,6 +81,13 @@ impl SplitTextBlock {
             &self.right,
         )?;
         super::super::creation::publish(doc, &self.empty_node(), stamp, ordinal)?;
+        super::super::layout_fields::inherit_split(
+            doc,
+            codec,
+            edit.document(),
+            &self.right,
+            stamp,
+        )?;
         super::super::placement::move_block(
             doc,
             &self.right,

@@ -37,6 +37,39 @@ pub enum RichBlockAlignment {
     /// Physical right, independent from text direction.
     Right = 6,
 }
+impl RichBlockAlignment {
+    /// Stable authored code, retaining physical/logical distinctions.
+    #[must_use]
+    pub const fn code(self) -> u8 {
+        self as u8
+    }
+    /// Closed intent/read token, never an arbitrary style string.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::Center => "center",
+            Self::End => "end",
+            Self::Justify => "justify",
+            Self::Left => "left",
+            Self::Right => "right",
+        }
+    }
+}
+impl TryFrom<u8> for RichBlockAlignment {
+    type Error = RichBlockLayoutError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Start),
+            2 => Ok(Self::Center),
+            3 => Ok(Self::End),
+            4 => Ok(Self::Justify),
+            5 => Ok(Self::Left),
+            6 => Ok(Self::Right),
+            _ => Err(RichBlockLayoutError::Value),
+        }
+    }
+}
 /// Text direction, encoded durably as integers 1 through 3.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
@@ -47,6 +80,33 @@ pub enum RichBlockDirection {
     RightToLeft = 2,
     /// Let the host determine direction from text, not a persisted derived value.
     Auto = 3,
+}
+impl RichBlockDirection {
+    /// Stable authored direction code.
+    #[must_use]
+    pub const fn code(self) -> u8 {
+        self as u8
+    }
+    /// Closed intent/read token, without resolving automatic direction.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::LeftToRight => "ltr",
+            Self::RightToLeft => "rtl",
+            Self::Auto => "auto",
+        }
+    }
+}
+impl TryFrom<u8> for RichBlockDirection {
+    type Error = RichBlockLayoutError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::LeftToRight),
+            2 => Ok(Self::RightToLeft),
+            3 => Ok(Self::Auto),
+            _ => Err(RichBlockLayoutError::Value),
+        }
+    }
 }
 /// Logical block indentation, independent from list nesting.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -127,22 +187,17 @@ impl RichBlockLayout {
                 .transpose()
         };
         let alignment = value("block-align")?
-            .map(|v| match v {
-                1 => Ok(RichBlockAlignment::Start),
-                2 => Ok(RichBlockAlignment::Center),
-                3 => Ok(RichBlockAlignment::End),
-                4 => Ok(RichBlockAlignment::Justify),
-                5 => Ok(RichBlockAlignment::Left),
-                6 => Ok(RichBlockAlignment::Right),
-                _ => Err(RichBlockLayoutError::Value),
+            .map(|v| {
+                RichBlockAlignment::try_from(
+                    u8::try_from(v).map_err(|_| RichBlockLayoutError::Value)?,
+                )
             })
             .transpose()?;
         let direction = value("block-direction")?
-            .map(|v| match v {
-                1 => Ok(RichBlockDirection::LeftToRight),
-                2 => Ok(RichBlockDirection::RightToLeft),
-                3 => Ok(RichBlockDirection::Auto),
-                _ => Err(RichBlockLayoutError::Value),
+            .map(|v| {
+                RichBlockDirection::try_from(
+                    u8::try_from(v).map_err(|_| RichBlockLayoutError::Value)?,
+                )
             })
             .transpose()?;
         let indent = value("block-indent")?

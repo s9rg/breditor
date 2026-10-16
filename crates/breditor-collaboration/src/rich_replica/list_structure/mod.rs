@@ -34,10 +34,10 @@ pub(super) fn reserve_task(doc: &LoroDoc, block: &str, checked: bool) -> Result<
     creation::prepare(doc, &node, None, None)
 }
 
-/// V2-only infrastructure; do not add operations to the older preparation path.
+/// V2/V3 infrastructure; do not add operations to the original V1 preparation path.
 /// Existing journals retain their original operation IDs and replay effects.
 pub(super) fn prepare_v2(doc: &LoroDoc) -> Result<(), Error> {
-    super::protocol::Protocol::StructuralV2.require(doc)?;
+    super::protocol::Protocol::require_structural(doc)?;
     prepare(doc)?;
     let raw = doc.get_map("metadata").get_deep_value().to_json_value();
     let owners = raw.as_object().ok_or(Error::Contract("structural V2 metadata directory"))?;
@@ -148,8 +148,7 @@ pub(super) fn apply(
                         | "breditor/heading"
                 )
             );
-            let structural = super::protocol::Protocol::from_codec(codec)?
-                == super::protocol::Protocol::StructuralV2
+            let structural = super::protocol::Protocol::from_codec(codec)?.structural()
                 && matches!(
                     node.value["type"].as_str(),
                     Some(

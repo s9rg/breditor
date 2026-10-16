@@ -103,7 +103,7 @@ fn element(
             return Ok(None);
         }
         children = flows.runs(doc, block)?;
-        if protocol == super::protocol::Protocol::StructuralV2 {
+        if protocol.structural() {
             project_text_properties(&kind, &mut properties, &mut children)?;
         }
     } else {
@@ -141,7 +141,7 @@ fn normalize_body(
     protocol: super::protocol::Protocol,
     children: &mut Vec<Value>,
 ) -> Result<bool, Error> {
-    let structural = protocol == super::protocol::Protocol::StructuralV2;
+    let structural = protocol.structural();
     if (kind == "breditor/bullet-list"
         || kind == "breditor/ordered-list"
         || (structural && kind == "breditor/task-list"))
@@ -343,7 +343,7 @@ fn fallback(
             }
         }
     }
-    if super::protocol::Protocol::read(doc)? == super::protocol::Protocol::StructuralV2 {
+    if super::protocol::Protocol::read(doc)?.structural() {
         let kind =
             node["type"].as_str().ok_or(Error::Contract("shared normalized kind"))?.to_owned();
         let mut runs =

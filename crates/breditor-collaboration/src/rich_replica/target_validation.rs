@@ -14,9 +14,12 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
     ));
     let mut declared = TargetKinds::default();
     for command in commands {
-        if command.requires_structural_v2()
-            && owner.protocol != super::protocol::Protocol::StructuralV2
+        if matches!(command, Command::SetBlockLayout(_))
+            && owner.protocol != super::protocol::Protocol::LayoutV3
         {
+            return Err(Error::Contract("shared layout requires model 13"));
+        }
+        if command.requires_structural_v2() && !owner.protocol.structural() {
             return Err(Error::Contract("shared structural V2 command requires model 12"));
         }
         if super::planning::handles(command) {
@@ -31,24 +34,25 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
             let block = BlockId::try_new(primary(command)?).map_err(contract)?;
             let kind = declared.kind(&owner.document, &block)?;
             let expected = match command {
+                Command::SetBlockLayout(_) => {
+                    owner.protocol == super::protocol::Protocol::LayoutV3
+                        && owner.protocol.text(&kind)
+                }
                 Command::InsertText(_) | Command::DeleteText(_) | Command::SetHeading(_) => {
                     owner.protocol.text(&kind)
                 }
                 Command::SetCodeBlock(_) => {
-                    owner.protocol == super::protocol::Protocol::StructuralV2
-                        && owner.protocol.text(&kind)
+                    owner.protocol.structural() && owner.protocol.text(&kind)
                 }
                 Command::SetCodeLanguage(_) => {
-                    owner.protocol == super::protocol::Protocol::StructuralV2
-                        && kind == "breditor/code-block"
+                    owner.protocol.structural() && kind == "breditor/code-block"
                 }
                 Command::SetTaskChecked(_) => {
-                    owner.protocol == super::protocol::Protocol::StructuralV2
-                        && kind == "breditor/task-item"
+                    owner.protocol.structural() && kind == "breditor/task-item"
                 }
                 Command::ReplaceTextRange(value) => {
                     matches!(kind.as_str(), "breditor/paragraph" | "breditor/heading")
-                        || (owner.protocol == super::protocol::Protocol::StructuralV2
+                        || (owner.protocol.structural()
                             && kind == "breditor/code-block"
                             && value.anchor.block == value.focus.block)
                 }
@@ -76,6 +80,7 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
 }
 fn primary(command: &Command) -> Result<&str, Error> {
     Ok(match command {
+        Command::SetBlockLayout(value) => &value.block,
         Command::SetCodeBlock(value) => &value.block,
         Command::SetCodeLanguage(value) => &value.block,
         Command::SetTaskChecked(value) => &value.block,
@@ -105,10 +110,17 @@ fn secondary(
     formats: &RichFormatsJsonCodec,
 ) -> Result<(), Error> {
     match command {
+        Command::SetBlockLayout(value) => {
+            breditor_core::codec::decode_rich_block_layout_patch(
+                &super::paragraphs::context(&owner.codec),
+                &value.patch_json,
+            )
+            .map_err(contract)?;
+        }
         Command::SetImageCaption(value) => value.validate_draft(&owner.doc, &owner.codec)?,
         Command::JoinTextBlocks(value) => declared.require_text(&owner.document, &value.right)?,
         Command::ReplaceTextRange(value) => {
-            let code = owner.protocol == super::protocol::Protocol::StructuralV2
+            let code = owner.protocol.structural()
                 && value.anchor.block == value.focus.block
                 && declared.kind(
                     &owner.document,

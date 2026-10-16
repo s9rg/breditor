@@ -28,6 +28,7 @@ mod replace_image;
 mod replace_text_range;
 mod resize_column;
 mod resize_image;
+mod set_block_layout;
 mod set_code_block;
 mod set_code_language;
 mod set_format;
@@ -80,6 +81,7 @@ pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
 pub use resize_column::ResizeColumn;
 pub use resize_image::ResizeImage;
 use serde::{Deserialize, Serialize};
+pub use set_block_layout::SetBlockLayout;
 pub use set_code_block::{CodeFormatPolicy, SetCodeBlock};
 pub use set_code_language::SetCodeLanguage;
 pub use set_format::SetFormat;
@@ -104,6 +106,8 @@ pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Patch independently owned bounded layout fields under explicit shared model 13.
+    SetBlockLayout(SetBlockLayout),
     /// Insert one V2 atomic rule at an explicit flow position.
     InsertHorizontalRule(InsertHorizontalRule),
     /// Delete one V2 rule with an explicit optional fresh replacement.
@@ -221,6 +225,7 @@ impl Command {
     }
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::SetBlockLayout(value) => value.prepare(doc)?,
             Self::InsertHorizontalRule(value) => value.prepare(doc)?,
             Self::DeleteHorizontalRule(value) => value.prepare(doc)?,
             Self::WrapBlockquote(value) => value.prepare(doc)?,
@@ -319,6 +324,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::SetBlockLayout(value) => value.apply(doc, codec, document, stamp),
             Self::InsertHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::DeleteHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::WrapBlockquote(value) => value.apply(doc, codec, document, stamp),

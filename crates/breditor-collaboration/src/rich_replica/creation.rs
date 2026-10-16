@@ -76,6 +76,12 @@ fn definition(doc: &LoroDoc, node: &Value, mode: &str) -> Result<(), Error> {
         .clone();
     defaults.remove("breditor/block-id");
     defaults.remove("breditor/columns");
+    if super::layout_fields::enabled(doc)? {
+        super::layout_fields::strip_defaults(&mut defaults);
+        if super::protocol::Protocol::read(doc)?.text(kind) {
+            super::layout_fields::prepare_all(&meta.ensure_mergeable_map("effects")?)?;
+        }
+    }
     let mut identities = Map::new();
     for key in ["breditor/table-id", "breditor/image-id", "breditor/row-id", "breditor/column-id"] {
         if let Some(value) = defaults.remove(key) {
@@ -152,6 +158,7 @@ pub(super) fn publish(
         .insert(&stamp.key(), stamp.contribution(true.into()))?;
     let kind = node["type"].as_str().ok_or(Error::Contract("shared creation kind"))?;
     if super::protocol::Protocol::read(doc)?.text(kind) {
+        super::layout_fields::publish_node(doc, node, stamp)?;
         publish_text(doc, node, stamp, ordinal)?;
     } else {
         for child in

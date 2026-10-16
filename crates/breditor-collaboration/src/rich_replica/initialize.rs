@@ -77,6 +77,9 @@ fn text_properties(
             serde_json::to_string(&patch)?.into(),
         )?;
     }
+    if super::layout_fields::enabled(doc)? && super::protocol::Protocol::read(doc)?.text(kind) {
+        super::layout_fields::seed(effects, properties, stamp)?;
+    }
     Ok(())
 }
 

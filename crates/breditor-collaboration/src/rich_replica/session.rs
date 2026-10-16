@@ -269,6 +269,7 @@ impl RichReplica {
             }
         }
         protocol.require(&doc)?;
+        super::layout_fields::validate(&doc)?;
         let header = materialize::header(&doc)?;
         let value = materialize::envelope(&doc)?;
         let admitted = codec.decode(&value.to_string()).map_err(contract)?;
@@ -717,6 +718,7 @@ impl RichReplica {
 
     fn refresh_document(&mut self) -> Result<(), Error> {
         self.protocol.require(&self.doc)?;
+        super::layout_fields::validate(&self.doc)?;
         if materialize::header(&self.doc)? != self.header {
             return Err(Error::Contract("immutable shared document binding"));
         }

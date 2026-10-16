@@ -527,6 +527,50 @@ fn strict_intent_distinguishes_keep_clear_and_set_and_never_accepts_targets_or_c
     Ok(())
 }
 #[test]
+fn canonical_patch_encoding_and_native_codes_round_trip_every_closed_value() -> Result {
+    use breditor_core::codec::{
+        decode_rich_block_layout_patch as decode, encode_rich_block_layout_patch as encode,
+    };
+    let (c, _) = setup()?;
+    for alignment in 1..=6 {
+        let a = Align::try_from(alignment)?;
+        assert_eq!(a.code(), alignment);
+        for direction in 1..=3 {
+            let d = Direction::try_from(direction)?;
+            assert_eq!(d.code(), direction);
+            for (indent, height) in [(0, 100), (12, 300)] {
+                let patch = Patch::try_new(
+                    Change::Set(a),
+                    Change::Set(d),
+                    Change::Set(Indent::try_new(indent)?),
+                    Change::Set(Height::try_new(height)?),
+                )?;
+                let encoded = encode(&c, &patch)?;
+                assert_eq!(decode(&c, &encoded)?, patch);
+                assert_eq!(encode(&c, &decode(&c, &encoded)?)?, encoded);
+                let v: Value = serde_json::from_str(&encoded)?;
+                assert_eq!(v["alignment"], a.as_str());
+                assert_eq!(v["direction"], d.as_str());
+            }
+        }
+    }
+    for invalid in [0, 7, 255] {
+        assert!(Align::try_from(invalid).is_err());
+    }
+    for invalid in [0, 4, 255] {
+        assert!(Direction::try_from(invalid).is_err());
+    }
+    for changes in [(Change::Clear, Change::Keep), (Change::Keep, Change::Clear)] {
+        let p = Patch::try_new(changes.0, changes.1, Change::Keep, Change::Clear)?;
+        assert_eq!(decode(&c, &encode(&c, &p)?)?, p);
+    }
+    for revision in [1, 2] {
+        let c = EditorContext::new(schema(revision)?, DocumentLimits::default());
+        assert!(encode(&c, &complete()?).is_err());
+    }
+    Ok(())
+}
+#[test]
 fn distinct_field_state_encoding_keeps_inheritance_and_refuses_contradictory_read_counts() -> Result
 {
     use breditor_core::codec::encode_rich_block_layout_state as encode;

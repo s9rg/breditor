@@ -209,7 +209,7 @@ fn insert_flow(
         let allowed = matches!(
             node["type"].as_str(),
             Some("breditor/table-cell" | "breditor/list-item" | "breditor/image")
-        ) || (protocol == super::protocol::Protocol::StructuralV2
+        ) || (protocol.structural()
             && matches!(node["type"].as_str(), Some("breditor/blockquote" | "breditor/task-item")));
         if !allowed {
             return Err(Error::Contract("shared creation flow parent"));

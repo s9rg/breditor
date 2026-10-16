@@ -155,7 +155,7 @@ impl Grammar {
 }
 
 fn allows(protocol: super::super::protocol::Protocol, parent: Option<&str>, kind: &str) -> bool {
-    if protocol == super::super::protocol::Protocol::StructuralV2 {
+    if protocol.structural() {
         match parent {
             Some("breditor/blockquote" | "breditor/task-item") => {
                 return protocol.flow(kind);
