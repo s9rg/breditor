@@ -275,3 +275,37 @@ composition, asynchronous images and React retirement in all three engines.
 Sustained responsiveness and the remaining general selection/navigation/interchange
 work still govern V1 promotion. Synthetic composition is not physical IME
 qualification.
+
+## Shared replay projection reuse
+
+Shared authoring still stages a disposable owner and replays retained native
+history before publication. Two private caches avoid repeating some AST work;
+neither replaces the native engine, changes Undo units nor supplies an inverse.
+
+An unchanged committed projection can be reused only with the same live owner
+token, state version and operation-log version. Pending transactions and detached
+checkouts never qualify. Protocol and immutable header checks precede every hit.
+A version match does not certify the root namespace: complete adoption still
+rejects unexpected empty roots that create no causal operation.
+
+Retained-prefix replay can also reuse immutable rich documents already admitted
+by that same live owner. The reader exists only while reconstructing its exact
+internal journal; fresh JSON recovery starts without it. New actions cannot read
+the old reader. A staged candidate writes a separate copy, so a rejected action
+cannot add projections to the published owner. Replay still executes native
+commands and compares saved causal effects, history keys and UI. Reused documents
+are admitted against the current compiled schema and limits before exposure.
+
+The retained store keeps at most 256 entries and 2 MiB of charged canonical JSON,
+version keys and fixed entry allowance. It declines keys above 4096 combined
+version-vector entries and projections larger than that charge ceiling. These
+are cache limits, not new document limits: a miss uses ordinary materialization.
+The charge is not a total heap budget; ASTs, allocator overhead and the disposable
+candidate's copy need separate memory measurement. Caches are never serialized
+or shared between owners and add no wire fields or Wasm exports.
+
+Native checks cover current-state invalidation, replay-only lookup, copy-on-write
+isolation, eviction, oversize misses, independent recovery, altered-effect
+rejection and late publication failure. Repeated whole-journal replay still
+costs more as history grows. This optimization does not establish sustained
+typing responsiveness or complete the V1 performance gate.

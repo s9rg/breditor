@@ -21,6 +21,10 @@ pub(super) const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
 const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
 
+#[cfg(test)]
+#[path = "session_projection_tests.rs"]
+mod projection_tests;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum Origin {
@@ -122,6 +126,8 @@ pub struct RichReplica {
     header: Value,
     pub(super) document: RichDocument,
     pub(super) canonical: String,
+    projection_cache: super::projection_cache::ProjectionCache,
+    replay_projections: super::replay_projections::ReplayProjections,
     token: Arc<()>,
     metadata: Arc<Mutex<Channel>>,
     recipes: BTreeMap<String, Recipe>,
@@ -290,6 +296,8 @@ impl RichReplica {
             header,
             document,
             canonical,
+            projection_cache: super::projection_cache::ProjectionCache::default(),
+            replay_projections: super::replay_projections::ReplayProjections::default(),
             token: Arc::new(()),
             metadata,
             recipes: BTreeMap::new(),
@@ -313,6 +321,15 @@ impl RichReplica {
         joins: Option<Vec<u32>>,
         leave_open: bool,
     ) -> Result<Self, Error> {
+        Self::from_journal_parts_cached(codec, journal, joins, leave_open, None)
+    }
+    fn from_journal_parts_cached(
+        codec: DocumentJsonCodecV2,
+        journal: Journal,
+        joins: Option<Vec<u32>>,
+        leave_open: bool,
+        replay_projections: Option<super::replay_projections::ReplayProjections>,
+    ) -> Result<Self, Error> {
         let protocol = super::protocol::Protocol::from_codec(&codec)?;
         let (format, version) = if joins.is_some() {
             (super::typing_history::JOURNAL_FORMAT, super::typing_history::JOURNAL_VERSION)
@@ -329,6 +346,9 @@ impl RichReplica {
         let mut base = journal.clone();
         base.ui = UiState::default();
         let mut candidate = Self::base(codec, base)?;
+        if let Some(replay_projections) = replay_projections {
+            candidate.replay_projections = replay_projections;
+        }
         candidate.typing =
             joins.map(|joins| super::typing_history::TypingHistory { joins, continuation: None });
         if let Some(history) = &candidate.typing {
@@ -349,6 +369,7 @@ impl RichReplica {
             candidate.replay(entry, join, keep_open)?;
         }
         candidate.journal = journal;
+        candidate.replay_projections.finish_replay();
         candidate.validate_adoption()?;
         Ok(candidate)
     }
@@ -582,11 +603,12 @@ impl RichReplica {
         self.staged_for_typing(false)
     }
     fn staged_for_typing(&self, leave_open: bool) -> Result<Self, Error> {
-        let mut candidate = Self::from_journal_parts(
+        let mut candidate = Self::from_journal_parts_cached(
             self.codec.clone(),
             self.journal.clone(),
             self.typing.as_ref().map(|history| history.joins.clone()),
             leave_open,
+            Some(self.replay_projections.fork_for_replay()),
         )?;
         candidate.read_only = self.read_only;
         candidate.read_only_revision.clone_from(&self.read_only_revision);
@@ -694,6 +716,27 @@ impl RichReplica {
         if materialize::header(&self.doc)? != self.header {
             return Err(Error::Contract("immutable shared document binding"));
         }
+        if self.projection_cache.is_current(&self.doc, &self.token) {
+            return Ok(());
+        }
+        if let Some(cached) = self.replay_projections.find(&self.doc) {
+            // The immutable AST retains its schema/limit proof. Re-admission also
+            // checks the active codec before the cached directory is exposed.
+            let document = RichDocument::try_admit(
+                self.codec.schema(),
+                cached.document.document().clone(),
+                self.codec.limits(),
+            )
+            .map_err(contract)?;
+            if document.id().as_str() != self.journal.document {
+                return Err(Error::Contract("rich replica document binding"));
+            }
+            self.canonical = self.codec.encode(document.document()).map_err(contract)?;
+            self.document = document;
+            self.projection_cache.record(&self.doc, &self.token);
+            self.replay_projections.record(&self.doc, &self.document, &self.canonical);
+            return Ok(());
+        }
         let value = materialize::envelope(&self.doc)?;
         let admitted = self.codec.decode(&value.to_string()).map_err(contract)?;
         let document = RichDocument::try_admit(self.codec.schema(), admitted, self.codec.limits())
@@ -703,6 +746,8 @@ impl RichReplica {
         }
         self.canonical = self.codec.encode(document.document()).map_err(contract)?;
         self.document = document;
+        self.projection_cache.record(&self.doc, &self.token);
+        self.replay_projections.record(&self.doc, &self.document, &self.canonical);
         Ok(())
     }
 
