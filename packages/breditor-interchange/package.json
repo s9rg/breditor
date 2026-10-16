@@ -1,0 +1,37 @@
+{
+  "name": "@breditor/interchange",
+  "version": "0.3.0-alpha.22",
+  "private": true,
+  "description": "Explicit bounded HTML and Markdown interchange through Breditor's native semantic clipboard",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
+  ],
+  "dependencies": {
+    "css-tree": "3.2.1",
+    "markdown-it": "15.0.3",
+    "parse5": "8.0.1"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run --config vitest.config.ts --maxWorkers 2"
+  },
+  "devDependencies": {
+    "@types/css-tree": "3.2.0"
+  }
+}

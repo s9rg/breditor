@@ -12,14 +12,16 @@ sessions now connect native plain input to vanilla/React controllers. General
 rich clipboard, cross-range paragraph Enter, explicit caption/code text paste
 and transport V2 have functional checkpoints below. Explicit local/shared document
 DOM coordinators, root SDK/React lifecycles and relay composition now connect
-document-wide Select All and composition to Rust. Foreign interchange and final
-integrated qualification remain required.
+document-wide Select All and composition to Rust. Programmatic HTML/Markdown
+conversion now has a native checkpoint; opt-in foreign clipboard routing and
+final integrated qualification remain required.
 
 Whole-document selection has native local/shared scope, rich replacement,
 separate view/checkpoint families and explicit programmatic SDK/storage support.
 The native [external interchange bridge](RICH_INTERCHANGE.md) now admits source
 roots and validates export fragments under the active schema without changing
-content or history. Its HTML/Markdown adapters and Office paste remain unfinished.
+content or history. Its separate HTML/Markdown adapters now cover representative
+Office markup programmatically; browser clipboard integration remains unfinished.
 
 ## Original joins and protected boundaries
 

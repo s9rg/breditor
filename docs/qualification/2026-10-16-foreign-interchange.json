@@ -1,0 +1,89 @@
+{
+  "format": "breditor/foreign-interchange-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "package": "@breditor/interchange",
+  "version": "0.3.0-alpha.22",
+  "scope": "Separate bounded HTML/Markdown conversion through actual paired native clipboard admission and existing guarded document/grid actions. The Office snippets are representative markup patterns, not captured application-native clipboard certification.",
+  "contract": {
+    "conversionVersion": 1,
+    "cellPartitionVersion": 1,
+    "nativeInterchangeVersion": "1",
+    "nativeDocumentHistoryOrSyncProtocolsChanged": false,
+    "defaultClipboardRoutingChanged": false,
+    "browserOptInIntegrated": false,
+    "createsLiveDom": false,
+    "fetchesAssetsOrStylesheets": false,
+    "imageMapping": "Explicit synchronous registry lookup for host-owned immutable bytes; separate safe portable export URL policy",
+    "notices": "Closed aggregated codes/counts, with loss versus compatibility effects; no source text/URLs/CSS/asset identifiers",
+    "markdown": "CommonMark parsing plus tables, strikethrough, parsed tasks and sanitized raw HTML; no automatic linkification or typography; not full GFM",
+    "html": "Inert complete-document parsing, closed semantic conversion, simple stylesheet selector cascade and individually recognized bounded CSS values"
+  },
+  "dependencies": {
+    "parse5": "8.0.1",
+    "css-tree": "3.2.1",
+    "markdown-it": "15.0.3",
+    "existingDefaultParserEntities": "8.0.0",
+    "isolatedMarkdownEntities": "8.1.0",
+    "lockSha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4"
+  },
+  "artifacts": {
+    "adapterDistributionDirectory": "packages/breditor-interchange/dist",
+    "adapterDistributionFiles": 24,
+    "adapterDistributionSha256": "226c3c8b37ced58ce17fb85b0c624bdffb9126c20f39ade7d994996606d46969",
+    "adapterDigestAlgorithm": "SHA256 of sorted .js/.d.ts basenames, each followed by NUL, its exact bytes and NUL",
+    "localWasmDirectory": "target/block-layout-shared-qualification/clipboard-interchange-local-final-web",
+    "sharedWasmDirectory": "target/block-layout-shared-qualification/clipboard-interchange-shared-final-web",
+    "localWasmSha256": "17963624e85cd0cf3fada236bfb4ddd0621b821fae9518e392e1cebf29a512f5",
+    "sharedWasmSha256": "90f08ec88f2618eb025db9b34b4b22e78eb2c511a5d107f894256c29fe38b561",
+    "retainedProbeResult": "target/block-layout-shared-qualification/foreign-interchange-functional-final.json"
+  },
+  "verification": {
+    "sourceTypecheck": "Strict existing base configuration, no skipped library checking and no emission on error",
+    "testSourceTypecheck": "Strict test-source checking with test-only skipLibCheck for existing Vite/Vitest declaration conflicts; dependency declaration cleanliness is not claimed",
+    "adapterParserStagingTests": 21,
+    "existingDefaultHtmlAndSafeRenderTests": 62,
+    "existingEditorSdkTests": 249,
+    "existingEditorSdkTestFiles": 31,
+    "actualWasmProbeCommand": "node scripts/probe-foreign-interchange.mjs target/block-layout-shared-qualification/clipboard-interchange-local-final-web target/block-layout-shared-qualification/clipboard-interchange-shared-final-web",
+    "actualWasmScenarios": 20,
+    "pureNativeStates": 40,
+    "htmlContentRoundTrips": 40,
+    "markdownContentRoundTrips": 40,
+    "exactRestores": 48,
+    "exactFutureCheckpoints": 192,
+    "nonemptyCoveredCellPartitionRoundTrips": 2,
+    "offlinePeerDocumentComparisons": 10,
+    "explicitGridPastes": 4,
+    "atomicGridShapeRefusals": 4,
+    "checkpointFieldsExcluded": [],
+    "foreignRoundTripExclusions": "Conversion-owned source identities and merge causal/context identities, represented by exact relative geometry instead; text, format literals, headers, widths, asset references, captions and independent source-cell bodies remain compared",
+    "localSharedAstComparisonExclusions": "Only newly authored merge lamport/writer/counter priority words",
+    "offlineRecovery": "Both authors restored after import/reconnect; future selective Undo/Redo compares whole checkpoint bytes under identical actual admitted remote frame inputs",
+    "passed": true
+  },
+  "repairedDuringImplementation": [
+    "Converter property maps did not initially satisfy the existing ascending-key native record grammar; fixed the adapter, not Rust admission",
+    "Nested Markdown tasks were indented as code blocks; continuation indentation now follows the actual list marker width",
+    "Exported task checkbox metadata could manufacture an empty item head; noncontent staging no longer creates an extra paragraph",
+    "Full-document body styles needed document parsing rather than dropped fragment-wrapper attributes",
+    "Covered merge cells require versioned complete relative partition wrappers to retain their independent bodies and headers"
+  ],
+  "explicitLimits": [
+    "1 MiB source and final output; bounded HTML construction/repair/depth and Markdown token creation, plus unchanged native limits",
+    "Simple tag/class/ID stylesheet selectors only; unsupported selectors, at-rules, styles and metadata have notices",
+    "Host-resolved images only; missing mappings retain available alt/caption text with a notice",
+    "Nested tables and hidden table axes/cells or list entries reject instead of shifting geometry or exposing hidden content",
+    "Basic Markdown cannot preserve every native feature; declared safe HTML fallback is a compatibility notice",
+    "No complete arbitrary HTML/CSS, full GFM, Office binary file format, spreadsheet formula, or native clipboard certification claim"
+  ],
+  "remaining": [
+    "Opt-in browser HTML/Markdown clipboard routing with unchanged private-MIME priority and defaults",
+    "Visible post-commit conversion/destination notices and managed SDK/React plus asset-registry wiring",
+    "Installed-consumer and integrated editing acceptance",
+    "Deferred broad browser, native IME/accessibility, performance and release qualification"
+  ],
+  "releaseReady": false,
+  "pushed": false,
+  "published": false
+}

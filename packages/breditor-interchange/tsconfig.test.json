@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {"rootDir": ".", "noEmit": true, "skipLibCheck": true},
+  "include": ["src/**/*.ts", "tests/**/*.test.ts", "vitest.config.ts"],
+  "exclude": []
+}

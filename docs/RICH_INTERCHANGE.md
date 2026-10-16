@@ -1,9 +1,10 @@
 # External rich content interchange
 
-External HTML and Markdown adapters will convert foreign content into the
-existing Rust semantic clipboard. The native construction and export validation
-bridge is implemented in local and shared owners. HTML/Markdown parsing,
-sanitization, Office fixtures and browser opt-in integration remain unfinished.
+The separate opt-in `@breditor/interchange` package converts bounded HTML and
+Markdown through the existing Rust semantic clipboard. Native local/shared
+admission, sanitized import/export and representative Office-style fixtures are
+implemented and tested programmatically. Browser opt-in integration, visible
+post-commit notices and installed-consumer acceptance remain unfinished.
 Default Copy/Paste behavior and all stored document/history formats are unchanged.
 
 ## Native admission contract
@@ -49,8 +50,8 @@ Admission and validation are pure in read-only mode too: document, selection,
 pending formats, revision, checkpoint, peer frame and history are unchanged.
 
 No image bytes are loaded, fetched, decoded or uploaded by either method.
-Existing immutable asset references remain references. The future foreign
-adapter must resolve image sources through an explicit host asset policy before
+Existing immutable asset references remain references. The foreign
+adapter resolves image sources through an explicit host asset policy before
 constructing an admitted image; copying an untrusted URL is not asset ownership.
 
 ## Paste and loss reporting
@@ -68,28 +69,45 @@ losses only after that edit succeeds. Prose retains structured paste; inline
 fragments retain their existing rich-paste contract rather than entering this
 flow/grid conversion path. Empty or oversized projections still reject.
 
-Foreign conversion losses and destination losses are separate. The future
-adapter must report discarded or approximated source content, including
+Foreign conversion losses and destination losses are separate. The
+adapter reports discarded or approximated source content, including
 unsupported CSS/layout, unsafe markup/URLs, unresolved images and table or
 caption transformations. A successful clipboard admission does not establish
 that the foreign conversion was lossless.
 
-## Remaining adapter work
+## Foreign conversion contract
 
-The separate opt-in adapter must parse inert bounded trees, never attach input
-markup to the editing DOM, and emit only allowlisted semantic content. It must
-bound parser construction and traversal, not only validate the final tree.
-HTML export must escape text and attribute values and apply a safe URL and
-asset policy. Markdown must name its supported dialect and report features
-that dialect cannot represent. Both directions still pass native admission;
-there is no second TypeScript editing document.
+The adapter parses inert bounded trees, never attaches input markup to the
+editing DOM, and emits only allowlisted semantic content. Construction,
+HTML repair, final traversal, CSS rules and Markdown tokens are bounded before
+publication. Full-document parsing retains authored body styles as well as
+ordinary clipboard fragments. Simple stylesheet selectors and inline CSS
+become closed native formats/layout fields; unsupported CSS has explicit notices.
 
-Fixtures must cover realistic Word list/style markup, Google Docs wrappers and
-Excel tables, including mixed formatting, Unicode, nested lists, merged cells,
-captions and asset references. Supported content must survive import/export;
-unsupported content must have an explicit loss or rejection result. Browser
-clipboard integration must be opt-in, preserve the current defaults, and retain
-one-group Undo/Redo, exact reload and shared offline recovery.
+The named version-one Markdown dialect uses CommonMark parsing with tables,
+strikethrough, parsed task markers and sanitized raw HTML. It disables automatic
+URL linking and typography changes. Export uses safe HTML when basic Markdown
+cannot preserve layout, captions, rich tables or exact code text. Compatibility
+notices distinguish that requirement from actual conversion loss; this is not
+full GFM conformance. Native schema admission still validates both directions.
+
+HTML inline fragments retain text scope; explicit blocks use flow. Hosts may
+request flow or grid admission explicitly, but native kind/shape checks still
+reject incompatible content. HTML merged cells use relative, complete,
+version-one source-partition wrappers so covered cells' independent text,
+headers and media survive reimport without exposing source identities/clocks.
+
+The package guide lists its [supported values and limits](../packages/breditor-interchange/README.md).
+The Word/Docs/Excel fixtures are representative markup snippets, not a claim of
+application-native clipboard certification. They cover list metadata, stylesheet
+classes, Unicode, formatting, nested lists, merges, captions and asset references.
+Unsupported content has a loss, compatibility notice or closed rejection result.
+
+Browser routing remains opt-in work. It must preserve the existing private-MIME
+priority and defaults, use the captured revision and fresh-ID policy, publish one
+native history group, and show source/destination reports only after success.
+Managed SDK/React, asset-registry wiring and installed-consumer acceptance also
+remain required before calling foreign clipboard handling end to end.
 
 ## Functional checkpoint
 
@@ -102,5 +120,13 @@ tested. Complete checkpoints are compared after recovery and future Undo/Redo,
 including previous runtimes; no checkpoint fields are excluded.
 
 The local/shared AST comparison excludes only newly authored merge priority
-words, whose owners differ. The native bridge does not qualify foreign parsing,
-system clipboard or release readiness.
+words, whose owners differ. That earlier native bridge checkpoint does not
+qualify foreign parsing, system clipboard or release readiness.
+
+The [foreign interchange checkpoint](qualification/2026-10-16-foreign-interchange.json)
+adds both converter directions through paired application Wasm: 20 scenarios,
+80 foreign content round trips, 48 exact restores and 192 future checkpoint
+comparisons, including both offline authors. Covered merge cells retain their
+distinct content and media. Four grid pastes and four wrong-shape refusals use
+the existing native actions. Conversion-owned IDs are excluded only from foreign
+round-trip comparisons; no checkpoint fields are excluded.
