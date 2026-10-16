@@ -70,3 +70,22 @@ function documentDom(host:HTMLElement,core:RichDocumentCoreEditor,original:RichC
  const oldDom:RichDomEditor=dom;void oldDom;
 }
 void documentDom;
+import {mountSharedEditor,mountSharedDocumentEditor,SharedDomEditor,createLayoutSharedToolbarV3,type SharedDocumentDomOptions} from "@breditor/collaboration";
+function sharedDocumentDom(host:HTMLElement,core:SharedRichEditor<"document-v1">,original:SharedRichEditor,presentation:RichInlinePresentation):void {
+ const options:SharedDocumentDomOptions={core,selectionEditing:"document-v1",toolbar:createLayoutSharedToolbarV3(core,presentation),onChange:event=>{const view:SharedDocumentView=event.view;void view;}};
+ const dom=mountSharedDocumentEditor(host,options),view:SharedDocumentView=dom.view();void view;
+ dom.selectDocument();dom.pasteDocumentClipboard("opaque native clipboard");dom.replaceDocumentPlainText("Q");dom.collapseDocumentSelection("before");
+ const capable:boolean=core.supportsDocumentTools();void capable;core.selectionCoverage("document");core.selectionFormatState("breditor/strong");core.blockLayoutState();core.changeSelectionLayout({alignment:"center"});
+ // @ts-expect-error an original mount does not select the document view family
+ mountSharedEditor(host,options);
+ // @ts-expect-error a document owner alone is insufficient without the explicit policy
+ new SharedDomEditor<"document-v1">(host,{core});
+ const old=mountSharedEditor(host,{core:original});
+ // @ts-expect-error original coordinators cannot submit named document intents
+ old.selectDocument();
+ // @ts-expect-error extended coordinators cannot masquerade as original producers
+ const oldDom:SharedDomEditor=dom;void oldDom;
+ // @ts-expect-error original dispatch selection DTOs remain closed
+ dom.execute({selectionUpdate:{kind:"set",value:{kind:"document"}},commands:[]});
+}
+void sharedDocumentDom;

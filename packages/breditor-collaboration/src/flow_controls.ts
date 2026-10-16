@@ -2,8 +2,9 @@
 import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import type {SharedRichEditor} from "./core.js";
 import type {SharedToolbarControl} from "./actions.js";
-export function createSharedFlowNavigationControls(core:SharedRichEditor):readonly SharedToolbarControl[]{
- const controls:SharedToolbarControl[]=[];
+import type {SharedSelectionPolicy} from "./types.js";
+export function createSharedFlowNavigationControls<P extends SharedSelectionPolicy="original">(core:SharedRichEditor<P>):readonly SharedToolbarControl<P>[]{
+ const controls:SharedToolbarControl<P>[]=[];
  for(const movement of ["before","after"] as const){
   controls.push({id:`flow-${movement}`,label:movement==="before"?"Previous block":"Next block",owner:core,readOnlySafe:true,
    enabled:c=>core.supportsFlowNavigation()&&flowEdgeEligible(c.model,movement),run:c=>{c.core.navigateFlow(movement,c.revision);}});

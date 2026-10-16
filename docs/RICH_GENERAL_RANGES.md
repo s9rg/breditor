@@ -698,7 +698,7 @@ hidden-only sources/targets, exact future history, and an offline previous-runti
 peer. Local/shared semantic comparisons exclude only authored table-merge
 priority words, which legitimately differ by owner; each owner's recovery and
 shared peer documents are checked exactly. The explicit local DOM route is
-covered separately below; shared document browser routing remains required.
+covered separately below, together with explicit shared document browser routing.
 
 ## Explicit local document browser coordinator
 
@@ -751,6 +751,60 @@ commit/cancel and layout controls. It also exercises native shared collapse thro
 the release Wasm/SDK. This is functional integration evidence, not OS clipboard,
 physical IME, native-browser, screen-reader or final release acceptance.
 
+## Explicit shared document browser coordinator
+
+`mountSharedDocumentEditor` and `SharedDomEditor<'document-v1'>` require
+`selectionEditing: 'document-v1'` and a complete native document browser owner.
+Their views and publication callbacks retain `breditor/shared-document-view`;
+the renderer projects that view only to its matching document presentation
+family. Original shared mounts, dispatch DTOs, callbacks and owner types remain
+closed. Generic toolbar factories retain their actual owner's selection policy.
+
+The shared coordinator supports native whole-document selection, rich Copy/Cut,
+opaque rich paste, first-key input, Enter/deletion, collapse and document layout.
+Rich Cut retains both MIME values exactly before deletion, including an empty
+plain-text projection. Unretained rich Cut and refused rich paste do not delete
+content or retry as plain text. Controls requiring an insertion position cannot
+silently append blocks while the whole document is selected.
+
+Composition holds remote frames until its final nonempty text commits once, or
+an empty composition cancels. Duplicate starts do not acquire another hold.
+Queued UI intents retain their observed guards. Finishing composition forces
+native DOM restoration even after a stale guard, and releases the remote hold
+in `finally`. Read-only changes and disposal cancel provisional work and release
+queued frames; a borrowed native owner remains usable after DOM disposal.
+Offline unobserved roots survive replacement, and Undo restores source roots
+with peer edits. This does not change the existing birth-Undo law.
+
+Native `document_tools_version` string `1` pairs three guarded reads with named
+format/layout mutations. Earlier document runtimes remain usable for their
+programmatic capabilities, but the complete new browser coordinator refuses
+them before changing host DOM. The original selection/format/layout methods
+still refuse whole-document scope. Native coverage/state payload meanings are
+unchanged; the named methods supply the explicit document-family proof.
+
+Whole-document formatting and layout each save one closed semantic command,
+`ChangeDocumentFormatsV1` or `ChangeDocumentLayoutV1`, as the sole command under
+current document scope in a document-family journal. They lower to owned native
+format annotations and independent layout fields, never a root register.
+One captured semantic author stamp applies to the entire intent; traversal
+length and immutable preparation do not increase the priority of later blocks.
+Layout authors only blocks changed by the native plan. A code block makes an
+incompatible whole-document formatting request unavailable rather than being
+silently skipped.
+
+These document commands do not inherit the old 64-command dispatch ceiling.
+Original-scope requests retain their existing lowering and ceiling, including
+when invoked through a document owner. Native request envelopes are bounded at
+1 MiB; existing Core operation, frame, causal-view and journal budgets remain
+unchanged. Earlier document journal readers reject the new saved tags, while
+earlier peers can receive the resulting existing causal primitives.
+
+The [shared document DOM checkpoint](qualification/2026-10-16-shared-document-dom.json)
+records the previous-runtime getter reproduction, actual release-Wasm DOM
+integration, offline peer updates, 70-block actions and exact future recovery.
+Its synthetic event tests do not qualify OS clipboard or physical IME behavior.
+
 ## Remaining integration
 
 The [transport V2 functional checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
@@ -758,7 +812,7 @@ now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
 general explicit/natural journal recovery after host restart, and peer-preserving
 selective Undo/Redo. It does not change original writer digests or migrate rooms.
 
-Shared document DOM/React, root SDK document sessions, document-specific relay
+Shared document React, root SDK document sessions, document-specific relay
 composition, remaining installed editing/transport acceptance and external
 interchange remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred

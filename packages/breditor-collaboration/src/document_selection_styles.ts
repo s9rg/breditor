@@ -1,0 +1,2 @@
+/** Mark the complete shared scope, including non-text atoms and hidden placeholders. */
+export const sharedDocumentSelectionStyles=`[data-breditor-shared] .breditor-shared-surface[data-document-selected]{outline:3px solid #378a77;outline-offset:-3px}[data-breditor-shared] .breditor-shared-surface[data-document-selected]>:is(hr,figure,table,[data-select-node]){box-shadow:inset 0 0 0 2px #378a77}`;

@@ -34,3 +34,9 @@ function documentClipboard(owner:SharedEditorOwner,observation:SharedObservation
 void documentClipboard;
 function documentNavigation(owner:SharedEditorOwner,observation:SharedObservation):void {const version:string=owner.document_navigation_version();const changed:boolean=owner.collapse_document_selection(observation,"before");void version;void changed;}
 void documentNavigation;
+function documentTools(owner:SharedEditorOwner,observation:SharedObservation):void {
+ const version:string=owner.document_tools_version(),coverage:string=owner.document_selection_coverage_json(observation,"document"),format:string=owner.document_selection_format_state_json(observation,"breditor/strong"),layout:string=owner.document_block_layout_state_json(observation);
+ const formatted:boolean=owner.change_document_selection_formats(observation,'{"changes":[]}'),arranged:boolean=owner.change_document_selection_layout(observation,'{"alignment":"center"}');
+ void version;void coverage;void format;void layout;void formatted;void arranged;
+}
+void documentTools;

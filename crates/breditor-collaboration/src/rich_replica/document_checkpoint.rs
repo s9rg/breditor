@@ -32,6 +32,8 @@ pub(super) fn validate_journal_scope(
                             c,
                             super::Command::ReplaceDocumentPlainTextV1(_)
                                 | super::Command::PasteDocumentClipboardV1(_)
+                                | super::Command::ChangeDocumentFormatsV1(_)
+                                | super::Command::ChangeDocumentLayoutV1(_)
                         )
                     })
                 {

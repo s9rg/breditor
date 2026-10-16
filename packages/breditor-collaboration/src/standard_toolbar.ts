@@ -1,10 +1,12 @@
 import {standardInlineControls,pendingStandardFormats,standardRemovalLiteral,textTargets,type RichInlinePresentation} from "@breditor/experimental-rich-content/rendering";
 import type {SharedRichEditor} from "./core.js";
-import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
+import {defaultSharedToolbarFor,moveSharedToolbarFor} from "./toolbar.js";
+import {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 import type {SharedToolbarControl} from "./actions.js";
-import type {SharedCommand} from "./types.js";
+import type {SharedCommand,SharedSelectionPolicy} from "./types.js";
 /** Same control/state semantics; shared lowering authors one existing atomic dispatch. */
-export function createStandardSharedToolbarV1(core:SharedRichEditor,presentation:RichInlinePresentation):readonly SharedToolbarControl[]{
+export function createStandardSharedToolbarV1<P extends SharedSelectionPolicy="original">(core:SharedRichEditor<P>,presentation:RichInlinePresentation):readonly SharedToolbarControl<P>[]{
+ if(core.selectionPolicy()==="document-v1")return createSelectionSharedToolbarV1(core,presentation);
  const inline=standardInlineControls(core,presentation).map(spec=>({id:spec.id,label:spec.label,owner:core,...(spec.fields?{fields:spec.fields}:{}),...(spec.shortcut?{shortcut:spec.shortcut}:{}),...(spec.mixedHint?{mixedHint:spec.mixedHint}:{}),read:()=>spec.read(),enabled:()=>spec.read().kind!=="unavailable",run(context,_value,fields={}){
   if(context.core!==core)throw Error("Standard toolbar belongs to a different Rust owner");
   const s=context.model.view.selection;if(s?.kind!=="text")return;const changes=spec.changes(fields);if(!changes.length)return;
@@ -17,6 +19,6 @@ export function createStandardSharedToolbarV1(core:SharedRichEditor,presentation
   const ordered=[...changes.filter(c=>c.kind==="remove"),...changes.filter(c=>c.kind==="set")];
   const commands:SharedCommand[]=ordered.flatMap(change=>targets.map(target=>({kind:"set_format" as const,data:{block:target.block,offset:Number(target.start),length:Number(target.end)-Number(target.start),format:change.kind==="set"?change.format:standardRemovalLiteral(change.format),enabled:change.kind==="set"}})));
   core.dispatch({commands},context.revision);
- }} satisfies SharedToolbarControl));
- return Object.freeze([...defaultSharedToolbar.filter(control=>control.id!=="bold"),...moveSharedToolbar,...inline]);
+ }} satisfies SharedToolbarControl<P>));
+ return Object.freeze([...defaultSharedToolbarFor<P>().filter(control=>control.id!=="bold"),...moveSharedToolbarFor<P>(),...inline]);
 }

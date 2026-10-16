@@ -1,48 +1,61 @@
 import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rendering";
-import {model,id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreNative,standardInlineStylesV1,structuralBlockStylesV2,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
+import {id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreDocumentNative,nativeSelectsDocument,standardInlineStylesV1,structuralBlockStylesV2,type RichModel,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
 import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
-import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
-import type {SharedDispatch,SharedPublication,RichSelection,Navigation} from "./types.js";
+import {defaultSharedToolbarFor,moveSharedToolbarFor} from "./toolbar.js";
+import type {SharedDispatch,SharedPublication,RichSelection,Navigation,SharedSelectionPolicy,SharedEditorView,SharedDocumentSelection} from "./types.js";
+import {sharedPresentationModel} from "./document_presentation.js";
+import {requireSharedDocumentBrowserCore} from "./document_core.js";
+import {sharedDocumentSelectionStyles} from "./document_selection_styles.js";
 import type {RichClipboardTextProjection} from "./types.js";
 import {sharedTaskTab} from "./task_actions_v2.js";
 import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 import {standardSelectionInlineControls,selectionFormatChanges} from "@breditor/experimental-rich-content/rendering";
 import {blockLayoutShortcut} from "@breditor/experimental-rich-content/rendering";
-export interface SharedDomOptions extends RenderOptions {
- core:SharedRichEditor;toolbar?:readonly SharedToolbarControl[];label?:string;image?:{asset:string;alt:string};
+export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
+ core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
+ /** Immutable explicit view family; omission keeps the original contract. */
+ selectionEditing?:P;
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
  coreOwnership?:"transfer"|"borrow";
- onChange?:(event:SharedPublication)=>void|Promise<void>;onError?:(error:unknown)=>void;
+ onChange?:(event:SharedPublication<P>)=>void|Promise<void>;onError?:(error:unknown)=>void;
  /** Explicit caption/code text conversion, reported only after successful guarded publication. */
  onPasteLoss?:(report:RichClipboardTextProjection)=>void;
  onFiles?:(files:readonly File[],position:{parent:string|null;before:string|null},revision:string)=>void|Promise<void>;
+ /** Document-aware asset replacement retains this guard and submits one native rich paste. */
+ onDocumentFiles?:(files:readonly File[],revision:string)=>void|Promise<void>;
 }
-interface Work {run:(context:ActionContext)=>void;revision:string;focus:boolean;boundary:boolean}
-interface Composition {block:string;original:string;revision:string;release:()=>void;target?:Extract<RichSelection,{kind:"text"}>}
-function sameSelection(a:RichSelection|null,b:RichSelection|null):boolean{
+export type SharedDocumentDomOptions=Omit<SharedDomOptions<"document-v1">,"selectionEditing">&{selectionEditing:"document-v1"};
+interface Work<P extends SharedSelectionPolicy> {run:(context:ActionContext<P>)=>void;revision:string;focus:boolean;boundary:boolean}
+type Composition={block:string;original:string;revision:string;release:()=>void;target?:Extract<RichSelection,{kind:"text"}>}|{document:true;revision:string;release:()=>void};
+function sameSelection(a:SharedDocumentSelection|null,b:SharedDocumentSelection|null):boolean{
  if(a?.kind!==b?.kind)return false;if(!a||!b)return a===b;
  if(a.kind==="node"&&b.kind==="node")return a.block===b.block;
+ if(a.kind==="document"&&b.kind==="document")return true;
  if(a.kind==="text"&&b.kind==="text")return a.anchor.block===b.anchor.block&&a.anchor.offset===b.anchor.offset&&a.anchor.affinity===b.anchor.affinity&&a.focus.block===b.focus.block&&a.focus.offset===b.focus.offset&&a.focus.affinity===b.focus.affinity;
  if(a.kind==="grid"&&b.kind==="grid")return a.anchor.table===b.anchor.table&&a.anchor.row===b.anchor.row&&a.anchor.column===b.anchor.column&&a.focus.table===b.focus.table&&a.focus.row===b.focus.row&&a.focus.column===b.focus.column;return false;
 }
 /** DOM coordinator only. Native Rust observations authorize every mutation and history operation. */
-export class SharedDomEditor {
+export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
- #root:HTMLElement;#options:SharedDomOptions;#model:RichModel;#abort=new AbortController();#unsubscribe:()=>void;
- #disposed=false;#busy=false;#refreshing=false;#logical=false;#queue:Work[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;
- #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl;view:RichControlView<ActionContext>}[]=[];
- constructor(root:HTMLElement,options:SharedDomOptions){
-  if((options.core.selectionPolicy?.()??"original")!=="original")throw Error("The original shared DOM owner does not admit document-selection facades");
-  this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
+ #root:HTMLElement;#options:SharedDomOptions<P>;#model:RichModel<P>;#abort=new AbortController();#unsubscribe:()=>void;
+ #disposed=false;#busy=false;#refreshing=false;#logical=false;#queue:Work<P>[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;
+ #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
+ readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
+ constructor(root:HTMLElement,options:SharedDomOptions<P>&(P extends "document-v1"?SharedDocumentDomOptions:unknown)){
+  const policy=options.selectionEditing??"original";
+  if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
+  if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("The original shared DOM owner does not admit document-selection facades without an explicit matching policy");
+  this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireSharedDocumentBrowserCore(options.core):undefined;
+  this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#isLogical();
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
-  for(const control of options.toolbar??[...defaultSharedToolbar,...moveSharedToolbar])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2.replaceAll("[data-breditor-rich]","[data-breditor-shared]");root.dataset["breditorShared"]="";
+  for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2.replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Shared rich text editor");
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Shared rich text controls");this.status=d.createElement("p");this.status.setAttribute("role","status");
-  const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbar,...moveSharedToolbar]){
+  const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){
    if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);
    const view=mountToolbarControl(this.toolbar,control,{prefix:"shared",signal:this.#abort.signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});this.#controls.push({control,view});
   }
@@ -63,24 +76,25 @@ export class SharedDomEditor {
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal});this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal});
   d.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal});
  }
- #read():RichModel{const view=this.#options.core.view();return model({...view,format:"breditor/rich-view"} satisfies RichView);}
+ #read():RichModel<P>{return sharedPresentationModel<P>(this.#options.core.view(),this.#selectionPolicy);}
+ #isLogical():boolean{return ["grid","node","document"].includes(this.#model.view.selection?.kind??"");}
  #live():void{if(this.#disposed)throw new SharedEditorError("disposed","The shared DOM editor is disposed");}
  #allocate=(kind:string):string=>`${this.#prefix}:${kind}:${this.#counter++}`;
- #context():ActionContext{const value:ActionContext={core:this.#options.core,model:this.#model,revision:this.#model.view.revision,allocate:this.#allocate};if(this.#options.image)value.image=this.#options.image;return value;}
+ #context():ActionContext<P>{const value:ActionContext<P>={core:this.#options.core,model:this.#model,revision:this.#model.view.revision,allocate:this.#allocate};if(this.#options.image)value.image=this.#options.image;return value;}
  #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
  #alreadyReported(error:unknown):boolean{return this.#reportedError!==undefined&&this.#reportedError.error===error;}
  #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
  #refreshControls():void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of this.#controls)view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);}
  #refresh(focus:boolean,force=false):void{
   if(this.#disposed||this.#composition)return;this.#refreshing=true;try{const previous=this.#model.view.documentJson,policy=this.#model.view.readOnlyRevision,active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
-  this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
+  this.#model=this.#read();this.#logical=this.#isLogical();
   if(force||previous!==this.#model.view.documentJson||policy!==this.#model.view.readOnlyRevision)render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
-  if(focus||ownedFocus){this.surface.focus({preventScroll:true});restoreNative(this.surface,this.#model.view.selection);}this.#refreshControls();
+  if(focus||ownedFocus){this.surface.focus({preventScroll:true});restoreDocumentNative(this.surface,this.#model.view.selection);}this.#refreshControls();
   this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}Shared revision ${this.#model.view.revision} · ${this.#model.view.undoDepth} undo · ${this.#options.core.pendingRemote().frames} pending remote`;
   }finally{this.#refreshing=false;}
  }
- #sync():void{if(this.#busy||this.#composition||this.#logical)return;const active=this.surface.ownerDocument.activeElement;if(active!==this.surface&&(!active||!this.surface.contains(active)))return;const selection=readNative(this.surface,this.#model);if(selection&&!sameSelection(selection,this.#model.view.selection))this.#perform(c=>{c.core.select(selection,c.revision);},false);}
- #perform(run:(context:ActionContext)=>void,focus=true,revision=this.#model.view.revision,boundary=false):void{
+ #sync():void{if(this.#busy||this.#composition||this.#logical)return;const active=this.surface.ownerDocument.activeElement;if(active!==this.surface&&(!active||!this.surface.contains(active)))return;if(this.#document&&nativeSelectsDocument(this.surface)){this.#perform(c=>{this.#document!.selectDocument(c.revision);},false);return;}const selection=readNative(this.surface,this.#model);if(selection&&!sameSelection(selection,this.#model.view.selection))this.#perform(c=>{c.core.select(selection,c.revision);},false);}
+ #perform(run:(context:ActionContext<P>)=>void,focus=true,revision=this.#model.view.revision,boundary=false):void{
   this.#live();if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary});if(this.#busy||this.#composition)return;
   const release=this.#options.core.holdRemotes();this.#busy=true;let error:unknown,drained=0;
   try{while(!this.#disposed&&this.#queue.length){if(++drained>128){this.#queue=[];throw Error("Shared editor callback command loop exceeded its bound");}const next=this.#queue.shift()!;
@@ -89,9 +103,14 @@ export class SharedDomEditor {
  }
  execute(request:SharedDispatch,focus=true,revision=this.#model.view.revision):void{const frozen=JSON.parse(JSON.stringify(request)) as SharedDispatch;this.#perform(c=>{c.core.dispatch(frozen,c.revision);},focus,revision);}
  select(selection:RichSelection|null,focus=true):void{const frozen=structuredClone(selection);this.#perform(c=>{c.core.select(frozen,c.revision);},focus);}
- view():ReturnType<SharedRichEditor["view"]>{this.#live();return this.#options.core.view();}
+ #documentOwner():SharedRichEditor<"document-v1">{this.#live();if(!this.#document)throw new SharedEditorError("selection_policy","Use an explicitly selected shared document DOM owner");return this.#document;}
+ selectDocument(this:SharedDomEditor<"document-v1">,revision=this.#options.core.view().revision):void{const core=this.#documentOwner();this.#perform(c=>{core.selectDocument(c.revision);},true,revision);}
+ collapseDocumentSelection(this:SharedDomEditor<"document-v1">,side:"before"|"after",revision=this.#options.core.view().revision):void{const core=this.#documentOwner();this.#perform(c=>{core.collapseDocumentSelection(side,c.revision);},true,revision);}
+ replaceDocumentPlainText(this:SharedDomEditor<"document-v1">,text:string,revision=this.#options.core.view().revision):void{const core=this.#documentOwner(),paragraph=this.#allocate("p");this.#perform(c=>{core.replaceDocumentPlainText(paragraph,text,c.revision);},true,revision);}
+ pasteDocumentClipboard(this:SharedDomEditor<"document-v1">,clipboardJson:string,revision=this.#options.core.view().revision):void{const core=this.#documentOwner(),prefix=this.#allocate("paste");this.#perform(c=>{core.pasteDocumentClipboard(clipboardJson,prefix,c.revision);},true,revision);}
+ view():SharedEditorView<P>{this.#live();return this.#options.core.view();}
  checkpointJson():string{this.#live();return this.#options.core.checkpointJson();}
- focus():void{this.#live();this.surface.focus();restoreNative(this.surface,this.#model.view.selection);}
+ focus():void{this.#live();this.surface.focus();restoreDocumentNative(this.surface,this.#model.view.selection);}
  /** Read-only retry after independently transferred image bytes become available. */
  refreshAssets():void{this.#live();refreshAssets(this.surface,this.#options);}
  setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean{this.#live();if(this.#busy)throw Error("Editing policy cannot publish reentrantly");return this.#options.core.setReadOnly(value,revision);}
@@ -99,7 +118,7 @@ export class SharedDomEditor {
  closeTypingGroup(revision=this.#options.core.view().revision):boolean{this.#live();if(this.#busy||this.#composition)throw Error("History boundaries cannot publish during a command or composition");if(this.#model.view.historyGrouping!=="typing-v1")return false;let changed=false;this.#perform(c=>{changed=c.core.closeTypingGroup(c.revision);},false,revision,true);return changed;}
  #boundary():void{if(this.#model.view.historyGrouping==="typing-v1"&&!this.#busy&&!this.#refreshing&&!this.#composition)this.#attempt(()=>{this.closeTypingGroup();});}
  #clock():string{const value=Math.floor(this.surface.ownerDocument.defaultView!.performance.now());if(!Number.isSafeInteger(value)||value<0)throw Error("Expected a finite monotonic typing clock");return String(value);}
- #deleteInput(c:ActionContext,selection:Extract<RichSelection,{kind:"text"}>,backward:boolean,inputType:string):void{
+ #deleteInput(c:ActionContext<P>,selection:Extract<RichSelection,{kind:"text"}>,backward:boolean,inputType:string):void{
   const current=c.model.view.selection;
   if(c.model.view.historyGrouping==="typing-v1"&&/^delete(?:Content|Word|SoftLine|HardLine)(?:Backward|Forward)$/.test(inputType)&&current?.kind==="text"&&current.anchor.block===current.focus.block&&current.anchor.offset===current.focus.offset&&selection.anchor.block===current.focus.block&&selection.focus.block===current.focus.block){
    const a=BigInt(selection.anchor.offset),b=BigInt(selection.focus.offset),start=a<b?a:b,end=a>b?a:b,at=BigInt(current.focus.offset);
@@ -136,6 +155,13 @@ export class SharedDomEditor {
    return;
   }
   if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&[...event.key].length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(key))){event.preventDefault();return;}
+  if(this.#model.view.selection?.kind==="document"&&this.#document){
+   const side=({ArrowLeft:"before",ArrowUp:"before",Home:"before",PageUp:"before",ArrowRight:"after",ArrowDown:"after",End:"after",PageDown:"after",Escape:"before"} as const)[event.key as "ArrowLeft"];
+   if(side&&!event.altKey&&!event.shiftKey){event.preventDefault();this.#attempt(()=>this.#perform(c=>{this.#document!.collapseDocumentSelection(side,c.revision);}));return;}
+   if(!mod&&!event.altKey&&["Backspace","Delete","Enter"].includes(event.key)){event.preventDefault();this.#attempt(()=>this.#perform(c=>this.#replaceDocumentInput(c,event.key==="Enter"&&event.shiftKey?"\n":"",false)));return;}
+   if(!mod&&!event.altKey&&[...event.key].length===1){event.preventDefault();this.#attempt(()=>this.#perform(c=>this.#replaceDocumentInput(c,event.key,true)));return;}
+   if(side&&event.shiftKey)this.#logical=false;
+  }
   const alignment=blockLayoutShortcut(event);
   if(alignment&&this.#options.core.supportsBlockLayout()){
    event.preventDefault();if(this.#model.view.readOnly===true)return;
@@ -161,7 +187,7 @@ export class SharedDomEditor {
     this.#perform(c=>{c.core.exitCodeBlock(c.allocate("p"),c.revision);});
    });return;
   }
-  if(mod&&key==="a")this.#logical=false;
+  if(mod&&!event.altKey&&key==="a"){if(this.#document){event.preventDefault();this.#attempt(()=>this.#perform(c=>{this.#document!.selectDocument(c.revision);}));return;}this.#logical=false;}
   if(mod&&!event.altKey){const shortcut=`${event.shiftKey?"shift+":""}${key}`,control=this.#controls.find(item=>item.control.shortcut===shortcut);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   const nativeShortcut=({b:"bold",i:"italic",u:"underline","shift+x":"strike"} as Record<string,string>)[`${event.shiftKey?"shift+":""}${key}`];
   if(mod&&!event.altKey&&nativeShortcut&&isStructuralRichLanguage(this.#options.core.richLanguageVersion())&&this.#options.core.supportsSelectionFormatting()&&this.#options.inlinePresentation){event.preventDefault();this.#attempt(()=>{this.#sync();this.#selectionFormat(nativeShortcut);});return;}
@@ -182,6 +208,11 @@ export class SharedDomEditor {
   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
   if(this.#selectionFormat(action))return;
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}
+   if(c.model.view.selection?.kind==="document"&&this.#document){
+    if(kind.startsWith("delete")){this.#replaceDocumentInput(c,"",false);return;}
+    if(kind==="insertParagraph"||kind==="insertLineBreak"){this.#replaceDocumentInput(c,kind==="insertLineBreak"?"\n":"",false);return;}
+    if((kind==="insertText"||kind==="insertReplacementText")&&event.data)this.#replaceDocumentInput(c,event.data,kind==="insertText");return;
+   }
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
    if(kind==="insertParagraph"){const range=event.getTargetRanges?.()[0],target=c.model.view.rangeEditing==="general-v1"&&range?readTarget(this.surface,range):null;enter(c,target&&target.anchor.block!==target.focus.block?target:undefined);return;}
    if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
@@ -200,10 +231,11 @@ export class SharedDomEditor {
  #copy(event:ClipboardEvent,cut:boolean):void{
   if(!event.clipboardData)return;if(this.#composition||this.#busy){event.preventDefault();return;}if(this.#model.view.rangeEditing==="general-v1")event.preventDefault();this.#boundary();
   this.#attempt(()=>{this.#sync();this.#perform(c=>{
-   const general=c.model.view.rangeEditing==="general-v1",content=general?c.core.copyGeneral():c.core.copy();if(!content)return;
+   const whole=c.model.view.selection?.kind==="document",general=c.model.view.rangeEditing==="general-v1",content=whole?this.#documentOwner().copyDocument():general?c.core.copyGeneral():c.core.copy();if(!content)return;
    event.preventDefault();event.clipboardData!.setData("text/plain",content.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",content.richJson);
    if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==content.plainText)throw Error("Clipboard did not retain text; content was not cut");
-   if(cut&&c.model.view.readOnly!==true){const selection=c.model.view.selection;if(general&&selection?.kind==="text")c.core.replaceGeneralRangePlainText(selection,"",c.allocate("range"));else removeSelection(c);}
+   if(whole&&(!event.clipboardData!.types.includes("application/x-breditor-rich+json")||event.clipboardData!.getData("application/x-breditor-rich+json")!==content.richJson))throw Error("Clipboard did not retain the complete rich document; content was not cut");
+   if(cut&&c.model.view.readOnly!==true){const selection=c.model.view.selection;if(whole)this.#replaceDocumentInput(c,"",false);else if(general&&selection?.kind==="text")c.core.replaceGeneralRangePlainText(selection,"",c.allocate("range"),c.revision);else removeSelection(c);}
   },false);});
  }
  #paste(event:ClipboardEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(!event.clipboardData)return;event.preventDefault();if(this.#composition||this.#busy)return;
@@ -215,6 +247,7 @@ export class SharedDomEditor {
    let projection:RichClipboardTextProjection|undefined;
    this.#sync();this.#perform(c=>{
     const s=c.model.view.selection,general=c.model.view.rangeEditing==="general-v1";
+    if(s?.kind==="document"&&this.#document){if(fragment)this.#document.pasteDocumentClipboard(fragment,c.allocate("paste"),c.revision);else this.#replaceDocumentInput(c,plain,false);return;}
     if(!fragment){if(general&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,plain,c.allocate("range"),c.revision);else if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}
     const kind=(JSON.parse(fragment) as {kind:string}).kind,prefix=c.allocate("paste");
     if(kind==="text"){if(general&&s?.kind==="text")c.core.pasteGeneralInlineClipboard(s,fragment,prefix,c.revision);else c.core.paste(fragment,{kind:"text"},prefix,c.revision);}
@@ -228,24 +261,35 @@ export class SharedDomEditor {
    });if(projection)this.#pasteLoss(projection);});
  }
  #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=`Pasted text into ${report.target}; formatting loss: ${report.losses.join(", ")}.`;try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
- #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
- #startComposition():void{if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text")return;const cross=s.anchor.block!==s.focus.block;if(cross&&this.#model.view.rangeEditing!=="general-v1")return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes(),...(cross?{target:structuredClone(s)}:{})};});}
+ #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="document"){if(!this.#options.onDocumentFiles)throw Error("Whole-document image replacement requires a document-aware asset host");void Promise.resolve(this.#options.onDocumentFiles(files,this.#model.view.revision)).catch(error=>this.#report(error));return;}if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
+ #replaceDocumentInput(c:ActionContext<P>,text:string,typing:boolean):void{const core=this.#documentOwner(),paragraph=c.allocate("p");if(typing&&c.model.view.historyGrouping==="typing-v1")core.replaceDocumentTypingText(paragraph,text,this.#clock(),c.revision);else core.replaceDocumentPlainText(paragraph,text,c.revision);}
+ #startComposition():void{if(this.#composition||this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{if(this.#model.view.readOnly===true)return;this.#sync();const s=this.#model.view.selection;if(s?.kind==="document"&&this.#document){this.#composition={document:true,revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};return;}if(s?.kind!=="text")return;const cross=s.anchor.block!==s.focus.block;if(cross&&this.#model.view.rangeEditing!=="general-v1")return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes(),...(cross?{target:structuredClone(s)}:{})};});}
+ #finishComposition(composition:Composition,pending:Work<P>[],force:boolean):void{try{for(const work of pending)this.#attempt(()=>this.#perform(work.run,work.focus,work.revision,work.boundary));this.#refresh(false,force);}finally{composition.release();}}
  #endComposition(committedText:string):void{const composition=this.#composition;if(!composition)return;this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{
   if(this.#disposed||this.#composition!==composition)return;
+  if("document" in composition){
+   this.#composition=undefined;const pending=this.#queue;this.#queue=[];
+   try{if(committedText)this.#perform(c=>{this.#documentOwner().replaceDocumentPlainText(c.allocate("p"),committedText,c.revision);},true,composition.revision);}
+   catch(error){this.#report(error);}
+   finally{this.#finishComposition(composition,pending,true);}
+   return;
+  }
   if(composition.target){
    this.#composition=undefined;const pending=this.#queue;this.#queue=[];
    try{if(committedText)this.#perform(c=>{c.core.replaceGeneralRangePlainText(composition.target!,committedText,c.allocate("range"),c.revision);},true,composition.revision);}
    catch(error){this.#report(error);}
-   finally{for(const work of pending)this.#attempt(()=>this.#perform(work.run,work.focus,work.revision));this.#refresh(false,true);composition.release();}
+   finally{this.#finishComposition(composition,pending,true);}
    return;
   }
   if(this.#disposed||this.#composition!==composition)return;const node=[...this.surface.querySelectorAll<HTMLElement>("[data-rich-text]")].find(n=>n.dataset["richText"]===composition.block),final=node?.textContent??composition.original;let start=0;while(start<composition.original.length&&start<final.length&&composition.original[start]===final[start])start++;if(start>0&&/[\uDC00-\uDFFF]/.test(composition.original[start]??final[start]??""))start--;
   let oldEnd=composition.original.length,newEnd=final.length;while(oldEnd>start&&newEnd>start&&composition.original[oldEnd-1]===final[newEnd-1]){oldEnd--;newEnd--;}if(oldEnd<composition.original.length&&/[\uDC00-\uDFFF]/.test(composition.original[oldEnd]??"")){oldEnd++;newEnd++;}
   this.#composition=undefined;const pending=this.#queue;this.#queue=[];
   try{if(composition.original!==final){const point={block:composition.block,affinity:"after" as const};this.#perform(c=>{c.core.replace({kind:"text",anchor:{...point,offset:String(start)},focus:{...point,offset:String(oldEnd)}},final.slice(start,newEnd),c.revision);},true,composition.revision);}}
-  catch(error){this.#report(error);}finally{for(const work of pending)this.#attempt(()=>this.#perform(work.run,work.focus,work.revision));this.#refresh(false);composition.release();}
+  catch(error){this.#report(error);}finally{this.#finishComposition(composition,pending,true);}
  });}
  dispose():void{if(this.#disposed)return;this.#disposed=true;this.#unsubscribe();this.#abort.abort();this.#queue=[];if(this.#options.coreOwnership!=="borrow")this.#options.core.dispose();this.#composition?.release();this.#composition=undefined;this.#root.replaceChildren();delete this.#root.dataset["breditorShared"];}
 }
 export const mountSharedEditor=(root:HTMLElement,options:SharedDomOptions):SharedDomEditor=>new SharedDomEditor(root,options);
+/** Explicit extended coordinator; the default mount/execute/selection DTOs remain closed. */
+export const mountSharedDocumentEditor=(root:HTMLElement,options:SharedDocumentDomOptions):SharedDomEditor<"document-v1">=>new SharedDomEditor<"document-v1">(root,options);
 const styles=`[data-breditor-shared]{color:#173d37;font:15px system-ui,sans-serif}[data-breditor-shared] .breditor-shared-toolbar{display:flex;gap:5px;flex-wrap:wrap;align-items:end;background:#edf2ef;padding:10px;border:1px solid #b6c7bf}[data-breditor-shared] button{padding:5px 8px;background:white;border:1px solid #a5b9af;border-radius:4px;color:inherit}[data-breditor-shared] button:disabled{opacity:.4}[data-breditor-shared] label{display:grid;font-size:11px;gap:3px}[data-breditor-shared] input{width:100px;padding:5px}[data-breditor-shared] .breditor-shared-surface{min-height:220px;padding:18px;border:1px solid #b6c7bf;background:white;outline:none;white-space:pre-wrap}[data-breditor-shared] .breditor-shared-surface:focus{box-shadow:inset 0 0 0 2px #378a77}[data-breditor-shared] p{min-height:1em}[data-breditor-shared] table{border-collapse:collapse;margin:10px 0;table-layout:fixed}[data-breditor-shared] td,[data-breditor-shared] th{border:1px solid #819e90;min-width:90px;padding:8px;vertical-align:top}[data-breditor-shared] [data-selected]{background:#e0f4e9}[data-breditor-shared] [data-node-selected]{outline:2px solid #378a77}[data-breditor-shared] figure{margin:10px 0;border:1px solid #a5b9af;padding:10px}[data-breditor-shared] img{max-width:100%;display:block}[data-breditor-shared] [data-source-cell]+[data-source-cell]{border-top:1px dashed #a5b9af}`;

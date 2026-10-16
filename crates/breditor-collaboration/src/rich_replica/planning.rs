@@ -11,6 +11,8 @@ pub(super) fn handles(command: &Command) -> bool {
         command,
         Command::ReplaceDocumentPlainTextV1(_)
             | Command::PasteDocumentClipboardV1(_)
+            | Command::ChangeDocumentFormatsV1(_)
+            | Command::ChangeDocumentLayoutV1(_)
             | Command::InsertGeneralParagraphV1(_)
             | Command::PasteGeneralFlowAtTextV1(_)
             | Command::PasteFlowAtText(_)
@@ -134,6 +136,12 @@ fn validate_geometry(
     let context =
         breditor_core::state::EditorContext::new(codec.schema().clone(), codec.limits().clone());
     match command {
+        Command::ChangeDocumentFormatsV1(value) => {
+            value.preview(codec, document)?;
+        }
+        Command::ChangeDocumentLayoutV1(value) => {
+            value.preview(codec, document)?;
+        }
         Command::PasteDocumentClipboardV1(value) => {
             value.preview(doc, codec, document)?;
         }

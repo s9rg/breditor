@@ -8,6 +8,7 @@ export const documentOwnerMethods=Object.freeze(["document_selection_version","d
 export const documentProfileMethods=Object.freeze(["document_selection_version","restore_document","restore_document_typing"]);
 export const documentClipboardMethods=Object.freeze(["document_clipboard_version","paste_document_clipboard"]);
 export const documentNavigationMethods=Object.freeze(["document_navigation_version","collapse_document_selection"]);
+export const documentToolsMethods=Object.freeze(["document_tools_version","document_selection_coverage_json","document_selection_format_state_json","document_block_layout_state_json","change_document_selection_formats","change_document_selection_layout"]);
 /** Generated glue must expose only configured factories, opaque observations and guarded owners. */
 export function admitApplicationSurface(module,binary,declarations){
  assert.deepEqual(Object.keys(module).sort(),[...applicationExports].sort(),"Application runtime exports must not include research probes");
@@ -35,6 +36,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of documentProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing document-selection recovery capability ${name}`);
  for(const name of documentClipboardMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document clipboard capability ${name}`);
  for(const name of documentNavigationMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document navigation capability ${name}`);
+ for(const name of documentToolsMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document tools capability ${name}`);
  for(const name of ["general_range_version","restore_general","restore_general_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing general-range recovery capability ${name}`);
  for(const name of ["typing_history_version","restore_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing separate typing-history recovery ${name}`);
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function");

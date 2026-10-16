@@ -21,6 +21,23 @@ pub(super) fn commands(
     changes: &[RichSelectionFormatChange],
     codec: &RichFormatsJsonCodec,
 ) -> Result<Vec<Command>, Error> {
+    lower(document, coverage, changes, codec, Some(64))
+}
+pub(super) fn document_commands(
+    document: &RichDocument,
+    coverage: &RichSelectionCoverage,
+    changes: &[RichSelectionFormatChange],
+    codec: &RichFormatsJsonCodec,
+) -> Result<Vec<Command>, Error> {
+    lower(document, coverage, changes, codec, None)
+}
+fn lower(
+    document: &RichDocument,
+    coverage: &RichSelectionCoverage,
+    changes: &[RichSelectionFormatChange],
+    codec: &RichFormatsJsonCodec,
+    limit: Option<usize>,
+) -> Result<Vec<Command>, Error> {
     coverage.validate_document(document).map_err(|_| Error::Contract("selection format source"))?;
     let mut commands = vec![];
     // Preserve existing script-switch safety: removals precede complete sets.
@@ -46,7 +63,7 @@ pub(super) fn commands(
                 )]
             };
             for (start, end, format, enabled) in runs {
-                if commands.len() == 64 {
+                if limit.is_some_and(|limit| commands.len() == limit) {
                     return Err(Error::Limit("selection format commands"));
                 }
                 commands.push(Command::SetFormat(SetFormat {

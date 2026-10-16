@@ -1,13 +1,20 @@
 import {isStructuralRichLanguage} from "@breditor/experimental-rich-content/rendering";
 // Read-only UI preparation. Rust owns final semantic admission and all replicated state.
-import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,selectedFlowAtom,type RichModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
+import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,selectedFlowAtom,type RichModel,type RichPresentationModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
 import {exitEmptySharedTask} from "./task_actions_v2.js";
 import type {SharedRichEditor} from "./core.js";
-import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral} from "./types.js";
+import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral,SharedSelectionPolicy} from "./types.js";
 import type {RichToolbarField,RichToolbarReading} from "@breditor/experimental-rich-content/rendering";
-export interface ActionContext {core:SharedRichEditor;model:RichModel;revision:string;allocate:(kind:string)=>string;image?:{asset:string;alt:string}}
-export interface SharedToolbarControl {id:string;label:string;type?:"text"|"number";owner?:SharedRichEditor;fields?:readonly RichToolbarField[];shortcut?:string;mixedHint?:string;readOnlySafe?:boolean;read?:(context:ActionContext)=>RichToolbarReading;enabled:(context:ActionContext)=>boolean;value?:(context:ActionContext)=>string;run:(context:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>void}
-export function publish(ctx:ActionContext,commands:readonly SharedCommand[],selection?:RichSelection|null):void{
+export interface ActionContext<P extends SharedSelectionPolicy="original"> {core:SharedRichEditor<P>;model:RichModel<P>;revision:string;allocate:(kind:string)=>string;image?:{asset:string;alt:string}}
+/** Minimal intent port, not a replacement owner/view. Private generic observer/listener state is
+ * deliberately absent; every operation still invokes the real native-backed facade. */
+type IntentCore=Pick<SharedRichEditor,"dispatch"|"select"|"setPendingFormats"|"replace"|"richLanguageVersion"|"supportsAtomEditing"|"deleteAtom"|"hardBreak"|"replaceGeneralRangePlainText"|"insertGeneralParagraph"|"undo"|"redo">&{
+ selectionPolicy?():SharedSelectionPolicy;replaceDocumentPlainText?(paragraph:string,text:string,revision?:string):boolean;
+};
+export interface SharedIntentContext extends Omit<ActionContext,"core"|"model"> {core:IntentCore;model:RichPresentationModel}
+export interface SharedToolbarControl<P extends SharedSelectionPolicy="original"> {id:string;label:string;type?:"text"|"number";owner?:SharedRichEditor<P>;fields?:readonly RichToolbarField[];shortcut?:string;mixedHint?:string;readOnlySafe?:boolean;read?:(context:ActionContext<P>)=>RichToolbarReading;enabled:(context:ActionContext<P>)=>boolean;value?:(context:ActionContext<P>)=>string;run:(context:ActionContext<P>,value?:string,fields?:Readonly<Record<string,string>>)=>void}
+export type SharedCommonToolbarControl=Omit<SharedToolbarControl,"owner"|"read"|"enabled"|"value"|"run">&{read?:(context:SharedIntentContext)=>RichToolbarReading;enabled:(context:SharedIntentContext)=>boolean;value?:(context:SharedIntentContext)=>string;run:(context:SharedIntentContext,value?:string,fields?:Readonly<Record<string,string>>)=>void};
+export function publish(ctx:SharedIntentContext,commands:readonly SharedCommand[],selection?:RichSelection|null):void{
  const request:SharedDispatch={commands};if(selection!==undefined)request.selectionUpdate={kind:"set",value:selection};ctx.core.dispatch(request,ctx.revision);
 }
 export function paragraph(block:string,value=""):SharedParagraph{return {kind:"element",type:"breditor/paragraph",entityId:null,properties:{"breditor/block-id":block},children:value?[{kind:"text",text:value,formats:[]}]:[]};}
@@ -16,29 +23,34 @@ export function imageNode(block:string,image:string,asset:string,generation:stri
  return {kind:"element",type:"breditor/image",entityId:null,properties,children:caption?[paragraph(caption)]:[]};
 }
 export const caret=(block:string,offset=0):Extract<RichSelection,{kind:"text"}>=>({kind:"text",anchor:{block,offset:String(offset),affinity:"after"},focus:{block,offset:String(offset),affinity:"after"}});
-export function positionAfter(ctx:ActionContext):{parent:string|null;before:string|null}{
+export function positionAfter(ctx:SharedIntentContext):{parent:string|null;before:string|null}{
+ if(ctx.model.view.selection?.kind==="document")throw Error("Whole-document insertion requires an explicit replacement intent");
  const s=ctx.model.view.selection;if(s?.kind==="grid")return {parent:cellBlock(ctx.model,s.focus),before:null};
  let node=s?.kind==="node"?ctx.model.nodes.get(s.block):s?.kind==="text"?ctx.model.nodes.get(s.focus.block):undefined;
  if(!node)return {parent:null,before:null};let parent=ctx.model.parents.get(id(node));if(parent?.type==="breditor/image"){node=parent;parent=ctx.model.parents.get(id(node));}
  const index=parent?.children.indexOf(node)??-1,next=parent?.children[index+1];return {parent:parent&&parent!==ctx.model.root?id(parent):null,before:next?.kind==="element"?id(next):null};
 }
-export function cellBlock(value:RichModel,cell:RichCell):string{
+export function cellBlock(value:RichPresentationModel,cell:RichCell):string{
  for(const node of value.nodes.values()){if(node.type!=="breditor/table-cell")continue;const source=sourceCell(value,id(node));if(source?.table===cell.table&&source.row===cell.row&&source.column===cell.column)return id(node);}throw Error("Visible source cell is absent");
 }
-export function ordered(value:RichModel,s:Extract<RichSelection,{kind:"text"}>):[RichPoint,RichPoint]{
+export function ordered(value:RichPresentationModel,s:Extract<RichSelection,{kind:"text"}>):[RichPoint,RichPoint]{
  const a=value.textBlocks.findIndex(n=>id(n)===s.anchor.block),b=value.textBlocks.findIndex(n=>id(n)===s.focus.block);return a<b||(a===b&&BigInt(s.anchor.offset)<=BigInt(s.focus.offset))?[s.anchor,s.focus]:[s.focus,s.anchor];
 }
-export function listContext(value:RichModel):{list:ElementNode;items:ElementNode[];first:number;last:number}|undefined{
+export function listContext(value:RichPresentationModel):{list:ElementNode;items:ElementNode[];first:number;last:number}|undefined{
  const s=value.view.selection;if(s?.kind!=="text")return undefined;const item=(block:string):ElementNode|undefined=>{let n=value.nodes.get(block);while(n){if(n.type==="breditor/list-item")return n;if(n.type==="breditor/task-item")return undefined;n=value.parents.get(id(n));}return undefined;};
  const a=item(s.anchor.block),b=item(s.focus.block);if(!a||!b)return undefined;const list=value.parents.get(id(a));if(!list||value.parents.get(id(b))!==list)return undefined;const items=list.children.filter((n):n is ElementNode=>n.kind==="element"),first=items.indexOf(a),last=items.indexOf(b);return {list,items,first:Math.min(first,last),last:Math.max(first,last)};
 }
-export function bold(ctx:ActionContext):void{
+export function bold(ctx:SharedIntentContext):void{
  const s=ctx.model.view.selection;if(s?.kind!=="text")return;const format={type:"breditor/strong",properties:{}};
  if(s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset){const formats=ctx.model.view.pendingFormatsJson===null?formatsAt(ctx.model,s.focus):JSON.parse(ctx.model.view.pendingFormatsJson) as FormatLiteral[];const active=formats.some(f=>f.type===format.type);const next=formats.filter(f=>f.type!==format.type);if(!active)next.push(format);next.sort((a,b)=>a.type.localeCompare(b.type));ctx.core.setPendingFormats(next,ctx.revision);return;}
  const targets=textTargets(ctx.model),active=targets.every(target=>{const n=ctx.model.nodes.get(target.block);if(!n)return false;let offset=0;return n.children.every(run=>{if(run.kind!=="text")return true;const start=offset;offset+=run.text.length;return offset<=Number(target.start)||start>=Number(target.end)||run.formats.some(f=>f.type===format.type);});});
  publish(ctx,targets.map(target=>({kind:"set_format",data:{block:target.block,offset:Number(target.start),length:Number(target.end)-Number(target.start),format,enabled:!active}})));
 }
-export function removeSelection(ctx:ActionContext,movement:"before"|"after"="after"):void{
+export function removeSelection(ctx:SharedIntentContext,movement:"before"|"after"="after"):void{
+ if(ctx.model.view.selection?.kind==="document"){
+  if(ctx.core.selectionPolicy?.()!=="document-v1"||!ctx.core.replaceDocumentPlainText)throw Error("Use matching native document-selection replacement");
+  ctx.core.replaceDocumentPlainText(ctx.allocate("p"),"",ctx.revision);return;
+ }
  const s=ctx.model.view.selection;if(s?.kind==="text"){ctx.core.replace(s,"",ctx.revision);return;}
  if(s?.kind==="node"){
   if(isStructuralRichLanguage(ctx.core.richLanguageVersion())&&ctx.core.supportsAtomEditing()&&selectedFlowAtom(ctx.model)){ctx.core.deleteAtom(ctx.allocate("p"),movement,ctx.revision);return;}
@@ -48,7 +60,7 @@ export function removeSelection(ctx:ActionContext,movement:"before"|"after"="aft
  }
  if(s?.kind==="grid")publish(ctx,[{kind:"clear_table_cells",data:{anchor:cellBlock(ctx.model,s.anchor),focus:cellBlock(ctx.model,s.focus),empty:(ctx.model.view.grid?.cells??[]).map(()=>ctx.allocate("empty"))}}]);
 }
-export function enter(ctx:ActionContext,target?:Extract<RichSelection,{kind:"text"}>):void{
+export function enter(ctx:SharedIntentContext,target?:Extract<RichSelection,{kind:"text"}>):void{
  const s=target??ctx.model.view.selection;if(s?.kind!=="text")return;const[start,end]=ordered(ctx.model,s),node=ctx.model.nodes.get(start.block);if(!node)return;
  const cross=ctx.model.view.rangeEditing==="general-v1"&&s.anchor.block!==s.focus.block,parent=ctx.model.parents.get(start.block);
  if(node.type==="breditor/code-block"||parent?.type==="breditor/image"){if(cross)ctx.core.replaceGeneralRangePlainText(s,"\n",ctx.allocate("range"),ctx.revision);else ctx.core.hardBreak(ctx.revision);return;}
@@ -63,7 +75,7 @@ export function enter(ctx:ActionContext,target?:Extract<RichSelection,{kind:"tex
  else commands.push({kind:"split_text_block",data:{block:start.block,offset:Number(start.offset),right,right_heading:rank}});
  publish(ctx,commands,caret(right));
 }
-export function boundaryDelete(ctx:ActionContext,backward:boolean):boolean{
+export function boundaryDelete(ctx:SharedIntentContext,backward:boolean):boolean{
  const s=ctx.model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset)return false;
  const node=ctx.model.nodes.get(s.focus.block),parent=node?ctx.model.parents.get(id(node)):undefined;if(!node||!parent||Number(s.focus.offset)!==(backward?0:text(node).length))return false;
  if(node.type==="breditor/code-block")return false;

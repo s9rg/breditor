@@ -16,7 +16,10 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
     for command in commands {
         if matches!(
             command,
-            Command::ReplaceDocumentPlainTextV1(_) | Command::PasteDocumentClipboardV1(_)
+            Command::ReplaceDocumentPlainTextV1(_)
+                | Command::PasteDocumentClipboardV1(_)
+                | Command::ChangeDocumentFormatsV1(_)
+                | Command::ChangeDocumentLayoutV1(_)
         ) && (!owner.document_selection_enabled()
             || !owner.document_selected()
             || commands.len() != 1)
@@ -34,7 +37,7 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
                 "general compound requires its explicit history family and sole command",
             ));
         }
-        if matches!(command, Command::SetBlockLayout(_))
+        if matches!(command, Command::SetBlockLayout(_) | Command::ChangeDocumentLayoutV1(_))
             && owner.protocol != super::protocol::Protocol::LayoutV3
         {
             return Err(Error::Contract("shared layout requires model 13"));

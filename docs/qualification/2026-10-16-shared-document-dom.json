@@ -1,0 +1,76 @@
+{
+  "format": "breditor/shared-document-dom-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "status": "shared-document-dom-and-native-tools-functional",
+  "probe": "scripts/probe-shared-document-dom.mjs",
+  "runtime": {
+    "sharedDirectory": "target/block-layout-shared-qualification/shared-document-dom-tools-final-web",
+    "previousSharedDirectory": "target/block-layout-shared-qualification/document-browser-shared-final-web",
+    "sharedWasmSha256": "d063f22348a15a5b718b65bfd2c30899b6f0788cff317c79f4a0d5df1b66ddae",
+    "previousSharedWasmSha256": "97386d4fe7c74a997c1bdd2e6c956287ef38252a96ca3c6da19af706d9571f63"
+  },
+  "functional": {
+    "history": ["explicit", "typing-v1"],
+    "source": ["mixed-rich-document", "hidden-only-document"],
+    "documentCases": 4,
+    "nativeRootSelectionCases": 4,
+    "compositionCommits": 4,
+    "compositionCancellations": 4,
+    "policyOrDisposalCancellations": 8,
+    "exactRestores": 34,
+    "exactFutureCheckpoints": 60,
+    "exactPreviousPeerDocuments": 36,
+    "nativeToolbarPublications": 2,
+    "previousGetterGapReproductions": 2,
+    "previousUnknownJournalTagRefusals": 4,
+    "largeDocumentBlocks": 70,
+    "passed": true,
+    "eventSource": "synthetic jsdom with compiled coordinator and actual release Wasm"
+  },
+  "focusedChecks": {
+    "nativeDocumentToolsTests": 5,
+    "sdkTests": 211,
+    "sdkTestFiles": 28,
+    "sdkMaxWorkers": 2,
+    "sharedDocumentDomContractTests": 8,
+    "applicationSurfaceTests": 17,
+    "positiveNegativeConsumerTypes": "passed against generated SDK and Wasm declarations",
+    "strictClippy": ["shared library and document-tools tests", "shared application Wasm32 release"],
+    "thirdPartyWarningUnchanged": "vendored loro-internal unused HasIdSpan import"
+  },
+  "contracts": {
+    "originalFactoriesViewsDispatchAndCheckpointFamiliesWidened": false,
+    "documentSelectionRelabeledAsOriginal": false,
+    "newDocumentBrowserRequiresCompleteNativeTools": true,
+    "olderProgrammaticDocumentOwnersStillUsable": true,
+    "documentToolsCapability": "1",
+    "documentFormatLayoutRequestMaxBytes": 1048576,
+    "wholeDocumentFormatLayoutHistory": "One sole semantic document command per request",
+    "wholeDocumentSemanticPriority": "One captured stamp independent of target count and immutable preparation",
+    "oldOrdinarySelection64CommandCeilingChanged": false,
+    "codeBlocksSilentlySkippedForFormatting": false,
+    "cutRequiresExactPlainAndStructuredRetention": true,
+    "compositionOwnsFinalTextOnly": true,
+    "emptyCompositionDeletesContent": false,
+    "duplicateCompositionStartLeaksHold": false,
+    "policyOrDisposalLeaksRemoteHold": false,
+    "borrowedOwnerDisposedWithDom": false,
+    "richFailureHasPlainFallback": false,
+    "storedProtocolOrDefaultResourceLimitsChanged": false,
+    "birthUndoLawChanged": false
+  },
+  "regressions": {
+    "localDocumentDom": {"trials": 4, "exactRestores": 16, "exactFutureCheckpoints": 32, "passed": true},
+    "richDocumentPaste": {"trials": 24, "localSharedSemanticDocumentComparisons": 120, "exactRestores": 52, "exactFutureCheckpoints": 208, "exactPreviousPeerDocuments": 10, "byteIdenticalOriginalCheckpoints": 12, "passed": true},
+    "captionCodeTextPaste": {"policy": "Insert text and report formatting loss after successful guarded replacement", "trials": 32, "exactLocalSharedDocuments": 160, "exactRestores": 64, "exactFutureCheckpoints": 256, "pureReads": 64, "guardedRefusals": 4, "passed": true}
+  },
+  "remaining": [
+    "Shared document React and root SDK document sessions",
+    "Document-family relay composition and explicit presence behavior",
+    "Sanitized HTML/Markdown and realistic Word/Google Docs/Excel interchange",
+    "Deferred broad native browser/clipboard/IME/accessibility/performance/release qualification"
+  ],
+  "releaseReady": false,
+  "publishedOrPushed": false
+}

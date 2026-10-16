@@ -1,4 +1,6 @@
 //! Shared semantic actions. Each mutation has its own named, documented source file.
+mod change_document_formats_v1;
+mod change_document_layout_v1;
 mod clear_table_cells;
 mod delete_block;
 mod delete_column;
@@ -55,6 +57,8 @@ mod wrap_list;
 mod wrap_task_list;
 
 use crate::{Error, register::Stamp};
+pub use change_document_formats_v1::ChangeDocumentFormatsV1;
+pub use change_document_layout_v1::ChangeDocumentLayoutV1;
 pub use clear_table_cells::ClearTableCells;
 pub use delete_block::DeleteBlock;
 pub use delete_column::DeleteColumn;
@@ -116,6 +120,10 @@ pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Whole-document native formats; one command only in the explicit document history family.
+    ChangeDocumentFormatsV1(ChangeDocumentFormatsV1),
+    /// Whole-document native V3 layout; independently owned fields in one document-family action.
+    ChangeDocumentLayoutV1(ChangeDocumentLayoutV1),
     /// Whole-document semantic clipboard replacement; sole command in explicit document history.
     PasteDocumentClipboardV1(PasteDocumentClipboardV1),
     /// Whole-document plain replacement; sole command in explicitly selected document history.
@@ -249,6 +257,8 @@ impl Command {
     ) -> Result<(), Error> {
         match self {
             Self::PasteDocumentClipboardV1(value) => value.prepare(doc, codec, document)?,
+            Self::ChangeDocumentFormatsV1(value) => value.prepare(doc, codec, document)?,
+            Self::ChangeDocumentLayoutV1(value) => value.prepare(doc, codec, document)?,
             Self::ReplaceDocumentPlainTextV1(value) => value.prepare(doc, codec, document)?,
             Self::InsertGeneralParagraphV1(value) => value.prepare(doc, codec, document)?,
             Self::PasteGeneralFlowAtTextV1(value) => value.prepare(doc, codec, document)?,
@@ -352,6 +362,8 @@ impl Command {
     ) -> Result<(), Error> {
         match self {
             Self::PasteDocumentClipboardV1(value) => value.apply(doc, codec, document, stamp),
+            Self::ChangeDocumentFormatsV1(value) => value.apply(doc, codec, document, stamp),
+            Self::ChangeDocumentLayoutV1(value) => value.apply(doc, codec, document, stamp),
             Self::ReplaceDocumentPlainTextV1(value) => value.apply(doc, codec, document, stamp),
             Self::InsertGeneralParagraphV1(value) => value.apply(doc, codec, document, stamp),
             Self::PasteGeneralFlowAtTextV1(value) => value.apply(doc, codec, document, stamp),

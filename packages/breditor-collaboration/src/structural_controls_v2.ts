@@ -1,27 +1,28 @@
 /** Explicit shared V2 controls; prepare original native commands, never a JS document transaction. */
 import {id,isProse,property,selectedText,nearestStructuralV2 as nearest,replaceableFlowV2,structuralIntervalV2,taskContext,type ElementNode,type RichInlinePresentation} from "@breditor/experimental-rich-content/rendering";
-import {publish,positionAfter,type ActionContext,type SharedToolbarControl} from "./actions.js";
+import {publish,positionAfter,type ActionContext,type SharedIntentContext,type SharedToolbarControl} from "./actions.js";
 import {createStandardSharedToolbarV1} from "./standard_toolbar.js";
 import {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
 import {indentSharedTasks,outdentSharedTasks} from "./task_actions_v2.js";
 import type {SharedRichEditor} from "./core.js";
 import {createSharedFlowNavigationControls} from "./flow_controls.js";
-function oneText(c:ActionContext):ElementNode|undefined {
+import type {SharedSelectionPolicy} from "./types.js";
+function oneText(c:SharedIntentContext):ElementNode|undefined {
  const s=c.model.view.selection;return s?.kind==="text"&&s.anchor.block===s.focus.block?selectedText(c.model):undefined;
 }
-function ordinaryListAllowed(c:ActionContext):boolean {
+function ordinaryListAllowed(c:SharedIntentContext):boolean {
  const s=c.model.view.selection;if(s?.kind!=="text")return false;
  const a=c.model.textBlocks.findIndex(n=>id(n)===s.anchor.block),f=c.model.textBlocks.findIndex(n=>id(n)===s.focus.block);
  if(a<0||f<0||!c.model.textBlocks.slice(Math.min(a,f),Math.max(a,f)+1).every(isProse))return false;
  return [s.anchor,s.focus].every(point=>{const n=c.model.nodes.get(point.block),parent=c.model.parents.get(point.block);return parent?.type!=="breditor/image"&&!(parent?.type==="breditor/task-item"&&parent.children[0]===n);});
 }
-export function createStructuralSharedToolbarV2(core:SharedRichEditor,presentation:RichInlinePresentation):readonly SharedToolbarControl[]{
+export function createStructuralSharedToolbarV2<P extends SharedSelectionPolicy="original">(core:SharedRichEditor<P>,presentation:RichInlinePresentation):readonly SharedToolbarControl<P>[]{
  return structuralSharedControlsForOwner(core,presentation,2);
 }
 /** Internal composition, not permission for the public V2 constructor to select V3. */
-export function structuralSharedControlsForOwner(core:SharedRichEditor,presentation:RichInlinePresentation,language:2|3):readonly SharedToolbarControl[]{
+export function structuralSharedControlsForOwner<P extends SharedSelectionPolicy="original">(core:SharedRichEditor<P>,presentation:RichInlinePresentation,language:2|3):readonly SharedToolbarControl<P>[]{
  if(core.richLanguageVersion()!==language)throw Error(`Structural controls require an explicitly selected V${language} owner`);
- const controls:SharedToolbarControl[]=[
+ const controls:SharedToolbarControl<P>[]=[
   {id:"blockquote",label:"Blockquote",enabled:c=>structuralIntervalV2(c.model)!==undefined,run:c=>{const r=structuralIntervalV2(c.model);if(r)publish(c,[{kind:"wrap_blockquote",data:{first:r.first,last:r.last,wrapper:c.allocate("quote")}}]);}},
   {id:"unquote",label:"Remove quote",enabled:c=>!!nearest(c.model,"blockquote"),run:c=>{const n=nearest(c.model,"blockquote");if(n)publish(c,[{kind:"unwrap_blockquote",data:{wrapper:id(n)}}]);}},
   {id:"code-block",label:"Code block",fields:[{id:"language",label:"Code language",type:"text",maxLength:64},{id:"policy",label:"Inline formatting",type:"select",options:[{value:"reject_formatted",label:"Reject formatted text"},{value:"remove_formats",label:"Remove inline formatting"}]}],enabled:c=>{const n=oneText(c);return !!n&&replaceableFlowV2(c.model,n);},read:c=>{const n=oneText(c);return n?{kind:"uniform",pressed:n.type==="breditor/code-block",values:{language:String(property(n,"language")??""),policy:"reject_formatted"}}:{kind:"unavailable"};},run:(c,_value,fields)=>{const n=oneText(c),policy=fields?.["policy"];if(n&&(policy==="reject_formatted"||policy==="remove_formats"))publish(c,[{kind:"set_code_block",data:{block:id(n),language:fields?.["language"]||null,format_policy:policy}}]);}},
@@ -30,14 +31,14 @@ export function structuralSharedControlsForOwner(core:SharedRichEditor,presentat
   {id:"tasks",label:"Task list",enabled:c=>{const r=structuralIntervalV2(c.model);return !!r&&isProse(r.nodes[0]!);},run:c=>{const r=structuralIntervalV2(c.model);if(r)publish(c,[{kind:"wrap_task_list",data:{first:r.first,last:r.last,container:c.allocate("tasks"),items:r.nodes.filter(isProse).map(()=>({block:c.allocate("task"),checked:false}))}}]);}},
   {id:"untask",label:"Remove task list",enabled:c=>!!nearest(c.model,"task-list"),run:c=>{const n=nearest(c.model,"task-list");if(n)publish(c,[{kind:"unwrap_task_list",data:{container:id(n)}}]);}},
   {id:"task-checked",label:"Task completed",enabled:c=>!!nearest(c.model,"task-item"),read:c=>{const n=nearest(c.model,"task-item");return n?{kind:"uniform",pressed:property(n,"checked")===true}:{kind:"unavailable"};},run:c=>{const n=nearest(c.model,"task-item");if(n)publish(c,[{kind:"set_task_checked",data:{block:id(n),checked:property(n,"checked")!==true}}]);}},
-  {id:"horizontal-rule",label:"Horizontal rule",enabled:c=>c.model.view.selection!==null,run:c=>publish(c,[{kind:"insert_horizontal_rule",data:{...positionAfter(c),block:c.allocate("rule")}}])},
+  {id:"horizontal-rule",label:"Horizontal rule",enabled:c=>c.model.view.selection!==null&&c.model.view.selection?.kind!=="document",run:c=>publish(c,[{kind:"insert_horizontal_rule",data:{...positionAfter(c),block:c.allocate("rule")}}])},
  ];
  const standard=(core.supportsSelectionFormatting()?createSelectionSharedToolbarV1(core,presentation):createStandardSharedToolbarV1(core,presentation)).map(control=>{
-  if(control.id==="bullet"||control.id==="numbered")return {...control,enabled:(c:ActionContext)=>ordinaryListAllowed(c)&&control.enabled(c)};
-  if(control.id==="table")return {...control,enabled:(c:ActionContext)=>{const position=positionAfter(c);let parent=position.parent?c.model.nodes.get(position.parent):undefined;const flow=!parent||["breditor/list-item","breditor/task-item","breditor/blockquote"].includes(parent.type);while(parent){if(parent.type==="breditor/table")return false;parent=c.model.parents.get(id(parent));}return flow;}};
+  if(control.id==="bullet"||control.id==="numbered")return {...control,enabled:(c:ActionContext<P>)=>ordinaryListAllowed(c)&&control.enabled(c)};
+  if(control.id==="table")return {...control,enabled:(c:ActionContext<P>)=>{if(c.model.view.selection?.kind==="document")return false;const position=positionAfter(c);let parent=position.parent?c.model.nodes.get(position.parent):undefined;const flow=!parent||["breditor/list-item","breditor/task-item","breditor/blockquote"].includes(parent.type);while(parent){if(parent.type==="breditor/table")return false;parent=c.model.parents.get(id(parent));}return flow;}};
   if(control.id!=="indent"&&control.id!=="outdent")return control;
   const backward=control.id==="outdent";
-  return {...control,owner:core,enabled:(c:ActionContext)=>{const t=taskContext(c.model);return t?(backward||t.first>0):control.enabled(c);},run:(c:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>{if(!taskContext(c.model)){control.run(c,value,fields);return;}const command=backward?outdentSharedTasks(c):indentSharedTasks(c);if(command)publish(c,[command]);}};
+  return {...control,owner:core,enabled:(c:ActionContext<P>)=>{const t=taskContext(c.model);return t?(backward||t.first>0):control.enabled(c);},run:(c:ActionContext<P>,value?:string,fields?:Readonly<Record<string,string>>)=>{if(!taskContext(c.model)){control.run(c,value,fields);return;}const command=backward?outdentSharedTasks(c):indentSharedTasks(c);if(command)publish(c,[command]);}};
  });
  return Object.freeze([...standard,...controls.map(control=>({...control,owner:core})),...createSharedFlowNavigationControls(core)]);
 }

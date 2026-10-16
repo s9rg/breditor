@@ -5,7 +5,7 @@ export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSha
 export {SharedPresence,type SharedPeerIdentity,type SharedPeerView,type SharedPresenceOptions} from "./presence.js";
 export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presence_overlay.js";
 export type * from "./types.js";
-export {SharedDomEditor,mountSharedEditor,type SharedDomOptions} from "./controller.js";
+export {SharedDomEditor,mountSharedEditor,mountSharedDocumentEditor,type SharedDomOptions,type SharedDocumentDomOptions} from "./controller.js";
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 export {createStandardSharedToolbarV1} from "./standard_toolbar.js";
 export {createSelectionSharedToolbarV1} from "./selection_toolbar.js";
