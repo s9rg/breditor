@@ -31,8 +31,9 @@ pub(super) struct CellRecord {
 }
 
 impl SelectionRecord {
-    pub(super) fn from_kind(kind: &RichSelectionKind) -> Self {
-        match kind {
+    pub(super) fn from_kind(kind: &RichSelectionKind) -> Option<Self> {
+        Some(match kind {
+            RichSelectionKind::Document => return None,
             RichSelectionKind::TextRange { anchor, focus } => Self::TextRange {
                 anchor: PointRecord::from_point(anchor),
                 focus: PointRecord::from_point(focus),
@@ -42,7 +43,7 @@ impl SelectionRecord {
                 anchor: CellRecord::from_cell(anchor),
                 focus: CellRecord::from_cell(focus),
             },
-        }
+        })
     }
     pub(super) fn into_kind(self) -> Result<RichSelectionKind, RichSessionCodecError> {
         Ok(match self {

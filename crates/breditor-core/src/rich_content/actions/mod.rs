@@ -51,6 +51,7 @@ mod paste_table_cells;
 mod patch_inline_format_properties;
 mod replace_blocks;
 mod replace_covered_range;
+mod replace_document;
 mod replace_image;
 mod replace_text;
 pub(crate) mod replace_text_range;
@@ -119,6 +120,7 @@ pub use paste_table_cells::PasteTableCells;
 pub use patch_inline_format_properties::{RichFormatPropertyPatch, RichPatchedFormatRun};
 pub use replace_blocks::ReplaceBlocks;
 pub use replace_covered_range::ReplaceCoveredRange;
+pub use replace_document::ReplaceDocument;
 pub use replace_image::ReplaceImage;
 pub use replace_text::ReplaceText;
 pub use replace_text_range::ReplaceTextRange;
@@ -151,6 +153,8 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Explicit complete root flow replacement with exact local inverse.
+    ReplaceDocument(ReplaceDocument),
     /// General native text coverage replacement, retaining partial structural owners.
     ReplaceCoveredRange(ReplaceCoveredRange),
     /// Patch bounded independent V3 text-block layout fields without replacing content.
@@ -326,6 +330,7 @@ impl RichAction {
             Self::ClearTableCells(action) => action.apply(context, document),
             Self::InsertBlocks(action) => action.apply(context, document),
             Self::ReplaceBlocks(action) => action.apply(context, document),
+            Self::ReplaceDocument(action) => action.apply(context, document),
             Self::IndentListItems(action) => action.apply(context, document),
             Self::OutdentListItems(action) => action.apply(context, document),
             Self::SplitListItem(action) => action.apply(context, document),

@@ -85,7 +85,9 @@ pub fn plan_atom_deletion(
                 let id = match destination.kind() {
                     RichSelectionKind::Node(id) => id,
                     RichSelectionKind::TextRange { focus, .. } => focus.block(),
-                    RichSelectionKind::Grid { .. } => return Err(RichSelectionError::Invariant),
+                    RichSelectionKind::Grid { .. } | RichSelectionKind::Document => {
+                        return Err(RichSelectionError::Invariant);
+                    }
                 };
                 let path = document.block_path(id).ok_or(RichSelectionError::Invariant)?;
                 visible_sibling |= path.as_slice().starts_with(parent.as_slice());

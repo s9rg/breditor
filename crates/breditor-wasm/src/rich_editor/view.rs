@@ -9,6 +9,23 @@ use breditor_core::{
 use serde_json::json;
 
 pub(super) fn encode(observation: &BreditorRichObservation) -> Result<String, BreditorError> {
+    if matches!(
+        observation.inner.state().selection().map(breditor_core::rich_content::RichSelection::kind),
+        Some(breditor_core::rich_content::RichSelectionKind::Document)
+    ) {
+        return Err(error::rejected("breditor_rich.document_view_family_required"));
+    }
+    encode_scope(observation, false)
+}
+pub(super) fn encode_document(
+    observation: &BreditorRichObservation,
+) -> Result<String, BreditorError> {
+    encode_scope(observation, true)
+}
+fn encode_scope(
+    observation: &BreditorRichObservation,
+    document_scope: bool,
+) -> Result<String, BreditorError> {
     let state = observation.inner.state();
     let doc = state.document();
     let document = DocumentJsonCodecV2::new(observation.context.schema().clone())
@@ -42,7 +59,7 @@ pub(super) fn encode(observation: &BreditorRichObservation) -> Result<String, Br
         let cells=table.geometry().cells().iter().map(|cell|json!({"base":selection::cell(cell.base()),"master":selection::cell(cell.master()),"rowSpan":cell.row_span(),"columnSpan":cell.column_span(),"sources":cell.source_cells().iter().map(selection::cell).collect::<Vec<_>>()})).collect::<Vec<_>>();
         tables.push(json!({"id":id.as_str(),"hidden":table.geometry().is_hidden(),"rows":table.rows().iter().map(breditor_core::rich_content::RowId::as_str).collect::<Vec<_>>(),"columns":table.columns().iter().map(|column|json!({"id":column.id().as_str(),"width":column.width()})).collect::<Vec<_>>(),"cells":cells}));
     }
-    let mut view = json!({"format":"breditor/rich-view","formatVersion":1,"documentJson":document,"revision":state.revision().get().to_string(),
+    let mut view = json!({"format":if document_scope {"breditor/rich-document-view"}else{"breditor/rich-view"},"formatVersion":1,"documentJson":document,"revision":state.revision().get().to_string(),
         "selection":state.selection().map(|value|selection::encode(value.kind())),"pendingFormatsJson":pending,
         "undoDepth":observation.undo_depth,"redoDepth":observation.redo_depth,"historyCapacity":observation.capacity,"tables":tables,"grid":grid});
     // Omit false to retain every original default-view byte.

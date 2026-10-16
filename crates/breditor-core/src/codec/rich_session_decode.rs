@@ -48,7 +48,7 @@ pub(super) fn metadata(
         Some(node.as_text().ok_or(RichSessionCodecError::Value)?.formats().clone())
     };
     Ok(Metadata {
-        selection: record.selection.map(SelectionRecord::into_kind).transpose()?,
+        selection: record.selection.map(|raw| selection(codec, raw.get())).transpose()?,
         pending,
         revision: Revision::new(record.revision.get()),
     })
@@ -57,12 +57,38 @@ pub(super) fn metadata(
 fn json_failure(error: &serde_json::Error) -> RichSessionCodecError {
     JsonFailure::from_serde(error).into()
 }
+fn selection(
+    codec: &RichSessionJsonCodec,
+    input: &str,
+) -> Result<crate::rich_content::RichSelectionKind, RichSessionCodecError> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    enum DocumentSelectionKind {
+        Document,
+    }
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct DocumentSelection {
+        kind: DocumentSelectionKind,
+    }
+    if codec.document_selection
+        && matches!(
+            serde_json::from_str::<DocumentSelection>(input),
+            Ok(DocumentSelection { kind: DocumentSelectionKind::Document })
+        )
+    {
+        return Ok(crate::rich_content::RichSelectionKind::Document);
+    }
+    let record: SelectionRecord = serde_json::from_str(input).map_err(|e| json_failure(&e))?;
+    record.into_kind()
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct StateRecord<'a> {
     #[serde(deserialize_with = "required_option")]
-    selection: Option<SelectionRecord>,
+    #[serde(borrow)]
+    selection: Option<&'a RawValue>,
     #[serde(borrow)]
     pending_formats: &'a RawValue,
     revision: DecimalU64Record,

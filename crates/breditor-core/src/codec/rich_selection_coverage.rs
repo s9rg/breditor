@@ -99,7 +99,7 @@ pub fn encode_rich_selection_coverage(
         },
         document: document.id().as_str(),
         scope: coverage.map_or("none", |c| match c.selection() {
-            None => "document",
+            None | Some(RichSelectionKind::Document) => "document",
             Some(RichSelectionKind::TextRange { .. }) => "text",
             Some(RichSelectionKind::Node(_)) => "node",
             Some(RichSelectionKind::Grid { .. }) => "grid",

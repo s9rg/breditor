@@ -26,6 +26,9 @@ pub(super) fn paragraph(id: &str, text: &str) -> Result<Value, Error> {
 }
 pub(super) fn selection(kind: &RichSelectionKind) -> Result<Selection, Error> {
     match kind {
+        RichSelectionKind::Document => {
+            Err(Error::Contract("atom recovery cannot be document scope"))
+        }
         RichSelectionKind::Node(id) => Ok(Selection::Node { block: id.as_str().into() }),
         RichSelectionKind::TextRange { anchor, focus } => {
             let point =

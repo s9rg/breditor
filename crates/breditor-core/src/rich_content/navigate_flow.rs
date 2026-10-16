@@ -62,7 +62,9 @@ pub fn navigate_flow(
             }
             focus.block()
         }
-        RichSelectionKind::Grid { .. } => return Ok(FlowNavigationOutcome::NotApplicable),
+        RichSelectionKind::Grid { .. } | RichSelectionKind::Document => {
+            return Ok(FlowNavigationOutcome::NotApplicable);
+        }
     };
     let mut path = document.block_path(id).ok_or(RichSelectionError::MissingTarget)?.clone();
     let domain = domain(document, &path)?;

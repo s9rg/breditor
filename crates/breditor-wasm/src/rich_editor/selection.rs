@@ -89,6 +89,7 @@ const fn invalid() -> BreditorError {
 }
 pub(super) fn encode(kind: &RichSelectionKind) -> Value {
     match kind {
+        RichSelectionKind::Document => json!({"kind":"document"}),
         RichSelectionKind::TextRange { anchor, focus } => {
             json!({"kind":"text","anchor":point(anchor),"focus":point(focus)})
         }

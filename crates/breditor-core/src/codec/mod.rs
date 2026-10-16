@@ -50,6 +50,8 @@ pub use rich_clipboard_json::{
 };
 
 #[cfg(feature = "experimental-rich-content")]
+mod rich_document_session_json;
+#[cfg(feature = "experimental-rich-content")]
 mod rich_selection_record;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_session_decode;
@@ -59,6 +61,12 @@ mod rich_session_encoding;
 mod rich_session_error;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_session_json;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_document_session_json::{
+    RICH_DOCUMENT_SESSION_FORMAT, RICH_DOCUMENT_SESSION_FORMAT_VERSION,
+    RICH_DOCUMENT_TYPING_SESSION_FORMAT, RichDocumentSessionJsonCodec,
+    RichDocumentTypingSessionJsonCodec,
+};
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_session_error::RichSessionCodecError;
 #[cfg(feature = "experimental-rich-content")]

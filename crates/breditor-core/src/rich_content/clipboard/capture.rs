@@ -28,6 +28,16 @@ impl RichClipboardFragment {
     ) -> Result<Option<Self>, RichClipboardError> {
         let resolved = selection.resolve(document)?;
         match (selection.kind(), resolved) {
+            (RichSelectionKind::Document, _) => {
+                let root =
+                    document.document().root().as_element().ok_or(RichClipboardError::Invariant)?;
+                let nodes = root
+                    .children()
+                    .iter()
+                    .map(|n| semantic_table::normalize(document, n))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Some(Self::from_nodes(context, RichClipboardKind::Flow, nodes)?))
+            }
             (RichSelectionKind::TextRange { anchor, focus }, _) => {
                 text(context, document, anchor, focus)
             }

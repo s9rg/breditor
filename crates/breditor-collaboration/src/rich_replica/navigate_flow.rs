@@ -31,6 +31,9 @@ impl RichReplica {
             return Ok(false);
         };
         let selection = match destination.kind() {
+            RichSelectionKind::Document => {
+                return Err(Error::Contract("flow navigation cannot synthesize document scope"));
+            }
             RichSelectionKind::Node(id) => Selection::Node { block: id.as_str().into() },
             RichSelectionKind::TextRange { anchor, focus } => {
                 let point =

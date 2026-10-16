@@ -223,6 +223,7 @@ pub(crate) fn rebase_with_text_maps(
         return Err(RichSelectionError::Binding);
     }
     let kind = match selection.kind() {
+        RichSelectionKind::Document => RichSelectionKind::Document,
         RichSelectionKind::Node(id) => {
             let Some(_) = after.block_path(id) else {
                 return Ok(cleared(RichSelectionLoss::TargetDeleted));

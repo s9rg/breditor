@@ -22,7 +22,7 @@ pub const RICH_TYPING_SESSION_FORMAT_VERSION: u32 = 1;
 /// Strict exact local typing-history recovery bound to one existing editor context.
 #[derive(Clone, Debug)]
 pub struct RichTypingSessionJsonCodec {
-    inner: RichSessionJsonCodec,
+    pub(super) inner: RichSessionJsonCodec,
 }
 
 impl RichTypingSessionJsonCodec {
@@ -53,8 +53,16 @@ impl RichTypingSessionJsonCodec {
         let checkpoint =
             RawValue::from_string(checkpoint).map_err(|error| JsonFailure::from_serde(&error))?;
         let value = Encoding {
-            format: RICH_TYPING_SESSION_FORMAT,
-            format_version: RICH_TYPING_SESSION_FORMAT_VERSION,
+            format: if self.inner.document_selection {
+                super::rich_document_session_json::RICH_DOCUMENT_TYPING_SESSION_FORMAT
+            } else {
+                RICH_TYPING_SESSION_FORMAT
+            },
+            format_version: if self.inner.document_selection {
+                super::rich_document_session_json::RICH_DOCUMENT_SESSION_FORMAT_VERSION
+            } else {
+                RICH_TYPING_SESSION_FORMAT_VERSION
+            },
             checkpoint: &checkpoint,
             groups,
         };
@@ -79,9 +87,17 @@ impl RichTypingSessionJsonCodec {
         }
         let value: Envelope<'_> =
             serde_json::from_str(input).map_err(|error| JsonFailure::from_serde(&error))?;
-        if value.format != RICH_TYPING_SESSION_FORMAT
-            || value.format_version != RICH_TYPING_SESSION_FORMAT_VERSION
-        {
+        let format = if self.inner.document_selection {
+            super::rich_document_session_json::RICH_DOCUMENT_TYPING_SESSION_FORMAT
+        } else {
+            RICH_TYPING_SESSION_FORMAT
+        };
+        let version = if self.inner.document_selection {
+            super::rich_document_session_json::RICH_DOCUMENT_SESSION_FORMAT_VERSION
+        } else {
+            RICH_TYPING_SESSION_FORMAT_VERSION
+        };
+        if value.format != format || value.format_version != version {
             return Err(RichSessionCodecError::Format);
         }
         let mut reader = serde_json::Deserializer::from_str(value.groups.get());

@@ -29,12 +29,18 @@ pub struct RichSessionJsonCodec {
     pub(super) context: EditorContext,
     pub(super) max_json_bytes: usize,
     pub(super) max_entries: usize,
+    pub(super) document_selection: bool,
 }
 impl RichSessionJsonCodec {
     /// Bind a separate local rich codec with a 16 MiB and 1000 retained-entry budget.
     #[must_use]
     pub fn new(context: EditorContext) -> Self {
-        Self { context, max_json_bytes: 16 * 1024 * 1024, max_entries: 1000 }
+        Self {
+            context,
+            max_json_bytes: 16 * 1024 * 1024,
+            max_entries: 1000,
+            document_selection: false,
+        }
     }
     /// Set an independent serialized checkpoint byte budget; document limits still apply.
     #[must_use]
@@ -64,6 +70,19 @@ impl RichSessionJsonCodec {
         session: &RichLocalSession,
     ) -> Result<String, RichSessionCodecError> {
         let checkpoint = session.durable_checkpoint()?;
+        let document_scope = |m: &crate::rich_content::local_session::durable::Metadata| {
+            matches!(m.selection, Some(crate::rich_content::RichSelectionKind::Document))
+        };
+        if !self.document_selection
+            && (document_scope(&checkpoint.base_metadata)
+                || document_scope(&checkpoint.current)
+                || checkpoint
+                    .entries
+                    .iter()
+                    .any(|e| document_scope(&e.before) || document_scope(&e.after)))
+        {
+            return Err(RichSessionCodecError::Format);
+        }
         if checkpoint.entries.len() > self.max_entries {
             return Err(RichSessionCodecError::Limit);
         }
@@ -73,7 +92,7 @@ impl RichSessionJsonCodec {
         DocumentJsonCodecV2::new(self.context.schema().clone())
             .with_limits(self.context.limits().clone())
             .encode(checkpoint.base.document())?;
-        let encoding = CheckpointEncoding(&checkpoint);
+        let encoding = CheckpointEncoding(&checkpoint, self.document_selection);
         let mut counter = JsonByteCounter::new(self.max_json_bytes);
         let result = serde_json::to_writer(&mut counter, &encoding);
         if counter.exceeded() {
@@ -93,9 +112,17 @@ impl RichSessionJsonCodec {
         }
         let record: Envelope<'_> =
             serde_json::from_str(input).map_err(|error| JsonFailure::from_serde(&error))?;
-        if record.format != RICH_SESSION_FORMAT
-            || record.format_version != RICH_SESSION_FORMAT_VERSION
-        {
+        let format = if self.document_selection {
+            super::rich_document_session_json::RICH_DOCUMENT_SESSION_FORMAT
+        } else {
+            RICH_SESSION_FORMAT
+        };
+        let version = if self.document_selection {
+            super::rich_document_session_json::RICH_DOCUMENT_SESSION_FORMAT_VERSION
+        } else {
+            RICH_SESSION_FORMAT_VERSION
+        };
+        if record.format != format || record.format_version != version {
             return Err(RichSessionCodecError::Format);
         }
         let codec = DocumentJsonCodecV2::new(self.context.schema().clone())

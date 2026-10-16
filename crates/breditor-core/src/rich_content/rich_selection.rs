@@ -47,6 +47,9 @@ impl RichTextPoint {
 /// Rich selection candidate; constructors validate it against one exact snapshot.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichSelectionKind {
+    /// Complete current document scope, including atoms, hidden tables and no-text documents.
+    /// This explicit scope requires the separate document-selection checkpoint family.
+    Document,
     /// Directional text range; endpoint order is never sorted or collapsed implicitly.
     TextRange {
         /// Logical anchor, not necessarily the earlier endpoint.
@@ -124,6 +127,8 @@ impl RichSelection {
 /// Snapshot-local rich rendering selection; re-resolve after each document edit.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ResolvedRichSelection {
+    /// Complete admitted current root, without manufacturing text endpoints or a block identity.
+    Document,
     /// Scalar-aligned leaf/child points with original range direction.
     TextRange {
         /// Resolved anchor.
@@ -249,6 +254,7 @@ fn resolve_kind(
     kind: &RichSelectionKind,
 ) -> Result<ResolvedRichSelection, RichSelectionError> {
     match kind {
+        RichSelectionKind::Document => Ok(ResolvedRichSelection::Document),
         RichSelectionKind::TextRange { anchor, focus } => Ok(ResolvedRichSelection::TextRange {
             anchor: text_point(document, anchor)?,
             focus: text_point(document, focus)?,

@@ -14,28 +14,42 @@ use serde::{
     ser::{SerializeSeq, SerializeStruct},
 };
 
-pub(super) struct CheckpointEncoding<'a>(pub(super) &'a Checkpoint);
+pub(super) struct CheckpointEncoding<'a>(pub(super) &'a Checkpoint, pub(super) bool);
 impl Serialize for CheckpointEncoding<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut record = serializer.serialize_struct("RichSessionV1", 8)?;
-        record.serialize_field("format", RICH_SESSION_FORMAT)?;
-        record.serialize_field("formatVersion", &RICH_SESSION_FORMAT_VERSION)?;
+        record.serialize_field(
+            "format",
+            if self.1 {
+                super::rich_document_session_json::RICH_DOCUMENT_SESSION_FORMAT
+            } else {
+                RICH_SESSION_FORMAT
+            },
+        )?;
+        record.serialize_field(
+            "formatVersion",
+            &if self.1 {
+                super::rich_document_session_json::RICH_DOCUMENT_SESSION_FORMAT_VERSION
+            } else {
+                RICH_SESSION_FORMAT_VERSION
+            },
+        )?;
         record.serialize_field("baseDocument", &DocumentEncodingV2::new(self.0.base.document()))?;
-        record.serialize_field("baseState", &MetadataEncoding(&self.0.base_metadata))?;
-        record.serialize_field("entries", &EntriesEncoding(&self.0.entries))?;
+        record.serialize_field("baseState", &MetadataEncoding(&self.0.base_metadata, self.1))?;
+        record.serialize_field("entries", &EntriesEncoding(&self.0.entries, self.1))?;
         record.serialize_field("cursor", &self.0.cursor)?;
         record.serialize_field("historyCapacity", &self.0.capacity.get())?;
-        record.serialize_field("currentState", &MetadataEncoding(&self.0.current))?;
+        record.serialize_field("currentState", &MetadataEncoding(&self.0.current, self.1))?;
         record.end()
     }
 }
-struct MetadataEncoding<'a>(&'a Metadata);
+struct MetadataEncoding<'a>(&'a Metadata, bool);
 impl Serialize for MetadataEncoding<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut record = serializer.serialize_struct("RichStateMetadataV1", 3)?;
         record.serialize_field(
             "selection",
-            &self.0.selection.as_ref().map(SelectionRecord::from_kind),
+            &self.0.selection.as_ref().map(|s| SelectionEncoding(s, self.1)),
         )?;
         record
             .serialize_field("pendingFormats", &self.0.pending.as_ref().map(FormatSetEncoding))?;
@@ -43,17 +57,17 @@ impl Serialize for MetadataEncoding<'_> {
         record.end()
     }
 }
-struct EntriesEncoding<'a>(&'a [Entry]);
+struct EntriesEncoding<'a>(&'a [Entry], bool);
 impl Serialize for EntriesEncoding<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
         for entry in self.0 {
-            seq.serialize_element(&EntryEncoding(entry))?;
+            seq.serialize_element(&EntryEncoding(entry, self.1))?;
         }
         seq.end()
     }
 }
-struct EntryEncoding<'a>(&'a Entry);
+struct EntryEncoding<'a>(&'a Entry, bool);
 impl Serialize for EntryEncoding<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut record = serializer.serialize_struct("RichEntryV1", 5)?;
@@ -63,8 +77,24 @@ impl Serialize for EntryEncoding<'_> {
         )?;
         record.serialize_field("expected", &NodeEncoding(&self.0.recipe.expected))?;
         record.serialize_field("replacement", &NodeEncoding(&self.0.recipe.replacement))?;
-        record.serialize_field("before", &MetadataEncoding(&self.0.before))?;
-        record.serialize_field("after", &MetadataEncoding(&self.0.after))?;
+        record.serialize_field("before", &MetadataEncoding(&self.0.before, self.1))?;
+        record.serialize_field("after", &MetadataEncoding(&self.0.after, self.1))?;
+        record.end()
+    }
+}
+struct SelectionEncoding<'a>(&'a crate::rich_content::RichSelectionKind, bool);
+impl Serialize for SelectionEncoding<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if let Some(record) = SelectionRecord::from_kind(self.0) {
+            return record.serialize(serializer);
+        }
+        if !self.1 {
+            return Err(serde::ser::Error::custom(
+                "document selection requires its explicit session family",
+            ));
+        }
+        let mut record = serializer.serialize_struct("RichDocumentSelectionV1", 1)?;
+        record.serialize_field("kind", "document")?;
         record.end()
     }
 }

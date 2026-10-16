@@ -21,7 +21,7 @@ impl<'a> Scope<'a> {
         selection: Option<&RichSelectionKind>,
     ) -> Result<Self, RichSelectionError> {
         Ok(match selection {
-            None => Self::Document,
+            None | Some(RichSelectionKind::Document) => Self::Document,
             Some(RichSelectionKind::TextRange { anchor, focus }) => {
                 let a = document.block_path(anchor.block()).ok_or(RichSelectionError::Invariant)?;
                 let f = document.block_path(focus.block()).ok_or(RichSelectionError::Invariant)?;
