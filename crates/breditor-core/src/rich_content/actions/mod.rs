@@ -10,6 +10,7 @@ mod boundary_patch;
 mod branch_patch;
 mod change_inline_formats;
 mod clear_table_cells;
+mod covered_range_plan;
 mod delete_horizontal_rule;
 mod delete_image;
 mod delete_table;
@@ -19,6 +20,7 @@ mod delete_text;
 mod exit_task_item;
 mod flow_patch;
 pub(crate) mod flow_siblings;
+mod general_range_plan;
 mod guard;
 mod indent_list_items;
 mod indent_task_items;
@@ -46,6 +48,7 @@ mod outdent_task_items;
 mod paste_table_cells;
 mod patch_inline_format_properties;
 mod replace_blocks;
+mod replace_covered_range;
 mod replace_image;
 mod replace_text;
 pub(crate) mod replace_text_range;
@@ -82,6 +85,7 @@ mod wrap_task_list;
 
 pub use apply_batch::{RichBatchEdit, apply_batch};
 pub use clear_table_cells::ClearTableCells;
+pub use covered_range_plan::{RichRangeFloor, RichRangeReplacementPlan};
 pub use delete_horizontal_rule::DeleteHorizontalRule;
 pub use delete_image::DeleteImage;
 pub use delete_table::DeleteTable;
@@ -89,6 +93,7 @@ pub use delete_table_column::DeleteTableColumn;
 pub use delete_table_row::DeleteTableRow;
 pub use delete_text::DeleteText;
 pub use exit_task_item::ExitTaskItem;
+pub use general_range_plan::{RichGeneralRangeKind, RichGeneralRangePlan};
 pub use indent_list_items::IndentListItems;
 pub use indent_task_items::IndentTaskItems;
 pub use insert_blocks::InsertBlocks;
@@ -109,6 +114,7 @@ pub use outdent_task_items::OutdentTaskItems;
 pub use paste_table_cells::PasteTableCells;
 pub use patch_inline_format_properties::{RichFormatPropertyPatch, RichPatchedFormatRun};
 pub use replace_blocks::ReplaceBlocks;
+pub use replace_covered_range::ReplaceCoveredRange;
 pub use replace_image::ReplaceImage;
 pub use replace_text::ReplaceText;
 pub use replace_text_range::ReplaceTextRange;
@@ -141,6 +147,8 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// General native text coverage replacement, retaining partial structural owners.
+    ReplaceCoveredRange(ReplaceCoveredRange),
     /// Patch bounded independent V3 text-block layout fields without replacing content.
     SetBlockLayout(SetBlockLayout),
     /// Nest tasks with retained completion values and complete rich bodies.
@@ -248,6 +256,19 @@ pub enum RichAction {
 }
 
 impl RichAction {
+    fn inverse_position_maps(
+        &self,
+    ) -> Result<Vec<super::rich_text_mapping::RichPositionMap>, super::RichSelectionError> {
+        if let Self::ReplaceCoveredRange(action) = self {
+            return action
+                .maps
+                .iter()
+                .rev()
+                .map(|map| Ok(super::rich_text_mapping::RichPositionMap::Text(map.inverse()?)))
+                .collect();
+        }
+        Ok(self.inverse_position_map()?.into_iter().collect())
+    }
     fn inverse_position_map(
         &self,
     ) -> Result<Option<super::rich_text_mapping::RichPositionMap>, super::RichSelectionError> {
@@ -282,6 +303,7 @@ impl RichAction {
         document: &RichDocument,
     ) -> Result<Option<RichEdit>, RichActionError> {
         match self {
+            Self::ReplaceCoveredRange(action) => action.apply(context, document),
             Self::IndentTaskItems(action) => action.apply(context, document),
             Self::OutdentTaskItems(action) => action.apply(context, document),
             Self::ExitTaskItem(action) => action.apply(context, document),
@@ -355,7 +377,7 @@ impl RichEdit {
         &self,
         selection: &super::RichSelection,
     ) -> Result<super::RichSelectionMapping, super::RichSelectionError> {
-        let maps = self.inverse.inverse_position_map()?.into_iter().collect::<Vec<_>>();
+        let maps = self.inverse.inverse_position_maps()?;
         super::rich_selection_mapping::rebase_with_text_maps(
             &self.before,
             &self.document,
@@ -383,6 +405,9 @@ impl RichEdit {
 /// Payload-free failure of a captured local rich-content action.
 #[derive(Debug, thiserror::Error)]
 pub enum RichActionError {
+    /// General range repair requires exactly one fresh, non-reused block ID per native floor.
+    #[error("rich range floor identities must be exact, unique and fresh")]
+    RangeFloorIds,
     /// Typed layout profile, target or value admission failed without exposing metadata.
     #[error(transparent)]
     BlockLayout(#[from] super::RichBlockLayoutError),

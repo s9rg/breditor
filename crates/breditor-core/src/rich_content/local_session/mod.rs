@@ -24,6 +24,7 @@ mod navigate_flow;
 mod redo;
 mod replace_atom_plain_text;
 mod replace_atom_typing_text;
+mod replace_general_selection_text;
 mod replace_range_plain_text;
 mod replace_selection_plain_text;
 mod replace_selection_text;

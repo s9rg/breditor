@@ -27,3 +27,7 @@ proptest = { version = "1.11.0", default-features = false, features = ["std"] }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "general_range_checkpoint_probe"
+required-features = ["experimental-rich-content"]

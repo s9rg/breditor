@@ -23,9 +23,7 @@ impl RichBatchEdit {
     {
         let mut maps = Vec::new();
         for inverse in self.inverse.iter().rev() {
-            if let Some(map) = inverse.inverse_position_map()? {
-                maps.push(map);
-            }
+            maps.extend(inverse.inverse_position_maps()?);
         }
         crate::rich_content::rich_selection_mapping::rebase_with_text_maps(
             &self.before,
