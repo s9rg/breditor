@@ -1,0 +1,171 @@
+{
+  "date": "2026-10-16",
+  "sourceBaseline": "9a34fc6e23165fb84d3ed4c3fbae650edb7eacfc",
+  "scope": "Additive shared natural typing history through strict application Wasm, headless facade, immutable vanilla/React/durable sessions, browser intent boundaries and ordinary relay transport. Original defaults and protocols remain unchanged.",
+  "sharedIntegrationImplemented": true,
+  "featureComplete": false,
+  "goalComplete": false,
+  "releaseQualified": false,
+  "contracts": {
+    "wasm": "Exact native version 1, guarded enable/close/insert/deletion and separate grouped checkpoint/restore. Canonical decimal u64 clocks and closed bounded JSON. Stale/read-only checks precede payload parsing. Each new Rust action has its own documented file. Five top-level JS exports, 64 raw exports; no research exports.",
+    "ownership": "Requested immutable history policy is explicit. Durable owners seal it after native admission, before initial save/mount. Older runtimes reject requested grouping/recovery instead of falling back. React rerenders preserve one owner; failed retirement hands off exact journal and declared history policy.",
+    "storage": "IndexedDB version 1 and keys unchanged. Original sessions keep byte-identical strings. New records exactly declare breditor/shared-typing-checkpoint-record v1 plus checkpointJson. Default opens reject grouped records without overwriting; explicit opt-in atomically upgrades old journals while retaining old Undo/Redo. Failed first transaction keeps the original durable record and discards the unannounced owner.",
+    "publications": "Changed native observations, not Boolean action outcomes, drive autosave. Fully invisible grouped Undo returns false but consumes history and changes publication; actual IDB bytes are checked after that publication. Read-only policy changes publication but is not restored permission.",
+    "dom": "Only collapsed ordinary input and valid adjacent directional deletion use named user methods. Paste/composition/replacement/hardbreak/programmatic/format/move remain explicit. Pointer/navigation/blur/toolbar fences update cached native publication without repaint/focus. Owned asynchronous carets restore; outside focus/selection cannot overwrite Rust selection. Composition holds incoming frames.",
+    "relayRepair": "A deterministic installed startup failure reproduced in every engine: SharedRelaySync constructor still called the original-only checkpoint identity check. It now selects the family from the native view, preserving exact room/writer/model/byte checks and original writer-stream semantics. New unit rejects wrong writers in both modes. No codec fallback, new wire operation or engine patch.",
+    "limits": "Existing 16 MiB/1000-journal-entry/64-input/750ms native limits remain. No dependency, vendor source, original model/journal/factory or default browser contract is changed."
+  },
+  "nativeChecks": {
+    "canonicalCommand": "/Users/s/.cargo/bin/cargo test --manifest-path crates/breditor-collaboration/Cargo.toml",
+    "rootCommand": "CARGO_TARGET_DIR=target/shared-v2-root-regression /Users/s/.cargo/bin/cargo test --offline --workspace --features breditor-wasm/experimental-rich-content",
+    "sdkCommand": "npm run test:candidate --workspace @breditor/editor",
+    "typingProbeCommand": "node scripts/probe-shared-typing-history.mjs <pre-capability-runtime-directory> packages/breditor-collaboration/dist/runtime",
+    "defaultCommand": "npm test",
+    "canonicalSharedPassed": 265,
+    "canonicalSuiteFooters": 22,
+    "rootPassed": 2353,
+    "rootSuiteFooters": 140,
+    "sdkPassed": 72,
+    "sdkFiles": 13,
+    "strictNativeAllTargetClippy": true,
+    "strictActualReleaseWasmClippy": true,
+    "researchWasmSourceCompiles": true,
+    "researchFullNativeSuiteRerun": false,
+    "rustdocWarningsDenied": true,
+    "namedFirstPartyFormatCheck": true
+  },
+  "compatibility": {
+    "sharedV1States": 49,
+    "crossVersionRestores": 2,
+    "futureHistorySteps": 12,
+    "sharedTypingLanguages": [
+      1,
+      2
+    ],
+    "exactOriginalModeStates": 14,
+    "strictRawWasmRejections": 18,
+    "exactGroupedFutureComparisons": 22,
+    "invisibleFalsePublications": 2,
+    "readOnlyNativeDenials": 4,
+    "readOnlyCrossRestores": 8,
+    "readOnlyFutureComparisons": 20,
+    "localWasmUnchanged": true,
+    "browserAndRichArchivesUnchanged": true
+  },
+  "defaultRegression": {
+    "browserPassed": 2203,
+    "reactPassed": 57,
+    "highlightPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 363,
+    "existingOptInSkips": 3
+  },
+  "timingConcern": {
+    "engine": "Firefox",
+    "kind": "Unqualified wall-clock observation, not an approved benchmark",
+    "fixture": "shared V2 paste/composition/forward-delete/code history sequence",
+    "retainedTrace": "target/shared-typing-sdk-qualification/measured-before-policy-test-correction/shared-typing-history-shar-c5b4a-d-deletion-stay-intentional-firefox/trace.zip",
+    "codeTypeClocksMs": [
+      "26335",
+      "29634",
+      "33221",
+      "39363",
+      "41582",
+      "43794"
+    ],
+    "coreMethodWallMs": [
+      2780,
+      3344,
+      1715,
+      1976,
+      1962,
+      2036
+    ],
+    "interpretation": "Input gaps exceeded 750ms under qualification load, so native history correctly splits. This is a serious responsiveness concern, not a repaired product behavior. Browser assertions use captured actual clocks; separate real-Wasm tests prove <=750/>750 behavior above 2^53. No window/deadline increase or retry hides it. Profile the native staged-for-typing whole-journal replay and surrounding work without weakening atomicity."
+  },
+  "openIssues": [
+    "Earlier unrecorded native V2 code/style ReplayMismatch remains unconfirmed",
+    "Historical intermittent WebKit integer-domain startup recurred in the old V2 read-only network case during parallel qualification; trace preserved, not repaired",
+    "Earlier unclassified WebKit cancelled-mount TypeError remains unconfirmed",
+    "Shared mixed-document Firefox processing/input latency can split real typing bursts at the unchanged 750ms boundary",
+    "Unclassified WebKit application-demo offline-button click stayed ready during concurrent runs; no root cause or repair claim"
+  ],
+  "retainedLogs": "target/shared-typing-sdk-qualification",
+  "readiness": "Both original workstreams remain active/incomplete. History and all release gates retain their existing status; no V1/production claim, push, tag, publication or deployment. Native IME/accessibility/mobile/performance/public deployment qualification remains later.",
+  "nextAcceptance": "Profile and repair shared typing responsiveness without weakening native replay/atomicity, then continue general selections, code/atomic navigation, bounded block/context controls and separate sanitized HTML/Markdown plus Word/Docs/Excel interchange with explicit losses.",
+  "sourceCheckpoint": "2e44eaa8ec9acbeca6c8fc9702c491a72c4eeba2",
+  "installedRegression": {
+    "command": "node scripts/check-editor-browser.mjs",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-s0Ixww/consumer",
+    "batches": [
+      {
+        "passed": 93,
+        "duration": "1.6m"
+      },
+      {
+        "passed": 102,
+        "duration": "2.7m"
+      },
+      {
+        "passed": 18,
+        "duration": "11.7s"
+      },
+      {
+        "passed": 21,
+        "duration": "1.2m"
+      },
+      {
+        "passed": 39,
+        "duration": "3.0m"
+      },
+      {
+        "passed": 15,
+        "duration": "1.8m"
+      }
+    ],
+    "editingPassed": 273,
+    "relayPassed": 15,
+    "totalPassed": 288,
+    "applicationPassed": 78,
+    "applicationDuration": "1.7m",
+    "artifacts": [
+      {
+        "name": "breditor-browser-0.3.0-alpha.22.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "bytes": 1252157,
+        "sha256": "6d28a09c9e5e04230a5de45408790be12f4795b78ac975dba8aa0dc19452896e"
+      },
+      {
+        "name": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "bytes": 2354471,
+        "sha256": "0d03cb7fea3be49863a71879faa3161ecb2061922823a8cf68e73b3647962603"
+      },
+      {
+        "name": "breditor-editor-0.3.0-alpha.22.tgz",
+        "bytes": 21967,
+        "sha256": "1a9a89eb432ae23369caf6ddefa32464b0a0eae2a7e9a36ea2bc8f475caabf20"
+      },
+      {
+        "name": "breditor_wasm_bg.wasm",
+        "bytes": 4313791,
+        "sha256": "32d815eed9b44c2e40fda36bbf2ecec0b350bffa5d871c39466b2f134c767de8"
+      },
+      {
+        "name": "breditor_shared_bg.wasm",
+        "bytes": 8560420,
+        "sha256": "e5c71ae345c7455a0ae114e314b1edde31ae0ef01bbcdc7c141bf862d47bbeb7"
+      }
+    ],
+    "engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "policy": "Every discovered spec exactly once; shared-typing files get dedicated bounded processes. All three engines, one worker, zero retries, unchanged 60-second case and 300-second process limits. Application regression ran serially after the final SDK matrix. These are test executions, not unique product capabilities."
+  },
+  "failedAndIntermediateAttempts": "Initial new-mode browser run:27 passed/6 failed; pre-close checkpoint assertions and machine-speed assumptions were corrected. The focused Firefox diagnostics passed3/failed3 and confirmed >750ms input gaps. The intermediate measured run passed32/failed7: six comparisons incorrectly crossed a read-only publication, and code typing still assumed a fixed group count despite measured gaps. False-Undo now verifies actual IDB bytes before policy changes; denied edits compare against the current policy publication. The complete pre-relay-fix matrix passed273 editing plus12 old relay cases but failed3 grouped relay startups; trace and source identified the original-only identity check in SharedRelaySync. After repair, a full network file passed14/failed1 because the historical WebKit integer-domain fault recurred in an old case; a concurrent application run passed77/failed1 with an unclassified offline-button observation. Both were retained before the final serial288/78 passes; those later passes do not establish engine or click repairs. SDK mocks were updated for the new declared storage reader; missing fake IDBDatabase global, an invalid mock relay credential, a wrong Wasm manifest/feature invocation and a wrong old-local-runtime path were corrected. No failed/intermediate attempt is presented as final release qualification."
+}

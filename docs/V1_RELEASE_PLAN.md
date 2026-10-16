@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `c237538` (saved locally,
+The latest functional implementation checkpoint is `2e44eaa` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -231,13 +231,30 @@ Rebuilt default-mode matrices pass 225 installed SDK and 78 application cases,
 with exact old/new runtime comparisons. These are not shared new-mode browser
 acceptance: Wasm/SDK/React/durable/DOM wiring remains next, and history stays partial.
 
+The subsequent [shared typing SDK checkpoint](qualification/2026-10-16-shared-typing-sdk.json)
+connects native grouping to opt-in application Wasm, vanilla/React, exact durable
+storage and DOM intent boundaries in both languages. Declared grouped records
+reject default reopening; explicit atomic upgrades retain old units and Redo.
+Invisible-history Undo publications still autosave, and failed React retirement
+retains its exact recovery family. Installed testing reproduced a relay constructor
+that incorrectly assumed original journals; selecting the native owner's declared
+family repairs startup without weakening room/writer/model checks or changing wire
+operations. Final serial matrices pass 288 installed SDK and 78 application cases,
+plus 72 SDK units, 265 shared Rust and 2,353 root Rust tests, strict Wasm/native
+checks and unchanged default regressions. The record retains intermediate failures
+and exact candidate hashes. Firefox processing after mixed history can take several
+seconds per input, legitimately splitting the unchanged 750 ms window; this remains
+a serious responsiveness issue. The historical WebKit startup error recurred, and
+an offline-button observation remains unclassified. Later passing runs close
+neither issue. History and release-gate labels remain unchanged.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
 commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
-Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are general
-selections, code/atomic navigation, shared natural typing product integration, bounded layout
+Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are shared
+typing responsiveness, general selections, code/atomic navigation, bounded layout
 contracts, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
