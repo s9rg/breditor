@@ -11,6 +11,34 @@ fn read(mut r: BreditorStringResult) -> Result<String> {
 fn view(a: &BreditorRichEditor) -> Result<Value> {
     Ok(serde_json::from_str(&read(a.observe().document_view_json())?)?)
 }
+#[test]
+fn document_navigation_has_closed_side_and_observation_with_no_content_history() -> Result {
+    for hidden in [false, true] {
+        let (_, mut a) = setup(hidden)?;
+        assert_eq!(a.document_navigation_version(), "1");
+        let stale = a.observe();
+        assert_eq!(a.select_document(&a.observe()).status(), "selection");
+        read(a.set_read_only(&a.observe(), true))?;
+        let source = read(a.observe().document_json())?;
+        for side in ["before", "after"] {
+            assert!(matches!(
+                a.select_document(&a.observe()).status().as_str(),
+                "selection" | "unchanged"
+            ));
+            let exact = read(a.document_checkpoint_json())?;
+            assert_eq!(a.collapse_document_selection(&stale, "bad").status(), "error");
+            assert_eq!(a.collapse_document_selection(&a.observe(), "left").status(), "error");
+            assert_eq!(read(a.document_checkpoint_json())?, exact);
+            assert_eq!(
+                a.collapse_document_selection(&a.observe(), side).status(),
+                if hidden { "unchanged" } else { "selection" }
+            );
+            assert_eq!(read(a.observe().document_json())?, source);
+            assert_eq!(view(&a)?["undoDepth"], 0);
+        }
+    }
+    Ok(())
+}
 fn setup(hidden_only: bool) -> Result<(BreditorRichProfile, BreditorRichEditor)> {
     let p=BreditorRichProfile::from_standard_layout_bootstrap_json_v3(&json!({"format":"breditor/profile-bootstrap","formatVersion":8,"schema":{"name":"example/document-wasm","version":1},"extensions":[]}).to_string()).take_profile().ok_or("profile")?;
     let binding: Value = serde_json::from_str(&read(p.descriptor_json())?)?;

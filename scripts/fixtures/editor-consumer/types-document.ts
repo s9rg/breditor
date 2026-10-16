@@ -12,6 +12,9 @@ function document(raw:SharedRustOwner,profile:SharedRustProfile):void {
  const policy:"document-v1"=core.selectionPolicy();void policy;
  core.selectDocument();core.copyDocument();core.replaceDocumentPlainText("fresh","Q");core.replaceDocumentTypingText("fresh2","Q","1");
  core.supportsDocumentClipboard();core.pasteDocumentClipboard("opaque native clipboard","reserved");
+ core.supportsDocumentNavigation();core.collapseDocumentSelection("before");
+ // @ts-expect-error logical sides are not physical arrow names
+ core.collapseDocumentSelection("left");
  const recovered=restoreSharedDocumentEditor(profile,"room",core.checkpointJson());void recovered;
  // @ts-expect-error extended views cannot masquerade as an original selection protocol
  const old:SharedView=view;void old;
@@ -36,6 +39,7 @@ async function localDocument(profile:RichCoreProfile):Promise<void>{
  if(!profile.createDocumentEditor||!profile.restoreDocumentEditor||!profile.restoreOriginalAsDocumentEditor)throw Error("Missing explicit capability");
  const core=profile.createDocumentEditor("native document"),view:LocalDocumentView=core.view();void view;core.selectDocument();core.copyDocument();core.replaceDocumentPlainText("fresh","Q");core.replaceDocumentTypingText("fresh2","Q","1");
  core.supportsDocumentClipboard();core.pasteDocumentClipboard("opaque native clipboard","reserved");
+ core.supportsDocumentNavigation();core.collapseDocumentSelection("after");
  profile.restoreDocumentEditor(core.checkpointJson());profile.restoreOriginalAsDocumentEditor("original checkpoint","typing-v1");
  // @ts-expect-error document views cannot masquerade as original local views
  const oldView:RichView=core.view();void oldView;
@@ -46,3 +50,23 @@ async function localDocument(profile:RichCoreProfile):Promise<void>{
  const store=await RichDocumentSessionStore.open("explicit-local-document",{richLanguage:3,history:"typing-v1"});await store.save(core.checkpointJson());await store.load();store.close();
 }
 void localDocument;
+import {mountRichEditor,mountDocumentRichEditor,RichDomEditor,createLayoutRichToolbarV3,type RichDocumentCoreEditor,type RichInlinePresentation,type RichDocumentEditorOptions} from "@breditor/experimental-rich-content";
+import {model,documentModel} from "@breditor/experimental-rich-content/rendering";
+function documentDom(host:HTMLElement,core:RichDocumentCoreEditor,original:RichCoreEditor,presentation:RichInlinePresentation):void {
+ const options:RichDocumentEditorOptions={core,selectionEditing:"document-v1",toolbar:createLayoutRichToolbarV3(core,presentation),onChange:view=>{const v:LocalDocumentView=view;void v;}};
+ const dom=mountDocumentRichEditor(host,options),view:LocalDocumentView=dom.view();void view;
+ dom.selectDocument();dom.pasteDocumentClipboard("opaque native clipboard");dom.replaceDocumentPlainText("Q");dom.collapseDocumentSelection("after");
+ documentModel(core.view());model(original.view());
+ // @ts-expect-error original models remain closed to extended views
+ model(core.view());
+ // @ts-expect-error an original mount does not select the extended policy
+ mountRichEditor(host,options);
+ // @ts-expect-error an extended native owner alone is insufficient without explicit policy
+ new RichDomEditor<"document-v1">(host,{core});
+ const old=mountRichEditor(host,{core:original});
+ // @ts-expect-error original coordinators cannot submit named document intents
+ old.selectDocument();
+ // @ts-expect-error document coordinators are not original view/selection producers
+ const oldDom:RichDomEditor=dom;void oldDom;
+}
+void documentDom;

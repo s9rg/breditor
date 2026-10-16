@@ -2,7 +2,7 @@
 // All logical mutation and retained history remain Rust-owned. Asset storage and
 // uploads are explicit host services, never command side effects.
 import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
-export {mountRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
+export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1} from "./dist/browser/index.js";
@@ -151,6 +151,8 @@ class RichCoreEditor {
     return this.#publish(input===undefined?r[method](this.#observation):r[method](this.#observation,JSON.stringify(input)));
   }
   selectDocument(revision){return this.#documentCommand("selectDocument",undefined,revision);}
+  supportsDocumentNavigation(){const r=this.#live();return this.supportsDocumentSelection()&&r.documentNavigationVersion?.()==="1"&&typeof r.collapseDocumentSelection==="function";}
+  collapseDocumentSelection(side,revision){const r=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The document intent was prepared from an older rich view");if(this.#selectionPolicy!=="document-v1"||!this.supportsDocumentNavigation())throw new RichCommandError("breditor_rich.document_navigation_unavailable","Use an explicit document facade with matching native edge navigation");return this.#publish(r.collapseDocumentSelection(this.#observation,side));}
   supportsDocumentClipboard(){const r=this.#live();return this.supportsDocumentSelection()&&r.documentClipboardVersion?.()==="1"&&typeof r.pasteDocumentClipboard==="function";}
   pasteDocumentClipboard(clipboardJson,prefix,revision){if(!this.supportsDocumentClipboard())throw new RichCommandError("breditor_rich.document_clipboard_unavailable","Use matching native whole-document rich paste");return this.#documentCommand("pasteDocumentClipboard",{clipboardJson,prefix},revision);}
   replaceDocumentPlainText(paragraph,text,revision){return this.#documentCommand("replaceDocumentPlainText",{paragraph,text},revision);}

@@ -10,13 +10,15 @@ The local foundation, explicit shared semantic history and guarded Wasm/source
 facade commands are implemented. Explicit root SDK options and durable general
 sessions now connect native plain input to vanilla/React controllers. General
 rich clipboard, cross-range paragraph Enter, explicit caption/code text paste
-and transport V2 have functional checkpoints below. Document-wide Select All,
-external interchange and final integrated qualification remain required.
+and transport V2 have functional checkpoints below. The explicit local document
+DOM coordinator connects document-wide Select All and composition to Rust.
+Shared document browser composition, external interchange and final integrated
+qualification remain required.
 
 Whole-document selection has native local/shared scope, rich replacement,
 separate view/checkpoint families and explicit programmatic SDK/storage support.
-Document-specific DOM input, composition and relay composition remain required
-before it is an end-to-end browser editing feature.
+The explicit local DOM path is implemented; shared DOM, root SDK/React and relay
+composition remain required for a complete local/shared browser editing feature.
 
 ## Original joins and protected boundaries
 
@@ -642,11 +644,10 @@ can retry the current native checkpoint without disposing the owner.
 
 The [document persistence checkpoint](qualification/2026-10-16-document-selection-persistence.json)
 covers actual local/shared release Wasm through the source facades and transaction
-coordinators, with IndexedDB and exclusive-lock fixtures. Document composition,
-browser Copy/Cut retention (including empty plain text), selection
-painting, document-specific relay composition and explicit presence/toolbar
-behavior remain required. Original DOM entry points do not yet accept the
-extended facades.
+coordinators, with IndexedDB and exclusive-lock fixtures. The explicit local DOM
+path below adds document input, Copy/Cut retention and selection presentation.
+Shared document DOM, root SDK/React, relay composition and presence remain
+required. Original DOM entry points deliberately refuse extended facades.
 
 ## Whole document rich paste
 
@@ -696,8 +697,59 @@ covers actual release Wasm through both programmatic facades, structured and
 hidden-only sources/targets, exact future history, and an offline previous-runtime
 peer. Local/shared semantic comparisons exclude only authored table-merge
 priority words, which legitimately differ by owner; each owner's recovery and
-shared peer documents are checked exactly. Browser clipboard routing remains a
-separate integration step.
+shared peer documents are checked exactly. The explicit local DOM route is
+covered separately below; shared document browser routing remains required.
+
+## Explicit local document browser coordinator
+
+`mountDocumentRichEditor` requires `selectionEditing: 'document-v1'` and a complete
+matching `RichDocumentCoreEditor`. `RichDomEditor<'document-v1'>` has the same
+explicit construction requirement. Default `mountRichEditor`, `RichDomEditor`,
+view/model types, command DTOs and callbacks retain their original closed types.
+The original local/shared DOM constructors reject extended native facades before
+changing host DOM. No document view is relabeled as an original selection family.
+
+The read-only `RichModel` and toolbar context carry their declared selection
+policy. `documentModel` and policy-bound `presentationModel` share AST/table
+rendering without weakening the original `model` reader. Document-aware toolbar
+factories retain the actual owner, document view and native coverage/state reads.
+Controls that require a particular caret, item or table stay unavailable while
+the whole document is selected; whole-document layout uses native coverage.
+
+Select All publishes native document scope. Presentation selects the DOM root's
+contents rather than inventing first/last text positions, so atoms and hidden
+placeholders remain included. An explicit native root range is recognized too;
+ordinary text endpoints are never guessed to mean document scope. First-key
+typing, plain/rich paste, selected deletion and Enter use named native intents in
+the bounded guarded queue. Original `execute` remains closed. Enter replaces the
+whole selection with one usable empty paragraph; Shift+Enter inserts one LF.
+Natural first-key typing can join following caret input. Rich paste and committed
+composition remain separate explicit history groups.
+
+Copy writes both plain and native rich MIME values. Cut requires exact retention
+of both before deleting anything, including when plain text is empty. Failed rich
+admission never retries as plain text. Document composition stages its actual
+scope/revision, submits only final nonempty committed text once, and cancels empty
+composition without deleting content. Provisional DOM is not native content.
+Policy changes/disposal cancel provisional work; queued pre-commit commands keep
+their guards and reject when stale. Asset file replacement requires the explicit
+`onDocumentFiles(files, revision)` host callback, which must retain the guard and
+submit one document paste; it cannot silently append to selected content.
+
+`collapseDocumentSelection` / `collapse_document_selection` declare separate
+document-navigation capability string `1`. Rust chooses the logical outer start
+or end: lists/tasks/quotes are transparent, but images, visible tables and rules
+remain atoms. Hidden-only documents retain scope when there is no visible stop.
+Navigation is read-only-safe, creates no content or fake paragraph and retains
+Redo. Existing flow-navigation behavior is unchanged. The local/shared facades
+negotiate this capability independently from prior document selection/paste.
+
+The [document DOM checkpoint](qualification/2026-10-16-document-dom.json) covers
+the compiled local coordinator with actual release Wasm under synthetic jsdom
+events, exact ordinary/natural reload/future history, rich Cut refusal, composition
+commit/cancel and layout controls. It also exercises native shared collapse through
+the release Wasm/SDK. This is functional integration evidence, not OS clipboard,
+physical IME, native-browser, screen-reader or final release acceptance.
 
 ## Remaining integration
 
@@ -706,9 +758,9 @@ now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
 general explicit/natural journal recovery after host restart, and peer-preserving
 selective Undo/Redo. It does not change original writer digests or migrate rooms.
 
-Whole-document selection,
-remaining installed editing/transport acceptance and external interchange
-remain required. Native IME/accessibility and
+Shared document DOM/React, root SDK document sessions, document-specific relay
+composition, remaining installed editing/transport acceptance and external
+interchange remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 

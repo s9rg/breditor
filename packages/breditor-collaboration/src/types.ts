@@ -90,6 +90,7 @@ export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVer
 export interface SharedRustOwner {
  document_selection_version?():string;document_typing_version?():string;document_selection_enabled?():boolean;
  document_clipboard_version?():string;paste_document_clipboard?(observation:unknown,input:string):boolean;
+ document_navigation_version?():string;collapse_document_selection?(observation:unknown,side:string):boolean;
  enable_document_selection?(observation:unknown):boolean;observe_document?():ReturnType<SharedRustOwner["observe"]>;
  document_view_json?():string;select_document?(observation:unknown):boolean;copy_document_clipboard?(observation:unknown):string;
  replace_document_plain_text?(observation:unknown,input:string):boolean;replace_document_typing_text?(observation:unknown,input:string):boolean;

@@ -61,6 +61,66 @@ fn document_selected(s: &RichLocalSession) -> bool {
         Some(RichSelectionKind::Document)
     )
 }
+#[test]
+fn document_collapse_has_native_outer_edges_and_no_hidden_only_fake_endpoint() -> Result {
+    use breditor_core::rich_content::FlowMove;
+    for case in 0..4 {
+        let mut root = fixture::root();
+        if case > 0 {
+            root["children"].as_array_mut().ok_or("children")?.retain(|n| match case {
+                1 => ["quote", "list", "tasks", "code"]
+                    .contains(&n["properties"]["breditor/block-id"].as_str().unwrap_or("")),
+                2 => n["properties"]["breditor/block-id"] == "table",
+                _ => n["properties"]["breditor/block-id"] == "hidden",
+            });
+        }
+        let (context, mut s) = setup(&root)?;
+        s.select_document(&s.snapshot())?;
+        s.replace_document_plain_text(&s.snapshot(), &BlockId::try_new("temporary")?, "X")?;
+        s.undo(&s.snapshot())?;
+        s.set_read_only(&s.snapshot(), true)?;
+        let source = s.state().document().clone();
+        for side in [FlowMove::Before, FlowMove::After] {
+            s.select_document(&s.snapshot())?;
+            let old = s.snapshot();
+            let outcome = s.collapse_document_selection(&old, side)?;
+            assert_eq!(s.state().document().document(), source.document());
+            assert_eq!((s.undo_depth(), s.redo_depth()), (0, 1));
+            let kind = s.state().selection().ok_or("selection")?.kind().clone();
+            if case == 3 {
+                assert_eq!(outcome, RichLocalOutcome::Unchanged);
+                assert!(matches!(kind, RichSelectionKind::Document));
+            } else {
+                assert_eq!(outcome, RichLocalOutcome::SelectionOnly);
+                assert!(s.collapse_document_selection(&old, side).is_err());
+                match (case, side, kind) {
+                    (0, FlowMove::Before, RichSelectionKind::Node(id)) => {
+                        assert_eq!(id.as_str(), "lead");
+                    }
+                    (0, FlowMove::After, RichSelectionKind::Node(id)) => {
+                        assert_eq!(id.as_str(), "tail");
+                    }
+                    (2, _, RichSelectionKind::Node(id)) => assert_eq!(id.as_str(), "table"),
+                    (1, FlowMove::Before, RichSelectionKind::TextRange { anchor, focus }) => {
+                        assert_eq!(anchor, focus);
+                        assert_eq!(focus.block().as_str(), "q1");
+                        assert_eq!(focus.offset(), TextOffset::ZERO);
+                    }
+                    (1, FlowMove::After, RichSelectionKind::TextRange { anchor, focus }) => {
+                        assert_eq!(anchor, focus);
+                        assert_eq!(focus.block().as_str(), "code");
+                        assert_eq!(focus.offset().get(), 10);
+                    }
+                    _ => return Err("wrong native document edge".into()),
+                }
+            }
+            let bytes = saved(&context, &s)?;
+            let recovered = restored(&context, &s, &bytes)?;
+            assert_eq!(saved(&context, &recovered)?, bytes);
+        }
+    }
+    Ok(())
+}
 fn caret(id: &str) -> Result<RichSelectionKind> {
     let p = RichTextPoint::new(BlockId::try_new(id)?, TextOffset::ZERO, Affinity::After);
     Ok(RichSelectionKind::TextRange { anchor: p.clone(), focus: p })

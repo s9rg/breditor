@@ -108,6 +108,9 @@ export interface RichDocumentCoreEditor extends RichCoreEditor<"document-v1"> {
   supportsDocumentSelection():boolean;
   /** Separate optional native capability; older document-selection owners remain usable. */
   supportsDocumentClipboard():boolean;
+  supportsDocumentNavigation():boolean;
+  /** Native outer reading-order start/end, without inventing text endpoints in no-text documents. */
+  collapseDocumentSelection(side:"before"|"after",expectedRevision?:string):RichCommandOutcome;
   selectDocument(expectedRevision?:string):RichCommandOutcome;
   copyDocument():ReturnType<RichCoreEditor["clipboard"]>;
   replaceDocumentPlainText(paragraph:string,text:string,expectedRevision?:string):RichCommandOutcome;

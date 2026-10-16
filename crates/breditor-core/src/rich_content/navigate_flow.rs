@@ -131,7 +131,7 @@ fn identity(node: &ElementNode) -> Result<BlockId, RichSelectionError> {
 
 // Iterative depth-first edge search. Only the current bounded path is retained;
 // a wide list never allocates a frontier or clones every sibling identity.
-fn edge_stop(
+pub(super) fn edge_stop(
     document: &RichDocument,
     root: &NodePath,
     movement: FlowMove,

@@ -1,0 +1,75 @@
+{
+  "format": "breditor/document-dom-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "status": "local-dom-functional-and-shared-native-navigation",
+  "probe": "scripts/probe-document-dom.mjs",
+  "runtime": {
+    "localDirectory": "target/block-layout-shared-qualification/document-browser-local-final-web",
+    "sharedDirectory": "target/block-layout-shared-qualification/document-browser-shared-final-web",
+    "localWasmSha256": "d236c07082ba421412fcd0802dd4c582398b74e9501506820aca2b6f1aa49a32",
+    "sharedWasmSha256": "97386d4fe7c74a997c1bdd2e6c956287ef38252a96ca3c6da19af706d9571f63"
+  },
+  "functional": {
+    "trials": 4,
+    "history": ["explicit", "typing-v1"],
+    "source": ["mixed-rich-document", "hidden-only-document"],
+    "exactRestores": 16,
+    "exactFutureCheckpoints": 32,
+    "refusedUnretainedRichCuts": 4,
+    "compositionCommits": 4,
+    "compositionCancellations": 4,
+    "nativeWholeDocumentToolbarPublications": 2,
+    "sharedNativeEdgeCases": 8,
+    "nativeRootSelectAllCases": 4,
+    "passed": true
+  },
+  "focusedChecks": {
+    "coreDocumentSelectionTests": 12,
+    "wasmDocumentSelectionTests": 5,
+    "sharedDocumentSelectionTests": 13,
+    "sdkTests": 203,
+    "sdkTestFiles": 27,
+    "sdkMaxWorkers": 2,
+    "documentDomContractTests": 10,
+    "applicationSurfaceTests": 16,
+    "positiveNegativeConsumerTypes": "passed against generated declarations",
+    "strictClippy": ["local Core/Wasm all targets", "shared library and document-selection tests", "shared application Wasm32 release"],
+    "thirdPartyWarningUnchanged": "vendored loro-internal unused HasIdSpan import"
+  },
+  "contracts": {
+    "originalFactoryCommandViewAndCheckpointFamiliesWidened": false,
+    "documentViewsRelabeledAsOriginal": false,
+    "selectAllUsesFakeTextEndpoints": false,
+    "cutRequiresExactPlainAndStructuredRetention": true,
+    "compositionSubmitsFinalTextOnly": true,
+    "emptyCompositionDeletesContent": false,
+    "failedRichPasteHasPlainFallback": false,
+    "documentEnter": "One empty usable paragraph; Shift+Enter is one LF",
+    "documentNavigation": "Native logical outer start/end; no visible stop retains scope",
+    "documentNavigationChangesContentOrHistory": false,
+    "documentAssetFiles": "Explicit document-aware callback retains observed guard and submits one whole-document rich paste",
+    "storedProtocolOrDefaultResourceLimitsChanged": false
+  },
+  "richPasteCompatibilityRegression": {
+    "probe": "scripts/probe-document-rich-paste.mjs",
+    "trials": 24,
+    "localSharedSemanticDocumentComparisons": 120,
+    "exactRestores": 52,
+    "exactFutureCheckpoints": 208,
+    "exactPreviousPeerDocuments": 10,
+    "previousSharedUnknownCommandRefusals": 24,
+    "previousLocalExactRecipeRestores": 24,
+    "guardedRefusals": 96,
+    "byteIdenticalOriginalCheckpoints": 12,
+    "passed": true
+  },
+  "remaining": [
+    "Shared document DOM and root SDK/React composition",
+    "Document-family relay composition and explicit presence behavior",
+    "Sanitized HTML/Markdown and realistic Word/Google Docs/Excel interchange",
+    "Deferred broad native browser/clipboard/IME/accessibility/performance/release qualification"
+  ],
+  "releaseReady": false,
+  "publishedOrPushed": false
+}

@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods} from "./check-collaboration-runtime-surface.mjs";
+import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 function fixture(){
  const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},default:()=>{},initSync:()=>{}};
  for(const name of documentOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of documentProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of documentClipboardMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of documentNavigationMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_copy_version","copy_general_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_flow_paste_version","paste_general_flow_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_paragraph_version","insert_general_paragraph"])module.SharedEditorOwner.prototype[name]=()=>{};
@@ -30,6 +31,9 @@ test("general Copy needs both its explicit version and native observation-scoped
 });
 test("document rich paste requires its independent capability and guarded operation",()=>{
  for(const name of documentClipboardMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native document clipboard capability/);}
+});
+test("document edge navigation requires its independent capability and guarded operation",()=>{
+ for(const name of documentNavigationMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native document navigation capability/);}
 });
 test("document scope requires complete guarded authoring, separate observations and exact recovery",()=>{
  for(const name of documentOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native document-selection capability/);}

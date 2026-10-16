@@ -1,6 +1,6 @@
 // Stable logical selections bridge native ranges; DOM coordinates never become durable identity.
-import type {RichPoint,RichSelection} from "./core.js";
-import {sourceCell,type RichModel} from "./model.js";
+import type {RichPoint,RichSelection,RichDocumentSelection} from "./core.js";
+import {sourceCell,type RichPresentationModel} from "./model.js";
 const blockSelector="[data-rich-text]";
 function containing(node:Node):HTMLElement|null {
  return (node.nodeType===1?node as Element:node.parentElement)?.closest<HTMLElement>(blockSelector)??null;
@@ -19,7 +19,7 @@ function point(surface:HTMLElement,node:Node,offset:number,side:"start"|"end"):R
  if(!nearest){const matches=surface.querySelectorAll<HTMLElement>(blockSelector);nearest=side==="start"?matches[0]??null:matches[matches.length-1]??null;}
  return nearest?{block:nearest.dataset["richText"]??"",offset:String(side==="start"?0:nearest.textContent?.length??0),affinity:"after"}:null;
 }
-export function readNative(surface:HTMLElement,value:RichModel,rangeEditing:"original"|"general-v1"=value.view.rangeEditing??"original"):RichSelection|null {
+export function readNative(surface:HTMLElement,value:RichPresentationModel,rangeEditing:"original"|"general-v1"=value.view.format==="breditor/rich-document-view"?"general-v1":value.view.rangeEditing??"original"):RichSelection|null {
  const native=surface.ownerDocument.getSelection();
  if(!native?.anchorNode||!native.focusNode)return null;
  let anchor=point(surface,native.anchorNode,native.anchorOffset,"start"),focus=native.isCollapsed&&anchor?{...anchor}:point(surface,native.focusNode,native.focusOffset,"end");
@@ -57,4 +57,15 @@ export function restoreNative(surface:HTMLElement,selection:RichSelection|null):
  if(selection?.kind!=="text"){native.removeAllRanges();return;}
  const anchor=endpoint(surface,selection.anchor),focus=endpoint(surface,selection.focus);
  if(anchor&&focus)native.setBaseAndExtent(anchor[0],anchor[1],focus[0],focus[1]);
+}
+/** Whole-root DOM selection is presentation only, not synthetic native text coordinates. */
+export function restoreDocumentNative(surface:HTMLElement,selection:RichDocumentSelection|null):void {
+ if(selection?.kind!=="document"){restoreNative(surface,selection);return;}
+ const native=surface.ownerDocument.getSelection();if(!native)return;
+ const range=surface.ownerDocument.createRange();range.selectNodeContents(surface);native.removeAllRanges();native.addRange(range);
+}
+/** Recognize an explicit native root range; never infer Select All from first/last text offsets. */
+export function nativeSelectsDocument(surface:HTMLElement):boolean {
+ const native=surface.ownerDocument.getSelection();if(!native||native.rangeCount!==1||native.isCollapsed)return false;
+ const range=native.getRangeAt(0);return range.startContainer===surface&&range.startOffset===0&&range.endContainer===surface&&range.endOffset===surface.childNodes.length;
 }

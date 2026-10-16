@@ -52,6 +52,46 @@ fn replace(a: &mut RichReplica, paragraph: &str, text: &str) -> Result {
     )?);
     Ok(())
 }
+#[test]
+fn document_collapse_is_guarded_read_only_local_ui_with_exact_redo_and_recovery() -> Result {
+    for natural in [false, true] {
+        for hidden in [false, true] {
+            let (p, mut a) = setup(hidden)?;
+            enable(&mut a, natural)?;
+            a.select_document_guarded(&a.observe_document()?)?;
+            replace(&mut a, "temporary", "X")?;
+            a.undo()?;
+            a.set_read_only_guarded(&a.observe_document()?, true)?;
+            let source = a.document_json().to_owned();
+            for side in ["before", "after"] {
+                a.select_document_guarded(&a.observe_document()?)?;
+                let old = a.observe_document()?;
+                let exact = save(&a)?;
+                assert!(a.collapse_document_selection_guarded(&old, "left").is_err());
+                assert_eq!(save(&a)?, exact);
+                assert_eq!(a.collapse_document_selection_guarded(&old, side)?, !hidden);
+                assert_eq!(a.document_json(), source);
+                assert_eq!((a.undo_count(), a.redo_count()), (0, 1));
+                if hidden {
+                    assert!(a.document_selected());
+                    assert_eq!(save(&a)?, exact);
+                } else {
+                    assert!(a.collapse_document_selection_guarded(&old, side).is_err());
+                    assert_eq!(
+                        a.selection()?,
+                        Some(Selection::Node {
+                            block: if side == "before" { "lead" } else { "tail" }.into()
+                        })
+                    );
+                }
+                let bytes = save(&a)?;
+                let restored = restore(&p, &a, &bytes)?;
+                assert_eq!(save(&restored)?, bytes);
+            }
+        }
+    }
+    Ok(())
+}
 fn peer(p: &SharedRichProfile, a: &RichReplica) -> Result<RichReplica> {
     Ok(p.join_frame("room".into(), "202".into(), &a.update_frame()?)?)
 }

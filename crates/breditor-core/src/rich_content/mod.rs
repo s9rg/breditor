@@ -14,6 +14,7 @@ mod block_layout_patch;
 mod block_layout_state;
 pub(crate) mod clipboard;
 mod code_language;
+mod collapse_document_selection;
 mod drafts;
 mod flow_position;
 mod general_range_ids;
@@ -55,6 +56,7 @@ pub use clipboard::{
     RichDocumentClipboardPlan,
 };
 pub use code_language::{CodeLanguage, CodeLanguageError};
+pub use collapse_document_selection::collapse_document_selection;
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use flow_position::{RichFlowParent, RichFlowPosition};
 pub use general_range_ids::allocate_general_range_paragraphs;

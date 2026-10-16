@@ -32,3 +32,5 @@ function documentScope(owner:SharedEditorOwner,profile:SharedRichProfile,observa
 void documentScope;
 function documentClipboard(owner:SharedEditorOwner,observation:SharedObservation):void {const version:string=owner.document_clipboard_version();const changed:boolean=owner.paste_document_clipboard(observation,'{"clipboardJson":"opaque native clipboard","prefix":"reserved"}');void version;void changed;}
 void documentClipboard;
+function documentNavigation(owner:SharedEditorOwner,observation:SharedObservation):void {const version:string=owner.document_navigation_version();const changed:boolean=owner.collapse_document_selection(observation,"before");void version;void changed;}
+void documentNavigation;

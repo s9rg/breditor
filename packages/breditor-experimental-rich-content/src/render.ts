@@ -1,6 +1,6 @@
 // Render only the admitted Rust AST and its derived non-destructive table geometry.
 import type {FormatLiteral,RichCell} from "./core.js";
-import {cellKey,id,property,type AstNode,type ElementNode,type RichModel} from "./model.js";
+import {cellKey,id,property,type AstNode,type ElementNode,type RichPresentationModel} from "./model.js";
 import {requireRichInlinePresentation,richInlineRecipes,type RichInlinePresentation} from "./inline_presentation.js";
 import {applyBlockLayout} from "./block_layout_presentation.js";
 export const structuralBlockStylesV2=`[data-breditor-rich] [data-rich-text]{white-space:pre-wrap;min-height:1em}[data-breditor-rich] blockquote{border-left:3px solid #9dbbb0;margin:12px 0;padding:1px 16px}[data-breditor-rich] pre{font-family:ui-monospace,monospace;background:#f1f5f2;padding:12px;overflow:auto}[data-breditor-rich] [data-task-list]{list-style:none;padding-left:12px}[data-breditor-rich] [data-rich-task]{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:8px 0}[data-breditor-rich] input[data-task-check]{width:18px;height:18px;margin:4px 0}[data-breditor-rich] [data-task-body]>:first-child{margin-top:0}[data-breditor-rich] hr{border:0;border-top:2px solid #9dbbb0;margin:16px 0}`;
@@ -11,7 +11,7 @@ export interface RenderOptions {
  inlinePresentation?:RichInlinePresentation;
 }
 /** Validate opt-in presentation before publishing host DOM. Legacy callbacks stay separate. */
-export function requireRenderOptions(value:RichModel,options:RenderOptions):void {
+export function requireRenderOptions(value:RichPresentationModel,options:RenderOptions):void {
  if(options.inlinePresentation){if(options.inlineTag)throw new TypeError("Use either inlinePresentation or inlineTag, not both");requireRichInlinePresentation(options.inlinePresentation,value.schema);}
 }
 const assetBindings=new WeakMap<HTMLElement,{bitmap:HTMLImageElement;binding:AssetBinding;attempt:number}>();
@@ -39,7 +39,7 @@ export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
  for(const caption of surface.querySelectorAll<HTMLElement>("figcaption"))caption.contentEditable=readOnly?"false":"true";
  for(const check of surface.querySelectorAll<HTMLInputElement>("input[data-task-check]"))check.disabled=readOnly;
 }
-export function render(surface:HTMLElement,value:RichModel,options:RenderOptions):void {
+export function render(surface:HTMLElement,value:RichPresentationModel,options:RenderOptions):void {
  requireRenderOptions(value,options);
  const document=surface.ownerDocument;
  const flow=(node:AstNode):Node=>{
@@ -110,7 +110,8 @@ export function render(surface:HTMLElement,value:RichModel,options:RenderOptions
  applyEditingPolicy(surface,value.view.readOnly===true);
  paintSelection(surface,value);
 }
-export function paintSelection(surface:HTMLElement,value:RichModel):void {
+export function paintSelection(surface:HTMLElement,value:RichPresentationModel):void {
+ surface.toggleAttribute("data-document-selected",value.view.selection?.kind==="document");
  const masters=new Set(value.view.grid?.masters.map(cellKey)??[]);
  for(const element of surface.querySelectorAll<HTMLElement>("[data-rich-cell]"))element.toggleAttribute("data-selected",masters.has(element.dataset["richCell"]??""));
  for(const element of surface.querySelectorAll<HTMLElement>("[data-rich-block]"))element.toggleAttribute("data-node-selected",value.view.selection?.kind==="node"&&value.view.selection.block===element.dataset["richBlock"]);

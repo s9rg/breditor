@@ -8,6 +8,7 @@ mod block_layout;
 mod clipboard;
 mod clipboard_text_projection;
 mod close_typing_group;
+mod collapse_document_selection;
 mod command;
 mod document_checkpoint;
 mod document_view;

@@ -18,6 +18,7 @@ mod clipboard_grid;
 mod clipboard_namespace;
 mod clipboard_plan;
 mod close_typing_group;
+mod collapse_document_selection;
 mod column_order;
 mod copy_document_clipboard;
 mod copy_general_clipboard;

@@ -5,20 +5,23 @@ import {formatsAt,id,isProse,property,selectedImage,selectedTable,selectedText,s
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 import {exitEmptyTask} from "./task_actions_v2.js";
 import {selectedFlowAtom} from "./flow_controls.js";
-export interface ActionContext {core?:RichCoreEditor;model:RichModel;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
-export interface ToolbarControl {
+import type {RichSelectionPolicy} from "./core.js";
+export interface ActionContext<P extends RichSelectionPolicy="original"> {core?:RichCoreEditor<P>;model:RichModel<P>;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
+type IntentContext=ActionContext<RichSelectionPolicy>;
+export interface ToolbarControl<P extends RichSelectionPolicy="original"> {
  id:string;label:string;type?:"text"|"number";
  /** Optional binding for controls that read one particular owner. Not mutation authority. */
- owner?:RichCoreEditor;
- fields?:readonly RichToolbarField[];shortcut?:string;read?:(context:ActionContext)=>RichToolbarReading;
+ owner?:RichCoreEditor<P>;
+ fields?:readonly RichToolbarField[];shortcut?:string;read?:(context:ActionContext<P>)=>RichToolbarReading;
  mixedHint?:string;
  /** Opt in only for controls that do not author content/history/typing state. Native policy still enforces writes. */
  readOnlySafe?:boolean;
- enabled:(context:ActionContext)=>boolean;
- value?:(context:ActionContext)=>string;
- command:(context:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>RichCommand|null;
+ enabled:(context:ActionContext<P>)=>boolean;
+ value?:(context:ActionContext<P>)=>string;
+ command:(context:ActionContext<P>,value?:string,fields?:Readonly<Record<string,string>>)=>RichCommand|null;
 }
-export function positionAfter(context:ActionContext):FlowPosition {
+export function positionAfter(context:IntentContext):FlowPosition {
+ if(context.model.view.selection?.kind==="document")throw Error("Whole-document insertion requires an explicit replacement intent");
  const value=context.model,selection=value.view.selection;
  if(selection?.kind==="grid")return {parent:{kind:"cell",cell:selection.focus},before:null};
  let node=selection?.kind==="node"?value.nodes.get(selection.block):selectedText(value);
@@ -36,14 +39,14 @@ export function positionAfter(context:ActionContext):FlowPosition {
  else if(parent?.type==="breditor/task-item")target={kind:"taskItem",block:id(parent)};
  return {parent:target,before:next?.kind==="element"?id(next):null};
 }
-export function selectedCell(context:ActionContext):RichCell|undefined {
+export function selectedCell(context:IntentContext):RichCell|undefined {
  const selection=context.model.view.selection;
  return selection?.kind==="grid"?selection.focus:selection?.kind==="text"?sourceCell(context.model,selection.focus.block):undefined;
 }
-export function emptyCell(context:ActionContext,column:string):TableCellDraft {
+export function emptyCell(context:IntentContext,column:string):TableCellDraft {
  return {block:context.allocate("cell"),column,header:false,body:[{kind:"paragraph",block:context.allocate("p"),text:"",formatsJson:"[]"}]};
 }
-function listContext(value:RichModel,task=false):{list:ElementNode;items:ElementNode[];first:number;last:number}|undefined {
+function listContext(value:RichModel<RichSelectionPolicy>,task=false):{list:ElementNode;items:ElementNode[];first:number;last:number}|undefined {
  const selection=value.view.selection;if(selection?.kind!=="text")return undefined;
  const itemOf=(block:string):ElementNode|undefined=>{let node=value.nodes.get(block);while(node){if(node.type===(task?"breditor/task-item":"breditor/list-item"))return node;if(node.type===(task?"breditor/list-item":"breditor/task-item"))return undefined;node=value.parents.get(id(node));}return undefined;};
  const a=itemOf(selection.anchor.block),f=itemOf(selection.focus.block);if(!a||!f)return undefined;
@@ -51,11 +54,11 @@ function listContext(value:RichModel,task=false):{list:ElementNode;items:Element
  const items=list.children.filter((node):node is ElementNode=>node.kind==="element");
  const first=items.indexOf(a),last=items.indexOf(f);return {list,items,first:Math.min(first,last),last:Math.max(first,last)};
 }
-function formats(context:ActionContext):readonly FormatLiteral[] {
+function formats(context:IntentContext):readonly FormatLiteral[] {
  const selection=context.model.view.selection;if(selection?.kind!=="text")return [];
  return context.model.view.pendingFormatsJson!==null?JSON.parse(context.model.view.pendingFormatsJson) as FormatLiteral[]:formatsAt(context.model,selection.focus);
 }
-export function bold(context:ActionContext):RichCommand|null {
+export function bold(context:IntentContext):RichCommand|null {
  if(!textEnabled(context))return null;
  const selection=context.model.view.selection;if(selection?.kind!=="text")return null;
  if(selection.anchor.block===selection.focus.block&&selection.anchor.offset===selection.focus.offset){
@@ -70,7 +73,7 @@ export function bold(context:ActionContext):RichCommand|null {
  });
  return {kind:"setInlineFormat",data:{targets,change:active?{kind:"remove",format:"breditor/strong"}:{kind:"set",formatsJson:'[{"type":"breditor/strong","properties":{}}]'}}};
 }
-export function enter(context:ActionContext,general=false,target?:Extract<RichSelection,{kind:"text"}>):RichCommand|null {
+export function enter(context:IntentContext,general=false,target?:Extract<RichSelection,{kind:"text"}>):RichCommand|null {
  const selection=target??context.model.view.selection;if(selection?.kind!=="text")return null;
  const cross=selection.anchor.block!==selection.focus.block;
  const exit=target?null:exitEmptyTask(context);if(exit)return exit;
@@ -84,7 +87,7 @@ export function enter(context:ActionContext,general=false,target?:Extract<RichSe
   return {kind:"insertParagraph",data:{right,newItem:context.allocate("item")}};
  return {kind:"insertParagraph",data:{right,newItem:null}};
 }
-export function boundaryDelete(context:ActionContext,backward:boolean):RichCommand|null {
+export function boundaryDelete(context:IntentContext,backward:boolean):RichCommand|null {
  const value=context.model,selection=value.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset)return null;
  const node=value.nodes.get(selection.focus.block),parent=node?value.parents.get(id(node)):undefined;if(!node||!parent)return null;
  const offset=Number(selection.focus.offset);if(backward?offset!==0:offset!==text(node).length)return null;
@@ -99,7 +102,7 @@ export function boundaryDelete(context:ActionContext,backward:boolean):RichComma
  if(isProse(other)&&isProse(node))return {kind:"joinTextBlocks",data:{left:id(backward?other:node),right:id(backward?node:other)}};
  return {kind:"setSelection",selection:{kind:"node",block:id(other)}};
 }
-export function deleteSelection(context:ActionContext,movement:"before"|"after"="after"):RichCommand|null {
+export function deleteSelection(context:IntentContext,movement:"before"|"after"="after"):RichCommand|null {
  const value=context.model,selection=value.view.selection;
  if(selection?.kind==="text")return {kind:"deleteSelection"};
  if(selection?.kind==="grid")return {kind:"clearTableCells",data:{emptyBlocks:(value.view.grid?.cells??[]).map(()=>context.allocate("p"))}};
@@ -112,7 +115,7 @@ export function deleteSelection(context:ActionContext,movement:"before"|"after"=
  if(node.type==="breditor/horizontal-rule")return {kind:"deleteHorizontalRule",data:{block:id(node),replacement}};
  return {kind:"replaceBlocks",data:{first:id(node),last:id(node),blocks:replacement?[replacement]:[]}};
 }
-function listCommand(context:ActionContext,start:number|null):RichCommand|null {
+function listCommand(context:IntentContext,start:number|null):RichCommand|null {
  const list=listContext(context.model);if(list)return {kind:"setListKind",data:{list:id(list.list),start}};
  const selection=context.model.view.selection;if(selection?.kind!=="text")return null;
  const value=context.model,aIndex=value.textBlocks.findIndex(node=>id(node)===selection.anchor.block),fIndex=value.textBlocks.findIndex(node=>id(node)===selection.focus.block);
@@ -122,12 +125,12 @@ function listCommand(context:ActionContext,start:number|null):RichCommand|null {
  const heads=parent.children.slice(begin,end+1).filter((node):node is ElementNode=>node.kind==="element"&&isProse(node));
  return {kind:"wrapList",data:{first,last,container:context.allocate("list"),items:heads.map(()=>context.allocate("item")),start}};
 }
-const textEnabled=(context:ActionContext):boolean=>{
+const textEnabled=(context:IntentContext):boolean=>{
  const value=context.model,s=value.view.selection;if(s?.kind!=="text")return false;
  const a=value.textBlocks.findIndex(n=>id(n)===s.anchor.block),f=value.textBlocks.findIndex(n=>id(n)===s.focus.block);
  return a>=0&&f>=0&&value.textBlocks.slice(Math.min(a,f),Math.max(a,f)+1).every(isProse);
 };
-const flowTextEnabled=(context:ActionContext):boolean=>{
+const flowTextEnabled=(context:IntentContext):boolean=>{
  if(!textEnabled(context))return false;
  const value=context.model,selection=value.view.selection;if(selection?.kind!=="text")return false;
  // Task heads are mandatory prose. Ordinary-list wrapping cannot replace them
@@ -138,30 +141,30 @@ const flowTextEnabled=(context:ActionContext):boolean=>{
  }
  return true;
 };
-const anyTextEnabled=(context:ActionContext):boolean=>context.model.view.selection?.kind==="text";
-const headingEnabled=(context:ActionContext):boolean=>anyTextEnabled(context)&&context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type!=="breditor/image";
-const gridEnabled=(context:ActionContext):boolean=>context.model.view.selection?.kind==="grid";
-const tableEnabled=(context:ActionContext):boolean=>selectedTable(context.model)!==undefined;
-const imageEnabled=(context:ActionContext):boolean=>selectedImage(context.model)!==undefined;
+const anyTextEnabled=(context:IntentContext):boolean=>context.model.view.selection?.kind==="text";
+const headingEnabled=(context:IntentContext):boolean=>anyTextEnabled(context)&&context.model.parents.get(selectedText(context.model)?id(selectedText(context.model)!):"")?.type!=="breditor/image";
+const gridEnabled=(context:IntentContext):boolean=>context.model.view.selection?.kind==="grid";
+const tableEnabled=(context:IntentContext):boolean=>selectedTable(context.model)!==undefined;
+const imageEnabled=(context:IntentContext):boolean=>selectedImage(context.model)!==undefined;
 const data=(kind:RichCommand["kind"],value:unknown):RichCommand=>({kind,data:value}) as RichCommand;
-function tableAxis(context:ActionContext):{table:string;view:RichModel["view"]["tables"][number];cell:RichCell|undefined}|undefined {
+function tableAxis(context:IntentContext):{table:string;view:RichModel["view"]["tables"][number];cell:RichCell|undefined}|undefined {
  const node=selectedTable(context.model);if(!node)return undefined;const table=String(property(node,"table-id")),view=context.model.view.tables.find(value=>value.id===table);return view?{table,view,cell:selectedCell(context)}:undefined;
 }
-function moveAxis(context:ActionContext,row:boolean,direction:-1|1):RichCommand|null {
+function moveAxis(context:IntentContext,row:boolean,direction:-1|1):RichCommand|null {
  const axis=tableAxis(context);if(!axis?.cell)return null;
  const order=row?axis.view.rows:axis.view.columns.map(column=>column.id),key=row?axis.cell.row:axis.cell.column,index=order.indexOf(key);
  if(index<0||index+direction<0||index+direction>=order.length)return null;
  const before=direction<0?order[index-1]??null:order[index+2]??null;
  return row?{kind:"moveTableRow",data:{table:axis.table,row:key,before}}:{kind:"moveTableColumn",data:{table:axis.table,column:key,before}};
 }
-function headerIntent(context:ActionContext):boolean {
+function headerIntent(context:IntentContext):boolean {
  const table=selectedTable(context.model),selected=new Set(context.model.view.grid?.cells.map(cell=>JSON.stringify([cell.row,cell.column]))??[]);
  if(!table)return true;
  const values=table.children.flatMap(row=>row.kind!=="element"?[]:row.children.flatMap(cell=>cell.kind!=="element"||!selected.has(JSON.stringify([property(row,"row-id"),property(cell,"column-id")]))?[]:[property(cell,"header")]));
  return !values.every(value=>value===true);
 }
 function dimension(input:string|undefined):number|undefined {if(!input||!/^\d+$/.test(input))return undefined;const value=Number(input);return Number.isSafeInteger(value)&&value>=1&&value<=4096?value:undefined;}
-export const defaultToolbar:readonly ToolbarControl[]=[
+const commonToolbar:readonly Omit<ToolbarControl<RichSelectionPolicy>,"owner">[]=[
  {id:"undo",label:"Undo",enabled:c=>c.model.view.undoDepth>0,command:()=>({kind:"undo"})},
  {id:"redo",label:"Redo",enabled:c=>c.model.view.redoDepth>0,command:()=>({kind:"redo"})},
  {id:"bold",label:"Bold",enabled:textEnabled,command:bold},
@@ -172,7 +175,7 @@ export const defaultToolbar:readonly ToolbarControl[]=[
  {id:"unlist",label:"Remove list",enabled:c=>listContext(c.model)!==undefined,command:c=>{const list=listContext(c.model);return list?{kind:"unwrapList",data:{list:id(list.list)}}:null;}},
  {id:"indent",label:"Indent",enabled:c=>(listContext(c.model)?.first??0)>0,command:c=>{const list=listContext(c.model);if(!list)return null;const previous=list.items[list.first-1],last=previous?.children[previous.children.length-1],kind=list.list.type,start=kind==="breditor/ordered-list"?Number(property(list.list,"start"))+list.first:null;return {kind:"indentListItems",data:{container:id(list.list),first:id(list.items[list.first]!),last:id(list.items[list.last]!),nested:last?.kind==="element"&&last.type===kind?null:{block:c.allocate("list"),start}}};}},
  {id:"outdent",label:"Outdent",enabled:c=>listContext(c.model)!==undefined,command:c=>{const list=listContext(c.model);return list?{kind:"outdentListItems",data:{container:id(list.list),first:id(list.items[list.first]!),last:id(list.items[list.last]!),tail:list.first>0&&list.last<list.items.length-1?c.allocate("list"):null}}:null;}},
- {id:"table",label:"Insert table",enabled:c=>!selectedTable(c.model),command:c=>{const columns=[{id:c.allocate("col"),width:160},{id:c.allocate("col"),width:160}],table:TableDraft={block:c.allocate("table-block"),table:c.allocate("table"),columns,rows:[0,1].map(()=>({block:c.allocate("row-block"),id:c.allocate("row"),cells:columns.map(column=>emptyCell(c,column.id))}))};return {kind:"insertTable",data:{position:positionAfter(c),table}};}},
+ {id:"table",label:"Insert table",enabled:c=>c.model.view.selection?.kind!=="document"&&!selectedTable(c.model),command:c=>{const columns=[{id:c.allocate("col"),width:160},{id:c.allocate("col"),width:160}],table:TableDraft={block:c.allocate("table-block"),table:c.allocate("table"),columns,rows:[0,1].map(()=>({block:c.allocate("row-block"),id:c.allocate("row"),cells:columns.map(column=>emptyCell(c,column.id))}))};return {kind:"insertTable",data:{position:positionAfter(c),table}};}},
  {id:"row",label:"Add row",enabled:tableEnabled,command:c=>{const axis=tableAxis(c);return axis?{kind:"insertTableRow",data:{table:axis.table,before:null,row:{block:c.allocate("row-block"),id:c.allocate("row"),cells:axis.view.columns.map(column=>emptyCell(c,column.id))}}}:null;}},
  {id:"column",label:"Add column",enabled:tableEnabled,command:c=>{const axis=tableAxis(c),column={id:c.allocate("col"),width:160};return axis?{kind:"insertTableColumn",data:{table:axis.table,before:null,column,cells:axis.view.rows.map(row=>({row,cell:emptyCell(c,column.id)}))}}:null;}},
  {id:"delete-row",label:"Delete row",enabled:c=>selectedCell(c)!==undefined,command:c=>{const cell=selectedCell(c);return cell?{kind:"deleteTableRow",data:{table:cell.table,row:cell.row}}:null;}},
@@ -194,3 +197,6 @@ export const defaultToolbar:readonly ToolbarControl[]=[
  {id:"image-height",label:"Image height",type:"number",enabled:imageEnabled,value:c=>String(property(selectedImage(c.model)!,"height")??240),command:(c,input)=>{const image=selectedImage(c.model),height=dimension(input);return image&&height?{kind:"resizeImage",data:{image:String(property(image,"image-id")),size:{height,width:Number(property(image,"width")??320)}}}:null;}},
  {id:"asset",label:"Image asset",type:"text",enabled:imageEnabled,value:c=>String(property(selectedImage(c.model)!,"asset-id")),command:(c,input)=>{const image=selectedImage(c.model);return image&&input?{kind:"replaceImage",data:{image:String(property(image,"image-id")),asset:input,generation:c.allocate("generation")}}:null;}},
 ];
+export const defaultToolbar:readonly ToolbarControl[]=commonToolbar;
+/** Same controls with an explicit extended context; never cast an extended owner to an old view. */
+export function defaultToolbarFor<P extends RichSelectionPolicy>():readonly ToolbarControl<P>[]{return commonToolbar;}

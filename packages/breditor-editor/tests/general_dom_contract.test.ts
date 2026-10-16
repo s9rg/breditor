@@ -2,7 +2,7 @@ import {afterEach,describe,expect,it,vi} from "vitest";
 import {RichDomEditor} from "../../breditor-experimental-rich-content/src/controller.js";
 import {SharedDomEditor} from "../../breditor-collaboration/src/controller.js";
 import {SharedRichEditor} from "../../breditor-collaboration/src/core.js";
-import {model,type ElementNode} from "../../breditor-experimental-rich-content/src/model.js";
+import {model,documentModel,type ElementNode} from "../../breditor-experimental-rich-content/src/model.js";
 import {readNative,restoreNative} from "../../breditor-experimental-rich-content/src/selection.js";
 import type {RichCoreEditor,RichView,RichSelection} from "../../breditor-experimental-rich-content/src/core.js";
 import type {RichClipboardTextProjection} from "../../breditor-experimental-rich-content/src/core.js";
@@ -113,6 +113,7 @@ describe("guarded general DOM routing (synthetic events, not browser acceptance)
   const table=element("table","table",[element("table-row","row",[element("table-cell","cell-a",[paragraph("a")],{"breditor/column-id":"c1"}),element("table-cell","cell-b",[paragraph("b")],{"breditor/column-id":"c2"})],{"breditor/row-id":"r"})],{"breditor/table-id":"t"});
   const source=fixture("local");try{const view=source.core.view(),projection=model({...view,documentJson:JSON.stringify({schema:{name:"test/dom",version:1},schemaFingerprint:"fixture",root:element("document","root",[table])})}),surface=document.createElement("div");for(const block of ["a","b"]){const p=document.createElement("p");p.dataset["richText"]=block;p.textContent="seed";surface.append(p);}document.body.append(surface);
    for(const backward of [false,true]){const target=backward?range(point("b","3","before"),point("a","1")):range(point("a","1"),point("b","3","before"));const current={...projection,view:{...projection.view,selection:target}};restoreNative(surface,target);expect(readNative(surface,current,"original")?.kind).toBe("grid");expect(readNative(surface,current,"general-v1")).toEqual(target);expect(readNative(surface,{...current,view:{...current.view,rangeEditing:"general-v1"}})).toEqual(target);}
+   const target=range(point("b","3","before"),point("a","1")),extended=documentModel({...projection.view,format:"breditor/rich-document-view",selection:target});restoreNative(surface,target);expect(readNative(surface,extended)).toEqual(target);
    // Projections are read-only. The bridge never changes the native view into a text selection.
    expect(projection.root.type).toBe("breditor/document");expect((projection.root.children[0] as ElementNode).type).toBe("breditor/table");
   }finally{source.dom.dispose();}

@@ -2,7 +2,7 @@ export * from "./dist/browser/model.js";
 export * from "./dist/browser/render.js";
 export * from "./dist/browser/selection.js";
 export {standardInlineStylesV1} from "./dist/browser/standard_inline_v1.js";
-export type {RichView,RichSelection,RichPoint,RichCell,FormatLiteral,RichInlineFormatState,RichInlineFormatStateRead} from "./dist/browser/core.js";
+export type {RichView,RichDocumentView,RichSelection,RichDocumentSelection,RichSelectionPolicy,RichPoint,RichCell,FormatLiteral,RichInlineFormatState,RichInlineFormatStateRead} from "./dist/browser/core.js";
 export * from "./dist/browser/toolbar_control_view.js";
 export * from "./dist/browser/standard_inline_controls.js";
 export type {RichInlinePresentation} from "./dist/browser/inline_presentation.js";

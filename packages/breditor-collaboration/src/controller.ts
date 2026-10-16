@@ -34,6 +34,7 @@ export class SharedDomEditor {
  #disposed=false;#busy=false;#refreshing=false;#logical=false;#queue:Work[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;
  #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl;view:RichControlView<ActionContext>}[]=[];
  constructor(root:HTMLElement,options:SharedDomOptions){
+  if((options.core.selectionPolicy?.()??"original")!=="original")throw Error("The original shared DOM owner does not admit document-selection facades");
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
