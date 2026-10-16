@@ -10,7 +10,9 @@ use breditor_collab_feasibility::rich_replica::{
     RichReplica, SharedRichProfile, WriterGroupPreparation,
 };
 use std::{collections::BTreeMap, path::Path};
+mod atomic_transport_v2;
 mod layout_v3;
+pub use atomic_transport_v2::AtomicTransportProfile;
 #[cfg(test)]
 mod layout_v3_tests;
 
@@ -36,6 +38,7 @@ struct Writer {
 /// Open the log on a local filesystem with working file locks and sync semantics; do not unlink
 /// or replace a live log. It is private service state, not an interchangeable document export.
 pub struct Room {
+    atomic_transport_v2: bool,
     log: Log,
     profile: SharedRichProfile,
     replica: RichReplica,
@@ -109,34 +112,64 @@ impl Room {
         profile: SharedRichProfile,
         profile_seed: ProfileSeed,
     ) -> Result<Self> {
+        Self::create_bound_transport(
+            path,
+            configuration,
+            document,
+            owner,
+            profile,
+            profile_seed,
+            false,
+        )
+    }
+    fn create_bound_transport(
+        path: &Path,
+        configuration: &str,
+        document: &str,
+        owner: &str,
+        profile: SharedRichProfile,
+        profile_seed: ProfileSeed,
+        atomic_transport_v2: bool,
+    ) -> Result<Self> {
         let replica = profile.create(document, "1".into())?;
         let journal = replica.checkpoint()?;
         let asset_binding =
             Self::bind_assets(configuration, replica.document_id(), owner, &journal)?;
-        let seed = match profile_seed {
-            ProfileSeed::Original => Event::Seed {
+        let seed = if atomic_transport_v2 {
+            Event::SeedAtomicTransportV2 {
                 configuration: configuration.into(),
+                profile: AtomicTransportProfile::from_seed(profile_seed),
                 room: replica.document_id().into(),
                 owner: owner.into(),
                 journal,
-            },
-            ProfileSeed::StructuralV2(standard_inline_v1) => Event::SeedStructuralV2 {
-                configuration: configuration.into(),
-                standard_inline_v1,
-                room: replica.document_id().into(),
-                owner: owner.into(),
-                journal,
-            },
-            ProfileSeed::LayoutV3(standard_inline_v1) => Event::SeedLayoutV3 {
-                configuration: configuration.into(),
-                standard_inline_v1,
-                room: replica.document_id().into(),
-                owner: owner.into(),
-                journal,
-            },
+            }
+        } else {
+            match profile_seed {
+                ProfileSeed::Original => Event::Seed {
+                    configuration: configuration.into(),
+                    room: replica.document_id().into(),
+                    owner: owner.into(),
+                    journal,
+                },
+                ProfileSeed::StructuralV2(standard_inline_v1) => Event::SeedStructuralV2 {
+                    configuration: configuration.into(),
+                    standard_inline_v1,
+                    room: replica.document_id().into(),
+                    owner: owner.into(),
+                    journal,
+                },
+                ProfileSeed::LayoutV3(standard_inline_v1) => Event::SeedLayoutV3 {
+                    configuration: configuration.into(),
+                    standard_inline_v1,
+                    room: replica.document_id().into(),
+                    owner: owner.into(),
+                    journal,
+                },
+            }
         };
         let log = Log::create(path, seed)?;
         Ok(Self {
+            atomic_transport_v2,
             log,
             profile,
             replica,
@@ -158,15 +191,32 @@ impl Room {
     pub fn open(path: &Path) -> Result<(Self, Recovery)> {
         let (log, mut records, recovery) = Log::open(path)?;
         let seed = records.remove(0);
-        let (configuration, room, owner, journal, profile_seed) = match seed.event {
+        let (configuration, room, owner, journal, profile_seed, atomic_transport_v2) = match seed
+            .event
+        {
             Event::Seed { configuration, room, owner, journal } => {
-                (configuration, room, owner, journal, ProfileSeed::Original)
+                (configuration, room, owner, journal, ProfileSeed::Original, false)
             }
             Event::SeedStructuralV2 { configuration, standard_inline_v1, room, owner, journal } => {
-                (configuration, room, owner, journal, ProfileSeed::StructuralV2(standard_inline_v1))
+                (
+                    configuration,
+                    room,
+                    owner,
+                    journal,
+                    ProfileSeed::StructuralV2(standard_inline_v1),
+                    false,
+                )
             }
-            Event::SeedLayoutV3 { configuration, standard_inline_v1, room, owner, journal } => {
-                (configuration, room, owner, journal, ProfileSeed::LayoutV3(standard_inline_v1))
+            Event::SeedLayoutV3 { configuration, standard_inline_v1, room, owner, journal } => (
+                configuration,
+                room,
+                owner,
+                journal,
+                ProfileSeed::LayoutV3(standard_inline_v1),
+                false,
+            ),
+            Event::SeedAtomicTransportV2 { configuration, profile, room, owner, journal } => {
+                (configuration, room, owner, journal, profile.seed(), true)
             }
             _ => return Err(Error::Contract("first relay record must seed room")),
         };
@@ -192,6 +242,7 @@ impl Room {
             return Err(Error::Contract("relay seed writer or history"));
         }
         let mut result = Self {
+            atomic_transport_v2,
             log,
             profile,
             replica,
@@ -212,7 +263,10 @@ impl Room {
 
     fn replay(&mut self, record: Record) -> Result<()> {
         match record.event {
-            Event::Seed { .. } | Event::SeedStructuralV2 { .. } | Event::SeedLayoutV3 { .. } => {
+            Event::Seed { .. }
+            | Event::SeedStructuralV2 { .. }
+            | Event::SeedLayoutV3 { .. }
+            | Event::SeedAtomicTransportV2 { .. } => {
                 return Err(Error::Contract("duplicate relay seed"));
             }
             Event::Grant { actor, principal, role } => {
@@ -229,7 +283,7 @@ impl Room {
             Event::Commit { principal, writer, frame, receipt } => {
                 self.owns(&principal, &writer)?;
                 let WriterGroupPreparation::Prepared(prepared) =
-                    self.replica.prepare_writer_group(&writer, &frame)?
+                    self.prepare_writer_group(&writer, &frame)?
                 else {
                     return Err(Error::Contract("durable group did not prepare"));
                 };
@@ -500,7 +554,11 @@ impl Room {
     /// Rejects missing read permission, uncertain storage or invalid writer identity.
     pub fn writer_clock(&self, principal: &str, writer: &str) -> Result<serde_json::Value> {
         self.reader(principal)?;
-        Ok(serde_json::to_value(self.replica.writer_clock(writer)?)?)
+        Ok(serde_json::to_value(if self.atomic_transport_v2 {
+            self.replica.writer_clock_v2(writer)?
+        } else {
+            self.replica.writer_clock(writer)?
+        })?)
     }
     fn key(receipt: &Receipt) -> (String, String, String) {
         (receipt.writer.clone(), receipt.from.clone(), receipt.through.clone())
@@ -521,7 +579,7 @@ impl Room {
     /// uncertain storage or I/O failure. No acknowledgement is issued on an uncertain append.
     pub fn admit(&mut self, principal: &str, lease: &Lease, frame: &str) -> Result<Admission> {
         self.validate_lease(principal, lease)?;
-        match self.replica.prepare_writer_group(&lease.writer, frame)? {
+        match self.prepare_writer_group(&lease.writer, frame)? {
             WriterGroupPreparation::Pending { writer, missing } => {
                 Ok(Admission::Pending { writer, missing })
             }
@@ -555,5 +613,12 @@ impl Room {
                 Ok(Admission::Durable(self.remember(sequence, receipt)))
             }
         }
+    }
+    fn prepare_writer_group(&self, writer: &str, frame: &str) -> Result<WriterGroupPreparation> {
+        Ok(if self.atomic_transport_v2 {
+            self.replica.prepare_writer_group_v2(writer, frame)?
+        } else {
+            self.replica.prepare_writer_group(writer, frame)?
+        })
     }
 }

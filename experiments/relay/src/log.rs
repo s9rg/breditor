@@ -17,6 +17,13 @@ const HEADER: u64 = 72;
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) enum Event {
+    SeedAtomicTransportV2 {
+        configuration: String,
+        profile: crate::AtomicTransportProfile,
+        room: String,
+        owner: String,
+        journal: String,
+    },
     Seed {
         configuration: String,
         room: String,

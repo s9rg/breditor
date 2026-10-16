@@ -5,6 +5,8 @@ import type {SharedPresence} from "../presence.js";
 export interface SharedRelayIdentity {
  readonly endpoint:string;readonly principal:string;readonly room:string;
  readonly writer:string;readonly credential:string;
+ /** Explicit atom-lineage room contract. Omitted retains the original writer transport. */
+ readonly writerTransport?:"atomic-v2";
 }
 export interface SharedRelayAuthentication {
  endpoint:string;principal:string;room:string;
@@ -13,6 +15,8 @@ export interface SharedRelayAuthentication {
  requestTimeoutMs?:number;
 }
 export interface SharedRelayRegistrationOptions extends SharedRelayAuthentication {
+ /** Must match a separately created transport-V2 room; never silently negotiates an upgrade. */
+ writerTransport?:"atomic-v2";
  /** Must complete durable host storage before the writer can be returned for authoring. */
  saveIdentity:(identity:SharedRelayIdentity)=>void|Promise<void>;
 }

@@ -18,7 +18,16 @@ export function endpoint(value:string):string{let url:URL;try{url=new URL(value)
 export function identity(value:SharedRelayIdentity):SharedRelayIdentity{
  const principal=string(value.principal,128),room=string(value.room,200);
  if(!principal||!room||/[\x00-\x1f\x7f]/.test(principal)||new TextEncoder().encode(principal).length>128||new TextEncoder().encode(room).length>200)throw new SharedRelayError("identity_invalid");
- return Object.freeze({endpoint:endpoint(value.endpoint),principal,room,writer:writer(value.writer),credential:secret(value.credential)});
+ const version=transportVersion(value.writerTransport);
+ return Object.freeze({endpoint:endpoint(value.endpoint),principal,room,writer:writer(value.writer),credential:secret(value.credential),...(version===2?{writerTransport:"atomic-v2" as const}:{})});
+}
+export function transportVersion(value:unknown):1|2{if(value===undefined)return 1;if(value==="atomic-v2")return 2;throw new SharedRelayError("writer_transport_invalid");}
+/** A returned capability confirms the explicitly requested contract; it never selects one. */
+export function transportCapabilities(value:unknown,version:1|2):readonly string[]{
+ const capabilities=value??[];
+ if(!Array.isArray(capabilities)||capabilities.length>3||new Set(capabilities).size!==capabilities.length||capabilities.some(c=>c!=="assets"&&c!=="presence"&&c!=="writerTransportV2"))throw new SharedRelayError("protocol_error");
+ if(capabilities.includes("writerTransportV2")!==(version===2))throw new SharedRelayError("writer_transport_mismatch");
+ return capabilities as string[];
 }
 export function timeout(value:number|undefined):number{const n=value??10_000;if(!Number.isInteger(n)||n<100||n>30_000)throw new SharedRelayError("timeout_invalid");return n;}
 export function clock(value:unknown,expectedWriter:string):SharedWriterClock{const c=object(value);if(writer(c["writer"])!==expectedWriter)throw new SharedRelayError("writer_mismatch");return{writer:expectedWriter,through:counter(c["through"]),prefixDigest:digest(c["prefixDigest"])};}
@@ -30,12 +39,12 @@ export function descriptor(value:unknown):SharedProfileDescriptor{
 }
 export function checkDescriptor(core:SharedRichEditor,d:SharedProfileDescriptor):void{const local=core.descriptor();if(sharedProtocolLanguage(d)===undefined||d.abiVersion!==local.abiVersion||d.modelVersion!==local.modelVersion||d.journalVersion!==local.journalVersion||d.richLanguageVersion!==local.richLanguageVersion||d.schemaFingerprint!==local.schemaFingerprint||d.schema?.name!==local.schema.name||d.schema?.version!==local.schema.version)throw new SharedRelayError("profile_mismatch");}
 export interface GroupMetadata {writer:string;from:string;through:string;previousDigest:string;groupDigest:string}
-export function groupMetadata(raw:string):GroupMetadata{const g=object(JSON.parse(raw));if(g["format"]!=="breditor/shared-writer-group"||g["formatVersion"]!==1||g["kind"]!=="action")throw new SharedRelayError("writer_origin_invalid");return{writer:writer(g["writer"]),from:counter(g["from"]),through:counter(g["through"]),previousDigest:digest(g["previousDigest"]),groupDigest:digest(g["groupDigest"])};}
+export function groupMetadata(raw:string,version:1|2=1):GroupMetadata{const g=object(JSON.parse(raw));if(g["format"]!=="breditor/shared-writer-group"||g["formatVersion"]!==version||g["kind"]!=="action")throw new SharedRelayError("writer_origin_invalid");return{writer:writer(g["writer"]),from:counter(g["from"]),through:counter(g["through"]),previousDigest:digest(g["previousDigest"]),groupDigest:digest(g["groupDigest"])};}
 /** Read native canonical prefix proof; never rebuild or merge a JS replicated document. */
-export function prefixAt(core:SharedRichEditor,id:string,through:string):string{
- const local=core.writerClock(id);if(BigInt(through)>BigInt(local.through))throw new SharedRelayError("server_ahead");
+export function prefixAt(core:SharedRichEditor,id:string,through:string,version:1|2=1):string{
+ const local=version===2?core.writerClockV2(id):core.writerClock(id);if(BigInt(through)>BigInt(local.through))throw new SharedRelayError("server_ahead");
  if(through===local.through)return local.prefixDigest;
- const first=core.writerGroups(through).groups[0];if(first===undefined)throw new SharedRelayError("history_fork");
- return groupMetadata(first).previousDigest;
+ const first=(version===2?core.writerGroupsV2(through):core.writerGroups(through)).groups[0];if(first===undefined)throw new SharedRelayError("history_fork");
+ return groupMetadata(first,version).previousDigest;
 }
-export function checkClock(core:SharedRichEditor,c:SharedWriterClock):void{if(prefixAt(core,c.writer,c.through)!==c.prefixDigest)throw new SharedRelayError("history_fork");}
+export function checkClock(core:SharedRichEditor,c:SharedWriterClock,version:1|2=1):void{if(prefixAt(core,c.writer,c.through,version)!==c.prefixDigest)throw new SharedRelayError("history_fork");}

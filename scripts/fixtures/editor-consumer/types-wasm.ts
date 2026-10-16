@@ -15,3 +15,5 @@ function generalCopy(owner:SharedEditorOwner,observation:SharedObservation):void
 void generalCopy;
 function generalParagraph(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.general_paragraph_version();const changed:boolean=owner.insert_general_paragraph(observation,'{"selection":{},"prefix":"fresh"}');void version;void changed;}
 void generalParagraph;
+function atomicTransport(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.writer_transport_v2_version();const groups:string=owner.writer_groups_v2(observation,"0");const clock:string=owner.writer_clock_v2("101");void version;void groups;void clock;}
+void atomicTransport;

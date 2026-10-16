@@ -17,6 +17,7 @@ pub mod server;
 pub use access::Role;
 pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
+pub use room::AtomicTransportProfile;
 pub use room::Room;
 
 /// Explicit service rejection. An I/O failure may have reached storage without an acknowledgement;

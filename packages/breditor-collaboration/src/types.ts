@@ -78,6 +78,8 @@ export type SharedPresenceResolution=
 export interface SharedWriterClock {writer:string;through:string;prefixDigest:string}
 /** Frozen complete local action windows. Group strings carry their own strict protocol binding. */
 export interface SharedWriterGroups {format:"breditor/shared-writer-groups";formatVersion:1;writer:string;from:string;through:string;hasMore:boolean;groups:readonly string[]}
+/** Explicit atom-lineage transport; never accepted as an original group batch. */
+export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVersion"> {formatVersion:2}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
  general_range_version?():string;
@@ -98,6 +100,7 @@ export interface SharedRustOwner {
  /** Additive capability: older matching owners may omit the separate presence channel. */
  presence_frame?(observation:unknown):string;resolve_presence?(frame:string):string;
  writer_groups?(observation:unknown,after:string):string;writer_clock?(writer:string):string;
+ writer_transport_v2_version?():string;writer_groups_v2?(observation:unknown,after:string):string;writer_clock_v2?(writer:string):string;
  inline_format_state_json?(observation:unknown,kind:string):string;
  caret_formats_json?(observation:unknown):string;
  patch_inline_format_properties?(observation:unknown,input:string):boolean;

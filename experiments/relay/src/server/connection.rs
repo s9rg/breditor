@@ -124,8 +124,8 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return None;
     };
-    if capabilities.len() > 2
-        || capabilities.iter().any(|c| c != "assets" && c != "presence")
+    if capabilities.len() > 3
+        || capabilities.iter().any(|c| c != "assets" && c != "presence" && c != "writerTransportV2")
         || capabilities.iter().collect::<std::collections::BTreeSet<_>>().len()
             != capabilities.len()
     {
@@ -139,7 +139,11 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let accepted = match authentication {
         Ok(()) => {
             let p = principal.clone();
-            host.transaction(move |room| Ok(json!({"kind":"authenticated","frame":room.catchup(&p)?,"descriptor":room.descriptor(&p)?,"capabilities":supported}))).await
+            host.transaction(move |room| {
+                let frame=room.catchup(&p)?;
+                if supported.iter().any(|c|c=="writerTransportV2") != (room.writer_transport_version()==2) {return Err(Error::Contract("explicit writer transport negotiation required"));}
+                Ok(json!({"kind":"authenticated","frame":frame,"descriptor":room.descriptor(&p)?,"capabilities":supported}))
+            }).await
         }
         Err(e) => Err(e),
     };

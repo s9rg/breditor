@@ -11,6 +11,7 @@ mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod selection_formatting;
 mod typing;
+mod writer_transport_v2;
 use crate::{
     Error,
     rich_replica::{

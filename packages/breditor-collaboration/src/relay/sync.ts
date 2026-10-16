@@ -6,6 +6,7 @@ import {RelayPresence} from "./presence.js";
 import {accountToken} from "./registration.js";
 import {SharedRelayError,checkClock,checkDescriptor,clock,counter,decimal,descriptor,digest,frame,groupMetadata,identity,object,prefixAt,timeout,writer} from "./validation.js";
 import type {SharedRelayIdentity,SharedRelayOptions,SharedRelayState,SharedRelayStatus} from "./types.js";
+import {transportVersion,transportCapabilities} from "./validation.js";
 
 interface Waiter {target:string;resolve:()=>void;reject:(error:SharedRelayError)=>void;timer:ReturnType<typeof setTimeout>}
 interface Run {epoch:number;promise:Promise<void>}
@@ -26,16 +27,18 @@ export class SharedRelaySync {
  #presence:RelayPresence|undefined;#presenceEnabled=false;
  #milliseconds:number;#minimum:number;#maximum:number;
  #missing:{writer:string;counter:string}[]=[];
+ #transport:1|2;
 
  constructor(core:SharedRichEditor,options:SharedRelayOptions){
   if(attached.has(core))throw new SharedRelayError("relay_already_attached");
   this.#core=core;this.#identity=identity(options.identity);this.#options={...options,identity:this.#identity};
+  this.#transport=transportVersion(this.#identity.writerTransport);
   this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30_000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30_000)throw new SharedRelayError("reconnect_limits");
-  if(!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
+  if(this.#transport===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   // The owner declares its local recovery family; transport/model bindings stay unchanged.
-  checkCheckpoint(core.checkpointJson(),this.#identity.room,this.#identity.writer,core.richLanguageVersion(),core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit");
-  this.#local=core.writerClock(this.#identity.writer).through;
+  checkCheckpoint(core.checkpointJson(),this.#identity.room,this.#identity.writer,core.richLanguageVersion(),core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit",core.view().rangeEditing??"original");
+  this.#local=this.#clock().through;
   if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
   this.#unsubscribe=core.subscribe(()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}});
   attached.add(core);
@@ -46,7 +49,9 @@ export class SharedRelaySync {
  #active(epoch:number):boolean{return !this.#closed&&epoch===this.#epoch;}
  #notify():void{if(this.#notifyQueued)return;this.#notifyQueued=true;queueMicrotask(()=>{this.#notifyQueued=false;try{this.#options.onState?.(this.state());}catch{/* Host callbacks do not rewind accepted content. */}});}
  #report(error:SharedRelayError):void{if(this.#reported===error.code)return;this.#reported=error.code;queueMicrotask(()=>{try{this.#options.onError?.(error);}catch{/* Reporting is not publication. */}});}
- #refresh():void{this.#local=this.#core.writerClock(this.#identity.writer).through;this.#settle();}
+ #clock():SharedWriterClock{return this.#transport===2?this.#core.writerClockV2(this.#identity.writer):this.#core.writerClock(this.#identity.writer);}
+ #groups(after:string):readonly string[]{return(this.#transport===2?this.#core.writerGroupsV2(after):this.#core.writerGroups(after)).groups;}
+ #refresh():void{this.#local=this.#clock().through;this.#settle();}
  #settle():void{
   if(this.#ready){this.#status=this.#localFailure?"local-save-failed":this.#drain||this.#latest!==undefined||this.#pump?"syncing":this.#local===this.#acked?.through?"ready":"pending";}
   this.#notify();
@@ -91,10 +96,10 @@ export class SharedRelaySync {
   const token=await accountToken(this.#options.getToken,abort.signal,this.#milliseconds);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   const channel=await RelayChannel.open(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),abort.signal);
   if(!this.#active(epoch)){channel.close();throw new SharedRelayError("disconnected");}this.#channel=channel;
-  const wanted=[...(this.#options.onAssetsChanged?["assets"]:[]),...(this.#presence?["presence"]:[])];
+  const wanted=[...(this.#options.onAssetsChanged?["assets"]:[]),...(this.#presence?["presence"]:[]),...(this.#transport===2?["writerTransportV2"]:[])];
   const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token,...(wanted.length?{capabilities:wanted}:{})});
   if(authenticated["kind"]!=="authenticated")throw new SharedRelayError("protocol_error");checkDescriptor(this.#core,descriptor(authenticated["descriptor"]));
-  const capabilities=authenticated["capabilities"]??[];if(!Array.isArray(capabilities)||capabilities.some(c=>c!=="assets"&&c!=="presence")||capabilities.length>2||new Set(capabilities).size!==capabilities.length)throw new SharedRelayError("protocol_error");
+  const capabilities=transportCapabilities(authenticated["capabilities"],this.#transport);
   this.#assetHints=!!this.#options.onAssetsChanged&&capabilities.includes("assets");
   this.#presenceEnabled=!!this.#presence&&capabilities.includes("presence");
   this.#latest=frame(authenticated["frame"]);
@@ -106,7 +111,7 @@ export class SharedRelaySync {
   if(current.through!==this.#acked?.through)this.#sequence=null;this.#acked=current;this.#ready=true;this.#localFailure=false;this.#error=null;this.#reported=null;this.#attempts=0;this.#status="syncing";this.#notify();
   await this.#drainFrames(epoch);if(this.#active(epoch)){this.#refresh();this.#schedulePump();if(this.#assetHints)this.#assetsChanged(epoch);if(this.#presenceEnabled)this.#presence?.start(channel);}
  }
- async #readClock(channel:RelayChannel):Promise<SharedWriterClock>{const result=await channel.request({kind:"clock",writer:this.#identity.writer});if(result["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(result["clock"],this.#identity.writer);checkClock(this.#core,current);return current;}
+ async #readClock(channel:RelayChannel):Promise<SharedWriterClock>{const result=await channel.request({kind:"clock",writer:this.#identity.writer});if(result["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(result["clock"],this.#identity.writer);checkClock(this.#core,current,this.#transport);return current;}
  #drainFrames(epoch:number):Promise<void>{
   if(this.#drain?.epoch===epoch)return this.#drain.promise;
   const run:Run={epoch,promise:Promise.resolve()};this.#drain=run;
@@ -123,12 +128,12 @@ export class SharedRelaySync {
   run.promise=this.#sendGroups(epoch).catch(error=>{if(this.#active(epoch))this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("group_export_failed"),epoch);}).finally(()=>{if(this.#pump===run){this.#pump=undefined;const again=this.#pumpAgain;this.#pumpAgain=false;this.#settle();if(again)this.#schedulePump();}});
  }
  async #sendGroups(epoch:number):Promise<void>{
-  if(!this.#acked||!this.#channel)return;const channel=this.#channel,target=this.#core.writerClock(this.#identity.writer).through;
+  if(!this.#acked||!this.#channel)return;const channel=this.#channel,target=this.#clock().through;
   if(BigInt(target)<=BigInt(this.#acked.through))return;
   if(this.#options.persistLocal){try{await this.#options.persistLocal();}catch{if(this.#active(epoch)){this.#localFailure=true;this.#error="local_save_failed";const error=new SharedRelayError("local_save_failed");this.#rejectWaiters(error);this.#report(error);}return;}if(!this.#active(epoch))return;this.#durable=target;this.#reported=null;this.#error=null;this.#notify();}
   while(this.#active(epoch)&&this.#ready&&BigInt(this.#acked.through)<BigInt(target)){
-   const groups=this.#core.writerGroups(this.#acked.through).groups;if(!groups.length)throw new SharedRelayError("group_export_failed");
-   for(const raw of groups){const g=groupMetadata(raw);if(BigInt(g.through)>BigInt(target))return;
+   const groups=this.#groups(this.#acked.through);if(!groups.length)throw new SharedRelayError("group_export_failed");
+   for(const raw of groups){const g=groupMetadata(raw,this.#transport);if(BigInt(g.through)>BigInt(target))return;
     if(g.writer!==this.#identity.writer||g.from!==this.#acked.through||g.previousDigest!==this.#acked.prefixDigest)throw new SharedRelayError("history_fork");
     this.#missing=[];const result=await channel.request({kind:"submit",group:raw});if(!this.#active(epoch))return;
     if(result["kind"]==="pending"){
@@ -136,7 +141,7 @@ export class SharedRelaySync {
      this.#missing=dependencies.map(value=>{const d=object(value),n=counter(d["counter"]);if(n==="0")throw new SharedRelayError("protocol_error");return{writer:writer(d["writer"]),counter:n};});return;
     }if(result["kind"]!=="durable")throw new SharedRelayError("protocol_error");
     const receipt=object(result["receipt"]),through=counter(receipt["through"]),prefix=digest(receipt["prefixDigest"]);
-    if(receipt["writer"]!==g.writer||receipt["from"]!==g.from||through!==g.through||receipt["groupDigest"]!==g.groupDigest||prefix!==prefixAt(this.#core,g.writer,through)||typeof result["duplicate"]!=="boolean")throw new SharedRelayError("receipt_mismatch");
+    if(receipt["writer"]!==g.writer||receipt["from"]!==g.from||through!==g.through||receipt["groupDigest"]!==g.groupDigest||prefix!==prefixAt(this.#core,g.writer,through,this.#transport)||typeof result["duplicate"]!=="boolean")throw new SharedRelayError("receipt_mismatch");
     this.#sequence=decimal(result["sequence"]);this.#acked={writer:g.writer,through,prefixDigest:prefix};this.#settle();
    }
   }

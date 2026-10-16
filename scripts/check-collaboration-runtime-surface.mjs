@@ -25,6 +25,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["general_copy_version","copy_general_clipboard"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native general Copy capability ${name}`);
  for(const name of ["general_flow_paste_version","paste_general_flow_clipboard"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native general flow paste capability ${name}`);
  for(const name of ["general_paragraph_version","insert_general_paragraph"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native general paragraph capability ${name}`);
+ for(const name of ["writer_transport_v2_version","writer_groups_v2","writer_clock_v2"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native writer transport V2 capability ${name}`);
  for(const name of ["general_range_version","restore_general","restore_general_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing general-range recovery capability ${name}`);
  for(const name of ["typing_history_version","restore_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing separate typing-history recovery ${name}`);
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function");

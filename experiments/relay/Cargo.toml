@@ -37,6 +37,11 @@ name = "network_demo"
 path = "examples/network_demo.rs"
 required-features = ["server"]
 
+[[example]]
+name = "transport_v2_functional"
+path = "examples/transport_v2_functional.rs"
+required-features = ["server"]
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"

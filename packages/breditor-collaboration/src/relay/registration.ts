@@ -1,5 +1,5 @@
 import {RelayChannel} from "./channel.js";
-import {SharedRelayError,descriptor,endpoint,frame,identity,object,secret,string,timeout} from "./validation.js";
+import {SharedRelayError,descriptor,endpoint,frame,identity,object,secret,string,timeout,transportVersion,transportCapabilities} from "./validation.js";
 import type {SharedRelayRegistration,SharedRelayRegistrationOptions} from "./types.js";
 
 /** Token acquisition is bounded and cancellable; a late provider result cannot open an old socket. */
@@ -19,17 +19,19 @@ export function accountToken(getToken:(signal:AbortSignal)=>string|Promise<strin
 export async function registerSharedRelayWriter(options:SharedRelayRegistrationOptions):Promise<SharedRelayRegistration>{
  const url=endpoint(options.endpoint),principal=string(options.principal,128),room=string(options.room,200),milliseconds=timeout(options.requestTimeoutMs);
  if(!principal||!room)throw new SharedRelayError("identity_invalid");
+ const version=transportVersion(options.writerTransport);
  const abort=new AbortController();let channel:RelayChannel|undefined;
  try{
   const token=await accountToken(options.getToken,abort.signal,milliseconds);
   channel=await RelayChannel.open(url,milliseconds,()=>{},()=>{},abort.signal);
-  const authenticated=await channel.request({kind:"authenticate",principal,token});
+  const authenticated=await channel.request({kind:"authenticate",principal,token,...(version===2?{capabilities:["writerTransportV2"]}:{})});
   if(authenticated["kind"]!=="authenticated")throw new SharedRelayError("protocol_error");
+  transportCapabilities(authenticated["capabilities"],version);
   const d=descriptor(authenticated["descriptor"]),f=frame(authenticated["frame"]),header=object(JSON.parse(f));
   if(header["format"]!=="breditor/rich-replica-update"||header["document"]!==room)throw new SharedRelayError("room_mismatch");
   const result=await channel.request({kind:"register"});if(result["kind"]!=="registered")throw new SharedRelayError("protocol_error");
   const registration=object(result["registration"]),lease=object(registration["lease"]);
-  const saved=identity({endpoint:url,principal,room,writer:string(lease["writer"],20),credential:secret(registration["credential"])});
+  const saved=identity({endpoint:url,principal,room,writer:string(lease["writer"],20),credential:secret(registration["credential"]),...(version===2?{writerTransport:"atomic-v2"}:{})});
   try{await options.saveIdentity({...saved});}catch{throw new SharedRelayError("identity_not_saved");}
   return Object.freeze({identity:saved,frame:f,descriptor:d});
  }finally{abort.abort();channel?.close();}
