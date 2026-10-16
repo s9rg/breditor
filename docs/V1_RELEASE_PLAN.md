@@ -363,15 +363,21 @@ including recovery by the earlier V3 Wasm binary. Shared lowering, Wasm/SDK inpu
 routing, document-wide Select All and installed-browser qualification remain
 unfinished. This native checkpoint does not promote the general-selections row.
 
-The initial shared general-range adapter now uses original causal commands and
+The initial shared general-range adapter uses original causal commands and
 requires exact native-result equality before adoption. Functional contracts
 cover mixed boundaries, both directions/history families, offline peer text and
-image fields, old rich languages and earlier-Wasm recovery. Two deterministic
-integration gaps remain: removing a generated head while retaining a sibling,
-and sequential insertion requiring temporary nodes even when the final tree
-fits. Both require a complete saved semantic contract before Wasm/SDK exposure;
-atomic refusal is not completion. See the shared integration gaps in the
-[general range contract](RICH_GENERAL_RANGES.md).
+image fields, old rich languages and earlier-Wasm recovery. Its two deterministic
+gaps are now repaired by an explicitly selected semantic history family:
+generated-head removal retains its conditional origin, and final-fitting edits
+need no temporary extra nodes. Original histories retain their old behavior;
+new ordinary/natural saves require matching factories. Release Wasm replays
+the new histories exactly, including joined first-key input, while earlier
+Wasm still imports their peer frames. Relay testing separately found that
+original lineage hashes depend on engine change packing. An explicit transport
+version 2 hashes causal atoms and retains the existing authority, integrity and
+admission guards. Its relay/SDK integration and general browser editing routes
+remain unfinished. See the [general range contract](RICH_GENERAL_RANGES.md)
+and [semantic qualification](qualification/2026-10-16-general-range-shared-semantic.json).
 
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)

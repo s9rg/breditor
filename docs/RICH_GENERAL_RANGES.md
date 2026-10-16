@@ -6,8 +6,8 @@ flattening them. The owner approved this policy: remove only selected content
 inside partial structures, remove whole enclosed atoms, and insert replacement
 text at the selection's logical beginning.
 
-The local foundation is implemented and the initial shared adapter is partial.
-Complete shared lowering, Wasm editing commands, SDK input routing,
+The local foundation and explicit shared semantic history are implemented.
+Wasm editing commands, SDK input routing,
 document-wide Select All and installed-browser acceptance remain required
 before the general-selection feature is ready.
 
@@ -93,7 +93,7 @@ history compatibility, not support for a new editing request in that binary.
 
 Shared lowering must preserve causal text, independently owned metadata and
 selective Undo. It must verify the complete staged result against the native
-preview and retain existing command/resource ceilings. Required fresh paragraph
+preview and retain native resource ceilings and original command limits. Required fresh paragraph
 births cannot justify a root replacement or an invalid intermediate cell/item.
 Sequential admission and transient resource requirements need explicit tests.
 
@@ -146,10 +146,10 @@ directions and both history families. Offline peer prefix/suffix text and image
 metadata survive selective Undo. A separate case confirms that omitting an
 unchanged first text block does not duplicate its insertion.
 
-## Shared integration gaps
+## Explicit shared semantic history
 
-Two deterministic cases still prevent general support. The tests reproduce
-atomic refusal; a passing refusal test is not acceptance of the feature.
+The original history family still atomically refuses two cases. They cannot be
+repaired by silently changing old command meanings:
 
 1. Delete a cell's only ordinary paragraph, type into its generated head, and
    split that head. Select from a different cell into the retained right
@@ -162,20 +162,84 @@ atomic refusal; a passing refusal test is not acceptance of the feature.
    fits. Original paste admission checks paragraph insertion before the selected
    removals, so it unnecessarily requires temporary extra nodes and refuses.
 
-Both cases must work before advertising a general-range Wasm/SDK capability.
-The complete shared implementation needs an explicit saved semantic contract
-that prepares retained origins and applies causal changes before final
-admission. It must not change old journal command meanings, raise resource
-ceilings, invent temporary user blocks or replace the shared AST wholesale.
-Exact replay and old-reader refusal must be proved for any new saved family;
-unchanged peer-frame interpretation needs its own interoperability proof.
+The explicit `enable_general_ranges_guarded` path repairs both cases through
+one named `ReplaceGeneralTextRangeV1` action. Preparation retains conditional
+origins and defines fresh paragraphs outside Undo, without changing visible
+content. One native history span then publishes births, trims causal text and
+deletes maximal roots. Only its complete final AST is admitted. The staged
+result must equal the independent native preview before publication. No copied
+surviving text, temporary user block, extra resource headroom or shared root
+register is introduced.
 
-General first-key typing groups, clipboard routing and whole-document selection
-remain required integration work. Native IME/accessibility and the historical
-WebKit reliability observations remain separate deferred qualifications.
+This one-way opt-in preserves existing content, frames and both stacks, but
+selects separate local replay families. Ordinary saves declare
+`breditor/rich-replica-general-journal` version 1. Natural saves declare
+`breditor/shared-general-typing-session` version 1 with the matching
+`breditor/rich-replica-general-typing-journal` inner family. Their original
+causal model and journal binding remain explicit; language revisions 1, 2 and 3
+retain models 11, 12 and 13 respectively. `general_checkpoint` and
+`general_typing_checkpoint` require their corresponding mode.
+`restore_general` and `restore_general_typing` never guess a family or silently
+upgrade an original save. Original factories reject these new saves.
+
+The original command-group limit remains 64. A semantic range is one action;
+its expanded native work must fit the existing transaction limit rather than
+being counted as an original command batch. Insertions retain the existing
+1,000-run and 64 KiB bounds. Invalid current or historical floor IDs, stale
+observations, read-only policy and late final-limit failures publish nothing.
+
+`replace_general_typing_text_guarded` starts a new natural group for a selected
+range. Following same-caret input can join under the existing time, style and
+step rules. The semantic replacement never joins preceding input. Empty input
+does not delete a selection; line separators isolate the group. Exact recovery
+retains the first selection, source text and joined history.
+
+Application Wasm has explicit recovery and matching save getters. It does not
+yet expose the new editing command. Native-to-release-Wasm checks cover both
+directions, strict source-sized node limits, generated heads, captions and
+joined first-key input. The earlier shared Wasm imports the resulting peer
+frames while rejecting the new local save families. Peer-frame compatibility
+does not make original readers able to replay new local history.
+
+## Packing independent writer transport
+
+Relay admission reproduced a separate transport fault. The sender exported 237
+identical operations in two engine changes; binary import repacked them into
+one change. Original version-one lineage hashes include change boundaries, so
+the receiver correctly refused its mismatched digest despite identical causal
+operations. Original format meanings and checks remain unchanged.
+
+The additive `writer_clock_v2`, `writer_groups_v2_guarded` and
+`prepare_writer_group_v2` APIs select version-two group, batch and lineage
+formats explicitly. Each digest hashes a binding header followed by ordered
+causal atoms. Records use recursively sorted JSON object keys and an unsigned
+big-endian 64-bit byte-length prefix. Every atom retains author/counter,
+container, operation payload, Lamport clock and immediate causal dependencies.
+Unicode insertion and list runs expand into individual atoms; reverse deletes
+normalize to their equivalent single-atom direction. Nonsemantic engine commit
+messages and wall clocks are excluded. Change and run packing are not identity.
+
+Payload digests, authenticated author/range checks, dependencies, fork detection,
+room/schema/model bindings, whole-result admission, byte limits and exact
+publication fencing remain mandatory. Original and version-two entry points
+reject each other's envelopes. Existing receipt and clock shapes are reused
+only in their explicitly selected transport context; their digest domains are
+different. Tests compare every sliced interval against the pinned engine's own
+singleton exporter and freeze an independently generated wire hash. The relay
+reproducer also checks duplicate delivery and future Undo/Redo with server
+recovery. Version-two transport still needs Wasm, SDK and reference-relay wiring.
+
+## Remaining integration
+
+General editing requests, clipboard and DOM routing, whole-document selection
+and installed-browser acceptance remain required. Native IME/accessibility and
+the historical WebKit reliability observations remain separate deferred
+qualifications. The general-selections readiness row stays partial.
 
 The [shared foundation qualification](qualification/2026-10-16-general-range-shared-foundation.json)
-records all 331 canonical shared tests, the ten same-source research cases,
-strict native/optimized-Wasm lint, Rustdoc, default JavaScript/type checks and
-actual earlier-runtime recovery. Two of the ten new tests deliberately
-reproduce the required unresolved cases above; neither is a feature acceptance.
+retains the original adapter's two refusal reproductions and earlier-runtime
+recovery. The subsequent
+[semantic history qualification](qualification/2026-10-16-general-range-shared-semantic.json)
+records the explicit repairs, transport reproduction, exact new-family recovery
+and unchanged original-mode compatibility. Neither checkpoint qualifies a new
+browser editing request or promotes full V1 readiness.
