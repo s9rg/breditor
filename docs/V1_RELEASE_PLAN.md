@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `9e1ffda` (saved locally,
+The latest functional implementation checkpoint is `c237538` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -219,13 +219,25 @@ consumption, the danger of fixed Undo-call counts and exact restart. Shared
 natural history still needs native key-based grouping, separate recovery and its
 complete browser/remote acceptance. No history label or release gate is promoted.
 
+The subsequent [native shared typing checkpoint](qualification/2026-10-15-native-shared-typing-history.json)
+uses one explicit native engine span per burst, with guarded input actions and
+separate grouped replay. It preserves per-input forward records and ordinary
+peer writer frames. A repeated-Undo design was insufficient when a peer deleted
+the beginning of a partly visible burst; the native span preserves an older
+unrelated edit and exact carets. The new decoder is scoped to its own family so
+oversized original journals keep their original error. Shared Rust passes 265
+tests, including 14 new contracts also passing through the research facade.
+Rebuilt default-mode matrices pass 225 installed SDK and 78 application cases,
+with exact old/new runtime comparisons. These are not shared new-mode browser
+acceptance: Wasm/SDK/React/durable/DOM wiring remains next, and history stays partial.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
 commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
 Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are general
-selections, code/atomic navigation, shared natural typing history, bounded layout
+selections, code/atomic navigation, shared natural typing product integration, bounded layout
 contracts, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
