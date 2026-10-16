@@ -83,6 +83,28 @@ retains the logical start's admitted typing formats, creates no block identity a
 does not normalize surrounding line endings. Explicit `beforeinput` replacement
 ranges remain distinct from the visible caret.
 
+### Natural local typing history
+
+Pass `history: 'typing-v1'` to `openLocalEditor` or React `initialOptions` for native
+typing/deletion bursts. Omitted history or `'explicit'` keeps the original
+per-dispatch behavior. Matching Wasm is required; there is no JavaScript history
+fallback. Local V1 and structural V2 both support the mode. Shared natural history
+is not implemented yet.
+
+The mode groups adjacent same-context user input within 750 ms, up to 64 original
+steps. Paste, composition, replacement, formatting and structural edits remain
+separate. Navigation, blur, pointer and toolbar intent end the burst. Use
+`editor.closeTypingGroup(revision?)` or the React handle for an explicit host
+boundary. Mode is initial configuration, not a live React prop.
+
+Save the exact `checkpointJson()` and reopen this separate family with
+`initial: {kind: 'typingCheckpoint', checkpointJson}`. Keep the same `richLanguage`.
+The original `kind: 'checkpoint'` factory remains strict; combining that original
+recovery with `history: 'typing-v1'` explicitly enables grouping for future input.
+Recovery preserves grouped Undo/Redo but starts a fresh typing burst. An explicit
+history option cannot discard a grouped checkpoint's partition. See
+`docs/RICH_TYPING_HISTORY.md` for the native contract and remaining shared work.
+
 ### Explicit structural V2 candidate
 
 Pass `richLanguage: 2` to `openLocalEditor` (or React `initialOptions`) to select

@@ -83,6 +83,11 @@ class RichCoreProfile {
     const raw = transfer(this.#live().restoreEditor(checkpointJson), "editor", "takeEditor");
     return new RichCoreEditor(raw,this.#descriptor);
   }
+  supportsTypingHistory(){return typeof this.#live().restoreTypingEditor==="function";}
+  restoreTypingEditor(checkpointJson){
+    const profile=this.#live();if(!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use a matching native owner with typing-history recovery");
+    return new RichCoreEditor(transfer(profile.restoreTypingEditor(checkpointJson),"editor","takeEditor"),this.#descriptor);
+  }
   dispose() { this.#raw?.free(); this.#raw = undefined; }
 }
 
@@ -112,6 +117,15 @@ class RichCoreEditor {
   documentJson() { this.#live(); return read(this.#observation.documentJson()); }
   supportsStandardInlineControls() { const raw=this.#live();return typeof raw.inlineControlsVersion==="function"&&raw.inlineControlsVersion()==="1"&&typeof this.#observation.caretFormatsJson==="function"; }
   supportsInlinePropertyPatches() { const raw=this.#live();return typeof raw.inlinePropertyPatchesVersion==="function"&&raw.inlinePropertyPatchesVersion()==="1"; }
+  supportsTypingHistory(){const raw=this.#live();return typeof raw.typingHistoryVersion==="function"&&raw.typingHistoryVersion()==="1"&&typeof raw.enableTypingHistory==="function"&&typeof raw.closeTypingGroup==="function";}
+  #typingPolicy(method,revision){
+    const raw=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The history intent was prepared from an older rich view");
+    if(!this.supportsTypingHistory())throw new RichCommandError("breditor_rich.typing_history_unavailable","Use a matching native owner with natural typing history");
+    const value=read(raw[method](this.#observation));if(value!=="true"&&value!=="false")throw new RichCommandError("breditor_rich.boundary","Invalid history policy result");
+    const next=raw.observe();this.#observation.free();this.#observation=next;return value==="true";
+  }
+  enableTypingHistory(revision){return this.#typingPolicy("enableTypingHistory",revision);}
+  closeTypingGroup(revision){return this.#typingPolicy("closeTypingGroup",revision);}
   supportsReadOnly() { const raw=this.#live();return typeof raw.readOnlyVersion==="function"&&raw.readOnlyVersion()==="1"&&typeof raw.setReadOnly==="function"; }
   setReadOnly(value,expectedRevision) {
     const raw=this.#live();if(typeof value!=="boolean")throw new TypeError("readOnly must be Boolean");

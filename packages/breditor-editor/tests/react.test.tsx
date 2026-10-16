@@ -7,11 +7,17 @@ vi.mock("../src/local.js",()=>({openLocalEditor:mocks.open}));
 import {BreditorEditor,type BreditorEditorHandle} from "../src/react.js";
 (globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
 let root:Root,container:HTMLDivElement;
-const editor=()=>({dispose:vi.fn(),focus:vi.fn(),checkpointJson:()=>"exact checkpoint",execute:vi.fn(()=>"content"),setReadOnly:vi.fn(()=>true),view:vi.fn()} as unknown as LocalEditor);
+const editor=()=>({dispose:vi.fn(),focus:vi.fn(),checkpointJson:()=>"exact checkpoint",execute:vi.fn(()=>"content"),setReadOnly:vi.fn(()=>true),closeTypingGroup:vi.fn(()=>true),view:vi.fn()} as unknown as LocalEditor);
 async function settle(){await act(async()=>{await Promise.resolve();await Promise.resolve();});}
 beforeEach(()=>{mocks.open.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
 afterEach(async()=>{await act(async()=>root.unmount());container.remove();});
 describe("React Rust-owner lifecycle",()=>{
+ it("natural history is initial per key and imperative boundaries retain the same owner",async()=>{
+  const owned=editor(),ref=createRef<BreditorEditorHandle>();mocks.open.mockResolvedValue(owned);
+  await act(async()=>root.render(<BreditorEditor ref={ref} initialOptions={{history:"typing-v1"}}/>));await settle();expect(mocks.open.mock.calls[0]![0].history).toBe("typing-v1");
+  await act(async()=>root.render(<BreditorEditor ref={ref} initialOptions={{history:"explicit"}}/>));expect(mocks.open).toHaveBeenCalledOnce();expect(ref.current?.getEditor()).toBe(owned);
+  expect(ref.current?.closeTypingGroup("9")).toBe(true);expect(owned.closeTypingGroup).toHaveBeenCalledWith("9");
+ });
  it("live readOnly props and imperative control retain one owner and its history",async()=>{
   const owned=editor(),ref=createRef<BreditorEditorHandle>();mocks.open.mockResolvedValue(owned);
   await act(async()=>root.render(<BreditorEditor ref={ref} readOnly={true}/>));await settle();expect(mocks.open.mock.calls[0]![0].readOnly).toBe(true);expect(owned.setReadOnly).toHaveBeenCalledWith(true);

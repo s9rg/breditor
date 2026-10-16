@@ -34,6 +34,7 @@ export class RichDomEditor {
  constructor(root:HTMLElement,options:RichEditorOptions){
   this.#root=root;this.#options=options;this.#model=model(options.core.view());this.#namespace=`br:${crypto.randomUUID()}`;this.#logicalSelection=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
   requireRenderOptions(this.#model,options);
+  if(this.#model.view.historyGrouping==="typing-v1"&&(options.core.supportsTypingHistory?.()!==true||!options.core.closeTypingGroup))throw Error("Use matching native natural typing history");
   for(const control of options.toolbar??defaultToolbar)if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Rich text editor");
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Rich text formatting");
@@ -51,6 +52,9 @@ export class RichDomEditor {
   this.surface.addEventListener("input",()=>{if(!this.#composition)this.#reconcile();},{signal:this.#abort.signal});
   this.surface.addEventListener("keydown",event=>this.#key(event),{signal:this.#abort.signal});
   this.surface.addEventListener("pointerdown",event=>this.#pick(event),{signal:this.#abort.signal});
+  this.surface.addEventListener("blur",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
+  this.toolbar.addEventListener("pointerdown",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
+  this.toolbar.addEventListener("focusin",()=>this.#boundary(),{capture:true,signal:this.#abort.signal});
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal:this.#abort.signal});
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal:this.#abort.signal});
   this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal:this.#abort.signal});
@@ -72,6 +76,10 @@ export class RichDomEditor {
  #reconcile():void {if(this.#disposed||this.#composition)return;this.#model=model(this.#options.core.view());render(this.surface,this.#model,this.#options);restoreNative(this.surface,this.#model.view.selection);this.#refreshControls();}
  #sync():void {
   if(this.#composition||this.#busy||this.#logicalSelection)return;
+  // Rendering while a host control owns focus can leave a collapsed browser
+  // range in this surface. It is not an intentional editor selection change.
+  const active=this.surface.ownerDocument.activeElement;
+  if(active!==this.surface&&(!active||!this.surface.contains(active)))return;
   const selection=readNative(this.surface,this.#model);
   if(selection&&!sameSelection(selection,this.#model.view.selection))this.execute({kind:"setSelection",selection},false);
  }
@@ -86,9 +94,12 @@ export class RichDomEditor {
    if(++drained>128){this.#queue=[];throw Error("Rich editor callback command loop exceeded its bound");}
    const work=this.#queue.shift()!;
    try {
+    const active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
     const outcome=this.#options.core.execute(work.command,work.revision);first??=outcome;this.#model=model(this.#options.core.view());this.#logicalSelection=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
     if(outcome==="content"||outcome==="undo"||outcome==="redo")render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
-    if(work.focus){this.surface.focus({preventScroll:true});restoreNative(this.surface,this.#model.view.selection);}
+    // An asynchronous focus:false edit must retain an already-owned caret after
+    // replacing children, but must not steal focus from an outside host control.
+    if(work.focus||ownedFocus){this.surface.focus({preventScroll:true});restoreNative(this.surface,this.#model.view.selection);}
     this.#refreshControls();this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}${outcome} · revision ${this.#model.view.revision}`;
     if(outcome!=="unchanged")this.#options.onChange?.(this.#options.core.view(),outcome);
    }catch(error){if(first===undefined)throw error;this.#report(error);}
@@ -97,6 +108,24 @@ export class RichDomEditor {
  }
  view():RichView {this.#live();return this.#options.core.view();}
  checkpointJson():string {this.#live();return this.#options.core.checkpointJson();}
+ /** Close native continuation without rendering, moving focus, or inventing a content outcome. */
+ closeTypingGroup(revision=this.#options.core.view().revision):boolean {
+  this.#live();if(this.#busy||this.#composition)throw Error("History boundaries cannot publish during a command or composition");
+  const core=this.#options.core;
+  if(core.supportsTypingHistory?.()!==true||!core.closeTypingGroup){if(this.#model.view.historyGrouping==="typing-v1")throw Error("Use matching native typing history");return false;}
+  const changed=core.closeTypingGroup(revision);if(changed){this.#model=model(core.view());this.#refreshControls();}return changed;
+ }
+ #boundary():void {if(this.#model.view.historyGrouping==="typing-v1"&&!this.#busy&&!this.#composition)this.#attempt(()=>{this.closeTypingGroup();});}
+ #clock():string {const clock=Math.floor(this.surface.ownerDocument.defaultView!.performance.now());if(!Number.isSafeInteger(clock)||clock<0)throw Error("Expected a finite monotonic typing clock");return String(clock);}
+ #deleteInput(selection:Extract<RichSelection,{kind:"text"}>,backward:boolean,inputType:string):void {
+  const current=this.#model.view.selection;
+  const natural=this.#model.view.historyGrouping==="typing-v1"&&/^delete(?:Content|Word|SoftLine|HardLine)(?:Backward|Forward)$/.test(inputType)&&current?.kind==="text"&&current.anchor.block===current.focus.block&&current.anchor.offset===current.focus.offset;
+  if(natural&&selection.anchor.block===current.focus.block&&selection.focus.block===current.focus.block){
+   const a=BigInt(selection.anchor.offset),b=BigInt(selection.focus.offset),start=a<b?a:b,end=a>b?a:b,at=BigInt(current.focus.offset);
+   if(start<end&&(backward?end===at:start===at)){this.execute({kind:"deleteTypingRange",data:{selection,direction:backward?"backward":"forward",clockMs:this.#clock()}});return;}
+  }
+  this.execute({kind:"replaceTextRange",data:{selection,text:""}});
+ }
  /** Change native host policy immediately, cancelling provisional composition and queued edits. */
  setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean {
   this.#live();if(this.#busy)throw Error("Editing policy cannot publish reentrantly");
@@ -105,6 +134,7 @@ export class RichDomEditor {
  }
  focus():void {this.#live();this.surface.focus();restoreNative(this.surface,this.#model.view.selection);}
  #pick(event:PointerEvent):void {
+  this.#boundary();
   const target=event.target as Element,button=target.closest<HTMLElement>("[data-select-cell]"),figure=target.closest<HTMLElement>("[data-rich-image]"),node=target.closest<HTMLElement>("[data-select-node]");
   if(button){event.preventDefault();const cell=JSON.parse(button.dataset["selectCell"]!) as Extract<RichSelection,{kind:"grid"}>["focus"],prior=this.#model.view.selection;const anchor=event.shiftKey&&prior?.kind==="grid"&&prior.anchor.table===cell.table?prior.anchor:cell;this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"grid",anchor,focus:cell}}));}
   else if(node||(figure&&!target.closest("[data-rich-text]"))){event.preventDefault();const block=node?.dataset["selectNode"]??figure?.dataset["richBlock"];if(block)this.#attempt(()=>this.execute({kind:"setSelection",selection:{kind:"node",block}}));}
@@ -119,6 +149,7 @@ export class RichDomEditor {
  #key(event:KeyboardEvent):void {
   if(this.#composition||event.isComposing)return;
   const mod=event.metaKey||event.ctrlKey;
+  if(mod&&!["Backspace","Delete"].includes(event.key)||["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown","Tab","Enter","Escape"].includes(event.key))this.#boundary();
   // A focused native widget owns navigation/deletion even if the logical editor
   // selection is still a table grid or node. Keep editor Undo/Redo available so
   // a checkbox activation remains an ordinary undoable document action.
@@ -157,6 +188,7 @@ export class RichDomEditor {
   if(this.#composition||event.isComposing)return;
   event.preventDefault();this.#attempt(()=>{
    this.#sync();const type=event.inputType;
+   if(type!=="insertText"&&!type.startsWith("delete"))this.#boundary();
    const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[type],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}
@@ -166,22 +198,25 @@ export class RichDomEditor {
    const ranges=event.getTargetRanges?.()??[],target=ranges[0]?readTarget(this.surface,ranges[0]):null;
    if(type==="insertLineBreak"){this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:"\n"}}:{kind:"insertHardBreak"});return;}
    if(type==="insertText"||type==="insertReplacementText"){
-    const input=event.data??"";this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:input}}:{kind:"insertPlainText",text:input});return;
+    const input=event.data??"",caret=selection.anchor.block===selection.focus.block&&selection.anchor.offset===selection.focus.offset;
+    if(type==="insertText"&&caret&&this.#model.view.historyGrouping==="typing-v1"&&(!target||isCurrentCaretTarget(selection,target)))this.execute({kind:"insertTypingText",data:{text:input,clockMs:this.#clock()}});
+    else this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:input}}:{kind:"insertPlainText",text:input});return;
    }
    if(type.startsWith("delete")){
     const backward=type.includes("Backward"),boundary=boundaryDelete(this.#context(),backward);
     if(boundary){this.execute(boundary);return;}
     if(selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset){this.execute({kind:"deleteSelection"});return;}
-    if(target&&(target.anchor.block!==target.focus.block||target.anchor.offset!==target.focus.offset)){this.execute({kind:"replaceTextRange",data:{selection:target,text:""}});return;}
+    if(target&&(target.anchor.block!==target.focus.block||target.anchor.offset!==target.focus.offset)){this.#deleteInput(target,backward,type);return;}
     const node=this.#model.nodes.get(selection.focus.block);if(!node)return;const content=text(node),offset=Number(selection.focus.offset),segments=[...new Intl.Segmenter(undefined,{granularity:type.includes("Word")?"word":"grapheme"}).segment(content)];
     const start=backward?(segments.filter(value=>value.index<offset).at(-1)?.index??0):offset,end=backward?offset:(segments.find(value=>value.index>=offset)?.index??content.length);
     const next=!backward&&end===offset?(segments.find(value=>value.index>offset)?.index??content.length):end;
-    this.execute({kind:"replaceTextRange",data:{selection:{kind:"text",anchor:{...selection.focus,offset:String(start)},focus:{...selection.focus,offset:String(backward?end:next)}},text:""}});
+    this.#deleteInput({kind:"text",anchor:{...selection.focus,offset:String(start)},focus:{...selection.focus,offset:String(backward?end:next)}},backward,type);
    }
   });
  }
  #copy(event:ClipboardEvent,cut:boolean):void {
   if(this.#composition||!event.clipboardData)return;
+  this.#boundary();
   this.#attempt(()=>{this.#sync();const transfer=this.#options.core.clipboard();if(!transfer)return;
    event.preventDefault();event.clipboardData!.setData("text/plain",transfer.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",transfer.structuredJson);
    if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==transfer.plainText)throw Error("Clipboard did not retain the supplied text; content was not cut");
@@ -191,6 +226,7 @@ export class RichDomEditor {
  #paste(event:ClipboardEvent):void {
   if(this.#model.view.readOnly===true){event.preventDefault();return;}
   if(this.#composition||!event.clipboardData)return;event.preventDefault();
+  this.#boundary();
   const files=[...event.clipboardData.files];if(files.length){this.#files(files);return;}
   this.#attempt(()=>{this.#sync();const clipboard=event.clipboardData!.getData("application/x-breditor-rich+json");
    if(clipboard){const kind=(JSON.parse(clipboard) as {kind:string}).kind,allocation={prefix:this.#allocate("paste"),...this.#context().stamp()};
@@ -201,8 +237,8 @@ export class RichDomEditor {
    }else this.execute({kind:"insertPlainText",text:event.clipboardData!.getData("text/plain")});
   });
  }
- #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
- #startComposition():void {if(this.#model.view.readOnly===true)return;this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false};});}
+ #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
+ #startComposition():void {if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false};});}
  #endComposition():void {
   const composition=this.#composition;if(!composition)return;composition.finishing=true;
   this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{

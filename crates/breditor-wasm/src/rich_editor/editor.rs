@@ -2,7 +2,10 @@
 
 use super::{BreditorRichCommandResult, BreditorRichObservation, command, error};
 use crate::BreditorStringResult;
-use breditor_core::{codec::RichSessionJsonCodec, rich_content::RichLocalSession};
+use breditor_core::{
+    codec::{RichSessionJsonCodec, RichTypingSessionJsonCodec},
+    rich_content::RichLocalSession,
+};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 /// Opt-in rich single-user owner; replication and host assets remain separate coordinators.
@@ -57,6 +60,8 @@ impl BreditorRichEditor {
             undo_depth: self.inner.undo_depth(),
             redo_depth: self.inner.redo_depth(),
             capacity: self.inner.history_capacity().get(),
+            typing_history: self.inner.typing_history_enabled(),
+            history_steps: self.inner.history_step_count(),
         }
     }
     /// Execute a closed JSON command against the exact observed publication.
@@ -75,7 +80,12 @@ impl BreditorRichEditor {
     #[must_use]
     #[wasm_bindgen(js_name=checkpointJson)]
     pub fn checkpoint_json(&self) -> BreditorStringResult {
-        match RichSessionJsonCodec::new(self.inner.context().clone()).encode(&self.inner) {
+        let encoded = if self.inner.typing_history_enabled() {
+            RichTypingSessionJsonCodec::new(self.inner.context().clone()).encode(&self.inner)
+        } else {
+            RichSessionJsonCodec::new(self.inner.context().clone()).encode(&self.inner)
+        };
+        match encoded {
             Ok(value) => BreditorStringResult::from_value(value),
             Err(_) => {
                 BreditorStringResult::from_error(error::rejected("breditor_rich.checkpoint_read"))

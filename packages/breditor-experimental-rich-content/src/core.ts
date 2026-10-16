@@ -19,6 +19,10 @@ export interface RichView {
   readOnly?:true;
   /** Last live host-policy publication; omitted until changed, never a durable permission. */
   readOnlyRevision?:string;
+  /** Explicit native grouping; omitted preserves original per-dispatch history. */
+  historyGrouping?:"typing-v1";
+  /** Original retained steps, not grouped Undo units. Present only in typing mode. */
+  historyStepCount?:number;
   selection: RichSelection | null; pendingFormatsJson: string | null;
   undoDepth: number; redoDepth: number; historyCapacity: number;
   grid: {cells:readonly RichCell[];masters:readonly RichCell[]}|null;
@@ -31,6 +35,9 @@ export interface RichCoreEditor {
   supportsStandardInlineControls?():boolean;
   supportsInlinePropertyPatches?():boolean;
   supportsReadOnly?():boolean;
+  supportsTypingHistory?():boolean;
+  enableTypingHistory?(expectedRevision?:string):boolean;
+  closeTypingGroup?(expectedRevision?:string):boolean;
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;
   caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
@@ -46,5 +53,7 @@ export interface RichCoreProfile {
   inlineCatalogJson(): string;
   createEditor(documentJson: string, historyCapacity?: string): RichCoreEditor;
   restoreEditor(checkpointJson: string): RichCoreEditor;
+  supportsTypingHistory?():boolean;
+  restoreTypingEditor?(checkpointJson:string):RichCoreEditor;
   dispose(): void;
 }

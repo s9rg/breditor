@@ -4,12 +4,15 @@
 //! every publication. Read/encoding failures are separate from committed mutations.
 
 mod clipboard;
+mod close_typing_group;
 mod command;
 mod editor;
+mod enable_typing_history;
 mod error;
 mod inline_format_state;
 mod observation;
 mod profile;
+mod restore_typing_editor;
 mod result;
 mod selection;
 mod view;

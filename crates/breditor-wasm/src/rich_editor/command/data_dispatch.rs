@@ -9,6 +9,12 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     match tag {
+        CommandTag::InsertTypingText => {
+            super::insert_typing_text::execute(owner, observation, input)
+        }
+        CommandTag::DeleteTypingRange => {
+            super::delete_typing_range::execute(owner, observation, input)
+        }
         CommandTag::IndentTaskItems => super::indent_task_items::execute(owner, observation, input),
         CommandTag::OutdentTaskItems => {
             super::outdent_task_items::execute(owner, observation, input)

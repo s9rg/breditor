@@ -13,6 +13,7 @@ mod delete_selection;
 mod delete_table;
 mod delete_table_column;
 mod delete_table_row;
+mod delete_typing_range;
 mod drafts;
 mod exit_task_item;
 mod indent_list_items;
@@ -28,6 +29,7 @@ mod insert_plain_text;
 mod insert_table;
 mod insert_table_column;
 mod insert_table_row;
+mod insert_typing_text;
 mod join_list_items;
 mod join_task_items;
 mod join_text_blocks;
@@ -81,6 +83,8 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    InsertTypingText,
+    DeleteTypingRange,
     IndentTaskItems,
     OutdentTaskItems,
     ExitTaskItem,

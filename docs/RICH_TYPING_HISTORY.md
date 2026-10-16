@@ -2,9 +2,10 @@
 
 The local Rust owner can combine adjacent user typing into natural Undo units
 while preserving every original edit record, revision and inverse. The native
-local implementation is available; shared grouping, Wasm commands and browser
-integration are still required before natural history is a product feature.
-Existing owners, checkpoints and browser defaults retain explicit history.
+local owner now reaches additive Wasm commands and opt-in local vanilla/React
+editing. Shared grouping remains unfinished, so the full history feature is
+still partial. Existing owners, checkpoints and browser defaults retain explicit
+history.
 
 ## Native local API
 
@@ -82,7 +83,50 @@ active typing continuation. New input after recovery begins a fresh burst.
 The existing read-only rule is unchanged: policy is not stored permission and
 recovered owners start editable until their host reapplies it.
 
-## Remaining integration requirements
+## Local Wasm and SDK integration
+
+The native owner advertises `typingHistoryVersion() === "1"` and guarded
+`enableTypingHistory`/`closeTypingGroup` methods. `insertTypingText` and
+`deleteTypingRange` use strict `data` records with `clockMs` as a canonical decimal
+u64 string. Numeric, signed, fractional, duplicate or unknown fields reject.
+Frozen observations expose `historyGrouping: "typing-v1"` and `historyStepCount`
+only after admission; original view bytes remain unchanged by default.
+
+`openLocalEditor({host, history: "typing-v1"})` selects the mode explicitly.
+Omitted history or `"explicit"` retains existing behavior. The same initial
+option works through React `initialOptions`; ordinary parent renders do not
+replace the owner. `editor.closeTypingGroup(revision?)` and the React handle
+provide explicit host boundaries without inventing a content-change outcome.
+
+New-mode `checkpointJson()` uses the separate typing-session family. Reopen it
+with `initial: {kind: "typingCheckpoint", checkpointJson}` and the matching rich
+language. This declared initial kind itself selects grouping; combining it with
+`history: "explicit"` rejects before claiming the host. Original
+`initial: {kind: "checkpoint", checkpointJson}` still uses only the original
+factory. Add `history: "typing-v1"` to that original recovery route to enable
+grouping while preserving existing entries as individual units. No envelope
+shape is guessed, migrated or silently flattened.
+
+Headless profiles expose explicit `restoreTypingEditor`; `restoreEditor` remains
+original-only. Older matching runtimes reject requested grouping/recovery instead
+of substituting TypeScript history. Native factories, not the JS AST, admit the
+checkpoint and every user-input command.
+
+The local coordinator sends ordinary collapsed-caret `insertText` and valid
+directional, adjacent deletion targets to the native APIs. Replacement, paste,
+composition, hard breaks and programmatic edits remain explicit. Navigation,
+pointer/blur and toolbar intent close continuation even at an unchanged caret.
+Boundaries update the cached publication without replacing children or moving
+focus. Internal rendering does not create spurious blur boundaries.
+
+An asynchronous `focus: false` content edit restores the Rust selection if the
+surface already owned focus. This prevents the next key from landing at the root
+or first heading after image insertion. An outside host control keeps focus.
+Document-level selection events only sync while this editor owns focus: a
+temporary range left by background rendering cannot overwrite the Rust caret.
+The same fix applies to explicit history; it is not a Rust or engine repair.
+
+## Remaining shared integration requirements
 
 Shared grouping must preserve author-owned causal contributions and the original
 model/journal meanings. Its native aggregate Undo/Redo needs staged atomic
@@ -91,21 +135,43 @@ retention, including hidden or deleted contributions. Underlying wall-clock
 merging must remain disabled. A separately versioned history envelope must keep
 causal update frames and the original replay journal intact.
 
-Wasm needs a separate additive capability, exact guarded commands, frozen history
-counts and explicit grouped recovery. Millisecond hints must cross the bridge as
-canonical decimal strings, not a new large-number getter protocol. Older owners
-must reject requested grouping without a TypeScript history fallback.
+The next shared implementation follows these decisions; they are not a current
+shared grouping capability:
 
-DOM integration must route only appropriate `beforeinput` user events to the
-native typing/deletion APIs. Paste, replacement, composition and hard breaks stay
-explicit. Blur, pointer/navigation intent and toolbar commands need real history
-boundaries even if the resulting logical caret happens to be unchanged. Queue,
-read-only and asynchronous intent guards must remain effective.
+- Partition actual writer-owned history keys, not command counts or journal
+  positions. A remote deletion may make a contribution invisible: one engine
+  Undo can consume multiple keys and produce only one opposite-stack item.
+- Mirror every popped key, including skipped keys, before assigning the actual
+  opposite contribution to a group. Continue through the retained group of the
+  last engine-effective contribution, without blindly issuing another call for a key
+  already consumed. An entirely invisible newest group follows the existing
+  engine policy of searching older history for an effective contribution.
+- Stage all required original history operations, preserving each original
+  entry and its replay checks, then publish once. A false content-change result
+  can still consume invisible history and invalidate the publication guard.
+  A truly empty history call remains a no-op.
+- Recover the exact live key stacks by original journal replay and separately
+  admit a bounded partition over those keys. Keep the new recovery family
+  explicit, reject silent flattening, and close active continuation on recovery.
+  Do not encode timing hints as causal operations or lease permissions.
+- Keep original engine wall-clock merging disabled. Effective remote admission,
+  selection/pending-style changes, host policy, explicit edits and history calls
+  fence continuation; unchanged retries do not author a new history unit.
 
-SDK/React integration must make initial history configuration and checkpoint
-recovery explicit, retaining the same native owner through ordinary renders.
-Final public default/API decisions remain part of V1 distribution preparation.
-Installed local/shared V1/V2 tests must cover real keyboard bursts, time gaps,
+`rich_history_visibility_contracts.rs` proves the existing invisible-key behavior
+in both shared languages, including a three-key input sequence whose middle key
+is remotely deleted. Two engine Undo calls consume all three keys; a naive third
+call removes an older unrelated edit. Exact recovered future history and the
+false-result/publication distinction are also tested. These are prerequisites,
+not acceptance of shared natural typing.
+
+Shared Wasm, SDK/React and DOM integration must carry the same explicit capability,
+guarded command/recovery and real intent-boundary principles without weakening
+remote queues, read-only or asynchronous guards. Final public default/API decisions
+remain open. The shared SDK currently accepts only explicit history and rejects
+requests for natural grouping rather than silently substituting explicit history.
+Installed local/shared V1/V2 tests
+must cover real keyboard bursts, time gaps,
 deletions, formatting/paste/composition boundaries, exact reload, offline peer
 edits and future selective Undo/Redo in all three browser engines. Native-only
 tests do not complete that acceptance.

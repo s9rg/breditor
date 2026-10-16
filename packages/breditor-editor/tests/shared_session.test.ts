@@ -18,6 +18,9 @@ function setup(){
 }
 beforeEach(()=>{for(const fn of Object.values(mocks))fn.mockReset();});
 describe("durable SDK session coordinator",()=>{
+ it("unsupported shared natural history rejects instead of silently using explicit history",async()=>{
+  const t=setup();await expect(openSharedEditor({...t.options,history:"typing-v1" as "explicit"})).rejects.toThrow("explicit policy only");expect(mocks.runtime).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);
+ });
  it("resume-only opening never seeds a fresh writer when no durable journal exists",async()=>{
   const t=setup();await expect(openSharedEditor({...t.options,initial:{kind:"resume"}})).rejects.toMatchObject({code:"session_missing"});
   expect(t.profile.create).not.toHaveBeenCalled();expect(t.profile.join_frame).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);expect(t.profile.free).toHaveBeenCalledOnce();

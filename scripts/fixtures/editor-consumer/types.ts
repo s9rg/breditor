@@ -2,6 +2,13 @@ import {openLocalEditor,createLocalProfile,createStructuralLocalProfileV2,type L
 function contract(host:HTMLElement,editor:LocalEditor):void {
  const options:LocalEditorOptions={host,readOnly:true,initial:{kind:"empty",documentId:"doc",blockId:"p"},onChange:(view,outcome)=>{const revision:string=view.revision;const mode:true|undefined=view.readOnly;const policy:string|undefined=view.readOnlyRevision;void mode;void policy;void revision;void outcome;}};void openLocalEditor(options);void createLocalProfile();
  const changed:boolean=editor.setReadOnly(false,editor.view().revision);void changed;
+ void openLocalEditor({...options,history:"typing-v1"});void openLocalEditor({...options,initial:{kind:"typingCheckpoint",checkpointJson:"declared grouped checkpoint"}});
+ void editor.closeTypingGroup(editor.view().revision);editor.execute({kind:"insertTypingText",data:{text:"typed",clockMs:"9007199254740993"}});
+ editor.execute({kind:"deleteTypingRange",data:{selection:{kind:"text",anchor:{block:"p",offset:"1",affinity:"after"},focus:{block:"p",offset:"2",affinity:"after"}},direction:"forward",clockMs:"1"}});
+ // @ts-expect-error Clock hints cross the boundary as decimal strings, never floating point.
+ editor.execute({kind:"insertTypingText",data:{text:"typed",clockMs:1}});
+ // @ts-expect-error History is an explicit supported policy, not a truthy flag.
+ void openLocalEditor({...options,history:true});
  // @ts-expect-error mode is a boolean, never a truthy string.
  editor.setReadOnly("true");
  const command:RichCommand={kind:"insertPlainText",text:"Typed"};editor.execute(command);void editor.checkpointJson();

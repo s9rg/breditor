@@ -15,6 +15,8 @@ pub struct BreditorRichObservation {
     pub(super) undo_depth: u32,
     pub(super) redo_depth: u32,
     pub(super) capacity: u32,
+    pub(super) typing_history: bool,
+    pub(super) history_steps: u32,
 }
 #[wasm_bindgen]
 impl BreditorRichObservation {

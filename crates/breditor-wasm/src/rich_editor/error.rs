@@ -9,6 +9,7 @@ pub(super) const fn rejected(code: &'static str) -> BreditorError {
 pub(super) fn session(error: &RichLocalSessionError) -> BreditorError {
     let code = match error {
         RichLocalSessionError::ReadOnly => "breditor_rich.read_only",
+        RichLocalSessionError::TypingHistoryDisabled => "breditor_rich.typing_history_disabled",
         RichLocalSessionError::StaleSnapshot => "breditor_rich.stale_observation",
         RichLocalSessionError::Revision(_) => "breditor_rich.revision_overflow",
         _ => "breditor_rich.command_rejected",

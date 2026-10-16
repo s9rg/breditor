@@ -26,6 +26,8 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  /** Explicit shared structural language. Omitted/1 retains model 11 and configuration format 1. */
  richLanguage?:1|2;
  readOnly?:boolean;
+ /** Natural shared grouping is not yet implemented; explicit preserves original behavior. */
+ history?:"explicit";
  runtimeInput?:RuntimeInput;signal?:AbortSignal;coreOptions?:Omit<SharedCoreOptions,"onError">;
  onSaveState?:(state:SharedSaveState)=>void;
  /** Stop borrowed relay/presence/asset adapters before the native writer retires. Reporting errors cannot cancel close. */
@@ -95,6 +97,7 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
  options={...options};
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new TypeError("Expected richLanguage 1 or 2");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
+ if(options.history!==undefined&&options.history!=="explicit")throw new TypeError("Shared history currently supports explicit policy only");
  const structural=options.richLanguage===2;
  const initial=structuredClone(options.initial??{kind:"empty"}) as SharedInitial;
  const configuration=structuredClone(options.configuration??(structural?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));

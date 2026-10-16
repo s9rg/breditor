@@ -49,6 +49,10 @@ pub(super) fn encode(observation: &BreditorRichObservation) -> Result<String, Br
     if observation.inner.is_read_only() {
         view["readOnly"] = json!(true);
     }
+    if observation.typing_history {
+        view["historyGrouping"] = json!("typing-v1");
+        view["historyStepCount"] = json!(observation.history_steps);
+    }
     if let Some(revision) = observation.inner.read_only_revision() {
         view["readOnlyRevision"] = json!(revision.get().to_string());
     }
