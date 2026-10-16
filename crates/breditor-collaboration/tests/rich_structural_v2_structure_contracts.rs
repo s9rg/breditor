@@ -2,7 +2,7 @@
 use breditor_collaboration::{
     anchor::Affinity,
     rich_replica::{
-        Command, RichReplica, SharedRichProfile,
+        Command, PendingFormatsUpdate, RichReplica, SelectionUpdate, SharedRichProfile,
         actions::{
             CodeFormatPolicy, DeleteBlock, DeleteHorizontalRule, DeleteText, ExitTaskItem,
             IndentTaskItems, InsertHorizontalRule, InsertText, JoinTaskItems, NewTaskItem,
@@ -944,4 +944,33 @@ fn top_level_task_removal_uses_actual_cell_or_ordinary_list_flow_without_flatten
         future(&profile, &mut a)?;
     }
     Ok(())
+}
+
+#[test]
+fn deleting_all_task_head_text_then_exiting_keeps_restorable_history_cursors() -> Result {
+    let (profile, mut a) = room(vec![list(
+        "tasks",
+        vec![task("a", "First", true, vec![]), task("b", "Review", true, vec![])],
+    )])?;
+    let point = |offset| TextPoint { block: "b-head".into(), offset, affinity: Affinity::After };
+    let caret = Selection::TextRange { anchor: point(2), focus: point(2) };
+    a.set_selection_guarded(&a.observe()?, Some(&caret))?;
+    let range = Selection::TextRange { anchor: point(0), focus: point(6) };
+    a.replace_plain_text_guarded(&a.observe()?, &range, "")?;
+    let empty = a.document_json().to_owned();
+    a.apply_guarded(
+        &a.observe()?,
+        vec![Command::ExitTaskItem(ExitTaskItem {
+            container: "tasks".into(),
+            item: "b".into(),
+            fresh_tail: None,
+        })],
+        SelectionUpdate::Set(Some(Selection::TextRange { anchor: point(0), focus: point(0) })),
+        PendingFormatsUpdate::Map,
+    )?;
+    let checkpoint = a.checkpoint()?;
+    a.undo().map_err(|error| format!("empty task exit Undo: {error}; checkpoint={checkpoint}"))?;
+    assert_eq!(a.document_json(), empty);
+    assert!(a.redo()?);
+    future(&profile, &mut a)
 }

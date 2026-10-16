@@ -12,6 +12,14 @@ pub struct SharedRichProfile {
 }
 #[wasm_bindgen]
 impl SharedRichProfile {
+    /// Explicit structural V2; original factories never select model 12/journal 13.
+    pub fn from_configuration_json_v2(input: &str) -> Result<Self, JsValue> {
+        Ok(Self { inner: Profile::from_configuration_json_v2(input).map_err(error)? })
+    }
+    /// Compose standard inline V1 with structural V2 using configuration format 2.
+    pub fn from_standard_configuration_json_v2(input: &str) -> Result<Self, JsValue> {
+        Ok(Self { inner: Profile::from_standard_configuration_json_v2(input).map_err(error)? })
+    }
     /// Opt into the original standard inline V1 preset without changing ordinary V1 config.
     pub fn from_standard_configuration_json_v1(input: &str) -> Result<Self, JsValue> {
         Ok(Self { inner: Profile::from_standard_configuration_json_v1(input).map_err(error)? })

@@ -75,7 +75,11 @@ fn repair(
         return Err(Error::Anchor);
     }
     let (position, deleted) = history_position(diff, &basis.cursor.container, basis.pos.pos);
-    let position = if !deleted && basis.cursor.side == Side::Right {
+    // Right of a character advances one scalar. A right-affine empty/end gap
+    // has no character ID: advancing it invents offset 1 in an empty source.
+    // This occurs when a retained recipe still names deleted characters but
+    // its live history basis has already normalized to the empty text gap.
+    let position = if !deleted && basis.cursor.id.is_some() && basis.cursor.side == Side::Right {
         position.checked_add(1).ok_or(Error::Offset)?
     } else {
         position

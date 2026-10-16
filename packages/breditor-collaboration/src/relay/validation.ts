@@ -2,6 +2,7 @@ import {SharedEditorError,SharedRichEditor} from "../core.js";
 import type {SharedWriterClock} from "../types.js";
 import type {SharedProfileDescriptor} from "../profile.js";
 import type {SharedRelayIdentity} from "./types.js";
+import {sharedProtocolLanguage} from "../protocol.js";
 
 export class SharedRelayError extends SharedEditorError {
  constructor(code:string){super(code,`Shared relay: ${code}`);this.name="SharedRelayError";}
@@ -24,10 +25,10 @@ export function clock(value:unknown,expectedWriter:string):SharedWriterClock{con
 export function frame(value:unknown):string{const s=string(value,5*1024*1024);if(new TextEncoder().encode(s).length>5*1024*1024)throw new SharedRelayError("protocol_error");return s;}
 export function descriptor(value:unknown):SharedProfileDescriptor{
  const d=object(JSON.parse(string(value,16*1024)));
- if(d["format"]!=="breditor/shared-rich-profile-descriptor"||d["formatVersion"]!==1||d["abiVersion"]!==1||d["modelVersion"]!==11||d["journalVersion"]!==12)throw new SharedRelayError("profile_mismatch");
+ if(d["format"]!=="breditor/shared-rich-profile-descriptor"||d["formatVersion"]!==1||sharedProtocolLanguage(d)===undefined)throw new SharedRelayError("profile_mismatch");
  digest(d["schemaFingerprint"]);return d as unknown as SharedProfileDescriptor;
 }
-export function checkDescriptor(core:SharedRichEditor,d:SharedProfileDescriptor):void{const local=core.descriptor();if(d.schemaFingerprint!==local.schemaFingerprint||d.schema?.name!==local.schema.name||d.schema?.version!==local.schema.version)throw new SharedRelayError("profile_mismatch");}
+export function checkDescriptor(core:SharedRichEditor,d:SharedProfileDescriptor):void{const local=core.descriptor();if(sharedProtocolLanguage(d)===undefined||d.abiVersion!==local.abiVersion||d.modelVersion!==local.modelVersion||d.journalVersion!==local.journalVersion||d.richLanguageVersion!==local.richLanguageVersion||d.schemaFingerprint!==local.schemaFingerprint||d.schema?.name!==local.schema.name||d.schema?.version!==local.schema.version)throw new SharedRelayError("profile_mismatch");}
 export interface GroupMetadata {writer:string;from:string;through:string;previousDigest:string;groupDigest:string}
 export function groupMetadata(raw:string):GroupMetadata{const g=object(JSON.parse(raw));if(g["format"]!=="breditor/shared-writer-group"||g["formatVersion"]!==1||g["kind"]!=="action")throw new SharedRelayError("writer_origin_invalid");return{writer:writer(g["writer"]),from:counter(g["from"]),through:counter(g["through"]),previousDigest:digest(g["previousDigest"]),groupDigest:digest(g["groupDigest"])};}
 /** Read native canonical prefix proof; never rebuild or merge a JS replicated document. */

@@ -1,5 +1,6 @@
 // Read-only UI preparation. Rust owns final semantic admission and all replicated state.
-import {id,isText,property,sourceCell,text,formatsAt,textTargets,type RichModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
+import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,type RichModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
+import {exitEmptySharedTask} from "./task_actions_v2.js";
 import type {SharedRichEditor} from "./core.js";
 import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral} from "./types.js";
 import type {RichToolbarField,RichToolbarReading} from "@breditor/experimental-rich-content/rendering";
@@ -27,7 +28,7 @@ export function ordered(value:RichModel,s:Extract<RichSelection,{kind:"text"}>):
  const a=value.textBlocks.findIndex(n=>id(n)===s.anchor.block),b=value.textBlocks.findIndex(n=>id(n)===s.focus.block);return a<b||(a===b&&BigInt(s.anchor.offset)<=BigInt(s.focus.offset))?[s.anchor,s.focus]:[s.focus,s.anchor];
 }
 export function listContext(value:RichModel):{list:ElementNode;items:ElementNode[];first:number;last:number}|undefined{
- const s=value.view.selection;if(s?.kind!=="text")return undefined;const item=(block:string):ElementNode|undefined=>{let n=value.nodes.get(block);while(n){if(n.type==="breditor/list-item")return n;n=value.parents.get(id(n));}return undefined;};
+ const s=value.view.selection;if(s?.kind!=="text")return undefined;const item=(block:string):ElementNode|undefined=>{let n=value.nodes.get(block);while(n){if(n.type==="breditor/list-item")return n;if(n.type==="breditor/task-item")return undefined;n=value.parents.get(id(n));}return undefined;};
  const a=item(s.anchor.block),b=item(s.focus.block);if(!a||!b)return undefined;const list=value.parents.get(id(a));if(!list||value.parents.get(id(b))!==list)return undefined;const items=list.children.filter((n):n is ElementNode=>n.kind==="element"),first=items.indexOf(a),last=items.indexOf(b);return {list,items,first:Math.min(first,last),last:Math.max(first,last)};
 }
 export function bold(ctx:ActionContext):void{
@@ -38,24 +39,34 @@ export function bold(ctx:ActionContext):void{
 }
 export function removeSelection(ctx:ActionContext):void{
  const s=ctx.model.view.selection;if(s?.kind==="text"){ctx.core.replace(s,"",ctx.revision);return;}
- if(s?.kind==="node"){publish(ctx,[{kind:"delete_block",data:{block:s.block}}]);return;}
+ if(s?.kind==="node"){
+  const node=ctx.model.nodes.get(s.block),parent=ctx.model.parents.get(s.block);
+  if(node?.type==="breditor/horizontal-rule")publish(ctx,[{kind:"delete_horizontal_rule",data:{block:s.block,replacement:parent?.children.length===1?paragraph(ctx.allocate("p")):null}}]);
+  else publish(ctx,[{kind:"delete_block",data:{block:s.block}}]);return;
+ }
  if(s?.kind==="grid")publish(ctx,[{kind:"clear_table_cells",data:{anchor:cellBlock(ctx.model,s.anchor),focus:cellBlock(ctx.model,s.focus),empty:(ctx.model.view.grid?.cells??[]).map(()=>ctx.allocate("empty"))}}]);
 }
 export function enter(ctx:ActionContext):void{
  const s=ctx.model.view.selection;if(s?.kind!=="text")return;const[start,end]=ordered(ctx.model,s),node=ctx.model.nodes.get(start.block);if(!node)return;
+ if(node.type==="breditor/code-block"){ctx.core.hardBreak(ctx.revision);return;}
  const parent=ctx.model.parents.get(start.block);if(parent?.type==="breditor/image"){ctx.core.hardBreak(ctx.revision);return;}
+ if(parent?.type==="breditor/task-item"&&parent.children[0]===node){const exit=exitEmptySharedTask(ctx);if(exit){publish(ctx,[exit],caret(start.block));return;}}
  const list=listContext(ctx.model);
  if(list&&parent?.type==="breditor/list-item"&&parent.children[0]===node&&!text(node)&&start.block===end.block&&start.offset===end.offset){const outside=ctx.model.parents.get(id(list.list)),tail=outside?.type!=="breditor/list-item"&&list.last<list.items.length-1?ctx.allocate("list-tail"):null;publish(ctx,[{kind:"outdent_list_items",data:{container:id(list.list),first:id(parent),last:id(parent),fresh_tail:tail}}],caret(start.block));return;}
  const commands:SharedCommand[]=[];if(start.block!==end.block||start.offset!==end.offset)commands.push({kind:"replace_text_range",data:{anchor:s.anchor,focus:s.focus,runs:[]}});
  const right=ctx.allocate("p"),endNode=ctx.model.nodes.get(end.block),rank=node.type==="breditor/heading"&&endNode&&Number(end.offset)<text(endNode).length?Number(property(node,"level")):null;
- if(parent?.type==="breditor/list-item"&&parent.children[0]===node)commands.push({kind:"split_list_item",data:{block:start.block,offset:Number(start.offset),new_item:ctx.allocate("item"),right,right_heading:rank}});
+ if(parent?.type==="breditor/task-item"&&parent.children[0]===node)commands.push({kind:"split_task_item",data:{block:start.block,offset:Number(start.offset),new_item:ctx.allocate("task"),right,right_heading:rank}});
+ else if(parent?.type==="breditor/list-item"&&parent.children[0]===node)commands.push({kind:"split_list_item",data:{block:start.block,offset:Number(start.offset),new_item:ctx.allocate("item"),right,right_heading:rank}});
  else commands.push({kind:"split_text_block",data:{block:start.block,offset:Number(start.offset),right,right_heading:rank}});
  publish(ctx,commands,caret(right));
 }
 export function boundaryDelete(ctx:ActionContext,backward:boolean):boolean{
  const s=ctx.model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset)return false;
  const node=ctx.model.nodes.get(s.focus.block),parent=node?ctx.model.parents.get(id(node)):undefined;if(!node||!parent||Number(s.focus.offset)!==(backward?0:text(node).length))return false;
+ if(node.type==="breditor/code-block")return false;
+ const task=taskContext(ctx.model);if(task&&parent.type==="breditor/task-item"&&parent.children[0]===node){const index=task.first,other=index+(backward?-1:1),left=task.items[Math.min(index,other)],right=task.items[Math.max(index,other)];if(left&&right){publish(ctx,[{kind:"join_task_items",data:{container:id(task.container),left:id(left),right:id(right)}}]);return true;}return false;}
  const list=listContext(ctx.model);if(list&&parent.type==="breditor/list-item"&&parent.children[0]===node){const index=list.first,other=index+(backward?-1:1),left=list.items[Math.min(index,other)],right=list.items[Math.max(index,other)];if(left&&right){publish(ctx,[{kind:"join_list_items",data:{container:id(list.list),left:id(left),right:id(right)}}]);return true;}return false;}
  const index=parent.children.indexOf(node),other=parent.children[index+(backward?-1:1)];if(other?.kind!=="element")return false;
+ if(other.type==="breditor/code-block")return false;
  if(isText(other))publish(ctx,[{kind:"join_text_blocks",data:{left:id(backward?other:node),right:id(backward?node:other)}}]);else ctx.core.select({kind:"node",block:id(other)},ctx.revision);return true;
 }

@@ -5,3 +5,5 @@ new SharedEditorOwner();
 new SharedObservation();
 // @ts-expect-error schema compilation is required before a profile exists
 new SharedRichProfile();
+void SharedRichProfile.from_configuration_json_v2;
+void SharedRichProfile.from_standard_configuration_json_v2;

@@ -1,12 +1,13 @@
 # Structural rich language V2
 
-The opt-in Rust core, Wasm boundary and explicitly selected local SDK support
+The opt-in Rust core, Wasm boundary and explicitly selected local/shared SDK support
 blockquotes, plain-text code, horizontal rules and tasks. Select native contracts
 with `CompiledSchema::try_compile_rich_content_profile_v2`, or open the local SDK
 with `richLanguage: 2`. Existing defaults stay V1. Shared model 11 still rejects V2
 before seed parsing or engine import. An explicitly selected native shared V2
-profile now has its own model and replay contract; it is not yet exposed through
-the browser SDK or relay configuration.
+profile has its own model and replay contract, now exposed through separate
+candidate Wasm/SDK factories and explicit relay room creation. Existing rooms and
+factories do not upgrade automatically.
 
 ## Explicit local profile
 
@@ -240,8 +241,7 @@ tree. The [native compatibility fixture](../scripts/fixtures/shared-structural-v
 captures the first V2 implementation and verifies its journal plus sixteen exact
 future history/edit states in the new implementation.
 
-V2 Wasm factories, SDK selection and relay configuration remain absent pending
-the complete browser conflict and recovery contract. One development run reported
+The shared SDK and relay remain private candidates. One development run reported
 `ReplayMismatch` in concurrent style/code history without a saved checkpoint.
 The clock regression below establishes a separate reproducible cause, but does
 not identify that unrecorded invocation; it remains open for V2 promotion. Native
@@ -249,6 +249,66 @@ debug builds can opt into
 `BREDITOR_REPLAY_TRACE=1` to print differing engine effects; these may contain
 document content, so use controlled fixtures. The trace is absent from Wasm and
 native release builds.
+
+## Explicit shared SDK and relay
+
+`SharedRichProfile.from_configuration_json_v2` and
+`from_standard_configuration_json_v2` expose the native factories in the optional
+application Wasm. Browser helpers are `compileStructuralSharedProfileV2` and
+`compileStandardStructuralSharedProfileV2`. Older modules without those distinct
+methods reject before owner creation. Runtime validation accepts only exact
+V1 ABI 1/model 11/journal 12 with no language field, or ABI 1/model 12/journal 13
+with `richLanguageVersion: 2`; independent version ranges are not a contract.
+
+```js
+import {openSharedEditor} from '@breditor/editor/collaboration';
+
+const editor = await openSharedEditor({
+  host: document.querySelector('#shared'), richLanguage: 2,
+  database: 'structural-documents', room: 'document-123', writer: '101',
+  initial: {kind: 'empty'}, onError: console.error
+});
+await editor.flush();
+await editor.close();
+```
+
+Shared React accepts the same option in `initialOptions`. The default V2 schema
+is `breditor-editor/standard@2`; custom shared configuration uses format 2.
+`createStructuralSharedProfileV2` supplies the headless SDK factory. Omitted or
+`1` keeps the original configuration, model and history. Durable sessions and
+relay sync check the selected language's journal revision; mismatched saved
+state rejects without overwriting it. `initial: {kind: 'resume'}` requires an
+existing exact durable journal, never a fresh seed under a previously allocated
+writer. Writer leases, credentials and asset bytes remain independent services.
+
+`createStructuralSharedToolbarV2` binds standard and new controls to the admitted
+owner. Local/shared controls reuse read-only structural targeting. Pointer/Space
+checkboxes, task Enter/split/empty exit, boundary joins, Tab/Shift+Tab and code LF
+all publish original native commands. Native widget keys do not operate a still
+selected grid. Image ingestion snapshots its bounded file list/target and holds
+the bounded remote queue until insertion finishes. Local UI/history changes still
+invalidate its original revision, failure retains separately stored bytes, and
+every exit releases the hold. It does not silently retry against a different intent.
+
+Reference relay `Room::create_structural_v2` and
+`create_standard_structural_v2` create a separate `seedStructuralV2` log record
+with the exact configuration and standard-preset choice. The CLI names are
+`init-v2` and `init-standard-v2`. Open follows that recorded policy; original
+`create`/`init` and original seed records stay V1-only. Clients verify the exact
+protocol tuple before authenticated catchup; native admission rejects old-model
+writer groups without appending. This is not public deployment qualification.
+
+## Empty gap history repair
+
+Deleting all text can leave a retained recipe naming original characters while
+its current history basis has normalized to an empty, right-affine gap. Cursor
+repair previously advanced every right-sided basis by one scalar, including
+that gap with no character ID. Undoing a subsequent task exit or heading change
+then requested offset 1 in an empty source and rejected with `Error::Anchor`.
+Repair now advances only a character-bound basis. The minimal native task
+reproduction and original V1 both-affinity regression retain exact future history
+through recovery; the installed shared task-exit workflow exercises the same fix.
+No dependency source, journal version or cursor encoding changes.
 
 ## Clock independent shared history
 
@@ -297,9 +357,19 @@ including byte-exact journals and semantic lineage plus cross-version recovery.
 parents, empty exit, checked values, ordering, active limits, atomic rejection and
 exact future history. Installed keyboard, toolbar and React regressions are in
 `experiments/editor-browser/task-structure.spec.mjs`.
+Shared installed vanilla/React workflows are in
+`experiments/editor-browser/shared-structural-v2.spec.mjs`; the separate
+`shared-structural-network.spec.mjs` uses actual loopback relay processes,
+independent browser contexts, offline changes, server restart, presence and
+image-byte transfer. Its controlled ingestion barrier reproduces the old remote
+publication race without relying on timing. The bounded-hold unit tests retain
+local-staleness rejection and release after ingestion failure.
 
-Next, expose and qualify explicit shared V2 Wasm, SDK and relay selection while
-continuing to trace the retained unrecorded replay observation.
+`node scripts/check-editor-browser.mjs` builds fresh installed archives and runs
+every discovered SDK spec once per engine in separate editing/network processes,
+with the same 60-second cases, 300-second process budget and zero retries.
+
+Continue tracing the retained unrecorded replay observation before release promotion.
 Code exit-to-new-block shortcuts and complete atomic-block caret navigation still
 need explicit actions and integration.
 Atomic-block navigation, general selections, typing coalescing, live read-only

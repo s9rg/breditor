@@ -93,6 +93,7 @@ declares `taskStructureVersion: 1`; older runtimes reject before host mutation.
 
 Shared model 11 remains V1-only. Complete atomic navigation, code-exit shortcuts
 and broader selection/history/interchange work remain open.
+The optional shared entry also has an explicit structural V2 candidate described below.
 See `docs/RICH_STRUCTURAL_V2.md` in the repository for the full contract boundary.
 
 Persistence and asset storage are explicit host services, not implicit SDK
@@ -188,6 +189,8 @@ await editor.close(); // Stops UI, retires publications, saves, then releases th
 causal writer, not a user name or authentication token. An existing journal
 always wins over `initial`. A first opening also accepts `{kind: 'document',
 documentJson}`, `{kind: 'frame', frame}` or `{kind: 'checkpoint', checkpointJson}`.
+Use `{kind: 'resume'}` when a writer must already have an exact durable journal;
+missing history rejects without seeding a fresh writer or replacing saved state.
 Rust admits those values using the selected original shared profile. Recovery
 does not replace a mismatched journal with the seed or import an AST in place of
 history. The fresh empty editor starts with an admitted caret.
@@ -197,6 +200,34 @@ through a closure as a relay's `persistLocal`; keep credentials and asset bytes
 in their separate host stores. The SDK does not create accounts, deploy a relay,
 upload files or make image bytes part of the journal. Reuse `onFiles`,
 `insertSharedImageFiles` and `resolveAsset` for those explicit services.
+Shared image ingestion holds the bounded remote queue until its original guarded
+insertion commits. Local selection/history changes still reject a stale intent;
+failure retains separately stored bytes and always releases the remote hold.
+
+### Explicit shared structural V2 candidate
+
+Pass `richLanguage: 2` to `openSharedEditor` or shared React `initialOptions`.
+`createStructuralSharedProfileV2()` supplies the corresponding headless factory.
+It selects `breditor-editor/standard@2`, configuration format 2, causal model 12
+and journal 13. Custom configuration must use that exact language revision.
+Omitted or `1` retains the original profile, model 11 and journal 12. No existing
+document, journal or room is migrated; keep the language selection when reopening.
+
+The standard V2 toolbar includes quote wrapping, code conversion/language, tasks
+and rules. Task checkbox pointer/Space, prose Enter and Tab/Shift+Tab use named
+native actions. Splits, joins and nesting retain complete rich tails and independent
+completion contributions; a truly empty task can exit without discarding content.
+Code Enter inserts LF and conversion requires an explicit formatting-loss policy.
+Native widgets retain their navigation even when a logical grid remains selected.
+Both owners share read-only targeting helpers; the Rust owner remains the only
+authority for edits, conflict resolution, selections and history.
+
+Relay rooms must also be created explicitly as structural V2. A V1 room or an
+older module without the distinct V2 factories rejects instead of falling back.
+The reference relay supplies `init-v2` and `init-standard-v2` for those separate
+profiles. Credentials, durable journals and asset bytes remain separate services.
+This private candidate is not a V2 release qualification or a historical WebKit
+repair; general selections, natural typing groups and foreign interchange remain open.
 
 `close()` stops UI synchronously. The coordinator then permanently rejects local
 and remote publications, including queued frames, while retaining checkpoint
@@ -268,11 +299,13 @@ build graph. From the repository root:
 
 ```sh
 npm run test:candidate --workspace @breditor/editor
-node scripts/check-editor-package.mjs
-node_modules/.bin/playwright test --config experiments/editor-browser/playwright.config.mjs
+node scripts/check-editor-browser.mjs
 ```
 
-The package check installs fresh archives outside the workspace. A minimal
+The browser check first installs fresh archives outside the workspace, then runs
+every discovered spec once in each configured engine, in separate editing and
+real-network processes with unchanged case/global deadlines and zero retries.
+A minimal
 consumer has no React or collaboration peer; a full consumer compiles React and
 both native runtimes, and builds production Vite pages. Browser checks cover
 mixed document editing, exact future history after reload, asset bytes, React

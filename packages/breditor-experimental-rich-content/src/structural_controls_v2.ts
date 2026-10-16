@@ -1,28 +1,13 @@
 /** Explicit structural V2 command preparation. Rust owns all admission, text and history. */
 import type {RichCoreEditor} from "./core.js";
-import {id,isProse,property,selectedText,type ElementNode,type RichModel} from "./model.js";
+import {id,isProse,property,selectedText,type ElementNode} from "./model.js";
 import {positionAfter,type ActionContext,type ToolbarControl} from "./actions.js";
 import {createStandardRichToolbarV1} from "./standard_toolbar.js";
 import type {RichInlinePresentation} from "./inline_presentation.js";
 import {taskContext,indentTasks,outdentTasks} from "./task_actions_v2.js";
+import {nearestStructuralV2 as nearest,replaceableFlowV2 as replaceable,structuralIntervalV2} from "./structural_context_v2.js";
 
-function nearest(model:RichModel,kind:string):ElementNode|undefined {
- const s=model.view.selection;let node=s?.kind==="node"?model.nodes.get(s.block):selectedText(model);
- while(node){if(node.type===`breditor/${kind}`)return node;node=model.parents.get(id(node));}return undefined;
-}
-function replaceable(model:RichModel,node:ElementNode):boolean {
- const parent=model.parents.get(id(node));if(!parent||parent.type==="breditor/image")return false;
- if((parent.type==="breditor/list-item"||parent.type==="breditor/task-item")&&parent.children[0]===node)return false;
- return ["breditor/document","breditor/blockquote","breditor/table-cell","breditor/list-item","breditor/task-item"].includes(parent.type);
-}
-function interval(c:ActionContext):{first:string;last:string;nodes:ElementNode[]}|undefined {
- const m=c.model,s=m.view.selection;if(s?.kind==="node"){const node=m.nodes.get(s.block);return node&&replaceable(m,node)?{first:id(node),last:id(node),nodes:[node]}:undefined;}
- if(s?.kind!=="text")return undefined;const a=m.textBlocks.findIndex(n=>id(n)===s.anchor.block),f=m.textBlocks.findIndex(n=>id(n)===s.focus.block);if(a<0||f<0)return undefined;
- const first=id(m.textBlocks[Math.min(a,f)]!),last=id(m.textBlocks[Math.max(a,f)]!),parent=m.parents.get(first);if(!parent||parent!==m.parents.get(last)||parent.type==="breditor/image")return undefined;
- const start=parent.children.findIndex(n=>n.kind==="element"&&id(n)===first),end=parent.children.findIndex(n=>n.kind==="element"&&id(n)===last);
- if(!replaceable(m,m.nodes.get(first)!))return undefined;
- return {first,last,nodes:parent.children.slice(start,end+1).filter((n):n is ElementNode=>n.kind==="element")};
-}
+const interval=(c:ActionContext)=>structuralIntervalV2(c.model);
 function oneText(c:ActionContext):ElementNode|undefined {
  const s=c.model.view.selection;return s?.kind==="text"&&s.anchor.block===s.focus.block?selectedText(c.model):undefined;
 }

@@ -1,11 +1,12 @@
 export {SharedRichEditor,SharedEditorError} from "./core.js";
-export {compileSharedProfile,compileStandardSharedProfileV1,type SharedProfileConfiguration,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
+export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSharedProfileV2,compileStandardStructuralSharedProfileV2,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
 export {SharedPresence,type SharedPeerIdentity,type SharedPeerView,type SharedPresenceOptions} from "./presence.js";
 export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presence_overlay.js";
 export type * from "./types.js";
 export {SharedDomEditor,mountSharedEditor,type SharedDomOptions} from "./controller.js";
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 export {createStandardSharedToolbarV1} from "./standard_toolbar.js";
+export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";
 export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files.js";
 export {SharedPersistentSession,type SharedSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";

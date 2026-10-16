@@ -5,7 +5,7 @@ use breditor_collaboration::{
         Command, PendingFormatsUpdate, RichReplica, SelectionUpdate,
         actions::{
             DeleteBlock, DeleteColumn, DeleteText, InsertBlocks, InsertColumn, InsertRow,
-            InsertText, MoveBlock,
+            InsertText, MoveBlock, SetHeading,
         },
         selection::{CellTarget, Selection, SelectionLoss, SelectionOutcome, TextPoint},
     },
@@ -18,6 +18,30 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+#[test]
+fn empty_text_gap_history_does_not_advance_past_a_nonexistent_character() -> TestResult {
+    for affinity in [Affinity::Before, Affinity::After] {
+        let (mut a, _) = peers()?;
+        a.set_selection(Some(&caret("p", 1, affinity)))?;
+        let range = Selection::TextRange {
+            anchor: point("p", 0, affinity),
+            focus: point("p", 4, affinity),
+        };
+        a.replace_plain_text_guarded(&a.observe()?, &range, "")?;
+        a.apply(vec![Command::SetHeading(SetHeading { block: "p".into(), level: Some(2) })])?;
+        let checkpoint = a.checkpoint()?;
+        let mut restored = RichReplica::restore(codec()?, "room", &checkpoint)?;
+        for redo in [false, false, true, true, false, true] {
+            let left = if redo { a.redo()? } else { a.undo()? };
+            let right = if redo { restored.redo()? } else { restored.undo()? };
+            assert!(left);
+            assert_eq!(left, right);
+            assert_eq!(a.checkpoint()?, restored.checkpoint()?);
+        }
+    }
+    Ok(())
+}
 
 #[test]
 fn guarded_hard_break_is_one_exact_selective_group_with_offline_peer_history() -> TestResult {

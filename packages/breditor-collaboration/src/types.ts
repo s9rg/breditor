@@ -1,4 +1,5 @@
 import type {RichView,RichSelection,RichPoint,FormatLiteral,TextNode} from "@breditor/experimental-rich-content/rendering";
+import type {SharedProtocolBinding} from "./protocol.js";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
 export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string}};
@@ -30,6 +31,20 @@ export type SharedCommand=
  |Op<"replace_text_range",{anchor:RichPoint;focus:RichPoint;runs:readonly {text:string;formats:readonly FormatLiteral[]}[]}>
  |Op<"set_format",{block:string;offset:number;length:number;format:FormatLiteral;enabled:boolean}>
  |Op<"set_heading",{block:string;level:number|null}>
+ |Op<"set_code_block",{block:string;language:string|null;format_policy:"reject_formatted"|"remove_formats"}>
+ |Op<"set_code_language",{block:string;language:string|null}>
+ |Op<"set_task_checked",{block:string;checked:boolean}>
+ |Op<"wrap_blockquote",{first:string;last:string;wrapper:string}>
+ |Op<"unwrap_blockquote",{wrapper:string}>
+ |Op<"wrap_task_list",{first:string;last:string;container:string;items:readonly {block:string;checked:boolean}[]}>
+ |Op<"unwrap_task_list",{container:string}>
+ |Op<"indent_task_items",{container:string;first:string;last:string;new_nested:string|null}>
+ |Op<"outdent_task_items",{container:string;first:string;last:string;fresh_tail:string|null}>
+ |Op<"exit_task_item",{container:string;item:string;fresh_tail:string|null}>
+ |Op<"split_task_item",{block:string;offset:number;new_item:string;right:string;right_heading:number|null}>
+ |Op<"join_task_items",{container:string;left:string;right:string}>
+ |Op<"insert_horizontal_rule",Position&{block:string}>
+ |Op<"delete_horizontal_rule",{block:string;replacement:SharedNode|null}>
  |Op<"split_text_block",{block:string;offset:number;right:string;right_heading:number|null}>
  |Op<"join_text_blocks",{left:string;right:string}>
  |Op<"wrap_list",{first:string;last:string;container:string;items:readonly string[];style:ListStyle}>
@@ -48,7 +63,7 @@ export type PasteTarget={kind:"text"}|{kind:"grid"}|({kind:"flow"}&Position);
 export type Navigation="next"|"previous"|"left"|"right"|"up"|"down"|"rowStart"|"rowEnd"|"tableStart"|"tableEnd";
 export type NavigationResult={kind:"moved"|"unchanged"}|{kind:"boundary";boundary:string};
 export interface ClipboardContent {richJson:string;plainText:string}
-export interface SharedOwnerDescriptor {format:"breditor/shared-rich-owner";abiVersion:1;modelVersion:11;journalVersion:12;schema:{name:string;version:number};schemaFingerprint:string}
+export type SharedOwnerDescriptor=SharedProtocolBinding&{format:"breditor/shared-rich-owner";schema:{name:string;version:number};schemaFingerprint:string};
 /** Read-only mapping of an opaque presence packet, never an authorization credential. */
 export type SharedPresenceResolution=
  |{kind:"resolved";writer:string;selection:RichSelection|null}

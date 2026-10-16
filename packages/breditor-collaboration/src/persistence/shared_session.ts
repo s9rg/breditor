@@ -5,6 +5,8 @@ import {checkCheckpoint,openSessionDatabase,readCheckpoint,writeCheckpoint} from
 
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
+ /** Explicit journal language. Omitted/1 preserves the original model 11/journal 12 storage guard. */
+ richLanguage?:1|2;
  /** Called only while this origin holds the exclusive causal writer lock. */
  create:()=>SharedRustOwner|Promise<SharedRustOwner>;
  /** Must invoke the matching Rust replay admission, never import a JSON AST in place of history. */
@@ -31,13 +33,15 @@ export class SharedPersistentSession {
  }
  static async open(options:SharedSessionOptions):Promise<SharedPersistentSession>{
   options={...options};
+  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new SharedEditorError("session_identity","Expected richLanguage 1 or 2");
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
   const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor|undefined;
   try{
    db=await openSessionDatabase(options.database);const checkpoint=await readCheckpoint(db,[options.room,options.writer]);
-   if(checkpoint!==null)checkCheckpoint(checkpoint,options.room,options.writer);
+   if(checkpoint!==null)checkCheckpoint(checkpoint,options.room,options.writer,options.richLanguage);
    core=new SharedRichEditor(await(checkpoint===null?options.create():options.restore(checkpoint)),options.editor);
-   checkCheckpoint(core.checkpointJson(),options.room,options.writer);
+   if(core.richLanguageVersion()!==(options.richLanguage??1))throw new SharedEditorError("session_identity","Shared owner language does not match the explicitly selected session");
+   checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage);
    const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options);session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core?.dispose();db?.close();await lease.close();throw error;}
@@ -49,7 +53,7 @@ export class SharedPersistentSession {
  state():SharedSaveState{return{status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",revision:this.#savedRevision,error:this.#failure?String(this.#failure):null};}
  /** Capture a complete exact journal synchronously; coalesce only superseded complete checkpoints. */
  save():void{
-  this.#live();const json=this.core.checkpointJson(),revision=this.core.view().revision;checkCheckpoint(json,this.#options.room,this.#options.writer);
+  this.#live();const json=this.core.checkpointJson(),revision=this.core.view().revision;checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage);
   if(json===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
   this.#pending={json,revision};this.#failure=undefined;this.#notify();this.#start();
  }

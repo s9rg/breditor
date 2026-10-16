@@ -11,7 +11,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["new","join","join_frame","restore"])assert.equal(module.SharedEditorOwner[name],undefined,`Fixed-schema owner constructor ${name} must not ship`);
  for(const name of ["apply","apply_at","receive","undo","redo","updates"])assert.equal(module.SharedEditorOwner.prototype[name],undefined,`Unguarded research method ${name} must not ship`);
  for(const name of ["observe","dispatch","set_selection","set_pending_formats","insert_plain_text","insert_hard_break","replace_plain_text","undo_observed","redo_observed","checkpoint","receive_frame","update_frame","inline_format_state_json","caret_formats_json","writer_groups","writer_clock","presence_frame","resolve_presence"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing application owner capability ${name}`);
- for(const name of ["from_configuration_json","from_standard_configuration_json_v1"])assert.equal(typeof module.SharedRichProfile[name],"function");
+ for(const name of ["from_configuration_json","from_standard_configuration_json_v1","from_configuration_json_v2","from_standard_configuration_json_v2"])assert.equal(typeof module.SharedRichProfile[name],"function");
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function");
  const exports=WebAssembly.Module.exports(new WebAssembly.Module(binary)).map(value=>value.name);
  assert.ok(!exports.some(name=>/^(exercise_|probesession_|rich_ast_binding$|admit_rich_ast$|resolve_geometry$|classify_upload$|resolve_rich_selection$)/.test(name)),"Research functions must be absent from the binary, not just hidden by JS");

@@ -29,6 +29,8 @@ The CLI supports:
 ```text
 breditor-collab-relay token
 breditor-collab-relay init LOG PROFILE_JSON DOCUMENT_JSON OWNER
+breditor-collab-relay init-v2 LOG PROFILE_JSON DOCUMENT_JSON OWNER
+breditor-collab-relay init-standard-v2 LOG PROFILE_JSON DOCUMENT_JSON OWNER
 breditor-collab-relay serve LOG AUTH_JSON 127.0.0.1:PORT
 ```
 
@@ -178,6 +180,24 @@ without overwriting an existing file. The host-owned seed reserves causal writer
 `1`. The immutable initial account owner can durably grant Reader or Editor
 roles, or revoke access. The caller must authenticate an account before supplying
 its principal to this API; a causal writer string is never an account identity.
+
+### Explicit structural V2 rooms
+
+Original `create` and `init` remain configuration format 1/model 11/journal 12.
+`Room::create_structural_v2` (`init-v2`) selects configuration format 2/model 12/
+journal 13. `create_standard_structural_v2` (`init-standard-v2`) additionally
+composes standard inline V1, matching the structural editor SDK preset.
+Each creates a distinct `seedStructuralV2` log record that retains the exact
+configuration and preset choice. Open replays that recorded policy; it never
+infers an upgrade from document content, relabels an old seed or overwrites a log.
+Older binaries reject the unfamiliar seed kind rather than treating it as V1.
+
+Registration, authority, asset storage and ephemeral presence keep their original
+service contracts. Structural writer groups still require matching native
+language/model/history/schema admission before durable append. Clients verify
+that exact tuple before catchup. A V1 writer group rejects without modifying a V2
+room's log. These explicit capabilities remain a private candidate, not public
+deployment qualification or a repair of the historical WebKit fault.
 
 Editors register distinct server-allocated writers. Registration persists the
 account/writer binding and the SHA-256 digest of a 256-bit OS-random resume

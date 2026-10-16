@@ -1,11 +1,11 @@
 import {
- compileStandardSharedProfileV1,SharedPersistentSession,mountSharedEditor,createStandardSharedToolbarV1,
- type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileDescriptor,
+ compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,
+ type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileDescriptor,
  type SharedDomEditor,type SharedDomOptions,type SharedRichEditor,type SharedToolbarControl,
  type SharedDispatch,type SharedSaveState,type SharedRustOwner,type SharedEditorOptions as SharedCoreOptions
 } from "@breditor/collaboration";
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
-import {initializeSharedRuntime,standardSharedProfileConfiguration} from "./shared_profile.js";
+import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2} from "./shared_profile.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
 import type {RuntimeInput} from "./runtime_loader.js";
@@ -14,6 +14,7 @@ export {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_err
 
 /** A durable journal, if present, always takes precedence over this first-opening seed. */
 export type SharedInitial=
+ |{kind:"resume"}
  |{kind:"empty";blockId?:string}
  |{kind:"document";documentJson:string}
  |{kind:"frame";frame:string}
@@ -21,7 +22,9 @@ export type SharedInitial=
 
 export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"> {
  host:HTMLElement;database:string;room:string;writer:string;initial?:SharedInitial;
- configuration?:SharedProfileConfiguration;additionalInlinePresentation?:unknown;
+ configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2;additionalInlinePresentation?:unknown;
+ /** Explicit shared structural language. Omitted/1 retains model 11 and configuration format 1. */
+ richLanguage?:1|2;
  runtimeInput?:RuntimeInput;signal?:AbortSignal;coreOptions?:Omit<SharedCoreOptions,"onError">;
  onSaveState?:(state:SharedSaveState)=>void;
  /** Stop borrowed relay/presence/asset adapters before the native writer retires. Reporting errors cannot cancel close. */
@@ -87,19 +90,22 @@ class SharedEditorSessionOwner implements SharedEditorSession {
 /** Open one exact persistent writer. Cancelling initialization does not cancel another consumer's Wasm. */
 export async function openSharedEditor(options:SharedEditorSessionOptions):Promise<SharedEditorSession>{
  options={...options};
+ if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new TypeError("Expected richLanguage 1 or 2");
+ const structural=options.richLanguage===2;
  const initial=structuredClone(options.initial??{kind:"empty"}) as SharedInitial;
- const configuration=structuredClone(options.configuration??standardSharedProfileConfiguration);
+ const configuration=structuredClone(options.configuration??(structural?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
  const claim=claimHost(options.host,options.signal);
  let profile:SharedRustProfile|undefined,session:SharedPersistentSession|undefined,dom:SharedDomEditor|undefined;
  try{
   const runtime=await awaitInitialization(initializeSharedRuntime(options.runtimeInput),options.signal);claim.assert();
-  profile=compileStandardSharedProfileV1(runtime,configuration);
+  profile=structural?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
   const factory=profile,binding=JSON.parse(factory.descriptor_json()) as SharedProfileDescriptor;
   const presentation=createStandardRichInlinePresentationV1(factory.inline_catalog_json(),options.additionalInlinePresentation);
   session=await SharedPersistentSession.open({
-   database:options.database,room:options.room,writer:options.writer,
+   database:options.database,room:options.room,writer:options.writer,richLanguage:structural?2:1,
    create:()=>{
     claim.assert();
+    if(initial.kind==="resume")throw new SharedEditorError("session_missing","An exact durable shared journal is required to resume this writer");
     if(initial.kind==="frame")return factory.join_frame(options.room,options.writer,initial.frame);
     if(initial.kind==="checkpoint")return factory.restore(options.room,initial.checkpointJson);
     const block=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
@@ -112,7 +118,7 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
    ...(options.onSaveState?{onState:options.onSaveState}:{}),...(options.onError?{onError:options.onError}:{})
   });
   claim.assert();
-  const core=session.core,standard=createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
+  const core=session.core,standard=structural?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   claim.assert();dom=mountSharedEditor(options.host,{...options,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
   return new SharedEditorSessionOwner(session,dom,claim.release,options);
  }catch(error){

@@ -17,10 +17,35 @@ const HEADER: u64 = 72;
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) enum Event {
-    Seed { configuration: String, room: String, owner: String, journal: String },
-    Grant { actor: String, principal: String, role: Option<Role> },
-    Register { principal: String, writer: String, resume_hash: [u8; 32] },
-    Commit { principal: String, writer: String, frame: String, receipt: Receipt },
+    Seed {
+        configuration: String,
+        room: String,
+        owner: String,
+        journal: String,
+    },
+    SeedStructuralV2 {
+        configuration: String,
+        standard_inline_v1: bool,
+        room: String,
+        owner: String,
+        journal: String,
+    },
+    Grant {
+        actor: String,
+        principal: String,
+        role: Option<Role>,
+    },
+    Register {
+        principal: String,
+        writer: String,
+        resume_hash: [u8; 32],
+    },
+    Commit {
+        principal: String,
+        writer: String,
+        frame: String,
+        receipt: Receipt,
+    },
 }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

@@ -7,7 +7,8 @@ probe package and does not require a relay for local editing.
 
 Use `@breditor/editor/collaboration` for lazy initialization and the default
 standard profile, or use this lower-level package with an explicitly selected
-original shared V1 configuration. Install the exact matching candidate archives;
+original shared V1 configuration or the separate structural V2 factories below.
+Install the exact matching candidate archives;
 there is no registry release or V1 API freeze yet.
 
 ```js
@@ -44,6 +45,10 @@ publication; mutations use the owner's current opaque Rust observation. An
 optional exact revision rejects asynchronous work prepared from an older view.
 Remote publications can be held across input/composition and remain bounded.
 Callback failures cannot rewind content already committed by Rust.
+`insertSharedImageFiles` snapshots the bounded file list and insertion position,
+then holds remote publications across asynchronous ingestion. Its original exact
+revision still rejects local UI/history changes; bytes remain available after a
+failed insertion, and success or failure releases the remote hold.
 
 `SharedRichEditor.hardBreak(revision?)` replaces the current text selection with
 one LF in one author-local history group, retaining logical-start formats and
@@ -90,6 +95,34 @@ existing serialized meanings are unchanged. A local rich checkpoint is not a
 shared journal. The default editor/Wasm graph remains independent of replication.
 The native core's explicit rich-language V2 structural schema is not admitted by
 model 11; profile creation rejects it before seed parsing or engine import.
+
+## Explicit structural V2 candidate
+
+`compileStructuralSharedProfileV2(wasm, configuration)` compiles bounded format 2
+configuration without extra inline formats. `compileStandardStructuralSharedProfileV2`
+also composes the original standard inline V1 manifest. Their generated native
+factories are `from_configuration_json_v2` and
+`from_standard_configuration_json_v2`; neither original factory changes.
+V2 descriptors require the exact language 2/model 12/journal 13 tuple. V1 keeps
+its original tuple and descriptor shape. A mismatched or older module rejects
+before creating a writer; schemas and histories do not migrate automatically.
+
+Transfer the resulting owner to `SharedRichEditor`, or explicitly select
+`richLanguage: 2` in `SharedPersistentSession.open`. Storage defaults remain V1
+and reject crossed journals without overwriting them. For a managed vanilla or
+React host, use the same explicit option through `@breditor/editor/collaboration`.
+`createStructuralSharedToolbarV2` binds standard and structural controls to that
+exact V2 core. Named native commands own task completion, wrapping, split/join,
+indent/outdent/empty exit, quote wrapping, code conversion/language and rules.
+The command shape remains Breditor's own closed shared protocol, not the local
+command DTO or another editor's protocol.
+
+Reference relay creation is explicit too: `Room::create_structural_v2` or
+`create_standard_structural_v2` writes a distinct V2 seed record. The CLI equivalents
+are `init-v2` and `init-standard-v2`. Reopening follows the recorded seed policy;
+original seeds and original `create`/`init` remain V1-only. Clients verify the
+language/model/history binding before importing authenticated catchup. This
+candidate still needs the retained reliability and broader V1 release gates.
 
 Run `node scripts/check-editor-package.mjs` for clean local-only, shared-only and React SDK installs
 and production Vite pages. The application-network browser matrix uses the same

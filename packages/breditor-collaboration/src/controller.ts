@@ -1,8 +1,9 @@
-import {model,id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreNative,standardInlineStylesV1,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
+import {model,id,text,sourceCell,render,requireRenderOptions,paintSelection,refreshAssets,readNative,readTarget,restoreNative,standardInlineStylesV1,structuralBlockStylesV2,type RichModel,type RichView,type RenderOptions} from "@breditor/experimental-rich-content/rendering";
 import {SharedRichEditor,SharedEditorError} from "./core.js";
 import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,type ActionContext,type SharedToolbarControl} from "./actions.js";
 import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 import type {SharedDispatch,SharedPublication,RichSelection,Navigation} from "./types.js";
+import {sharedTaskTab} from "./task_actions_v2.js";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions extends RenderOptions {
  core:SharedRichEditor;toolbar?:readonly SharedToolbarControl[];label?:string;image?:{asset:string;alt:string};
@@ -29,7 +30,7 @@ export class SharedDomEditor {
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
   requireRenderOptions(this.#model,options);
   for(const control of options.toolbar??[...defaultSharedToolbar,...moveSharedToolbar])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles;root.dataset["breditorShared"]="";
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2.replaceAll("[data-breditor-rich]","[data-breditor-shared]");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Shared rich text editor");
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Shared rich text controls");this.status=d.createElement("p");this.status.setAttribute("role","status");
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbar,...moveSharedToolbar]){
@@ -43,6 +44,7 @@ export class SharedDomEditor {
   this.surface.addEventListener("input",()=>{if(!this.#composition)this.#refresh(false);},{signal});
   this.surface.addEventListener("keydown",event=>this.#key(event),{signal});
   this.surface.addEventListener("pointerdown",event=>this.#pick(event),{signal});
+  this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal});
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal});this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal});this.surface.addEventListener("paste",event=>this.#paste(event),{signal});
   this.surface.addEventListener("dragover",event=>{if(event.dataTransfer?.types.includes("Files"))event.preventDefault();},{signal});this.surface.addEventListener("drop",event=>{if(event.dataTransfer?.files.length){event.preventDefault();this.#files([...event.dataTransfer.files]);}},{signal});
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal});this.surface.addEventListener("compositionend",()=>this.#endComposition(),{signal});
@@ -79,15 +81,29 @@ export class SharedDomEditor {
  /** Read-only retry after independently transferred image bytes become available. */
  refreshAssets():void{this.#live();refreshAssets(this.surface,this.#options);}
  #pick(event:PointerEvent):void{const target=event.target as Element,cell=target.closest<HTMLElement>("[data-select-cell]"),node=target.closest<HTMLElement>("[data-select-node]"),figure=target.closest<HTMLElement>("[data-rich-image]");
+  if(target.closest("input[data-task-check]"))return;
   if(cell){event.preventDefault();const focus=JSON.parse(cell.dataset["selectCell"]!) as Extract<RichSelection,{kind:"grid"}>["focus"],prior=this.#model.view.selection,anchor=event.shiftKey&&prior?.kind==="grid"&&prior.anchor.table===focus.table?prior.anchor:focus;this.#attempt(()=>this.select({kind:"grid",anchor,focus}));}
   else if(node||(figure&&!target.closest("[data-rich-text]"))){event.preventDefault();const block=node?.dataset["selectNode"]??figure?.dataset["richBlock"];if(block)this.#attempt(()=>this.select({kind:"node",block}));}else this.#logical=false;
  }
- #key(event:KeyboardEvent):void{if(this.#composition||event.isComposing)return;const mod=event.metaKey||event.ctrlKey,key=event.key.toLowerCase();if(mod&&key==="a")this.#logical=false;
+ #taskCheck(event:MouseEvent):void{
+  const check=(event.target as Element).closest<HTMLInputElement>("input[data-task-check]");if(!check||!this.surface.contains(check))return;
+  event.preventDefault();if(this.#composition||this.#options.core.richLanguageVersion()!==2)return;
+  const item=check.dataset["taskCheck"],node=item?this.#model.nodes.get(item):undefined;if(!node||node.type!=="breditor/task-item")return;
+  this.#attempt(()=>{this.#perform(c=>{c.core.dispatch({commands:[{kind:"set_task_checked",data:{block:id(node),checked:node.properties["breditor/checked"]!==true}}]},c.revision);});[...this.surface.querySelectorAll<HTMLInputElement>("input[data-task-check]")].find(input=>input.dataset["taskCheck"]===item)?.focus({preventScroll:true});});
+ }
+ #key(event:KeyboardEvent):void{if(this.#composition||event.isComposing)return;const mod=event.metaKey||event.ctrlKey,key=event.key.toLowerCase();
+  const widget=(event.target as Element).closest("input,button,select,textarea");
+  if(widget&&!(mod&&!event.altKey&&["z","y"].includes(key))){
+   if(["Backspace","Delete"].includes(event.key)&&widget.matches("button,input[type=checkbox],input[type=radio]"))event.preventDefault();
+   return;
+  }
+  if(mod&&key==="a")this.#logical=false;
   if(mod&&!event.altKey){const shortcut=`${event.shiftKey?"shift+":""}${key}`,control=this.#controls.find(item=>item.control.shortcut===shortcut);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   if(mod&&!event.altKey&&["z","y","b"].includes(key)){event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{if(key==="b")bold(c);else if(key==="y"||event.shiftKey)c.core.redo(c.revision);else c.core.undo(c.revision);});});return;}
   // WebKit can report insertParagraph for Shift+Enter. Resolve the keyboard
   // contract here without changing composition, grid Enter or beforeinput targets.
   if(event.key==="Enter"&&event.shiftKey&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="text"){event.preventDefault();this.#perform(c=>{c.core.hardBreak(c.revision);});}});if(event.defaultPrevented)return;}
+  if(event.key==="Tab"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();const command=sharedTaskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.#perform(c=>{c.core.dispatch({commands:[command]},c.revision);});}});if(event.defaultPrevented)return;}
   const s=this.#model.view.selection;if(s?.kind==="grid"){
    const moves:Record<string,Navigation>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"},move=moves[event.key];
    if(move){this.#attempt(()=>this.#perform(c=>{const result=c.core.navigate(move,event.key!=="Tab"&&event.shiftKey,c.revision);if(event.key!=="Tab"||result.kind!=="boundary")event.preventDefault();}));return;}
