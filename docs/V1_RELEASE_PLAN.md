@@ -422,9 +422,17 @@ targets, Cut routing and cross-block composition routing. Table shape is retaine
 with unselected cells empty. Focused SDK checks pass 159 cases; actual paired
 Wasm passes 80 equal-document comparisons, 32 exact restores and 128 future
 history comparisons, and clean local/shared/React consumers build. Caption/code
-structured paste, cross-range Enter, whole-document selection, transport V2 and
+structured paste, whole-document selection, transport V2 and
 external interchange remain functional work. Broad browser qualification follows
 feature completion under the current priority.
+
+The subsequent [general paragraph checkpoint](qualification/2026-10-16-general-paragraph-functional.json)
+adds atomic cross-structure Enter with native paragraph/list/task choice,
+directional and browser-provided targets, retained task completion and isolated
+typing groups. It passes 164 focused SDK checks and another actual release-Wasm
+matrix with 80 equal-document comparisons, 32 exact restores and 128 future
+history comparisons. Caption/code Enter uses native general LF replacement;
+same-block and empty-item behavior retains the original routes.
 
 The combined editor implements nested lists, tables with rich cell bodies and
 grid operations, block raster images, durable offline journals/uploads,

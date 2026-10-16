@@ -1,0 +1,111 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "sourceCommit": "44b36743727d02f69bbb4afa7dc5e2ca464992d9",
+  "scope": "Atomic cross-structure Enter with native paragraph/list/task choice and browser target routing.",
+  "native": {
+    "wasmTests": 3,
+    "sharedMatrixTests": 3,
+    "additionalSharedTypingGroupTest": 1,
+    "strictClippyPassed": true,
+    "existingVendoredWarningUnchanged": true
+  },
+  "sdk": {
+    "tests": 164,
+    "testFiles": 22,
+    "typesPassed": true,
+    "scope": "Synthetic DOM routing, explicit targets, old-runtime refusal and caption/code LF dispatch; not browser or physical input qualification."
+  },
+  "releaseRuntimeProbe": {
+    "format": "breditor/general-paragraph-functional-probe",
+    "formatVersion": 1,
+    "localWasmSha256": "2627a05132e4a3d169c45127fc7228b45d641658fa703bbb63d26daee4df36f4",
+    "sharedWasmSha256": "08500d02015359c8d3cb5d55446c648447df45f0966a18cd3601dfcbc2169ed4",
+    "trials": 16,
+    "exactLocalSharedDocuments": 80,
+    "exactRestores": 32,
+    "exactFutureCheckpoints": 128,
+    "passed": true,
+    "scope": "Atomic prose/cell/list/task Enter across general ranges in both directions and explicit/natural histories; actual before-caret/pending styles restored. No browser, physical input, whole-document or release acceptance inferred."
+  },
+  "remaining": [
+    "Caption/code rich-flow paste policy",
+    "Whole-document selection",
+    "Collaboration transport V2 Wasm/SDK/relay integration",
+    "HTML/Markdown and Word/Docs/Excel interchange",
+    "Final integrated browser/input/accessibility/performance/release qualification"
+  ],
+  "readiness": {
+    "promotedRows": [],
+    "goalComplete": false,
+    "releaseReady": false
+  },
+  "artifacts": [
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-wasm-tests.log",
+      "bytes": 641,
+      "sha256": "dfbd1e8685cf6ee204348a74959cef96a4d05e1184e6ca516a209de811fd4519"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-shared-tests.log",
+      "bytes": 1303,
+      "sha256": "858a96e9b452930fa45d342edba5ab1474d9e356230e3af764ccec329251eeb8"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-typing-tests.log",
+      "bytes": 916,
+      "sha256": "77f7717bc09c10eda448a401a26faf303d35c05133b43eea0f07099f693745d0"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-local-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-shared-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-sdk-types.log",
+      "bytes": 88,
+      "sha256": "4ed1577b26f7965af6b47dde9307902ced45570b6d37297049bd7086fd0d55a2"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-sdk-tests.log",
+      "bytes": 619,
+      "sha256": "4a594fabf72df6678a9d90c66d8f0bfd432848f304a4e09800b65bfc1df1fed5"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-local-clippy.log",
+      "bytes": 239,
+      "sha256": "3071a580773b7b0570bdbfeddbe7bd1022371accf1c7ad56fb0e60e8716d44f9"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-shared-clippy.log",
+      "bytes": 612,
+      "sha256": "6035f604657dbf19358d188090c3ffc925bb956d71d3de29292e37fc920f97f5"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-local-runtime.log",
+      "bytes": 241,
+      "sha256": "70ec36f21c5db056d7df83affe2747ce6f84bcce95a968e0050ec9f388578c81"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-shared-runtime.log",
+      "bytes": 803,
+      "sha256": "40dfac57af5ba72a44243e6fb74e0d3f81c0a022b7a62926e6cf601b31cae8d6"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-release-functional.json",
+      "bytes": 629,
+      "sha256": "33ae6d78131e4045e4da706147beb5e572c2ad109d6c6e8f41537a7092ad9e26"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-paragraph-surface-tests.log",
+      "bytes": 2553,
+      "sha256": "540a24d387d82ac73762a686f65e84efe2d45765d7bfc542bb3b6fad248cbcc0"
+    }
+  ]
+}

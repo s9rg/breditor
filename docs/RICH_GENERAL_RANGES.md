@@ -436,6 +436,10 @@ and collapsed-caret Enter, including empty-item exit, retain their original
 routes. A missing structural capability refuses the requested cross-range split
 without falling back to an original multi-step edit.
 
+The [functional paragraph checkpoint](qualification/2026-10-16-general-paragraph-functional.json)
+records the native matrices, controller contracts and actual release-Wasm
+comparisons, including exact recovery and typing groups on both sides of Enter.
+
 ## Remaining integration
 
 Caption/code structured-paste policy, whole-document selection,
