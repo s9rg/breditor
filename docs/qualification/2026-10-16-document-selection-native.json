@@ -1,0 +1,61 @@
+{
+  "format":"breditor/functional-checkpoint",
+  "formatVersion":1,
+  "date":"2026-10-16",
+  "sourceCommit":"264aeb1",
+  "scope":"Native Core/Wasm document-selection foundation, not completed end-to-end Select All integration.",
+  "contract":{
+    "selection":"Explicit native Document scope, including atoms and hidden/no-text documents; never two manufactured text endpoints.",
+    "explicitCheckpointFamily":"breditor/rich-document-session",
+    "naturalCheckpointFamily":"breditor/rich-document-typing-session",
+    "viewFamily":"breditor/rich-document-view",
+    "familyVersion":1,
+    "originalCommandsViewsAndCheckpointFamiliesRemainStrict":true,
+    "wholePlainReplacement":"One guarded fresh plain paragraph, exact inverse and actual before-UI; empty text is deletion with a usable caret.",
+    "hostRequirement":"Reserve a fresh paragraph identity for every attempt, including failed and undone work."
+  },
+  "native":{
+    "newCoreTests":6,
+    "newWasmTests":2,
+    "existingLocalSessionTests":17,
+    "existingGeneralCopyTests":5,
+    "existingCheckpointAndTypingTests":20,
+    "existingWasmClipboardAndParagraphTests":10,
+    "strictCoreAndWasmAllTargetsClippyPassed":true,
+    "originalSharedAdapterCompileAndLibraryClippyPassed":true,
+    "naturalPartitionBoundaryVerified":[2,1,2],
+    "extraAndDuplicateDocumentScopeFieldsRejected":true
+  },
+  "actualReleaseWasmProbe":{
+    "currentLocalWasmSha256":"08eb3406a2d3c0bf45c29273e065323ef71cadf82fca5a7da0179c8b60c9db6e",
+    "previousLocalWasmSha256":"8703e74722a9579f960a4b96aac5e672e68dc8a4f1e066e931896ff1738af92d",
+    "trials":8,
+    "exactDocumentFamilyRestores":8,
+    "exactFutureCheckpoints":32,
+    "byteIdenticalOriginalCheckpoints":12,
+    "originalFamilyRefusals":8,
+    "passed":true,
+    "scope":"Direct raw Wasm selection, semantic Copy and plain replacement/deletion for mixed/hidden-only documents in explicit/natural histories. Previous-runtime byte comparisons cover original text/node/grid histories; they are focused compatibility evidence, not a universal release qualification."
+  },
+  "reproduce":[
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/collaboration-native cargo test -p breditor-core --features experimental-rich-content --test rich_document_selection --locked --offline",
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/collaboration-native cargo test -p breditor-wasm --features experimental-rich-content --test rich_document_selection --locked --offline",
+    "CARGO_INCREMENTAL=0 node scripts/build-rich-runtime.mjs",
+    "node scripts/probe-document-selection-native.mjs target/rich-browser-web target/block-layout-shared-qualification/caption-code-local-final-web"
+  ],
+  "artifacts":[
+    {"path":"target/block-layout-shared-qualification/document-selection-core-tests.log","bytes":884,"sha256":"d30a1ffee93984c001f48a5c9e61206cedf8a76cd193a50b4477372dd1aaa502"},
+    {"path":"target/block-layout-shared-qualification/document-selection-wasm-tests.log","bytes":614,"sha256":"2ff145c482278c2f64f59ca1b125f1c1d5334420028f87a14b70d65ed12b1b14"},
+    {"path":"target/block-layout-shared-qualification/document-selection-native-clippy.log","bytes":149,"sha256":"1ea2ecf5f045e99b1e867d659b519c11ffa7357f4abe2a544908b3ef0daa9830"},
+    {"path":"target/block-layout-shared-qualification/document-selection-native-functional.json","bytes":837,"sha256":"b675e263ffeaf582d2a13cadefd7f2b26fb18df806f14eefdd36667885dea78a"}
+  ],
+  "preservedRuntimeDirectory":"target/block-layout-shared-qualification/document-selection-local-native-final-web",
+  "remainingForDocumentSelection":[
+    "Whole-document rich clipboard paste and explicit post-paste caret/floor policy",
+    "Shared causal selection, owned lowering, selective history and separate exact shared recovery families",
+    "Immutable SDK/storage declarations, restore factories and recovery handoff",
+    "DOM/React Select All, selection painting, input/Enter/composition and Copy/Cut/paste routing"
+  ],
+  "remainingForGoal":["Complete document selection end to end","Sanitized HTML/Markdown and realistic Word/Docs/Excel interchange with explicit losses","Focused integrated functional tests"],
+  "readiness":{"promotedRows":[],"goalComplete":false,"wholeDocumentFeatureComplete":false,"releaseReady":false,"pushedOrPublished":false}
+}

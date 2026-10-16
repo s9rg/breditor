@@ -557,6 +557,14 @@ latest React callbacks, 32 paired Wasm scenarios and exact history recovery.
 These focused results do not promote V1
 readiness rows or replace final installed/browser/release acceptance.
 
+The [native document-selection foundation](qualification/2026-10-16-document-selection-native.json)
+adds an explicit Core/Wasm whole-root scope, semantic Copy, atomic plain
+replacement/deletion and separate exact explicit/natural recovery. Its extended
+view family leaves original selection commands, views and stored families
+strict. Shared lowering, whole-document rich paste and immutable SDK/storage/DOM
+routing remain required before this feature is end-to-end. External interchange
+remains part of the unchanged functional-completion goal.
+
 The active implementation goal covers the first two workstreams: a unified
 installable rich editor, then everyday editing and external interchange. This
 includes the distribution, editing and interchange checkpoints below. Completion

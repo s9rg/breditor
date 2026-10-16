@@ -13,6 +13,10 @@ rich clipboard, cross-range paragraph Enter, explicit caption/code text paste
 and transport V2 have functional checkpoints below. Document-wide Select All,
 external interchange and final integrated qualification remain required.
 
+Whole-document selection now has a native Core/Wasm foundation with separate
+view and checkpoint families. Shared lowering and SDK/storage/DOM integration
+remain required before it is an end-to-end editing feature.
+
 ## Original joins and protected boundaries
 
 `RichGeneralRangePlan::capture` first tries the original `ReplaceTextRange`.
@@ -473,6 +477,55 @@ expose the callback; React forwards the latest callback without reopening histor
 The [caption/code functional checkpoint](qualification/2026-10-16-caption-code-text-paste-functional.json)
 records actual paired release Wasm, directional targets, exact explicit/natural
 recovery and future histories. It is not browser/OS clipboard acceptance.
+
+## Native whole document selection
+
+`RichSelectionKind::Document` is an explicit current-document scope, not a
+synthetic root block ID or a text range between the first and last paragraphs.
+It includes leading/trailing atoms, hidden tables, empty blocks and documents
+without any text endpoint. Coverage and semantic Copy visit every root body;
+Copy retains the existing rich-clipboard V1 flow envelope and normalizes table
+geometry as before. Native structural mapping preserves the document scope
+over the resulting root.
+
+`RichLocalSession::select_document` is selection-only, available in read-only
+mode and does not discard Redo. `replace_document_plain_text` requires that
+explicit scope and replaces the complete root flow with one fresh plain
+paragraph. Empty text implements deletion while retaining a usable caret. Text
+is bounded to 64 KiB; stale/foreign, read-only, wrong-scope and reused-current-ID
+requests reject atomically. Hosts must reserve a fresh paragraph ID for every
+attempt and never reuse an allocated namespace after failure or Undo.
+
+`ReplaceDocument` is a named local action with an exact inverse. One replacement
+restores the actual document selection and every removed body, caption, atom and
+hidden structure on Undo. Natural typing groups remain separate on both sides.
+Shared adapters must lower observed source removals and fresh insertions through
+owned operations; the local root recipe is not a replicated JSON register.
+
+The explicit family `breditor/rich-document-session` V1 and natural family
+`breditor/rich-document-typing-session` V1 retain document-scope metadata at every
+history boundary. The corresponding codecs are `RichDocumentSessionJsonCodec`
+and `RichDocumentTypingSessionJsonCodec`. Original session codecs remain closed:
+they reject the new scope even when it survives only in a retained Undo/Redo
+before-state. New readers require the selected family; they do not infer or
+downgrade it from JSON content. The original and new families have independent
+version constants and retain the same replay and resource checks.
+
+The raw Wasm capability `documentSelectionVersion()` pairs `selectDocument`,
+`replaceDocumentPlainText`, `documentCheckpointJson`, `restoreDocumentEditor`
+and `restoreDocumentTypingEditor`. A frozen observation's `documentViewJson`
+uses `breditor/rich-document-view` V1 for extended selections. Original
+`viewJson` refuses a currently selected document scope rather than emit an
+unknown selection tag under its existing family. Original `execute/setSelection`
+records remain strict and do not admit the new kind. This is a native boundary,
+not an already-integrated toolbar/keyboard or durable SDK option.
+
+The [native document selection checkpoint](qualification/2026-10-16-document-selection-native.json)
+records the native tests and direct release-Wasm probe, including exact new-family
+history and byte comparisons against the preserved previous runtime. Whole-root
+rich paste, shared exact recovery, browser Copy/Cut retention (including empty
+plain text), selection painting and immutable SDK storage routing remain work
+for the same end-to-end feature.
 
 ## Remaining integration
 
