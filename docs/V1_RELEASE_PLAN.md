@@ -330,6 +330,15 @@ archives, 2,418 all-feature root Rust tests, 303 canonical shared tests and
 83 SDK units. Default regressions, strict native/release-Wasm lint and exact
 older-runtime recovery pass. No readiness row is promoted by this slice.
 
+The [bounded block layout native foundation](RICH_BLOCK_LAYOUT.md) adds an
+explicit rich V3 schema without widening V1/V2. It admits bounded alignment,
+direction, block indentation and line height; native coverage chooses text-block
+targets and exact history retains their metadata. Six alignment values keep
+physical Left/Right separate from logical Start/End. Native/default regressions
+pass, but V3 shared ownership, Wasm/SDK construction, rendering and installed
+browser qualification are still unfinished. No readiness row advances for this
+native-only checkpoint.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set

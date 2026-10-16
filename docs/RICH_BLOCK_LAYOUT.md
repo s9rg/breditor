@@ -88,3 +88,20 @@ No readiness row advances for declarations or a native-only foundation. General
 selection replacement, external interchange and the broader first-two-workstream
 goal remain separate required work; final native accessibility and performance
 qualification remain later release work.
+
+## Native foundation checkpoint
+
+The [native qualification](qualification/2026-10-16-block-layout-native.json)
+covers the explicit V3 compiler, closed values, named action, native selection
+transaction, strict intent decoder and independent mixed-state read. Local
+conversion, splits, joins, captions, merged source cells, rich clipboard and
+explicit/natural history recovery are exercised by 16 integration tests and an
+internal schema-capability test. The complete native run passes 2,435 workspace
+tests; existing shared V1/V2 regression passes 303. Strict native and release-Wasm
+lint, Rustdoc and default JavaScript regressions pass. V1/V2 fingerprint constants
+come from the previous actual Wasm runtime, not a new expected-value generator.
+
+This checkpoint does not implement or qualify the planned V3 shared owner,
+Wasm/SDK construction, rendering or browser controls. No V3 installed archives
+or browser results are claimed. Steps 3 through 5 remain required before block
+layout is a complete user-facing feature.

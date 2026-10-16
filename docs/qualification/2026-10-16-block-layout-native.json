@@ -1,0 +1,78 @@
+{
+  "format": "breditor/block-layout-native-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "52c49f2cb5925049ebd38ad00f98ad0fb25112b9",
+  "previousCheckpoint": "e20a12dec153424d87f09e6db4febe752a0811ed",
+  "status": "native-foundation-only-goal-incomplete",
+  "publication": "Local commits only; no push, tag, package publication or deployment.",
+  "implemented": {
+    "profile": "Explicit Rust rich V3 compiler; V2 structural grammar plus optional closed layout metadata on paragraph/heading/code only. No old constructor or SDK default selects V3.",
+    "fields": "Alignment1=start,2=center,3=end,4=justify,5=physical-left,6=physical-right; direction1=ltr,2=rtl,3=auto; indent0..12; line-height percentage100..300. Absence is inheritance, not a filled default.",
+    "mutation": "Named guarded SetBlockLayout action and atomic change_selection_layout. Native coverage owns every covered text block including empty boundaries and code. One content history unit, no inline-pending change, exact original selection. No text targets refuses.",
+    "intent": "Closed native decoder: omitted field keeps, null removes, value sets. Strict types/tokens/bounds, duplicate/unknown field refusal, no caller target list or arbitrary CSS, independent64KiB budget.",
+    "reads": "Typed independent mixed-state read and separate breditor/rich-block-layout-state version1; uniform-null retains inheritance. Read does not publish or inherit the mutation operation ceiling.",
+    "retention": "Heading/code conversion and text/list/task splits preserve native layout; joins retain left layout and exact inverse source. Rich image-caption clipboard roundtrip/rekey/paste retains layout. Fresh code-exit paragraph starts with absent layout.",
+    "atomicity": "Stale/read-only, old profile, no targets, transaction ceilings and a late property-count failure leave the owner unchanged."
+  },
+  "native": {
+    "rootCommand": "CARGO_INCREMENTAL=0 cargo test --workspace --all-features --locked --offline",
+    "rootPassed": 2435,
+    "rootSuiteFooters": 149,
+    "focusedCommand": "CARGO_INCREMENTAL=0 cargo test -p breditor-core --features experimental-rich-content --test rich_block_layout --locked --offline",
+    "focusedIntegrationPassed": 16,
+    "newInternalSchemaProofTests": 1,
+    "existingSharedCommand": "cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --all-targets --locked --offline",
+    "existingSharedPassed": 303,
+    "existingSharedSuiteFooters": 25,
+    "strictNativeAllTargetClippy": true,
+    "strictReleaseWasmTargetClippy": true,
+    "rustdocWarningsDenied": true,
+    "namedFirstPartyFormatChecks": true,
+    "ordinaryWorkspaceWithoutRichFeaturesCompiles": true,
+    "legacyFingerprintSource": "Actual previous installed Wasm from the selection-formatting checkpoint, using schema example/layout version1 and standard inline declarations.",
+    "legacyLocalWasmSha256": "e76866563ec397892fc0fefa9a000692f3da68722fb6feebce14f8af803ad35f",
+    "legacyV1Fingerprint": "sha256:26dcb0992f0814e1d18491134f70c5857efc01b0c28d07015199490389090278",
+    "legacyV2Fingerprint": "sha256:2082e440c52cdef30f9fa46289cae3e378ea7673f05d20e6b71bb5797347b056",
+    "unchangedVendorWarning": "Existing HasIdSpan unused import; vendored sources unchanged."
+  },
+  "defaultRegression": {
+    "command": "npm test",
+    "browserUnitsPassed": 2203,
+    "reactUnitsPassed": 57,
+    "highlightUnitsPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 374,
+    "existingOptInSkips": 3
+  },
+  "notYetImplemented": {
+    "sharedV3OwnershipAndRecovery": true,
+    "wasmV3FactoriesAndAuthoring": true,
+    "sdkV3SelectionAndControls": true,
+    "layoutRendering": true,
+    "layoutBrowserQualification": true
+  },
+  "verificationScope": "Native foundation and old shared/default regressions only. No new V3 SDK archives were assembled and no V3 browser/clipboard/concurrency functionality is claimed. Prior installed matrices remain evidence for their original checkpoint, not this unfinished feature.",
+  "attempts": [
+    {
+      "kind": "Test harness compilation",
+      "cause": "Integration tests initially called two crate-private capability methods; moved capability assertions into the internal schema test. Fixed an ambiguous Into argument and an owned test-context move."
+    },
+    {
+      "kind": "Strict lint",
+      "cause": "Used compiler-derived default for the unit Keep variant and corrected two test-helper lint issues. No lint threshold or product bound was weakened."
+    }
+  ],
+  "retainedEvidence": "target/block-layout-qualification: core-layout-tests-final.log, root-all-final.log, shared-v1-v2-regression.log, clippy-final.log, clippy-wasm.log, rustdoc-final.log, default-check.log and defaults.log. Earlier intermediate logs may include earlier source/test versions.",
+  "next": [
+    "Implement explicit shared V3 model13/journal14, independent field ownership, strict import/audit and native selection lowering with selective history.",
+    "Implement explicit Wasm bootstrap8/profile configuration3 factories, native observations and matching SDK/control/rendering support.",
+    "Prove installed V3 mixed-content create/modify/selection/clipboard/Undo/Redo/reload, React, offline/concurrent/reconnect/assets in all three browsers.",
+    "Continue general selection replacement and sanitized HTML/Markdown/Office interchange toward the unchanged full first-two-workstream objective."
+  ],
+  "readiness": {
+    "promotedRows": 0,
+    "fullLayoutFeatureComplete": false,
+    "firstTwoWorkstreamsComplete": false
+  }
+}
