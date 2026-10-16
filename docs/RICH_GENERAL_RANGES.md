@@ -498,7 +498,11 @@ attempt and never reuse an allocated namespace after failure or Undo.
 
 `ReplaceDocument` is a named local action with an exact inverse. One replacement
 restores the actual document selection and every removed body, caption, atom and
-hidden structure on Undo. Natural typing groups remain separate on both sides.
+hidden structure on Undo. Plain replacement isolates natural typing on both sides.
+The separate `replace_document_typing_text` starts a new burst: its first key
+never joins earlier input, but subsequent caret typing can join that replacement.
+The native partition is `[2,3]` for two earlier keystrokes followed by a document
+replacement and two more keystrokes; plain paste retains `[2,1,2]` instead.
 Shared adapters must lower observed source removals and fresh insertions through
 owned operations; the local root recipe is not a replicated JSON register.
 
@@ -521,11 +525,72 @@ records remain strict and do not admit the new kind. This is a native boundary,
 not an already-integrated toolbar/keyboard or durable SDK option.
 
 The [native document selection checkpoint](qualification/2026-10-16-document-selection-native.json)
-records the native tests and direct release-Wasm probe, including exact new-family
-history and byte comparisons against the preserved previous runtime. Whole-root
-rich paste, shared exact recovery, browser Copy/Cut retention (including empty
-plain text), selection painting and immutable SDK storage routing remain work
-for the same end-to-end feature.
+records the original native tests and direct release-Wasm probe, including exact
+new-family history and byte comparisons against the preserved previous runtime.
+
+## Shared whole document selection
+
+`enable_document_selection_guarded` explicitly selects document-scope recovery
+without changing causal content or either history stack. It retains general-range
+editing and cannot downgrade to the general family. The original text/node/grid
+selection DTO stays closed; `select_document_guarded` publishes a separate local
+scope, available in read-only mode, without fake text endpoints or replicated UI.
+Remote updates keep the scope over the current root. Frozen `observe_document`
+uses `breditor/shared-document-view` V1; original views refuse a currently
+selected document scope.
+
+`ReplaceDocumentPlainTextV1` inserts one fresh paragraph and authors owned
+visibility deletions for the observed source roots. It does not overwrite a root
+AST register. Unobserved peer-created roots survive delivery and selective Undo.
+Undo restores peer edits in the removed source bodies. As with existing shared
+block creation, undoing the fresh paragraph's birth hides that paragraph, while
+retaining peer edits in it for Redo. Historical paragraph identities cannot be
+reused, including after Undo. The separate first-key typing method uses the same
+saved command and native selective partition; ordinary plain replacement stays
+isolated from typing on both sides.
+
+Explicit saves use `breditor/rich-replica-document-journal` V1. Natural saves use
+`breditor/shared-document-typing-session` V1 around
+`breditor/rich-replica-document-typing-journal` V1. The matching factories are
+`restore_document` and `restore_document_typing`. Original and general factories
+reject these families, including document metadata retained only in history.
+Document scope metadata requires version 1, no pending-format override and a
+preserved outcome. Original command, view and checkpoint meanings remain unchanged.
+
+Raw shared Wasm exposes paired document selection/typing capabilities, guarded
+selection/replacement/Copy, the explicit observer and both exact save/restore
+families. The [shared native checkpoint](qualification/2026-10-16-document-selection-shared-native.json)
+records paired release-Wasm recovery and actual previous-runtime peer behavior.
+
+## Programmatic shared document selection
+
+`createSharedDocumentEditor(raw)` explicitly selects the new observer and exact
+checkpoint family for the facade's lifetime. The equivalent typed constructor is
+`new SharedRichEditor<"document-v1">(raw, {selectionEditing: "document-v1"})`.
+Its `SharedDocumentView` and publication types admit document scope; original
+`SharedView`, `RichSelection` and default constructors remain closed. A default
+facade rejects an already-enabled document-family owner, even if its current
+selection is an ordinary caret. Selecting the TypeScript generic alone is not a
+runtime opt-in.
+
+`selectDocument`, `copyDocument`, `replaceDocumentPlainText` and
+`replaceDocumentTypingText` keep all planning and mutations in Rust. Ordinary
+selection setters can leave document scope without changing the recovery family.
+`restoreSharedDocumentEditor` chooses only the caller's explicit ordinary/natural
+document factory; it never falls back to old or general recovery. Queued remotes,
+revision guards and publication listeners use the selected frozen observer.
+
+The [programmatic SDK checkpoint](qualification/2026-10-16-document-selection-sdk.json)
+also records a live remote-receive refusal reproduced against the prior actual
+Wasm. That path had used the original selection reader even though replay used
+the internal scope mapper. Live receipt now uses the same mapper, preserves
+document scope, and includes newly observed peer roots in subsequent Copy and
+replacement. The original selection getter still rejects document scope.
+
+Whole-root rich paste, composition, browser Copy/Cut retention (including empty
+plain text), selection painting, explicit presence/toolbar behavior and immutable
+durable storage routing remain required. Original DOM and persistent-session APIs
+do not yet accept the extended facade.
 
 ## Remaining integration
 

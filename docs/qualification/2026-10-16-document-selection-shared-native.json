@@ -1,0 +1,155 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "sourceCommit": "4b817db",
+  "scope": "Native Core and raw local/shared release Wasm document selection, owned plain replacement and first-key natural typing. SDK/storage/DOM integration remains incomplete.",
+  "contract": {
+    "selection": "Explicit whole-current-root local scope, including hidden/no-text structures; old text/node/grid DTO remains closed.",
+    "sharedLowering": "Fresh paragraph birth plus writer-owned visibility deletions of observed source roots, never an AST root register.",
+    "offlinePeerRoots": "Unobserved peer-created roots survive replacement, Undo and Redo.",
+    "peerSourceEdits": "Peer text in removed original bodies returns on Undo.",
+    "peerReplacementEdits": "Existing birth Undo semantics hide the fresh paragraph without erasing peer edits; Redo and exact restored Redo recover them.",
+    "sharedExplicitFamily": "breditor/rich-replica-document-journal",
+    "sharedNaturalEnvelope": "breditor/shared-document-typing-session",
+    "sharedNaturalJournal": "breditor/rich-replica-document-typing-journal",
+    "sharedViewFamily": "breditor/shared-document-view",
+    "familyVersion": 1,
+    "oldFactoriesNeverGuessNewFamilies": true,
+    "oneWayModePreservesExistingUndoAndRedo": true,
+    "firstKeyTypingPartition": [
+      2,
+      3
+    ],
+    "plainPastePartition": [
+      2,
+      1,
+      2
+    ],
+    "identities": "Fresh host-reserved paragraph/paste namespaces remain consumed after failure and Undo; shared lowering rejects historical paragraph reuse."
+  },
+  "focusedTests": {
+    "coreDocumentTests": 7,
+    "localWasmDocumentTests": 3,
+    "sharedDocumentTests": 6,
+    "generatedSurfaceTests": 14,
+    "rawWasmConsumerTypesPassed": true,
+    "strictCoreAndLocalWasmAllTargetClippyPassed": true,
+    "strictChangedSharedLibraryAndDocumentTestsClippyPassed": true,
+    "strictSharedWasm32LibraryClippyPassed": true,
+    "knownUnchangedLintDebt": "Full shared all-target Clippy still reports pre-existing test lints in general_paragraph_contracts and general_inline_clipboard_contracts; changed library/new document tests and wasm32 boundary pass without suppressions."
+  },
+  "actualPairedReleaseWasm": {
+    "format": "breditor/document-selection-shared-native-probe",
+    "formatVersion": 1,
+    "localWasmSha256": "778f1eb53bc2a737d8958726567af1178ae71c8580a1c299fe69acbf795013d1",
+    "sharedWasmSha256": "433eb9ac1ac3b6a552ea859fb6faa6a49ab028631d8098b43ee440895e72ba67",
+    "previousSharedWasmSha256": "9cdc26ed6624714b2da27b52b254929de1ea6b5720ae0528fa97cc761ce300eb",
+    "trials": 10,
+    "exactLocalSharedDocuments": 50,
+    "exactDocumentFamilyRestores": 24,
+    "exactFutureCheckpoints": 96,
+    "byteIdenticalOriginalCheckpoints": 12,
+    "originalPeerDocumentComparisons": 10,
+    "pureCopies": 20,
+    "originalFamilyRefusals": 40,
+    "passed": true,
+    "scope": "Direct paired release Wasm scope/Copy/deletion/plain and first-key typing, hidden-only documents, exact explicit/natural recovery, and actual previous-runtime offline peer with owned root visibility edits. SDK/storage/DOM document routing, whole-document rich paste and composition remain required. No release acceptance inferred."
+  },
+  "actualLocalOriginalCompatibility": {
+    "format": "breditor/document-selection-native-probe",
+    "formatVersion": 1,
+    "currentLocalWasmSha256": "778f1eb53bc2a737d8958726567af1178ae71c8580a1c299fe69acbf795013d1",
+    "previousLocalWasmSha256": "8703e74722a9579f960a4b96aac5e672e68dc8a4f1e066e931896ff1738af92d",
+    "trials": 8,
+    "exactDocumentFamilyRestores": 8,
+    "exactFutureCheckpoints": 32,
+    "byteIdenticalOriginalCheckpoints": 12,
+    "originalFamilyRefusals": 8,
+    "passed": true,
+    "scope": "Direct real Wasm native document selection, semantic Copy, plain deletion/replacement, hidden-only documents and exact explicit/natural history. Byte comparisons with previous actual runtime cover original text/node/grid selection histories. Shared lowering, SDK/storage/controller/React routing and whole-document rich paste remain required; no release acceptance inferred."
+  },
+  "reproduce": [
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/collaboration-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --test document_selection_contracts --locked --offline",
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/collaboration-native cargo test -p breditor-core --features experimental-rich-content --test rich_document_selection --locked --offline",
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/collaboration-native cargo test -p breditor-wasm --features experimental-rich-content --test rich_document_selection --locked --offline",
+    "CARGO_INCREMENTAL=0 node scripts/build-rich-runtime.mjs",
+    "CARGO_INCREMENTAL=0 node scripts/build-collaboration-runtime.mjs",
+    "node scripts/probe-document-selection-shared-native.mjs target/rich-browser-web target/promoted-shared-web target/block-layout-shared-qualification/caption-code-shared-final-web",
+    "node --test scripts/check-collaboration-runtime-surface.test.mjs"
+  ],
+  "artifacts": [
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-core-typing-tests.log",
+      "bytes": 1026,
+      "sha256": "3eaa42f05c85ed95bab02948e355efc33f1bf79dc9861971997372527cb7f63f"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-wasm-typing-tests.log",
+      "bytes": 641,
+      "sha256": "d992fb109c2f0f3517c5f3dce0efa079771eab0e7ffe6f575190b2b78b92e5b6"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-tests.log",
+      "bytes": 1385,
+      "sha256": "4f305b4480f8269493faee45f02c92add5f004afef6baab6abd46f6b11c9cca9"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-focused-clippy.log",
+      "bytes": 622,
+      "sha256": "4c2ba544b1631df30473466ff1a46ebbc826fd3e59d19b9bd869dce66bc6b450"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-local-clippy.log",
+      "bytes": 239,
+      "sha256": "9ea6cde4cecf7a8d398916569a0c7638fc0569ff6d0ee4046a9ce138d04c2f22"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-wasm-clippy.log",
+      "bytes": 714,
+      "sha256": "689daa45f42cba26f0cdc899fd9b6a532310f67f8156d0474ec88327dc875f7e"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-native-probe.json",
+      "bytes": 983,
+      "sha256": "4b9446b2708e76700a3b7dada69af1e29df523360bc9ba427a25b8f147ab4830"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-local-native-final-probe.json",
+      "bytes": 837,
+      "sha256": "27b2e368f9323ed258cec2bde617d627edbddc03f583c86300b702b46a833ce0"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-wasm-surface-tests.log",
+      "bytes": 3150,
+      "sha256": "2ad204fe8751205c10ca1084bcef4b95e2730d64ea4e4930086f3be1de14fdae"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-wasm-consumer-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "preservedRuntimes": [
+    "target/block-layout-shared-qualification/document-selection-paired-local-final-web",
+    "target/block-layout-shared-qualification/document-selection-paired-shared-final-web"
+  ],
+  "remainingForDocumentSelection": [
+    "Whole-root rich clipboard paste with explicit post-paste caret/floor policy",
+    "Immutable explicit SDK selection option and stored family declarations with exact recovery",
+    "DOM/React Select All, painting, Copy/Cut with empty plain text, input/Enter/composition and rich paste",
+    "Explicit presence and toolbar behavior for document scope without widening original protocols"
+  ],
+  "remainingForGoal": [
+    "Finish document selection end to end",
+    "Separate sanitized HTML/Markdown and realistic Word/Docs/Excel interchange with explicit loss reporting",
+    "Focused integrated feature tests"
+  ],
+  "readiness": {
+    "promotedRows": [],
+    "goalComplete": false,
+    "wholeDocumentFeatureComplete": false,
+    "releaseReady": false,
+    "pushedOrPublished": false
+  }
+}

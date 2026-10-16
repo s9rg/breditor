@@ -1,0 +1,155 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "sourceCommit": "3cded08",
+  "nativeFoundationCommit": "4b817db",
+  "scope": "Explicit programmatic shared SDK document selection and a reproduced live receive repair; not complete UI or durable-session integration.",
+  "contract": {
+    "entryPoint": "createSharedDocumentEditor(raw), or SharedRichEditor<document-v1> with explicit selectionEditing document-v1",
+    "immutablePolicy": "The selected observer/view/recovery family lasts for the facade lifetime; ordinary caret selection does not downgrade it.",
+    "types": "New SharedDocumentView/SharedDocumentSelection and generic publication types; original SharedView/RichSelection/default constructor remain closed.",
+    "firstClassActions": [
+      "selectDocument",
+      "copyDocument",
+      "replaceDocumentPlainText",
+      "replaceDocumentTypingText"
+    ],
+    "recovery": "restoreSharedDocumentEditor selects only the caller-declared document explicit/natural factory with no old/general fallback.",
+    "oldDefaults": "Default constructors refuse document-family native owners; existing DOM/storage interfaces do not accept the new typed facade.",
+    "nativeReceiveRepair": {
+      "location": "crates/breditor-collaboration/src/rich_replica/session.rs::receive",
+      "defect": "The live receive path used candidate.selection(), which intentionally rejects Document; replay already used selection_for_mapping().",
+      "reproducedPreFixWasmSha256": "433eb9ac1ac3b6a552ea859fb6faa6a49ab028631d8098b43ee440895e72ba67",
+      "expectedFailure": "Queued remote while the whole document is selected was refused; contract violation: use explicit document selection family.",
+      "fix": "Live receipt uses the internal scope mapper; public original getters remain strict.",
+      "regression": "In both history modes, live receipt retains Document, newly observed peer roots enter subsequent Copy/replacement, duplicate frames are no-ops, old observations stale, and exact restored Undo recovers the full observed document."
+    }
+  },
+  "tests": {
+    "sdkTests": 178,
+    "sdkFiles": 24,
+    "newSdkTests": 4,
+    "sharedDocumentTests": 7,
+    "defaultEditorAndSdkTypesPassed": true,
+    "explicitPositiveAndNegativeConsumerTypesPassed": true,
+    "strictChangedSharedLibraryAndNewTestClippyPassed": true,
+    "strictSharedWasm32LibraryClippyPassed": true,
+    "existingSharedNativeRegressionBaseline": {
+      "sourceCommit": "4b817db",
+      "tests": 112,
+      "suites": 7,
+      "passed": true,
+      "scope": "Original selection, general ranges/flow/Enter, semantic history and typing. The subsequent one-line live document-scope repair was checked by the new focused native case and rebuilt real-Wasm probes."
+    }
+  },
+  "actualSdkReleaseWasm": {
+    "format": "breditor/document-selection-programmatic-sdk-probe",
+    "formatVersion": 1,
+    "sharedWasmSha256": "09377c6084f180d98a9c6a5e220e490119474904221dd16b26d8bcd44fb9f74d",
+    "trials": 4,
+    "exactRestores": 8,
+    "exactFutureCheckpoints": 16,
+    "pureCopies": 4,
+    "queuedRemotePublications": 4,
+    "passed": true,
+    "scope": "Explicit programmatic shared SDK observer/view/Copy/replacement/first-key typing/recovery and real queued remotes. Original defaults stay closed. Durable session/storage, DOM/React, rich whole-document paste and document presence/toolbar integration remain incomplete."
+  },
+  "actualPairedReleaseWasm": {
+    "format": "breditor/document-selection-shared-native-probe",
+    "formatVersion": 1,
+    "localWasmSha256": "778f1eb53bc2a737d8958726567af1178ae71c8580a1c299fe69acbf795013d1",
+    "sharedWasmSha256": "09377c6084f180d98a9c6a5e220e490119474904221dd16b26d8bcd44fb9f74d",
+    "previousSharedWasmSha256": "9cdc26ed6624714b2da27b52b254929de1ea6b5720ae0528fa97cc761ce300eb",
+    "trials": 10,
+    "exactLocalSharedDocuments": 50,
+    "exactDocumentFamilyRestores": 24,
+    "exactFutureCheckpoints": 96,
+    "byteIdenticalOriginalCheckpoints": 12,
+    "originalPeerDocumentComparisons": 10,
+    "pureCopies": 20,
+    "originalFamilyRefusals": 40,
+    "passed": true,
+    "scope": "Direct paired release Wasm scope/Copy/deletion/plain and first-key typing, hidden-only documents, exact explicit/natural recovery, and actual previous-runtime offline peer with owned root visibility edits. SDK/storage/DOM document routing, whole-document rich paste and composition remain required. No release acceptance inferred."
+  },
+  "artifacts": [
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-sdk-receive-reproduction.log",
+      "bytes": 1468,
+      "sha256": "e450594f1d72431cfdbe42e29764ffbe13e887e11e94abbee8be9a5b6ade4ed6"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-sdk-fixed-functional.json",
+      "bytes": 603,
+      "sha256": "3e9772b8152a5c237c1b96898232ac686a8c2db98e357e73f9439438fd36882e"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-native-fixed-probe.json",
+      "bytes": 983,
+      "sha256": "0806bfa4a8550b6944320817e3acfcc11647c6ca7288ea9b5aa32007016d5877"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-sdk-final-tests.log",
+      "bytes": 619,
+      "sha256": "2a78e35732faa84aaa08af5ec7587a175106b3644ec017553a28260f1925d674"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-tests-final.log",
+      "bytes": 1468,
+      "sha256": "18c40f38f2c7d6416390532299af47f1fd7229eb9db7b487c25969262ac5bb0e"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-focused-clippy-final.log",
+      "bytes": 622,
+      "sha256": "56f3b24c6c6168735eba74f7dcb78654a255fb57e3f66a8862fa52ae6d33dddc"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-wasm-clippy-fixed.log",
+      "bytes": 624,
+      "sha256": "d99618a2ea60c93066a2e311fbbe21bc413054a213ec4867a2c649b0e1be05b0"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-sdk-consumer-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-editor-typecheck.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/document-selection-shared-regressions.log",
+      "bytes": 13858,
+      "sha256": "b6bf55d8276f22e6e975a92239e48634c74af5c60a30316326b1d6e23d8e60b7"
+    }
+  ],
+  "reproduce": [
+    "CARGO_INCREMENTAL=0 node scripts/build-collaboration-runtime.mjs",
+    "node_modules/.bin/tsc -p packages/breditor-collaboration/tsconfig.json",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node_modules/.bin/tsc --noEmit --strict --target ES2022 --module NodeNext --lib ES2022,DOM,ESNext.Disposable scripts/fixtures/editor-consumer/types-document.ts",
+    "node scripts/probe-document-selection-sdk.mjs target/promoted-shared-web",
+    "node scripts/probe-document-selection-sdk.mjs target/block-layout-shared-qualification/document-selection-paired-shared-final-web",
+    "node scripts/probe-document-selection-shared-native.mjs target/rich-browser-web target/promoted-shared-web target/block-layout-shared-qualification/caption-code-shared-final-web"
+  ],
+  "preservedFixedRuntime": "target/block-layout-shared-qualification/document-selection-sdk-shared-final-web",
+  "remainingForDocumentSelection": [
+    "Whole-root rich paste and explicit post-paste caret/floor policy",
+    "Immutable declared local/shared durable storage and recovery handoff",
+    "Local SDK and DOM/React Select All, painting, input/Enter/composition and Copy/Cut/paste",
+    "Explicit document-scope presence and toolbar behavior without widening old protocols"
+  ],
+  "remainingForGoal": [
+    "Finish document selection end to end",
+    "Separate sanitized HTML/Markdown and realistic Word/Docs/Excel interchange with explicit losses",
+    "Focused final feature integration tests"
+  ],
+  "readiness": {
+    "promotedRows": [],
+    "goalComplete": false,
+    "wholeDocumentFeatureComplete": false,
+    "releaseReady": false,
+    "pushedOrPublished": false
+  }
+}
