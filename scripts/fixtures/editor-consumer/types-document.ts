@@ -1,4 +1,4 @@
-import {SharedRichEditor,createSharedDocumentEditor,restoreSharedDocumentEditor,type SharedRustOwner,type SharedRustProfile,type SharedView,type SharedDocumentView} from "@breditor/collaboration";
+import {SharedRichEditor,SharedPersistentSession,createSharedDocumentEditor,restoreSharedDocumentEditor,type SharedRustOwner,type SharedRustProfile,type SharedView,type SharedDocumentView} from "@breditor/collaboration";
 function original(raw:SharedRustOwner):void {
  const core=new SharedRichEditor(raw),view:SharedView=core.view();void view;
  // @ts-expect-error document scope requires an explicit typed owner policy
@@ -18,3 +18,12 @@ function document(raw:SharedRustOwner,profile:SharedRustProfile):void {
  new SharedRichEditor<"document-v1">(raw);
 }
 void original;void document;
+async function documentSession(raw:SharedRustOwner):Promise<void>{
+ const session=await SharedPersistentSession.openDocument({database:"explicit-document",room:"room",writer:"303",create:()=>raw,restore:()=>raw,restoreDocument:()=>raw});
+ const view:SharedDocumentView=session.core.view();void view;session.core.selectDocument();
+ // @ts-expect-error a document session is not an original durable session
+ const original:SharedPersistentSession=session;void original;
+ // @ts-expect-error separate declared document recovery is required
+ SharedPersistentSession.openDocument({database:"explicit-document",room:"room",writer:"303",create:()=>raw,restore:()=>raw});
+}
+void documentSession;

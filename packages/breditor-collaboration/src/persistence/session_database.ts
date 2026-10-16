@@ -27,15 +27,41 @@ export function checkCheckpoint(value:string,room:string,writer:string,language:
 export type StoredSessionCheckpoint=
  |{history:SharedHistoryPolicy;json:string;rangeEditing?:never;richLanguage?:never}
  |{history:SharedHistoryPolicy;json:string;rangeEditing:"general-v1";richLanguage:1|2|3};
+/** Separate declared record; original readers never infer document scope from opaque JSON. */
+export type StoredDocumentSessionCheckpoint=StoredSessionCheckpoint|{history:SharedHistoryPolicy;json:string;rangeEditing:"general-v1";selectionEditing:"document-v1";richLanguage:1|2|3};
+/** Storage identity only; the separate native document factory still proves exact replay. */
+export function checkDocumentCheckpoint(value:string,room:string,writer:string,language:1|2|3=1,history:SharedHistoryPolicy="explicit"):void{
+ if(typeof value!=="string"||new TextEncoder().encode(value).length>MAX_CHECKPOINT_BYTES)throw new SharedEditorError("session_budget","Shared journal exceeds its 16 MiB storage budget");
+ const decoded:unknown=JSON.parse(value);
+ if(!decoded||typeof decoded!=="object"||Array.isArray(decoded))throw new SharedEditorError("session_identity","Expected a shared document journal object");
+ const envelope=decoded as {format?:unknown;formatVersion?:unknown;modelVersion?:unknown;journalVersion?:unknown;version?:unknown;document?:unknown;writer?:unknown;journal?:{format?:unknown;version?:unknown;document?:unknown;writer?:unknown}};
+ const grouped=history==="typing-v1",header=grouped?envelope.journal:envelope,model=language===3?13:language===2?12:11,journal=language===3?14:language===2?13:12;
+ if((language!==1&&language!==2&&language!==3)||(history!=="explicit"&&!grouped)||!header||
+  grouped&&(envelope.format!=="breditor/shared-document-typing-session"||envelope.formatVersion!==1||envelope.modelVersion!==model||envelope.journalVersion!==journal)||
+  header.format!==(grouped?"breditor/rich-replica-document-typing-journal":"breditor/rich-replica-document-journal")||header.version!==1||header.document!==room||header.writer!==writer)throw new SharedEditorError("session_identity","Shared document journal does not belong to the leased room/writer/model/history/selection policy");
+}
 /** Legacy strings declare original history. New records declare their family outside opaque Rust JSON. */
 export function readSessionCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promise<StoredSessionCheckpoint|null>{
+ return readStoredSessionCheckpoint(db,key,false);
+}
+/** Explicit document sessions can read old records for an atomic, caller-selected upgrade. */
+export function readDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promise<StoredDocumentSessionCheckpoint|null>{
+ return readStoredSessionCheckpoint(db,key,true);
+}
+function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],document:false):Promise<StoredSessionCheckpoint|null>;
+function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],document:true):Promise<StoredDocumentSessionCheckpoint|null>;
+function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],document:boolean):Promise<StoredDocumentSessionCheckpoint|null>{
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get([...key]);let result:StoredSessionCheckpoint|null=null,failure:unknown;
+  const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get([...key]);let result:StoredDocumentSessionCheckpoint|null=null,failure:unknown;
   request.onsuccess=()=>{try{const value:unknown=request.result;
    if(value===undefined)return;
    if(typeof value==="string"){result={history:"explicit",json:value};return;}
    if(!value||typeof value!=="object"||Array.isArray(value))throw new SharedEditorError("session_read","Unknown stored shared history record");
    const record=value as Record<string,unknown>;
+   if(document&&record["format"]==="breditor/shared-document-checkpoint-record"){
+    if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion,history,richLanguage"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string"||(record["history"]!=="explicit"&&record["history"]!=="typing-v1")||(record["richLanguage"]!==1&&record["richLanguage"]!==2&&record["richLanguage"]!==3))throw new SharedEditorError("session_read","Unknown stored shared document history record");
+    result={history:record["history"],json:record["checkpointJson"],rangeEditing:"general-v1",selectionEditing:"document-v1",richLanguage:record["richLanguage"]};return;
+   }
    if(record["format"]==="breditor/shared-general-checkpoint-record"){
     if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion,history,richLanguage"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string"||(record["history"]!=="explicit"&&record["history"]!=="typing-v1")||(record["richLanguage"]!==1&&record["richLanguage"]!==2&&record["richLanguage"]!==3))throw new SharedEditorError("session_read","Unknown stored shared general history record");
     result={history:record["history"],json:record["checkpointJson"],rangeEditing:"general-v1",richLanguage:record["richLanguage"]};return;
@@ -44,6 +70,14 @@ export function readSessionCheckpoint(db:IDBDatabase,key:readonly[string,string]
    result={history:"typing-v1",json:record["checkpointJson"]};
   }catch(error){failure=error;tx.abort();}};
   tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(failure??tx.error??new SharedEditorError("session_read","Cannot read the exact shared journal"));
+ });
+}
+/** Commit only a closed document-family record after validating its declared storage identity. */
+export function writeDocumentSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string,history:SharedHistoryPolicy,language:1|2|3=1):Promise<void>{
+ try{checkDocumentCheckpoint(value,key[0],key[1],language,history);}catch(error){return Promise.reject(error);}
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction("journals","readwrite");tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??new SharedEditorError("session_write","Shared document journal transaction did not complete"));
+  try{tx.objectStore("journals").put({format:"breditor/shared-document-checkpoint-record",formatVersion:1,history,richLanguage:language,checkpointJson:value},[...key]);}catch(error){tx.abort();reject(error);}
  });
 }
 /** Explicit sessions keep byte-identical legacy values; grouping uses a declared storage discriminator. */

@@ -1,7 +1,7 @@
-import {SharedRichEditor,SharedEditorError} from "../core.js";
-import type {SharedEditorOptions,SharedRustOwner,SharedHistoryPolicy,SharedRangePolicy} from "../types.js";
+import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
+import type {SharedEditorOptions,SharedRustOwner,SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 import {SharedWriterLease} from "./writer_lease.js";
-import {checkCheckpoint,openSessionDatabase,readSessionCheckpoint,writeSessionCheckpoint} from "./session_database.js";
+import {checkCheckpoint,checkDocumentCheckpoint,openSessionDatabase,readSessionCheckpoint,readDocumentSessionCheckpoint,writeSessionCheckpoint,writeDocumentSessionCheckpoint} from "./session_database.js";
 
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
@@ -18,16 +18,25 @@ export interface SharedSessionOptions {
  editor?:SharedEditorOptions;onState?:(state:SharedSaveState)=>void;onError?:(error:unknown)=>void;
 }
 export interface SharedSaveState {status:"saved"|"pending"|"failed"|"closed";revision:string|null;error:string|null}
+/** Separate factory options: old/general replay is never redirected to document recovery. */
+export interface SharedDocumentSessionOptions extends Omit<SharedSessionOptions,"rangeEditing"|"editor"> {
+ /** Document scope includes general ranges. An explicit original range policy is incompatible. */
+ rangeEditing?:"general-v1";
+ editor?:Omit<SharedEditorOptions<"document-v1">,"selectionEditing">;
+ /** Called only for a stored document-family record after acquiring its exact writer lease. */
+ restoreDocument:(checkpoint:string,history:SharedHistoryPolicy)=>SharedRustOwner|Promise<SharedRustOwner>;
+}
 
 /** Exact causal recovery with bounded coalesced writes and origin-wide writer exclusion. */
-export class SharedPersistentSession {
- readonly core:SharedRichEditor;readonly recovered:boolean;
- #db:IDBDatabase;#lease:SharedWriterLease;#options:SharedSessionOptions;#unsubscribe:()=>void;
+export class SharedPersistentSession<P extends SharedSelectionPolicy="original"> {
+ readonly core:SharedRichEditor<P>;readonly recovered:boolean;
+ #db:IDBDatabase;#lease:SharedWriterLease;#options:SharedSessionOptions|SharedDocumentSessionOptions;#unsubscribe:()=>void;
+ readonly #selectionPolicy:P;
  #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
- private constructor(db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor,recovered:boolean,options:SharedSessionOptions){
-  this.#db=db;this.#lease=lease;this.core=core;this.recovered=recovered;this.#options=options;
+ private constructor(db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P){
+  this.#db=db;this.#lease=lease;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
   db.onversionchange=()=>{
    // An upgrade must unblock its database, not silently destroy an unsaved native journal.
@@ -35,29 +44,38 @@ export class SharedPersistentSession {
    this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
   };
  }
- static async open(options:SharedSessionOptions):Promise<SharedPersistentSession>{
+ static open(options:SharedSessionOptions):Promise<SharedPersistentSession>{return SharedPersistentSession.#open(options,"original");}
+ /** Explicit document-scope lifecycle with separately declared durable records and recovery. */
+ static openDocument(options:SharedDocumentSessionOptions):Promise<SharedPersistentSession<"document-v1">>{return SharedPersistentSession.#open(options,"document-v1");}
+ static async #open<Q extends SharedSelectionPolicy>(options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:Q):Promise<SharedPersistentSession<Q>>{
   options={...options};
   if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new SharedEditorError("session_identity","Expected richLanguage 1, 2 or 3");
   if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new SharedEditorError("session_history","Expected history explicit or typing-v1");
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new SharedEditorError("session_range","Expected rangeEditing original or general-v1");
+  if(selectionPolicy==="document-v1"&&(options.rangeEditing==="original"||!("restoreDocument" in options)||typeof options.restoreDocument!=="function"))throw new SharedEditorError("session_selection","Document sessions require general ranges and an explicit document recovery factory");
+  const editorSelection=(options.editor as {selectionEditing?:unknown}|undefined)?.selectionEditing;
+  if(editorSelection!==undefined&&editorSelection!==selectionPolicy)throw new SharedEditorError("session_selection","Editor selection policy must match its explicitly selected durable session");
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
-  const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor|undefined;
+  const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined;
   try{
-   db=await openSessionDatabase(options.database);const checkpoint=await readSessionCheckpoint(db,[options.room,options.writer]),history=options.history??"explicit",ranges=options.rangeEditing??"original",storedRanges=checkpoint?.rangeEditing??"original";
+   db=await openSessionDatabase(options.database);const checkpoint=await (selectionPolicy==="document-v1"?readDocumentSessionCheckpoint:readSessionCheckpoint)(db,[options.room,options.writer]),history=options.history??"explicit",ranges=options.rangeEditing??(selectionPolicy==="document-v1"?"general-v1":"original"),storedRanges=checkpoint?.rangeEditing??"original",storedDocument=checkpoint!==null&&"selectionEditing" in checkpoint&&checkpoint.selectionEditing==="document-v1";
    if(checkpoint!==null){
     if(storedRanges==="general-v1"&&(ranges!=="general-v1"||checkpoint.richLanguage!==(options.richLanguage??1)))throw new SharedEditorError("session_range","General recovery requires explicit matching rangeEditing and richLanguage");
-    checkCheckpoint(checkpoint.json,options.room,options.writer,options.richLanguage,checkpoint.history,storedRanges);if(checkpoint.history==="typing-v1"&&history!=="typing-v1")throw new SharedEditorError("session_history","Grouped recovery requires explicit typing-v1 history");
+    if(storedDocument)checkDocumentCheckpoint(checkpoint.json,options.room,options.writer,options.richLanguage,checkpoint.history);
+    else checkCheckpoint(checkpoint.json,options.room,options.writer,options.richLanguage,checkpoint.history,storedRanges);
+    if(checkpoint.history==="typing-v1"&&history!=="typing-v1")throw new SharedEditorError("session_history","Grouped recovery requires explicit typing-v1 history");
    }
-   const raw=await(checkpoint===null?options.create():storedRanges==="general-v1"?options.restore(checkpoint.json,checkpoint.history,storedRanges):options.restore(checkpoint.json,checkpoint.history));
-   core=new SharedRichEditor(raw,options.editor);
+   const raw=await(checkpoint===null?options.create():storedDocument?(options as SharedDocumentSessionOptions).restoreDocument(checkpoint.json,checkpoint.history):storedRanges==="general-v1"?options.restore(checkpoint.json,checkpoint.history,storedRanges):options.restore(checkpoint.json,checkpoint.history));
+   core=(selectionPolicy==="document-v1"?createSharedDocumentEditor(raw,options.editor as SharedDocumentSessionOptions["editor"]):new SharedRichEditor(raw,options.editor as SharedSessionOptions["editor"])) as SharedRichEditor<Q>;
    if(core.richLanguageVersion()!==(options.richLanguage??1))throw new SharedEditorError("session_identity","Shared owner language does not match the explicitly selected session");
    if(history==="typing-v1")core.enableTypingHistory();
    else if(core.view().historyGrouping!==undefined)throw new SharedEditorError("session_history","Explicit history cannot flatten a grouped owner");
    core.sealHistoryPolicy(history);
    if(ranges==="general-v1")core.enableGeneralRanges();
    core.sealRangePolicy(ranges);
-   checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history,ranges);
-   const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options);session.save();
+   if(selectionPolicy==="document-v1")checkDocumentCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history);
+   else checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history,ranges);
+   const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options,selectionPolicy);session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core?.dispose();db?.close();await lease.close();throw error;}
  }
@@ -68,7 +86,9 @@ export class SharedPersistentSession {
  state():SharedSaveState{return{status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",revision:this.#savedRevision,error:this.#failure?String(this.#failure):null};}
  /** Capture a complete exact journal synchronously; coalesce only superseded complete checkpoints. */
  save():void{
-  this.#live();const json=this.core.checkpointJson(),revision=this.core.view().revision;checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history,this.#options.rangeEditing);
+  this.#live();const json=this.core.checkpointJson(),revision=this.core.view().revision;
+  if(this.#selectionPolicy==="document-v1")checkDocumentCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history);
+  else checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history,this.#options.rangeEditing);
   if(json===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
   this.#pending={json,revision};this.#failure=undefined;this.#notify();this.#start();
  }
@@ -78,7 +98,7 @@ export class SharedPersistentSession {
  }
  async #drain():Promise<void>{
   while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
-   try{if(this.#options.rangeEditing==="general-v1")await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit","general-v1",this.#options.richLanguage??1);else await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit");}
+   try{if(this.#selectionPolicy==="document-v1")await writeDocumentSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit",this.#options.richLanguage??1);else if(this.#options.rangeEditing==="general-v1")await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit","general-v1",this.#options.richLanguage??1);else await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit");}
    catch(error){this.#pending??=next;throw error;}
    this.#saved=next.json;this.#savedRevision=next.revision;
   }
