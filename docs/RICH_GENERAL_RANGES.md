@@ -805,6 +805,41 @@ records the previous-runtime getter reproduction, actual release-Wasm DOM
 integration, offline peer updates, 70-block actions and exact future recovery.
 Its synthetic event tests do not qualify OS clipboard or physical IME behavior.
 
+## Explicit document SDK and React openings
+
+The root SDK exposes `openLocalDocumentEditor`; its collaboration entry exposes
+`openSharedDocumentEditor`. Both require `selectionEditing: 'document-v1'` and
+retain the original language defaults. Their named document intents delegate to
+the tested document DOM coordinator. Original opening functions, views, command
+DTOs and React components remain closed to the new family.
+
+First-opening saved state uses only `documentCheckpoint` or
+`documentTypingCheckpoint`. Local opening never imports an AST in place of a
+saved history or guesses an original/general checkpoint family. Shared opening
+uses `SharedPersistentSession.openDocument` and its separate declared recovery
+callback. Stored original/general records still route to their declared native
+restore factory before explicit opt-in upgrade; document records never fall
+back to an older restore. Resume-only opening never creates a new writer.
+
+Host claims preserve original nodes on failed or cancelled startup. Document
+shared UI borrows the durable owner and stops before retirement. Failed saves
+retain the exact owner and exclusive lease for retry; startup cleanup failure
+hands off `SharedDocumentEditorOpenError.recovery` with explicit selection,
+range and history metadata. There is no automatic discard.
+
+`BreditorDocumentEditor` and `BreditorSharedDocumentEditor` retain document views,
+callbacks and imperative intents. Options are immutable per `sessionKey`;
+callbacks and read-only policy remain live. StrictMode and late startup cannot
+announce an abandoned owner. Shared unmount and key replacement serialize
+durable closure; failures reach the required `onCloseError` recovery callback
+and block a replacement writer until safe retirement succeeds.
+
+The [document SDK checkpoint](qualification/2026-10-16-document-sdk.json) covers
+three native languages, explicit/natural histories, mixed/hidden documents,
+rich clipboard editing, exact restore/resume, failed-close retry and four actual
+React-owned release-Wasm editors. Storage and lock APIs are test fixtures, not
+native-browser qualification.
+
 ## Remaining integration
 
 The [transport V2 functional checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
@@ -812,8 +847,8 @@ now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
 general explicit/natural journal recovery after host restart, and peer-preserving
 selective Undo/Redo. It does not change original writer digests or migrate rooms.
 
-Shared document React, root SDK document sessions, document-specific relay
-composition, remaining installed editing/transport acceptance and external
+Document-specific relay/presence composition, remaining installed
+editing/transport acceptance and external
 interchange remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.

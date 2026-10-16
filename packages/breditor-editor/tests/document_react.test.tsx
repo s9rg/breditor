@@ -1,0 +1,48 @@
+import {StrictMode,act,createRef} from "react";
+import {createRoot,type Root} from "react-dom/client";
+import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
+import type {LocalDocumentEditor} from "../src/local_document.js";
+import type {SharedDocumentEditorSession} from "../src/shared_document_session.js";
+const mocks=vi.hoisted(()=>({local:vi.fn(),shared:vi.fn()}));
+vi.mock("../src/local_document.js",()=>({openLocalDocumentEditor:mocks.local}));
+vi.mock("../src/shared_document_session.js",()=>({openSharedDocumentEditor:mocks.shared}));
+import {BreditorDocumentEditor,type BreditorDocumentEditorHandle} from "../src/document_react.js";
+import {BreditorSharedDocumentEditor,type BreditorSharedDocumentEditorHandle} from "../src/shared_document_react.js";
+import {SharedDocumentEditorOpenError} from "../src/shared_document_open_error.js";
+import type {SharedPersistentSession} from "@breditor/collaboration";
+(globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
+let root:Root,container:HTMLDivElement;
+const localOptions={selectionEditing:"document-v1" as const},sharedOptions={...localOptions,database:"document-react",room:"room",writer:"101"};
+const local=()=>({dispose:vi.fn(),focus:vi.fn(),checkpointJson:()=>"exact document",execute:vi.fn(()=>"content"),selectDocument:vi.fn(()=>"ui"),replaceDocumentPlainText:vi.fn(()=>"content"),pasteDocumentClipboard:vi.fn(()=>"content"),collapseDocumentSelection:vi.fn(()=>"ui"),setReadOnly:vi.fn(()=>true),closeTypingGroup:vi.fn(()=>true)} as unknown as LocalDocumentEditor);
+const shared=()=>({...local(),selectionPolicy:()=>"document-v1",rangePolicy:()=>"general-v1",historyPolicy:()=>"typing-v1",close:vi.fn(async()=>{}),discardAndClose:vi.fn(async()=>{}),flush:vi.fn(async()=>{})} as unknown as SharedDocumentEditorSession);
+async function settle(){await act(async()=>{for(let i=0;i<12;i++)await Promise.resolve();});}
+beforeEach(()=>{mocks.local.mockReset();mocks.shared.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
+afterEach(async()=>{await act(async()=>root.unmount());await settle();container.remove();});
+describe("explicit React document ownership",()=>{
+ it("StrictMode announces one owner of each family and exposes named document intents",async()=>{
+  const a=local(),b=shared(),ra=createRef<BreditorDocumentEditorHandle>(),rb=createRef<BreditorSharedDocumentEditorHandle>();mocks.local.mockResolvedValue(a);mocks.shared.mockResolvedValue(b);
+  await act(async()=>root.render(<StrictMode><BreditorDocumentEditor ref={ra} initialOptions={localOptions}/><BreditorSharedDocumentEditor ref={rb} initialOptions={sharedOptions} onCloseError={()=>{}}/></StrictMode>));await settle();expect(mocks.local).toHaveBeenCalledOnce();expect(mocks.shared).toHaveBeenCalledOnce();expect(ra.current?.getEditor()).toBe(a);expect(rb.current?.getEditor()).toBe(b);
+  ra.current?.selectDocument("1");ra.current?.replaceDocumentPlainText("Q","2");ra.current?.pasteDocumentClipboard("opaque","3");ra.current?.collapseDocumentSelection("after","4");rb.current?.selectDocument("5");rb.current?.replaceDocumentPlainText("Q","6");rb.current?.pasteDocumentClipboard("opaque","7");rb.current?.collapseDocumentSelection("before","8");expect(a.selectDocument).toHaveBeenCalledWith("1");expect(a.pasteDocumentClipboard).toHaveBeenCalledWith("opaque","3");expect(b.selectDocument).toHaveBeenCalledWith("5");expect(b.collapseDocumentSelection).toHaveBeenCalledWith("before","8");await act(async()=>root.unmount());await settle();expect(a.dispose).toHaveBeenCalledOnce();expect(b.close).toHaveBeenCalledOnce();expect(b.discardAndClose).not.toHaveBeenCalled();
+ });
+ it.each([false,true])("live callbacks and readOnly do not reset document history (shared=%s)",async isShared=>{
+  const owned=isShared?shared():local(),first=vi.fn(),latest=vi.fn();(isShared?mocks.shared:mocks.local).mockResolvedValue(owned);
+  const render=(next:boolean)=>isShared?<BreditorSharedDocumentEditor initialOptions={{...sharedOptions,history:next?"explicit":"typing-v1"}} readOnly={next} onChange={next?latest:first} onPasteLoss={next?latest:first} onCloseError={()=>{}}/>:<BreditorDocumentEditor initialOptions={{...localOptions,history:next?"explicit":"typing-v1"}} readOnly={next} onChange={next?latest:first} onPasteLoss={next?latest:first}/>;
+  await act(async()=>root.render(render(false)));await settle();const options=(isShared?mocks.shared:mocks.local).mock.calls[0]![0];await act(async()=>root.render(render(true)));options.onChange({format:isShared?"breditor/shared-document-view":"breditor/rich-document-view"},"content");options.onPasteLoss({losses:["block-structure"]});expect(first).not.toHaveBeenCalled();expect(latest).toHaveBeenCalledTimes(2);expect(owned.setReadOnly).toHaveBeenLastCalledWith(true);expect(isShared?mocks.shared:mocks.local).toHaveBeenCalledOnce();
+ });
+ it.each([false,true])("late unmounted document startup retires without announcing ready (shared=%s)",async isShared=>{
+  const owned=isShared?shared():local(),ready=vi.fn();let finish!:(v:typeof owned)=>void;(isShared?mocks.shared:mocks.local).mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));await act(async()=>root.render(isShared?<BreditorSharedDocumentEditor initialOptions={sharedOptions} onReady={ready} onCloseError={()=>{}}/>:<BreditorDocumentEditor initialOptions={localOptions} onReady={ready}/>));await settle();await act(async()=>root.unmount());await act(async()=>finish(owned));await settle();expect(ready).not.toHaveBeenCalled();expect(isShared?(owned as SharedDocumentEditorSession).close:(owned as LocalDocumentEditor).dispose).toHaveBeenCalledOnce();if(isShared)expect((owned as SharedDocumentEditorSession).discardAndClose).not.toHaveBeenCalled();
+ });
+ it("local failed startup retries and sessionKey replaces the prior owner once",async()=>{
+  const first=local(),second=local(),ref=createRef<BreditorDocumentEditorHandle>();mocks.local.mockRejectedValueOnce(Error("Missing runtime")).mockResolvedValueOnce(first).mockResolvedValueOnce(second);await act(async()=>root.render(<BreditorDocumentEditor ref={ref} sessionKey="a" initialOptions={localOptions}/>));await settle();expect(container.querySelector('[role="alert"]')).not.toBeNull();await act(async()=>ref.current?.retry());await settle();expect(ref.current?.getEditor()).toBe(first);await act(async()=>root.render(<BreditorDocumentEditor ref={ref} sessionKey="b" initialOptions={localOptions}/>));await settle();expect(first.dispose).toHaveBeenCalledOnce();expect(ref.current?.getEditor()).toBe(second);
+ });
+ it("shared failed retirement retains document family and blocks replacement until retry",async()=>{
+  const first=shared(),second=shared(),ref=createRef<BreditorSharedDocumentEditorHandle>(),failure=vi.fn();vi.mocked(first.close).mockRejectedValue(Error("Quota"));mocks.shared.mockResolvedValueOnce(first).mockResolvedValueOnce(second);const render=(key:string)=><BreditorSharedDocumentEditor ref={ref} sessionKey={key} initialOptions={sharedOptions} onCloseError={failure}/>;
+  await act(async()=>root.render(render("a")));await settle();await act(async()=>root.render(render("b")));await settle();expect(mocks.shared).toHaveBeenCalledOnce();expect(ref.current?.getRecovery()).toBe(first);expect(ref.current?.getRecovery()?.selectionPolicy()).toBe("document-v1");expect(ref.current?.getRecovery()?.historyPolicy()).toBe("typing-v1");expect(ref.current?.checkpointJson()).toBe("exact document");expect(first.discardAndClose).not.toHaveBeenCalled();vi.mocked(first.close).mockResolvedValue(undefined);await act(async()=>ref.current?.retry());await settle();expect(ref.current?.getRecovery()).toBeNull();expect(ref.current?.getEditor()).toBe(second);
+ });
+ it("shared startup cleanup failure hands off headless document recovery before a new lease",async()=>{
+  const close=vi.fn(async()=>{}),session={core:{view:()=>({historyGrouping:"typing-v1"}),checkpointJson:()=>"exact startup document"},close,discardAndClose:vi.fn()},failure=new SharedDocumentEditorOpenError(Error("Quota"),session as unknown as SharedPersistentSession<"document-v1">),owned=shared(),ref=createRef<BreditorSharedDocumentEditorHandle>(),handoff=vi.fn();mocks.shared.mockRejectedValueOnce(failure).mockResolvedValueOnce(owned);await act(async()=>root.render(<BreditorSharedDocumentEditor ref={ref} initialOptions={sharedOptions} onCloseError={handoff}/>));await settle();expect(handoff).toHaveBeenCalledWith(failure,failure.recovery);expect(ref.current?.checkpointJson()).toBe("exact startup document");expect(ref.current?.getRecovery()?.selectionPolicy()).toBe("document-v1");await act(async()=>ref.current?.retry());await settle();expect(close).toHaveBeenCalledOnce();expect(ref.current?.getEditor()).toBe(owned);expect(session.discardAndClose).not.toHaveBeenCalled();
+ });
+ it("unmounted shared close failure still reaches its required recovery callback",async()=>{
+  const owned=shared(),handoff=vi.fn(()=>{throw Error("Reporter failed");}),report=vi.fn();vi.mocked(owned.close).mockRejectedValue(Error("Storage failure"));mocks.shared.mockResolvedValue(owned);await act(async()=>root.render(<BreditorSharedDocumentEditor initialOptions={sharedOptions} onCloseError={handoff} onError={report}/>));await settle();await act(async()=>root.unmount());await settle();expect(handoff).toHaveBeenCalledWith(expect.any(Error),owned);expect(report).toHaveBeenCalled();expect(owned.discardAndClose).not.toHaveBeenCalled();
+ });
+});

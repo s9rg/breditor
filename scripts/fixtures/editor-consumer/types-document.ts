@@ -89,3 +89,36 @@ function sharedDocumentDom(host:HTMLElement,core:SharedRichEditor<"document-v1">
  dom.execute({selectionUpdate:{kind:"set",value:{kind:"document"}},commands:[]});
 }
 void sharedDocumentDom;
+import {openLocalEditor,openLocalDocumentEditor,type LocalEditor,type LocalDocumentEditorOptions,RichDocumentSessionStore as RootDocumentStore} from "@breditor/editor";
+import {openSharedEditor,openSharedDocumentEditor,type SharedEditorSession,type SharedDocumentEditorSessionOptions,type SharedDocumentEditorRecovery} from "@breditor/editor/collaboration";
+import type {BreditorEditorProps,BreditorDocumentEditorProps,BreditorDocumentEditorHandle} from "@breditor/editor/react";
+import type {BreditorSharedEditorProps,BreditorSharedDocumentEditorProps,BreditorSharedDocumentEditorHandle} from "@breditor/editor/collaboration/react";
+async function documentSdk(host:HTMLElement):Promise<void>{
+ const options:LocalDocumentEditorOptions={host,selectionEditing:"document-v1",richLanguage:3,onChange:view=>{const v:LocalDocumentView=view;void v;}};
+ const editor=await openLocalDocumentEditor(options);editor.selectDocument();editor.pasteDocumentClipboard("opaque");editor.collapseDocumentSelection("after");const view:LocalDocumentView=editor.view();void view;void RootDocumentStore;
+ // @ts-expect-error original startup must not adopt document options implicitly
+ openLocalEditor(options);
+ // @ts-expect-error original top-level owner cannot produce document views
+ const old:LocalEditor=editor;void old;
+ // @ts-expect-error no sniffing of old checkpoint tags in the document factory
+ openLocalDocumentEditor({host,selectionEditing:"document-v1",initial:{kind:"checkpoint",checkpointJson:"opaque"}});
+ const sharedOptions:SharedDocumentEditorSessionOptions={host,selectionEditing:"document-v1",database:"document",room:"room",writer:"101",onChange:event=>{const v:SharedDocumentView=event.view;void v;}};
+ const shared=await openSharedDocumentEditor(sharedOptions);shared.selectDocument();shared.replaceDocumentPlainText("Q");const recovery:SharedDocumentEditorRecovery=shared;const policy:"document-v1"=recovery.selectionPolicy();void policy;
+ // @ts-expect-error original durable startup does not adopt a new selection family
+ openSharedEditor(sharedOptions);
+ // @ts-expect-error original shared owners do not produce document selections
+ const oldShared:SharedEditorSession=shared;void oldShared;
+ // @ts-expect-error document recovery is an explicit discriminator, not a general journal
+ openSharedDocumentEditor({...sharedOptions,initial:{kind:"generalCheckpoint",checkpointJson:"opaque"}});
+ await shared.close();editor.dispose();
+}
+function documentReact(local:BreditorDocumentEditorHandle,shared:BreditorSharedDocumentEditorHandle):void {
+ local.selectDocument();local.pasteDocumentClipboard("opaque");shared.selectDocument();shared.replaceDocumentPlainText("Q");
+ const localProps:BreditorDocumentEditorProps={initialOptions:{selectionEditing:"document-v1"},onChange:view=>{const v:LocalDocumentView=view;void v;}};
+ const sharedProps:BreditorSharedDocumentEditorProps={initialOptions:{selectionEditing:"document-v1",database:"d",room:"r",writer:"1"},onCloseError:(_error,recovery)=>{const policy:"document-v1"=recovery.selectionPolicy();void policy;}};
+ // @ts-expect-error the original React component cannot adopt document initial options or callbacks
+ const old:BreditorEditorProps=localProps;void old;
+ // @ts-expect-error the original shared component cannot adopt document initial options
+ const oldShared:BreditorSharedEditorProps=sharedProps;void oldShared;
+}
+void documentSdk;void documentReact;

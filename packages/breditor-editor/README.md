@@ -22,8 +22,9 @@ rich Copy/Cut/paste, atomic cross-range Enter and cross-block composition routin
 have functional checkpoints. Rich blocks pasted into captions/code use native
 text conversion with a visible formatting-loss notice and optional
 `onPasteLoss(report)` callback, also available as a live React prop. Failed rich
-paste never triggers a silent plain-text retry. Whole-document Select All,
-external interchange and final integrated qualification remain unfinished.
+paste never triggers a silent plain-text retry. Whole-document Select All uses
+the separate document openings below. External interchange and final integrated
+qualification remain unfinished.
 
 Local saves keep their existing checkpoint families; reapply the range option
 after reload. Shared general sessions use separately declared ordinary/natural
@@ -41,8 +42,85 @@ records take precedence over seeds. New shared recovery handles expose
 `rangePolicy()` and `historyPolicy()` so a failed close/mount can retain the
 declared save family. Keep the language/profile configuration too, and retry
 closure or explicitly discard rather than releasing a failed writer implicitly.
-Relay V2 still needs integration; general journal/digest guards must not be
-bypassed to attach a general owner to the original relay.
+General owners can select the explicit writer transport V2 adapter. Document
+relay composition remains separate; journal/digest guards must not be bypassed
+to attach a document owner to an original/general adapter.
+
+## Explicit document selection
+
+`openLocalDocumentEditor` from the root and `openSharedDocumentEditor` from
+`@breditor/editor/collaboration` require `selectionEditing: 'document-v1'`.
+They add native whole-document selection, rich Copy/Cut/paste, first-key typing,
+Enter/deletion, composition and native formatting/layout coverage. This is a
+distinct selection and save family; the original openings do not adopt it.
+Language defaults remain 1; choose `richLanguage: 3` for layout and the full
+structural grammar, with the same explicit profile configuration on recovery.
+
+```js
+import {openLocalDocumentEditor} from '@breditor/editor';
+
+const editor = await openLocalDocumentEditor({
+  host,
+  selectionEditing: 'document-v1',
+  richLanguage: 3,
+  history: 'typing-v1'
+});
+editor.selectDocument();
+editor.replaceDocumentPlainText('A fresh start');
+const checkpointJson = editor.checkpointJson();
+editor.dispose();
+
+const restored = await openLocalDocumentEditor({
+  host,
+  selectionEditing: 'document-v1',
+  richLanguage: 3,
+  history: 'typing-v1',
+  initial: {kind: 'documentTypingCheckpoint', checkpointJson}
+});
+```
+
+Both owners expose `selectDocument`, `replaceDocumentPlainText`,
+`pasteDocumentClipboard` and `collapseDocumentSelection`, with optional exact
+revision guards. `execute` retains its original closed command DTO. Native
+document views and toolbar callbacks retain their declared family. Rich Cut
+requires exact retention of both MIME values before deleting content. Rich paste
+failure never falls back to plain text. Asset replacement over document scope
+uses `onDocumentFiles(files, revision)`; the host must retain the guard and submit
+one document rich paste, not append uploaded images elsewhere.
+
+Use `initial: {kind: 'documentCheckpoint', checkpointJson}` for explicit local
+history; the natural family uses `documentTypingCheckpoint`. Original/general
+checkpoint tags are not reinterpreted by these openings. The root exports
+`RichDocumentSessionStore` for separate explicit local persistence. Converting
+an original local save requires the headless profile's named
+`restoreOriginalAsDocumentEditor`, not importing its AST instead of history.
+
+Shared document options additionally require `database`, `room` and `writer`.
+Stored journals take precedence over initial seeds; `{kind: 'resume'}` refuses to
+create a fresh writer. New seeds can use `empty`, `document`, `frame`, or the two
+document checkpoint variants. Durable storage routes original/general records
+only to their declared old restore callbacks before an explicit document-family
+upgrade; document records route only to document recovery. Keep the same
+language/profile and history policy on reopening.
+
+Shared `close()` stops UI before saving. A failed close retains the exact native
+owner and exclusive writer lease for retry; retain its recovery handle or call
+`discardAndClose()` explicitly. Failed startup cleanup throws
+`SharedDocumentEditorOpenError` with readable recovery and required
+`selectionPolicy()`, `rangePolicy()` and `historyPolicy()` metadata.
+
+The React entry points export `BreditorDocumentEditor` and
+`BreditorSharedDocumentEditor`. Their required `initialOptions` carry the explicit
+selector; their imperative handles expose the named document intents. Options
+are immutable per `sessionKey`, while callbacks and `readOnly` remain live. The
+shared component requires `onCloseError(error, recovery)`, including after
+unmount; a failed old writer blocks replacement until safe retirement succeeds.
+React never reconciles editable document children.
+
+The document SDK/React functional checkpoint covers compiled source with actual
+release Wasm and synthetic DOM/storage/lock fixtures. Document-specific relay
+and presence integration, external interchange, native browser/IME/accessibility
+and final release acceptance remain separate work.
 
 ## Local editor
 

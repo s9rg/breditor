@@ -1,0 +1,65 @@
+{
+  "format": "breditor/document-sdk-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "status": "explicit-sdk-and-react-functional",
+  "probe": "scripts/probe-document-sdk.mjs",
+  "runtime": {
+    "localDirectory": "target/block-layout-shared-qualification/document-browser-local-final-web",
+    "sharedDirectory": "target/block-layout-shared-qualification/shared-document-dom-tools-final-web",
+    "localWasmSha256": "d236c07082ba421412fcd0802dd4c582398b74e9501506820aca2b6f1aa49a32",
+    "sharedWasmSha256": "d063f22348a15a5b718b65bfd2c30899b6f0788cff317c79f4a0d5df1b66ddae",
+    "probeRequiresByteIdenticalPackagedWasm": true
+  },
+  "functional": {
+    "nativeLanguages": [1, 2, 3],
+    "history": ["explicit", "typing-v1"],
+    "sources": ["simple", "mixed-rich-document", "hidden-only-document"],
+    "localCases": 10,
+    "sharedCases": 10,
+    "exactRestores": 20,
+    "exactFutureCheckpoints": 80,
+    "failedCloseRetries": 2,
+    "originalFactoryRefusals": 20,
+    "actualReactOwners": 4,
+    "reactFutureHistorySteps": 8,
+    "passed": true,
+    "fixtures": ["jsdom synthetic events", "fake-indexeddb", "exclusive Web Locks API fixture"]
+  },
+  "focusedChecks": {
+    "sdkTests": 238,
+    "sdkTestFiles": 30,
+    "sdkMaxWorkers": 2,
+    "documentSdkLifecycleTests": 18,
+    "documentReactLifecycleTests": 9,
+    "sdkDeclarations": "passed",
+    "positiveNegativeConsumerTypes": "passed against generated root, collaboration, React and raw Wasm declarations"
+  },
+  "contracts": {
+    "newOpeningsRequireExplicitDocumentSelector": true,
+    "oldOpeningViewCommandAndReactContractsWidened": false,
+    "oldSchemaDefaultsChanged": false,
+    "localDocumentRestoreSniffsOldCheckpoints": false,
+    "sharedDocumentRestoreFallsBackToOldFactory": false,
+    "storedOriginalGeneralRecoveryRoutesChanged": false,
+    "sharedResumeCreatesFreshWriter": false,
+    "failedStartupRetainsOriginalHostNodes": true,
+    "failedCloseRetainsExactOwnerAndExclusiveLease": true,
+    "failedCloseAutomaticallyDiscards": false,
+    "startupRecoveryDeclaresSelectionRangeAndHistory": true,
+    "reactOptionsImmutablePerSessionKey": true,
+    "reactCallbacksAndReadOnlyRemainLive": true,
+    "reactReconcilesEditableChildren": false,
+    "lateUnmountedOwnersAnnouncedReady": false,
+    "replacementWaitsForDurableRetirement": true,
+    "documentAssetReplacementAppendsSilently": false
+  },
+  "remaining": [
+    "Document-family relay composition and explicit presence behavior",
+    "Remaining installed editing and transport acceptance",
+    "Sanitized HTML/Markdown and realistic Word/Google Docs/Excel interchange",
+    "Deferred broad native browser/clipboard/IME/accessibility/performance/release qualification"
+  ],
+  "releaseReady": false,
+  "publishedOrPushed": false
+}

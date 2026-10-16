@@ -2,6 +2,7 @@ import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactEleme
 import {openSharedEditor,type SharedEditorSession,type SharedEditorSessionOptions} from "./shared_session.js";
 import {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
 import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextProjection} from "@breditor/collaboration";
+export {BreditorSharedDocumentEditor,type BreditorSharedDocumentEditorProps,type BreditorSharedDocumentEditorHandle} from "./shared_document_react.js";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
