@@ -1,0 +1,417 @@
+{
+  "date": "2026-10-16",
+  "sourceBaseline": "f25cb11629615f4c9a120146aed448ad8e479ac6",
+  "sourceCheckpoint": "ce5fec4b054652c2701043e57a62dfecb6798c98",
+  "status": "functional-regressions-passed-latency-open",
+  "scope": "Private positive reuse of already-admitted shared AST projections during atomic native staging. No new action, protocol, checkpoint family, default, native engine inverse or browser adapter.",
+  "featureComplete": false,
+  "goalComplete": false,
+  "releaseQualified": false,
+  "contracts": {
+    "currentProjection": "Same live owner token, committed state and oplog versions only; pending and detached states miss. Protocol/header checks precede hits. Root namespaces, causal bytes, UI, history and journal limits still receive complete adoption checks, including empty root activation without a new operation.",
+    "retainedPrefix": "Only the unchanged live owner's exact internal journal receives an immutable replay reader. Native commands, keys, UI and expected causal effects still replay. A hit re-admits the immutable AST under the active codec. Fresh JSON recovery has no reader, and staged construction removes its reader before any new action.",
+    "atomicity": "Staged memo writes use copy-on-write; a failed action cannot mutate the published owner's store. Tests include a late publication failure followed by a different payload at the same prospective counter.",
+    "cacheLimits": "At most 256 entries and 2 MiB charged canonical/key/entry allowance per store; 4096 combined clock entries maximum for cache eligibility. Oversized entries simply materialize normally. This charge is not a total heap budget; ASTs, allocator overhead, and old-source/candidate overlap need separate measurement.",
+    "compatibility": "Original local runtime/browser/rich/editor package archives remain identical. Original shared models, checkpoints, errors, operation/frame semantics and exported method surface are unchanged. No dependency or vendored source change."
+  },
+  "nativeChecks": {
+    "canonicalCommand": "CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "sdkCommand": "npm run test:candidate --workspace @breditor/editor",
+    "defaultCommand": "npm test",
+    "canonicalSharedPassed": 279,
+    "canonicalSuiteFooters": 22,
+    "focusedPrivateCacheTests": 14,
+    "focusedResearchPassed": 14,
+    "strictNativeAllTargetClippy": true,
+    "strictActualReleaseWasmClippy": true,
+    "researchWasmSourceCompiles": true,
+    "researchFullNativeSuiteRerun": false,
+    "rustdocWarningsDenied": true,
+    "namedFirstPartyFormatCheck": true,
+    "sdkPassed": 72,
+    "sdkFiles": 13,
+    "rootRustRerun": false
+  },
+  "defaultRegression": {
+    "browserPassed": 2203,
+    "reactPassed": 57,
+    "highlightPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 365,
+    "existingOptInSkips": 3
+  },
+  "compatibility": {
+    "originalV1States": 49,
+    "crossVersionRestores": 2,
+    "futureHistorySteps": 12,
+    "typingLanguages": [
+      1,
+      2
+    ],
+    "exactOriginalModeStates": 14,
+    "strictRawWasmRejections": 18,
+    "exactGroupedFutureComparisons": 22,
+    "invisibleFalsePublications": 2,
+    "readOnlyNativeDenials": 4,
+    "readOnlyCrossRestores": 8,
+    "readOnlyFutureComparisons": 20,
+    "javascriptExports": 5,
+    "rawWasmExports": 64
+  },
+  "installedRegression": {
+    "status": "passed",
+    "command": "caffeinate -is -t 1800 node scripts/check-editor-browser.mjs",
+    "applicationCommand": "caffeinate -is -t 600 node_modules/.bin/playwright test -c experiments/shared-browser/application-network.config.mjs",
+    "policy": "All discovered SDK files once per complete run; Chromium/Firefox/WebKit, one worker, zero retries, unchanged60-second case and300-second process limits. Application regression follows serially. A complete prior attempt was interrupted by proved host sleep and is retained separately.",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-b3Zkil/consumer",
+    "artifacts": [
+      {
+        "name": "breditor-browser-0.3.0-alpha.22.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "bytes": 1252157,
+        "sha256": "6d28a09c9e5e04230a5de45408790be12f4795b78ac975dba8aa0dc19452896e"
+      },
+      {
+        "name": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "bytes": 2360021,
+        "sha256": "af4407fb06f8fb309ea4a4cb65225d90d2908e608055663bab19668c2d7b7300"
+      },
+      {
+        "name": "breditor-editor-0.3.0-alpha.22.tgz",
+        "bytes": 21967,
+        "sha256": "1a9a89eb432ae23369caf6ddefa32464b0a0eae2a7e9a36ea2bc8f475caabf20"
+      },
+      {
+        "name": "breditor_wasm_bg.wasm",
+        "bytes": 4313791,
+        "sha256": "32d815eed9b44c2e40fda36bbf2ecec0b350bffa5d871c39466b2f134c767de8"
+      },
+      {
+        "name": "breditor_shared_bg.wasm",
+        "bytes": 8589871,
+        "sha256": "a19245135d94a371d78ab6ed2e40802ba94f20c1b4188c1b1fa55fe4e18aaed3"
+      }
+    ],
+    "batches": [
+      {
+        "passed": 93,
+        "duration": "1.8m"
+      },
+      {
+        "passed": 102,
+        "duration": "2.5m"
+      },
+      {
+        "passed": 18,
+        "duration": "11.8s"
+      },
+      {
+        "passed": 21,
+        "duration": "1.1m"
+      },
+      {
+        "passed": 39,
+        "duration": "2.5m"
+      },
+      {
+        "passed": 15,
+        "duration": "1.6m"
+      }
+    ],
+    "applicationPassed": 78,
+    "totalPassed": 288,
+    "editingPassed": 273,
+    "relayPassed": 15,
+    "applicationDuration": "1.4m",
+    "engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ]
+  },
+  "diagnosticInputCost": {
+    "script": "scripts/probe-shared-input-cost.mjs",
+    "command": "node scripts/probe-shared-input-cost.mjs firefox 8",
+    "host": "Build clean archives with node scripts/check-editor-package.mjs, then run node experiments/editor-browser/serve.mjs separately on the owned test port49784. The probe accepts chromium/firefox/webkit and1..16 inputs per phase; a300-second diagnostic watchdog closes its browser on failure.",
+    "workload": "Fresh installed structural V2 owner:8x typing, four Undo/Redo cycles,8y typing, exact grouped checkpoint recovery and future Undo/Redo; independent leased writer303, no relay.",
+    "baselineWasmSha256": "e5c71ae345c7455a0ae114e314b1edde31ae0ef01bbcdc7c141bf862d47bbeb7",
+    "candidateWasmSha256": "a19245135d94a371d78ab6ed2e40802ba94f20c1b4188c1b1fa55fe4e18aaed3",
+    "observedFirefoxSamples": {
+      "baselineInitialMs": [
+        241,
+        322,
+        446,
+        563,
+        697,
+        841,
+        928,
+        1051
+      ],
+      "baselineAfterHistoryMs": [
+        1642,
+        1761,
+        1996,
+        2046,
+        2148,
+        2359,
+        2459,
+        2655
+      ],
+      "baselineRestoreMs": 2875,
+      "currentProjectionOnlyAfterHistoryMs": [
+        1489,
+        1628,
+        1671,
+        1688,
+        1820,
+        1903,
+        2130,
+        2243
+      ],
+      "retainedReplayInitialMs": [
+        182,
+        262,
+        355,
+        392,
+        462,
+        535,
+        687,
+        659
+      ],
+      "retainedReplayAfterHistoryMs": [
+        1148,
+        1417,
+        2068,
+        1494,
+        1478,
+        1585,
+        1687,
+        1816
+      ],
+      "retainedReplayRestoreMs": 2145
+    },
+    "exactHashes": {
+      "checkpoint": "6a45b746be55375562845cb1472ce00892b2c98b1e8d651fbc13ee15037eb713",
+      "futureCheckpoint": "31211f0bbf2b1db55760acad740acf207c95b3a306f3f1f4c2b7e8390e073716",
+      "document": "85c6bc096c973cec7364c88801d2c40a4660c0c18cd0ceb499431087f4fe356f",
+      "allThreeBuildsMatch": true
+    },
+    "interpretation": "Unqualified local diagnostic samples. An earlier Firefox last-input sample decreased from 2655 to 1816 ms, but the final sample was 2574 ms and its after-history phase included 4548 ms. A reliable responsiveness improvement is not established. Repeated projection work is removed by code and deterministic work guards, while whole-journal native replay and multi-second costs remain. Earlier observations overlapped native qualification; final three-engine diagnostics followed completed task builds/tests, with external load uncontrolled. Millisecond samples are rounded and raw rows are retained. No p95, supported-size, heap-budget or release-performance claim; no timing window/deadline increased.",
+    "finalAllEngineToolProof": {
+      "passed": true,
+      "baselineExactInAllThreeEngines": true,
+      "rowsPerEngine": 24,
+      "wasmSha256": "a19245135d94a371d78ab6ed2e40802ba94f20c1b4188c1b1fa55fe4e18aaed3",
+      "engines": [
+        {
+          "engine": "chromium",
+          "browserVersion": "151.0.7922.34",
+          "phases": [
+            {
+              "phase": "initial-typing",
+              "mutationMs": [
+                34,
+                36,
+                42,
+                52,
+                57,
+                65,
+                74,
+                85
+              ]
+            },
+            {
+              "phase": "undo",
+              "mutationMs": [
+                95,
+                100,
+                109,
+                125
+              ]
+            },
+            {
+              "phase": "redo",
+              "mutationMs": [
+                96,
+                103,
+                119,
+                135
+              ]
+            },
+            {
+              "phase": "after-history-typing",
+              "mutationMs": [
+                144,
+                157,
+                168,
+                180,
+                187,
+                195,
+                209,
+                214
+              ]
+            }
+          ],
+          "restoreMs": 279
+        },
+        {
+          "engine": "firefox",
+          "browserVersion": "153.0",
+          "phases": [
+            {
+              "phase": "initial-typing",
+              "mutationMs": [
+                169,
+                236,
+                289,
+                362,
+                448,
+                496,
+                565,
+                641
+              ]
+            },
+            {
+              "phase": "undo",
+              "mutationMs": [
+                660,
+                767,
+                877,
+                1038
+              ]
+            },
+            {
+              "phase": "redo",
+              "mutationMs": [
+                727,
+                874,
+                910,
+                1120
+              ]
+            },
+            {
+              "phase": "after-history-typing",
+              "mutationMs": [
+                1285,
+                1535,
+                1311,
+                4548,
+                1989,
+                2823,
+                2536,
+                2574
+              ]
+            }
+          ],
+          "restoreMs": 3594
+        },
+        {
+          "engine": "webkit",
+          "browserVersion": "26.5",
+          "phases": [
+            {
+              "phase": "initial-typing",
+              "mutationMs": [
+                38,
+                44,
+                64,
+                65,
+                75,
+                84,
+                98,
+                107
+              ]
+            },
+            {
+              "phase": "undo",
+              "mutationMs": [
+                115,
+                143,
+                156,
+                169
+              ]
+            },
+            {
+              "phase": "redo",
+              "mutationMs": [
+                126,
+                151,
+                161,
+                216
+              ]
+            },
+            {
+              "phase": "after-history-typing",
+              "mutationMs": [
+                196,
+                216,
+                223,
+                220,
+                209,
+                244,
+                268,
+                286
+              ]
+            }
+          ],
+          "restoreMs": 380
+        }
+      ],
+      "scope": "Final document, checkpoint and future checkpoint hashes match the baseline in all three engines. Intermediate comparisons cover only the named row metadata, not per-step document hashes. Bounded native diagnostics followed completed task builds/tests; external load uncontrolled, not accepted performance qualification. Milliseconds rounded; raw rows retained.",
+      "exactIntermediateMetadataRows": 72,
+      "intermediateComparedFields": [
+        "phase",
+        "revision",
+        "undoDepth",
+        "historyStepCount",
+        "checkpointBytes"
+      ]
+    }
+  },
+  "interruptedRun": {
+    "passedBatches": [
+      93,
+      102,
+      18,
+      21
+    ],
+    "partialLast": {
+      "passed": 10,
+      "notRun": 29,
+      "errors": 2
+    },
+    "kind": "Confirmed host idle sleep during Chromium V2 mixed typing",
+    "trace": "target/shared-replay-projection-qualification/installed-matrix-timeout/shared-typing-history-shar-c5b4a-d-deletion-stay-intentional-chromium/trace.zip",
+    "sleepLocal": "2026-10-16 00:59:33 -0400",
+    "darkWakeLocal": "2026-10-16 01:15:01 -0400",
+    "sleepSeconds": 928,
+    "traceKeyboardMs": 927499.421,
+    "policy": "Failed run retained. Full clean-installed matrix restarted under bounded caffeinate -is -t1800; no case/global deadline increase or Playwright retry. Preserve the timeout in final record; not a product fix or a passed qualification."
+  },
+  "openIssues": [
+    "Shared whole-journal hot-path replay and sustained mixed-document typing responsiveness",
+    "Earlier unrecorded native V2 code/style ReplayMismatch remains unconfirmed",
+    "Historical intermittent WebKit integer-domain startup fault remains unresolved",
+    "Earlier WebKit cancelled-mount TypeError remains unconfirmed",
+    "Earlier application-demo offline-button observation remains unclassified"
+  ],
+  "retainedLogs": "target/shared-replay-projection-qualification",
+  "readiness": {
+    "implemented": 9,
+    "partial": 17,
+    "missing": 20,
+    "openReleaseGates": 13,
+    "statusChanged": false,
+    "noPushTagPublishDeploy": true
+  },
+  "nextAcceptance": "Keep the original two workstreams active: finish general selections, code/atomic navigation, bounded block/context controls, and separate sanitized HTML/Markdown plus Word/Docs/Excel interchange. Shared responsiveness remains open; native IME/accessibility and final performance/deployment qualification remain later.",
+  "artifactDelta": {
+    "sharedWasmBytes": 29451,
+    "collaborationArchiveBytes": 5550,
+    "sizeBudgetApproved": false
+  }
+}

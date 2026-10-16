@@ -248,6 +248,19 @@ a serious responsiveness issue. The historical WebKit startup error recurred, an
 an offline-button observation remains unclassified. Later passing runs close
 neither issue. History and release-gate labels remain unchanged.
 
+The subsequent [shared projection reuse checkpoint](qualification/2026-10-16-shared-replay-projections.json)
+removes repeated AST projection work during native staging. Its private caches
+cannot bypass fresh recovery, protocol/header or complete adoption checks;
+failed candidates cannot populate the live owner's store. Fourteen new native
+guards bring the shared suite to 279 tests. All 288 installed SDK and 78
+application cases pass across three engines, and 72 diagnostic metadata rows
+plus final document/checkpoint/future-history hashes match the baseline.
+The record preserves an earlier run interrupted by 928 seconds of confirmed
+macOS idle sleep; bounded temporary sleep assertions protect the completed rerun.
+The apparent early Firefox speedup did not hold reliably in the final diagnostic,
+which still included a 4.55-second input. Shared responsiveness, the historical
+faults and release labels remain open. Cache charges are not a total memory budget.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
