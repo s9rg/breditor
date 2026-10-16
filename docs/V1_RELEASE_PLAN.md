@@ -546,6 +546,14 @@ cross-browser matrices, physical input/accessibility, performance and final
 release qualification follow feature completion. This changes the order of
 work, not the V1 acceptance criteria or the independent original protocols.
 
+The [2026-10-16 transport checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
+completes explicit Wasm/SDK/reference-relay V2 integration with real offline
+authors, exact restart recovery and peer-preserving Undo/Redo. General rich
+clipboard and cross-structure paragraph checkpoints are also retained. Remaining
+functional work includes caption/code text-with-losses paste, whole-document
+selection and external interchange. These focused results do not promote V1
+readiness rows or replace final installed/browser/release acceptance.
+
 The active implementation goal covers the first two workstreams: a unified
 installable rich editor, then everyday editing and external interchange. This
 includes the distribution, editing and interchange checkpoints below. Completion

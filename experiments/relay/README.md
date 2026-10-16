@@ -266,6 +266,24 @@ device or network filesystem.
 
 ## Tested workflows and limits
 
+Writer transport V2 is an explicit new-room choice:
+`Room::create_atomic_transport_v2(path, configuration, document, owner, profile)`.
+`AtomicTransportProfile` selects original, structural V2 or layout V3 grammar
+and the appropriate inline preset; it does not infer grammar from document
+content. A separate durable `seedAtomicTransportV2` record retains this selection.
+Original room constructors/logs keep writer transport V1 and their existing
+digests; no in-place migration occurs. `writer_transport_version()` reports the
+room-bound contract. V2 rooms require the `writerTransportV2` socket capability;
+V1 rooms refuse it. The standard relay envelope and existing update-frame
+contracts are unchanged. Native author, payload, dependency, fork and budget
+checks remain mandatory for every admitted group and every replayed record.
+
+`transport_v2_functional` is a separate loopback-only example used by
+`scripts/probe-writer-transport-v2.mjs`. It creates only explicitly selected
+standard-layout V3 / transport V2 rooms, uses temporary host-owned fixtures and
+does not restart the existing network demo. See the retained
+[functional evidence](../../docs/qualification/2026-10-16-writer-transport-v2-functional.json).
+
 The contracts exercise simultaneous offline table width/text and image alt/
 caption edits, original server-durable retry receipts, server restart, client
 journal restore and selective Undo/Redo through later remote edits. They also

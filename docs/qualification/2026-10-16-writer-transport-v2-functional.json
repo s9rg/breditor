@@ -1,0 +1,53 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "sourceCommit": "691dc9e",
+  "scope": "Explicit native atom-lineage transport V2 through application Wasm, SDK and durable reference relay, independently from rich grammar/range/history policies.",
+  "native": {
+    "relayTests": 27,
+    "newAtomicTransportTests": 2,
+    "strictRelayAndWasmClippyPassed": true,
+    "existingVendoredWarningUnchanged": true
+  },
+  "sdk": {
+    "tests": 169,
+    "testFiles": 23,
+    "newTransportContractTests": 5,
+    "typesPassed": true,
+    "generatedRuntimeSurfacePassed": true,
+    "generalJournalRelayAdmissionRegressionFixed": true
+  },
+  "releaseRuntimeProbe": {
+    "sharedWasmSha256": "bdb7434c60ddda2b392677ae9a06281a8a20ea28d86ea56379c9961a02e334a7",
+    "nativeRelaySha256": "4c96c7784e6820cc56a89415936ebaf71a32995b31e4ca6ca24980dba07d00c6",
+    "historyPolicies": 2,
+    "exactJournalRestores": 4,
+    "twoWriterDocumentComparisons": 16,
+    "durableFlushes": 20,
+    "wrongModeRegistrationRefusals": 2,
+    "passed": true,
+    "scope": "Temporary loopback relay and actual release Wasm/SDK: offline cross-cell replacement, atomic Enter, rich inline paste, two authors, host restart and peer-preserving selective Undo/Redo. Local persistence uses isolated private filesystem fixtures; this is not installed/browser/IndexedDB/OS clipboard or deployment qualification."
+  },
+  "compatibility": {
+    "originalNativeWriterDigestsUnchanged": true,
+    "originalRoomConstructorsAndSeedsUnchanged": true,
+    "roomMigrationPerformed": false,
+    "silentFallbackAllowed": false,
+    "existingDemoRestarted": false,
+    "pushedOrPublished": false
+  },
+  "reproduce": [
+    "CARGO_INCREMENTAL=0 node scripts/build-collaboration-runtime.mjs",
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/relay-native cargo build --manifest-path experiments/relay/Cargo.toml --features server --example transport_v2_functional --locked --offline",
+    "node scripts/probe-writer-transport-v2.mjs target/promoted-shared-web target/relay-native/debug/examples/transport_v2_functional"
+  ],
+  "artifacts": [
+    {"path":"target/block-layout-shared-qualification/transport-v2-relay-regressions.log","bytes":4792,"sha256":"d535f4839d82ee6d9b102a5d80bc72cfec1cbb836c47f956ed0f115ef7da893b"},
+    {"path":"target/block-layout-shared-qualification/transport-v2-sdk-all.log","bytes":619,"sha256":"57eb802a697a192dc4770ad6379f5efea32119bb651e5fc605bb73bfb1ac3c70"},
+    {"path":"target/block-layout-shared-qualification/transport-v2-functional.json","bytes":767,"sha256":"79858f8613c03b8e0de9f8e16864ae212efb7cdd96f93d3509b3e261764967ed"}
+  ],
+  "readiness": {"promotedRows":[],"goalComplete":false,"releaseReady":false},
+  "remaining": ["Caption/code explicit text-with-losses paste","Whole-document selection","HTML/Markdown and Word/Docs/Excel interchange","Final installed/browser/input/accessibility/performance/release qualification"]
+}

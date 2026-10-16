@@ -148,11 +148,28 @@ closes retain the exact retired owner and lease for retry.
 
 Shared DOM plain typing, replacement, selected deletion, Shift+Enter and plain
 paste follow the observed general mode. Cross-cell browser text ranges retain
-partial endpoints; cell-picker grids remain explicit. Rich clipboard,
-cross-range paragraph transformations, whole-document Select All and relay V2
-integration remain required. A general session must not be attached to a V1
-relay by bypassing its journal or digest guard. See the
+partial endpoints; cell-picker grids remain explicit. Native general rich Copy,
+inline/flow paste and cross-range paragraph Enter are implemented with separate
+capability checks. Caption/code flow-paste and whole-document Select All remain
+required. A general session must not bypass a relay's journal or digest guard. See the
 [native contract](../../docs/RICH_GENERAL_RANGES.md).
+
+### Explicit writer transport V2
+
+`supportsWriterTransportV2()`, `writerGroupsV2(after)` and `writerClockV2(writer)`
+use the native packing-independent atom-lineage contract. Original reads keep
+their original digest meanings. Registration explicitly requires
+`writerTransport: 'atomic-v2'`; persist that field with the returned identity and
+pass the unchanged identity to `SharedRelaySync`. The matching native room must
+have been created with `Room::create_atomic_transport_v2`. Neither side upgrades,
+sniffs frame versions, or falls back to original digests. Wrong-mode handshakes
+reject before writer allocation. Range and natural-history policies remain
+independent and require their matching native recovery factories.
+
+The [functional checkpoint](../../docs/qualification/2026-10-16-writer-transport-v2-functional.json)
+exercises real release Wasm and a temporary native host, including two offline
+authors, host restart, exact journals and selective Undo/Redo. It is not browser,
+public deployment or final release qualification.
 
 ## Source and compatibility
 

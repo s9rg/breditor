@@ -442,9 +442,16 @@ comparisons, including exact recovery and typing groups on both sides of Enter.
 
 ## Remaining integration
 
-Caption/code structured-paste policy, whole-document selection,
-remaining installed editing/transport acceptance and
-relay V2 integration remain required. Native IME/accessibility and
+The [transport V2 functional checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
+now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
+general explicit/natural journal recovery after host restart, and peer-preserving
+selective Undo/Redo. It does not change original writer digests or migrate rooms.
+
+Caption/code structured-paste implementation, whole-document selection,
+remaining installed editing/transport acceptance and external interchange
+remain required. The approved caption/code policy inserts text and explicitly
+reports formatting loss; it must not be a silent retry after failed rich paste.
+Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 
