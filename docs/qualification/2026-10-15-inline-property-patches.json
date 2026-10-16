@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "520386eee248822b08fb11e83caa03b54c173790",
+  "scope": "Explicit field-only inline format intent in Rust, local Wasm and shared V1/V2 SDK controls. Preserves observed mixed Link properties without changing existing persisted format operations or concurrent conflict policy.",
+  "releaseQualified": false,
+  "goalComplete": false,
+  "contracts": {
+    "core": "RichFormatPropertyPatch has its own named documented action file. A complete typed template supplies a nonempty unique list of existing fields. RichFormatChange::Patch merges only those fields into every selected existing format, retaining omitted properties and unrelated kinds. Missing formats reject, never skip or guess. Final local schema/limits admission and exact node-patch inverses remain unchanged.",
+    "localBoundary": "Only the separate changeInlineFormats command accepts patch, formatsJson and properties. Original setInlineFormat remains set/remove-only. Template JSON uses the existing strict codec. Duplicate kinds/fields, invalid values/ranges and late failures publish no content, selection or history. The original inlineControlsVersion remains 1; separate inlinePropertyPatchesVersion is 1, surfaced as supportsInlinePropertyPatches.",
+    "sharedBoundary": "patch_inline_format_properties checks the exact opaque observation before decoding. The native planner inspects current admitted source runs and lowers changed/coalesced results to existing Command::SetFormat annotations in one guarded author-local group. A true no-op retains the checkpoint, observation and Redo branch. No patch request is persisted as a journal or network command.",
+    "limits": "Shared input remains bounded to 64 KiB, unique target blocks and the original 64-command group ceiling after coalescing. Oversized heterogeneous patches fail atomically; no automatic batching or limit widening. Local action limits remain unchanged.",
+    "toolbar": "Leave mixed Link URL or target blank to preserve each existing value for that field. At least one field is required, and every selected character must already be linked for a partial patch. Supplying both fields uses the original complete set; Unlink removes links. Dirty draft revision guards and the credential-free absolute HTTP(S) URL policy are unchanged. Existing color/size commands already preserve unrelated format kinds.",
+    "concurrency": "Observed omitted properties survive authoring. Concurrent changes to different properties of one format are not independently merged registers: the original complete-format causal policy still selects a complete value. Selective Undo removes the author's owned annotations, retaining foreign text and unrelated formats. A different policy requires a separately versioned replication design.",
+    "compatibility": "Original factories/defaults and ABI descriptors retain their meanings. Model 11/journal 12 and explicit model 12/journal 13 are unchanged. Older matching owners report no patch capability and reject without a JS fallback. Application runtime stays five JS exports and has 54 raw Wasm exports, including the additive guarded method. No dependency or vendor edit."
+  },
+  "nativeChecks": {
+    "rootCommand": "CARGO_TARGET_DIR=target/shared-v2-root-regression /Users/s/.cargo/bin/cargo test --offline --workspace --features breditor-wasm/experimental-rich-content",
+    "rootPassed": 2336,
+    "rootSuiteFooters": 137,
+    "canonicalSharedCommand": "CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "canonicalSharedPassed": 245,
+    "canonicalSuiteFootersIncludingZeroDoctests": 19,
+    "researchFocusedCommand": "CARGO_TARGET_DIR=target/shared-research-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path experiments/collaboration/Cargo.toml --test inline_property_patch_contracts",
+    "researchFocusedPassed": 3,
+    "strictNativeCoreWasmAndSharedClippy": true,
+    "strictActualLocalAndSharedReleaseWasmClippy": true,
+    "sharedRustdocWarningsDenied": true,
+    "formatChecks": true,
+    "coverage": "Mixed URL/target values, Unicode scalar ranges, complete template/field admission, original single-command rejection, exact future history after recovery, peer text/format retention, stale/no-op guards and atomic 64-command rejection/coalescing. Research executes the canonical test via a facade shim, not copied contracts.",
+    "note": "No complete research or --all-features qualification is claimed. The existing dependency HasIdSpan warning is unchanged; first-party checks are strict and vendor sources are untouched."
+  },
+  "compatibilityChecks": {
+    "previousSource": "e73805b26ec880e26b2c4333b442919942419a99",
+    "beforeWasmSha256": "de496995f794c2eef158ad9b78af610dabc0717079d6d77d4caf23b421902876",
+    "afterWasmSha256": "e515fd8d6d5b62c0bbd4059d2671374872756276a4e68f4fc6b8b080810513d7",
+    "originalV1": {"passed":true,"states":49,"crossVersionRestores":2,"futureHistorySteps":12,"script":"scripts/compare-shared-v1-runtime.mjs"},
+    "newPatchesWithOldPeer": {"passed":true,"languages":[1,2],"oldPeerHasPatchApi":false,"exactFutureHistoryComparisons":8,"script":"scripts/probe-inline-property-patch.mjs","coverage":"Older peer receives the lowered format operations, retains offline foreign text, and restores the newer journal for byte-exact future Undo/Redo."},
+    "oldRuntime": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RDP8qR/consumer/node_modules/@breditor/collaboration/dist/runtime"
+  },
+  "installedQualification": {
+    "command": "node scripts/check-editor-browser.mjs",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-3oS9MV/consumer",
+    "configurations": ["Local without React/collaboration", "Shared without React", "Full React/shared Node initialization, SSR and package-root declarations"],
+    "productionPages": 11,
+    "initialRun": {"editingPassed":140,"editingFailed":1,"duration":"4.7 minutes","networkExecuted":false,"newPropertyPatchCasesPassed":9,"failure":"Existing WebKit cancelled durable mount returned TypeError instead of AbortError; original host children and exact recovered journal were retained."},
+    "finalRun": {"status":"passed","editingPassed":141,"editingPerEngine":47,"editingDuration":"4.0 minutes","networkPassed":9,"networkPerEngine":3,"networkDuration":"47.5 seconds","engines":["chromium","firefox","webkit"],"totalPassed":150,"earlierFailureRemainsUnconfirmed":true},
+    "newCases": "Local, durable shared V1 and durable shared V2 Link forms in Chromium/Firefox/WebKit: URL-only and target-only patch, one Undo group, foreign work, exact page reload and future history.",
+    "policy": "Original three-engine configuration, workers 1, zero retries, 60-second cases and 300-second process deadlines. No ignored failure, changed assertion or relaxed timeout."
+  },
+  "otherChecks": {
+    "existingApplicationV1BrowserPassed": 78,
+    "applicationDuration": "2.4 minutes",
+    "sdkUnitPassed": 43,
+    "defaultBrowserUnitPassed": 2203,
+    "defaultBrowserTypes": true,
+    "scripts": {"total":363,"passed":360,"failed":0,"existingOptInSkips":3},
+    "defaultBrowserArchiveByteUnchanged": true
+  },
+  "artifacts": [
+    {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1233856,"sha256":"2f9d58c2fa0f4858a1a33384a6581fbb5ebacd65aa49204fcb5aa49ae9b02500"},
+    {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2317712,"sha256":"110fdd1b4caedaa454ee9b9af64df5fb90ff99819f18e79a2a86dd6c1d56aea0"},
+    {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":20189,"sha256":"4a1cb28a91e5eabd0433d667a7376207f6b42f0f7f1b0f8a6fc9ce0d567b2b7c"},
+    {"name":"breditor_wasm_bg.wasm","bytes":4272176,"sha256":"c1ec60c9530e117a5504f8b66991f2f3e05defddf5860d52727ec809e88d4258"},
+    {"name":"breditor_shared_bg.wasm","bytes":8352952,"sha256":"e515fd8d6d5b62c0bbd4059d2671374872756276a4e68f4fc6b8b080810513d7"}
+  ],
+  "observedWebkitCancellationFailure": {
+    "status": "observed-not-confirmed-fixed",
+    "cause": "Unknown. The first failure retained only the TypeError name. Do not infer a cancellation bug, numeric-domain failure or Rust defect from that name.",
+    "initialTrace": "target/inline-property-patch-qualification/abort-webkit-before/trace.zip",
+    "initialRunLog": "target/inline-property-patch-qualification/installed-initial.log",
+    "diagnostics": "The same assertion now retains non-AbortError message/stack/cause, abortCalls/aborted state, round and throwIfAborted availability. Default execution remains one round; opt-in BREDITOR_CANCEL_ROUNDS is bounded to 1..100.",
+    "freshWebkitRepetitions": {"passed":20,"duration":"34.0 seconds"},
+    "samePageHotLoop": {"roundsPassed":100,"duration":"6.6 seconds"},
+    "conclusion": "These repetitions did not reproduce the original failure and do not prove it repaired. It remains distinct from older unconfirmed observations until its actual cause is established."
+  },
+  "openIssues": ["Earlier unrecorded native V2 code/style ReplayMismatch remains unconfirmed", "Historical intermittent WebKit integer-domain startup fault remains open", "Unclassified WebKit cancelled-mount TypeError remains unconfirmed"],
+  "retainedLogs": "target/inline-property-patch-qualification",
+  "remaining": ["General cross-container selections and code/atomic navigation", "Natural typing history and live read-only enforcement", "Bounded block layout/context controls", "Sanitized HTML/Markdown and realistic Office/Docs/Excel paste with explicit loss reporting"],
+  "readiness": "First two V1 workstreams remain active and incomplete. No feature group or release gate is promoted on this narrower evidence. Private alpha.22; no push, tag, publication or deployment."
+}

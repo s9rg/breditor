@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "e73805b26ec880e26b2c4333b442919942419a99",
+  "baselineCommit": "520386eee248822b08fb11e83caa03b54c173790",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -60,9 +60,9 @@
     {
       "id":"links","area":"Editing","status":"partial",
       "summary":"Links and automatic link detection",
-      "current":"Default and explicit standard rich/shared Link forms reuse the same safe URL policy. Standard forms handle mixed URL/target state, Enter/Escape, stale drafts and exact Undo/Redo/reload. Applying replaces the complete Link map, with an explicit mixed target; per-property-preserving edits, foreign interchange and autolink remain open.",
+      "current":"Default and explicit standard rich/shared Link forms reuse the same safe URL policy. Standard forms support mixed values, stale guards and exact history/reload. Explicit native property patches preserve each observed URL or target when the other form field is left blank; every selected character must already carry a Link. Complete set commands retain replacement semantics. Shared patches use original complete-format annotations and whole-format concurrent conflict policy, with atomic existing group limits. Foreign interchange, optional autolink and release qualification remain open.",
       "acceptance":"Use one safe URL policy for shared rendering, explicit link editing, clipboard/export and optional autolink, without interpreting arbitrary HTML.",
-      "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","experiments/rich-browser/standard-toolbar-checks.mjs"],
+      "evidence":["packages/breditor-reference-highlight/src/formatting_profile.ts","packages/breditor-browser/src/toolbar_inline_format_form.ts","packages/breditor-experimental-rich-content/src/standard_inline_controls.ts","experiments/rich-browser/standard-toolbar-checks.mjs","docs/RICH_INLINE_PROPERTY_PATCHES.md","crates/breditor-core/tests/rich_format_property_patch.rs","crates/breditor-collaboration/tests/inline_property_patch_contracts.rs","experiments/editor-browser/inline-property-patch.spec.mjs","scripts/probe-inline-property-patch.mjs","docs/qualification/2026-10-15-inline-property-patches.json"],
       "sources":["tiptap-starter","ckeditor-overview"]
     },
     {

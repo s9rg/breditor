@@ -19,7 +19,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `e73805b` (saved locally,
+The latest functional implementation checkpoint is `520386e` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -167,13 +167,26 @@ passes 2,332 root Rust tests, 242 canonical shared tests, 61 focused research te
 22 relay tests, 40 SDK unit tests and default/type/compatibility regressions.
 The private V2 candidate is not a supported release promotion. The older
 unrecorded replay observation and historical WebKit fault remain open.
+The [inline property patch checkpoint](qualification/2026-10-15-inline-property-patches.json)
+adds explicit field-only native intent, mixed Link form behavior and old-peer
+interoperability without changing stored annotation semantics. The final
+clean-installed run passes 141 editing and nine network cases; the separate V1
+application matrix passes 78. Root Rust passes 2,336 cases, canonical shared Rust
+245, and SDK units 43. An initial WebKit cancelled-mount case returned an
+unclassified `TypeError` while retaining its host and journal. Twenty isolated
+repetitions, 100 same-page cancellations and the final complete rerun pass, but
+no cause or repair is established for that initial failure. Its trace is retained,
+and detailed failure capture is now part of the strict lifecycle test.
 These overlapping runs are not unique capability counts. The ledger anchors
 the latest implementation; feature labels and all 13 qualification
 gates remain unchanged because their complete acceptance is still open.
 
-The active first-two-workstream goal is not complete. Standard controls now use
-the Rust state reads, but applying a mixed format replaces its complete map;
-per-property-preserving mixed edits remain distinct work. Next are general
+The active first-two-workstream goal is not complete. Standard controls use
+Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
+now preserve omitted observed properties across mixed Link values; ordinary set
+commands still replace complete maps. Shared patches lower to existing owned
+annotations, retaining the original whole-format concurrent conflict policy.
+Next are general
 selections, code/atomic navigation, natural typing history, read-only/layout
 contracts, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
@@ -253,8 +266,9 @@ No competitor implementation was copied into Breditor.
    adds bounded pixel-size CSS, background color and four font-family presets.
    Opt-in local/shared controls now use Rust-derived exact/mixed state consistently,
    including Link, scalar fields and caret styles. They still need promotion into
-   the public V1 distribution. Complete-map replacement is explicit; preserving
-   other mixed properties during a field-only patch is not yet supported.
+   the public V1 distribution. Complete-map replacement remains explicit; separate
+   Rust-planned property patches now preserve other observed mixed properties.
+   Foreign interchange and optional automatic Link detection remain open.
 2. **Complete editing grammar.** Explicit V2 blockquote, code, horizontal-rule
    and task contracts now reach Wasm, local/shared SDKs and the reference relay.
    Named hard breaks have a one-LF policy. Finish code/atomic navigation and general selections across
