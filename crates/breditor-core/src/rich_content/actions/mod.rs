@@ -52,6 +52,7 @@ pub(crate) mod replace_text_range;
 mod resize_image;
 mod resize_table_column;
 pub(crate) mod rewrite_properties;
+mod set_block_layout;
 mod set_code_block;
 mod set_code_language;
 mod set_heading;
@@ -113,6 +114,7 @@ pub use replace_text::ReplaceText;
 pub use replace_text_range::ReplaceTextRange;
 pub use resize_image::ResizeImage;
 pub use resize_table_column::ResizeColumn;
+pub use set_block_layout::SetBlockLayout;
 pub use set_code_block::{CodeFormatPolicy, SetCodeBlock};
 pub use set_code_language::SetCodeLanguage;
 pub use set_heading::SetHeading;
@@ -139,6 +141,8 @@ use crate::{schema::ValidationReport, state::EditorContext};
 /// Closed local action set; not a replicated operation or public wire record.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RichAction {
+    /// Patch bounded independent V3 text-block layout fields without replacing content.
+    SetBlockLayout(SetBlockLayout),
     /// Nest tasks with retained completion values and complete rich bodies.
     IndentTaskItems(IndentTaskItems),
     /// Promote/unlist tasks without losing ordered tails or exact inverse metadata.
@@ -282,6 +286,7 @@ impl RichAction {
             Self::OutdentTaskItems(action) => action.apply(context, document),
             Self::ExitTaskItem(action) => action.apply(context, document),
             Self::SetCodeBlock(action) => action.apply(context, document),
+            Self::SetBlockLayout(action) => action.apply(context, document),
             Self::SetCodeLanguage(action) => action.apply(context, document),
             Self::SetTaskChecked(action) => action.apply(context, document),
             Self::WrapBlockquote(action) => action.apply(context, document),
@@ -378,6 +383,9 @@ impl RichEdit {
 /// Payload-free failure of a captured local rich-content action.
 #[derive(Debug, thiserror::Error)]
 pub enum RichActionError {
+    /// Typed layout profile, target or value admission failed without exposing metadata.
+    #[error(transparent)]
+    BlockLayout(#[from] super::RichBlockLayoutError),
     /// The operation requires an existing code block rather than arbitrary prose/flow.
     #[error("rich code action requires a code block")]
     CodeTarget,

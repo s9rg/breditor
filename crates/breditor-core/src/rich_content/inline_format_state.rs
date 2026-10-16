@@ -91,7 +91,9 @@ pub fn inspect_inline_format(
         }
         super::local_session::typing_state::validate(context, document, selection, Some(pending))?;
     }
-    if context.schema().rich_content_revision() == Some(2) && contains_code(document, selection)? {
+    if context.schema().rich_content_revision().is_some_and(|revision| revision >= 2)
+        && contains_code(document, selection)?
+    {
         return Ok(RichInlineFormatState::Unavailable);
     }
     if caret.is_some() {

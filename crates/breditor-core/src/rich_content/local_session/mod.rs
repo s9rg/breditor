@@ -4,6 +4,7 @@
 //! is separately enabled and persisted; original checkpoints/defaults stay exact.
 
 mod change_selection_formats;
+mod change_selection_layout;
 mod close_typing_group;
 mod delete_atom;
 mod delete_typing_range;

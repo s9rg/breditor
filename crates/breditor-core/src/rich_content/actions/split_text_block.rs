@@ -48,6 +48,7 @@ impl SplitTextBlock {
             RichBlockDraft::paragraph(right, &tail)?
         }
         .into_node();
+        let right_node = super::rewrite_properties::inherit_layout(source, right_node)?;
         let siblings = FlowSiblings::capture(document, point.block(), point.block())?;
         let branch = BranchPatch::Flow(
             siblings.splice(document, vec![left_node.clone(), right_node.clone()])?,

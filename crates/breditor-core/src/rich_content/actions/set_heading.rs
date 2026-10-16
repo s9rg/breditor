@@ -27,13 +27,15 @@ impl SetHeading {
         block: &BlockId,
         level: Option<u8>,
     ) -> Result<Self, RichActionError> {
-        let text = fragment(block_node(document, block)?)?;
+        let source = block_node(document, block)?;
+        let text = fragment(source)?;
         let draft = if let Some(level) = level {
             RichBlockDraft::heading(block, level, &text)?
         } else {
             RichBlockDraft::paragraph(block, &text)?
         };
-        Ok(Self { patch: NodePatch::capture(document, block, draft.into_node())? })
+        let replacement = super::rewrite_properties::inherit_layout(source, draft.into_node())?;
+        Ok(Self { patch: NodePatch::capture(document, block, replacement)? })
     }
     /// Publish one exact undoable rank/kind change, keeping stable text/node selections.
     ///

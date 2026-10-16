@@ -202,6 +202,19 @@ impl CompiledSchema {
         super::compiler::compile_rich_content_profile_v2(schema_id, extensions)
     }
 
+    /// Compile explicit rich V3: V2 structure plus closed optional text-block layout.
+    ///
+    /// Old profiles and fingerprints are unchanged; this does not migrate old documents.
+    /// # Errors
+    /// Rejects reserved identities, incompatible extensions and compiler limits.
+    #[cfg(feature = "experimental-rich-content")]
+    pub fn try_compile_rich_content_profile_v3(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        super::compiler::compile_rich_content_profile_v3(schema_id, extensions)
+    }
+
     /// Exact admitted rich-language revision; unrecognized lookalikes return `None`.
     #[cfg(feature = "experimental-rich-content")]
     #[must_use]

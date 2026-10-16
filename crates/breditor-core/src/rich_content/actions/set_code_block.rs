@@ -36,7 +36,8 @@ impl SetCodeBlock {
         language: Option<&CodeLanguage>,
         policy: CodeFormatPolicy,
     ) -> Result<Self, RichActionError> {
-        let source = fragment(block_node(document, block)?)?;
+        let source_node = block_node(document, block)?;
+        let source = fragment(source_node)?;
         let formatted = source.iter().any(|run| !run.formats().is_empty());
         if formatted && policy == CodeFormatPolicy::RejectFormatted {
             return Err(RichDraftError::CodeFormats.into());
@@ -54,7 +55,9 @@ impl SetCodeBlock {
             source
         };
         let draft = RichBlockDraft::code_block(block, language, &text)?;
-        Ok(Self { patch: NodePatch::capture(document, block, draft.into_node())? })
+        let replacement =
+            super::rewrite_properties::inherit_layout(source_node, draft.into_node())?;
+        Ok(Self { patch: NodePatch::capture(document, block, replacement)? })
     }
     /// Publish one admitted conversion and preserve the exact original styled node for Undo.
     ///

@@ -61,6 +61,7 @@ impl SplitListItem {
             RichBlockDraft::paragraph(right, &tail)?
         }
         .into_node();
+        let right_node = super::rewrite_properties::inherit_layout(source, right_node)?;
         let left_item = with_children(item, vec![left_node.clone()])?;
         let mut body = vec![right_node.clone()];
         body.extend_from_slice(&children(item)?[1..]);

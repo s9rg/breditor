@@ -91,8 +91,28 @@ fn rich_language_two_does_not_grant_legacy_editing_or_accept_a_revision_only_loo
     assert!(!schema.supports_flat_list_operations());
     assert!(!schema.supports_nested_list_reframe());
     let mut unsupported = schema.definition().as_ref().clone();
-    unsupported.rich_content_contract = Some(3);
+    unsupported.rich_content_contract = Some(4);
     assert!(!supports_rich_content(&unsupported));
     assert_ne!(schema.fingerprint(), fingerprint(&unsupported));
+    Ok(())
+}
+
+#[test]
+fn explicit_rich_v3_keeps_legacy_editing_capabilities_sealed() -> TestResult {
+    let schema = CompiledSchema::try_compile_rich_content_profile_v3(
+        SchemaId::new(QualifiedName::try_new("example/layout")?, SchemaVersion::try_new(1)?),
+        &ExtensionSet::try_new(vec![], ExtensionLimits::default())?,
+    )?;
+    assert_eq!(schema.rich_content_revision(), Some(3));
+    assert!(!schema.supports_text_splice_operations());
+    assert!(!schema.supports_paragraph_structure_operations());
+    assert!(!schema.supports_base_text_operations());
+    assert!(!schema.supports_text_block_kind_operations());
+    assert!(!schema.supports_flat_list_operations());
+    assert!(!schema.supports_nested_list_reframe());
+    let mut future = schema.definition().as_ref().clone();
+    future.rich_content_contract = Some(4);
+    assert!(!supports_rich_content(&future));
+    assert_ne!(schema.fingerprint(), fingerprint(&future));
     Ok(())
 }

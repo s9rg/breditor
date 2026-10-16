@@ -8,6 +8,10 @@
 pub mod actions;
 pub(crate) mod ast_properties;
 mod atom_edit;
+pub(crate) mod block_layout;
+mod block_layout_draft;
+mod block_layout_patch;
+mod block_layout_state;
 pub(crate) mod clipboard;
 mod code_language;
 mod drafts;
@@ -38,6 +42,12 @@ mod table_paste_draft;
 
 pub use ast_properties::{RichColumn, RichTableView};
 pub use atom_edit::{AtomDeletionPlan, plan_atom_deletion, selected_flow_atom};
+pub use block_layout::{
+    RichBlockAlignment, RichBlockDirection, RichBlockIndent, RichBlockLayout, RichBlockLayoutError,
+    RichLineHeight,
+};
+pub use block_layout_patch::{RichBlockLayoutPatch, RichLayoutChange};
+pub use block_layout_state::{RichBlockLayoutState, RichLayoutFieldState, inspect_block_layout};
 pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
     RichClipboardKind,

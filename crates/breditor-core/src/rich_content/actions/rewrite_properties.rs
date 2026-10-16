@@ -84,3 +84,17 @@ pub(super) fn integer(value: u32) -> Result<PropertyValue, RichActionError> {
             .map_err(|_| RichActionError::Rewrite)?,
     ))
 }
+
+/// Kind changes and new split heads inherit only the explicit bounded layout fields.
+pub(super) fn inherit_layout(
+    source: &NodeRef,
+    replacement: NodeRef,
+) -> Result<NodeRef, RichActionError> {
+    let source = source.as_element().ok_or(RichActionError::Rewrite)?;
+    let changes = ["block-align", "block-direction", "block-indent", "line-height-percent"]
+        .map(|name| (name, crate::rich_content::ast_properties::property(source, name).cloned()));
+    if changes.iter().all(|(_, value)| value.is_none()) {
+        return Ok(replacement);
+    }
+    with_properties(&replacement, changes)
+}

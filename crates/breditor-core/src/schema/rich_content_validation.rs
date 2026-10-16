@@ -33,7 +33,9 @@ impl ValidationState<'_> {
             if self.report_is_saturated() {
                 return;
             }
-            if !ast_properties::allows_property(kind, name) {
+            let layout = self.schema.rich_content_revision() == Some(3)
+                && crate::rich_content::block_layout::allows_property(kind, name);
+            if !ast_properties::allows_property(kind, name) && !layout {
                 self.element_property_issue(
                     ValidationCode::UnknownElementProperty,
                     path,
@@ -45,6 +47,16 @@ impl ValidationState<'_> {
         }
         if let Err(reason) = ast_properties::validate_values(element) {
             self.rich_issue(ValidationCode::RichContentContract, path, reason);
+        }
+        if self.schema.rich_content_revision() == Some(3)
+            && crate::rich_content::block_layout::supports_kind(kind)
+            && crate::rich_content::RichBlockLayout::from_node(element).is_err()
+        {
+            self.rich_issue(
+                ValidationCode::RichContentContract,
+                path,
+                "invalid bounded block layout value",
+            );
         }
         if kind != "breditor/document"
             && let Ok(id) = ast_properties::string(element, "block-id")

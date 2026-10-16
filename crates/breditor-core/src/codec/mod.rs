@@ -19,9 +19,19 @@ pub use rich_inline_format_state::{
     encode_rich_inline_format_state, encode_rich_selection_format_state,
 };
 #[cfg(feature = "experimental-rich-content")]
+mod rich_block_layout_patch;
+#[cfg(feature = "experimental-rich-content")]
+mod rich_block_layout_state;
+#[cfg(feature = "experimental-rich-content")]
 mod rich_selection_coverage;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_selection_format_changes;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_block_layout_patch::{RichBlockLayoutCodecError, decode_rich_block_layout_patch};
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_block_layout_state::{
+    RICH_BLOCK_LAYOUT_STATE_FORMAT, RICH_BLOCK_LAYOUT_STATE_VERSION, encode_rich_block_layout_state,
+};
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_selection_coverage::{
     RICH_SELECTION_COVERAGE_FORMAT, RICH_SELECTION_COVERAGE_VERSION, encode_rich_selection_coverage,
