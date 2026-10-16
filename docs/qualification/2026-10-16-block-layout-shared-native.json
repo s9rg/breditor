@@ -1,0 +1,71 @@
+{
+  "format": "breditor/block-layout-shared-native-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "334e265af078bbcc20deab6c6c73008cf6059d27",
+  "previousCheckpoint": "030dad2c5a72bcb062c3ddbb7c02c4ef44117dbc",
+  "status": "shared-native-contracts-complete-user-facing-layout-and-goal-incomplete",
+  "publication": "Local commits only. No push, tag, package publication or deployment.",
+  "contracts": {
+    "profile": "Explicit native configuration3 and from_schema_v3 select rich V3, causal model13 and journal14. Descriptors declare richLanguageVersion3 and blockLayoutVersion1. Original V1/V2 entry points and descriptor shapes remain strict; no implicit migration.",
+    "fields": "layout-alignment, layout-direction, layout-indent and layout-line-height each own only their single bounded AST property. Genesis, new births, text/list/task splits, clipboard and later edits use these same independent registers, never competing immutable defaults or identity properties.",
+    "intent": "Native canonical encoder retains omitted Keep, null Clear and typed Set. Shared commands retain patch_json as text so duplicate native intent keys are not collapsed before strict decoding. Every new action has a named documented file.",
+    "selection": "Native coverage and complete native semantic preview precede shared adoption. Carets edit block metadata rather than pending inline style. Empty boundaries, code, captions, node and merged base-cell domains retain their original selections; whole requests retain the64-command ceiling.",
+    "history": "Disjoint offline fields merge, same-field priority uses the existing deterministic register order, and selective Undo/Redo retracts only owned contributions. Exact explicit/natural checkpoints preserve future history, pending formats, peer text and fields. A reset restores inheritance without resetting other fields.",
+    "retainedAdmission": "All retained V3 layout contributions are audited before initial projection, cached-view reuse or adoption, including hidden blocks and currently losing values. Invalid values, wrong field/property ownership, nontext owners and layout in identity/default metadata reject without publication.",
+    "retention": "Kind conversion, all three split families, joins, creator Undo/Redo, deletion Undo, re-keyed image-caption clipboard and conditional empty heads preserve the native contract. Writer groups retain model13 binding and exact restart receipts."
+  },
+  "native": {
+    "rootCommand": "CARGO_INCREMENTAL=0 cargo test --offline --workspace --all-features -j 2",
+    "rootPassed": 2436,
+    "rootSuiteFooters": 149,
+    "coreLayoutPassed": 17,
+    "sharedCommand": "cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --offline -j 2",
+    "sharedPassed": 321,
+    "sharedSuiteFootersIncludingEmptyRustdoc": 27,
+    "newSharedLayoutContractsPassed": 18,
+    "researchCommand": "CARGO_INCREMENTAL=0 cargo test --manifest-path experiments/collaboration/Cargo.toml --offline --test block_layout_contracts",
+    "researchSameSourceLayoutPassed": 18,
+    "strictNativeAllTargetClippy": true,
+    "strictRootOptimizedWasmTargetClippy": true,
+    "strictSharedReleaseWasmTargetClippy": true,
+    "researchWasmTargetCheck": true,
+    "rootAndSharedRustdocWarningsDenied": true,
+    "namedFirstPartyFormatChecks": true,
+    "ordinaryRustWorkspaceWithoutOptInFeaturesCompiles": true,
+    "unchangedVendorWarning": "Existing HasIdSpan unused import. No vendored source or lint threshold changed."
+  },
+  "defaultRegression": {
+    "command": "npm test",
+    "browserUnitsPassed": 2203,
+    "reactUnitsPassed": 57,
+    "highlightUnitsPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 374,
+    "existingOptInSkips": 3,
+    "subsequentReadinessAndPromotionBoundaryTestsPassed": 31
+  },
+  "attempts": [
+    "Test-harness compilation initially needed a borrowed updates byte slice and owned pending-format slice. Native/core conformance then passed.",
+    "The first complete shared run passed16/17 new cases but rejected a test's invalid empty genesis. The corrected test bootstraps valid flow and deletes its final block to exercise the real conditional-head path; all18 final contracts pass in both manifests.",
+    "Concurrent builds exhausted disk space, interrupting one optimized root-Wasm check and leaving a3744-byte nonexecutable test artifact. Removed only34084 validated inactive pre-October-16 Rust object-cache files totaling2414473720 bytes and the exact broken generated artifact. Source, Git, archives, running binaries and evidence were preserved; final checks were rerun successfully.",
+    "Strict lint requested a Copy-by-value private patch argument and a borrowed test fixture. Corrected both without weakening a lint, resource ceiling or admission rule."
+  ],
+  "retainedEvidence": "target/block-layout-shared-qualification: root-all-features.log, core-layout-tests.log, shared-full-final.log, research-layout-final.log, root-clippy.log, root-wasm-clippy-final.log, root-rustdoc.log, default-rust-check.log, shared-clippy-final.log, shared-wasm-clippy-final.log, shared-rustdoc-final.log, research-wasm-final.log, default-javascript.log and documentation-and-boundary-checks.log. Intermediate logs retain prior attempts and may cover earlier source.",
+  "verificationScope": "Native functionality and optimized Wasm compilation only. V3 Wasm factories, SDK integration, controls and rendering are not implemented by this checkpoint. No new V3 runtime archives, installed-browser results, native clipboard/input qualification, historical WebKit repair or performance qualification are claimed.",
+  "next": [
+    "Add explicit local Wasm bootstrap8 and shared Wasm configuration3 factories, guarded layout commands and native independent mixed-state reads.",
+    "Add explicit SDK richLanguage3, bounded direction-aware rendering, contextual controls and keyboard equivalents without changing V1/V2 defaults.",
+    "Build fresh paired archives and qualify installed mixed-content layout, clipboard, exact history/reload, React ownership, offline/concurrent/reconnect and assets in Chromium, Firefox and WebKit.",
+    "Continue general selection replacement and sanitized HTML/Markdown/Office interchange toward the original first-two-workstream goal."
+  ],
+  "readiness": {
+    "promotedRows": 0,
+    "implemented": 9,
+    "partial": 17,
+    "missing": 20,
+    "openGates": 13,
+    "fullLayoutFeatureComplete": false,
+    "firstTwoWorkstreamsComplete": false
+  }
+}

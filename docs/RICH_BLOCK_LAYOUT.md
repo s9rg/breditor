@@ -15,9 +15,9 @@ There is no implicit migration or reinterpretation of an old document.
 The planned local Wasm selector is an explicit bootstrap format 8 factory for
 rich V3. The shared selector is explicit profile configuration format 3, causal
 model 13 and journal 14. Original V1/V2 constructors keep their exact selectors.
-SDK rich language 3 is opt-in; it must not silently change the default or map an
-unknown future revision to an old profile. These browser/shared factories are
-not implemented by the native foundation alone.
+SDK rich language 3 will be opt-in; it must not silently change the default or map an
+unknown future revision to an old profile. Native shared V3 factories are
+implemented; the Wasm and SDK factories remain required.
 
 The native values are explicit alignment (start, center, end, justify, physical
 left, physical right), text
@@ -101,7 +101,43 @@ tests; existing shared V1/V2 regression passes 303. Strict native and release-Wa
 lint, Rustdoc and default JavaScript regressions pass. V1/V2 fingerprint constants
 come from the previous actual Wasm runtime, not a new expected-value generator.
 
-This checkpoint does not implement or qualify the planned V3 shared owner,
+That foundation did not implement or qualify the planned V3 shared owner,
 Wasm/SDK construction, rendering or browser controls. No V3 installed archives
-or browser results are claimed. Steps 3 through 5 remain required before block
-layout is a complete user-facing feature.
+or browser results belong to that checkpoint.
+
+## Shared native checkpoint
+
+Explicit V3 profile constructors now select causal model 13 and journal 14.
+Their descriptors declare rich language 3 and block layout version 1; original
+V1/V2 constructors, descriptors, frames and journals keep their meanings. There
+is no automatic migration.
+
+Genesis, new blocks, splits, clipboard paste and subsequent edits use the same
+four independently owned fields. Layout never competes with immutable defaults
+or identity properties. Only requested fields change, and explicit removal
+restores inheritance. Native selection coverage and a complete native preview
+precede shared publication; the original 64-command ceiling still applies.
+
+Every retained V3 layout contribution is checked before projection cache reuse
+or adoption, including hidden blocks and currently losing values. Each field may
+set or remove only its own bounded property. Foreign fields, nontext owners and
+layout in immutable identity/default metadata are refused atomically. Old
+profiles do not acquire these semantics.
+
+Eighteen shared integration contracts cover caret/code/empty/node/grid targets,
+mixed values, pending formats, seed/reset, text/list/task splits, kind conversion,
+join, fresh births, image-caption clipboard, independent offline edits, same-field
+conflicts, selective history, exact explicit/natural restart, writer groups and
+atomic policy/resource/import refusal. The research compatibility manifest runs
+the same test source, not a second implementation.
+
+The [shared native qualification](qualification/2026-10-16-block-layout-shared-native.json)
+passes all 321 canonical shared tests, all 2,436 native workspace tests, the 18
+same-source compatibility contracts, strict native/optimized-Wasm lint, Rustdoc
+and default JavaScript regressions. It retains the failed attempts separately
+from the final passing checks.
+
+Steps 4 and 5 remain required: expose explicit V3 Wasm/SDK factories and native
+reads/commands, add bounded rendering and controls, then qualify clean-installed
+archives in all three browsers. This native checkpoint does not qualify V3
+browser behavior or complete either V1 workstream.

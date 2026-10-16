@@ -108,9 +108,9 @@
     {
       "id":"block-layout","area":"Editing","status":"missing",
       "summary":"Alignment, block indent, direction and line height controls",
-      "current":"The current combined toolbar has list indentation but no complete block layout property family.",
+      "current":"The current combined toolbar has list indentation but no complete block layout property family. Explicit native rich V3 and shared model13/journal14 now own bounded alignment, direction, block indent and line height; V3 Wasm/SDK construction, rendering, controls and installed-browser/interchange acceptance remain unfinished.",
       "acceptance":"Add bounded semantic block properties, direction-aware selection/layout and safe rendering/interchange, not arbitrary stored CSS.",
-      "evidence":["packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/drafts.rs"],
+      "evidence":["packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/RICH_BLOCK_LAYOUT.md","crates/breditor-collaboration/tests/block_layout_contracts.rs","docs/qualification/2026-10-16-block-layout-shared-native.json"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
