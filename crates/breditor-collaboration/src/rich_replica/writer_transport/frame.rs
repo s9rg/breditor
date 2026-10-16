@@ -2,6 +2,7 @@
 use super::{
     super::{RichReplica, session::writer_id},
     digest,
+    version::Version,
 };
 use crate::Error;
 use loro::{EncodedBlobMode, ExportMode, IdSpan, LoroDoc};
@@ -69,7 +70,11 @@ pub(super) fn counter(value: &str) -> Result<i32, Error> {
     }
     Ok(n)
 }
-pub(super) fn encode(owner: &RichReplica, window: &super::Window) -> Result<String, Error> {
+pub(super) fn encode(
+    owner: &RichReplica,
+    window: &super::Window,
+    version: Version,
+) -> Result<String, Error> {
     if window.dependencies.len() > 1024 {
         return Err(Error::Limit("shared writer group dependencies"));
     }
@@ -85,7 +90,7 @@ pub(super) fn encode(owner: &RichReplica, window: &super::Window) -> Result<Stri
     let schema = owner.codec.schema();
     let frame = Frame {
         format: "breditor/shared-writer-group".into(),
-        format_version: 1,
+        format_version: version.number(),
         document: owner.document_id().into(),
         schema: Schema {
             name: schema.id().name().as_str().into(),
@@ -98,8 +103,8 @@ pub(super) fn encode(owner: &RichReplica, window: &super::Window) -> Result<Stri
         writer: owner.writer().into(),
         from: window.from.to_string(),
         through: window.through.to_string(),
-        previous_digest: digest::operations(owner, writer, 0, window.from)?,
-        group_digest: digest::operations(owner, writer, window.from, window.through)?,
+        previous_digest: version.operations(owner, writer, 0, window.from)?,
+        group_digest: version.operations(owner, writer, window.from, window.through)?,
         payload_digest: digest::bytes(&bytes),
         dependencies: window.dependencies.clone(),
         bytes,
@@ -114,6 +119,7 @@ pub(super) fn decode(
     owner: &RichReplica,
     authenticated_writer: &str,
     input: &str,
+    version: Version,
 ) -> Result<Checked, Error> {
     let writer = writer_id(authenticated_writer)?;
     if input.len() > super::MAX_GROUP_BYTES {
@@ -125,7 +131,7 @@ pub(super) fn decode(
     }
     let schema = owner.codec.schema();
     if frame.format != "breditor/shared-writer-group"
-        || frame.format_version != 1
+        || frame.format_version != version.number()
         || frame.model_version != owner.model_version()
         || frame.engine.name != "loro"
         || frame.engine.version != super::ENGINE

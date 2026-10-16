@@ -111,7 +111,10 @@ impl ReplaceTextRange {
         self.insert(doc, &start.block, start.offset, stamp)?;
         super::super::paragraphs::verify(doc, codec, edit.document())
     }
-    fn fragment(&self, codec: &DocumentJsonCodecV2) -> Result<TextFragment, Error> {
+    pub(in crate::rich_replica) fn fragment(
+        &self,
+        codec: &DocumentJsonCodecV2,
+    ) -> Result<TextFragment, Error> {
         if self.runs.len() > 1000
             || self.runs.iter().map(|run| run.text.len()).sum::<usize>() > 64 * 1024
         {
@@ -135,7 +138,7 @@ impl ReplaceTextRange {
         }
         Ok(fragment)
     }
-    fn insert(
+    pub(in crate::rich_replica) fn insert(
         &self,
         doc: &LoroDoc,
         block: &str,

@@ -1,7 +1,8 @@
 //! Bounded read-only export of complete authored windows, excluding remote authors and local UI.
 use super::{
     super::{RichReplica, SharedObservation, session::writer_id},
-    digest, frame,
+    frame,
+    version::Version,
 };
 use crate::Error;
 use serde::Serialize;
@@ -32,12 +33,22 @@ impl RichReplica {
     /// # Errors
     /// Rejects a noncanonical writer or serialization failure.
     pub fn writer_clock(&self, writer: &str) -> Result<WriterClock, Error> {
+        self.writer_clock_version(writer, Version::Original)
+    }
+    /// Inspect an author's head using packing-independent version-two causal lineage.
+    /// The returned digest belongs only to the explicit version-two transport.
+    /// # Errors
+    /// Rejects noncanonical writers, discontinuous history or encoding failures.
+    pub fn writer_clock_v2(&self, writer: &str) -> Result<WriterClock, Error> {
+        self.writer_clock_version(writer, Version::Atomic)
+    }
+    fn writer_clock_version(&self, writer: &str, version: Version) -> Result<WriterClock, Error> {
         let id = writer_id(writer)?;
         let through = self.doc.state_vv().get(&id).copied().unwrap_or(0);
         Ok(WriterClock {
             writer: writer.into(),
             through: through.to_string(),
-            prefix_digest: digest::operations(self, id, 0, through)?,
+            prefix_digest: version.operations(self, id, 0, through)?,
         })
     }
     /// Export complete local action/Undo/Redo groups from a previously acknowledged boundary.
@@ -51,6 +62,27 @@ impl RichReplica {
         &self,
         observation: &SharedObservation,
         after: &str,
+    ) -> Result<String, Error> {
+        self.writer_groups_version(observation, after, Version::Original)
+    }
+    /// Export complete groups with version-two atom-level lineage hashes.
+    ///
+    /// This is explicit negotiation, not an upgrade of the original wire format.
+    /// Its payload, origin, dependency, boundary and byte budgets are unchanged.
+    /// # Errors
+    /// Rejects stale observations, invalid boundaries, encoding or resource limits.
+    pub fn writer_groups_v2_guarded(
+        &self,
+        observation: &SharedObservation,
+        after: &str,
+    ) -> Result<String, Error> {
+        self.writer_groups_version(observation, after, Version::Atomic)
+    }
+    fn writer_groups_version(
+        &self,
+        observation: &SharedObservation,
+        after: &str,
+        version: Version,
     ) -> Result<String, Error> {
         self.check(observation)?;
         let from = frame::counter(after)?;
@@ -69,7 +101,7 @@ impl RichReplica {
         let mut through = from;
         let mut index = start;
         for window in self.writer_windows.iter().skip(start).take(super::MAX_GROUPS) {
-            let json = frame::encode(self, window)?;
+            let json = frame::encode(self, window, version)?;
             let encoded = serde_json::to_string(&json)?.len() + 1;
             if bytes + encoded > super::MAX_BATCH_BYTES {
                 break;
@@ -84,7 +116,7 @@ impl RichReplica {
         }
         let batch = Batch {
             format: "breditor/shared-writer-groups",
-            format_version: 1,
+            format_version: version.number(),
             writer: self.writer().into(),
             from: from.to_string(),
             through: through.to_string(),

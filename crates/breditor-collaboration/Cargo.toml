@@ -51,3 +51,7 @@ pedantic = { level = "deny", priority = -1 }
 [[example]]
 name = "general_range_checkpoint_probe"
 required-features = ["research"]
+
+[[example]]
+name = "general_semantic_frame_probe"
+required-features = ["research"]

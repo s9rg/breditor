@@ -332,3 +332,108 @@ fn stale_export_observations_reject_before_a_malformed_cursor_without_changing_s
     assert_eq!(a.checkpoint()?, before);
     Ok(())
 }
+
+fn groups_v2(owner: &RichReplica, from: &str) -> Result<Vec<String>> {
+    let packet: Value =
+        serde_json::from_str(&owner.writer_groups_v2_guarded(&owner.observe()?, from)?)?;
+    assert_eq!(packet["formatVersion"], 2);
+    packet["groups"]
+        .as_array()
+        .ok_or("groups")?
+        .iter()
+        .map(|v| v.as_str().map(str::to_owned).ok_or("group".into()))
+        .collect()
+}
+fn commit_v2(server: &mut RichReplica, writer: &str, input: &str) -> Result {
+    let before = server.checkpoint()?;
+    let WriterGroupPreparation::Prepared(prepared) =
+        server.prepare_writer_group_v2(writer, input)?
+    else {
+        return Err("not prepared".into());
+    };
+    assert_eq!(server.checkpoint()?, before);
+    let saved = prepared.checkpoint()?;
+    server.commit_writer_group(*prepared)?;
+    assert_eq!(server.checkpoint()?, saved);
+    Ok(())
+}
+
+#[test]
+fn atomic_v2_retains_authority_fork_payload_and_explicit_version_guards() -> Result {
+    let (profile, _, mut server, mut author, _) = room()?;
+    let original = author.checkpoint()?;
+    author.apply(vec![insert("p", "A🙂")])?;
+    let group = groups_v2(&author, "0")?[0].clone();
+    let before = server.checkpoint()?;
+    let observation = server.observe()?;
+    assert!(server.prepare_writer_group(A, &group).is_err());
+    assert!(server.prepare_writer_group_v2(B, &group).is_err());
+    assert!(server.prepare_writer_group_v2(A, &groups(&author, "0")?[0]).is_err());
+    for (field, value) in [
+        ("document", json!("other")),
+        ("modelVersion", json!(999)),
+        ("formatVersion", json!(1)),
+        ("from", json!("00")),
+        ("groupDigest", json!(format!("sha256:{}", "0".repeat(64)))),
+        ("previousDigest", json!(format!("sha256:{}", "0".repeat(64)))),
+    ] {
+        let mut altered: Value = serde_json::from_str(&group)?;
+        altered[field] = value;
+        assert!(server.prepare_writer_group_v2(A, &altered.to_string()).is_err(), "{field}");
+    }
+    let mut altered: Value = serde_json::from_str(&group)?;
+    altered["bytes"][0] = json!(255);
+    assert!(server.prepare_writer_group_v2(A, &altered.to_string()).is_err());
+    assert_eq!(server.checkpoint()?, before);
+    server.check(&observation)?;
+    commit_v2(&mut server, A, &group)?;
+    let before = server.checkpoint()?;
+    assert!(matches!(
+        server.prepare_writer_group_v2(A, &group)?,
+        WriterGroupPreparation::Duplicate(_)
+    ));
+    let mut fork = profile.restore("room", &original)?;
+    fork.apply(vec![insert("p", "B🙂")])?;
+    assert!(server.prepare_writer_group_v2(A, &groups_v2(&fork, "0")?[0]).is_err());
+    let next = fork.writer_clock_v2(A)?.through;
+    fork.apply(vec![insert("caption", "Next")])?;
+    assert!(server.prepare_writer_group_v2(A, &groups_v2(&fork, &next)?[0]).is_err());
+    assert_eq!(server.checkpoint()?, before);
+    assert_ne!(server.writer_clock(A)?.prefix_digest, server.writer_clock_v2(A)?.prefix_digest);
+    Ok(())
+}
+
+#[test]
+fn atomic_v2_keeps_pending_dependencies_bounded_and_preparations_observation_fenced() -> Result {
+    let (_, _, mut server, mut author, mut other) = room()?;
+    other.apply(vec![insert("caption", "B")])?;
+    author.receive_frame(&other.update_frame()?)?;
+    author.apply(vec![insert("p", "A")])?;
+    let group = groups_v2(&author, "0")?[0].clone();
+    let before = server.checkpoint()?;
+    assert!(matches!(
+        server.prepare_writer_group_v2(A, &group)?,
+        WriterGroupPreparation::Pending { .. }
+    ));
+    let mut hidden: Value = serde_json::from_str(&group)?;
+    hidden["dependencies"] = json!([]);
+    assert!(server.prepare_writer_group_v2(A, &hidden.to_string()).is_err());
+    assert_eq!(server.checkpoint()?, before);
+    commit_v2(&mut server, B, &groups_v2(&other, "0")?[0])?;
+    let WriterGroupPreparation::Prepared(prepared) = server.prepare_writer_group_v2(A, &group)?
+    else {
+        return Err("not prepared".into());
+    };
+    server.set_selection(Some(&Selection::Node { block: "image-block".into() }))?;
+    let before = server.checkpoint()?;
+    assert!(server.commit_writer_group(*prepared).is_err());
+    assert_eq!(server.checkpoint()?, before);
+    commit_v2(&mut server, A, &group)?;
+    assert_eq!(server.document_json(), author.document_json());
+    assert_eq!(server.writer_clock_v2(A)?, author.writer_clock_v2(A)?);
+    let stale = author.observe()?;
+    author.apply(vec![insert("p", "Next")])?;
+    assert!(author.writer_groups_v2_guarded(&stale, "malformed").is_err());
+    assert!(author.writer_groups_v2_guarded(&author.observe()?, "1").is_err());
+    Ok(())
+}

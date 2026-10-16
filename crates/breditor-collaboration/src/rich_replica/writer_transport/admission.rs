@@ -1,8 +1,9 @@
 //! Staged authenticated-origin admission; persistence/lease policy belongs to the reference relay.
 use super::{
     super::{RichReplica, SharedObservation},
-    WriterDependency, digest,
+    WriterDependency,
     frame::{self, GroupKind},
+    version::Version,
 };
 use crate::Error;
 use loro::{ContainerID, ContainerType, IdSpan};
@@ -64,6 +65,18 @@ impl PreparedWriterGroup {
     pub fn typing_checkpoint(&self) -> Result<String, Error> {
         self.candidate.typing_checkpoint()
     }
+    /// Save a candidate whose server owner explicitly selected general semantic history.
+    /// # Errors
+    /// Wrong family or existing journal/resource budgets reject.
+    pub fn general_checkpoint(&self) -> Result<String, Error> {
+        self.candidate.general_checkpoint()
+    }
+    /// Save a candidate with both explicit general semantics and natural history.
+    /// # Errors
+    /// Wrong family or existing envelope/resource budgets reject.
+    pub fn general_typing_checkpoint(&self) -> Result<String, Error> {
+        self.candidate.general_typing_checkpoint()
+    }
     /// Admitted candidate server catchup frame; preparation does not broadcast it.
     /// # Errors
     /// Rejects existing full-state frame budgets or engine encoding failures.
@@ -76,12 +89,16 @@ impl PreparedWriterGroup {
         self.candidate.document_json()
     }
 }
-fn receipt(owner: &RichReplica, checked: &frame::Checked) -> Result<WriterReceipt, Error> {
+fn receipt(
+    owner: &RichReplica,
+    checked: &frame::Checked,
+    version: Version,
+) -> Result<WriterReceipt, Error> {
     Ok(WriterReceipt {
         writer: checked.frame.writer.clone(),
         from: checked.frame.from.clone(),
         through: checked.frame.through.clone(),
-        prefix_digest: digest::operations(owner, checked.writer, 0, checked.through)?,
+        prefix_digest: version.operations(owner, checked.writer, 0, checked.through)?,
         group_digest: checked.frame.group_digest.clone(),
     })
 }
@@ -98,7 +115,28 @@ impl RichReplica {
         authenticated_writer: &str,
         input: &str,
     ) -> Result<WriterGroupPreparation, Error> {
-        let checked = frame::decode(self, authenticated_writer, input)?;
+        self.prepare_writer_group_version(authenticated_writer, input, Version::Original)
+    }
+    /// Stage an explicitly version-two group with packing-independent causal lineage.
+    ///
+    /// Original entry points reject this format, and this entry point rejects the
+    /// original format. Host authentication and durable publication remain mandatory.
+    /// # Errors
+    /// All original authority, dependency, fork, semantic and budget guards apply.
+    pub fn prepare_writer_group_v2(
+        &self,
+        authenticated_writer: &str,
+        input: &str,
+    ) -> Result<WriterGroupPreparation, Error> {
+        self.prepare_writer_group_version(authenticated_writer, input, Version::Atomic)
+    }
+    fn prepare_writer_group_version(
+        &self,
+        authenticated_writer: &str,
+        input: &str,
+        version: Version,
+    ) -> Result<WriterGroupPreparation, Error> {
+        let checked = frame::decode(self, authenticated_writer, input, version)?;
         if checked.frame.kind == GroupKind::Genesis {
             return Err(Error::Contract("shared genesis requires room creation authority"));
         }
@@ -113,18 +151,18 @@ impl RichReplica {
                 }],
             });
         }
-        if digest::operations(self, checked.writer, 0, checked.from)?
+        if version.operations(self, checked.writer, 0, checked.from)?
             != checked.frame.previous_digest
         {
             return Err(Error::Contract("shared writer history fork"));
         }
         if checked.through <= current {
-            if digest::operations(self, checked.writer, checked.from, checked.through)?
+            if version.operations(self, checked.writer, checked.from, checked.through)?
                 != checked.frame.group_digest
             {
                 return Err(Error::Contract("shared writer history fork"));
             }
-            return Ok(WriterGroupPreparation::Duplicate(receipt(self, &checked)?));
+            return Ok(WriterGroupPreparation::Duplicate(receipt(self, &checked, version)?));
         }
         if checked.from != current {
             return Err(Error::Contract("shared writer group overlaps integrated boundary"));
@@ -161,12 +199,12 @@ impl RichReplica {
         {
             return Err(Error::Contract("ordinary writer group contains room initialization"));
         }
-        if digest::operations(&candidate, checked.writer, checked.from, checked.through)?
+        if version.operations(&candidate, checked.writer, checked.from, checked.through)?
             != checked.frame.group_digest
         {
             return Err(Error::Contract("shared writer group canonical digest"));
         }
-        let receipt = receipt(&candidate, &checked)?;
+        let receipt = receipt(&candidate, &checked, version)?;
         Ok(WriterGroupPreparation::Prepared(Box::new(PreparedWriterGroup {
             basis,
             candidate,

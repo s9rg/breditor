@@ -34,6 +34,15 @@ enum Origin {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(super) enum Entry {
+    GeneralRangeV1 {
+        action: super::actions::ReplaceGeneralTextRangeV1,
+        selection_update: SelectionUpdate,
+        pending_update: PendingFormatsUpdate,
+        before_ui: UiState,
+        after_ui: UiState,
+        history_key: String,
+        expected: Value,
+    },
     Local {
         commands: Vec<Command>,
         selection_update: SelectionUpdate,
@@ -60,6 +69,11 @@ pub(super) enum Entry {
         popped: Vec<String>,
         expected: Value,
     },
+}
+impl Entry {
+    pub(super) const fn authored(&self) -> bool {
+        matches!(self, Self::Local { .. } | Self::GeneralRangeV1 { .. })
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -96,7 +110,7 @@ pub(super) fn writer_id(value: &str) -> Result<u64, Error> {
     }
     Ok(id)
 }
-fn effects(doc: &LoroDoc, before: &VersionVector) -> Result<Value, Error> {
+pub(super) fn effects(doc: &LoroDoc, before: &VersionVector) -> Result<Value, Error> {
     Ok(serde_json::to_value(
         doc.export_json_updates_without_peer_compression(before, &doc.oplog_vv()),
     )?)
@@ -122,6 +136,7 @@ pub struct RichReplica {
     pub(super) undo: UndoManager,
     pub(super) codec: DocumentJsonCodecV2,
     pub(super) protocol: super::protocol::Protocol,
+    pub(super) replay_contract: super::general_history::ReplayContract,
     pub(super) journal: Journal,
     header: Value,
     pub(super) document: RichDocument,
@@ -129,9 +144,9 @@ pub struct RichReplica {
     projection_cache: super::projection_cache::ProjectionCache,
     replay_projections: super::replay_projections::ReplayProjections,
     token: Arc<()>,
-    metadata: Arc<Mutex<Channel>>,
-    recipes: BTreeMap<String, Recipe>,
-    cursors: super::history_cursors::HistoryCursors,
+    pub(super) metadata: Arc<Mutex<Channel>>,
+    pub(super) recipes: BTreeMap<String, Recipe>,
+    pub(super) cursors: super::history_cursors::HistoryCursors,
     pub(super) history_keys: super::history_keys::HistoryKeys,
     pub(super) typing: Option<super::typing_history::TypingHistory>,
     pub(super) writer_windows: Vec<super::writer_transport::Window>,
@@ -293,6 +308,7 @@ impl RichReplica {
             undo,
             codec,
             protocol,
+            replay_contract: super::general_history::ReplayContract::Original,
             journal,
             header,
             document,
@@ -331,22 +347,50 @@ impl RichReplica {
         leave_open: bool,
         replay_projections: Option<super::replay_projections::ReplayProjections>,
     ) -> Result<Self, Error> {
+        Self::from_journal_contract_cached(
+            codec,
+            journal,
+            joins,
+            leave_open,
+            super::general_history::ReplayContract::Original,
+            replay_projections,
+        )
+    }
+    pub(super) fn from_journal_contract_parts(
+        codec: DocumentJsonCodecV2,
+        journal: Journal,
+        joins: Option<Vec<u32>>,
+        leave_open: bool,
+        contract: super::general_history::ReplayContract,
+    ) -> Result<Self, Error> {
+        Self::from_journal_contract_cached(codec, journal, joins, leave_open, contract, None)
+    }
+    fn from_journal_contract_cached(
+        codec: DocumentJsonCodecV2,
+        journal: Journal,
+        joins: Option<Vec<u32>>,
+        leave_open: bool,
+        contract: super::general_history::ReplayContract,
+        replay_projections: Option<super::replay_projections::ReplayProjections>,
+    ) -> Result<Self, Error> {
         let protocol = super::protocol::Protocol::from_codec(&codec)?;
-        let (format, version) = if joins.is_some() {
-            (super::typing_history::JOURNAL_FORMAT, super::typing_history::JOURNAL_VERSION)
-        } else {
-            ("breditor/rich-replica-journal", protocol.journal())
-        };
+        let (format, version) = contract.journal(protocol, joins.is_some());
         if journal.format != format || journal.version != version {
             return Err(Error::Contract("rich replica journal version"));
         }
         if journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
+        if contract == super::general_history::ReplayContract::Original
+            && journal.entries.iter().any(|entry| matches!(entry, Entry::GeneralRangeV1 { .. }))
+        {
+            return Err(Error::Contract("general records require explicit history family"));
+        }
         publication(&journal.publication)?;
         let mut base = journal.clone();
         base.ui = UiState::default();
         let mut candidate = Self::base(codec, base)?;
+        candidate.replay_contract = contract;
         if let Some(replay_projections) = replay_projections {
             candidate.replay_projections = replay_projections;
         }
@@ -364,7 +408,7 @@ impl RichReplica {
             let join = joining(index);
             let keep_open =
                 joining(index + 1) || (leave_open && index + 1 == journal.entries.len());
-            if keep_open && !matches!(entry, Entry::Local { .. }) {
+            if keep_open && !entry.authored() {
                 return Err(Error::ReplayMismatch);
             }
             candidate.replay(entry, join, keep_open)?;
@@ -549,6 +593,30 @@ impl RichReplica {
         let before = self.doc.oplog_vv();
         let applied_before = self.doc.state_vv();
         let expected = match entry {
+            Entry::GeneralRangeV1 {
+                action,
+                selection_update,
+                pending_update,
+                before_ui,
+                after_ui,
+                history_key,
+                expected,
+            } => {
+                self.journal.ui.clone_from(before_ui);
+                self.validate_ui()?;
+                if join
+                    || self.execute_general_range(
+                        action,
+                        selection_update,
+                        pending_update,
+                        keep_open,
+                    )? != *history_key
+                    || self.journal.ui != *after_ui
+                {
+                    return Err(Error::ReplayMismatch);
+                }
+                Some(expected)
+            }
             Entry::Local {
                 commands,
                 selection_update,
@@ -608,11 +676,12 @@ impl RichReplica {
         self.staged_for_typing(false)
     }
     fn staged_for_typing(&self, leave_open: bool) -> Result<Self, Error> {
-        let mut candidate = Self::from_journal_parts_cached(
+        let mut candidate = Self::from_journal_contract_cached(
             self.codec.clone(),
             self.journal.clone(),
             self.typing.as_ref().map(|history| history.joins.clone()),
             leave_open,
+            self.replay_contract,
             Some(self.replay_projections.fork_for_replay()),
         )?;
         candidate.read_only = self.read_only;
@@ -716,7 +785,7 @@ impl RichReplica {
         super::target_validation::validate(self, commands)
     }
 
-    fn refresh_document(&mut self) -> Result<(), Error> {
+    pub(super) fn refresh_document(&mut self) -> Result<(), Error> {
         self.protocol.require(&self.doc)?;
         super::layout_fields::validate(&self.doc)?;
         if materialize::header(&self.doc)? != self.header {
@@ -759,6 +828,10 @@ impl RichReplica {
 
     fn validate_adoption(&mut self) -> Result<(), Error> {
         self.protocol.require(&self.doc)?;
+        let (format, version) = self.replay_contract.journal(self.protocol, self.typing.is_some());
+        if self.journal.format != format || self.journal.version != version {
+            return Err(Error::Contract("shared replay family binding"));
+        }
         if self.journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
@@ -810,7 +883,13 @@ impl RichReplica {
         self.history_keys.validate(self.undo.undo_count(), self.undo.redo_count())?;
         if let Some(history) = &self.typing {
             history.validate(&self.journal)?;
-            self.typing_checkpoint()?;
+            if self.general_ranges_enabled() {
+                self.general_typing_checkpoint()?;
+            } else {
+                self.typing_checkpoint()?;
+            }
+        } else if self.general_ranges_enabled() {
+            self.general_checkpoint()?;
         } else {
             self.checkpoint()?;
         }
@@ -977,9 +1056,15 @@ impl RichReplica {
     /// # Errors
     /// Rejects the independent journal byte budget.
     pub fn checkpoint(&self) -> Result<String, Error> {
+        if self.general_ranges_enabled() {
+            return Err(Error::Contract("use explicit general shared checkpoint"));
+        }
         if self.typing.is_some() {
             return Err(Error::Contract("use explicit shared typing checkpoint"));
         }
+        self.encode_explicit_journal()
+    }
+    pub(super) fn encode_explicit_journal(&self) -> Result<String, Error> {
         let value = serde_json::to_string(&self.journal)?;
         if value.len() > MAX_JOURNAL_BYTES {
             return Err(Error::Limit("rich journal bytes"));
@@ -1023,7 +1108,7 @@ impl RichReplica {
     pub const fn model_version(&self) -> u32 {
         self.protocol.model()
     }
-    /// Exact replay contract; journals from other causal models cannot be relabeled.
+    /// Original journal binding for this causal model; opt-in families declare their own versions.
     #[must_use]
     pub const fn journal_version(&self) -> u32 {
         self.protocol.journal()

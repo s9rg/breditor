@@ -50,7 +50,7 @@ impl TypingHistory {
                 || at >= journal.entries.len()
                 || (ordinal > 0 && index <= previous)
                 || !matches!(journal.entries[at], Entry::Local { .. })
-                || !matches!(journal.entries[at - 1], Entry::Local { .. })
+                || !journal.entries[at - 1].authored()
             {
                 return Err(Error::Contract("shared typing join partition"));
             }

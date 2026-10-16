@@ -25,7 +25,7 @@ impl RichReplica {
         RichGeneralRangePlan::capture(&self.document, &selection.admit(&self.document)?, inserted)
             .map_err(|_| Error::Contract("general range native plan"))
     }
-    /// Replace selected text using native partial-structure preservation and original commands.
+    /// Replace selected text using native partial-structure preservation.
     ///
     /// One staged group retains causal source characters, owned births/deletions and
     /// selective Undo. The complete result must equal the native preview. Exact fresh
@@ -33,13 +33,22 @@ impl RichReplica {
     /// This native integration is not yet a Wasm/SDK editing capability.
     /// # Errors
     /// Stale/read-only, invalid IDs/styles, command limits or any lowering mismatch
-    /// reject atomically. Original paste admission needs transient insertion headroom;
-    /// normalization states not expressible by these commands also refuse, never flatten.
+    /// reject atomically. The original history family retains its primitive lowering
+    /// limits; the explicit general family admits the complete semantic result once.
     pub fn replace_general_selection_text_guarded(
         &mut self,
         observation: &SharedObservation,
         inserted: &TextFragment,
         empty: &[BlockId],
+    ) -> Result<bool, Error> {
+        self.replace_general_selection_text_with_typing(observation, inserted, empty, None)
+    }
+    pub(super) fn replace_general_selection_text_with_typing(
+        &mut self,
+        observation: &SharedObservation,
+        inserted: &TextFragment,
+        empty: &[BlockId],
+        typing: Option<super::typing_history::Request>,
     ) -> Result<bool, Error> {
         self.check(observation)?;
         self.require_writable()?;
@@ -93,13 +102,31 @@ impl RichReplica {
                 })
                 .transpose()?,
         );
-        let commands = general_range_plan::commands(
-            &self.codec,
-            &plan,
-            request,
-            empty,
-            preview.state().document(),
-        )?;
+        if self.general_ranges_enabled()
+            && preview.state().document().document() != self.document.document()
+        {
+            return self.apply_general_range_with_state(
+                super::actions::ReplaceGeneralTextRangeV1 {
+                    range: request,
+                    empty: empty.iter().map(|id| id.as_str().into()).collect(),
+                },
+                selection,
+                pending,
+                preview.state().document(),
+                typing,
+            );
+        }
+        let commands = if self.general_ranges_enabled() {
+            vec![]
+        } else {
+            general_range_plan::commands(
+                &self.codec,
+                &plan,
+                request,
+                empty,
+                preview.state().document(),
+            )?
+        };
         if commands.is_empty() {
             let mut candidate = self.staged()?;
             candidate.journal.ui.after(

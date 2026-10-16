@@ -1,8 +1,5 @@
 //! One-way native shared history admission without changing causal operations or old factories.
-use super::{
-    RichReplica, SharedObservation,
-    typing_history::{self, TypingHistory},
-};
+use super::{RichReplica, SharedObservation, typing_history::TypingHistory};
 use crate::Error;
 
 impl RichReplica {
@@ -20,8 +17,9 @@ impl RichReplica {
         }
         self.require_writable()?;
         let mut candidate = self.staged()?;
-        candidate.journal.format = typing_history::JOURNAL_FORMAT.into();
-        candidate.journal.version = typing_history::JOURNAL_VERSION;
+        let (format, version) = candidate.replay_contract.journal(candidate.protocol, true);
+        candidate.journal.format = format.into();
+        candidate.journal.version = version;
         candidate.typing = Some(TypingHistory { joins: vec![], continuation: None });
         self.adopt(candidate)?;
         Ok(true)

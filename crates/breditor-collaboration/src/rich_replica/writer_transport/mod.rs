@@ -3,6 +3,8 @@ mod admission;
 mod digest;
 mod export;
 mod frame;
+mod lineage_v2;
+mod version;
 mod window;
 pub use admission::{PreparedWriterGroup, WriterGroupPreparation, WriterReceipt};
 pub use export::WriterClock;
