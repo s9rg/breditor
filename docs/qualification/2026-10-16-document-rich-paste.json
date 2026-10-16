@@ -52,6 +52,7 @@
     "sharedDocumentSelectionTests": 12,
     "coreClipboardRegressionTests": 21,
     "wasmClipboardRegressionTests": 7,
+    "sharedClipboardRegressionTests": 23,
     "editorSdkTests": 193,
     "sdkTestFiles": 26,
     "applicationSurfaceTests": 15,

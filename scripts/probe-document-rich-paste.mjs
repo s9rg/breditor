@@ -38,12 +38,12 @@ export async function probeDocumentRichPaste(localDirectory,sharedDirectory,prev
     if(natural){a.enableTypingHistory();b.enableTypingHistory();}
     assert.equal(a.supportsDocumentClipboard(),true);assert.equal(b.supportsDocumentClipboard(),true);
     a.selectDocument();b.selectDocument();const before=a.documentJson(),sa=a.checkpointJson(),sb=b.checkpointJson(),ra=a.view().revision,rb=b.view().revision,prefix=`rich-${trials}`;
-    assert.throws(()=>a.pasteDocumentClipboard("malformed",prefix));assert.throws(()=>b.pasteDocumentClipboard("malformed",prefix));assert.equal(a.checkpointJson(),sa);assert.equal(b.checkpointJson(),sb);guardedRefusals+=2;
+    assert.throws(()=>a.pasteDocumentClipboard("malformed",`${prefix}:rejected`));assert.throws(()=>b.pasteDocumentClipboard("malformed",`${prefix}:rejected`));assert.equal(a.checkpointJson(),sa);assert.equal(b.checkpointJson(),sb);guardedRefusals+=2;
     a.pasteDocumentClipboard(clip.structuredJson,prefix,ra);b.pasteDocumentClipboard(clip.structuredJson,prefix,rb);
     assert.deepEqual(semantic(a.documentJson()),semantic(b.documentJson()));semanticDocuments++;
     assert.deepEqual(a.view().tables,b.view().tables);assert.equal(a.view().undoDepth,1);assert.equal(b.view().undoDepth,1);
     const roots=JSON.parse(b.documentJson()).root.children;assert.equal(roots.at(-1).type,"breditor/paragraph");if(clip.kind!=="text")assert.deepEqual(roots.at(-1).children,[]);else assert.ok(JSON.stringify(roots).includes("breditor/strong"));
-    assert.throws(()=>a.pasteDocumentClipboard(clip.structuredJson,"stale",ra));assert.throws(()=>b.pasteDocumentClipboard(clip.structuredJson,"stale",rb));guardedRefusals+=2;
+    assert.throws(()=>a.pasteDocumentClipboard(clip.structuredJson,`${prefix}:stale`,ra));assert.throws(()=>b.pasteDocumentClipboard(clip.structuredJson,`${prefix}:stale`,rb));guardedRefusals+=2;
     const ca=a.checkpointJson(),cb=b.checkpointJson();ar=createSharedDocumentEditor(restoreSharedDocumentEditor(sp,"room",ca,natural?"typing-v1":"explicit"));br=natural?lp.restoreDocumentTypingEditor(cb):lp.restoreDocumentEditor(cb);
     assert.equal(ar.checkpointJson(),ca);assert.equal(br.checkpointJson(),cb);restores+=2;
     assert.throws(()=>restoreSharedDocumentEditor(oldShared,"room",ca,natural?"typing-v1":"explicit"));oldSharedRefusals++;
