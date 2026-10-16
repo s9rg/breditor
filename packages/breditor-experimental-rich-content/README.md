@@ -470,12 +470,28 @@ per authored paste plus exact `replica`, `counter` and `lamport` strings. Consum
 namespaces remain consumed even when publication fails. Assets retain immutable
 references while copied image nodes receive fresh binding generations.
 
-Current range planners cover one text block, direct sibling flow or sibling
-leading list heads. Arbitrary cross-cell/container ranges are rejected. Grid
+Original range commands cover one text block, direct sibling flow or sibling
+leading list heads. They still reject arbitrary cross-cell/container ranges. Grid
 navigation stops at table boundaries without silently creating rows. Each content
 command creates one local undo unit; typing coalescing and native IME handling
 remain qualification work. The browser controller stages composition, but tests
 using synthetic composition events do not establish physical IME support.
+
+The separate source-level general-input bridge requires
+`core.supportsGeneralRanges() === true`. Its closed commands are
+`replaceGeneralRangeText`, `replaceGeneralRangePlainText` and
+`replaceGeneralRangeTypingText`. Each `data` supplies an explicit text
+`selection` and a durably fresh `prefix`. Plain/typing input supplies `text`;
+rich input supplies canonical `runs` of `{text, formatsJson}`; typing also
+requires native natural history and a canonical decimal `clockMs` string.
+Rust derives coverage, styles and required paragraphs. Undo restores the actual
+before-selection, not a temporary input target. Original commands are unchanged.
+
+Partial tables/images retain their structure. Whole enclosed atoms can be
+removed; inserted text starts at the logical beginning. A prefix is reserved
+even after failure or Undo and cannot be reused. These commands are proved
+through actual release Wasm/source facades, not yet through installed DOM or
+clipboard routes. See the [native contract](../../docs/RICH_GENERAL_RANGES.md).
 
 Checkpoint recovery validates all retained forward/inverse recipes and restores
 the redo branch with fresh owner tokens. This is local history, not selective

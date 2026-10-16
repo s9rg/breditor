@@ -6,9 +6,9 @@ flattening them. The owner approved this policy: remove only selected content
 inside partial structures, remove whole enclosed atoms, and insert replacement
 text at the selection's logical beginning.
 
-The local foundation and explicit shared semantic history are implemented.
-Wasm editing commands, SDK input routing,
-document-wide Select All and installed-browser acceptance remain required
+The local foundation, explicit shared semantic history and guarded Wasm/source
+facade commands are implemented. Root SDK and durable-session options, DOM and
+clipboard routing, document-wide Select All and installed-browser acceptance remain required
 before the general-selection feature is ready.
 
 ## Original joins and protected boundaries
@@ -194,12 +194,70 @@ step rules. The semantic replacement never joins preceding input. Empty input
 does not delete a selection; line separators isolate the group. Exact recovery
 retains the first selection, source text and joined history.
 
-Application Wasm has explicit recovery and matching save getters. It does not
-yet expose the new editing command. Native-to-release-Wasm checks cover both
+Application Wasm has explicit editing, recovery and matching save getters.
+Native-to-release-Wasm checks cover both
 directions, strict source-sized node limits, generated heads, captions and
 joined first-key input. The earlier shared Wasm imports the resulting peer
 frames while rejecting the new local save families. Peer-frame compatibility
 does not make original readers able to replay new local history.
+
+## Explicit browser input targets
+
+Browsers may replace a target range while the actual visible selection is a
+different caret or node. The new `replace_general_range_text`,
+`replace_general_range_plain_text` and `replace_general_range_typing_text`
+methods do not publish that target as a temporary selection. Their before-UI
+recipe retains the actual selection and pending styles, even if the operation
+removes the entire block holding that caret. Shared lowering compares the
+complete native preview while retaining that same actual before-UI.
+
+`RichGeneralPlainRangePlan` owns the admitted input fragment, effective formats
+and native coverage/floor requirements. Plain input inherits the actual caret's
+style when that caret lies inside a boundary block of the target. Otherwise the
+logical start's affinity chooses its style; an unrelated pending override cannot
+leak into the replacement. Explicit plain deletion retains that native input
+style at the resulting caret. Rich-run deletion instead maps actual pending
+styles through the action. First-key replacement never joins an earlier burst;
+subsequent same-caret typing can join under the existing native rules.
+
+Local Wasm exposes separate `replaceGeneralRangeText`,
+`replaceGeneralRangePlainText` and `replaceGeneralRangeTypingText` commands.
+Shared Wasm exposes corresponding guarded methods only after explicit semantic
+history admission. Both advertise general range capability string `1`.
+Original range commands and original factories retain their meanings.
+
+Each closed request supplies an explicit text selection and a host-reserved
+fresh namespace prefix. Rust plans the exact number of required paragraphs and
+allocates `prefix:range:ordinal` IDs. Prefixes admit at most 90 UTF-8 bytes and
+must remain durably unused after failures, Undo or discarded work. This
+spelling contract is not proof of durability; native source/historical ID checks
+still apply. JavaScript never counts floors or selects removal roots.
+
+Plain requests supply text; rich requests supply canonical nonempty runs with
+literal-array `formatsJson` strings; typing requests add a canonical decimal
+`clockMs`. Requests retain the 1 MiB envelope, 1,000-run and 64 KiB text limits.
+Unknown fields, number-valued coordinates/clocks, unadmitted literal formats,
+duplicate adjacent run styles, malformed namespaces and late failures reject
+atomically. Stale observations reject before request decoding. Mutation also
+requires current write policy and, for first-key input, natural history.
+
+Source facades expose these named capabilities and explicitly paired general
+recovery, without an original-command fallback. Shared observations report
+`rangeEditing: general-v1` only in the new mode. A recovered new-mode owner with
+an incomplete paired runtime rejects before ownership transfer. Its ordinary
+and natural save getters remain distinct. Existing durable sessions seal their
+range policy to the original family, preventing a live upgrade behind the
+storage record's identity guard. General-mode durable storage and root SDK
+options are still required; that guard is not completion of those integrations.
+
+The [input bridge qualification](qualification/2026-10-16-general-range-input-bridge.json)
+records actual release Wasm through source facades: fourteen scenarios, seventy
+matching local/shared documents and 112 exact future checkpoint comparisons.
+Earlier local and general-shared binaries restore all twenty-eight resulting
+saves and match 112 future checkpoints. These include a fully deleted
+before-caret block and clocks above JavaScript's safe-integer range. The local
+runtime keeps its existing default document limits; only the shared fixture
+explicitly tightens its node budget to the source size.
 
 ## Packing independent writer transport
 
@@ -231,8 +289,9 @@ recovery. Version-two transport still needs Wasm, SDK and reference-relay wiring
 
 ## Remaining integration
 
-General editing requests, clipboard and DOM routing, whole-document selection
-and installed-browser acceptance remain required. Native IME/accessibility and
+Root SDK/durable options, clipboard and DOM routing, cross-range paragraph/key
+transformations, whole-document selection and installed-browser acceptance
+remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 

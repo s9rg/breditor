@@ -119,6 +119,27 @@ saves leave the original durable record intact. The 16 MiB journal bound and
 exclusive writer lease are unchanged. See `docs/RICH_TYPING_HISTORY.md` for the
 record contract, false-result Undo publications and timing/qualification limits.
 
+## General range input bridge
+
+The source-level bridge requires a matching runtime with
+`core.supportsGeneralRanges() === true`. Call `core.enableGeneralRanges()`
+explicitly before `replaceGeneralRangeText(selection, runs, prefix)`,
+`replaceGeneralRangePlainText(selection, text, prefix)` or
+`replaceGeneralRangeTypingText(selection, text, prefix, clockMs)`. Optional
+revision arguments retain exact publication guards. Rich runs use
+`{text, formatsJson}`; first-key input also requires native natural history.
+Rust decides styles, structural coverage and fresh paragraph allocation.
+Reserve a new namespace prefix for every request, including failed/undone work.
+
+The new mode preserves actual before-UI and selects separate general ordinary
+or natural save families. `core.checkpointJson()` chooses the native getter;
+`restoreSharedGeneralEditor(profile, room, checkpoint, history)` requires the
+explicit matching recovery capability. There is no original-factory or
+JavaScript command fallback. Existing persistent sessions seal the original
+range policy and reject live upgrades behind their storage identity guard.
+General-mode root SDK/durable options, DOM/clipboard routing and relay V2
+integration remain required. See the [native contract](../../docs/RICH_GENERAL_RANGES.md).
+
 ## Source and compatibility
 
 Rust source is canonical in `crates/breditor-collaboration`; browser source is

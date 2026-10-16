@@ -378,6 +378,16 @@ version 2 hashes causal atoms and retains the existing authority, integrity and
 admission guards. Its relay/SDK integration and general browser editing routes
 remain unfinished. See the [general range contract](RICH_GENERAL_RANGES.md)
 and [semantic qualification](qualification/2026-10-16-general-range-shared-semantic.json).
+The subsequent [general input bridge](qualification/2026-10-16-general-range-input-bridge.json)
+adds closed local/shared Wasm and source-facade rich/plain/first-key requests.
+Rust derives styles, structural consequences and paragraph allocation while
+retaining the actual pre-edit selection rather than temporarily selecting a
+browser target. Actual release Wasm and earlier readers retain exact future
+history, including a deleted before-caret block. Original durable sessions reject
+live general-mode upgrades until a matching storage record is selected. Root
+SDK/durable general-mode options, DOM/clipboard routing, whole-document Select All,
+relay V2 integration and clean-installed acceptance remain required; no readiness
+row is promoted by this bridge.
 
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
