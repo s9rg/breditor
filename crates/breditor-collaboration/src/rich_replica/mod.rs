@@ -31,6 +31,7 @@ mod navigate_grid;
 mod observation;
 mod paragraphs;
 mod paste_flow_at_text;
+mod patch_inline_format_properties;
 mod placement;
 mod planning;
 mod presence;

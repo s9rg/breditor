@@ -12,6 +12,7 @@ export interface RichToolbarReading {
 export interface RichControlPresentation<C> {
  readonly id:string;readonly label:string;readonly type?:"text"|"number";
  readonly fields?:readonly RichToolbarField[];readonly shortcut?:string;
+ readonly mixedHint?:string;
  readonly read?:(context:C)=>RichToolbarReading;readonly value?:(context:C)=>string;
 }
 export interface RichControlView<C> {
@@ -42,7 +43,7 @@ export function mountToolbarControl<C>(toolbar:HTMLElement,control:RichControlPr
   input.dataset[`${hooks.prefix}Field`]=control.fields?`${control.id}-${field.id}`:control.id;input.setAttribute("aria-label",field.label);label.append(input);container.append(label);fields.set(field.id,input);
  }
  button.type="button";button.textContent=definitions.length?`Apply ${control.label}`:control.label;button.dataset[`${hooks.prefix}Action`]=control.id;container.append(button);
- const help=d.createElement("small");help.hidden=true;help.textContent="Mixed values: applying replaces this complete format.";if(panel)container.append(help);
+ const help=d.createElement("small");help.hidden=true;help.textContent=control.mixedHint??"Mixed values: applying replaces this complete format.";if(panel)container.append(help);
  toolbar.append(container);
  let lastStamp="",draft:string|undefined,enabled=false,lastContext:C,lastReading:RichToolbarReading|undefined;
  const write=()=>{

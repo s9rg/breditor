@@ -23,6 +23,12 @@ impl BreditorRichEditor {
     pub fn inline_controls_version(&self) -> String {
         "1".to_owned()
     }
+    /// Separate additive capability; original standard-control version remains unchanged.
+    #[must_use]
+    #[wasm_bindgen(js_name=inlinePropertyPatchesVersion)]
+    pub fn inline_property_patches_version(&self) -> String {
+        "1".to_owned()
+    }
     /// Capture one exact independently disposable rich observation.
     #[must_use]
     pub fn observe(&self) -> BreditorRichObservation {

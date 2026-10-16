@@ -5,7 +5,7 @@ import type {SharedRichEditor} from "./core.js";
 import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral} from "./types.js";
 import type {RichToolbarField,RichToolbarReading} from "@breditor/experimental-rich-content/rendering";
 export interface ActionContext {core:SharedRichEditor;model:RichModel;revision:string;allocate:(kind:string)=>string;image?:{asset:string;alt:string}}
-export interface SharedToolbarControl {id:string;label:string;type?:"text"|"number";owner?:SharedRichEditor;fields?:readonly RichToolbarField[];shortcut?:string;read?:(context:ActionContext)=>RichToolbarReading;enabled:(context:ActionContext)=>boolean;value?:(context:ActionContext)=>string;run:(context:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>void}
+export interface SharedToolbarControl {id:string;label:string;type?:"text"|"number";owner?:SharedRichEditor;fields?:readonly RichToolbarField[];shortcut?:string;mixedHint?:string;read?:(context:ActionContext)=>RichToolbarReading;enabled:(context:ActionContext)=>boolean;value?:(context:ActionContext)=>string;run:(context:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>void}
 export function publish(ctx:ActionContext,commands:readonly SharedCommand[],selection?:RichSelection|null):void{
  const request:SharedDispatch={commands};if(selection!==undefined)request.selectionUpdate={kind:"set",value:selection};ctx.core.dispatch(request,ctx.revision);
 }

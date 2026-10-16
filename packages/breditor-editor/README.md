@@ -42,8 +42,16 @@ The other initial values are `{kind: 'document', documentJson}` and
 Rust. The default schema is `breditor-editor/standard@1`; a custom
 `profileBootstrapJson` must retain the original V6 bootstrap shape. Additional
 inline formats need explicit safe presentation recipes through
-`additionalInlinePresentation`. Format commands replace complete property maps;
-they are not implicit patches of individual mixed properties.
+`additionalInlinePresentation`. Ordinary set-format commands still replace complete
+property maps. The separate compound command also accepts an explicit property
+patch. In the Link form, leave one field blank to preserve that field on each
+existing link; enter both fields to replace or create complete links. Partial
+patches require every selected character to be linked. Use Unlink to remove links.
+Shared patches use a guarded Rust planner and the existing complete-format wire
+operations. They preserve observed omitted fields, not independently merging
+concurrent edits to different fields of the same format. See
+`docs/RICH_INLINE_PROPERTY_PATCHES.md` in the repository for native/API examples
+and the unchanged action limits.
 
 One SDK opening or editor may own a host at a time. An invalid or aborted startup
 restores its original child nodes and frees any newly created native owner. Pass

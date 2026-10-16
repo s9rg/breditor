@@ -56,6 +56,7 @@ fn caret_format_reads_are_exact_frozen_affinity_aware_and_non_mutating() -> Test
     let profile = profile()?;
     let mut owner = editor(&profile)?;
     assert_eq!(owner.inline_controls_version(), "1");
+    assert_eq!(owner.inline_property_patches_version(), "1");
     assert_eq!(owner.observe().caret_formats_json().status(), "error");
     command(
         &mut owner,
@@ -82,6 +83,73 @@ fn caret_format_reads_are_exact_frozen_affinity_aware_and_non_mutating() -> Test
     let before = read(owner.checkpoint_json())?;
     assert_eq!(owner.observe().caret_formats_json().status(), "error");
     assert_eq!(read(owner.checkpoint_json())?, before);
+    Ok(())
+}
+
+#[test]
+fn property_patch_preserves_mixed_fields_and_original_single_command_rejects_it() -> TestResult {
+    let mut result = BreditorRichProfile::from_standard_bootstrap_json_v1(&bootstrap(6));
+    let profile = result.take_profile().ok_or("standard")?;
+    let mut owner = editor(&profile)?;
+    let link = |href: &str, new: bool| {
+        json!([{"type":"breditor-inline/link","properties":{"breditor-inline/href":href,"breditor-inline/new-window":new}}]).to_string()
+    };
+    for (start, end, href, new) in
+        [("0", "3", "https://one.test/", false), ("3", "4", "https://two.test/", true)]
+    {
+        command(
+            &mut owner,
+            &action(
+                "setInlineFormat",
+                json!({"change":{"kind":"set","formatsJson":link(href,new)},"targets":[{"block":"p","start":start,"end":end}]}),
+            ),
+            "content",
+        )?;
+    }
+    let before = read(owner.checkpoint_json())?;
+    let patch = json!({"kind":"patch","formatsJson":link("https://changed.test/",false),"properties":["breditor-inline/href"]});
+    let target = json!({"block":"p","start":"0","end":"4"});
+    assert_eq!(
+        owner
+            .execute(
+                &owner.observe(),
+                &action("setInlineFormat", json!({"change":patch,"targets":[target]})).to_string()
+            )
+            .status(),
+        "error"
+    );
+    assert_eq!(read(owner.checkpoint_json())?, before);
+    for data in [
+        json!({"changes":[patch],"targets":[target,{"block":"caption","start":"0","end":"1"}]}),
+        json!({"changes":[patch,patch],"targets":[target]}),
+        json!({"changes":[{"kind":"patch","formatsJson":link("https://changed.test/",false),"properties":[]}],"targets":[target]}),
+    ] {
+        assert_eq!(
+            owner
+                .execute(&owner.observe(), &action("changeInlineFormats", data).to_string())
+                .status(),
+            "error"
+        );
+        assert_eq!(read(owner.checkpoint_json())?, before);
+    }
+    command(
+        &mut owner,
+        &action("changeInlineFormats", json!({"changes":[patch],"targets":[target]})),
+        "content",
+    )?;
+    let after = read(owner.observe().document_json())?;
+    assert!(after.contains("https://changed.test/"));
+    assert!(after.contains("\"breditor-inline/new-window\":true"));
+    assert!(after.contains("\"breditor-inline/new-window\":false"));
+    let mut restored =
+        profile.restore_editor(&read(owner.checkpoint_json())?).take_editor().ok_or("restore")?;
+    for undo in [true, false, true, false] {
+        let (kind, outcome) = if undo { ("undo", "undo") } else { ("redo", "redo") };
+        command(&mut owner, &json!({"kind":kind}), outcome)?;
+        command(&mut restored, &json!({"kind":kind}), outcome)?;
+        assert_eq!(read(owner.checkpoint_json())?, read(restored.checkpoint_json())?);
+    }
+    assert_eq!(read(owner.observe().document_json())?, after);
     Ok(())
 }
 

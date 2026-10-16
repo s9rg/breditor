@@ -78,7 +78,7 @@ export type RichCommand =
  |{kind:"insertFormattedText";data:{text:string;formatsJson:string}}
  |{kind:"setInlineFormat";data:{change:{kind:"set";formatsJson:string}|{kind:"remove";format:string};targets:readonly {block:string;start:string;end:string}[]}}
  /** Simultaneous changes to unique kinds; one guarded publication/history unit. */
- |{kind:"changeInlineFormats";data:{changes:readonly ({kind:"set";formatsJson:string}|{kind:"remove";format:string})[];targets:readonly {block:string;start:string;end:string}[]}}
+ |{kind:"changeInlineFormats";data:{changes:readonly ({kind:"set";formatsJson:string}|{kind:"remove";format:string}|{kind:"patch";formatsJson:string;properties:readonly string[]})[];targets:readonly {block:string;start:string;end:string}[]}}
  |{kind:"pasteInlineClipboard";data:{clipboardJson:string}}
  |{kind:"pasteFlowClipboard";data:{clipboardJson:string;position:FlowPosition;allocation:ClipboardAllocation}}
  |{kind:"pasteGridClipboard";data:{clipboardJson:string;allocation:ClipboardAllocation}};

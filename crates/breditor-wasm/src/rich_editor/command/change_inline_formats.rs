@@ -49,6 +49,7 @@ pub(super) fn execute(
             let kind = match &change {
                 RichFormatChange::Set(format) => format.kind(),
                 RichFormatChange::Remove(kind) => kind,
+                RichFormatChange::Patch(patch) => patch.kind(),
             };
             let schema = owner.context().schema();
             if !seen.insert(kind.clone())

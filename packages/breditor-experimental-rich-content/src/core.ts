@@ -25,6 +25,7 @@ export interface RichCoreEditor {
   /** Read-only grammar revision, not mutation authority. Legacy owners may omit it. */
   richLanguageVersion?():1|2;
   supportsStandardInlineControls?():boolean;
+  supportsInlinePropertyPatches?():boolean;
   caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
   view(): RichView;

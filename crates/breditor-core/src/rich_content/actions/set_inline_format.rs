@@ -16,6 +16,8 @@ pub enum RichFormatChange {
     Set(Format),
     /// Remove one format kind while preserving every other format.
     Remove(QualifiedName),
+    /// Change only named properties of an existing format on every selected run.
+    Patch(super::RichFormatPropertyPatch),
 }
 
 /// One exact guarded inline-format action in a paragraph, heading, cell or caption.

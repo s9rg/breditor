@@ -65,6 +65,19 @@ computes the complete fingerprint; a caller-provided fingerprint is not a schema
 declaration. Typed inline extension support does not admit arbitrary block kinds,
 callbacks, HTML or CSS. The explicit standard V1 factory adds the same bounded
 twelve-format manifest as the local owner, without changing ordinary factories.
+
+`core.supportsInlinePropertyPatches()` reports the additive guarded Rust planner.
+`core.patchInlineFormatProperties({format, properties, targets}, revision)` patches
+named fields of an existing format on every selected character. `format` is a
+complete typed template; `properties` lists only the fields to copy. Targets use
+`{block, offset, length}` with scalar-aligned UTF-16 boundaries. Missing formats,
+duplicate targets/fields and stale revisions reject without publication. Matching
+standard Link controls use this path when one form field is left blank. Other
+observed fields and unrelated formats survive. The planner coalesces equal
+results and keeps the existing 64-command group ceiling; oversized requests fail
+atomically. Persisted operations remain ordinary complete-format annotations,
+with the original whole-format concurrent conflict policy and author-local Undo.
+There is no silent fallback for older owners lacking this capability.
 Configured factories prove schema admission; they do not authenticate a user,
 lease a writer or persist data automatically. A host still supplies identity,
 durability, asset-byte storage and optional transport.

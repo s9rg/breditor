@@ -9,6 +9,7 @@ export interface ToolbarControl {
  /** Optional binding for controls that read one particular owner. Not mutation authority. */
  owner?:RichCoreEditor;
  fields?:readonly RichToolbarField[];shortcut?:string;read?:(context:ActionContext)=>RichToolbarReading;
+ mixedHint?:string;
  enabled:(context:ActionContext)=>boolean;
  value?:(context:ActionContext)=>string;
  command:(context:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>RichCommand|null;

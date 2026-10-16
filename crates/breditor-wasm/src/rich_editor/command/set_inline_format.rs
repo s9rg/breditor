@@ -13,7 +13,7 @@ use breditor_core::{
     position::TextOffset,
     rich_content::{
         BlockId, RichLocalOutcome, RichLocalSession, RichLocalSnapshot, RichSelectionUpdate,
-        actions::{RichAction, RichFormatChange, SetInlineFormat},
+        actions::{RichAction, RichFormatChange, RichFormatPropertyPatch, SetInlineFormat},
     },
 };
 use serde::Deserialize;
@@ -27,6 +27,11 @@ pub(super) enum Change {
     },
     Remove {
         format: String,
+    },
+    Patch {
+        #[serde(rename = "formatsJson")]
+        formats_json: String,
+        properties: Vec<String>,
     },
 }
 #[derive(Deserialize)]
@@ -50,6 +55,10 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     let record: Record = decode(input)?;
+    // The original single-format command retains its exact set/remove grammar.
+    if matches!(record.change, Change::Patch { .. }) {
+        return Err(super::invalid());
+    }
     let change = admit_change(owner, record.change)?;
     if record.targets.is_empty() {
         return Err(super::invalid());
@@ -92,6 +101,21 @@ pub(super) fn admit_change(
                 return Err(super::invalid());
             }
             RichFormatChange::Set(formats.iter().next().ok_or(super::invalid())?.clone())
+        }
+        Change::Patch { formats_json, properties } => {
+            let formats =
+                checked(RichFormatsJsonCodec::new(owner.context().clone()).decode(&formats_json))?;
+            if formats.len() != 1 {
+                return Err(super::invalid());
+            }
+            let properties = properties
+                .into_iter()
+                .map(|value| checked(QualifiedName::try_new(value)))
+                .collect::<Result<_, _>>()?;
+            RichFormatChange::Patch(checked(RichFormatPropertyPatch::try_new(
+                formats.iter().next().ok_or(super::invalid())?.clone(),
+                properties,
+            ))?)
         }
     })
 }

@@ -65,6 +65,16 @@ impl RichReplicaProbe {
 #[cfg_attr(feature = "research", wasm_bindgen)]
 #[cfg_attr(not(feature = "research"), wasm_bindgen(js_class = SharedEditorOwner))]
 impl RichReplicaProbe {
+    /// Guarded field-only intent; only existing complete-format operations are persisted.
+    pub fn patch_inline_format_properties(
+        &mut self,
+        observation: &RichSharedObservation,
+        input: &str,
+    ) -> Result<bool, JsValue> {
+        self.inner
+            .patch_inline_format_properties_json_guarded(&observation.inner, input)
+            .map_err(error)
+    }
     /// Read exact formatting properties under the current complete publication guard.
     pub fn inline_format_state_json(
         &self,

@@ -30,6 +30,7 @@ pub(super) fn capture(
             !kinds.insert(match change {
                 RichFormatChange::Set(format) => format.kind(),
                 RichFormatChange::Remove(kind) => kind,
+                RichFormatChange::Patch(patch) => patch.kind(),
             })
         })
     {
@@ -56,6 +57,11 @@ pub(super) fn capture(
                 }
                 RichFormatChange::Remove(kind) => {
                     formats.remove(kind);
+                }
+                RichFormatChange::Patch(patch) => {
+                    let existing =
+                        formats.get(patch.kind()).ok_or(RichActionError::FormatChanges)?;
+                    formats.insert(patch.kind().clone(), patch.apply_to(existing)?);
                 }
             }
         }

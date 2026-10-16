@@ -221,8 +221,18 @@ rejects before changing the host. Custom owner-neutral controls remain reusable.
 
 Rust supplies active, mixed and unavailable state. Color, size, font and Link
 fields show a blank mixed value rather than choosing one of the selected values.
-Applying a format replaces its complete property map. In particular, a mixed
-Link requires an explicit URL and target; this is not a per-property patch API.
+Ordinary set-format commands replace the complete property map. A mixed Link form
+also supports an explicit field-only patch: leave URL blank to keep each existing
+URL, or target blank to keep each existing target. Every selected character must
+already carry a Link for a partial patch. Supplying both fields creates/replaces
+complete links; Unlink removes them. The separate `changeInlineFormats` command
+accepts `{kind:'patch', formatsJson, properties}` with one complete admitted
+template and a nonempty unique list of property names. Only named fields are
+copied to existing per-run values, while other properties and formats survive.
+`supportsInlinePropertyPatches()` reports the additive native capability; the
+original standard-controls version stays 1. The original `setInlineFormat`
+command remains set/remove-only. A missing format or invalid target rejects the
+complete transaction. See `docs/RICH_INLINE_PROPERTY_PATCHES.md` in the repository.
 Links accept only absolute credential-free HTTP(S) URLs without whitespace.
 Stored schema-valid unsafe strings remain inert until explicitly replaced.
 

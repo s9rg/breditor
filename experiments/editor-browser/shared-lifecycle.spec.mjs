@@ -10,13 +10,19 @@ test("installed durable SDK restores exact mixed-content and selective peer hist
 });
 
 test("installed durable SDK excludes duplicate writers and rolls back a cancelled render without freeing its saved history",async({page})=>{
- await ready(page);const result=await page.evaluate(async()=>{
+ const rounds=Number(process.env.BREDITOR_CANCEL_ROUNDS??"1");if(!Number.isSafeInteger(rounds)||rounds<1||rounds>100)throw Error("BREDITOR_CANCEL_ROUNDS must be between 1 and 100");
+ await ready(page);const result=await page.evaluate(async rounds=>{
   const t=window.durableSdk,host=document.createElement("main"),original=document.createElement("button");host.append(original);document.body.append(host);let duplicate;
   try{await t.openSharedEditor({...t.options,database:"different-store",host});}catch(error){duplicate=error.code;}
-  const checkpoint=t.a.checkpointJson();await t.a.close();const abort=new AbortController();let cancelled;
-  try{await t.openSharedEditor({...t.options,host,signal:abort.signal,resolveAsset:()=>{abort.abort();return undefined;}});}catch(error){cancelled=error.name;}
+  const checkpoint=t.a.checkpointJson();await t.a.close();let cancelled;
+  for(let round=0;round<rounds;round++){
+   const abort=new AbortController();let abortCalls=0;
+   try{await t.openSharedEditor({...t.options,host,signal:abort.signal,resolveAsset:()=>{abortCalls++;abort.abort();return undefined;}});cancelled="unexpected success";}catch(error){cancelled=error.name==="AbortError"?error.name:JSON.stringify({name:error.name,message:error.message,stack:String(error.stack).slice(0,4096),cause:error.cause,round,abortCalls,aborted:abort.signal.aborted,throwIfAborted:typeof abort.signal.throwIfAborted});}
+   if(cancelled!=="AbortError")break;
+   if(host.firstChild!==original)throw Error("Cancelled mount lost the original host children");
+  }
   const kept=host.firstChild===original,reopened=await t.openSharedEditor({...t.options,host}),exact=reopened.checkpointJson()===checkpoint;await reopened.close();host.remove();return {duplicate,cancelled,kept,exact};
- });expect(result).toEqual({duplicate:"writer_in_use",cancelled:"AbortError",kept:true,exact:true});
+ },rounds);expect(result).toEqual({duplicate:"writer_in_use",cancelled:"AbortError",kept:true,exact:true});
 });
 
 test("installed durable close seals publications and retains a failed save until exact recovery succeeds",async({page})=>{
