@@ -291,15 +291,37 @@ integer-domain startup error during a code-exit reload; that trace remains open,
 and the passing rerun is not an engine repair. Physical/bidi arrows, full atom
 editing/recovery, general selections and hidden-only recovery remain unfinished.
 
+The next [whole atom editing contract](RICH_ATOM_EDIT.md) adds Rust-owned
+deletion and plain/first-key replacement for selected images, visible tables and
+rules. Deletion chooses logical neighbors or an explicit floor when its original
+parent would be empty or have no visible stop. First-key replacement can share
+one natural Undo group with subsequent typing. Original action families retain
+exact local and selective shared recovery, including peer source/destination
+text. The installed three-engine 69-case atom matrix passes, including React
+owner retention, writer replacement and reload. Actual previous/current Wasm
+passes 60 cross-version restores and 193 exact future comparisons. A reproduced
+missing-first-character path is repaired by routing printable keys when a logical
+atom has no DOM text range. Shared replacement still needs transient insertion
+headroom; native OS clipboard and physical IME at atom selections are not
+qualified by the event-boundary tests. Existing reliability observations remain
+open, and this does not complete the two workstreams.
+
+The [completed atom qualification](qualification/2026-10-16-atom-edit.json)
+passes all 477 installed SDK cases and 78 serial application cases, 2,406
+all-feature root Rust tests, 298 canonical shared tests and 80 SDK units.
+The independent event probe reproduces the pre-repair delivery gap in six
+engine/owner combinations and verifies all six repaired combinations. Default
+regressions, strict native/Wasm lint and exact older-runtime history pass.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
 commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
 Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are shared
-typing responsiveness, general selections, physical/bidi navigation and atom
-editing, bounded layout contracts, public API/publication decisions and external
-interchange. Local
+typing responsiveness, general selections, physical/bidi navigation, native atom
+clipboard/input qualification, bounded layout contracts, public API/publication
+decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill

@@ -108,6 +108,15 @@ are in `experiments/editor-browser/atom-edit.spec.mjs`, including vanilla, React
 selective peer history and restart. `scripts/probe-atom-edit-compatibility.mjs`
 compares real previous/current Wasm, not a JavaScript inverse implementation.
 
+The [qualification record](qualification/2026-10-16-atom-edit.json) binds the
+477-case SDK and serial 78-case application matrices to the exact installed
+archives. `scripts/probe-atom-input-delivery.mjs` compares a pre-repair build with
+the repaired build. For a selected image, both owners in all three engines
+receive trusted keydown/keypress but no input event in the old build; injecting
+`beforeinput` reaches its existing native planner successfully. The repaired
+cases insert once through a prevented keydown. This isolates the controller
+delivery gap from Rust's edit planning.
+
 Synthetic composition guards do not qualify physical IME replacement of an atom.
 Clipboard-event fixtures exercise the editor boundary, not the operating-system
 clipboard. Visual/bidirectional arrows, general cross-container ranges, gap/drop
