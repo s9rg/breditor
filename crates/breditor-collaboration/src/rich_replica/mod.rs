@@ -17,6 +17,7 @@ mod change_selection_layout;
 mod clipboard;
 mod clipboard_flow;
 mod clipboard_grid;
+mod clipboard_interchange;
 mod clipboard_namespace;
 mod clipboard_plan;
 mod close_typing_group;

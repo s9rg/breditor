@@ -1,0 +1,105 @@
+{
+  "format": "breditor/clipboard-interchange-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "scope": "Pure native source-root admission and export validation through actual paired application Wasm and compiled SDK facades, followed by existing guarded paste and exact future history. Foreign HTML/Markdown conversion and Office paste are not implemented by this checkpoint.",
+  "capability": {
+    "version": "1",
+    "sdk": ["supportsClipboardInterchange", "admitClipboardRoot", "validateClipboard"],
+    "localNative": ["clipboardInterchangeVersion", "admitClipboardRoot", "validateClipboard"],
+    "sharedNative": ["clipboard_interchange_version", "admit_clipboard_root", "validate_clipboard"],
+    "sourceGrammar": "Existing strict NodeRecordV1 neutral clipboard root",
+    "result": "Existing breditor/rich-clipboard-transfer version 1 containing the receiving schema-bound rich clipboard",
+    "newStoredProtocols": [],
+    "defaultClipboardBehaviorChanged": false,
+    "nativeSchemaAdmissionIsForeignSanitization": false,
+    "reservesPasteIdentities": false,
+    "fetchesAssets": false
+  },
+  "artifacts": {
+    "localWasmDirectory": "target/block-layout-shared-qualification/clipboard-interchange-local-final-web",
+    "sharedWasmDirectory": "target/block-layout-shared-qualification/clipboard-interchange-shared-final-web",
+    "localWasmSha256": "17963624e85cd0cf3fada236bfb4ddd0621b821fae9518e392e1cebf29a512f5",
+    "sharedWasmSha256": "90f08ec88f2618eb025db9b34b4b22e78eb2c511a5d107f894256c29fe38b561",
+    "previousLocalWasmDirectory": "target/block-layout-shared-qualification/document-browser-local-final-web",
+    "previousSharedWasmDirectory": "target/block-layout-shared-qualification/document-relay-final-web",
+    "previousLocalWasmSha256": "d236c07082ba421412fcd0802dd4c582398b74e9501506820aca2b6f1aa49a32",
+    "previousSharedWasmSha256": "47754f9bf47307e1571bd2acefd39063548aadcfbb50363d8beec20fc13b5a6a",
+    "retainedProbeResult": "target/block-layout-shared-qualification/clipboard-interchange-functional-final.json"
+  },
+  "nativeContracts": {
+    "coreTests": 6,
+    "sharedTests": 1,
+    "sharedHistorySelectionCases": 4,
+    "existingClipboardTests": 12,
+    "existingGeneralCopyCaptureTests": 5,
+    "passed": true,
+    "covers": [
+      "Exact receiving schema binding, including equal selectors with unequal definition fingerprints",
+      "Unicode, mixed inline formats, active tables, captions and immutable image references",
+      "Strict kind, neutral identity, unknown/duplicate fields, noncanonical runs and ID uniqueness",
+      "Input bytes, complete envelope bytes, allocation preflight, depth, node and text limits",
+      "Read-only admission leaves checkpoint and synchronization frame unchanged in original/document and explicit/natural modes",
+      "Existing bounded link literals are preserved; URL allowlisting remains a distinct renderer and foreign-adapter policy"
+    ]
+  },
+  "actualWasmProbe": {
+    "command": "node scripts/probe-clipboard-interchange.mjs target/block-layout-shared-qualification/clipboard-interchange-local-final-web target/block-layout-shared-qualification/clipboard-interchange-shared-final-web target/block-layout-shared-qualification/document-browser-local-final-web target/block-layout-shared-qualification/document-relay-final-web",
+    "trials": 12,
+    "pureNativeStates": 24,
+    "rejectedDraftsAndBindings": 144,
+    "exactRestores": 24,
+    "exactFutureCheckpoints": 96,
+    "previousRuntimeExactCheckpoints": 120,
+    "previousCapabilityRefusals": 24,
+    "explicitCaptionCodeTextProjections": 40,
+    "unchangedInlinePolicyRefusals": 8,
+    "checkpointFieldsExcluded": [],
+    "localSharedAstComparisonExcludes": ["Newly authored merge lamport, writer and counter priority words"],
+    "passed": true
+  },
+  "captionCodeRegression": {
+    "command": "node scripts/probe-caption-code-text-paste.mjs target/block-layout-shared-qualification/clipboard-interchange-local-final-web target/block-layout-shared-qualification/clipboard-interchange-shared-final-web",
+    "trials": 32,
+    "exactLocalSharedDocuments": 160,
+    "exactRestores": 64,
+    "exactFutureCheckpoints": 256,
+    "pureReads": 64,
+    "guardedRefusals": 4,
+    "passed": true
+  },
+  "documentSdkRegression": {
+    "command": "node scripts/probe-document-sdk.mjs target/block-layout-shared-qualification/clipboard-interchange-local-final-web target/block-layout-shared-qualification/clipboard-interchange-shared-final-web",
+    "localCases": 10,
+    "sharedCases": 10,
+    "exactRestores": 20,
+    "exactFutureCheckpoints": 80,
+    "failedCloseRetries": 2,
+    "originalFactoryRefusals": 20,
+    "actualReactOwners": 4,
+    "reactFutureHistorySteps": 8,
+    "passed": true
+  },
+  "checks": {
+    "sdkRegressionTests": 249,
+    "sdkRegressionFiles": 31,
+    "sharedApplicationSurfaceTests": 19,
+    "sharedApplicationWasmExports": 136,
+    "existingSafeRenderAttributeTests": 16,
+    "localSharedRootTypeBuilds": true,
+    "strictLocalWasmNativeLibClippy": true,
+    "strictCoreNewTestClippy": true,
+    "strictSharedLibAndNewTestClippy": true,
+    "unchangedVendorWarning": "loro-internal HasIdSpan unused import",
+    "passed": true
+  },
+  "remaining": [
+    "Separate bounded HTML and Markdown parsers, sanitizer, exporter and explicit conversion loss reports",
+    "Realistic Word, Google Docs and Excel fixtures with merged tables, nested lists, inline styles, captions and host-resolved images",
+    "Explicit opt-in browser and SDK interchange integration with one guarded history group and exact local/shared offline recovery",
+    "Installed-package acceptance and deferred broad release qualification"
+  ],
+  "releaseReady": false,
+  "pushed": false,
+  "published": false
+}

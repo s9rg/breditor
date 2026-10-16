@@ -42,6 +42,8 @@ pub use rich_selection_coverage::{
 pub use rich_selection_format_changes::decode_rich_selection_format_changes;
 
 #[cfg(feature = "experimental-rich-content")]
+mod rich_clipboard_interchange;
+#[cfg(feature = "experimental-rich-content")]
 mod rich_clipboard_json;
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_clipboard_json::{

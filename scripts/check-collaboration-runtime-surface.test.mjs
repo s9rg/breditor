@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods} from "./check-collaboration-runtime-surface.mjs";
+import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
+test("clipboard interchange requires the complete separate pure capability",()=>{
+ for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
+});
 function fixture(){
  const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},default:()=>{},initSync:()=>{}};
  for(const name of documentOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -10,6 +13,7 @@ function fixture(){
  for(const name of documentNavigationMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of documentToolsMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of documentPresenceMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of clipboardInterchangeMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_copy_version","copy_general_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_flow_paste_version","paste_general_flow_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_paragraph_version","insert_general_paragraph"])module.SharedEditorOwner.prototype[name]=()=>{};

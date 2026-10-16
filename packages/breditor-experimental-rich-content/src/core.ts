@@ -10,6 +10,8 @@ export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
 export type RichSelectionPolicy="original"|"document-v1";
 export type RichHistoryPolicy="explicit"|"typing-v1";
+/** Pure schema-admitted source content. This carries no destination allocation or edit authority. */
+export interface RichClipboardTransfer {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string}
 export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
 export interface RichProfileDescriptor {kind: "rich"; abiVersion: 1; schema: {name: string; version: number}; schemaFingerprint: string;richLanguageVersion?:2|3;taskStructureVersion?:1;blockLayoutVersion?:1}
 /** Closed native intent. Omission keeps, null clears; bounds are enforced in Rust. */
@@ -58,6 +60,10 @@ export interface RichView {
 export interface RichDocumentView extends Omit<RichView,"format"|"selection"> {format:"breditor/rich-document-view";selection:RichDocumentSelection|null}
 export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "document-v1"?RichDocumentView:RichView;
 export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
+  /** Separate optional parser/export bridge; old owners remain usable without this capability. */
+  supportsClipboardInterchange?():boolean;
+  admitClipboardRoot?(kind:"text"|"flow"|"grid",rootJson:string):RichClipboardTransfer;
+  validateClipboard?(clipboardJson:string):RichClipboardTransfer;
   selectionPolicy?():P;
   supportsDocumentSelection?():boolean;
   /** Read-only grammar revision, not mutation authority. Legacy owners may omit it. */

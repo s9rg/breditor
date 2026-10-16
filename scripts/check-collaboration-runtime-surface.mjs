@@ -10,6 +10,7 @@ export const documentClipboardMethods=Object.freeze(["document_clipboard_version
 export const documentNavigationMethods=Object.freeze(["document_navigation_version","collapse_document_selection"]);
 export const documentToolsMethods=Object.freeze(["document_tools_version","document_selection_coverage_json","document_selection_format_state_json","document_block_layout_state_json","change_document_selection_formats","change_document_selection_layout"]);
 export const documentPresenceMethods=Object.freeze(["document_presence_version","document_presence_frame","resolve_document_presence"]);
+export const clipboardInterchangeMethods=Object.freeze(["clipboard_interchange_version","admit_clipboard_root","validate_clipboard"]);
 /** Generated glue must expose only configured factories, opaque observations and guarded owners. */
 export function admitApplicationSurface(module,binary,declarations){
  assert.deepEqual(Object.keys(module).sort(),[...applicationExports].sort(),"Application runtime exports must not include research probes");
@@ -33,6 +34,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["general_paragraph_version","insert_general_paragraph"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native general paragraph capability ${name}`);
  for(const name of ["writer_transport_v2_version","writer_groups_v2","writer_clock_v2"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native writer transport V2 capability ${name}`);
  for(const name of ["clipboard_text_policy_version","project_clipboard_text"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard text policy capability ${name}`);
+ for(const name of clipboardInterchangeMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard interchange capability ${name}`);
  for(const name of documentOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document-selection capability ${name}`);
  for(const name of documentProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing document-selection recovery capability ${name}`);
  for(const name of documentClipboardMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document clipboard capability ${name}`);

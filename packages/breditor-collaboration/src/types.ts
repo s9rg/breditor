@@ -88,6 +88,8 @@ export interface SharedWriterGroups {format:"breditor/shared-writer-groups";form
 export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVersion"> {formatVersion:2}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
+ clipboard_interchange_version?():string;
+ admit_clipboard_root?(kind:string,rootJson:string):string;validate_clipboard?(clipboardJson:string):string;
  document_selection_version?():string;document_typing_version?():string;document_selection_enabled?():boolean;
  document_clipboard_version?():string;paste_document_clipboard?(observation:unknown,input:string):boolean;
  document_navigation_version?():string;collapse_document_selection?(observation:unknown,side:string):boolean;

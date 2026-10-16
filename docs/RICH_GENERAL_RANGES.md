@@ -10,15 +10,16 @@ The local foundation, explicit shared semantic history and guarded Wasm/source
 facade commands are implemented. Explicit root SDK options and durable general
 sessions now connect native plain input to vanilla/React controllers. General
 rich clipboard, cross-range paragraph Enter, explicit caption/code text paste
-and transport V2 have functional checkpoints below. The explicit local document
-DOM coordinator connects document-wide Select All and composition to Rust.
-Shared document browser composition, external interchange and final integrated
-qualification remain required.
+and transport V2 have functional checkpoints below. Explicit local/shared document
+DOM coordinators, root SDK/React lifecycles and relay composition now connect
+document-wide Select All and composition to Rust. Foreign interchange and final
+integrated qualification remain required.
 
 Whole-document selection has native local/shared scope, rich replacement,
 separate view/checkpoint families and explicit programmatic SDK/storage support.
-The explicit local DOM path is implemented; shared DOM, root SDK/React and relay
-composition remain required for a complete local/shared browser editing feature.
+The native [external interchange bridge](RICH_INTERCHANGE.md) now admits source
+roots and validates export fragments under the active schema without changing
+content or history. Its HTML/Markdown adapters and Office paste remain unfinished.
 
 ## Original joins and protected boundaries
 

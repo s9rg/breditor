@@ -3,6 +3,7 @@ import type {RichInlineFormatStateRead} from "./types.js";
 import type {SharedWriterGroupsV2} from "./types.js";
 import type {RichClipboardTextProjection} from "./types.js";
 import type {SharedSelectionPolicy,SharedEditorView} from "./types.js";
+import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 export class SharedEditorError extends Error {
@@ -162,6 +163,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Explicit read capability, independent of range authoring policy and read-only state. */
  supportsGeneralCopy():boolean{const raw=this.#live();return typeof raw.general_copy_version==="function"&&raw.general_copy_version()==="1"&&typeof raw.copy_general_clipboard==="function";}
  copyGeneral():ClipboardContent|null{const raw=this.#live();if(!this.supportsGeneralCopy())throw new SharedEditorError("general_copy_unavailable","Use matching native general clipboard copy");return JSON.parse(raw.copy_general_clipboard!(this.#observation)) as ClipboardContent|null;}
+ supportsClipboardInterchange():boolean{const raw=this.#live();return raw.clipboard_interchange_version?.()==="1"&&typeof raw.admit_clipboard_root==="function"&&typeof raw.validate_clipboard==="function";}
+ admitClipboardRoot(kind:"text"|"flow"|"grid",rootJson:string):RichClipboardTransfer{const raw=this.#live();if(!this.supportsClipboardInterchange())throw new SharedEditorError("clipboard_interchange_unavailable","Use matching native clipboard interchange");return JSON.parse(raw.admit_clipboard_root!(kind,rootJson)) as RichClipboardTransfer;}
+ validateClipboard(clipboardJson:string):RichClipboardTransfer{const raw=this.#live();if(!this.supportsClipboardInterchange())throw new SharedEditorError("clipboard_interchange_unavailable","Use matching native clipboard interchange");return JSON.parse(raw.validate_clipboard!(clipboardJson)) as RichClipboardTransfer;}
  supportsClipboardTextPolicy():boolean{const raw=this.#live();return typeof raw.clipboard_text_policy_version==="function"&&raw.clipboard_text_policy_version()==="1"&&typeof raw.project_clipboard_text==="function";}
  /** Pure native policy read; callers still submit its text with the same revision guard. */
  projectClipboardText(selection:Extract<RichSelection,{kind:"text"}>,clipboardJson:string,revision?:string):RichClipboardTextProjection|null{this.#check(revision);const raw=this.#live();if(!this.supportsClipboardTextPolicy())throw new SharedEditorError("clipboard_text_policy_unavailable","Use matching native clipboard text policy");return JSON.parse(raw.project_clipboard_text!(this.#observation,JSON.stringify({selection,clipboardJson}))) as RichClipboardTextProjection|null;}

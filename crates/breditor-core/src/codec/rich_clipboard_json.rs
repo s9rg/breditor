@@ -58,6 +58,53 @@ impl RichClipboardJsonCodec {
         self.max_json_bytes = maximum;
         self
     }
+    /// Admit an external adapter's neutral clipboard root under this receiving context.
+    ///
+    /// This is a pure construction boundary, not an insertion or an HTML parser.
+    /// The root uses the existing strict node record shape and must identify the
+    /// neutral `breditor-clipboard` document. Source identities are never paste
+    /// allocations. The returned fragment acquires this context's exact schema
+    /// binding; normal paste still performs fresh-ID allocation and guarded admission.
+    ///
+    /// # Errors
+    /// Rejects byte/allocation limits, noncanonical trees, unsupported schema
+    /// features, incorrect clipboard kinds, and nonsemantic merge history.
+    pub fn admit_root(
+        &self,
+        kind: RichClipboardKind,
+        root_json: &str,
+    ) -> Result<RichClipboardFragment, RichClipboardCodecError> {
+        super::rich_clipboard_interchange::admit_root(
+            &self.context,
+            self.max_json_bytes,
+            kind,
+            root_json,
+        )
+    }
+    /// Encode a validated fragment and its exact plain-text fallback for an adapter.
+    ///
+    /// This shares the existing rich clipboard transfer family used by local Copy.
+    /// It carries no observation, history, permission, or destination identities.
+    ///
+    /// # Errors
+    /// Rejects the same active schema/semantic/byte limits as [`Self::encode`].
+    pub fn encode_transfer(
+        &self,
+        fragment: &RichClipboardFragment,
+    ) -> Result<String, RichClipboardCodecError> {
+        let structured = self.encode(fragment)?;
+        let text = fragment.plain_text()?;
+        Ok(serde_json::json!({
+            "format":"breditor/rich-clipboard-transfer", "formatVersion":1,
+            "kind": match fragment.kind() {
+                RichClipboardKind::Text => "text",
+                RichClipboardKind::Flow => "flow",
+                RichClipboardKind::Grid => "grid",
+            },
+            "structuredJson":structured, "plainText":text,
+        })
+        .to_string())
+    }
     /// Encode admitted semantic content without fresh-ID allocation or document mutation.
     ///
     /// # Errors

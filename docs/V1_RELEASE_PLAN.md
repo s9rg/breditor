@@ -612,6 +612,12 @@ fail atomically and preserve content. No unrelated wire format changes meaning.
 
 ### Third checkpoint implement external interchange
 
+The [native interchange bridge](RICH_INTERCHANGE.md) now admits bounded source
+roots and validates export fragments under the receiving schema without editing
+content or history. Its local/shared Wasm and SDK checkpoint preserves existing
+clipboard, checkpoint and synchronization formats. Foreign parsing and browser
+integration below remain required; this bridge alone does not qualify interchange.
+
 Introduce separate bounded HTML and Markdown import/export adapters with
 schema/version binding, safe URL/asset policies and explicit loss reports.
 Keep editing DOM, canonical AST and external data representations separate.

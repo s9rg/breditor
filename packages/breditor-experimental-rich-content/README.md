@@ -479,6 +479,14 @@ is retried as plain text. Empty projected text and text over 64 KiB reject; inli
 fragments keep their existing rich-paste semantics. Projection is a pure native
 read, not editing authority. See the [caption/code functional checkpoint](../../docs/qualification/2026-10-16-caption-code-text-paste-functional.json).
 
+The separate optional `supportsClipboardInterchange()` capability exposes pure
+`admitClipboardRoot(kind, rootJson)` and `validateClipboard(clipboardJson)` reads.
+Rust supplies the receiving schema binding and validates the existing neutral
+clipboard tree, then returns `RichClipboardTransfer`; guarded paste still owns
+fresh IDs and history. Neither method fetches assets or parses foreign markup.
+See the [external interchange contract](../../docs/RICH_INTERCHANGE.md). HTML,
+Markdown and Office adapters remain separate unfinished work.
+
 Original range commands cover one text block, direct sibling flow or sibling
 leading list heads. They still reject arbitrary cross-cell/container ranges. Grid
 navigation stops at table boundaries without silently creating rows. Each content
