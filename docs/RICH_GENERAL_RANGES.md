@@ -7,9 +7,10 @@ inside partial structures, remove whole enclosed atoms, and insert replacement
 text at the selection's logical beginning.
 
 The local foundation, explicit shared semantic history and guarded Wasm/source
-facade commands are implemented. Root SDK and durable-session options, DOM and
-clipboard routing, document-wide Select All and installed-browser acceptance remain required
-before the general-selection feature is ready.
+facade commands are implemented. Explicit root SDK options and durable general
+sessions now connect native plain input to vanilla/React controllers. Rich
+clipboard, cross-range paragraph transformations, document-wide Select All and
+transport V2 integration remain required before the general-selection feature is ready.
 
 ## Original joins and protected boundaries
 
@@ -99,7 +100,8 @@ Sequential admission and transient resource requirements need explicit tests.
 
 Wasm and SDK integration need an explicit capability and closed guarded
 requests. Browser controllers must use native plans, not infer removal from DOM
-order. Existing cross-cell drag still produces a Grid selection. General
+order. Original cross-cell drag still produces a Grid selection; explicit
+general mode retains the browser's partial text endpoints instead. General
 visual-order ranges, whole-document Select All including leading/trailing atoms,
 gap/drop positions and external interchange remain distinct contracts.
 
@@ -245,10 +247,10 @@ Source facades expose these named capabilities and explicitly paired general
 recovery, without an original-command fallback. Shared observations report
 `rangeEditing: general-v1` only in the new mode. A recovered new-mode owner with
 an incomplete paired runtime rejects before ownership transfer. Its ordinary
-and natural save getters remain distinct. Existing durable sessions seal their
-range policy to the original family, preventing a live upgrade behind the
-storage record's identity guard. General-mode durable storage and root SDK
-options are still required; that guard is not completion of those integrations.
+and natural save getters remain distinct. Durable sessions seal their selected
+range policy, preventing a live upgrade behind the storage record's identity
+guard. Reopening with an explicit opt-in can upgrade an original record as
+described below.
 
 The [input bridge qualification](qualification/2026-10-16-general-range-input-bridge.json)
 records actual release Wasm through source facades: fourteen scenarios, seventy
@@ -258,6 +260,62 @@ saves and match 112 future checkpoints. These include a fully deleted
 before-caret block and clocks above JavaScript's safe-integer range. The local
 runtime keeps its existing default document limits; only the shared fixture
 explicitly tightens its node budget to the source size.
+
+## Durable sessions and browser routing
+
+`openLocalEditor` and `openSharedEditor` accept immutable
+`rangeEditing: 'general-v1'`; omitted or `'original'` retains the original input
+contract. Both React components apply this option once per `sessionKey`.
+Parent renders cannot silently change a live owner's replay policy or reset its
+history. Local checkpoints retain their existing ordinary/natural families;
+local general routing is an explicitly reapplied controller option.
+
+Shared general records use a separate IndexedDB value:
+
+```json
+{
+  "format": "breditor/shared-general-checkpoint-record",
+  "formatVersion": 1,
+  "history": "explicit",
+  "richLanguage": 3,
+  "checkpointJson": "opaque native general journal"
+}
+```
+
+The exact five keys declare the family outside opaque Rust JSON. `history` is
+`explicit` or `typing-v1`; `richLanguage` is 1, 2 or 3. Unknown keys, versions or
+values reject. Legacy strings and original typing records retain their exact
+old shapes and restore callback arity. The legacy string-only reader refuses
+general records. The 16 MiB journal ceiling and origin-wide exclusive writer
+lease remain unchanged.
+
+Opening a stored general record requires an explicit matching range/language
+option and, for natural history, explicit `history: 'typing-v1'`. Storage checks
+record identity; Rust admits the actual origin, schema, causal model and replay.
+In particular, an ordinary general journal has no language header: changing the
+outer record's label cannot make another native profile admit it. A failed
+upgrade leaves the exact old durable value intact and frees the unannounced
+owner. A failed close retires authoring but retains the exact readable journal
+and writer lease until retry or explicit discard.
+
+First-opening seeds add explicit `{kind: 'generalCheckpoint', checkpointJson}`
+and `{kind: 'generalTypingCheckpoint', checkpointJson}` variants. These choose
+the corresponding native restore factory and defaults, never sniff the JSON or
+fall back to an original factory. Existing durable records still take precedence
+over seeds. `rangePolicy()` and `historyPolicy()` on new recovery producers
+retain the two independent policy choices through failed mount/close handoff.
+Hosts must also retain the selected language and profile configuration.
+
+General-mode controllers retain cross-cell browser ranges as text selections;
+explicit cell-picker grid selections remain separate. Typing, replacement,
+selected deletion, Shift+Enter and plain paste submit a closed native target and
+fresh request namespace. Browser target ranges never become temporary native
+selections. A target at the actual caret retains its logical affinity, allowing
+the native natural-typing continuation rule to apply. Adjacent same-block
+natural deletion retains its existing grouping action. Shared routing follows
+the observed native mode; local routing requires the explicit immutable option.
+An unavailable native capability rejects before mounting; neither controller
+implements a JavaScript AST rewrite.
 
 ## Packing independent writer transport
 
@@ -289,9 +347,9 @@ recovery. Version-two transport still needs Wasm, SDK and reference-relay wiring
 
 ## Remaining integration
 
-Root SDK/durable options, clipboard and DOM routing, cross-range paragraph/key
-transformations, whole-document selection and installed-browser acceptance
-remain required. Native IME/accessibility and
+Rich clipboard Copy/Cut/paste, cross-range paragraph/key transformations,
+whole-document selection, general composition targets, remaining installed
+editing/transport acceptance and relay V2 integration remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 

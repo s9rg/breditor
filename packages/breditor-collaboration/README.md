@@ -135,10 +135,24 @@ The new mode preserves actual before-UI and selects separate general ordinary
 or natural save families. `core.checkpointJson()` chooses the native getter;
 `restoreSharedGeneralEditor(profile, room, checkpoint, history)` requires the
 explicit matching recovery capability. There is no original-factory or
-JavaScript command fallback. Existing persistent sessions seal the original
-range policy and reject live upgrades behind their storage identity guard.
-General-mode root SDK/durable options, DOM/clipboard routing and relay V2
-integration remain required. See the [native contract](../../docs/RICH_GENERAL_RANGES.md).
+JavaScript command fallback. `SharedPersistentSession.open` accepts explicit
+`rangeEditing: 'general-v1'` independently from `history` and `richLanguage`.
+General records declare those policies outside opaque native JSON; legacy
+records keep their exact shapes. An explicit reopen can upgrade an original
+journal transactionally; a live session cannot switch behind its storage guard.
+General stored records require matching opt-in and language on every reopening.
+Use the restore callback's optional third range-policy argument to choose
+`restoreSharedGeneralEditor`; original records still invoke the callback with
+exactly two arguments. Failed upgrades retain the old durable value; failed
+closes retain the exact retired owner and lease for retry.
+
+Shared DOM plain typing, replacement, selected deletion, Shift+Enter and plain
+paste follow the observed general mode. Cross-cell browser text ranges retain
+partial endpoints; cell-picker grids remain explicit. Rich clipboard,
+cross-range paragraph transformations, whole-document Select All and relay V2
+integration remain required. A general session must not be attached to a V1
+relay by bypassing its journal or digest guard. See the
+[native contract](../../docs/RICH_GENERAL_RANGES.md).
 
 ## Source and compatibility
 

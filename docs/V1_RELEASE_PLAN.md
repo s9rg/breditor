@@ -389,6 +389,19 @@ SDK/durable general-mode options, DOM/clipboard routing, whole-document Select A
 relay V2 integration and clean-installed acceptance remain required; no readiness
 row is promoted by this bridge.
 
+The subsequent [durable general input qualification](qualification/2026-10-16-general-range-durable-dom.json)
+adds immutable local/shared range options, separately declared general storage
+records, exact native reopening and transactional upgrades that retain legacy
+Redo. Failed-close handoff retains the range and history families. Explicit
+general controllers preserve partial cross-cell text endpoints and route plain
+typing, replacement, selected deletion, Shift+Enter and plain paste through
+native planning. All 48 new clean-installed vanilla/React cases pass in the
+three configured engines. Source persistence adds 18 real-Wasm scenarios and
+72 exact future checkpoint comparisons, with aborted upgrades/close retries
+and native rejection of mislabeled language records. Rich clipboard,
+cross-range Enter/composition, whole-document Select All and relay V2 wiring
+remain unfinished; no readiness row advances.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set

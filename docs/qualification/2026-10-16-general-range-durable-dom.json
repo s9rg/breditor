@@ -1,0 +1,211 @@
+{
+  "format": "breditor/general-range-durable-dom-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "6d88488ffdd783753b5c4da391472c85b116252c",
+  "previousCheckpoint": "1a43d331b16c8f4e4052163ad971a341998f4d99",
+  "status": "explicit-general-plain-input-and-durability-qualified-rich-clipboard-paragraph-transforms-and-relay-v2-open",
+  "publication": "Local Git checkpoints and fresh private candidate archives only. No push, tag, registry publication or deployment. No demo-host reconfiguration or restart.",
+  "contracts": {
+    "optIn": "Immutable rangeEditing original/general-v1 is independent from explicit/typing-v1 history and richLanguage 1/2/3. Local/shared vanilla and React roots require a complete paired native capability for general mode. Parent renders cannot silently change an owner's replay policy.",
+    "records": "General records use breditor/shared-general-checkpoint-record version1 with exactly checkpointJson, format, formatVersion, history and richLanguage. Existing exact strings and original typing record shapes remain unchanged. Original restore callbacks retain exactly two arguments; general records explicitly supply the third range policy.",
+    "admission": "Stored general records require matching range/language options and explicit natural history when selected. JS checks family/identity, never substitutes AST import for native replay. Ordinary general journals lack a language header; the selected Rust profile proves actual schema/model admission. A tampered outer language label was rejected by real Wasm without replacing the durable value.",
+    "recovery": "Explicit generalCheckpoint/generalTypingCheckpoint seeds choose matching restore factories and policy defaults. Stored records still take precedence. Legacy upgrades retain content, old Undo units and Redo; an aborted upgrade leaves the old durable record intact. Failed close retires publications but retains exact readable history and the writer lease for retry. New recovery producers expose independent rangePolicy/historyPolicy.",
+    "routing": "Observed shared general mode or explicit immutable local general mode retains cross-cell native text endpoints. Explicit cell-picker grids stay separate. Plain typing/replacement, selected deletion, Shift+Enter and plain paste use closed native targets and fresh namespaces. Same-caret browser targets retain logical affinity; adjacent same-block natural deletion retains original grouping. No temporary target selection or JS AST rewrite is introduced.",
+    "compatibility": "Original defaults, factories, stored strings/typing records, causal models, frame meanings and writer digest guards retain their existing contracts. Local checkpoints retain their original ordinary/natural families; hosts explicitly reapply the controller option on reopen."
+  },
+  "checks": {
+    "sdkTestsPassed": 148,
+    "sdkTestFiles": 22,
+    "newSdkTests": 41,
+    "localSharedSdkTypes": true,
+    "installedTypes": true,
+    "cleanMinimalSharedOnlyAndFullReactConsumers": true,
+    "installedDirectoriesAreNotWorkspaceSymlinks": true,
+    "optimizedPairedRuntimeBuilds": true,
+    "localWasmSha256": "5df4abe86a01d42ede67d0cfb345928941cc85c443627987a3b42c70253670a0",
+    "sharedWasmSha256": "0acfcadf164eba388687c30d6a34f1b8c0b02f1018416fda50597c74f7517954",
+    "nativeCoreAndWasmSourceChanged": false,
+    "rootAndCanonicalSharedNativeTestsRerun": false,
+    "priorNativeProof": "2026-10-16-general-range-input-bridge.json binds the unchanged core/bridges to 2460 root and 354 canonical shared tests, exact original/earlier-runtime recovery and strict native/Wasm lint. Current optimized runtime hashes equal that qualification.",
+    "vendorWarning": "Unchanged vendored loro-internal HasIdSpan unused import; no vendor changes or lowered first-party lint thresholds."
+  },
+  "sourcePersistenceProbe": {
+    "command": "node scripts/probe-general-session.mjs target/block-layout-shared-qualification/general-semantic-v2-native-vectors.json target/block-layout-shared-qualification/general-input-shared-final-web",
+    "format": "breditor/general-session-source-probe",
+    "formatVersion": 1,
+    "sharedWasmSha256": "0acfcadf164eba388687c30d6a34f1b8c0b02f1018416fda50597c74f7517954",
+    "vectorsSha256": "bc8634b83f982d32f6703ae0724e1325ec9e403286b68a8e787db0ef437221d2",
+    "trials": 18,
+    "exactRestores": 18,
+    "exactFutureCheckpointComparisons": 72,
+    "failedCloseRetries": 6,
+    "failedUpgrades": 6,
+    "guardedReopens": 27,
+    "forgedLanguageRejected": 1,
+    "passed": true,
+    "scope": "Actual release shared Wasm with compiled source persistence; three languages, both history families, forward/backward partial structures, legacy Redo upgrade, exact future history, aborted IndexedDB saves and native language admission. fake-indexeddb and deterministic exclusive-lock API fixture; not installed consumer, browser Web Locks/clipboard or relay V2 acceptance."
+  },
+  "installedBrowser": {
+    "buildCommand": "CARGO_INCREMENTAL=0 node scripts/check-editor-package.mjs",
+    "newCommand": "playwright test -c experiments/editor-browser/playwright.config.mjs general-range.spec.mjs",
+    "newCasesPassed": 48,
+    "newPerEngine": 16,
+    "regressionCommand": "playwright test -c experiments/editor-browser/playwright.config.mjs shared-lifecycle.spec.mjs selection-formatting.spec.mjs",
+    "regressionCasesPassed": 69,
+    "regressionPerEngine": 23,
+    "totalDistinctCasesPassed": 117,
+    "engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "sameInstalledArchivesForBothRuns": true,
+    "retries": 0,
+    "scope": "Trusted keyboard delivery against clean-installed original package-root local/shared vanilla/React APIs. Partial cells/captions, both directions/history families, Undo/Redo, exact native reload, read-only refusal and wrong-policy reopening. Existing source-domain/grid/whole-node formatting, peer selective history, real Web Locks writer exclusion, quota/upgrade/close recovery and React ownership also pass. Paste events are explicitly synthetic, not native OS clipboard certification.",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-LvmhjH/consumer",
+    "syntheticClipboardCorrection": {
+      "initialMatrixPassed": 40,
+      "initialMatrixFailed": 8,
+      "engine": "firefox",
+      "reproduced": "In an isolated real-browser check, a DataTransfer held Pasted🙂 but Firefox's constructed ClipboardEvent had empty data/types and a different transfer object. Chromium and WebKit retained the supplied object.",
+      "correction": "The test explicitly defines the event's clipboardData payload and checks it before delivery. No editor behavior or native clipboard permission was changed for this correction. The corrected complete 48-case matrix passed.",
+      "retainedInitialLog": "target/block-layout-shared-qualification/general-session-installed-browser-constructor-fault.log"
+    },
+    "inventory": "The general-range matrix has its own complete three-engine process budget; no timeout, project, retry or discovered-case coverage is weakened."
+  },
+  "defaultRegression": {
+    "browserTests": 2203,
+    "reactTests": 57,
+    "highlightTests": 34,
+    "diagnostics": 332,
+    "scriptsPassed": 378,
+    "existingOptInSkips": 3,
+    "typesPassed": true,
+    "defaultBrowserArchiveUnchanged": true,
+    "defaultBrowserArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+  },
+  "remaining": [
+    "Rich native clipboard Copy/Cut and structured paste across general ranges",
+    "Atomic cross-range Enter/paragraph transformations and general composition targets",
+    "Whole-document Select All including leading/trailing atoms and hidden-only flows",
+    "Transport V2 Wasm/SDK/reference-relay negotiation, admission and durable acknowledgement wiring",
+    "Remaining installed mixed-content clipboard/offline/reconnect/asset acceptance for complete workstreams",
+    "Deferred physical IME/accessibility, historical WebKit reliability, final performance/public deployment and V1 API/release qualification"
+  ],
+  "readiness": {
+    "implemented": 9,
+    "partial": 17,
+    "missing": 20,
+    "openQualificationGates": 13,
+    "promotedRows": [],
+    "activeGoalComplete": false
+  },
+  "artifacts": [
+    {
+      "path": "target/block-layout-shared-qualification/general-session-local-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-shared-build.log",
+      "bytes": 82,
+      "sha256": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-sdk-types.log",
+      "bytes": 75,
+      "sha256": "1310c2fdb084ee048dc83520d840d200e7f41bfad549bd6f349c38aef1c38b44"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-sdk-tests.log",
+      "bytes": 619,
+      "sha256": "0928d3983053c186d5d562d87a7db35bd986d69c4444e439abceaa86d5d8def8"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-native-probe.json",
+      "bytes": 846,
+      "sha256": "c727f14a35210a11b43a0f4ff72c1df23fc80ad499838847f95fbdbc515caefb"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-native-probe.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-installed-package.log",
+      "bytes": 9711,
+      "sha256": "1268453b2aaa3b96da2b3ab64727a83b298d17a095b5b497df853df4fcef3812"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-installed-browser-constructor-fault.log",
+      "bytes": 114752,
+      "sha256": "4406db2e788b86628e0e1a7e2ef6b869d4374244e8306d8ba6849d66bcced9bb"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-installed-browser.log",
+      "bytes": 9058,
+      "sha256": "13d012a5251538438625440ac9b6bf7845c0316f707f3b5537408fc6d219634e"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-installed-regressions.log",
+      "bytes": 14290,
+      "sha256": "6581c7081a426fad8e4fa6557e69af0822964cc411f2e68d18f95fe5eff96e2a"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-default-tests.log",
+      "bytes": 71320,
+      "sha256": "48206b0deb6a35ec015f6c0ea489b35e14e9a016b5df800cad71f41171571851"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-default-types.log",
+      "bytes": 373,
+      "sha256": "1567af4ed2591443d9f41d897171e355ccc1b045bececb8ada99cd626afba7b5"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-session-script-tests.log",
+      "bytes": 69475,
+      "sha256": "233d70b621747b0300caed857f6f4b1301d98474cd580e15eccaef89a338e45c"
+    },
+    {
+      "path": "scripts/probe-general-session.mjs",
+      "bytes": 12138,
+      "sha256": "28673d9ddddc78acc71ce788ed2290845f67d89658b3adec1a5de64df5a6a572"
+    },
+    {
+      "path": "experiments/editor-browser/general-range.spec.mjs",
+      "bytes": 6224,
+      "sha256": "b4d1e85e106dbebaea726c99936c46f979baeaea9c233be415311d0aeb7de596"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+      "bytes": 4577912,
+      "sha256": "5df4abe86a01d42ede67d0cfb345928941cc85c443627987a3b42c70253670a0"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 9283387,
+      "sha256": "0acfcadf164eba388687c30d6a34f1b8c0b02f1018416fda50597c74f7517954"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-LvmhjH/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "bytes": 327732,
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-LvmhjH/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "bytes": 1329906,
+      "sha256": "e5732a0da9f4d9ce1e89971ee83d35db9c82cd002babfb9e8b20c01696636bae"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-LvmhjH/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "bytes": 2545300,
+      "sha256": "28951d375c4eb9406c98a08f8b4d0d90c1c843101adefed7f4eaab5feed38cbd"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-LvmhjH/archives/breditor-editor-0.3.0-alpha.22.tgz",
+      "bytes": 23625,
+      "sha256": "c90a4cb719d4b686e42610585a9695cd89ee9eb917be6f6ac3aad316c678798f"
+    }
+  ]
+}

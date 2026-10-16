@@ -10,6 +10,36 @@ V1 API. The implementation still depends on the opt-in rich-content package.
 Collaboration uses the separate `@breditor/collaboration` application package,
 with canonical Rust/browser source and a matching module without research probes.
 
+## General range editing
+
+Pass `rangeEditing: 'general-v1'` to local or shared openings, or to React
+`initialOptions`, to select native partial-structure plain input. The default
+retains original routing. The option is immutable per owner/React `sessionKey`.
+Cross-cell browser text selections retain their partial endpoints; explicit
+cell-picker grid selections are unchanged. Typing, replacement, selected
+deletion, Shift+Enter and plain paste use the Rust general planner. Rich
+clipboard, cross-range Enter, whole-document Select All and composition across
+blocks remain unfinished.
+
+Local saves keep their existing checkpoint families; reapply the range option
+after reload. Shared general sessions use separately declared ordinary/natural
+storage records, not a JSON shape guess. Reopening requires the same range
+option, selected `richLanguage`, and `history: 'typing-v1'` for naturally grouped
+saves. Explicit opt-in can transactionally upgrade a legacy stored journal,
+preserving its old history and Redo branch. Failed writes retain the previous
+durable value. A live original session cannot silently switch its save family.
+
+For a first-opening general shared save, use
+`initial: {kind: 'generalCheckpoint', checkpointJson}` or
+`{kind: 'generalTypingCheckpoint', checkpointJson}`. These explicit variants
+select their matching restore factory and policy defaults. Existing stored
+records take precedence over seeds. New shared recovery handles expose
+`rangePolicy()` and `historyPolicy()` so a failed close/mount can retain the
+declared save family. Keep the language/profile configuration too, and retry
+closure or explicitly discard rather than releasing a failed writer implicitly.
+Relay V2 still needs integration; general journal/digest guards must not be
+bypassed to attach a general owner to the original relay.
+
 ## Local editor
 
 Local and shared openings accept `readOnly: true`; both owners also expose
