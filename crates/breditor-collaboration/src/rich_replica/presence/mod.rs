@@ -1,10 +1,12 @@
 //! Read-only ephemeral selections using the same stable anchors as shared history.
+mod document;
 mod packet;
 use super::{
     RichReplica, SharedObservation,
     selection::{self, Selection, SelectionLoss},
 };
 use crate::Error;
+pub use document::{DocumentPresenceResolution, DocumentPresenceSelection};
 use serde::Serialize;
 
 /// Read-only mapping of another writer's ephemeral selection into the current AST.
@@ -40,6 +42,9 @@ impl RichReplica {
     /// Rejects a stale/foreign observation before serialization, or an over-budget packet.
     pub fn presence_frame_guarded(&self, observation: &SharedObservation) -> Result<String, Error> {
         self.check(observation)?;
+        if self.document_selected() {
+            return Err(Error::Contract("document scope requires separate presence family"));
+        }
         let json = serde_json::to_string(&packet::Packet::capture(self))?;
         if json.len() > packet::MAX_BYTES {
             return Err(Error::Limit("shared presence bytes"));
@@ -58,17 +63,24 @@ impl RichReplica {
         }
         let packet: packet::Packet = serde_json::from_str(input)?;
         let ready = packet.ready(self)?;
-        let Some(anchors) = packet.selection else {
-            return Ok(PresenceResolution::Resolved { writer: packet.writer, selection: None });
-        };
-        if !ready {
-            return Ok(PresenceResolution::Pending { writer: packet.writer });
-        }
-        Ok(match selection::resolve(&self.doc, &self.document, &anchors)? {
-            Ok((_, selection)) => {
-                PresenceResolution::Resolved { writer: packet.writer, selection: Some(selection) }
-            }
-            Err(reason) => PresenceResolution::Cleared { writer: packet.writer, reason },
-        })
+        resolve_ready(self, packet, ready)
     }
+}
+fn resolve_ready(
+    owner: &RichReplica,
+    packet: packet::Packet,
+    ready: bool,
+) -> Result<PresenceResolution, Error> {
+    let Some(anchors) = packet.selection else {
+        return Ok(PresenceResolution::Resolved { writer: packet.writer, selection: None });
+    };
+    if !ready {
+        return Ok(PresenceResolution::Pending { writer: packet.writer });
+    }
+    Ok(match selection::resolve(&owner.doc, &owner.document, &anchors)? {
+        Ok((_, selection)) => {
+            PresenceResolution::Resolved { writer: packet.writer, selection: Some(selection) }
+        }
+        Err(reason) => PresenceResolution::Cleared { writer: packet.writer, reason },
+    })
 }

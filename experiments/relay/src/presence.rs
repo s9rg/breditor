@@ -31,6 +31,12 @@ struct Entry {
     sequence: u64,
     received: Instant,
     expired: bool,
+    channel: Channel,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Channel {
+    Original,
+    DocumentV1,
 }
 #[derive(Default)]
 pub(crate) struct Presence {
@@ -67,6 +73,17 @@ impl Presence {
         }
     }
     pub fn publish(&mut self, peer: PresencePeer, now: Instant) -> Result<bool> {
+        self.publish_channel(peer, now, Channel::Original)
+    }
+    pub fn publish_document(&mut self, peer: PresencePeer, now: Instant) -> Result<bool> {
+        self.publish_channel(peer, now, Channel::DocumentV1)
+    }
+    fn publish_channel(
+        &mut self,
+        peer: PresencePeer,
+        now: Instant,
+        channel: Channel,
+    ) -> Result<bool> {
         let next = sequence(&peer.sequence)?;
         if peer.frame.len() > MAX_FRAME {
             return Err(Error::Contract("presence frame budget"));
@@ -91,13 +108,23 @@ impl Presence {
         self.bytes = bytes;
         self.entries.insert(
             peer.writer.clone(),
-            Entry { peer, sequence: next, received: now, expired: false },
+            Entry { peer, sequence: next, received: now, expired: false, channel },
         );
         Ok(true)
     }
     pub fn snapshot(&mut self, now: Instant) -> Vec<PresencePeer> {
+        self.snapshot_channel(now, Channel::Original)
+    }
+    pub fn snapshot_document(&mut self, now: Instant) -> Vec<PresencePeer> {
+        self.snapshot_channel(now, Channel::DocumentV1)
+    }
+    fn snapshot_channel(&mut self, now: Instant, channel: Channel) -> Vec<PresencePeer> {
         self.expire(now);
-        self.entries.values().filter(|e| !e.expired).map(|e| e.peer.clone()).collect()
+        self.entries
+            .values()
+            .filter(|e| !e.expired && e.channel == channel)
+            .map(|e| e.peer.clone())
+            .collect()
     }
 }
 
@@ -150,6 +177,45 @@ mod tests {
         assert!(p.remove("2"));
         assert!(!p.remove("2"));
         assert_eq!(p.bytes, 0);
+        Ok(())
+    }
+    #[test]
+    fn both_packet_families_share_the_existing_aggregate_peer_and_byte_budgets() -> Result<()> {
+        let now = Instant::now();
+        let mut p = Presence::default();
+        for i in 0..MAX_PEERS {
+            let mut value = peer("1");
+            value.writer = (i + 2).to_string();
+            if i % 2 == 0 {
+                p.publish(value, now)?;
+            } else {
+                p.publish_document(value, now)?;
+            }
+        }
+        assert_eq!(p.snapshot(now).len(), 32);
+        assert_eq!(p.snapshot_document(now).len(), 32);
+        let mut extra = peer("1");
+        extra.writer = "1000".into();
+        assert!(p.publish_document(extra, now).is_err());
+        assert_eq!(p.entries.len(), 64);
+        let mut p = Presence::default();
+        for i in 0..8 {
+            let mut value = peer("1");
+            value.writer = (i + 2).to_string();
+            value.frame = "x".repeat(MAX_FRAME);
+            if i % 2 == 0 {
+                p.publish(value, now)?;
+            } else {
+                p.publish_document(value, now)?;
+            }
+        }
+        assert_eq!(p.bytes, MAX_BYTES);
+        let mut extra = peer("1");
+        extra.writer = "1000".into();
+        assert!(p.publish_document(extra, now).is_err());
+        assert_eq!(p.bytes, MAX_BYTES);
+        assert_eq!(p.snapshot(now).len(), 4);
+        assert_eq!(p.snapshot_document(now).len(), 4);
         Ok(())
     }
 }

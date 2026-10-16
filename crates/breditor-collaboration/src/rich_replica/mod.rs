@@ -111,6 +111,7 @@ pub use clipboard_namespace::ClipboardNamespace;
 pub use navigate_grid::GridNavigationResult;
 pub use observation::SharedObservation;
 pub use presence::PresenceResolution;
+pub use presence::{DocumentPresenceResolution, DocumentPresenceSelection};
 pub use profile::SharedRichProfile;
 pub use session::RichReplica;
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};

@@ -56,7 +56,19 @@ impl Packet {
         }
     }
     pub fn ready(&self, owner: &RichReplica) -> Result<bool, Error> {
-        if self.format != "breditor/shared-rich-presence"
+        if matches!(self.selection, Some(AnchoredSelection::Document { .. })) {
+            return Err(Error::Contract("document scope is not original presence"));
+        }
+        self.ready_family(owner, "breditor/shared-rich-presence")
+    }
+    pub fn capture_document(owner: &RichReplica) -> Self {
+        Self { format: "breditor/shared-document-presence".into(), ..Self::capture(owner) }
+    }
+    pub fn ready_document(&self, owner: &RichReplica) -> Result<bool, Error> {
+        self.ready_family(owner, "breditor/shared-document-presence")
+    }
+    fn ready_family(&self, owner: &RichReplica, format: &str) -> Result<bool, Error> {
+        if self.format != format
             || self.format_version != 1
             || self.model_version != owner.model_version()
             || self.engine != ENGINE

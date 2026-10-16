@@ -131,6 +131,9 @@ pub(crate) fn selection_json(
     selection: &RichSelection,
 ) -> Result<Value, Error> {
     let kind = match selection.kind() {
+        RichSelectionKind::Document => {
+            return Err(Error::Contract("document scope is not an original selection fixture"));
+        }
         RichSelectionKind::Node(block) => json!({"kind":"node","block":block.as_str()}),
         RichSelectionKind::Grid { anchor, focus } => {
             json!({"kind":"grid","anchor":cell_json(anchor),"focus":cell_json(focus)})
@@ -140,6 +143,9 @@ pub(crate) fn selection_json(
         }
     };
     let resolved = match selection.resolve(document).map_err(contract)? {
+        ResolvedRichSelection::Document => {
+            return Err(Error::Contract("document scope is not an original selection fixture"));
+        }
         ResolvedRichSelection::Node { path, .. } => json!({"path":path.to_vec()}),
         ResolvedRichSelection::TextRange { anchor, focus } => {
             json!({"anchor":point_json(&anchor),"focus":point_json(&focus)})

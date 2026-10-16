@@ -11,6 +11,7 @@ use breditor_collab_feasibility::rich_replica::{
 };
 use std::{collections::BTreeMap, path::Path};
 mod atomic_transport_v2;
+mod document_presence;
 mod layout_v3;
 pub use atomic_transport_v2::AtomicTransportProfile;
 #[cfg(test)]

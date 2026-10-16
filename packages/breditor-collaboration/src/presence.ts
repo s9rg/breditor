@@ -1,21 +1,23 @@
 import {SharedEditorError,SharedRichEditor} from "./core.js";
-import type {SharedPresenceResolution} from "./types.js";
+import type {SharedPresenceResolution,SharedSelectionPolicy} from "./types.js";
 /** Metadata from the host's authenticated connection/lease, not from the opaque selection frame. */
 export interface SharedPeerIdentity {writer:string;session:string;label:string;palette?:number}
-export interface SharedPeerView {writer:string;session:string;label:string;palette:number;sequence:string|null;resolution:SharedPresenceResolution|null;error:string|null;expiresAt:number|null}
-export interface SharedPresenceOptions {ttlMs?:number;maxPeers?:number;maxBytes?:number;now?:()=>number;autoExpire?:boolean;onError?:(error:unknown)=>void}
-interface Peer {identity:Required<SharedPeerIdentity>;sequence:bigint|null;frame:string|null;bytes:number;resolution:SharedPresenceResolution|null;error:string|null;expires:number|null}
+export interface SharedPeerView<P extends SharedSelectionPolicy="original"> {writer:string;session:string;label:string;palette:number;sequence:string|null;resolution:SharedPresenceResolution<P>|null;error:string|null;expiresAt:number|null}
+export interface SharedPresenceOptions<P extends SharedSelectionPolicy="original"> {selectionEditing?:P;ttlMs?:number;maxPeers?:number;maxBytes?:number;now?:()=>number;autoExpire?:boolean;onError?:(error:unknown)=>void}
+interface Peer<P extends SharedSelectionPolicy> {identity:Required<SharedPeerIdentity>;sequence:bigint|null;frame:string|null;bytes:number;resolution:SharedPresenceResolution<P>|null;error:string|null;expires:number|null}
 const MAX_FRAME=256*1024;
 function decimal(value:string,writer=false):bigint{
  if(typeof value!=="string"||!/^\d{1,20}$/.test(value)||(value.length>1&&value.startsWith("0")))throw new SharedEditorError("presence_identity","Expected a canonical decimal identity or sequence");
  const n=BigInt(value);if(n>18446744073709551615n||(writer&&(n===0n||n===18446744073709551615n)))throw new SharedEditorError("presence_identity","Presence identity or sequence is out of range");return n;
 }
 /** Latest-per-writer ephemeral channel. Never sends presence through the durable content queue. */
-export class SharedPresence {
- #core:SharedRichEditor;#peers=new Map<string,Peer>();#bytes=0;#listeners=new Set<()=>void>();#unsubscribe:()=>void;
- #options:SharedPresenceOptions;#ttl:number;#maxPeers:number;#maxBytes:number;#now:()=>number;#clock=0;
+export class SharedPresence<P extends SharedSelectionPolicy="original"> {
+ #core:SharedRichEditor<P>;#peers=new Map<string,Peer<P>>();#bytes=0;#listeners=new Set<()=>void>();#unsubscribe:()=>void;
+ #options:SharedPresenceOptions<SharedSelectionPolicy>;#ttl:number;#maxPeers:number;#maxBytes:number;#now:()=>number;#clock=0;
  #timer:ReturnType<typeof setInterval>|undefined;#disposed=false;#notifying=false;#notifyAgain=false;#version:string;
- constructor(core:SharedRichEditor,options:SharedPresenceOptions={}){
+ constructor(core:SharedRichEditor<P>,...configuration:P extends "document-v1"?[options:SharedPresenceOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedPresenceOptions<P>]){
+  const options:SharedPresenceOptions<SharedSelectionPolicy>=configuration[0]??{};
+  if((options.selectionEditing??"original")!==core.selectionPolicy())throw new SharedEditorError("presence_selection_policy","Presence requires its explicitly selected matching owner policy");
   if(!core.supportsPresence())throw new SharedEditorError("presence_unavailable","Use a Rust owner with the causal presence capability");
   this.#core=core;this.#options=options;this.#ttl=options.ttlMs??30000;this.#maxPeers=options.maxPeers??64;this.#maxBytes=options.maxBytes??2*1024*1024;
   if(!Number.isInteger(this.#ttl)||this.#ttl<1000||this.#ttl>30000||!Number.isInteger(this.#maxPeers)||this.#maxPeers<1||this.#maxPeers>64||!Number.isInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>2*1024*1024)throw new SharedEditorError("presence_limits","Presence budgets may only tighten defaults");
@@ -30,7 +32,10 @@ export class SharedPresence {
   try{do{this.#notifyAgain=false;for(const listener of [...this.#listeners]){if(this.#disposed)break;try{listener();}catch(error){this.#report(error);}}}while(!this.#disposed&&this.#notifyAgain&&++rounds<128);
    if(this.#notifyAgain)this.#report(new SharedEditorError("presence_callback_loop","Presence callback publications exceeded their bounded queue"));
   }finally{this.#notifyAgain=false;this.#notifying=false;}}
- #clear(peer:Peer):void{this.#bytes-=peer.bytes;peer.bytes=0;peer.frame=null;peer.resolution=null;peer.error=null;peer.expires=null;}
+ selectionPolicy():P{return this.#core.selectionPolicy();}
+ /** Identity proof for adapters borrowing this registry, not a second editor owner. */
+ isFor(core:SharedRichEditor<P>):boolean{return this.#core===core;}
+ #clear(peer:Peer<P>):void{this.#bytes-=peer.bytes;peer.bytes=0;peer.frame=null;peer.resolution=null;peer.error=null;peer.expires=null;}
  #refresh():void{let changed=false;const now=this.#time();for(const p of this.#peers.values()){
   if(p.expires!==null&&p.expires<=now){this.#clear(p);changed=true;continue;}if(p.frame===null)continue;
   try{const next=this.#core.resolvePresence(p.frame);if(JSON.stringify(next)!==JSON.stringify(p.resolution)||p.error!==null){p.resolution=next;p.error=null;changed=true;}}
@@ -60,7 +65,7 @@ export class SharedPresence {
  remove(writer:string,session:string):boolean{this.#live(true);const p=this.#peers.get(writer);if(!p||p.identity.session!==session)return false;this.#clear(p);this.#peers.delete(writer);this.#notify();return true;}
  /** Expire display/packet bytes, retaining the high sequence so old packets cannot revive a caret. */
  sweep():boolean{this.#live(true);const now=this.#time();let changed=false;for(const p of this.#peers.values())if(p.expires!==null&&p.expires<=now){this.#clear(p);changed=true;}if(changed)this.#notify();return changed;}
- view():readonly SharedPeerView[]{this.#live();const now=this.#time();return [...this.#peers.values()].sort((a,b)=>BigInt(a.identity.writer)<BigInt(b.identity.writer)?-1:1).map(p=>({
+ view():readonly SharedPeerView<P>[]{this.#live();const now=this.#time();return [...this.#peers.values()].sort((a,b)=>BigInt(a.identity.writer)<BigInt(b.identity.writer)?-1:1).map(p=>({
   ...p.identity,sequence:p.sequence?.toString()??null,resolution:p.expires!==null&&p.expires>now?structuredClone(p.resolution):null,error:p.error,expiresAt:p.expires,
  }));}
  pendingBytes():number{this.#live();return this.#bytes;}
@@ -68,3 +73,5 @@ export class SharedPresence {
  /** Does not dispose the independently owned shared editor. */
  dispose():void{if(this.#disposed)return;this.#disposed=true;this.#unsubscribe();if(this.#timer!==undefined)clearInterval(this.#timer);this.#peers.clear();this.#bytes=0;this.#listeners.clear();}
 }
+/** Named explicit document registry. Its packets/DTOs never enter the original presence family. */
+export function createSharedDocumentPresence(core:SharedRichEditor<"document-v1">,options:Omit<SharedPresenceOptions<"document-v1">,"selectionEditing">={}):SharedPresence<"document-v1">{return new SharedPresence(core,{...options,selectionEditing:"document-v1"});}

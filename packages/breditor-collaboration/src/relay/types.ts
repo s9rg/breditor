@@ -1,5 +1,6 @@
 import type {SharedProfileDescriptor} from "../profile.js";
 import type {SharedPresence} from "../presence.js";
+import type {SharedSelectionPolicy} from "../types.js";
 
 /** Separate host-protected credential record. Never place this in a portable document/journal. */
 export interface SharedRelayIdentity {
@@ -32,7 +33,8 @@ export interface SharedRelayState {
  readonly waitingFor:readonly {readonly writer:string;readonly counter:string}[];
  readonly pending:boolean;readonly error:string|null;
 }
-export interface SharedRelayOptions {
+export interface SharedRelayOptions<P extends SharedSelectionPolicy="original"> {
+ selectionEditing?:P;
  identity:SharedRelayIdentity;getToken:(signal:AbortSignal)=>string|Promise<string>;
  /** Resolve only after this core's complete current journal is durable, e.g. session.flush(). */
  persistLocal?:()=>Promise<void>;
@@ -42,5 +44,7 @@ export interface SharedRelayOptions {
   * currently rendered asset bindings; reconnect invokes this too, so missed hints are harmless. */
  onAssetsChanged?:()=>void;
  /** Opt-in ephemeral registry for this same core. The sync adapter does not dispose it. */
- presence?:SharedPresence;
+ presence?:SharedPresence<P>;
 }
+/** Document replay requires atom-lineage transport V2; old room seeds/digests never upgrade. */
+export type SharedDocumentRelayOptions=SharedRelayOptions<"document-v1">&{selectionEditing:"document-v1";identity:SharedRelayIdentity&{writerTransport:"atomic-v2"}};

@@ -26,6 +26,10 @@ pub(super) enum Request {
         sequence: String,
         frame: String,
     },
+    DocumentPresence {
+        sequence: String,
+        frame: String,
+    },
     Clock {
         writer: String,
     },

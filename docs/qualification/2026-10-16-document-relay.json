@@ -1,0 +1,85 @@
+{
+  "format": "breditor/document-relay-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "status": "document-transport-and-negotiated-presence-functional",
+  "probe": "scripts/probe-document-relay.mjs",
+  "runtime": {
+    "sharedDirectory": "target/block-layout-shared-qualification/document-relay-final-web",
+    "previousSharedDirectory": "target/block-layout-shared-qualification/shared-document-dom-tools-final-web",
+    "nativeRelayExecutable": "target/relay-native/debug/examples/transport_v2_functional",
+    "sharedWasmSha256": "47754f9bf47307e1571bd2acefd39063548aadcfbb50363d8beec20fc13b5a6a",
+    "previousSharedWasmSha256": "d063f22348a15a5b718b65bfd2c30899b6f0788cff317c79f4a0d5df1b66ddae",
+    "nativeRelaySha256": "080e4df1b81715b755c2272370d3b72565d49a00bd4b8a46e0e1e9cf28a0d6ef"
+  },
+  "functional": {
+    "history": ["explicit", "typing-v1"],
+    "source": ["mixed-rich-document", "hidden-only-document"],
+    "trials": 4,
+    "exactDurableSessionRestores": 8,
+    "exactFutureWriterCheckpoints": 40,
+    "twoWriterDocumentComparisons": 52,
+    "durableRelayFlushes": 64,
+    "documentPresenceScopes": 8,
+    "genuinePresenceAbsences": 4,
+    "heldRelayCompositionCommits": 4,
+    "previousInvalidOriginalPresenceReproductions": 1,
+    "wrongModeRegistrationRefusals": 4,
+    "futureReplayInputs": "Same actual successfully admitted native frames, including server echoes; no checkpoint fields excluded",
+    "passed": true,
+    "fixtures": ["synthetic jsdom composition", "fake-indexeddb", "exclusive Web Locks API fixture", "isolated native loopback host"]
+  },
+  "focusedChecks": {
+    "nativeDocumentPresenceTests": 4,
+    "existingNativePresenceTests": 8,
+    "nativeRelayTests": 31,
+    "newNativeRelayDocumentTests": 3,
+    "sharedAggregatePresenceBudgetTest": 1,
+    "sdkTests": 249,
+    "sdkTestFiles": 31,
+    "sdkMaxWorkers": 2,
+    "documentRelayPresenceContractTests": 11,
+    "applicationSurfaceTests": 18,
+    "positiveNegativeConsumerTypes": "passed against generated SDK and Wasm declarations",
+    "strictClippy": ["shared library and document-presence tests", "shared application Wasm32 release", "reference relay library, document-presence tests and functional host example"],
+    "thirdPartyWarningUnchanged": "vendored loro-internal unused HasIdSpan import"
+  },
+  "repairEvidence": {
+    "oldInvalidPacket": "Previous runtime emits whole-document scope under original presence, then its own resolver refuses it; retained real-Wasm reproduction",
+    "earlyPresence": "Deterministic failing pre-fix test and sanitized actual-host trace; bounded latest snapshot now waits for validated negotiation and catchup",
+    "earlyCatchup": "Deterministic failing pre-fix test shows newer catchup overwritten by older authentication snapshot; latest received frame now survives",
+    "explicitSocketFamily": "Default socket refuses document presence events; named document socket refuses original presence events",
+    "preFixLogs": ["target/block-layout-shared-qualification/document-presence-early-event-repro.log", "target/block-layout-shared-qualification/document-relay-startup-repro.stderr.log", "target/block-layout-shared-qualification/document-relay-early-catchup-repro.log"]
+  },
+  "contracts": {
+    "documentSelectionRelabeledOrReplacedByFakeAbsence": false,
+    "newDocumentPresenceProtocol": "breditor/shared-document-presence@1",
+    "newDocumentPresenceCapability": "documentPresenceV1",
+    "nativeDocumentPresenceVersion": "1",
+    "documentRelayRequiresExplicitV2Identity": true,
+    "documentPresenceMustBeConfirmedWhenRequested": true,
+    "presenceIsDurableOrMutatesContentUiHistory": false,
+    "defaultOriginalPacketSocketAndCheckpointFamiliesWidened": false,
+    "oldStoredMeaningsOrWriterDigestsChanged": false,
+    "roomMigrationPerformed": false,
+    "crossChannelPresenceDisplayed": false,
+    "presenceAggregateMaxPeers": 64,
+    "presenceAggregateMaxBytes": 2097152,
+    "presenceFrameMaxBytes": 262144,
+    "presenceClocksMax": 1024,
+    "earlyPresenceSnapshotsRetained": 1,
+    "bodyPresenceMetadataErrorsBecomeDurableFailures": false,
+    "existingDemosRestarted": false
+  },
+  "regressions": {
+    "rootDocumentSdkReact": {"localCases": 10, "sharedCases": 10, "exactRestores": 20, "exactFutureCheckpoints": 80, "actualReactOwners": 4, "passed": true},
+    "originalGeneralTransportV2": {"historyPolicies": 2, "exactJournalRestores": 4, "twoWriterDocumentComparisons": 16, "durableFlushes": 20, "wrongModeRegistrationRefusals": 2, "passed": true}
+  },
+  "remaining": [
+    "Sanitized HTML/Markdown and realistic Word/Google Docs/Excel interchange",
+    "Remaining installed editing and transport acceptance",
+    "Deferred broad native browser/clipboard/IME/accessibility/performance/release qualification"
+  ],
+  "releaseReady": false,
+  "publishedOrPushed": false
+}

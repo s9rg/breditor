@@ -40,3 +40,5 @@ function documentTools(owner:SharedEditorOwner,observation:SharedObservation):vo
  void version;void coverage;void format;void layout;void formatted;void arranged;
 }
 void documentTools;
+function documentPresence(owner:SharedEditorOwner,observation:SharedObservation):void {const version:string=owner.document_presence_version(),frame:string=owner.document_presence_frame(observation),resolution:string=owner.resolve_document_presence(frame);void version;void resolution;}
+void documentPresence;

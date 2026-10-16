@@ -840,6 +840,62 @@ rich clipboard editing, exact restore/resume, failed-close retry and four actual
 React-owned release-Wasm editors. Storage and lock APIs are test fixtures, not
 native-browser qualification.
 
+## Document collaboration transport and presence
+
+`createSharedDocumentRelaySync` requires the actual document owner, explicit
+`selectionEditing: 'document-v1'` and an `atomic-v2` writer identity. The generic
+`SharedRelaySync<'document-v1'>` has the same requirement. Its durability check
+uses the declared document checkpoint family; it does not route a document save
+through the old/general validator or change a room's seed, writer digests or
+transport mode. The core and persistent session remain independently owned.
+
+`createSharedDocumentPresence` and the explicitly configured generic registry
+retain document-aware resolution types. Native `document_presence_version`
+string `1` pairs a guarded capture with a pure resolver for
+`breditor/shared-document-presence` format 1. Capture requires a document-family
+owner; a native room replica can perform the pure read without changing its
+original replay family. Original text, node and grid scopes keep their causal
+anchor laws, including cross-structure ranges. Whole-document scope waits for
+captured content dependencies, then covers the receiver's current complete
+root, including hidden/no-text content. Genuine absence clears immediately.
+Neither operation imports content or publishes UI/history.
+
+The reference relay negotiates `documentPresenceV1` separately from `presence`
+and uses the named `documentPresence` request/event. A connection cannot select
+both presence channels. Original and document peers share the existing latest
+writer store and aggregate 64-peer, 2 MiB and per-frame 256 KiB limits, but their
+snapshots contain only their selected channel. Thus old clients never receive
+an unknown document packet. Cross-channel presence is not displayed; document
+updates still use the common explicitly selected transport V2. Presence is
+ephemeral, authenticated by the active writer lease, and absent after restart.
+Resume, release and role changes retain their existing epoch/fencing behavior.
+
+Original native capture now refuses whole-document scope rather than emitting
+an old-family packet its own resolver cannot resolve. Old packet decoders remain
+closed to document scope. Older document owners remain usable for their prior
+capabilities, but document presence never silently falls back to original
+packets or fake `None`. A requested document registry requires explicit relay
+confirmation before it starts. Registry attachment checks the actual owner;
+document overlays paint the complete editor rectangle without installing a
+native selection or wrapping editable text.
+
+Relay startup keeps one bounded latest presence snapshot until authentication,
+capability checks, lease acquisition and native catchup finish. Disconnect clears
+that pending epoch. The authentication snapshot cannot overwrite a newer catchup
+already received on the same connection. The default socket still admits only
+original presence events; the named document socket selects the new family.
+The [document relay checkpoint](qualification/2026-10-16-document-relay.json)
+retains the old invalid-packet reproduction and the failing startup-order tests.
+
+Exact future recovery compares owners receiving the same admitted native frame
+stream, including server echoes. Existing native journals can record different
+engine encodings of already known catchup; a networked owner and an air-gapped
+copy therefore need not have identical record lists. The checkpoint mirrors the
+actual successful native admission inputs into recovered companions and compares
+complete future checkpoint bytes without excluding fields or inventing imports.
+It also verifies two offline authors, unobserved roots, queued real relay updates
+during document composition, host restart and peer-preserving selective history.
+
 ## Remaining integration
 
 The [transport V2 functional checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
@@ -847,9 +903,8 @@ now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
 general explicit/natural journal recovery after host restart, and peer-preserving
 selective Undo/Redo. It does not change original writer digests or migrate rooms.
 
-Document-specific relay/presence composition, remaining installed
-editing/transport acceptance and external
-interchange remain required. Native IME/accessibility and
+Remaining installed editing/transport acceptance and external interchange
+remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 

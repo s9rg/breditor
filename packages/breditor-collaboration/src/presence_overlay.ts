@@ -1,8 +1,8 @@
 import type {SharedDomEditor} from "./controller.js";
 import type {SharedPresence} from "./presence.js";
-import type {RichPoint,RichSelection,SharedView} from "./types.js";
+import type {RichPoint,RichSelection,SharedView,SharedDocumentSelection,SharedSelectionPolicy} from "./types.js";
 
-export interface SharedPresenceOverlayOptions {editor:SharedDomEditor;presence:SharedPresence}
+export interface SharedPresenceOverlayOptions<P extends SharedSelectionPolicy="original"> {editor:SharedDomEditor<P>;presence:SharedPresence<P>;selectionEditing?:P}
 interface Rect {left:number;top:number;width:number;height:number}
 const palette=["#b83250","#1768b2","#15734b","#9358a6","#b45c16","#2c7584","#716427","#8f486a"];
 const key=(cell:{table:string;row:string;column:string}):string=>JSON.stringify([cell.table,cell.row,cell.column]);
@@ -22,7 +22,7 @@ function textRects(surface:HTMLElement,selection:Extract<RichSelection,{kind:"te
  if(rect.height===0){const block=(a[0].nodeType===1?a[0] as Element:a[0].parentElement)?.closest<HTMLElement>("[data-rich-text]");if(!block)return[];rect=block.getBoundingClientRect();}
  return[{left:rect.left,top:rect.top,width:2,height:rect.height}];
 }
-function gridRects(surface:HTMLElement,selection:Extract<RichSelection,{kind:"grid"}>,view:SharedView):Rect[]{
+function gridRects(surface:HTMLElement,selection:Extract<RichSelection,{kind:"grid"}>,view:Pick<SharedView,"tables">):Rect[]{
  const table=view.tables.find(t=>t.id===selection.anchor.table);if(!table||table.hidden||selection.focus.table!==table.id)return[];
  const row=(id:string)=>table.rows.indexOf(id),column=(id:string)=>table.columns.findIndex(c=>c.id===id);
  let r0=Math.min(row(selection.anchor.row),row(selection.focus.row)),r1=Math.max(row(selection.anchor.row),row(selection.focus.row)),c0=Math.min(column(selection.anchor.column),column(selection.focus.column)),c1=Math.max(column(selection.anchor.column),column(selection.focus.column));
@@ -39,18 +39,21 @@ function gridRects(surface:HTMLElement,selection:Extract<RichSelection,{kind:"gr
  const wanted=new Set(masters.filter(cell=>{const r=row(cell.base.row),c=column(cell.base.column);return r>=r0&&r<=r1&&c>=c0&&c<=c1;}).map(cell=>key(cell.master)));
  return[...surface.querySelectorAll<HTMLElement>("[data-rich-cell]")].filter(n=>wanted.has(n.dataset["richCell"]??"")).slice(0,256).map(n=>n.getBoundingClientRect());
 }
-function rectangles(surface:HTMLElement,selection:RichSelection,view:SharedView):Rect[]{
+function rectangles(surface:HTMLElement,selection:SharedDocumentSelection,view:Pick<SharedView,"tables">):Rect[]{
+ if(selection.kind==="document")return[surface.getBoundingClientRect()];
  if(selection.kind==="text")return textRects(surface,selection);
  if(selection.kind==="grid")return gridRects(surface,selection,view);
  const node=[...surface.querySelectorAll<HTMLElement>("[data-rich-block]")].find(n=>n.dataset["richBlock"]===selection.block);return node?[node.getBoundingClientRect()]:[];
 }
 /** Separate fixed-position paint layer. Never installs native selections, wraps text, changes
  * editor content or owns/disposes its independent editor and presence registry. */
-export class SharedPresenceOverlay {
+export class SharedPresenceOverlay<P extends SharedSelectionPolicy="original"> {
  readonly element:HTMLDivElement;
- #options:SharedPresenceOverlayOptions;#window:Window;#unsubscribe:()=>void;#resize:ResizeObserver;#mutation:MutationObserver;
+ #options:SharedPresenceOverlayOptions<P>;#window:Window;#unsubscribe:()=>void;#resize:ResizeObserver;#mutation:MutationObserver;
  #abort=new AbortController();#frame:number|undefined;#closed=false;
- constructor(options:SharedPresenceOverlayOptions){
+ constructor(options:SharedPresenceOverlayOptions<P>&(P extends "document-v1"?{selectionEditing:"document-v1"}:unknown)){
+  const policy=options.selectionEditing??"original";
+  if(options.presence.selectionPolicy()!==policy||options.editor.view().format!==(policy==="document-v1"?"breditor/shared-document-view":"breditor/shared-rich-view"))throw Error("Presence overlay requires matching explicit selection families");
   this.#options=options;const document=options.editor.surface.ownerDocument,window=document.defaultView;if(!window)throw Error("Presence overlay requires a live document");this.#window=window;
   this.element=document.createElement("div");this.element.dataset["sharedPresenceOverlay"]="";this.element.setAttribute("aria-hidden","true");this.element.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:10;overflow:hidden";document.body.append(this.element);
   this.#unsubscribe=options.presence.subscribe(()=>this.refresh());

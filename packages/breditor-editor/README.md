@@ -43,8 +43,8 @@ records take precedence over seeds. New shared recovery handles expose
 declared save family. Keep the language/profile configuration too, and retry
 closure or explicitly discard rather than releasing a failed writer implicitly.
 General owners can select the explicit writer transport V2 adapter. Document
-relay composition remains separate; journal/digest guards must not be bypassed
-to attach a document owner to an original/general adapter.
+owners use the separate document adapter below; journal/digest guards must not
+be bypassed to attach a document owner to an original/general adapter.
 
 ## Explicit document selection
 
@@ -118,9 +118,47 @@ unmount; a failed old writer blocks replacement until safe retirement succeeds.
 React never reconciles editable document children.
 
 The document SDK/React functional checkpoint covers compiled source with actual
-release Wasm and synthetic DOM/storage/lock fixtures. Document-specific relay
-and presence integration, external interchange, native browser/IME/accessibility
-and final release acceptance remain separate work.
+release Wasm and synthetic DOM/storage/lock fixtures. External interchange,
+native browser/IME/accessibility and final release acceptance remain separate work.
+
+### Document relay and presence
+
+Use `createSharedDocumentRelaySync` and `createSharedDocumentPresence` from
+`@breditor/editor/collaboration` with a document session's actual borrowed core.
+The identity must explicitly select `writerTransport: 'atomic-v2'` and belong to
+a separately created transport-V2 room. The original relay remains closed to
+document checkpoints; neither adapter migrates a room or changes old digests.
+
+```js
+const presence = createSharedDocumentPresence(session.core);
+const relay = createSharedDocumentRelaySync(session.core, {
+  selectionEditing: 'document-v1',
+  identity, // separately saved V2 writer credential, never a portable checkpoint
+  getToken,
+  autoConnect: false,
+  presence,
+  persistLocal: () => session.flush()
+});
+await relay.connect();
+await relay.flush(); // server durability for this call's authored end
+```
+
+Dispose the relay and registry in the session's `onClosing` callback before its
+native writer retires. Networking disposal does not close/discard the durable
+session. Presence is optional; when requested, the separate document capability
+must be confirmed. Older modules never fall back to an original packet or fake
+absence. `SharedPresenceOverlay` accepts the same document registry/controller
+with an explicit `selectionEditing: 'document-v1'` option.
+
+Document presence includes whole-document scope, normal text/node/grid ranges,
+genuine absence and causal-pending results. It never enters document history or
+survives server restart. Original and document clients see peers using their own
+presence channel; the relay filters the other packet family instead of exposing
+unknown scope. Both channels share the unchanged aggregate presence budgets.
+The reference loopback-host functional checkpoint includes offline rich paste,
+layout, held relay updates during composition, document presence, exact durable
+restart and both authors' future Undo/Redo. DOM/storage/locks are fixtures, not
+installed-package, native-browser or deployment qualification.
 
 ## Local editor
 

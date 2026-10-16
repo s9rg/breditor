@@ -77,8 +77,8 @@ export interface ClipboardContent {richJson:string;plainText:string}
 export type {RichClipboardTextProjection} from "@breditor/experimental-rich-content";
 export type SharedOwnerDescriptor=SharedProtocolBinding&{format:"breditor/shared-rich-owner";schema:{name:string;version:number};schemaFingerprint:string};
 /** Read-only mapping of an opaque presence packet, never an authorization credential. */
-export type SharedPresenceResolution=
- |{kind:"resolved";writer:string;selection:RichSelection|null}
+export type SharedPresenceResolution<P extends SharedSelectionPolicy="original">=
+ |{kind:"resolved";writer:string;selection:(P extends "document-v1"?SharedDocumentSelection:RichSelection)|null}
  |{kind:"pending";writer:string}
  |{kind:"cleared";writer:string;reason:"target_deleted"|"hidden_table"|"no_text_target"};
 export interface SharedWriterClock {writer:string;through:string;prefixDigest:string}
@@ -92,6 +92,7 @@ export interface SharedRustOwner {
  document_clipboard_version?():string;paste_document_clipboard?(observation:unknown,input:string):boolean;
  document_navigation_version?():string;collapse_document_selection?(observation:unknown,side:string):boolean;
  document_tools_version?():string;
+ document_presence_version?():string;document_presence_frame?(observation:unknown):string;resolve_document_presence?(frame:string):string;
  document_selection_coverage_json?(observation:unknown,scope:string):string;document_selection_format_state_json?(observation:unknown,kind:string):string;document_block_layout_state_json?(observation:unknown):string;
  change_document_selection_formats?(observation:unknown,input:string):boolean;change_document_selection_layout?(observation:unknown,input:string):boolean;
  enable_document_selection?(observation:unknown):boolean;observe_document?():ReturnType<SharedRustOwner["observe"]>;

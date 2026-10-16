@@ -2,6 +2,7 @@
 mod change_document_formats;
 mod change_document_layout;
 mod collapse_document_selection;
+mod document_presence;
 mod document_tools;
 mod enable_document_selection;
 mod paste_document_clipboard;

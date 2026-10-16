@@ -122,3 +122,25 @@ function documentReact(local:BreditorDocumentEditorHandle,shared:BreditorSharedD
  const oldShared:BreditorSharedEditorProps=sharedProps;void oldShared;
 }
 void documentSdk;void documentReact;
+import {SharedPresence,createSharedDocumentPresence,SharedPresenceOverlay,SharedRelaySync,createSharedDocumentRelaySync,type SharedDocumentRelayOptions,type SharedPresenceResolution} from "@breditor/collaboration";
+function documentRelay(core:SharedRichEditor<"document-v1">,original:SharedRichEditor,dom:SharedDomEditor<"document-v1">):void {
+ const presence=createSharedDocumentPresence(core,{autoExpire:false});const policy:"document-v1"=presence.selectionPolicy();void policy;
+ const resolution:SharedPresenceResolution<"document-v1">=core.resolvePresence("opaque document frame");void resolution;
+ const options:SharedDocumentRelayOptions={selectionEditing:"document-v1",identity:{endpoint:"ws://127.0.0.1:5000/ws",principal:"alice",room:"room",writer:"101",credential:"secret",writerTransport:"atomic-v2"},getToken:()=>"token",presence};
+ createSharedDocumentRelaySync(core,options);new SharedRelaySync(core,options);new SharedPresenceOverlay({editor:dom,presence,selectionEditing:"document-v1"});
+ // @ts-expect-error a document presence registry requires explicit construction policy
+ new SharedPresence(core);
+ // @ts-expect-error original registry types cannot produce document selections
+ const oldPresence:SharedPresence=presence;void oldPresence;
+ // @ts-expect-error original relay options do not declare the document checkpoint/presence family
+ new SharedRelaySync(core,{identity:options.identity,getToken:options.getToken});
+ // @ts-expect-error document relay requires an explicitly selected V2 identity
+ createSharedDocumentRelaySync(core,{...options,identity:{endpoint:"ws://127.0.0.1:5000/ws",principal:"alice",room:"room",writer:"101",credential:"secret"}});
+ // @ts-expect-error an original owner cannot be adopted by document relay options
+ createSharedDocumentRelaySync(original,options);
+ // @ts-expect-error original resolution consumers cannot adopt document scope
+ const oldResolution:SharedPresenceResolution=resolution;void oldResolution;
+ // @ts-expect-error the overlay also requires its explicit document presentation family
+ new SharedPresenceOverlay({editor:dom,presence});
+}
+void documentRelay;
