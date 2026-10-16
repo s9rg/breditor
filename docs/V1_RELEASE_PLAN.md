@@ -177,17 +177,30 @@ unclassified `TypeError` while retaining its host and journal. Twenty isolated
 repetitions, 100 same-page cancellations and the final complete rerun pass, but
 no cause or repair is established for that initial failure. Its trace is retained,
 and detailed failure capture is now part of the strict lifecycle test.
-These overlapping runs are not unique capability counts. The ledger anchors
-the latest implementation; feature labels and all 13 qualification
-gates remain unchanged because their complete acceptance is still open.
+These overlapping runs are not unique capability counts. At that checkpoint,
+feature labels and all 13 qualification gates remained unchanged because their
+complete acceptance was still open.
+
+The [live read-only checkpoint](qualification/2026-10-15-read-only.json) adds
+native policy enforcement, initial SDK options and live vanilla/React setters
+without changing persisted protocols. Selection, Copy, remote updates, assets
+and retained history remain usable while authoring is locked. Its complete
+clean-installed matrix passes 171 editing and 12 real-relay cases, with another
+78 cases in the existing application matrix. Root Rust passes 2,340 cases,
+canonical shared Rust 248 and SDK units 54. Old/current Wasm checks cover eight
+cross-version restores and twenty exact future history steps after policy
+changes. Policy itself is not persisted permission; hosts reapply it after
+restore. The ledger marks this whole-editor feature implemented and tracks
+editable-region restrictions separately as missing. All 13 release gates remain
+open, including the older unconfirmed browser and replay observations.
 
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
 commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
-Next are general
-selections, code/atomic navigation, natural typing history, read-only/layout
+Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are general
+selections, code/atomic navigation, natural typing history, bounded layout
 contracts, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
@@ -277,9 +290,10 @@ No competitor implementation was copied into Breditor.
 3. **Interchange.** Add sanitized rich HTML and Markdown adapters, then realistic
    Office/Docs/Excel paste. Deterministic JSON remains canonical; foreign import
    needs declared losses, fresh IDs and one guarded transaction.
-4. **Product UI and host contracts.** Add genuine read-only mode, contextual
-   controls, accessible resize interaction, search and coherent application
-   integration. Relay Reader authority alone does not disable local editing.
+4. **Product UI and host contracts.** Live native read-only mode is implemented;
+   finish contextual controls, accessible resize interaction, search and coherent
+   application integration. Relay Reader authority remains separate from local
+   editing policy, and editable-region restrictions need their own native contract.
 5. **Extension and advanced document contracts.** Typed inline extensions do not
    constitute arbitrary custom-node support. Review comments, suggestions,
    versions, pagination and conversion as distinct features with their own

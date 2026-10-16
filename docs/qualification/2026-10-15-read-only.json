@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-15",
+  "sourceCheckpoint": "3b989be678cff529ee09634c6c55e495890b1d61",
+  "scope": "Native live read-only policy across local/shared V1/V2 Rust owners, packaged Wasm, installed vanilla/React SDKs, composition/asset queues and reference relay integration.",
+  "releaseQualified": false,
+  "goalComplete": false,
+  "contracts": {
+    "native": "Each owner has its own documented set_read_only action/policy file. A genuine change advances the original publication revision/opaque observation but not content, selection, pending styles, Undo/Redo, causal operations or writer clock. The same value is a true no-op. Locked owners reject authoring, pending styles and history, including empty authoring intents. Exact stale/foreign guards remain authoritative.",
+    "durability": "Only the ordinary publication counter is durable. readOnly and readOnlyRevision are live view metadata, absent by default and not stored permissions. Restore starts editable; hosts must reapply policy before exposure. Shared staging replays without policy, then copies live policy, so remote/selection candidates cannot unlock it.",
+    "browser": "Outer surface and captions become non-editable with aria-readonly and keyboard focus retained. Task widgets and authoring controls disable. Keyboard, beforeinput, paste/drop and file callbacks do not author. Copy remains; Cut copies without deletion. Late DOM input reconciles from native content. Selection/grid navigation and asset reads remain available.",
+    "queues": "A mode transition cancels provisional composition and queued edits, including delayed completion after unlock, and releases the shared remote hold. Already-locked image requests reject before storage. In-flight local image work fences the last policy publication while preserving stable-target semantics across unrelated edits; shared image work retains its exact-publication guard. Stored bytes are never deleted on insertion failure.",
+    "sdk": "Initial readOnly options apply before exposing mounted owners. Local/shared vanilla setters and live React props/handles retain the same owner/history. Late React opening failures dispose or durably retire unannounced owners. Older runtimes cannot claim policy support; explicit requests reject without a DOM-only fallback. Reentrant publication rejects.",
+    "compatibility": "Default editable views remain byte-identical in the original V1 comparison. ABI 5, rich ABI 1, Document V2, local checkpoint V1, original model 11/journal 12 and explicit model 12/journal 13 retain their meanings. readOnlyVersion/read_only_version is a separate additive capability version 1. Application runtime has five JS exports and 56 raw Wasm exports, with no research exports. No dependency, vendor, lockfile or version change.",
+    "limits": "Whole-editor host policy is cooperative application behavior, not server authorization, a saved ACL, writer retirement or editable-region restrictions. Region restrictions remain a separate missing ledger item. Physical IME, screen-reader and native OS clipboard certification are outside this functional checkpoint."
+  },
+  "nativeChecks": {
+    "rootCommand": "CARGO_TARGET_DIR=target/shared-v2-root-regression /Users/s/.cargo/bin/cargo test --offline --workspace --features breditor-wasm/experimental-rich-content",
+    "rootPassed": 2340,
+    "rootSuiteFooters": 138,
+    "sharedCommand": "CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "sharedPassed": 248,
+    "sharedSuiteFootersIncludingZeroDoctests": 20,
+    "researchFocusedPassed": 3,
+    "researchScope": "The facade shim executes canonical read_only_contracts; no complete research/all-features qualification is claimed.",
+    "strictNativeAllTargetClippy": true,
+    "strictActualLocalAndSharedReleaseWasmClippy": true,
+    "rootAndSharedRustdocWarningsDenied": true,
+    "firstPartyFormatChecks": true,
+    "relay": {"command":"node scripts/check-relay.mjs","defaultPassed":19,"serverPassed":22,"totalOverlappingExecutions":41,"buildAndRasterExamples":true},
+    "note": "The existing dependency HasIdSpan warning is unchanged; first-party checks are strict and vendor sources are untouched. Initial test-style and instance-capability Clippy findings were resolved before final checks."
+  },
+  "installedQualification": {
+    "command": "node scripts/check-editor-browser.mjs",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-QfcUDh/consumer",
+    "configurations": ["Local without React/collaboration", "Shared without React", "Full React/shared initialization, SSR and package-root declarations"],
+    "productionPages": 11,
+    "editingBatches": [{"passed":81,"duration":"2.1 minutes"},{"passed":90,"duration":"2.4 minutes"}],
+    "editingPassed": 171,
+    "networkPassed": 12,
+    "networkDuration": "1.2 minutes",
+    "totalPassed": 183,
+    "perEngine": {"editing":57,"network":4},
+    "engines": ["chromium","firefox","webkit"],
+    "newCases": "Thirty read-only editing cases cover both languages/local-shared owners, keyboard/API denial, copy/Cut-as-Copy, beforeinput, paste/drop/files, captions/tasks/toolbar, grid navigation, late DOM repair, composition/queue cancellation, exact reload/default editable recovery, React lifetime and initial policy. Three new real-relay cases cover incoming peer text/tasks/images/presence, disconnect/reconnect and retained history while locked.",
+    "runnerPolicy": "Every discovered editing file runs once in deterministic batches of at most four files, then the network spec runs once. Every invocation retains all three engines, workers 1, zero retries, 60-second cases and 300-second process deadlines. Inventory tests reject missing/duplicate/ambiguous coverage. No project filter or relaxed deadline/retry override.",
+    "initialFocusedRun": {"passed":27,"failed":3,"cause":"Test harness awaited receiveFrame while intentionally holding remote publication, before it could reach the policy transition that releases the hold. Its executed trace contains that await. The corrected harness retains the promise, changes policy, then awaits admission.","preserved":"target/read-only-qualification/initial-focused-results"},
+    "correctedFocusedRun": {"passed":30,"duration":"1.1 minutes"},
+    "clipboardCompositionScope": "Trusted browser keyboard input plus synthetic clipboard/beforeinput/composition/drop event-path checks; not physical OS clipboard or Japanese IME certification.",
+    "failureDiagnostics": "Network assertions now retain replayable native fixture journals, detached views, frames, sync state and errors before teardown when available. Passing runs do not generate failing replay evidence."
+  },
+  "compatibilityChecks": {
+    "previousSource": "520386eee248822b08fb11e83caa03b54c173790",
+    "oldLocalWasmSha256": "c1ec60c9530e117a5504f8b66991f2f3e05defddf5860d52727ec809e88d4258",
+    "oldSharedWasmSha256": "e515fd8d6d5b62c0bbd4059d2671374872756276a4e68f4fc6b8b080810513d7",
+    "originalV1": {"passed":true,"states":49,"crossVersionRestores":2,"futureHistorySteps":12,"script":"scripts/compare-shared-v1-runtime.mjs"},
+    "readOnly": {"passed":true,"languages":[1,2],"nativeWasmDenials":4,"crossVersionRestores":8,"exactFutureHistoryComparisons":20,"permissionNotPersisted":true,"script":"scripts/probe-read-only-compatibility.mjs"},
+    "oldPeerPropertyPatches": {"passed":true,"languages":[1,2],"oldPeerLacksPlanner":true,"exactFutureHistoryComparisons":8,"script":"scripts/probe-inline-property-patch.mjs"},
+    "oldRuntimeConsumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-3oS9MV/consumer"
+  },
+  "otherChecks": {
+    "existingApplicationV1": {"command":"node_modules/.bin/playwright test -c experiments/shared-browser/application-network.config.mjs","passed":78,"perEngine":26,"duration":"1.8 minutes"},
+    "sdkUnitPassed": 54,
+    "sdkTestFiles": 11,
+    "defaultBrowserUnitPassed": 2203,
+    "defaultBrowserTestFiles": 59,
+    "defaultBrowserAndSdkTypes": true,
+    "scripts": {"total":364,"passed":361,"failed":0,"existingOptInSkips":3},
+    "defaultBrowserArchiveByteUnchanged": true
+  },
+  "artifacts": [
+    {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1236457,"sha256":"812e34f047b6660479f038516db754cf745e5e31dab73ba19e11e5dabc213a9e"},
+    {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2315772,"sha256":"978eb2cef9c7a239310094d5a9b31ef9e589efe13b51dcb2b15caf2ec2ad165a"},
+    {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":20879,"sha256":"d6a570194dffbfdaa18cdf82a9976b7ef7d490325fb18e025b2ce0f60d987752"},
+    {"name":"breditor_wasm_bg.wasm","bytes":4274287,"sha256":"51c111c3ab515a775ab33b7d94ecaf186505d01dc5d803a65761d1f3e3c4ee2d"},
+    {"name":"breditor_shared_bg.wasm","bytes":8354512,"sha256":"a215fe40038d9f56fedeb2bea541494b92a00910f300ae89765e9e0e4cfd3b6d"}
+  ],
+  "retainedLogs": "target/read-only-qualification",
+  "openIssues": ["Earlier unrecorded native V2 code/style ReplayMismatch remains unconfirmed", "Historical intermittent WebKit integer-domain startup fault remains open", "Earlier unclassified WebKit cancelled-mount TypeError remains unconfirmed"],
+  "remainingGoalWork": ["General cross-container selections and code/atomic navigation", "Natural typing history groups", "Bounded block layout and contextual controls", "Sanitized HTML/Markdown import/export", "Realistic Word/Google Docs/Excel paste with explicit losses", "Public API/package ownership and final combined acceptance"],
+  "readiness": "Native whole-editor read-only acceptance passes. Editable-region restrictions remain separately missing. Both V1 workstreams remain active and incomplete; all 13 release gates stay open. Private alpha.22; no push, tag, publication or deployment. These overlapping suite runs are not counts of unique product capabilities."
+}

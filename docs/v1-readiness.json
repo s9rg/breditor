@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "520386eee248822b08fb11e83caa03b54c173790",
+  "baselineCommit": "3b989be678cff529ee09634c6c55e495890b1d61",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -226,11 +226,19 @@
       "sources":["ckeditor-digest"]
     },
     {
-      "id":"read-only-mode","area":"Integration","status":"missing",
-      "summary":"Read-only and restricted editing UI",
-      "current":"A relay Reader role is not a read-only DOM editor contract. SharedDomOptions has no complete read-only/restricted-editing mode.",
+      "id":"read-only-mode","area":"Integration","status":"implemented",
+      "summary":"Native live read-only editing",
+      "current":"Both rich languages have native local/shared host policy, initial SDK options and live vanilla/React setters. It rejects authoring, pending styles and history while retaining selection, copy, incoming updates and durability. Surface/captions, task widgets, toolbar, keyboard, beforeinput, Cut-as-Copy, composition queues and asynchronous assets share the policy. Lock/unlock fences old intents without a history entry. Policy is not stored permission: restored owners start editable and hosts reapply it. Installed three-engine and real-relay tests pass; editable-region restrictions are tracked separately.",
       "acceptance":"Enforce read-only consistently for keyboard, beforeinput, clipboard, API, toolbar, composition and remote updates; define editable-region restrictions separately.",
-      "evidence":["packages/breditor-collaboration/src/controller.ts"],
+      "evidence":["docs/RICH_READ_ONLY.md","crates/breditor-core/src/rich_content/local_session/set_read_only.rs","crates/breditor-core/tests/rich_read_only.rs","crates/breditor-collaboration/src/rich_replica/set_read_only.rs","crates/breditor-collaboration/tests/read_only_contracts.rs","experiments/editor-browser/read-only.spec.mjs","experiments/editor-browser/shared-structural-network.spec.mjs","scripts/probe-read-only-compatibility.mjs","docs/qualification/2026-10-15-read-only.json"],
+      "sources":["ckeditor-digest"]
+    },
+    {
+      "id":"restricted-editing","area":"Integration","status":"missing",
+      "summary":"Editable region restrictions",
+      "current":"Live whole-editor read-only policy does not authorize individual regions. A separate native range/identity policy is defined as required work; nested contenteditable islands are not an implementation.",
+      "acceptance":"Define and enforce protected/editable identities through cross-region selections, moves, atomic mixed requests, pending styles, history authorization and remote changes; qualify persistence and host/server authority separately.",
+      "evidence":["docs/RICH_READ_ONLY.md"],
       "sources":["ckeditor-digest"]
     },
     {
