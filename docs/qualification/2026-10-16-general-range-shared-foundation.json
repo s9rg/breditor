@@ -1,0 +1,101 @@
+{
+  "format": "breditor/general-range-shared-foundation-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "59937b4c50e428a148ad888953ef2ff9926b909a",
+  "previousCheckpoint": "940d76822065047d74b033f86b25cfb9834427b6",
+  "status": "initial-native-shared-adapter-partial-two-required-cases-reproduced-not-fixed",
+  "publication": "Local Git checkpoints only. No push, tag, package publication or deployment.",
+  "contracts": {
+    "authority": "An exact shared observation and current write policy precede one disposable native local-session preview. Native Rust chooses coverage, original joins, partial structures, fresh floors, final caret and pending formats; callers do not supply removal targets.",
+    "lowering": "Original joins retain the original ReplaceTextRange command. Protected boundaries lower to original PasteBlocks floor births, same-block ReplaceTextRange commands and maximal DeleteBlock roots. Paste preparation retains conditional normalization origins when a fresh floor is required. Complete staged/native document equality precedes adoption.",
+    "history": "One original selective group retains causal source text and independently owned births, deletions and fields. Explicit and natural histories recover exactly. UI-only changes have no content history; a true no-op preserves affinity, the observation and Redo.",
+    "identity": "Core admission rejects current-source ID reuse; the shared historical directory additionally rejects reuse of hidden old definitions. Caller IDs must remain durably fresh, including after failure or discarded history.",
+    "bounds": "The original64-command ceiling remains strict. Inserted native fragments admit at most1000 runs and64KiB text through the original literal format codec. Policy, source, style, ID, command or final-comparison failure publishes nothing.",
+    "compatibility": "No schema, model, frame, journal, command-tag or default-constructor meaning changes. There is no new Wasm/SDK editing capability or new installed runtime archive in this checkpoint."
+  },
+  "native": {
+    "environment": "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/collaboration-native",
+    "canonicalCommand": "cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline",
+    "canonicalPassed": 331,
+    "canonicalSuiteFootersIncludingEmptyRustdoc": 28,
+    "newContractTestsPassed": 10,
+    "functionalAndGuardTests": 8,
+    "requiredUnresolvedCasesReproducedByAtomicRefusalTests": 2,
+    "directionAndHistoryMatrixTrials": 20,
+    "richLanguageRevisionsExercised": [1, 2, 3],
+    "researchCommand": "cargo test --manifest-path experiments/collaboration/Cargo.toml --test general_range_contracts --locked --offline",
+    "sameSourceResearchPassed": 10,
+    "strictNativeAllTargetAllFeatureClippy": true,
+    "strictOptimizedSharedWasmClippy": true,
+    "rustdocWarningsDenied": true,
+    "namedFirstPartyFormatting": true,
+    "previousCoreProof": "docs/qualification/2026-10-16-general-range-native.json",
+    "coreSourceAndDefaultRustGraphUnchangedSincePreviousCoreProof": true,
+    "existingVendorWarning": "HasIdSpan unused import; no vendor edit or lint suppression."
+  },
+  "earlierRuntimeRecovery": {
+    "generator": "cargo run --manifest-path crates/breditor-collaboration/Cargo.toml --example general_range_checkpoint_probe --features research --locked --offline",
+    "probe": "scripts/probe-shared-general-range-checkpoint-compatibility.mjs",
+    "earlierSharedWasmSha256": "4aa03445f3ad7db5bc9550b5974cb2f41351d313daf3b8e15042044e87953d3b",
+    "actualEarlierRuntimeRestores": 12,
+    "exactFutureCheckpointComparisons": 48,
+    "scope": "Merged-cell, caption and nested-item ranges in both directions and both original shared history families. Does not qualify the two unresolved cases or a new editing request in the earlier binary."
+  },
+  "defaultRegression": {
+    "command": "npm test",
+    "browserUnitsPassed": 2203,
+    "reactUnitsPassed": 57,
+    "highlightUnitsPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 377,
+    "existingOptInSkips": 3,
+    "defaultWorkspaceTypesCommand": "npm run typecheck",
+    "defaultWorkspaceTypesPassed": true,
+    "readinessGuardTestsPassed": 25,
+    "promotionBoundaryTestsPassed": 6
+  },
+  "requiredUnresolvedCases": [
+    {
+      "id": "normalized-head-with-retained-sibling",
+      "reproduction": "Delete cell-0-1's only ordinary paragraph, type ab into the generated head, split at1 into retained-right, then select p-0-0@1 through retained-right@1. Native replacement removes the generated head and requests no floor.",
+      "cause": "The original primitive group has no preparation retaining that conditional origin. Ordinary deletion does not express the native final result; complete native equality rejects atomically.",
+      "fixed": false
+    },
+    {
+      "id": "unnecessary-transient-node-headroom",
+      "reproduction": "Limit max_nodes to the source AST's exact count, then replace p-0-0@1 through p-1-1@3 with X. The native final result fits and needs fresh empty cell paragraphs.",
+      "cause": "Original PasteBlocks admission validates each insertion before selected removals, requiring unnecessary temporary nodes even though the final tree fits.",
+      "fixed": false
+    }
+  ],
+  "nextRequiredImplementation": "Complete these cases through an explicit saved semantic contract that prepares retained origins and applies causal changes before final admission. Preserve old command/replay meanings; prove exact restart and old-reader refusal for any new save family, and actual peer-frame interoperability if retaining the causal model. Do not raise limits, invent temporary user blocks, replace the shared AST wholesale or advertise the partial adapter as complete.",
+  "evidenceDirectory": "target/block-layout-shared-qualification",
+  "artifacts": [
+    {"name":"general-range-shared-full-final.log","sha256":"c9c0f56923fbeb69e52fdf8bf10a0a178cb7d634d4358428c8de43c31c945ac1"},
+    {"name":"general-range-shared-research.log","sha256":"376b353cfa9db00dd202970d6ad53012b5972550db52cdecdd4be6fa62478ee2"},
+    {"name":"general-range-shared-final-all-targets-clippy.log","sha256":"567060975a98b17031d836d4367cda1de69b3a3a08e3b9fa4e4a5ff90e9b3322"},
+    {"name":"general-range-shared-wasm-clippy.log","sha256":"2d6e1b7149fb9d1e7b51045fa23cd2c90f2dad12d66193d054fbbab8ea6c2c95"},
+    {"name":"general-range-shared-rustdoc.log","sha256":"b450e02a01087c96413b00f6a76e96a419bf8e8476a577166c2baa70192d66af"},
+    {"name":"general-range-shared-default-javascript-final.log","sha256":"6139873abb91e5766180fb2dc75bf71a378af5e56f43b2db3c9a15a8007b0cbb"},
+    {"name":"general-range-shared-types.log","sha256":"1567af4ed2591443d9f41d897171e355ccc1b045bececb8ada99cd626afba7b5"},
+    {"name":"general-range-shared-old-wasm-compatibility.json","sha256":"7f890540c319fe439a25fc5d60b35392b725c59a048d7f8c533596d84e878a11"},
+    {"name":"general-range-shared-native-checkpoints.json","sha256":"72140264fac95f5bdf21b31402e7fa3e8dc0e5c09337e95ecc7e2ccfc99df782"}
+  ],
+  "attempts": [
+    "The first targeted run passed6/7 cases. Its code-style refusal fixture had the logical start in an earlier empty paragraph, so styled insertion was valid. Corrected the fixture to start in code and end in a later paragraph; final native and research suites pass all10 cases.",
+    "Strict lint requested implicit reference iteration and a borrowed JSON fixture. Corrected both without suppressions or admission changes.",
+    "The first default JavaScript run detected a missing research shim and the exact25-file promotion inventory. Added the same-source shim, raised the inventory to26, ran all10 cases through that manifest, and reran the full default suite successfully. The guard was not weakened.",
+    "Low disk space was resolved by removing exactly189 inventoried inactive generated Rust test executables from before October16, each with a newer retained sibling, totaling3330534352 bytes. Confirmed no active Rust checks before deletion. Cargo can rebuild those caches; source, Git, runtimes, archives, evidence and demo hosts were retained."
+  ],
+  "verificationScope": "Native partial shared integration and compatibility/regression evidence only. Two refusal reproductions prove unfinished work, not feature acceptance. No new Wasm/SDK/browser/clipboard/first-key/Select-All support, historical WebKit repair, native IME/VoiceOver or performance qualification is claimed.",
+  "readiness": {
+    "promotedRows": 0,
+    "implemented": 9,
+    "partial": 17,
+    "missing": 20,
+    "openGates": 13,
+    "generalSelectionFeatureComplete": false,
+    "firstTwoWorkstreamsComplete": false
+  }
+}

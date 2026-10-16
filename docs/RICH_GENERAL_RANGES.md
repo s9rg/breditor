@@ -6,9 +6,10 @@ flattening them. The owner approved this policy: remove only selected content
 inside partial structures, remove whole enclosed atoms, and insert replacement
 text at the selection's logical beginning.
 
-This checkpoint is a native foundation. Shared lowering, Wasm editing commands,
-SDK input routing, document-wide Select All and installed-browser acceptance
-remain required before the general-selection feature is ready.
+The local foundation is implemented and the initial shared adapter is partial.
+Complete shared lowering, Wasm editing commands, SDK input routing,
+document-wide Select All and installed-browser acceptance remain required
+before the general-selection feature is ready.
 
 ## Original joins and protected boundaries
 
@@ -114,3 +115,67 @@ binds 2,453 passing root Rust tests, 321 existing shared regression tests,
 default JavaScript regressions and the actual earlier-runtime comparison to the
 tested source checkpoint. Strict native/Wasm lint, Rustdoc and ordinary
 feature-disabled builds pass. The readiness row remains partial.
+
+## Initial shared adapter
+
+`plan_general_selection_text_guarded` reads native requirements under the exact
+shared observation. `replace_general_selection_text_guarded` admits a complete
+local semantic preview, then lowers it to original `PasteBlocks`, same-block
+`ReplaceTextRange` and `DeleteBlock` records in one selective history group.
+Original supported joins retain their single original command. New paragraphs
+use original paste preparation so conditional heads participate in exact
+recovery. No shared root register or copied surviving text is introduced.
+
+The complete staged document must equal the native result before adoption.
+Pending formats and the final caret come from the same native preview. True
+no-ops preserve the observation and Redo; UI-only collapse creates no content
+history. Native plans can be read in read-only mode, while mutation still
+requires write permission. Shared historical definitions reject fresh-floor ID
+reuse even when the current AST no longer contains that ID.
+
+The original 64-command ceiling remains strict. The adapter accepts at most
+1,000 insertion runs and 64 KiB of insertion text, matching the existing shared
+range input. Styles use the native literal codec. No model, frame, journal,
+schema or default-constructor meaning changes. The actual earlier V3 shared
+Wasm binary restores twelve produced checkpoints and matches forty-eight future
+Undo/Redo checkpoints exactly.
+
+Tests compare native results across merged source cells, partial captions,
+mixed containers, old supported joins and code/prose boundaries in both
+directions and both history families. Offline peer prefix/suffix text and image
+metadata survive selective Undo. A separate case confirms that omitting an
+unchanged first text block does not duplicate its insertion.
+
+## Shared integration gaps
+
+Two deterministic cases still prevent general support. The tests reproduce
+atomic refusal; a passing refusal test is not acceptance of the feature.
+
+1. Delete a cell's only ordinary paragraph, type into its generated head, and
+   split that head. Select from a different cell into the retained right
+   sibling. The native result removes the generated head without needing a
+   fresh paragraph. The original command group does not retain its conditional
+   origin, so ordinary deletion cannot express the result. Final native-result
+   comparison refuses the request without changing the live owner.
+2. Tighten the active node budget to the source document's exact size, then
+   replace across cells that need fresh empty paragraphs. The native final tree
+   fits. Original paste admission checks paragraph insertion before the selected
+   removals, so it unnecessarily requires temporary extra nodes and refuses.
+
+Both cases must work before advertising a general-range Wasm/SDK capability.
+The complete shared implementation needs an explicit saved semantic contract
+that prepares retained origins and applies causal changes before final
+admission. It must not change old journal command meanings, raise resource
+ceilings, invent temporary user blocks or replace the shared AST wholesale.
+Exact replay and old-reader refusal must be proved for any new saved family;
+unchanged peer-frame interpretation needs its own interoperability proof.
+
+General first-key typing groups, clipboard routing and whole-document selection
+remain required integration work. Native IME/accessibility and the historical
+WebKit reliability observations remain separate deferred qualifications.
+
+The [shared foundation qualification](qualification/2026-10-16-general-range-shared-foundation.json)
+records all 331 canonical shared tests, the ten same-source research cases,
+strict native/optimized-Wasm lint, Rustdoc, default JavaScript/type checks and
+actual earlier-runtime recovery. Two of the ten new tests deliberately
+reproduce the required unresolved cases above; neither is a feature acceptance.
