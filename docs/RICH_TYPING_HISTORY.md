@@ -3,9 +3,9 @@
 The local Rust owner can combine adjacent user typing into natural Undo units
 while preserving every original edit record, revision and inverse. The native
 local owner now reaches additive Wasm commands and opt-in local vanilla/React
-editing. Shared Rust grouping now uses explicit native engine spans and a separate
-replay family; its Wasm/SDK/DOM integration remains unfinished. The full history
-feature stays partial. Existing owners, checkpoints and browser defaults retain
+editing. Shared grouping uses explicit native engine spans and a separate
+replay family, now exposed through opt-in Wasm, SDK/React and durable DOM sessions.
+The full history feature stays partial. Existing owners, checkpoints and browser defaults retain
 explicit history.
 
 ## Native local API
@@ -194,15 +194,84 @@ reproductions. `rich_typing_history_contracts.rs` checks the grouped implementat
 including partial/complete invisibility, old forward-record equivalence, exact
 future recovery, native step ceilings and atomic late revision failures.
 
-## Remaining shared product integration
+## Shared Wasm and SDK integration
 
-Shared Wasm, SDK/React and DOM integration must carry the same explicit capability,
-guarded command/recovery and real intent-boundary principles without weakening
-remote queues, read-only or asynchronous guards. Final public default/API decisions
-remain open. The shared SDK currently accepts only explicit history and rejects
-requests for natural grouping rather than silently substituting explicit history.
-Installed local/shared V1/V2 tests
-must cover real keyboard bursts, time gaps,
-deletions, formatting/paste/composition boundaries, exact reload, offline peer
-edits and future selective Undo/Redo in all three browser engines. Native-only
-tests do not complete that acceptance.
+The generated application owner advertises `typing_history_version() === "1"`
+and guarded enable, close, insert and delete methods. Insert/delete requests use
+closed JSON records with canonical decimal u64 `clockMs` strings; numeric,
+duplicate, unknown, signed and overflowing fields reject. Stale observation and
+read-only rejection precede payload parsing. Separate `typing_checkpoint()` and
+profile `restore_typing()` methods carry grouped recovery. Original factories
+remain strict. `SharedRichEditor.supportsTypingHistory()` checks the complete
+capability, and `restoreSharedTypingEditor` requires the exact matching factory.
+Older runtimes do not fall back to explicit history or JavaScript inverses.
+
+`openSharedEditor({history: "typing-v1", ...})` selects grouping through both
+vanilla and React initial options, for either rich language. Omitted history
+retains explicit history. The persistent coordinator seals the admitted policy
+for its lifetime, so a borrowed core cannot change its checkpoint family behind
+storage. Parent renders do not change that policy or replace the React owner.
+The session and React handle expose `closeTypingGroup(revision?)`.
+
+`initial: {kind: "typingCheckpoint", checkpointJson}` explicitly selects grouped
+recovery. It cannot be combined with `history: "explicit"`. Original
+`kind: "checkpoint"` uses only original recovery; an additional explicit
+`history: "typing-v1"` enables grouping for future input, retaining old units and
+Redo. Failed retirement recovery includes `historyPolicy()` alongside the exact
+journal and close/discard handles. Hosts must retain both language and history
+family when transferring that recovery to a new store.
+
+### Durable family selection
+
+IndexedDB schema version 1 and room/writer keys are unchanged. Explicit sessions
+still store the original exact journal string. Grouped sessions store exactly
+`{format: "breditor/shared-typing-checkpoint-record", formatVersion: 1,
+checkpointJson}`. This discriminator declares the native restore family outside
+its opaque JSON; neither SDK nor storage guesses history from document shape.
+Unknown records reject. The old string-only storage reader rejects new records.
+
+Reopening a grouped record requires explicit `typing-v1` configuration. A default
+opening rejects before restoring or overwriting it and releases its writer lease.
+An explicitly opted-in session can upgrade an existing legacy journal: original
+native restore runs first, then guarded enable, then one atomic transaction saves
+the grouped record. If that transaction fails, the original durable string stays
+intact and the unannounced upgraded owner is discarded. No document-only import
+or flattened-history fallback is used.
+
+Persistence subscribes to changed publications, not the Boolean command result.
+An Undo that consumes only invisible native history can return false while
+changing revision and stacks; that exact new journal must still be autosaved.
+Read-only remains a live policy, not a saved permission.
+
+The relay adapter selects this identity check from the native owner's declared
+history mode, not from a guessed JSON shape. Original and grouped owners retain
+the same room/writer/model and byte-limit checks, writer-stream protocol and
+server acknowledgement rules. A grouped local recovery envelope is not a new
+relay operation or a reason to bypass identity validation.
+
+### Browser intent and timing
+
+Collapsed-caret insertions and valid adjacent directional deletions use the named
+native methods. Paste, composition commit, replacement, hard breaks and
+programmatic edits remain explicit. Pointer, navigation, blur and toolbar intent
+close continuation without replacing editable children or moving focus. Internal
+rendering does not manufacture blur boundaries. Remote queues, composition holds
+and exact asynchronous guards retain their existing ownership rules.
+
+The shared coordinator also restores an owned caret after asynchronous content
+changes, while preserving outside focus. Document selection events cannot replace
+its Rust selection while another control owns focus.
+
+The 750 ms rule applies to actual supplied input hints, including delays caused
+by editor processing. Instrumented Firefox runs observed gaps above this threshold
+during mixed-document typing/deletion. Such gaps legitimately split history but
+remain a responsiveness concern, not a qualified performance result. Browser
+tests check boundaries against captured hints; real-Wasm tests separately prove
+exact grouping at 750 ms and separation above it. No timing window or release
+deadline is raised to mask latency.
+
+Installed boundary tests cover formatting, movement, queued peers during
+composition, asynchronous images and React retirement in all three engines.
+Sustained responsiveness and the remaining general selection/navigation/interchange
+work still govern V1 promotion. Synthetic composition is not physical IME
+qualification.

@@ -14,6 +14,8 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["from_configuration_json","from_standard_configuration_json_v1","from_configuration_json_v2","from_standard_configuration_json_v2"])assert.equal(typeof module.SharedRichProfile[name],"function");
  assert.equal(typeof module.SharedEditorOwner.prototype.patch_inline_format_properties,"function","Missing guarded property-patch planner");
  for(const name of ["read_only_version","set_read_only"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native read-only capability ${name}`);
+ for(const name of ["typing_history_version","enable_typing_history","close_typing_group","insert_typing_text","delete_typing_range","typing_checkpoint"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native typing-history capability ${name}`);
+ for(const name of ["typing_history_version","restore_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing separate typing-history recovery ${name}`);
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function");
  const exports=WebAssembly.Module.exports(new WebAssembly.Module(binary)).map(value=>value.name);
  assert.ok(!exports.some(name=>/^(exercise_|probesession_|rich_ast_binding$|admit_rich_ast$|resolve_geometry$|classify_upload$|resolve_rich_selection$)/.test(name)),"Research functions must be absent from the binary, not just hidden by JS");

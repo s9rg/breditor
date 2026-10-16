@@ -3,7 +3,7 @@ import {SharedRichEditor} from "../../breditor-collaboration/src/core.js";
 import type {SharedRustOwner} from "../../breditor-collaboration/src/types.js";
 const storage=vi.hoisted(()=>({open:vi.fn(),read:vi.fn(),write:vi.fn(),acquire:vi.fn()}));
 vi.mock("../../breditor-collaboration/src/persistence/session_database.js",async importOriginal=>({
- ...await importOriginal<object>(),openSessionDatabase:storage.open,readCheckpoint:storage.read,writeCheckpoint:storage.write
+ ...await importOriginal<object>(),openSessionDatabase:storage.open,readSessionCheckpoint:storage.read,writeSessionCheckpoint:storage.write
 }));
 vi.mock("../../breditor-collaboration/src/persistence/writer_lease.js",()=>({SharedWriterLease:{acquire:storage.acquire}}));
 import {SharedPersistentSession} from "../../breditor-collaboration/src/persistence/shared_session.js";

@@ -96,6 +96,29 @@ recovery handoff. Low-level DOM mounts still transfer core ownership by default;
 `coreOwnership: 'borrow'` is explicit for a session-managed core. Server
 acknowledgement and uploaded assets are not the local journal save state.
 
+## Natural shared typing history
+
+`SharedPersistentSession.open({history: 'typing-v1', ...})` selects native grouped
+typing for either language. Omitted history remains explicit. A requested mode
+requires the exact native capability; it never falls back to JavaScript history.
+Use `core.typeUser(text, clockMs)` or `core.deleteUserRange(selection, direction,
+clockMs)` only for user input, with canonical decimal u64 clock strings. Ordinary
+`type`, paste, composition and dispatch keep explicit boundaries. `closeTypingGroup`
+is an observed intent fence, not a content edit.
+
+`core.checkpointJson()` selects the separate grouped family only after native
+admission. Restore it with `restoreSharedTypingEditor(profile, room, checkpoint)`;
+the original profile factory rejects that family. A persistent session's history
+policy is immutable. Its restore callback receives the declared stored policy as
+its second argument; select the matching native factory, not an AST import.
+
+Explicit storage keeps legacy exact strings. Grouped storage uses a versioned
+record, and default openings reject it without overwriting it. An explicit opt-in
+can atomically upgrade a legacy journal while retaining old units and Redo; failed
+saves leave the original durable record intact. The 16 MiB journal bound and
+exclusive writer lease are unchanged. See `docs/RICH_TYPING_HISTORY.md` for the
+record contract, false-result Undo publications and timing/qualification limits.
+
 ## Source and compatibility
 
 Rust source is canonical in `crates/breditor-collaboration`; browser source is

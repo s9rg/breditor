@@ -28,6 +28,13 @@ export interface SharedRustProfile {
  descriptor_json():string;inline_catalog_json():string;create(document:string,writer:string):SharedRustOwner;
  join_frame(room:string,writer:string,frame:string):SharedRustOwner;
  restore(room:string,journal:string):SharedRustOwner;free():void;
+ typing_history_version?():string;restore_typing?(room:string,journal:string):SharedRustOwner;
+}
+/** No shape sniffing or fallback to the original factory on an older paired runtime. */
+export function supportsSharedTypingHistory(profile:SharedRustProfile):boolean{return typeof profile.typing_history_version==="function"&&profile.typing_history_version()==="1"&&typeof profile.restore_typing==="function";}
+export function restoreSharedTypingEditor(profile:SharedRustProfile,room:string,journal:string):SharedRustOwner{
+ if(!supportsSharedTypingHistory(profile))throw new SharedEditorError("typing_history_unavailable","Use matching native shared typing-history recovery");
+ return profile.restore_typing!(room,journal);
 }
 export interface SharedProfileModule {SharedRichProfile:{from_configuration_json(input:string):SharedRustProfile;from_standard_configuration_json_v1?(input:string):SharedRustProfile;from_configuration_json_v2?(input:string):SharedRustProfile;from_standard_configuration_json_v2?(input:string):SharedRustProfile}}
 /** Compile application-selected formats/budgets with matching Rust; no fixed probe schema. */

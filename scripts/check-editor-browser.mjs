@@ -11,9 +11,10 @@ export function editorBrowserRuns(discovered){
  if(!discovered.includes(network)||discovered.length<2)throw Error("Missing installed SDK editing/network coverage");
  // Bound process size, not coverage: every batch still uses all configured
  // engines with the original per-case/global deadline and zero retries.
- const editing=discovered.filter(name=>name!==network).sort(),runs=[];
+ const standalone=discovered.filter(name=>name.startsWith("shared-typing-")).sort();
+ const editing=discovered.filter(name=>name!==network&&!standalone.includes(name)).sort(),runs=[];
  for(let start=0;start<editing.length;start+=4)runs.push(editing.slice(start,start+4));
- return [...runs,[network]];
+ return [...runs,...standalone.map(name=>[name]),[network]];
 }
 export function editorBrowserPlan(){
  const names=readdirSync(resolve(root,"experiments/editor-browser")).filter(name=>name.endsWith(".spec.mjs"));

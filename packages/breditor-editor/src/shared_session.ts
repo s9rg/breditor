@@ -1,5 +1,5 @@
 import {
- compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,
+ compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,restoreSharedTypingEditor,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,
  type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileDescriptor,
  type SharedDomEditor,type SharedDomOptions,type SharedRichEditor,type SharedToolbarControl,
  type SharedDispatch,type SharedSaveState,type SharedRustOwner,type SharedEditorOptions as SharedCoreOptions
@@ -18,7 +18,8 @@ export type SharedInitial=
  |{kind:"empty";blockId?:string}
  |{kind:"document";documentJson:string}
  |{kind:"frame";frame:string}
- |{kind:"checkpoint";checkpointJson:string};
+ |{kind:"checkpoint";checkpointJson:string}
+ |{kind:"typingCheckpoint";checkpointJson:string};
 
 export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"> {
  host:HTMLElement;database:string;room:string;writer:string;initial?:SharedInitial;
@@ -26,8 +27,8 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  /** Explicit shared structural language. Omitted/1 retains model 11 and configuration format 1. */
  richLanguage?:1|2;
  readOnly?:boolean;
- /** Natural shared grouping is not yet implemented; explicit preserves original behavior. */
- history?:"explicit";
+ /** Immutable native history policy; omitted/explicit preserves existing defaults. */
+ history?:"explicit"|"typing-v1";
  runtimeInput?:RuntimeInput;signal?:AbortSignal;coreOptions?:Omit<SharedCoreOptions,"onError">;
  onSaveState?:(state:SharedSaveState)=>void;
  /** Stop borrowed relay/presence/asset adapters before the native writer retires. Reporting errors cannot cancel close. */
@@ -45,6 +46,7 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  select(...args:Parameters<SharedDomEditor["select"]>):void;
  focus():void;refreshAssets():void;
  setReadOnly(value:boolean,revision?:string):boolean;
+ closeTypingGroup(revision?:string):boolean;
  view():ReturnType<SharedRichEditor["view"]>;checkpointJson():string;state():SharedSaveState;
  flush():Promise<void>;retrySave():Promise<void>;
  /** Stops UI immediately. Failed saves retain the owner/lease for retry, never implicit discard. */
@@ -69,6 +71,8 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  focus():void{this.#active();this.#dom.focus();}
  refreshAssets():void{this.#active();this.#dom.refreshAssets();}
  setReadOnly(value:boolean,revision?:string):boolean{this.#active();return this.#dom.setReadOnly(value,revision);}
+ closeTypingGroup(revision?:string):boolean{this.#active();return this.#dom.closeTypingGroup(revision);}
+ historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}
  view():ReturnType<SharedRichEditor["view"]>{return this.core.view();}
  checkpointJson():string{return this.core.checkpointJson();}
  state():SharedSaveState{return this.#session.state();}
@@ -97,9 +101,11 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
  options={...options};
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new TypeError("Expected richLanguage 1 or 2");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
- if(options.history!==undefined&&options.history!=="explicit")throw new TypeError("Shared history currently supports explicit policy only");
+ if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
+ if(options.initial?.kind==="typingCheckpoint"&&options.history==="explicit")throw new TypeError("A typing checkpoint requires its declared natural history policy");
  const structural=options.richLanguage===2;
  const initial=structuredClone(options.initial??{kind:"empty"}) as SharedInitial;
+ const history=options.history??(initial.kind==="typingCheckpoint"?"typing-v1":"explicit");
  const configuration=structuredClone(options.configuration??(structural?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
  const claim=claimHost(options.host,options.signal);
  let profile:SharedRustProfile|undefined,session:SharedPersistentSession|undefined,dom:SharedDomEditor|undefined;
@@ -109,18 +115,19 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
   const factory=profile,binding=JSON.parse(factory.descriptor_json()) as SharedProfileDescriptor;
   const presentation=createStandardRichInlinePresentationV1(factory.inline_catalog_json(),options.additionalInlinePresentation);
   session=await SharedPersistentSession.open({
-   database:options.database,room:options.room,writer:options.writer,richLanguage:structural?2:1,
+   database:options.database,room:options.room,writer:options.writer,richLanguage:structural?2:1,history,
    create:()=>{
     claim.assert();
     if(initial.kind==="resume")throw new SharedEditorError("session_missing","An exact durable shared journal is required to resume this writer");
     if(initial.kind==="frame")return factory.join_frame(options.room,options.writer,initial.frame);
     if(initial.kind==="checkpoint")return factory.restore(options.room,initial.checkpointJson);
+    if(initial.kind==="typingCheckpoint")return restoreSharedTypingEditor(factory,options.room,initial.checkpointJson);
     const block=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
     const raw=factory.create(initial.kind==="document"?initial.documentJson:emptyDocumentJson(binding,options.room,block!),options.writer);
     if(block)selectInitialCaret(raw,block);
     return raw;
    },
-   restore:checkpoint=>{claim.assert();return factory.restore(options.room,checkpoint);},
+   restore:(checkpoint,storedHistory)=>{claim.assert();return storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);},
    editor:{...options.coreOptions,...(options.onError?{onError:options.onError}:{})},
    ...(options.onSaveState?{onState:options.onSaveState}:{}),...(options.onError?{onError:options.onError}:{})
   });

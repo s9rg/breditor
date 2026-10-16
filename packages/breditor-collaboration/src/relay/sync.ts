@@ -33,7 +33,8 @@ export class SharedRelaySync {
   this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30_000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30_000)throw new SharedRelayError("reconnect_limits");
   if(!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
-  checkCheckpoint(core.checkpointJson(),this.#identity.room,this.#identity.writer,core.richLanguageVersion());
+  // The owner declares its local recovery family; transport/model bindings stay unchanged.
+  checkCheckpoint(core.checkpointJson(),this.#identity.room,this.#identity.writer,core.richLanguageVersion(),core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit");
   this.#local=core.writerClock(this.#identity.writer).through;
   if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
   this.#unsubscribe=core.subscribe(()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}});

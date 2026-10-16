@@ -12,7 +12,13 @@ test.beforeEach(async({page})=>{
  await page.evaluate(async({url,tokens})=>{const owner=await window.relaySocketFixture.connect(url,"owner",tokens.owner);for(const principal of["alice","bob"]){const r=await owner.request({kind:"grant",principal,role:"editor"});if(r.kind!=="granted")throw Error("Demo account provisioning failed");}await owner.close();},{url:relay.url,tokens:relay.tokens});
  bootstrap={format:"breditor/network-demo",formatVersion:1,endpoint:relay.url,configuration:JSON.parse(input.configuration),tokens:{alice:relay.tokens.alice,bob:relay.tokens.bob}};await route(page);
 });
-test.afterEach(async()=>{await otherContext?.close();otherContext=undefined;await relay?.dispose();relay=undefined;});
+test.afterEach(async({page},info)=>{
+ if(info.status!==info.expectedStatus&&!page.isClosed()){
+  const state=await page.evaluate(()=>{const t=window.breditorNetworkDemo;if(!t)return null;return {ready:t.ready,errors:t.errors,peers:Object.fromEntries(Object.entries(t.peers).map(([key,p])=>[key,{offline:p.offline,button:document.querySelector(`#connect-${key}`)?.textContent,sync:p.sync?.state(),checkpoint:p.session?.core.checkpointJson()}]))};}).catch(error=>({diagnosticError:String(error)}));
+  await info.attach("application-network-native-state",{body:JSON.stringify(state),contentType:"application/json"});
+ }
+ await otherContext?.close();otherContext=undefined;await relay?.dispose();relay=undefined;
+});
 
 test("network demo combines offline table image text history and restart with distinct saved states",async({page})=>{
  await page.goto("/network-demo");await ready(page);

@@ -1,7 +1,7 @@
 import {beforeEach,describe,expect,it,vi} from "vitest";
-const mocks=vi.hoisted(()=>({runtime:vi.fn(),compile:vi.fn(),compileV2:vi.fn(),open:vi.fn(),mount:vi.fn()}));
+const mocks=vi.hoisted(()=>({runtime:vi.fn(),compile:vi.fn(),compileV2:vi.fn(),open:vi.fn(),mount:vi.fn(),restoreTyping:vi.fn()}));
 vi.mock("../src/shared_profile.js",()=>({initializeSharedRuntime:mocks.runtime,standardSharedProfileConfiguration:{format:"breditor/shared-rich-profile",formatVersion:1,schema:{name:"test/profile",version:1},extensions:[]},structuralSharedProfileConfigurationV2:{format:"breditor/shared-rich-profile",formatVersion:2,schema:{name:"test/profile",version:2},extensions:[]}}));
-vi.mock("@breditor/collaboration",()=>({SharedEditorError:class extends Error {constructor(readonly code:string,message:string){super(message);}},compileStandardSharedProfileV1:mocks.compile,compileStandardStructuralSharedProfileV2:mocks.compileV2,SharedPersistentSession:{open:mocks.open},mountSharedEditor:mocks.mount,createStandardSharedToolbarV1:()=>[],createStructuralSharedToolbarV2:()=>[]}));
+vi.mock("@breditor/collaboration",()=>({SharedEditorError:class extends Error {constructor(readonly code:string,message:string){super(message);}},restoreSharedTypingEditor:mocks.restoreTyping,compileStandardSharedProfileV1:mocks.compile,compileStandardStructuralSharedProfileV2:mocks.compileV2,SharedPersistentSession:{open:mocks.open},mountSharedEditor:mocks.mount,createStandardSharedToolbarV1:()=>[],createStructuralSharedToolbarV2:()=>[]}));
 vi.mock("@breditor/experimental-rich-content",()=>({createStandardRichInlinePresentationV1:()=>({})}));
 import {openSharedEditor,SharedEditorOpenError} from "../src/shared_session.js";
 
@@ -11,15 +11,25 @@ function setup(){
  const profile={descriptor_json:()=>JSON.stringify({schema:{name:"test/profile",version:1},schemaFingerprint:"native proof"}),inline_catalog_json:()=>"catalog",create:vi.fn(()=>raw),join_frame:vi.fn(()=>raw),restore:vi.fn(()=>raw),free:vi.fn()};
  const core={view:()=>({revision:"1"}),checkpointJson:()=>"exact journal"};
  const session={core,recovered:false,close:vi.fn(async()=>{events.push("saved and released");}),discardAndClose:vi.fn(async()=>{}),state:()=>({status:"saved"}),flush:vi.fn(async()=>{}),retry:vi.fn(async()=>{})};
- const dom={surface:document.createElement("div"),toolbar:document.createElement("div"),status:document.createElement("p"),dispose:vi.fn(()=>{events.push("UI stopped");host.replaceChildren();delete host.dataset["breditorShared"]; }),execute:vi.fn(),select:vi.fn(),focus:vi.fn(),refreshAssets:vi.fn()};
+ const dom={surface:document.createElement("div"),toolbar:document.createElement("div"),status:document.createElement("p"),dispose:vi.fn(()=>{events.push("UI stopped");host.replaceChildren();delete host.dataset["breditorShared"]; }),execute:vi.fn(),select:vi.fn(),focus:vi.fn(),refreshAssets:vi.fn(),closeTypingGroup:vi.fn(()=>true)};
  mocks.runtime.mockResolvedValue({});mocks.compile.mockReturnValue(profile);mocks.compileV2.mockReturnValue(profile);mocks.open.mockImplementation(async options=>{options.create();return session;});
  mocks.mount.mockImplementation(()=>{host.dataset["breditorShared"]="";host.replaceChildren(dom.surface);return dom;});
  return {events,host,original,raw,profile,session,dom,options:{host,database:"store",room:"room",writer:"101"}};
 }
 beforeEach(()=>{for(const fn of Object.values(mocks))fn.mockReset();});
 describe("durable SDK session coordinator",()=>{
- it("unsupported shared natural history rejects instead of silently using explicit history",async()=>{
-  const t=setup();await expect(openSharedEditor({...t.options,history:"typing-v1" as "explicit"})).rejects.toThrow("explicit policy only");expect(mocks.runtime).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);
+ it("unknown policy and an explicitly conflicting recovery family reject before runtime or host claim",async()=>{
+  const t=setup();await expect(openSharedEditor({...t.options,history:"automatic" as "explicit"})).rejects.toThrow("Expected history");await expect(openSharedEditor({...t.options,history:"explicit",initial:{kind:"typingCheckpoint",checkpointJson:"grouped"}})).rejects.toThrow("declared natural history");expect(mocks.runtime).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);
+ });
+ it("declares grouped recovery separately and never falls back to the original factory",async()=>{
+  const t=setup();mocks.restoreTyping.mockReturnValue(t.raw);
+  const editor=await openSharedEditor({...t.options,initial:{kind:"typingCheckpoint",checkpointJson:"grouped"}});
+  expect(mocks.open.mock.calls[0]![0].history).toBe("typing-v1");expect(mocks.restoreTyping).toHaveBeenCalledWith(t.profile,"room","grouped");expect(t.profile.restore).not.toHaveBeenCalled();expect(editor.closeTypingGroup("1")).toBe(true);expect(t.dom.closeTypingGroup).toHaveBeenCalledWith("1");await editor.close();
+  const other=setup();mocks.restoreTyping.mockImplementation(()=>{throw Error("Missing native capability");});await expect(openSharedEditor({...other.options,initial:{kind:"typingCheckpoint",checkpointJson:"grouped"}})).rejects.toThrow("Missing native capability");expect(other.profile.restore).not.toHaveBeenCalled();expect(other.host.firstChild).toBe(other.original);
+ });
+ it("restores only the declared stored family, including original journals upgraded by explicit opt-in",async()=>{
+  const t=setup();mocks.restoreTyping.mockReturnValue(t.raw);mocks.open.mockImplementation(async options=>{expect(options.history).toBe("typing-v1");options.restore("legacy","explicit");options.restore("grouped","typing-v1");return t.session;});
+  const editor=await openSharedEditor({...t.options,history:"typing-v1"});expect(t.profile.restore).toHaveBeenCalledWith("room","legacy");expect(mocks.restoreTyping).toHaveBeenCalledWith(t.profile,"room","grouped");await editor.close();
  });
  it("resume-only opening never seeds a fresh writer when no durable journal exists",async()=>{
   const t=setup();await expect(openSharedEditor({...t.options,initial:{kind:"resume"}})).rejects.toMatchObject({code:"session_missing"});

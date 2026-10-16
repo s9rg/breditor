@@ -1,4 +1,5 @@
 //! Thin Wasm ownership boundary over the canonical shared rich editor.
+mod typing;
 use crate::{
     Error,
     rich_replica::{

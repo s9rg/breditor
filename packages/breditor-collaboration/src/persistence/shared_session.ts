@@ -1,16 +1,18 @@
 import {SharedRichEditor,SharedEditorError} from "../core.js";
-import type {SharedEditorOptions,SharedRustOwner} from "../types.js";
+import type {SharedEditorOptions,SharedRustOwner,SharedHistoryPolicy} from "../types.js";
 import {SharedWriterLease} from "./writer_lease.js";
-import {checkCheckpoint,openSessionDatabase,readCheckpoint,writeCheckpoint} from "./session_database.js";
+import {checkCheckpoint,openSessionDatabase,readSessionCheckpoint,writeSessionCheckpoint} from "./session_database.js";
 
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
  /** Explicit journal language. Omitted/1 preserves the original model 11/journal 12 storage guard. */
  richLanguage?:1|2;
+ /** Requested immutable history mode; an explicit opt-in may upgrade a legacy stored journal. */
+ history?:SharedHistoryPolicy;
  /** Called only while this origin holds the exclusive causal writer lock. */
  create:()=>SharedRustOwner|Promise<SharedRustOwner>;
  /** Must invoke the matching Rust replay admission, never import a JSON AST in place of history. */
- restore:(checkpoint:string)=>SharedRustOwner|Promise<SharedRustOwner>;
+ restore:(checkpoint:string,history:SharedHistoryPolicy)=>SharedRustOwner|Promise<SharedRustOwner>;
  editor?:SharedEditorOptions;onState?:(state:SharedSaveState)=>void;onError?:(error:unknown)=>void;
 }
 export interface SharedSaveState {status:"saved"|"pending"|"failed"|"closed";revision:string|null;error:string|null}
@@ -34,14 +36,18 @@ export class SharedPersistentSession {
  static async open(options:SharedSessionOptions):Promise<SharedPersistentSession>{
   options={...options};
   if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new SharedEditorError("session_identity","Expected richLanguage 1 or 2");
+  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new SharedEditorError("session_history","Expected history explicit or typing-v1");
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
   const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor|undefined;
   try{
-   db=await openSessionDatabase(options.database);const checkpoint=await readCheckpoint(db,[options.room,options.writer]);
-   if(checkpoint!==null)checkCheckpoint(checkpoint,options.room,options.writer,options.richLanguage);
-   core=new SharedRichEditor(await(checkpoint===null?options.create():options.restore(checkpoint)),options.editor);
+   db=await openSessionDatabase(options.database);const checkpoint=await readSessionCheckpoint(db,[options.room,options.writer]),history=options.history??"explicit";
+   if(checkpoint!==null){checkCheckpoint(checkpoint.json,options.room,options.writer,options.richLanguage,checkpoint.history);if(checkpoint.history==="typing-v1"&&history!=="typing-v1")throw new SharedEditorError("session_history","Grouped recovery requires explicit typing-v1 history");}
+   core=new SharedRichEditor(await(checkpoint===null?options.create():options.restore(checkpoint.json,checkpoint.history)),options.editor);
    if(core.richLanguageVersion()!==(options.richLanguage??1))throw new SharedEditorError("session_identity","Shared owner language does not match the explicitly selected session");
-   checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage);
+   if(history==="typing-v1")core.enableTypingHistory();
+   else if(core.view().historyGrouping!==undefined)throw new SharedEditorError("session_history","Explicit history cannot flatten a grouped owner");
+   core.sealHistoryPolicy(history);
+   checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history);
    const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options);session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core?.dispose();db?.close();await lease.close();throw error;}
@@ -53,7 +59,7 @@ export class SharedPersistentSession {
  state():SharedSaveState{return{status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",revision:this.#savedRevision,error:this.#failure?String(this.#failure):null};}
  /** Capture a complete exact journal synchronously; coalesce only superseded complete checkpoints. */
  save():void{
-  this.#live();const json=this.core.checkpointJson(),revision=this.core.view().revision;checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage);
+  this.#live();const json=this.core.checkpointJson(),revision=this.core.view().revision;checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history);
   if(json===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
   this.#pending={json,revision};this.#failure=undefined;this.#notify();this.#start();
  }
@@ -63,7 +69,7 @@ export class SharedPersistentSession {
  }
  async #drain():Promise<void>{
   while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
-   try{await writeCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json);}
+   try{await writeSessionCheckpoint(this.#db,[this.#options.room,this.#options.writer],next.json,this.#options.history??"explicit");}
    catch(error){this.#pending??=next;throw error;}
    this.#saved=next.json;this.#savedRevision=next.revision;
   }

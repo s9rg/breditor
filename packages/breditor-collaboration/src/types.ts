@@ -3,6 +3,8 @@ import type {SharedProtocolBinding} from "./protocol.js";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
 export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string}};
+/** Explicit immutable owner policy; the old per-dispatch default is unchanged. */
+export type SharedHistoryPolicy="explicit"|"typing-v1";
 type Op<K extends string,D>=Readonly<{kind:K;data:D}>;
 type Position={parent:string|null;before:string|null};
 type ListStyle={kind:"bullet"}|{kind:"ordered";start:number};
@@ -82,6 +84,12 @@ export interface SharedRustOwner {
  patch_inline_format_properties?(observation:unknown,input:string):boolean;
  read_only_version?():string;
  set_read_only?(observation:unknown,value:boolean):boolean;
+ typing_history_version?():string;
+ enable_typing_history?(observation:unknown):boolean;
+ close_typing_group?(observation:unknown):boolean;
+ insert_typing_text?(observation:unknown,input:string):boolean;
+ delete_typing_range?(observation:unknown,input:string):boolean;
+ typing_checkpoint?():string;
  descriptor_json():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;

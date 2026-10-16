@@ -19,3 +19,7 @@ test("editing partition is deterministic and complete beyond one bounded batch",
 test("an ambiguous or incomplete SDK matrix inventory rejects instead of hiding cases",()=>{
  for(const value of [[],["x.spec.mjs"],["shared-structural-network.spec.mjs"],["../x.spec.mjs"],["shared-structural-network.spec.mjs","x.spec.mjs","x.spec.mjs"]])assert.throws(()=>editorBrowserRuns(value));
 });
+test("shared typing matrices keep their own process budget without dropping other editing coverage",()=>{
+ const names=["shared-typing-history.spec.mjs","shared-typing-boundaries.spec.mjs","a.spec.mjs","b.spec.mjs","shared-structural-network.spec.mjs"];
+ assert.deepEqual(editorBrowserRuns(names),[["a.spec.mjs","b.spec.mjs"],["shared-typing-boundaries.spec.mjs"],["shared-typing-history.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});

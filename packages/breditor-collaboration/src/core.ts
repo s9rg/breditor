@@ -10,7 +10,7 @@ const owners=new WeakSet<SharedRustOwner>();
 export class SharedRichEditor {
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
  #listeners=new Set<(event:SharedPublication)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
- #options:SharedEditorOptions;#maxFrames:number;#maxBytes:number;
+ #options:SharedEditorOptions;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
  constructor(raw:SharedRustOwner,options:SharedEditorOptions={}){
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
   this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
@@ -43,7 +43,16 @@ export class SharedRichEditor {
  patchInlineFormatProperties(request:{format:FormatLiteral;properties:readonly string[];targets:readonly {block:string;offset:number;length:number}[]},revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!raw.patch_inline_format_properties)throw new SharedEditorError("property_patch_unavailable","Use a matching Rust owner with inline property-patch support");return raw.patch_inline_format_properties(o,JSON.stringify({formatsJson:JSON.stringify([request.format]),properties:request.properties,targets:request.targets}));},revision);}
  caretFormats():readonly FormatLiteral[]{const raw=this.#live();if(!raw.caret_formats_json)throw new SharedEditorError("caret_formats_unavailable","Use a matching Rust owner with caret-format reads");return JSON.parse(raw.caret_formats_json(this.#observation)) as FormatLiteral[];}
  inlineFormatState(kind:string):RichInlineFormatStateRead{const raw=this.#live();if(!raw.inline_format_state_json)throw new SharedEditorError("inline_state_unavailable","Use a matching Rust owner with formatting-state support");if(typeof kind!=="string"||kind.length>128)throw new SharedEditorError("inline_state_kind","Expected a bounded declared format kind");return JSON.parse(raw.inline_format_state_json(this.#observation,kind)) as RichInlineFormatStateRead;}
- checkpointJson():string{return this.#live().checkpoint();}
+ supportsTypingHistory():boolean{const raw=this.#live();return typeof raw.typing_history_version==="function"&&raw.typing_history_version()==="1"&&[raw.enable_typing_history,raw.close_typing_group,raw.insert_typing_text,raw.delete_typing_range,raw.typing_checkpoint].every(method=>typeof method==="function");}
+ #typingOwner():SharedRustOwner{if(!this.supportsTypingHistory())throw new SharedEditorError("typing_history_unavailable","Use a matching native shared typing-history owner");return this.#live();}
+ enableTypingHistory(revision?:string):boolean{return this.#run("local",(_raw,o)=>{if(this.#fixedHistory==="explicit")throw new SharedEditorError("history_policy","This durable session's history policy is immutable");return this.#typingOwner().enable_typing_history!(o);},revision,false);}
+ /** An owning durable session seals its selected policy after native admission, not its content. */
+ sealHistoryPolicy(policy:"explicit"|"typing-v1"):void{this.#live();if((policy!=="explicit"&&policy!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==policy)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==policy)throw new SharedEditorError("history_policy","History policy does not match the native owner");this.#fixedHistory=policy;}
+ closeTypingGroup(revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().close_typing_group!(o),revision,false);}
+ /** Named user input only; programmatic type/paste/composition remain explicit. */
+ typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
+ deleteUserRange(selection:Extract<RichSelection,{kind:"text"}>,direction:"backward"|"forward",clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().delete_typing_range!(o,JSON.stringify({selection,direction,clockMs})),revision);}
+ checkpointJson():string{return this.view().historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
  /** Separate read capability; neither method publishes, imports content or changes local UI. */
  supportsPresence():boolean{const raw=this.#live();return typeof raw.presence_frame==="function"&&typeof raw.resolve_presence==="function";}

@@ -10,11 +10,16 @@ import type {SharedPersistentSession} from "@breditor/collaboration";
 (globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
 let root:Root,container:HTMLDivElement;
 const options={database:"react-test",room:"room",writer:"101"};
-const editor=()=>({close:vi.fn(async()=>{}),discardAndClose:vi.fn(async()=>{}),focus:vi.fn(),checkpointJson:()=>"exact causal journal",execute:vi.fn(),setReadOnly:vi.fn(()=>true),flush:vi.fn(async()=>{})} as unknown as SharedEditorSession);
+const editor=()=>({close:vi.fn(async()=>{}),discardAndClose:vi.fn(async()=>{}),focus:vi.fn(),checkpointJson:()=>"exact causal journal",execute:vi.fn(),setReadOnly:vi.fn(()=>true),closeTypingGroup:vi.fn(()=>true),flush:vi.fn(async()=>{})} as unknown as SharedEditorSession);
 async function settle(){await act(async()=>{for(let i=0;i<12;i++)await Promise.resolve();});}
 beforeEach(()=>{mocks.open.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
 afterEach(async()=>{await act(async()=>root.unmount());await settle();container.remove();});
 describe("durable React writer ownership",()=>{
+ it("history policy is initial owner configuration while the imperative boundary reaches the current owner",async()=>{
+  const owned=editor(),ref=createRef<BreditorSharedEditorHandle>();mocks.open.mockResolvedValue(owned);
+  await act(async()=>root.render(<BreditorSharedEditor ref={ref} initialOptions={{...options,history:"typing-v1"}} onCloseError={()=>{}}/>));await settle();expect(mocks.open.mock.calls[0]![0].history).toBe("typing-v1");expect(ref.current?.closeTypingGroup("9")).toBe(true);expect(owned.closeTypingGroup).toHaveBeenCalledWith("9");
+  await act(async()=>root.render(<BreditorSharedEditor ref={ref} initialOptions={{...options,history:"explicit"}} onCloseError={()=>{}}/>));await settle();expect(mocks.open).toHaveBeenCalledOnce();expect(ref.current?.getEditor()).toBe(owned);
+ });
  it("live readOnly updates preserve one durable writer and allow imperative policy control",async()=>{
   const owned=editor(),ref=createRef<BreditorSharedEditorHandle>();mocks.open.mockResolvedValue(owned);
   await act(async()=>root.render(<BreditorSharedEditor ref={ref} readOnly={true} initialOptions={options} onCloseError={()=>{}}/>));await settle();expect(mocks.open.mock.calls[0]![0].readOnly).toBe(true);expect(owned.setReadOnly).toHaveBeenCalledWith(true);

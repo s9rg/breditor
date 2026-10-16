@@ -1,4 +1,5 @@
 //! Application-configured shared factory; the fixed fixture probe remains a separate path.
+mod restore_typing;
 use crate::{rich_replica::SharedRichProfile as Profile, rich_replica_wasm::RichReplicaProbe};
 use wasm_bindgen::prelude::*;
 fn error(value: impl std::fmt::Display) -> JsValue {

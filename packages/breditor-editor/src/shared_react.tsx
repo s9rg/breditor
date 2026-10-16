@@ -22,6 +22,7 @@ export interface BreditorSharedEditorHandle {
  checkpointJson():string|null;
  execute(request:SharedDispatch,focus?:boolean,revision?:string):void;
  setReadOnly(value:boolean,revision?:string):boolean|null;
+ closeTypingGroup(revision?:string):boolean|null;
  flush():Promise<void>|null;
  retry():void;
 }
@@ -37,6 +38,7 @@ export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,Breditor
   focus:()=>current.current?.focus(),checkpointJson:()=>current.current?.checkpointJson()??recovery.current?.checkpointJson()??null,
   execute:(request,focus,revision)=>current.current?.execute(request,focus,revision),
   setReadOnly:(value,revision)=>current.current?.setReadOnly(value,revision)??null,
+  closeTypingGroup:revision=>current.current?.closeTypingGroup(revision)??null,
   flush:()=>current.current?.flush()??null,retry:()=>{if(current.current===null)setAttempt(value=>value+1);}
  }),[]);
  useEffect(()=>{if(props.readOnly===undefined||!current.current)return;try{current.current.setReadOnly(props.readOnly);}catch(error){try{callbacks.current.onError?.(error);}catch{/* Reporting cannot rewind policy. */}}},[props.readOnly]);

@@ -88,8 +88,8 @@ ranges remain distinct from the visible caret.
 Pass `history: 'typing-v1'` to `openLocalEditor` or React `initialOptions` for native
 typing/deletion bursts. Omitted history or `'explicit'` keeps the original
 per-dispatch behavior. Matching Wasm is required; there is no JavaScript history
-fallback. Local V1 and structural V2 both support the mode. Shared natural history
-is not implemented yet.
+fallback. Local V1 and structural V2 both support the mode. Shared sessions have
+the separate opt-in policy described below.
 
 The mode groups adjacent same-context user input within 750 ms, up to 64 original
 steps. Paste, composition, replacement, formatting and structural edits remain
@@ -103,7 +103,7 @@ The original `kind: 'checkpoint'` factory remains strict; combining that origina
 recovery with `history: 'typing-v1'` explicitly enables grouping for future input.
 Recovery preserves grouped Undo/Redo but starts a fresh typing burst. An explicit
 history option cannot discard a grouped checkpoint's partition. See
-`docs/RICH_TYPING_HISTORY.md` for the native contract and remaining shared work.
+`docs/RICH_TYPING_HISTORY.md` for the native contract and qualification limits.
 
 ### Explicit structural V2 candidate
 
@@ -234,6 +234,17 @@ missing history rejects without seeding a fresh writer or replacing saved state.
 Rust admits those values using the selected original shared profile. Recovery
 does not replace a mismatched journal with the seed or import an AST in place of
 history. The fresh empty editor starts with an admitted caret.
+
+Pass `history: 'typing-v1'` to opt into native shared typing/deletion bursts in
+either language, including React initial options. Default sessions stay explicit.
+`editor.closeTypingGroup(revision?)` and the React handle end a burst without
+editing content. Shared checkpoints then use a separate family; first-open
+recovery uses `{kind: 'typingCheckpoint', checkpointJson}`. Preserve the explicit
+history option on durable reopening. A default opening rejects a grouped stored
+record without overwriting it. Explicit opt-in can atomically upgrade an original
+stored journal, preserving its old units and Redo. Failed retirement recovery
+exposes `historyPolicy()` so hosts can retain the declared family with its bytes.
+See `docs/RICH_TYPING_HISTORY.md` for exact recovery, input and timing limits.
 
 `core` is borrowed for existing relay/presence integration. Pass `editor.flush`
 through a closure as a relay's `persistLocal`; keep credentials and asset bytes
