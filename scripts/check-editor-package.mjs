@@ -20,7 +20,7 @@ run(resolve(root,"node_modules/.bin/tsc"),[...types,"types.ts"],minimal);
 run("npm",[...install,...paths],sharedOnly);run(process.execPath,["shared-only.mjs"],sharedOnly);
 run(resolve(root,"node_modules/.bin/tsc"),[...types,"types-shared.ts"],sharedOnly);
 run("npm",[...install,...paths,"react@19.2.8","react-dom@19.2.8","@types/react@19.2.18"],consumer);
-run(resolve(root,"node_modules/.bin/tsc"),[...types,"types.ts","types-full.ts","types-selection.ts","types-layout.ts"],consumer);run(process.execPath,["full-runtime.mjs"],consumer);
+run(resolve(root,"node_modules/.bin/tsc"),[...types,"types.ts","types-full.ts","types-selection.ts","types-layout.ts","types-document.ts"],consumer);run(process.execPath,["full-runtime.mjs"],consumer);
 run(process.execPath,["layout-runtime.mjs"],consumer);
 run(resolve(root,"node_modules/.bin/tsc"),[...types,"--lib","ES2022,DOM,ESNext.Disposable","types-wasm.ts"],consumer);
 run(resolve(root,"node_modules/.bin/vite"),["build","--config","vite.config.mjs"],consumer);

@@ -2,6 +2,7 @@ import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedE
 import type {RichInlineFormatStateRead} from "./types.js";
 import type {SharedWriterGroupsV2} from "./types.js";
 import type {RichClipboardTextProjection} from "./types.js";
+import type {SharedSelectionPolicy,SharedEditorView} from "./types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 export class SharedEditorError extends Error {
@@ -9,30 +10,43 @@ export class SharedEditorError extends Error {
 }
 interface Pending {frame:string;bytes:number;resolve:(changed:boolean)=>void;reject:(reason:unknown)=>void;cleanup:()=>void}
 const owners=new WeakSet<SharedRustOwner>();
+/** Explicit typed entry point. Original constructors and durable sessions do not infer this policy. */
+export function createSharedDocumentEditor(raw:SharedRustOwner,options:Omit<SharedEditorOptions<"document-v1">,"selectionEditing">={}):SharedRichEditor<"document-v1">{
+ return new SharedRichEditor<"document-v1">(raw,{...options,selectionEditing:"document-v1"});
+}
 /** Owns the exact Rust observation and bounded remote queue; no replicated JS document exists. */
-export class SharedRichEditor {
+export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
- #listeners=new Set<(event:SharedPublication)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
- #options:SharedEditorOptions;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
+ #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
+ #options:SharedEditorOptions<P>;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
+ readonly #selectionPolicy:SharedSelectionPolicy;
  #fixedRanges:"original"|"general-v1"|undefined;
- constructor(raw:SharedRustOwner,options:SharedEditorOptions={}){
+ constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
+  const options=(args[0]??{}) as SharedEditorOptions<P>;
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
   this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
-  this.#raw=raw;
+  this.#raw=raw;this.#selectionPolicy=options.selectionEditing??"original";
   try{
+   if(this.#selectionPolicy!=="original"&&this.#selectionPolicy!=="document-v1")throw new SharedEditorError("selection_policy","Expected selectionEditing original or document-v1");
    if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");
    if(typeof raw.descriptor_json!=="function")throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");
    this.#descriptor=raw.descriptor_json();const descriptor=JSON.parse(this.#descriptor) as SharedOwnerDescriptor;
    if(descriptor.format!=="breditor/shared-rich-owner"||sharedProtocolLanguage(descriptor)===undefined)throw new SharedEditorError("owner_abi","Unsupported shared Rust ABI/model/history revision");
    if(this.richLanguageVersion()===3&&!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");
-   this.#observation=raw.observe();this.#view=this.#observation.view_json();const view=this.view();
-   if(view.format!=="breditor/shared-rich-view"||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");
+   if(this.#selectionPolicy==="document-v1"){
+    if(!this.supportsDocumentSelection())throw new SharedEditorError("document_selection_unavailable","Use complete matching native document-selection capabilities");
+    if(!raw.document_selection_enabled!()){const initial=raw.observe();try{raw.enable_document_selection!(initial);}finally{initial.free();}}
+   }else if(raw.document_selection_enabled?.()===true)throw new SharedEditorError("selection_policy","Document-family recovery requires explicit selectionEditing document-v1");
+   this.#observation=this.#observe(raw);this.#view=this.#observation.view_json();const view=this.view();
+   if(view.format!==(this.#selectionPolicy==="document-v1"?"breditor/shared-document-view":"breditor/shared-rich-view")||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching explicitly selected shared view family");
+   if(this.#selectionPolicy==="document-v1"&&(!("selectionEditing" in view)||view.selectionEditing!=="document-v1"))throw new SharedEditorError("selection_policy","Native document view did not declare the selected scope policy");
    if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
    owners.add(raw);
   }
   catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
  }
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
+ #observe(raw:SharedRustOwner):ReturnType<SharedRustOwner["observe"]>{return this.#selectionPolicy==="document-v1"?raw.observe_document!():raw.observe();}
  #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
  #report(error:unknown):void{try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed content. */}}
  #notify(source:"local"|"remote"):void{for(const listener of [...this.#listeners]){if(!this.#raw)break;try{listener({source,view:this.view()});}catch(error){this.#report(error);}}}
@@ -40,10 +54,19 @@ export class SharedRichEditor {
   this.#check(revision);if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
   if(write&&this.view().readOnly===true)throw new SharedEditorError("read_only","The shared editor is read-only");
   const raw=this.#live(),before=this.#view;this.#publishing=true;
-  try{const result=work(raw,this.#observation);const next=raw.observe(),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#notify(source);return result;}
+  try{const result=work(raw,this.#observation);const next=this.#observe(raw),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#notify(source);return result;}
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
  }
- view():SharedView{this.#live();return JSON.parse(this.#view) as SharedView;}
+ view():SharedEditorView<P>{this.#live();return JSON.parse(this.#view) as SharedEditorView<P>;}
+ /** Immutable for this facade's lifetime; recovery must select the same family explicitly. */
+ selectionPolicy():P{this.#live();return this.#selectionPolicy as P;}
+ supportsDocumentSelection():boolean{const raw=this.#live();return raw.document_selection_version?.()==="1"&&raw.document_typing_version?.()==="1"&&[raw.document_selection_enabled,raw.enable_document_selection,raw.observe_document,raw.document_view_json,raw.select_document,raw.copy_document_clipboard,raw.replace_document_plain_text,raw.replace_document_typing_text,raw.document_checkpoint,raw.document_typing_checkpoint].every(method=>typeof method==="function");}
+ #documentOwner():SharedRustOwner{if(this.#selectionPolicy!=="document-v1"||!this.supportsDocumentSelection())throw new SharedEditorError("selection_policy","Use explicit selectionEditing document-v1 with matching native capabilities");return this.#live();}
+ /** Local scope publication, not shared content; read-only selection remains allowed. */
+ selectDocument(this:SharedRichEditor<"document-v1">,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#documentOwner().select_document!(o),revision,false);}
+ replaceDocumentPlainText(this:SharedRichEditor<"document-v1">,paragraph:string,text:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#documentOwner().replace_document_plain_text!(o,JSON.stringify({paragraph,text})),revision);}
+ replaceDocumentTypingText(this:SharedRichEditor<"document-v1">,paragraph:string,text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#documentOwner().replace_document_typing_text!(o,JSON.stringify({paragraph,text,clockMs})),revision);}
+ copyDocument(this:SharedRichEditor<"document-v1">):ClipboardContent|null{return JSON.parse(this.#documentOwner().copy_document_clipboard!(this.#observation)) as ClipboardContent|null;}
  descriptor():SharedOwnerDescriptor{this.#live();return JSON.parse(this.#descriptor) as SharedOwnerDescriptor;}
  richLanguageVersion():1|2|3{const language=sharedProtocolLanguage(this.descriptor());if(language===undefined)throw new SharedEditorError("owner_abi","Unsupported shared native language");return language;}
  documentJson():string{return this.view().documentJson;}
@@ -100,7 +123,7 @@ export class SharedRichEditor {
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
  deleteUserRange(selection:Extract<RichSelection,{kind:"text"}>,direction:"backward"|"forward",clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().delete_typing_range!(o,JSON.stringify({selection,direction,clockMs})),revision);}
- checkpointJson():string{const view=this.view();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
+ checkpointJson():string{const view=this.view();if(this.#selectionPolicy==="document-v1")return view.historyGrouping==="typing-v1"?this.#documentOwner().document_typing_checkpoint!():this.#documentOwner().document_checkpoint!();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
  /** Separate read capability; neither method publishes, imports content or changes local UI. */
  supportsPresence():boolean{const raw=this.#live();return typeof raw.presence_frame==="function"&&typeof raw.resolve_presence==="function";}
@@ -113,7 +136,7 @@ export class SharedRichEditor {
  writerClockV2(writer:string):SharedWriterClock{const raw=this.#live();if(!this.supportsWriterTransportV2())throw new SharedEditorError("writer_transport_v2_unavailable","Use matching native packing-independent writer transport");if(typeof writer!=="string"||writer.length>20)throw new SharedEditorError("writer_identity","Expected a bounded decimal writer identity");return JSON.parse(raw.writer_clock_v2!(writer)) as SharedWriterClock;}
  writerGroups(after:string,revision?:string):SharedWriterGroups{this.#check(revision);const raw=this.#live();if(!raw.writer_groups)throw new SharedEditorError("writer_transport_unavailable","Use a Rust owner with single-writer transport support");if(typeof after!=="string"||after.length>10)throw new SharedEditorError("writer_counter","Expected a bounded decimal author counter");return JSON.parse(raw.writer_groups(this.#observation,after)) as SharedWriterGroups;}
  writerClock(writer:string):SharedWriterClock{const raw=this.#live();if(!raw.writer_clock)throw new SharedEditorError("writer_transport_unavailable","Use a Rust owner with single-writer transport support");if(typeof writer!=="string"||writer.length>20)throw new SharedEditorError("writer_identity","Expected a bounded decimal writer identity");return JSON.parse(raw.writer_clock(writer)) as SharedWriterClock;}
- subscribe(listener:(event:SharedPublication)=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
+ subscribe(listener:(event:SharedPublication<P>)=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  /** Hold remote publication across input/composition/callback queues. Release is idempotent. */
  holdRemotes():()=>void{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#holds>=128)throw new SharedEditorError("hold_limit","Too many nested remote holds");this.#holds++;let held=true;return()=>{if(!held)return;held=false;this.#holds--;this.#flush();};}
  dispatch(request:SharedDispatch,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.dispatch(o,JSON.stringify(request)),revision);}

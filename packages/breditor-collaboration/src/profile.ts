@@ -32,6 +32,14 @@ export interface SharedRustProfile {
  restore(room:string,journal:string):SharedRustOwner;free():void;
  typing_history_version?():string;restore_typing?(room:string,journal:string):SharedRustOwner;
  general_range_version?():string;restore_general?(room:string,journal:string):SharedRustOwner;restore_general_typing?(room:string,journal:string):SharedRustOwner;
+ document_selection_version?():string;restore_document?(room:string,journal:string):SharedRustOwner;restore_document_typing?(room:string,journal:string):SharedRustOwner;
+}
+/** Explicit document-scope pairing, never inferred from the contents of a saved journal. */
+export function supportsSharedDocumentSelection(profile:SharedRustProfile):boolean{return profile.document_selection_version?.()==="1"&&typeof profile.restore_document==="function"&&typeof profile.restore_document_typing==="function";}
+export function restoreSharedDocumentEditor(profile:SharedRustProfile,room:string,journal:string,history:"explicit"|"typing-v1"="explicit"):SharedRustOwner{
+ if(!supportsSharedDocumentSelection(profile))throw new SharedEditorError("document_selection_unavailable","Use matching native document-selection recovery");
+ if(history!=="explicit"&&history!=="typing-v1")throw new SharedEditorError("history_policy","Expected an explicit history policy");
+ return history==="typing-v1"?profile.restore_document_typing!(room,journal):profile.restore_document!(room,journal);
 }
 /** Explicit pairing; original factories never guess a new general-range save family. */
 export function supportsSharedGeneralRanges(profile:SharedRustProfile):boolean{return typeof profile.general_range_version==="function"&&profile.general_range_version()==="1"&&typeof profile.restore_general==="function"&&typeof profile.restore_general_typing==="function";}

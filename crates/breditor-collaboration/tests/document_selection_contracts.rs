@@ -397,3 +397,45 @@ fn enabling_document_family_preserves_original_and_general_redo_and_is_one_way()
     }
     Ok(())
 }
+
+#[test]
+fn live_receive_keeps_document_scope_and_copies_newly_observed_peer_roots() -> Result {
+    for natural in [false, true] {
+        let (p, mut a) = setup(false)?;
+        let mut b = peer(&p, &a)?;
+        enable(&mut a, natural)?;
+        a.select_document_guarded(&a.observe_document()?)?;
+        let previous = a.observe_document()?;
+        b.apply(vec![Command::InsertBlocks(InsertBlocks {
+            parent: None,
+            before: None,
+            nodes: vec![paragraph("arrived", "PEER")],
+        })])?;
+        let frame = b.update_frame()?;
+        a.receive_frame(&frame)?;
+        assert!(a.document_selected());
+        assert!(a.check(&previous).is_err());
+        let copied = a.copy_document_clipboard_guarded(&a.observe_document()?)?.ok_or("copy")?;
+        assert!(copied.plain_text.contains("PEER"));
+        let exact = save(&a)?;
+        // Repeated identical frame does not discard scope or publish another observation.
+        a.receive_frame(&frame)?;
+        assert_eq!(save(&a)?, exact);
+        let mut restored = restore(&p, &a, &exact)?;
+        assert!(restored.document_selected());
+        assert_eq!(save(&restored)?, exact);
+        let before = a.document_json().to_owned();
+        replace(&mut a, "whole", "Q")?;
+        replace(&mut restored, "whole", "Q")?;
+        assert_eq!(
+            text(a.document_json(), "arrived")?,
+            None,
+            "received roots are now observed and selected"
+        );
+        a.undo()?;
+        restored.undo()?;
+        assert_eq!(a.document_json(), before);
+        assert_eq!(save(&a)?, save(&restored)?);
+    }
+    Ok(())
+}

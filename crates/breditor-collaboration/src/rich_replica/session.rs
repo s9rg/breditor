@@ -948,7 +948,7 @@ impl RichReplica {
             return Ok(());
         }
         let mut candidate = self.staged()?;
-        let previous = candidate.selection()?;
+        let previous = candidate.selection_for_mapping()?;
         candidate.import(&bytes)?;
         candidate.refresh_document()?;
         candidate.journal.ui.normalize(&candidate.doc, &candidate.document, previous.as_ref())?;

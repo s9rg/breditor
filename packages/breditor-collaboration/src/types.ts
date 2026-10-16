@@ -3,6 +3,11 @@ import type {SharedProtocolBinding} from "./protocol.js";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
 export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string}};
+/** Independent explicit scope policy; original view and selection DTOs stay closed. */
+export type SharedSelectionPolicy="original"|"document-v1";
+export type SharedDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
+export type SharedDocumentView=Omit<SharedView,"format"|"selection">&{format:"breditor/shared-document-view";selection:SharedDocumentSelection|null;selectionEditing:"document-v1"};
+export type SharedEditorView<P extends SharedSelectionPolicy="original">=P extends "document-v1"?SharedDocumentView:SharedView;
 /** Explicit immutable owner policy; the old per-dispatch default is unchanged. */
 export type SharedHistoryPolicy="explicit"|"typing-v1";
 /** Independent immutable replay/range policy; old sessions keep original semantics. */
@@ -83,6 +88,11 @@ export interface SharedWriterGroups {format:"breditor/shared-writer-groups";form
 export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVersion"> {formatVersion:2}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
+ document_selection_version?():string;document_typing_version?():string;document_selection_enabled?():boolean;
+ enable_document_selection?(observation:unknown):boolean;observe_document?():ReturnType<SharedRustOwner["observe"]>;
+ document_view_json?():string;select_document?(observation:unknown):boolean;copy_document_clipboard?(observation:unknown):string;
+ replace_document_plain_text?(observation:unknown,input:string):boolean;replace_document_typing_text?(observation:unknown,input:string):boolean;
+ document_checkpoint?():string;document_typing_checkpoint?():string;
  general_range_version?():string;
  general_inline_paste_version?():string;
  general_flow_paste_version?():string;
@@ -146,7 +156,7 @@ export interface SharedRustOwner {
  undo_observed(observation:unknown):boolean;redo_observed(observation:unknown):boolean;
  receive_frame(frame:string):void;update_frame():string;checkpoint():string;free():void;
 }
-export interface SharedPublication {source:"local"|"remote";view:SharedView}
-export interface SharedEditorOptions {maxPendingFrames?:number;maxPendingBytes?:number;onError?:(error:unknown)=>void}
+export interface SharedPublication<P extends SharedSelectionPolicy="original"> {source:"local"|"remote";view:SharedEditorView<P>}
+export interface SharedEditorOptions<P extends SharedSelectionPolicy="original"> {selectionEditing?:P;maxPendingFrames?:number;maxPendingBytes?:number;onError?:(error:unknown)=>void}
 /** Cancel only a queued remote publication; a synchronous admitted Rust commit cannot be rewound. */
 export interface SharedRemoteOptions {signal?:AbortSignal}
