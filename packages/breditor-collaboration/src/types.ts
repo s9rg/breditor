@@ -84,6 +84,8 @@ export interface SharedRustOwner {
  patch_inline_format_properties?(observation:unknown,input:string):boolean;
  read_only_version?():string;
  set_read_only?(observation:unknown,value:boolean):boolean;
+ code_exit_version?():string;
+ exit_code_block?(observation:unknown,paragraph:string):boolean;
  typing_history_version?():string;
  enable_typing_history?(observation:unknown):boolean;
  close_typing_group?(observation:unknown):boolean;

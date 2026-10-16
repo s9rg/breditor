@@ -36,6 +36,8 @@ export interface RichCoreEditor {
   supportsInlinePropertyPatches?():boolean;
   supportsReadOnly?():boolean;
   supportsTypingHistory?():boolean;
+  /** Exact additive native code-exit command; an older owner may omit it. */
+  supportsCodeExit?():boolean;
   enableTypingHistory?(expectedRevision?:string):boolean;
   closeTypingGroup?(expectedRevision?:string):boolean;
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;

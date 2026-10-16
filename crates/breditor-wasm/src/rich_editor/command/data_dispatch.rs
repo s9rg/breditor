@@ -24,6 +24,7 @@ pub(super) fn execute(
         CommandTag::JoinTaskItems => super::join_task_items::execute(owner, observation, input),
         CommandTag::SetCodeBlock => super::set_code_block::execute(owner, observation, input),
         CommandTag::SetCodeLanguage => super::set_code_language::execute(owner, observation, input),
+        CommandTag::ExitCodeBlock => super::exit_code_block::execute(owner, observation, input),
         CommandTag::SetTaskChecked => super::set_task_checked::execute(owner, observation, input),
         CommandTag::WrapBlockquote => super::wrap_blockquote::execute(owner, observation, input),
         CommandTag::UnwrapBlockquote => {

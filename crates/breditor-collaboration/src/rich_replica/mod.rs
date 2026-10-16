@@ -18,6 +18,7 @@ mod column_order;
 mod creation;
 mod delete_typing_range;
 mod enable_typing_history;
+mod exit_code_block;
 mod flow_parent;
 mod history_cursors;
 mod history_keys;

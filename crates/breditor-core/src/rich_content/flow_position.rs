@@ -114,4 +114,28 @@ impl RichDocument {
         let parent = RichFlowParent::at_path(self, &parent)?;
         Some(RichFlowPosition::new(parent, Some(block.clone())))
     }
+
+    /// Resolve the flow gap immediately after one direct child, retaining its next sibling.
+    ///
+    /// A caption, row, cell or item is not a general flow child. This is a
+    /// snapshot-local read, not mutation authority; capture an action against
+    /// the same document and publish under its owner's exact observation.
+    #[must_use]
+    pub fn flow_position_after(&self, block: &BlockId) -> Option<RichFlowPosition> {
+        let path = self.block_path(block)?;
+        let parent_path = path.parent()?;
+        let parent = RichFlowParent::at_path(self, &parent_path)?;
+        let children = self.document().node_at(&parent_path).ok()?.as_element()?.children();
+        let next = usize::try_from(path.last_index()?).ok()?.checked_add(1)?;
+        let before = match children.get(next) {
+            Some(node) => Some(
+                BlockId::try_new(
+                    super::ast_properties::string(node.as_element()?, "block-id").ok()?,
+                )
+                .ok()?,
+            ),
+            None => None,
+        };
+        Some(RichFlowPosition::new(parent, before))
+    }
 }

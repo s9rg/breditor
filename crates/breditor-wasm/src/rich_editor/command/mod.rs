@@ -15,6 +15,7 @@ mod delete_table_column;
 mod delete_table_row;
 mod delete_typing_range;
 mod drafts;
+mod exit_code_block;
 mod exit_task_item;
 mod indent_list_items;
 mod indent_task_items;
@@ -92,6 +93,7 @@ enum CommandTag {
     JoinTaskItems,
     SetCodeBlock,
     SetCodeLanguage,
+    ExitCodeBlock,
     SetTaskChecked,
     WrapBlockquote,
     UnwrapBlockquote,

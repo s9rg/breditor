@@ -9,6 +9,7 @@ mod command;
 mod editor;
 mod enable_typing_history;
 mod error;
+mod exit_code_block;
 mod inline_format_state;
 mod observation;
 mod profile;

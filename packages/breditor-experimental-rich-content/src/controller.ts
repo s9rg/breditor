@@ -161,6 +161,15 @@ export class RichDomEditor {
    return;
   }
   if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(event.key.toLowerCase()))){event.preventDefault();return;}
+  // Native code exit also works with an empty/custom toolbar. A range is not
+  // replaced, and focused native widgets/composition retain their own keys.
+  if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&this.#options.core.richLanguageVersion?.()===2){
+   event.preventDefault();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;
+    if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset||this.#model.nodes.get(s.focus.block)?.type!=="breditor/code-block")return;
+    if(this.#options.core.supportsCodeExit?.()!==true)throw Error("Use a matching native code-exit owner");
+    this.execute({kind:"exitCodeBlock",data:{paragraph:this.#context().allocate("p")}});
+   });return;
+  }
   if(mod&&event.key.toLowerCase()==="a")this.#logicalSelection=false;
   if(mod&&!event.altKey){const key=`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`,control=this.#controls.find(item=>item.control.shortcut===key);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   if(mod&&!event.altKey&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}

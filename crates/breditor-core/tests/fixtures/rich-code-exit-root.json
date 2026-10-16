@@ -1,0 +1,307 @@
+{
+  "kind": "element",
+  "type": "breditor/document",
+  "entityId": null,
+  "properties": {
+    "breditor/document-id": "room"
+  },
+  "children": [
+    {
+      "kind": "element",
+      "type": "breditor/table",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "table-block",
+        "breditor/table-id": "t",
+        "breditor/columns": [
+          {
+            "id": "c",
+            "width": 120
+          }
+        ],
+        "breditor/merges": [],
+        "breditor/retracted-merges": []
+      },
+      "children": [
+        {
+          "kind": "element",
+          "type": "breditor/table-row",
+          "entityId": null,
+          "properties": {
+            "breditor/block-id": "row",
+            "breditor/row-id": "r"
+          },
+          "children": [
+            {
+              "kind": "element",
+              "type": "breditor/table-cell",
+              "entityId": null,
+              "properties": {
+                "breditor/block-id": "cell",
+                "breditor/column-id": "c",
+                "breditor/header": false
+              },
+              "children": [
+                {
+                  "kind": "element",
+                  "type": "breditor/paragraph",
+                  "entityId": null,
+                  "properties": {
+                    "breditor/block-id": "p"
+                  },
+                  "children": [
+                    {
+                      "kind": "text",
+                      "text": "Cell",
+                      "formats": []
+                    }
+                  ]
+                },
+                {
+                  "kind": "element",
+                  "type": "breditor/code-block",
+                  "entityId": null,
+                  "properties": {
+                    "breditor/block-id": "code-cell",
+                    "breditor/language": "rust"
+                  },
+                  "children": [
+                    {
+                      "kind": "text",
+                      "text": "a🙂\r\n\tb",
+                      "formats": []
+                    }
+                  ]
+                },
+                {
+                  "kind": "element",
+                  "type": "breditor/paragraph",
+                  "entityId": null,
+                  "properties": {
+                    "breditor/block-id": "cell-next"
+                  },
+                  "children": [
+                    {
+                      "kind": "text",
+                      "text": "Cell tail",
+                      "formats": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "element",
+      "type": "breditor/code-block",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "code-root",
+        "breditor/language": "rust"
+      },
+      "children": [
+        {
+          "kind": "text",
+          "text": "a🙂\r\n\tb",
+          "formats": []
+        }
+      ]
+    },
+    {
+      "kind": "element",
+      "type": "breditor/horizontal-rule",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "root-next"
+      },
+      "children": []
+    },
+    {
+      "kind": "element",
+      "type": "breditor/blockquote",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "quote"
+      },
+      "children": [
+        {
+          "kind": "element",
+          "type": "breditor/code-block",
+          "entityId": null,
+          "properties": {
+            "breditor/block-id": "code-quote",
+            "breditor/language": "rust"
+          },
+          "children": [
+            {
+              "kind": "text",
+              "text": "a🙂\r\n\tb",
+              "formats": []
+            }
+          ]
+        },
+        {
+          "kind": "element",
+          "type": "breditor/paragraph",
+          "entityId": null,
+          "properties": {
+            "breditor/block-id": "quote-next"
+          },
+          "children": [
+            {
+              "kind": "text",
+              "text": "Quote tail",
+              "formats": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "element",
+      "type": "breditor/bullet-list",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "list"
+      },
+      "children": [
+        {
+          "kind": "element",
+          "type": "breditor/list-item",
+          "entityId": null,
+          "properties": {
+            "breditor/block-id": "item"
+          },
+          "children": [
+            {
+              "kind": "element",
+              "type": "breditor/paragraph",
+              "entityId": null,
+              "properties": {
+                "breditor/block-id": "item-head"
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "text": "List head",
+                  "formats": []
+                }
+              ]
+            },
+            {
+              "kind": "element",
+              "type": "breditor/code-block",
+              "entityId": null,
+              "properties": {
+                "breditor/block-id": "code-list",
+                "breditor/language": "rust"
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "text": "a🙂\r\n\tb",
+                  "formats": []
+                }
+              ]
+            },
+            {
+              "kind": "element",
+              "type": "breditor/paragraph",
+              "entityId": null,
+              "properties": {
+                "breditor/block-id": "list-next"
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "text": "List tail",
+                  "formats": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "element",
+      "type": "breditor/task-list",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "tasks"
+      },
+      "children": [
+        {
+          "kind": "element",
+          "type": "breditor/task-item",
+          "entityId": null,
+          "properties": {
+            "breditor/block-id": "task",
+            "breditor/checked": true
+          },
+          "children": [
+            {
+              "kind": "element",
+              "type": "breditor/paragraph",
+              "entityId": null,
+              "properties": {
+                "breditor/block-id": "task-head"
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "text": "Task head",
+                  "formats": []
+                }
+              ]
+            },
+            {
+              "kind": "element",
+              "type": "breditor/code-block",
+              "entityId": null,
+              "properties": {
+                "breditor/block-id": "code-task",
+                "breditor/language": "rust"
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "text": "a🙂\r\n\tb",
+                  "formats": []
+                }
+              ]
+            },
+            {
+              "kind": "element",
+              "type": "breditor/paragraph",
+              "entityId": null,
+              "properties": {
+                "breditor/block-id": "task-next"
+              },
+              "children": [
+                {
+                  "kind": "text",
+                  "text": "Task tail",
+                  "formats": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "element",
+      "type": "breditor/code-block",
+      "entityId": null,
+      "properties": {
+        "breditor/block-id": "code-last",
+        "breditor/language": "rust"
+      },
+      "children": []
+    }
+  ]
+}

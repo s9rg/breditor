@@ -119,6 +119,13 @@ export class SharedDomEditor {
    return;
   }
   if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(key))){event.preventDefault();return;}
+  // Independent of toolbar composition; never turn a selected range into code loss.
+  if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&this.#options.core.richLanguageVersion()===2){
+   event.preventDefault();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;
+    if(s?.kind!=="text"||s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset||this.#model.nodes.get(s.focus.block)?.type!=="breditor/code-block")return;
+    this.#perform(c=>{c.core.exitCodeBlock(c.allocate("p"),c.revision);});
+   });return;
+  }
   if(mod&&key==="a")this.#logical=false;
   if(mod&&!event.altKey){const shortcut=`${event.shiftKey?"shift+":""}${key}`,control=this.#controls.find(item=>item.control.shortcut===shortcut);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   if(mod&&!event.altKey&&["z","y","b"].includes(key)){event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{if(key==="b")bold(c);else if(key==="y"||event.shiftKey)c.core.redo(c.revision);else c.core.undo(c.revision);});});return;}

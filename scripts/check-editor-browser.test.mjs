@@ -23,3 +23,12 @@ test("shared typing matrices keep their own process budget without dropping othe
  const names=["shared-typing-history.spec.mjs","shared-typing-boundaries.spec.mjs","a.spec.mjs","b.spec.mjs","shared-structural-network.spec.mjs"];
  assert.deepEqual(editorBrowserRuns(names),[["a.spec.mjs","b.spec.mjs"],["shared-typing-boundaries.spec.mjs"],["shared-typing-history.spec.mjs"],["shared-structural-network.spec.mjs"]]);
 });
+test("code-exit exact-replay checks use a dedicated complete three-engine process",()=>{
+ const names=["code-exit.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"];
+ assert.deepEqual(editorBrowserRuns(names),[["a.spec.mjs"],["code-exit.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});
+test("dynamic SDK imports cannot execute another installed fixture page's bootstrap",()=>{
+ const source=readFileSync(new URL("./fixtures/editor-consumer/vite.config.mjs",import.meta.url),"utf8");
+ assert.ok(source.includes('preserveEntrySignatures:"strict"'));
+ assert.ok(source.includes('strictExecutionOrder:true'));
+});

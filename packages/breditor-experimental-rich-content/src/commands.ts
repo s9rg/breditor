@@ -27,6 +27,8 @@ export type RichCommand =
  |{kind:"exitTaskItem";data:{container:string;item:string;tail:string|null}}
  |{kind:"setCodeBlock";data:{block:string;language:string|null;formatPolicy:"rejectFormatted"|"removeFormats"}}
  |{kind:"setCodeLanguage";data:{block:string;language:string|null}}
+ /** One existing insertion recipe; native Rust derives the same-flow position from the caret. */
+ |{kind:"exitCodeBlock";data:{paragraph:string}}
  |{kind:"setTaskChecked";data:{item:string;checked:boolean}}
  |{kind:"wrapBlockquote";data:{first:string;last:string;wrapper:string}}
  |{kind:"unwrapBlockquote";data:{wrapper:string}}

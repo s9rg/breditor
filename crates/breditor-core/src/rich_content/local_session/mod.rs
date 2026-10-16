@@ -9,6 +9,7 @@ mod dispatch;
 pub(crate) mod durable;
 mod enable_typing_history;
 mod error;
+mod exit_code_block;
 mod history_entry;
 mod history_recipe;
 mod insert_hard_break;
