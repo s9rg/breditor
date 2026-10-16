@@ -401,6 +401,12 @@ without deleting the selection. Shared composition holds remote publication
 until commit or cancellation. Existing same-block composition is unchanged.
 These routing contracts do not qualify physical IME behavior.
 
+The [functional clipboard checkpoint](qualification/2026-10-16-general-clipboard-functional.json)
+retains the tested source, actual release-runtime hashes, focused native/SDK
+results and clean-install artifacts. Its source-facade probe compares local and
+shared documents and exact future history; browser and OS clipboard qualification
+remain separate.
+
 ## Remaining integration
 
 Caption/code structured-paste policy, cross-range paragraph/key transformations,

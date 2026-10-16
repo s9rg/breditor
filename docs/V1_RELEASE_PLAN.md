@@ -416,6 +416,16 @@ original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill
 the workstreams' acceptance conditions.
 
+The [general clipboard functional checkpoint](qualification/2026-10-16-general-clipboard-functional.json)
+adds native partial-structure Copy, inline and structured paste at general prose
+targets, Cut routing and cross-block composition routing. Table shape is retained
+with unselected cells empty. Focused SDK checks pass 159 cases; actual paired
+Wasm passes 80 equal-document comparisons, 32 exact restores and 128 future
+history comparisons, and clean local/shared/React consumers build. Caption/code
+structured paste, cross-range Enter, whole-document selection, transport V2 and
+external interchange remain functional work. Broad browser qualification follows
+feature completion under the current priority.
+
 The combined editor implements nested lists, tables with rich cell bodies and
 grid operations, block raster images, durable offline journals/uploads,
 selective Undo/Redo, authenticated peer presence and a reference relay. Its

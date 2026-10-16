@@ -1,0 +1,138 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "sourceCommit": "f95fda4a2fded6fa43590a109ae4b019b22de2fa",
+  "scope": "Native general Copy, Cut routing, inline and structured general paste, cross-block composition routing; functionality-first checkpoint, not release qualification.",
+  "userDecisions": {
+    "partialTableCopy": "Preserve table shape; unselected cells empty",
+    "priority": "Functional implementation with focused checks first; broad browser/accessibility qualification later"
+  },
+  "native": {
+    "coreInlineTests": 4,
+    "coreCaptureTests": 5,
+    "directionalCaptureCorpus": "At least 1000 directional captures, exact selected UTF-16 and byte-identical original supported outputs",
+    "wasmClipboardTests": 5,
+    "sharedCopyInlineTests": 5,
+    "sharedFlowTests": 3,
+    "originalSharedClipboardTests": 14,
+    "strictFirstPartyClippy": true,
+    "existingVendoredWarning": "Pinned Loro HasIdSpan unused import remains unchanged"
+  },
+  "sdk": {
+    "tests": 159,
+    "testFiles": 22,
+    "typesPassed": true,
+    "runtimeSurfaceTests": 11,
+    "crossRangeComposition": "Synthetic routing tests: final text once; cancellation does not delete; same-block behavior unchanged"
+  },
+  "releaseRuntimeProbe": {
+    "format": "breditor/general-clipboard-functional-probe",
+    "formatVersion": 1,
+    "localWasmSha256": "33af6ad42deca2d761218055e9cb0746261d267dbcfa9503f95b2dc6d5b6c744",
+    "sharedWasmSha256": "30b4f517693a2b95a94fb54331312778f2ff56d67f75b4f37618b17a2add9552",
+    "trials": 16,
+    "exactLocalSharedDocuments": 80,
+    "exactRestores": 32,
+    "exactFutureCheckpoints": 128,
+    "originalFamilyRefusals": 16,
+    "partialTableShapeAndNoOutsideContent": true,
+    "passed": true,
+    "scope": "Native rich Copy, inline/flow paste and exact local/shared explicit/natural history using actual paired release Wasm; not installed/browser/OS clipboard, caption/code flow-paste or full release acceptance."
+  },
+  "packaging": {
+    "cleanMinimalSharedOnlyReactConsumers": true,
+    "productionBuild": true,
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RqU2VG/consumer",
+    "defaultBrowserArchiveUnchanged": true
+  },
+  "remaining": [
+    "Caption/code rich-flow insertion policy and integration",
+    "Atomic cross-range paragraph Enter and whole-document selection",
+    "Collaboration transport V2 Wasm/SDK/reference-relay wiring",
+    "Sanitized HTML/Markdown and Word/Docs/Excel interchange with explicit losses",
+    "Final integrated installed-browser/OS clipboard/reliability/accessibility/performance/release qualification"
+  ],
+  "readiness": {
+    "promotedRows": [],
+    "goalComplete": false,
+    "releaseReady": false
+  },
+  "artifacts": [
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-core-final-tests.log",
+      "bytes": 1365,
+      "sha256": "074e4c15b8bc10969f3f5264d1ee846521e1b46d7bce468d75c2036405fd6893"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-capture-tests.log",
+      "bytes": 867,
+      "sha256": "c202acb49d6bf631c90836ba5471b633e93cbc43c27a79ace8a65c37c0788287"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-wasm-tests.log",
+      "bytes": 832,
+      "sha256": "cf4e808c7d707bdc96192f72c43429e3e49f4805141d8312ac2e3ecd1d5c2946"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-shared-tests.log",
+      "bytes": 1632,
+      "sha256": "0369f02a6a930aabaf84a37c80a045942fa5d5159bdc440ea6d4f5f7f7abec2d"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-flow-shared-tests.log",
+      "bytes": 1259,
+      "sha256": "9889b3e58fe5068a91da8923bddc9b831ff7becbf9d96b0c04b6fb386b82997b"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-original-shared-tests.log",
+      "bytes": 2153,
+      "sha256": "0eafdd9e61a1bd9eee51c7f1c77cf44874eb380a5d45b19531b74c9746e6bc48"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-sdk-tests.log",
+      "bytes": 619,
+      "sha256": "4ef8a3dbb652a9757a774bd7c04db1509f22fc768a303c52178337c0e924fd3d"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-local-clippy.log",
+      "bytes": 239,
+      "sha256": "a7ce8b7cc4cce8049d14675f18bc6643231bae58d3ec75daa2a83e76009fc0f2"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-shared-clippy.log",
+      "bytes": 702,
+      "sha256": "ffc69e9a42794fad37180190976379d8f286b52af95585bc19d704f70ddb2b80"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-package-functional.log",
+      "bytes": 10087,
+      "sha256": "76d53a7474f56cc6e43b69fc29024b11533dda2f8c4235736ff2bc30ffff4128"
+    },
+    {
+      "path": "target/block-layout-shared-qualification/general-clipboard-release-functional.json",
+      "bytes": 688,
+      "sha256": "ffd0924e08f5c99dab52ed8aa698c74492f1ec7b79045d9f4e72506195394595"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RqU2VG/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "bytes": 327732,
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RqU2VG/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "bytes": 1344525,
+      "sha256": "cbf0335f9f0e7ca7cd6faa485705d1809efdcff58427c3eb4fae14d9683d021c"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RqU2VG/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "bytes": 2577092,
+      "sha256": "c084677c35e73639e77eb2ac270fbc817f78a48cd59141f2ff0efcd575e532d6"
+    },
+    {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-RqU2VG/archives/breditor-editor-0.3.0-alpha.22.tgz",
+      "bytes": 24230,
+      "sha256": "a5fa08ecd099039d1293b6e5bfd52a342ac3424b0d64e9092f00cc1e3766da2b"
+    }
+  ]
+}
