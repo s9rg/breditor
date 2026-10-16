@@ -111,8 +111,10 @@ neither owner silently enlarges a budget or commits a prefix.
 Coverage does not change browser selection projection. A native text range uses
 AST order; a rendered merged cell can display its retained source bodies in a
 different order. The browser's existing cross-cell drag still becomes a Grid
-selection. General visual-order ranges, document-wide Select All mutations,
-cross-container destructive replacement and gap/drop positions remain separate
+selection. [Native general range replacement](RICH_GENERAL_RANGES.md) now uses
+coverage to preserve partial structures under one local action; its shared and
+browser integration remains unfinished. General visual-order ranges,
+document-wide Select All mutations and gap/drop positions remain separate
 contracts. Whole-document coverage alone implements none of those mutations.
 
 ## Verification

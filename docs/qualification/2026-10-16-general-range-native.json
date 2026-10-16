@@ -1,0 +1,95 @@
+{
+  "format": "breditor/general-range-native-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "2cfb6177b8cb30691327e452910ff61d2e75ca6d",
+  "previousCheckpoint": "304d39022770d420fe981e9cd935088ff2852a46",
+  "status": "native-foundation-complete-shared-and-browser-integration-incomplete",
+  "publication": "Local Git checkpoints only. No push, tag, package publication or deployment.",
+  "approvedDecision": {
+    "answer": "Yes—preserve partially selected structures",
+    "contract": "Preserve partial tables/images and remove only selected content inside them; remove whole enclosed atoms and insert at the logical beginning. Existing legal range joins retain their exact behavior."
+  },
+  "contracts": {
+    "selection": "Existing directional AST-order text ranges, not a new selection kind or visual-order interpretation. Only the original unsupported-flow result selects the new protected-boundary planner.",
+    "structure": "Distinct boundary blocks retain identity, kind, layout and unselected prefix/suffix. Partial tables retain every axis, header, merge and source-cell identity. Partial images retain their assets/properties. Partial item tails and task completion survive; required heads/bodies use native fresh-paragraph requirements.",
+    "identity": "Caller supplies exactly one durably fresh ID per requested paragraph. The core rejects duplicates, wrong counts and any source-ID reuse, including removed IDs. Historical freshness beyond the current source remains the host's obligation.",
+    "admission": "One final schema/limit admission, existing transaction work ceilings, exact source proof, scalar-aligned UTF-16 and atomic late refusal. Styled insertion into code rejects without style loss. New planner traversal/materialization is iterative; existing whole-engine recursion and limits are unchanged.",
+    "history": "One guarded local action with exact inverse, multiple witnessed surviving-text maps and domain-aware removed-position recovery. Original local explicit/natural codecs store their existing guarded rewrite recipe. No schema, selection, checkpoint or journal version changes. The runtime root splice is not shared mutation authority.",
+    "noOp": "Collapsed empty insertion preserves affinity, the same observation and Redo. Read-only policy still guards mutation requests."
+  },
+  "native": {
+    "environment": "CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_TARGET_DIR=target/collaboration-native",
+    "rootCommand": "cargo test --workspace --all-features --locked --offline",
+    "rootPassed": 2453,
+    "rootSuiteFooters": 151,
+    "newIntegrationTestsPassed": 12,
+    "newDeepPlannerUnitPassed": 1,
+    "fixtureTextBlocks": 21,
+    "allPairDirectionalDeleteAndInsertScenarios": 840,
+    "deepPlannerNestedQuoteCount": 160,
+    "deepPlannerConfiguredDepthLimit": 200,
+    "canonicalSharedRegressionCommand": "cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline",
+    "canonicalSharedRegressionPassed": 321,
+    "canonicalSharedSuiteFootersIncludingEmptyRustdoc": 27,
+    "strictWorkspaceAllTargetAllFeatureClippy": true,
+    "strictLocalWasmTargetClippy": true,
+    "wasmClippyScope": "wasm32-unknown-unknown dev check, not a new packaged runtime or optimized release qualification",
+    "coreRustdocWarningsDenied": true,
+    "namedFirstPartyFormatCheck": true,
+    "ordinaryWorkspaceWithoutOptInFeaturesCompiles": true
+  },
+  "earlierRuntimeRecovery": {
+    "generator": "cargo run -p breditor-core --features experimental-rich-content --example general_range_checkpoint_probe --locked --offline",
+    "probe": "scripts/probe-general-range-checkpoint-compatibility.mjs",
+    "earlierRuntimeQualification": "docs/qualification/2026-10-16-block-layout-visual-relay.json",
+    "earlierLocalWasmSha256": "fdbd9a1353cb0c5f05c2f6cb34d09c072210041b715bab520f7cbd4ba48d5231",
+    "actualEarlierRuntimeRestores": 12,
+    "exactFutureHistoryComparisons": 48,
+    "families": ["rich-local-session", "rich-typing-session"],
+    "scope": "Three protected-boundary cases, both directions, both local history families, then Undo/Redo/Undo/Redo. The earlier binary recovers saved history; it does not gain a new editing command."
+  },
+  "defaultRegression": {
+    "command": "npm test",
+    "browserUnitsPassed": 2203,
+    "reactUnitsPassed": 57,
+    "highlightUnitsPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 377,
+    "existingOptInSkips": 3,
+    "subsequentReadinessGuardTestsPassed": 25
+  },
+  "evidenceDirectory": "target/block-layout-shared-qualification",
+  "artifacts": [
+    {"name":"general-range-final-native.log","sha256":"0c423fb21661cb2d6e7057d84a048b3da85345cc2ff5844a0ae7d3ff44522fa2"},
+    {"name":"general-range-canonical-shared-native.log","sha256":"2537b9c78b1cb8ce92602a0be40010262670bc70a8fbc797818fdf83bc3bd9d2"},
+    {"name":"general-range-final-clippy.log","sha256":"b93aad409671ac6f836f4a96932af690ca6755a5ebe77a40f4e1b8557258cd55"},
+    {"name":"general-range-wasm-target-clippy.log","sha256":"f65049c30f98b328e3407e85978f32493076dbcba4a5382abd86615ffe073b56"},
+    {"name":"general-range-rustdoc.log","sha256":"731541549a12e26b026542b04028a365e6071bdca6dc1c0d85f8dbebf5e1fd6b"},
+    {"name":"general-range-default-javascript.log","sha256":"5bd7d24d008abfa9372b61fa5a4f91c00f7aae6caa58e3adf79a86fff84694bf"},
+    {"name":"general-range-old-wasm-compatibility.json","sha256":"a26eef0ad9e710dec96fbe6619acb3e79bf55bd56eddf750c2f8051fb30d249e"},
+    {"name":"general-range-native-checkpoints.json","sha256":"1614db89103653e31f201642f6010f5156fe30be23c170dfbc70843bdced1936"}
+  ],
+  "attempts": [
+    "Initial tests incorrectly used private AST constructors from an integration test. The deep admitted-tree test now lives beside the planner as a unit test; no constructor visibility or admission rule was widened.",
+    "A mutable test JSON walker inserted a null children field into text nodes. Changed the walker to get_mut; production decoding remained strict.",
+    "The final extra no-op test initially named a nonexistent outcome variant. Corrected it to the original RedoApplied variant. general-range-final-refusal-tests.log retains that failed compile; general-range-final-native.log is the complete final passing run.",
+    "Strict lint and formatting findings were corrected without lint suppression, limit changes, protocol reinterpretation or vendor edits."
+  ],
+  "verificationScope": "Native local replacement and existing shared/default regressions only. No new Wasm/SDK editing capability, browser behavior, shared lowering or concurrency result is claimed. No historical WebKit repair, native IME/VoiceOver or final performance qualification is claimed.",
+  "next": [
+    "Lower native plans to original shared causal commands and verify complete staged results, including fresh paragraph births, sequential resource admission, selective Undo and offline peer edits.",
+    "Expose explicit guarded Wasm/SDK general-range capability and route browser typing, deletion and clipboard through native semantics without changing old strict requests.",
+    "Specify and implement whole-document Select All including leading/trailing atoms, then qualify clean-installed mixed-content workflows in all three engines.",
+    "Continue sanitized HTML/Markdown/Office interchange toward the unchanged first-two-workstream goal."
+  ],
+  "readiness": {
+    "promotedRows": 0,
+    "implemented": 9,
+    "partial": 17,
+    "missing": 20,
+    "openGates": 13,
+    "generalSelectionFeatureComplete": false,
+    "firstTwoWorkstreamsComplete": false
+  }
+}

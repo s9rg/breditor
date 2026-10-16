@@ -116,9 +116,9 @@
     {
       "id":"general-selections","area":"Editing","status":"partial",
       "summary":"Text, node, grid and document-wide editing selections",
-      "current":"Stable text/node/grid selections exist. Rich range replacement covers one block, sibling flow and sibling list heads, not arbitrary cross-container ranges.",
+      "current":"Stable text/node/grid selections exist. A new native local general-range plan preserves original legal joins and trims across protected containers while retaining partial tables/images, merged source-cell geometry, list/task tails and layout. Its exact explicit/natural history restores in the earlier V3 Wasm runtime. Shared lowering, Wasm/SDK editing commands, browser routing, whole-document Select All and integrated acceptance remain unfinished; no readiness promotion.",
       "acceptance":"Specify and implement document-wide Select All, deletion, replacement and formatting across lists, tables, captions and atoms in both directions.",
-      "evidence":["crates/breditor-core/src/rich_content/actions/replace_text_range.rs","packages/breditor-collaboration/src/controller.ts","crates/breditor-core/tests/rich_text_range.rs"],
+      "evidence":["crates/breditor-core/src/rich_content/actions/replace_text_range.rs","packages/breditor-collaboration/src/controller.ts","crates/breditor-core/tests/rich_text_range.rs","docs/RICH_GENERAL_RANGES.md","crates/breditor-core/src/rich_content/actions/replace_covered_range.rs","crates/breditor-core/tests/rich_general_range.rs","scripts/probe-general-range-checkpoint-compatibility.mjs","docs/qualification/2026-10-16-general-range-native.json"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {

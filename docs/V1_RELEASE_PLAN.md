@@ -354,6 +354,15 @@ cases and actual older-runtime recovery also pass. External interchange and
 complete bidi editing qualification remain unfinished, so no readiness row
 advances.
 
+The [native general range foundation](RICH_GENERAL_RANGES.md) preserves the
+original supported joins and adds replacement across protected boundaries.
+Partially selected tables/images keep their structure; only selected content
+is removed, whole enclosed atoms can be removed, and insertion occurs at the
+logical beginning. Native local history retains exact inverse and restart,
+including recovery by the earlier V3 Wasm binary. Shared lowering, Wasm/SDK input
+routing, document-wide Select All and installed-browser qualification remain
+unfinished. This native checkpoint does not promote the general-selections row.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
