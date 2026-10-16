@@ -1,4 +1,5 @@
 export {SharedRichEditor,SharedEditorError} from "./core.js";
+export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
 export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSharedProfileV2,compileStandardStructuralSharedProfileV2,compileLayoutSharedProfileV3,compileStandardLayoutSharedProfileV3,supportsSharedTypingHistory,restoreSharedTypingEditor,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
 export {SharedPresence,type SharedPeerIdentity,type SharedPeerView,type SharedPresenceOptions} from "./presence.js";
 export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presence_overlay.js";

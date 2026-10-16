@@ -16,6 +16,7 @@ pub(crate) mod clipboard;
 mod code_language;
 mod drafts;
 mod flow_position;
+mod general_range_ids;
 mod grid_destination;
 mod identity;
 mod image_binding;
@@ -55,15 +56,16 @@ pub use clipboard::{
 pub use code_language::{CodeLanguage, CodeLanguageError};
 pub use drafts::{RichBlockDraft, RichDraftError, TableCellDraft, TableColumnDraft, TableRowDraft};
 pub use flow_position::{RichFlowParent, RichFlowPosition};
+pub use general_range_ids::allocate_general_range_paragraphs;
 pub use image_draft::ImageDraft;
 pub use inline_format_state::{
     RichInlineFormatState, RichInlineFormatStateError, inspect_inline_format,
 };
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use local_session::{
-    RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichLocalOutcome, RichLocalSession,
-    RichLocalSessionError, RichLocalSnapshot, RichLocalState, RichPendingFormatsUpdate,
-    RichSelectionUpdate, RichTypingDeleteDirection,
+    RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichGeneralPlainRangePlan,
+    RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
+    RichPendingFormatsUpdate, RichSelectionUpdate, RichTypingDeleteDirection,
 };
 pub use navigate_flow::{FlowMove, FlowNavigationOutcome, navigate_flow};
 pub use navigate_grid::{

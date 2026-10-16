@@ -31,6 +31,14 @@ export interface SharedRustProfile {
  join_frame(room:string,writer:string,frame:string):SharedRustOwner;
  restore(room:string,journal:string):SharedRustOwner;free():void;
  typing_history_version?():string;restore_typing?(room:string,journal:string):SharedRustOwner;
+ general_range_version?():string;restore_general?(room:string,journal:string):SharedRustOwner;restore_general_typing?(room:string,journal:string):SharedRustOwner;
+}
+/** Explicit pairing; original factories never guess a new general-range save family. */
+export function supportsSharedGeneralRanges(profile:SharedRustProfile):boolean{return typeof profile.general_range_version==="function"&&profile.general_range_version()==="1"&&typeof profile.restore_general==="function"&&typeof profile.restore_general_typing==="function";}
+export function restoreSharedGeneralEditor(profile:SharedRustProfile,room:string,journal:string,history:"explicit"|"typing-v1"="explicit"):SharedRustOwner{
+ if(!supportsSharedGeneralRanges(profile))throw new SharedEditorError("general_range_unavailable","Use matching native general-range recovery");
+ if(history!=="explicit"&&history!=="typing-v1")throw new SharedEditorError("history_policy","Expected an explicit history policy");
+ return history==="typing-v1"?profile.restore_general_typing!(room,journal):profile.restore_general!(room,journal);
 }
 /** No shape sniffing or fallback to the original factory on an older paired runtime. */
 export function supportsSharedTypingHistory(profile:SharedRustProfile):boolean{return typeof profile.typing_history_version==="function"&&profile.typing_history_version()==="1"&&typeof profile.restore_typing==="function";}

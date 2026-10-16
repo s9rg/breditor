@@ -56,6 +56,9 @@ impl RichReplica {
         if self.read_only {
             view["readOnly"] = json!(true);
         }
+        if self.general_ranges_enabled() {
+            view["rangeEditing"] = json!("general-v1");
+        }
         if self.typing_history_enabled() {
             view["historyGrouping"] = json!("typing-v1");
             view["historyStepCount"] = json!(self.history_step_count());

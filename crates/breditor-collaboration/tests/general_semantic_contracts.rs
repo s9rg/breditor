@@ -521,3 +521,133 @@ fn relabeling_semantic_records_as_original_journals_never_reinterprets_old_forma
     assert_eq!(saved(&a)?, checkpoint);
     Ok(())
 }
+
+#[test]
+fn explicit_namespace_target_ignores_an_unrelated_caret_style_and_undo_restores_actual_ui() -> Result
+{
+    for backwards in [false, true] {
+        let (p, mut a) = setup(DocumentLimits::default())?;
+        a.enable_general_ranges_guarded(&a.observe()?)?;
+        let before = range("q2", 2, "q2", 2);
+        a.set_selection(Some(&before))?;
+        let marks = vec![json!({"type":"breditor/strong","properties":{}})];
+        a.set_pending_formats(Some(&marks))?;
+        let source = a.document_json().to_owned();
+        let target =
+            if backwards { range("p-1-1", 3, "p-0-0", 1) } else { range("p-0-0", 1, "p-1-1", 3) };
+        let input = json!({"selection":target,"text":"Q🙂","prefix":"explicit-input"}).to_string();
+        assert!(a.replace_general_range_plain_text_namespace_json_guarded(&a.observe()?, &input)?);
+        assert_eq!(a.pending_formats(), Some([].as_slice()));
+        a.undo()?;
+        assert_eq!(a.document_json(), source);
+        assert_eq!(a.selection()?, Some(before));
+        assert_eq!(a.pending_formats(), Some(marks.as_slice()));
+        a.redo()?;
+        future(&p, &mut a)?;
+    }
+    Ok(())
+}
+#[test]
+fn explicit_namespace_first_key_keeps_boundary_caret_styles_and_exact_joined_recovery() -> Result {
+    let (p, mut a) = setup(DocumentLimits::default())?;
+    a.enable_general_ranges_guarded(&a.observe()?)?;
+    a.enable_typing_history_guarded(&a.observe()?)?;
+    let before = range("p-0-0", 1, "p-0-0", 1);
+    a.set_selection(Some(&before))?;
+    let marks = vec![json!({"type":"breditor/strong","properties":{}})];
+    a.set_pending_formats(Some(&marks))?;
+    let source = a.document_json().to_owned();
+    let input=json!({"selection":range("p-0-0",1,"p-1-1",3),"text":"Q","prefix":"explicit-typing","clockMs":"1000"}).to_string();
+    a.replace_general_range_typing_text_namespace_json_guarded(&a.observe()?, &input)?;
+    a.insert_typing_text_guarded(&a.observe()?, "Y🙂", 1050)?;
+    assert_eq!((a.undo_count(), a.history_step_count()), (1, 2));
+    assert_eq!(a.pending_formats(), Some(marks.as_slice()));
+    a.undo()?;
+    assert_eq!(a.document_json(), source);
+    assert_eq!(a.selection()?, Some(before));
+    a.redo()?;
+    future(&p, &mut a)?;
+    Ok(())
+}
+#[test]
+fn explicit_namespace_rich_runs_use_native_literals_and_no_current_selection_is_required() -> Result
+{
+    let (p, mut a) = setup(DocumentLimits::default())?;
+    a.enable_general_ranges_guarded(&a.observe()?)?;
+    a.set_selection(None)?;
+    let source = a.document_json().to_owned();
+    let input=json!({"selection":range("p-0-0",1,"p-1-1",3),"runs":[{"text":"Q🙂","formatsJson":"[{\"type\":\"breditor/strong\",\"properties\":{}}]"},{"text":"R","formatsJson":"[]"}],"prefix":"rich-input"}).to_string();
+    assert!(a.replace_general_range_text_namespace_json_guarded(&a.observe()?, &input)?);
+    assert!(a.document_json().contains("Q🙂"));
+    a.undo()?;
+    assert_eq!(a.document_json(), source);
+    assert_eq!(a.selection()?, None);
+    a.redo()?;
+    future(&p, &mut a)?;
+    Ok(())
+}
+#[test]
+fn closed_namespace_request_failures_stale_policy_and_late_history_reuse_are_atomic() -> Result {
+    let (_, mut a) = setup(DocumentLimits::default())?;
+    let request = json!({"selection":range("p-0-0",1,"p-1-1",3),"text":"Q","prefix":"reserved"});
+    let before = a.checkpoint()?;
+    assert!(
+        a.replace_general_range_plain_text_namespace_json_guarded(
+            &a.observe()?,
+            &request.to_string()
+        )
+        .is_err()
+    );
+    assert_eq!(a.checkpoint()?, before);
+    a.apply(vec![Command::InsertBlocks(InsertBlocks {
+        parent: None,
+        before: Some("lead".into()),
+        nodes: vec![fixture::paragraph("reserved:range:1", "")],
+    })])?;
+    a.undo()?;
+    a.enable_general_ranges_guarded(&a.observe()?)?;
+    let before = saved(&a)?;
+    let frame = a.update_frame()?;
+    let observation = a.observe()?;
+    for input in [
+        request.to_string(),
+        json!({"selection":range("p-0-0",2,"p-1-1",3),"text":"Q","prefix":"fresh"}).to_string(),
+        json!({"selection":range("p-0-0",1,"p-1-1",3),"text":"Q","prefix":"fresh","extra":true})
+            .to_string(),
+        json!({"selection":range("p-0-0",1,"p-1-1",3),"text":"Q","prefix":"x".repeat(91)})
+            .to_string(),
+    ] {
+        assert!(
+            a.replace_general_range_plain_text_namespace_json_guarded(&observation, &input)
+                .is_err()
+        );
+        assert_eq!(saved(&a)?, before);
+        assert_eq!(a.update_frame()?, frame);
+    }
+    a.enable_typing_history_guarded(&a.observe()?)?;
+    let before = saved(&a)?;
+    for clock in [json!(1), json!("01"), json!("18446744073709551616")] {
+        let mut r = request.clone();
+        r["clockMs"] = clock;
+        assert!(
+            a.replace_general_range_typing_text_namespace_json_guarded(
+                &a.observe()?,
+                &r.to_string()
+            )
+            .is_err()
+        );
+        assert_eq!(saved(&a)?, before);
+    }
+    a.set_read_only_guarded(&a.observe()?, true)?;
+    let before = saved(&a)?;
+    assert!(
+        a.replace_general_range_plain_text_namespace_json_guarded(&observation, "not json")
+            .is_err()
+    );
+    assert!(matches!(
+        a.replace_general_range_plain_text_namespace_json_guarded(&a.observe()?, "not json"),
+        Err(breditor_collaboration::Error::ReadOnly)
+    ));
+    assert_eq!(saved(&a)?, before);
+    Ok(())
+}

@@ -134,6 +134,7 @@ class RichCoreEditor {
   supportsCodeExit(){const raw=this.#live();return typeof raw.codeExitVersion==="function"&&raw.codeExitVersion()==="1";}
   supportsFlowNavigation(){const raw=this.#live();return typeof raw.flowNavigationVersion==="function"&&raw.flowNavigationVersion()==="1";}
   supportsAtomEditing(){const raw=this.#live();return typeof raw.atomEditVersion==="function"&&raw.atomEditVersion()==="1";}
+  supportsGeneralRanges(){const raw=this.#live();return typeof raw.generalRangeVersion==="function"&&raw.generalRangeVersion()==="1";}
   supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}
   supportsBlockLayout(){const raw=this.#live();return this.#language===3&&typeof raw.blockLayoutVersion==="function"&&raw.blockLayoutVersion()==="1"&&typeof this.#observation.blockLayoutStateJson==="function";}
   blockLayoutState(){this.#live();if(!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(read(this.#observation.blockLayoutStateJson()));}

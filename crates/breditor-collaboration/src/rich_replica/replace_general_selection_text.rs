@@ -5,10 +5,14 @@ use super::{
 use crate::Error;
 use breditor_core::{
     codec::RichFormatsJsonCodec,
-    document::TextFragment,
-    rich_content::{BlockId, RichLocalOutcome, RichLocalSession, actions::RichGeneralRangePlan},
-    session::HistoryCapacity,
+    document::{FormatSet, TextFragment},
+    rich_content::{BlockId, RichLocalOutcome, actions::RichGeneralRangePlan},
 };
+pub(super) struct GeneralInput<'a> {
+    pub target: &'a super::selection::Selection,
+    pub typing: Option<super::typing_history::Request>,
+    pub pending: Option<FormatSet>,
+}
 impl RichReplica {
     /// Read native general text replacement requirements under the exact current observation.
     /// Reads remain legal in read-only mode and confer no publication authority.
@@ -30,7 +34,7 @@ impl RichReplica {
     /// One staged group retains causal source characters, owned births/deletions and
     /// selective Undo. The complete result must equal the native preview. Exact fresh
     /// IDs are caller-owned, including identities in discarded durable history.
-    /// This native integration is not yet a Wasm/SDK editing capability.
+    /// Separate explicit-target methods provide the additive Wasm/source-facade capability.
     /// # Errors
     /// Stale/read-only, invalid IDs/styles, command limits or any lowering mismatch
     /// reject atomically. The original history family retains its primitive lowering
@@ -52,34 +56,46 @@ impl RichReplica {
     ) -> Result<bool, Error> {
         self.check(observation)?;
         self.require_writable()?;
-        let selection = self.selection()?.ok_or(Error::Contract("general range selection"))?;
-        let request = general_range_plan::request(&self.codec, &selection, inserted)?;
+        let target = self.selection()?.ok_or(Error::Contract("general range selection"))?;
+        self.replace_general_range_input(
+            observation,
+            inserted,
+            empty,
+            GeneralInput { target: &target, typing, pending: None },
+        )
+    }
+    pub(super) fn replace_general_range_input(
+        &mut self,
+        observation: &SharedObservation,
+        inserted: &TextFragment,
+        empty: &[BlockId],
+        input: GeneralInput<'_>,
+    ) -> Result<bool, Error> {
+        self.check(observation)?;
+        self.require_writable()?;
+        let selection = input.target;
+        let request = general_range_plan::request(&self.codec, selection, inserted)?;
         let context = super::paragraphs::context(&self.codec);
         let formats = RichFormatsJsonCodec::new(context.clone());
-        let mut preview = RichLocalSession::try_new(
-            context,
-            self.document.clone(),
-            Some(selection.admit(&self.document)?.kind().clone()),
-            HistoryCapacity::try_new(0).map_err(|_| Error::Contract("general range history"))?,
+        let mut preview = self.general_range_preview()?;
+        let target = selection.admit(&self.document)?.kind().clone();
+        let plan = RichGeneralRangePlan::capture(
+            &self.document,
+            &selection.admit(&self.document)?,
+            inserted,
         )
-        .map_err(|_| Error::Contract("general range preview"))?;
-        if let Some(pending) = self.pending_formats() {
-            let pending = formats
-                .decode(&serde_json::to_string(pending)?)
-                .map_err(|_| Error::Contract("general range pending formats"))?;
-            preview
-                .set_pending_formats(&preview.snapshot(), Some(pending))
-                .map_err(|_| Error::Contract("general range preview pending"))?;
-        }
-        let plan = preview
-            .plan_general_selection_text(&preview.snapshot(), inserted)
-            .map_err(|_| Error::Contract("general range preview plan"))?;
+        .map_err(|_| Error::Contract("general range preview plan"))?;
         if preview
-            .replace_general_selection_text(&preview.snapshot(), inserted, empty)
+            .replace_general_range_text(&preview.snapshot(), &target, inserted, empty)
             .map_err(|_| Error::Contract("general range native admission"))?
             == RichLocalOutcome::Unchanged
         {
             return Ok(false);
+        }
+        if let Some(pending) = input.pending {
+            preview
+                .set_pending_formats(&preview.snapshot(), Some(pending))
+                .map_err(|_| Error::Contract("general range preview input formats"))?;
         }
         let selection = SelectionUpdate::Set(Some(super::atom_edit::selection(
             preview
@@ -113,7 +129,7 @@ impl RichReplica {
                 selection,
                 pending,
                 preview.state().document(),
-                typing,
+                input.typing,
             );
         }
         let commands = if self.general_ranges_enabled() {

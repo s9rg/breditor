@@ -47,6 +47,9 @@ export class SharedPersistentSession {
    if(history==="typing-v1")core.enableTypingHistory();
    else if(core.view().historyGrouping!==undefined)throw new SharedEditorError("session_history","Explicit history cannot flatten a grouped owner");
    core.sealHistoryPolicy(history);
+   // General history needs its own declared storage record and restore policy.
+   // Until explicitly wired, a live session must not upgrade behind its storage guard.
+   core.sealRangePolicy("original");
    checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history);
    const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options);session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;

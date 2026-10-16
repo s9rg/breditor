@@ -4,6 +4,7 @@ mod block_layout;
 mod exit_code_block;
 mod flow_navigation;
 mod general_history;
+mod general_range;
 mod selection_formatting;
 mod typing;
 use crate::{

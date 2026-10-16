@@ -21,9 +21,13 @@ mod insert_plain_text;
 mod insert_typing_text;
 pub(crate) mod local_rewrite;
 mod navigate_flow;
+mod plan_general_range_plain_text;
 mod redo;
 mod replace_atom_plain_text;
 mod replace_atom_typing_text;
+mod replace_general_range_plain_text;
+mod replace_general_range_text;
+mod replace_general_range_typing_text;
 mod replace_general_selection_text;
 mod replace_range_plain_text;
 mod replace_selection_plain_text;
@@ -38,6 +42,7 @@ mod undo;
 mod validate_observation;
 
 pub use error::RichLocalSessionError;
+pub use plan_general_range_plain_text::RichGeneralPlainRangePlan;
 pub use snapshot::RichLocalSnapshot;
 pub use state::RichLocalState;
 pub use typing_history::{

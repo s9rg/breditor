@@ -12,6 +12,7 @@ export class SharedRichEditor {
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
  #listeners=new Set<(event:SharedPublication)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
  #options:SharedEditorOptions;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
+ #fixedRanges:"original"|"general-v1"|undefined;
  constructor(raw:SharedRustOwner,options:SharedEditorOptions={}){
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
   this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
@@ -24,6 +25,7 @@ export class SharedRichEditor {
    if(this.richLanguageVersion()===3&&!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");
    this.#observation=raw.observe();this.#view=this.#observation.view_json();const view=this.view();
    if(view.format!=="breditor/shared-rich-view"||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");
+   if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
    owners.add(raw);
   }
   catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
@@ -51,6 +53,15 @@ export class SharedRichEditor {
  supportsCodeExit():boolean{const raw=this.#live();return typeof raw.code_exit_version==="function"&&raw.code_exit_version()==="1"&&typeof raw.exit_code_block==="function";}
  supportsFlowNavigation():boolean{const raw=this.#live();return typeof raw.flow_navigation_version==="function"&&raw.flow_navigation_version()==="1"&&typeof raw.navigate_flow==="function"&&typeof raw.insert_paragraph_adjacent==="function";}
  supportsAtomEditing():boolean{const raw=this.#live();return typeof raw.atom_edit_version==="function"&&raw.atom_edit_version()==="1"&&typeof raw.delete_atom==="function"&&typeof raw.replace_atom_plain_text==="function"&&typeof raw.replace_atom_typing_text==="function";}
+ supportsGeneralRanges():boolean{const raw=this.#live();return typeof raw.general_range_version==="function"&&raw.general_range_version()==="1"&&[raw.enable_general_ranges,raw.replace_general_range_text,raw.replace_general_range_plain_text,raw.replace_general_range_typing_text,raw.general_checkpoint,raw.general_typing_checkpoint].every(method=>typeof method==="function");}
+ #generalOwner():SharedRustOwner{if(!this.supportsGeneralRanges())throw new SharedEditorError("general_range_unavailable","Use a matching native general-range owner");return this.#live();}
+ /** Explicit one-way native admission. Durable hosts must bind the matching save family first. */
+ enableGeneralRanges(revision?:string):boolean{return this.#run("local",(_raw,o)=>{if(this.#fixedRanges==="original")throw new SharedEditorError("range_policy","This durable session's range policy is immutable");return this.#generalOwner().enable_general_ranges!(o);},revision,false);}
+ /** Durable storage binds this independently from natural/explicit history. */
+ sealRangePolicy(policy:"original"|"general-v1"):void{this.#live();if((policy!=="original"&&policy!=="general-v1")||(this.#fixedRanges!==undefined&&this.#fixedRanges!==policy)||(this.view().rangeEditing??"original")!==policy)throw new SharedEditorError("range_policy","Range policy does not match the native owner");this.#fixedRanges=policy;}
+ replaceGeneralRangeText(selection:Extract<RichSelection,{kind:"text"}>,runs:readonly {text:string;formatsJson:string}[],prefix:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_text!(o,JSON.stringify({selection,runs,prefix})),revision);}
+ replaceGeneralRangePlainText(selection:Extract<RichSelection,{kind:"text"}>,text:string,prefix:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_plain_text!(o,JSON.stringify({selection,text,prefix})),revision);}
+ replaceGeneralRangeTypingText(selection:Extract<RichSelection,{kind:"text"}>,text:string,prefix:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_typing_text!(o,JSON.stringify({selection,text,prefix,clockMs})),revision);}
  supportsSelectionFormatting():boolean{const raw=this.#live();return typeof raw.selection_formatting_version==="function"&&raw.selection_formatting_version()==="1"&&typeof raw.selection_coverage_json==="function"&&typeof raw.selection_format_state_json==="function"&&typeof raw.change_selection_formats==="function";}
  supportsBlockLayout():boolean{const raw=this.#live();return this.richLanguageVersion()===3&&typeof raw.block_layout_version==="function"&&raw.block_layout_version()==="1"&&typeof raw.block_layout_state_json==="function"&&typeof raw.change_selection_layout==="function";}
  blockLayoutState():import("@breditor/experimental-rich-content").RichBlockLayoutStateRead{if(!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(this.#live().block_layout_state_json!(this.#observation)) as import("@breditor/experimental-rich-content").RichBlockLayoutStateRead;}
@@ -80,7 +91,7 @@ export class SharedRichEditor {
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
  deleteUserRange(selection:Extract<RichSelection,{kind:"text"}>,direction:"backward"|"forward",clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().delete_typing_range!(o,JSON.stringify({selection,direction,clockMs})),revision);}
- checkpointJson():string{return this.view().historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
+ checkpointJson():string{const view=this.view();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
  /** Separate read capability; neither method publishes, imports content or changes local UI. */
  supportsPresence():boolean{const raw=this.#live();return typeof raw.presence_frame==="function"&&typeof raw.resolve_presence==="function";}

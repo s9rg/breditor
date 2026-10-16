@@ -13,6 +13,7 @@ mod enable_typing_history;
 mod error;
 mod exit_code_block;
 mod flow_navigation;
+mod general_range;
 mod inline_format_state;
 mod observation;
 mod profile;

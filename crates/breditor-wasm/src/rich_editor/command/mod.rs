@@ -54,6 +54,9 @@ mod redo;
 mod replace_atom_plain_text;
 mod replace_atom_typing_text;
 mod replace_blocks;
+mod replace_general_range_plain_text;
+mod replace_general_range_text;
+mod replace_general_range_typing_text;
 mod replace_image;
 mod replace_text_range;
 mod resize_image;
@@ -92,6 +95,9 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    ReplaceGeneralRangeText,
+    ReplaceGeneralRangePlainText,
+    ReplaceGeneralRangeTypingText,
     ChangeSelectionLayout,
     ChangeSelectionFormats,
     DeleteAtom,
@@ -236,6 +242,21 @@ pub(super) fn execute(
         return Err(error::rejected("breditor_rich.read_only"));
     }
     match command.kind {
+        CommandTag::ReplaceGeneralRangeText => replace_general_range_text::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
+        CommandTag::ReplaceGeneralRangePlainText => replace_general_range_plain_text::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
+        CommandTag::ReplaceGeneralRangeTypingText => replace_general_range_typing_text::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
         CommandTag::ChangeSelectionLayout => change_selection_layout::execute(
             owner,
             observation,

@@ -78,6 +78,13 @@ export interface SharedWriterClock {writer:string;through:string;prefixDigest:st
 export interface SharedWriterGroups {format:"breditor/shared-writer-groups";formatVersion:1;writer:string;from:string;through:string;hasMore:boolean;groups:readonly string[]}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
+ general_range_version?():string;
+ enable_general_ranges?(observation:unknown):boolean;
+ replace_general_range_text?(observation:unknown,input:string):boolean;
+ replace_general_range_plain_text?(observation:unknown,input:string):boolean;
+ replace_general_range_typing_text?(observation:unknown,input:string):boolean;
+ general_checkpoint?():string;
+ general_typing_checkpoint?():string;
  /** Additive capability: older matching owners may omit the separate presence channel. */
  presence_frame?(observation:unknown):string;resolve_presence?(frame:string):string;
  writer_groups?(observation:unknown,after:string):string;writer_clock?(writer:string):string;

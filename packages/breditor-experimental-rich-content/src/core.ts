@@ -39,6 +39,8 @@ export interface RichView {
   readOnlyRevision?:string;
   /** Explicit native grouping; omitted preserves original per-dispatch history. */
   historyGrouping?:"typing-v1";
+  /** Explicit shared semantic replay family; omitted retains the original range contract. */
+  rangeEditing?:"general-v1";
   /** Original retained steps, not grouped Undo units. Present only in typing mode. */
   historyStepCount?:number;
   selection: RichSelection | null; pendingFormatsJson: string | null;
@@ -60,6 +62,8 @@ export interface RichCoreEditor {
   supportsFlowNavigation?():boolean;
   /** Separate native whole-atom deletion/plain/first-key replacement capability. */
   supportsAtomEditing?():boolean;
+  /** Additive closed general-range commands; an older module must not be silently substituted. */
+  supportsGeneralRanges?():boolean;
   supportsSelectionFormatting?():boolean;
   supportsBlockLayout?():boolean;
   blockLayoutState?():RichBlockLayoutStateRead;
