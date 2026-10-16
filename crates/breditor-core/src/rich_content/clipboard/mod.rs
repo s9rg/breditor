@@ -7,14 +7,18 @@
 mod capture;
 mod capture_general;
 mod capture_list;
+mod document_paste;
 mod error;
+mod namespace;
 mod plain_text;
 mod prepare;
 mod rekey;
 mod semantic_table;
 mod text_projection;
 
+pub use document_paste::RichDocumentClipboardPlan;
 pub use error::RichClipboardError;
+pub use namespace::RichClipboardNamespace;
 pub use rekey::{RichClipboardIdAllocator, RichClipboardIdentityKind};
 pub use text_projection::RichClipboardTextProjection;
 

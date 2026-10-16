@@ -106,10 +106,14 @@ export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
 export interface RichDocumentCoreEditor extends RichCoreEditor<"document-v1"> {
   selectionPolicy():"document-v1";
   supportsDocumentSelection():boolean;
+  /** Separate optional native capability; older document-selection owners remain usable. */
+  supportsDocumentClipboard():boolean;
   selectDocument(expectedRevision?:string):RichCommandOutcome;
   copyDocument():ReturnType<RichCoreEditor["clipboard"]>;
   replaceDocumentPlainText(paragraph:string,text:string,expectedRevision?:string):RichCommandOutcome;
   replaceDocumentTypingText(paragraph:string,text:string,clockMs:string,expectedRevision?:string):RichCommandOutcome;
+  /** Prefix must be permanently reserved, including failed and undone attempts. */
+  pasteDocumentClipboard(clipboardJson:string,prefix:string,expectedRevision?:string):RichCommandOutcome;
 }
 export interface RichCoreProfile {
   descriptor(): RichProfileDescriptor;

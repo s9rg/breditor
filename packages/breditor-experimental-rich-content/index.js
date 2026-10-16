@@ -151,6 +151,8 @@ class RichCoreEditor {
     return this.#publish(input===undefined?r[method](this.#observation):r[method](this.#observation,JSON.stringify(input)));
   }
   selectDocument(revision){return this.#documentCommand("selectDocument",undefined,revision);}
+  supportsDocumentClipboard(){const r=this.#live();return this.supportsDocumentSelection()&&r.documentClipboardVersion?.()==="1"&&typeof r.pasteDocumentClipboard==="function";}
+  pasteDocumentClipboard(clipboardJson,prefix,revision){if(!this.supportsDocumentClipboard())throw new RichCommandError("breditor_rich.document_clipboard_unavailable","Use matching native whole-document rich paste");return this.#documentCommand("pasteDocumentClipboard",{clipboardJson,prefix},revision);}
   replaceDocumentPlainText(paragraph,text,revision){return this.#documentCommand("replaceDocumentPlainText",{paragraph,text},revision);}
   replaceDocumentTypingText(paragraph,text,clockMs,revision){return this.#documentCommand("replaceDocumentTypingText",{paragraph,text,clockMs},revision);}
   copyDocument(){this.#live();if(this.#selectionPolicy!=="document-v1"||!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use an explicitly selected document facade with matching native capabilities");return this.generalClipboard();}

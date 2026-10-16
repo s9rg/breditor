@@ -1,5 +1,6 @@
 //! Explicit scope/view/recovery capabilities, independent from original selection DTOs.
 mod enable_document_selection;
+mod paste_document_clipboard;
 mod replace_document_plain_text;
 mod replace_document_typing_text;
 mod select_document;

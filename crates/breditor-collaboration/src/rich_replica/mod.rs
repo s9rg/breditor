@@ -54,6 +54,7 @@ mod navigate_flow;
 mod navigate_grid;
 mod observation;
 mod paragraphs;
+mod paste_document_clipboard;
 mod paste_flow_at_text;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;

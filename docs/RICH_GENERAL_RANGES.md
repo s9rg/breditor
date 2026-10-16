@@ -13,9 +13,10 @@ rich clipboard, cross-range paragraph Enter, explicit caption/code text paste
 and transport V2 have functional checkpoints below. Document-wide Select All,
 external interchange and final integrated qualification remain required.
 
-Whole-document selection now has a native Core/Wasm foundation with separate
-view and checkpoint families. Shared lowering and SDK/storage/DOM integration
-remain required before it is an end-to-end editing feature.
+Whole-document selection has native local/shared scope, rich replacement,
+separate view/checkpoint families and explicit programmatic SDK/storage support.
+Document-specific DOM input, composition and relay composition remain required
+before it is an end-to-end browser editing feature.
 
 ## Original joins and protected boundaries
 
@@ -641,11 +642,62 @@ can retry the current native checkpoint without disposing the owner.
 
 The [document persistence checkpoint](qualification/2026-10-16-document-selection-persistence.json)
 covers actual local/shared release Wasm through the source facades and transaction
-coordinators, with IndexedDB and exclusive-lock fixtures. Whole-root rich paste,
-composition, browser Copy/Cut retention (including empty plain text), selection
+coordinators, with IndexedDB and exclusive-lock fixtures. Document composition,
+browser Copy/Cut retention (including empty plain text), selection
 painting, document-specific relay composition and explicit presence/toolbar
 behavior remain required. Original DOM entry points do not yet accept the
 extended facades.
+
+## Whole document rich paste
+
+`RichDocumentClipboardPlan` prepares one native replacement over explicit
+document scope. Text clipboard content retains its inline formatting in one
+fresh paragraph. Flow and grid content retain their structure, followed by a
+fresh empty plain paragraph with a usable caret. There is no extra 64-root
+ceiling; the existing native schema and resource limits still govern admission.
+Images retain their immutable asset references and receive fresh image and
+binding-generation identities. Paste performs no asset upload.
+
+`RichClipboardNamespace` derives typed IDs from a host-reserved prefix of at most
+90 UTF-8 bytes. Rust traverses the clipboard and rejects source/target identity
+reuse in every domain, including the receiving roots being removed. The host
+must reserve the namespace permanently, including failures and Undo. Shared
+lowering also rejects historical block/entity reuse. Shared merge priorities use
+the actual captured author stamp; clipboard clocks do not authorize authorship.
+
+Local `pasteDocumentClipboard` and shared `paste_document_clipboard` accept the
+closed `{clipboardJson, prefix}` request. Both declare independent document
+clipboard capability string `1`; an older document-selection runtime remains
+usable without claiming rich paste. The request envelope is bounded at 4 MiB to
+accommodate the escaped semantic clipboard. The clipboard's existing 1 MiB
+codec, document limits, shared frame/causal limits and recovery limits remain
+unchanged. Guard/write failures retain content, selection, pending styles and
+both history stacks. Rich admission or publication failure never retries as
+plain text.
+
+Local history stores the existing guarded root recipe. Shared history adds the
+closed `PasteDocumentClipboardV1` command only to the explicit document family.
+It replays the native plan into fresh owned births and visibility deletion of
+observed roots, not a replicated root-register replacement. Unobserved offline
+roots survive; Undo restores observed source roots with their peer edits. The
+existing birth-Undo rule for edits inside newly born replacement content is
+unchanged. Paste isolates both adjacent natural typing bursts: two keys, paste,
+two keys retain the partition `[2, 1, 2]` through exact recovery.
+
+The explicit local/shared facades expose `supportsDocumentClipboard` and
+`pasteDocumentClipboard`. Original factories, command DTOs and recovery getters
+do not widen. Previous local document readers retain the same exact recipe;
+previous shared document readers reject the unknown saved command rather than
+guessing a replacement. Previous shared peers can still receive the resulting
+causal primitives.
+
+The [whole-document rich paste checkpoint](qualification/2026-10-16-document-rich-paste.json)
+covers actual release Wasm through both programmatic facades, structured and
+hidden-only sources/targets, exact future history, and an offline previous-runtime
+peer. Local/shared semantic comparisons exclude only authored table-merge
+priority words, which legitimately differ by owner; each owner's recovery and
+shared peer documents are checked exactly. Browser clipboard routing remains a
+separate integration step.
 
 ## Remaining integration
 

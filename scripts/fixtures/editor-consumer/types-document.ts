@@ -3,12 +3,15 @@ function original(raw:SharedRustOwner):void {
  const core=new SharedRichEditor(raw),view:SharedView=core.view();void view;
  // @ts-expect-error document scope requires an explicit typed owner policy
  core.selectDocument();
+ // @ts-expect-error document clipboard requires an explicit typed owner policy
+ core.pasteDocumentClipboard("opaque native clipboard","reserved");
 }
 function document(raw:SharedRustOwner,profile:SharedRustProfile):void {
  const named=createSharedDocumentEditor(raw),namedView:SharedDocumentView=named.view();void namedView;
  const core=new SharedRichEditor<"document-v1">(raw,{selectionEditing:"document-v1"}),view:SharedDocumentView=core.view();
  const policy:"document-v1"=core.selectionPolicy();void policy;
  core.selectDocument();core.copyDocument();core.replaceDocumentPlainText("fresh","Q");core.replaceDocumentTypingText("fresh2","Q","1");
+ core.supportsDocumentClipboard();core.pasteDocumentClipboard("opaque native clipboard","reserved");
  const recovered=restoreSharedDocumentEditor(profile,"room",core.checkpointJson());void recovered;
  // @ts-expect-error extended views cannot masquerade as an original selection protocol
  const old:SharedView=view;void old;
@@ -32,6 +35,7 @@ import {RichDocumentSessionStore} from "@breditor/experimental-rich-content";
 async function localDocument(profile:RichCoreProfile):Promise<void>{
  if(!profile.createDocumentEditor||!profile.restoreDocumentEditor||!profile.restoreOriginalAsDocumentEditor)throw Error("Missing explicit capability");
  const core=profile.createDocumentEditor("native document"),view:LocalDocumentView=core.view();void view;core.selectDocument();core.copyDocument();core.replaceDocumentPlainText("fresh","Q");core.replaceDocumentTypingText("fresh2","Q","1");
+ core.supportsDocumentClipboard();core.pasteDocumentClipboard("opaque native clipboard","reserved");
  profile.restoreDocumentEditor(core.checkpointJson());profile.restoreOriginalAsDocumentEditor("original checkpoint","typing-v1");
  // @ts-expect-error document views cannot masquerade as original local views
  const oldView:RichView=core.view();void oldView;

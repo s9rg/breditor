@@ -67,9 +67,21 @@ pub(super) fn prepare(
     fragment: &RichClipboardFragment,
     allocator: &mut dyn RichClipboardIdAllocator,
 ) -> Result<RichClipboardFragment, RichClipboardError> {
+    prepare_avoiding(context, fragment, None, allocator)
+}
+
+pub(super) fn prepare_avoiding(
+    context: &EditorContext,
+    fragment: &RichClipboardFragment,
+    target: Option<&crate::rich_content::RichDocument>,
+    allocator: &mut dyn RichClipboardIdAllocator,
+) -> Result<RichClipboardFragment, RichClipboardError> {
     RichClipboardFragment::try_admit(context, fragment.kind, fragment.document.document().clone())?;
     let mut source = BTreeMap::new();
     inventory(fragment.document.document().root(), &mut source)?;
+    if let Some(target) = target {
+        inventory(target.document().root(), &mut source)?;
+    }
     let mut rekeyer = Rekeyer { fragment, allocator, source, used: BTreeMap::new() };
     let nodes = fragment
         .document
@@ -108,6 +120,16 @@ fn inventory(
         }
     }
     if node.kind().as_str() == "breditor/table" {
+        if let Some(retracted) =
+            ast_properties::property(node, "retracted-merges").and_then(PropertyValue::as_array)
+        {
+            for id in retracted {
+                values
+                    .entry(K::Merge)
+                    .or_default()
+                    .insert(id.as_string().ok_or(RichClipboardError::Invariant)?.to_owned());
+            }
+        }
         for (local, kind) in [("columns", K::Column), ("merges", K::Merge)] {
             for value in ast_properties::property(node, local)
                 .and_then(PropertyValue::as_array)
@@ -126,6 +148,27 @@ fn inventory(
         inventory(child, values)?;
     }
     Ok(())
+}
+
+pub(super) fn fresh_document_floor(
+    target: &crate::rich_content::RichDocument,
+    original: &RichClipboardFragment,
+    fresh: &RichClipboardFragment,
+    allocator: &mut dyn RichClipboardIdAllocator,
+) -> Result<BlockId, RichClipboardError> {
+    let mut reserved = BTreeMap::new();
+    for root in [
+        target.document().root(),
+        original.document.document().root(),
+        fresh.document.document().root(),
+    ] {
+        inventory(root, &mut reserved)?;
+    }
+    let value = allocator.next(RichClipboardIdentityKind::Block)?;
+    if reserved.get(&RichClipboardIdentityKind::Block).is_some_and(|ids| ids.contains(&value)) {
+        return Err(RichClipboardError::Allocation);
+    }
+    BlockId::try_new(value).map_err(|_| RichClipboardError::Allocation)
 }
 
 impl Rekeyer<'_> {

@@ -12,9 +12,9 @@ use breditor_core::{
     identity::QualifiedName,
     position::{Affinity, TextOffset},
     rich_content::{
-        BlockId, RichClipboardFragment, RichDocument, RichLocalOutcome, RichLocalSession,
-        RichLocalSessionError, RichSelectionCoverage, RichSelectionFormatChange, RichSelectionKind,
-        RichTextPoint, standard_inline_extension_v1,
+        BlockId, RichClipboardFragment, RichClipboardNamespace, RichDocument, RichLocalOutcome,
+        RichLocalSession, RichLocalSessionError, RichSelectionCoverage, RichSelectionFormatChange,
+        RichSelectionKind, RichTextPoint, standard_inline_extension_v1,
     },
     schema::{CompiledSchema, DocumentLimits, SchemaId, SchemaVersion},
     session::HistoryCapacity,
@@ -352,5 +352,238 @@ fn document_first_key_starts_one_new_burst_and_recovers_its_document_before_ui()
         }
         assert_eq!(saved(&context, &session)?, saved(&context, &recovered)?);
     }
+    Ok(())
+}
+
+fn clipboard(
+    c: &EditorContext,
+    s: &RichLocalSession,
+    kind: RichSelectionKind,
+) -> Result<RichClipboardFragment> {
+    let selection =
+        breditor_core::rich_content::RichSelection::try_new(s.state().document(), kind)?;
+    RichClipboardFragment::copy_selection(c, s.state().document(), &selection)?
+        .ok_or("clipboard".into())
+}
+
+#[test]
+fn whole_rich_paste_keeps_structure_formats_and_exact_future_history() -> Result {
+    let (context, mut donor) = setup(&fixture::root())?;
+    let point = |offset| -> Result<RichTextPoint> {
+        Ok(RichTextPoint::new(
+            BlockId::try_new("q1")?,
+            TextOffset::try_new(offset)?,
+            Affinity::After,
+        ))
+    };
+    let text = RichSelectionKind::TextRange { anchor: point(0)?, focus: point(2)? };
+    donor.set_selection(&donor.snapshot(), Some(text.clone()))?;
+    donor.change_selection_formats(
+        &donor.snapshot(),
+        &[RichSelectionFormatChange::Set(Format::new(
+            QualifiedName::try_new("breditor/strong")?,
+            PropertyMap::default(),
+        ))],
+    )?;
+    let mut clips = vec![clipboard(&context, &donor, text)?];
+    for id in ["table", "image"] {
+        clips.push(clipboard(&context, &donor, RichSelectionKind::Node(BlockId::try_new(id)?))?);
+    }
+    let (_, hidden_donor) = setup(&{
+        let mut root = fixture::root();
+        root["children"]
+            .as_array_mut()
+            .ok_or("root")?
+            .retain(|n| n["properties"]["breditor/block-id"] == "hidden");
+        root
+    })?;
+    clips.push(clipboard(&context, &hidden_donor, RichSelectionKind::Document)?);
+    let cell = breditor_core::rich_content::CellId::new(
+        breditor_core::rich_content::TableId::try_new("t")?,
+        breditor_core::rich_content::RowId::try_new("r1")?,
+        breditor_core::rich_content::ColumnId::try_new("c1")?,
+    );
+    clips.push(clipboard(
+        &context,
+        &donor,
+        RichSelectionKind::Grid { anchor: cell.clone(), focus: cell },
+    )?);
+    clips.push(clipboard(&context, &donor, RichSelectionKind::Document)?);
+    for natural in [false, true] {
+        for hidden in [false, true] {
+            for (index, clip) in clips.iter().enumerate() {
+                let mut root = fixture::root();
+                if hidden {
+                    root["children"]
+                        .as_array_mut()
+                        .ok_or("children")?
+                        .retain(|n| n["properties"]["breditor/block-id"] == "hidden");
+                }
+                let (_, mut s) = setup(&root)?;
+                if natural {
+                    s.enable_typing_history(&s.snapshot())?;
+                }
+                s.select_document(&s.snapshot())?;
+                let before = s.state().document().document().clone();
+                s.paste_document_clipboard(
+                    &s.snapshot(),
+                    clip,
+                    &mut RichClipboardNamespace::try_new(&format!("paste-{index}"))?,
+                )?;
+                assert_eq!(s.undo_depth(), 1);
+                assert!(!document_selected(&s));
+                let root = s.state().document().document().root().as_element().ok_or("root")?;
+                if index == 0 {
+                    assert_eq!(root.children().len(), 1);
+                    assert!(saved(&context, &s)?.contains("breditor/strong"));
+                } else {
+                    let last = root
+                        .children()
+                        .get(root.children().len().saturating_sub(1))
+                        .and_then(breditor_core::document::NodeRef::as_element)
+                        .ok_or("tail")?;
+                    assert_eq!(last.kind().as_str(), "breditor/paragraph");
+                    assert!(last.children().is_empty());
+                }
+                let exact = saved(&context, &s)?;
+                let mut b = restored(&context, &s, &exact)?;
+                assert_eq!(saved(&context, &b)?, exact);
+                for undo in [true, false, true, false] {
+                    if undo {
+                        s.undo(&s.snapshot())?;
+                        b.undo(&b.snapshot())?;
+                        assert!(document_selected(&s));
+                        assert_eq!(s.state().document().document(), &before);
+                    } else {
+                        s.redo(&s.snapshot())?;
+                        b.redo(&b.snapshot())?;
+                    }
+                    assert_eq!(saved(&context, &s)?, saved(&context, &b)?);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn document_rich_paste_isolates_preceding_and_following_natural_typing() -> Result {
+    let (context, donor) = setup(&fixture::root())?;
+    let clip = clipboard(&context, &donor, RichSelectionKind::Document)?;
+    let (_, mut s) = setup(&fixture::root())?;
+    s.enable_typing_history(&s.snapshot())?;
+    s.set_selection(&s.snapshot(), Some(caret("q1")?))?;
+    for (text, clock) in [("A", 1), ("B", 2)] {
+        s.insert_typing_text(&s.snapshot(), text, clock)?;
+    }
+    let before = s.state().document().clone();
+    s.select_document(&s.snapshot())?;
+    s.paste_document_clipboard(
+        &s.snapshot(),
+        &clip,
+        &mut RichClipboardNamespace::try_new("burst-rich")?,
+    )?;
+    let pasted = s.state().document().clone();
+    for (text, clock) in [("C", 3), ("D", 4)] {
+        s.insert_typing_text(&s.snapshot(), text, clock)?;
+    }
+    assert_eq!(s.undo_depth(), 3);
+    let bytes = saved(&context, &s)?;
+    assert_eq!(serde_json::from_str::<Value>(&bytes)?["groups"], json!([2, 1, 2]));
+    let mut recovered = restored(&context, &s, &bytes)?;
+    for undo in [true, true, false, false, true, true, false, false] {
+        if undo {
+            s.undo(&s.snapshot())?;
+            recovered.undo(&recovered.snapshot())?;
+            if s.undo_depth() == 2 {
+                assert_eq!(s.state().document().document(), pasted.document());
+            }
+            if s.undo_depth() == 1 {
+                assert_eq!(s.state().document().document(), before.document());
+                assert!(document_selected(&s));
+            }
+        } else {
+            s.redo(&s.snapshot())?;
+            recovered.redo(&recovered.snapshot())?;
+        }
+        assert_eq!(saved(&context, &s)?, saved(&context, &recovered)?);
+    }
+    Ok(())
+}
+
+#[test]
+fn document_paste_excludes_all_target_identity_domains_even_when_original_roots_are_removed()
+-> Result {
+    use breditor_core::rich_content::{
+        CausalStamp, RichClipboardError, RichClipboardIdAllocator,
+        RichClipboardIdentityKind as Kind,
+    };
+    struct Collision {
+        safe: RichClipboardNamespace,
+        kind: Kind,
+        value: String,
+    }
+    impl RichClipboardIdAllocator for Collision {
+        fn next(&mut self, kind: Kind) -> std::result::Result<String, RichClipboardError> {
+            if kind == self.kind { Ok(self.value.clone()) } else { self.safe.next(kind) }
+        }
+        fn merge_stamp(&mut self) -> std::result::Result<CausalStamp, RichClipboardError> {
+            self.safe.merge_stamp()
+        }
+    }
+    let (c, mut s) = setup(&fixture::root())?;
+    let copied = clipboard(&c, &s, RichSelectionKind::Document)?
+        .rekeyed(&c, &mut RichClipboardNamespace::try_new("donor")?)?;
+    s.select_document(&s.snapshot())?;
+    let exact = saved(&c, &s)?;
+    for (kind, value) in [
+        (Kind::Block, "q1"),
+        (Kind::Table, "t"),
+        (Kind::Row, "r0"),
+        (Kind::Column, "c0"),
+        (Kind::Image, "img"),
+        (Kind::AssetGeneration, "gen"),
+        (Kind::Merge, "m"),
+    ] {
+        let mut ids =
+            Collision { safe: RichClipboardNamespace::try_new("safe")?, kind, value: value.into() };
+        assert!(s.paste_document_clipboard(&s.snapshot(), &copied, &mut ids).is_err());
+        assert_eq!(saved(&c, &s)?, exact);
+    }
+    let old = s.snapshot();
+    s.set_read_only(&s.snapshot(), true)?;
+    assert!(
+        s.paste_document_clipboard(&old, &copied, &mut RichClipboardNamespace::try_new("guard")?)
+            .is_err()
+    );
+    assert!(matches!(
+        s.paste_document_clipboard(
+            &s.snapshot(),
+            &copied,
+            &mut RichClipboardNamespace::try_new("guard")?
+        ),
+        Err(RichLocalSessionError::ReadOnly)
+    ));
+    Ok(())
+}
+
+#[test]
+fn whole_root_rich_paste_is_not_limited_to_sixty_four_blocks() -> Result {
+    let mut root = fixture::root();
+    root["children"] =
+        json!((0..70).map(|i| fixture::paragraph(&format!("source-{i}"), "S")).collect::<Vec<_>>());
+    let (c, donor) = setup(&root)?;
+    let copied = clipboard(&c, &donor, RichSelectionKind::Document)?;
+    let (_, mut s) = setup(&fixture::root())?;
+    s.select_document(&s.snapshot())?;
+    s.paste_document_clipboard(
+        &s.snapshot(),
+        &copied,
+        &mut RichClipboardNamespace::try_new("many")?,
+    )?;
+    assert_eq!(
+        s.state().document().document().root().as_element().ok_or("root")?.children().len(),
+        71
+    );
     Ok(())
 }

@@ -19,6 +19,7 @@ mod flow_navigation;
 mod general_range;
 mod inline_format_state;
 mod observation;
+mod paste_document_clipboard;
 mod profile;
 mod replace_document_plain_text;
 mod replace_document_typing_text;

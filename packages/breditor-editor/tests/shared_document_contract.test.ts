@@ -11,12 +11,22 @@ function owner(enabled=false){
  const save=()=>JSON.stringify({format:"breditor/rich-replica-document-journal",version:1,document:"room",writer:"101",revision,selected});
  const raw={descriptor_json:()=>JSON.stringify({format:"breditor/shared-rich-owner",abiVersion:1,modelVersion:11,journalVersion:12}),observe:vi.fn(()=>{if(selected)throw Error("Original observer rejects document scope");return observation();}),free:vi.fn(),
   document_selection_version:()=>"1",document_typing_version:()=>"1",document_selection_enabled:()=>documentMode,enable_document_selection:vi.fn(()=>{documentMode=true;revision++;return true;}),observe_document:vi.fn(observation),document_view_json:()=>JSON.stringify(view()),
+  document_clipboard_version:()=>"1",paste_document_clipboard:vi.fn((_observation:unknown,_input:string)=>{selected=false;revision++;return true;}),
   select_document:vi.fn(()=>{selected=true;revision++;return true;}),copy_document_clipboard:vi.fn(()=>JSON.stringify({richJson:"opaque native flow",plainText:""})),replace_document_plain_text:vi.fn(()=>{selected=false;revision++;return true;}),replace_document_typing_text:vi.fn(()=>{selected=false;revision++;return true;}),document_checkpoint:vi.fn(save),document_typing_checkpoint:vi.fn(save),
   general_range_version:()=>"1",enable_general_ranges:()=>false,replace_general_range_text:()=>true,replace_general_range_plain_text:()=>true,replace_general_range_typing_text:()=>true,general_checkpoint:vi.fn(()=>{throw Error("Wrong recovery family");}),general_typing_checkpoint:vi.fn(()=>{throw Error("Wrong recovery family");}),
   receive_frame:vi.fn(()=>{revision++;}),checkpoint:vi.fn(()=>"original"),set_selection:vi.fn(()=>{selected=false;revision++;return true;})};
  return {raw:raw as unknown as SharedRustOwner,methods:raw};
 }
 describe("explicit shared document scope facade",()=>{
+ it("negotiates rich paste independently and forwards one guarded opaque request",()=>{
+  const a=owner(),core=new SharedRichEditor<"document-v1">(a.raw,{selectionEditing:"document-v1"});
+  expect(core.supportsDocumentClipboard()).toBe(true);core.selectDocument();const revision=core.view().revision;
+  core.pasteDocumentClipboard("opaque native clipboard","reserved",revision);
+  expect(a.methods.paste_document_clipboard).toHaveBeenCalledOnce();expect(JSON.parse(a.methods.paste_document_clipboard.mock.calls[0]?.[1]??"null")).toEqual({clipboardJson:"opaque native clipboard",prefix:"reserved"});
+  expect(()=>core.pasteDocumentClipboard("opaque","unused",revision)).toThrow("older shared publication");expect(a.methods.paste_document_clipboard).toHaveBeenCalledOnce();core.dispose();
+  for(const method of ["document_clipboard_version","paste_document_clipboard"] as const){const b=owner();delete b.raw[method];const old=new SharedRichEditor<"document-v1">(b.raw,{selectionEditing:"document-v1"});expect(old.supportsDocumentSelection()).toBe(true);expect(old.supportsDocumentClipboard()).toBe(false);old.selectDocument();const exact=old.checkpointJson();expect(()=>old.pasteDocumentClipboard("opaque","unused")).toThrow("matching native whole-document rich paste");expect(old.checkpointJson()).toBe(exact);old.dispose();}
+  const b=owner(),old=new SharedRichEditor(b.raw);expect(()=>Reflect.apply(old.pasteDocumentClipboard,old,["opaque","unused"])).toThrow("explicit selectionEditing");expect(b.methods.paste_document_clipboard).not.toHaveBeenCalled();old.dispose();
+ });
  it("publishes only the chosen view family and uses document recovery even after the caret returns",()=>{
   const a=owner(),core=new SharedRichEditor<"document-v1">(a.raw,{selectionEditing:"document-v1"}),listener=vi.fn();core.subscribe(listener);
   expect(core.selectionPolicy()).toBe("document-v1");expect(a.methods.enable_document_selection).toHaveBeenCalledOnce();

@@ -27,9 +27,13 @@ pub(super) fn validate_journal_scope(
         match entry {
             Entry::Local { commands, before_ui, after_ui, .. } => {
                 if !document
-                    && commands
-                        .iter()
-                        .any(|c| matches!(c, super::Command::ReplaceDocumentPlainTextV1(_)))
+                    && commands.iter().any(|c| {
+                        matches!(
+                            c,
+                            super::Command::ReplaceDocumentPlainTextV1(_)
+                                | super::Command::PasteDocumentClipboardV1(_)
+                        )
+                    })
                 {
                     return Err(Error::Contract(
                         "document command requires explicit history family",

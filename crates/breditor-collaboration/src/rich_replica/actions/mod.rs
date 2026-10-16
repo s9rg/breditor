@@ -23,6 +23,7 @@ mod move_column;
 mod outdent_list_items;
 mod outdent_task_items;
 mod paste_blocks;
+mod paste_document_clipboard_v1;
 mod paste_flow_at_text;
 mod paste_general_flow_at_text_v1;
 mod paste_table_cells;
@@ -79,6 +80,7 @@ pub use move_column::MoveColumn;
 pub use outdent_list_items::OutdentListItems;
 pub use outdent_task_items::OutdentTaskItems;
 pub use paste_blocks::PasteBlocks;
+pub use paste_document_clipboard_v1::PasteDocumentClipboardV1;
 pub use paste_flow_at_text::PasteFlowAtText;
 pub use paste_general_flow_at_text_v1::PasteGeneralFlowAtTextV1;
 pub use paste_table_cells::{PasteTableCells, PastedCell, PastedMerge};
@@ -114,6 +116,8 @@ pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Whole-document semantic clipboard replacement; sole command in explicit document history.
+    PasteDocumentClipboardV1(PasteDocumentClipboardV1),
     /// Whole-document plain replacement; sole command in explicitly selected document history.
     ReplaceDocumentPlainTextV1(ReplaceDocumentPlainTextV1),
     /// Additive general paragraph Enter with native list/task policy and one exact history unit.
@@ -244,6 +248,7 @@ impl Command {
         document: &breditor_core::rich_content::RichDocument,
     ) -> Result<(), Error> {
         match self {
+            Self::PasteDocumentClipboardV1(value) => value.prepare(doc, codec, document)?,
             Self::ReplaceDocumentPlainTextV1(value) => value.prepare(doc, codec, document)?,
             Self::InsertGeneralParagraphV1(value) => value.prepare(doc, codec, document)?,
             Self::PasteGeneralFlowAtTextV1(value) => value.prepare(doc, codec, document)?,
@@ -346,6 +351,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::PasteDocumentClipboardV1(value) => value.apply(doc, codec, document, stamp),
             Self::ReplaceDocumentPlainTextV1(value) => value.apply(doc, codec, document, stamp),
             Self::InsertGeneralParagraphV1(value) => value.apply(doc, codec, document, stamp),
             Self::PasteGeneralFlowAtTextV1(value) => value.apply(doc, codec, document, stamp),

@@ -1,0 +1,81 @@
+{
+  "format": "breditor/document-rich-paste-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "status": "programmatic-native-functionality",
+  "probe": "scripts/probe-document-rich-paste.mjs",
+  "runtime": {
+    "localDirectory": "target/block-layout-shared-qualification/document-rich-paste-local-final-web",
+    "sharedDirectory": "target/block-layout-shared-qualification/document-rich-paste-shared-final-web",
+    "localWasmSha256": "09f2b0f7dcdbc24f9d4d71eda0d93f0ab024066fff0d4cac47993d608fb3f86e",
+    "sharedWasmSha256": "dd2cfcb7196febfa99a5a904405d6ad8a98ecf13104427831026ed078ad4fa3d",
+    "previousLocalDirectory": "target/block-layout-shared-qualification/document-selection-paired-local-final-web",
+    "previousSharedDirectory": "target/block-layout-shared-qualification/document-selection-sdk-shared-final-web",
+    "previousLocalWasmSha256": "778f1eb53bc2a737d8958726567af1178ae71c8580a1c299fe69acbf795013d1",
+    "previousSharedWasmSha256": "09377c6084f180d98a9c6a5e220e490119474904221dd16b26d8bcd44fb9f74d"
+  },
+  "functional": {
+    "trials": 24,
+    "clipboardKinds": ["formatted-text", "merged-table", "image", "grid", "whole-flow", "hidden-only-flow"],
+    "targets": ["mixed-document", "hidden-only-document"],
+    "history": ["explicit", "typing-v1"],
+    "localSharedSemanticDocumentComparisons": 120,
+    "localSharedComparisonExclusions": ["breditor/merges[].lamport", "breditor/merges[].writer", "breditor/merges[].counter"],
+    "exactRestores": 52,
+    "exactFutureCheckpoints": 208,
+    "exactPreviousPeerDocuments": 10,
+    "previousSharedUnknownCommandRefusals": 24,
+    "previousLocalExactRecipeRestores": 24,
+    "guardedRefusals": 96,
+    "byteIdenticalOriginalCheckpoints": 12,
+    "passed": true
+  },
+  "contracts": {
+    "namespacePrefixMaxUtf8Bytes": 90,
+    "namespaceConsumption": "Host must reserve forever, including refused and undone attempts",
+    "requestEnvelopeMaxBytes": 4194304,
+    "semanticClipboardMaxBytes": 1048576,
+    "sourceAndTargetTypedIdsExcluded": true,
+    "sharedHistoricalBlockEntityIdsExcluded": true,
+    "sharedRootRegisterReplacement": false,
+    "sharedAuthorClock": "Captured native author stamp, never clipboard authority",
+    "flowGridCaret": "Fresh empty plain paragraph after retained structure",
+    "textCaret": "End of fresh paragraph retaining clipboard inline formats",
+    "failurePlainFallback": false,
+    "originalDefaultsChanged": false,
+    "oldStoredMeaningsChanged": false,
+    "birthUndoLawChanged": false
+  },
+  "focusedChecks": {
+    "coreDocumentSelectionTests": 11,
+    "wasmDocumentSelectionTests": 4,
+    "sharedDocumentSelectionTests": 12,
+    "coreClipboardRegressionTests": 21,
+    "wasmClipboardRegressionTests": 7,
+    "editorSdkTests": 193,
+    "sdkTestFiles": 26,
+    "applicationSurfaceTests": 15,
+    "positiveNegativeConsumerTypes": "passed against generated local/shared declarations",
+    "strictClippy": ["core and local Wasm all targets", "shared library and document-selection test", "shared application Wasm32 release"],
+    "thirdPartyWarningUnchanged": "vendored loro-internal unused HasIdSpan import"
+  },
+  "captionCodePolicyRegression": {
+    "probe": "scripts/probe-caption-code-text-paste.mjs",
+    "policy": "Insert text and report formatting loss after successful guarded replacement",
+    "trials": 32,
+    "exactLocalSharedDocuments": 160,
+    "exactRestores": 64,
+    "exactFutureCheckpoints": 256,
+    "pureReads": 64,
+    "guardedRefusals": 4,
+    "passed": true
+  },
+  "remaining": [
+    "Explicit document DOM and React routing, selection painting, Copy/Cut retention and composition",
+    "Document-family relay composition and explicit presence/toolbar behavior",
+    "Sanitized HTML/Markdown and realistic Word/Google Docs/Excel interchange",
+    "Deferred broad browser, native IME, accessibility, performance and release qualification"
+  ],
+  "releaseReady": false,
+  "publishedOrPushed": false
+}

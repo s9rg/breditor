@@ -67,6 +67,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  replaceDocumentPlainText(this:SharedRichEditor<"document-v1">,paragraph:string,text:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#documentOwner().replace_document_plain_text!(o,JSON.stringify({paragraph,text})),revision);}
  replaceDocumentTypingText(this:SharedRichEditor<"document-v1">,paragraph:string,text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#documentOwner().replace_document_typing_text!(o,JSON.stringify({paragraph,text,clockMs})),revision);}
  copyDocument(this:SharedRichEditor<"document-v1">):ClipboardContent|null{return JSON.parse(this.#documentOwner().copy_document_clipboard!(this.#observation)) as ClipboardContent|null;}
+ /** Rich paste is separately negotiated; earlier document-selection runtimes still work. */
+ supportsDocumentClipboard():boolean{const raw=this.#live();return this.supportsDocumentSelection()&&raw.document_clipboard_version?.()==="1"&&typeof raw.paste_document_clipboard==="function";}
+ /** Prefix must be permanently reserved on success, refusal and Undo. No plain-text fallback. */
+ pasteDocumentClipboard(this:SharedRichEditor<"document-v1">,clipboardJson:string,prefix:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>{const raw=this.#documentOwner();if(!this.supportsDocumentClipboard())throw new SharedEditorError("document_clipboard_unavailable","Use matching native whole-document rich paste");return raw.paste_document_clipboard!(o,JSON.stringify({clipboardJson,prefix}));},revision);}
  descriptor():SharedOwnerDescriptor{this.#live();return JSON.parse(this.#descriptor) as SharedOwnerDescriptor;}
  richLanguageVersion():1|2|3{const language=sharedProtocolLanguage(this.descriptor());if(language===undefined)throw new SharedEditorError("owner_abi","Unsupported shared native language");return language;}
  documentJson():string{return this.view().documentJson;}

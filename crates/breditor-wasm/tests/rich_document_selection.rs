@@ -26,6 +26,74 @@ fn setup(hidden_only: bool) -> Result<(BreditorRichProfile, BreditorRichEditor)>
     Ok((p, a))
 }
 #[test]
+fn rich_document_paste_is_closed_guarded_and_retains_exact_native_future_history() -> Result {
+    for natural in [false, true] {
+        for hidden in [false, true] {
+            let (p, mut a) = setup(hidden)?;
+            let (_, mut donor) = setup(false)?;
+            assert_eq!(a.document_clipboard_version(), "1");
+            assert_eq!(donor.select_document(&donor.observe()).status(), "selection");
+            let transfer: Value =
+                serde_json::from_str(&read(donor.observe().general_clipboard_json())?)?;
+            let clipboard = transfer["structuredJson"].as_str().ok_or("clipboard")?;
+            if natural {
+                read(a.enable_typing_history(&a.observe()))?;
+            }
+            let stale = a.observe();
+            assert_eq!(a.select_document(&a.observe()).status(), "selection");
+            let source = read(a.observe().document_json())?;
+            let selected = read(a.document_checkpoint_json())?;
+            for bad in [
+                "bad".into(),
+                json!({"clipboardJson":clipboard,"prefix":"fresh","extra":true}).to_string(),
+                "{\"clipboardJson\":\"x\",\"prefix\":\"a\",\"prefix\":\"b\"}".into(),
+                json!({"clipboardJson":"bad","prefix":"fresh"}).to_string(),
+                json!({"clipboardJson":clipboard,"prefix":""}).to_string(),
+            ] {
+                assert_eq!(a.paste_document_clipboard(&a.observe(), &bad).status(), "error");
+                assert_eq!(read(a.document_checkpoint_json())?, selected);
+            }
+            assert_eq!(a.paste_document_clipboard(&stale, "bad").status(), "error");
+            assert_eq!(a.paste_document_clipboard(&donor.observe(), "bad").status(), "error");
+            let input = json!({"clipboardJson":clipboard,"prefix":"whole-rich"}).to_string();
+            assert_eq!(a.paste_document_clipboard(&a.observe(), &input).status(), "content");
+            assert_eq!(view(&a)?["undoDepth"], 1);
+            let exact = read(a.document_checkpoint_json())?;
+            let mut b = if natural {
+                p.restore_document_typing_editor(&exact)
+            } else {
+                p.restore_document_editor(&exact)
+            }
+            .take_editor()
+            .ok_or("rich restore")?;
+            assert_eq!(read(b.document_checkpoint_json())?, exact);
+            for command in ["undo", "redo", "undo", "redo"] {
+                assert_eq!(
+                    a.execute(&a.observe(), &json!({"kind":command}).to_string()).status(),
+                    command
+                );
+                assert_eq!(
+                    b.execute(&b.observe(), &json!({"kind":command}).to_string()).status(),
+                    command
+                );
+                assert_eq!(
+                    read(a.document_checkpoint_json())?,
+                    read(b.document_checkpoint_json())?
+                );
+                if command == "undo" {
+                    assert_eq!(read(a.observe().document_json())?, source);
+                    assert_eq!(view(&a)?["selection"], json!({"kind":"document"}));
+                }
+            }
+            read(a.set_read_only(&a.observe(), true))?;
+            let exact = read(a.document_checkpoint_json())?;
+            assert_eq!(a.paste_document_clipboard(&a.observe(), &input).status(), "error");
+            assert_eq!(read(a.document_checkpoint_json())?, exact);
+        }
+    }
+    Ok(())
+}
+#[test]
 fn explicit_document_scope_and_replace_restore_exact_future_histories() -> Result {
     for natural in [false, true] {
         for hidden_only in [false, true] {

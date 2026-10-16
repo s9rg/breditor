@@ -22,6 +22,7 @@ mod insert_plain_text;
 mod insert_typing_text;
 pub(crate) mod local_rewrite;
 mod navigate_flow;
+mod paste_document_clipboard;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod plan_general_range_plain_text;
