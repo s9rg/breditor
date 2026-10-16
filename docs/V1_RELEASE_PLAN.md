@@ -550,7 +550,8 @@ The [2026-10-16 transport checkpoint](qualification/2026-10-16-writer-transport-
 completes explicit Wasm/SDK/reference-relay V2 integration with real offline
 authors, exact restart recovery and peer-preserving Undo/Redo. General rich
 clipboard and cross-structure paragraph checkpoints are also retained. Remaining
-functional work includes whole-document selection and external interchange.
+functional checkpoints subsequently added whole-document selection and external
+conversion, as described below.
 The subsequent [caption/code checkpoint](qualification/2026-10-16-caption-code-text-paste-functional.json)
 implements the approved native text-with-losses policy with visible notices,
 latest React callbacks, 32 paired Wasm scenarios and exact history recovery.
@@ -617,8 +618,15 @@ roots and validates export fragments under the receiving schema without editing
 content or history. Its local/shared Wasm and SDK checkpoint preserves existing
 clipboard, checkpoint and synchronization formats. The separate opt-in
 `@breditor/interchange` converter now covers representative Office-style input
-and both export formats through actual native paste/history. Browser routing,
-visible post-commit notices and installed-consumer acceptance remain required.
+and both export formats through actual native paste/history. The subsequent
+[browser clipboard checkpoint](qualification/2026-10-16-browser-interchange.json)
+adds explicit local/shared routing, combined post-publication notices, managed
+SDK/React integration and host-owned image registry mappings. Both workspace and
+clean-installed archives pass 44 paste/recovery scenarios, 176 future checkpoint
+comparisons and 32 dropped-format Cut refusals. Installed consumer types and
+production parser separation also pass. Combined installed editing/transport
+workflows remain the next functional acceptance checkpoint; final browser and
+release qualification stays deferred under the current priority.
 
 Introduce separate bounded HTML and Markdown import/export adapters with
 schema/version binding, safe URL/asset policies and explicit loss reports.

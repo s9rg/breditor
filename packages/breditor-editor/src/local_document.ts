@@ -4,15 +4,17 @@ import {refreshAssets} from "@breditor/experimental-rich-content/rendering";
 import {initializeLocalRuntime} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
+import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 import {standardProfileBootstrapJson,structuralProfileBootstrapJsonV2,layoutProfileBootstrapJsonV3,type LocalEditor,type LocalEditorOptions,type LocalInitial} from "./local.js";
 
 export type LocalDocumentInitial=Extract<LocalInitial,{kind:"empty"|"document"}>
  |{kind:"documentCheckpoint";checkpointJson:string}
  |{kind:"documentTypingCheckpoint";checkpointJson:string};
-export interface LocalDocumentEditorOptions extends Omit<RichDocumentEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag">,Pick<LocalEditorOptions,"host"|"profileBootstrapJson"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"> {
+export interface LocalDocumentEditorOptions extends Omit<RichDocumentEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange">,Pick<LocalEditorOptions,"host"|"profileBootstrapJson"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"> {
  initial?:LocalDocumentInitial;
  /** Runs against the actual typed native document owner before host mutation. */
  toolbar?:(core:RichDocumentCoreEditor,standard:readonly ToolbarControl<"document-v1">[])=>readonly ToolbarControl<"document-v1">[];
+ clipboardInterchange?:ClipboardInterchangeFactory<RichDocumentCoreEditor>;
 }
 export interface LocalDocumentEditor extends Omit<LocalEditor,"view"|"insertImageFiles"> {
  selectionPolicy():"document-v1";
@@ -63,7 +65,8 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
   if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use matching native read-only enforcement");core.setReadOnly(options.readOnly);}
   const standard=language===3?createLayoutRichToolbarV3(core,presentation):language===2?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
-  claim.assert();dom=mountDocumentRichEditor(options.host,{...options,core,...render,toolbar});claim.assert();return new DocumentOwner(dom,claim.release,render);
+  const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);
+  claim.assert();dom=mountDocumentRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();return new DocumentOwner(dom,claim.release,render);
  }catch(error){try{if(dom)dom.dispose();else core?.dispose();}finally{claim.rollback();}throw error;}
  finally{profile?.dispose();}
 }

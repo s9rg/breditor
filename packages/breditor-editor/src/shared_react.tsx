@@ -2,6 +2,7 @@ import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactEleme
 import {openSharedEditor,type SharedEditorSession,type SharedEditorSessionOptions} from "./shared_session.js";
 import {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
 import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextProjection} from "@breditor/collaboration";
+import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-content";
 export {BreditorSharedDocumentEditor,type BreditorSharedDocumentEditorProps,type BreditorSharedDocumentEditorHandle} from "./shared_document_react.js";
 
 export interface BreditorSharedEditorProps {
@@ -14,6 +15,7 @@ export interface BreditorSharedEditorProps {
  onClosing?:(editor:SharedEditorSession)=>void;
  onError?:(error:unknown)=>void;
  onPasteLoss?:(report:RichClipboardTextProjection)=>void;
+ onInterchange?:(report:RichClipboardInterchangeReport)=>void;
  /** Required recovery handoff, including after unmount. Keep/export this writer or explicitly discard it. */
  onCloseError:(error:unknown,editor:SharedEditorRecovery)=>void;
 }
@@ -67,7 +69,7 @@ export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,Breditor
     if(abort.signal.aborted)return;
     const policy=callbacks.current.readOnly;
     const editor=await openSharedEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
-     onChange:event=>callbacks.current.onChange?.(event),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),
+     onChange:event=>callbacks.current.onChange?.(event),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),onInterchange:value=>(callbacks.current.onInterchange??initial.onInterchange)?.(value),
      onSaveState:state=>callbacks.current.onSaveState?.(state),onClosing:editor=>callbacks.current.onClosing?.(editor),onError:report});
     if(abort.signal.aborted){await retire(editor);return;}
     try{if(callbacks.current.readOnly!==undefined)editor.setReadOnly(callbacks.current.readOnly);}catch(error){await retire(editor);throw error;}

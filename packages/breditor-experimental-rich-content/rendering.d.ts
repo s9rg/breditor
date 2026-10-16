@@ -13,3 +13,4 @@ export * from "./dist/browser/block_layout_presentation.js";
 export * from "./dist/browser/block_layout_controls.js";
 export * from "./dist/browser/block_layout_serialization.js";
 export * from "./dist/browser/rich_language.js";
+export * from "./dist/browser/clipboard_interchange.js";

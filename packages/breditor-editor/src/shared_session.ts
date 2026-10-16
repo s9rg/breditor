@@ -8,6 +8,7 @@ import {createStandardRichInlinePresentationV1} from "@breditor/experimental-ric
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
+import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 import type {RuntimeInput} from "./runtime_loader.js";
 import {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
 export {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
@@ -23,7 +24,7 @@ export type SharedInitial=
  |{kind:"generalCheckpoint";checkpointJson:string}
  |{kind:"generalTypingCheckpoint";checkpointJson:string};
 
-export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"> {
+export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;database:string;room:string;writer:string;initial?:SharedInitial;
  configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2|SharedProfileConfigurationV3;additionalInlinePresentation?:unknown;
  /** Explicit native language. Omitted/1 retains original model11; 3 selects layout model13. */
@@ -39,6 +40,8 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  onClosing?:(editor:SharedEditorSession)=>void;
  /** Configuration only: do not publish edits from a toolbar factory. */
  toolbar?:(core:SharedRichEditor,standard:readonly SharedToolbarControl[])=>readonly SharedToolbarControl[];
+ /** Configuration only, against this durable native owner before mounting. */
+ clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor>;
 }
 
 /** Owns UI, exact local durability and the exclusive causal writer; transport remains optional. */
@@ -145,7 +148,8 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
   claim.assert();
   if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
   const core=session.core,standard=language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
-  claim.assert();dom=mountSharedEditor(options.host,{...options,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
+  const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
+  claim.assert();dom=mountSharedEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
   return new SharedEditorSessionOwner(session,dom,claim.release,options);
  }catch(error){
   try{dom?.dispose();if(session)await session.close();}

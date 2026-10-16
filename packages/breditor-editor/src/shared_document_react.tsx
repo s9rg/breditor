@@ -2,12 +2,14 @@ import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactEleme
 import {openSharedDocumentEditor,type SharedDocumentEditorSession,type SharedDocumentEditorSessionOptions} from "./shared_document_session.js";
 import {SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery} from "./shared_document_open_error.js";
 import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextProjection} from "@breditor/collaboration";
+import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-content";
 export interface BreditorSharedDocumentEditorProps {
  initialOptions:Omit<SharedDocumentEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
  sessionKey?:string;className?:string;readOnly?:boolean;
  onReady?:(editor:SharedDocumentEditorSession)=>void;onChange?:(event:SharedPublication<"document-v1">)=>void|Promise<void>;
  onSaveState?:(state:SharedSaveState)=>void;onClosing?:(editor:SharedDocumentEditorSession)=>void;
  onPasteLoss?:(report:RichClipboardTextProjection)=>void;onError?:(error:unknown)=>void;
+ onInterchange?:(report:RichClipboardInterchangeReport)=>void;
  /** Required even after unmount: retain/export exact document recovery or explicitly discard it. */
  onCloseError:(error:unknown,editor:SharedDocumentEditorRecovery)=>void;
 }
@@ -34,7 +36,7 @@ export const BreditorSharedDocumentEditor=forwardRef<BreditorSharedDocumentEdito
   const opening=lane.current.then(async()=>{if(abort.signal.aborted)return;try{
    if(recovery.current)await retire(recovery.current);if(abort.signal.aborted)return;
    const policy=callbacks.current.readOnly,editor=await openSharedDocumentEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
-    onChange:event=>callbacks.current.onChange?.(event),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),onSaveState:state=>callbacks.current.onSaveState?.(state),onClosing:editor=>callbacks.current.onClosing?.(editor),onError:report});
+    onChange:event=>callbacks.current.onChange?.(event),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),onInterchange:value=>(callbacks.current.onInterchange??initial.onInterchange)?.(value),onSaveState:state=>callbacks.current.onSaveState?.(state),onClosing:editor=>callbacks.current.onClosing?.(editor),onError:report});
    if(abort.signal.aborted){await retire(editor);return;}try{if(callbacks.current.readOnly!==undefined)editor.setReadOnly(callbacks.current.readOnly);}catch(error){await retire(editor);throw error;}
    owned=editor;current.current=editor;setPhase("ready");try{callbacks.current.onReady?.(editor);}catch(error){report(error);}
   }catch(error){if(error instanceof SharedDocumentEditorOpenError)handoff(error,error.recovery);if(!abort.signal.aborted){setPhase("failed");report(error);}}});

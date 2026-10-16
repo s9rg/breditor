@@ -94,7 +94,28 @@ unique rectangle and known version. No internal source IDs or causal clocks
 are encoded in these wrappers. Consumers stripping them may keep visible text
 but cannot preserve Breditor's independent base-cell partitions.
 
-## Verification and remaining integration
+## Browser integration and verification
+
+Managed local/shared openings accept an explicit owner-bound factory:
+
+```ts
+clipboardInterchange: core => createRichInterchange(core),
+onInterchange: report => showInterchangeNotice(report),
+```
+
+Use the factory in React `initialOptions`; `onInterchange` is also a live React
+prop. Direct DOM mounts take the adapter object. Default editors do not load
+this package or enable foreign paste merely because HTML is available. Opt-in
+priority is private Breditor content, HTML, explicit Markdown MIME, then existing
+file/plain handling. Plain text is not guessed as Markdown, and conversion
+failure does not retry as plain text.
+
+Copy/Cut adds HTML and Markdown to private/plain output. Cut requires every
+requested format to be retained before native deletion. Reports follow retained
+Copy or accepted Cut/Paste, not conversion preparation. Caption/code flow paste
+uses native-projected text with a visible loss notice. See the
+[full contract](../../docs/RICH_INTERCHANGE.md) for queue guards, image registry
+policy and combined source/destination reports.
 
 Run `npm run typecheck --workspace @breditor/interchange` and
 `npm test --workspace @breditor/interchange` for parser staging tests. Those
@@ -103,7 +124,9 @@ adapter and paired native runtimes, run `scripts/probe-foreign-interchange.mjs`
 with their local/shared directories for actual native conversion, atomic
 document/grid paste, exact recovery and offline peer history.
 
-This private checkpoint is programmatic. Opt-in browser clipboard routing,
-visible post-commit notices, managed SDK/React wiring and installed-consumer
-acceptance remain unfinished. It is not a release-ready or native clipboard
-qualification. See the [full contract](../../docs/RICH_INTERCHANGE.md).
+Run `scripts/probe-browser-interchange.mjs` with matching runtime directories for
+compiled SDK/React integration with actual Wasm and synthetic clipboard events.
+`scripts/check-interchange-package.mjs` packs and installs candidate archives
+offline, repeats those checks, verifies consumer types and checks production
+bundle parser separation. These functional checks do not qualify OS clipboard
+applications, broad browser reliability or release readiness.

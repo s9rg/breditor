@@ -13,15 +13,16 @@ rich clipboard, cross-range paragraph Enter, explicit caption/code text paste
 and transport V2 have functional checkpoints below. Explicit local/shared document
 DOM coordinators, root SDK/React lifecycles and relay composition now connect
 document-wide Select All and composition to Rust. Programmatic HTML/Markdown
-conversion now has a native checkpoint; opt-in foreign clipboard routing and
-final integrated qualification remain required.
+conversion now has native and opt-in browser/managed checkpoints. Final integrated
+release qualification remains required.
 
 Whole-document selection has native local/shared scope, rich replacement,
 separate view/checkpoint families and explicit programmatic SDK/storage support.
 The native [external interchange bridge](RICH_INTERCHANGE.md) now admits source
 roots and validates export fragments under the active schema without changing
 content or history. Its separate HTML/Markdown adapters now cover representative
-Office markup programmatically; browser clipboard integration remains unfinished.
+Office markup programmatically and through opt-in local/shared browser, managed
+SDK and React clipboard routes with visible post-publication notices.
 
 ## Original joins and protected boundaries
 
@@ -906,8 +907,8 @@ now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
 general explicit/natural journal recovery after host restart, and peer-preserving
 selective Undo/Redo. It does not change original writer digests or migrate rooms.
 
-Remaining installed editing/transport acceptance and external interchange
-remain required. Native IME/accessibility and
+Remaining combined installed editing/transport acceptance is required. Foreign
+clipboard now has a focused managed integration probe; native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 

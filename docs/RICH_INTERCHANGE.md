@@ -3,8 +3,10 @@
 The separate opt-in `@breditor/interchange` package converts bounded HTML and
 Markdown through the existing Rust semantic clipboard. Native local/shared
 admission, sanitized import/export and representative Office-style fixtures are
-implemented and tested programmatically. Browser opt-in integration, visible
-post-commit notices and installed-consumer acceptance remain unfinished.
+implemented and tested programmatically. Explicit local/shared clipboard routing,
+visible post-commit notices and managed SDK/React integration now use that same
+native boundary and pass clean-installed functional checks. Final integrated
+release qualification remains separate.
 Default Copy/Paste behavior and all stored document/history formats are unchanged.
 
 ## Native admission contract
@@ -103,11 +105,64 @@ application-native clipboard certification. They cover list metadata, stylesheet
 classes, Unicode, formatting, nested lists, merges, captions and asset references.
 Unsupported content has a loss, compatibility notice or closed rejection result.
 
-Browser routing remains opt-in work. It must preserve the existing private-MIME
-priority and defaults, use the captured revision and fresh-ID policy, publish one
-native history group, and show source/destination reports only after success.
-Managed SDK/React, asset-registry wiring and installed-consumer acceptance also
-remain required before calling foreign clipboard handling end to end.
+## Enable browser clipboard conversion
+
+Direct local/shared DOM mounts accept `clipboardInterchange: adapter`. Managed
+`openLocalEditor`, `openLocalDocumentEditor`, `openSharedEditor` and
+`openSharedDocumentEditor` accept a factory for their actual native owner:
+
+```ts
+import {openLocalDocumentEditor} from "@breditor/editor";
+import {createRichInterchange} from "@breditor/interchange";
+
+const editor = await openLocalDocumentEditor({
+  host,
+  selectionEditing: "document-v1",
+  rangeEditing: "general-v1",
+  richLanguage: 3,
+  clipboardInterchange: core => createRichInterchange(core),
+  onInterchange: report => showInterchangeNotice(report),
+});
+```
+
+The port imports no foreign parser. Omitting it preserves the existing
+private/plain clipboard path and file handling. Enabling it requires the complete
+adapter and matching native admission. The factory runs before host DOM mutation
+and must not publish edits. Startup failure uses the existing cleanup and host
+rollback contracts.
+
+Opted-in paste prefers private Breditor content, then advertised HTML, then
+advertised `text/markdown`. Ordinary plain text is never guessed as Markdown.
+Advertised empty rich/foreign content, conversion failure and native refusal do
+not fall through to another representation. Rich/foreign content wins over an
+accompanying image file; file-only insertion retains the explicit asset host.
+Grid selections request native grid admission, rejecting incompatible shapes
+atomically rather than converting them to prose.
+
+Copy/Cut prepares HTML and Markdown before touching the clipboard. It writes
+plain text, the private fragment and both foreign formats, verifying retention
+of all four byte for byte. Failure may leave a partially written clipboard,
+but Cut does not delete editor content. Read-only Cut behaves as Copy. Without
+the opt-in, the existing retention requirements apply.
+
+The controller captures the native revision before conversion callbacks. Cut
+and Paste retain that guard through the bounded queue. A stale operation has no
+success report. Each accepted paste uses one existing native history group,
+not a sequence of TypeScript document edits.
+
+`onInterchange` receives a frozen version-one report with the operation,
+`sourceRevision`, per-format notices and optional native `destination` projection.
+Copy reports follow verified retention; Cut/Paste reports follow accepted native
+publication, including queued work. Visible status combines source notices with
+caption/code losses. Callback failure cannot rewind an accepted edit. Existing
+`onPasteLoss` still receives the destination once. That projection includes
+inserted text; the full callback payload is not a content-free diagnostic record.
+
+All four React wrappers take the factory in immutable `initialOptions` and expose
+`onInterchange` as a live prop. Callback changes do not reset the owner or history.
+Images use the programmatic adapter's explicit `resolveImage` and `exportImage`
+registry policies. Import does not acquire bytes from source URLs or clipboard
+companion files.
 
 ## Functional checkpoint
 
@@ -130,3 +185,17 @@ comparisons, including both offline authors. Covered merge cells retain their
 distinct content and media. Four grid pastes and four wrong-shape refusals use
 the existing native actions. Conversion-owned IDs are excluded only from foreign
 round-trip comparisons; no checkpoint fields are excluded.
+
+The [browser clipboard checkpoint](qualification/2026-10-16-browser-interchange.json)
+adds compiled managed local/shared SDKs and all four actual React wrappers,
+tested with paired application Wasm and synthetic DOM/clipboard/storage/locks.
+It covers both owner and history families, 44 pastes, 44 exact restores,
+176 future checkpoint comparisons, 22 durable shared resumes and 32 refused
+Cuts with dropped formats. Priority, stale guards, queued reports, host-owned
+images and live React callbacks are included.
+
+Run `scripts/probe-browser-interchange.mjs` with the paired runtime directories.
+`scripts/check-interchange-package.mjs` repeats it using packed archives and bare
+package imports, checks consumer types, and verifies parser separation in
+production bundles. OS clipboard applications, broader browser reliability and
+final release acceptance remain separate qualifications.

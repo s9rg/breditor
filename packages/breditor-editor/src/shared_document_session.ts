@@ -4,6 +4,7 @@ import {createStandardRichInlinePresentationV1} from "@breditor/experimental-ric
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
+import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 import type {SharedInitial,SharedEditorSessionOptions} from "./shared_session.js";
 import {SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery} from "./shared_document_open_error.js";
 export {SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery} from "./shared_document_open_error.js";
@@ -11,11 +12,12 @@ export {SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery} from ".
 export type SharedDocumentInitial=Extract<SharedInitial,{kind:"resume"|"empty"|"document"|"frame"}>
  |{kind:"documentCheckpoint";checkpointJson:string}
  |{kind:"documentTypingCheckpoint";checkpointJson:string};
-export interface SharedDocumentEditorSessionOptions extends Omit<SharedDocumentDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag">,Pick<SharedEditorSessionOptions,"host"|"database"|"room"|"writer"|"configuration"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"|"onSaveState"> {
+export interface SharedDocumentEditorSessionOptions extends Omit<SharedDocumentDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange">,Pick<SharedEditorSessionOptions,"host"|"database"|"room"|"writer"|"configuration"|"additionalInlinePresentation"|"richLanguage"|"readOnly"|"history"|"runtimeInput"|"signal"|"onSaveState"> {
  initial?:SharedDocumentInitial;rangeEditing?:"general-v1";
  coreOptions?:Omit<SharedEditorOptions<"document-v1">,"selectionEditing"|"onError">;
  onClosing?:(editor:SharedDocumentEditorSession)=>void;
  toolbar?:(core:SharedRichEditor<"document-v1">,standard:readonly SharedToolbarControl<"document-v1">[])=>readonly SharedToolbarControl<"document-v1">[];
+ clipboardInterchange?:ClipboardInterchangeFactory<SharedRichEditor<"document-v1">>;
 }
 /** Borrow the actual document owner; relay/presence adapters require their own explicit compatible policy. */
 export interface SharedDocumentEditorSession extends SharedDocumentEditorRecovery {
@@ -92,7 +94,8 @@ export async function openSharedDocumentEditor(options:SharedDocumentEditorSessi
   });
   claim.assert();if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
   const core=session.core,standard=language===3?createLayoutSharedToolbarV3(core,presentation):language===2?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
-  claim.assert();dom=mountSharedDocumentEditor(options.host,{...options,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options);
+  const {clipboardInterchange:interchangeFactory,...domOptions}=options,interchange=clipboardInterchangeOptions(interchangeFactory,core);
+  claim.assert();dom=mountSharedDocumentEditor(options.host,{...domOptions,...interchange,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();return new DocumentSessionOwner(session,dom,claim.release,options);
  }catch(error){try{dom?.dispose();if(session)await session.close();}catch(closeError){throw new SharedDocumentEditorOpenError(new AggregateError([error,closeError],"Document opening and durable cleanup failed"),session!);}finally{claim.rollback();}throw error;}
  finally{profile?.free();}
 }

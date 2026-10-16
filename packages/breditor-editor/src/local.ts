@@ -3,12 +3,13 @@ import {refreshAssets} from "@breditor/experimental-rich-content/rendering";
 import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
+import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 export const standardProfileBootstrapJson=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:6,schema:{name:"breditor-editor/standard",version:1},extensions:[]});
 /** Explicit bootstrap V7; neither old schema selectors nor saved checkpoints migrate. */
 export const structuralProfileBootstrapJsonV2=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:7,schema:{name:"breditor-editor/standard",version:2},extensions:[]});
 export const layoutProfileBootstrapJsonV3=JSON.stringify({format:"breditor/profile-bootstrap",formatVersion:8,schema:{name:"breditor-editor/standard",version:3},extensions:[]});
 export type LocalInitial={kind:"empty";documentId?:string;blockId?:string}|{kind:"document";documentJson:string}|{kind:"checkpoint";checkpointJson:string}|{kind:"typingCheckpoint";checkpointJson:string};
-export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"> {
+export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolbar"|"inlinePresentation"|"inlineTag"|"clipboardInterchange"> {
  host:HTMLElement;initial?:LocalInitial;profileBootstrapJson?:string;additionalInlinePresentation?:unknown;
  /** Explicit native grammar; omitted/1 preserves V1, 2 selects structure, 3 adds layout. */
  richLanguage?:1|2|3;
@@ -19,6 +20,8 @@ export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolb
  runtimeInput?:RuntimeInput;signal?:AbortSignal;
  /** Created for this exact owner, after native compilation and before host mutation. */
  toolbar?:(core:RichCoreEditor,standard:readonly ToolbarControl[])=>readonly ToolbarControl[];
+ /** Explicit opt-in, configured for this owner before mount. Do not publish edits in the factory. */
+ clipboardInterchange?:ClipboardInterchangeFactory<RichCoreEditor>;
 }
 export interface LocalEditor {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
@@ -83,7 +86,8 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
   const standard=language===3?createLayoutRichToolbarV3(core,presentation):language===2?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation);
   const toolbar=options.toolbar?.(core,standard)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};
-  claim.assert();dom=mountRichEditor(options.host,{...options,core,...render,toolbar});claim.assert();
+  const {clipboardInterchange:factory,...domOptions}=options,interchange=clipboardInterchangeOptions(factory,core);
+  claim.assert();dom=mountRichEditor(options.host,{...domOptions,...interchange,core,...render,toolbar});claim.assert();
   return new LocalEditorOwner(dom,claim.release,render);
  }catch(error){try{if(dom)dom.dispose();else core?.dispose();}finally{claim.rollback();}throw error;}
  finally{profile?.dispose();}

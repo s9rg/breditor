@@ -1,6 +1,7 @@
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement} from "react";
 import {openLocalDocumentEditor,type LocalDocumentEditor,type LocalDocumentEditorOptions} from "./local_document.js";
 import type {RichCommand,RichDocumentView,RichCommandOutcome,RichClipboardTextProjection} from "@breditor/experimental-rich-content";
+import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-content";
 /** Immutable document-family configuration per sessionKey; callbacks and readOnly remain live. */
 export interface BreditorDocumentEditorProps {
  initialOptions:Omit<LocalDocumentEditorOptions,"host"|"signal"|"onChange"|"onError">;
@@ -8,6 +9,7 @@ export interface BreditorDocumentEditorProps {
  onReady?:(editor:LocalDocumentEditor)=>void;
  onChange?:(view:RichDocumentView,outcome:RichCommandOutcome)=>void;
  onPasteLoss?:(report:RichClipboardTextProjection)=>void;onError?:(error:unknown)=>void;
+ onInterchange?:(report:RichClipboardInterchangeReport)=>void;
 }
 export interface BreditorDocumentEditorHandle {
  getEditor():LocalDocumentEditor|null;focus():void;checkpointJson():string|null;
@@ -31,7 +33,7 @@ export const BreditorDocumentEditor=forwardRef<BreditorDocumentEditorHandle,Bred
   if(!host)return;const abort=new AbortController(),initial=configuration.current;let owned:LocalDocumentEditor|undefined;setPhase("starting");
   const report=(error:unknown)=>{try{callbacks.current.onError?.(error);}catch{/* Reporting cannot rewind a publication. */}};
   const opening=lane.current.then(async()=>{if(abort.signal.aborted)return;try{
-   const policy=callbacks.current.readOnly,editor=await openLocalDocumentEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,onChange:(view,outcome)=>callbacks.current.onChange?.(view,outcome),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),onError:report});
+   const policy=callbacks.current.readOnly,editor=await openLocalDocumentEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,onChange:(view,outcome)=>callbacks.current.onChange?.(view,outcome),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),onInterchange:value=>(callbacks.current.onInterchange??initial.onInterchange)?.(value),onError:report});
    if(abort.signal.aborted){editor.dispose();return;}try{if(callbacks.current.readOnly!==undefined)editor.setReadOnly(callbacks.current.readOnly);}catch(error){editor.dispose();throw error;}
    owned=editor;current.current=editor;setPhase("ready");try{callbacks.current.onReady?.(editor);}catch(error){report(error);}
   }catch(error){if(!abort.signal.aborted){setPhase("failed");report(error);}}});

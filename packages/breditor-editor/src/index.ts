@@ -3,5 +3,7 @@ export {openLocalEditor,createLocalProfile,createStructuralLocalProfileV2,create
 export {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 export {openLocalDocumentEditor,type LocalDocumentEditor,type LocalDocumentEditorOptions,type LocalDocumentInitial} from "./local_document.js";
 export {emptyDocumentJson} from "./empty_document.js";
+export type {ClipboardInterchangeFactory} from "./clipboard_interchange.js";
+export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeNotice,RichInterchangeFormatReport,RichInterchangeResult} from "@breditor/experimental-rich-content";
 export {RichAssetStore,RichLocalSessionStore,RichDocumentSessionStore,defaultAssetLimits,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createSelectionRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,createFlowNavigationControls,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "@breditor/experimental-rich-content";
 export type {RichCommand,RichView,RichDocumentView,RichDocumentSelection,RichDocumentCoreEditor,RichSelection,RichPoint,RichCell,FormatLiteral,RichCoreEditor,RichCoreProfile,RichClipboardTransfer,RichInlinePresentation,RichSelectionCoverageRead,RichSelectionFormatStateRead,RichSelectionFormatChange,RichBlockLayoutPatch,RichBlockLayoutStateRead,RichLayoutFieldState,ToolbarControl,AssetInfo,AssetLimits,AssetUploader,FlowPosition,FlowDraft} from "@breditor/experimental-rich-content";

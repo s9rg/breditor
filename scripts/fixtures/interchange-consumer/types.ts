@@ -1,0 +1,15 @@
+import {createRichInterchange} from "@breditor/interchange";
+import type {LocalEditorOptions,LocalDocumentEditorOptions,RichClipboardInterchangeReport} from "@breditor/editor";
+import type {SharedEditorSessionOptions,SharedDocumentEditorSessionOptions} from "@breditor/editor/collaboration";
+import type {BreditorEditorProps,BreditorDocumentEditorProps} from "@breditor/editor/react";
+import type {BreditorSharedEditorProps,BreditorSharedDocumentEditorProps} from "@breditor/editor/collaboration/react";
+const onInterchange=(report:RichClipboardInterchangeReport):void=>{const operation:"copy"|"cut"|"paste"=report.operation;void operation;};
+const local={clipboardInterchange:core=>createRichInterchange(core),onInterchange} satisfies Pick<LocalEditorOptions,"clipboardInterchange"|"onInterchange">;
+const document={clipboardInterchange:core=>createRichInterchange(core),onInterchange} satisfies Pick<LocalDocumentEditorOptions,"clipboardInterchange"|"onInterchange">;
+const shared={clipboardInterchange:core=>createRichInterchange(core),onInterchange} satisfies Pick<SharedEditorSessionOptions,"clipboardInterchange"|"onInterchange">;
+const sharedDocument={clipboardInterchange:core=>createRichInterchange(core),onInterchange} satisfies Pick<SharedDocumentEditorSessionOptions,"clipboardInterchange"|"onInterchange">;
+const react={onInterchange} satisfies Pick<BreditorEditorProps,"onInterchange">;
+const documentReact={onInterchange} satisfies Pick<BreditorDocumentEditorProps,"onInterchange">;
+const sharedReact={onInterchange} satisfies Pick<BreditorSharedEditorProps,"onInterchange">;
+const sharedDocumentReact={onInterchange} satisfies Pick<BreditorSharedDocumentEditorProps,"onInterchange">;
+void [local,document,shared,sharedDocument,react,documentReact,sharedReact,sharedDocumentReact];

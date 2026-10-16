@@ -23,8 +23,8 @@ have functional checkpoints. Rich blocks pasted into captions/code use native
 text conversion with a visible formatting-loss notice and optional
 `onPasteLoss(report)` callback, also available as a live React prop. Failed rich
 paste never triggers a silent plain-text retry. Whole-document Select All uses
-the separate document openings below. External interchange and final integrated
-qualification remain unfinished.
+the separate document openings below. Foreign clipboard conversion is explicit
+opt-in as described below; final integrated release qualification remains open.
 
 Local saves keep their existing checkpoint families; reapply the range option
 after reload. Shared general sessions use separately declared ordinary/natural
@@ -45,6 +45,26 @@ closure or explicitly discard rather than releasing a failed writer implicitly.
 General owners can select the explicit writer transport V2 adapter. Document
 owners use the separate document adapter below; journal/digest guards must not
 be bypassed to attach a document owner to an original/general adapter.
+
+## Optional HTML and Markdown clipboard
+
+Install the separate `@breditor/interchange` package to enable bounded foreign
+conversion. All four managed local/shared openings accept
+`clipboardInterchange: core => createRichInterchange(core)`; all four React
+wrappers accept the factory in `initialOptions`. Import `createRichInterchange`
+from `@breditor/interchange`. Defaults do not load its parsers or reinterpret
+plain text as Markdown.
+
+Paste prefers private Breditor content, then HTML, then explicit Markdown MIME.
+Failed rich conversion does not silently retry plain text. Copy/Cut adds HTML
+and Markdown; Cut refuses native deletion if a requested format was dropped.
+Images require an explicit host-owned asset registry mapping.
+
+`onInterchange(report)` is available on managed options and as a live React prop.
+It reports source conversion notices and optional native caption/code losses
+after retained Copy or accepted Cut/Paste, including queued work. Visible status
+shows nonempty notices. The existing `onPasteLoss` callback remains supported.
+See [the clipboard conversion contract](../../docs/RICH_INTERCHANGE.md).
 
 ## Explicit document selection
 
@@ -118,8 +138,9 @@ unmount; a failed old writer blocks replacement until safe retirement succeeds.
 React never reconciles editable document children.
 
 The document SDK/React functional checkpoint covers compiled source with actual
-release Wasm and synthetic DOM/storage/lock fixtures. External interchange,
-native browser/IME/accessibility and final release acceptance remain separate work.
+release Wasm and synthetic DOM/storage/lock fixtures. Foreign conversion has its
+own opt-in functional probe; native browser/IME/accessibility and final release
+acceptance remain separate work.
 
 ### Document relay and presence
 
