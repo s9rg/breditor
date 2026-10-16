@@ -5,6 +5,8 @@ export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/ex
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string}};
 /** Explicit immutable owner policy; the old per-dispatch default is unchanged. */
 export type SharedHistoryPolicy="explicit"|"typing-v1";
+/** Independent immutable replay/range policy; old sessions keep original semantics. */
+export type SharedRangePolicy="original"|"general-v1";
 type Op<K extends string,D>=Readonly<{kind:K;data:D}>;
 type Position={parent:string|null;before:string|null};
 type ListStyle={kind:"bullet"}|{kind:"ordered";start:number};

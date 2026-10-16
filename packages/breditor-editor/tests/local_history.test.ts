@@ -5,13 +5,18 @@ vi.mock("@breditor/experimental-rich-content",()=>({compileStandardRichProfileV1
 import {openLocalEditor} from "../src/local.js";
 function setup(capable=true){
  let natural=false;
- const core={supportsTypingHistory:()=>capable,enableTypingHistory:vi.fn(()=>{const changed=!natural;natural=true;return changed;}),supportsReadOnly:()=>true,setReadOnly:vi.fn(()=>true),dispose:vi.fn(),view:()=>({historyGrouping:natural?"typing-v1":undefined})};
+ const core={supportsGeneralRanges:()=>capable,supportsTypingHistory:()=>capable,enableTypingHistory:vi.fn(()=>{const changed=!natural;natural=true;return changed;}),supportsReadOnly:()=>true,setReadOnly:vi.fn(()=>true),dispose:vi.fn(),view:()=>({historyGrouping:natural?"typing-v1":undefined})};
  const profile={descriptor:()=>({schema:{name:"example/unit",version:1},schemaFingerprint:"test"}),inlineCatalogJson:()=>"[]",createEditor:vi.fn(()=>core),restoreEditor:vi.fn(()=>core),supportsTypingHistory:()=>capable,restoreTypingEditor:vi.fn(()=>{natural=true;return core;}),dispose:vi.fn()};
  const dom={surface:document.createElement("div"),toolbar:document.createElement("div"),status:document.createElement("p"),dispose:vi.fn(()=>core.dispose()),closeTypingGroup:vi.fn(()=>true)};
  mocks.compile.mockReturnValue(profile);mocks.compileV3.mockReturnValue(profile);mocks.mount.mockReturnValue(dom);const host=document.createElement("main"),original=document.createElement("button");host.append(original);document.body.append(host);
  return {host,original,core,profile,dom};
 }
 beforeEach(()=>{vi.clearAllMocks();mocks.runtime.mockResolvedValue({});document.body.replaceChildren();});
+it("general input routing is explicit, capability checked before mutation, and independent from local save family",async()=>{
+ const t=setup(),editor=await openLocalEditor({host:t.host,rangeEditing:"general-v1",history:"typing-v1",initial:{kind:"typingCheckpoint",checkpointJson:"opaque natural local"}});expect(t.profile.restoreTypingEditor).toHaveBeenCalledWith("opaque natural local");expect(mocks.mount.mock.calls[0]![1].rangeEditing).toBe("general-v1");editor.dispose();
+ const old=setup(false);mocks.mount.mockClear();await expect(openLocalEditor({host:old.host,rangeEditing:"general-v1",initial:{kind:"document",documentJson:"native"}})).rejects.toThrow("matching native general-range");expect(mocks.mount).not.toHaveBeenCalled();expect(old.core.setReadOnly).not.toHaveBeenCalled();expect(old.core.dispose).toHaveBeenCalledOnce();expect(old.host.firstChild).toBe(old.original);
+ mocks.runtime.mockClear();await expect(openLocalEditor({host:old.host,rangeEditing:"auto" as "general-v1"})).rejects.toThrow("rangeEditing original or general-v1");expect(mocks.runtime).not.toHaveBeenCalled();
+});
 it("typing policy is enabled before readonly and mount while original checkpoint recovery remains explicit",async()=>{
  const t=setup(),editor=await openLocalEditor({host:t.host,history:"typing-v1",readOnly:true,initial:{kind:"checkpoint",checkpointJson:"old exact checkpoint"}});
  expect(t.profile.restoreEditor).toHaveBeenCalledWith("old exact checkpoint");expect(t.profile.restoreTypingEditor).not.toHaveBeenCalled();expect(t.core.enableTypingHistory).toHaveBeenCalledOnce();

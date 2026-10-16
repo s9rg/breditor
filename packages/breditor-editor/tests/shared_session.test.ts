@@ -1,7 +1,7 @@
 import {beforeEach,describe,expect,it,vi} from "vitest";
-const mocks=vi.hoisted(()=>({runtime:vi.fn(),compile:vi.fn(),compileV2:vi.fn(),compileV3:vi.fn(),open:vi.fn(),mount:vi.fn(),restoreTyping:vi.fn()}));
+const mocks=vi.hoisted(()=>({runtime:vi.fn(),compile:vi.fn(),compileV2:vi.fn(),compileV3:vi.fn(),open:vi.fn(),mount:vi.fn(),restoreTyping:vi.fn(),restoreGeneral:vi.fn(),supportsGeneral:vi.fn()}));
 vi.mock("../src/shared_profile.js",()=>({initializeSharedRuntime:mocks.runtime,standardSharedProfileConfiguration:{format:"breditor/shared-rich-profile",formatVersion:1,schema:{name:"test/profile",version:1},extensions:[]},structuralSharedProfileConfigurationV2:{format:"breditor/shared-rich-profile",formatVersion:2,schema:{name:"test/profile",version:2},extensions:[]},layoutSharedProfileConfigurationV3:{format:"breditor/shared-rich-profile",formatVersion:3,schema:{name:"test/profile",version:3},extensions:[]}}));
-vi.mock("@breditor/collaboration",()=>({SharedEditorError:class extends Error {constructor(readonly code:string,message:string){super(message);}},restoreSharedTypingEditor:mocks.restoreTyping,compileStandardSharedProfileV1:mocks.compile,compileStandardStructuralSharedProfileV2:mocks.compileV2,compileStandardLayoutSharedProfileV3:mocks.compileV3,SharedPersistentSession:{open:mocks.open},mountSharedEditor:mocks.mount,createStandardSharedToolbarV1:()=>[],createStructuralSharedToolbarV2:()=>[],createLayoutSharedToolbarV3:()=>[]}));
+vi.mock("@breditor/collaboration",()=>({SharedEditorError:class extends Error {constructor(readonly code:string,message:string){super(message);}},restoreSharedTypingEditor:mocks.restoreTyping,restoreSharedGeneralEditor:mocks.restoreGeneral,supportsSharedGeneralRanges:mocks.supportsGeneral,compileStandardSharedProfileV1:mocks.compile,compileStandardStructuralSharedProfileV2:mocks.compileV2,compileStandardLayoutSharedProfileV3:mocks.compileV3,SharedPersistentSession:{open:mocks.open},mountSharedEditor:mocks.mount,createStandardSharedToolbarV1:()=>[],createStructuralSharedToolbarV2:()=>[],createLayoutSharedToolbarV3:()=>[]}));
 vi.mock("@breditor/experimental-rich-content",()=>({createStandardRichInlinePresentationV1:()=>({})}));
 import {openSharedEditor,SharedEditorOpenError} from "../src/shared_session.js";
 
@@ -18,6 +18,32 @@ function setup(){
 }
 beforeEach(()=>{for(const fn of Object.values(mocks))fn.mockReset();});
 describe("durable SDK session coordinator",()=>{
+ it.each(["generalCheckpoint","generalTypingCheckpoint"] as const)("selects %s only through its explicit initial discriminator",async kind=>{
+  const t=setup();mocks.supportsGeneral.mockReturnValue(true);mocks.restoreGeneral.mockReturnValue(t.raw);
+  const editor=await openSharedEditor({...t.options,initial:{kind,checkpointJson:"opaque general save"}}),history=kind==="generalTypingCheckpoint"?"typing-v1":"explicit";
+  expect(mocks.open.mock.calls[0]![0]).toMatchObject({rangeEditing:"general-v1",history});expect(mocks.restoreGeneral).toHaveBeenCalledWith(t.profile,"room","opaque general save",history);expect(mocks.restoreTyping).not.toHaveBeenCalled();expect(t.profile.restore).not.toHaveBeenCalled();await editor.close();
+ });
+ it("rejects unknown/conflicting policies before claiming the host or initializing Wasm",async()=>{
+  const t=setup();await expect(openSharedEditor({...t.options,rangeEditing:"auto" as "general-v1"})).rejects.toThrow("rangeEditing original or general-v1");
+  await expect(openSharedEditor({...t.options,rangeEditing:"original",initial:{kind:"generalCheckpoint",checkpointJson:"opaque"}})).rejects.toThrow("declared general-v1");
+  await expect(openSharedEditor({...t.options,history:"explicit",initial:{kind:"generalTypingCheckpoint",checkpointJson:"opaque"}})).rejects.toThrow("declared natural history");expect(mocks.runtime).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);
+ });
+ it("requires the complete general recovery factory before opening a durable writer",async()=>{
+  const t=setup();mocks.supportsGeneral.mockReturnValue(false);await expect(openSharedEditor({...t.options,rangeEditing:"general-v1"})).rejects.toMatchObject({code:"general_range_unavailable"});expect(mocks.open).not.toHaveBeenCalled();expect(t.profile.free).toHaveBeenCalledOnce();expect(t.host.firstChild).toBe(t.original);
+ });
+ it("dispatches stored general and original saves only to their declared recovery factories",async()=>{
+  const t=setup();mocks.supportsGeneral.mockReturnValue(true);mocks.restoreGeneral.mockReturnValue(t.raw);mocks.restoreTyping.mockReturnValue(t.raw);
+  mocks.open.mockImplementation(async options=>{options.restore("ordinary general","explicit","general-v1");options.restore("natural general","typing-v1","general-v1");options.restore("ordinary original","explicit");options.restore("natural original","typing-v1");return t.session;});
+  const editor=await openSharedEditor({...t.options,rangeEditing:"general-v1",history:"typing-v1"});expect(mocks.restoreGeneral.mock.calls).toEqual([[t.profile,"room","ordinary general","explicit"],[t.profile,"room","natural general","typing-v1"]]);expect(t.profile.restore).toHaveBeenCalledWith("room","ordinary original");expect(mocks.restoreTyping).toHaveBeenCalledWith(t.profile,"room","natural original");await editor.close();
+ });
+ it("default options neither require new capability nor add a general storage discriminator",async()=>{
+  const t=setup(),editor=await openSharedEditor(t.options);expect(mocks.supportsGeneral).not.toHaveBeenCalled();expect(mocks.open.mock.calls[0]![0]).not.toHaveProperty("rangeEditing");expect(editor.rangePolicy()).toBe("original");await editor.close();
+ });
+ it.each(["explicit","typing-v1"] as const)("failed general %s startup cleanup hands off its declared exact recovery family",async history=>{
+  const t=setup();mocks.supportsGeneral.mockReturnValue(true);t.session.core.view=()=>({revision:"1",rangeEditing:"general-v1",...(history==="typing-v1"?{historyGrouping:"typing-v1"}:{})}) as ReturnType<typeof t.session.core.view>;
+  mocks.mount.mockImplementation(()=>{throw Error("Bad toolbar");});t.session.close.mockRejectedValueOnce(Error("Quota"));let failure:unknown;try{await openSharedEditor({...t.options,rangeEditing:"general-v1",history});}catch(error){failure=error;}
+  expect(failure).toBeInstanceOf(SharedEditorOpenError);const recovery=(failure as SharedEditorOpenError).recovery;expect(recovery.rangePolicy?.()).toBe("general-v1");expect(recovery.historyPolicy?.()).toBe(history);expect(recovery.checkpointJson()).toBe("exact journal");expect(t.session.discardAndClose).not.toHaveBeenCalled();await recovery.close();expect(t.session.close).toHaveBeenCalledTimes(2);expect(t.host.firstChild).toBe(t.original);
+ });
  it("unknown policy and an explicitly conflicting recovery family reject before runtime or host claim",async()=>{
   const t=setup();await expect(openSharedEditor({...t.options,history:"automatic" as "explicit"})).rejects.toThrow("Expected history");await expect(openSharedEditor({...t.options,history:"explicit",initial:{kind:"typingCheckpoint",checkpointJson:"grouped"}})).rejects.toThrow("declared natural history");expect(mocks.runtime).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);
  });

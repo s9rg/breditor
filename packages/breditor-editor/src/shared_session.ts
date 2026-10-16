@@ -1,8 +1,8 @@
 import {
- compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,restoreSharedTypingEditor,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,
+ compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,restoreSharedTypingEditor,restoreSharedGeneralEditor,supportsSharedGeneralRanges,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,
  type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,
  type SharedDomEditor,type SharedDomOptions,type SharedRichEditor,type SharedToolbarControl,
- type SharedDispatch,type SharedSaveState,type SharedRustOwner,type SharedEditorOptions as SharedCoreOptions
+ type SharedDispatch,type SharedSaveState,type SharedRustOwner,type SharedRangePolicy,type SharedEditorOptions as SharedCoreOptions
 } from "@breditor/collaboration";
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSharedProfileConfigurationV2,layoutSharedProfileConfigurationV3} from "./shared_profile.js";
@@ -19,7 +19,9 @@ export type SharedInitial=
  |{kind:"document";documentJson:string}
  |{kind:"frame";frame:string}
  |{kind:"checkpoint";checkpointJson:string}
- |{kind:"typingCheckpoint";checkpointJson:string};
+ |{kind:"typingCheckpoint";checkpointJson:string}
+ |{kind:"generalCheckpoint";checkpointJson:string}
+ |{kind:"generalTypingCheckpoint";checkpointJson:string};
 
 export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"|"coreOwnership"|"toolbar"|"inlinePresentation"|"inlineTag"> {
  host:HTMLElement;database:string;room:string;writer:string;initial?:SharedInitial;
@@ -29,6 +31,8 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  readOnly?:boolean;
  /** Immutable native history policy; omitted/explicit preserves existing defaults. */
  history?:"explicit"|"typing-v1";
+ /** Explicit general replay/routing policy; never inferred from opaque checkpoint JSON. */
+ rangeEditing?:SharedRangePolicy;
  runtimeInput?:RuntimeInput;signal?:AbortSignal;coreOptions?:Omit<SharedCoreOptions,"onError">;
  onSaveState?:(state:SharedSaveState)=>void;
  /** Stop borrowed relay/presence/asset adapters before the native writer retires. Reporting errors cannot cancel close. */
@@ -47,6 +51,7 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  focus():void;refreshAssets():void;
  setReadOnly(value:boolean,revision?:string):boolean;
  closeTypingGroup(revision?:string):boolean;
+ rangePolicy():SharedRangePolicy;
  view():ReturnType<SharedRichEditor["view"]>;checkpointJson():string;state():SharedSaveState;
  flush():Promise<void>;retrySave():Promise<void>;
  /** Stops UI immediately. Failed saves retain the owner/lease for retry, never implicit discard. */
@@ -73,6 +78,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  setReadOnly(value:boolean,revision?:string):boolean{this.#active();return this.#dom.setReadOnly(value,revision);}
  closeTypingGroup(revision?:string):boolean{this.#active();return this.#dom.closeTypingGroup(revision);}
  historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}
+ rangePolicy():SharedRangePolicy{return this.core.view().rangeEditing??"original";}
  view():ReturnType<SharedRichEditor["view"]>{return this.core.view();}
  checkpointJson():string{return this.core.checkpointJson();}
  state():SharedSaveState{return this.#session.state();}
@@ -102,10 +108,13 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
- if(options.initial?.kind==="typingCheckpoint"&&options.history==="explicit")throw new TypeError("A typing checkpoint requires its declared natural history policy");
+ if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
+ if((options.initial?.kind==="typingCheckpoint"||options.initial?.kind==="generalTypingCheckpoint")&&options.history==="explicit")throw new TypeError("A typing checkpoint requires its declared natural history policy");
+ if((options.initial?.kind==="generalCheckpoint"||options.initial?.kind==="generalTypingCheckpoint")&&options.rangeEditing==="original")throw new TypeError("A general checkpoint requires its declared general-v1 range policy");
  const language=options.richLanguage??1;
  const initial=structuredClone(options.initial??{kind:"empty"}) as SharedInitial;
- const history=options.history??(initial.kind==="typingCheckpoint"?"typing-v1":"explicit");
+ const history=options.history??(initial.kind==="typingCheckpoint"||initial.kind==="generalTypingCheckpoint"?"typing-v1":"explicit");
+ const ranges=options.rangeEditing??(initial.kind==="generalCheckpoint"||initial.kind==="generalTypingCheckpoint"?"general-v1":"original");
  const configuration=structuredClone(options.configuration??(language===3?layoutSharedProfileConfigurationV3:language===2?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
  const claim=claimHost(options.host,options.signal);
  let profile:SharedRustProfile|undefined,session:SharedPersistentSession|undefined,dom:SharedDomEditor|undefined;
@@ -113,21 +122,23 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
   const runtime=await awaitInitialization(initializeSharedRuntime(options.runtimeInput),options.signal);claim.assert();
   profile=language===3?compileStandardLayoutSharedProfileV3(runtime,configuration as SharedProfileConfigurationV3):language===2?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
   const factory=profile,binding=JSON.parse(factory.descriptor_json()) as SharedProfileDescriptor;
+  if(ranges==="general-v1"&&!supportsSharedGeneralRanges(factory))throw new SharedEditorError("general_range_unavailable","Use matching native general-range recovery before opening a durable general session");
   const presentation=createStandardRichInlinePresentationV1(factory.inline_catalog_json(),options.additionalInlinePresentation);
   session=await SharedPersistentSession.open({
-   database:options.database,room:options.room,writer:options.writer,richLanguage:language,history,
+   database:options.database,room:options.room,writer:options.writer,richLanguage:language,history,...(ranges==="general-v1"?{rangeEditing:ranges}:{}),
    create:()=>{
     claim.assert();
     if(initial.kind==="resume")throw new SharedEditorError("session_missing","An exact durable shared journal is required to resume this writer");
     if(initial.kind==="frame")return factory.join_frame(options.room,options.writer,initial.frame);
     if(initial.kind==="checkpoint")return factory.restore(options.room,initial.checkpointJson);
     if(initial.kind==="typingCheckpoint")return restoreSharedTypingEditor(factory,options.room,initial.checkpointJson);
+    if(initial.kind==="generalCheckpoint"||initial.kind==="generalTypingCheckpoint")return restoreSharedGeneralEditor(factory,options.room,initial.checkpointJson,initial.kind==="generalTypingCheckpoint"?"typing-v1":"explicit");
     const block=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
     const raw=factory.create(initial.kind==="document"?initial.documentJson:emptyDocumentJson(binding,options.room,block!),options.writer);
     if(block)selectInitialCaret(raw,block);
     return raw;
    },
-   restore:(checkpoint,storedHistory)=>{claim.assert();return storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);},
+   restore:(checkpoint,storedHistory,storedRanges="original")=>{claim.assert();return storedRanges==="general-v1"?restoreSharedGeneralEditor(factory,options.room,checkpoint,storedHistory):storedHistory==="typing-v1"?restoreSharedTypingEditor(factory,options.room,checkpoint):factory.restore(options.room,checkpoint);},
    editor:{...options.coreOptions,...(options.onError?{onError:options.onError}:{})},
    ...(options.onSaveState?{onState:options.onSaveState}:{}),...(options.onError?{onError:options.onError}:{})
   });

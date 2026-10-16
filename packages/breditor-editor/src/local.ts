@@ -59,6 +59,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");
+ if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
  if(options.initial?.kind==="typingCheckpoint"&&options.history==="explicit")throw new TypeError("A typing checkpoint requires its declared natural history policy");
  const initial:LocalInitial=structuredClone(options.initial??{kind:"empty"}),claim=claimHost(options.host,options.signal);
  let profile:RichCoreProfile|undefined,core:RichCoreEditor|undefined,dom:RichDomEditor|undefined;
@@ -72,6 +73,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
    if(profile.supportsTypingHistory?.()!==true||!profile.restoreTypingEditor)throw Error("Use matching native typing-history recovery");
    core=profile.restoreTypingEditor(initial.checkpointJson);
   }else core=initial.kind==="checkpoint"?profile.restoreEditor(initial.checkpointJson):profile.createEditor(initial.kind==="document"?initial.documentJson:emptyDocumentJson(profile.descriptor(),initial.documentId??crypto.randomUUID(),blockId!));
+  if(options.rangeEditing==="general-v1"&&core.supportsGeneralRanges?.()!==true)throw Error("Use a matching native general-range owner");
   if(blockId){const point={block:blockId,offset:"0",affinity:"after" as const};core.execute({kind:"setSelection",selection:{kind:"text",anchor:point,focus:point}});}
   if(options.history==="typing-v1"||initial.kind==="typingCheckpoint"){
    if(core.supportsTypingHistory?.()!==true||!core.enableTypingHistory)throw Error("Use matching native typing history");

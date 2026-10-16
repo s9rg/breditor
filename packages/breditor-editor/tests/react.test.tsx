@@ -12,6 +12,12 @@ async function settle(){await act(async()=>{await Promise.resolve();await Promis
 beforeEach(()=>{mocks.open.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
 afterEach(async()=>{await act(async()=>root.unmount());container.remove();});
 describe("React Rust-owner lifecycle",()=>{
+ it("explicit general routing is initial per key and does not change behind a mounted owner's history",async()=>{
+  const first=editor(),second=editor(),ref=createRef<BreditorEditorHandle>();mocks.open.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+  await act(async()=>root.render(<BreditorEditor ref={ref} sessionKey="general" initialOptions={{rangeEditing:"general-v1",history:"typing-v1"}}/>));await settle();expect(mocks.open.mock.calls[0]![0]).toMatchObject({rangeEditing:"general-v1",history:"typing-v1"});
+  await act(async()=>root.render(<BreditorEditor ref={ref} sessionKey="general" initialOptions={{rangeEditing:"original"}}/>));await settle();expect(mocks.open).toHaveBeenCalledOnce();expect(ref.current?.getEditor()).toBe(first);
+  await act(async()=>root.render(<BreditorEditor ref={ref} sessionKey="original" initialOptions={{rangeEditing:"original"}}/>));await settle();expect(first.dispose).toHaveBeenCalledOnce();expect(mocks.open.mock.calls[1]![0].rangeEditing).toBe("original");expect(ref.current?.getEditor()).toBe(second);
+ });
  it("natural history is initial per key and imperative boundaries retain the same owner",async()=>{
   const owned=editor(),ref=createRef<BreditorEditorHandle>();mocks.open.mockResolvedValue(owned);
   await act(async()=>root.render(<BreditorEditor ref={ref} initialOptions={{history:"typing-v1"}}/>));await settle();expect(mocks.open.mock.calls[0]![0].history).toBe("typing-v1");

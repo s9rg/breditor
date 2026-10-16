@@ -15,6 +15,8 @@ import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
+ /** Immutable explicit native general-range routing; default keeps original input contracts. */
+ rangeEditing?:"original"|"general-v1";
  toolbar?:readonly ToolbarControl[];
  label?:string;
  onChange?:(view:RichView,outcome:RichCommandOutcome)=>void;
@@ -36,7 +38,11 @@ export class RichDomEditor {
  readonly status:HTMLParagraphElement;
  #root:HTMLElement;#options:RichEditorOptions;#model:RichModel;#abort=new AbortController();#queue:Work[]=[];#busy=false;#disposed=false;#composition:Composition|undefined;
  #namespace:string;#counter=0n;#logicalSelection=false;#controls:{control:ToolbarControl;view:RichControlView<ActionContext>}[]=[];
+ #general=false;
  constructor(root:HTMLElement,options:RichEditorOptions){
+  if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
+  this.#general=options.rangeEditing==="general-v1";
+  if(this.#general&&options.core.supportsGeneralRanges?.()!==true)throw Error("Use a matching native general-range owner");
   this.#root=root;this.#options=options;this.#model=model(options.core.view());this.#namespace=`br:${crypto.randomUUID()}`;this.#logicalSelection=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&(options.core.supportsTypingHistory?.()!==true||!options.core.closeTypingGroup))throw Error("Use matching native natural typing history");
@@ -85,7 +91,7 @@ export class RichDomEditor {
   // range in this surface. It is not an intentional editor selection change.
   const active=this.surface.ownerDocument.activeElement;
   if(active!==this.surface&&(!active||!this.surface.contains(active)))return;
-  const selection=readNative(this.surface,this.#model);
+  const selection=readNative(this.surface,this.#model,this.#general?"general-v1":"original");
   if(selection&&!sameSelection(selection,this.#model.view.selection))this.execute({kind:"setSelection",selection},false);
  }
  /** Commands prepared by asynchronous hosts should pass their observed revision. */
@@ -131,7 +137,7 @@ export class RichDomEditor {
    const a=BigInt(selection.anchor.offset),b=BigInt(selection.focus.offset),start=a<b?a:b,end=a>b?a:b,at=BigInt(current.focus.offset);
    if(start<end&&(backward?end===at:start===at)){this.execute({kind:"deleteTypingRange",data:{selection,direction:backward?"backward":"forward",clockMs:this.#clock()}});return;}
   }
-  this.execute({kind:"replaceTextRange",data:{selection,text:""}});
+  this.execute(this.#general?{kind:"replaceGeneralRangePlainText",data:{selection,text:"",prefix:this.#allocate("range")}}:{kind:"replaceTextRange",data:{selection,text:""}});
  }
  /** Change native host policy immediately, cancelling provisional composition and queued edits. */
  setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean {
@@ -213,7 +219,7 @@ export class RichDomEditor {
   // Own the keyboard meaning before a browser can translate Shift+Enter into
   // insertParagraph (observed in WebKit). Composition and grid navigation stay separate.
   if(event.key==="Enter"&&event.shiftKey&&!mod&&!event.altKey){
-   this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="text"){event.preventDefault();this.execute({kind:"insertHardBreak"});}});
+   this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind==="text"){event.preventDefault();this.execute(this.#general?{kind:"replaceGeneralRangePlainText",data:{selection,text:"\n",prefix:this.#allocate("range")}}:{kind:"insertHardBreak"});}});
    if(event.defaultPrevented)return;
   }
   const selection=this.#model.view.selection;
@@ -248,6 +254,10 @@ export class RichDomEditor {
    }
    if(selection?.kind!=="text")return;
    const ranges=event.getTargetRanges?.()??[],target=ranges[0]?readTarget(this.surface,ranges[0]):null;
+   if(this.#general&&(type==="insertText"||type==="insertReplacementText"||type==="insertLineBreak")){
+    const text=type==="insertLineBreak"?"\n":event.data??"",data={selection:target&&!isCurrentCaretTarget(selection,target)?target:selection,text,prefix:this.#allocate("range")};
+    this.execute(type==="insertText"&&this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceGeneralRangeTypingText",data:{...data,clockMs:this.#clock()}}:{kind:"replaceGeneralRangePlainText",data});return;
+   }
    if(type==="insertLineBreak"){this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:"\n"}}:{kind:"insertHardBreak"});return;}
    if(type==="insertText"||type==="insertReplacementText"){
     const input=event.data??"",caret=selection.anchor.block===selection.focus.block&&selection.anchor.offset===selection.focus.offset;
@@ -257,7 +267,7 @@ export class RichDomEditor {
    if(type.startsWith("delete")){
     const backward=type.includes("Backward"),boundary=boundaryDelete(this.#context(),backward);
     if(boundary){this.execute(boundary);return;}
-    if(selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset){this.execute({kind:"deleteSelection"});return;}
+    if(selection.anchor.block!==selection.focus.block||selection.anchor.offset!==selection.focus.offset){this.execute(this.#general?{kind:"replaceGeneralRangePlainText",data:{selection,text:"",prefix:this.#allocate("range")}}:{kind:"deleteSelection"});return;}
     if(target&&(target.anchor.block!==target.focus.block||target.anchor.offset!==target.focus.offset)){this.#deleteInput(target,backward,type);return;}
     const node=this.#model.nodes.get(selection.focus.block);if(!node)return;const content=text(node),offset=Number(selection.focus.offset),segments=[...new Intl.Segmenter(undefined,{granularity:type.includes("Word")?"word":"grapheme"}).segment(content)];
     const start=backward?(segments.filter(value=>value.index<offset).at(-1)?.index??0):offset,end=backward?offset:(segments.find(value=>value.index>=offset)?.index??content.length);
@@ -286,7 +296,7 @@ export class RichDomEditor {
     else if(kind==="grid"&&this.#model.view.selection?.kind==="grid")this.execute({kind:"pasteGridClipboard",data:{clipboardJson:clipboard,allocation}});
     else if(this.#model.view.selection?.kind==="text")this.execute({kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right:this.#allocate("p")}});
     else this.execute({kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(this.#context())}});
-   }else {const plain=event.clipboardData!.getData("text/plain");if(!plain)return;this.execute(isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain});}
+   }else {const plain=event.clipboardData!.getData("text/plain");if(!plain)return;const selection=this.#model.view.selection;this.execute(this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText",data:{selection,text:plain,prefix:this.#allocate("range")}}:isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain});}
   });
  }
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}

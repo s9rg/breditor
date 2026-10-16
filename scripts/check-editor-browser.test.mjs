@@ -48,3 +48,6 @@ test("native V3 layout and durable recovery retain every engine in a dedicated p
 test("V3 visual and structure matrices have separate budgets without hiding any engine",()=>{
  assert.deepEqual(editorBrowserRuns(["layout-visual.spec.mjs","layout-structure.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["layout-structure.spec.mjs"],["layout-visual.spec.mjs"],["shared-structural-network.spec.mjs"]]);
 });
+test("durable general range editing retains a dedicated complete three-engine process",()=>{
+ assert.deepEqual(editorBrowserRuns(["general-range.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["general-range.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});

@@ -19,7 +19,7 @@ function point(surface:HTMLElement,node:Node,offset:number,side:"start"|"end"):R
  if(!nearest){const matches=surface.querySelectorAll<HTMLElement>(blockSelector);nearest=side==="start"?matches[0]??null:matches[matches.length-1]??null;}
  return nearest?{block:nearest.dataset["richText"]??"",offset:String(side==="start"?0:nearest.textContent?.length??0),affinity:"after"}:null;
 }
-export function readNative(surface:HTMLElement,value:RichModel):RichSelection|null {
+export function readNative(surface:HTMLElement,value:RichModel,rangeEditing:"original"|"general-v1"=value.view.rangeEditing??"original"):RichSelection|null {
  const native=surface.ownerDocument.getSelection();
  if(!native?.anchorNode||!native.focusNode)return null;
  let anchor=point(surface,native.anchorNode,native.anchorOffset,"start"),focus=native.isCollapsed&&anchor?{...anchor}:point(surface,native.focusNode,native.focusOffset,"end");
@@ -30,7 +30,9 @@ export function readNative(surface:HTMLElement,value:RichModel):RichSelection|nu
   if(focus.block===prior.focus.block&&focus.offset===prior.focus.offset)focus={...focus,affinity:prior.focus.affinity};
  }
  const a=sourceCell(value,anchor.block),f=sourceCell(value,focus.block);
- if(a&&f&&a.table===f.table&&(a.row!==f.row||a.column!==f.column))return {kind:"grid",anchor:a,focus:f};
+ // Original input treats cross-cell browser ranges as a grid. Explicit general
+ // mode retains their partial text endpoints; cell-picker grid selection is separate.
+ if(rangeEditing==="original"&&a&&f&&a.table===f.table&&(a.row!==f.row||a.column!==f.column))return {kind:"grid",anchor:a,focus:f};
  return {kind:"text",anchor,focus};
 }
 export function readTarget(surface:HTMLElement,range:StaticRange):Extract<RichSelection,{kind:"text"}>|null {
