@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-15",
-  "baselineCommit": "3b989be678cff529ee09634c6c55e495890b1d61",
+  "baselineCommit": "51e0b3de854a83c895a884f0f51ec198241e1a88",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -124,9 +124,9 @@
     {
       "id":"history","area":"Editing","status":"partial",
       "summary":"Undo, Redo and natural typing groups",
-      "current":"Exact local/selective shared history and compound formatting are implemented. Inherited typing styles survive run boundaries and restart. Explicit shared groups are independent of backward wall time; empty-gap cursor repair no longer advances past nonexistent characters during later Undo. Native V1/V2 regressions and installed structural SDK/real-relay cases retain foreign edits and future history after reload. Natural typing coalescing and the complete integrated boundary policy remain unfinished.",
+      "current":"Exact local/selective shared history and compound formatting are implemented. Native local Rust now supports explicit natural typing admission, bounded insertion/directional-deletion bursts and grouped atomic Undo/Redo over unchanged original records. A separate strict typing-session envelope preserves exact future history, original capacity and revision semantics; recovery starts a new burst. Ten native tests include 48 randomized sequences and failure atomicity. Original defaults remain explicit, and 183 installed regression cases pass without enabling the new mode. Shared grouping, Wasm/SDK/DOM exposure and integrated typing/paste/composition/format/move boundaries remain unfinished; the feature stays partial.",
       "acceptance":"Define typing/paste/composition/format/move grouping, preserve remote work under local Undo, and test future Redo after recovery.",
-      "evidence":["crates/breditor-core/src/rich_content/local_session/undo.rs","crates/breditor-core/tests/rich_format_changes.rs","crates/breditor-core/tests/rich_local_session.rs","experiments/collaboration/tests/rich_replica_selection_contracts.rs","experiments/editor-browser/editor.spec.mjs","experiments/shared-browser/network-demo.spec.mjs","docs/qualification/2026-10-15-compound-inline-formatting.json","scripts/probe-shared-history-clock.mjs","crates/breditor-collaboration/src/rich_replica/text_flow/history.rs","docs/qualification/2026-10-15-shared-structural-v2-sdk.json"],
+      "evidence":["crates/breditor-core/src/rich_content/local_session/undo.rs","crates/breditor-core/tests/rich_format_changes.rs","crates/breditor-core/tests/rich_local_session.rs","experiments/collaboration/tests/rich_replica_selection_contracts.rs","experiments/editor-browser/editor.spec.mjs","experiments/shared-browser/network-demo.spec.mjs","docs/qualification/2026-10-15-compound-inline-formatting.json","scripts/probe-shared-history-clock.mjs","crates/breditor-collaboration/src/rich_replica/text_flow/history.rs","docs/qualification/2026-10-15-shared-structural-v2-sdk.json","docs/RICH_TYPING_HISTORY.md","crates/breditor-core/tests/rich_typing_history.rs","crates/breditor-core/src/codec/rich_typing_session_json.rs","docs/qualification/2026-10-15-native-typing-history.json"],
       "sources":["tiptap-starter","ckeditor-digest"]
     },
     {

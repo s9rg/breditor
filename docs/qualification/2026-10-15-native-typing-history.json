@@ -1,0 +1,64 @@
+{
+  "date":"2026-10-15",
+  "sourceCheckpoint":"51e0b3de854a83c895a884f0f51ec198241e1a88",
+  "scope":"Native local Rust natural-history foundation and strict grouped recovery. Installed tests guard original explicit-mode behavior; shared natural history and product APIs are not implemented by this checkpoint.",
+  "featureComplete":false,
+  "goalComplete":false,
+  "releaseQualified":false,
+  "contracts":{
+    "admission":"Explicit enable_typing_history is a guarded, one-way owner configuration, leaving existing Undo/Redo records individual. Mode changes advance publication, not content/history. Original owners remain explicit. Enable, close, insertion and directional deletion each have a named documented Rust file.",
+    "policy":"Same-kind, same-caret, same-effective-format user input may join within 750 monotonic host milliseconds, up to 64 original publications. Backwards clocks, effective intervening publications and explicit close are boundaries. Insert, backward and forward deletion differ. Line separators isolate both sides. No-ops retain continuation. Paste/composition/selected replacement and other explicit APIs remain isolated when effective; hosts explicitly close for physical intents with no native change.",
+    "atomicity":"Every edit retains its actual original before/after revision and recipe. Grouped Undo/Redo replays all required inverses/forwards and validates boundaries before one publication. Stale/read-only/invalid input, malformed partitions and revision exhaustion retain document, selection, history cursor, partition and observation. Original record capacity still applies; zero retains no history, and front trimming can retain a suffix of the oldest group.",
+    "recovery":"RichTypingSessionJsonCodec uses breditor/rich-typing-session version 1 with an unchanged embedded rich-local-session version 1 checkpoint and a bounded original-step partition. Lengths are 1..64, cover all retained records and cannot straddle the saved cursor. The entire envelope retains original 16 MiB/1000-step defaults and tighter-policy support. Unknown/duplicate fields, malformed groups and bad original replay reject. The original codec rejects grouped owners instead of silently discarding the partition.",
+    "restart":"Exact grouped future Undo/Redo survives recovery. Active timing/caret continuation is not persisted, so new post-recovery input starts a fresh burst. Read-only still restores editable for host reapplication. Group metadata declares Undo boundaries; it does not attest physical gestures or historical clock authenticity.",
+    "compatibility":"No default profile, schema fingerprint, original codec, causal update frame, shared model/journal, ABI, dependency, vendor, lockfile or package version changes meaning. The generated browser owners still expose the existing API without a natural-history capability; application shared Wasm remains five JS exports and 56 raw exports. SDK/React/DOM behavior remains explicit until the separate integration is implemented."
+  },
+  "nativeChecks":{
+    "rootCommand":"CARGO_TARGET_DIR=target/shared-v2-root-regression /Users/s/.cargo/bin/cargo test --offline --workspace --features breditor-wasm/experimental-rich-content",
+    "rootPassed":2350,
+    "rootSuiteFooters":139,
+    "focusedCommand":"CARGO_TARGET_DIR=target/shared-v2-root-regression /Users/s/.cargo/bin/cargo test --offline -p breditor-core --features experimental-rich-content --test rich_typing_history",
+    "focusedPassed":10,
+    "propertyCases":48,
+    "propertyScope":"Random input/clock sequences with explicit edits, close, selection, pending styles, read-only transitions, Undo/Redo, same-block scalar deletion and capacities 0..9. Exact checkpoint replay is checked after each event; this is not an exhaustive state-space claim.",
+    "focusedScope":"Contiguous Unicode/combining input; directional/reversed deletion; real before-caret restoration; time/format/mode/explicit boundaries; line separators; 64-step ceiling; capacity 0/1/3; branching; wrong scalar/stale/read-only atomic failure; strict envelope/byte/entry limits; exact recovered future history; monotonic revision exhaustion.",
+    "sharedCommand":"CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "sharedRegressionPassed":248,
+    "sharedSuiteFootersIncludingZeroDoctests":20,
+    "strictNativeAllTargetClippy":true,
+    "strictActualLocalAndSharedReleaseWasmClippy":true,
+    "rootRustdocWarningsDenied":true,
+    "firstPartyFormatChecks":true,
+    "note":"Initial compile and test-style/expect lint findings were corrected before final qualification. The existing vendored HasIdSpan warning remains unchanged; vendor files were not edited. No full research or all-features qualification is claimed."
+  },
+  "installedRegression":{
+    "command":"node scripts/check-editor-browser.mjs",
+    "consumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-Qn610o/consumer",
+    "cleanInstallTypesAndRuntime":true,
+    "editingBatches":[{"passed":81,"duration":"2.1 minutes"},{"passed":90,"duration":"2.4 minutes"}],
+    "editingPassed":171,
+    "networkPassed":12,
+    "networkDuration":"1.1 minutes",
+    "totalPassed":183,
+    "engines":["chromium","firefox","webkit"],
+    "policy":"All discovered specs run once in complete bounded matrices; all three engines, one worker, zero retries and unchanged 60-second case/300-second process deadlines.",
+    "limitation":"These are original explicit-history/feature regressions on rebuilt archives, not browser acceptance of the new native grouping mode. No new shared natural-history, physical IME/clipboard or accessibility claim."
+  },
+  "runtimeCompatibility":{
+    "originalSharedV1":{"passed":true,"comparedStates":49,"crossVersionRestores":2,"futureHistorySteps":12,"beforeSharedWasmSha256":"a215fe40038d9f56fedeb2bea541494b92a00910f300ae89765e9e0e4cfd3b6d","afterSharedWasmSha256":"9b0c4b5bef66ea65f4806881e863c5ed8b56799a6979cc781f6212c5d1d97906","script":"scripts/compare-shared-v1-runtime.mjs"},
+    "readOnlyRegression":{"passed":true,"languages":[1,2],"nativeWasmDenials":4,"crossVersionRestores":8,"exactFutureHistoryComparisons":20,"script":"scripts/probe-read-only-compatibility.mjs"}
+  },
+  "scripts":{"total":364,"passed":361,"failed":0,"existingOptInSkips":3},
+  "artifacts":[
+    {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1237567,"sha256":"10a9619e5a50a88bdbf242064a4d4b19c9c7fd92c8e1588f4b798d23123ef153"},
+    {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2313398,"sha256":"1c623b0472b90d08b1fecf50600aeacb1b0ba7c75150d00534e9eac224ae6079"},
+    {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":20879,"sha256":"d6a570194dffbfdaa18cdf82a9976b7ef7d490325fb18e025b2ce0f60d987752"},
+    {"name":"breditor_wasm_bg.wasm","bytes":4278037,"sha256":"be1b5661a7b7a12cb2974bc39cd4f51e9e2d8783cd2a905b7bb380b190d52da7"},
+    {"name":"breditor_shared_bg.wasm","bytes":8345517,"sha256":"9b0c4b5bef66ea65f4806881e863c5ed8b56799a6979cc781f6212c5d1d97906"}
+  ],
+  "retainedLogs":"target/typing-history-core-qualification",
+  "openIssues":["Earlier unrecorded native V2 code/style ReplayMismatch remains unconfirmed","Historical intermittent WebKit integer-domain startup fault remains open","Earlier unclassified WebKit cancelled-mount TypeError remains unconfirmed"],
+  "nextAcceptance":"Complete native shared grouping and exact recovery, additive Wasm capabilities/guarded commands, SDK/React configuration and real DOM input boundaries. Then qualify new-mode installed local/shared V1/V2 keyboard/paste/composition/history/offline/remote cases, not just these native tests or existing explicit-mode regressions.",
+  "readiness":"History remains partial. Both original V1 workstreams stay active and incomplete; 9 implemented/17 partial/20 missing grouped capabilities and all 13 release gates remain unchanged. No push, tag, publication or deployment."
+}

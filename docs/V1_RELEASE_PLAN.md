@@ -194,6 +194,17 @@ restore. The ledger marks this whole-editor feature implemented and tracks
 editable-region restrictions separately as missing. All 13 release gates remain
 open, including the older unconfirmed browser and replay observations.
 
+The [native typing-history foundation](qualification/2026-10-15-native-typing-history.json)
+adds local Rust insertion/deletion bursts and atomic grouped Undo/Redo over
+unchanged explicit records. A separate checkpoint family preserves the partition;
+original codecs and browser defaults stay explicit. Ten native tests include 48
+randomized sequences, capacity/branch recovery and revision-exhaustion atomicity.
+The complete root run passes 2,350 cases, shared regressions 248, and existing
+installed browser regressions 183. These browser passes protect existing behavior;
+they do not qualify natural history in the product. Shared grouping and
+Wasm/SDK/DOM exposure still need the [integration contract](RICH_TYPING_HISTORY.md).
+History remains partial, with no feature or release-gate promotion.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
