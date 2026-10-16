@@ -36,7 +36,7 @@ export const defaultSharedToolbar:readonly SharedToolbarControl[]=[
  {id:"merge",label:"Merge cells",enabled:c=>(c.model.view.grid?.cells.length??0)>1,run:c=>{const s=c.model.view.selection;if(s?.kind==="grid")publish(c,[{kind:"merge_cells",data:{block:id(table(c)!),merge:c.allocate("merge"),anchor:cellBlock(c.model,s.anchor),focus:cellBlock(c.model,s.focus)}}]);}},
  {id:"split",label:"Split cell",enabled:c=>!!focusCell(c),run:c=>publish(c,[{kind:"split_cell",data:{cell:cellBlock(c.model,focusCell(c)!)}}])},
  {id:"header",label:"Toggle header",enabled:c=>!!c.model.view.grid,run:c=>{const cells=c.model.view.grid!.cells.map(v=>cellBlock(c.model,v)),header=!cells.every(v=>property(c.model.nodes.get(v)!,"header")===true);publish(c,[{kind:"set_header",data:{cells,header}}]);}},
- {id:"clear",label:"Clear selection",enabled:c=>c.model.view.selection!==null,run:removeSelection},
+ {id:"clear",label:"Clear selection",enabled:c=>c.model.view.selection!==null,run:c=>removeSelection(c)},
  {id:"image",label:"Insert image",enabled:c=>!!c.image,run:c=>publish(c,[{kind:"insert_blocks",data:{...positionAfter(c),nodes:[imageNode(c.allocate("image-block"),c.allocate("image"),c.image!.asset,c.allocate("generation"),c.image!.alt,c.allocate("caption"))]}}])},
  {id:"add-caption",label:"Add caption",enabled:c=>!!image(c)&&image(c)!.children.length===0,run:c=>{const block=c.allocate("caption");publish(c,[{kind:"set_image_caption",data:{block:id(image(c)!),caption:paragraph(block)}}],caret(block,0));}},
  {id:"remove-caption",label:"Remove caption",enabled:c=>(image(c)?.children.length??0)>0,run:c=>{const block=id(image(c)!);publish(c,[{kind:"set_image_caption",data:{block,caption:null}}],{kind:"node",block});}},
@@ -44,7 +44,7 @@ export const defaultSharedToolbar:readonly SharedToolbarControl[]=[
  {id:"decorative",label:"Decorative image",enabled:c=>!!image(c),run:c=>publish(c,[{kind:"set_image_alt",data:{block:id(image(c)!),text:"",decorative:true}}])},
  {id:"asset",label:"Image asset",type:"text",enabled:c=>!!image(c),value:c=>String(property(image(c)!,"asset-id")),run:(c,v)=>publish(c,[{kind:"replace_image",data:{block:id(image(c)!),asset:v??"",generation:c.allocate("generation")}}])},
  {id:"image-width",label:"Image width",type:"number",enabled:c=>!!image(c),value:c=>String(property(image(c)!,"width")??160),run:(c,v)=>publish(c,[{kind:"resize_image",data:{block:id(image(c)!),size:[Number(v),Number(property(image(c)!,"height")??Number(v))]}}])},
- {id:"remove-node",label:"Remove node",enabled:c=>c.model.view.selection?.kind==="node",run:removeSelection},
+ {id:"remove-node",label:"Remove node",enabled:c=>c.model.view.selection?.kind==="node",run:c=>removeSelection(c)},
 ];
 /** Reorder the selected row/column without rebuilding retained cell bodies. */
 export function axisMove(ctx:ActionContext,axis:"row"|"column",direction:-1|1):SharedCommand|undefined{

@@ -20,6 +20,9 @@ export interface FlowPosition {parent:{kind:"document"}|{kind:"cell";cell:RichCe
 /** Use a unique prefix for every authored paste, including failed/undone ones. */
 export interface ClipboardAllocation {prefix:string;replica:string;counter:string;lamport:string}
 export type RichCommand =
+ |{kind:"deleteAtom";data:{paragraph:string;movement:"before"|"after"}}
+ |{kind:"replaceAtomPlainText";data:{paragraph:string;text:string}}
+ |{kind:"replaceAtomTypingText";data:{paragraph:string;text:string;clockMs:string}}
  |{kind:"insertTypingText";data:{text:string;clockMs:string}}
  |{kind:"deleteTypingRange";data:{selection:Extract<RichSelection,{kind:"text"}>;direction:"backward"|"forward";clockMs:string}}
  |{kind:"indentTaskItems";data:{container:string;first:string;last:string;nested:string|null}}

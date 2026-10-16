@@ -68,7 +68,7 @@ export class RichDomEditor {
  }
  #live():void {if(this.#disposed)throw Error("The rich DOM editor is disposed");}
  #allocate=(kind:string):string=>`${this.#namespace}:${kind}:${this.#counter++}`;
- #context():ActionContext{return {model:this.#model,allocate:this.#allocate,stamp:()=>({replica:"1",counter:String(this.#counter++),lamport:this.#model.view.revision})};}
+ #context():ActionContext{return {core:this.#options.core,model:this.#model,allocate:this.#allocate,stamp:()=>({replica:"1",counter:String(this.#counter++),lamport:this.#model.view.revision})};}
  #attempt(work:()=>void):void {try{work();}catch(error){this.#report(error);this.#reconcile();}}
  #report(error:unknown):void {this.status.textContent=error instanceof Error?error.message:"Rich editor operation failed";try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
  #refreshControls():void {
@@ -161,7 +161,13 @@ export class RichDomEditor {
    if(["Backspace","Delete"].includes(event.key)&&widget.matches("button,input[type=checkbox],input[type=radio]"))event.preventDefault();
    return;
   }
-  if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(event.key.toLowerCase()))){event.preventDefault();return;}
+  if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&[...event.key].length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(event.key.toLowerCase()))){event.preventDefault();return;}
+  // Logical node selections deliberately have no DOM range. Firefox/WebKit
+  // (and Chromium images) may therefore emit no beforeinput for a printable key.
+  // Own this first key only; cancelling its default prevents duplicate insertion.
+  if(!mod&&!event.altKey&&[...event.key].length===1&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
+   event.preventDefault();this.#attempt(()=>{this.#sync();const paragraph=this.#allocate("p");this.execute(this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceAtomTypingText",data:{paragraph,text:event.key,clockMs:this.#clock()}}:{kind:"replaceAtomPlainText",data:{paragraph,text:event.key}});});return;
+  }
   if(this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsFlowNavigation?.()===true){
    if(event.altKey&&!mod&&!event.shiftKey&&(event.key==="PageUp"||event.key==="PageDown")){
     // This reserved logical shortcut owns the default even at a boundary/range:
@@ -199,7 +205,7 @@ export class RichDomEditor {
    if(movement){const outcome=this.execute({kind:"navigateGrid",data:{movement:movement as "next",extend:event.key!=="Tab"&&event.shiftKey}});if(outcome!=="unchanged"||event.key!=="Tab")event.preventDefault();return;}
    if(event.key==="Enter"||event.key==="Escape"){event.preventDefault();const cell=selection.focus,node=this.#model.textBlocks.find(node=>{const source=sourceCell(this.#model,id(node));return source?.table===cell.table&&source.row===cell.row&&source.column===cell.column;});if(node)this.execute({kind:"setSelection",selection:{kind:"text",anchor:{block:id(node),offset:"0",affinity:"after"},focus:{block:id(node),offset:"0",affinity:"after"}}});return;}
   }
-  if((selection?.kind==="grid"||selection?.kind==="node")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>{const command=deleteSelection(this.#context());if(command)this.execute(command);});}
+  if((selection?.kind==="grid"||selection?.kind==="node")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>{const command=deleteSelection(this.#context(),event.key==="Backspace"?"before":"after");if(command)this.execute(command);});}
  }
  #input(event:InputEvent):void {
   if(this.#model.view.readOnly===true){event.preventDefault();return;}
@@ -213,6 +219,10 @@ export class RichDomEditor {
    if((type==="insertParagraph"||type==="insertLineBreak")&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
    if(type==="insertParagraph"){const command=enter(this.#context());if(command)this.execute(command);return;}
    const selection=this.#model.view.selection;
+   if(this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)){
+    if(type.startsWith("delete")){this.execute({kind:"deleteAtom",data:{paragraph:this.#allocate("p"),movement:type.includes("Backward")?"before":"after"}});return;}
+    if(type==="insertText"||type==="insertReplacementText"){const input=event.data??"";if(input)this.execute(type==="insertText"&&this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceAtomTypingText",data:{paragraph:this.#allocate("p"),text:input,clockMs:this.#clock()}}:{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:input}});return;}
+   }
    if(selection?.kind!=="text")return;
    const ranges=event.getTargetRanges?.()??[],target=ranges[0]?readTarget(this.surface,ranges[0]):null;
    if(type==="insertLineBreak"){this.execute(target&&!isCurrentCaretTarget(selection,target)?{kind:"replaceTextRange",data:{selection:target,text:"\n"}}:{kind:"insertHardBreak"});return;}
@@ -253,7 +263,7 @@ export class RichDomEditor {
     else if(kind==="grid"&&this.#model.view.selection?.kind==="grid")this.execute({kind:"pasteGridClipboard",data:{clipboardJson:clipboard,allocation}});
     else if(this.#model.view.selection?.kind==="text")this.execute({kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right:this.#allocate("p")}});
     else this.execute({kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(this.#context())}});
-   }else this.execute({kind:"insertPlainText",text:event.clipboardData!.getData("text/plain")});
+   }else {const plain=event.clipboardData!.getData("text/plain");if(!plain)return;this.execute(this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain});}
   });
  }
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}

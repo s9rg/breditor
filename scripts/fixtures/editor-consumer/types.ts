@@ -14,6 +14,7 @@ function contract(host:HTMLElement,editor:LocalEditor):void {
  const command:RichCommand={kind:"insertPlainText",text:"Typed"};editor.execute(command);void editor.checkpointJson();
  void createStructuralLocalProfileV2();void openLocalEditor({...options,richLanguage:2});
  editor.execute({kind:"navigateFlow",data:{movement:"before"}});editor.execute({kind:"insertParagraphAdjacent",data:{paragraph:"fresh",side:"after"}});void createFlowNavigationControls;
+ editor.execute({kind:"deleteAtom",data:{paragraph:"floor",movement:"before"}});editor.execute({kind:"replaceAtomPlainText",data:{paragraph:"plain",text:"Paste"}});editor.execute({kind:"replaceAtomTypingText",data:{paragraph:"typed",text:"Q",clockMs:"1"}});
  // @ts-expect-error Logical movement is not a visual/bidi arrow name.
  editor.execute({kind:"navigateFlow",data:{movement:"right"}});
  editor.execute({kind:"setCodeBlock",data:{block:"p",language:"Rust",formatPolicy:"removeFormats"}});

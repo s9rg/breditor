@@ -3,6 +3,9 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// A replacement paragraph must have an identity absent from the source tree.
+    #[error("atom replacement requires a fresh paragraph identity")]
+    AtomIdentityReuse,
     /// Timestamped user input requires explicit native history grouping admission.
     #[error("natural typing history is not enabled for this owner")]
     TypingHistoryDisabled,

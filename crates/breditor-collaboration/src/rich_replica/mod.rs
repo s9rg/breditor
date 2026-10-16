@@ -5,6 +5,7 @@
 
 pub mod actions;
 mod annotations;
+mod atom_edit;
 mod captions;
 mod caret_formats;
 mod cell_bodies;
@@ -16,6 +17,7 @@ mod clipboard_plan;
 mod close_typing_group;
 mod column_order;
 mod creation;
+mod delete_atom;
 mod delete_typing_range;
 mod enable_typing_history;
 mod exit_code_block;
@@ -47,6 +49,8 @@ mod profile;
 mod projection_cache;
 mod protocol;
 mod range_plan;
+mod replace_atom_plain_text;
+mod replace_atom_typing_text;
 mod replace_plain_text_range;
 mod replay_projections;
 pub mod selection;

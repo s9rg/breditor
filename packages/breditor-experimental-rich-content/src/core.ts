@@ -40,6 +40,8 @@ export interface RichCoreEditor {
   supportsCodeExit?():boolean;
   /** Native logical movement and explicit text recovery beside atoms; no JS planning fallback. */
   supportsFlowNavigation?():boolean;
+  /** Separate native whole-atom deletion/plain/first-key replacement capability. */
+  supportsAtomEditing?():boolean;
   enableTypingHistory?(expectedRevision?:string):boolean;
   closeTypingGroup?(expectedRevision?:string):boolean;
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;

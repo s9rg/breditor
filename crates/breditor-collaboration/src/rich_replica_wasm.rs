@@ -1,4 +1,5 @@
 //! Thin Wasm ownership boundary over the canonical shared rich editor.
+mod atom_edit;
 mod exit_code_block;
 mod flow_navigation;
 mod typing;

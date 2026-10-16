@@ -119,7 +119,12 @@ export class SharedDomEditor {
    if(["Backspace","Delete"].includes(event.key)&&widget.matches("button,input[type=checkbox],input[type=radio]"))event.preventDefault();
    return;
   }
-  if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(key))){event.preventDefault();return;}
+  if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&[...event.key].length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(key))){event.preventDefault();return;}
+  // No DOM range exists for a logical atom; a first printable key may have no
+  // beforeinput. Cancel its default and send only the native replacement intent.
+  if(!mod&&!event.altKey&&[...event.key].length===1&&this.#options.core.richLanguageVersion()===2&&this.#options.core.supportsAtomEditing()&&selectedFlowAtom(this.#model)){
+   event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{const paragraph=c.allocate("p");if(c.model.view.historyGrouping==="typing-v1")c.core.replaceAtomTypingText(paragraph,event.key,this.#clock(),c.revision);else c.core.replaceAtomPlainText(paragraph,event.key,c.revision);});});return;
+  }
   if(this.#options.core.richLanguageVersion()===2&&this.#options.core.supportsFlowNavigation()){
    if(event.altKey&&!mod&&!event.shiftKey&&(event.key==="PageUp"||event.key==="PageDown")){
     // Refused ranges/boundaries still belong to this reserved logical shortcut.
@@ -147,7 +152,7 @@ export class SharedDomEditor {
    if(move){this.#attempt(()=>this.#perform(c=>{const result=c.core.navigate(move,event.key!=="Tab"&&event.shiftKey,c.revision);if(event.key!=="Tab"||result.kind!=="boundary")event.preventDefault();}));return;}
    if(event.key==="Enter"||event.key==="Escape"){event.preventDefault();const block=this.#model.textBlocks.find(n=>{const cell=sourceCell(this.#model,id(n));return cell?.table===s.focus.table&&cell.row===s.focus.row&&cell.column===s.focus.column;});if(block)this.select(caret(id(block)));return;}
   }
-  if((s?.kind==="node"||s?.kind==="grid")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>this.#perform(removeSelection));}
+  if((s?.kind==="node"||s?.kind==="grid")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>this.#perform(c=>removeSelection(c,event.key==="Backspace"?"before":"after")));}
  }
  #input(event:InputEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{this.#sync();const kind=event.inputType;
   if(kind!=="insertText"&&!kind.startsWith("delete"))this.#boundary();
@@ -155,6 +160,10 @@ export class SharedDomEditor {
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}
    if((kind==="insertParagraph"||kind==="insertLineBreak")&&c.core.richLanguageVersion()===2&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
    if(kind==="insertParagraph"){enter(c);return;}
+   if(c.core.richLanguageVersion()===2&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model)){
+    if(kind.startsWith("delete")){c.core.deleteAtom(c.allocate("p"),kind.includes("Backward")?"before":"after",c.revision);return;}
+    if(kind==="insertText"||kind==="insertReplacementText"){const value=event.data??"";if(value){const paragraph=c.allocate("p");if(kind==="insertText"&&c.model.view.historyGrouping==="typing-v1")c.core.replaceAtomTypingText(paragraph,value,this.#clock(),c.revision);else c.core.replaceAtomPlainText(paragraph,value,c.revision);}return;}
+   }
    const s=c.model.view.selection;if(s?.kind!=="text")return;const range=event.getTargetRanges?.()[0],target=range?readTarget(this.surface,range):null;
    if(kind==="insertText"||kind==="insertReplacementText"||kind==="insertLineBreak"){const value=kind==="insertLineBreak"?"\n":event.data??"";if(target&&!isCurrentCaretTarget(s,target))c.core.replace(target,value,c.revision);else if(kind==="insertLineBreak")c.core.hardBreak(c.revision);else if(kind==="insertText"&&c.model.view.historyGrouping==="typing-v1"&&s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset)c.core.typeUser(value,this.#clock(),c.revision);else c.core.type(value,c.revision);return;}
    if(kind.startsWith("delete")){const backward=kind.includes("Backward");if(boundaryDelete(c,backward))return;if(s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset){c.core.replace(s,"",c.revision);return;}if(target&&(target.anchor.block!==target.focus.block||target.anchor.offset!==target.focus.offset)){this.#deleteInput(c,target,backward,kind);return;}
@@ -170,7 +179,7 @@ export class SharedDomEditor {
    // Clipboard stores are event-scoped. Capture strings before preparing/queuing work,
    // and never interpret an empty or unsupported transfer as a selection deletion.
    const fragment=transfer.getData("application/x-breditor-rich+json"),plain=transfer.getData("text/plain");if(!fragment&&!plain)return;
-   this.#sync();this.#perform(c=>{if(!fragment){c.core.type(plain,c.revision);return;}const kind=(JSON.parse(fragment) as {kind:string}).kind,s=c.model.view.selection,prefix=c.allocate("paste");if(kind==="text")c.core.paste(fragment,{kind:"text"},prefix,c.revision);else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);else if(s?.kind==="text")c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);});});
+   this.#sync();this.#perform(c=>{if(!fragment){if(c.core.richLanguageVersion()===2&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}const kind=(JSON.parse(fragment) as {kind:string}).kind,s=c.model.view.selection,prefix=c.allocate("paste");if(kind==="text")c.core.paste(fragment,{kind:"text"},prefix,c.revision);else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);else if(s?.kind==="text")c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);});});
  }
  #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
  #startComposition():void{if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block)return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};});}

@@ -36,3 +36,6 @@ test("dynamic SDK imports cannot execute another installed fixture page's bootst
  assert.ok(source.includes('preserveEntrySignatures:"strict"'));
  assert.ok(source.includes('strictExecutionOrder:true'));
 });
+test("native atom-edit checks retain a dedicated complete three-engine process",()=>{
+ assert.deepEqual(editorBrowserRuns(["atom-edit.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"]),[["a.spec.mjs"],["atom-edit.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});

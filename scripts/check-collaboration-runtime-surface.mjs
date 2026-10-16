@@ -16,6 +16,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["read_only_version","set_read_only"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native read-only capability ${name}`);
  for(const name of ["code_exit_version","exit_code_block"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded code-exit capability ${name}`);
  for(const name of ["flow_navigation_version","navigate_flow","insert_paragraph_adjacent"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded flow-navigation capability ${name}`);
+ for(const name of ["atom_edit_version","delete_atom","replace_atom_plain_text","replace_atom_typing_text"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded atom-edit capability ${name}`);
  for(const name of ["typing_history_version","enable_typing_history","close_typing_group","insert_typing_text","delete_typing_range","typing_checkpoint"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native typing-history capability ${name}`);
  for(const name of ["typing_history_version","restore_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing separate typing-history recovery ${name}`);
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function");

@@ -89,6 +89,10 @@ export interface SharedRustOwner {
  flow_navigation_version?():string;
  navigate_flow?(observation:unknown,movement:string):boolean;
  insert_paragraph_adjacent?(observation:unknown,paragraph:string,side:string):boolean;
+ atom_edit_version?():string;
+ delete_atom?(observation:unknown,paragraph:string,movement:string):boolean;
+ replace_atom_plain_text?(observation:unknown,paragraph:string,text:string):boolean;
+ replace_atom_typing_text?(observation:unknown,paragraph:string,text:string,clockMs:string):boolean;
  typing_history_version?():string;
  enable_typing_history?(observation:unknown):boolean;
  close_typing_group?(observation:unknown):boolean;

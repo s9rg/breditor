@@ -11,6 +11,9 @@ void opening.then(editor=>{const changed:boolean=editor.closeTypingGroup(editor.
 void opening.then(editor=>editor.core.typeUser("A",9007199254740993));
 void opening.then(editor=>{const changed:boolean=editor.setReadOnly(false,editor.view().revision);void changed;});
 void opening.then(editor=>{const moved:boolean=editor.core.navigateFlow("before",editor.view().revision);const inserted:boolean=editor.core.insertParagraphAdjacent("fresh","after",editor.view().revision);void moved;void inserted;});
+void opening.then(editor=>{editor.core.deleteAtom("floor","after",editor.view().revision);editor.core.replaceAtomPlainText("plain","Paste",editor.view().revision);editor.core.replaceAtomTypingText("typed","Q","1",editor.view().revision);});
+// @ts-expect-error The replacement clock must remain an exact decimal string.
+void opening.then(editor=>editor.core.replaceAtomTypingText("typed","Q",1));
 // @ts-expect-error Logical movement cannot be a guessed physical arrow direction.
 void opening.then(editor=>editor.core.navigateFlow("right"));
 void opening;

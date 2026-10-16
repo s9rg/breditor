@@ -3,7 +3,8 @@ import type {FlowPosition,FormatLiteral,RichCell,RichCommand,RichCoreEditor,Rich
 import {formatsAt,id,isProse,property,selectedImage,selectedTable,selectedText,sourceCell,text,textTargets,type ElementNode,type RichModel} from "./model.js";
 import type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 import {exitEmptyTask} from "./task_actions_v2.js";
-export interface ActionContext {model:RichModel;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
+import {selectedFlowAtom} from "./flow_controls.js";
+export interface ActionContext {core?:RichCoreEditor;model:RichModel;allocate:(kind:string)=>string;stamp:()=>{replica:string;counter:string;lamport:string}}
 export interface ToolbarControl {
  id:string;label:string;type?:"text"|"number";
  /** Optional binding for controls that read one particular owner. Not mutation authority. */
@@ -95,11 +96,12 @@ export function boundaryDelete(context:ActionContext,backward:boolean):RichComma
  if(isProse(other)&&isProse(node))return {kind:"joinTextBlocks",data:{left:id(backward?other:node),right:id(backward?node:other)}};
  return {kind:"setSelection",selection:{kind:"node",block:id(other)}};
 }
-export function deleteSelection(context:ActionContext):RichCommand|null {
+export function deleteSelection(context:ActionContext,movement:"before"|"after"="after"):RichCommand|null {
  const value=context.model,selection=value.view.selection;
  if(selection?.kind==="text")return {kind:"deleteSelection"};
  if(selection?.kind==="grid")return {kind:"clearTableCells",data:{emptyBlocks:(value.view.grid?.cells??[]).map(()=>context.allocate("p"))}};
  if(selection?.kind!=="node")return null;
+ if(context.core?.richLanguageVersion?.()===2&&context.core.supportsAtomEditing?.()===true&&selectedFlowAtom(value))return {kind:"deleteAtom",data:{paragraph:context.allocate("p"),movement}};
  const node=value.nodes.get(selection.block),parent=node?value.parents.get(id(node)):undefined;if(!node||!parent)return null;
  const replacement=parent.children.length===1?{kind:"paragraph" as const,block:context.allocate("p"),text:"",formatsJson:"[]"}:null;
  if(node.type==="breditor/image")return {kind:"deleteImage",data:{image:String(property(node,"image-id")),replacement}};
@@ -179,9 +181,9 @@ export const defaultToolbar:readonly ToolbarControl[]=[
  {id:"merge",label:"Merge cells",enabled:c=>gridEnabled(c)&&(c.model.view.grid?.cells.length??0)>1,command:c=>({kind:"mergeTableCells",data:{merge:c.allocate("merge"),...c.stamp()}})},
  {id:"split",label:"Split cell",enabled:gridEnabled,command:c=>{const cell=selectedCell(c);return cell?{kind:"splitTableCell",data:{cell}}:null;}},
  {id:"header",label:"Header cells",enabled:gridEnabled,command:c=>({kind:"setTableHeader",data:{header:headerIntent(c)}})},
- {id:"clear",label:"Clear cells",enabled:gridEnabled,command:deleteSelection},
+ {id:"clear",label:"Clear cells",enabled:gridEnabled,command:c=>deleteSelection(c)},
  {id:"column-width",label:"Column width",type:"number",enabled:c=>selectedCell(c)!==undefined,value:c=>{const axis=tableAxis(c);return String(axis?.view.columns.find(column=>column.id===axis.cell?.column)?.width??160);},command:(c,input)=>{const cell=selectedCell(c),width=dimension(input);return cell&&width?{kind:"resizeTableColumn",data:{table:cell.table,column:cell.column,width}}:null;}},
- {id:"delete-node",label:"Delete selected node",enabled:c=>c.model.view.selection?.kind==="node",command:deleteSelection},
+ {id:"delete-node",label:"Delete selected node",enabled:c=>c.model.view.selection?.kind==="node",command:c=>deleteSelection(c)},
  {id:"alt",label:"Image alt",type:"text",enabled:imageEnabled,value:c=>String(property(selectedImage(c.model)!,"alt-text")),command:(c,input)=>{const image=selectedImage(c.model);return image&&input?.trim()?{kind:"setImageAlt",data:{image:String(property(image,"image-id")),alt:{kind:"description",text:input}}}:null;}},
  {id:"decorative",label:"Decorative image",enabled:imageEnabled,command:c=>{const image=selectedImage(c.model);return image?{kind:"setImageAlt",data:{image:String(property(image,"image-id")),alt:{kind:"decorative"}}}:null;}},
  {id:"caption",label:"Image caption",type:"text",enabled:imageEnabled,value:c=>{const node=selectedImage(c.model)?.children[0];return node?.kind==="element"?text(node):"";},command:(c,input)=>{const image=selectedImage(c.model);return image&&input!==undefined?{kind:"setImageCaption",data:{image:String(property(image,"image-id")),caption:input?{block:c.allocate("caption"),text:input,formatsJson:"[]"}:null}}:null;}},

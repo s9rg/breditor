@@ -3,6 +3,7 @@
 //! Commands own no DOM/storage/network. An opaque exact observation accompanies
 //! every publication. Read/encoding failures are separate from committed mutations.
 
+mod atom_edit;
 mod clipboard;
 mod close_typing_group;
 mod command;

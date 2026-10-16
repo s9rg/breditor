@@ -1,5 +1,5 @@
 // Read-only UI preparation. Rust owns final semantic admission and all replicated state.
-import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,type RichModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
+import {id,isText,property,sourceCell,text,formatsAt,textTargets,taskContext,selectedFlowAtom,type RichModel,type ElementNode} from "@breditor/experimental-rich-content/rendering";
 import {exitEmptySharedTask} from "./task_actions_v2.js";
 import type {SharedRichEditor} from "./core.js";
 import type {SharedCommand,SharedDispatch,SharedNode,SharedParagraph,RichSelection,RichPoint,RichCell,FormatLiteral} from "./types.js";
@@ -37,9 +37,10 @@ export function bold(ctx:ActionContext):void{
  const targets=textTargets(ctx.model),active=targets.every(target=>{const n=ctx.model.nodes.get(target.block);if(!n)return false;let offset=0;return n.children.every(run=>{if(run.kind!=="text")return true;const start=offset;offset+=run.text.length;return offset<=Number(target.start)||start>=Number(target.end)||run.formats.some(f=>f.type===format.type);});});
  publish(ctx,targets.map(target=>({kind:"set_format",data:{block:target.block,offset:Number(target.start),length:Number(target.end)-Number(target.start),format,enabled:!active}})));
 }
-export function removeSelection(ctx:ActionContext):void{
+export function removeSelection(ctx:ActionContext,movement:"before"|"after"="after"):void{
  const s=ctx.model.view.selection;if(s?.kind==="text"){ctx.core.replace(s,"",ctx.revision);return;}
  if(s?.kind==="node"){
+  if(ctx.core.richLanguageVersion()===2&&ctx.core.supportsAtomEditing()&&selectedFlowAtom(ctx.model)){ctx.core.deleteAtom(ctx.allocate("p"),movement,ctx.revision);return;}
   const node=ctx.model.nodes.get(s.block),parent=ctx.model.parents.get(s.block);
   if(node?.type==="breditor/horizontal-rule")publish(ctx,[{kind:"delete_horizontal_rule",data:{block:s.block,replacement:parent?.children.length===1?paragraph(ctx.allocate("p")):null}}]);
   else publish(ctx,[{kind:"delete_block",data:{block:s.block}}]);return;

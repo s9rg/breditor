@@ -4,6 +4,7 @@
 //! is separately enabled and persisted; original checkpoints/defaults stay exact.
 
 mod close_typing_group;
+mod delete_atom;
 mod delete_typing_range;
 mod dispatch;
 pub(crate) mod durable;
@@ -19,6 +20,8 @@ mod insert_typing_text;
 pub(crate) mod local_rewrite;
 mod navigate_flow;
 mod redo;
+mod replace_atom_plain_text;
+mod replace_atom_typing_text;
 mod replace_range_plain_text;
 mod replace_selection_plain_text;
 mod replace_selection_text;

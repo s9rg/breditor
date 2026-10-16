@@ -118,9 +118,12 @@ completed 408-case SDK matrix and serial 78-case application matrix to the exact
 candidate archives. Its earlier WebKit startup recurrence remains retained;
 the completed rerun does not establish an engine repair.
 
+Native deletion and plain/first-key replacement of whole selected images,
+visible tables and rules now have a [separate editing contract](RICH_ATOM_EDIT.md),
+including explicit floors for sole children and hidden-only parent remainders.
 Physical/bidirectional arrows, visual line edges, extended/general selections,
-explicit gap/drop selection, typing replacement of selected atoms and complete
-atomic deletion/recovery remain separate unfinished contracts. Bounded layout
+explicit gap/drop selection and recovery from an already hidden-only document
+remain separate unfinished contracts. Bounded layout
 properties and foreign interchange also remain in the first-two-workstream
 goal. The older browser/replay observations and serious shared input latency
 are still open; this is not V1 release qualification.

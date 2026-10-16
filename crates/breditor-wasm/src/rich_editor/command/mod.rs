@@ -7,6 +7,7 @@ mod change_inline_formats;
 mod clear_table_cells;
 mod clipboard_ids;
 mod data_dispatch;
+mod delete_atom;
 mod delete_horizontal_rule;
 mod delete_image;
 mod delete_selection;
@@ -48,6 +49,8 @@ mod paste_flow_clipboard;
 mod paste_grid_clipboard;
 mod paste_inline_clipboard;
 mod redo;
+mod replace_atom_plain_text;
+mod replace_atom_typing_text;
 mod replace_blocks;
 mod replace_image;
 mod replace_text_range;
@@ -87,6 +90,9 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    DeleteAtom,
+    ReplaceAtomPlainText,
+    ReplaceAtomTypingText,
     NavigateFlow,
     InsertParagraphAdjacent,
     InsertTypingText,
@@ -226,6 +232,19 @@ pub(super) fn execute(
         return Err(error::rejected("breditor_rich.read_only"));
     }
     match command.kind {
+        CommandTag::DeleteAtom => {
+            delete_atom::execute(owner, observation, command.data.ok_or(invalid())?.get())
+        }
+        CommandTag::ReplaceAtomPlainText => replace_atom_plain_text::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
+        CommandTag::ReplaceAtomTypingText => replace_atom_typing_text::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
         CommandTag::SetSelection => {
             set_selection::execute(owner, observation, value(command.selection)?)
         }

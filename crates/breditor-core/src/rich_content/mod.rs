@@ -7,6 +7,7 @@
 
 pub mod actions;
 pub(crate) mod ast_properties;
+mod atom_edit;
 pub(crate) mod clipboard;
 mod code_language;
 mod drafts;
@@ -33,6 +34,7 @@ mod table_geometry;
 mod table_paste_draft;
 
 pub use ast_properties::{RichColumn, RichTableView};
+pub use atom_edit::{AtomDeletionPlan, plan_atom_deletion, selected_flow_atom};
 pub use clipboard::{
     RichClipboardError, RichClipboardFragment, RichClipboardIdAllocator, RichClipboardIdentityKind,
     RichClipboardKind,

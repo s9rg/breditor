@@ -9,6 +9,7 @@ function fixture(){
  for(const name of ["typing_history_version","enable_typing_history","close_typing_group","insert_typing_text","delete_typing_range","typing_checkpoint"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["code_exit_version","exit_code_block"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["flow_navigation_version","navigate_flow","insert_paragraph_adjacent"])module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["atom_edit_version","delete_atom","replace_atom_plain_text","replace_atom_typing_text"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
@@ -28,6 +29,9 @@ test("flow navigation and adjacent authoring require their matching native capab
 test("research exports and unguarded owner methods reject instead of being filtered away",()=>{
  const f=fixture();assert.throws(()=>admitApplicationSurface({...f.module,ProbeSession:class {}},emptyWasm,f.declarations),/research probes/);
  f.module.SharedEditorOwner.prototype.undo=()=>{};assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Unguarded research method/);
+});
+test("atom edits require all guarded native methods and their separate capability",()=>{
+ for(const name of ["atom_edit_version","delete_atom","replace_atom_plain_text","replace_atom_typing_text"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing guarded atom-edit capability/);}
 });
 test("missing real application capabilities and invalid Wasm bytes reject",()=>{
  const f=fixture();delete f.module.SharedEditorOwner.prototype.dispatch;assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing application owner capability/);
