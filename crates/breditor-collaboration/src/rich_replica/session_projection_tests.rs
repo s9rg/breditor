@@ -47,7 +47,7 @@ fn changed_causal_content_must_be_materialized_and_admitted_again() -> Result {
         let stamp = Stamp::next(&a.doc)?;
         let command =
             Command::InsertText(InsertText { block: "p".into(), offset: 1, text: "X".into() });
-        command.prepare(&a.doc)?;
+        command.prepare(&a.doc, &a.codec, &a.document)?;
         command.apply(&a.doc, &a.codec, &a.document, stamp, 0)?;
         a.doc.commit();
         assert!(!a.projection_cache.is_current(&a.doc, &a.token));

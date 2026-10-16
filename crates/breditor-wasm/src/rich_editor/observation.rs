@@ -59,6 +59,17 @@ impl BreditorRichObservation {
             Err(error) => BreditorStringResult::from_error(error),
         }
     }
+    /// General Copy from this frozen observation; partial tables retain shape, not unselected text.
+    /// The original clipboardJson read keeps its narrower behavior and its existing payload version.
+    #[must_use]
+    #[wasm_bindgen(js_name=generalClipboardJson)]
+    pub fn general_clipboard_json(&self) -> BreditorStringResult {
+        match super::clipboard::encode_general(self) {
+            Ok(Some(value)) => BreditorStringResult::from_value(value),
+            Ok(None) => BreditorStringResult::absent(),
+            Err(error) => BreditorStringResult::from_error(error),
+        }
+    }
     /// Exact publication revision as canonical decimal, never a floating-point bridge value.
     #[must_use]
     #[wasm_bindgen(getter)]

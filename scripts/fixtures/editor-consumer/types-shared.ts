@@ -4,9 +4,11 @@ const opening:Promise<SharedEditorSession>=openSharedEditor(options);
 void openSharedEditor({...options,history:"explicit"});
 void openSharedEditor({...options,history:"typing-v1"});
 void openSharedEditor({...options,rangeEditing:"general-v1"});
+void opening.then(editor=>{const capable:boolean=editor.core.supportsGeneralCopy();const content=editor.core.copyGeneral();void capable;void content;});
 void openSharedEditor({...options,initial:{kind:"generalCheckpoint",checkpointJson:"opaque native save"}});
 void openSharedEditor({...options,initial:{kind:"generalTypingCheckpoint",checkpointJson:"opaque native save"}});
 void opening.then(editor=>{const policy:"original"|"general-v1"=editor.rangePolicy();void policy;});
+void opening.then(editor=>{const capable:boolean=editor.core.supportsGeneralInlinePaste();const point={block:"p",offset:"1",affinity:"after" as const};const changed:boolean=editor.core.pasteGeneralInlineClipboard({kind:"text",anchor:point,focus:point},"opaque native clipboard","fresh",editor.view().revision);void capable;void changed;});
 // @ts-expect-error A future unknown range policy is not silently substituted.
 void openSharedEditor({...options,rangeEditing:"general-v2"});
 void openSharedEditor({...options,initial:{kind:"typingCheckpoint",checkpointJson:"opaque native journal"}});

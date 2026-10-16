@@ -5,6 +5,7 @@
 //! before insertion; immutable assets remain host-resolved references.
 
 mod capture;
+mod capture_general;
 mod capture_list;
 mod error;
 mod plain_text;

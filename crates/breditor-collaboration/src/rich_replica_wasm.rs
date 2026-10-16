@@ -1,10 +1,13 @@
 //! Thin Wasm ownership boundary over the canonical shared rich editor.
 mod atom_edit;
 mod block_layout;
+mod copy_general_clipboard;
 mod exit_code_block;
 mod flow_navigation;
 mod general_history;
 mod general_range;
+mod paste_general_flow_clipboard;
+mod paste_general_inline_clipboard;
 mod selection_formatting;
 mod typing;
 use crate::{

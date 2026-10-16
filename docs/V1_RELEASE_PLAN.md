@@ -520,6 +520,14 @@ pretending either core extension alone solves every hosting concern.
 
 ## Implementation order and reproducible exits
 
+The current implementation priority is functional completion: finish general
+rich clipboard editing, cross-structure paragraph and whole-document editing,
+transport V2 integration, and external HTML/Markdown/Office interchange. Keep
+focused native, type and functional integration tests with each change. Broad
+cross-browser matrices, physical input/accessibility, performance and final
+release qualification follow feature completion. This changes the order of
+work, not the V1 acceptance criteria or the independent original protocols.
+
 The active implementation goal covers the first two workstreams: a unified
 installable rich editor, then everyday editing and external interchange. This
 includes the distribution, editing and interchange checkpoints below. Completion

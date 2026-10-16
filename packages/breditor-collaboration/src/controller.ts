@@ -17,7 +17,7 @@ export interface SharedDomOptions extends RenderOptions {
  onFiles?:(files:readonly File[],position:{parent:string|null;before:string|null},revision:string)=>void|Promise<void>;
 }
 interface Work {run:(context:ActionContext)=>void;revision:string;focus:boolean;boundary:boolean}
-interface Composition {block:string;original:string;revision:string;release:()=>void}
+interface Composition {block:string;original:string;revision:string;release:()=>void;target?:Extract<RichSelection,{kind:"text"}>}
 function sameSelection(a:RichSelection|null,b:RichSelection|null):boolean{
  if(a?.kind!==b?.kind)return false;if(!a||!b)return a===b;
  if(a.kind==="node"&&b.kind==="node")return a.block===b.block;
@@ -56,7 +56,7 @@ export class SharedDomEditor {
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal});
   this.surface.addEventListener("copy",event=>this.#copy(event,false),{signal});this.surface.addEventListener("cut",event=>this.#copy(event,true),{signal});this.surface.addEventListener("paste",event=>this.#paste(event),{signal});
   this.surface.addEventListener("dragover",event=>{if(event.dataTransfer?.types.includes("Files"))event.preventDefault();},{signal});this.surface.addEventListener("drop",event=>{if(event.dataTransfer?.files.length){event.preventDefault();this.#files([...event.dataTransfer.files]);}},{signal});
-  this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal});this.surface.addEventListener("compositionend",()=>this.#endComposition(),{signal});
+  this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal});this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal});
   d.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal});
  }
  #read():RichModel{const view=this.#options.core.view();return model({...view,format:"breditor/rich-view"} satisfies RichView);}
@@ -193,18 +193,42 @@ export class SharedDomEditor {
    }
   });
  });}
- #copy(event:ClipboardEvent,cut:boolean):void{if(!event.clipboardData)return;if(this.#composition||this.#busy){event.preventDefault();return;}this.#boundary();this.#attempt(()=>{this.#sync();this.#perform(c=>{const content=c.core.copy();if(!content)return;event.preventDefault();event.clipboardData!.setData("text/plain",content.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",content.richJson);if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==content.plainText)throw Error("Clipboard did not retain text; content was not cut");if(cut&&c.model.view.readOnly!==true)removeSelection(c);},false);});}
+ #copy(event:ClipboardEvent,cut:boolean):void{
+  if(!event.clipboardData)return;if(this.#composition||this.#busy){event.preventDefault();return;}if(this.#model.view.rangeEditing==="general-v1")event.preventDefault();this.#boundary();
+  this.#attempt(()=>{this.#sync();this.#perform(c=>{
+   const general=c.model.view.rangeEditing==="general-v1",content=general?c.core.copyGeneral():c.core.copy();if(!content)return;
+   event.preventDefault();event.clipboardData!.setData("text/plain",content.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",content.richJson);
+   if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==content.plainText)throw Error("Clipboard did not retain text; content was not cut");
+   if(cut&&c.model.view.readOnly!==true){const selection=c.model.view.selection;if(general&&selection?.kind==="text")c.core.replaceGeneralRangePlainText(selection,"",c.allocate("range"));else removeSelection(c);}
+  },false);});
+ }
  #paste(event:ClipboardEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(!event.clipboardData)return;event.preventDefault();if(this.#composition||this.#busy)return;
   this.#boundary();
   this.#attempt(()=>{const transfer=event.clipboardData!,files=[...transfer.files];if(files.length){this.#files(files);return;}
    // Clipboard stores are event-scoped. Capture strings before preparing/queuing work,
    // and never interpret an empty or unsupported transfer as a selection deletion.
    const fragment=transfer.getData("application/x-breditor-rich+json"),plain=transfer.getData("text/plain");if(!fragment&&!plain)return;
-   this.#sync();this.#perform(c=>{if(!fragment){const s=c.model.view.selection;if(c.model.view.rangeEditing==="general-v1"&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,plain,c.allocate("range"),c.revision);else if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}const kind=(JSON.parse(fragment) as {kind:string}).kind,s=c.model.view.selection,prefix=c.allocate("paste");if(kind==="text")c.core.paste(fragment,{kind:"text"},prefix,c.revision);else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);else if(s?.kind==="text")c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);});});
+   this.#sync();this.#perform(c=>{
+    const s=c.model.view.selection,general=c.model.view.rangeEditing==="general-v1";
+    if(!fragment){if(general&&s?.kind==="text")c.core.replaceGeneralRangePlainText(s,plain,c.allocate("range"),c.revision);else if(isStructuralRichLanguage(c.core.richLanguageVersion())&&c.core.supportsAtomEditing()&&selectedFlowAtom(c.model))c.core.replaceAtomPlainText(c.allocate("p"),plain,c.revision);else c.core.type(plain,c.revision);return;}
+    const kind=(JSON.parse(fragment) as {kind:string}).kind,prefix=c.allocate("paste");
+    if(kind==="text"){if(general&&s?.kind==="text")c.core.pasteGeneralInlineClipboard(s,fragment,prefix,c.revision);else c.core.paste(fragment,{kind:"text"},prefix,c.revision);}
+    else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);
+    else if(s?.kind==="text"){if(general)c.core.pasteGeneralFlowClipboard(s,fragment,c.allocate("right"),prefix,c.revision);else c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);}
+    else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);
+   });});
  }
  #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
- #startComposition():void{if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block)return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};});}
- #endComposition():void{const composition=this.#composition;if(!composition)return;this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{
+ #startComposition():void{if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text")return;const cross=s.anchor.block!==s.focus.block;if(cross&&this.#model.view.rangeEditing!=="general-v1")return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes(),...(cross?{target:structuredClone(s)}:{})};});}
+ #endComposition(committedText:string):void{const composition=this.#composition;if(!composition)return;this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{
+  if(this.#disposed||this.#composition!==composition)return;
+  if(composition.target){
+   this.#composition=undefined;const pending=this.#queue;this.#queue=[];
+   try{if(committedText)this.#perform(c=>{c.core.replaceGeneralRangePlainText(composition.target!,committedText,c.allocate("range"),c.revision);},true,composition.revision);}
+   catch(error){this.#report(error);}
+   finally{for(const work of pending)this.#attempt(()=>this.#perform(work.run,work.focus,work.revision));this.#refresh(false,true);composition.release();}
+   return;
+  }
   if(this.#disposed||this.#composition!==composition)return;const node=[...this.surface.querySelectorAll<HTMLElement>("[data-rich-text]")].find(n=>n.dataset["richText"]===composition.block),final=node?.textContent??composition.original;let start=0;while(start<composition.original.length&&start<final.length&&composition.original[start]===final[start])start++;if(start>0&&/[\uDC00-\uDFFF]/.test(composition.original[start]??final[start]??""))start--;
   let oldEnd=composition.original.length,newEnd=final.length;while(oldEnd>start&&newEnd>start&&composition.original[oldEnd-1]===final[newEnd-1]){oldEnd--;newEnd--;}if(oldEnd<composition.original.length&&/[\uDC00-\uDFFF]/.test(composition.original[oldEnd]??"")){oldEnd++;newEnd++;}
   this.#composition=undefined;const pending=this.#queue;this.#queue=[];

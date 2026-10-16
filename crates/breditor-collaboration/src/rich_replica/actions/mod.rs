@@ -23,6 +23,7 @@ mod outdent_list_items;
 mod outdent_task_items;
 mod paste_blocks;
 mod paste_flow_at_text;
+mod paste_general_flow_at_text_v1;
 mod paste_table_cells;
 mod replace_general_text_range_v1;
 mod replace_image;
@@ -76,6 +77,7 @@ pub use outdent_list_items::OutdentListItems;
 pub use outdent_task_items::OutdentTaskItems;
 pub use paste_blocks::PasteBlocks;
 pub use paste_flow_at_text::PasteFlowAtText;
+pub use paste_general_flow_at_text_v1::PasteGeneralFlowAtTextV1;
 pub use paste_table_cells::{PasteTableCells, PastedCell, PastedMerge};
 pub use replace_general_text_range_v1::ReplaceGeneralTextRangeV1;
 pub use replace_image::ReplaceImage;
@@ -108,6 +110,8 @@ pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Additive atomic general-range flow paste; requires explicitly enabled general history.
+    PasteGeneralFlowAtTextV1(PasteGeneralFlowAtTextV1),
     /// Patch independently owned bounded layout fields under explicit shared model 13.
     SetBlockLayout(SetBlockLayout),
     /// Insert one V2 atomic rule at an explicit flow position.
@@ -225,8 +229,14 @@ impl Command {
                 | Self::SetTaskChecked(_)
         )
     }
-    pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
+    pub(super) fn prepare(
+        &self,
+        doc: &LoroDoc,
+        codec: &breditor_core::codec::DocumentJsonCodecV2,
+        document: &breditor_core::rich_content::RichDocument,
+    ) -> Result<(), Error> {
         match self {
+            Self::PasteGeneralFlowAtTextV1(value) => value.prepare(doc, codec, document)?,
             Self::SetBlockLayout(value) => value.prepare(doc)?,
             Self::InsertHorizontalRule(value) => value.prepare(doc)?,
             Self::DeleteHorizontalRule(value) => value.prepare(doc)?,
@@ -326,6 +336,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::PasteGeneralFlowAtTextV1(value) => value.apply(doc, codec, document, stamp),
             Self::SetBlockLayout(value) => value.apply(doc, codec, document, stamp),
             Self::InsertHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::DeleteHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),

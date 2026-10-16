@@ -31,7 +31,7 @@ function sameSelection(a:RichSelection|null,b:RichSelection|null):boolean {
  return false;
 }
 interface Work {command:RichCommand;revision:string;focus:boolean}
-interface Composition {block:string;original:string;revision:string;finishing:boolean}
+interface Composition {block:string;original:string;revision:string;finishing:boolean;target?:Extract<RichSelection,{kind:"text"}>}
 export class RichDomEditor {
  readonly surface:HTMLDivElement;
  readonly toolbar:HTMLDivElement;
@@ -73,7 +73,7 @@ export class RichDomEditor {
   this.surface.addEventListener("dragover",event=>{if(event.dataTransfer?.types.includes("Files"))event.preventDefault();},{signal:this.#abort.signal});
   this.surface.addEventListener("drop",event=>{if(event.dataTransfer?.files.length){event.preventDefault();this.#files([...event.dataTransfer.files]);}},{signal:this.#abort.signal});
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal:this.#abort.signal});
-  this.surface.addEventListener("compositionend",()=>this.#endComposition(),{signal:this.#abort.signal});
+  this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal:this.#abort.signal});
   document.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal:this.#abort.signal});
  }
  #live():void {if(this.#disposed)throw Error("The rich DOM editor is disposed");}
@@ -278,11 +278,12 @@ export class RichDomEditor {
  }
  #copy(event:ClipboardEvent,cut:boolean):void {
   if(this.#composition||!event.clipboardData)return;
+  if(this.#general)event.preventDefault();
   this.#boundary();
-  this.#attempt(()=>{this.#sync();const transfer=this.#options.core.clipboard();if(!transfer)return;
+  this.#attempt(()=>{this.#sync();const core=this.#options.core;if(this.#general&&(core.supportsGeneralCopy?.()!==true||typeof core.generalClipboard!=="function"))throw Error("Use matching native general clipboard copy");const transfer=this.#general?core.generalClipboard!():core.clipboard();if(!transfer)return;
    event.preventDefault();event.clipboardData!.setData("text/plain",transfer.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",transfer.structuredJson);
    if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==transfer.plainText)throw Error("Clipboard did not retain the supplied text; content was not cut");
-   if(cut&&this.#model.view.readOnly!==true){const command=deleteSelection(this.#context());if(command)this.execute(command);}
+   if(cut&&this.#model.view.readOnly!==true){const selection=this.#model.view.selection,command=this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText" as const,data:{selection,text:"",prefix:this.#allocate("range")}}:deleteSelection(this.#context());if(command)this.execute(command);}
   });
  }
  #paste(event:ClipboardEvent):void {
@@ -292,19 +293,28 @@ export class RichDomEditor {
   const files=[...event.clipboardData.files];if(files.length){this.#files(files);return;}
   this.#attempt(()=>{this.#sync();const clipboard=event.clipboardData!.getData("application/x-breditor-rich+json");
    if(clipboard){const kind=(JSON.parse(clipboard) as {kind:string}).kind,allocation={prefix:this.#allocate("paste"),...this.#context().stamp()};
-    if(kind==="text")this.execute({kind:"pasteInlineClipboard",data:{clipboardJson:clipboard}});
+    if(kind==="text"){const selection=this.#model.view.selection;if(this.#general&&selection?.kind==="text"){if(this.#options.core.supportsGeneralInlinePaste?.()!==true)throw Error("Use matching native general inline clipboard paste");this.execute({kind:"pasteGeneralInlineClipboard",data:{selection,clipboardJson:clipboard,prefix:allocation.prefix}});}else this.execute({kind:"pasteInlineClipboard",data:{clipboardJson:clipboard}});}
     else if(kind==="grid"&&this.#model.view.selection?.kind==="grid")this.execute({kind:"pasteGridClipboard",data:{clipboardJson:clipboard,allocation}});
-    else if(this.#model.view.selection?.kind==="text")this.execute({kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right:this.#allocate("p")}});
+    else if(this.#model.view.selection?.kind==="text"){const selection=this.#model.view.selection,right=this.#allocate("p");if(this.#general){if(this.#options.core.supportsGeneralFlowPaste?.()!==true)throw Error("Use matching native general rich-flow clipboard paste");this.execute({kind:"pasteGeneralFlowClipboard",data:{selection,clipboardJson:clipboard,allocation,prefix:allocation.prefix,right}});}else this.execute({kind:"pasteFlowAtText",data:{clipboardJson:clipboard,allocation,right}});}
     else this.execute({kind:"pasteFlowClipboard",data:{clipboardJson:clipboard,allocation,position:positionAfter(this.#context())}});
    }else {const plain=event.clipboardData!.getData("text/plain");if(!plain)return;const selection=this.#model.view.selection;this.execute(this.#general&&selection?.kind==="text"?{kind:"replaceGeneralRangePlainText",data:{selection,text:plain,prefix:this.#allocate("range")}}:isStructuralRichLanguage(this.#options.core.richLanguageVersion?.())&&this.#options.core.supportsAtomEditing?.()===true&&selectedFlowAtom(this.#model)?{kind:"replaceAtomPlainText",data:{paragraph:this.#allocate("p"),text:plain}}:{kind:"insertPlainText",text:plain});}
   });
  }
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
- #startComposition():void {if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false};});}
- #endComposition():void {
+ #startComposition():void {if(this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind!=="text")return;const cross=selection.anchor.block!==selection.focus.block;if(cross&&!this.#general)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false,...(cross?{target:structuredClone(selection)}:{})};});}
+ #endComposition(committedText:string):void {
   const composition=this.#composition;if(!composition)return;composition.finishing=true;
   this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{
    if(this.#disposed||this.#composition!==composition)return;
+   // The browser may provisionally rewrite several containers. Only its final committed
+   // composition text crosses the native general target; never reverse-engineer that DOM.
+   if(composition.target){
+    this.#composition=undefined;const pending=this.#queue;this.#queue=[];
+    try{if(committedText)this.execute({kind:"replaceGeneralRangePlainText",data:{selection:composition.target,text:committedText,prefix:this.#allocate("range")}},true,composition.revision);}
+    catch(error){this.#report(error);}
+    finally{for(const work of pending){try{this.execute(work.command,work.focus,work.revision);}catch(error){this.#report(error);}}this.#reconcile();}
+    return;
+   }
    const block=[...this.surface.querySelectorAll<HTMLElement>("[data-rich-text]")].find(node=>node.dataset["richText"]===composition.block),final=block?.textContent??composition.original;
    let prefix=0;while(prefix<composition.original.length&&prefix<final.length&&composition.original[prefix]===final[prefix])prefix++;
    if(prefix>0&&/[\uDC00-\uDFFF]/.test(composition.original[prefix]??final[prefix]??""))prefix--;

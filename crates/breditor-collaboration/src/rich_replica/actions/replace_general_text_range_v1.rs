@@ -29,6 +29,21 @@ impl ReplaceGeneralTextRangeV1 {
         codec: &DocumentJsonCodecV2,
         document: &RichDocument,
     ) -> Result<PreparedGeneralRange, Error> {
+        self.plan_inner(codec, document, true)
+    }
+    pub(super) fn plan_for_compound(
+        &self,
+        codec: &DocumentJsonCodecV2,
+        document: &RichDocument,
+    ) -> Result<PreparedGeneralRange, Error> {
+        self.plan_inner(codec, document, false)
+    }
+    fn plan_inner(
+        &self,
+        codec: &DocumentJsonCodecV2,
+        document: &RichDocument,
+        require_change: bool,
+    ) -> Result<PreparedGeneralRange, Error> {
         let inserted = self.range.fragment(codec)?;
         let selection = super::super::selection::Selection::TextRange {
             anchor: self.range.anchor.clone(),
@@ -46,9 +61,11 @@ impl ReplaceGeneralTextRangeV1 {
             .action(&empty)
             .map_err(|_| Error::Contract("general semantic floor identities"))?
             .apply(&super::super::paragraphs::context(codec), document)
-            .map_err(|_| Error::Contract("general semantic final admission"))?
-            .ok_or(Error::Contract("general semantic content change required"))?;
-        let expected = edit.document().clone();
+            .map_err(|_| Error::Contract("general semantic final admission"))?;
+        if require_change && edit.is_none() {
+            return Err(Error::Contract("general semantic content change required"));
+        }
+        let expected = edit.map_or_else(|| document.clone(), |edit| edit.document().clone());
         let raw: Value = serde_json::from_str(
             &codec
                 .encode(expected.document())

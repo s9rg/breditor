@@ -345,11 +345,67 @@ singleton exporter and freeze an independently generated wire hash. The relay
 reproducer also checks duplicate delivery and future Undo/Redo with server
 recovery. Version-two transport still needs Wasm, SDK and reference-relay wiring.
 
+## Native general clipboard
+
+General Copy is an explicit native read, separate from the original clipboard
+read. Local owners declare `generalCopyVersion()` and observations expose
+`generalClipboardJson()`; the local facade supplies `supportsGeneralCopy()` and
+`generalClipboard()`. Shared owners declare `general_copy_version()` and expose
+the guarded `copy_general_clipboard()` read, surfaced as `copyGeneral()`.
+Neither Copy read changes the document, selection, pending formats or history.
+Read-only owners can copy; shared stale or foreign observations still reject.
+
+For a text range crossing table cells, rich Copy retains the complete table
+shape, widths, header flags and active merges. Unselected cell bodies become
+neutral empty paragraphs rather than copied source content. Partial images
+contribute only selected caption text, without their unselected asset or alt
+fields. Fully selected images retain their asset references and captions.
+Partial list and task wrappers retain valid heads without borrowing unselected
+text or formatting. Original supported text, node and grid captures keep their
+existing output. The rich clipboard envelope remains version one; clipboard
+identities are still re-keyed before insertion.
+
+Inline rich paste uses the separate `generalInlinePasteVersion()` or shared
+`general_inline_paste_version()` capability. The closed
+`pasteGeneralInlineClipboard` request carries `selection`, `clipboardJson` and
+`prefix`. Rust decodes the opaque clipboard, admits its complete inline marks
+and derives the coverage and required floor IDs. Pending typing styles do not
+override the copied styles. Existing general-range replay entries retain their
+meaning.
+
+Structured paste declares a third capability, `generalFlowPasteVersion()` or
+shared `general_flow_paste_version()`. The native plan trims general coverage,
+splits its retained prose start and inserts freshly keyed rich blocks before
+the retained suffix. One publication and history unit retain the actual
+before-selection and pending formats. A source ID cannot be reintroduced as a
+fresh pasted ID merely because the range deletes its original block.
+The local command also takes a native clipboard allocation record. The shared
+request takes `selection`, `clipboardJson`, `prefix` and `right`, and saves the
+additive `paste_general_flow_at_text_v1` command only in explicitly selected
+general history. Older runtimes reject the unknown command rather than
+reinterpreting an original paste entry. Prior commands and journal meanings are
+unchanged. Flow paste beginning in a caption or code block remains unsupported;
+those targets reject atomically rather than flattening the clipboard.
+
+General-mode DOM Copy and Cut use the native general read. Cut submits one
+general deletion only after the event clipboard retains the supplied plain
+text. Missing capabilities or failed clipboard retention do not delete content.
+Inline and structured paste forward the rich JSON to Rust without rebuilding
+its tree in JavaScript or silently substituting plain text.
+
+For composition over a cross-block general range, controllers retain the
+original target and publication until `compositionend`. The event's final
+committed text becomes one native general plain replacement; provisional DOM
+mutations are not parsed into document edits. An empty final composition cancels
+without deleting the selection. Shared composition holds remote publication
+until commit or cancellation. Existing same-block composition is unchanged.
+These routing contracts do not qualify physical IME behavior.
+
 ## Remaining integration
 
-Rich clipboard Copy/Cut/paste, cross-range paragraph/key transformations,
-whole-document selection, general composition targets, remaining installed
-editing/transport acceptance and relay V2 integration remain required. Native IME/accessibility and
+Caption/code structured-paste policy, cross-range paragraph/key transformations,
+whole-document selection, remaining installed editing/transport acceptance and
+relay V2 integration remain required. Native IME/accessibility and
 the historical WebKit reliability observations remain separate deferred
 qualifications. The general-selections readiness row stays partial.
 

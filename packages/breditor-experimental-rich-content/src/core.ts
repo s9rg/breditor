@@ -64,6 +64,13 @@ export interface RichCoreEditor {
   supportsAtomEditing?():boolean;
   /** Additive closed general-range commands; an older module must not be silently substituted. */
   supportsGeneralRanges?():boolean;
+  /** Strict native inline clipboard paste over a general target, independent of older range capability. */
+  supportsGeneralInlinePaste?():boolean;
+  /** Atomic native rich-flow paste at a general text range with a retained prose start. */
+  supportsGeneralFlowPaste?():boolean;
+  /** Pure native general Copy, preserving partial table shape without unselected content. */
+  supportsGeneralCopy?():boolean;
+  generalClipboard?():ReturnType<RichCoreEditor["clipboard"]>;
   supportsSelectionFormatting?():boolean;
   supportsBlockLayout?():boolean;
   blockLayoutState?():RichBlockLayoutStateRead;

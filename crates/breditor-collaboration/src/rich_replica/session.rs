@@ -521,7 +521,7 @@ impl RichReplica {
                 if !super::text_flow::prepared(&self.doc, block) {
                     return Err(Error::Contract("shared typing join preparation"));
                 }
-                command.prepare(&self.doc)?;
+                command.prepare(&self.doc, &self.codec, &self.document)?;
             }
             self.doc.commit();
             if self.doc.oplog_vv() != before {
@@ -531,7 +531,7 @@ impl RichReplica {
         } else {
             self.undo.pause();
             for command in commands {
-                command.prepare(&self.doc)?;
+                command.prepare(&self.doc, &self.codec, &self.document)?;
             }
             self.doc.commit();
             self.undo.resume();

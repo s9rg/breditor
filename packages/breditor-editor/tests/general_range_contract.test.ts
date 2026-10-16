@@ -10,6 +10,20 @@ function owner(readOnly=false,natural=false){
  return {raw,core:()=>new SharedRichEditor(raw as unknown as SharedRustOwner)};
 }
 describe("explicit general-range facade",()=>{
+ it("general rich-flow capability is separate and retains the opaque request and guards",()=>{
+  const a=owner(),c=a.core();expect(c.supportsGeneralFlowPaste()).toBe(false);expect(()=>c.pasteGeneralFlowClipboard(selection,"opaque","right","fresh")).toThrow("matching native general rich-flow clipboard");
+  const method=vi.fn((o:unknown,input:string)=>a.raw.replace_general_range_text(o,input));Object.assign(a.raw,{general_flow_paste_version:()=>"1",paste_general_flow_clipboard:method});c.enableGeneralRanges();c.pasteGeneralFlowClipboard(selection,"opaque","right","fresh","2");expect(JSON.parse(method.mock.calls[0]![1])).toEqual({selection,clipboardJson:"opaque",right:"right",prefix:"fresh"});expect(()=>c.pasteGeneralFlowClipboard(selection,"opaque","right","fresh","2")).toThrow("older shared publication");expect(a.raw.dispatch).not.toHaveBeenCalled();c.dispose();
+  const b=owner(true),d=b.core();expect(()=>d.pasteGeneralFlowClipboard(selection,"bad","right","fresh","1")).toThrow("read-only");d.dispose();
+ });
+ it("gates opaque inline clipboard paste separately without tightening the original general capability",()=>{
+  const a=owner(),c=a.core();expect(c.supportsGeneralRanges()).toBe(true);expect(c.supportsGeneralInlinePaste()).toBe(false);expect(()=>c.pasteGeneralInlineClipboard(selection,"opaque native payload","fresh")).toThrow("matching native general inline clipboard");
+  const method=vi.fn((o:unknown,input:string)=>a.raw.replace_general_range_text(o,input));Object.assign(a.raw,{general_inline_paste_version:()=>"1",paste_general_inline_clipboard:method});expect(c.supportsGeneralInlinePaste()).toBe(true);c.enableGeneralRanges();c.pasteGeneralInlineClipboard(selection,"opaque native payload","fresh","2");expect(JSON.parse(method.mock.calls[0]![1])).toEqual({selection,clipboardJson:"opaque native payload",prefix:"fresh"});expect(a.raw.dispatch).not.toHaveBeenCalled();
+  Object.assign(a.raw,{general_inline_paste_version:()=>"2"});expect(c.supportsGeneralInlinePaste()).toBe(false);expect(c.supportsGeneralRanges()).toBe(true);expect(()=>c.pasteGeneralInlineClipboard(selection,"opaque","fresh")).toThrow("matching native general inline clipboard");c.dispose();
+ });
+ it("inline clipboard stale/read-only guards run before capability checks or payload handling",()=>{
+  const a=owner(true),c=a.core();expect(()=>c.pasteGeneralInlineClipboard(selection,"not JSON","fresh","1")).toThrow("read-only");c.dispose();
+  const b=owner(),d=b.core();expect(()=>d.pasteGeneralInlineClipboard(selection,"not JSON","fresh","0")).toThrow("older shared publication");expect(b.raw.dispatch).not.toHaveBeenCalled();d.dispose();
+ });
  it("rejects an already selected general mode with an incomplete paired runtime before transfer",()=>{
   const a=owner();a.raw.enable_general_ranges();delete (a.raw as unknown as Record<string,unknown>)["replace_general_range_text"];expect(()=>a.core()).toThrow("complete matching native general-range");expect(a.raw.free).toHaveBeenCalledTimes(1);
  });

@@ -81,6 +81,12 @@ export interface SharedWriterGroups {format:"breditor/shared-writer-groups";form
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner {
  general_range_version?():string;
+ general_inline_paste_version?():string;
+ general_flow_paste_version?():string;
+ paste_general_flow_clipboard?(observation:unknown,input:string):boolean;
+ general_copy_version?():string;
+ copy_general_clipboard?(observation:unknown):string;
+ paste_general_inline_clipboard?(observation:unknown,input:string):boolean;
  enable_general_ranges?(observation:unknown):boolean;
  replace_general_range_text?(observation:unknown,input:string):boolean;
  replace_general_range_plain_text?(observation:unknown,input:string):boolean;

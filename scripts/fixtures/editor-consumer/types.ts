@@ -4,9 +4,11 @@ function contract(host:HTMLElement,editor:LocalEditor):void {
  const changed:boolean=editor.setReadOnly(false,editor.view().revision);void changed;
  void openLocalEditor({...options,history:"typing-v1"});void openLocalEditor({...options,initial:{kind:"typingCheckpoint",checkpointJson:"declared grouped checkpoint"}});
  void openLocalEditor({...options,rangeEditing:"general-v1"});
+ void openLocalEditor({...options,toolbar:(core,standard)=>{const capable=core.supportsGeneralCopy?.();const copy=core.generalClipboard?.();void capable;void copy;return standard;}});
  // @ts-expect-error Range policy is explicit, never inferred from truthiness.
  void openLocalEditor({...options,rangeEditing:true});
  editor.execute({kind:"replaceGeneralRangePlainText",data:{selection:{kind:"text",anchor:{block:"p",offset:"1",affinity:"after"},focus:{block:"p",offset:"2",affinity:"after"}},text:"typed",prefix:"fresh"}});
+ editor.execute({kind:"pasteGeneralInlineClipboard",data:{selection:{kind:"text",anchor:{block:"p",offset:"1",affinity:"after"},focus:{block:"p",offset:"2",affinity:"after"}},clipboardJson:"opaque native clipboard",prefix:"fresh"}});
  void editor.closeTypingGroup(editor.view().revision);editor.execute({kind:"insertTypingText",data:{text:"typed",clockMs:"9007199254740993"}});
  editor.execute({kind:"deleteTypingRange",data:{selection:{kind:"text",anchor:{block:"p",offset:"1",affinity:"after"},focus:{block:"p",offset:"2",affinity:"after"}},direction:"forward",clockMs:"1"}});
  // @ts-expect-error Clock hints cross the boundary as decimal strings, never floating point.

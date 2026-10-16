@@ -48,6 +48,8 @@ mod outdent_list_items;
 mod outdent_task_items;
 mod paste_flow_at_text;
 mod paste_flow_clipboard;
+mod paste_general_flow_clipboard;
+mod paste_general_inline_clipboard;
 mod paste_grid_clipboard;
 mod paste_inline_clipboard;
 mod redo;
@@ -95,6 +97,8 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    PasteGeneralInlineClipboard,
+    PasteGeneralFlowClipboard,
     ReplaceGeneralRangeText,
     ReplaceGeneralRangePlainText,
     ReplaceGeneralRangeTypingText,
@@ -242,6 +246,16 @@ pub(super) fn execute(
         return Err(error::rejected("breditor_rich.read_only"));
     }
     match command.kind {
+        CommandTag::PasteGeneralFlowClipboard => paste_general_flow_clipboard::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
+        CommandTag::PasteGeneralInlineClipboard => paste_general_inline_clipboard::execute(
+            owner,
+            observation,
+            command.data.ok_or(invalid())?.get(),
+        ),
         CommandTag::ReplaceGeneralRangeText => replace_general_range_text::execute(
             owner,
             observation,

@@ -135,6 +135,10 @@ class RichCoreEditor {
   supportsFlowNavigation(){const raw=this.#live();return typeof raw.flowNavigationVersion==="function"&&raw.flowNavigationVersion()==="1";}
   supportsAtomEditing(){const raw=this.#live();return typeof raw.atomEditVersion==="function"&&raw.atomEditVersion()==="1";}
   supportsGeneralRanges(){const raw=this.#live();return typeof raw.generalRangeVersion==="function"&&raw.generalRangeVersion()==="1";}
+  supportsGeneralInlinePaste(){const raw=this.#live();return this.supportsGeneralRanges()&&typeof raw.generalInlinePasteVersion==="function"&&raw.generalInlinePasteVersion()==="1";}
+  supportsGeneralFlowPaste(){const raw=this.#live();return this.supportsGeneralRanges()&&typeof raw.generalFlowPasteVersion==="function"&&raw.generalFlowPasteVersion()==="1";}
+  supportsGeneralCopy(){const raw=this.#live();return typeof raw.generalCopyVersion==="function"&&raw.generalCopyVersion()==="1"&&typeof this.#observation.generalClipboardJson==="function";}
+  generalClipboard(){this.#live();if(!this.supportsGeneralCopy())throw new Error("Use matching native general clipboard copy");const value=read(this.#observation.generalClipboardJson(),true);return value===null?null:JSON.parse(value);}
   supportsSelectionFormatting(){const raw=this.#live();return typeof raw.selectionFormattingVersion==="function"&&raw.selectionFormattingVersion()==="1"&&typeof this.#observation.selectionCoverageJson==="function"&&typeof this.#observation.selectionFormatStateJson==="function";}
   supportsBlockLayout(){const raw=this.#live();return this.#language===3&&typeof raw.blockLayoutVersion==="function"&&raw.blockLayoutVersion()==="1"&&typeof this.#observation.blockLayoutStateJson==="function";}
   blockLayoutState(){this.#live();if(!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_unavailable","Use an explicitly selected matching native layout V3 owner");return JSON.parse(read(this.#observation.blockLayoutStateJson()));}

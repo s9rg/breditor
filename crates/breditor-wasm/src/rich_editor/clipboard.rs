@@ -8,13 +8,28 @@ use breditor_core::{
 pub(super) fn encode(
     observation: &BreditorRichObservation,
 ) -> Result<Option<String>, BreditorError> {
+    encode_with_policy(observation, false)
+}
+pub(super) fn encode_general(
+    observation: &BreditorRichObservation,
+) -> Result<Option<String>, BreditorError> {
+    encode_with_policy(observation, true)
+}
+fn encode_with_policy(
+    observation: &BreditorRichObservation,
+    general: bool,
+) -> Result<Option<String>, BreditorError> {
     let state = observation.inner.state();
     let Some(selection) = state.selection() else {
         return Ok(None);
     };
-    let fragment =
-        RichClipboardFragment::copy_selection(&observation.context, state.document(), selection)
-            .map_err(|_| error::rejected("breditor_rich.clipboard_read"))?;
+    let capture = if general {
+        RichClipboardFragment::copy_general_selection
+    } else {
+        RichClipboardFragment::copy_selection
+    };
+    let fragment = capture(&observation.context, state.document(), selection)
+        .map_err(|_| error::rejected("breditor_rich.clipboard_read"))?;
     let Some(fragment) = fragment else {
         return Ok(None);
     };

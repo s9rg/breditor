@@ -4,6 +4,8 @@ import {admitApplicationSurface,applicationExports} from "./check-collaboration-
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 function fixture(){
  const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},default:()=>{},initSync:()=>{}};
+ for(const name of ["general_copy_version","copy_general_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["general_flow_paste_version","paste_general_flow_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["observe","dispatch","set_selection","set_pending_formats","insert_plain_text","insert_hard_break","replace_plain_text","undo_observed","redo_observed","checkpoint","receive_frame","update_frame","inline_format_state_json","caret_formats_json","patch_inline_format_properties","read_only_version","set_read_only","writer_groups","writer_clock","presence_frame","resolve_presence"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["from_configuration_json","from_standard_configuration_json_v1","from_configuration_json_v2","from_standard_configuration_json_v2","from_configuration_json_v3","from_standard_configuration_json_v3"])module.SharedRichProfile[name]=()=>{};
  for(const name of ["typing_history_version","enable_typing_history","close_typing_group","insert_typing_text","delete_typing_range","typing_checkpoint"])module.SharedEditorOwner.prototype[name]=()=>{};
@@ -12,9 +14,14 @@ function fixture(){
  for(const name of ["atom_edit_version","delete_atom","replace_atom_plain_text","replace_atom_typing_text"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["selection_formatting_version","selection_coverage_json","selection_format_state_json","change_selection_formats"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["block_layout_version","block_layout_state_json","change_selection_layout"])module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["general_range_version","enable_general_ranges","replace_general_range_text","replace_general_range_plain_text","replace_general_range_typing_text","general_checkpoint","general_typing_checkpoint","general_inline_paste_version","paste_general_inline_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["general_range_version","restore_general","restore_general_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
+test("general Copy needs both its explicit version and native observation-scoped read",()=>{
+ for(const name of ["general_copy_version","copy_general_clipboard"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native general Copy capability/);}
+});
 test("application surface checks native constructors rather than JavaScript's implicit empty object construction",()=>{
  const f=fixture();assert.deepEqual(admitApplicationSurface(f.module,emptyWasm,f.declarations).javascriptExports,applicationExports);assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations.replace("private constructor();","constructor();")),/no public native constructor/);
 });
@@ -45,4 +52,8 @@ test("missing real application capabilities and invalid Wasm bytes reject",()=>{
 test("layout requires its native capability, independent state read and guarded intent",()=>{
  for(const name of ["block_layout_version","block_layout_state_json","change_selection_layout"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native layout capability/);}
  for(const name of ["from_configuration_json_v3","from_standard_configuration_json_v3"]){const f=fixture();delete f.module.SharedRichProfile[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations));}
+});
+test("general input and opaque inline clipboard require complete guarded authoring and explicit recovery",()=>{
+ for(const name of ["general_range_version","enable_general_ranges","replace_general_range_text","replace_general_range_plain_text","replace_general_range_typing_text","general_checkpoint","general_typing_checkpoint","general_inline_paste_version","paste_general_inline_clipboard"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing (guarded general-range|native general inline clipboard) capability/);}
+ for(const name of ["general_range_version","restore_general","restore_general_typing"]){const f=fixture();delete f.module.SharedRichProfile.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing general-range recovery capability/);}
 });

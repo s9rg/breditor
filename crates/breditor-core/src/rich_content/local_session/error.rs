@@ -3,6 +3,9 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// An already captured clipboard fragment fails receiving kind/schema/policy admission.
+    #[error(transparent)]
+    Clipboard(#[from] crate::rich_content::RichClipboardError),
     /// A replacement paragraph must have an identity absent from the source tree.
     #[error("atom replacement requires a fresh paragraph identity")]
     AtomIdentityReuse,

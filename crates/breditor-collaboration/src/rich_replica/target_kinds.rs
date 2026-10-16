@@ -103,6 +103,15 @@ impl TargetKinds {
     }
     fn record_original(&mut self, command: &Command) -> Result<(), Error> {
         match command {
+            Command::PasteGeneralFlowAtTextV1(value) => {
+                self.insert(&value.right, "breditor/paragraph")?;
+                for node in &value.nodes {
+                    self.node(node)?;
+                }
+                for id in &value.deletion.empty {
+                    self.insert(id, "breditor/paragraph")?;
+                }
+            }
             Command::SetImageCaption(value) => {
                 if let Some(node) = &value.caption {
                     self.node(node)?;
