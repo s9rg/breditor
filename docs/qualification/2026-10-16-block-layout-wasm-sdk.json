@@ -1,0 +1,99 @@
+{
+  "format": "breditor/block-layout-wasm-sdk-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "a79df99d50e52106bb86250e7c8f7343f6f133a6",
+  "previousCheckpoint": "9a742304ee6983ed209e1eb094b1baad69c9c31f",
+  "status": "headless-bridge-qualified-visual-layout-and-goal-incomplete",
+  "publication": "Local commits and private candidate archives only. No push, tag, registry publication or deployment.",
+  "implemented": {
+    "factories": "Explicit local bootstrap8 and shared configuration3 Wasm factories. Package-root createLayoutLocalProfileV3 and createLayoutSharedProfileV3 select the same standard V3 grammar; V1/V2 entry points and fingerprints remain strict.",
+    "capability": "Separate string1 native layout capability only for selected V3 owners; V1/V2 report string0. Wrappers require exact native methods and model/language/history/capability bindings, dispose rejected owners, and never fall back to old factories or JS transactions.",
+    "commandsAndReads": "Named local changeSelectionLayout and shared change_selection_layout route closed intent to native coverage. Duplicate keys remain visible to Rust decoding. Frozen local/native shared field reads preserve mixed and inherited state. Stale/read-only checks precede authoring; no caller targets or arbitrary CSS.",
+    "durability": "Explicit lower-level SharedPersistentSession richLanguage3 guards journal14 and model13 in both history families. Native restart and future selective history retain independent offline fields, peer text, code/empty/node/grid targets and caption clipboard metadata.",
+    "distribution": "Both matching application Wasm binaries are included in clean candidate archives. Minimal local, shared-only and full React consumers pass package-root imports, strict types, SSR, native runtime and production-build checks. The high-level DOM/React editor options still select V1/V2."
+  },
+  "checks": {
+    "wasmNativeTestsPassed": 135,
+    "wasmNativeSuiteFootersIncludingEmptyRustdoc": 14,
+    "newWasmBoundaryTestsPassed": 4,
+    "sdkUnitTestsPassed": 90,
+    "sdkUnitFiles": 18,
+    "newSdkBoundaryTestsPassed": 7,
+    "strictNativeAllTargetWasmClippy": true,
+    "strictOptimizedLocalAndSharedWasmClippy": true,
+    "researchWasmClassMappingCheck": true,
+    "wasmRustdocWarningsDenied": true,
+    "ordinaryRustWorkspaceCompiles": true,
+    "namedFormatChecks": true,
+    "candidateAndInstalledTypes": true,
+    "newInstalledTypeProof": "types-layout.ts",
+    "nativeCoreSourceChanged": false,
+    "fullRootAndCanonicalSharedNativeRerun": false,
+    "unchangedVendorWarning": "Existing HasIdSpan unused import; no vendor source or lint threshold changed."
+  },
+  "defaultRegression": {
+    "browserUnitsPassed": 2203,
+    "reactUnitsPassed": 57,
+    "highlightUnitsPassed": 34,
+    "diagnosticsPassed": 332,
+    "finalScriptsPassed": 376,
+    "existingOptInSkips": 3,
+    "defaultBrowserArchiveUnchanged": true
+  },
+  "actualWasmPackageRootProof": {
+    "fixture": "scripts/fixtures/editor-consumer/layout-runtime.mjs",
+    "localScenarios": 10,
+    "sharedOfflineScenarios": 4,
+    "legacyRejectionScenarios": 4,
+    "captionClipboardScenarios": 1,
+    "passedInSourceAndCleanInstalledConsumer": true
+  },
+  "installedBrowser": {
+    "command": "playwright test -c experiments/editor-browser/playwright.config.mjs layout-headless.spec.mjs selection-formatting.spec.mjs",
+    "passed": 60,
+    "newV3HeadlessAndDurablePassed": 15,
+    "existingSelectionAndReactPassed": 45,
+    "engines": ["chromium", "firefox", "webkit"],
+    "retries": 0,
+    "perCaseTimeoutMs": 60000,
+    "globalTimeoutMs": 300000,
+    "observedDuration": "1.3m",
+    "scope": "Headless V3 Wasm/SDK editing, offline convergence, exact explicit/natural recovery and real durable storage. Existing selection/React regressions remain V2, not V3 visual/React qualification."
+  },
+  "olderRuntimeInteroperability": {
+    "script": "scripts/probe-selection-formatting-compatibility.mjs",
+    "beforeConsumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-QwlpyN/consumer",
+    "crossVersionRestores": 48,
+    "exactFutureComparisons": 144,
+    "legacyLocalRejections": 12,
+    "guardedSharedRejections": 12,
+    "unchangedLegacyReads": 16,
+    "originalProtocolsRetained": true,
+    "passed": true
+  },
+  "artifacts": {
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-Mlhqjs/consumer",
+    "localWasmSha256": "fdbd9a1353cb0c5f05c2f6cb34d09c072210041b715bab520f7cbd4ba48d5231",
+    "sharedWasmSha256": "4aa03445f3ad7db5bc9550b5974cb2f41351d313daf3b8e15042044e87953d3b",
+    "archiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "8d4875872aa919ec01406a5e5a6397b827e1f07493db83af7410a4f201d7b99a",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "edc31697b1286b3815eb0a1a6e7dac0e2dde232df0a70ff9bff2fc1729d91402",
+      "breditor-editor-0.3.0-alpha.22.tgz": "db0f68c81cea5f5a73c9a50abf7f51ab00442567e11dc630bf75b73d92237224"
+    }
+  },
+  "attempts": [
+    "An SDK unit invocation from the repository root selected unrelated root diagnostics under the SDK config. The correct package-root invocation passes all90 intended cases; the erroneous invocation is not product evidence.",
+    "One new mock passed undefined to a defaulted capability parameter and unintentionally restored the valid default. Replaced it with a genuinely invalid capability; production capability guards were not relaxed.",
+    "Initial strict lint requested owned/borrowed test-helper correction and clearer variable naming. Corrected the harness without changing a native resource limit or lint threshold."
+  ],
+  "retainedEvidence": "target/block-layout-shared-qualification: layout-wasm-full-native.log, layout-wasm-native-clippy-final.log, layout-wasm-target-clippy-final.log, layout-shared-target-clippy-final.log, layout-wasm-rustdoc.log, layout-research-wasm-check.log, layout-default-rust.log, layout-sdk-units-final.log, layout-default-javascript.log, layout-scripts-final.log, layout-installed-package-final.log, layout-real-wasm.log, layout-installed-browser.log and layout-legacy-interop.json.",
+  "remaining": [
+    "Bounded direction-aware rendering, mixed/inherited contextual controls and keyboard equivalents.",
+    "Explicit high-level richLanguage3 vanilla/React openings with all inherited structural/input/navigation behavior preserved.",
+    "Integrated V3 clipboard, exact reload, React ownership, offline/reconnect/reference relay and asset lifecycle tests in all three engines, followed by complete paired-artifact regressions.",
+    "General selection replacement and sanitized HTML/Markdown/Office interchange toward the unchanged first-two-workstream goal."
+  ],
+  "readiness": {"promotedRows": 0, "implemented": 9, "partial": 17, "missing": 20, "openGates": 13, "fullLayoutFeatureComplete": false, "firstTwoWorkstreamsComplete": false}
+}

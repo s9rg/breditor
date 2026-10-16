@@ -340,9 +340,13 @@ journal 14, four independently owned fields, native selection lowering, strict
 retained-metadata checks and exact selective history. The
 [shared native qualification](qualification/2026-10-16-block-layout-shared-native.json)
 passes 321 canonical shared tests and 2,436 native workspace tests. Its 18 layout contracts
-cover offline concurrency, splits, clipboard and restart. V3 Wasm/SDK
-construction, rendering and installed-browser qualification remain required;
-no readiness row advances for this native work.
+cover offline concurrency, splits, clipboard and restart. The subsequent
+[Wasm and headless SDK bridge](qualification/2026-10-16-block-layout-wasm-sdk.json)
+adds explicit package-root V3 factories, native state/commands and durable
+model 13 storage. It passes 60 clean-installed browser cases, including 15 new
+headless V3 cases, plus actual-Wasm, native, type, old-runtime recovery and default
+regressions. Integrated V3 rendering, controls, high-level vanilla/React openings
+and relay/asset acceptance remain required; no readiness row advances yet.
 
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)

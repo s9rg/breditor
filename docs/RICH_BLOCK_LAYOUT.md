@@ -12,12 +12,12 @@ grammar. Its fingerprint differs even when every layout property is absent.
 Existing constructors, saved schemas and default SDK options never select it.
 There is no implicit migration or reinterpretation of an old document.
 
-The planned local Wasm selector is an explicit bootstrap format 8 factory for
+The local Wasm selector is an explicit bootstrap format 8 factory for
 rich V3. The shared selector is explicit profile configuration format 3, causal
 model 13 and journal 14. Original V1/V2 constructors keep their exact selectors.
-SDK rich language 3 will be opt-in; it must not silently change the default or map an
-unknown future revision to an old profile. Native shared V3 factories are
-implemented; the Wasm and SDK factories remain required.
+SDK rich language 3 is available through explicit headless factories; it must
+not silently change the default or map an unknown future revision to an old
+profile. Integrated V3 browser openings, rendering and controls remain required.
 
 The native values are explicit alignment (start, center, end, justify, physical
 left, physical right), text
@@ -137,7 +137,36 @@ same-source compatibility contracts, strict native/optimized-Wasm lint, Rustdoc
 and default JavaScript regressions. It retains the failed attempts separately
 from the final passing checks.
 
-Steps 4 and 5 remain required: expose explicit V3 Wasm/SDK factories and native
-reads/commands, add bounded rendering and controls, then qualify clean-installed
-archives in all three browsers. This native checkpoint does not qualify V3
-browser behavior or complete either V1 workstream.
+That native checkpoint preceded the Wasm/SDK bridge below. Complete visual
+rendering, controls and integrated browser acceptance still belong to steps 4
+and 5; neither checkpoint completes either V1 workstream.
+
+## Wasm and headless SDK checkpoint
+
+Bootstrap V8 and shared configuration 3 now have explicit Wasm factories, named
+layout intent and native mixed-state reads. Owners advertise layout capability
+only when V3 is selected. Old profiles retain their fingerprints and strict
+selectors; wrappers reject missing capabilities or mismatched protocol pairs
+before returning a V3 owner.
+
+The package-root entry points are `createLayoutLocalProfileV3` from
+`@breditor/editor` and `createLayoutSharedProfileV3` from
+`@breditor/editor/collaboration`. Both use the same standard inline declarations
+and V3 schema. Local `changeSelectionLayout` commands and shared
+`changeSelectionLayout` calls contain only native layout intent, not caller
+targets. `blockLayoutState` preserves independent mixed and inherited values.
+Lower-level durable shared sessions explicitly select `richLanguage: 3` and
+retain model 13 in both history families.
+
+The [bridge qualification](qualification/2026-10-16-block-layout-wasm-sdk.json)
+passes 135 native Wasm-boundary tests, 90 SDK units, 19 actual-Wasm package-root
+scenarios and 60 clean-installed browser cases. Fifteen new cases cover V3
+headless editing, offline shared fields, exact restart and durable storage in
+Chromium, Firefox and WebKit. The other 45 protect existing selection and React
+workflows. Actual older-runtime recovery passes 48 cross-version restores and
+144 future-history comparisons; the default browser archive is unchanged.
+
+The high-level vanilla/React openings still select only V1/V2. Bounded visual
+layout, contextual fields, keyboard equivalents and integrated V3
+vanilla/React/relay/asset tests are next. Headless API and storage results do not
+qualify those unfinished workflows or the historical WebKit fault.
