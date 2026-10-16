@@ -1,6 +1,7 @@
 {
   "date":"2026-10-15",
-  "sourceCheckpoint":"9e1ffdad9c5d6301e00c2a66f1c5daa16957b984",
+  "sourceCheckpoint":"901628f0b00a1bbb601b780d3cb844d21eaf5b8a",
+  "implementationCheckpoint":"9e1ffdad9c5d6301e00c2a66f1c5daa16957b984",
   "scope":"Opt-in local native typing history through Wasm, vanilla/React SDK and DOM; two reproduced asynchronous caret repairs; original shared-history visibility prerequisites.",
   "localIntegrationComplete":true,
   "featureComplete":false,
@@ -61,12 +62,15 @@
     "sharedPassed":251,
     "sharedSuiteFootersIncludingZeroDoctests":21,
     "newSharedVisibilityTests":3,
+    "researchVisibilityCommand":"CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path experiments/collaboration/Cargo.toml --test rich_history_visibility_contracts",
+    "researchVisibilityPassed":3,
     "sdkPassed":60,
     "sdkFiles":12,
     "defaultWorkspace":{"browser":2203,"browserFiles":59,"react":57,"referenceHighlight":34,"diagnostics":332},
     "scripts":{"total":364,"passed":361,"failed":0,"existingOptInSkips":3},
     "strictNativeAllTargetClippy":true,
     "strictSharedNativeAllTargetClippy":true,
+    "strictResearchVisibilityClippy":true,
     "strictActualLocalReleaseWasmClippy":true,
     "rootRustdocWarningsDenied":true,
     "firstPartyFormatChecks":true,
@@ -87,7 +91,7 @@
     {"name":"breditor_shared_bg.wasm","bytes":8345517,"sha256":"9b0c4b5bef66ea65f4806881e863c5ed8b56799a6979cc781f6212c5d1d97906"}
   ],
   "retainedLogs":"target/local-typing-history-qualification",
-  "failedAttempts":"The first expanded image run exposed missing C and an incorrect Ship-versus-Write seed expectation. After correcting the seed, the six-case before run still fails. The first caret repair passes 41/42, with Firefox outside-focus failure; its separate focused before run passes 2/fails 1. Both repairs together pass 42 focused and all 225 installed cases without weakening the retained immediate-typing assertions.",
+  "failedAttempts":"The first expanded image run exposed missing C and an incorrect Ship-versus-Write seed expectation. After correcting the seed, the six-case before run still fails. The first caret repair passes 41/42, with Firefox outside-focus failure; its separate focused before run passes 2/fails 1. Both repairs together pass 42 focused and all 225 installed cases without weakening the retained immediate-typing assertions. The first script run after adding shared visibility tests passes 360/fails 1/skips 3: the promoted conformance inventory increased from 18 to 19 without its research shim. Checkpoint 901628f adds the same-source shim and updates the exact count, retaining every per-file linkage assertion. The new three tests pass through both manifests, and the final script run passes 361 with the same three pre-existing opt-in skips.",
   "openIssues":["Earlier unrecorded native V2 code/style ReplayMismatch remains unconfirmed","Historical intermittent WebKit integer-domain startup fault remains open","Earlier unclassified WebKit cancelled-mount TypeError remains unconfirmed"],
   "nextAcceptance":"Implement native shared key-based grouping and exact separate recovery, then capability-checked Wasm/SDK/React/DOM and installed local/shared V1/V2 combined natural-history/offline/remote acceptance. Continue the original general-selection/navigation, bounded-layout/context and external-interchange workstreams.",
   "readiness":"History remains partial; no feature label or release gate is promoted. Both original V1 workstreams remain active/incomplete. There are still 9 implemented/17 partial/20 missing grouped capabilities and 13 open release gates. Source and qualification are local checkpoints only; no push, tag, registry publication or deployment."
