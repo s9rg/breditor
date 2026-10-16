@@ -15,6 +15,7 @@ impl RichLocalSession {
         snapshot: &RichLocalSnapshot,
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
+        self.require_writable()?;
         let Some(index) = self.cursor.checked_sub(1) else {
             return Ok(RichLocalOutcome::Unchanged);
         };

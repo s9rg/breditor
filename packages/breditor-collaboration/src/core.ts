@@ -22,8 +22,9 @@ export class SharedRichEditor {
  #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
  #report(error:unknown):void{try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed content. */}}
  #notify(source:"local"|"remote"):void{for(const listener of [...this.#listeners]){if(!this.#raw)break;try{listener({source,view:this.view()});}catch(error){this.#report(error);}}}
- #run<T>(source:"local"|"remote",work:(raw:SharedRustOwner,observation:unknown)=>T,revision?:string):T{
+ #run<T>(source:"local"|"remote",work:(raw:SharedRustOwner,observation:unknown)=>T,revision?:string,write=true):T{
   this.#check(revision);if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
+  if(write&&this.view().readOnly===true)throw new SharedEditorError("read_only","The shared editor is read-only");
   const raw=this.#live(),before=this.#view;this.#publishing=true;
   try{const result=work(raw,this.#observation);const next=raw.observe(),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#notify(source);return result;}
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
@@ -36,6 +37,8 @@ export class SharedRichEditor {
  supportsInlineFormatState():boolean{return typeof this.#live().inline_format_state_json==="function";}
  supportsStandardInlineControls():boolean{return this.supportsInlineFormatState()&&typeof this.#live().caret_formats_json==="function";}
  supportsInlinePropertyPatches():boolean{return typeof this.#live().patch_inline_format_properties==="function";}
+ supportsReadOnly():boolean{const raw=this.#live();return typeof raw.read_only_version==="function"&&raw.read_only_version()==="1"&&typeof raw.set_read_only==="function";}
+ setReadOnly(value:boolean,revision?:string):boolean{if(typeof value!=="boolean")throw new TypeError("readOnly must be Boolean");return this.#run("local",(raw,o)=>{if(!this.supportsReadOnly())throw new SharedEditorError("read_only_unavailable","Use a matching native owner with read-only enforcement");return raw.set_read_only!(o,value);},revision,false);}
  /** Field-only intent is planned and admitted in Rust, never lowered from a mutable JS AST. */
  patchInlineFormatProperties(request:{format:FormatLiteral;properties:readonly string[];targets:readonly {block:string;offset:number;length:number}[]},revision?:string):boolean{return this.#run("local",(raw,o)=>{if(!raw.patch_inline_format_properties)throw new SharedEditorError("property_patch_unavailable","Use a matching Rust owner with inline property-patch support");return raw.patch_inline_format_properties(o,JSON.stringify({formatsJson:JSON.stringify([request.format]),properties:request.properties,targets:request.targets}));},revision);}
  caretFormats():readonly FormatLiteral[]{const raw=this.#live();if(!raw.caret_formats_json)throw new SharedEditorError("caret_formats_unavailable","Use a matching Rust owner with caret-format reads");return JSON.parse(raw.caret_formats_json(this.#observation)) as FormatLiteral[];}
@@ -53,7 +56,7 @@ export class SharedRichEditor {
  /** Hold remote publication across input/composition/callback queues. Release is idempotent. */
  holdRemotes():()=>void{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#holds>=128)throw new SharedEditorError("hold_limit","Too many nested remote holds");this.#holds++;let held=true;return()=>{if(!held)return;held=false;this.#holds--;this.#flush();};}
  dispatch(request:SharedDispatch,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.dispatch(o,JSON.stringify(request)),revision);}
- select(selection:RichSelection|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_selection(o,JSON.stringify(selection)),revision);}
+ select(selection:RichSelection|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_selection(o,JSON.stringify(selection)),revision,false);}
  setPendingFormats(formats:readonly FormatLiteral[]|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_pending_formats(o,JSON.stringify(formats)),revision);}
  type(text:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.insert_plain_text(o,text),revision);}
  /** One LF in the current text selection; old ABI owners retain their identical plain-input path. */
@@ -61,7 +64,7 @@ export class SharedRichEditor {
  replace(selection:Extract<RichSelection,{kind:"text"}>,text:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.replace_plain_text(o,JSON.stringify(selection),text),revision);}
  paste(fragment:string,target:PasteTarget,prefix:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.paste_clipboard_namespace(o,fragment,JSON.stringify(target),prefix),revision);}
  pasteAtText(fragment:string,right:string,prefix:string,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.paste_flow_at_text_namespace(o,fragment,right,prefix),revision);}
- navigate(movement:Navigation,extend=false,revision?:string):NavigationResult{return this.#run("local",(raw,o)=>JSON.parse(raw.navigate_grid(o,movement,extend)) as NavigationResult,revision);}
+ navigate(movement:Navigation,extend=false,revision?:string):NavigationResult{return this.#run("local",(raw,o)=>JSON.parse(raw.navigate_grid(o,movement,extend)) as NavigationResult,revision,false);}
  copy():ClipboardContent|null{const raw=this.#live();return JSON.parse(raw.copy_clipboard(this.#observation)) as ClipboardContent|null;}
  undo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.undo_observed(o),revision);}
  redo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.redo_observed(o),revision);}
@@ -79,7 +82,7 @@ export class SharedRichEditor {
  pendingRemote():Readonly<{frames:number;bytes:number}>{this.#live();return {frames:this.#queue.length,bytes:this.#bytes};}
  #flush():void{
   if(!this.#raw||this.#retired||this.#holds||this.#publishing||this.#draining)return;this.#draining=true;
-  try{while(this.#raw&&!this.#retired&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;next.cleanup();try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame));next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
+   try{while(this.#raw&&!this.#retired&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;next.cleanup();try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame),undefined,false);next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
   finally{this.#draining=false;}
  }
  /** Permanent UI/transport retirement, not document read-only mode. Reads survive until explicit disposal. */

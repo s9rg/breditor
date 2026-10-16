@@ -29,6 +29,7 @@ impl RichLocalSession {
         text: &str,
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
+        self.require_writable()?;
         let point =
             caret(self.state.selection.as_ref()).ok_or(RichLocalSessionError::TypingCaret)?.clone();
         if text.is_empty() {

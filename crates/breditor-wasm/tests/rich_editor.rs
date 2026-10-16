@@ -10,6 +10,52 @@ use serde_json::{Value, json};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn native_read_only_capability_rejects_commands_but_allows_selection_copy_and_exact_recovery()
+-> TestResult {
+    let profile = profile()?;
+    let mut owner = editor(&profile)?;
+    assert_eq!(owner.read_only_version(), "1");
+    let old = owner.observe();
+    assert_eq!(read(owner.set_read_only(&old, true))?, "true");
+    let locked = owner.observe();
+    let view: Value = serde_json::from_str(&read(locked.view_json())?)?;
+    assert_eq!(view["readOnly"], true);
+    let checkpoint = read(owner.checkpoint_json())?;
+    for request in [
+        json!({"kind":"insertPlainText","text":"X"}),
+        json!({"kind":"setHeading","block":"p","level":2}),
+        json!({"kind":"setPendingFormats","formats":[]}),
+        json!({"kind":"undo"}),
+        json!({"kind":"redo"}),
+        action("insertBlocks", json!({})),
+        action("setTaskChecked", json!({})),
+    ] {
+        let result = owner.execute(&locked, &request.to_string());
+        assert_eq!(result.status(), "error");
+        assert_eq!(result.error().ok_or("error")?.code(), "breditor_rich.read_only");
+        assert_eq!(read(owner.checkpoint_json())?, checkpoint);
+    }
+    command(&mut owner, &select("0", "4"), "selection")?;
+    assert_eq!(owner.observe().clipboard_json().status(), "value");
+    let after_selection = read(owner.checkpoint_json())?;
+    let mut restored = profile.restore_editor(&after_selection).take_editor().ok_or("restore")?;
+    assert_eq!(read(restored.checkpoint_json())?, after_selection);
+    assert!(
+        serde_json::from_str::<Value>(&read(restored.observe().view_json())?)?
+            .get("readOnly")
+            .is_none()
+    );
+    assert_eq!(read(owner.set_read_only(&owner.observe(), false))?, "true");
+    assert_eq!(serde_json::from_str::<Value>(&read(locked.view_json())?)?["readOnly"], true);
+    assert_eq!(
+        owner.execute(&old, "not JSON").error().ok_or("stale")?.code(),
+        "breditor_rich.stale_observation"
+    );
+    command(&mut restored, &json!({"kind":"insertPlainText","text":"Y"}), "content")?;
+    Ok(())
+}
+
+#[test]
 fn explicit_hard_break_has_no_payload_one_history_group_and_exact_recovered_selection() -> TestResult
 {
     let profile = profile()?;

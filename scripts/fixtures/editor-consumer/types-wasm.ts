@@ -7,3 +7,5 @@ new SharedObservation();
 new SharedRichProfile();
 void SharedRichProfile.from_configuration_json_v2;
 void SharedRichProfile.from_standard_configuration_json_v2;
+function readOnly(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.read_only_version();void version;void owner.set_read_only(observation,true);}
+void readOnly;

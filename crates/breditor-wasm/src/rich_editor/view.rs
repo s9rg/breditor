@@ -42,7 +42,15 @@ pub(super) fn encode(observation: &BreditorRichObservation) -> Result<String, Br
         let cells=table.geometry().cells().iter().map(|cell|json!({"base":selection::cell(cell.base()),"master":selection::cell(cell.master()),"rowSpan":cell.row_span(),"columnSpan":cell.column_span(),"sources":cell.source_cells().iter().map(selection::cell).collect::<Vec<_>>()})).collect::<Vec<_>>();
         tables.push(json!({"id":id.as_str(),"hidden":table.geometry().is_hidden(),"rows":table.rows().iter().map(breditor_core::rich_content::RowId::as_str).collect::<Vec<_>>(),"columns":table.columns().iter().map(|column|json!({"id":column.id().as_str(),"width":column.width()})).collect::<Vec<_>>(),"cells":cells}));
     }
-    Ok(json!({"format":"breditor/rich-view","formatVersion":1,"documentJson":document,"revision":state.revision().get().to_string(),
+    let mut view = json!({"format":"breditor/rich-view","formatVersion":1,"documentJson":document,"revision":state.revision().get().to_string(),
         "selection":state.selection().map(|value|selection::encode(value.kind())),"pendingFormatsJson":pending,
-        "undoDepth":observation.undo_depth,"redoDepth":observation.redo_depth,"historyCapacity":observation.capacity,"tables":tables,"grid":grid}).to_string())
+        "undoDepth":observation.undo_depth,"redoDepth":observation.redo_depth,"historyCapacity":observation.capacity,"tables":tables,"grid":grid});
+    // Omit false to retain every original default-view byte.
+    if observation.inner.is_read_only() {
+        view["readOnly"] = json!(true);
+    }
+    if let Some(revision) = observation.inner.read_only_revision() {
+        view["readOnlyRevision"] = json!(revision.get().to_string());
+    }
+    Ok(view.to_string())
 }

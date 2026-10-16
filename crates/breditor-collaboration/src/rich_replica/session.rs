@@ -112,6 +112,8 @@ pub struct RichReplica {
     recipes: BTreeMap<String, Recipe>,
     cursors: super::history_cursors::HistoryCursors,
     pub(super) writer_windows: Vec<super::writer_transport::Window>,
+    pub(super) read_only: bool,
+    pub(super) read_only_revision: Option<String>,
 }
 
 impl RichReplica {
@@ -276,6 +278,8 @@ impl RichReplica {
             recipes: BTreeMap::new(),
             cursors: super::history_cursors::HistoryCursors::default(),
             writer_windows: Vec::new(),
+            read_only: false,
+            read_only_revision: None,
         };
         owner.note_writer_window(&VersionVector::default(), true)?;
         Ok(owner)
@@ -320,6 +324,7 @@ impl RichReplica {
         selection_update: SelectionUpdate,
         pending_update: PendingFormatsUpdate,
     ) -> Result<bool, Error> {
+        self.require_writable()?;
         let mut candidate = self.staged()?;
         let before = candidate.doc.oplog_vv();
         let before_ui = candidate.journal.ui.clone();
@@ -465,7 +470,10 @@ impl RichReplica {
     }
 
     pub(super) fn staged(&self) -> Result<Self, Error> {
-        Self::from_journal(self.codec.clone(), self.journal.clone())
+        let mut candidate = Self::from_journal(self.codec.clone(), self.journal.clone())?;
+        candidate.read_only = self.read_only;
+        candidate.read_only_revision.clone_from(&self.read_only_revision);
+        Ok(candidate)
     }
 
     pub(super) fn adopt(&mut self, mut candidate: Self) -> Result<(), Error> {
@@ -676,6 +684,7 @@ impl RichReplica {
         Ok(())
     }
     fn history(&mut self, redo: bool) -> Result<bool, Error> {
+        self.require_writable()?;
         let mut candidate = self.staged()?;
         let before = candidate.doc.oplog_vv();
         let before_ui = candidate.journal.ui.clone();

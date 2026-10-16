@@ -112,6 +112,14 @@ class RichCoreEditor {
   documentJson() { this.#live(); return read(this.#observation.documentJson()); }
   supportsStandardInlineControls() { const raw=this.#live();return typeof raw.inlineControlsVersion==="function"&&raw.inlineControlsVersion()==="1"&&typeof this.#observation.caretFormatsJson==="function"; }
   supportsInlinePropertyPatches() { const raw=this.#live();return typeof raw.inlinePropertyPatchesVersion==="function"&&raw.inlinePropertyPatchesVersion()==="1"; }
+  supportsReadOnly() { const raw=this.#live();return typeof raw.readOnlyVersion==="function"&&raw.readOnlyVersion()==="1"&&typeof raw.setReadOnly==="function"; }
+  setReadOnly(value,expectedRevision) {
+    const raw=this.#live();if(typeof value!=="boolean")throw new TypeError("readOnly must be Boolean");
+    if(expectedRevision!==undefined&&expectedRevision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The policy was prepared from an older rich view");
+    if(!this.supportsReadOnly())throw new RichCommandError("breditor_rich.read_only_unavailable","Use a matching native owner with read-only enforcement");
+    const changed=read(raw.setReadOnly(this.#observation,value));if(changed!=="true"&&changed!=="false")throw new RichCommandError("breditor_rich.boundary","Invalid policy result");
+    const next=raw.observe();this.#observation.free();this.#observation=next;return changed==="true";
+  }
   caretFormats() { this.#live();if(typeof this.#observation.caretFormatsJson!=="function")throw new RichCommandError("breditor_rich.caret_formats_read","Use a matching Wasm module with caret-format reads");return JSON.parse(read(this.#observation.caretFormatsJson())); }
   inlineFormatState(kind) {
     this.#live();

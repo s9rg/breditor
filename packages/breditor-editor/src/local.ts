@@ -11,6 +11,8 @@ export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolb
  host:HTMLElement;initial?:LocalInitial;profileBootstrapJson?:string;additionalInlinePresentation?:unknown;
  /** Explicit local structural grammar; omitted/1 preserves all V1 defaults. */
  richLanguage?:1|2;
+ /** Initial live host policy, reapplied after checkpoint restore; not serialized permission. */
+ readOnly?:boolean;
  runtimeInput?:RuntimeInput;signal?:AbortSignal;
  /** Created for this exact owner, after native compilation and before host mutation. */
  toolbar?:(core:RichCoreEditor,standard:readonly ToolbarControl[])=>readonly ToolbarControl[];
@@ -19,6 +21,7 @@ export interface LocalEditor {
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued";
  view():RichView;checkpointJson():string;focus():void;refreshAssets():void;
+ setReadOnly(value:boolean,revision?:string):boolean;
  insertImageFiles(store:RichAssetStore,files:readonly File[],position:FlowPosition):Promise<readonly AssetInfo[]>;
  dispose():void;
 }
@@ -37,6 +40,7 @@ class LocalEditorOwner implements LocalEditor {
  execute(command:RichCommand,focus=true,revision?:string):RichCommandOutcome|"queued"{return this.#dom.execute(command,focus,revision);}
  view():RichView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}focus():void{this.#dom.focus();}
  refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
+ setReadOnly(value:boolean,revision?:string):boolean{return this.#dom.setReadOnly(value,revision);}
  insertImageFiles(store:RichAssetStore,files:readonly File[],position:FlowPosition):Promise<readonly AssetInfo[]>{return insertImageFiles(this.#dom,store,files,position);}
  dispose():void{if(this.#disposed)return;this.#disposed=true;try{this.#dom.dispose();}finally{this.#release();}}
 }
@@ -44,6 +48,7 @@ class LocalEditorOwner implements LocalEditor {
 export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalEditor>{
  options={...options};
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new TypeError("Expected richLanguage 1 or 2");
+ if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  const initial:LocalInitial=structuredClone(options.initial??{kind:"empty"}),claim=claimHost(options.host,options.signal);
  let profile:RichCoreProfile|undefined,core:RichCoreEditor|undefined,dom:RichDomEditor|undefined;
  try{
@@ -54,6 +59,7 @@ export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalE
   const blockId=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
   core=initial.kind==="checkpoint"?profile.restoreEditor(initial.checkpointJson):profile.createEditor(initial.kind==="document"?initial.documentJson:emptyDocumentJson(profile.descriptor(),initial.documentId??crypto.randomUUID(),blockId!));
   if(blockId){const point={block:blockId,offset:"0",affinity:"after" as const};core.execute({kind:"setSelection",selection:{kind:"text",anchor:point,focus:point}});}
+  if(options.readOnly!==undefined){if(core.supportsReadOnly?.()!==true||!core.setReadOnly)throw Error("Use a matching native owner with read-only enforcement");core.setReadOnly(options.readOnly);}
   const standard=structural?createStructuralRichToolbarV2(core,presentation):createStandardRichToolbarV1(core,presentation);
   const toolbar=options.toolbar?.(core,standard)??standard;
   const render:RenderOptions={inlinePresentation:presentation,...(options.resolveAsset?{resolveAsset:options.resolveAsset}:{})};

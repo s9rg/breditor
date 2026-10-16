@@ -15,6 +15,10 @@ export type RichInlineFormatState = {kind:"unavailable"}|{kind:"unset"}|{kind:"u
 export interface RichInlineFormatStateRead {format:"breditor/rich-inline-format-state";formatVersion:1;schema:{name:string;version:number;fingerprint:string};formatKind:string;state:RichInlineFormatState}
 export interface RichView {
   format: "breditor/rich-view"; formatVersion: 1; revision: string; documentJson: string;
+  /** Omitted means the original editable default. This live host policy is not document permission. */
+  readOnly?:true;
+  /** Last live host-policy publication; omitted until changed, never a durable permission. */
+  readOnlyRevision?:string;
   selection: RichSelection | null; pendingFormatsJson: string | null;
   undoDepth: number; redoDepth: number; historyCapacity: number;
   grid: {cells:readonly RichCell[];masters:readonly RichCell[]}|null;
@@ -26,6 +30,8 @@ export interface RichCoreEditor {
   richLanguageVersion?():1|2;
   supportsStandardInlineControls?():boolean;
   supportsInlinePropertyPatches?():boolean;
+  supportsReadOnly?():boolean;
+  setReadOnly?(value:boolean,expectedRevision?:string):boolean;
   caretFormats?():readonly import("./commands.js").FormatLiteral[];
   execute(command: string | RichCommand, expectedRevision?: string): RichCommandOutcome;
   view(): RichView;

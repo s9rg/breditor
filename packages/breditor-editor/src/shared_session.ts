@@ -25,6 +25,7 @@ export interface SharedEditorSessionOptions extends Omit<SharedDomOptions,"core"
  configuration?:SharedProfileConfiguration|SharedProfileConfigurationV2;additionalInlinePresentation?:unknown;
  /** Explicit shared structural language. Omitted/1 retains model 11 and configuration format 1. */
  richLanguage?:1|2;
+ readOnly?:boolean;
  runtimeInput?:RuntimeInput;signal?:AbortSignal;coreOptions?:Omit<SharedCoreOptions,"onError">;
  onSaveState?:(state:SharedSaveState)=>void;
  /** Stop borrowed relay/presence/asset adapters before the native writer retires. Reporting errors cannot cancel close. */
@@ -41,6 +42,7 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  execute(request:SharedDispatch,focus?:boolean,revision?:string):void;
  select(...args:Parameters<SharedDomEditor["select"]>):void;
  focus():void;refreshAssets():void;
+ setReadOnly(value:boolean,revision?:string):boolean;
  view():ReturnType<SharedRichEditor["view"]>;checkpointJson():string;state():SharedSaveState;
  flush():Promise<void>;retrySave():Promise<void>;
  /** Stops UI immediately. Failed saves retain the owner/lease for retry, never implicit discard. */
@@ -64,6 +66,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  select(...args:Parameters<SharedDomEditor["select"]>):void{this.#active();this.#dom.select(...args);}
  focus():void{this.#active();this.#dom.focus();}
  refreshAssets():void{this.#active();this.#dom.refreshAssets();}
+ setReadOnly(value:boolean,revision?:string):boolean{this.#active();return this.#dom.setReadOnly(value,revision);}
  view():ReturnType<SharedRichEditor["view"]>{return this.core.view();}
  checkpointJson():string{return this.core.checkpointJson();}
  state():SharedSaveState{return this.#session.state();}
@@ -91,6 +94,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
 export async function openSharedEditor(options:SharedEditorSessionOptions):Promise<SharedEditorSession>{
  options={...options};
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2)throw new TypeError("Expected richLanguage 1 or 2");
+ if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  const structural=options.richLanguage===2;
  const initial=structuredClone(options.initial??{kind:"empty"}) as SharedInitial;
  const configuration=structuredClone(options.configuration??(structural?structuralSharedProfileConfigurationV2:standardSharedProfileConfiguration));
@@ -118,6 +122,7 @@ export async function openSharedEditor(options:SharedEditorSessionOptions):Promi
    ...(options.onSaveState?{onState:options.onSaveState}:{}),...(options.onError?{onError:options.onError}:{})
   });
   claim.assert();
+  if(options.readOnly!==undefined)session.core.setReadOnly(options.readOnly);
   const core=session.core,standard=structural?createStructuralSharedToolbarV2(core,presentation):createStandardSharedToolbarV1(core,presentation),toolbar=options.toolbar?.(core,standard)??standard;
   claim.assert();dom=mountSharedEditor(options.host,{...options,core,coreOwnership:"borrow",inlinePresentation:presentation,toolbar});claim.assert();
   return new SharedEditorSessionOwner(session,dom,claim.release,options);

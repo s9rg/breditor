@@ -10,11 +10,22 @@ import type {SharedPersistentSession} from "@breditor/collaboration";
 (globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
 let root:Root,container:HTMLDivElement;
 const options={database:"react-test",room:"room",writer:"101"};
-const editor=()=>({close:vi.fn(async()=>{}),discardAndClose:vi.fn(async()=>{}),focus:vi.fn(),checkpointJson:()=>"exact causal journal",execute:vi.fn(),flush:vi.fn(async()=>{})} as unknown as SharedEditorSession);
+const editor=()=>({close:vi.fn(async()=>{}),discardAndClose:vi.fn(async()=>{}),focus:vi.fn(),checkpointJson:()=>"exact causal journal",execute:vi.fn(),setReadOnly:vi.fn(()=>true),flush:vi.fn(async()=>{})} as unknown as SharedEditorSession);
 async function settle(){await act(async()=>{for(let i=0;i<12;i++)await Promise.resolve();});}
 beforeEach(()=>{mocks.open.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
 afterEach(async()=>{await act(async()=>root.unmount());await settle();container.remove();});
 describe("durable React writer ownership",()=>{
+ it("live readOnly updates preserve one durable writer and allow imperative policy control",async()=>{
+  const owned=editor(),ref=createRef<BreditorSharedEditorHandle>();mocks.open.mockResolvedValue(owned);
+  await act(async()=>root.render(<BreditorSharedEditor ref={ref} readOnly={true} initialOptions={options} onCloseError={()=>{}}/>));await settle();expect(mocks.open.mock.calls[0]![0].readOnly).toBe(true);expect(owned.setReadOnly).toHaveBeenCalledWith(true);
+  await act(async()=>root.render(<BreditorSharedEditor ref={ref} readOnly={false} initialOptions={options} onCloseError={()=>{}}/>));expect(owned.setReadOnly).toHaveBeenLastCalledWith(false);expect(mocks.open).toHaveBeenCalledOnce();expect(ref.current?.checkpointJson()).toBe("exact causal journal");
+  expect(ref.current?.setReadOnly(true,"9")).toBe(true);expect(owned.setReadOnly).toHaveBeenLastCalledWith(true,"9");
+ });
+ it("a late policy-update failure durably closes its unannounced owner",async()=>{
+  let finish!:(value:SharedEditorSession)=>void;const owned=editor(),ready=vi.fn(),error=vi.fn(),failed=vi.fn();mocks.open.mockImplementation(()=>new Promise<SharedEditorSession>(resolve=>{finish=resolve;}));
+  await act(async()=>root.render(<BreditorSharedEditor readOnly={false} initialOptions={options} onReady={ready} onError={error} onCloseError={failed}/>));await settle();await act(async()=>root.render(<BreditorSharedEditor readOnly={true} initialOptions={options} onReady={ready} onError={error} onCloseError={failed}/>));
+  vi.mocked(owned.setReadOnly).mockImplementation(()=>{throw Error("Policy update failed");});await act(async()=>finish(owned));await settle();expect(owned.setReadOnly).toHaveBeenCalledWith(true);expect(owned.close).toHaveBeenCalledOnce();expect(owned.discardAndClose).not.toHaveBeenCalled();expect(ready).not.toHaveBeenCalled();expect(error).toHaveBeenCalled();expect(failed).not.toHaveBeenCalled();
+ });
  it("StrictMode announces only one owner and awaits one durable close",async()=>{
   const owned=editor(),ref=createRef<BreditorSharedEditorHandle>(),failed=vi.fn();mocks.open.mockResolvedValue(owned);
   await act(async()=>root.render(<StrictMode><BreditorSharedEditor ref={ref} initialOptions={options} onCloseError={failed}/></StrictMode>));await settle();

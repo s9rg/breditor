@@ -129,6 +129,15 @@ impl RichLocalSession {
         let boundary =
             if cursor == 0 { base.document } else { entries[cursor - 1].after.document.clone() };
         let state = current.state(&context, boundary)?;
-        Ok(Self { context, state, entries, cursor, capacity, token: Arc::new(()) })
+        Ok(Self {
+            context,
+            state,
+            entries,
+            cursor,
+            capacity,
+            token: Arc::new(()),
+            read_only: false,
+            read_only_revision: None,
+        })
     }
 }

@@ -3,6 +3,9 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// The live host policy forbids content, history or pending-format mutation.
+    #[error("rich editor is read-only")]
+    ReadOnly,
     /// Code typing never retains semantic inline formatting overrides.
     #[error("code blocks require plain pending typing formats")]
     CodeFormats,

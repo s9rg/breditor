@@ -31,6 +31,13 @@ function resolveImage(figure:HTMLElement,options:RenderOptions):void {
 export function refreshAssets(surface:HTMLElement,options:RenderOptions):void {
  for(const figure of surface.querySelectorAll<HTMLElement>("figure[data-rich-image]"))resolveImage(figure,options);
 }
+/** Apply native host policy to every browser editing island, not only the outer surface. */
+export function applyEditingPolicy(surface:HTMLElement,readOnly:boolean):void {
+ surface.contentEditable=readOnly?"false":"true";surface.setAttribute("aria-readonly",String(readOnly));
+ if(readOnly)surface.tabIndex=0;else surface.removeAttribute("tabindex");
+ for(const caption of surface.querySelectorAll<HTMLElement>("figcaption"))caption.contentEditable=readOnly?"false":"true";
+ for(const check of surface.querySelectorAll<HTMLInputElement>("input[data-task-check]"))check.disabled=readOnly;
+}
 export function render(surface:HTMLElement,value:RichModel,options:RenderOptions):void {
  requireRenderOptions(value,options);
  const document=surface.ownerDocument;
@@ -98,6 +105,7 @@ export function render(surface:HTMLElement,value:RichModel,options:RenderOptions
   }element.append(body);return element;
  };
  surface.replaceChildren(...value.root.children.map(flow));
+ applyEditingPolicy(surface,value.view.readOnly===true);
  paintSelection(surface,value);
 }
 export function paintSelection(surface:HTMLElement,value:RichModel):void {

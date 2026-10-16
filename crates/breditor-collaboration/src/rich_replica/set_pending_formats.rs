@@ -8,6 +8,7 @@ impl RichReplica {
     /// # Errors
     /// Malformed/oversized arrays, non-caret overrides or failed adoption retain all state.
     pub fn set_pending_formats_json(&mut self, input: &str) -> Result<bool, Error> {
+        self.require_writable()?;
         if input.len() > 64 * 1024 {
             return Err(Error::Limit("shared pending JSON bytes"));
         }
@@ -33,6 +34,7 @@ impl RichReplica {
     /// # Errors
     /// Non-caret overrides, invalid literals or failed staged adoption retain content/history/UI.
     pub fn set_pending_formats(&mut self, formats: Option<&[Value]>) -> Result<bool, Error> {
+        self.require_writable()?;
         let mut candidate = self.staged()?;
         candidate.journal.ui.set_pending(
             &candidate.codec,

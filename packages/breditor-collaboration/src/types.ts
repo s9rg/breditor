@@ -80,6 +80,8 @@ export interface SharedRustOwner {
  inline_format_state_json?(observation:unknown,kind:string):string;
  caret_formats_json?(observation:unknown):string;
  patch_inline_format_properties?(observation:unknown,input:string):boolean;
+ read_only_version?():string;
+ set_read_only?(observation:unknown,value:boolean):boolean;
  descriptor_json():string;
  observe():{view_json():string;free():void};
  dispatch(observation:unknown,input:string):boolean;

@@ -17,6 +17,7 @@ impl RichReplica {
         text: &str,
     ) -> Result<bool, Error> {
         self.check(observation)?;
+        self.require_writable()?;
         selection.admit(&self.document)?;
         self.replace_plain_selection(text, selection)
     }

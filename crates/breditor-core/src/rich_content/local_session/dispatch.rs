@@ -44,6 +44,9 @@ impl RichLocalSession {
         pending_update: RichPendingFormatsUpdate,
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
+        if !actions.is_empty() || !matches!(pending_update, RichPendingFormatsUpdate::Map) {
+            self.require_writable()?;
+        }
         let edit = apply_batch(&self.context, &self.state.document, actions)?;
         let document = edit
             .as_ref()

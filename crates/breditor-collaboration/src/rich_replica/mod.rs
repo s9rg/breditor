@@ -42,6 +42,7 @@ mod replace_plain_text_range;
 pub mod selection;
 mod session;
 mod set_pending_formats;
+mod set_read_only;
 mod set_selection;
 mod structural_text;
 mod target_kinds;

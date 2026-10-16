@@ -38,10 +38,11 @@ export class SharedDomEditor {
    const view=mountToolbarControl(this.toolbar,control,{prefix:"shared",signal:this.#abort.signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});this.#controls.push({control,view});
   }
   root.replaceChildren(style,this.toolbar,this.surface,this.status);render(this.surface,this.#model,options);this.#refreshControls();
-  this.#unsubscribe=options.core.subscribe(event=>{if(!this.#busy&&!this.#composition)this.#refresh(false);try{void Promise.resolve(options.onChange?.(event)).catch(error=>this.#report(error));}catch(error){this.#report(error);}});
+  if(this.#model.view.readOnly===true)this.status.textContent=`Read-only · shared revision ${this.#model.view.revision}`;
+  this.#unsubscribe=options.core.subscribe(event=>{const policy=event.view.readOnlyRevision!==this.#model.view.readOnlyRevision||event.view.readOnly!==this.#model.view.readOnly;if(policy){const composition=this.#composition;this.#composition=undefined;this.#queue=[];composition?.release();this.#refresh(false);}else if(!this.#busy&&!this.#composition)this.#refresh(false);try{void Promise.resolve(options.onChange?.(event)).catch(error=>this.#report(error));}catch(error){this.#report(error);}});
   const signal=this.#abort.signal;
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal});
-  this.surface.addEventListener("input",()=>{if(!this.#composition)this.#refresh(false);},{signal});
+  this.surface.addEventListener("input",()=>{if(!this.#composition)this.#refresh(false,true);},{signal});
   this.surface.addEventListener("keydown",event=>this.#key(event),{signal});
   this.surface.addEventListener("pointerdown",event=>this.#pick(event),{signal});
   this.surface.addEventListener("click",event=>this.#taskCheck(event),{signal});
@@ -57,13 +58,13 @@ export class SharedDomEditor {
  #report(error:unknown):void{if(this.#disposed)return;this.#reportedError={error};this.status.textContent=error instanceof Error?error.message:String(error);try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed state. */}}
  #alreadyReported(error:unknown):boolean{return this.#reportedError!==undefined&&this.#reportedError.error===error;}
  #attempt(run:()=>void):void{this.#reportedError=undefined;try{run();}catch(error){if(!this.#alreadyReported(error)){this.#refresh(false);this.#report(error);}}}
- #refreshControls():void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of this.#controls)view.refresh(context,control.enabled(context),stamp);}
- #refresh(focus:boolean):void{
-  if(this.#disposed||this.#composition)return;const previous=this.#model.view.documentJson,active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
+ #refreshControls():void{const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view}of this.#controls)view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);}
+ #refresh(focus:boolean,force=false):void{
+  if(this.#disposed||this.#composition)return;const previous=this.#model.view.documentJson,policy=this.#model.view.readOnlyRevision,active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
   this.#model=this.#read();this.#logical=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
-  if(previous!==this.#model.view.documentJson)render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
+  if(force||previous!==this.#model.view.documentJson||policy!==this.#model.view.readOnlyRevision)render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
   if(focus||ownedFocus){this.surface.focus({preventScroll:true});restoreNative(this.surface,this.#model.view.selection);}this.#refreshControls();
-  this.status.textContent=`Shared revision ${this.#model.view.revision} · ${this.#model.view.undoDepth} undo · ${this.#options.core.pendingRemote().frames} pending remote`;
+  this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}Shared revision ${this.#model.view.revision} · ${this.#model.view.undoDepth} undo · ${this.#options.core.pendingRemote().frames} pending remote`;
  }
  #sync():void{if(this.#busy||this.#composition||this.#logical)return;const selection=readNative(this.surface,this.#model);if(selection&&!sameSelection(selection,this.#model.view.selection))this.#perform(c=>{c.core.select(selection,c.revision);},false);}
  #perform(run:(context:ActionContext)=>void,focus=true,revision=this.#model.view.revision):void{
@@ -80,6 +81,7 @@ export class SharedDomEditor {
  focus():void{this.#live();this.surface.focus();restoreNative(this.surface,this.#model.view.selection);}
  /** Read-only retry after independently transferred image bytes become available. */
  refreshAssets():void{this.#live();refreshAssets(this.surface,this.#options);}
+ setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean{this.#live();if(this.#busy)throw Error("Editing policy cannot publish reentrantly");return this.#options.core.setReadOnly(value,revision);}
  #pick(event:PointerEvent):void{const target=event.target as Element,cell=target.closest<HTMLElement>("[data-select-cell]"),node=target.closest<HTMLElement>("[data-select-node]"),figure=target.closest<HTMLElement>("[data-rich-image]");
   if(target.closest("input[data-task-check]"))return;
   if(cell){event.preventDefault();const focus=JSON.parse(cell.dataset["selectCell"]!) as Extract<RichSelection,{kind:"grid"}>["focus"],prior=this.#model.view.selection,anchor=event.shiftKey&&prior?.kind==="grid"&&prior.anchor.table===focus.table?prior.anchor:focus;this.#attempt(()=>this.select({kind:"grid",anchor,focus}));}
@@ -87,7 +89,7 @@ export class SharedDomEditor {
  }
  #taskCheck(event:MouseEvent):void{
   const check=(event.target as Element).closest<HTMLInputElement>("input[data-task-check]");if(!check||!this.surface.contains(check))return;
-  event.preventDefault();if(this.#composition||this.#options.core.richLanguageVersion()!==2)return;
+  event.preventDefault();if(this.#composition||this.#model.view.readOnly===true||this.#options.core.richLanguageVersion()!==2)return;
   const item=check.dataset["taskCheck"],node=item?this.#model.nodes.get(item):undefined;if(!node||node.type!=="breditor/task-item")return;
   this.#attempt(()=>{this.#perform(c=>{c.core.dispatch({commands:[{kind:"set_task_checked",data:{block:id(node),checked:node.properties["breditor/checked"]!==true}}]},c.revision);});[...this.surface.querySelectorAll<HTMLInputElement>("input[data-task-check]")].find(input=>input.dataset["taskCheck"]===item)?.focus({preventScroll:true});});
  }
@@ -97,13 +99,14 @@ export class SharedDomEditor {
    if(["Backspace","Delete"].includes(event.key)&&widget.matches("button,input[type=checkbox],input[type=radio]"))event.preventDefault();
    return;
   }
+  if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(key))){event.preventDefault();return;}
   if(mod&&key==="a")this.#logical=false;
   if(mod&&!event.altKey){const shortcut=`${event.shiftKey?"shift+":""}${key}`,control=this.#controls.find(item=>item.control.shortcut===shortcut);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   if(mod&&!event.altKey&&["z","y","b"].includes(key)){event.preventDefault();this.#attempt(()=>{this.#sync();this.#perform(c=>{if(key==="b")bold(c);else if(key==="y"||event.shiftKey)c.core.redo(c.revision);else c.core.undo(c.revision);});});return;}
   // WebKit can report insertParagraph for Shift+Enter. Resolve the keyboard
   // contract here without changing composition, grid Enter or beforeinput targets.
   if(event.key==="Enter"&&event.shiftKey&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="text"){event.preventDefault();this.#perform(c=>{c.core.hardBreak(c.revision);});}});if(event.defaultPrevented)return;}
-  if(event.key==="Tab"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();const command=sharedTaskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.#perform(c=>{c.core.dispatch({commands:[command]},c.revision);});}});if(event.defaultPrevented)return;}
+  if(this.#model.view.readOnly!==true&&event.key==="Tab"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();const command=sharedTaskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.#perform(c=>{c.core.dispatch({commands:[command]},c.revision);});}});if(event.defaultPrevented)return;}
   const s=this.#model.view.selection;if(s?.kind==="grid"){
    const moves:Record<string,Navigation>={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Tab:event.shiftKey?"previous":"next",Home:mod?"tableStart":"rowStart",End:mod?"tableEnd":"rowEnd"},move=moves[event.key];
    if(move){this.#attempt(()=>this.#perform(c=>{const result=c.core.navigate(move,event.key!=="Tab"&&event.shiftKey,c.revision);if(event.key!=="Tab"||result.kind!=="boundary")event.preventDefault();}));return;}
@@ -111,7 +114,7 @@ export class SharedDomEditor {
   }
   if((s?.kind==="node"||s?.kind==="grid")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>this.#perform(removeSelection));}
  }
- #input(event:InputEvent):void{if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{this.#sync();const kind=event.inputType;
+ #input(event:InputEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{this.#sync();const kind=event.inputType;
   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
   this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}if(kind==="insertParagraph"){enter(c);return;}
    const s=c.model.view.selection;if(s?.kind!=="text")return;const range=event.getTargetRanges?.()[0],target=range?readTarget(this.surface,range):null;
@@ -122,16 +125,16 @@ export class SharedDomEditor {
    }
   });
  });}
- #copy(event:ClipboardEvent,cut:boolean):void{if(!event.clipboardData)return;if(this.#composition||this.#busy){event.preventDefault();return;}this.#attempt(()=>{this.#sync();this.#perform(c=>{const content=c.core.copy();if(!content)return;event.preventDefault();event.clipboardData!.setData("text/plain",content.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",content.richJson);if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==content.plainText)throw Error("Clipboard did not retain text; content was not cut");if(cut)removeSelection(c);},false);});}
- #paste(event:ClipboardEvent):void{if(!event.clipboardData)return;event.preventDefault();if(this.#composition||this.#busy)return;
+ #copy(event:ClipboardEvent,cut:boolean):void{if(!event.clipboardData)return;if(this.#composition||this.#busy){event.preventDefault();return;}this.#attempt(()=>{this.#sync();this.#perform(c=>{const content=c.core.copy();if(!content)return;event.preventDefault();event.clipboardData!.setData("text/plain",content.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",content.richJson);if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==content.plainText)throw Error("Clipboard did not retain text; content was not cut");if(cut&&c.model.view.readOnly!==true)removeSelection(c);},false);});}
+ #paste(event:ClipboardEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(!event.clipboardData)return;event.preventDefault();if(this.#composition||this.#busy)return;
   this.#attempt(()=>{const transfer=event.clipboardData!,files=[...transfer.files];if(files.length){this.#files(files);return;}
    // Clipboard stores are event-scoped. Capture strings before preparing/queuing work,
    // and never interpret an empty or unsupported transfer as a selection deletion.
    const fragment=transfer.getData("application/x-breditor-rich+json"),plain=transfer.getData("text/plain");if(!fragment&&!plain)return;
    this.#sync();this.#perform(c=>{if(!fragment){c.core.type(plain,c.revision);return;}const kind=(JSON.parse(fragment) as {kind:string}).kind,s=c.model.view.selection,prefix=c.allocate("paste");if(kind==="text")c.core.paste(fragment,{kind:"text"},prefix,c.revision);else if(kind==="grid"&&s?.kind==="grid")c.core.paste(fragment,{kind:"grid"},prefix,c.revision);else if(s?.kind==="text")c.core.pasteAtText(fragment,c.allocate("right"),prefix,c.revision);else c.core.paste(fragment,{kind:"flow",...positionAfter(c)},prefix,c.revision);});});
  }
- #files(files:readonly File[]):void{this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
- #startComposition():void{this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block)return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};});}
+ #files(files:readonly File[]):void{if(this.#options.core.view().readOnly===true)return;this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image files require an asset host");const position=positionAfter(this.#context()),revision=this.#model.view.revision;void Promise.resolve(this.#options.onFiles(files,position,revision)).catch(error=>this.#report(error));});}
+ #startComposition():void{if(this.#model.view.readOnly===true)return;this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;if(s?.kind!=="text"||s.anchor.block!==s.focus.block)return;const n=this.#model.nodes.get(s.focus.block);if(n)this.#composition={block:id(n),original:text(n),revision:this.#model.view.revision,release:this.#options.core.holdRemotes()};});}
  #endComposition():void{const composition=this.#composition;if(!composition)return;this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{
   if(this.#disposed||this.#composition!==composition)return;const node=[...this.surface.querySelectorAll<HTMLElement>("[data-rich-text]")].find(n=>n.dataset["richText"]===composition.block),final=node?.textContent??composition.original;let start=0;while(start<composition.original.length&&start<final.length&&composition.original[start]===final[start])start++;if(start>0&&/[\uDC00-\uDFFF]/.test(composition.original[start]??final[start]??""))start--;
   let oldEnd=composition.original.length,newEnd=final.length;while(oldEnd>start&&newEnd>start&&composition.original[oldEnd-1]===final[newEnd-1]){oldEnd--;newEnd--;}if(oldEnd<composition.original.length&&/[\uDC00-\uDFFF]/.test(composition.original[oldEnd]??"")){oldEnd++;newEnd++;}

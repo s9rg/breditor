@@ -6,6 +6,7 @@ import type {SharedDispatch,SharedPublication,SharedSaveState} from "@breditor/c
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
  sessionKey?:string;className?:string;
+ readOnly?:boolean;
  onReady?:(editor:SharedEditorSession)=>void;
  onChange?:(event:SharedPublication)=>void|Promise<void>;
  onSaveState?:(state:SharedSaveState)=>void;
@@ -20,6 +21,7 @@ export interface BreditorSharedEditorHandle {
  focus():void;
  checkpointJson():string|null;
  execute(request:SharedDispatch,focus?:boolean,revision?:string):void;
+ setReadOnly(value:boolean,revision?:string):boolean|null;
  flush():Promise<void>|null;
  retry():void;
 }
@@ -34,8 +36,10 @@ export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,Breditor
   getEditor:()=>current.current,getRecovery:()=>recovery.current,
   focus:()=>current.current?.focus(),checkpointJson:()=>current.current?.checkpointJson()??recovery.current?.checkpointJson()??null,
   execute:(request,focus,revision)=>current.current?.execute(request,focus,revision),
+  setReadOnly:(value,revision)=>current.current?.setReadOnly(value,revision)??null,
   flush:()=>current.current?.flush()??null,retry:()=>{if(current.current===null)setAttempt(value=>value+1);}
  }),[]);
+ useEffect(()=>{if(props.readOnly===undefined||!current.current)return;try{current.current.setReadOnly(props.readOnly);}catch(error){try{callbacks.current.onError?.(error);}catch{/* Reporting cannot rewind policy. */}}},[props.readOnly]);
  useEffect(()=>{
   if(!host)return;
   const abort=new AbortController(),initial=configuration.current;let owned:SharedEditorSession|undefined;setPhase("starting");
@@ -57,10 +61,12 @@ export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,Breditor
     // A failed old writer must close successfully before a replacement can lease that identity.
     if(recovery.current)await retire(recovery.current);
     if(abort.signal.aborted)return;
-    const editor=await openSharedEditor({...initial,host,signal:abort.signal,
+    const policy=callbacks.current.readOnly;
+    const editor=await openSharedEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
      onChange:event=>callbacks.current.onChange?.(event),
      onSaveState:state=>callbacks.current.onSaveState?.(state),onClosing:editor=>callbacks.current.onClosing?.(editor),onError:report});
     if(abort.signal.aborted){await retire(editor);return;}
+    try{if(callbacks.current.readOnly!==undefined)editor.setReadOnly(callbacks.current.readOnly);}catch(error){await retire(editor);throw error;}
     owned=editor;current.current=editor;setPhase("ready");
     try{callbacks.current.onReady?.(editor);}catch(error){report(error);}
    }catch(error){

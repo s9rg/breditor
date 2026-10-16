@@ -33,6 +33,7 @@ impl RichLocalSession {
         text: &str,
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
+        self.require_writable()?;
         let selection = RichSelection::try_new(&self.state.document, target.clone())?;
         let RichSelectionKind::TextRange { anchor, focus } = selection.kind() else {
             return Err(RichActionError::SelectionKind.into());

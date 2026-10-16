@@ -21,6 +21,7 @@ impl RichReplica {
     /// # Errors
     /// Unsupported/non-text ranges, invalid input or failed publication preserve all owner state.
     pub fn insert_plain_text(&mut self, text: &str) -> Result<bool, Error> {
+        self.require_writable()?;
         let selection = self.selection()?.ok_or(Error::Contract("shared typing requires caret"))?;
         if selection.caret().is_none() {
             return self.replace_plain_selection(text, &selection);

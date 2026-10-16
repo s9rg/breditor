@@ -17,6 +17,25 @@ impl BreditorRichEditor {
 }
 #[wasm_bindgen]
 impl BreditorRichEditor {
+    /// Additive live editing-policy capability; not a document or permission version.
+    #[must_use]
+    #[wasm_bindgen(js_name=readOnlyVersion)]
+    pub fn read_only_version(&self) -> String {
+        "1".to_owned()
+    }
+    /// Guard a policy change and invalidate queued work without a content/history entry.
+    #[must_use]
+    #[wasm_bindgen(js_name=setReadOnly)]
+    pub fn set_read_only(
+        &mut self,
+        observation: &BreditorRichObservation,
+        read_only: bool,
+    ) -> BreditorStringResult {
+        match self.inner.set_read_only(&observation.inner, read_only) {
+            Ok(changed) => BreditorStringResult::from_value(changed.to_string()),
+            Err(value) => BreditorStringResult::from_error(error::session(&value)),
+        }
+    }
     /// Additive UI capability, independent from the unchanged rich ABI revision.
     #[must_use]
     #[wasm_bindgen(js_name=inlineControlsVersion)]

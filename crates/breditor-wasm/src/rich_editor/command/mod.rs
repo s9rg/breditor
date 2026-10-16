@@ -206,6 +206,11 @@ pub(super) fn execute(
     }
     let command: Command<'_> = serde_json::from_str(input).map_err(|_| invalid())?;
     command.validate_fields()?;
+    if owner.is_read_only()
+        && !matches!(command.kind, CommandTag::SetSelection | CommandTag::NavigateGrid)
+    {
+        return Err(error::rejected("breditor_rich.read_only"));
+    }
     match command.kind {
         CommandTag::SetSelection => {
             set_selection::execute(owner, observation, value(command.selection)?)

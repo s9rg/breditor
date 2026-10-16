@@ -9,7 +9,11 @@ export function editorBrowserRuns(discovered){
  if(!Array.isArray(discovered)||!discovered.length||discovered.some(name=>typeof name!=="string"||!/^[a-z0-9-]+\.spec\.mjs$/.test(name))||new Set(discovered).size!==discovered.length)throw Error("Invalid installed SDK browser inventory");
  const network="shared-structural-network.spec.mjs";
  if(!discovered.includes(network)||discovered.length<2)throw Error("Missing installed SDK editing/network coverage");
- return [discovered.filter(name=>name!==network).sort(),[network]];
+ // Bound process size, not coverage: every batch still uses all configured
+ // engines with the original per-case/global deadline and zero retries.
+ const editing=discovered.filter(name=>name!==network).sort(),runs=[];
+ for(let start=0;start<editing.length;start+=4)runs.push(editing.slice(start,start+4));
+ return [...runs,[network]];
 }
 export function editorBrowserPlan(){
  const names=readdirSync(resolve(root,"experiments/editor-browser")).filter(name=>name.endsWith(".spec.mjs"));

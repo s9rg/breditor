@@ -65,6 +65,19 @@ impl RichReplicaProbe {
 #[cfg_attr(feature = "research", wasm_bindgen)]
 #[cfg_attr(not(feature = "research"), wasm_bindgen(js_class = SharedEditorOwner))]
 impl RichReplicaProbe {
+    /// Additive host editing policy capability, independent of persisted protocols.
+    #[allow(clippy::unused_self)] // Instance capability must be discoverable on the live JS owner.
+    pub fn read_only_version(&self) -> String {
+        "1".to_owned()
+    }
+    /// Change local editing policy under the exact native publication guard.
+    pub fn set_read_only(
+        &mut self,
+        observation: &RichSharedObservation,
+        read_only: bool,
+    ) -> Result<bool, JsValue> {
+        self.inner.set_read_only_guarded(&observation.inner, read_only).map_err(error)
+    }
     /// Guarded field-only intent; only existing complete-format operations are persisted.
     pub fn patch_inline_format_properties(
         &mut self,

@@ -13,7 +13,15 @@ test.beforeEach(async({page})=>{
  await page.evaluate(async({url,tokens})=>{const admin=await window.relaySocketFixture.connect(url,"owner",tokens.owner);try{for(const principal of ["alice","bob"]){const r=await admin.request({kind:"grant",principal,role:"editor"});if(r.kind!=="granted")throw Error("Provisioning failed");}}finally{await admin.close();}},{url:relay.url,tokens:relay.tokens});
  bootstrap={url:relay.url,tokens:{alice:relay.tokens.alice,bob:relay.tokens.bob}};await route(page);
 });
-test.afterEach(async()=>{await other?.close();other=undefined;await relay?.dispose();relay=undefined;});
+test.afterEach(async({page},testInfo)=>{
+ // Preserve replayable fixture journals before teardown if a network/history
+ // assertion fails; a trace alone does not retain the native replay input.
+ if(testInfo.status!==testInfo.expectedStatus&&!page.isClosed()){
+  const state=await page.evaluate(()=>{const t=window.sharedV2Network;if(!t)return null;return {errors:t.errors,peers:Object.fromEntries(Object.entries(t.peers).map(([key,p])=>[key,{checkpoint:p.session.checkpointJson(),view:p.session.view(),frame:p.session.core.updateFrame(),sync:p.sync.state()}]))};}).catch(error=>({diagnosticError:String(error)}));
+  if(state)await testInfo.attach("native-network-fixture-state",{body:JSON.stringify(state),contentType:"application/json"});
+ }
+ await other?.close();other=undefined;await relay?.dispose();relay=undefined;
+});
 
 test("V2 network shares offline task nesting code and media through real relay restart and exact client recovery",async({page})=>{
  await page.goto("/shared-structural-network.html");await ready(page);
@@ -48,4 +56,16 @@ test("V2 network image ingestion retains its intent while a real peer publicatio
  await expect(page.locator('#a [data-rich-text="caption"]')).toHaveText("xy🙂");
  await page.evaluate(async()=>{const t=window.sharedV2Network;t.releaseIngest();await t.inserting;await t.peers.a.sync.flush();await t.uploaded("a");});await same(page);await expect(page.locator('#a [data-rich-text="caption"]')).toHaveText("During ingestion xy🙂");await expect.poll(()=>page.locator('#b [data-rich-task="task-a"] figure img').evaluate(i=>i.naturalWidth)).toBe(1);
  await page.evaluate(async()=>{const p=window.sharedV2Network.peers.a;p.session.core.undo();await p.sync.flush();});await same(page);await expect(page.locator('#b [data-rich-task="task-a"] figure')).toHaveCount(0);await expect(page.locator('#a [data-rich-text="caption"]')).toHaveText("During ingestion xy🙂");expect(await page.evaluate(()=>window.sharedV2Network.errors)).toEqual([]);
+});
+
+test("V2 network read-only receives edits assets presence and reconnect without authoring or losing history",async({page})=>{
+ await page.goto("/shared-structural-network.html");await ready(page);
+ await page.evaluate(async()=>{const t=window.sharedV2Network,{a}=t.peers;a.session.select(t.range("p",1));a.session.core.type("Q");a.session.core.undo();await a.sync.flush();a.session.setReadOnly(true);});await same(page);
+ const history=await page.evaluate(()=>{const v=window.sharedV2Network.peers.a.session.view();return [v.undoDepth,v.redoDepth];});
+ await page.evaluate(async()=>{const t=window.sharedV2Network,{a,b}=t.peers;a.sync.disconnect();b.session.execute({commands:[{kind:"set_task_checked",data:{block:"task-b",checked:true}},{kind:"insert_text",data:{block:"caption",offset:0,text:"Remote "}}]});b.session.select(t.range("task-b-head",2));await b.sync.flush();const canvas=document.createElement("canvas");canvas.width=1;canvas.height=1;canvas.getContext("2d").fillRect(0,0,1,1);const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));await t.files("b",[new File([blob],"readonly-peer.png",{type:"image/png"})]);await b.sync.flush();await t.uploaded("b");await a.sync.connect();await a.sync.flush();});await ready(page);await same(page);
+ await expect(page.locator('#a [data-rich-text="caption"]')).toHaveText("Remote xy🙂");await expect(page.locator('#a [data-task-check="task-b"]')).toBeChecked();await expect(page.locator('#a [data-task-check="task-b"]')).toBeDisabled();await expect.poll(()=>page.locator('#a [data-rich-task="task-a"] figure img').evaluate(i=>i.naturalWidth)).toBe(1);
+ // Publish fresh causal presence after reconnect; it is not a document mutation.
+ await page.evaluate(()=>{const t=window.sharedV2Network;t.peers.b.session.select(t.range("task-b-head",3));});await expect.poll(()=>page.evaluate(()=>window.sharedV2Network.peers.a.presence.view().some(p=>p.resolution?.kind==="resolved"&&p.resolution.selection?.focus?.block==="task-b-head"))).toBe(true);
+ expect(await page.evaluate(()=>{const t=window.sharedV2Network,p=t.peers.a,v=p.session.view(),before=p.session.checkpointJson();let code;try{p.session.core.type("No");}catch(error){code=error.code;}return {locked:v.readOnly,history:[v.undoDepth,v.redoDepth],code,unchanged:p.session.checkpointJson()===before,errors:t.errors};})).toEqual({locked:true,history,code:"read_only",unchanged:true,errors:[]});
+ await page.evaluate(async()=>{const p=window.sharedV2Network.peers.a;p.session.setReadOnly(false);p.session.core.redo();p.session.core.undo();await p.sync.flush();});await same(page);await expect(page.locator('#a [data-rich-text="caption"]')).toHaveText("Remote xy🙂");await expect(page.locator('#a [data-task-check="task-b"]')).toBeChecked();
 });

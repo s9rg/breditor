@@ -56,6 +56,9 @@ mod shared_profile_wasm;
 /// Failures isolated before a candidate session replaces published state.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// The live host policy forbids authoring content, history or pending styles.
+    #[error("shared editor is read-only")]
+    ReadOnly,
     /// Released replication engine rejected an operation.
     #[error(transparent)]
     Engine(#[from] loro::LoroError),

@@ -46,6 +46,7 @@ export class RichDomEditor {
    this.#controls.push({control,view});
   }
   render(this.surface,this.#model,options);this.#refreshControls();
+  if(this.#model.view.readOnly===true)this.status.textContent=`Read-only · revision ${this.#model.view.revision}`;
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal:this.#abort.signal});
   this.surface.addEventListener("input",()=>{if(!this.#composition)this.#reconcile();},{signal:this.#abort.signal});
   this.surface.addEventListener("keydown",event=>this.#key(event),{signal:this.#abort.signal});
@@ -66,7 +67,7 @@ export class RichDomEditor {
  #attempt(work:()=>void):void {try{work();}catch(error){this.#report(error);this.#reconcile();}}
  #report(error:unknown):void {this.status.textContent=error instanceof Error?error.message:"Rich editor operation failed";try{this.#options.onError?.(error);}catch{/* A host callback cannot rewind committed content. */}}
  #refreshControls():void {
-  const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view} of this.#controls)view.refresh(context,control.enabled(context),stamp);
+  const context=this.#context(),stamp=JSON.stringify(this.#options.core.view());for(const {control,view} of this.#controls)view.refresh(context,control.enabled(context)&&(this.#model.view.readOnly!==true||control.readOnlySafe===true),stamp);
  }
  #reconcile():void {if(this.#disposed||this.#composition)return;this.#model=model(this.#options.core.view());render(this.surface,this.#model,this.#options);restoreNative(this.surface,this.#model.view.selection);this.#refreshControls();}
  #sync():void {
@@ -88,7 +89,7 @@ export class RichDomEditor {
     const outcome=this.#options.core.execute(work.command,work.revision);first??=outcome;this.#model=model(this.#options.core.view());this.#logicalSelection=this.#model.view.selection?.kind==="grid"||this.#model.view.selection?.kind==="node";
     if(outcome==="content"||outcome==="undo"||outcome==="redo")render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
     if(work.focus){this.surface.focus({preventScroll:true});restoreNative(this.surface,this.#model.view.selection);}
-    this.#refreshControls();this.status.textContent=`${outcome} · revision ${this.#model.view.revision}`;
+    this.#refreshControls();this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}${outcome} · revision ${this.#model.view.revision}`;
     if(outcome!=="unchanged")this.#options.onChange?.(this.#options.core.view(),outcome);
    }catch(error){if(first===undefined)throw error;this.#report(error);}
   }}finally{this.#busy=false;}
@@ -96,6 +97,12 @@ export class RichDomEditor {
  }
  view():RichView {this.#live();return this.#options.core.view();}
  checkpointJson():string {this.#live();return this.#options.core.checkpointJson();}
+ /** Change native host policy immediately, cancelling provisional composition and queued edits. */
+ setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean {
+  this.#live();if(this.#busy)throw Error("Editing policy cannot publish reentrantly");
+  const core=this.#options.core;if(!core.setReadOnly||core.supportsReadOnly?.()!==true)throw Error("Use a matching native owner with read-only enforcement");
+  const changed=core.setReadOnly(value,revision);if(changed){this.#composition=undefined;this.#queue=[];this.#reconcile();this.status.textContent=`${value?"Read-only":"Editable"} · revision ${this.#model.view.revision}`;}return changed;
+ }
  focus():void {this.#live();this.surface.focus();restoreNative(this.surface,this.#model.view.selection);}
  #pick(event:PointerEvent):void {
   const target=event.target as Element,button=target.closest<HTMLElement>("[data-select-cell]"),figure=target.closest<HTMLElement>("[data-rich-image]"),node=target.closest<HTMLElement>("[data-select-node]");
@@ -105,7 +112,7 @@ export class RichDomEditor {
  }
  #taskCheck(event:MouseEvent):void {
   const target=event.target as Element,check=target.closest<HTMLInputElement>("input[data-task-check]");if(!check||!this.surface.contains(check))return;
-  event.preventDefault();if(this.#composition)return;
+  event.preventDefault();if(this.#composition||this.#model.view.readOnly===true)return;
   const item=check.dataset["taskCheck"],node=item?this.#model.nodes.get(item):undefined;if(!node||node.type!=="breditor/task-item")return;
   this.#attempt(()=>{this.execute({kind:"setTaskChecked",data:{item:id(node),checked:node.properties["breditor/checked"]!==true}});[...this.surface.querySelectorAll<HTMLInputElement>("input[data-task-check]")].find(input=>input.dataset["taskCheck"]===item)?.focus({preventScroll:true});});
  }
@@ -122,6 +129,7 @@ export class RichDomEditor {
    if(["Backspace","Delete"].includes(event.key)&&widget.matches("button,input[type=checkbox],input[type=radio]"))event.preventDefault();
    return;
   }
+  if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(event.key.toLowerCase()))){event.preventDefault();return;}
   if(mod&&event.key.toLowerCase()==="a")this.#logicalSelection=false;
   if(mod&&!event.altKey){const key=`${event.shiftKey?"shift+":""}${event.key.toLowerCase()}`,control=this.#controls.find(item=>item.control.shortcut===key);if(control){event.preventDefault();this.#attempt(()=>{this.#sync();control.view.activate();});return;}}
   if(mod&&!event.altKey&&["z","y","b"].includes(event.key.toLowerCase())){event.preventDefault();this.#attempt(()=>{this.#sync();const key=event.key.toLowerCase(),command=key==="b"?bold(this.#context()):{kind:key==="y"||event.shiftKey?"redo":"undo"} as RichCommand;if(command)this.execute(command);});return;}
@@ -132,7 +140,7 @@ export class RichDomEditor {
    if(event.defaultPrevented)return;
   }
   const selection=this.#model.view.selection;
-  if(event.key==="Tab"&&!mod&&!event.altKey){
+  if(this.#model.view.readOnly!==true&&event.key==="Tab"&&!mod&&!event.altKey){
    this.#attempt(()=>{this.#sync();const command=taskTab(this.#context(),event.shiftKey);if(command){event.preventDefault();this.execute(command);}});
    if(event.defaultPrevented)return;
   }
@@ -145,6 +153,7 @@ export class RichDomEditor {
   if((selection?.kind==="grid"||selection?.kind==="node")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>{const command=deleteSelection(this.#context());if(command)this.execute(command);});}
  }
  #input(event:InputEvent):void {
+  if(this.#model.view.readOnly===true){event.preventDefault();return;}
   if(this.#composition||event.isComposing)return;
   event.preventDefault();this.#attempt(()=>{
    this.#sync();const type=event.inputType;
@@ -176,10 +185,11 @@ export class RichDomEditor {
   this.#attempt(()=>{this.#sync();const transfer=this.#options.core.clipboard();if(!transfer)return;
    event.preventDefault();event.clipboardData!.setData("text/plain",transfer.plainText);event.clipboardData!.setData("application/x-breditor-rich+json",transfer.structuredJson);
    if(!event.clipboardData!.types.includes("text/plain")||event.clipboardData!.getData("text/plain")!==transfer.plainText)throw Error("Clipboard did not retain the supplied text; content was not cut");
-   if(cut){const command=deleteSelection(this.#context());if(command)this.execute(command);}
+   if(cut&&this.#model.view.readOnly!==true){const command=deleteSelection(this.#context());if(command)this.execute(command);}
   });
  }
  #paste(event:ClipboardEvent):void {
+  if(this.#model.view.readOnly===true){event.preventDefault();return;}
   if(this.#composition||!event.clipboardData)return;event.preventDefault();
   const files=[...event.clipboardData.files];if(files.length){this.#files(files);return;}
   this.#attempt(()=>{this.#sync();const clipboard=event.clipboardData!.getData("application/x-breditor-rich+json");
@@ -191,8 +201,8 @@ export class RichDomEditor {
    }else this.execute({kind:"insertPlainText",text:event.clipboardData!.getData("text/plain")});
   });
  }
- #files(files:readonly File[]):void {this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
- #startComposition():void {this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false};});}
+ #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#attempt(()=>{this.#sync();if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
+ #startComposition():void {if(this.#model.view.readOnly===true)return;this.#attempt(()=>{this.#sync();const selection=this.#model.view.selection;if(selection?.kind!=="text"||selection.anchor.block!==selection.focus.block)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false};});}
  #endComposition():void {
   const composition=this.#composition;if(!composition)return;composition.finishing=true;
   this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{

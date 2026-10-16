@@ -16,6 +16,7 @@ mod replace_range_plain_text;
 mod replace_selection_plain_text;
 mod replace_selection_text;
 mod set_pending_formats;
+mod set_read_only;
 mod snapshot;
 mod state;
 pub(crate) mod typing_state;
@@ -81,6 +82,9 @@ pub struct RichLocalSession {
     cursor: usize,
     capacity: HistoryCapacity,
     token: Arc<()>,
+    // Host policy, never part of document/history/checkpoint permissions.
+    read_only: bool,
+    read_only_revision: Option<Revision>,
 }
 
 impl std::fmt::Debug for RichLocalSession {
@@ -107,7 +111,16 @@ impl RichLocalSession {
         capacity: HistoryCapacity,
     ) -> Result<Self, RichLocalSessionError> {
         let state = RichLocalState::try_new(&context, document, selection, None, Revision::ZERO)?;
-        Ok(Self { context, state, entries: vec![], cursor: 0, capacity, token: Arc::new(()) })
+        Ok(Self {
+            context,
+            state,
+            entries: vec![],
+            cursor: 0,
+            capacity,
+            token: Arc::new(()),
+            read_only: false,
+            read_only_revision: None,
+        })
     }
     /// Current admitted immutable document, selection and publication revision.
     #[must_use]
@@ -122,7 +135,12 @@ impl RichLocalSession {
     /// Exact process-local observation; capture before planning/queuing a dispatch.
     #[must_use]
     pub fn snapshot(&self) -> RichLocalSnapshot {
-        RichLocalSnapshot::new(self.token.clone(), self.state.clone())
+        RichLocalSnapshot::new(
+            self.token.clone(),
+            self.state.clone(),
+            self.read_only,
+            self.read_only_revision,
+        )
     }
     /// Maximum retained chronological entries, including undo and redo.
     #[must_use]

@@ -27,6 +27,7 @@ impl RichLocalSession {
         text: &str,
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
+        self.require_writable()?;
         if text.is_empty() && super::typing_state::caret(self.state.selection.as_ref()).is_some() {
             return Ok(RichLocalOutcome::Unchanged);
         }

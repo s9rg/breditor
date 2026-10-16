@@ -51,6 +51,7 @@ impl RichReplica {
         input: &str,
     ) -> Result<bool, Error> {
         self.check(observation)?;
+        self.require_writable()?;
         if input.len() > 64 * 1024 {
             return Err(Error::Limit("inline property patch bytes"));
         }

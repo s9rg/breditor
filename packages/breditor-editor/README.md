@@ -12,6 +12,16 @@ with canonical Rust/browser source and a matching module without research probes
 
 ## Local editor
 
+Local and shared openings accept `readOnly: true`; both owners also expose
+`setReadOnly(boolean, expectedRevision?)`. This native policy blocks authoring
+without discarding Undo/Redo or preventing selection, Copy and incoming shared
+updates. Cut copies without deleting. Both React components accept a live
+`readOnly` prop and an imperative setter without recreating the owner.
+Policy is not stored permission: restored owners start editable, so hosts must
+reapply their policy before exposing them. Server authorization and editable
+region restrictions are separate contracts. See `docs/RICH_READ_ONLY.md` in the
+repository for publication, composition and asynchronous-file behavior.
+
 Use a bundler that supports JavaScript `new URL` asset references. Generated Wasm
 glue loads the matching packaged binary; applications do not need a file from
 the repository's `target` directory.

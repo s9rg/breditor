@@ -1,6 +1,9 @@
 import {openLocalEditor,createLocalProfile,createStructuralLocalProfileV2,type LocalEditor,type LocalEditorOptions,type RichCommand} from "@breditor/editor";
 function contract(host:HTMLElement,editor:LocalEditor):void {
- const options:LocalEditorOptions={host,initial:{kind:"empty",documentId:"doc",blockId:"p"},onChange:(view,outcome)=>{const revision:string=view.revision;void revision;void outcome;}};void openLocalEditor(options);void createLocalProfile();
+ const options:LocalEditorOptions={host,readOnly:true,initial:{kind:"empty",documentId:"doc",blockId:"p"},onChange:(view,outcome)=>{const revision:string=view.revision;const mode:true|undefined=view.readOnly;const policy:string|undefined=view.readOnlyRevision;void mode;void policy;void revision;void outcome;}};void openLocalEditor(options);void createLocalProfile();
+ const changed:boolean=editor.setReadOnly(false,editor.view().revision);void changed;
+ // @ts-expect-error mode is a boolean, never a truthy string.
+ editor.setReadOnly("true");
  const command:RichCommand={kind:"insertPlainText",text:"Typed"};editor.execute(command);void editor.checkpointJson();
  void createStructuralLocalProfileV2();void openLocalEditor({...options,richLanguage:2});
  editor.execute({kind:"setCodeBlock",data:{block:"p",language:"Rust",formatPolicy:"removeFormats"}});

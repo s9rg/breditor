@@ -7,6 +7,9 @@ createElement(BreditorEditor,{initialOptions:{richLanguage:2,initial:{kind:"empt
 const configuration:SharedProfileConfiguration={format:"breditor/shared-rich-profile",formatVersion:1,schema:{name:"example/typed",version:1},extensions:[]};void createSharedProfile(configuration);
 void handle.current?.checkpointJson();
 const sharedHandle=createRef<BreditorSharedEditorHandle>();
+createElement(BreditorEditor,{ref:handle,readOnly:true,initialOptions:{initial:{kind:"empty"}}});
+createElement(BreditorSharedEditor,{ref:sharedHandle,readOnly:false,initialOptions:{database:"readonly",room:"doc",writer:"404"},onCloseError:()=>{}});
+void handle.current?.setReadOnly(false);void sharedHandle.current?.setReadOnly(true);
 createElement(BreditorSharedEditor,{ref:sharedHandle,initialOptions:{database:"typed",room:"doc",writer:"101"},onCloseError:(error,editor)=>{void error;void editor.close();}});
 createElement(BreditorSharedEditor,{initialOptions:{richLanguage:2,database:"typed-v2",room:"doc",writer:"202"},onCloseError:()=>{}});
 void openSharedEditor;void sharedHandle.current?.getRecovery();

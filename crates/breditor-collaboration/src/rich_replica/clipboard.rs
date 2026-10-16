@@ -80,6 +80,7 @@ impl RichReplica {
         allocator: &mut dyn RichClipboardIdAllocator,
     ) -> Result<bool, Error> {
         self.check(observation)?;
+        self.require_writable()?;
         let context = super::paragraphs::context(&self.codec);
         let fragment = RichClipboardJsonCodec::new(context.clone())
             .decode(input)

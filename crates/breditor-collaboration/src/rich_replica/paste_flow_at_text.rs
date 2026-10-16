@@ -19,6 +19,7 @@ impl RichReplica {
         allocator: &mut dyn RichClipboardIdAllocator,
     ) -> Result<bool, Error> {
         self.check(observation)?;
+        self.require_writable()?;
         let Some(Selection::TextRange { anchor, focus }) = self.selection()? else {
             return Err(Error::Contract("flow paste text selection"));
         };

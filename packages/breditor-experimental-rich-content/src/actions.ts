@@ -10,6 +10,8 @@ export interface ToolbarControl {
  owner?:RichCoreEditor;
  fields?:readonly RichToolbarField[];shortcut?:string;read?:(context:ActionContext)=>RichToolbarReading;
  mixedHint?:string;
+ /** Opt in only for controls that do not author content/history/typing state. Native policy still enforces writes. */
+ readOnlySafe?:boolean;
  enabled:(context:ActionContext)=>boolean;
  value?:(context:ActionContext)=>string;
  command:(context:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>RichCommand|null;
