@@ -1,15 +1,19 @@
 //! Exclusive synchronous local rich owner, separate from collaboration and legacy codecs.
 //!
-//! One dispatch is one explicit history unit. The separate opt-in local rich
-//! checkpoint codec proves exact retained history replay before restoring an owner.
+//! One dispatch retains one explicit history record. Natural user-input grouping
+//! is separately enabled and persisted; original checkpoints/defaults stay exact.
 
+mod close_typing_group;
+mod delete_typing_range;
 mod dispatch;
 pub(crate) mod durable;
+mod enable_typing_history;
 mod error;
 mod history_entry;
 mod history_recipe;
 mod insert_hard_break;
 mod insert_plain_text;
+mod insert_typing_text;
 pub(crate) mod local_rewrite;
 mod redo;
 mod replace_range_plain_text;
@@ -19,6 +23,7 @@ mod set_pending_formats;
 mod set_read_only;
 mod snapshot;
 mod state;
+pub(crate) mod typing_history;
 pub(crate) mod typing_state;
 mod undo;
 mod validate_observation;
@@ -26,6 +31,9 @@ mod validate_observation;
 pub use error::RichLocalSessionError;
 pub use snapshot::RichLocalSnapshot;
 pub use state::RichLocalState;
+pub use typing_history::{
+    RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichTypingDeleteDirection,
+};
 
 use super::{RichDocument, RichSelectionKind};
 use crate::{
@@ -85,6 +93,7 @@ pub struct RichLocalSession {
     // Host policy, never part of document/history/checkpoint permissions.
     read_only: bool,
     read_only_revision: Option<Revision>,
+    typing_history: Option<typing_history::TypingHistory>,
 }
 
 impl std::fmt::Debug for RichLocalSession {
@@ -120,6 +129,7 @@ impl RichLocalSession {
             token: Arc::new(()),
             read_only: false,
             read_only_revision: None,
+            typing_history: None,
         })
     }
     /// Current admitted immutable document, selection and publication revision.
@@ -147,14 +157,21 @@ impl RichLocalSession {
     pub const fn history_capacity(&self) -> HistoryCapacity {
         self.capacity
     }
-    /// Number of currently undoable explicit groups.
+    /// Currently undoable native units; defaults to one per explicit dispatch.
     #[must_use]
     pub fn undo_depth(&self) -> u32 {
+        if let Some(history) = &self.typing_history {
+            return history.undo_depth(self.cursor);
+        }
         u32::try_from(self.cursor).unwrap_or(u32::MAX)
     }
-    /// Number of currently redoable explicit groups.
+    /// Currently redoable native units, including optional natural input bursts.
     #[must_use]
     pub fn redo_depth(&self) -> u32 {
+        if let Some(history) = &self.typing_history {
+            return u32::try_from(history.groups.len()).unwrap_or(u32::MAX)
+                - history.undo_depth(self.cursor);
+        }
         u32::try_from(self.entries.len() - self.cursor).unwrap_or(u32::MAX)
     }
     /// Whether exact local undo is available.
@@ -175,6 +192,9 @@ impl RichLocalSession {
         Ok(())
     }
     fn publish(&mut self, state: RichLocalState) {
+        if let Some(history) = &mut self.typing_history {
+            history.continuation = None;
+        }
         self.state = state;
         self.token = Arc::new(());
     }

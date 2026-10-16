@@ -105,6 +105,9 @@ impl RichLocalSession {
             forward: super::history_recipe::HistoryRecipe::Actions(actions.to_vec()),
             inverse: super::history_recipe::HistoryRecipe::Actions(inverse),
         };
+        if let Some(history) = &mut self.typing_history {
+            history.append(self.cursor, self.capacity.as_usize());
+        }
         self.entries.truncate(self.cursor);
         if self.capacity.get() == 0 {
             self.entries.clear();

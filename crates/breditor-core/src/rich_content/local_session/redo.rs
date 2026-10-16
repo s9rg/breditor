@@ -5,7 +5,10 @@ use super::{
 };
 
 impl RichLocalSession {
-    /// Redo one explicit group, preserving exact bodies, IDs, metadata and selection.
+    /// Redo one native history unit, preserving exact bodies, IDs, metadata and selection.
+    ///
+    /// Natural history replays all original records before one atomic publication;
+    /// an ordinary owner still redoes exactly one explicit dispatch.
     ///
     /// # Errors
     /// Rejects stale observations, mismatched boundaries, failed forward replay
@@ -16,16 +19,21 @@ impl RichLocalSession {
     ) -> Result<RichLocalOutcome, RichLocalSessionError> {
         self.check(snapshot)?;
         self.require_writable()?;
-        let Some(entry) = self.entries.get(self.cursor) else {
+        if self.cursor == self.entries.len() {
             return Ok(RichLocalOutcome::Unchanged);
-        };
-        if self.state.document.document() != entry.before.document.document() {
-            return Err(RichLocalSessionError::HistoryMismatch);
         }
-        let document = entry.forward.apply(&self.context, &self.state.document)?;
-        if document.document() != entry.after.document.document() {
-            return Err(RichLocalSessionError::HistoryMismatch);
+        let end = self.redo_group_end()?;
+        let mut document = self.state.document.clone();
+        for step in &self.entries[self.cursor..end] {
+            if document.document() != step.before.document.document() {
+                return Err(RichLocalSessionError::HistoryMismatch);
+            }
+            document = step.forward.apply(&self.context, &document)?;
+            if document.document() != step.after.document.document() {
+                return Err(RichLocalSessionError::HistoryMismatch);
+            }
         }
+        let entry = &self.entries[end - 1];
         let candidate = RichLocalState::try_new(
             &self.context,
             document,
@@ -33,7 +41,7 @@ impl RichLocalSession {
             entry.after.pending_formats.clone(),
             self.state.revision.successor()?,
         )?;
-        self.cursor += 1;
+        self.cursor = end;
         self.publish(candidate);
         Ok(RichLocalOutcome::RedoApplied)
     }

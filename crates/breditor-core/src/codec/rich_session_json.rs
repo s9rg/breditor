@@ -53,6 +53,16 @@ impl RichSessionJsonCodec {
     /// # Errors
     /// Rejects incompatible schemas, tighter host limits, incoherent history or byte/entry limits.
     pub fn encode(&self, session: &RichLocalSession) -> Result<String, RichSessionCodecError> {
+        // Omitting an admitted partition would silently change future Undo/Redo.
+        if session.typing_history_enabled() {
+            return Err(RichSessionCodecError::Format);
+        }
+        self.encode_explicit_records(session)
+    }
+    pub(super) fn encode_explicit_records(
+        &self,
+        session: &RichLocalSession,
+    ) -> Result<String, RichSessionCodecError> {
         let checkpoint = session.durable_checkpoint()?;
         if checkpoint.entries.len() > self.max_entries {
             return Err(RichSessionCodecError::Limit);

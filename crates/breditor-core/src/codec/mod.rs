@@ -42,6 +42,12 @@ pub use rich_session_error::RichSessionCodecError;
 pub use rich_session_json::{
     RICH_SESSION_FORMAT, RICH_SESSION_FORMAT_VERSION, RichSessionJsonCodec,
 };
+#[cfg(feature = "experimental-rich-content")]
+mod rich_typing_session_json;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_typing_session_json::{
+    RICH_TYPING_SESSION_FORMAT, RICH_TYPING_SESSION_FORMAT_VERSION, RichTypingSessionJsonCodec,
+};
 
 mod commit_encoding_v2;
 mod commit_encoding_v3;

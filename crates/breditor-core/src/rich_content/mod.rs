@@ -45,8 +45,9 @@ pub use inline_format_state::{
 };
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use local_session::{
-    RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
-    RichPendingFormatsUpdate, RichSelectionUpdate,
+    RICH_TYPING_GROUP_MAX_STEPS, RICH_TYPING_GROUP_WINDOW_MS, RichLocalOutcome, RichLocalSession,
+    RichLocalSessionError, RichLocalSnapshot, RichLocalState, RichPendingFormatsUpdate,
+    RichSelectionUpdate, RichTypingDeleteDirection,
 };
 pub use navigate_grid::{
     GridBoundary, GridMove, GridNavigationMode, GridNavigationOutcome, navigate_grid,

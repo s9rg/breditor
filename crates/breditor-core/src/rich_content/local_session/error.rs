@@ -3,6 +3,12 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// Timestamped user input requires explicit native history grouping admission.
+    #[error("natural typing history is not enabled for this owner")]
+    TypingHistoryDisabled,
+    /// A directional deletion must touch the actual caret in one stable text block.
+    #[error("typing deletion target does not match its direction and current caret")]
+    TypingDeleteTarget,
     /// The live host policy forbids content, history or pending-format mutation.
     #[error("rich editor is read-only")]
     ReadOnly,
