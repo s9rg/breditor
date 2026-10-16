@@ -324,6 +324,12 @@ comparisons. Code and any resource failure refuse the whole edit; shared
 lowering retains the 64-command ceiling. Coverage is not a visual-order range,
 document-wide Select All mutation or general cross-container replacement.
 
+The [selection formatting qualification](qualification/2026-10-16-selection-formatting.json)
+passes all 522 installed SDK cases and 78 serial application cases on the same
+archives, 2,418 all-feature root Rust tests, 303 canonical shared tests and
+83 SDK units. Default regressions, strict native/release-Wasm lint and exact
+older-runtime recovery pass. No readiness row is promoted by this slice.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set

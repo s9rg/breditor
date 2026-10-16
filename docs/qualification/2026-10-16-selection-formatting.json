@@ -1,0 +1,206 @@
+{
+  "format": "breditor/selection-formatting-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "6d2a274dc1aab594cb3bede6a3f01b1d35d945c7",
+  "previousCheckpoint": "ed8f689daf5d46cee193b7974a57d75c341c6b57",
+  "status": "tested-functional-checkpoint-goal-incomplete",
+  "publication": "Local commits only; no push, tag, registry publication or deployment.",
+  "contracts": {
+    "coverage": "Immutable native source proof; AST topology, whole/partial structural inclusion, text intervals, exact UTF-16 totals and protected source-cell/caption domains. Reverse text direction retains identical coverage. Merge-closed grids include each original base body once without intervening cells.",
+    "documentRead": "Explicit document scope includes leading/trailing atoms, empty text, code and hidden tables. None is distinct. This read is not persisted Select All or mutation authority.",
+    "formatting": "Typed unique set/remove/patch changes contain no caller targets. At a caret they change effective pending formats only. Non-caret formatting is one native history unit, preserves exact selection and refuses all touched code. Patch preserves omitted mixed properties and requires existing kind on every selected character.",
+    "atomicity": "Stale/read-only, strict payload, source proof, missing patch kind, resource limits and a late lowering disagreement publish nothing. Shared lowering compares its complete staged document to the native local semantic preview before live adoption.",
+    "history": "Original local SetInlineFormat actions and shared SetFormat annotations only; explicit and natural history families retain exact future replay and selective peer preservation.",
+    "capability": "Separate string1 local selectionFormattingVersion and shared selection_formatting_version, distinct native coverage/state reads and guarded selection-formatting intent. SDK requires matching capability and methods; no JS interval/transaction fallback.",
+    "browser": "Matching V2 stock toolbars use native intent. Empty/custom V2 toolbars retain formatting shortcuts and corresponding input events, following widget/composition/read-only ownership. Original standard factories remain unchanged.",
+    "limits": "Coverage read 4 MiB; intent/state 64 KiB. Local context transaction ceiling normally1024 nonempty blocks. Shared original64-command ceiling and sequential transient format/property headroom remain; no prefix commit, silent expansion or truncated read.",
+    "compatibility": "No original document, schema fingerprint, model, journal, frame or checkpoint version changes. Original inline-format-state remains Node/Grid unavailable. New selection-format-state has its own read family."
+  },
+  "native": {
+    "rootCommand": "cargo test --workspace --all-features --locked --offline",
+    "rootPassed": 2418,
+    "rootSuiteFooters": 148,
+    "sharedCommand": "cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --all-targets --locked --offline",
+    "canonicalSharedPassed": 303,
+    "canonicalSuiteFooters": 25,
+    "newCoreTests": 10,
+    "newWasmTests": 2,
+    "newSharedTests": 5,
+    "researchSameSourceFocusedPassed": 5,
+    "researchFullNativeRerun": false,
+    "researchWasmCompiles": true,
+    "strictNativeAllTargetClippy": true,
+    "strictActualReleaseWasmClippy": true,
+    "rustdocWarningsDenied": true,
+    "namedFirstPartyFormatChecks": true,
+    "defaultWorkspaceWithoutOptionalFeaturesCompiles": true,
+    "candidateAndInstalledTypeChecks": true,
+    "additionalInstalledTypeCheck": "types-selection.ts checked separately in the same clean-installed consumer after the initial archive build; final build orchestration includes it for future runs. No runtime/archive changed.",
+    "unchangedDependencyWarning": "Vendored HasIdSpan unused import; vendor source untouched."
+  },
+  "defaultRegression": {
+    "command": "npm test",
+    "browserPassed": 2203,
+    "reactPassed": 57,
+    "highlightPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 374,
+    "existingOptInSkips": 3,
+    "finalScriptsRerunPassed": 374,
+    "sdkCommand": "npm run test:candidate --workspace @breditor/editor",
+    "sdkPassed": 83,
+    "sdkFiles": 17
+  },
+  "interoperability": {
+    "script": "scripts/probe-selection-formatting-compatibility.mjs",
+    "beforeConsumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-QwlpyN/consumer",
+    "format": "breditor/selection-formatting-interoperability",
+    "formatVersion": 1,
+    "before": {
+      "local": "96daa39bf0599a5938d1e5dcbb206d69c258146568bf02d8e4e2a911d228fbf1",
+      "shared": "a32c05bca614736e25070e0720423c2ad6b0f1675f5a7668f3874089b8783740"
+    },
+    "after": {
+      "local": "e76866563ec397892fc0fefa9a000692f3da68722fb6feebce14f8af803ad35f",
+      "shared": "d2847391f1fd88317b5829d012409d60ce665981144bd87c833c8dc76ca509fb"
+    },
+    "crossVersionRestores": 48,
+    "exactFutureComparisons": 144,
+    "legacyLocalRejections": 12,
+    "guardedSharedRejections": 12,
+    "unchangedLegacyReads": 16,
+    "originalProtocolsRetained": true,
+    "passed": true,
+    "scopes": [
+      "cross-container AST text range",
+      "whole image caption",
+      "merge-closed grid"
+    ],
+    "histories": [
+      "explicit",
+      "typing-v1"
+    ],
+    "intents": [
+      "complete set",
+      "field-only patch"
+    ],
+    "applicationJavascriptExports": 5,
+    "applicationRawWasmExports": 77
+  },
+  "installed": {
+    "buildCommand": "caffeinate -is -t 1800 node scripts/check-editor-package.mjs",
+    "sdkCommand": "caffeinate -is -t 2400 node --input-type=module -e 'import {execFileSync} from \"node:child_process\"; import {editorBrowserPlan} from \"./scripts/check-editor-browser.mjs\"; for(const [cmd,args] of editorBrowserPlan().runs) execFileSync(cmd,args,{stdio:\"inherit\",shell:false});'",
+    "applicationCommand": "caffeinate -is -t 900 node_modules/.bin/playwright test -c experiments/shared-browser/application-network.config.mjs",
+    "policy": "Every discovered SDK spec once in the final run, Chromium/Firefox/WebKit, one worker, zero retries, unchanged60-second case and300-second process ceilings. Application matrix follows serially on the same installed consumer. Bounded sleep assertions; no OS settings or clipboard touched.",
+    "targetedPassed": 45,
+    "targetedDuration": "1.1m",
+    "fullSDKPassed": 522,
+    "editingPassed": 507,
+    "relayPassed": 15,
+    "applicationPassed": 78,
+    "applicationDuration": "1.3m",
+    "batches": [
+      {
+        "passed": 93,
+        "duration": "1.7m"
+      },
+      {
+        "passed": 102,
+        "duration": "2.8m"
+      },
+      {
+        "passed": 18,
+        "duration": "15.5s"
+      },
+      {
+        "passed": 69,
+        "duration": "52.9s"
+      },
+      {
+        "passed": 33,
+        "duration": "1.3m"
+      },
+      {
+        "passed": 87,
+        "duration": "2.1m"
+      },
+      {
+        "passed": 45,
+        "duration": "1.1m"
+      },
+      {
+        "passed": 21,
+        "duration": "1.0m"
+      },
+      {
+        "passed": 39,
+        "duration": "2.5m"
+      },
+      {
+        "passed": 15,
+        "duration": "1.5m"
+      }
+    ],
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-9wVYSg/consumer",
+    "archives": [
+      {
+        "package": "@breditor/browser",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "unchanged": true
+      },
+      {
+        "package": "@breditor/experimental-rich-content",
+        "bytes": 1289971,
+        "sha256": "509ab7c09bd2a78b9c36ae4cb9e197207595ed8aa291a2fc1c5212de75c435f3"
+      },
+      {
+        "package": "@breditor/collaboration",
+        "bytes": 2446987,
+        "sha256": "bca35b6ecc15b460d796a3403d5ae2e8a875c8611b0d8e9dc1416baab7c59044"
+      },
+      {
+        "package": "@breditor/editor",
+        "bytes": 22037,
+        "sha256": "b71fd282f8744457637658c3227382e2e652ec8914966925a1963e2f9948bcee"
+      }
+    ],
+    "localWasm": {
+      "bytes": 4442896,
+      "sha256": "e76866563ec397892fc0fefa9a000692f3da68722fb6feebce14f8af803ad35f"
+    },
+    "sharedWasm": {
+      "bytes": 8919254,
+      "sha256": "d2847391f1fd88317b5829d012409d60ce665981144bd87c833c8dc76ca509fb"
+    }
+  },
+  "attempts": [
+    {
+      "result": "Fixture scalar boundary rejected",
+      "cause": "An initial caption endpoint3 split the final emoji; corrected to legal4 without changing scalar admission."
+    },
+    {
+      "result": "Two wide-read fixture admission refusals",
+      "cause": "An initial20000-child root exceeded the original per-container ceiling; grouping still exceeded total property values. Final9000 legal long-ID paragraphs in3groups exceed the separate read ceiling while all default document limits remain unchanged."
+    }
+  ],
+  "retainedEvidence": "target/selection-formatting-qualification: full-sdk/application, root-all/shared-all, coverage-expanded/wasm-contracts/research-selection, strict native/Wasm lint, rustdoc, default/SDK/script/type logs, readiness audit, installed-consumer.json and interoperability.json. Development fixture refusals are described from tool output; the final focused log is the passing rerun.",
+  "remaining": [
+    "General visual-order cross-container selection and document-wide Select All mutations",
+    "Cross-container destructive replacement and explicit partially selected table/image recovery policy",
+    "Physical/bidirectional arrows, visual line edges and gap/drop positions",
+    "Bounded block/layout contracts and remaining contextual controls",
+    "Sanitized HTML/Markdown and Word/Google Docs/Excel interchange with explicit loss reporting",
+    "Historical WebKit integer-domain startup, earlier replay/cancel observations and serious shared Firefox latency",
+    "Native OS clipboard/IME, final accessibility, performance and public-release qualification"
+  ],
+  "readiness": {
+    "implemented": 9,
+    "partial": 17,
+    "missing": 20,
+    "openGates": 13,
+    "promotedRows": 0,
+    "firstTwoWorkstreamsComplete": false
+  }
+}

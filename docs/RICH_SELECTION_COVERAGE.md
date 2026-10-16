@@ -117,7 +117,7 @@ contracts. Whole-document coverage alone implements none of those mutations.
 
 ## Verification
 
-The core tests cover direction, domains, every pair of fixture endpoints,
+The core tests cover direction, domains, every pair of fixture text blocks,
 surrogate boundaries, stale source proof, strict decoding and read-budget
 refusal within default document limits. Local Wasm tests exercise frozen reads
 and both original history families. Canonical and same-source research tests
@@ -129,9 +129,11 @@ vanilla and React owners in Chromium, Firefox and WebKit. Its 45 cases check
 every intended formatted character, unrelated source cells, captions, mixed
 Link patches, keyboard routing, read-only policy, peer editing and exact future
 history after reload. `scripts/probe-selection-formatting-compatibility.mjs`
-compares actual pre-capability and current Wasm. The checkpoint evidence belongs
-in `docs/qualification/2026-10-16-selection-formatting.json` after the full SDK
-and serial application matrices finish.
+compares actual pre-capability and current Wasm. The
+[qualification record](qualification/2026-10-16-selection-formatting.json) binds
+all 522 installed SDK cases and 78 serial application cases to the exact
+archives, alongside 2,418 root Rust tests, 303 canonical shared tests and
+48 cross-version restores with 144 exact future-history comparisons.
 
 This is a selection-formatting checkpoint, not completion of the two V1
 workstreams or repair of the historical WebKit reliability observations.
