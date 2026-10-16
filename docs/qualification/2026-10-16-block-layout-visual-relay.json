@@ -1,0 +1,109 @@
+{
+  "format": "breditor/block-layout-visual-relay-qualification",
+  "formatVersion": 1,
+  "observedAt": "2026-10-16",
+  "sourceCheckpoint": "358643e756a4f1d20fbe31010527568df57d0247",
+  "previousCheckpoint": "7666ac5dade8f86e83b5e5054d9757eb5be2a0db",
+  "status": "explicit-v3-visual-relay-qualified-interchange-and-v1-workstreams-incomplete",
+  "publication": "Local Git checkpoints and private candidate archives only. No push, tag, registry publication or deployment.",
+  "implemented": {
+    "integration": "Explicit richLanguage 3 high-level local/shared openings and both React components select matching V3 factories and owner-bound toolbars. Defaults remain V1; V2 constructors stay strict. Reused structural/input/navigation behavior admits exactly languages 2/3, not unknown future revisions.",
+    "controls": "Independent native mixed/inherited state for Alignment, Text direction, Block indentation and Line spacing percent, plus explicit Reset. Numeric field dependencies distinguish inheritance from explicit zero. Partial intent retains other fields. Stale drafts refuse; Escape reads current state. Physical alignment shortcuts remain available with an empty toolbar and exclude composition, native widgets and read-only authoring.",
+    "presentation": "Only admitted paragraph/heading/code values map to fixed alignment tokens, HTML dir, logical margin-inline-start at 2em per level and unitless line-height. Clearing removes inline overrides. Captions and original merged-cell bodies retain their own text-block layout. Directional presentation does not qualify complete physical/bidi navigation.",
+    "serializationRepair": "Both owner boundaries and the local coordinator queue validate primitive finite layout intent before JSON snapshots. NaN, infinity and toJSON objects cannot silently become null/Clear. Rust remains the authority for tokens, integer bounds, native coverage, policy and atomic publication. Raw intent strings preserve duplicate keys for native rejection.",
+    "relay": "Explicit plain/standard V3 factories and init-v3/init-standard-v3 CLI modes write a distinct seedLayoutV3 record. Replay uses the recorded compiler, never configuration sniffing. Original seed tags and protocols retain their meanings. Independent offline fields, peer text, selective history, asset binding, durable duplicate receipts and incompatible/torn-tail recovery are covered."
+  },
+  "checks": {
+    "sdkUnitTestsPassed": 101,
+    "sdkUnitFiles": 19,
+    "newSdkUnitCases": 11,
+    "relayNativeTestsPassed": 25,
+    "relaySuiteFootersIncludingEmptyBinAndRustdoc": 7,
+    "newRelayTestCases": 3,
+    "relayStrictAllTargetClippy": true,
+    "relayRustdocWarningsDenied": true,
+    "relayNamedPackageFormatCheck": true,
+    "sdkInventoryAndPackageContractTestsPassed": 13,
+    "candidateAndInstalledTypes": true,
+    "cleanMinimalSharedOnlyAndFullReactConsumers": true,
+    "serverRenderingAndProductionBuild": true,
+    "actualWasmPackageRootScenarios": {"local": 10, "shared": 4, "legacy": 4, "clipboard": 1},
+    "nativeCoreAndWasmSourceChanged": false,
+    "rootAndCanonicalSharedNativeSuitesRerun": false,
+    "priorNativeEvidence": "2026-10-16-block-layout-shared-native.json retains the unchanged core's 2,436 root tests and 321 canonical shared tests. 2026-10-16-block-layout-wasm-sdk.json retains 135 native Wasm-boundary cases. Current actual-Wasm hashes match that bridge.",
+    "vendorWarning": "Unchanged loro-internal HasIdSpan unused import. No vendor changes or lowered first-party lint thresholds."
+  },
+  "defaultRegression": {
+    "browserUnitsPassed": 2203,
+    "reactUnitsPassed": 57,
+    "highlightUnitsPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 377,
+    "existingOptInSkips": 3,
+    "defaultBrowserArchiveUnchanged": true
+  },
+  "installedBrowser": {
+    "command": "caffeinate -dimsu env CARGO_INCREMENTAL=0 node scripts/check-editor-browser.mjs",
+    "sdkPassed": 618,
+    "sdkFiles": 20,
+    "completeBatchCounts": [93, 102, 18, 69, 33, 87, 15, 9, 18, 54, 45, 21, 39, 15],
+    "newV3VisualStructureAndNetworkCases": 81,
+    "existingV3HeadlessCases": 15,
+    "applicationPassed": 78,
+    "applicationCommand": "playwright test -c experiments/shared-browser/application-network.config.mjs",
+    "sameArchivesAndSerialApplicationRun": true,
+    "strengthenedExactCaptionCasesPassed": 6,
+    "captionCommand": "playwright test -c experiments/editor-browser/playwright.config.mjs layout-structure.spec.mjs --grep 'pasted raster bytes'",
+    "captionStrengthening": "After the complete SDK run, assert exactly one copy of Caption and no more than 7 native typing units; rerun every changed case in all three engines. Real typing retains actual idle-boundary units rather than assuming one burst on a slow engine.",
+    "engines": ["chromium", "firefox", "webkit"],
+    "retries": 0,
+    "perCaseTimeoutMs": 60000,
+    "globalTimeoutPerProcessMs": 300000,
+    "newScope": "Installed vanilla/React V3 controls, mixed native reads, RTL logical/physical alignment, automatic direction, empty/code/caption/merged domains, safe resets, stale forms, read-only/widget/composition ownership, internal rich clipboard/rekeying, task split/nesting, exact explicit/natural history, local asset bytes and reload. Real Rust relay tests add offline independent fields/peer text, uploads/downloads across separate browser contexts, selective history, read-only reconnect, durable restart and exact client recovery.",
+    "clipboardBoundary": "Browser-dispatched internal rich/file clipboard scenarios; no new physical OS clipboard, IME or screen-reader qualification."
+  },
+  "olderRuntimeInteroperability": {
+    "script": "scripts/probe-selection-formatting-compatibility.mjs",
+    "beforeConsumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-QwlpyN/consumer",
+    "crossVersionRestores": 48,
+    "exactFutureComparisons": 144,
+    "legacyLocalRejections": 12,
+    "guardedSharedRejections": 12,
+    "unchangedLegacyReads": 16,
+    "originalProtocolsRetained": true,
+    "passed": true
+  },
+  "artifacts": {
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-rEWG0T/consumer",
+    "localWasmSha256": "fdbd9a1353cb0c5f05c2f6cb34d09c072210041b715bab520f7cbd4ba48d5231",
+    "sharedWasmSha256": "4aa03445f3ad7db5bc9550b5974cb2f41351d313daf3b8e15042044e87953d3b",
+    "relayBinarySha256": "265791d73ccc8248104d377adcd2a06e6b53041da3746d96657b437ca1fea5c9",
+    "archiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "1f24508c60864fda15b211116e8e22e327855ecbb88a1ba1e023e40b6370edf2",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "592db25ad6730075e7bb75a243d25a2c5ff30890ab77c8a550f0a2dfcb3a7049",
+      "breditor-editor-0.3.0-alpha.22.tgz": "dcd5f1d5fa9f80a68470263a2f07bfb4d37b1ec919a34070ce5b04d039b0ae92"
+    },
+    "logSha256": {
+      "layout-full-installed-sdk.log": "9149cacff8badb54ed16e0979b6a418d85a4826e4bb73855cb0fb9fb0acd5555",
+      "layout-application-browser.log": "a60a5798c048c2ccf2045831abc5298f04924223523d968d1b39f4474ca892ac",
+      "layout-caption-exact-browser.log": "8618c413a28d6492ff9a99ef09b5a518be0bec8fc4782baa3fd2c84f32f7f1ab",
+      "layout-relay-native-final.log": "9126947d9bdca3fc21590e7bbf7f2b0dc6e0ee37921fc9ed4af9be1e34fa11aa",
+      "layout-visual-sdk-tests-final.log": "0fa24b68fdd2b79a8f2fa9c64d616d0d235dea895ec33928320893115f4f4e3a"
+    }
+  },
+  "attempts": [
+    "The initial installed browser test reproduced a real local queue defect: JSON cloning normalized nonfinite/toJSON numeric intent before core validation. The queue now validates before cloning; local/shared rejection and byte-exact checkpoint preservation pass in every engine.",
+    "Initial shared CSS assertions assumed 16px host text. The shared host uses 15px. Expectations now verify em-relative margins and line-height ratios without changing production presentation.",
+    "The initial structural run passed 17/18; Firefox crossed the real 750ms typing boundary and correctly undid only its final group. Tests now retain the actual native units, exact text, restart and all future undo/redo. No clock, retry, deadline or native grouping policy changed.",
+    "The external type fixture previously treated language 3 as unknown; it now positively types V3 and negatively checks 4. Strict relay lint requested a Copy closed seed selector. Guards and lint thresholds remain strict."
+  ],
+  "retainedEvidence": "target/block-layout-shared-qualification contains layout-full-installed-sdk.log, layout-application-browser.log, layout-caption-exact-browser.log, layout-relay-native-final.log, layout-relay-clippy-final.log, layout-relay-rustdoc.log, layout-relay-format.log, layout-visual-sdk-tests-final.log, layout-sdk-contract-tests.log, layout-visual-default-regression.log and layout-visual-older-runtime-compatibility.json. Initial targeted browser/structure and lint attempts are retained separately.",
+  "remaining": [
+    "General document-wide and cross-container destructive selection/replacement, not just existing native coverage and formatting.",
+    "Separate sanitized HTML/Markdown import/export and realistic Word/Google Docs/Excel paste with native admission, rekeying, safe asset/URL policy and explicit losses.",
+    "Complete physical/bidirectional navigation and final native clipboard/input/accessibility, performance, public API/distribution and deployment qualification.",
+    "Historical intermittent WebKit startup/integer fault, older replay/cancel observations and serious Firefox latency remain open; passing functional matrices do not establish those repairs."
+  ],
+  "readiness": {"promotedRows": 0, "implemented": 9, "partial": 17, "missing": 20, "openGates": 13, "fullLayoutFeatureComplete": false, "firstTwoWorkstreamsComplete": false, "v1ReleaseReady": false}
+}

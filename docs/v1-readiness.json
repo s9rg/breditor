@@ -108,9 +108,9 @@
     {
       "id":"block-layout","area":"Editing","status":"missing",
       "summary":"Alignment, block indent, direction and line height controls",
-      "current":"The current combined toolbar has list indentation but no complete block layout property family. Native rich V3 and shared model13/journal14 now reach explicit headless package-root Wasm/SDK factories, guarded commands, native reads and durable storage. Integrated V3 rendering, controls, high-level vanilla/React openings, relay/assets and interchange acceptance remain unfinished.",
+      "current":"Explicit V3 now has native bounded layout, independent shared fields, safe direction-aware rendering, mixed/inherited stock and keyboard controls, high-level vanilla/React openings and distinct relay seed records. Complete 618-case SDK and 78-case application matrices pass alongside 101 SDK units and 25 relay tests, including offline fields/text, real assets, selective history and exact recovery. Safe external layout interchange and complete bidi editing qualification remain unfinished; the row is not promoted before its full acceptance.",
       "acceptance":"Add bounded semantic block properties, direction-aware selection/layout and safe rendering/interchange, not arbitrary stored CSS.",
-      "evidence":["packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/RICH_BLOCK_LAYOUT.md","crates/breditor-collaboration/tests/block_layout_contracts.rs","docs/qualification/2026-10-16-block-layout-shared-native.json","docs/qualification/2026-10-16-block-layout-wasm-sdk.json"],
+      "evidence":["packages/breditor-collaboration/src/toolbar.ts","crates/breditor-core/src/rich_content/drafts.rs","docs/RICH_BLOCK_LAYOUT.md","crates/breditor-collaboration/tests/block_layout_contracts.rs","docs/qualification/2026-10-16-block-layout-shared-native.json","docs/qualification/2026-10-16-block-layout-wasm-sdk.json","docs/qualification/2026-10-16-block-layout-visual-relay.json"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {

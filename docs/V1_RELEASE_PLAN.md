@@ -345,8 +345,14 @@ cover offline concurrency, splits, clipboard and restart. The subsequent
 adds explicit package-root V3 factories, native state/commands and durable
 model 13 storage. It passes 60 clean-installed browser cases, including 15 new
 headless V3 cases, plus actual-Wasm, native, type, old-runtime recovery and default
-regressions. Integrated V3 rendering, controls, high-level vanilla/React openings
-and relay/asset acceptance remain required; no readiness row advances yet.
+regressions. The subsequent [visual and relay qualification](qualification/2026-10-16-block-layout-visual-relay.json)
+adds bounded direction-aware rendering, independent mixed/inherited forms,
+keyboard equivalents and explicit V3 vanilla/React openings. New real-relay
+seed tags retain exact old room meanings. All 618 installed SDK cases, 78 serial
+application cases, 101 SDK units and 25 relay tests pass; six strengthened caption
+cases and actual older-runtime recovery also pass. External interchange and
+complete bidi editing qualification remain unfinished, so no readiness row
+advances.
 
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
@@ -355,8 +361,8 @@ commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
 Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are shared
 typing responsiveness, general selection replacement, physical/bidi navigation, native atom
-clipboard/input qualification, bounded layout contracts, public API/publication
-decisions and external interchange. Local
+clipboard/input qualification, external layout interchange, public API/publication
+decisions and broader external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
 command. Declarations, rendering and command primitives alone do not fulfill

@@ -1,8 +1,9 @@
 # Bounded block layout implementation contract
 
 Block layout belongs to the native document, not DOM styles or a second browser
-model. Implementation is in progress. The feature is complete only after its
-Rust, shared, Wasm and installed-browser acceptance checks below pass.
+model. Native layout and explicit browser/relay integration are tested
+candidates. External interchange and the broader first-two-workstream goal
+remain in progress.
 
 ## Profile and property decisions
 
@@ -16,9 +17,9 @@ The local Wasm selector is an explicit bootstrap format 8 factory for
 rich V3. The shared selector is explicit profile configuration format 3, causal
 model 13 and journal 14. Original V1/V2 constructors keep their exact selectors.
 SDK rich language 3 is available through explicit factories and high-level
-vanilla/React openings; it must
-not silently change the default or map an unknown future revision to an old
-profile. Omitted high-level options still select the original language 1.
+vanilla/React openings. It never changes the default or maps an unknown future
+revision to an old profile. Omitted high-level options still select the original
+language 1.
 
 The native values are explicit alignment (start, center, end, justify, physical
 left, physical right), text
@@ -221,7 +222,26 @@ The distinct `seedLayoutV3` record selects configuration 3, model 13 and journal
 their compiler. Account authority, leases, asset binding and durable append
 before acknowledgement retain their existing contracts.
 
-Full browser qualification and its evidence record are required before this
-visual checkpoint is complete. Sanitized external interchange and general
-selection replacement remain separate first-two-workstream requirements;
-directional presentation is not a claim of complete physical/bidi navigation.
+## Installed visual and relay checkpoint
+
+The [visual and relay qualification](qualification/2026-10-16-block-layout-visual-relay.json)
+passes the complete 618-case installed SDK matrix and the serial 78-case
+application matrix on the same archives in Chromium, Firefox and WebKit.
+Eighty-one new SDK cases cover the visual/React, structural and real-relay V3
+flows above. Six strengthened caption cases additionally require exactly one
+copy of typed text and exact recovery through the actual native typing units.
+All processes retain zero retries and the original 60-second case and
+300-second process deadlines.
+
+All 101 SDK units, 25 relay native tests, strict relay lint/Rustdoc/format checks
+and default JavaScript regressions pass. Actual older Wasm recovery passes
+48 cross-version restores and 144 future-history comparisons. Native core and
+Wasm source/binaries are unchanged from the preceding bridge; root/shared
+native suites were not rerun for this visual checkpoint. The qualification
+links their prior evidence rather than presenting it as a new run.
+
+Sanitized external interchange and general selection replacement remain
+required. Directional presentation is not complete physical/bidi navigation.
+The historical intermittent WebKit fault, retained replay/cancel observations
+and serious Firefox latency remain open. This checkpoint advances no release
+ledger row and does not complete either V1 workstream.
