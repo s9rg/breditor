@@ -14,6 +14,11 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
     ));
     let mut declared = TargetKinds::default();
     for command in commands {
+        if command.requires_structural_v2()
+            && owner.protocol != super::protocol::Protocol::StructuralV2
+        {
+            return Err(Error::Contract("shared structural V2 command requires model 12"));
+        }
         if super::planning::handles(command) {
             super::planning::validate(
                 &owner.codec,
@@ -41,10 +46,13 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
                     owner.protocol == super::protocol::Protocol::StructuralV2
                         && kind == "breditor/task-item"
                 }
-                Command::ReplaceTextRange(_)
-                | Command::SetFormat(_)
-                | Command::SplitTextBlock(_)
-                | Command::JoinTextBlocks(_) => {
+                Command::ReplaceTextRange(value) => {
+                    matches!(kind.as_str(), "breditor/paragraph" | "breditor/heading")
+                        || (owner.protocol == super::protocol::Protocol::StructuralV2
+                            && kind == "breditor/code-block"
+                            && value.anchor.block == value.focus.block)
+                }
+                Command::SetFormat(_) | Command::SplitTextBlock(_) | Command::JoinTextBlocks(_) => {
                     matches!(kind.as_str(), "breditor/paragraph" | "breditor/heading")
                 }
                 Command::SetImageAlt(_)
@@ -100,7 +108,15 @@ fn secondary(
         Command::SetImageCaption(value) => value.validate_draft(&owner.doc, &owner.codec)?,
         Command::JoinTextBlocks(value) => declared.require_text(&owner.document, &value.right)?,
         Command::ReplaceTextRange(value) => {
-            declared.require_text(&owner.document, &value.focus.block)?;
+            let code = owner.protocol == super::protocol::Protocol::StructuralV2
+                && value.anchor.block == value.focus.block
+                && declared.kind(
+                    &owner.document,
+                    &BlockId::try_new(&value.focus.block).map_err(contract)?,
+                )? == "breditor/code-block";
+            if !code {
+                declared.require_text(&owner.document, &value.focus.block)?;
+            }
         }
         Command::SetFormat(value) => {
             formats.decode(&json!([value.format]).to_string()).map_err(contract)?;

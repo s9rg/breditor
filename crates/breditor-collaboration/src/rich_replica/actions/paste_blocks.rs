@@ -2,9 +2,7 @@
 use crate::{Error, register::Stamp};
 use breditor_core::{
     codec::DocumentJsonCodecV2,
-    rich_content::{
-        RichDocument, RichFlowParent, RichFlowPosition, actions::InsertBlocks as CoreInsert,
-    },
+    rich_content::{RichDocument, actions::InsertBlocks as CoreInsert},
 };
 use loro::LoroDoc;
 use serde::{Deserialize, Serialize};
@@ -57,19 +55,11 @@ impl PasteBlocks {
             nodes.clone(),
         )?;
         super::super::clipboard_plan::semantic(codec, &source)?;
-        let parent = if let Some(parent) = &self.parent {
-            if let Ok(cell) = super::super::merges::cell(document, parent) {
-                RichFlowParent::Cell(cell)
-            } else {
-                RichFlowParent::ListItem(super::super::paragraphs::id(parent)?)
-            }
-        } else {
-            RichFlowParent::Document
-        };
-        let position = RichFlowPosition::new(
-            parent,
-            self.before.as_deref().map(super::super::paragraphs::id).transpose()?,
-        );
+        let position = super::super::flow_parent::position(
+            document,
+            self.parent.as_deref(),
+            self.before.as_deref(),
+        )?;
         let edit = CoreInsert::capture(
             document,
             &position,

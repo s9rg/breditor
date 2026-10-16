@@ -36,6 +36,9 @@ impl TargetKinds {
             .ok_or(Error::Contract("visible or earlier-declared shared target"))
     }
     pub fn record(&mut self, command: &Command) -> Result<(), Error> {
+        if self.record_structure(command)? {
+            return Ok(());
+        }
         match command {
             Command::SetCodeBlock(value) => {
                 self.0.insert(value.block.clone(), "breditor/code-block".into());
@@ -47,6 +50,59 @@ impl TargetKinds {
                         .into(),
                 );
             }
+            _ => self.record_original(command)?,
+        }
+        Ok(())
+    }
+    fn record_structure(&mut self, command: &Command) -> Result<bool, Error> {
+        match command {
+            Command::InsertHorizontalRule(value) => {
+                self.insert(&value.block, "breditor/horizontal-rule")?;
+            }
+            Command::DeleteHorizontalRule(value) => {
+                if let Some(node) = &value.replacement {
+                    self.node(node)?;
+                }
+            }
+            Command::WrapBlockquote(value) => self.insert(&value.wrapper, "breditor/blockquote")?,
+            Command::WrapTaskList(value) => {
+                self.insert(&value.container, "breditor/task-list")?;
+                for item in &value.items {
+                    self.insert(&item.block, "breditor/task-item")?;
+                }
+            }
+            Command::IndentTaskItems(value) => {
+                if let Some(nested) = &value.new_nested {
+                    self.insert(nested, "breditor/task-list")?;
+                }
+            }
+            Command::OutdentTaskItems(value) => {
+                if let Some(tail) = &value.fresh_tail {
+                    self.insert(tail, "breditor/task-list")?;
+                }
+            }
+            Command::ExitTaskItem(value) => {
+                if let Some(tail) = &value.fresh_tail {
+                    self.insert(tail, "breditor/task-list")?;
+                }
+            }
+            Command::SplitTaskItem(value) => {
+                self.insert(&value.new_item, "breditor/task-item")?;
+                self.insert(
+                    &value.right,
+                    if value.right_heading.is_some() {
+                        "breditor/heading"
+                    } else {
+                        "breditor/paragraph"
+                    },
+                )?;
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+    fn record_original(&mut self, command: &Command) -> Result<(), Error> {
+        match command {
             Command::SetImageCaption(value) => {
                 if let Some(node) = &value.caption {
                     self.node(node)?;

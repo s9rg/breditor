@@ -15,6 +15,7 @@ mod clipboard_namespace;
 mod clipboard_plan;
 mod column_order;
 mod creation;
+mod flow_parent;
 mod history_cursors;
 mod history_metadata;
 mod initialize;

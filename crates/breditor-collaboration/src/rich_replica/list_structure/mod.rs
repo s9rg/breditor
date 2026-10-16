@@ -27,6 +27,52 @@ pub(super) fn reserve(
     creation::prepare(doc, &node, None, None)
 }
 
+/// A task birth's immutable defaults include its explicit initial completion.
+pub(super) fn reserve_task(doc: &LoroDoc, block: &str, checked: bool) -> Result<(), Error> {
+    let node = json!({"kind":"element","type":"breditor/task-item","entityId":null,
+        "properties":{"breditor/block-id":block,"breditor/checked":checked},"children":[]});
+    creation::prepare(doc, &node, None, None)
+}
+
+/// V2-only infrastructure; do not add operations to the older preparation path.
+/// Existing journals retain their original operation IDs and replay effects.
+pub(super) fn prepare_v2(doc: &LoroDoc) -> Result<(), Error> {
+    super::protocol::Protocol::StructuralV2.require(doc)?;
+    prepare(doc)?;
+    let raw = doc.get_map("metadata").get_deep_value().to_json_value();
+    let owners = raw.as_object().ok_or(Error::Contract("structural V2 metadata directory"))?;
+    if owners.len() > 20_000 {
+        return Err(Error::Limit("structural V2 metadata owners"));
+    }
+    for id in owners.keys() {
+        let kind = model::string(&model::metadata(doc, id)?, "type")?;
+        if matches!(kind.as_str(), "breditor/task-item" | "breditor/blockquote") {
+            derived::reserve_default(doc, id)?;
+        }
+        if matches!(
+            kind.as_str(),
+            "breditor/task-item" | "breditor/task-list" | "breditor/blockquote"
+        ) {
+            placement::prepare(doc, Some(id))?;
+        }
+    }
+    if doc.get_map("metadata").len() > 20_000 {
+        return Err(Error::Limit("structural V2 prepared metadata owners"));
+    }
+    Ok(())
+}
+
+/// Unwrapping a quote can move a conditional normalization paragraph into real flow.
+pub(super) fn retain_body(doc: &LoroDoc, container: &str) -> Result<(), Error> {
+    let source = super::materialize::envelope(doc)?;
+    if let Some(node) = creation::find(&source["root"], container) {
+        for child in node["children"].as_array().ok_or(Error::Contract("shared structural body"))? {
+            retain_text(doc, creation::block(child)?)?;
+        }
+    }
+    Ok(())
+}
+
 /// Infrastructure containers cannot belong to an action that later undoes another writer's work.
 pub(super) fn prepare(doc: &LoroDoc) -> Result<(), Error> {
     let raw = doc.get_map("metadata").get_deep_value().to_json_value();
@@ -92,7 +138,7 @@ pub(super) fn apply(
     let new = Tree::read(codec, after)?;
     for (id, node) in &new.nodes {
         if !old.nodes.contains_key(id) {
-            if !matches!(
+            let original = matches!(
                 node.value["type"].as_str(),
                 Some(
                     "breditor/bullet-list"
@@ -101,7 +147,19 @@ pub(super) fn apply(
                         | "breditor/paragraph"
                         | "breditor/heading"
                 )
-            ) {
+            );
+            let structural = super::protocol::Protocol::from_codec(codec)?
+                == super::protocol::Protocol::StructuralV2
+                && matches!(
+                    node.value["type"].as_str(),
+                    Some(
+                        "breditor/blockquote"
+                            | "breditor/task-list"
+                            | "breditor/task-item"
+                            | "breditor/horizontal-rule"
+                    )
+                );
+            if !original && !structural {
                 return Err(Error::Contract("shared list introduced foreign kind"));
             }
             let mut empty = node.value.clone();

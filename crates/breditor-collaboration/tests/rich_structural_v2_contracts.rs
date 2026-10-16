@@ -68,8 +68,12 @@ fn insert(block: &str, text: &str) -> Command {
 fn sync(a: &mut RichReplica, b: &mut RichReplica) -> Result {
     let x = a.update_frame()?;
     let y = b.update_frame()?;
-    a.receive_frame(&y)?;
-    b.receive_frame(&x)?;
+    a.receive_frame(&y).map_err(|e| {
+        format!("sync first: {e}; checkpoint={}", a.checkpoint().unwrap_or_else(|e| e.to_string()))
+    })?;
+    b.receive_frame(&x).map_err(|e| {
+        format!("sync second: {e}; checkpoint={}", b.checkpoint().unwrap_or_else(|e| e.to_string()))
+    })?;
     assert_eq!(a.document_json(), b.document_json());
     Ok(())
 }
@@ -327,22 +331,20 @@ fn plain(owner: &RichReplica, block: &str) -> Result {
     );
     Ok(())
 }
+fn traced_history(owner: &mut RichReplica, redo: bool, label: &str) -> Result<bool> {
+    let checkpoint = owner.checkpoint()?;
+    (if redo { owner.redo() } else { owner.undo() })
+        .map_err(|error| format!("{label}: {error}; checkpoint={checkpoint}").into())
+}
 fn exact_future(profile: &SharedRichProfile, owner: &mut RichReplica) -> Result {
+    let checkpoint = owner.checkpoint()?;
     let mut restored = profile
-        .restore("room", &owner.checkpoint()?)
-        .map_err(|error| format!("future initial restore: {error}"))?;
+        .restore("room", &checkpoint)
+        .map_err(|error| format!("future initial restore: {error}; checkpoint={checkpoint}"))?;
     for redo in [false, false, false, true, true, true] {
         assert_eq!(
-            if redo {
-                owner.redo().map_err(|e| format!("future live redo: {e}"))?
-            } else {
-                owner.undo().map_err(|e| format!("future live undo: {e}"))?
-            },
-            if redo {
-                restored.redo().map_err(|e| format!("future restored redo: {e}"))?
-            } else {
-                restored.undo().map_err(|e| format!("future restored undo: {e}"))?
-            }
+            traced_history(owner, redo, "future live")?,
+            traced_history(&mut restored, redo, "future restored")?
         );
         assert_eq!(owner.checkpoint()?, restored.checkpoint()?);
     }
@@ -427,7 +429,7 @@ fn unseen_remote_styles_are_masked_in_code_but_restored_by_selective_undo() -> R
             sync(&mut a, &mut b)?;
         }
         plain(&a, "p")?;
-        a.undo().map_err(|e| format!("unseen style initial undo reverse={reverse}: {e}"))?;
+        traced_history(&mut a, false, &format!("unseen style initial undo reverse={reverse}"))?;
         let projected = value(&a)?;
         let runs =
             find(&projected["root"], "p").ok_or("p")?["children"].as_array().ok_or("runs")?;
@@ -436,11 +438,15 @@ fn unseen_remote_styles_are_masked_in_code_but_restored_by_selective_undo() -> R
                 .as_array()
                 .is_some_and(|f| f.iter().any(|f| f["type"] == "breditor-inline/italic"))
         }));
-        a.redo().map_err(|e| format!("unseen style initial redo reverse={reverse}: {e}"))?;
+        traced_history(&mut a, true, &format!("unseen style initial redo reverse={reverse}"))?;
         // Explicit prose conversion preserves the visible plain code semantics,
         // authoring disables rather than deleting the retained remote annotation.
-        a.apply(vec![heading("p", None)])
-            .map_err(|e| format!("unseen style prose conversion reverse={reverse}: {e}"))?;
+        a.apply(vec![heading("p", None)]).map_err(|e| {
+            format!(
+                "unseen style prose conversion reverse={reverse}: {e}; checkpoint={}",
+                a.checkpoint().unwrap_or_else(|e| e.to_string())
+            )
+        })?;
         plain(&a, "p")?;
         exact_future(&profile, &mut a)?;
     }
@@ -586,4 +592,44 @@ fn multiple_observed_style_runs_are_removed_in_one_reversible_conversion() -> Re
     a.apply(vec![heading("p", None)])?;
     plain(&a, "p")?;
     exact_future(&profile, &mut a)
+}
+
+#[test]
+fn selected_code_replacement_is_plain_scalar_aligned_and_keeps_offline_suffix() -> Result {
+    for reverse in [false, true] {
+        let profile = profile()?;
+        let mut a = profile.create(&input(&profile, true)?, "101".into())?;
+        let mut b = profile.join_frame("room".into(), "102".into(), &a.update_frame()?)?;
+        let point = |offset| TextPoint { block: "code".into(), offset, affinity: Affinity::After };
+        let (anchor, focus) = if reverse { (point(3), point(1)) } else { (point(1), point(3)) };
+        a.set_selection(Some(&Selection::TextRange { anchor, focus }))?;
+        let before = a.checkpoint()?;
+        let bad = serde_json::from_value(
+            json!({"kind":"replace_text_range","data":{"anchor":{"block":"code","offset":"1","affinity":"after"},"focus":{"block":"code","offset":"3","affinity":"after"},"runs":[{"text":"styled","formats":[{"type":"breditor/strong","properties":{}}]}]}}),
+        )?;
+        assert!(a.apply(vec![bad]).is_err());
+        assert_eq!(a.checkpoint()?, before);
+        assert!(a.insert_plain_text("X\r\n")?);
+        b.apply(vec![Command::InsertText(InsertText {
+            block: "code".into(),
+            offset: 7,
+            text: "Remote".into(),
+        })])?;
+        sync(&mut a, &mut b)?;
+        let text = |owner: &RichReplica| -> Result<String> {
+            Ok(find(&value(owner)?["root"], "code").ok_or("code")?["children"]
+                .as_array()
+                .ok_or("runs")?
+                .iter()
+                .filter_map(|run| run["text"].as_str())
+                .collect())
+        };
+        assert_eq!(text(&a)?, "aX\r\n\t\n\rbRemote");
+        plain(&a, "code")?;
+        a.undo()?;
+        assert_eq!(text(&a)?, "a🙂\t\n\rbRemote");
+        a.redo()?;
+        exact_future(&profile, &mut a)?;
+    }
+    Ok(())
 }

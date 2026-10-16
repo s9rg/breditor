@@ -254,7 +254,12 @@ impl RichReplica {
         }
         let canonical = codec.encode(document.document()).map_err(contract)?;
         let undo = UndoManager::new(doc.inner());
-        undo.set_merge_interval(0);
+        // Only semantic group_start/group_end boundaries own history. Zero is
+        // not "disabled" in the pinned engine: a backwards wall-clock delta
+        // still satisfies delta < 0 and merges two separate authored groups.
+        // The minimum signed interval disables that time branch, while the
+        // independent explicit-group branch still merges a multi-command edit.
+        undo.set_merge_interval(i64::MIN);
         undo.set_max_undo_steps(MAX_ENTRIES);
         let metadata = history_metadata::connect(&undo);
         let mut owner = Self {

@@ -16,7 +16,8 @@ pub(in crate::rich_replica) fn retain(doc: &LoroDoc, block: &str) -> Result<(), 
     let Some(node) = creation::find(&source["root"], block) else {
         return Ok(());
     };
-    if !matches!(node["type"].as_str(), Some("breditor/paragraph" | "breditor/heading")) {
+    let protocol = super::super::protocol::Protocol::read(doc)?;
+    if !node["type"].as_str().is_some_and(|kind| protocol.text(kind)) {
         return Err(Error::Contract("shared retained normalization kind"));
     }
     let (parent, before) = paragraphs::layout(&source["root"], block)?;
@@ -48,7 +49,11 @@ pub(in crate::rich_replica) fn retain(doc: &LoroDoc, block: &str) -> Result<(), 
 fn base(doc: &LoroDoc, parent: Option<&str>) -> Result<String, Error> {
     if let Some(parent) = parent {
         let kind = model::string(&model::metadata(doc, parent)?, "type")?;
-        if !matches!(kind.as_str(), "breditor/table-cell" | "breditor/list-item") {
+        let original = matches!(kind.as_str(), "breditor/table-cell" | "breditor/list-item");
+        let structural = super::super::protocol::Protocol::read(doc)?
+            == super::super::protocol::Protocol::StructuralV2
+            && matches!(kind.as_str(), "breditor/task-item" | "breditor/blockquote");
+        if !original && !structural {
             return Err(Error::Contract("retained normalization parent kind"));
         }
         Ok(model::virtual_id("flow", &[parent]))

@@ -2,19 +2,25 @@
 mod clear_table_cells;
 mod delete_block;
 mod delete_column;
+mod delete_horizontal_rule;
 mod delete_text;
+mod exit_task_item;
 mod indent_list_items;
+mod indent_task_items;
 mod insert_blocks;
 mod insert_column;
+mod insert_horizontal_rule;
 mod insert_row;
 mod insert_text;
 mod join_list_items;
+mod join_task_items;
 mod join_text_blocks;
 mod list_style;
 mod merge_cells;
 mod move_block;
 mod move_column;
 mod outdent_list_items;
+mod outdent_task_items;
 mod paste_blocks;
 mod paste_flow_at_text;
 mod paste_table_cells;
@@ -33,21 +39,31 @@ mod set_list_kind;
 mod set_task_checked;
 mod split_cell;
 mod split_list_item;
+mod split_task_item;
 mod split_text_block;
+mod unwrap_blockquote;
 mod unwrap_list;
+mod unwrap_task_list;
+mod wrap_blockquote;
 mod wrap_list;
+mod wrap_task_list;
 
 use crate::{Error, register::Stamp};
 pub use clear_table_cells::ClearTableCells;
 pub use delete_block::DeleteBlock;
 pub use delete_column::DeleteColumn;
+pub use delete_horizontal_rule::DeleteHorizontalRule;
 pub use delete_text::DeleteText;
+pub use exit_task_item::ExitTaskItem;
 pub use indent_list_items::IndentListItems;
+pub use indent_task_items::IndentTaskItems;
 pub use insert_blocks::InsertBlocks;
 pub use insert_column::InsertColumn;
+pub use insert_horizontal_rule::InsertHorizontalRule;
 pub use insert_row::InsertRow;
 pub use insert_text::InsertText;
 pub use join_list_items::JoinListItems;
+pub use join_task_items::JoinTaskItems;
 pub use join_text_blocks::JoinTextBlocks;
 pub use list_style::{ListStyle, NestedList};
 use loro::LoroDoc;
@@ -55,6 +71,7 @@ pub use merge_cells::MergeCells;
 pub use move_block::MoveBlock;
 pub use move_column::MoveColumn;
 pub use outdent_list_items::OutdentListItems;
+pub use outdent_task_items::OutdentTaskItems;
 pub use paste_blocks::PasteBlocks;
 pub use paste_flow_at_text::PasteFlowAtText;
 pub use paste_table_cells::{PasteTableCells, PastedCell, PastedMerge};
@@ -74,14 +91,41 @@ pub use set_list_kind::SetListKind;
 pub use set_task_checked::SetTaskChecked;
 pub use split_cell::SplitCell;
 pub use split_list_item::SplitListItem;
+pub use split_task_item::SplitTaskItem;
 pub use split_text_block::SplitTextBlock;
+pub use unwrap_blockquote::UnwrapBlockquote;
 pub use unwrap_list::UnwrapList;
+pub use unwrap_task_list::UnwrapTaskList;
+pub use wrap_blockquote::WrapBlockquote;
 pub use wrap_list::WrapList;
+pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 
 /// One shared semantic command; ordered batches form one writer-local history group.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Insert one V2 atomic rule at an explicit flow position.
+    InsertHorizontalRule(InsertHorizontalRule),
+    /// Delete one V2 rule with an explicit optional fresh replacement.
+    DeleteHorizontalRule(DeleteHorizontalRule),
+    /// Wrap retained sibling flow in an explicit V2 quote.
+    WrapBlockquote(WrapBlockquote),
+    /// Remove exactly one V2 quote layer.
+    UnwrapBlockquote(UnwrapBlockquote),
+    /// Wrap prose-led rich groups in explicit V2 task identities/completion.
+    WrapTaskList(WrapTaskList),
+    /// Unlist one V2 task wrapper without flattening nested bodies.
+    UnwrapTaskList(UnwrapTaskList),
+    /// Nest retained V2 tasks under the preceding task.
+    IndentTaskItems(IndentTaskItems),
+    /// Promote or unlist V2 task bodies in rich reading order.
+    OutdentTaskItems(OutdentTaskItems),
+    /// Exit exactly one truly empty V2 task.
+    ExitTaskItem(ExitTaskItem),
+    /// Route a V2 task suffix into a fresh unchecked right task.
+    SplitTaskItem(SplitTaskItem),
+    /// Join adjacent V2 tasks, retaining left completion and causal bodies.
+    JoinTaskItems(JoinTaskItems),
     /// Explicit structural V2 code conversion with declared observed-format loss.
     SetCodeBlock(SetCodeBlock),
     /// Update a V2 code language independently of kind and text.
@@ -156,8 +200,38 @@ pub enum Command {
     DeleteColumn(DeleteColumn),
 }
 impl Command {
+    pub(super) fn requires_structural_v2(&self) -> bool {
+        matches!(
+            self,
+            Self::InsertHorizontalRule(_)
+                | Self::DeleteHorizontalRule(_)
+                | Self::WrapBlockquote(_)
+                | Self::UnwrapBlockquote(_)
+                | Self::WrapTaskList(_)
+                | Self::UnwrapTaskList(_)
+                | Self::IndentTaskItems(_)
+                | Self::OutdentTaskItems(_)
+                | Self::ExitTaskItem(_)
+                | Self::SplitTaskItem(_)
+                | Self::JoinTaskItems(_)
+                | Self::SetCodeBlock(_)
+                | Self::SetCodeLanguage(_)
+                | Self::SetTaskChecked(_)
+        )
+    }
     pub(super) fn prepare(&self, doc: &LoroDoc) -> Result<(), Error> {
         match self {
+            Self::InsertHorizontalRule(value) => value.prepare(doc)?,
+            Self::DeleteHorizontalRule(value) => value.prepare(doc)?,
+            Self::WrapBlockquote(value) => value.prepare(doc)?,
+            Self::UnwrapBlockquote(value) => value.prepare(doc)?,
+            Self::WrapTaskList(value) => value.prepare(doc)?,
+            Self::UnwrapTaskList(value) => value.prepare(doc)?,
+            Self::IndentTaskItems(value) => value.prepare(doc)?,
+            Self::OutdentTaskItems(value) => value.prepare(doc)?,
+            Self::ExitTaskItem(value) => value.prepare(doc)?,
+            Self::SplitTaskItem(value) => value.prepare(doc)?,
+            Self::JoinTaskItems(value) => value.prepare(doc)?,
             Self::SetCodeBlock(value) => value.prepare(doc)?,
             Self::SetCodeLanguage(value) => value.prepare(doc)?,
             Self::SetTaskChecked(value) => value.prepare(doc)?,
@@ -245,6 +319,17 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::InsertHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),
+            Self::DeleteHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),
+            Self::WrapBlockquote(value) => value.apply(doc, codec, document, stamp),
+            Self::UnwrapBlockquote(value) => value.apply(doc, codec, document, stamp),
+            Self::WrapTaskList(value) => value.apply(doc, codec, document, stamp),
+            Self::UnwrapTaskList(value) => value.apply(doc, codec, document, stamp),
+            Self::IndentTaskItems(value) => value.apply(doc, codec, document, stamp),
+            Self::OutdentTaskItems(value) => value.apply(doc, codec, document, stamp),
+            Self::ExitTaskItem(value) => value.apply(doc, codec, document, stamp),
+            Self::SplitTaskItem(value) => value.apply(doc, codec, document, stamp),
+            Self::JoinTaskItems(value) => value.apply(doc, codec, document, stamp),
             Self::SetCodeBlock(value) => value.apply(doc, codec, document, stamp),
             Self::SetCodeLanguage(value) => value.apply(doc, codec, document, stamp),
             Self::SetTaskChecked(value) => value.apply(doc, codec, document, stamp),
