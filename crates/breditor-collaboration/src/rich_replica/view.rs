@@ -25,7 +25,22 @@ impl RichReplica {
     /// # Errors
     /// Read admission/serialization failure has no shared or local mutation.
     pub fn view_json(&self) -> Result<String, Error> {
-        let selection = self.selection()?;
+        if self.document_selected() {
+            return Err(Error::Contract("use document selection view family"));
+        }
+        self.encode_view(false)
+    }
+    /// Read the explicitly selected extended view family without changing owner state.
+    /// # Errors
+    /// Wrong family, invalid UI or read/serialization failures reject without publication.
+    pub fn document_view_json(&self) -> Result<String, Error> {
+        if !self.document_selection_enabled() {
+            return Err(Error::Contract("document view family required"));
+        }
+        self.encode_view(true)
+    }
+    fn encode_view(&self, document_scope: bool) -> Result<String, Error> {
+        let selection = self.selection_for_mapping()?;
         let resolved = selection
             .as_ref()
             .map(|selection| {
@@ -51,10 +66,13 @@ impl RichReplica {
             let cells=table.geometry().cells().iter().map(|cell|json!({"base":CellTarget::from_core(cell.base()),"master":CellTarget::from_core(cell.master()),"rowSpan":cell.row_span(),"columnSpan":cell.column_span(),"sources":cell.source_cells().iter().map(CellTarget::from_core).collect::<Vec<_>>()})).collect::<Vec<_>>();
             tables.push(json!({"id":id.as_str(),"hidden":table.geometry().is_hidden(),"rows":table.rows().iter().map(breditor_core::rich_content::RowId::as_str).collect::<Vec<_>>(),"columns":table.columns().iter().map(|value|json!({"id":value.id().as_str(),"width":value.width()})).collect::<Vec<_>>(),"cells":cells}));
         }
-        let mut view = json!({"format":"breditor/shared-rich-view","formatVersion":1,"documentJson":self.canonical,"revision":self.journal.publication,"causalVersion":self.causal_version(),"selection":selection,
+        let mut view = json!({"format":if document_scope{"breditor/shared-document-view"}else{"breditor/shared-rich-view"},"formatVersion":1,"documentJson":self.canonical,"revision":self.journal.publication,"causalVersion":self.causal_version(),"selection":if self.document_selected(){json!({"kind":"document"})}else{serde_json::to_value(selection)?},
             "selectionOutcome":self.journal.ui.outcome,"pendingFormatsJson":self.pending_formats().map(serde_json::to_string).transpose()?,"undoDepth":self.undo_count(),"redoDepth":self.redo_count(),"historyCapacity":1000,"tables":tables,"grid":grid});
         if self.read_only {
             view["readOnly"] = json!(true);
+        }
+        if document_scope {
+            view["selectionEditing"] = json!("document-v1");
         }
         if self.general_ranges_enabled() {
             view["rangeEditing"] = json!("general-v1");

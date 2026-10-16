@@ -130,3 +130,66 @@ fn closed_original_selection_dto_guards_and_new_recovery_choice_remain_explicit(
     assert!(p.restore_document_typing_editor(&exact).take_editor().is_none());
     Ok(())
 }
+
+#[test]
+fn first_key_document_typing_has_closed_clock_and_exact_grouped_recovery() -> Result {
+    let (p, mut a) = setup(false)?;
+    assert_eq!(a.document_typing_version(), "1");
+    read(a.enable_typing_history(&a.observe()))?;
+    assert_eq!(a.select_document(&a.observe()).status(), "selection");
+    let before = read(a.observe().document_json())?;
+    let exact = read(a.document_checkpoint_json())?;
+    for clock in [json!(1), json!("01"), json!("+1"), json!("18446744073709551616")] {
+        assert_eq!(
+            a.replace_document_typing_text(
+                &a.observe(),
+                &json!({"paragraph":"whole","text":"Q","clockMs":clock}).to_string()
+            )
+            .status(),
+            "error"
+        );
+        assert_eq!(read(a.document_checkpoint_json())?, exact);
+    }
+    assert_eq!(
+        a.replace_document_typing_text(
+            &a.observe(),
+            &json!({"paragraph":"whole","text":"","clockMs":"1"}).to_string()
+        )
+        .status(),
+        "unchanged"
+    );
+    assert_eq!(read(a.document_checkpoint_json())?, exact);
+    assert_eq!(
+        a.replace_document_typing_text(
+            &a.observe(),
+            &json!({"paragraph":"whole","text":"Q","clockMs":"1"}).to_string()
+        )
+        .status(),
+        "content"
+    );
+    for (text, clock) in [("🙂", "2"), ("R", "3")] {
+        assert_eq!(
+            a.execute(
+                &a.observe(),
+                &json!({"kind":"insertTypingText","data":{"text":text,"clockMs":clock}})
+                    .to_string()
+            )
+            .status(),
+            "content"
+        );
+    }
+    assert_eq!(view(&a)?["undoDepth"], 1);
+    let bytes = read(a.document_checkpoint_json())?;
+    let mut b = p.restore_document_typing_editor(&bytes).take_editor().ok_or("typing restore")?;
+    assert_eq!(read(b.document_checkpoint_json())?, bytes);
+    for command in ["undo", "redo", "undo", "redo"] {
+        assert_eq!(a.execute(&a.observe(), &json!({"kind":command}).to_string()).status(), command);
+        assert_eq!(b.execute(&b.observe(), &json!({"kind":command}).to_string()).status(), command);
+        assert_eq!(read(a.document_checkpoint_json())?, read(b.document_checkpoint_json())?);
+        if command == "undo" {
+            assert_eq!(view(&a)?["selection"], json!({"kind":"document"}));
+            assert_eq!(read(a.observe().document_json())?, before);
+        }
+    }
+    Ok(())
+}

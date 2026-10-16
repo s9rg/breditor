@@ -14,6 +14,15 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
     ));
     let mut declared = TargetKinds::default();
     for command in commands {
+        if matches!(command, Command::ReplaceDocumentPlainTextV1(_))
+            && (!owner.document_selection_enabled()
+                || !owner.document_selected()
+                || commands.len() != 1)
+        {
+            return Err(Error::Contract(
+                "document replacement requires explicit scope/family and sole command",
+            ));
+        }
         if matches!(
             command,
             Command::PasteGeneralFlowAtTextV1(_) | Command::InsertGeneralParagraphV1(_)

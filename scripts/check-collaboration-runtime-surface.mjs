@@ -4,6 +4,8 @@ import {readFileSync,realpathSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 export const applicationExports=Object.freeze(["SharedEditorOwner","SharedObservation","SharedRichProfile","default","initSync"]);
+export const documentOwnerMethods=Object.freeze(["document_selection_version","document_typing_version","document_selection_enabled","enable_document_selection","observe_document","document_view_json","select_document","copy_document_clipboard","replace_document_plain_text","replace_document_typing_text","document_checkpoint","document_typing_checkpoint"]);
+export const documentProfileMethods=Object.freeze(["document_selection_version","restore_document","restore_document_typing"]);
 /** Generated glue must expose only configured factories, opaque observations and guarded owners. */
 export function admitApplicationSurface(module,binary,declarations){
  assert.deepEqual(Object.keys(module).sort(),[...applicationExports].sort(),"Application runtime exports must not include research probes");
@@ -27,6 +29,8 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["general_paragraph_version","insert_general_paragraph"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native general paragraph capability ${name}`);
  for(const name of ["writer_transport_v2_version","writer_groups_v2","writer_clock_v2"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native writer transport V2 capability ${name}`);
  for(const name of ["clipboard_text_policy_version","project_clipboard_text"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard text policy capability ${name}`);
+ for(const name of documentOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document-selection capability ${name}`);
+ for(const name of documentProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing document-selection recovery capability ${name}`);
  for(const name of ["general_range_version","restore_general","restore_general_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing general-range recovery capability ${name}`);
  for(const name of ["typing_history_version","restore_typing"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing separate typing-history recovery ${name}`);
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function");

@@ -26,6 +26,7 @@ mod paste_blocks;
 mod paste_flow_at_text;
 mod paste_general_flow_at_text_v1;
 mod paste_table_cells;
+mod replace_document_plain_text_v1;
 mod replace_general_text_range_v1;
 mod replace_image;
 mod replace_text_range;
@@ -81,6 +82,7 @@ pub use paste_blocks::PasteBlocks;
 pub use paste_flow_at_text::PasteFlowAtText;
 pub use paste_general_flow_at_text_v1::PasteGeneralFlowAtTextV1;
 pub use paste_table_cells::{PasteTableCells, PastedCell, PastedMerge};
+pub use replace_document_plain_text_v1::ReplaceDocumentPlainTextV1;
 pub use replace_general_text_range_v1::ReplaceGeneralTextRangeV1;
 pub use replace_image::ReplaceImage;
 pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
@@ -112,6 +114,8 @@ pub use wrap_task_list::{NewTaskItem, WrapTaskList};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    /// Whole-document plain replacement; sole command in explicitly selected document history.
+    ReplaceDocumentPlainTextV1(ReplaceDocumentPlainTextV1),
     /// Additive general paragraph Enter with native list/task policy and one exact history unit.
     InsertGeneralParagraphV1(InsertGeneralParagraphV1),
     /// Additive atomic general-range flow paste; requires explicitly enabled general history.
@@ -240,6 +244,7 @@ impl Command {
         document: &breditor_core::rich_content::RichDocument,
     ) -> Result<(), Error> {
         match self {
+            Self::ReplaceDocumentPlainTextV1(value) => value.prepare(doc, codec, document)?,
             Self::InsertGeneralParagraphV1(value) => value.prepare(doc, codec, document)?,
             Self::PasteGeneralFlowAtTextV1(value) => value.prepare(doc, codec, document)?,
             Self::SetBlockLayout(value) => value.prepare(doc)?,
@@ -341,6 +346,7 @@ impl Command {
         ordinal: usize,
     ) -> Result<(), Error> {
         match self {
+            Self::ReplaceDocumentPlainTextV1(value) => value.apply(doc, codec, document, stamp),
             Self::InsertGeneralParagraphV1(value) => value.apply(doc, codec, document, stamp),
             Self::PasteGeneralFlowAtTextV1(value) => value.apply(doc, codec, document, stamp),
             Self::SetBlockLayout(value) => value.apply(doc, codec, document, stamp),

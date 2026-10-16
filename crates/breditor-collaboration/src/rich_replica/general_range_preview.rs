@@ -11,9 +11,13 @@ impl RichReplica {
         let mut preview = RichLocalSession::try_new(
             context,
             self.document.clone(),
-            self.selection()?
-                .map(|s| s.admit(&self.document).map(|s| s.kind().clone()))
-                .transpose()?,
+            if self.journal.ui.document_selected() {
+                Some(breditor_core::rich_content::RichSelectionKind::Document)
+            } else {
+                self.selection()?
+                    .map(|s| s.admit(&self.document).map(|s| s.kind().clone()))
+                    .transpose()?
+            },
             HistoryCapacity::try_new(0).map_err(|_| Error::Contract("general preview history"))?,
         )
         .map_err(|_| Error::Contract("general preview"))?;

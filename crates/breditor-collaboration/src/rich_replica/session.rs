@@ -381,6 +381,7 @@ impl RichReplica {
         if journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
+        super::document_checkpoint::validate_journal_scope(&journal, contract)?;
         if contract == super::general_history::ReplayContract::Original
             && journal.entries.iter().any(|entry| matches!(entry, Entry::GeneralRangeV1 { .. }))
         {
@@ -500,7 +501,7 @@ impl RichReplica {
         }
         self.refresh_document()?;
         let before_ui = self.journal.ui.clone();
-        let before_selection = self.selection()?;
+        let before_selection = self.selection_for_mapping()?;
         self.validate_targets(commands)?;
         // Semantic priority is captured at the admitted request basis. Immutable
         // preparation (including initial characters) must not make a longer
@@ -637,7 +638,7 @@ impl RichReplica {
                 Some(expected)
             }
             Entry::Remote { bytes } => {
-                let previous = self.selection()?;
+                let previous = self.selection_for_mapping()?;
                 self.import(bytes)?;
                 self.refresh_document()?;
                 self.journal.ui.normalize(&self.doc, &self.document, previous.as_ref())?;
@@ -706,6 +707,12 @@ impl RichReplica {
     pub fn observe(&self) -> Result<SharedObservation, Error> {
         Ok(SharedObservation { token: Arc::clone(&self.token), view: self.view_json()? })
     }
+    /// Capture the explicitly selected document-view family under the same exact native guard.
+    /// # Errors
+    /// Wrong scope family or read/admission failure leaves the owner untouched.
+    pub fn observe_document(&self) -> Result<SharedObservation, Error> {
+        Ok(SharedObservation { token: Arc::clone(&self.token), view: self.document_view_json()? })
+    }
 
     /// Reject stale/foreign observations before payload admission; observations grant no transport authority.
     /// # Errors
@@ -735,12 +742,20 @@ impl RichReplica {
     /// # Errors
     /// Rejects missing causal history or malformed anchors rather than guessing coordinates.
     pub fn selection(&self) -> Result<Option<super::selection::Selection>, Error> {
+        if self.journal.ui.document_selected() {
+            return Err(Error::Contract("use explicit document selection family"));
+        }
+        self.selection_for_mapping()
+    }
+    pub(super) fn selection_for_mapping(
+        &self,
+    ) -> Result<Option<super::selection::Selection>, Error> {
         self.journal.ui.candidate(&self.doc, &self.document)
     }
 
     fn validate_ui(&self) -> Result<(), Error> {
         let mut normalized = self.journal.ui.clone();
-        let selection = self.selection()?;
+        let selection = self.selection_for_mapping()?;
         normalized.normalize(&self.doc, &self.document, selection.as_ref())?;
         normalized.outcome = self.journal.ui.outcome;
         if normalized != self.journal.ui {
@@ -835,6 +850,7 @@ impl RichReplica {
         if self.journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
+        super::document_checkpoint::validate_journal_scope(&self.journal, self.replay_contract)?;
         let root = self.doc.get_value();
         let root = root.as_map().ok_or(Error::Contract("rich shared root map"))?;
         for (name, value) in root.iter() {
@@ -883,11 +899,15 @@ impl RichReplica {
         self.history_keys.validate(self.undo.undo_count(), self.undo.redo_count())?;
         if let Some(history) = &self.typing {
             history.validate(&self.journal)?;
-            if self.general_ranges_enabled() {
+            if self.document_selection_enabled() {
+                self.document_typing_checkpoint()?;
+            } else if self.general_ranges_enabled() {
                 self.general_typing_checkpoint()?;
             } else {
                 self.typing_checkpoint()?;
             }
+        } else if self.document_selection_enabled() {
+            self.document_checkpoint()?;
         } else if self.general_ranges_enabled() {
             self.general_checkpoint()?;
         } else {
@@ -958,7 +978,7 @@ impl RichReplica {
     }
 
     fn perform_history(&mut self, redo: bool) -> Result<(bool, Vec<String>), Error> {
-        let previous = self.selection()?;
+        let previous = self.selection_for_mapping()?;
         let opposites = self
             .recipes
             .iter()

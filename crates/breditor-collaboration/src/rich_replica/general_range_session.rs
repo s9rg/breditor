@@ -60,7 +60,7 @@ impl RichReplica {
         let source = self.document.clone();
         let plan = action.plan(&self.codec, &source)?;
         let before_ui = self.journal.ui.clone();
-        let before_selection = self.selection()?;
+        let before_selection = self.selection_for_mapping()?;
         let stamp = Stamp::next(&self.doc)?;
         self.undo.pause();
         action.prepare(&self.doc, &plan)?;

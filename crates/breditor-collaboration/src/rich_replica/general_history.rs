@@ -12,6 +12,7 @@ pub(super) const TYPING_ENVELOPE: &str = "breditor/shared-general-typing-session
 pub(super) enum ReplayContract {
     Original,
     GeneralV1,
+    DocumentV1,
 }
 impl ReplayContract {
     pub const fn journal(
@@ -26,6 +27,8 @@ impl ReplayContract {
             }
             (Self::GeneralV1, false) => (JOURNAL, 1),
             (Self::GeneralV1, true) => (TYPING_JOURNAL, 1),
+            (Self::DocumentV1, false) => (super::document_checkpoint::JOURNAL, 1),
+            (Self::DocumentV1, true) => (super::document_checkpoint::TYPING_JOURNAL, 1),
         }
     }
 }
@@ -33,7 +36,7 @@ impl RichReplica {
     /// Whether this owner explicitly selected the general semantic range replay family.
     #[must_use]
     pub const fn general_ranges_enabled(&self) -> bool {
-        matches!(self.replay_contract, ReplayContract::GeneralV1)
+        matches!(self.replay_contract, ReplayContract::GeneralV1 | ReplayContract::DocumentV1)
     }
     /// Select the separate general-range history family without changing causal content or stacks.
     /// Original records replay unchanged. This is one-way and requires explicit matching recovery.
@@ -61,7 +64,7 @@ impl RichReplica {
     /// # Errors
     /// Wrong history family or the unchanged whole-journal byte budget rejects.
     pub fn general_checkpoint(&self) -> Result<String, Error> {
-        if !self.general_ranges_enabled() || self.typing.is_some() {
+        if self.replay_contract != ReplayContract::GeneralV1 || self.typing.is_some() {
             return Err(Error::Contract("explicit general history checkpoint required"));
         }
         self.encode_explicit_journal()

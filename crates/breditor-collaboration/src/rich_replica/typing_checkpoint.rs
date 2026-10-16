@@ -121,12 +121,12 @@ impl RichReplica {
     /// # Errors
     /// Wrong mode, malformed partition or the unchanged envelope byte budget rejects.
     pub fn general_typing_checkpoint(&self) -> Result<String, Error> {
-        if !self.general_ranges_enabled() {
+        if self.replay_contract != super::general_history::ReplayContract::GeneralV1 {
             return Err(Error::Contract("general shared typing history required"));
         }
         self.encode_typing_checkpoint(super::general_history::TYPING_ENVELOPE)
     }
-    fn encode_typing_checkpoint(&self, format: &'static str) -> Result<String, Error> {
+    pub(super) fn encode_typing_checkpoint(&self, format: &'static str) -> Result<String, Error> {
         let history =
             self.typing.as_ref().ok_or(Error::Contract("shared typing history disabled"))?;
         history.validate(&self.journal)?;
@@ -184,6 +184,9 @@ impl RichReplica {
             super::general_history::ReplayContract::Original => FORMAT,
             super::general_history::ReplayContract::GeneralV1 => {
                 super::general_history::TYPING_ENVELOPE
+            }
+            super::general_history::ReplayContract::DocumentV1 => {
+                super::document_checkpoint::TYPING_ENVELOPE
             }
         };
         if value.format != format

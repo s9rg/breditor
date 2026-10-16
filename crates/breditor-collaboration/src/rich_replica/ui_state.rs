@@ -48,6 +48,26 @@ pub(super) struct UiState {
     pub outcome: SelectionOutcome,
 }
 impl UiState {
+    pub fn document_selected(&self) -> bool {
+        matches!(self.selection, Some(AnchoredSelection::Document { .. }))
+    }
+    pub(super) fn validate_document(&self) -> Result<(), Error> {
+        if matches!(self.selection, Some(AnchoredSelection::Document { version: 1 }))
+            && self.pending.is_none()
+            && self.context.is_none()
+            && self.outcome == SelectionOutcome::Preserved
+        {
+            Ok(())
+        } else {
+            Err(Error::Contract("canonical document selection UI"))
+        }
+    }
+    pub fn select_document(&mut self) {
+        self.selection = Some(AnchoredSelection::Document { version: 1 });
+        self.pending = None;
+        self.context = None;
+        self.outcome = SelectionOutcome::Preserved;
+    }
     pub fn engine_meta(&self, doc: &LoroDoc, key: &str) -> Result<loro::UndoItemMeta, Error> {
         let mut meta = loro::UndoItemMeta::new();
         meta.set_value(key.into());
@@ -83,6 +103,10 @@ impl UiState {
         doc: &LoroDoc,
         document: &RichDocument,
     ) -> Result<Option<Selection>, Error> {
+        if self.document_selected() {
+            self.validate_document()?;
+            return Ok(None);
+        }
         self.selection
             .as_ref()
             .map(|selection| selection::resolve(doc, document, selection))
@@ -100,6 +124,11 @@ impl UiState {
         document: &RichDocument,
         previous: Option<&Selection>,
     ) -> Result<(), Error> {
+        if self.document_selected() {
+            self.validate_document()?;
+            self.outcome = SelectionOutcome::Preserved;
+            return Ok(());
+        }
         if let Some(selection) = &self.selection {
             match selection::resolve(doc, document, selection)? {
                 Ok((mapped, candidate)) => {

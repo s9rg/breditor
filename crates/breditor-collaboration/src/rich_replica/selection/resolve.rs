@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(in crate::rich_replica) enum AnchoredSelection {
+    Document { version: u32 },
     Text { anchor: Box<AnchoredPoint>, focus: Box<AnchoredPoint> },
     Node { block: String },
     Grid { anchor: Box<CellContext>, focus: Box<CellContext> },
@@ -37,6 +38,9 @@ pub(in crate::rich_replica) fn resolve(
     selection: &AnchoredSelection,
 ) -> Result<Result<(AnchoredSelection, Selection), SelectionLoss>, Error> {
     let (mapped, candidate) = match selection {
+        AnchoredSelection::Document { .. } => {
+            return Err(Error::Contract("document scope requires its explicit selection family"));
+        }
         AnchoredSelection::Text { anchor, focus } => {
             let (anchor, ap) = match anchor.resolve(doc, document)? {
                 Ok(value) => value,

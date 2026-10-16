@@ -19,3 +19,14 @@ function atomicTransport(owner:SharedEditorOwner,observation:SharedObservation):
 void atomicTransport;
 function textPolicy(owner:SharedEditorOwner,observation:SharedObservation):void{const version:string=owner.clipboard_text_policy_version();const read:string=owner.project_clipboard_text(observation,'{"selection":{},"clipboardJson":"opaque"}');void version;void read;}
 void textPolicy;
+function documentScope(owner:SharedEditorOwner,profile:SharedRichProfile,observation:SharedObservation):void {
+ const version:string=owner.document_selection_version(),typing:string=owner.document_typing_version(),profileVersion:string=profile.document_selection_version();
+ const enabled:boolean=owner.document_selection_enabled();
+ const selected:boolean=owner.select_document(observation),changed:boolean=owner.replace_document_plain_text(observation,'{"paragraph":"fresh","text":"Q"}');
+ const typed:boolean=owner.replace_document_typing_text(observation,'{"paragraph":"fresh","text":"Q","clockMs":"1"}');
+ const frozen:SharedObservation=owner.observe_document(),view:string=owner.document_view_json(),copy:string=owner.copy_document_clipboard(observation);
+ const explicit:string=owner.document_checkpoint(),natural:string=owner.document_typing_checkpoint();
+ const a:SharedEditorOwner=profile.restore_document("room",explicit),b:SharedEditorOwner=profile.restore_document_typing("room",natural);
+ void version;void typing;void profileVersion;void enabled;void selected;void changed;void typed;void frozen;void view;void copy;void a;void b;
+}
+void documentScope;

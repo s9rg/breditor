@@ -29,6 +29,7 @@ mod redo;
 mod replace_atom_plain_text;
 mod replace_atom_typing_text;
 mod replace_document_plain_text;
+mod replace_document_typing_text;
 mod replace_general_range_plain_text;
 mod replace_general_range_text;
 mod replace_general_range_typing_text;

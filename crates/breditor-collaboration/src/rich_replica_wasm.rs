@@ -3,6 +3,7 @@ mod atom_edit;
 mod block_layout;
 mod clipboard_text_projection;
 mod copy_general_clipboard;
+mod document_selection;
 mod exit_code_block;
 mod flow_navigation;
 mod general_history;

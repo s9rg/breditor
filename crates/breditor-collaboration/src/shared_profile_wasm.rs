@@ -1,4 +1,5 @@
 //! Application-configured shared factory; the fixed fixture probe remains a separate path.
+mod restore_document;
 mod restore_general;
 mod restore_typing;
 use crate::{rich_replica::SharedRichProfile as Profile, rich_replica_wasm::RichReplicaProbe};

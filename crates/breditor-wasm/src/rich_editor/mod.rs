@@ -21,6 +21,7 @@ mod inline_format_state;
 mod observation;
 mod profile;
 mod replace_document_plain_text;
+mod replace_document_typing_text;
 mod restore_typing_editor;
 mod result;
 mod select_document;

@@ -7,7 +7,7 @@ impl RichReplica {
     /// # Errors
     /// Invalid targets, scalar boundaries, grids or checkpoint limits preserve every published field.
     pub fn set_selection(&mut self, selection: Option<&Selection>) -> Result<bool, Error> {
-        if self.selection()?.as_ref() == selection {
+        if !self.journal.ui.document_selected() && self.selection()?.as_ref() == selection {
             return Ok(false);
         }
         let mut candidate = self.staged()?;

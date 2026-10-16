@@ -35,7 +35,7 @@ pub(super) struct Run {
     pub text: String,
     pub formats_json: String,
 }
-fn clock<'de, D: Deserializer<'de>>(d: D) -> Result<u64, D::Error> {
+pub(super) fn clock<'de, D: Deserializer<'de>>(d: D) -> Result<u64, D::Error> {
     let s = String::deserialize(d)?;
     let n = s.parse::<u64>().map_err(serde::de::Error::custom)?;
     if s.len() > 20 || n.to_string() != s {

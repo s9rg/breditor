@@ -305,3 +305,52 @@ fn document_replacement_isolates_natural_typing_on_both_sides() -> Result {
     assert_eq!(session.state().document().document(), before.document());
     Ok(())
 }
+
+#[test]
+fn document_first_key_starts_one_new_burst_and_recovers_its_document_before_ui() -> Result {
+    let (context, mut session) = setup(&fixture::root())?;
+    session.enable_typing_history(&session.snapshot())?;
+    session.set_selection(&session.snapshot(), Some(caret("q1")?))?;
+    for (text, clock) in [("A", 1), ("B", 2)] {
+        session.insert_typing_text(&session.snapshot(), text, clock)?;
+    }
+    let before = session.state().document().clone();
+    session.select_document(&session.snapshot())?;
+    let selected = saved(&context, &session)?;
+    assert_eq!(
+        session.replace_document_typing_text(
+            &session.snapshot(),
+            &BlockId::try_new("whole")?,
+            "",
+            3
+        )?,
+        RichLocalOutcome::Unchanged
+    );
+    assert_eq!(saved(&context, &session)?, selected);
+    session.replace_document_typing_text(
+        &session.snapshot(),
+        &BlockId::try_new("whole")?,
+        "Q",
+        3,
+    )?;
+    for (text, clock) in [("🙂", 4), ("R", 5)] {
+        session.insert_typing_text(&session.snapshot(), text, clock)?;
+    }
+    assert_eq!(session.undo_depth(), 2);
+    let bytes = saved(&context, &session)?;
+    assert_eq!(serde_json::from_str::<Value>(&bytes)?["groups"], json!([2, 3]));
+    let mut recovered = restored(&context, &session, &bytes)?;
+    for undo in [true, false, true, false] {
+        if undo {
+            session.undo(&session.snapshot())?;
+            recovered.undo(&recovered.snapshot())?;
+            assert!(document_selected(&session));
+            assert_eq!(session.state().document().document(), before.document());
+        } else {
+            session.redo(&session.snapshot())?;
+            recovered.redo(&recovered.snapshot())?;
+        }
+        assert_eq!(saved(&context, &session)?, saved(&context, &recovered)?);
+    }
+    Ok(())
+}
