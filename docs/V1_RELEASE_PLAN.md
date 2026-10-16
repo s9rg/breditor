@@ -261,13 +261,29 @@ The apparent early Firefox speedup did not hold reliably in the final diagnostic
 which still included a 4.55-second input. Shared responsiveness, the historical
 faults and release labels remain open. Cache charges are not a total memory budget.
 
+The subsequent [code exit checkpoint](qualification/2026-10-16-code-exit.json)
+adds guarded Rust commands and Ctrl/Command+Enter in explicit local/shared V2,
+including custom or empty toolbars. A fresh plain paragraph follows the whole
+code block in its original flow; source, language and surrounding nodes remain
+exact. Creator Undo hides the paragraph without erasing peer text; Redo and
+restart retain it. The saved operation is the original insertion family.
+Actual old/current Wasm passes 24 cross-version restores and 96 exact future
+comparisons. Final qualification passes all 321 installed SDK and 78 application
+cases across three engines, 2,361 root Rust cases, 285 canonical shared cases and
+74 SDK units, plus strict lint, types and default regressions. The record retains
+two failed fixture startups: canonical map ordering is repaired only in fixture
+input, and explicit Rolldown execution ordering prevents a dynamic SDK import
+from executing an unrelated page entry. Neither changes native admission or
+establishes a repair of the older WebKit/replay observations. Complete atomic
+navigation and general selections remain open; no readiness labels are promoted.
+
 The active first-two-workstream goal is not complete. Standard controls use
 Rust state reads. Explicit [inline property patches](RICH_INLINE_PROPERTY_PATCHES.md)
 now preserve omitted observed properties across mixed Link values; ordinary set
 commands still replace complete maps. Shared patches lower to existing owned
 annotations, retaining the original whole-format concurrent conflict policy.
 Live [read-only policy](RICH_READ_ONLY.md) is now implemented. Next are shared
-typing responsiveness, general selections, code/atomic navigation, bounded layout
+typing responsiveness, general selections, atomic-block navigation, bounded layout
 contracts, public API/publication decisions and external interchange. Local
 and durable shared React integrations are tested candidates, not a frozen V1 API. The
 original local one-format command remains strict; compound edits use a separate
@@ -351,7 +367,8 @@ No competitor implementation was copied into Breditor.
    Foreign interchange and optional automatic Link detection remain open.
 2. **Complete editing grammar.** Explicit V2 blockquote, code, horizontal-rule
    and task contracts now reach Wasm, local/shared SDKs and the reference relay.
-   Named hard breaks have a one-LF policy. Finish code/atomic navigation and general selections across
+   Named hard breaks have a one-LF policy; code exit preserves the original source.
+   Finish atomic-block navigation and general selections across
    container boundaries and natural typing history groups. Unsupported ranges
    currently reject; arbitrary flattening is not an acceptable shortcut.
 3. **Interchange.** Add sanitized rich HTML and Markdown adapters, then realistic

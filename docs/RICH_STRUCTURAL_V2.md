@@ -70,7 +70,12 @@ text identity. Callers choose `CodeFormatPolicy::RejectFormatted` or explicitly
 request `RemoveFormats`. Removal is one undoable conversion; its inverse retains
 the original styled node. `SetCodeLanguage` changes only the bounded language.
 Existing prose split/join actions reject code rather than guess a language merge
-or code-exit policy. Partial cross-block replacements with a code endpoint also
+or code-exit policy. The separate [code exit command](RICH_CODE_EXIT.md) inserts a
+fresh plain paragraph after the whole code block in the same flow, retaining all
+source and language. It supports a collapsed caret at any offset and one original
+insertion history group. Ctrl+Enter / Command+Enter and the Exit code control
+require its exact native capability; ordinary Enter remains inside code.
+Partial cross-block replacements with a code endpoint also
 reject; same-block code editing and deletion of wholly intervening code are
 separate operations. Code carets and intervals crossing code report inline
 formatting as unavailable, not unset or a silently filtered partial selection.
@@ -370,8 +375,10 @@ every discovered SDK spec once per engine in separate editing/network processes,
 with the same 60-second cases, 300-second process budget and zero retries.
 
 Continue tracing the retained unrecorded replay observation before release promotion.
-Code exit-to-new-block shortcuts and complete atomic-block caret navigation still
-need explicit actions and integration.
-Atomic-block navigation, general selections, typing coalescing, live read-only
-mode, bounded layout properties and sanitized foreign interchange remain in the
-active first-two-workstream goal. These local controls alone do not satisfy it.
+Code exit now has separate guarded local/shared entry points, exact recovered
+history and installed keyboard/toolbar integration; its persisted action remains
+the existing insertion family. Complete atomic-block navigation, general
+selections, typing responsiveness, bounded layout properties and sanitized
+foreign interchange remain in the active first-two-workstream goal. Native
+typing grouping and live read-only mode are implemented candidates; these
+controls alone do not satisfy the goal or close release qualification.

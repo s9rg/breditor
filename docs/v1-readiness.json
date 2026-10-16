@@ -2,7 +2,7 @@
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
   "reviewedAt": "2026-10-16",
-  "baselineCommit": "ce5fec4b054652c2701043e57a62dfecb6798c98",
+  "baselineCommit": "30d82ef0ee3a2505efdfb9d123f6fb1d92dea945",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -68,15 +68,15 @@
     {
       "id":"blockquotes-code-rules","area":"Editing","status":"missing",
       "summary":"Blockquotes, code blocks and horizontal rules",
-      "current":"Explicit local/shared V2 now reaches installed vanilla/React SDKs and separate reference-relay room factories, with semantic quote/code/rule rendering, declared code-format loss, bounded language and same-block code replacement. Code/quote/rule controls preserve foreign text and selective recovered history. Original V1 factories/model 11 remain unchanged; 49 old/new V1 Wasm states and the first V2 checkpoint's 16 future states match. Code exit/complete atomic navigation and foreign interchange remain open. An earlier unrecorded native replay observation and historical WebKit fault remain unconfirmed for release promotion.",
+      "current":"Explicit local/shared V2 reaches installed vanilla/React SDKs and separate reference-relay rooms, with semantic quote/code/rule rendering, declared code-format loss, bounded language and same-block code replacement. Native code exit now inserts one fresh plain paragraph after code in the same flow, retaining all source and exact explicit/natural history; Ctrl/Command Enter works without a toolbar. Creator Undo hides but retains peer text for Redo/restart. Persisted insertion commands and V1 defaults are unchanged. Complete atomic navigation, foreign interchange and release promotion remain open, including the older replay and WebKit observations.",
       "acceptance":"Add original Rust contracts and separate actions for each kind, including code language/text rules, boundary navigation, shared conflict policy and migration.",
-      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/schema/rich_content_profile_v2.rs","crates/breditor-core/tests/rich_structural_v2.rs","crates/breditor-wasm/tests/rich_structural_v2.rs","experiments/editor-browser/structural-v2.spec.mjs","crates/breditor-collaboration/src/rich_replica/protocol.rs","crates/breditor-collaboration/tests/rich_structural_v2_contracts.rs","crates/breditor-collaboration/tests/rich_structural_v2_structure_contracts.rs","scripts/compare-shared-v1-runtime.mjs","scripts/probe-shared-history-clock.mjs","docs/qualification/2026-10-15-shared-structural-v2-actions.json","experiments/editor-browser/shared-structural-v2.spec.mjs","experiments/editor-browser/shared-structural-network.spec.mjs","docs/qualification/2026-10-15-shared-structural-v2-sdk.json"],
+      "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/schema/rich_content_profile_v2.rs","crates/breditor-core/tests/rich_structural_v2.rs","crates/breditor-wasm/tests/rich_structural_v2.rs","experiments/editor-browser/structural-v2.spec.mjs","crates/breditor-collaboration/src/rich_replica/protocol.rs","crates/breditor-collaboration/tests/rich_structural_v2_contracts.rs","crates/breditor-collaboration/tests/rich_structural_v2_structure_contracts.rs","scripts/compare-shared-v1-runtime.mjs","scripts/probe-shared-history-clock.mjs","docs/qualification/2026-10-15-shared-structural-v2-actions.json","experiments/editor-browser/shared-structural-v2.spec.mjs","experiments/editor-browser/shared-structural-network.spec.mjs","docs/qualification/2026-10-15-shared-structural-v2-sdk.json","docs/RICH_CODE_EXIT.md","crates/breditor-core/tests/rich_code_exit.rs","crates/breditor-collaboration/tests/code_exit_contracts.rs","experiments/editor-browser/code-exit.spec.mjs","scripts/probe-code-exit-compatibility.mjs","docs/qualification/2026-10-16-code-exit.json"],
       "sources":["tiptap-starter","tiptap-source-starter","ckeditor-digest"]
     },
     {
       "id":"line-and-block-navigation","area":"Editing","status":"partial",
       "summary":"Hard breaks and navigation around atomic blocks",
-      "current":"Local/shared native owners now have named guarded hard-break commands: one LF in one history group without a new block, retaining logical-start styles and peer edits. Browser Shift+Enter and explicit beforeinput replacement targets use distinct routes. Atomic-block arrows, deletion, gap/drop positions and trailing-text recovery remain incomplete.",
+      "current":"Local/shared native owners have named guarded hard-break commands: one LF in one history group without a new block, retaining logical-start styles and peer edits. Shift+Enter and explicit beforeinput targets use distinct routes. Separate structural V2 code exit creates reachable plain text after a whole code block without source conversion. Atomic-block arrows, deletion, gap/drop positions and trailing-text recovery around other atoms remain incomplete.",
       "acceptance":"Specify soft-break semantics, create reachable text positions around every atom, and test Shift+Enter, arrows, deletion and empty-document recovery.",
       "evidence":["docs/RICH_STRUCTURAL_V2.md","crates/breditor-core/src/rich_content/local_session/insert_hard_break.rs","crates/breditor-collaboration/src/rich_replica/insert_hard_break.rs","experiments/editor-browser/hard-break.spec.mjs"],
       "sources":["tiptap-starter","tiptap-source-starter"]

@@ -1,0 +1,140 @@
+{
+  "date": "2026-10-16",
+  "sourceBaseline": "e9596c1e0ddd5d3a4cae6c0ed6f1ed6dab794419",
+  "sourceCheckpoint": "30d82ef0ee3a2505efdfb9d123f6fb1d92dea945",
+  "status": "functional-code-exit-and-complete-installed-regressions-passed",
+  "scope": "Explicit structural V2 code exit in native local/shared owners, additive Wasm capability, installed SDK controls and toolbar-independent keyboard routing. The saved action remains existing InsertBlocks.",
+  "featureComplete": false,
+  "codeExitFunctionalComplete": true,
+  "goalComplete": false,
+  "releaseQualified": false,
+  "contracts": {
+    "placement": "Collapsed code caret at any scalar-aligned UTF-16 boundary; one fresh empty paragraph after the entire code block, before its original next sibling, in the same root/cell/quote/list/task flow. Code text, tabs, CR/LF and language remain exact; caret enters paragraph@0, pending override clears.",
+    "history": "One original insertion unit in explicit and natural history. Code typing, exit and later paragraph typing are distinct groups. Creator Undo hides the paragraph while retaining peer causal text for Redo, including exact restart.",
+    "admission": "Exact native observation and writable policy precede planning. Ranged/wrong targets, reused/invalid IDs and late node limits publish nothing. Local Wasm data objects reject unknown/duplicate/wrong fields. Original V1 rejects unsupported code rather than widening its grammar.",
+    "keyboard": "Ctrl/Command Enter and stock Exit code; empty/custom toolbar works. Ordinary Enter/Shift Enter remain LF inside code. Composition and focused native widgets own their keys; read-only/ranges are not converted.",
+    "capability": "Exact local codeExitVersion() === string1; shared code_exit_version() === string1 and guarded exit_code_block. Old runtimes do not receive a JavaScript flow fallback.",
+    "compatibility": "No new saved action tag, shared model/journal/frame version or migration. Old matching V2 runtimes restore new exit histories and continue exact future history. Default V1 factories and original protocols retain meaning."
+  },
+  "nativeChecks": {
+    "rootCommand": "CARGO_TARGET_DIR=target/shared-v2-root-regression cargo test --offline --workspace --features breditor-wasm/experimental-rich-content",
+    "sharedCommand": "CARGO_TARGET_DIR=target/collaboration-native-v2-actions cargo test --offline --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "rootPassed": 2361,
+    "rootSuiteFooters": 142,
+    "canonicalSharedPassed": 285,
+    "canonicalSuiteFooters": 23,
+    "newLocalTests": 5,
+    "newWasmBoundaryTests": 3,
+    "newSharedTests": 6,
+    "focusedResearchPassed": 6,
+    "researchFullNativeSuiteRerun": false,
+    "strictNativeAllTargetClippy": true,
+    "strictActualReleaseWasmClippy": true,
+    "researchWasmSourceCompiles": true,
+    "rustdocWarningsDenied": true,
+    "namedFirstPartyFormatCheck": true,
+    "affectedTypeChecks": true,
+    "sdkPassed": 74,
+    "sdkFiles": 14
+  },
+  "defaultRegression": {
+    "browserPassed": 2203,
+    "reactPassed": 57,
+    "highlightPassed": 34,
+    "diagnosticsPassed": 332,
+    "scriptsPassed": 368,
+    "existingOptInSkips": 3,
+    "initialRegistrationFailure": "Initial scripts run passed367/failed1/skipped3 because the new canonical conformance file lacked the retained research shim and inventory count. Registered the same source under the compatibility manifest; complete npm test then passes with368 script tests."
+  },
+  "compatibility": {
+    "codeExit": {
+      "command": "node scripts/probe-code-exit-compatibility.mjs <old-local> <old-shared> <new-local> <new-shared>",
+      "beforeLocalWasmSha256": "32d815eed9b44c2e40fda36bbf2ecec0b350bffa5d871c39466b2f134c767de8",
+      "beforeSharedWasmSha256": "a19245135d94a371d78ab6ed2e40802ba94f20c1b4188c1b1fa55fe4e18aaed3",
+      "contexts": ["code-root", "code-cell", "code-task"],
+      "historyModes": ["explicit", "typing-v1"],
+      "crossVersionRestores": 24,
+      "exactFutureComparisons": 96,
+      "legacyLocalCommandRejections": 6,
+      "legacySharedCapabilityAbsent": 6,
+      "guardedSharedRejections": 12,
+      "passed": true
+    },
+    "originalV1States": 49,
+    "originalV1CrossRestores": 2,
+    "originalV1FutureSteps": 12,
+    "sharedTypingDefaultStates": 14,
+    "sharedTypingStrictRejections": 18,
+    "sharedTypingFutureComparisons": 22,
+    "invisibleUndoPublications": 2,
+    "localTypingDefaultStates": 10,
+    "localTypingFutureComparisons": 10,
+    "readOnlyNativeDenials": 4,
+    "readOnlyCrossRestores": 8,
+    "readOnlyFutureComparisons": 20,
+    "javascriptExports": 5,
+    "rawWasmExports": 66
+  },
+  "installedRegression": {
+    "status": "passed",
+    "command": "caffeinate -is -t 1800 node scripts/check-editor-browser.mjs",
+    "applicationCommand": "caffeinate -is -t 600 node_modules/.bin/playwright test -c experiments/shared-browser/application-network.config.mjs",
+    "policy": "All discovered SDK files once per complete run, all Chromium/Firefox/WebKit projects, one worker, zero retries, unchanged60-second case/300-second process deadlines; existing application matrix follows serially. Bounded host sleep assertion only, no permanent power changes.",
+    "focusedCodeExitPassed": 33,
+    "batches": [
+      {"passed":93,"duration":"1.5m"},
+      {"passed":102,"duration":"2.3m"},
+      {"passed":18,"duration":"10.7s"},
+      {"passed":33,"duration":"1.4m"},
+      {"passed":21,"duration":"1.4m"},
+      {"passed":39,"duration":"2.5m"},
+      {"passed":15,"duration":"1.5m"}
+    ],
+    "totalPassed": 321,
+    "editingPassed": 306,
+    "relayPassed": 15,
+    "applicationPassed": 78,
+    "applicationDuration": "1.2m",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-lerWS2/consumer",
+    "artifacts": [
+      {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1253811,"sha256":"f06b3b109ae56dc1be73f20b16b3015cdf0c6eafcfc1271c2ca465588ed6fe24"},
+      {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2365365,"sha256":"6fc7c752ead8eb2805b796b407a7824a67aec9f0c1be3f51fc7eb4edf6a2b8f4"},
+      {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":21967,"sha256":"1a9a89eb432ae23369caf6ddefa32464b0a0eae2a7e9a36ea2bc8f475caabf20"},
+      {"name":"breditor_wasm_bg.wasm","bytes":4318911,"sha256":"e82274c39c07758d346300ae502d8907c84356874c24a2c9fc04830cd1919344"},
+      {"name":"breditor_shared_bg.wasm","bytes":8595485,"sha256":"e0315a55b9c68424937ab1e34368d61137a54d4e0b7f531a16628952f8331708"}
+    ],
+    "engines": ["chromium", "firefox", "webkit"]
+  },
+  "failedFixtureAttempts": [
+    {
+      "result": "33 failed startup",
+      "causes": "New JS fixture retained unsorted property maps; Rust correctly rejected them. The shared dynamic SDK import also executed an unrelated bundled network-page bootstrap and fetched missing relay configuration.",
+      "repair": "Canonicalize only the fixture input. Keep Rust canonical admission strict. Retain the dynamic public import for the bundler regression.",
+      "evidence": "target/code-exit-qualification/noncanonical-and-cross-entry-startup"
+    },
+    {
+      "result": "10 passed,8 failed,1 interrupted,14 not run",
+      "cause": "Pinned Vite8.2.2/Rolldown strict entry signatures alone still executed the network entry through a generated collaboration chunk. The diagnosed owned run was explicitly stopped, not reported as an engine pass.",
+      "repair": "Add rolldownOptions.output.strictExecutionOrder:true to the multi-page installed fixture. This preserves module execution boundaries; all33 focused browser cases then pass and reject any /relay-bootstrap.json request.",
+      "evidence": "target/code-exit-qualification/canonical-but-cross-entry"
+    }
+  ],
+  "evidenceDirectory": "target/code-exit-qualification",
+  "readiness": {
+    "implemented": 9,
+    "partial": 17,
+    "missing": 20,
+    "openReleaseGates": 13,
+    "labelsPromoted": false,
+    "goalRemainsActive": true
+  },
+  "remaining": [
+    "Complete general selections, atomic-block arrows/gaps/deletion and safe trailing-text recovery; code exit alone does not fulfill these contracts.",
+    "Finish bounded layout properties, contextual controls, sanitized HTML/Markdown and realistic Office/Docs/Excel interchange with explicit losses.",
+    "Original V2 code/style replay observation, historical intermittent WebKit integer-domain startup fault, old cancelled-mount TypeError and unclassified offline-button observation remain open.",
+    "Shared replay/input latency remains serious; no new performance, memory or engine repair is claimed.",
+    "Finish supported V1 API/distribution decisions and final native input/accessibility/mobile, performance, CI, storage and public deployment qualification later."
+  ],
+  "publication": {"pushed":false,"tagged":false,"published":false,"deployed":false}
+}
