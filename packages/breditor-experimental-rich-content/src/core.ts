@@ -38,6 +38,8 @@ export interface RichCoreEditor {
   supportsTypingHistory?():boolean;
   /** Exact additive native code-exit command; an older owner may omit it. */
   supportsCodeExit?():boolean;
+  /** Native logical movement and explicit text recovery beside atoms; no JS planning fallback. */
+  supportsFlowNavigation?():boolean;
   enableTypingHistory?(expectedRevision?:string):boolean;
   closeTypingGroup?(expectedRevision?:string):boolean;
   setReadOnly?(value:boolean,expectedRevision?:string):boolean;

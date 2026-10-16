@@ -6,6 +6,7 @@ export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
 export {createStandardRichToolbarV1} from "./dist/browser/index.js";
 export {createStructuralRichToolbarV2} from "./dist/browser/index.js";
+export {createFlowNavigationControls} from "./dist/browser/index.js";
 
 export class RichCommandError extends Error {
   constructor(code, message) { super(message); this.name = "RichCommandError"; this.code = code; }
@@ -118,6 +119,7 @@ class RichCoreEditor {
   supportsStandardInlineControls() { const raw=this.#live();return typeof raw.inlineControlsVersion==="function"&&raw.inlineControlsVersion()==="1"&&typeof this.#observation.caretFormatsJson==="function"; }
   supportsInlinePropertyPatches() { const raw=this.#live();return typeof raw.inlinePropertyPatchesVersion==="function"&&raw.inlinePropertyPatchesVersion()==="1"; }
   supportsCodeExit(){const raw=this.#live();return typeof raw.codeExitVersion==="function"&&raw.codeExitVersion()==="1";}
+  supportsFlowNavigation(){const raw=this.#live();return typeof raw.flowNavigationVersion==="function"&&raw.flowNavigationVersion()==="1";}
   supportsTypingHistory(){const raw=this.#live();return typeof raw.typingHistoryVersion==="function"&&raw.typingHistoryVersion()==="1"&&typeof raw.enableTypingHistory==="function"&&typeof raw.closeTypingGroup==="function";}
   #typingPolicy(method,revision){
     const raw=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The history intent was prepared from an older rich view");

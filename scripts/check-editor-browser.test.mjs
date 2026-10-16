@@ -27,6 +27,10 @@ test("code-exit exact-replay checks use a dedicated complete three-engine proces
  const names=["code-exit.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"];
  assert.deepEqual(editorBrowserRuns(names),[["a.spec.mjs"],["code-exit.spec.mjs"],["shared-structural-network.spec.mjs"]]);
 });
+test("native flow navigation has a separate complete three-engine process budget",()=>{
+ const names=["flow-navigation.spec.mjs","code-exit.spec.mjs","a.spec.mjs","shared-structural-network.spec.mjs"];
+ assert.deepEqual(editorBrowserRuns(names),[["a.spec.mjs"],["code-exit.spec.mjs"],["flow-navigation.spec.mjs"],["shared-structural-network.spec.mjs"]]);
+});
 test("dynamic SDK imports cannot execute another installed fixture page's bootstrap",()=>{
  const source=readFileSync(new URL("./fixtures/editor-consumer/vite.config.mjs",import.meta.url),"utf8");
  assert.ok(source.includes('preserveEntrySignatures:"strict"'));

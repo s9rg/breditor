@@ -17,6 +17,7 @@ mod delete_typing_range;
 mod drafts;
 mod exit_code_block;
 mod exit_task_item;
+mod flow_direction;
 mod indent_list_items;
 mod indent_task_items;
 mod input_plan;
@@ -26,6 +27,7 @@ mod insert_hard_break;
 mod insert_horizontal_rule;
 mod insert_image;
 mod insert_paragraph;
+mod insert_paragraph_adjacent;
 mod insert_plain_text;
 mod insert_table;
 mod insert_table_column;
@@ -37,6 +39,7 @@ mod join_text_blocks;
 mod merge_table_cells;
 mod move_table_column;
 mod move_table_row;
+mod navigate_flow;
 mod navigate_grid;
 mod outdent_list_items;
 mod outdent_task_items;
@@ -84,6 +87,8 @@ use serde_json::value::RawValue;
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CommandTag {
+    NavigateFlow,
+    InsertParagraphAdjacent,
     InsertTypingText,
     DeleteTypingRange,
     IndentTaskItems,
@@ -213,7 +218,10 @@ pub(super) fn execute(
     let command: Command<'_> = serde_json::from_str(input).map_err(|_| invalid())?;
     command.validate_fields()?;
     if owner.is_read_only()
-        && !matches!(command.kind, CommandTag::SetSelection | CommandTag::NavigateGrid)
+        && !matches!(
+            command.kind,
+            CommandTag::SetSelection | CommandTag::NavigateGrid | CommandTag::NavigateFlow
+        )
     {
         return Err(error::rejected("breditor_rich.read_only"));
     }

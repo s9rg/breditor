@@ -9,6 +9,10 @@ pub(super) fn execute(
     input: &str,
 ) -> Result<RichLocalOutcome, BreditorError> {
     match tag {
+        CommandTag::NavigateFlow => super::navigate_flow::execute(owner, observation, input),
+        CommandTag::InsertParagraphAdjacent => {
+            super::insert_paragraph_adjacent::execute(owner, observation, input)
+        }
         CommandTag::InsertTypingText => {
             super::insert_typing_text::execute(owner, observation, input)
         }

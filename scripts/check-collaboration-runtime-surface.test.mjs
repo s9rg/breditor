@@ -8,6 +8,7 @@ function fixture(){
  for(const name of ["from_configuration_json","from_standard_configuration_json_v1","from_configuration_json_v2","from_standard_configuration_json_v2"])module.SharedRichProfile[name]=()=>{};
  for(const name of ["typing_history_version","enable_typing_history","close_typing_group","insert_typing_text","delete_typing_range","typing_checkpoint"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["code_exit_version","exit_code_block"])module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["flow_navigation_version","navigate_flow","insert_paragraph_adjacent"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
@@ -20,6 +21,9 @@ test("grouped history requires both guarded authoring and its separate native re
 });
 test("code-exit planning requires its exact native capability and guarded entry point",()=>{
  for(const name of ["code_exit_version","exit_code_block"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing guarded code-exit capability/);}
+});
+test("flow navigation and adjacent authoring require their matching native capability",()=>{
+ for(const name of ["flow_navigation_version","navigate_flow","insert_paragraph_adjacent"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing guarded flow-navigation capability/);}
 });
 test("research exports and unguarded owner methods reject instead of being filtered away",()=>{
  const f=fixture();assert.throws(()=>admitApplicationSurface({...f.module,ProbeSession:class {}},emptyWasm,f.declarations),/research probes/);

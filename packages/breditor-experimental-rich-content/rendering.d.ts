@@ -8,3 +8,4 @@ export * from "./dist/browser/standard_inline_controls.js";
 export type {RichInlinePresentation} from "./dist/browser/inline_presentation.js";
 export {taskContext} from "./dist/browser/task_actions_v2.js";
 export * from "./dist/browser/structural_context_v2.js";
+export {flowEdgeEligible,selectedFlowAtom} from "./dist/browser/flow_controls.js";

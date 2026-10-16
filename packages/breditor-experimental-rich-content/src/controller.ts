@@ -7,6 +7,7 @@ import {readNative,readTarget,restoreNative,isCurrentCaretTarget} from "./select
 import {standardInlineStylesV1} from "./standard_inline_v1.js";
 import {mountToolbarControl,toolbarControlStyles,type RichControlView} from "./toolbar_control_view.js";
 import {taskTab} from "./task_actions_v2.js";
+import {flowEdgeEligible,selectedFlowAtom} from "./flow_controls.js";
 
 export interface RichEditorOptions extends RenderOptions {
  core:RichCoreEditor;
@@ -161,6 +162,14 @@ export class RichDomEditor {
    return;
   }
   if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(event.key.toLowerCase()))){event.preventDefault();return;}
+  if(this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsFlowNavigation?.()===true){
+   if(event.altKey&&!mod&&!event.shiftKey&&(event.key==="PageUp"||event.key==="PageDown")){
+    // This reserved logical shortcut owns the default even at a boundary/range:
+    // otherwise native PageDown can collapse/move a range after Rust refuses it.
+    event.preventDefault();this.#attempt(()=>{this.#sync();const movement=event.key==="PageUp"?"before":"after";if(flowEdgeEligible(this.#model,movement))this.execute({kind:"navigateFlow",data:{movement}});});return;
+   }
+   if(event.key==="Enter"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();if(selectedFlowAtom(this.#model)){event.preventDefault();this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:event.shiftKey?"before":"after"}});}});if(event.defaultPrevented)return;}
+  }
   // Native code exit also works with an empty/custom toolbar. A range is not
   // replaced, and focused native widgets/composition retain their own keys.
   if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&this.#options.core.richLanguageVersion?.()===2){
@@ -201,6 +210,7 @@ export class RichDomEditor {
    const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[type],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
    if(type==="historyUndo"||type==="historyRedo"){this.execute({kind:type==="historyUndo"?"undo":"redo"});return;}
    if(type==="formatBold"){const command=bold(this.#context());if(command)this.execute(command);return;}
+   if((type==="insertParagraph"||type==="insertLineBreak")&&this.#options.core.richLanguageVersion?.()===2&&this.#options.core.supportsFlowNavigation?.()===true&&selectedFlowAtom(this.#model)){this.execute({kind:"insertParagraphAdjacent",data:{paragraph:this.#context().allocate("p"),side:type==="insertLineBreak"?"before":"after"}});return;}
    if(type==="insertParagraph"){const command=enter(this.#context());if(command)this.execute(command);return;}
    const selection=this.#model.view.selection;
    if(selection?.kind!=="text")return;

@@ -4,6 +4,7 @@ import {bold,boundaryDelete,caret,cellBlock,enter,positionAfter,removeSelection,
 import {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 import type {SharedDispatch,SharedPublication,RichSelection,Navigation} from "./types.js";
 import {sharedTaskTab} from "./task_actions_v2.js";
+import {flowEdgeEligible,selectedFlowAtom} from "@breditor/experimental-rich-content/rendering";
 import {mountToolbarControl,toolbarControlStyles,isCurrentCaretTarget,type RichControlView} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions extends RenderOptions {
  core:SharedRichEditor;toolbar?:readonly SharedToolbarControl[];label?:string;image?:{asset:string;alt:string};
@@ -119,6 +120,14 @@ export class SharedDomEditor {
    return;
   }
   if(this.#model.view.readOnly===true&&(["Backspace","Delete","Enter"].includes(event.key)||!mod&&!event.altKey&&event.key.length===1||mod&&!event.altKey&&["z","y","b","i","u","k"].includes(key))){event.preventDefault();return;}
+  if(this.#options.core.richLanguageVersion()===2&&this.#options.core.supportsFlowNavigation()){
+   if(event.altKey&&!mod&&!event.shiftKey&&(event.key==="PageUp"||event.key==="PageDown")){
+    // Refused ranges/boundaries still belong to this reserved logical shortcut.
+    // Letting the browser PageDown default run would move/collapse the range.
+    event.preventDefault();this.#attempt(()=>{this.#sync();const movement=event.key==="PageUp"?"before":"after";if(flowEdgeEligible(this.#model,movement))this.#perform(c=>{c.core.navigateFlow(movement,c.revision);});});return;
+   }
+   if(event.key==="Enter"&&!mod&&!event.altKey){this.#attempt(()=>{this.#sync();if(selectedFlowAtom(this.#model)){event.preventDefault();this.#perform(c=>{c.core.insertParagraphAdjacent(c.allocate("p"),event.shiftKey?"before":"after",c.revision);});}});if(event.defaultPrevented)return;}
+  }
   // Independent of toolbar composition; never turn a selected range into code loss.
   if(mod&&event.key==="Enter"&&!event.shiftKey&&!event.altKey&&this.#options.core.richLanguageVersion()===2){
    event.preventDefault();this.#attempt(()=>{this.#sync();const s=this.#model.view.selection;
@@ -143,7 +152,9 @@ export class SharedDomEditor {
  #input(event:InputEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{this.#sync();const kind=event.inputType;
   if(kind!=="insertText"&&!kind.startsWith("delete"))this.#boundary();
   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
-  this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}if(kind==="insertParagraph"){enter(c);return;}
+  this.#perform(c=>{if(kind==="historyUndo"){c.core.undo(c.revision);return;}if(kind==="historyRedo"){c.core.redo(c.revision);return;}if(kind==="formatBold"){bold(c);return;}
+   if((kind==="insertParagraph"||kind==="insertLineBreak")&&c.core.richLanguageVersion()===2&&c.core.supportsFlowNavigation()&&selectedFlowAtom(c.model)){c.core.insertParagraphAdjacent(c.allocate("p"),kind==="insertLineBreak"?"before":"after",c.revision);return;}
+   if(kind==="insertParagraph"){enter(c);return;}
    const s=c.model.view.selection;if(s?.kind!=="text")return;const range=event.getTargetRanges?.()[0],target=range?readTarget(this.surface,range):null;
    if(kind==="insertText"||kind==="insertReplacementText"||kind==="insertLineBreak"){const value=kind==="insertLineBreak"?"\n":event.data??"";if(target&&!isCurrentCaretTarget(s,target))c.core.replace(target,value,c.revision);else if(kind==="insertLineBreak")c.core.hardBreak(c.revision);else if(kind==="insertText"&&c.model.view.historyGrouping==="typing-v1"&&s.anchor.block===s.focus.block&&s.anchor.offset===s.focus.offset)c.core.typeUser(value,this.#clock(),c.revision);else c.core.type(value,c.revision);return;}
    if(kind.startsWith("delete")){const backward=kind.includes("Backward");if(boundaryDelete(c,backward))return;if(s.anchor.block!==s.focus.block||s.anchor.offset!==s.focus.offset){c.core.replace(s,"",c.revision);return;}if(target&&(target.anchor.block!==target.focus.block||target.anchor.offset!==target.focus.offset)){this.#deleteInput(c,target,backward,kind);return;}

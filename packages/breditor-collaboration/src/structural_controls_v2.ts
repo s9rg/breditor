@@ -4,6 +4,7 @@ import {publish,positionAfter,type ActionContext,type SharedToolbarControl} from
 import {createStandardSharedToolbarV1} from "./standard_toolbar.js";
 import {indentSharedTasks,outdentSharedTasks} from "./task_actions_v2.js";
 import type {SharedRichEditor} from "./core.js";
+import {createSharedFlowNavigationControls} from "./flow_controls.js";
 function oneText(c:ActionContext):ElementNode|undefined {
  const s=c.model.view.selection;return s?.kind==="text"&&s.anchor.block===s.focus.block?selectedText(c.model):undefined;
 }
@@ -33,5 +34,5 @@ export function createStructuralSharedToolbarV2(core:SharedRichEditor,presentati
   const backward=control.id==="outdent";
   return {...control,owner:core,enabled:(c:ActionContext)=>{const t=taskContext(c.model);return t?(backward||t.first>0):control.enabled(c);},run:(c:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>{if(!taskContext(c.model)){control.run(c,value,fields);return;}const command=backward?outdentSharedTasks(c):indentSharedTasks(c);if(command)publish(c,[command]);}};
  });
- return Object.freeze([...standard,...controls.map(control=>({...control,owner:core}))]);
+ return Object.freeze([...standard,...controls.map(control=>({...control,owner:core})),...createSharedFlowNavigationControls(core)]);
 }

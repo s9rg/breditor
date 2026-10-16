@@ -29,6 +29,8 @@ export type RichCommand =
  |{kind:"setCodeLanguage";data:{block:string;language:string|null}}
  /** One existing insertion recipe; native Rust derives the same-flow position from the caret. */
  |{kind:"exitCodeBlock";data:{paragraph:string}}
+ |{kind:"navigateFlow";data:{movement:"before"|"after"}}
+ |{kind:"insertParagraphAdjacent";data:{paragraph:string;side:"before"|"after"}}
  |{kind:"setTaskChecked";data:{item:string;checked:boolean}}
  |{kind:"wrapBlockquote";data:{first:string;last:string;wrapper:string}}
  |{kind:"unwrapBlockquote";data:{wrapper:string}}

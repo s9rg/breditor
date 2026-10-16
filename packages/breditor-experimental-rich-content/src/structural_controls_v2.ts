@@ -5,6 +5,7 @@ import {positionAfter,type ActionContext,type ToolbarControl} from "./actions.js
 import {createStandardRichToolbarV1} from "./standard_toolbar.js";
 import type {RichInlinePresentation} from "./inline_presentation.js";
 import {taskContext,indentTasks,outdentTasks} from "./task_actions_v2.js";
+import {createFlowNavigationControls} from "./flow_controls.js";
 import {nearestStructuralV2 as nearest,replaceableFlowV2 as replaceable,structuralIntervalV2} from "./structural_context_v2.js";
 
 const interval=(c:ActionContext)=>structuralIntervalV2(c.model);
@@ -33,5 +34,5 @@ export function createStructuralRichToolbarV2(core:RichCoreEditor,presentation:R
   const backward=control.id==="outdent";
   return {...control,owner:core,enabled:(c:ActionContext)=>{const t=taskContext(c.model);return t?(backward||t.first>0):control.enabled(c);},command:(c:ActionContext,value?:string,fields?:Readonly<Record<string,string>>)=>taskContext(c.model)?(backward?outdentTasks(c):indentTasks(c)):control.command(c,value,fields)};
  });
- return Object.freeze([...standard,...controls.map(control=>({...control,owner:core}))]);
+ return Object.freeze([...standard,...controls.map(control=>({...control,owner:core})),...createFlowNavigationControls(core)]);
 }

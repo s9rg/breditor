@@ -18,6 +18,7 @@ mod image_draft;
 mod inline_format_state;
 mod list_draft;
 pub(crate) mod local_session;
+mod navigate_flow;
 mod navigate_grid;
 mod rich_document;
 mod rich_grid_selection;
@@ -49,6 +50,7 @@ pub use local_session::{
     RichLocalSessionError, RichLocalSnapshot, RichLocalState, RichPendingFormatsUpdate,
     RichSelectionUpdate, RichTypingDeleteDirection,
 };
+pub use navigate_flow::{FlowMove, FlowNavigationOutcome, navigate_flow};
 pub use navigate_grid::{
     GridBoundary, GridMove, GridNavigationMode, GridNavigationOutcome, navigate_grid,
 };

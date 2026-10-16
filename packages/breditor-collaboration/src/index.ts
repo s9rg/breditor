@@ -7,6 +7,7 @@ export {SharedDomEditor,mountSharedEditor,type SharedDomOptions} from "./control
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";
 export {createStandardSharedToolbarV1} from "./standard_toolbar.js";
 export {createStructuralSharedToolbarV2} from "./structural_controls_v2.js";
+export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";
 export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files.js";
 export {SharedPersistentSession,type SharedSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";

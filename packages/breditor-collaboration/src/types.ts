@@ -86,6 +86,9 @@ export interface SharedRustOwner {
  set_read_only?(observation:unknown,value:boolean):boolean;
  code_exit_version?():string;
  exit_code_block?(observation:unknown,paragraph:string):boolean;
+ flow_navigation_version?():string;
+ navigate_flow?(observation:unknown,movement:string):boolean;
+ insert_paragraph_adjacent?(observation:unknown,paragraph:string,side:string):boolean;
  typing_history_version?():string;
  enable_typing_history?(observation:unknown):boolean;
  close_typing_group?(observation:unknown):boolean;

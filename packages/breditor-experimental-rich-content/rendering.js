@@ -7,3 +7,4 @@ export {mountToolbarControl,toolbarControlStyles} from "./dist/browser/toolbar_c
 export {standardInlineControls,pendingStandardFormats,standardRemovalLiteral} from "./dist/browser/standard_inline_controls.js";
 export {taskContext} from "./dist/browser/task_actions_v2.js";
 export {nearestStructuralV2,replaceableFlowV2,structuralIntervalV2} from "./dist/browser/structural_context_v2.js";
+export {flowEdgeEligible,selectedFlowAtom} from "./dist/browser/flow_controls.js";

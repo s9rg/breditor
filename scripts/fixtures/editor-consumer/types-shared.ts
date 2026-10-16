@@ -10,6 +10,9 @@ void opening.then(editor=>{const changed:boolean=editor.closeTypingGroup(editor.
 // @ts-expect-error Clock transport is an exact canonical decimal, not a rounded JavaScript number.
 void opening.then(editor=>editor.core.typeUser("A",9007199254740993));
 void opening.then(editor=>{const changed:boolean=editor.setReadOnly(false,editor.view().revision);void changed;});
+void opening.then(editor=>{const moved:boolean=editor.core.navigateFlow("before",editor.view().revision);const inserted:boolean=editor.core.insertParagraphAdjacent("fresh","after",editor.view().revision);void moved;void inserted;});
+// @ts-expect-error Logical movement cannot be a guessed physical arrow direction.
+void opening.then(editor=>editor.core.navigateFlow("right"));
 void opening;
 const structural:SharedProfileConfigurationV2={format:"breditor/shared-rich-profile",formatVersion:2,schema:{name:"example/v2",version:2},extensions:[]};
 void createStructuralSharedProfileV2(structural);

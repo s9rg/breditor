@@ -1,5 +1,6 @@
 //! Thin Wasm ownership boundary over the canonical shared rich editor.
 mod exit_code_block;
+mod flow_navigation;
 mod typing;
 use crate::{
     Error,

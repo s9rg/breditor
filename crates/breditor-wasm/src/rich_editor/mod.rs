@@ -10,6 +10,7 @@ mod editor;
 mod enable_typing_history;
 mod error;
 mod exit_code_block;
+mod flow_navigation;
 mod inline_format_state;
 mod observation;
 mod profile;
