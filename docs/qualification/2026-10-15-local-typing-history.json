@@ -1,0 +1,94 @@
+{
+  "date":"2026-10-15",
+  "sourceCheckpoint":"9e1ffdad9c5d6301e00c2a66f1c5daa16957b984",
+  "scope":"Opt-in local native typing history through Wasm, vanilla/React SDK and DOM; two reproduced asynchronous caret repairs; original shared-history visibility prerequisites.",
+  "localIntegrationComplete":true,
+  "featureComplete":false,
+  "goalComplete":false,
+  "releaseQualified":false,
+  "contracts":{
+    "admission":"history: typing-v1 is immutable initial local configuration for either rich language. Omitted/explicit preserves original behavior. Admission happens before initial read-only policy and mounting. Requested capability or grouped recovery fails on older runtimes without JS-history fallback, leaking an owner or claiming the host.",
+    "wasm":"Additive exact-version capability, guarded enable/close and separate insertTypingText/deleteTypingRange data commands. clockMs is a strict canonical decimal u64 string; numeric, signed, fractional, overflowing, duplicate and unknown fields reject. Frozen views add historyGrouping/historyStepCount only after opt-in; original default view bytes remain unchanged.",
+    "recovery":"New checkpoints use the separate breditor/rich-typing-session v1 family. typingCheckpoint and restoreTypingEditor explicitly select that family; original checkpoint/restoreEditor remain strict. Original recovery plus explicit new-mode admission retains old entries as singleton units. Exact grouped future Undo/Redo survives recovery, but active continuation does not. Read-only remains host policy reapplied after restore.",
+    "input":"Only collapsed-caret insertText and valid directional caret-adjacent deletion targets use native natural input. Paste, replacement, composition, hard breaks and programmatic edits remain explicit. Navigation, unchanged-caret pointer/blur and toolbar intent close continuation without rendering or moving focus. Native 750 ms, 64-step, scalar, format, capacity, revision and atomicity rules are unchanged.",
+    "react":"Parent renders retain the same owner and checkpoint. Initial history configuration is not a live prop. The imperative closeTypingGroup method delegates to the native guarded boundary.",
+    "shared":"Shared natural history is not implemented. The shared SDK accepts only explicit history and rejects unsupported policy before startup. Original causal models, update frames, journals, writer lineage, engine wall-clock configuration and application exports remain unchanged.",
+    "visibilityPrerequisites":"Three new canonical native tests in both shared languages prove that one engine Undo can skip multiple remotely invisible owned keys, that a false result may still change stacks/publication, and that blindly issuing one call per original typing event can cross an older explicit boundary. Exact recovered future history is compared. These are prerequisites, not shared grouping acceptance."
+  },
+  "reproducedRepairs":[
+    {
+      "id":"local-async-render-owned-caret",
+      "cause":"An asynchronous focus:false image insertion replaced editable children without restoring the already-owned DOM caret. Rust retained the task caret, but the browser range collapsed to the root; the next beforeinput adopted the first heading and inserted there.",
+      "before":"Corrected-seed reproduction fails all six explicit/natural V2 image cases across Chromium, Firefox and WebKit. Trace shows native task-a-head offset 2 versus browser root offset 0, followed by native intro offset 1 after C. No Rust command error.",
+      "repair":"Capture whether the surface owns focus before command publication. Restore the native selection after rendering when focus was already owned, including focus:false work; do not steal an outside control's focus.",
+      "beforeConsumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-yttCHN/consumer",
+      "retained":"target/local-typing-history-qualification/image-before"
+    },
+    {
+      "id":"local-background-selection-overwrite",
+      "cause":"Firefox emitted selectionchange for a temporary collapsed range left by background rendering while the Save button held focus. Unconditional document-level syncing overwrote Rust's retained caret with intro offset 0. Returning focus and typing C inserted in that heading.",
+      "before":"The outside-focus case reproduces in Firefox; the trace records active save and Rust intro offset 0 before editor.focus. The same run passes in Chromium/WebKit. The first repair alone passes 41/42 cases, exposing this independent case.",
+      "repair":"Sync browser selection only while this surface or its descendant owns focus. Background rendering cannot reinterpret a leftover range as user editor intent.",
+      "beforeConsumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-jg2mvi/consumer",
+      "retained":"target/local-typing-history-qualification/outside-before"
+    }
+  ],
+  "browserChecks":{
+    "command":"node scripts/check-editor-browser.mjs",
+    "consumer":"/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-editor-consumer-rwEBRa/consumer",
+    "cleanInstallTypesNodeAndProductionBundle":true,
+    "editingBatches":[{"passed":93,"duration":"1.9 minutes"},{"passed":102,"duration":"3.2 minutes"},{"passed":18,"duration":"13.1 seconds"}],
+    "editingPassed":213,
+    "realRelayPassed":12,
+    "realRelayDuration":"1.1 minutes",
+    "totalPassed":225,
+    "focusedNaturalHistoryAndCaretCases":42,
+    "focusedDuration":"33.0 seconds",
+    "existingApplicationCommand":"node_modules/.bin/playwright test -c experiments/shared-browser/application-network.config.mjs",
+    "existingApplicationPassed":78,
+    "existingApplicationDuration":"1.5 minutes",
+    "engines":["chromium","firefox","webkit"],
+    "policy":"Every discovered file runs once in the complete bounded matrix: all three engines, one worker, zero retries and unchanged 60-second case/300-second process deadlines. The focused run overlaps these cases, not additional feature coverage.",
+    "coverage":"Both local languages, trusted keyboard bursts, real pause, backward/forward deletion, caption/code input, explicit and natural image insertion, immediate typing, exact grouped checkpoint/reload/future history, declared recovery, native read-only denial, pointer/navigation/blur/toolbar boundaries and React ownership. Existing structural, storage lifecycle, peer/offline/reconnect and real asset checks also remain passing.",
+    "limits":"Paste/drop/composition events in the new cases are synthetic. Trusted browser keyboard is not physical OS IME, native clipboard or screen-reader qualification. Shared natural grouping and general cross-container selections are not implemented by this checkpoint."
+  },
+  "nativeAndPackageChecks":{
+    "rootCommand":"CARGO_TARGET_DIR=target/shared-v2-root-regression /Users/s/.cargo/bin/cargo test --offline --workspace --features breditor-wasm/experimental-rich-content",
+    "rootPassed":2353,
+    "rootSuiteFooters":140,
+    "newLocalWasmTests":3,
+    "sharedCommand":"CARGO_TARGET_DIR=target/collaboration-native-v2-actions /Users/s/.cargo/bin/cargo test --offline --manifest-path crates/breditor-collaboration/Cargo.toml -p breditor-collaboration",
+    "sharedPassed":251,
+    "sharedSuiteFootersIncludingZeroDoctests":21,
+    "newSharedVisibilityTests":3,
+    "sdkPassed":60,
+    "sdkFiles":12,
+    "defaultWorkspace":{"browser":2203,"browserFiles":59,"react":57,"referenceHighlight":34,"diagnostics":332},
+    "scripts":{"total":364,"passed":361,"failed":0,"existingOptInSkips":3},
+    "strictNativeAllTargetClippy":true,
+    "strictSharedNativeAllTargetClippy":true,
+    "strictActualLocalReleaseWasmClippy":true,
+    "rootRustdocWarningsDenied":true,
+    "firstPartyFormatChecks":true,
+    "candidateAndCleanConsumerTypes":true,
+    "note":"Existing vendored HasIdSpan warning remains unchanged. Vendor sources, dependencies, lockfiles, default browser archive and shared runtime were not changed. Full research/all-features and release performance qualification are not claimed."
+  },
+  "compatibility":{
+    "local":{"passed":true,"languages":[1,2],"oldCapabilityRejected":true,"exactDefaultStates":10,"exactGroupedFutureStates":10,"beforeWasmSha256":"be1b5661a7b7a12cb2974bc39cd4f51e9e2d8783cd2a905b7bb380b190d52da7","afterWasmSha256":"32d815eed9b44c2e40fda36bbf2ecec0b350bffa5d871c39466b2f134c767de8","script":"scripts/probe-local-typing-history.mjs"},
+    "originalSharedV1":{"passed":true,"comparedStates":49,"crossVersionRestores":2,"futureHistorySteps":12,"beforeWasmSha256":"de496995f794c2eef158ad9b78af610dabc0717079d6d77d4caf23b421902876","afterWasmSha256":"9b0c4b5bef66ea65f4806881e863c5ed8b56799a6979cc781f6212c5d1d97906","script":"scripts/compare-shared-v1-runtime.mjs"},
+    "readOnly":{"passed":true,"nativeWasmDenials":4,"crossVersionRestores":8,"exactFutureHistoryComparisons":20,"script":"scripts/probe-read-only-compatibility.mjs"}
+  },
+  "artifacts":[
+    {"name":"breditor-browser-0.3.0-alpha.22.tgz","bytes":327732,"sha256":"79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name":"breditor-experimental-rich-content-0.3.0-alpha.22.tgz","bytes":1252157,"sha256":"6d28a09c9e5e04230a5de45408790be12f4795b78ac975dba8aa0dc19452896e"},
+    {"name":"breditor-collaboration-0.3.0-alpha.22.tgz","bytes":2313398,"sha256":"1c623b0472b90d08b1fecf50600aeacb1b0ba7c75150d00534e9eac224ae6079"},
+    {"name":"breditor-editor-0.3.0-alpha.22.tgz","bytes":21628,"sha256":"fcd582e8d37b1f61fb71fda84f840b712fc64875f4d627a49fdd2ce7598105eb"},
+    {"name":"breditor_wasm_bg.wasm","bytes":4313791,"sha256":"32d815eed9b44c2e40fda36bbf2ecec0b350bffa5d871c39466b2f134c767de8"},
+    {"name":"breditor_shared_bg.wasm","bytes":8345517,"sha256":"9b0c4b5bef66ea65f4806881e863c5ed8b56799a6979cc781f6212c5d1d97906"}
+  ],
+  "retainedLogs":"target/local-typing-history-qualification",
+  "failedAttempts":"The first expanded image run exposed missing C and an incorrect Ship-versus-Write seed expectation. After correcting the seed, the six-case before run still fails. The first caret repair passes 41/42, with Firefox outside-focus failure; its separate focused before run passes 2/fails 1. Both repairs together pass 42 focused and all 225 installed cases without weakening the retained immediate-typing assertions.",
+  "openIssues":["Earlier unrecorded native V2 code/style ReplayMismatch remains unconfirmed","Historical intermittent WebKit integer-domain startup fault remains open","Earlier unclassified WebKit cancelled-mount TypeError remains unconfirmed"],
+  "nextAcceptance":"Implement native shared key-based grouping and exact separate recovery, then capability-checked Wasm/SDK/React/DOM and installed local/shared V1/V2 combined natural-history/offline/remote acceptance. Continue the original general-selection/navigation, bounded-layout/context and external-interchange workstreams.",
+  "readiness":"History remains partial; no feature label or release gate is promoted. Both original V1 workstreams remain active/incomplete. There are still 9 implemented/17 partial/20 missing grouped capabilities and 13 open release gates. Source and qualification are local checkpoints only; no push, tag, registry publication or deployment."
+}
