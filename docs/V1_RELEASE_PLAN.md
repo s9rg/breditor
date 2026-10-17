@@ -286,6 +286,21 @@ floors and owned Undo/Redo, and six permanent Reader control regressions.
 Proposal revisions and granular character-affine rebasing remain functional work;
 no package version, publication status or V1 release gate advances.
 
+The [native revision checkpoint](qualification/2026-10-17-rich-review-suggestion-revisions-native.json)
+adds immutable same-author revision relations and a separately enabled reference
+host transaction for pending-only supersession. Current author rights, competing
+revisions and Accept/Reject races are checked before commit. Prepare alone is
+inert; matching committed pairs recover the old intent's final not-accepted
+outcome and new V1 publication together. Real write failures, torn records,
+hostile replay and old cursor paging are tested, along with revised rich edits
+and exact owned-history recovery under all six policies. All 491 canonical
+native tests, 75 relay/server tests, three compatibility contracts and 344 SDK
+regressions pass. Strict native/Wasm and relay/integration-test lint passes.
+This is native-first: revision socket negotiation, durable client revision queues,
+paired controls and granular text rebasing remain functional work. Browser
+exports, existing packet meanings and package versions remain unchanged; no V1
+gate or publication status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

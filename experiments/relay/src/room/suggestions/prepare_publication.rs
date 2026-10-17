@@ -30,7 +30,10 @@ impl Room {
             return Ok(PublicationPreparation::Duplicate(info.id));
         }
         if state.proposals.len() >= MAX_PROPOSALS
-            || packet.len() > MAX_PACKETS_BYTES.saturating_sub(state.bytes)
+            || packet.len()
+                > MAX_PACKETS_BYTES.saturating_sub(state.bytes.saturating_add(
+                    state.revisions.as_ref().map_or(0, |revisions| revisions.bytes),
+                ))
         {
             return Err(Error::Contract("suggestion publication budget"));
         }

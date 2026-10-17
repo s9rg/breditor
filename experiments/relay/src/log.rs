@@ -105,6 +105,18 @@ pub(crate) enum Event {
         principal: String,
         packet: String,
     },
+    EnableDocumentSuggestionRevisionsV1 {
+        actor: String,
+        binding: String,
+    },
+    PrepareDocumentSuggestionRevisionV1 {
+        principal: String,
+        request: crate::SuggestionRevisionRequest,
+    },
+    CommitDocumentSuggestionRevisionV1 {
+        prepared_at: String,
+        revision_id: String,
+    },
     DecideDocumentSuggestionV1 {
         principal: String,
         request: crate::SuggestionDecisionRequest,
@@ -140,6 +152,8 @@ pub(crate) struct Log {
     previous: [u8; 32],
     bytes: u64,
     poisoned: bool,
+    #[cfg(test)]
+    read_only_after_append: Option<std::path::PathBuf>,
 }
 fn lock(file: &File) -> Result<()> {
     file.try_lock().map_err(|e| match e {
@@ -161,7 +175,15 @@ impl Log {
     pub fn create(path: &Path, event: Event) -> Result<Self> {
         let file = options().create_new(true).open(path)?;
         lock(&file)?;
-        let mut log = Self { file, next: 0, previous: [0; 32], bytes: 0, poisoned: false };
+        let mut log = Self {
+            file,
+            next: 0,
+            previous: [0; 32],
+            bytes: 0,
+            poisoned: false,
+            #[cfg(test)]
+            read_only_after_append: None,
+        };
         log.append(event)?;
         // The caller supplies an existing data directory; creation must persist its name too.
         File::open(path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new(".")))?
@@ -235,6 +257,8 @@ impl Log {
                 previous,
                 bytes: offset,
                 poisoned: false,
+                #[cfg(test)]
+                read_only_after_append: None,
             },
             records,
             recovery,
@@ -258,6 +282,10 @@ impl Log {
         // A real OS write failure after native preparation, not a fake acknowledgement or core.
         self.file = File::open(path)?;
         Ok(())
+    }
+    #[cfg(test)]
+    pub(crate) fn use_read_only_after_next_append_for_test(&mut self, path: &Path) {
+        self.read_only_after_append = Some(path.to_path_buf());
     }
     pub fn append(&mut self, event: Event) -> Result<u64> {
         self.ready()?;
@@ -292,6 +320,10 @@ impl Log {
         self.next += 1;
         self.previous = digest;
         self.bytes += HEADER + size;
+        #[cfg(test)]
+        if let Some(path) = self.read_only_after_append.take() {
+            self.file = File::open(path)?;
+        }
         Ok(record.sequence)
     }
 }

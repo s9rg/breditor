@@ -31,6 +31,7 @@ impl Room {
             proposals: BTreeMap::new(),
             updates: BTreeMap::new(),
             effect_owner,
+            revisions: None,
         })
     }
     /// Enable the separate proposal/decision lane once. Existing V1-transport rooms are refused,

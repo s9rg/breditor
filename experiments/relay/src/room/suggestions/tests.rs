@@ -15,6 +15,8 @@ use breditor_collab_feasibility::{
 use serde_json::{Value, json};
 use std::{fs, io::Write, path::PathBuf};
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+#[path = "revisions/replay_tests.rs"]
+mod revision_replay_tests;
 struct Files {
     directory: PathBuf,
     path: PathBuf,

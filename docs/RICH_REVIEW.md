@@ -32,7 +32,9 @@ document-author socket are implemented below. Recovered accepting-user history
 has an explicit native/Wasm/SDK contract and paired durable storage. Permanent
 Reader proposal/Reject synchronization uses a separate non-authoring transport.
 Borrowed vanilla/React controls expose those proposals and decisions alongside
-comments and versions. Proposal revisions and granular rebasing remain unfinished.
+comments and versions. Native immutable revisions and authenticated pending-only
+supersession are implemented below. Revision transport/client controls and
+granular rebasing remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -98,6 +100,92 @@ serialized or moved to another editor. `check_document_suggestion_preview` refus
 an old publication even after a disjoint peer edit; a new preview can retain that
 peer's work when the original dependencies still match. No preview is an Accept,
 server receipt or durable queued decision.
+
+### Immutable native proposal revisions
+
+`breditor/document-suggestion-revision` V1 is a separate closed relation containing
+an exact predecessor ID and an unchanged V1 replacement proposal packet. Its
+domain-separated digest identifies the relation, not the author's authority or a
+final server decision. The predecessor packet is supplied explicitly for native
+admission; no hidden mutable packet lookup or accepted AST is embedded. Ordinary
+V1 capture/publication refuses a revision envelope rather than interpreting it as
+an independent replacement proposal.
+
+`capture_document_suggestion_revision_guarded` captures a complete new intent at
+the current accepted native source. It is not an edit applied to the old proposed
+preview. It retains the predecessor's descriptive author and requires its source
+history. Planning remains pure for read-only owners under all six scope/grouping
+policies. `read_document_suggestion_revision` checks the closed relation, binding,
+different proposal identities and unchanged author;
+`verify_document_suggestion_revision` also proves both historical native intents
+and that the replacement source observes every predecessor source cut. Missing
+history stays Pending. Rehashed invalid coordinates, different authors and older
+child sources cannot become native source proofs. Metadata clocks remain exact
+decimal strings, not server order or authentication.
+
+The reference host enables revisions separately through
+`enable_document_suggestion_revisions`. Its descriptor has a new random binding
+and pins the original suggestion lane. Old activation/defaults remain unchanged.
+Current document-read permission and Propose permission allow only the original
+creator to replace their own pending intent, including a non-authoring Reader.
+This explicit withdrawal-and-replacement does not grant arbitrary Reject or
+document Accept rights; those retain their existing Review/Editor checks. Fresh
+namespaces and referenced assets remain host responsibilities.
+
+`revise_document_suggestion` serializes against ordinary Accept/Reject and other
+revisions. A winning revision finalizes the predecessor once as not accepted
+(the existing Reject outcome, attributed to the revising creator) and publishes
+the new immutable V1 proposal. Its separate revision receipt records that this
+was supersession, with the original chain root and exact successor. If an
+Accept/ordinary Reject wins first, the revision returns Conflict and publishes
+nothing. Two revisions against the same predecessor have one winner. Repeating
+the same revision returns its original receipt even after later revisions or
+child decisions; it does not create a branch or make that old child current.
+Supersession is not Accept: a source-valid replacement can still conflict with
+newer accepted content and needs the existing current native review/preview.
+
+Two consecutive hash-chained records preserve existing V1 update/cursor meanings.
+Prepare validates and retains the requested relation but changes neither proposal.
+Only its immediately following matching Commit makes the predecessor's Reject
+and replacement publication visible, after both records sync. A complete Prepare
+at EOF or before another next record is inert. A torn Commit leaves the old
+proposal pending after validated recovery; a fully synced Commit recovers both
+outcomes even when the process never updated memory or acknowledged the request.
+Uncertain second writes fence the room. Invalid author, source, identity or record
+order rejects semantic replay before any incomplete tail is removed.
+
+Existing V1 readers receive an ordinary final Reject and an ordinary new
+publication at distinct adjacent sequences. A frozen page may split between them
+without exposing later child decisions. Exact revision reads retain the explicit
+supersession reason and lineage. Older host binaries reject the new opt-in log
+tags; no old record or packet meaning is silently migrated. The existing 1,024
+proposal, 32 MiB retained-metadata and whole-log limits remain; retained revision
+envelopes count toward that byte budget. Native envelopes allow up to
+`2 * 1 MiB + 4096` bytes to account for the embedded packet's JSON escaping.
+
+Accepted children use the unchanged native effect and accepting-user history
+contracts. Undo/Redo compensates the child's accepted document effect; it does
+not reopen the predecessor or undo the authenticated revision receipt. Native
+tests combine revised rich text, formatting, lists, rows/columns and image sizing
+with exact owned-history recovery under all six policies.
+
+This checkpoint is native-first. Revision socket negotiation, a separately
+selected durable client queue, source-before-receipt recovery and borrowed
+vanilla/React revision controls remain integration work. They must submit the
+revision transaction, never fall back to publishing its child independently.
+Offline revision/decision races must retain the losing draft and original server
+outcome explicitly. Granular character-affine rebasing remains separate work;
+existing conservative V1 source witnesses are unchanged.
+
+The [native revision checkpoint](qualification/2026-10-17-rich-review-suggestion-revisions-native.json)
+passes 491 canonical native tests, 75 relay/server tests and three compatibility
+contracts, including real I/O/torn-log audits and rehashed-packet source checks.
+Strict native/Wasm, relay and document-suggestion integration-test lint passes.
+All 344 SDK/editor regressions and 48 runtime/build guards pass. Rebuilt native
+hosts and application Wasm also pass the original four-policy author workflow
+and clean-installed six-policy mixed controls/Reader regressions. Those client
+runs keep revisions disabled; they qualify existing behavior, not unfinished
+revision-client delivery.
 
 ### Staged native suggestion effects
 

@@ -138,8 +138,9 @@ pub use session::RichReplica;
 pub use suggestions::{
     DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionEffect,
     DocumentSuggestionEffectVerification, DocumentSuggestionInfo, DocumentSuggestionPreparation,
-    DocumentSuggestionPreview, DocumentSuggestionScope, DocumentSuggestionSource,
-    PreparedDocumentSuggestionEffect, SuggestionConflictTarget, VerifiedDocumentSuggestionEffect,
+    DocumentSuggestionPreview, DocumentSuggestionRevisionInfo, DocumentSuggestionRevisionSource,
+    DocumentSuggestionScope, DocumentSuggestionSource, PreparedDocumentSuggestionEffect,
+    SuggestionConflictTarget, VerifiedDocumentSuggestionEffect,
 };
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{

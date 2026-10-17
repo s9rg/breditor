@@ -8,12 +8,17 @@ mod prepare_publication;
 mod publish;
 mod read;
 mod replay;
+mod revisions;
 #[cfg(test)]
 mod tests;
 mod types;
 use super::Room;
 use crate::{Error, Result};
 use breditor_collab_feasibility::rich_replica::RichReplica;
+pub use revisions::{
+    DurableSuggestionRevision, StoredSuggestionRevision, SuggestionRevisionAdmission,
+    SuggestionRevisionRequest, SuggestionRevisionsDescriptor,
+};
 use std::collections::BTreeMap;
 pub use types::*;
 
@@ -39,6 +44,7 @@ pub(super) struct SuggestionsState {
     proposals: BTreeMap<String, StoredProposal>,
     updates: BTreeMap<u64, SuggestionUpdate>,
     effect_owner: RichReplica,
+    revisions: Option<revisions::RevisionsState>,
 }
 impl Room {
     fn suggestions_state(&self) -> Result<&SuggestionsState> {

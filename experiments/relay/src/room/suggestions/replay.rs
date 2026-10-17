@@ -10,6 +10,11 @@ impl Room {
         event: Event,
     ) -> Result<()> {
         match event {
+            event @ (Event::EnableDocumentSuggestionRevisionsV1 { .. }
+            | Event::PrepareDocumentSuggestionRevisionV1 { .. }
+            | Event::CommitDocumentSuggestionRevisionV1 { .. }) => {
+                self.replay_suggestion_revision(sequence, event)?;
+            }
             Event::EnableDocumentSuggestionsV1 { actor, binding, effect_writer } => {
                 if actor != self.owner
                     || self.suggestions.is_some()

@@ -12,6 +12,8 @@ use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[path = "selective_effect_tests.rs"]
 mod selective_effect_tests;
+#[path = "revision_packet_tests.rs"]
+mod revision_packet_tests;
 fn owner() -> Result<RichReplica> {
     let profile = SharedRichProfile::from_standard_configuration_json_v3(
         r#"{"format":"breditor/shared-rich-profile","formatVersion":3,"schema":{"name":"example/suggestion-packets","version":1},"extensions":[]}"#,

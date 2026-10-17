@@ -1,0 +1,81 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "761046cd3e7285242cc18f07c63e45118ca88ba6",
+  "scope": "Native immutable revision capture/source proof and separately enabled authenticated reference-host supersession of an author's pending proposal. Finalized Accept/Reject cannot reopen; revised rich child effects retain exact accepting-user history. Revision wire/Wasm/SDK queue/control integration and granular rebasing remain functional work. This native-first checkpoint is not end-to-end client revision delivery or V1 readiness.",
+  "artifacts": {
+    "applicationWasmSha256": "8d193ea78459fffb040a11af8a3f719db9e186d5222832415abdeda6c86b3fdd",
+    "suggestionHostSha256": "0529416dafccba5c3c5ee78ed584caa62805718c5b96eff70143be9597fad069",
+    "reviewAndCatalogHostSha256": "ef2256738ea6b38877066d379f888e2696ad4bfc8655d3a0f299f57c43d874f4",
+    "javascriptWasmExports": 8,
+    "wasmExports": 193,
+    "revisionWasmSdkOrWireApiAdded": false,
+    "browserSideEffectOrInverseExecutorAdded": false,
+    "newNativeEnvelope": "breditor/document-suggestion-revision V1",
+    "revisionEnvelopeMaximumBytes": 2101248,
+    "existingPacketsJournalsOrProtocolTagsReinterpreted": false,
+    "newOptInLogEvents": ["enableDocumentSuggestionRevisionsV1", "prepareDocumentSuggestionRevisionV1", "commitDocumentSuggestionRevisionV1"],
+    "verifiedLocalArchiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "67a188f79da6667384793dffb2ef0d611f94eeacf4a6c4b817ed4c1620b3378b",
+      "breditor-editor-0.3.0-alpha.22.tgz": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43"
+    }
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 491, "failed": 0, "resultGroupsIncludingEmptyDoctests": 45, "newPublicRevisionTests": 3, "newPrivateRehashedPacketTests": 3},
+    "fullRelayAndServerSuite": {"passed": 75, "failed": 0, "newPublicRevisionWorkflows": 6, "newPrivateCrashAndReplayAudits": 5},
+    "researchCompatibilityRevisionContracts": {"passed": 3, "failed": 0},
+    "finalNoReinterpretationAndRichHistoryCases": "passed",
+    "strictNativeLibraryAndPublicRevisionContractClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "strictRelayProductionAndDocumentSuggestionIntegrationClippy": "passed",
+    "fullUnchangedSdkEditorRegression": {"passed": 344, "failed": 0, "files": 38},
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 48, "failed": 0},
+    "originalDefaultActualWasmSdkRegression": {"passed": true, "trials": 4, "wireRequests": 1073, "revisionsEnabled": false},
+    "cleanInstalledExistingMixedWorkflowRegression": {"passed": true, "ownedHistoryCommentVersionTrials": 6, "vanillaReactControlTrials": 6, "stockActionCases": 54, "permanentReaderTransportTrials": 6, "permanentReaderControlTrials": 6, "readerAuthorRegistrations": 0, "readerAuthorResumes": 0, "readerDocumentSubmissions": 0, "strictPublicTypes": true, "packagedWasm": true, "workspaceProductionLinks": false, "authorWireRequests": 7529, "readerWireRequests": 1313, "revisionsEnabled": false, "doesNotQualifyRevisionClientIntegration": true}
+  },
+  "nativeContracts": [
+    "Each revision is a closed content-addressed relation around an exact predecessor ID and an unchanged immutable V1 replacement packet. Descriptive author is retained; no accepted AST, role, finality claim, arbitrary inverse or browser executor is introduced.",
+    "Capture is a pure guarded read under original/general/document and explicit/natural policies, including read-only sources. It replaces the complete proposed intent at the current accepted source, not the prior preview's AST. Missing original source, no-op/equal identities and malformed inputs refuse without changing native history or operation bytes.",
+    "Descriptive admission is separate from source proof. Native verification re-evaluates both historical intents and requires every predecessor source cut to be covered by the child. Valid rehashed wrappers cannot authorize invalid scalar coordinates, changed authors, unrelated predecessors or backward source cuts.",
+    "The reference host enables revisions explicitly with a separate random descriptor binding tied to the existing suggestion lane. Current read plus Propose permission permits only the original creator's pending withdrawal/replacement. It grants no arbitrary Reject or document Accept rights, and even the room owner cannot rewrite another creator's attribution through this operation.",
+    "A winning revision commits the predecessor's single final Reject/not-accepted outcome and the replacement's publication. A prior Accept/ordinary Reject returns Conflict with no publication. Racing revisions have one successor; exact retries return the original receipt after later child decisions or subsequent revisions rather than forking a new chain.",
+    "Prepare and its immediately following matching Commit are distinct hash-chained records. Nothing becomes visible until both sync. A valid uncommitted Prepare is inert at EOF or before any other following record. Uncertain second writes fence the room; committed pairs recover both outcomes after a process crash before in-memory publication or acknowledgement.",
+    "Semantic replay validates original rights, source, relation identity and record adjacency before repairing incomplete tails. Wrong authors, forged commit references, intervening records or commits without preparation reject without truncating the file.",
+    "Existing V1 clients see ordinary final Reject and new Published events at distinct adjacent sequences. Frozen paging may split between them without observing a later child's decision. Older host binaries reject newly enabled log tags; old saved meanings and defaults are not migrated.",
+    "Revised rich children use the existing source-checked native effect and owned Undo contracts. Tests combine text, formatting, lists, appended rows/columns and image sizing across all six history policies, exact native recovery, repeated receipts and Undo/Redo. Compensation never reopens the superseded predecessor.",
+    "The original 1024-proposal, 32 MiB retained-metadata and whole-log limits remain. Revision envelopes and retained child packets both count toward the byte ceiling. Fresh namespaces, referenced asset admission/retention and authenticated caller identity remain host responsibilities."
+  ],
+  "durabilityEvidence": [
+    "Real OS write failure on the second record after the first has synced fences all public room reads, leaves document bytes unchanged and recovers the old proposal as pending; exact retry can then commit.",
+    "Truncated Commit header and payload variants repair only the incomplete tail after semantic validation, leaving both supersession outcomes absent until retry.",
+    "Two fully synced records with deliberately skipped in-memory publication recover both original outcomes and an idempotent unchanged retry receipt.",
+    "A complete uncommitted Prepare can be followed by an unrelated legitimate record; it remains inert and cannot authorize a later unmatched Commit.",
+    "Two real threads racing same-author revision requests produce one committed successor and one explicit Conflict, with original winner retained after restart."
+  ],
+  "verificationNotes": [
+    "The first integration fixture reused a native effect proof after history adoption changed the publication. Native stale-proof refusal was correct; the final test refreshes the proof before checking once-only adoption. No native guard was weakened.",
+    "Strict test lint found a long new integration case, a similar binding name and a missing statement terminator. Shared helpers and naming/formatting fixes remove all introduced findings without suppressions; production and the document-suggestion integration target pass strict lint.",
+    "The new real-I/O hook is cfg(test) only and replaces the log's file handle with a real read-only OS handle after one successful append. It neither fabricates an acknowledgement nor changes production log behavior.",
+    "Application Wasm is rebuilt from the final canonical source but exposes no revision capture/acceptance API yet; its eight JS exports and 193 binary exports retain the prior guarded application surface. Existing SDK/installed checks are regressions, not proof of revision-client delivery.",
+    "Canonical native, application Wasm, compatibility and relay builds retain their separate target directories. Referenced hosts are isolated loopback fixtures; no live room, production credentials, remote repository or deployment is changed."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_revision_contracts",
+    "node scripts/build-collaboration-runtime.mjs",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node scripts/probe-suggestion-sync-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestions_functional",
+    "node scripts/check-suggestion-controls-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional"
+  ],
+  "remaining": [
+    "Explicit revision socket capability and authenticated relation discovery/download/submission, paired native/Wasm/SDK reads and immutable outcome validation.",
+    "A separately selected durable client revision queue with exact source-before-receipt recovery, offline race/lost-reply reconciliation and borrowed vanilla/React revision controls. It must never fall back to publishing the child independently.",
+    "Granular character-affine text rebasing without changing conservative V1 source-witness meanings.",
+    "Final V1 migration/API, package release, storage lifetime/compaction, production auth/hosting and deferred broad browser/IME/accessibility/performance qualification. The full advanced-review goal remains active."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

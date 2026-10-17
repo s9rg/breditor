@@ -25,6 +25,8 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+#[path = "support/suggestion_revisions.rs"]
+mod revision_contracts;
 struct Files {
     dir: PathBuf,
     path: PathBuf,

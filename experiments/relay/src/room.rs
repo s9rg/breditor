@@ -28,8 +28,10 @@ pub use suggestions::{
     DocumentSuggestionAdmission, DocumentSuggestionDecisionAdmission, DocumentSuggestionEntry,
     DocumentSuggestionPublication, DocumentSuggestionsCursor, DocumentSuggestionsDescriptor,
     DocumentSuggestionsPage, DurableDocumentSuggestion, DurableSuggestionDecision,
-    StoredSuggestionDecision, SuggestionDecision, SuggestionDecisionRequest, SuggestionEffect,
-    SuggestionPermissions, SuggestionRole, SuggestionUpdate,
+    DurableSuggestionRevision, StoredSuggestionDecision, StoredSuggestionRevision,
+    SuggestionDecision, SuggestionDecisionRequest, SuggestionEffect, SuggestionPermissions,
+    SuggestionRevisionAdmission, SuggestionRevisionRequest, SuggestionRevisionsDescriptor,
+    SuggestionRole, SuggestionUpdate,
 };
 pub use versions::{
     DocumentVersionAdmission, DocumentVersionCatalogEntry, DocumentVersionCatalogPage,
@@ -295,11 +297,15 @@ impl Room {
         for record in records {
             result.replay(record)?;
         }
+        result.abandon_suggestion_revision_preparation();
         result.log.finish_recovery(recovery)?;
         Ok((result, recovery))
     }
 
     fn replay(&mut self, record: Record) -> Result<()> {
+        if !matches!(&record.event, Event::CommitDocumentSuggestionRevisionV1 { .. }) {
+            self.abandon_suggestion_revision_preparation();
+        }
         match record.event {
             Event::Seed { .. }
             | Event::SeedStructuralV2 { .. }
@@ -347,7 +353,10 @@ impl Room {
             | Event::GrantDocumentSuggestionsV1 { .. }
             | Event::PublishDocumentSuggestionV1 { .. }
             | Event::DecideDocumentSuggestionV1 { .. }
-            | Event::DecideOwnedDocumentSuggestionV1 { .. }) => {
+            | Event::DecideOwnedDocumentSuggestionV1 { .. }
+            | Event::EnableDocumentSuggestionRevisionsV1 { .. }
+            | Event::PrepareDocumentSuggestionRevisionV1 { .. }
+            | Event::CommitDocumentSuggestionRevisionV1 { .. }) => {
                 self.replay_document_suggestions(record.sequence, event)?;
             }
         }
