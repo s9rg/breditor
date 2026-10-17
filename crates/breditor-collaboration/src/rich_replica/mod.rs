@@ -97,6 +97,7 @@ mod set_pending_formats;
 mod set_read_only;
 mod set_selection;
 mod structural_text;
+mod suggestions;
 mod target_kinds;
 mod target_validation;
 mod text;
@@ -131,6 +132,11 @@ pub use review_comments::{
     ResolvedReviewThread, ResolvedReviewView,
 };
 pub use session::RichReplica;
+pub use suggestions::{
+    DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionInfo,
+    DocumentSuggestionPreparation, DocumentSuggestionPreview, DocumentSuggestionScope,
+    DocumentSuggestionSource, SuggestionConflictTarget,
+};
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{
     PreparedWriterGroup, WriterClock, WriterDependency, WriterGroupPreparation, WriterReceipt,

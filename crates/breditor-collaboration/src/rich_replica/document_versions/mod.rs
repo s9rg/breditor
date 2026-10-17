@@ -6,6 +6,7 @@ mod packet;
 mod prepare_version_restore;
 mod read_version;
 mod verify_version_source;
+pub(super) use compare_version::compare as compare_documents;
 pub use compare_version::{
     VersionAssetReference, VersionBlockChange, VersionChangeAspect, VersionComparison,
     VersionNodeTarget,

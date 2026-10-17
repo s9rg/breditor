@@ -1,0 +1,67 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "f1a9eef",
+  "scope": "Native immutable suggestion capture, historical intent proof, typed read dependencies and exact-owner pure previews. Rust-only functionality; no suggestion Accept/Reject or transport is exposed. Full advanced-review goal remains active.",
+  "verification": {
+    "fullCanonicalSharedNativeSuite": {"passed": 441, "failed": 0},
+    "focusedNativeSuggestionIntegration": {"passed": 14, "failed": 0},
+    "privateRehashedPacketContractsIncludedInNativeSuite": {"passed": 3, "failed": 0},
+    "pureReadonlySelectionHistoryCombinations": 4,
+    "ordinaryNativePreviewOracleAndFutureRecoveryCombinations": 4,
+    "protectedGeneralRangeDirectionHistoryCases": 4,
+    "liveTypingContinuationExactControlCases": 2,
+    "listTableHeaderCaptionFixtureCases": 6,
+    "fullRelayRegressionSuite": {"passed": 46, "failed": 0},
+    "researchCompatibilityCanonicalSuggestionContracts": {"passed": 14, "failed": 0},
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 35, "failed": 0},
+    "strictNativeLibraryAndFocusedContractClippy": "passed; existing vendor unused-import warning retained",
+    "strictRelayAllTargetServerClippy": "passed; existing vendor unused-import warning retained",
+    "nativeBuildTargets": ["target/historical-source-native", "target/version-catalog-native"],
+    "scopedRustFormattingAndWhitespace": "passed",
+    "applicationWasmSdkControlsUnchanged": true,
+    "newSuggestionWasmOrInstalledAcceptance": false
+  },
+  "contracts": [
+    "Separate closed breditor/document-suggestion V1 family. Source anchor, native edit, descriptive attribution and content address; no accepted AST, credential, live permission or decision.",
+    "Explicit Commands versus Document scope. Command batches and one general rich-range edit have separate typed variants; no JavaScript lowering or plain-text fallback.",
+    "Capture and previews are pure even for a read-only document owner. Accepted content, local UI, native counters and all history/checkpoint bytes remain unchanged.",
+    "Descriptive read admission is weaker than native source proof. Missing native history remains pending; a valid digest does not excuse bad coordinates, wrong bindings or source scope.",
+    "Native-derived source dependencies exhaustively cover every existing command variant. Independent image fields and table-axis/body changes can remain disjoint; caption replacement guards the old caption.",
+    "Affected subtrees also retain native character identity witnesses; equal-looking replacement characters do not become original targets.",
+    "Ready previews retain a live exact-owner publication witness. A changed publication needs a new preview, even when its original proposal dependencies still match. No preview authorizes acceptance."
+  ],
+  "reproducedRepairs": [
+    {
+      "trigger": "An insertion on a disposable Loro fork failed with StyleConfigMissing for Breditor's dynamic provenance annotation.",
+      "location": "suggestions/evaluate_commands.rs created the fork without restoring text_flow configuration.",
+      "repair": "Configure only the private fork before evaluation; never check out, reset or mutate the live owner.",
+      "evidence": "Native preview output equals ordinary native edits, including exact future recovery across all four selection/history policies."
+    },
+    {
+      "trigger": "A peer deleted the source character and inserted a new equal-looking character with the same formatting. The canonical AST was byte-identical, but an AST-only source guard incorrectly returned Ready.",
+      "location": "suggestions/read_set.rs checked semantic equality without original scalar identity.",
+      "repair": "Derive native scalar cursor identity witnesses from retained source history and compare them against current affected subtrees.",
+      "evidence": "The equal_looking_replacement_characters regression failed before the witness and passes with explicit Conflict afterward."
+    }
+  ],
+  "bounds": {
+    "proposalPacketBytes": 1048576,
+    "nativeCommandBatchSteps": 64,
+    "sourceDependencyTargets": 20000,
+    "scalarWitnessesPerTextBlock": 4194304,
+    "sourceAnchorBytes": 262144,
+    "sourceClocks": 1024,
+    "generalRichRange": "Uses the existing bounded native semantic planner, rich-run/floor constraints and protected-structure preservation rather than expanded command count.",
+    "existingNativeJournalAndRelayWireMeaningsChanged": false
+  },
+  "remaining": [
+    "Granular character-affine rebasing and proposal revision/conflict resolution. Current text intents conservatively conflict if any affected source text block changes, even for a disjoint edit within that block.",
+    "Authenticated durable proposal/decision ledger and exact offline proposal/decision recovery. Accept/Reject must finalize once in server order with atomic accepted native effects.",
+    "Ordinary selective Undo ownership for accepted foreign effects, without reserving/fencing the user's ordinary offline document writer.",
+    "Paired Wasm/SDK, vanilla/React suggestion controls and clean-installed combined review/document acceptance.",
+    "Final V1, public-host, storage lifecycle, performance and broad physical browser/IME/accessibility qualification. This checkpoint does not claim a repair of the separate historical WebKit fault."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

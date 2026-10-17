@@ -110,6 +110,17 @@ live authority. All 281 SDK/editor tests and 46 relay tests pass. Suggestions an
 clean-installed combined review acceptance remain functional work; final browser
 and production qualification remain release gates, not part of this checkpoint.
 
+The [native proposal checkpoint](qualification/2026-10-17-rich-review-suggestion-native.json)
+adds immutable source-bound suggestion intents and pure native previews for
+command batches and protected general rich ranges. Fourteen focused integration
+tests plus three packet tests cover actual source history, explicit conflicts,
+independent fields, native character identities, preview ownership and exact
+future recovery. The complete shared-native suite passes 441 tests and the relay
+passes 46. This is a Rust-only foundation: proposal persistence, granular text
+rebasing, authenticated final decisions, accepted-effect Undo ownership and
+Wasm/SDK/control integration remain active work. No suggestion acceptance API or
+V1 release gate is promoted.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

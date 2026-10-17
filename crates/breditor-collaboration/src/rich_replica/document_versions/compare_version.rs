@@ -151,7 +151,7 @@ fn assets(records: &BTreeMap<VersionNodeTarget, Record>) -> Vec<VersionAssetRefe
         .into_iter()
         .collect()
 }
-pub(super) fn compare(
+pub(in crate::rich_replica) fn compare(
     version_id: String,
     before: &str,
     after: &str,

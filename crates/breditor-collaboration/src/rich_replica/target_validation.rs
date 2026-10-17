@@ -3,11 +3,46 @@ use super::{Command, RichReplica, target_kinds::TargetKinds};
 use crate::Error;
 use breditor_core::{codec::RichFormatsJsonCodec, rich_content::BlockId, state::EditorContext};
 use serde_json::{Value, json};
+/// Read-only command context shared by live staged edits and disposable proposal forks.
+pub(super) struct Context<'a> {
+    pub codec: &'a breditor_core::codec::DocumentJsonCodecV2,
+    pub doc: &'a loro::LoroDoc,
+    pub document: &'a breditor_core::rich_content::RichDocument,
+    pub canonical: &'a str,
+    pub protocol: super::protocol::Protocol,
+    pub general: bool,
+    pub document_scope: bool,
+}
+impl Context<'_> {
+    const fn document_selection_enabled(&self) -> bool {
+        self.document_scope
+    }
+    const fn document_selected(&self) -> bool {
+        self.document_scope
+    }
+    const fn general_ranges_enabled(&self) -> bool {
+        self.general
+    }
+}
 fn contract(_: impl std::fmt::Display) -> Error {
     Error::Contract("shared target admission")
 }
 
 pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), Error> {
+    validate_context(
+        &Context {
+            codec: &owner.codec,
+            doc: &owner.doc,
+            document: &owner.document,
+            canonical: &owner.canonical,
+            protocol: owner.protocol,
+            general: owner.general_ranges_enabled(),
+            document_scope: owner.document_selection_enabled() && owner.document_selected(),
+        },
+        commands,
+    )
+}
+pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Result<(), Error> {
     let formats = RichFormatsJsonCodec::new(EditorContext::new(
         owner.codec.schema().clone(),
         owner.codec.limits().clone(),
@@ -47,15 +82,15 @@ pub(super) fn validate(owner: &RichReplica, commands: &[Command]) -> Result<(), 
         }
         if super::planning::handles(command) {
             super::planning::validate(
-                &owner.codec,
-                &owner.doc,
-                &owner.document,
-                &owner.canonical,
+                owner.codec,
+                owner.doc,
+                owner.document,
+                owner.canonical,
                 command,
             )?;
-        } else if !super::list_targets::validate(command, &owner.document, &declared)? {
+        } else if !super::list_targets::validate(command, owner.document, &declared)? {
             let block = BlockId::try_new(primary(command)?).map_err(contract)?;
-            let kind = declared.kind(&owner.document, &block)?;
+            let kind = declared.kind(owner.document, &block)?;
             let expected = match command {
                 Command::SetBlockLayout(_) => {
                     owner.protocol == super::protocol::Protocol::LayoutV3
@@ -127,7 +162,7 @@ fn primary(command: &Command) -> Result<&str, Error> {
     })
 }
 fn secondary(
-    owner: &RichReplica,
+    owner: &Context<'_>,
     command: &Command,
     declared: &TargetKinds,
     formats: &RichFormatsJsonCodec,
@@ -135,22 +170,22 @@ fn secondary(
     match command {
         Command::SetBlockLayout(value) => {
             breditor_core::codec::decode_rich_block_layout_patch(
-                &super::paragraphs::context(&owner.codec),
+                &super::paragraphs::context(owner.codec),
                 &value.patch_json,
             )
             .map_err(contract)?;
         }
-        Command::SetImageCaption(value) => value.validate_draft(&owner.doc, &owner.codec)?,
-        Command::JoinTextBlocks(value) => declared.require_text(&owner.document, &value.right)?,
+        Command::SetImageCaption(value) => value.validate_draft(owner.doc, owner.codec)?,
+        Command::JoinTextBlocks(value) => declared.require_text(owner.document, &value.right)?,
         Command::ReplaceTextRange(value) => {
             let code = owner.protocol.structural()
                 && value.anchor.block == value.focus.block
                 && declared.kind(
-                    &owner.document,
+                    owner.document,
                     &BlockId::try_new(&value.focus.block).map_err(contract)?,
                 )? == "breditor/code-block";
             if !code {
-                declared.require_text(&owner.document, &value.focus.block)?;
+                declared.require_text(owner.document, &value.focus.block)?;
             }
         }
         Command::SetFormat(value) => {
@@ -158,11 +193,11 @@ fn secondary(
         }
         Command::MoveBlock(value) => {
             if let Some(parent) = &value.parent {
-                declared.kind(&owner.document, &BlockId::try_new(parent).map_err(contract)?)?;
+                declared.kind(owner.document, &BlockId::try_new(parent).map_err(contract)?)?;
             }
         }
         Command::ResizeColumn(value) => {
-            let raw: Value = serde_json::from_str(&owner.canonical)?;
+            let raw: Value = serde_json::from_str(owner.canonical)?;
             if !find_column(&raw["root"], &value.block, &value.column) {
                 return Err(Error::Contract("visible shared column target"));
             }

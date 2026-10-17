@@ -24,7 +24,81 @@ once, and a repeated decision returns its original result rather than inserting
 the accepted change again. A stale Accept must report a target conflict without
 mutating accepted content. The eventual accepted edit and final decision must
 share one durable transaction and a recoverable native publication. This decision
-contract is selected; suggestions and their mutation path are not implemented yet.
+contract is selected. Native proposal capture, historical source validation and
+guarded previews are implemented below; the authenticated decision ledger and
+accepted mutation/history path remain unfinished.
+
+### Native proposal intents and previews
+
+`breditor/document-suggestion` V1 is a separate immutable, content-addressed
+proposal family. It retains a plain title, claimed creator, exact decimal creation
+time, an original document source anchor and an explicit native edit: either a
+bounded command batch or one general rich-range replacement. It contains no
+accepted AST, history journal, credentials, permission claim or final decision.
+Existing comments, versions, document updates and saved
+journal families keep their meanings. Packet authorship is descriptive until the
+host authenticates publication against the current account.
+
+Capture validates the original command batch on a disposable causal fork without
+changing accepted content, source operation counters, selection, pending formats
+or either history lane. Document read-only mode does not prevent a pure proposal
+preview. Command scope is explicit; whole-document commands require the separate
+Document scope, never an absent caret. Existing typed semantics supply rich text,
+formatting, lists, tables, image fields/captions and declared conversion-loss
+policies. Fresh command identities remain permanently host-reserved even after a
+discarded proposal. A proposal is bounded to 1 MiB. Command batches retain the
+64-command ceiling; general rich-range intents use the existing native semantic
+planner instead of expanding into an artificially limited command array. Partial
+table and caption boundaries keep the same preservation laws as ordinary editing.
+
+`read_document_suggestion` checks the closed envelope, digest, metadata and native
+source binding. `verify_document_suggestion_source` additionally reconstructs the
+retained historical source and proves that the commands have a valid nonempty
+semantic result there. Missing document operations return explicit requirements.
+Rehashing an invalid scalar coordinate or changing the source scope cannot bypass
+native validation. The existing historical causal-closure and complete-formatting-
+mark checks apply before reconstruction.
+
+`prepare_document_suggestion_guarded` derives its source read dependencies from an
+exhaustive native command match, not packet-supplied hashes or JavaScript offsets.
+It returns Pending, explicit Conflict targets, or an opaque read-only preview.
+Image alt, dimensions and assets are separately guarded fields; table-axis edits
+can retain unrelated cell text. Caption replacement checks the old caption body.
+Structural operations check relevant topology and ancestor geometry. Text edits
+currently require the affected source text blocks to remain semantically equal
+and retain their original native scalar identities; an unrelated edit within the
+same block requires a new proposal. This conservative boundary is explicit, not
+an offset rebasing or neighboring-character fallback.
+
+Selected subtrees and explicit whole-document operations also verify their native
+character identities. This closes a reproduced case where a peer deleted a source
+character and inserted an equal-looking character with identical formatting: AST
+equality alone incorrectly considered the original target unchanged. The native
+scalar witness now reports a conflict instead of targeting the replacement.
+
+A Ready preview contains the admitted proposed tree, semantic changes and asset
+references, without fetching asset bytes. Its exact live-owner witness cannot be
+serialized or moved to another editor. `check_document_suggestion_preview` refuses
+an old publication even after a disjoint peer edit; a new preview can retain that
+peer's work when the original dependencies still match. No preview is an Accept,
+server receipt or durable queued decision.
+
+Acceptance still needs one authenticated ordered decision record atomically
+paired with its accepted native effects. A foreign effect writer does not
+automatically join the accepting client's ordinary Undo stack. That history
+ownership, exact recovery and offline compensation contract must be implemented
+before the server/client acceptance API is exposed. Ordinary offline document
+editing must remain available while decisions are queued. Proposal persistence,
+Wasm/SDK/control integration and combined installed suggestion acceptance are
+also open; this native checkpoint does not complete tracked changes.
+
+The focused native contracts and compatibility shim cover 14 workflows plus
+three private packet tests. Ordinary native edits serve as preview oracles, with
+exact future recovery across all four selection/history combinations. Protected
+rich ranges retain partial tables/captions in both directions. A live typing
+control verifies that proposal reads neither close a natural group nor change
+the next input's checkpoint or operation bytes. The full shared-native suite
+passes 441 tests; the existing relay passes 46, without new decision endpoints.
 
 ## Durable comments and anchors
 
