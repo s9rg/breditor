@@ -1,0 +1,78 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "293f0dc",
+  "scope": "Authenticated durable native shared version catalog, bounded raw HTTP transport, separately negotiated socket hints and a reproduced historical-formatting-cut repair. Full advanced-review goal remains active.",
+  "artifacts": {
+    "sharedWasmSha256": "f5f8db1f2376c04389754fd90fdf1e13d8008e603df649171c3ed3f725867c2d",
+    "nativeRelaySha256": "73bdf884774bbfa920ad760a111995ad248a7b562e73e13ee8a76b3a3ef41b1e",
+    "javascriptExports": 6,
+    "wasmExports": 168
+  },
+  "verification": {
+    "fullRelayNativeSuite": {"passed": 45, "failed": 0},
+    "catalogNativeFunctionalContracts": {"passed": 4, "failed": 0, "offlineTransportSelectionHistoryCombinations": 8},
+    "catalogPrivateReplayContract": "Checksum-valid wrong historical grants, forged publisher and duplicate publication records reject before torn-tail repair.",
+    "canonicalHistoricalContracts": {"passed": 10, "failed": 0},
+    "strictRelayAllTargetServerClippy": "passed; existing vendor unused-import warning retained",
+    "strictHistoricalLibraryAndFocusedContractClippy": "passed; existing vendor unused-import warning retained",
+    "applicationBuildAndSurface": "passed; original six JS constructor/proof exports and no research entry points",
+    "runtimePairingBuildAndPromotionTests": {"passed": 40, "failed": 0},
+    "actualWasmCatalogHttpSocketProbe": {
+      "script": "scripts/probe-version-catalog-relay.mjs",
+      "trials": 2,
+      "pendingWithoutAcceptance": 2,
+      "exactHostRestarts": 2,
+      "guardedRemoteVersionRestores": 2,
+      "permissionRefusals": 4,
+      "bindingRefusals": 2,
+      "unnegotiatedHintRefusals": 2,
+      "passed": true,
+      "scope": "Explicit wire fixture with actual Wasm and authenticated HTTP/WebSocket transport, not the unfinished automatic catalog adapter."
+    },
+    "actualWasmReviewSdk": {
+      "script": "scripts/probe-review-sdk.mjs",
+      "trials": 4,
+      "exactRestores": 4,
+      "exactFuturePairedCheckpoints": 24,
+      "incompleteMarkCutsRejected": 4,
+      "passed": true
+    },
+    "existingAutomaticReviewRelaySdk": {
+      "trials": 4,
+      "exactPairedReopens": 12,
+      "automaticHostRestarts": 4,
+      "futureHistorySteps": 16,
+      "passed": true
+    },
+    "scopedRustFormattingAndWhitespace": "passed",
+    "buildIsolation": "A reused cross-workspace target produced incompatible serde_core trait diagnostics despite one locked serde_core version. Isolated target/version-catalog-native and target/historical-source-native builds passed. No dependency or lockfile changes were made."
+  },
+  "reproducedRepair": {
+    "trigger": "A source clock ending at a text Mark atom excludes the adjacent MarkEnd. It can be causally closed but cannot be safely decoded as a historical rich-text state.",
+    "before": "The catalog mid-group test reproduced an unclosed-style decode panic followed by a destructor abort in the pinned engine.",
+    "location": "rich_replica/review_anchor/historical_document.rs reconstructed a source cut after checking causality alone.",
+    "repair": "check_source_cut.rs inspects each final retained atom and rejects incomplete marks before fork_at, protecting both quote reads and version-source verification without catching traps, resetting history or changing the engine.",
+    "evidence": "Direct Rust regression exercises every open-mark boundary; actual Wasm enumerates every interior cut of a real formatted insertion across four policies, then verifies unchanged owners and exact future recovery.",
+    "notClaimed": "This is not evidence that the separate historical intermittent WebKit fault is fixed."
+  },
+  "bounds": {
+    "versionPacketBytes": 4194304,
+    "catalogPacketBytes": 67108864,
+    "catalogEntries": 1024,
+    "pageEntries": 64,
+    "httpPageRequestBytes": 4096,
+    "httpBodyTimeoutSeconds": 10,
+    "activeVersionTransfers": 4,
+    "existingSocketMessageBytes": 6291456,
+    "unchangedRoomLog": "20 MiB escaped records, 256 MiB total and 4096 records; no automatic version eviction or compaction"
+  },
+  "remaining": [
+    "Automatic shared version SDK synchronization, exact durable offline catalog recovery and vanilla/React remote catalog controls.",
+    "Suggestions and native previews for text, formatting and supported structures; queued offline decisions finalized once by the authenticated server with atomic accepted effects.",
+    "Clean-installed combined review/document acceptance.",
+    "Broad physical browser, accessibility/IME, performance, public-host hardening and final V1 qualification remain deferred."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

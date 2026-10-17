@@ -4,6 +4,8 @@
 mod assets;
 mod authentication;
 mod connection;
+mod http;
+mod versions;
 mod wire;
 use crate::{Error, Result, Room};
 pub use authentication::Authentication;
@@ -28,6 +30,8 @@ pub(super) struct Host {
     asset_operations: Arc<Semaphore>,
     presence_changed: watch::Sender<u64>,
     review_changed: watch::Sender<u64>,
+    versions_changed: watch::Sender<u64>,
+    version_operations: Arc<Semaphore>,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -51,6 +55,9 @@ impl Host {
     }
     pub fn notify_review(&self) {
         self.review_changed.send_modify(|n| *n = n.wrapping_add(1));
+    }
+    pub fn notify_document_versions(&self) {
+        self.versions_changed.send_modify(|n| *n = n.wrapping_add(1));
     }
 }
 
@@ -84,6 +91,7 @@ fn build(
     let (assets_changed, _) = watch::channel(0);
     let (presence_changed, _) = watch::channel(0);
     let (review_changed, _) = watch::channel(0);
+    let (versions_changed, _) = watch::channel(0);
     let host = Host {
         room: Arc::new(Mutex::new(room)),
         authentication: Arc::new(authentication),
@@ -94,10 +102,28 @@ fn build(
         asset_operations: Arc::new(Semaphore::new(4)),
         presence_changed,
         review_changed,
+        versions_changed,
+        version_operations: Arc::new(Semaphore::new(4)),
     };
     Router::new()
         .route("/health", get(|| async { "breditor-relay-v1" }))
         .route("/ws", get(upgrade))
+        .route(
+            "/document-versions/v1/descriptor",
+            get(versions::describe).options(versions::preflight),
+        )
+        .route(
+            "/document-versions/v1/catalog",
+            axum::routing::post(versions::list).options(versions::preflight),
+        )
+        .route(
+            "/document-versions/v1/publish",
+            axum::routing::post(versions::publish).options(versions::preflight),
+        )
+        .route(
+            "/document-versions/v1/packets/{id}",
+            get(versions::download).options(versions::preflight),
+        )
         .route(
             "/assets/{asset}",
             get(assets::download).put(assets::upload).options(assets::preflight),

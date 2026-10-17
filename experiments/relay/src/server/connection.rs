@@ -24,6 +24,18 @@ enum ReviewMode {
     Observers,
 }
 impl ReviewMode {
+    fn from_capabilities(capabilities: &[String]) -> Self {
+        let has = |name| capabilities.iter().any(|c| c == name);
+        if has("reviewObserverV1") {
+            Self::Observers
+        } else if has("reviewLineageV1") {
+            Self::Lineage
+        } else if has("reviewV1") {
+            Self::Original
+        } else {
+            Self::None
+        }
+    }
     fn enabled(self) -> bool {
         self != Self::None
     }
@@ -48,6 +60,7 @@ struct ConnectionState {
     review_mode: ReviewMode,
     review_lease_kind: ReviewLeaseKind,
     presence: PresenceMode,
+    versions: bool,
 }
 impl ConnectionState {
     fn validate(&self, room: &Room, principal: &str) -> Result<()> {
@@ -223,7 +236,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return None;
     };
-    if capabilities.len() > 6
+    if capabilities.len() > 7
         || capabilities.iter().any(|c| {
             c != "assets"
                 && c != "presence"
@@ -232,6 +245,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 && c != "reviewV1"
                 && c != "reviewLineageV1"
                 && c != "reviewObserverV1"
+                && c != "documentVersionsV1"
         })
         || capabilities.iter().any(|c| c == "presence")
             && capabilities.iter().any(|c| c == "documentPresenceV1")
@@ -245,9 +259,10 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
         return None;
     }
     let assets_enabled = host.assets.is_some() && capabilities.iter().any(|c| c == "assets");
-    let review_enabled = capabilities.iter().any(|c| c == "reviewV1");
-    let review_lineage = capabilities.iter().any(|c| c == "reviewLineageV1");
-    let review_observer_capability = capabilities.iter().any(|c| c == "reviewObserverV1");
+    let review_mode = ReviewMode::from_capabilities(&capabilities);
+    let review_enabled = review_mode.enabled();
+    let versions = capabilities.iter().any(|c| c == "documentVersionsV1");
+    let review_lineage = review_mode.lineage();
     let presence = if capabilities.iter().any(|c| c == "documentPresenceV1") {
         PresenceMode::DocumentV1
     } else if capabilities.iter().any(|c| c == "presence") {
@@ -268,6 +283,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 let mut response=json!({"kind":"authenticated","frame":frame,"descriptor":room.descriptor(&p)?,"capabilities":supported});
                 if review_enabled { response["reviewDescriptor"]=serde_json::to_value(room.review_descriptor(&p)?)?; }
                 if review_lineage {response["reviewRole"]=serde_json::to_value(room.review_permissions(&p)?)?;}
+                if versions {response["documentVersionsDescriptor"]=serde_json::to_value(room.document_versions_descriptor(&p)?)?;response["documentVersionsCanPublish"]=serde_json::to_value(room.document_versions_can_publish(&p)?)?;}
                 Ok(response)
             }).await
         }
@@ -291,17 +307,10 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
             lease: None,
             observer: false,
             review_lease: None,
-            review_mode: if review_observer_capability {
-                ReviewMode::Observers
-            } else if review_lineage {
-                ReviewMode::Lineage
-            } else if review_enabled {
-                ReviewMode::Original
-            } else {
-                ReviewMode::None
-            },
+            review_mode,
             review_lease_kind: ReviewLeaseKind::Author,
             presence,
+            versions,
         },
     ))
 }
@@ -310,6 +319,7 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
     let mut assets_changed = host.assets_changed.subscribe();
     let mut presence_changed = host.presence_changed.subscribe();
     let mut review_changed = host.review_changed.subscribe();
+    let mut versions_changed = host.versions_changed.subscribe();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(5));
     heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let Some((principal, assets_enabled, mut state)) = handshake(&host, &mut socket).await else {
@@ -375,6 +385,15 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
                 match permitted {
                     Ok(()) => if !send(&mut socket,None,json!({"kind":"reviewChanged"})).await {break;},
                     Err(e) => {send(&mut socket,None,wire::error(&e)).await;break;}
+                }
+            }
+            update=versions_changed.changed(), if state.versions => {
+                if update.is_err(){break;}
+                versions_changed.borrow_and_update();
+                let p=principal.clone();let s=state.clone();
+                match host.transaction(move |room| s.validate(room,&p)).await {
+                    Ok(())=>if !send(&mut socket,None,json!({"kind":"documentVersionsChanged"})).await{break;},
+                    Err(error)=>{send(&mut socket,None,wire::error(&error)).await;break;}
                 }
             }
         }

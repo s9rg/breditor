@@ -35,6 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             AtomicTransportProfile::LayoutV3 { standard_inline_v1: true },
         )?;
         room.enable_review("functional-owner")?;
+        room.enable_document_versions("functional-owner")?;
         for principal in ["alice", "bob"] {
             room.grant("functional-owner", principal, Some(Role::Editor))?;
             room.grant_review("functional-owner", principal, Some(ReviewRole::Comment))?;

@@ -199,8 +199,9 @@ through JSON, cannot authorize a queued request. This is a source-state guard,
 not an account credential. Store declared native recovery records, not UI guards.
 
 The native reference host now has opt-in authenticated comment transport and the
-SDK has an automatic paired-storage adapter, described below. A shared version
-catalog and clean-installed mixed acceptance remain unfinished. Original quotes
+SDK has an automatic paired-storage adapter, described below. The shared version
+catalog now has native durable authority and HTTP transport; automatic catalog
+sync, offline catalog recovery and controls remain unfinished. Original quotes
 now have a native historical read and optional lazy control, described below.
 Current control tests use actual Wasm with synthetic DOM, IndexedDB and Web Locks;
 physical browser qualification remains a later release phase.
@@ -423,7 +424,8 @@ while claiming an older source. The original `read_document_version` still admit
 such imported descriptive packets under its original contract; only the new
 proof establishes historical content equality. Neither read authenticates an
 author, checks a server's accepted semantic-group boundaries or acknowledges
-durable publication. Those remain required laws of the unfinished shared catalog.
+durable publication. The catalog authority below enforces those additional laws;
+local imported-version reads retain their descriptive contract.
 
 The additional native capability pairs `review_quote_version`/`read_review_quote`
 and `document_version_source_version`/`verify_document_version_source` are version
@@ -447,5 +449,96 @@ deleted/split Unicode ranges, exact future recovery, table/image properties,
 cross-cell selected text, missing history, refused noncausal cuts and rehashed
 source/content mismatches. `probe-review-controls-sdk.mjs` verifies lazy quote
 display and retention through version restore with actual Wasm and fixture DOM.
-These close original-quote functionality, not the authenticated shared catalog,
-suggestions or final combined installed acceptance.
+These close original-quote functionality. Catalog SDK integration, suggestions
+and final combined installed acceptance remain part of the active goal.
+
+### Shared version catalog authority
+
+`Room::enable_document_versions` explicitly enables an immutable shared catalog
+under the room owner's authority, independently of comments and document writer
+transport. Existing rooms remain disabled unless the owner activates it. The
+separate `EnableDocumentVersionsV1` and `PublishDocumentVersionV1` records share
+the document room's ordered log; existing log tags and stored native document,
+review and local-version families keep their meanings.
+
+Publication requires current document Editor permission and packet authorship
+equal to the authenticated principal. Comment-only or Moderator rights alone
+cannot publish a document version. Native historical content proof must succeed,
+and every nonzero source clock must end at the immutable seed boundary or a
+complete durably accepted document group. A causally closed, valid snapshot taken
+inside an accepted group is still refused. Missing operations return `pending`,
+not an acceptance or a durable queue entry; the client retains its exact packet
+and ordinary offline document edits for retry.
+
+The authority appends and fsyncs before exposing a new catalog entry or receipt.
+Entries retain the original server log sequence; client timestamps remain
+descriptive. Exact retries, including different outer JSON whitespace, return the
+original acceptance and first packet bytes without a second record. Replay
+rechecks historical account permissions, attribution, source equality and group
+boundaries in original log order. Current read permission is required even for a
+known packet digest; revocation removes remote access, not the reader's already
+downloaded copy.
+
+`DocumentVersionsCursor` binds an exact enabled catalog and a frozen `after` and
+`through` interval. Both ends must be actual publication or activation sequences,
+not guessed offsets. Each page contains at most 64 metadata entries in original
+acceptance order. Publications after the first page's terminal sequence appear
+on a new refresh, not halfway through an old interval. The host retains at most
+1,024 immutable packets and 64 MiB of raw packet text, with the existing 4 MiB
+per-version ceiling. The room's unchanged aggregate log ceilings also apply:
+20 MiB per escaped record, 256 MiB total and 4,096 records. There is no automatic
+version deletion, compaction or asset-byte retention policy.
+
+The optional reference host exposes a separately versioned HTTP path:
+
+- `GET /document-versions/v1/descriptor` discovers the enabled document/catalog
+  binding and current publication affordance.
+- `POST /document-versions/v1/catalog` reads a page from a closed `{cursor}` body.
+- `POST /document-versions/v1/publish` submits the original raw semantic version.
+- `GET /document-versions/v1/packets/{id}` retrieves the first accepted exact packet.
+
+Each request uses fresh account authentication and exact allowed Origin policy.
+Catalog reads/publications and packet downloads require the pinned
+`X-Breditor-Catalog` binding; publishing also rechecks Editor permission after
+body admission. There are at most four active version transfers, a ten-second
+body timeout, a 4 KiB page request and a 4 MiB raw publication limit. Raw HTTP JSON
+avoids escaping a 4 MiB version inside the unchanged 6 MiB socket envelope.
+Credentials and live roles never enter version packets or portable recovery.
+
+The independent `documentVersionsV1` socket capability opts into catalog identity,
+current publication affordance and coalesced `documentVersionsChanged` hints.
+Unnegotiated clients retain their original responses and event families. Hints
+are not acceptance receipts. The native HTTP probe uses actual Wasm and two
+editor histories to publish, fetch, compare and perform a guarded remote-version
+restore, then verifies exact server restart and permissions. It drives the wire
+explicitly; automatic SDK sync, durable offline catalog cache, vanilla/React
+catalog controls and combined installed review acceptance remain unfinished.
+
+Reproduce this host checkpoint with isolated native targets:
+
+```sh
+CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_TARGET_DIR=target/version-catalog-native \
+  cargo test --manifest-path experiments/relay/Cargo.toml --release --locked --offline --features server
+CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_TARGET_DIR=target/version-catalog-native \
+  cargo build --manifest-path experiments/relay/Cargo.toml --release --locked --offline \
+  --features server --example review_functional
+CARGO_INCREMENTAL=0 node scripts/build-collaboration-runtime.mjs
+node scripts/probe-version-catalog-relay.mjs packages/breditor-collaboration/dist/runtime \
+  target/version-catalog-native/release/examples/review_functional
+```
+
+### Complete formatting marks in historical cuts
+
+The pinned engine stores a formatting mark as adjacent start/end operations.
+Causal closure alone permits a clock between them, but reconstructing that state
+can abort the engine with an unclosed-style error. Historical quote/source reads
+now inspect the last retained atom of each nonzero clock before creating a fork
+and refuse a cut ending at a mark start. This is a deterministic native contract
+check, not a caught panic, a reset history or an exception hidden by the SDK.
+
+The direct native regression checks every captured open-mark boundary and retains
+the live owner and observation unchanged. The actual-Wasm probe enumerates every
+interior operation cut of a real formatted insertion across all four selection/
+history combinations; incomplete marks reject without a trap, followed by exact
+future paired recovery. This repair addresses the reproduced historical-cut bug,
+not the separate older intermittent WebKit investigation.

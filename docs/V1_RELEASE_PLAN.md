@@ -88,6 +88,16 @@ pending. Shared catalog authorization/durability, suggestions and final combined
 installed review acceptance remain open. Existing formats and constructor exports
 are unchanged.
 
+The [shared catalog host checkpoint](qualification/2026-10-17-rich-review-version-catalog-host.json)
+adds authenticated native version publication, accepted source-group boundaries,
+durable idempotent receipts, frozen metadata pages and exact packet download.
+Actual-Wasm HTTP/socket workflows cover offline dependencies, remote guarded
+restore, current read/write rights and exact host restart. A reproduced historical
+cut between formatting-mark atoms now rejects natively before engine reconstruction,
+with both direct Rust and actual-Wasm regressions. Automatic catalog SDK sync,
+offline catalog cache, shared catalog controls, suggestions and final combined
+installed review acceptance remain active work. No V1 gate is promoted.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

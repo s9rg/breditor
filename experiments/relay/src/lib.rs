@@ -20,6 +20,10 @@ pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registra
 pub use room::AtomicTransportProfile;
 pub use room::Room;
 pub use room::{
+    DocumentVersionAdmission, DocumentVersionCatalogEntry, DocumentVersionCatalogPage,
+    DocumentVersionsCursor, DocumentVersionsDescriptor, DurableDocumentVersion,
+};
+pub use room::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
     ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
     StoredReviewBatch,

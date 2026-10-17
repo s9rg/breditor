@@ -83,6 +83,14 @@ pub(crate) enum Event {
         frame: String,
         receipt: breditor_collab_feasibility::review::ReviewBatchReceipt,
     },
+    EnableDocumentVersionsV1 {
+        actor: String,
+        binding: String,
+    },
+    PublishDocumentVersionV1 {
+        principal: String,
+        packet: String,
+    },
     Commit {
         principal: String,
         writer: String,

@@ -15,11 +15,16 @@ mod document_presence;
 mod layout_v3;
 mod observers;
 mod review;
+mod versions;
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use review::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
     ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
     StoredReviewBatch,
+};
+pub use versions::{
+    DocumentVersionAdmission, DocumentVersionCatalogEntry, DocumentVersionCatalogPage,
+    DocumentVersionsCursor, DocumentVersionsDescriptor, DurableDocumentVersion,
 };
 #[cfg(test)]
 mod layout_v3_tests;
@@ -59,6 +64,9 @@ pub struct Room {
     receipts: BTreeMap<(String, String, String), DurableReceipt>,
     presence: crate::presence::Presence,
     review: Option<review::ReviewState>,
+    versions: Option<versions::VersionsState>,
+    /// Immutable seed boundary; later service-authored actions must not redefine genesis.
+    seed_writer_through: String,
 }
 
 impl Room {
@@ -142,6 +150,7 @@ impl Room {
         atomic_transport_v2: bool,
     ) -> Result<Self> {
         let replica = profile.create(document, "1".into())?;
+        let seed_writer_through = replica.writer_clock("1")?.through;
         let journal = replica.checkpoint()?;
         let asset_binding =
             Self::bind_assets(configuration, replica.document_id(), owner, &journal)?;
@@ -191,6 +200,8 @@ impl Room {
             receipts: BTreeMap::new(),
             presence: crate::presence::Presence::default(),
             review: None,
+            versions: None,
+            seed_writer_through,
         })
     }
 
@@ -249,6 +260,7 @@ impl Room {
             }
         };
         let replica = profile.restore(&room, &journal)?;
+        let seed_writer_through = replica.writer_clock("1")?.through;
         if replica.writer() != "1" || replica.undo_count() != 0 || replica.redo_count() != 0 {
             return Err(Error::Contract("relay seed writer or history"));
         }
@@ -265,6 +277,8 @@ impl Room {
             receipts: BTreeMap::new(),
             presence: crate::presence::Presence::default(),
             review: None,
+            versions: None,
+            seed_writer_through,
         };
         for record in records {
             result.replay(record)?;
@@ -313,6 +327,10 @@ impl Room {
             | Event::RegisterReviewV1 { .. }
             | Event::RegisterReviewObserverV1 { .. }
             | Event::CommitReviewV1 { .. }) => self.replay_review(record.sequence, event)?,
+            event @ (Event::EnableDocumentVersionsV1 { .. }
+            | Event::PublishDocumentVersionV1 { .. }) => {
+                self.replay_document_versions(record.sequence, event)?;
+            }
         }
         Ok(())
     }
