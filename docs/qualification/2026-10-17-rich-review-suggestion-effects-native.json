@@ -1,0 +1,68 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "66e0772",
+  "scope": "Rust-only source-guarded staging and publication of real native suggestion effects, exact recovery, version-two transport and checked inverse experiments. This is not an authenticated review decision ledger or accepting-user Undo implementation. The advanced-review goal remains active.",
+  "verification": {
+    "fullCanonicalSharedNativeSuite": {"passed": 453, "failed": 0},
+    "finalFocusedNativeEffectContracts": {"passed": 9, "failed": 0},
+    "privateCheckedInverseTestsIncludedInNativeSuite": {"passed": 3, "failed": 0},
+    "privateCheckedInverseScenarios": 9,
+    "privateCheckedInverseApplications": 36,
+    "explicitScopeAndHistoryRecoveryPolicies": 6,
+    "ordinaryRichEffectFixtures": 7,
+    "protectedGeneralRangeAcceptedDirectionHistoryCases": 8,
+    "protectedGeneralRangeDisabledFamilyRefusals": 4,
+    "wholeDocumentAcceptedHistoryCases": 2,
+    "wholeDocumentDisabledFamilyRefusals": 4,
+    "preselectedDocumentHistoryCases": 2,
+    "discardedCandidateLiveTypingContinuationControls": 3,
+    "independentWriterScenario": "Three native writers: source author 101, receiver 202 and host effect author 303. The source author edits both the affected paragraph and an unrelated caption while the host candidate is unpublished. Native convergence, duplicate version-two admission, exact host checkpoint recovery and each writer's selective Undo retain the other writer's text.",
+    "fullRelayRegressionSuite": {"passed": 46, "failed": 0},
+    "researchCompatibilityCanonicalEffectContracts": {"passed": 9, "failed": 0},
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 35, "failed": 0},
+    "strictNativeLibraryAndFocusedContractClippy": "passed; existing dependency unused-import warning retained",
+    "strictRelayAllTargetServerClippy": "passed; existing dependency unused-import warning retained",
+    "scopedRustFormattingAndWhitespace": "passed",
+    "applicationWasmSdkControlsUnchanged": true,
+    "newInstalledSuggestionAcceptance": false
+  },
+  "contracts": [
+    "An opaque native preview retains its admitted original intent. Effects require the exact live-owner witness and current write policy; callers cannot supply an arbitrary replacement AST or mutable candidate.",
+    "Preparation executes the existing native commands or compound rich-range action on a disposable staged owner. The result must equal the preview and create exactly one ordinary native Undo group with an empty Redo stack.",
+    "Prepared or discarded candidates do not change the source's content, UI, counters, native history, checkpoint, update frame or open natural typing group.",
+    "Original/general/document semantic families and ordinary/natural histories retain their existing meanings. No family is silently enabled. Document drafts explicitly select document scope on the candidate, including when already selected.",
+    "The effect identity contains the original proposal ID, exact version-two writer receipt and semantic start counter. Immutable preparation belongs to the transport group but precedes the semantic span and must not be selectively undone.",
+    "The complete candidate checkpoint, full update frame and one atomic writer group pass existing budgets before preparation returns. Commit consumes that exact candidate under its original guard, without rerunning commands or allocating counters.",
+    "The host must serialize prepare, durable decision append and commit, authenticate account/roles and admit/retain referenced assets. Native preparation or an effect descriptor is not an Accept decision, durable acknowledgement or authority credential.",
+    "A dedicated host writer does not reserve/fence the user's ordinary stream. The existing native history belongs to the effect writer; importing the effect does not silently transfer it into the accepting user's stack.",
+    "Checked public native diff/application can invert the tested semantic spans on a separate writer while retaining peer text and original formatting priority. These private disposable tests expose no generic inverse or accepting-user history API."
+  ],
+  "reproducedRepair": {
+    "trigger": "Preparing a whole-document proposal when document scope was already selected used the legacy observation family and returned use document selection view family.",
+    "location": "suggestions/prepare_suggestion_effect.rs selected the candidate scope using observe instead of observe_document.",
+    "repair": "Use the explicitly matching document observation. Disabled document families still reject; no saved or wire family is widened.",
+    "evidence": "The added preselected-scope test failed against the earlier implementation. It now passes for ordinary and natural history in the focused nine-test run and the complete 453-test native suite."
+  },
+  "developmentChecks": [
+    "Strict native Clippy caught an oversized Ready enum after retaining the private draft. Boxing private draft/metadata keeps the public preview and packet meanings unchanged; final strict Clippy passes.",
+    "Research compatibility initially rejected the new shim's missing crate documentation. Adding its documentation restores the complete nine-test compatibility run."
+  ],
+  "bounds": {
+    "proposalPacketBytes": 1048576,
+    "nativeCommandBatchSteps": 64,
+    "existingNativeJournalAndTransportBudgets": "unchanged and enforced before returning a prepared effect",
+    "originalJournalOrTransportMeaningsChanged": false,
+    "proposalPacketFamilyChanged": false,
+    "vendorEngineChanged": false
+  },
+  "remaining": [
+    "Authenticated durable suggestion publication and exactly-once Accept/Reject ledger in server order, atomically paired with accepted native effects and source-boundary grants.",
+    "Accepting-user selective history for host-authored effects: authenticated receipt admission, ordered native history adoption, invisible-item handling, selection/cursor repair and exact recovery without fencing ordinary offline typing.",
+    "Durable offline proposal/decision queues, paired Wasm/SDK and borrowed vanilla/React suggestion controls, followed by clean-installed combined review acceptance.",
+    "Granular character-affine rebasing and explicit proposal revision/conflict resolution; current text proposals conservatively conflict when the affected source block changes before preparation.",
+    "Final V1, public-host/storage lifecycle, performance and broad physical browser/IME/accessibility qualification. No claim is made about the separate historical WebKit fault."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

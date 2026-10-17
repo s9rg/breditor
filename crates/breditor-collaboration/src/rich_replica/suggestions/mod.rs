@@ -2,8 +2,10 @@
 //! A proposal is not an accepted document operation, history checkpoint or authority credential.
 mod capture_suggestion;
 mod check_suggestion_preview;
+mod commit_suggestion_effect;
 mod evaluate_commands;
 mod packet;
+mod prepare_suggestion_effect;
 mod prepare_suggestion_preview;
 mod read_set;
 mod read_suggestion;
@@ -16,6 +18,7 @@ pub use packet::{
     DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionInfo,
     DocumentSuggestionScope,
 };
+pub use prepare_suggestion_effect::{DocumentSuggestionEffect, PreparedDocumentSuggestionEffect};
 pub use prepare_suggestion_preview::{DocumentSuggestionPreparation, DocumentSuggestionPreview};
 pub use read_set::SuggestionConflictTarget;
 pub use verify_suggestion_source::DocumentSuggestionSource;

@@ -14,7 +14,8 @@ use crate::{
 /// Disposable immutable suggestion preview. No live owner or journal is exposed or checked out.
 pub struct DocumentSuggestionPreview {
     pub(super) observed: SharedObservation,
-    info: DocumentSuggestionInfo,
+    pub(super) draft: Box<super::DocumentSuggestionDraft>,
+    info: Box<DocumentSuggestionInfo>,
     document_json: String,
     changes: Vec<VersionBlockChange>,
     before_assets: Vec<VersionAssetReference>,
@@ -118,7 +119,8 @@ impl RichReplica {
         )?;
         Ok(DocumentSuggestionPreparation::Ready(DocumentSuggestionPreview {
             observed: observed.clone(),
-            info: packet.info(),
+            info: Box::new(packet.info()),
+            draft: Box::new(packet.data.draft),
             document_json,
             changes: comparison.changes,
             before_assets: comparison.version_assets,

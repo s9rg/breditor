@@ -25,8 +25,8 @@ the accepted change again. A stale Accept must report a target conflict without
 mutating accepted content. The eventual accepted edit and final decision must
 share one durable transaction and a recoverable native publication. This decision
 contract is selected. Native proposal capture, historical source validation and
-guarded previews are implemented below; the authenticated decision ledger and
-accepted mutation/history path remain unfinished.
+guarded previews and staged native effects are implemented below. The
+authenticated decision ledger and accepting-user history path remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -83,6 +83,55 @@ an old publication even after a disjoint peer edit; a new preview can retain tha
 peer's work when the original dependencies still match. No preview is an Accept,
 server receipt or durable queued decision.
 
+### Staged native suggestion effects
+
+`prepare_document_suggestion_effect` turns a still-current native preview into
+one unpublished ordinary native action under the caller's exclusive writer.
+It runs the existing semantic commands or general-range action, proves the
+result equals the preview and retains exact native history. No accepted source
+content, source counters, Redo state or active typing group changes while the
+candidate is prepared or discarded. A current read-only policy refuses staging.
+
+The candidate retains the source's explicitly selected recovery family:
+original, general or document semantics, each with ordinary or natural history.
+It never enables a family implicitly. Document-scoped drafts explicitly select
+the document on the candidate and retain the ordinary native scope recipes;
+they also work when that scope was already selected. General-range drafts
+require general or document history. Every successful candidate has one new
+Undo group and no remaining Redo items.
+
+The prepared result exposes an admitted tree, exact candidate checkpoint,
+catchup frame and one version-two writer group with native lineage. Its effect
+identity binds the proposal ID, writer receipt and first semantic counter.
+Permanent preparation precedes that counter and remains outside selective
+Undo. A whole transport window must not be mistaken for its semantic history
+span. Existing checkpoint, operation and frame budgets apply before preparation
+succeeds, so an oversized candidate cannot be acknowledged as ready to persist.
+
+`commit_document_suggestion_effect` consumes the candidate under its original
+live-owner guard; it does not regenerate commands or counters. Another owner or
+any intervening publication refuses commit. The host must hold its serialization
+lock across preparation, durable decision append and commit. Neither the native
+effect identity nor successful preparation grants account permissions or claims
+disk durability. Server-finalized acceptance still needs the authenticated
+decision record and native effect in one durable transaction.
+
+An independent host writer can author this group while a user's ordinary writer
+continues offline edits. Existing version-two transport admits the group and
+reconciles duplicate deliveries without another insertion. Ordinary native
+Undo/Redo belongs to the effect's actual writer; importing it does not transfer
+history to the accepting user. The public native primitive is therefore not an
+end-to-end Accept API, and no suggestion acceptance Wasm/SDK/control endpoint is
+exposed by this checkpoint.
+
+Private disposable-document tests also compare checked native selective inverses
+with ordinary author Undo/Redo for text, formatting, lists, table structure and
+captions. They preserve same-block peer insertions and later formatting priority.
+This is a test of the inverse mechanism, not a recovered accepting-user history
+implementation. Receipt admission, ordering with normal typing, invisible-item
+handling, selection/cursor repair and exact local recovery must still be
+implemented together before that history path is exposed.
+
 Acceptance still needs one authenticated ordered decision record atomically
 paired with its accepted native effects. A foreign effect writer does not
 automatically join the accepting client's ordinary Undo stack. That history
@@ -92,13 +141,19 @@ editing must remain available while decisions are queued. Proposal persistence,
 Wasm/SDK/control integration and combined installed suggestion acceptance are
 also open; this native checkpoint does not complete tracked changes.
 
-The focused native contracts and compatibility shim cover 14 workflows plus
-three private packet tests. Ordinary native edits serve as preview oracles, with
+The proposal contracts and compatibility shim cover 14 workflows plus three
+private packet tests. Ordinary native edits serve as preview oracles, with
 exact future recovery across all four selection/history combinations. Protected
 rich ranges retain partial tables/captions in both directions. A live typing
 control verifies that proposal reads neither close a natural group nor change
 the next input's checkpoint or operation bytes. The full shared-native suite
-passes 441 tests; the existing relay passes 46, without new decision endpoints.
+passed 441 tests at that proposal checkpoint; its existing relay passed 46,
+without new decision endpoints. The staged-effect tests add recovery across all
+six scope/history policies, rich single-group edits, stale/read-only refusal,
+both preselected and unselected document scope, repeated preparation, dropped
+typing candidates, protected ranges in both directions, and an independent host
+writer with concurrent offline edits. Current checkpoint results are recorded in
+the release trail.
 
 ## Durable comments and anchors
 

@@ -81,6 +81,21 @@ pub(super) struct HistoryCursors {
     redo: Stack,
 }
 impl HistoryCursors {
+    /// Exact semantic span of the most recent local item, excluding paused immutable preparation.
+    /// This is a read of the existing engine grouping mirror, never a new history owner.
+    pub fn latest_authored(&self, key: &str) -> Result<(&Frontiers, &Frontiers), Error> {
+        let item = self
+            .undo
+            .rows
+            .iter()
+            .rev()
+            .find_map(|row| row.items.last())
+            .ok_or(Error::ReplayMismatch)?;
+        if item.key != key {
+            return Err(Error::ReplayMismatch);
+        }
+        Ok((&item.before, &item.after))
+    }
     pub fn authored(
         &mut self,
         key: String,

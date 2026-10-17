@@ -133,9 +133,10 @@ pub use review_comments::{
 };
 pub use session::RichReplica;
 pub use suggestions::{
-    DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionInfo,
-    DocumentSuggestionPreparation, DocumentSuggestionPreview, DocumentSuggestionScope,
-    DocumentSuggestionSource, SuggestionConflictTarget,
+    DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionEffect,
+    DocumentSuggestionInfo, DocumentSuggestionPreparation, DocumentSuggestionPreview,
+    DocumentSuggestionScope, DocumentSuggestionSource, PreparedDocumentSuggestionEffect,
+    SuggestionConflictTarget,
 };
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{

@@ -121,6 +121,22 @@ rebasing, authenticated final decisions, accepted-effect Undo ownership and
 Wasm/SDK/control integration remain active work. No suggestion acceptance API or
 V1 release gate is promoted.
 
+The [staged suggestion-effect checkpoint](qualification/2026-10-17-rich-review-suggestion-effects-native.json)
+adds source-guarded native preparation and one-time publication of real rich
+edits. It retains each selected recovery family, one ordinary native Undo group
+and the exact transport lineage, with permanent preparation outside the semantic
+history span. A separate host writer can stage its edit while the user's
+ordinary writer continues offline. Checked inverse tests establish a mechanism
+for future accepting-user history, but do not implement that recovered history
+lane. The authenticated exactly-once decision ledger, accepting-user history,
+proposal persistence, granular text rebasing and paired Wasm/SDK/control
+acceptance remain active work. This checkpoint adds no decision endpoint or V1
+readiness claim. The full shared-native suite passes 453 tests, including nine
+new effect workflows and three private inverse tests. All 46 relay regressions,
+nine research-compatibility effect contracts, 35 runtime/promotion guards and
+strict scoped native/relay lint checks also pass. Application Wasm and SDK
+surfaces remain unchanged.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

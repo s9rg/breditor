@@ -29,6 +29,28 @@ struct Batch {
     groups: Vec<String>,
 }
 impl RichReplica {
+    /// Export exactly one newly authored action under version-two native lineage. Used by staged
+    /// server effects; this does not confer permission to publish or acknowledge the operations.
+    pub(in crate::rich_replica) fn last_authored_group_v2(
+        &self,
+        from: i32,
+    ) -> Result<(String, super::WriterReceipt), Error> {
+        let window = self.writer_windows.last().ok_or(Error::ReplayMismatch)?;
+        if window.from != from || window.kind != frame::GroupKind::Action {
+            return Err(Error::Contract("suggestion effect requires one authored action group"));
+        }
+        let writer = writer_id(self.writer())?;
+        let version = Version::Atomic;
+        let group = frame::encode(self, window, version)?;
+        let receipt = super::WriterReceipt {
+            writer: self.writer().into(),
+            from: window.from.to_string(),
+            through: window.through.to_string(),
+            prefix_digest: version.operations(self, writer, 0, window.through)?,
+            group_digest: version.operations(self, writer, window.from, window.through)?,
+        };
+        Ok((group, receipt))
+    }
     /// Inspect an applied author's exact head without changing content, history or observations.
     /// # Errors
     /// Rejects a noncanonical writer or serialization failure.
