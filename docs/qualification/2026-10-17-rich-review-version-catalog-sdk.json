@@ -1,0 +1,77 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "24c3844",
+  "scope": "Optional shared document version SDK, independent durable cache/intent queue, automatic catalog synchronization and borrowed asynchronous version controls. Advanced-review goal remains active.",
+  "artifacts": {
+    "sharedWasmSha256": "f5f8db1f2376c04389754fd90fdf1e13d8008e603df649171c3ed3f725867c2d",
+    "nativeRelaySha256": "13e8a63b25fd1a85b34d9b963cf1ac6cda4af0368342087b6888fa740972a516",
+    "applicationWasmUnchanged": true,
+    "nativeBuildTarget": "target/version-catalog-native"
+  },
+  "verification": {
+    "fullRelayNativeSuite": {"passed": 46, "failed": 0},
+    "strictRelayAllTargetServerClippy": "passed; pre-existing vendor unused-import warning retained",
+    "collaborationBuildAndEditorTypes": "passed",
+    "fullEditorSdkSuite": {"passed": 281, "files": 33, "failed": 0},
+    "focusedCatalogContractsIncludedInSdkSuite": {"passed": 12, "failed": 0},
+    "runtimeBuildSurfaceAndPromotionContracts": {"passed": 35, "failed": 0},
+    "actualWasmCatalogSdk": {
+      "script": "scripts/probe-version-catalog-sdk.mjs",
+      "trials": 4,
+      "policies": "Original/document selection crossed with explicit/natural native history",
+      "exactOfflineReopens": 16,
+      "localSaveRefusals": 8,
+      "localRetryWithoutNetworkAcceptance": 4,
+      "localReceiptSaveRefusals": 4,
+      "lostReplyRecoveries": 4,
+      "automaticHostRestarts": 4,
+      "guardedRemoteRestores": 4,
+      "leaseRefusals": 8,
+      "missingLocalSourceRefusals": 4,
+      "rollbackRefusals": 8,
+      "permissionTransitions": 4,
+      "unicodeAccounts": 1,
+      "sharedControlWorkflows": 1,
+      "idleCatalogsDoNotPoll": true,
+      "capturedFlushCancellationRefused": true,
+      "finalRunWireRequests": 1535,
+      "finalRunHttpRequests": 640,
+      "passed": true,
+      "scope": "Actual application Wasm and authenticated native host beside real document and paired-review SDK transports. IndexedDB, Web Locks and the shared panel DOM are fixtures. The UTF-8 account uses an immutable native source without authored offline document changes."
+    },
+    "existingActualWasmCatalogHttpSocketProbe": {"trials": 2, "passed": true},
+    "existingActualWasmLocalVanillaReactControls": "passed, including failed local save retry, guarded restore and React StrictMode ownership/draft retention",
+    "scopedFormattingAndWhitespace": "passed"
+  },
+  "contracts": [
+    "Separate opt-in cache family with no stored credentials, live role or native journal; native document/review session remains the sole source owner.",
+    "Source-native save/flush precedes every cache transaction. Exact offline version bytes and publication intents survive failed saves and recovery without recapture.",
+    "Local flush and retry are local barriers. Shared flush additionally requires server acceptance and a locally committed receipt for its initially captured queued IDs.",
+    "Missing document dependencies remain queued; the catalog never submits ordinary document operations. An optional callback may flush the already-owned document relay.",
+    "Frozen complete metadata snapshots cannot roll back an observed immutable prefix. Remote packets are downloaded lazily, natively validated and locally saved before use.",
+    "Old principal header semantics remain unchanged. A separate UTF-8 header is supported only by version endpoints; ambiguous/malformed identities refuse.",
+    "Delayed packet loading cannot prepare a restore against a changed source or selection. Catalog-only UI updates retain comment drafts/focus; disposal does not close native owners."
+  ],
+  "bounds": {
+    "nativeVersionPacketBytes": 4194304,
+    "localRetainedPackets": 32,
+    "localEscapedRecordBytes": 33554432,
+    "serverCatalogEntries": 1024,
+    "metadataPageEntries": 64,
+    "concurrentHttpRequests": 4,
+    "concurrentDownloads": 4,
+    "sharedFlushWaiters": 16,
+    "sharedFlushTimeoutSeconds": 30,
+    "automaticEviction": false,
+    "serverLogAndNativeJournalBudgetsChanged": false
+  },
+  "remaining": [
+    "Native suggestions and previews for text, formatting and supported structures; offline decision intents finalized once by authenticated server order with atomic accepted effects.",
+    "Correct ordinary selective Undo ownership for accepted server effects, without blocking ordinary offline document edits.",
+    "Clean-installed combined review/document acceptance and shared React remote-catalog acceptance.",
+    "Broad physical browser, accessibility/IME, performance, public-host hardening, storage lifecycle and final V1 qualification. The historical intermittent WebKit fault is not claimed fixed."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

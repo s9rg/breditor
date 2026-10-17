@@ -2,12 +2,19 @@ import type {SharedRichEditor} from "../core.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewPolicy,SharedReviewSnapshot,SharedReviewTarget} from "../review_types.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
+import type {SharedDocumentVersionsState,SharedDocumentVersionStatus} from "../versions/types.js";
 /** A borrowed native facade, not another editor owner. */
 export type SharedReviewPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"reviewSnapshot"|"subscribeReview"|"captureReviewAnchor"|"dispatchReview"|"undoReview"|"redoReview"|"compareVersion"|"prepareVersionRestore"|"applyVersionRestore">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsReviewQuotes"|"readReviewQuote">>;
-/** Host-local catalog/persistence port, implemented by SharedReviewPersistentSession. */
+/** Borrowed local or shared catalog. Optional remote methods do not change local synchronous use. */
 export interface SharedReviewVersionCatalog {
  versions():readonly SharedDocumentVersionInfo[];versionPacket(id:string):string;
  saveVersion(name:string,createdAtMs:string):SharedDocumentVersionInfo;flush():Promise<void>;retry():Promise<void>;
+ /** Fetch, natively validate and locally cache an immutable remote packet before using it. */
+ loadVersion?(id:string):Promise<string>;
+ subscribeVersions?(listener:()=>void):()=>void;
+ versionsState?():SharedDocumentVersionsState;
+ versionStatus?(id:string):SharedDocumentVersionStatus;
+ syncVersions?():Promise<void>;
 }
 export interface SharedReviewPanelOptions {
  /** Display affordances only. Rust's separately supplied policy still authorizes every action. */

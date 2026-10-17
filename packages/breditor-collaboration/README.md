@@ -136,8 +136,60 @@ authors one new undoable group, retains current comments and gives restored node
 fresh identities. Asset bytes remain host-owned. Failed local saves retain readable
 paired recovery and both leases for retry or explicit discard. The local catalog
 has 32 entries and the whole paired record has a 32 MiB ceiling. These controls
-currently use the programmatic shared facade; authenticated review relay, shared
-version catalogs, suggestions and final installed/browser qualification remain open.
+use the programmatic shared facade. Authenticated review synchronization and a
+separate shared version client are opt-in; suggestions and final combined
+installed/browser qualification remain open. See `docs/RICH_REVIEW.md` for the
+paired review relay contract and exact recovery requirements.
+
+### Shared named versions
+
+`SharedDocumentVersions` borrows a durable document or paired review session.
+Discover and durably pin its nonsecret catalog identity once, then reopen the
+same cache/identity with the exact native source journal. Account tokens remain
+separate host-owned secrets:
+
+```js
+import {
+  discoverSharedDocumentVersions,
+  SharedDocumentVersions
+} from '@breditor/collaboration';
+
+const {identity} = await discoverSharedDocumentVersions({
+  endpoint, principal, room, documentWriter,
+  writerTransport: 'atomic-v2', getToken,
+  saveIdentity: identity => app.saveCatalogIdentity(identity)
+});
+const versions = await SharedDocumentVersions.open({
+  identity, database: 'app-shared-versions', storage: reviewSession,
+  getToken,
+  flushDocument: () => documentSync.flush()
+});
+versions.saveVersion('Before review', Date.now().toString());
+await versions.flush();       // Local immutable packet and source journal saved.
+await versions.flushShared(); // Server acceptance and local receipt both saved.
+
+// Pass versions instead of reviewSession as the review panel's versions port.
+// For a remote metadata-only entry, loadVersion validates and caches its packet.
+const packet = await versions.loadVersion(selectedVersionId);
+const comparison = reviewSession.core.compareVersion(packet);
+
+await versions.close();       // Closes only this catalog cache and transport.
+```
+
+This separate cache does not automatically import a paired session's old local
+catalog. Explicit `queueVersion(packet)` admits an existing native source-proven
+packet without recapture. Offline publication remains queued until the host has
+accepted its document dependencies. Remote metadata arrives through negotiated
+hints; cached packets remain usable offline. `versionStatus` distinguishes cached
+content, local save, queued intent and server acceptance. Failed saves retain
+readable recovery and the cache lease; `retry` never silently takes a new version.
+
+The client retains at most 32 packets in a 32 MiB escaped record, independently
+of the server directory. No automatic eviction is performed. Explicit
+`stopRetryingVersion` keeps the local snapshot and cannot revoke a server
+transaction already received. `forgetCachedVersion` refuses queued or in-flight
+packets. Close borrowed controls before closing the catalog, then close the
+native document/review session last. Asset bytes remain host-owned.
 
 ## Natural shared typing history
 

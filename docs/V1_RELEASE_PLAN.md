@@ -98,6 +98,18 @@ with both direct Rust and actual-Wasm regressions. Automatic catalog SDK sync,
 offline catalog cache, shared catalog controls, suggestions and final combined
 installed review acceptance remain active work. No V1 gate is promoted.
 
+The [shared catalog client checkpoint](qualification/2026-10-17-rich-review-version-catalog-sdk.json)
+adds the optional SDK cache/synchronizer and asynchronous borrowed version
+controls. All four selection/history combinations retain exact offline packets,
+recover aborted local saves and server receipts, reconcile lost replies and
+restore remote versions as ordinary edits. Sixteen exact reopens and four host
+restarts pass with actual Wasm and the native host; a synthetic-DOM shared panel
+also refuses stale asynchronous previews and retains drafts through catalog-only
+updates. The separate cache never owns the document/review journals or persists
+live authority. All 281 SDK/editor tests and 46 relay tests pass. Suggestions and
+clean-installed combined review acceptance remain functional work; final browser
+and production qualification remain release gates, not part of this checkpoint.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

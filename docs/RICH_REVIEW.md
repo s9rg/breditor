@@ -200,8 +200,8 @@ not an account credential. Store declared native recovery records, not UI guards
 
 The native reference host now has opt-in authenticated comment transport and the
 SDK has an automatic paired-storage adapter, described below. The shared version
-catalog now has native durable authority and HTTP transport; automatic catalog
-sync, offline catalog recovery and controls remain unfinished. Original quotes
+catalog now has native durable authority, HTTP transport and the separate SDK
+cache/synchronizer described below. Original quotes
 now have a native historical read and optional lazy control, described below.
 Current control tests use actual Wasm with synthetic DOM, IndexedDB and Web Locks;
 physical browser qualification remains a later release phase.
@@ -449,8 +449,8 @@ deleted/split Unicode ranges, exact future recovery, table/image properties,
 cross-cell selected text, missing history, refused noncausal cuts and rehashed
 source/content mismatches. `probe-review-controls-sdk.mjs` verifies lazy quote
 display and retention through version restore with actual Wasm and fixture DOM.
-These close original-quote functionality. Catalog SDK integration, suggestions
-and final combined installed acceptance remain part of the active goal.
+These close original-quote functionality. Suggestions and final combined
+installed acceptance remain part of the active goal.
 
 ### Shared version catalog authority
 
@@ -511,8 +511,8 @@ Unnegotiated clients retain their original responses and event families. Hints
 are not acceptance receipts. The native HTTP probe uses actual Wasm and two
 editor histories to publish, fetch, compare and perform a guarded remote-version
 restore, then verifies exact server restart and permissions. It drives the wire
-explicitly; automatic SDK sync, durable offline catalog cache, vanilla/React
-catalog controls and combined installed review acceptance remain unfinished.
+explicitly. The automatic SDK/cache and shared control contract below has a
+separate actual-runtime probe; combined installed review acceptance remains open.
 
 Reproduce this host checkpoint with isolated native targets:
 
@@ -542,3 +542,78 @@ interior operation cut of a real formatted insertion across all four selection/
 history combinations; incomplete marks reject without a trap, followed by exact
 future paired recovery. This repair addresses the reproduced historical-cut bug,
 not the separate older intermittent WebKit investigation.
+
+### Durable shared version client and controls
+
+`discoverSharedDocumentVersions` discovers and pins the nonsecret catalog binding
+before the first capture. `SharedDocumentVersions.open` borrows an existing
+document or paired review session's native core; it does not allocate, replace,
+submit through or dispose that document writer. The host supplies fresh account
+tokens. HTTP uses the original principal header for ASCII accounts and the new
+explicit percent-encoded `X-Breditor-Principal-Utf8` header for other UTF-8
+identities. Both headers together reject; a literal plus is never decoded as a
+space. This addition is confined to the version endpoint.
+
+The client owns a separate origin-wide cache lease and a closed
+`breditor/shared-version-catalog-cache` V1 record. Neither an old document/review
+record nor another cache family is automatically migrated. The record retains
+the pinned identity, the last complete frozen catalog, exact immutable packets,
+explicit publication intents and original acceptance entries. It contains no
+account token, writer credential, live role or native journal. Opening validates
+the exact native source identity and re-proves every retained local version's
+historical source. A valid older journal missing a queued version's source cannot
+silently replace the required source history.
+
+Every cache transaction first saves and flushes the borrowed native journal.
+`saveVersion` captures once; retrying never recaptures its document, name or time.
+`flush` confirms local durability only. `flushShared` captures the current queued
+IDs before waiting and requires both server acceptance and a locally committed
+receipt for each. Missing document dependencies remain queued. An optional
+`flushDocument` callback can drive the already-owned document relay; the catalog
+itself only receives catchup. Ordinary offline document edits remain available.
+`retry` confirms local persistence and restarts wanted synchronization separately;
+a denied reconnect cannot turn a successful local save into a save failure.
+
+Automatic sync negotiates only the independent version hints, checks the native
+source/profile and own-writer prefix before importing catchup, then reads complete
+frozen metadata pages. It refuses a server catalog that drops or changes an
+observed entry. Transient connection failures retry with bounded backoff; current
+roles are checked for each publication rather than recovered from disk. A lost
+HTTP reply is reconciled against the catalog or the original idempotent packet.
+An aborted local receipt save remains visibly unconfirmed, preserves the last
+complete record and retains readable recovery for retry. Failed close retains
+the cache lease; successful close releases only the catalog's own resources.
+
+`loadVersion` fetches and natively validates a selected packet, checks its exact
+accepted metadata and saves it locally before returning. Cached packets remain
+available offline. Metadata-only entries require a connection. The client cache
+holds at most 32 packets in a 32 MiB escaped record, independently of the server's
+1,024-entry catalog. It never silently evicts a packet. `stopRetryingVersion`
+retains a local snapshot while cancelling future retries, not a transaction the
+server already received; later discovered acceptance still wins.
+`forgetCachedVersion` explicitly removes an unqueued cached packet, leaving a
+known server entry in the directory.
+
+Pass the shared client as the existing review panel's `versions` port to opt into
+asynchronous loading, catalog subscriptions and a Sync versions control. Local
+synchronous ports keep their existing behavior. A changed source publication or
+version selection while loading refuses the stale result before creating a
+native restore preview. The controls distinguish local save, queued publication,
+server acceptance and unconfirmed local receipt. Remote catalog-only updates
+preserve comment drafts and focus; disposal detaches the subscription without
+closing either native owner. The same borrowed port is available through React.
+
+`probe-version-catalog-sdk.mjs` covers all four selection/history combinations
+with actual application Wasm and the durable authenticated host: 16 exact cache/
+paired reopens, eight local save aborts, four receipt save aborts, four lost-reply
+recoveries, four guarded remote restores and four host restarts. It also checks
+rollback refusal, independent cache leases, missing local sources, role changes,
+a UTF-8 account and a shared panel with delayed loading/stale preview refusal.
+The storage, locks and DOM are fixtures; installed combined review acceptance,
+suggestions and final production/browser qualification remain open.
+
+```sh
+npm run build:candidate --workspace @breditor/collaboration
+node scripts/probe-version-catalog-sdk.mjs packages/breditor-collaboration/dist/runtime \
+  target/version-catalog-native/release/examples/review_functional
+```

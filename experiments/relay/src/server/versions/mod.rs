@@ -1,14 +1,16 @@
 //! Bounded authenticated HTTP catalog transport. Version packets stay raw JSON, not escaped
 //! inside a six-MiB socket envelope; the original four-MiB native packet budget is unchanged.
+mod account;
 mod describe;
 mod download;
 mod list;
 mod publish;
 use super::{
     Host,
-    http::{account, cors, failure, origin},
+    http::{cors, failure, origin},
 };
 use crate::{DocumentVersionsDescriptor, Error, Result, Room};
+use account::account;
 use axum::{
     body::{Body, to_bytes},
     http::{HeaderMap, StatusCode},
@@ -64,6 +66,7 @@ pub(super) async fn preflight(
                     h.trim().to_ascii_lowercase().as_str(),
                     "authorization"
                         | "x-breditor-principal"
+                        | "x-breditor-principal-utf8"
                         | "content-type"
                         | "x-breditor-catalog"
                 )
@@ -76,7 +79,7 @@ pub(super) async fn preflight(
                 ("access-control-allow-methods", "GET, POST"),
                 (
                     "access-control-allow-headers",
-                    "Authorization, X-Breditor-Principal, Content-Type, X-Breditor-Catalog",
+                    "Authorization, X-Breditor-Principal, X-Breditor-Principal-Utf8, Content-Type, X-Breditor-Catalog",
                 ),
             ],
         )

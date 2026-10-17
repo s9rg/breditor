@@ -13,9 +13,11 @@ export class RelayChannel {
  #abortCleanup:()=>void=()=>{};
  readonly #presenceKind:"presence"|"documentPresence";
  readonly #review:boolean;
- private constructor(url:string,milliseconds:number,onEvent:(event:Result)=>void,onClose:(error:SharedRelayError)=>void,presence:"original"|"document-v1"|"review-v1"){
+ readonly #versions:boolean;
+ private constructor(url:string,milliseconds:number,onEvent:(event:Result)=>void,onClose:(error:SharedRelayError)=>void,presence:"original"|"document-v1"|"review-v1"|"versions-v1"){
   this.#presenceKind=presence==="document-v1"?"documentPresence":"presence";
   this.#review=presence==="review-v1";
+  this.#versions=presence==="versions-v1";
   this.#timeout=milliseconds;this.#onEvent=onEvent;this.#onClose=onClose;this.#socket=new WebSocket(url);
   this.#socket.addEventListener("open",()=>{if(this.#closed)return;this.#opened=true;clearTimeout(this.#openTimer);this.#openResolve(this);});
   this.#socket.addEventListener("message",e=>this.#message(e.data));
@@ -31,7 +33,9 @@ export class RelayChannel {
  }
  /** Explicit review event family; old document channels continue refusing reviewChanged. */
  static openReview(url:string,milliseconds:number|undefined,onEvent:(event:Result)=>void,onClose:(error:SharedRelayError)=>void,signal?:AbortSignal):Promise<RelayChannel>{return RelayChannel.#open(url,milliseconds,onEvent,onClose,"review-v1",signal);}
- static #open(url:string,milliseconds:number|undefined,onEvent:(event:Result)=>void,onClose:(error:SharedRelayError)=>void,presence:"original"|"document-v1"|"review-v1",signal?:AbortSignal):Promise<RelayChannel>{
+ /** Separate immutable-version hints; original document/review channels keep refusing this family. */
+ static openVersions(url:string,milliseconds:number|undefined,onEvent:(event:Result)=>void,onClose:(error:SharedRelayError)=>void,signal?:AbortSignal):Promise<RelayChannel>{return RelayChannel.#open(url,milliseconds,onEvent,onClose,"versions-v1",signal);}
+ static #open(url:string,milliseconds:number|undefined,onEvent:(event:Result)=>void,onClose:(error:SharedRelayError)=>void,presence:"original"|"document-v1"|"review-v1"|"versions-v1",signal?:AbortSignal):Promise<RelayChannel>{
   return new Promise((resolve,reject)=>{try{const channel=new RelayChannel(endpoint(url),timeout(milliseconds),onEvent,onClose,presence);channel.#openResolve=resolve;channel.#openReject=reject;channel.#openTimer=setTimeout(()=>channel.#fail(new SharedRelayError("connection_timeout")),channel.#timeout);
    const cancel=()=>channel.#fail(new SharedRelayError("disconnected"));channel.#abortCleanup=()=>signal?.removeEventListener("abort",cancel);signal?.addEventListener("abort",cancel,{once:true});if(signal?.aborted)cancel();
   }catch{reject(new SharedRelayError("connection_lost"));}});
@@ -43,7 +47,7 @@ export class RelayChannel {
    const e=object(JSON.parse(raw));if(Object.keys(e).sort().join(",")!=="format,formatVersion,id,result"||e["format"]!=="breditor/relay"||e["formatVersion"]!==1)throw new SharedRelayError("protocol_error");
    const result=object(e["result"]),kind=string(result["kind"],32);let error:SharedRelayError|undefined;
    if(kind==="error"){const code=string(result["code"],64);if(!codes.has(code))throw new SharedRelayError("protocol_error");error=new SharedRelayError(code);}
-   if(e["id"]===null){if(kind!=="catchup"&&kind!=="error"&&!(this.#review?kind==="reviewChanged":kind==="assetsChanged"||kind===this.#presenceKind))throw new SharedRelayError("protocol_error");this.#onEvent(result);return;}
+   if(e["id"]===null){if(kind!=="catchup"&&kind!=="error"&&!(this.#versions?kind==="documentVersionsChanged":this.#review?kind==="reviewChanged":kind==="assetsChanged"||kind===this.#presenceKind))throw new SharedRelayError("protocol_error");this.#onEvent(result);return;}
    const id=string(e["id"],64),pending=this.#pending.get(id);if(!pending)throw new SharedRelayError("protocol_error");
    this.#pending.delete(id);clearTimeout(pending.timer);if(error)pending.reject(error);else pending.resolve(result);
   }catch(error){this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("protocol_error"));}
