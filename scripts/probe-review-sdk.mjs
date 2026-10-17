@@ -21,7 +21,7 @@ export async function probeReviewSdk(directory){
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify({format:"breditor/shared-rich-profile",formatVersion:3,schema:{name:"example/review-sdk",version:1},extensions:[]}));
  const descriptor=JSON.parse(profile.descriptor_json());
  const seed=JSON.stringify({format:"breditor/document",formatVersion:2,schema:descriptor.schema,schemaFingerprint:descriptor.schemaFingerprint,root:canonical(JSON.parse(readFileSync(resolve(root,"crates/breditor-core/tests/fixtures/rich-local-root.json"),"utf8")))});
- let trials=0,restores=0,future=0,pendingTargets=0,duplicateEchoes=0,blockedReentrant=0,versionRestores=0,sourceProofs=0,originalQuotes=0,pendingQuoteReads=0,rehashedSourceRefusals=0;
+ let trials=0,restores=0,future=0,pendingTargets=0,duplicateEchoes=0,blockedReentrant=0,versionRestores=0,sourceProofs=0,originalQuotes=0,pendingQuoteReads=0,rehashedSourceRefusals=0,incompleteMarkCutsRejected=0;
  try{
   for(const document of [false,true])for(const natural of [false,true]){
    const errors=[];
@@ -66,6 +66,10 @@ export async function probeReviewSdk(directory){
     assert.ok(errors.some(e=>e.code==="reentrant_publication"));blockedReentrant++;off1();off2();
     // Document dependencies can be delayed independently of the comment causal stream.
     b.dispatch({commands:[{kind:"insert_text",data:{block:"p",offset:0,text:"Offline "}}]});
+    // Causality alone does not make an engine cut safe: a mark consists of adjacent start/end atoms.
+    const source=b.captureReviewAnchor({kind:"document"}),pairedBefore=[b.checkpointJson(),b.reviewCheckpoint()];let incomplete=0;
+    for(let cut=1;cut<Number(b.writerClockV2("202").through);cut++){const forged=JSON.parse(source);forged.clocks.find(clock=>clock.writer==="202").counter=String(cut);try{b.readReviewQuote(JSON.stringify(forged));}catch(error){if(error instanceof WebAssembly.RuntimeError)throw error;if(String(error).includes("source cut splits text mark"))incomplete++;}}
+    assert.ok(incomplete>0);incompleteMarkCutsRejected+=incomplete;assert.deepEqual([b.checkpointJson(),b.reviewCheckpoint()],pairedBefore);assert.equal(b.readReviewQuote(source).kind,"document");
     b.dispatchReview(create(b.captureReviewAnchor(nodeTarget),"After offline typing"));
     assert.equal(a.receiveReview(b.exportReview(),bob).kind,"applied");
     assert.equal(a.reviewSnapshot().view.threads[1].targets[0].resolution.kind,"pending");pendingTargets++;
@@ -124,6 +128,6 @@ export async function probeReviewSdk(directory){
  }finally{profile.free();}
  assert.equal(trials,4);assert.equal(future,24);assert.equal(restores,4);assert.equal(pendingTargets,4);assert.equal(duplicateEchoes,4);assert.equal(blockedReentrant,4);assert.equal(versionRestores,4);
  for(const count of [sourceProofs,originalQuotes,pendingQuoteReads,rehashedSourceRefusals])assert.equal(count,4);
- return {format:"breditor/review-programmatic-sdk-probe",formatVersion:1,sharedWasmSha256:createHash("sha256").update(bytes).digest("hex"),trials,exactRestores:restores,exactFuturePairedCheckpoints:future,pendingTargets,duplicateEchoes,blockedReentrant,versionRestores,sourceProofs,originalQuotes,pendingQuoteReads,rehashedSourceRefusals,ownerGuardRefusals:2,passed:true,scope:"Actual Wasm/native comment admission, strict anchors, peer frames, separate history, original historical quotes, proven version sources, named version restore preserving current comments, exact paired manual recovery, owner-bound guards and SDK notifications across original/document selection and explicit/natural history. Paired local storage and vanilla/React controls have separate probes. This probe does not qualify physical browsers, authenticated shared version catalogs or suggestions."};
+ return {format:"breditor/review-programmatic-sdk-probe",formatVersion:1,sharedWasmSha256:createHash("sha256").update(bytes).digest("hex"),trials,exactRestores:restores,exactFuturePairedCheckpoints:future,pendingTargets,duplicateEchoes,blockedReentrant,versionRestores,sourceProofs,originalQuotes,pendingQuoteReads,rehashedSourceRefusals,incompleteMarkCutsRejected,ownerGuardRefusals:2,passed:true,scope:"Actual Wasm/native comment admission, strict anchors, peer frames, separate history, original historical quotes, proven version sources, named version restore preserving current comments, exact paired manual recovery, owner-bound guards and SDK notifications across original/document selection and explicit/natural history. Every interior local source cut is probed: incomplete formatting marks reject before engine reconstruction, without traps or owner mutation. Paired local storage and vanilla/React controls have separate probes. This probe does not qualify physical browsers, authenticated shared version catalogs or suggestions."};
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){if(process.argv.length!==3)throw Error("Expected actual shared Wasm directory");console.log(JSON.stringify(await probeReviewSdk(process.argv[2]),null,2));}

@@ -32,6 +32,7 @@ impl RichReplica {
         if self.doc.frontiers_to_vv(&frontiers).as_ref() != Some(&vector) {
             return Err(Error::Contract("review source cut is not causally closed"));
         }
+        super::check_source_cut::check_source_cut(&self.doc, &vector)?;
         // fork_at retains only the requested history. No live checkout, authoring, or UI mutation.
         let doc = self.doc.fork_at(&frontiers)?;
         if doc.state_vv() != vector || doc.oplog_vv() != vector {

@@ -250,6 +250,62 @@ fn source_proof_reconstructs_formatted_table_and_image_properties_not_just_plain
     Ok(())
 }
 
+#[test]
+fn every_open_style_mark_cut_rejects_before_historical_engine_fork_without_poisoning_the_owner()
+-> Result {
+    use loro::{IdSpan, JsonOpContent, JsonTextOp, LoroDoc};
+    let (_, mut a, _) = peers()?;
+    a.apply(vec![insert("Inherited strong formatting ")])?;
+    let frame: Value = serde_json::from_str(&a.update_frame()?)?;
+    let bytes: Vec<u8> = serde_json::from_value(frame["bytes"].clone())?;
+    let engine = LoroDoc::new();
+    engine.import(&bytes)?;
+    let original = anchor(&a, &Target::Document)?;
+    let saved = version(&a)?;
+    let before = (a.checkpoint()?, a.view_json()?, a.update_frame()?);
+    let observed = a.observe()?;
+    let mut refused = 0;
+    for (writer, through) in engine.state_vv().iter() {
+        let writer_key = writer.to_string();
+        for op in engine
+            .export_json_in_id_span(IdSpan::new(*writer, 0, *through))
+            .iter()
+            .flat_map(|change| &change.ops)
+        {
+            if !matches!(op.content, JsonOpContent::Text(JsonTextOp::Mark { .. })) {
+                continue;
+            }
+            let mut source: Value = serde_json::from_str(&original)?;
+            let clock = source["clocks"]
+                .as_array_mut()
+                .ok_or("clocks")?
+                .iter_mut()
+                .find(|clock| clock["writer"].as_str() == Some(writer_key.as_str()))
+                .ok_or("writer")?;
+            clock["counter"] = (op.counter + 1).to_string().into();
+            assert!(matches!(
+                a.read_review_quote(&source.to_string()),
+                Err(Error::Contract("review source cut splits text mark"))
+            ));
+            let mut candidate: Value = serde_json::from_str(&saved)?;
+            candidate["data"]["sourceAnchorJson"] = source.to_string().into();
+            assert!(matches!(
+                a.verify_document_version_source(&rehash(candidate)?),
+                Err(Error::Contract("review source cut splits text mark"))
+            ));
+            refused += 1;
+        }
+    }
+    assert!(refused > 0);
+    assert_eq!((a.checkpoint()?, a.view_json()?, a.update_frame()?), before);
+    a.check(&observed)?;
+    assert!(matches!(
+        a.verify_document_version_source(&saved)?,
+        DocumentVersionSource::Verified { .. }
+    ));
+    Ok(())
+}
+
 // Rehashing is deliberately available to any host. Digest validity alone cannot prove source content.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

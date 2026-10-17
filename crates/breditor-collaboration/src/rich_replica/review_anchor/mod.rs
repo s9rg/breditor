@@ -1,5 +1,6 @@
 //! Durable review targets have strict orphan laws, independent of ephemeral caret relocation.
 mod capture_review_anchor;
+mod check_source_cut;
 mod historical_document;
 mod missing_review_dependencies;
 mod packet;
