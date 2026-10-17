@@ -22,6 +22,9 @@ const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
 
 #[cfg(test)]
+#[path = "known_remote_tests.rs"]
+mod known_remote_tests;
+#[cfg(test)]
 #[path = "session_projection_tests.rs"]
 mod projection_tests;
 
@@ -916,7 +919,7 @@ impl RichReplica {
         Ok(())
     }
 
-    fn import(&mut self, bytes: &[u8]) -> Result<(), Error> {
+    fn import(&mut self, bytes: &[u8]) -> Result<loro::ImportStatus, Error> {
         if bytes.is_empty() || bytes.len() > MAX_UPDATE_BYTES {
             return Err(Error::Limit("rich update bytes"));
         }
@@ -928,11 +931,11 @@ impl RichReplica {
             return Err(Error::WriterCollision);
         }
         let before = self.doc.state_frontiers();
-        self.doc.import(bytes)?;
+        let status = self.doc.import(bytes)?;
         let diff: loro_internal::undo::DiffBatch =
             self.doc.diff(&before, &self.doc.state_frontiers())?.into();
         self.cursors.imported(&diff)?;
-        Ok(())
+        Ok(status)
     }
     /// Import authorized engine changes atomically; pending causal dependencies are retained.
     ///
@@ -949,7 +952,18 @@ impl RichReplica {
         }
         let mut candidate = self.staged()?;
         let previous = candidate.selection_for_mapping()?;
-        candidate.import(&bytes)?;
+        let before = candidate.doc.oplog_vv();
+        let applied_before = candidate.doc.state_vv();
+        let status = candidate.import(&bytes)?;
+        let Some(bytes) = candidate.semantic_remote_record_v1(
+            &before,
+            &applied_before,
+            status.pending.is_some(),
+            bytes,
+        )?
+        else {
+            return Ok(());
+        };
         candidate.refresh_document()?;
         candidate.journal.ui.normalize(&candidate.doc, &candidate.document, previous.as_ref())?;
         candidate.journal.entries.push(Entry::Remote { bytes });

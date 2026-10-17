@@ -900,6 +900,36 @@ complete future checkpoint bytes without excluding fields or inventing imports.
 It also verifies two offline authors, unobserved roots, queued real relay updates
 during document composition, host restart and peer-preserving selective history.
 
+## Remote records in semantic histories
+
+General and document histories retain native operation deltas instead of repeated
+cumulative transport prefixes. The importer first stages the original input
+under the existing engine, binding, writer-collision and byte checks. It can
+omit a record only when the engine reports no pending import, the incoming
+causal range is fully applied, and both
+the operation and applied-state vectors are unchanged. Such a transport echo
+does not create a publication, invalidate an observation or split typing.
+
+For new fully applied operations, Rust exports the delta from the pre-import
+operation vector and uses it only when it is smaller than the original payload.
+The existing opaque `Remote` byte record, final semantic admission and resource
+ceilings are unchanged. If dependencies remain pending, the original blob is
+retained so later arrivals and exact replay can still complete it. This is not
+a TypeScript filter based on visible text or a retry after failed admission.
+
+Original-mode histories still retain their exact original input bytes. Existing
+saved general/document journals are not rewritten, and old readers can replay
+new minimal records. The 16 MiB journal ceiling still applies; this repair does
+not provide unbounded history or compact already bloated saves.
+
+The mixed installed workflow reproduced a failure on the fifth selective Undo:
+23 remote records occupied 15,234,737 bytes of a 16,372,883-byte journal. Many
+admissions left the native causal export unchanged. The focused Rust regression
+first failed for an alternate encoding of known operations; it now covers all
+four semantic/history combinations, pending dependencies, malformed input,
+original-mode retention and exact future replay. The actual old/new Wasm probe
+is `scripts/probe-semantic-remote-compat.mjs`.
+
 ## Remaining integration
 
 The [transport V2 functional checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
