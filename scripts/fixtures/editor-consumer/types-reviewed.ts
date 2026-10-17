@@ -20,3 +20,13 @@ async function paired(options:SharedReviewedReviewSessionOptions<"document-v1">,
  SharedSuggestionQueue.open({...queueOptions,ownedHistory:"automatic",storage:session});
 }
 void proofBoundary;void paired;
+import {SharedSuggestionObserverRelay,registerSharedSuggestionObserver,sharedSuggestionObserverQueueIdentity,type SharedSuggestionObserverIdentity,type SharedSuggestionTransport} from "@breditor/editor/collaboration";
+async function reader(options:Omit<SharedSuggestionQueueOptions,"identity">,identity:SharedSuggestionObserverIdentity):Promise<void>{
+ const relay=new SharedSuggestionObserverRelay({identity,storage:options.storage,getToken:()=>"host token",autoConnect:false}),port:SharedSuggestionTransport=relay;
+ const queue=await SharedSuggestionQueue.open({...options,identity:sharedSuggestionObserverQueueIdentity(identity)});await port.connect();await port.flush();await queue.close();relay.dispose();
+ // @ts-expect-error Observer transport cannot accept a document-author resume credential instead.
+ new SharedSuggestionObserverRelay({identity:{...sharedSuggestionObserverQueueIdentity(identity),credential:"author"},storage:options.storage,getToken:()=>"token"});
+ // @ts-expect-error The observer helper requires explicitly selected atomic V2.
+ registerSharedSuggestionObserver({endpoint:identity.endpoint,room:identity.room,principal:identity.principal,getToken:()=>"token",saveIdentity(){}});
+}
+void reader;

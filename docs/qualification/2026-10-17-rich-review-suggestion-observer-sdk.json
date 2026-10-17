@@ -1,0 +1,89 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "712ef4f",
+  "scope": "Permanent non-authoring Reader proposal/Reject synchronization using the original Rust observer contract, existing source/queue formats and shared bounded suggestion engine. Actual-Wasm and clean-installed acceptance cover all six scope/grouping policies alongside existing mixed owned-history/comment/version workflows. Controls and granular rebasing remain unfinished.",
+  "artifacts": {
+    "applicationWasmSha256": "a07fff8be589fbc9d2909f37b04b5a4607f9f9dc2c61721d66403fff6c98f196",
+    "suggestionHostSha256": "767896e964d02f0c89685b99668a3499ffdfc02f05d2c2f8f24d11428944840e",
+    "nativeSourcesChanged": false,
+    "wasmBytesChanged": false,
+    "persistedFormatsChanged": false,
+    "protocolOrLogTagsAdded": false,
+    "packageVersion": "0.3.0-alpha.22"
+  },
+  "verification": {
+    "fullSdkSuite": {"passed": 325, "failed": 0, "files": 37, "newObserverBoundaryTests": 10},
+    "strictSdkAndEditorTypes": "passed",
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 47, "failed": 0},
+    "actualWasmObserverMatrix": {
+      "passed": true,
+      "trials": 6,
+      "scopePolicies": ["original", "general-v1", "document-v1"],
+      "groupingPolicies": ["explicit", "typing-v1"],
+      "exactOfflineReopens": 6,
+      "readerProposalRejects": 6,
+      "foreignAcceptImports": 6,
+      "pendingPeerSourceRecoveries": 6,
+      "independentGrantTransitions": 6,
+      "acceptRefusalsAfterEditorGrant": 6,
+      "lostRejectReplyRecoveries": 6,
+      "sourceSaveRefusals": 6,
+      "automaticHostRestarts": 6,
+      "idleWithoutPolling": 6,
+      "readerAuthorRegistrations": 0,
+      "readerAuthorResumes": 0,
+      "readerDocumentSubmissions": 0,
+      "readerAcceptRequests": 0,
+      "readerObserverRegistrations": 6,
+      "readerObserverResumes": 42,
+      "readerNativeAuthoredThrough": "0"
+    },
+    "cleanInstalledPublicSdkAcceptance": {
+      "passed": true,
+      "strictInstalledConsumerTypes": "passed",
+      "publicEntry": "@breditor/editor/collaboration",
+      "packagedWasm": true,
+      "workspaceProductionLinks": false,
+      "ownedMixedCommentSuggestionVersionTrials": 6,
+      "permanentReaderTrials": 6,
+      "readerAuthorRegistrations": 0,
+      "readerAuthorResumes": 0,
+      "readerDocumentSubmissions": 0
+    },
+    "originalDefaultAuthorRegression": {"passed": true, "trials": 4},
+    "nativeSemanticsEvidence": "The prior owned-history native/SDK qualification retains the 480-test canonical native suite and 64 relay/server tests. This checkpoint changes SDK networking only and reuses the unchanged native permanent-observer register/resume/validation and suggestion decision contracts."
+  },
+  "contracts": [
+    "registerSharedSuggestionObserver explicitly negotiates atomic V2 and suggestions, then allocates only native registerObserver. Its separate observer credential is durably handed to the host before returning. No document-author credential is created or stored in the portable queue.",
+    "SharedSuggestionObserverRelay borrows the exact existing durable native source and requires a zero authored prefix. It enforces native read-only policy, checks matching model/lane/room/writer, resumes only the permanent observer identity and imports catchup through the same native owner.",
+    "A nonzero local or server observer prefix, replaced source, stale async lifetime, changed native writable policy, incomplete capabilities or mismatched lane refuses. Source history is never reset, truncated, replaced or uploaded as authored document operations.",
+    "The shared suggestion synchronization engine accepts a narrow transport port. Author defaults still use the existing author socket. Observer mode masks canAccept after every permission read and refuses an Accept request before transmission, including after the account is granted Editor.",
+    "Offline proposals and Reject choices remain in the original durable queue. Current authenticated host grants gate transmission; a queued Accept is retained but not silently converted or sent through an observer. Original opposing/final outcomes remain distinct from requested choices.",
+    "Imported accepted effects stay foreign to observer Undo. Native source is saved before dependent queue receipts. Failed saves and lost replies retain the source/intent for explicit local retry or original server-outcome reconciliation.",
+    "Catchup hints wake pending peer sources even when the native projection was already retained offline. Idle adapters do not poll. Transient network loss/host restart resumes the same observer identity; fenced leases and document-role changes require explicit reconnect.",
+    "Networking disposal leaves the borrowed core read-only and does not close source storage, dispose the core, release its local lease or erase proposals. Credentials, current auth/roles and assets remain host-owned.",
+    "Existing native source/queue limits, cache bounds, protocol and storage meanings remain unchanged. No new native actions, schemas, saved live permissions, author leases or automatic compaction are introduced."
+  ],
+  "reproduce": [
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "npm run typecheck:candidate --workspace @breditor/editor",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node scripts/probe-suggestion-observer-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestions_functional",
+    "node scripts/check-suggestion-observer-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional"
+  ],
+  "verificationNotes": [
+    "The native contract was inspected before adding SDK behavior: document-role changes intentionally fence all existing account leases, and an observer kind never becomes an author when the account gains Editor. The probe explicitly reconnects after role-change fencing; no server permission or lease check was relaxed.",
+    "The actual-Wasm harness asserts every Reader outbound request: no author register/resume/submit and no Accept. All six native reader writer prefixes remain zero through recovery, dependency catchup, grants, lost replies, persistence failure and host restart.",
+    "Installed acceptance packs four local candidate archives, installs offline in a separate consumer, checks positive/negative public types, and runs both mixed owned history and observer matrices through installed editor/collaboration exports and packaged Wasm. Fixture storage fault injection also uses installed package backend paths.",
+    "IndexedDB/Web Locks, lost replies, local aborts, the loopback native host and test-only fault injection are fixtures. This is not physical-browser, clipboard, IME, accessibility, performance or production-hosting qualification.",
+    "Rust sources, compiled Wasm and host binaries are unchanged. No native build or dependency/cache cleanup is needed or claimed for this SDK-only checkpoint."
+  ],
+  "remaining": [
+    "Borrowed vanilla/React suggestion controls with pure previews, explicit conflicts, queued/offline decisions and original final outcomes.",
+    "Proposal revisions and granular character-affine text rebasing; conservative affected-text source witnesses remain unchanged.",
+    "Final V1 migration/API, package release, storage lifetime/compaction, production auth/hosting and deferred broad cross-browser/IME/accessibility/performance qualification. The advanced-review goal remains active."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

@@ -1,7 +1,7 @@
-/** Automatic selected-queue sync borrowing the existing document-author socket and source owner.
+/** Automatic selected-queue sync borrowing an author or permanent observer connection and source.
  * This adapter owns neither. Live discovery is bounded metadata, not an implicitly persisted feed. */
 import type {SharedSelectionPolicy} from "../types.js";
-import type {SharedRelaySync} from "../relay/sync.js";
+import type {SharedSuggestionTransport} from "./transport_port.js";
 import type {SharedSuggestionPermissions,SharedSuggestionRelayRequest} from "../relay/suggestion_types.js";
 import type {SharedSuggestionConflictTarget} from "../suggestion_types.js";
 import {SharedRelayError,object,digest} from "../relay/validation.js";
@@ -26,7 +26,7 @@ export interface SharedSuggestionSyncOptions {
 interface Waiter {targets:readonly {id:string;publish:boolean;decide:boolean}[];resolve:()=>void;reject:(error:SharedRelayError)=>void;timer:ReturnType<typeof setTimeout>}
 const attached=new WeakSet<object>();
 export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
- readonly #queue:SharedSuggestionQueue<P>;readonly #relay:SharedRelaySync<P>;readonly #identity:SharedSuggestionQueueIdentity;readonly #options:SharedSuggestionSyncOptions;
+ readonly #queue:SharedSuggestionQueue<P>;readonly #relay:SharedSuggestionTransport<P>;readonly #identity:SharedSuggestionQueueIdentity;readonly #options:SharedSuggestionSyncOptions;
  #status:SharedSuggestionSyncState["status"]="offline";#permissions:SharedSuggestionPermissions|null=null;#error:string|null=null;
  #entries=new Map<string,SuggestionEntry>();#conflicts=new Map<string,readonly SharedSuggestionConflictTarget[]>();#waiting=false;
  #epoch=0;#wanted:boolean;#closed=false;#serial=Promise.resolve();#queued:number|undefined;#dirty=false;#working=0;
@@ -35,7 +35,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
  #listeners=new Set<()=>void>();#off:(()=>void)[];#waiters=new Set<Waiter>();
  #refreshRun:{epoch:number;promise:Promise<void>}|undefined;#downloads=new Map<string,Promise<string>>();
 
- constructor(queue:SharedSuggestionQueue<P>,relay:SharedRelaySync<P>,options:SharedSuggestionSyncOptions={}){
+ constructor(queue:SharedSuggestionQueue<P>,relay:SharedSuggestionTransport<P>,options:SharedSuggestionSyncOptions={}){
   if(attached.has(queue))throw new SharedRelayError("suggestion_sync_already_attached");
   this.#queue=queue;this.#relay=relay;this.#identity=queue.identity();this.#options={...options};
   relay.checkSuggestionQueue(queue.core,this.#identity);this.#wanted=options.autoStart!==false;
@@ -50,6 +50,9 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
  subscribe(listener:()=>void):()=>void{if(this.#closed)throw new SharedRelayError("closed");this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  /** Detached live metadata only. Cached packet/intent recovery remains in the borrowed queue. */
  entries():readonly SuggestionEntry[]{return structuredClone([...this.#entries.values()]);}
+ #effectivePermissions(input:SharedSuggestionPermissions):SharedSuggestionPermissions;
+ #effectivePermissions(input:SharedSuggestionPermissions|null):SharedSuggestionPermissions|null;
+ #effectivePermissions(input:SharedSuggestionPermissions|null):SharedSuggestionPermissions|null{return input&&this.#relay.suggestionDecisionMode==="observer"?{...input,canAccept:false}:input;}
  #notify():void{if(this.#notifying)return;this.#notifying=true;queueMicrotask(()=>{this.#notifying=false;try{this.#options.onState?.(this.state());}catch{/* Reporting cannot replace durable intent. */}for(const listener of [...this.#listeners])try{listener();}catch{/* Observers do not own this adapter. */}});}
  #active(epoch:number):boolean{return !this.#closed&&this.#wanted&&epoch===this.#epoch&&this.#relay.suggestionState().ready;}
  #check(epoch:number):void{if(!this.#active(epoch))throw new SharedRelayError("suggestion_offline");this.#relay.checkSuggestionQueue(this.#queue.core,this.#identity);}
@@ -67,7 +70,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
   if(this.#closed)return;const state=this.#relay.suggestionState(),document=this.#relay.state();
   const signature=JSON.stringify([state.ready,state.revision,state.documentRevision,document.localThrough,document.serverThrough]);
   if(!state.ready)this.#permissions=null;
-  else if(this.#permissionRevision!==state.revision){this.#permissionRevision=state.revision;this.#permissions=state.permissions;}
+  else if(this.#permissionRevision!==state.revision){this.#permissionRevision=state.revision;this.#permissions=this.#effectivePermissions(state.permissions);}
   if(!state.ready){if(this.#relaySignature!==signature){this.#epoch++;this.#queued=undefined;this.#reject(new SharedRelayError(document.error??"suggestion_offline"));}this.#status=document.status==="denied"?"denied":["fenced","failed"].includes(document.status)?"failed":"offline";this.#error=document.error;this.#notify();}
   else if(this.#relaySignature!==signature)this.#schedule();
   this.#relaySignature=signature;
@@ -77,7 +80,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
  #fail(error:SharedRelayError,epoch:number):void{
   if(this.#closed||epoch!==this.#epoch)return;
   this.#error=error.code;this.#status=error.code==="local_save_failed"?"local-save-failed":error.code==="permission_denied"?"denied":this.#relay.suggestionState().ready?"failed":"offline";
-  // Networking/reconnect remains owned by the document adapter. A failed local cache requires
+  // Networking/reconnect remains owned by the borrowed transport. A failed local cache requires
   // explicit retry; a lane protocol error must not silently resume after unrelated typing.
   if(this.#relay.suggestionState().ready)this.#wanted=false;
   this.#reject(error);this.#notify();try{this.#options.onError?.(error);}catch{/* Error reporting cannot acknowledge a save. */}
@@ -92,7 +95,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
  async #pull(epoch:number):Promise<void>{
   const previous=[...this.#entries.values(),...this.#queue.proposals().flatMap(info=>{const row=this.#queue.status(info.id);return row.publication?[{publication:row.publication,decision:row.decision}]:[];})];
   const feed=await readSuggestionFeed(input=>this.#request(input,epoch),this.#identity);this.#check(epoch);checkSuggestionFeed(previous,feed);
-  this.#entries=feed.entries;this.#permissions=feed.permissions;
+  this.#entries=feed.entries;this.#permissions=this.#effectivePermissions(feed.permissions);
   for(const info of this.#queue.proposals()){
    const entry=this.#entries.get(info.id);if(!entry)continue;await this.#retain(entry,epoch);
   }
@@ -115,7 +118,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
   const response=await this.#request({kind:"suggestionRead",suggestionId:id},epoch);keys(response,"entry,kind,permissions");
   if(response["kind"]!=="suggestionEntry")throw new SharedRelayError("suggestion_protocol_error");
   if(response["entry"]===null)throw new SharedRelayError(required||this.#entries.has(id)?"suggestion_server_rollback":"suggestion_unknown");
-  this.#permissions=suggestionPermissions(response["permissions"]);const entry=suggestionEntry(response["entry"],this.#identity);
+  this.#permissions=this.#effectivePermissions(suggestionPermissions(response["permissions"]));const entry=suggestionEntry(response["entry"],this.#identity);
   if(entry.publication.suggestion.id!==id)throw new SharedRelayError("suggestion_receipt_mismatch");
   checkSuggestionFeed(this.#entries.has(id)?[this.#entries.get(id)!]:[],{entries:new Map([[id,entry]]),through:entry.decision?.sequence??entry.publication.sequence,permissions:this.#permissions});
   this.#entries.set(id,entry);return entry;
@@ -163,7 +166,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
   }
   this.#notify();
  }
- /** Explicit resume; automatic reconnect is owned by the borrowed document adapter. */
+ /** Explicit resume; automatic reconnect is owned by the borrowed transport. */
  async connect():Promise<void>{if(this.#closed)throw new SharedRelayError("closed");this.#wanted=true;this.#error=null;if(!this.#relay.suggestionState().ready)await this.#relay.connect();await this.refresh();}
  async refresh():Promise<void>{
   if(this.#closed)throw new SharedRelayError("closed");this.#wanted=true;this.#error=null;const epoch=this.#epoch;if(this.#refreshRun?.epoch===epoch)return this.#refreshRun.promise;

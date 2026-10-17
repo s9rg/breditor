@@ -242,6 +242,20 @@ workflows remain intact. Reader-only automatic suggestion sync, borrowed
 vanilla/React suggestion controls and proposal revision/granular rebasing remain
 functional work. No V1 gate, package version or publication status advances.
 
+The [permanent-observer SDK checkpoint](qualification/2026-10-17-rich-review-suggestion-observer-sdk.json)
+adds automatic Reader proposal/Reject synchronization through the existing
+native observer contract. Readers never register/resume an author or submit
+document operations; a later Editor grant cannot promote their permanent
+identity into owned Accept. All six history-policy combinations pass offline
+recovery, accepted foreign effects, peer-source dependency retry, grant changes,
+lost Reject replies, source-save failures and automatic host restart. A separate
+installed consumer passes strict public types and both six-policy author and
+Reader matrices with packaged Wasm. All 325 SDK tests and 47 scoped runtime/build
+guards pass. Native contracts, Wasm bytes, saved families and existing author
+defaults remain unchanged. Borrowed vanilla/React suggestion controls and
+proposal revision/granular rebasing remain functional work; no release gate or
+publication status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

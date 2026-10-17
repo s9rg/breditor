@@ -29,9 +29,9 @@ guarded previews, staged effects, the opt-in native reference-host decision
 ledger, an explicitly negotiated reference socket lane, native/Wasm proposal
 pairing, a durable SDK intent queue and automatic synchronization on the existing
 document-author socket are implemented below. Recovered accepting-user history
-has an explicit native/Wasm/SDK contract and paired durable storage. Reader-only
-metadata synchronization, paired suggestion controls and granular rebasing remain
-unfinished.
+has an explicit native/Wasm/SDK contract and paired durable storage. Permanent
+Reader proposal/Reject synchronization uses a separate non-authoring transport.
+Paired suggestion controls and granular rebasing remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -275,7 +275,7 @@ covers exact recovery across all six policies, local/accepted/local ordering,
 peer text, invisible items, overlapping receipts, once-only adoption, policy
 upgrades, read-only refusal and recreated directional selections. The following
 explicit Wasm/SDK pairing saves adopted source history before persisting its
-dependent final receipt. Reader-only transport, proposal revision/rebasing,
+dependent final receipt. Proposal revision/rebasing,
 borrowed vanilla/React controls remain functional work.
 
 ### Wasm and SDK owned history
@@ -600,9 +600,9 @@ global catalog: the existing 256-row selected cache retains its original limits.
 The adapter borrows both queue and document connection. Dispose it before closing
 the queue/source; disconnecting it alone leaves ordinary document sync running.
 Ordinary author reconnection controls lease recovery. A fenced author is not
-silently resumed by a new metadata connection. Reader-only automatic proposal and
-Reject workflows still need a separate non-authoring adapter; the native socket
-and low-level durable queue already support them without an author lease.
+silently resumed by a new metadata connection. The separate permanent-observer
+adapter below supports Reader-only proposal/Reject workflows without an author
+lease.
 
 The [automatic client checkpoint](qualification/2026-10-17-rich-review-suggestion-sync-sdk.json)
 combines actual application Wasm, exported document/queue/sync adapters and the
@@ -614,6 +614,76 @@ loss are fixtures. This original default leaves imported effects foreign to
 ordinary Undo; accepting-user history uses the separate opt-in pairing above.
 Proposal controls remain open; the separate owned-history checkpoint covers
 installed mixed SDK acceptance.
+
+### Automatic suggestions for permanent observers
+
+`registerSharedSuggestionObserver` selects atomic V2 and the suggestion lane,
+authenticates the current account, then calls only native `registerObserver`.
+The existing Rust registry reserves a permanently non-authoring document writer.
+The host must save the returned `SharedSuggestionObserverIdentity` before joining
+its native source. Its observer credential is separate protected host state;
+`sharedSuggestionObserverQueueIdentity` returns only the detached nonsecret queue
+key. Neither saved identity nor registration-time permissions grant current access.
+
+`SharedSuggestionObserverRelay` borrows the durable source rather than creating,
+replacing or disposing it. Construction checks its exact room/writer/source
+family, requires a zero native authored prefix and enforces native read-only
+mode. Existing original/general/document and explicit/natural policies remain
+available. A source with authored operations is refused; it is never truncated,
+rewritten or uploaded under an observer identity. Source replacement across an
+asynchronous save and later writable/authored transitions also refuse.
+
+Connection authenticates and verifies the pinned descriptor/lane, checks the
+native zero prefix against the host, resumes only `resumeObserver`, then imports
+and saves catchup through the same native owner. It never calls author register,
+author resume, document submit or owned Accept. The account may have independent
+proposal/Reject permission while its accepted document remains read-only. Even a
+later Editor grant cannot promote this permanent identity: the transport and
+sync UI permissions keep `canAccept` false, and the request path refuses Accept
+before transmission. A separate author identity is required for owned acceptance.
+
+`SharedSuggestionSync` now borrows the common `SharedSuggestionTransport`
+contract. Existing author adapters still reuse their original socket and owned
+Accept path. An observer uses that same bounded discovery, lazy native packet
+cache, offline queue, final-outcome reconciliation and source-before-receipt
+rules. A queued Accept is not silently changed to Reject or sent after an account
+upgrade. Current server permissions gate each proposal/Reject; denied offline
+intent remains available for retry. Authenticated foreign Accepts import their
+native effect and final metadata without adding local Undo ownership.
+
+Catchup hints wake missing peer-source publication even when the local native
+projection already contains that peer's offline operations. Unchanged live feeds
+do not poll. Ordinary network loss and host restart reconnect with the same
+observer credential. Document-role changes deliberately fence existing native
+leases; reconnect after a grant is explicit, not an automatic lease takeover.
+Failed local saves retain readable source and queue state for explicit local
+retry, followed by reconnect. No new persisted source/queue format, native log
+tag, protocol negotiation or live permission record is introduced.
+
+Dispose the suggestion sync and observer transport before closing the borrowed
+queue/source. Disconnecting the suggestion sync alone leaves source catchup
+running, as it does for an author connection. Observer disposal leaves the native
+source read-only, does not close its storage or release its local lease, and does
+not erase offline proposals. The host still owns credentials, assets and lifetime.
+
+The [observer checkpoint](qualification/2026-10-17-rich-review-suggestion-observer-sdk.json)
+covers all six scope/grouping policies with actual Wasm and an authenticated
+native host. Reader wire assertions prohibit author registration/resume/submit
+and all Accept requests. Exact offline recovery, foreign accepted effects,
+pending peer sources, independent grant changes, explicit role-change reconnect,
+lost Reject replies, failed source saves, host restart and idle behavior pass.
+Clean-installed acceptance repeats both the six-policy mixed owned-history
+workflow and this six-policy observer workflow through installed public editor
+exports and packaged Wasm, with strict consumer type checks. Browser storage,
+locks and transport failures remain fixtures; suggestion controls and granular
+rebasing remain functional work.
+
+```sh
+node scripts/probe-suggestion-observer-sdk.mjs target/promoted-shared-web \
+  target/owned-history-relay-native/release/examples/suggestions_functional
+node scripts/check-suggestion-observer-installed.mjs \
+  target/owned-history-relay-native/release/examples/suggestions_functional
+```
 
 ## Durable comments and anchors
 

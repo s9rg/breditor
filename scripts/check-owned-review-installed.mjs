@@ -7,8 +7,9 @@ import {tmpdir} from "node:os";
 import {dirname,join,resolve,sep} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {probeSuggestionSyncSdk} from "./probe-suggestion-sync-sdk.mjs";
+import {probeSuggestionObserverSdk} from "./probe-suggestion-observer-sdk.mjs";
 
-export async function checkOwnedReviewInstalled(executable){
+export async function checkOwnedReviewInstalled(executable,{includeObserver=false}={}){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdtempSync(join(tmpdir(),"breditor-owned-review-installed-")),archives=join(temporary,"archives"),consumer=join(temporary,"consumer");
  mkdirSync(archives);mkdirSync(consumer);writeFileSync(join(consumer,"package.json"),JSON.stringify({name:"breditor-owned-review-consumer",private:true,type:"module"}));
  const packages=["@breditor/browser","@breditor/experimental-rich-content","@breditor/collaboration","@breditor/editor"];
@@ -22,7 +23,8 @@ export async function checkOwnedReviewInstalled(executable){
  const sdkDirectory=pathToFileURL(dirname(installed[2])+sep),sdkModule=pathToFileURL(realpathSync(fileURLToPath(resolved[4]))),wasmDirectory=dirname(realpathSync(fileURLToPath(resolved[5])));
  assert.ok(fileURLToPath(sdkModule).startsWith(realpathSync(consumer)+sep));
  const result=await probeSuggestionSyncSdk(wasmDirectory,resolve(executable),{ownedHistory:true,sdkDirectory,sdkModule});
- const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm").replace("UI, Reader-only automatic transport, installed combined acceptance and release qualification remain open","Borrowed suggestion controls, Reader-only automatic transport and release qualification remain open")};
+ const observer=includeObserver?await probeSuggestionObserverSdk(wasmDirectory,resolve(executable),{sdkDirectory,sdkModule}):undefined;
+ const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,...(observer?{observer}:{}),scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm").replace("this author-only probe does not exercise the separate observer adapter or suggestion controls.",includeObserver?"The additional observer matrix covers the non-authoring path; suggestion controls remain open.":"This installed author-only matrix does not exercise the separate observer adapter or suggestion controls.")};
  writeFileSync(join(temporary,"result.json"),JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
