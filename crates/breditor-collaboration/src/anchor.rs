@@ -23,8 +23,8 @@ pub enum Affinity {
 #[serde(deny_unknown_fields)]
 pub struct TextAnchor {
     cursor: Vec<u8>,
-    // Loro's binary cursor omits origin_pos. Retain its Unicode coordinate
-    // explicitly for future UndoItemMeta use, instead of assuming decode keeps it.
+    // Retain the Unicode origin explicitly for UndoItemMeta and cursor reconstruction rather
+    // than depending on the pinned engine's binary hint representation. Existing bytes stay valid.
     origin_unicode: u32,
 }
 

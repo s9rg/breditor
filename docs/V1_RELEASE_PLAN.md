@@ -315,6 +315,15 @@ Granular character-affine text rebasing, final API/migration and package-release
 checks, production hosting/auth and deferred browser/IME/accessibility/performance
 qualification remain open. This is a local functional checkpoint, not V1 readiness.
 
+The [native character-range checkpoint](qualification/2026-10-17-rich-review-affine-range-native.json)
+adds the original-character proof needed for granular suggestions. Pure capture
+and resolution preserve disjoint same-paragraph edits, map stable characters
+through split/join, exclude new intervening text and distinguish deletion from
+equal-looking reinsertion. Separate source/current marks and protected domains
+remain explicit. This is not automatic suggestion rebasing: new suggestion
+packets, native effects and opt-in transport/SDK/control integration still remain.
+Existing V1 guards, saved meanings and browser APIs are unchanged.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

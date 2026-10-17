@@ -1,0 +1,73 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "67ad37ca78b7020a428175722f02ee291f888837",
+  "scope": "Additive native original-character range capture and source-checked resolution. Disjoint text edits and character-preserving flow splits/joins can resolve without changing conservative suggestion V1 guards. This is a pure range primitive, not a new suggestion, structural edit plan, Accept effect or browser rebasing feature. The full advanced-review goal remains active.",
+  "artifacts": {
+    "newNativeFamily": "breditor/shared-affine-text-range V1",
+    "rangeDigestDomain": "breditor/shared-affine-text-range/1 with trailing NUL",
+    "originalDocumentDigestDomain": "breditor/shared-affine-text-source/1 with trailing NUL",
+    "applicationWasmSha256": "b967060eab1f34f4e37cbdebbea59d4d74b3c0730f8a5f5d4ca9a85446d9b17a",
+    "existingRevisionFixtureSha256": "778b833386a3cb489fb9d3b1d790e5ffea0f84d0cbe1cd638218b10c4c76f794",
+    "javascriptWasmExports": 8,
+    "wasmExports": 198,
+    "affineBrowserApiAdded": false,
+    "newPublicationOrDecisionLaneAdded": false,
+    "existingStoredMeaningsOrDefaultsChanged": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 510, "failed": 0, "resultGroupsIncludingEmptyDoctests": 46, "newPublicRangeTests": 14, "newPrivateRangeAndBudgetTests": 5},
+    "fullRelayAndServerRegression": {"passed": 78, "failed": 0},
+    "compatibilityRangeContracts": {"passed": 14, "failed": 0, "canonicalSourceShim": true},
+    "strictNativeLibraryAndPublicRangeClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "newRangeSourceAndTestsRustfmt": "passed",
+    "sdkAndEditorRegression": {"passed": 357, "failed": 0, "files": 39},
+    "buildSurfaceAndPromotionGuards": {"passed": 54, "failed": 0},
+    "existingActualWasmMixedWorkflowRegression": {"passed": true, "trials": 6, "mixedRevisionCommentVersionReopens": 6, "wireRequests": 2040, "doesNotQualifyAffineClientIntegration": true}
+  },
+  "nativeContracts": [
+    "Capture checks the current owner observation before work and requires an explicit admitted directional text selection. It does not change selection, grouping, clocks, operation frames, Undo or retained Redo, including under all six read-only selection/history policies.",
+    "The closed packet retains a document review anchor, exact original coordinates and a separate canonical original-document digest. Descriptive reading does not establish that historical operations exist or that the original coordinates are valid. Resolution reconstructs the exact retained causal source before deriving native scalar identities itself.",
+    "Missing source operations return Pending. Rehashed invalid scalar coordinates or a different original-document witness cannot become a resolved source. Unknown witness fields and non-document sources refuse rather than weakening admission.",
+    "A resolved character set contains every original selected scalar in original order and the same text kind and protected base-cell/caption domain. New intervening characters are excluded. Missing originals, reordered characters, domain or kind changes and lost admitted endpoints return explicit Conflict without a surviving subset or nearest-cell substitution.",
+    "Native scalar keys retain container and character identity while normalizing the pinned engine's mutable cursor origin-position hint. Raw cursor bytes with that hint are not stable character keys. Existing saved cursor encodings and original V1 suggestion witnesses remain unchanged.",
+    "Maximal segments retain original and current text coordinates and marks separately. UTF-16 scalar boundaries, exact emoji and original direction are preserved. Deleting and reinserting equal text cannot recreate the original characters. Original characters can follow native flow split/join without regeneration.",
+    "Resolved endpoints are not deletion authority. An originally empty range can have Before/After endpoints surrounding later text while selecting zero original characters. Structural removal, joins, floors, formatting conflict policy and insertion placement require a separate source-checked edit planner.",
+    "Original/current block and formatting witnesses share allocations across scalars. Bounded JSON counting precedes repetitive mark cloning into output segments. Oversized packets, selected character sets, traversals, formatting witnesses and retained output refuse explicitly.",
+    "No new Wasm/SDK methods, mutation executor, publication fallback or server decision ordering is introduced. Existing immutable revision, accepting-user Undo, comment and named-version behavior remains covered by regression tests."
+  ],
+  "limits": {
+    "selectedUnicodeScalars": 65536,
+    "resolvedSegments": 4096,
+    "rangePacketBytes": 1048576,
+    "resolvedJsonBytes": 1048576,
+    "accumulatedFormattingWitnessBytesPerSide": 8388608,
+    "visitedScalarsPerTraversal": 4194304,
+    "textCoordinates": "exact u32 UTF-16 scalar boundaries"
+  },
+  "verificationNotes": [
+    "The first prefix-insertion case exposed position hints in this pinned engine's serialized cursors. Normalizing only the scalar-key hint fixed identity lookup; no original anchor packet or conservative suggestion guard was changed.",
+    "A fresh blank-editor test uses the admitted document shape with one empty paragraph. A childless document correctly fails the existing schema and was not made valid for this feature.",
+    "Strict source checks pass without new lint suppressions. The pinned third-party engine retains its existing unused-import warning. A whole-crate fmt check also reports a pre-existing module-order difference in suggestions/tests.rs; only new range files were formatted, preserving unrelated source.",
+    "Canonical native, compatibility, relay and application Wasm builds retain separate existing target directories. The mixed SDK check uses isolated authenticated loopback storage; it is not physical browser, IME, VoiceOver or production-host qualification."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test affine_text_range_contracts",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release --lib --test affine_text_range_contracts -- -D warnings",
+    "CARGO_TARGET_DIR=target/promoted-shared-wasm cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --no-default-features --target wasm32-unknown-unknown --release --lib -- -D warnings",
+    "node scripts/build-collaboration-runtime.mjs",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node --test scripts/build-collaboration-runtime.test.mjs scripts/check-collaboration-runtime-surface.test.mjs scripts/collaboration-native-graph.test.mjs scripts/collaboration-promotion.test.mjs scripts/build-shared-runtime.test.mjs scripts/editor-package-contract.test.mjs scripts/collaboration-browser-runs.test.mjs scripts/shared-browser-runs.test.mjs",
+    "node scripts/probe-suggestion-revisions-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestion_revisions_functional"
+  ],
+  "remaining": [
+    "Source-checked affine text and formatting suggestion intents, explicit replacement/intervening-insertion and formatting conflict policies, guarded preview/effect verification, and authenticated finalization without reinterpreting V1 packets.",
+    "Opt-in paired Wasm/SDK methods, durable offline publication and revision coexistence, vanilla/React controls and mixed installed workflow acceptance for the new behavior.",
+    "Final API/migration and package-release checks, production auth/hosting, storage lifetime/compaction and the deferred cross-browser, IME, accessibility and performance work."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

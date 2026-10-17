@@ -265,6 +265,63 @@ node scripts/check-suggestion-revisions-installed.mjs \
   target/owned-history-relay-native/release/examples/suggestion_revisions_functional
 ```
 
+### Native original character ranges
+
+`breditor/shared-affine-text-range` V1 is an additive pure range family for the
+next granular suggestion contract. It is not a V1 proposal, comment/version
+packet, executable edit or server receipt. Existing V1 suggestion guards continue
+to conflict on changes in their affected whole text blocks. No current SDK or
+control automatically rebases an old suggestion through this primitive.
+
+`capture_affine_text_range_guarded` captures an explicit directional text
+selection and the original causal document cut without activating text roots or
+changing the caret, native clocks, history or grouping. A domain-separated digest
+also pins the canonical original document, not just its name and clock values;
+current disjoint edits do not change that retained original cut. `read_affine_text_range`
+admits closed descriptive metadata; it does not establish that source history
+exists or that its coordinates are valid. `resolve_affine_text_range` rebuilds
+the exact historical source, admits those original scalar boundaries and derives
+the selected native character identities itself. Packets cannot supply a weaker
+identity or formatting witness.
+
+The resolver returns Pending for missing source operations. Resolved means every
+original selected scalar survives in original order, with the same text kind and
+protected base-cell/caption domain. It returns maximal original/current segments,
+original and current marks separately, and independently mapped directional
+endpoints. Peer insertions are excluded from the segments, including insertions
+between selected characters. Disjoint same-paragraph edits and character-preserving
+splits/joins can therefore map without a text diff or identity regeneration.
+Deleting and reinserting equal text still reports original-character loss.
+Deleted characters, reordered originals, changed domains/kinds and lost endpoints
+return Conflict with no usable surviving subset or nearest-cell fallback.
+
+Endpoints alone must never become a delete-between-offsets operation. For an
+original empty range, Before/After endpoints can surround newly typed text while
+the original selected character set remains empty. This primitive neither deletes
+whole atoms nor plans paragraph joins, fresh floors or structural replacement.
+A future source-checked affine suggestion action must combine the original set,
+formatting conflict policy, insertion point and explicit structural contract under
+one guarded native preview/effect. Handling peer insertions inside a replacement
+range remains a proposal-level policy choice, not an implicit range resolution.
+
+Each traversal uses one native flow index. Scalar keys retain the native container
+and character ID while normalizing the engine's mutable origin-position hint;
+opaque cursor bytes with that hint are not stable character keys. Original and
+current formatting/block bindings are shared across scalar witnesses. Limits are
+65,536 selected scalars, 4,096 returned segments, 1 MiB per range packet/resolution,
+8 MiB of accumulated formatting witnesses per side and four million visited
+scalars per traversal. Output bytes are counted before repeated marks can be
+cloned into segments. Scalar offsets remain exact UTF-16 boundaries, including
+emoji; neither Unicode normalization nor surrogate-pair slicing is inferred.
+
+The [native range checkpoint](qualification/2026-10-17-rich-review-affine-range-native.json)
+records pure capture/resolution and exact reopen under all six read-only
+selection/history policies, original V1 conflict preservation, source-loss and
+rehashed-coordinate refusals, protected domains, split/join, empty floors,
+insertion affinity and pre-allocation byte budgets. This is native groundwork;
+affine suggestion packets, guarded effects, transport and client controls remain
+functional work.
+
 ### Staged native suggestion effects
 
 `prepare_document_suggestion_effect` turns a still-current native preview into

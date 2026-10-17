@@ -4,6 +4,7 @@
 //! A semantic Document V2 is a validated export, never a mutable shared root register.
 
 pub mod actions;
+mod affine_text_range;
 mod annotations;
 mod atom_edit;
 mod block_layout_state;
@@ -114,6 +115,10 @@ mod writer_transport;
 pub use actions::Command;
 /// Private shared projection revision; incompatible causal interpretations must reject old frames.
 pub const MODEL_VERSION: u32 = 11;
+pub use affine_text_range::{
+    AffineTextDomain, AffineTextRangeConflict, AffineTextRangeInfo, AffineTextRangeResolution,
+    AffineTextSegment,
+};
 pub use clipboard::{ClipboardContent, PasteTarget};
 pub use clipboard_namespace::ClipboardNamespace;
 pub use document_versions::{

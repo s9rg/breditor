@@ -31,6 +31,8 @@ mod markers;
 mod projection;
 pub(in crate::rich_replica) mod provenance;
 mod split;
+mod visit_scalars;
+pub(in crate::rich_replica) use visit_scalars::visit_scalars;
 
 pub use anchor::FlowAnchor;
 pub use delete::delete;
