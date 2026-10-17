@@ -6,14 +6,14 @@ use crate::{
         PendingFormatsUpdate, RichReplica, SelectionUpdate, SharedObservation, WriterReceipt,
     },
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Native authored effect identity, not a decision receipt or permission credential.
 /// The host must bind this to its authenticated, exactly-once review decision and durably append
 /// the complete candidate before publication. Importing this writer's group does not transfer
 /// its Undo history to a different accepting user's writer.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct DocumentSuggestionEffect {
     /// Immutable original proposal identity.
     pub suggestion_id: String,

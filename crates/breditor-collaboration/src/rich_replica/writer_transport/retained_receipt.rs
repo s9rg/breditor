@@ -4,7 +4,28 @@ use crate::{
     Error,
     rich_replica::{RichReplica, session::writer_id},
 };
+use loro::{IdSpan, LoroDoc};
 use serde::Serialize;
+
+/// The same canonical V2 lineage domain for a disposable native re-execution, never a new
+/// transport frame, mutable-owner grant or alternative digest implementation.
+pub(in crate::rich_replica) fn atomic_digest_for_doc(
+    owner: &RichReplica,
+    doc: &LoroDoc,
+    writer: u64,
+    from: i32,
+    through: i32,
+) -> Result<String, Error> {
+    super::lineage_v2::changes(
+        owner.document_id(),
+        &owner.codec.schema().fingerprint().to_string(),
+        owner.model_version(),
+        writer,
+        from,
+        through,
+        &doc.export_json_in_id_span(IdSpan::new(writer, from, through)),
+    )
+}
 
 /// A pure native lineage read, not an authenticated review decision or local Undo adoption.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

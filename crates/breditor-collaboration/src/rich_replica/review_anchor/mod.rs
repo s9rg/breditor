@@ -6,6 +6,7 @@ mod missing_review_dependencies;
 mod packet;
 mod read_review_quote;
 mod resolve_review_anchor;
+pub(super) use check_source_cut::check_source_cut;
 
 pub use read_review_quote::{ReviewAnchorQuote, ReviewQuoteLoss};
 

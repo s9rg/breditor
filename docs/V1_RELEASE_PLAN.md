@@ -201,6 +201,19 @@ Accepting-user Undo, Reader-only automatic metadata sync, suggestion controls,
 granular rebasing and installed combined review acceptance remain functional
 work. No V1 gate, package version or publication status advances.
 
+The [native effect-proof checkpoint](qualification/2026-10-17-rich-review-effect-proof-native.json)
+proves that retained accepted operations reproduce their original proposal and
+semantic preparation boundary. It repairs historical source reconstruction that
+could falsely refuse a creation proposal after acceptance because a snapshot
+retained empty containers from later history. Actual Wasm/SDK workflows now
+re-prove accepted creations and exactly reopen their queues beside the original
+document/comment histories. The complete native suite passes 466 tests; 305 SDK
+tests and 36 runtime guards pass as well. This is a native history prerequisite,
+not accepting-user Undo adoption. The one-ordered-stack/recovery contract is
+documented; adoption, paired controls and installed combined acceptance remain
+active work. Existing saved meanings and the application export surface remain
+unchanged, and no V1 gate or publication status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

@@ -1,0 +1,127 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "5092fa9",
+  "scope": "Pure native proof of an accepted suggestion's original intent, exact retained V2 operations and re-derived semantic boundary, plus operation-only historical reconstruction. The repaired historical source path is exercised through actual application Wasm, durable SDK queues and the authenticated native host. This is a prerequisite for accepting-user history, not a recovered Undo implementation. The advanced-review goal remains active.",
+  "artifacts": {
+    "applicationWasmSha256": "94bbfdfa90c79c5a42e9c40094b9cfb6d680917a36954c290e8dba4e890efe3a",
+    "suggestionHostSha256": "171636c35366c9b0eefa5c82f9d19b31632dba8a3cd4f4cee180e76a86727005",
+    "existingReviewAndCatalogHostSha256": "5937d20805c103ba6cfea74763ece30798856fa7fe7ee405fb84719a11bac71c",
+    "nativeEffectContractsExecutableSha256": "8da17aa8785d84d4a3a3c188155422136e6c1d85e13eb9d11caa1eebefd7fdab",
+    "canonicalApplicationWasmRebuilt": true,
+    "referenceHostsRebuilt": true,
+    "javascriptExports": 7,
+    "wasmExports": 178,
+    "newSemanticEffectProofExportedToApplicationWasm": false,
+    "newBrowserSideEffectOrInverseExecutor": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 466, "failed": 0, "libraryTests": 55, "effectContractTests": 15},
+    "fullRelayServerSuite": {"passed": 64, "failed": 0},
+    "fullSdkSuite": {"passed": 305, "failed": 0, "files": 35},
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 36, "failed": 0},
+    "strictNativeLibraryAndEffectContractClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "strictAllTargetRelayServerClippy": "passed",
+    "nativeEffectProofContracts": [
+      "Pure source/effect Pending followed by Verified, across all six original/general/document and explicit/natural recovery policies",
+      "Old effect receipts remain provable after later host operations, conflicting local offline text, read-only mode and exact restart",
+      "Opaque proof metadata stays readable while stale/foreign owner guards refuse reuse",
+      "A valid retained range cannot claim another native intent or a guessed permanent-preparation boundary",
+      "An identical visible tree after Undo cannot make a future proposal source precede an older effect",
+      "Exact closed effect metadata retains the original serialized fields and refuses unknown authority claims or numeric coercion",
+      "Text, inline formats, headings, lists, table axes/cells, captions, protected ranges and explicit document effects retain their native lowering",
+      "Even a rehashed valid atom receipt refuses a causal cut between paired text-mark atoms before reconstruction"
+    ],
+    "directHistoricalArenaRegression": {
+      "passed": true,
+      "snapshotHasExactOldVersionVectorsButFutureEmptyHandles": true,
+      "operationOnlyReadDropsFutureHandles": true,
+      "currentRetainedCreationIdsStillRefusedForReuse": true,
+      "liveCheckpointUnchanged": true
+    },
+    "mixedSelectiveInverseMechanism": {"privateNativeOnly": true, "semanticShapes": 5, "orderedInverseStepsPerShape": 6, "nativeOracleComparisons": 30, "laterPeerTextPreserved": true, "acceptingDeviceHistoryAdoptionProved": false},
+    "actualWasmProposalAndHistoricalSourceProbe": {
+      "command": "node scripts/probe-suggestion-sdk.mjs target/promoted-shared-web target/suggestion-ledger-native/release/examples/suggestions_functional",
+      "passed": true,
+      "socketTrials": 2,
+      "sdkCaptures": 8,
+      "pendingAndConflictReads": 4,
+      "retainedReceiptReads": 4,
+      "acceptedCreationSourceReproofs": 4,
+      "additionalPureSemanticIntentShapes": 28
+    },
+    "automaticAcceptedCreationQueueRecovery": {
+      "command": "node scripts/probe-suggestion-sync-sdk.mjs target/promoted-shared-web target/suggestion-ledger-native/release/examples/suggestions_functional",
+      "passed": true,
+      "trials": 4,
+      "originalOfflineReopens": 4,
+      "additionalAcceptedCreationQueueReopensAndFutureOrdinaryUndoRedo": 4,
+      "automaticOwnedAccepts": 4,
+      "lazyRemotePackets": 4,
+      "sourceBeforePublication": 4,
+      "pendingPeerSourceRecoveries": 4,
+      "originalIndependentHistoryWorkflows": 4,
+      "conflictThenReject": 4,
+      "opposingOfflineChoices": 4,
+      "localSaveRefusals": 4,
+      "receiptSaveRefusals": 4,
+      "lostDecisionReplies": 4,
+      "automaticHostRestarts": 4,
+      "livePermissionTransitions": 4,
+      "idleWithoutPolling": 4,
+      "acceptingUserUndoAdoptionImplemented": false
+    },
+    "existingAutomaticCommentsAndVersionsRegression": {
+      "passed": true,
+      "trials": 4,
+      "exactOfflineReopens": 16,
+      "localSaveRefusals": 8,
+      "localRetryWithoutNetworkAcceptance": 4,
+      "localReceiptSaveRefusals": 4,
+      "lostReplyRecoveries": 4,
+      "automaticHostRestarts": 4,
+      "guardedRemoteRestores": 4,
+      "leaseRefusals": 8,
+      "missingLocalSourceRefusals": 4,
+      "rollbackRefusals": 8,
+      "permissionTransitions": 4,
+      "unicodeAccounts": 1,
+      "syntheticDomSharedControlWorkflows": 1
+    }
+  },
+  "repair": {
+    "reproducedBeforeFix": true,
+    "originalFailure": "Re-proving a valid source after accepting a fresh structural creation returned fresh historical creation identity",
+    "cause": "The pinned engine's snapshot-at-cut retained empty mergeable-container allocations from later history. Native fresh-ID checks observed those handles even though the requested historical version vector and retained operations preceded their creation.",
+    "fix": "Validate an applied, causally closed cut and complete text-mark boundaries, export only its original operations and import them into a fresh private arena. Preserve original IDs/atoms without live checkout, schema relaxation or accepting a current reused ID.",
+    "vendorChanges": false,
+    "historicalWebKitFaultRepairClaimed": false
+  },
+  "contracts": [
+    "verify_document_suggestion_effect_guarded returns Pending or an opaque VerifiedDocumentSuggestionEffect. A retained digest alone is not a semantic effect or history-ownership proof.",
+    "Re-execution uses the actual pre-effect causal basis and original effect writer. The original proposal source must precede that basis; original read dependencies must still match there. Both V2 digests, the exact end and the re-derived semantic start must reproduce the retained operations.",
+    "Permanent preparation is excluded from the verified semantic range. No supplied semanticFrom, AST snapshot or replacement operation batch is trusted as an inverse boundary.",
+    "The proof is pure, including in read-only mode. It changes no live roots, content, UI, counters, stacks or publication. Frozen metadata remains readable while exact owner/publication guards refuse stale or foreign use.",
+    "Authenticated finality, current account authority, original accepting-device identity, server durability and local history adoption remain separate host/coordinator contracts. No browser effect executor or arbitrary inverse API is added.",
+    "Operation-only historical reads retain original causal atoms, clock ends and immutable document binding while excluding future arena-only handles. Current native freshness, schema, source-cut and resource laws remain intact.",
+    "Native effect metadata gains closed deserialization without changing its existing serialized shape or any saved family. Existing defaults, journal meanings, operation/frame protocols and application export surfaces remain unchanged.",
+    "The documented next history contract requires one ordered native stack, explicit opt-in recovery, existing ordinary Undo/Redo preservation, durable idempotent owned adoption, natural typing fences, cursor-basis repair and source-before-dependent-receipt persistence. No replicated marker roots or writer counter reservations are introduced by this checkpoint."
+  ],
+  "verificationNotes": [
+    "The first new proof run failed on legitimate creation cases. A separate call to the existing original-source verifier reproduced the same failure before the new effect verifier, isolating the historical-source bug. The direct arena test then proved old version vectors with future empty handles and the corrected operation-only behavior.",
+    "The first relay example rebuild omitted the existing required server feature and refused before compilation. The corrected explicitly server-enabled build and tests succeeded; feature defaults were not changed.",
+    "A scoped process inspection confirmed the longer native regression command was actively advancing through integration tests. It was not restarted merely for taking time.",
+    "Formatting is scoped to changed Rust files. The existing dependency unused HasIdSpan import warning remains; unrelated source formatting, dependencies and lockfiles are unchanged.",
+    "Browser APIs for automatic probes use IndexedDB/Web Locks and transport-loss fixtures. These workflows do not qualify physical clipboard, IME, accessibility, broad browser reliability or public hosting."
+  ],
+  "remaining": [
+    "Implement the explicitly selected recovered native history family: ordered ordinary/owned-effect Undo/Redo, invisible-item handling, native cursor repair, adoption idempotency and exact future replay. The selective-inverse mechanism tests are not this history owner.",
+    "Pair native history/proof methods with opt-in Wasm/SDK adoption, exact source/queue recovery and authenticated original-device receipts. Never adopt another device's effect solely from a matching account name.",
+    "Reader-only automatic proposal/Reject synchronization, persisted bounded global discovery, borrowed vanilla/React suggestion controls and clean-installed combined review acceptance.",
+    "Proposal revision and granular character-affine text rebasing; conservative affected-text witnesses remain unchanged.",
+    "Final V1, production hosting/storage lifecycle, performance and physical browser/IME/accessibility qualification remain deferred. No full feature parity or historical WebKit repair is claimed."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

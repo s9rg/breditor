@@ -49,7 +49,7 @@ export async function probeSuggestionRelay(directory, executable, options = {}) 
     exactClientRestores: 0, ordinaryUndoRedoWorkflows: 0, observerAcceptRefusals: 0,
     fullCapabilityHandshakes: 0, liveReadRevocationRefusals: 0, serverMergeImports: 0,
     fixtureQueuedOfflineDecisionReplays: 0};
-  let sdkCaptures = 0, sdkSourceStates = 0, sdkRetainedReceipts = 0;
+  let sdkCaptures = 0, sdkSourceStates = 0, sdkRetainedReceipts = 0, sdkAcceptedCreationSourceProofs = 0;
   try {
     for (const natural of [false, true]) {
       const temporary = mkdtempSync(join(tmpdir(), "breditor-suggestion-socket-"));
@@ -271,6 +271,23 @@ export async function probeSuggestionRelay(directory, executable, options = {}) 
             {kind: "verified", receipt: accepted.decision.effect.writerGroup});
           assert.throws(() => b.retainedWriterReceiptV2({...accepted.decision.effect.writerGroup,
             prefixDigest: `sha256:${"f".repeat(64)}`}), /lineage differs/); sdkRetainedReceipts++;
+          // A historical snapshot must not make IDs created AFTER the source cut look already
+          // used AT that cut. This failed after accepting creation before operation-only reads.
+          const creation = a.captureSuggestion("Re-prove accepted creation", "alice", "1792200000001", draft([
+            {kind: "set_image_caption", data: {block: "image-block", caption: {
+              kind: "element", type: "breditor/paragraph", entityId: null,
+              properties: {"breditor/block-id": "accepted-source-proof-caption"},
+              children: [{kind: "text", text: "New caption 日本 🙂", formats: []}]
+            }}}
+          ]));
+          await publish(alice, creation); await decide(alice, JSON.parse(creation).id);
+          for (const [core, wire] of [[a, alice], [b, bob]]) {
+            await core.receiveFrame((await wire.request({kind: "sync"})).frame);
+            const before = [core.checkpointJson(), core.updateFrame(), core.documentJson()];
+            assert.equal(core.verifySuggestionSource(creation).kind, "verified");
+            assert.deepEqual([core.checkpointJson(), core.updateFrame(), core.documentJson()], before);
+            sdkAcceptedCreationSourceProofs++;
+          }
         }
         const replayFrame = (await alice.request({kind: "sync"})).frame;
         const replayPage = (await reader.request({kind: "suggestionSync", binding, cursor: null})).page;
@@ -314,10 +331,11 @@ export async function probeSuggestionRelay(directory, executable, options = {}) 
   for (const [name, count] of Object.entries(counts)) assert.equal(count, 2, name);
   if (options.proposalCapture === "wasm-sdk") {
     assert.equal(sdkCaptures, 8); assert.equal(sdkSourceStates, 4); assert.equal(sdkRetainedReceipts, 4);
+    assert.equal(sdkAcceptedCreationSourceProofs, 4);
   }
   return {format: "breditor/suggestion-relay-functional-probe", formatVersion: 1,
     nativeRelaySha256: hash(readFileSync(executable)), sharedWasmSha256: hash(bytes), ...counts, passed: true,
-    proposalCapture: options.proposalCapture ?? "native-fixture", sdkCaptures, sdkSourceStates, sdkRetainedReceipts,
+    proposalCapture: options.proposalCapture ?? "native-fixture", sdkCaptures, sdkSourceStates, sdkRetainedReceipts, sdkAcceptedCreationSourceProofs,
     scope: "Actual native source-proven proposals and durable authenticated WebSocket host, with actual application Wasm clients under explicit/natural history. Exact writer-owned Accept, immutable packets, offline source retry, ordinary offline edit retention, conflict/Reject, races, original-winner retry, independent live rights and exact restart. Explicit fixture, not automatic SDK queues, accepting-user Undo, UI, physical browser or production qualification."};
 }
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {

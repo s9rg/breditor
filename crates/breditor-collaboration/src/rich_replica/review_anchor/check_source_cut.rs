@@ -2,7 +2,10 @@
 use crate::Error;
 use loro::{IdSpan, JsonOpContent, JsonTextOp, LoroDoc, VersionVector};
 
-pub(super) fn check_source_cut(doc: &LoroDoc, vector: &VersionVector) -> Result<(), Error> {
+pub(in crate::rich_replica) fn check_source_cut(
+    doc: &LoroDoc,
+    vector: &VersionVector,
+) -> Result<(), Error> {
     for (writer, through) in vector.iter() {
         if *through <= 0 {
             continue;

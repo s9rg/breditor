@@ -1,8 +1,10 @@
 //! Staged proposal effects are ordinary native groups, not durable review decisions or foreign Undo.
 use breditor_collaboration::rich_replica::{
     Command, DocumentSuggestionDraft as Draft, DocumentSuggestionEdit as Edit,
+    DocumentSuggestionEffect, DocumentSuggestionEffectVerification as EffectVerification,
     DocumentSuggestionPreparation as Preparation, DocumentSuggestionPreview as Preview,
-    DocumentSuggestionScope as Scope, RichReplica, SharedRichProfile, WriterGroupPreparation,
+    DocumentSuggestionScope as Scope, RichReplica, SharedRichProfile,
+    VerifiedDocumentSuggestionEffect, WriterGroupPreparation,
     actions::{
         ClearTableCells, InsertColumn, InsertRow, InsertText, ListStyle, RangeTextRun,
         ReplaceDocumentPlainTextV1, ReplaceGeneralTextRangeV1, ReplaceTextRange, ResizeImage,
@@ -87,6 +89,27 @@ fn ready(owner: &RichReplica, packet: &str) -> Result<Preview> {
 fn insert(block: &str, text: &str) -> Command {
     Command::InsertText(InsertText { block: block.into(), offset: 0, text: text.into() })
 }
+fn verified_effect(
+    owner: &RichReplica,
+    packet: &str,
+    effect: &DocumentSuggestionEffect,
+) -> Result<VerifiedDocumentSuggestionEffect> {
+    owner
+        .verify_document_suggestion_source(packet)
+        .map_err(|error| format!("original source proof: {error}"))?;
+    let observed =
+        if owner.document_selected() { owner.observe_document()? } else { owner.observe()? };
+    match owner.verify_document_suggestion_effect_guarded(&observed, packet, effect)? {
+        EffectVerification::Verified(proof) => {
+            owner.check_document_suggestion_effect_proof(&proof)?;
+            assert_eq!(proof.effect(), effect);
+            Ok(*proof)
+        }
+        EffectVerification::Pending { missing } => {
+            Err(format!("unexpected missing effect: {missing:?}").into())
+        }
+    }
+}
 fn caret(owner: &mut RichReplica) -> Result {
     use breditor_collaboration::anchor::Affinity;
     let p = TextPoint { block: "caption".into(), offset: 0, affinity: Affinity::After };
@@ -142,6 +165,7 @@ fn one_staged_native_group_recovers_exactly_in_all_six_explicit_policies() -> Re
             );
             let mut recovered = restore(&profile, &saved, scope, typing)?;
             assert_eq!(a.commit_document_suggestion_effect(prepared)?, effect);
+            verified_effect(&a, &packet, &effect)?;
             assert_eq!(save(&a, scope, typing)?, saved);
             assert_eq!(a.update_frame()?, frame);
             assert_eq!(a.redo_count(), 0);
@@ -307,9 +331,11 @@ fn native_effects_cover_text_formats_headings_lists_table_axes_cells_and_image_c
             separated_preparation += 1;
         }
         let saved = prepared.checkpoint()?;
+        let effect = prepared.effect().clone();
         let mut recovered = profile.restore("room", &saved)?;
         a.commit_document_suggestion_effect(prepared)?;
         b.receive_frame(&a.update_frame()?)?;
+        verified_effect(&b, &packet, &effect)?;
         assert_eq!(b.document_json(), preview.document_json());
         assert_eq!(
             b.undo_count(),
@@ -361,8 +387,10 @@ fn whole_document_effect_requires_document_history_but_not_a_preexisting_ui_sele
                 continue;
             }
             let prepared = prepared?;
+            let effect = prepared.effect().clone();
             let mut recovered = restore(&profile, &prepared.checkpoint()?, scope, typing)?;
             a.commit_document_suggestion_effect(prepared)?;
+            verified_effect(&a, &packet, &effect)?;
             assert!(
                 a.document_selected(),
                 "Explicit document scope retains the ordinary native scope recipe"
@@ -465,8 +493,10 @@ fn protected_general_range_effects_are_one_group_and_recover_in_both_directions(
                     continue;
                 }
                 let prepared = prepared?;
+                let effect = prepared.effect().clone();
                 let mut recovered = restore(&profile, &prepared.checkpoint()?, scope, typing)?;
                 a.commit_document_suggestion_effect(prepared)?;
+                verified_effect(&a, &packet, &effect)?;
                 assert_eq!(a.undo_count(), 1);
                 for redo in [false, true] {
                     if redo {
@@ -539,5 +569,202 @@ fn independent_host_writer_stages_v2_transport_without_reserving_the_proposer_st
     a.undo()?;
     assert_eq!(text(a.document_json(), "p")?, "Accepted a🙂b");
     assert_eq!(text(a.document_json(), "caption")?, "xy🙂");
+    Ok(())
+}
+
+#[test]
+fn retained_effect_proof_is_pure_pending_then_exact_after_later_edits_and_recovery() -> Result {
+    for scope in 0..=2 {
+        for typing in [false, true] {
+            let (profile, mut host, mut client) = peers()?;
+            configure(&mut host, scope, typing)?;
+            configure(&mut client, scope, typing)?;
+            let packet =
+                proposal(&host, Scope::Commands, Edit::Commands(vec![insert("p", "Accepted ")]))?;
+            let prepared = host.prepare_document_suggestion_effect(&ready(&host, &packet)?)?;
+            let effect = prepared.effect().clone();
+            let before =
+                (save(&client, scope, typing)?, client.update_frame()?, client.view_json()?);
+            assert!(matches!(
+                client.verify_document_suggestion_effect_guarded(&client.observe()?, &packet, &effect)?,
+                EffectVerification::Pending { missing }
+                    if missing.len() == 1 && missing[0].writer == effect.writer_group.writer
+                        && missing[0].counter == effect.writer_group.through
+            ));
+            assert_eq!(
+                (save(&client, scope, typing)?, client.update_frame()?, client.view_json()?),
+                before
+            );
+            host.commit_document_suggestion_effect(prepared)?;
+            host.apply(vec![Command::SetHeading(SetHeading {
+                block: "p".into(),
+                level: Some(4),
+            })])?;
+            // Current client content conflicts with the original text intent, but the historical
+            // accepted effect still proves at ITS actual basis, without deleting offline work.
+            client.apply(vec![insert("p", "Later offline client ")])?;
+            client.receive_frame(&host.update_frame()?)?;
+            client.set_read_only_guarded(&client.observe()?, true)?;
+            let before =
+                (save(&client, scope, typing)?, client.update_frame()?, client.view_json()?);
+            let proof = verified_effect(&client, &packet, &effect)?;
+            assert_eq!(proof.info().id, effect.suggestion_id);
+            assert_eq!((client.undo_count(), client.redo_count()), (1, 0));
+            assert_eq!(
+                (save(&client, scope, typing)?, client.update_frame()?, client.view_json()?),
+                before
+            );
+            let recovered = restore(&profile, &before.0, scope, typing)?;
+            assert!(recovered.check_document_suggestion_effect_proof(&proof).is_err());
+            verified_effect(&recovered, &packet, &effect)?;
+            client.set_read_only_guarded(&client.observe()?, false)?;
+            assert!(client.check_document_suggestion_effect_proof(&proof).is_err());
+            assert_eq!(
+                proof.effect(),
+                &effect,
+                "Frozen proof reads survive invalidated live guards"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn a_valid_retained_receipt_cannot_claim_a_different_native_intent() -> Result {
+    let (_, mut host, mut client) = peers()?;
+    let original =
+        proposal(&host, Scope::Commands, Edit::Commands(vec![insert("p", "Accepted ")]))?;
+    let other = proposal(
+        &host,
+        Scope::Commands,
+        Edit::Commands(vec![Command::SetHeading(SetHeading { block: "p".into(), level: Some(4) })]),
+    )?;
+    let prepared = host.prepare_document_suggestion_effect(&ready(&host, &original)?)?;
+    let mut claim = prepared.effect().clone();
+    host.commit_document_suggestion_effect(prepared)?;
+    client.receive_frame(&host.update_frame()?)?;
+    verified_effect(&client, &original, &claim)?;
+    claim.suggestion_id = client.read_document_suggestion(&other)?.id;
+    assert!(matches!(
+        client.retained_writer_receipt_v2(&claim.writer_group)?,
+        breditor_collaboration::rich_replica::WriterReceiptRetention::Verified { .. }
+    ));
+    let before = client.checkpoint()?;
+    assert!(
+        client
+            .verify_document_suggestion_effect_guarded(&client.observe()?, &other, &claim)
+            .is_err()
+    );
+    assert_eq!(client.checkpoint()?, before);
+    Ok(())
+}
+
+#[test]
+fn a_future_proposal_source_cannot_claim_an_earlier_identical_native_effect() -> Result {
+    let (_, mut host, _) = peers()?;
+    let command = Command::SetHeading(SetHeading { block: "p".into(), level: Some(4) });
+    let original = proposal(&host, Scope::Commands, Edit::Commands(vec![command.clone()]))?;
+    let prepared = host.prepare_document_suggestion_effect(&ready(&host, &original)?)?;
+    let mut effect = prepared.effect().clone();
+    host.commit_document_suggestion_effect(prepared)?;
+    host.undo()?;
+    // The visible tree is back at its old value, but this source is causally AFTER the effect.
+    let future = proposal(&host, Scope::Commands, Edit::Commands(vec![command]))?;
+    effect.suggestion_id = host.read_document_suggestion(&future)?.id;
+    let before = host.checkpoint()?;
+    let error = host
+        .verify_document_suggestion_effect_guarded(&host.observe()?, &future, &effect)
+        .err()
+        .ok_or("future source attached to old effect")?;
+    assert!(error.to_string().contains("precedes its original source"));
+    assert_eq!(host.checkpoint()?, before);
+    Ok(())
+}
+
+#[test]
+fn proof_rederives_permanent_preparation_boundary_instead_of_trusting_a_receipt_field() -> Result {
+    let (_, mut host, mut client) = peers()?;
+    let packet = proposal(
+        &host,
+        Scope::Commands,
+        Edit::Commands(vec![Command::ClearTableCells(ClearTableCells {
+            anchor: "cell".into(),
+            focus: "cell".into(),
+            empty: vec!["proof-empty".into()],
+        })]),
+    )?;
+    let prepared = host.prepare_document_suggestion_effect(&ready(&host, &packet)?)?;
+    let effect = prepared.effect().clone();
+    assert!(effect.semantic_from.parse::<i32>()? > effect.writer_group.from.parse::<i32>()?);
+    host.commit_document_suggestion_effect(prepared)?;
+    client.receive_frame(&host.update_frame()?)?;
+    verified_effect(&client, &packet, &effect)?;
+    let before = client.checkpoint()?;
+    let mut claimed = effect.clone();
+    claimed.semantic_from.clone_from(&effect.writer_group.from);
+    assert!(
+        client
+            .verify_document_suggestion_effect_guarded(&client.observe()?, &packet, &claimed)
+            .is_err()
+    );
+    claimed.semantic_from = effect.writer_group.through.clone();
+    assert!(
+        client
+            .verify_document_suggestion_effect_guarded(&client.observe()?, &packet, &claimed)
+            .is_err()
+    );
+    claimed.semantic_from = "01".into();
+    assert!(
+        client
+            .verify_document_suggestion_effect_guarded(&client.observe()?, &packet, &claimed)
+            .is_err()
+    );
+    assert_eq!(client.checkpoint()?, before);
+    Ok(())
+}
+
+#[test]
+fn effect_proof_refuses_stale_or_foreign_observations_before_reading_the_input() -> Result {
+    let (_, mut host, mut client) = peers()?;
+    let packet = proposal(&host, Scope::Commands, Edit::Commands(vec![insert("p", "Accepted ")]))?;
+    let prepared = host.prepare_document_suggestion_effect(&ready(&host, &packet)?)?;
+    let effect = prepared.effect().clone();
+    host.commit_document_suggestion_effect(prepared)?;
+    client.receive_frame(&host.update_frame()?)?;
+    let stale = client.observe()?;
+    client.set_selection_guarded(&stale, Some(&Selection::Node { block: "image-block".into() }))?;
+    let before = client.checkpoint()?;
+    assert!(client.verify_document_suggestion_effect_guarded(&stale, "not JSON", &effect).is_err());
+    assert!(
+        client
+            .verify_document_suggestion_effect_guarded(&host.observe()?, &packet, &effect)
+            .is_err()
+    );
+    let proof = verified_effect(&client, &packet, &effect)?;
+    assert!(host.check_document_suggestion_effect_proof(&proof).is_err());
+    assert_eq!(client.checkpoint()?, before);
+    Ok(())
+}
+
+#[test]
+fn effect_metadata_keeps_closed_exact_string_fields_and_unchanged_serialized_shape() -> Result {
+    let (_, host, _) = peers()?;
+    let packet = proposal(&host, Scope::Commands, Edit::Commands(vec![insert("p", "Accepted ")]))?;
+    let prepared = host.prepare_document_suggestion_effect(&ready(&host, &packet)?)?;
+    let effect = prepared.effect();
+    let value = serde_json::to_value(effect)?;
+    assert_eq!(serde_json::from_value::<DocumentSuggestionEffect>(value.clone())?, *effect);
+    for path in ["top", "writer"] {
+        let mut invalid = value.clone();
+        if path == "top" {
+            invalid["credential"] = json!("not authority");
+        } else {
+            invalid["writerGroup"]["lease"] = json!("not authority");
+        }
+        assert!(serde_json::from_value::<DocumentSuggestionEffect>(invalid).is_err());
+    }
+    let mut invalid = value;
+    invalid["semanticFrom"] = json!(0);
+    assert!(serde_json::from_value::<DocumentSuggestionEffect>(invalid).is_err());
     Ok(())
 }

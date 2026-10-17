@@ -168,6 +168,80 @@ typing candidates, protected ranges in both directions, and an independent host
 writer with concurrent offline edits. Current checkpoint results are recorded in
 the release trail.
 
+### Native proof of accepted effect semantics
+
+`verify_document_suggestion_effect_guarded` is a pure Rust prerequisite for
+accepting-user history. It returns Pending until the required source/effect
+operations are applied, or an opaque `VerifiedDocumentSuggestionEffect`. A valid
+V2 receipt alone is insufficient: it identifies operations but does not establish
+which proposal they implement or where permanent preparation ends.
+
+The verifier reconstructs the actual causal basis immediately before the effect,
+checks the proposal's original read dependencies there, and runs the original
+native lowering on a disposable fork with the original effect writer. It must
+reproduce both canonical V2 digests, the exact authored end and the re-derived
+semantic start. The original source must causally precede that basis; an Undo
+that restores the same visible tree cannot attach a later proposal to an older
+effect. Text, formats, list/table/image structure, protected ranges and
+explicit document scope use the same native lowering as ordinary preparation.
+Later host operations and unrelated or conflicting local offline content do not
+replace that historical basis. The live owner, selection, roots, counters and
+Undo/Redo remain unchanged, including in read-only mode.
+
+`check_document_suggestion_effect_proof` checks the opaque proof's exact owner
+and live publication. Its frozen metadata stays readable after the live guard
+becomes stale. Neither method authenticates a decision, proves disk durability,
+identifies the accepting device or adopts history. Those remain separate checks
+against the authenticated original server decision and the pinned local writer.
+The methods are native-only at this checkpoint; no new application-Wasm executor
+or browser-side Undo authority is exposed.
+
+Historical reads now import only operations in their closed retained version
+vector into a fresh private arena. Snapshot-at-cut reconstruction could retain
+empty mergeable containers allocated later and falsely refuse an originally
+fresh creation ID when re-proving a proposal after acceptance. The reproduced
+failure is repaired without changing the creation/freshness laws: current edits
+still cannot reuse retained IDs. Original source atoms and IDs are preserved,
+and the live document is never checked out. Cuts between paired formatting-mark
+atoms reject before reconstruction, even with a valid atom-range digest.
+
+The [native effect-proof checkpoint](qualification/2026-10-17-rich-review-effect-proof-native.json)
+records the source-reconstruction repair, semantic proof workflows and mixed
+selective-inverse comparisons. These are prerequisites, not a claim that the
+accepting user's recovered Undo stack is implemented.
+
+### Accepting user history integration plan
+
+The next integration uses one opt-in local history contract for ordinary edits
+and authenticated owned Accepts. It must retain all original/general/document
+selection families and explicit/natural grouping policies. Existing readers and
+saves keep their meanings; a new explicitly selected local recovery envelope
+will record activation and adoption. No marker roots are added to replicated
+content, and the existing document transport remains unchanged.
+
+Activation must preserve the current ordinary Undo/Redo, local UI and exact
+writer end. Adoption is a local history event, not another application of the
+proposal. It requires the native semantic proof plus the authenticated original
+decision's exact account, accepting writer, proposal, lane and effect. Another
+device on the same account cannot inherit that ownership. Replaying an already
+adopted decision must remain a no-op even after Undo, Redo or a new edit discards
+Redo; adoption identity cannot disappear with a stack item.
+
+The native ordered stack must distinguish accepted effects from foreign edits
+that remain unowned, close a natural typing group at adoption, and prevent an
+invisible ordinary item from skipping over an intervening accepted item. Checked
+selective inverses must preserve later peer text and original formatting
+priority, excluding permanent preparation. UI recipes need their own captured
+causal basis so native cursor repair does not use the host's caret or a replaced
+AST. Read-only and stale-owner guards remain in force for Undo/Redo.
+
+Exact recovery must retain adoption order, idempotency, cursor recipes, typing
+boundaries and all future author operations. The borrowed document/comment owner
+must durably save that history before the dependent final decision cache can
+acknowledge it. A lost reply or failed receipt save must not create a second Undo
+item on retry. Combined native, Wasm, SDK and installed review workflows must
+prove this path before the ordinary Undo controls expose it.
+
 ### Native ordered proposal and decision ledger
 
 The reference relay's `enable_document_suggestions` explicitly enables

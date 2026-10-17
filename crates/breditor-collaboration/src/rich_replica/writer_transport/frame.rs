@@ -63,7 +63,7 @@ pub(super) struct Checked {
     pub through: i32,
     pub dependencies: Vec<(u64, i32)>,
 }
-pub(super) fn counter(value: &str) -> Result<i32, Error> {
+pub(in crate::rich_replica) fn counter(value: &str) -> Result<i32, Error> {
     let n = value.parse::<i32>().map_err(|_| Error::Contract("shared transport counter"))?;
     if n < 0 || n.to_string() != value {
         return Err(Error::Contract("canonical shared transport counter"));

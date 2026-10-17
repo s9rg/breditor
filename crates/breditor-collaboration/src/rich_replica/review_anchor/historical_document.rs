@@ -33,8 +33,9 @@ impl RichReplica {
             return Err(Error::Contract("review source cut is not causally closed"));
         }
         super::check_source_cut::check_source_cut(&self.doc, &vector)?;
-        // fork_at retains only the requested history. No live checkout, authoring, or UI mutation.
-        let doc = self.doc.fork_at(&frontiers)?;
+        // Reconstruct operations, not snapshot arena allocations from later history. No live
+        // checkout, authoring, identity regeneration or local-history mutation occurs.
+        let doc = super::super::retained_history::at_vector(&self.doc, &vector)?;
         if doc.state_vv() != vector || doc.oplog_vv() != vector {
             return Err(Error::Contract("review source cut differs from retained history"));
         }

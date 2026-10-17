@@ -86,6 +86,7 @@ mod replace_general_selection_text;
 mod replace_general_typing_text;
 mod replace_plain_text_range;
 mod replay_projections;
+mod retained_history;
 mod review_anchor;
 mod review_comments;
 mod select_document;
@@ -134,9 +135,9 @@ pub use review_comments::{
 pub use session::RichReplica;
 pub use suggestions::{
     DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionEffect,
-    DocumentSuggestionInfo, DocumentSuggestionPreparation, DocumentSuggestionPreview,
-    DocumentSuggestionScope, DocumentSuggestionSource, PreparedDocumentSuggestionEffect,
-    SuggestionConflictTarget,
+    DocumentSuggestionEffectVerification, DocumentSuggestionInfo, DocumentSuggestionPreparation,
+    DocumentSuggestionPreview, DocumentSuggestionScope, DocumentSuggestionSource,
+    PreparedDocumentSuggestionEffect, SuggestionConflictTarget, VerifiedDocumentSuggestionEffect,
 };
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{
