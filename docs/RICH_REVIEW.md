@@ -1172,6 +1172,60 @@ writer, imports old credentials or silently replaces concurrent unobserved work.
 Current discussions remain current discussions; restoring a document version does
 not silently resurrect an older review database.
 
+### Image bytes during review and restore
+
+Proposals and named versions retain immutable asset references, not image bytes,
+upload receipts or credentials. Accepting an image insertion or replacement can
+therefore finish before another device can download its raster. The host must
+show that availability separately. A missing download is retryable; it does not
+erase the accepted node or finalize a different review decision. Applications
+requiring remote bytes before publication must explicitly finish their asset
+upload first rather than infer durability from local ingestion or proposal save.
+
+`RichAssetStore` owns the durable local raster cache. `SharedRelayAssets` borrows
+it for explicit upload and authenticated, independently verified download. A
+downloaded raster is cached as already uploaded and never echoed into the local
+upload queue. Asset transport does not capture proposals, author document edits,
+move selections or close the borrowed store. The reference host binds its
+separate asset directory to the room; current document Readers may download,
+while upload requires current document editing rights.
+
+Image replacement changes the asset/generation pair without replacing surviving
+caption or alternative-text fields. Accepting-user Undo preserves independent
+peer changes. Version comparison reports the original and current asset
+references; guarded restore creates fresh node identities and generations while
+retaining the version's immutable raster hashes. Old node-anchored discussions
+can become orphaned, but their original quotations and peer replies remain
+readable. Neither document/review Undo nor restore implicitly uploads, deletes or
+garbage-collects cached or server bytes. Hosts must retain assets referenced by
+versions and retained history when defining their own collection policy.
+
+The separate `review_assets_functional` fixture enables the existing review,
+version and suggestion lanes together with room-bound raster storage. Existing
+fixture arguments and room defaults remain unchanged. The combined check runs
+through the public SDK, then through clean-installed local package archives:
+
+```sh
+CARGO_TARGET_DIR=target/owned-history-relay-native cargo build \
+  --manifest-path experiments/relay/Cargo.toml --features server --locked --offline \
+  --release --example review_assets_functional
+node scripts/probe-review-assets-sdk.mjs packages/breditor-collaboration/dist/runtime \
+  target/owned-history-relay-native/release/examples/review_assets_functional
+node scripts/check-review-assets-installed.mjs \
+  target/owned-history-relay-native/release/examples/review_assets_functional
+```
+
+The [combined asset and review checkpoint](qualification/2026-10-17-rich-review-assets-workflow.json)
+passes all six editing/history policies both in the workspace and from clean
+offline-installed archives. Each run includes 36 exact author/source/queue/catalog
+reopens, 24 asset-cache reopens, 12 image decisions, six explicit discussion
+conflicts, six guarded restores and 12 cold downloads after restart. The existing
+54 stock proposal-control cases and vanilla/React lifecycle checks also pass.
+Separate processes isolate pinned fake IndexedDB transaction retention between
+policies without changing same-origin recovery, timeouts or the total request
+budget. The two-raster/DOM/storage fixtures do not qualify physical browsers,
+arbitrary images or production memory behavior.
+
 ## Implementation and acceptance order
 
 1. Native durable anchor capture, strict mapping, orphan/pending behavior and exact
@@ -1708,8 +1762,9 @@ paired reopens, eight local save aborts, four receipt save aborts, four lost-rep
 recoveries, four guarded remote restores and four host restarts. It also checks
 rollback refusal, independent cache leases, missing local sources, role changes,
 a UTF-8 account and a shared panel with delayed loading/stale preview refusal.
-The storage, locks and DOM are fixtures; installed combined review acceptance,
-suggestions and final production/browser qualification remain open.
+The storage, locks and DOM are fixtures. The later suggestion and combined
+asset/review checkpoints above provide their separate installed functional
+acceptance; final production/browser qualification remains open.
 
 ```sh
 npm run build:candidate --workspace @breditor/collaboration

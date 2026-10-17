@@ -281,6 +281,23 @@ transaction already received. `forgetCachedVersion` refuses queued or in-flight
 packets. Close borrowed controls before closing the catalog, then close the
 native document/review session last. Asset bytes remain host-owned.
 
+### Image availability during review
+
+An accepted image proposal or saved version proves document metadata, not remote
+raster availability. Keep the host's `RichAssetStore` separate and use
+`SharedRelayAssets` for explicit upload/download. Local ingestion retains bytes
+before a proposal is captured; call the asset provider's `flush()` before
+publication if your application requires remote availability at that point.
+A missing server raster remains retryable without changing the accepted image.
+Remote downloads are verified and cached without entering the upload queue.
+
+Version restore and accepting-user Undo retain immutable raster hashes but never
+upload, delete or garbage-collect bytes. Keep image bytes needed by retained
+versions/history. Restore creates fresh node identities; existing image comments
+may become orphaned while their captured quotations and replies stay readable.
+The [review and asset contract](../../docs/RICH_REVIEW.md#image-bytes-during-review-and-restore)
+includes separate native-host and clean-installed combined-workflow commands.
+
 ## Natural shared typing history
 
 `SharedPersistentSession.open({history: 'typing-v1', ...})` selects native grouped

@@ -1,0 +1,59 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "04888f417d3a855adce924300915e6b339ce2ed6",
+  "scope": "Asset-byte-inclusive advanced-review acceptance through actual application Wasm, the existing public SDK and a separately selected room-bound native raster host. Two offline authors combine immutable image proposals, once-only server decisions, changing anchored discussions, independent histories, shared named versions, guarded restore and exact recovery. No production runtime, stored family, default, package version or release gate changes.",
+  "artifacts": {
+    "applicationWasmSha256": "1c6977fc0db304d3c96553933c2a13413c048b0df5b2f3cc7854e4e604074d6f",
+    "assetReviewHostSha256": "b2c7fc0c528cbee2d6db8ab2b36e7562cf22b513231c1aa8c9e9a000d902ab14",
+    "knownRasterSha256Ids": ["sha256:3d107046d9cb7b247225fcbfaf33c27eabc944099e246d4f8c7a08a443a3f46e", "sha256:8722f7a6281bea82f16fbd506cc06b8c760b540b27f56b5a004b3d49aae55e21"],
+    "verifiedLocalArchiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "7331ae39ccb6020d39e82f3b70eac58a928fcc321212874767673645228e8f66",
+      "breditor-editor-0.3.0-alpha.22.tgz": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43"
+    }
+  },
+  "verification": {
+    "focusedNativeIntegration": {"passed": 37, "failed": 0, "assetCases": 5, "documentSuggestionCases": 20, "reviewRoomCases": 8, "versionCatalogCases": 4},
+    "strictNewFixtureClippy": "passed",
+    "newFixtureRustfmt": "passed",
+    "editorSdkSuite": {"passed": 364, "failed": 0, "files": 39},
+    "fixtureBuildSurfaceAndPromotionGuards": {"passed": 46, "failed": 0, "newFixtureCases": 6},
+    "strictPublicAssetReviewTypes": "passed in workspace and clean-installed consumer",
+    "actualWasmMatrix": {"passed": true, "trials": 6, "wireRequests": 9719, "totalRequestBudget": 16000, "stockControlActionCases": 54},
+    "cleanInstalledMatrix": {"passed": true, "trials": 6, "wireRequests": 9707, "totalRequestBudget": 16000, "stockControlActionCases": 54, "strictInstalledTypes": true, "packagedWasm": true, "workspaceProductionLinks": false, "installedReactInstance": true},
+    "additionalAcceptancePerMatrix": {"exactAuthorSourceQueueCatalogReopens": 36, "exactAssetCacheReopens": 24, "serverFinalImageDecisions": 12, "concurrentThreadResolutionConflicts": 6, "guardedVersionRestores": 6, "staleRestoreRefusals": 6, "coldDownloadsAfterRestart": 12, "readerUploadRefusals": 6, "unauthenticatedDownloadRefusals": 6, "successfulRasterUploads": 12, "assetHttpGetsIncludingMissingAndDenied": 36, "assetHttpPutsIncludingDenied": 18}
+  },
+  "contracts": [
+    "Offline Accept remains an intent and cannot mutate accepted content. Both authors' ordinary offline text survives once-only native image insertion and replacement. Original image decision receipts remain exact through paired reload, selective history, guarded version restore and native host restart.",
+    "Image references and byte availability are separate. A peer initially receives the accepted node while the room-bound asset store returns missing. Explicit host upload admits two distinct real PNGs through the native raster decoder, then the same missing hash resolves on retry without document mutation.",
+    "Both local PNGs are durable before proposal capture. Local pending/uploaded cache records and bytes survive close/reopen. Authenticated remote downloads are rehashed and decoded, cached as uploaded with zero upload attempts and never echoed into PUT by flush.",
+    "A discussion anchored to the new image retains its original caption quote and a peer reply. Concurrent offline resolved/open heads become explicitly conflicted. A later attributed resolution can be independently undone/redone without changing accepted content. Image Accept Undo/Redo preserves foreign alternative text and paragraph work without changing comment history or uploading bytes.",
+    "Named version comparison retains distinct original/current asset hashes. A peer edit invalidates an old restore plan without source mutation; a fresh guarded plan restores the named raster under new node identities. Current threads remain current, old node anchors become orphaned and their original quotations remain readable. Restore Undo/Redo neither uploads nor collects retained assets.",
+    "Exact paired source, suggestion queue and version catalog records survive reopening both authors before and after decisions. Fresh caches download real bytes after durable host restart, including a hash no longer referenced by the restored current document. Current Readers may download; Reader PUT and unauthenticated GET are denied.",
+    "The separate review_assets_functional example requires a loopback bind and explicit asset directory. Existing logs open without upgrades, and the asset directory must match the room binding. Original host arguments, default fixtures, stored protocol meanings and public runtime APIs remain unchanged."
+  ],
+  "verificationNotes": [
+    "Every original author-sync counter still passes within each isolated policy: source-before-publication, offline reload, lazy loading, pending dependencies, opposing decisions, local/receipt save aborts, lost replies, live permission changes, exact owned acceptance recovery, rollback refusal, host restart, comments and named versions. The original nine stock actions and borrowed vanilla/React lifecycle checks also pass in each of the six cases.",
+    "A single long-lived Node fixture exhausted its default V8 heap while accumulating policy histories. The pinned fake-indexeddb 6.2.5 retains completed transactions and rollback closures; a focused regression demonstrates that retention and exact same-origin recovery. Replacing only the factory between policies was insufficient. The final harness uses a fresh process per independent policy, preserves every within-policy database, fault injection and reopen, and validates six distinct complete reports plus the unchanged aggregate 16000-request gate. No heap increase, skipped case, raised timeout, production memory repair or storage compaction is claimed.",
+    "The initial root-relative Vitest invocation selected unrelated diagnostic paths and failed. The package's actual configured candidate command subsequently passed all 364 tests across 39 files. The strict native fixture lint retains only the pinned dependency's existing HasIdSpan unused-import warning.",
+    "DOM, IndexedDB, Web Locks and raster admission use deterministic fixtures. Node's Image fixture accepts only the two exact 1x1 PNGs, while the native HTTP host actually decodes both. This is not arbitrary-raster, file-size, physical browser, accessibility or performance qualification. The seed's legacy host-owned asset reference is intentionally neither reinterpreted nor supplied by this test.",
+    "All four production modules, the public editor/collaboration entry, React wrapper and its React instance resolve inside the clean offline-installed consumer. Matching packaged Wasm is used. Test helpers and the native host remain local fixtures. Both final processes exited zero and left no asset-host process running."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo build --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --example review_assets_functional",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo clippy --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --example review_assets_functional -- -D warnings",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --test assets --test review_room --test version_catalog --test document_suggestions",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node --test scripts/review-assets-workflow.test.mjs scripts/collaboration-promotion.test.mjs scripts/build-collaboration-runtime.test.mjs scripts/check-collaboration-runtime-surface.test.mjs",
+    "node scripts/probe-review-assets-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/review_assets_functional",
+    "node scripts/check-review-assets-installed.mjs target/owned-history-relay-native/release/examples/review_assets_functional"
+  ],
+  "remaining": [
+    "Direct original-character text insertion/replacement rebasing and an explicit intervening-peer-text policy without changing stored V1 intents. Existing conservative general-text proposals and manual revisions remain available.",
+    "Final API/migration, storage lifetime/compaction, package-release and production auth/hosting work, plus deferred broad browser, physical IME, accessibility and performance qualification."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22", "advancedReviewGoalRemainsActive": true}
+}

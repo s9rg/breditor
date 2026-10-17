@@ -341,6 +341,19 @@ peer text and unrelated marks remain separate from the original formatting
 targets. Text replacement, final API/migration, package release and deferred
 browser/IME/accessibility/performance gates remain open.
 
+The [combined review and raster checkpoint](qualification/2026-10-17-rich-review-assets-workflow.json)
+closes the advanced-review asset-byte integration case. Two offline authors
+combine image insertion/replacement decisions, changing anchored discussions,
+conflicting resolution, selective histories, shared named versions and guarded
+restore. All six policies pass in both workspace and clean-installed runs,
+including 36 exact author reopens, 24 cache reopens, 12 cold downloads after
+restart and the existing 54 stock action cases per run. Reference bytes, upload
+receipts and document acceptance remain separate host-owned concerns. A
+process-isolated fixture avoids accumulating fake IndexedDB rollback history
+without raising heap limits or weakening the aggregate request gate. Direct
+affine text replacement and the release/production qualification above remain
+open; the advanced-review goal is still active and no V1 gate advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
