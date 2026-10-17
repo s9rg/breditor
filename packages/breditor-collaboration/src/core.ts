@@ -26,6 +26,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #selectionPolicy:SharedSelectionPolicy;
  #fixedRanges:"original"|"general-v1"|undefined;
  #reviewEnabled=false;#reviewRevision=0n;#reviewListeners=new Set<(snapshot:SharedReviewSnapshot)=>void>();
+ readonly #reviewOwner=Object.freeze({});
  #versionPlans=new Set<SharedDocumentVersionRestorePlan>();
  constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
   const options=(args[0]??{}) as SharedEditorOptions<P>;
@@ -69,10 +70,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Complete opt-in native pairing; old binaries must not fall back to JavaScript review state. */
  supportsReview():boolean{const r=this.#live();return r.review_version?.()==="1"&&[r.review_enabled,r.enable_review,r.capture_review_anchor,r.resolve_review_anchor,r.review_view_json,r.dispatch_review,r.undo_review,r.redo_review,r.set_review_access,r.receive_review,r.export_review,r.review_checkpoint].every(f=>typeof f==="function");}
  #requireReview():SharedRustOwner{const raw=this.#live();if(!this.#reviewEnabled||!this.supportsReview())throw new SharedEditorError("review_unavailable","Enable the complete matching native review lane first");return raw;}
- #checkReview(guard?:SharedReviewGuard):void{this.#requireReview();if(guard&&(guard.reviewRevision!==this.#reviewRevision.toString()||guard.documentRevision!==this.view().revision))throw new SharedEditorError("stale_review","The request was prepared from an older document or review publication");}
+ #checkReview(guard?:SharedReviewGuard):void{this.#requireReview();if(guard&&(guard.owner!==this.#reviewOwner||guard.reviewRevision!==this.#reviewRevision.toString()||guard.documentRevision!==this.view().revision))throw new SharedEditorError("stale_review","The request was prepared from an older document or review publication, or a foreign owner");}
  /** Host must hold a separate durable review-writer lease and authenticate this policy. No saved roles are trusted. */
  enableReview(policy:SharedReviewPolicy,checkpoint?:string,documentRevision?:string):void{if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use a complete matching native review runtime");if(this.#reviewEnabled)throw new SharedEditorError("review_enabled","This owner already has a review lane");if(this.#fixedHistory!==undefined)throw new SharedEditorError("review_persistence_unavailable","This sealed durable session stores document history only; use review-aware paired storage before enabling comments");this.#run("local",(raw,o)=>{raw.enable_review!(o,JSON.stringify(policy),checkpoint);this.#reviewEnabled=true;this.#reviewRevision++;},documentRevision,false);}
- reviewSnapshot():SharedReviewSnapshot{const r=this.#requireReview();return {documentRevision:this.view().revision,reviewRevision:this.#reviewRevision.toString(),view:JSON.parse(r.review_view_json!(this.#observation)) as SharedReviewView};}
+ reviewSnapshot():SharedReviewSnapshot{const r=this.#requireReview();return {owner:this.#reviewOwner,documentRevision:this.view().revision,reviewRevision:this.#reviewRevision.toString(),view:JSON.parse(r.review_view_json!(this.#observation)) as SharedReviewView};}
  subscribeReview(listener:(snapshot:SharedReviewSnapshot)=>void):()=>void{this.#requireReview();this.#reviewListeners.add(listener);return()=>this.#reviewListeners.delete(listener);}
  captureReviewAnchor(target:SharedReviewTarget,documentRevision?:string):string{this.#check(documentRevision);const r=this.#live();if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use matching native review anchors");return r.capture_review_anchor!(this.#observation,JSON.stringify(target));}
  resolveReviewAnchor(packet:string):SharedReviewResolution{const r=this.#live();if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use matching native review anchors");return JSON.parse(r.resolve_review_anchor!(packet)) as SharedReviewResolution;}

@@ -33,7 +33,8 @@ use `ESNext.Disposable`.
 ## Ownership and host responsibilities
 
 The generated module exposes configured `SharedRichProfile` factories,
-`SharedEditorOwner`, opaque `SharedObservation` values and initialization only.
+`SharedEditorOwner`, opaque `SharedObservation` values, privately constructed
+`SharedVersionRestorePlan` proofs and initialization only.
 Its generated types have no public constructors for those classes. Fixed-schema
 probe constructors, exercise functions, raw engine import/export and unguarded
 research authoring methods are excluded from the application build. Use the
@@ -95,6 +96,48 @@ the durable session, serializes React replacement and requires a failed-close
 recovery handoff. Low-level DOM mounts still transfer core ownership by default;
 `coreOwnership: 'borrow'` is explicit for a session-managed core. Server
 acknowledgement and uploaded assets are not the local journal save state.
+
+## Optional document review
+
+Use the explicit `SharedReviewPersistentSession` for atomic local recovery of
+document history, comment history and a named-version catalog. Its `create` and
+`restore` callbacks run after independent document/review writer leases are held.
+Select the exact language, history, range and selection policies on every opening;
+the restore callback must use the matching native journal factory. Original
+document-only sessions intentionally refuse live comments and paired records.
+Legacy-to-review migration is not automatic.
+
+Attach controls to that session's enabled native core:
+
+```js
+import {mountSharedReviewPanel} from '@breditor/collaboration';
+
+const panel = mountSharedReviewPanel(reviewHost, reviewSession.core, {
+  policy: () => liveReviewPolicy,
+  versions: reviewSession,
+  allocatePrefix: () => app.reserveNeverReusedPrefix(),
+  nowMs: () => Date.now().toString(),
+  onError: reportError
+});
+
+// Borrowed controls do not close native writers or discard unsaved recovery.
+panel.dispose();
+await reviewSession.close();
+```
+
+The policy callback governs affordances, not authority. Native comment policy is
+supplied separately when enabling/restoring review and updated explicitly through
+`setReviewAccess`. Plain comments are never HTML. Edit drafts retain their original
+guards through peer updates; resolving concurrent bodies requires an explicit new
+edit. Review guards are live owner-bound objects, not serializable tokens.
+
+Version restore requires a fresh native preview and explicit confirmation. It
+authors one new undoable group, retains current comments and gives restored nodes
+fresh identities. Asset bytes remain host-owned. Failed local saves retain readable
+paired recovery and both leases for retry or explicit discard. The local catalog
+has 32 entries and the whole paired record has a 32 MiB ceiling. These controls
+currently use the programmatic shared facade; authenticated review relay, shared
+version catalogs, suggestions and final installed/browser qualification remain open.
 
 ## Natural shared typing history
 

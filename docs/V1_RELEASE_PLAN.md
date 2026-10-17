@@ -52,6 +52,10 @@ The [paired persistence checkpoint](qualification/2026-10-16-rich-review-persist
 adds atomic local document/review recovery, independent writer leases and retained
 named versions. Its storage/locks are synthetic; review relay, UI and suggestions
 still remain outside this checkpoint.
+The [review controls checkpoint](qualification/2026-10-16-rich-review-controls-sdk.json)
+adds borrowed vanilla/React comment and version controls, retained drafts, explicit
+restore confirmation and an owner-bound SDK guard repair. It uses actual Wasm with
+synthetic browser APIs; authenticated review relay and suggestions remain open.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

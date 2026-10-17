@@ -29,7 +29,11 @@ export interface SharedReviewView {
  undoDepth:number;redoDepth:number;
 }
 /** Both lanes must still match when executing a queued UI request. These are live tokens, not recovery. */
-export interface SharedReviewGuard {documentRevision:string;reviewRevision:string}
+export interface SharedReviewGuard {
+ /** Exact facade-lifetime witness. This object identity cannot be serialized or moved to another owner. */
+ readonly owner:object;
+ documentRevision:string;reviewRevision:string;
+}
 export interface SharedReviewSnapshot extends SharedReviewGuard {view:SharedReviewView}
 /** Additive complete native capability; old owners remain usable but cannot emulate comments in JS. */
 export interface SharedReviewRustCapability {

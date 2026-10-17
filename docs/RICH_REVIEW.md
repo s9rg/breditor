@@ -163,9 +163,40 @@ storage or server-side writer leasing. The existing document-only wrapper still
 explicitly refuses live comments, so it cannot claim a document-only save while
 silently omitting discussions.
 
-Authenticated review relay receipts/historical grants, a shared version catalog,
-vanilla/React review controls and clean-installed mixed acceptance remain
-unfinished. Original-quote capture/presentation also remains review UI work.
+### Vanilla and React controls
+
+`mountSharedReviewPanel` borrows an enabled native review facade. It provides
+explicit document/selection targets, replies, attributed concurrent message
+versions, guarded message edits, retraction, resolution, reanchoring and separate
+comment Undo/Redo. Stable keyed controls retain unsaved reply/edit drafts through
+native updates. A changed edit baseline requires explicit acknowledgement before
+saving the retained draft. Comment content is plain text, never interpreted HTML.
+The host's policy callback controls display affordances only; native permissions
+still decide every action.
+
+An optional paired-session catalog adds named version capture, semantic comparison,
+the exact native restore preview and explicit Apply. A changed source publication
+disposes the preview. Failed local persistence offers Retry without recapturing a
+duplicate version. Hosts supply permanently fresh restore prefixes and asset-byte
+retention. These controls do not authenticate transport or restore inactive causal
+merge provenance.
+
+`BreditorSharedReviewPanel` is available from the optional React collaboration
+entry. Its `initialOptions` belong to one core/`sessionKey`; parent rerenders retain
+drafts. Both DOM and React mounts dispose only their own controls, never either
+native writer or persistence lease. The caller closes the paired session after
+unmounting borrowed controls.
+
+SDK review guards now include an exact facade-lifetime object witness as well as
+both revisions. Matching revision strings from another owner, or a guard copied
+through JSON, cannot authorize a queued request. This is a source-state guard,
+not an account credential. Store declared native recovery records, not UI guards.
+
+Authenticated review relay receipts/historical grants, a shared version catalog
+and clean-installed mixed acceptance remain unfinished. Original-quote
+capture/presentation also remains review UI work. Current control tests use actual
+Wasm with synthetic DOM, IndexedDB and Web Locks; physical browser qualification
+remains a later release phase.
 
 Suggestions and atomic shared Accept/Reject are not implemented yet. Accepted
 content remains unchanged until an authenticated Accept is finalized. The

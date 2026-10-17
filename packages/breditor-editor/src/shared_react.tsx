@@ -4,6 +4,7 @@ import {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_err
 import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextProjection} from "@breditor/collaboration";
 import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-content";
 export {BreditorSharedDocumentEditor,type BreditorSharedDocumentEditorProps,type BreditorSharedDocumentEditorHandle} from "./shared_document_react.js";
+export {BreditorSharedReviewPanel,type BreditorSharedReviewPanelProps,type BreditorSharedReviewPanelHandle} from "./shared_review_react.js";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;

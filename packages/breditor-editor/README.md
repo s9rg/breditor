@@ -10,6 +10,15 @@ V1 API. The implementation still depends on the opt-in rich-content package.
 Collaboration uses the separate `@breditor/collaboration` application package,
 with canonical Rust/browser source and a matching module without research probes.
 
+The optional `@breditor/editor/collaboration/react` entry also exports
+`BreditorSharedReviewPanel`. Pass the enabled core of an explicit
+`SharedReviewPersistentSession` and `initialOptions` matching
+`mountSharedReviewPanel`. It borrows that core: StrictMode, ordinary parent renders
+and panel unmounting do not create, replace or close a writer. Configuration is
+fixed per core/`sessionKey`; live policy callbacks may read current host state.
+Close the paired session explicitly after borrowed controls are removed. Existing
+managed document-only openings do not silently enable or persist review metadata.
+
 ## General range editing
 
 Pass `rangeEditing: 'general-v1'` to local or shared openings, or to React
