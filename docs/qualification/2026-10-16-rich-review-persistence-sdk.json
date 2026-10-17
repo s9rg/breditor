@@ -1,0 +1,45 @@
+{
+  "format": "breditor/rich-review-persistence-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "baseCommit": "4faacaa",
+  "status": "explicit-paired-storage-qualified-with-synthetic-browser-apis-goal-active",
+  "pushed": false,
+  "published": false,
+  "actualWasmSha256": "c92273cc8667be92908b18a1e879ecedeccd02f4ed853a3f4145bb06b61a7956",
+  "checks": {
+    "collaborationTypes": "passed; immutable selection policy remains visible in the generic public session type",
+    "existingEditorSdk": { "passed": 269, "failed": 0, "files": 32 },
+    "pairedPersistence": {
+      "command": "node scripts/probe-review-persistence-sdk.mjs packages/breditor-collaboration/dist/runtime",
+      "nativeRuntime": "actual packaged application Wasm",
+      "storageAndLocks": "synthetic IndexedDB and origin-wide Web Locks, not physical browser APIs",
+      "trials": 4,
+      "policies": ["original/explicit", "original/typing-v1", "document-v1/explicit", "document-v1/typing-v1"],
+      "exactPairedRestores": 12,
+      "retainedVersionCatalogs": 4,
+      "atomicAbortChecks": 4,
+      "writerLeaseChecks": 12,
+      "nativeCorruptRecoveryRefusals": 4,
+      "passed": true
+    },
+    "mixedCommentsAndVersionRestores": {
+      "command": "node scripts/probe-review-sdk.mjs packages/breditor-collaboration/dist/runtime",
+      "trials": 4,
+      "exactPairedRestores": 4,
+      "exactFuturePairedCheckpoints": 24,
+      "versionRestoresPreservingCurrentComments": 4,
+      "passed": true
+    }
+  },
+  "contracts": [
+    "Both writer leases are acquired before create/restore factories; exclusion is independent of database name.",
+    "One declared record commits document history, comment history and the local immutable version catalog together.",
+    "Stored rights never grant live permission; native metadata replay uses freshly supplied host policy.",
+    "A failed final save retains a readable export and both writer leases for retry or explicit discard.",
+    "Malformed or mismatched stored families/identities and corrupt native history reject without resetting data or falling back to fresh create.",
+    "Original document-only persistence refuses review records; paired persistence refuses legacy records without an explicit migration."
+  ],
+  "limits": { "totalEscapedRecordBytes": 33554432, "localNamedVersions": 32, "versionPacketBytes": 4194304, "automaticMigration": false, "automaticVersionDeletion": false, "assetBytesPersistedByThisStore": false },
+  "remaining": ["physical browser storage/locks qualification", "authenticated review relay and historical grants/receipts", "shared version catalog", "vanilla/React review UI and original quote capture", "suggestions and concurrent/offline Accept/Reject", "clean-installed mixed feature acceptance", "final V1 production qualification"]
+}

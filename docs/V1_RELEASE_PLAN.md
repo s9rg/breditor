@@ -48,6 +48,10 @@ restore across both selection and history policies; this does not complete revie
 persistence/transport/UI, suggestions, the parity audit or any V1 release gate.
 The [focused checkpoint](qualification/2026-10-16-rich-review-native-sdk.json)
 records native suites, actual application-Wasm workflows and remaining bounds.
+The [paired persistence checkpoint](qualification/2026-10-16-rich-review-persistence-sdk.json)
+adds atomic local document/review recovery, independent writer leases and retained
+named versions. Its storage/locks are synthetic; review relay, UI and suggestions
+still remain outside this checkpoint.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

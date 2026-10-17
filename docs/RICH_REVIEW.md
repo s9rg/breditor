@@ -141,12 +141,31 @@ staged admission may also refuse a replacement near document budgets. Preview
 failure is atomic; it does not silently truncate content or fall back to text.
 Restore clears local selection/pending styles as shown by its native preview.
 
-Automatic paired durable storage, review writer leases/relay receipts, shared
-version catalog persistence, vanilla/React review controls and clean-installed
-mixed acceptance remain unfinished. Original-quote capture/presentation also
-remains review UI work. The existing document-only persistent wrapper explicitly
-refuses enabling comments, and vice versa, so it cannot report a document-only
-save while silently omitting a live discussion lane.
+The explicit `SharedReviewPersistentSession` now stores both exact histories and
+a local immutable version catalog in one IndexedDB record/transaction. It leases
+document and review writers independently before calling either native factory,
+requires exact declared language/selection/range/history policies, and reapplies
+fresh host access on restore. The storage header is identity/budget admission,
+not a replacement for native causal replay. Old records require an explicit future
+migration; neither reader silently resets or downgrades the other's family.
+
+An aborted save retains the previous complete durable pair. Failed final saves
+retire authoring but retain both readable native histories and both leases until
+retry or explicit discard. `exportRecovery()` returns the complete readable pair
+and catalog without serializing live permissions. The local catalog is bounded
+to 32 packets; the entire escaped stored record is bounded to 32 MiB. No automatic
+version deletion, migration or asset-byte retention policy is inferred.
+
+The paired lifecycle passes actual-Wasm tests using synthetic IndexedDB/Web Locks:
+12 exact reopens, four retained catalogs, four atomic-abort checks, 12 lease checks
+and four native corrupt-recovery refusals. This does not qualify physical browser
+storage or server-side writer leasing. The existing document-only wrapper still
+explicitly refuses live comments, so it cannot claim a document-only save while
+silently omitting discussions.
+
+Authenticated review relay receipts/historical grants, a shared version catalog,
+vanilla/React review controls and clean-installed mixed acceptance remain
+unfinished. Original-quote capture/presentation also remains review UI work.
 
 Suggestions and atomic shared Accept/Reject are not implemented yet. Accepted
 content remains unchanged until an authenticated Accept is finalized. The

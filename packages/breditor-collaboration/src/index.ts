@@ -19,6 +19,7 @@ export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";
 export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files.js";
 export {SharedPersistentSession,type SharedSessionOptions,type SharedDocumentSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";
+export {SharedReviewPersistentSession,type SharedReviewSessionOptions,type SharedReviewSessionPolicy,type SharedReviewSaveState} from "./persistence/review_session.js";
 export {SharedRelaySync,createSharedDocumentRelaySync} from "./relay/sync.js";
 export {SharedRelayAssets} from "./relay/assets.js";
 export type {SharedRelayAssetInfo,SharedRelayAssetCache,SharedRelayAssetsOptions} from "./relay/asset_types.js";
