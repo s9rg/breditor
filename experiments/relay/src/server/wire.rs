@@ -45,6 +45,13 @@ pub(super) enum Request {
     ReviewRegister {
         actor: breditor_collab_feasibility::review::ReviewActorId,
     },
+    ReviewRegisterObserver {
+        actor: breditor_collab_feasibility::review::ReviewActorId,
+    },
+    ReviewResumeObserver {
+        actor: breditor_collab_feasibility::review::ReviewActorId,
+        credential: String,
+    },
     ReviewResume {
         actor: breditor_collab_feasibility::review::ReviewActorId,
         credential: String,

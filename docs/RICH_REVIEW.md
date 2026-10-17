@@ -308,9 +308,9 @@ responses and a native cursor-prefix proof. It requires `reviewV1`; original
 cannot call the new proof request. Historical source grants remain independent
 of current permissions. A revoked comment writer does not automatically steal its
 lease back; an explicit reconnect can retain read-only catchup when document-read
-permission remains. Initial registration currently needs Comment/Moderator access.
-Automatic initial pure-reader registration without any prior metadata-writer
-reservation remains integration work; it must not require a temporary write grant.
+permission remains. Author registration needs Comment/Moderator access. A new
+reader can instead register the permanent observer identity described below,
+without any temporary write grant.
 
 Setting `SharedReviewSessionOptions.relay` selects the distinct
 `breditor/shared-review-relay-checkpoint-record` V1 storage family. It holds both
@@ -343,5 +343,53 @@ paired reopens, four abrupt host restarts with automatic reconnect, four atomic
 save failures/retries, four missing-native-prefix refusals, sixteen future history
 steps, four guarded version restores, multi-page escaped catchup and four
 write-to-read-only transitions. IndexedDB and Web Locks are synthetic. Clean-installed
-review/UI acceptance, original quotes, initial pure readers, authenticated shared
+review/UI acceptance, original quotes, authenticated shared
 versions and suggestions remain part of the active goal.
+
+### Permanent read-only metadata observers
+
+`registerSharedReviewObserver` reserves a metadata actor for an account with
+document-read permission only. By default it also reserves the existing permanent
+document-observer identity. Its identity has `reviewEditing: "read_only"`; this is
+a fixed actor kind, not a saved live permission. The host still supplies the native
+document read-only policy and `review.access: "read_only"` when opening the paired
+session. Passing an already reserved document writer remains an explicit host
+choice and does not change that writer's separate permissions.
+
+Observers and authors share the bounded actor registry, so the same actor cannot
+be registered under both kinds. The distinct durable `RegisterReviewObserverV1`
+record never becomes an author record, including after role promotion or restart.
+Author resume/submission rejects observer actors even when their account is now
+Editor/Moderator. Becoming an author requires a separate newly registered actor.
+The `reviewObserverV1` socket capability requires `reviewLineageV1` and `reviewV1`;
+old capability/response shapes remain unchanged. Observer credentials can only
+resume a matching principal's read-only lease. Replacement fences the prior
+connection; read revocation denies catchup, and regrant requires valid resume.
+
+The explicit observer identity selects
+`breditor/shared-review-observer-checkpoint-record` V1, not the writer or local
+paired storage family. One transaction retains both exact native journals, the
+local version catalog, nonsecret binding and caught-up prefix. The unchanged
+32 MiB record budget includes all fields. An observer has no authored sequence,
+and its native own-event counter must remain zero. Native restore refuses even a
+structurally valid recovery record containing an authored observer suffix; failed
+admission leaves the saved bytes available. There is no silent promotion,
+demotion, actor renaming or family migration. Credentials and current account
+roles remain outside portable recovery. A failed save retains the prior complete
+record and cursor, with readable in-memory recovery for explicit retry.
+
+Reproduce the additional actual-Wasm/native acceptance after building the matching
+SDK and isolated host above:
+
+```sh
+node scripts/probe-review-observer-sdk.mjs packages/breditor-collaboration/dist/runtime \
+  target/relay-native/release/examples/review_functional
+```
+
+Four selection/history combinations cover initial reader catchup without write
+grants, exact reopen, refused authored recovery, failed-save retry, permanently
+read-only policy after promotion, lease replacement, read revoke/regrant and
+abrupt host restart. IndexedDB and Web Locks remain fixtures, not physical browser
+qualification. This completes initial pure-reader integration, not the remaining
+shared version catalog, original quotes, suggestions or combined installed review
+acceptance.

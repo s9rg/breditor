@@ -1,7 +1,8 @@
 //! Explicit negotiated review requests; all authority is authenticated connection/Room state.
-use super::{ConnectionState, Host, Request};
+use super::{ConnectionState, Host, Request, ReviewLeaseKind};
 use crate::{Error, Result, ReviewAdmission};
 use serde_json::{Value, json};
+mod observer;
 mod reads;
 
 pub(super) async fn dispatch(
@@ -10,7 +11,7 @@ pub(super) async fn dispatch(
     state: &mut ConnectionState,
     request: Request,
 ) -> Result<Value> {
-    if !state.review_enabled {
+    if !state.review_mode.enabled() {
         return Err(Error::Contract("review V1 capability required"));
     }
     let principal = principal.to_owned();
@@ -57,6 +58,7 @@ pub(super) async fn dispatch(
                 })
                 .await?;
             state.review_lease = Some(registration.lease.clone());
+            state.review_lease_kind = ReviewLeaseKind::Author;
             Ok(json!({"kind":"reviewRegistered","registration":registration}))
         }
         Request::ReviewResume { actor, credential } => {
@@ -71,9 +73,13 @@ pub(super) async fn dispatch(
                 })
                 .await?;
             state.review_lease = Some(lease.clone());
+            state.review_lease_kind = ReviewLeaseKind::Author;
             Ok(json!({"kind":"reviewResumed","lease":lease}))
         }
         Request::ReviewSubmit { frame } => {
+            if state.review_lease_kind == ReviewLeaseKind::Observer {
+                return Err(Error::Lease);
+            }
             let lease = state.review_lease.clone().ok_or(Error::Lease)?;
             let outcome =
                 host.transaction(move |room| room.admit_review(&principal, &lease, &frame)).await?;
@@ -84,6 +90,12 @@ pub(super) async fn dispatch(
         }
         Request::ReviewSync { cursor } => {
             reads::catchup(host, principal, state.clone(), cursor).await
+        }
+        Request::ReviewRegisterObserver { actor } => {
+            observer::register(host, principal, state, actor).await
+        }
+        Request::ReviewResumeObserver { actor, credential } => {
+            observer::resume(host, principal, state, actor, credential).await
         }
         Request::ReviewClock { actor } => reads::clock(host, principal, state.clone(), actor).await,
         Request::ReviewCursorProof { cursor } => {

@@ -24,7 +24,7 @@ export {SharedPersistentSession,type SharedSessionOptions,type SharedDocumentSes
 export {SharedReviewPersistentSession,type SharedReviewSessionOptions,type SharedReviewSessionPolicy,type SharedReviewSaveState} from "./persistence/review_session.js";
 export {SharedRelaySync,createSharedDocumentRelaySync} from "./relay/sync.js";
 export {SharedReviewRelaySync} from "./relay/review_sync.js";
-export {registerSharedReviewWriter} from "./relay/review_registration.js";
+export {registerSharedReviewWriter,registerSharedReviewObserver} from "./relay/review_registration.js";
 export type * from "./relay/review_types.js";
 export {SharedRelayAssets} from "./relay/assets.js";
 export type {SharedRelayAssetInfo,SharedRelayAssetCache,SharedRelayAssetsOptions} from "./relay/asset_types.js";

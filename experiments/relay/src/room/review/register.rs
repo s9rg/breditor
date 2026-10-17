@@ -23,9 +23,10 @@ impl Room {
             resume_hash,
         })?;
         let state = self.review_state_mut()?;
-        state
-            .writers
-            .insert(actor.clone(), ReviewWriter { principal: principal.into(), resume_hash });
+        state.writers.insert(
+            actor.clone(),
+            ReviewWriter { principal: principal.into(), resume_hash, observer: false },
+        );
         state.leases.insert(actor.clone(), token.clone());
         Ok(ReviewRegistration { lease: ReviewLease { actor, token }, credential })
     }

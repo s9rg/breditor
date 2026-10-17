@@ -4,8 +4,10 @@ mod catchup;
 mod enable;
 mod grant;
 mod register;
+mod register_observer;
 mod replay;
 mod resume;
+mod resume_observer;
 #[cfg(test)]
 mod tests;
 mod types;
@@ -24,6 +26,7 @@ const MAX_PAGE_BYTES: usize = 4 * 1024 * 1024;
 struct ReviewWriter {
     principal: String,
     resume_hash: [u8; 32],
+    observer: bool,
 }
 pub(super) struct ReviewState {
     binding: String,
@@ -70,7 +73,7 @@ impl Room {
     fn review_source(&self, principal: &str, actor: &ReviewActorId) -> Result<ReviewSource> {
         let role = self.review_role(principal)?;
         let writer = self.review_state()?.writers.get(actor).ok_or(Error::Lease)?;
-        if writer.principal != principal {
+        if writer.principal != principal || writer.observer {
             return Err(Error::Lease);
         }
         Ok(ReviewSource {
@@ -81,6 +84,10 @@ impl Room {
     }
     fn check_review_registration(&self, principal: &str, actor: &ReviewActorId) -> Result<()> {
         self.review_role(principal)?;
+        self.check_review_actor_available(principal, actor)
+    }
+    fn check_review_actor_available(&self, principal: &str, actor: &ReviewActorId) -> Result<()> {
+        self.reader(principal)?;
         let state = self.review_state()?;
         if actor.as_str() == SERVER_ACTOR || state.writers.contains_key(actor) {
             return Err(Error::Contract("review actor already reserved"));

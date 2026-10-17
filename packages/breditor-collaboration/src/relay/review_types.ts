@@ -10,6 +10,8 @@ export interface SharedReviewRelayIdentity {
  documentWriter:string;writerTransport?:"atomic-v2";
  /** Present only when the helper reserved a non-authoring document identity. */
  observerCredential?:string;
+ /** Permanently non-authoring metadata identity; account promotion requires a separate new actor. */
+ reviewEditing?:"read_only";
 }
 /** Nonsecret immutable binding stored with both native journals, never a live grant. */
 export type SharedReviewRelayStorageIdentity=Omit<SharedReviewRelayIdentity,"credential"|"observerCredential">;
@@ -33,6 +35,9 @@ export interface SharedReviewRelayRegistrationOptions extends SharedRelayAuthent
 }
 export interface SharedReviewRelayRegistration {
  identity:SharedReviewRelayIdentity;frame:string;descriptor:SharedProfileDescriptor;role:SharedReviewRelayRole;
+}
+export interface SharedReviewObserverRegistration extends Omit<SharedReviewRelayRegistration,"identity"> {
+ identity:SharedReviewRelayIdentity&{reviewEditing:"read_only"};
 }
 export interface SharedReviewRelayOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  identity:SharedReviewRelayIdentity;storage:SharedReviewRelayStorage<P>;

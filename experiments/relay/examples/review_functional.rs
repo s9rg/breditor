@@ -41,6 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         room.grant("functional-owner", "carol", Some(Role::Reader))?;
         room.grant_review("functional-owner", "carol", Some(ReviewRole::Moderator))?;
+        room.grant("functional-owner", "dana", Some(Role::Reader))?;
         room
     };
     if room.writer_transport_version() != 2 {

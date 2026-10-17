@@ -1,0 +1,46 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "b8ed6e4",
+  "scope": "Initial pure-reader metadata registration, permanently non-authoring native actors, authenticated observer catchup and explicit paired recovery. Full advanced-review goal remains active.",
+  "artifacts": {
+    "sharedWasmSha256": "8a2141761e5dce0c0efb0ec7ab8eedbb969be46ce0b12f64bab689a30560b107",
+    "nativeRelaySha256": "5c4cf1de38dc294b23df5cff80f70a307f6a7ad24ca61f571cb388110291dada",
+    "wasmChanged": false
+  },
+  "verification": {
+    "relayNativeTests": {"passed": 40, "failed": 0},
+    "focusedReviewRoomTests": {"passed": 8, "failed": 0},
+    "relayAllTargetServerClippy": "passed with warnings denied outside existing vendor warnings",
+    "collaborationTypecheck": "passed",
+    "editorTypecheck": "passed",
+    "editorUnitTests": {"passed": 269, "files": 32},
+    "observerProbe": {
+      "script": "scripts/probe-review-observer-sdk.mjs",
+      "trials": 4,
+      "initialPureReaderCatchups": 4,
+      "exactPairedReopens": 4,
+      "automaticHostRestarts": 4,
+      "atomicSaveRefusals": 4,
+      "permanentObserverAfterPromotion": 4,
+      "readRevocationAndRegrant": 4,
+      "writerFamilyRefusals": 4,
+      "observerFenceRefusals": 4,
+      "authoredRecoveryRefusals": 4,
+      "passed": true
+    },
+    "existingAutomaticWriterSyncProbe": {"trials": 4, "passed": true},
+    "originalWireProbe": {"trials": 2, "passed": true},
+    "localOnlyPairedPersistenceAndReviewControls": "passed with actual Wasm",
+    "scopedRustFormatting": "passed",
+    "unrelatedFormatting": "Pre-existing experiments/relay/tests/document_presence.rs formatting is unchanged."
+  },
+  "limitations": [
+    "IndexedDB, Web Locks and DOM controls use fixtures; no new physical browser, IME or accessibility qualification.",
+    "Shared authenticated version catalog, historical quote projection, suggestions and combined installed review acceptance remain active work.",
+    "Existing actor, journal, escaped-record and native host log budgets are unchanged; no automatic compaction or storage-family migration.",
+    "No package version, release gate or readiness claim is promoted."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false}
+}

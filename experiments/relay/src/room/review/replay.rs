@@ -20,7 +20,13 @@ impl Room {
                 self.check_review_registration(&principal, &actor)?;
                 self.review_state_mut()?
                     .writers
-                    .insert(actor, ReviewWriter { principal, resume_hash });
+                    .insert(actor, ReviewWriter { principal, resume_hash, observer: false });
+            }
+            Event::RegisterReviewObserverV1 { principal, actor, resume_hash } => {
+                self.check_review_actor_available(&principal, &actor)?;
+                self.review_state_mut()?
+                    .writers
+                    .insert(actor, ReviewWriter { principal, resume_hash, observer: true });
             }
             Event::CommitReviewV1 { source, frame, receipt } => {
                 let verified = self.review_source(source.principal.as_str(), &source.actor)?;

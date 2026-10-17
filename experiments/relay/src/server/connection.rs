@@ -16,14 +16,37 @@ enum PresenceMode {
     Original,
     DocumentV1,
 }
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ReviewMode {
+    None,
+    Original,
+    Lineage,
+    Observers,
+}
+impl ReviewMode {
+    fn enabled(self) -> bool {
+        self != Self::None
+    }
+    fn lineage(self) -> bool {
+        matches!(self, Self::Lineage | Self::Observers)
+    }
+    fn observers(self) -> bool {
+        self == Self::Observers
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ReviewLeaseKind {
+    Author,
+    Observer,
+}
 
 #[derive(Clone)]
 struct ConnectionState {
     lease: Option<Lease>,
     observer: bool,
     review_lease: Option<ReviewLease>,
-    review_enabled: bool,
-    review_lineage: bool,
+    review_mode: ReviewMode,
+    review_lease_kind: ReviewLeaseKind,
     presence: PresenceMode,
 }
 impl ConnectionState {
@@ -37,7 +60,11 @@ impl ConnectionState {
             }
         }
         if let Some(lease) = &self.review_lease {
-            room.validate_review_lease(principal, lease)?;
+            if self.review_lease_kind == ReviewLeaseKind::Observer {
+                room.validate_review_observer_lease(principal, lease)?;
+            } else {
+                room.validate_review_lease(principal, lease)?;
+            }
         }
         Ok(())
     }
@@ -72,6 +99,8 @@ async fn dispatch(
         | Request::ResumeObserver { .. }
         | Request::ReviewRegister { .. }
         | Request::ReviewResume { .. }
+        | Request::ReviewRegisterObserver { .. }
+        | Request::ReviewResumeObserver { .. }
         | Request::ReviewSubmit { .. }
         | Request::ReviewSync { .. }
         | Request::ReviewClock { .. }
@@ -148,19 +177,24 @@ async fn dispatch(
             host.notify();
             Ok(json!({"kind":"resumed","lease":next}))
         }
-        Request::Submit { group } => {
-            if state.observer {
-                return Err(Error::Lease);
-            }
-            let current = state.lease.clone().ok_or(Error::Lease)?;
-            let outcome =
-                host.transaction(move |room| room.admit(&principal, &current, &group)).await?;
-            if matches!(&outcome, Admission::Durable(ack) if !ack.duplicate) {
-                host.notify();
-            }
-            Ok(serde_json::to_value(outcome)?)
-        }
+        Request::Submit { group } => submit(host, principal, state, group).await,
     }
+}
+async fn submit(
+    host: &Host,
+    principal: String,
+    state: &ConnectionState,
+    group: String,
+) -> Result<Value> {
+    if state.observer {
+        return Err(Error::Lease);
+    }
+    let current = state.lease.clone().ok_or(Error::Lease)?;
+    let outcome = host.transaction(move |room| room.admit(&principal, &current, &group)).await?;
+    if matches!(&outcome,Admission::Durable(ack) if !ack.duplicate) {
+        host.notify();
+    }
+    Ok(serde_json::to_value(outcome)?)
 }
 
 async fn grant(
@@ -189,7 +223,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return None;
     };
-    if capabilities.len() > 5
+    if capabilities.len() > 6
         || capabilities.iter().any(|c| {
             c != "assets"
                 && c != "presence"
@@ -197,6 +231,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 && c != "documentPresenceV1"
                 && c != "reviewV1"
                 && c != "reviewLineageV1"
+                && c != "reviewObserverV1"
         })
         || capabilities.iter().any(|c| c == "presence")
             && capabilities.iter().any(|c| c == "documentPresenceV1")
@@ -204,12 +239,15 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
             != capabilities.len()
         || capabilities.iter().any(|c| c == "reviewLineageV1")
             && !capabilities.iter().any(|c| c == "reviewV1")
+        || capabilities.iter().any(|c| c == "reviewObserverV1")
+            && !capabilities.iter().any(|c| c == "reviewLineageV1")
     {
         return None;
     }
     let assets_enabled = host.assets.is_some() && capabilities.iter().any(|c| c == "assets");
     let review_enabled = capabilities.iter().any(|c| c == "reviewV1");
     let review_lineage = capabilities.iter().any(|c| c == "reviewLineageV1");
+    let review_observer_capability = capabilities.iter().any(|c| c == "reviewObserverV1");
     let presence = if capabilities.iter().any(|c| c == "documentPresenceV1") {
         PresenceMode::DocumentV1
     } else if capabilities.iter().any(|c| c == "presence") {
@@ -253,8 +291,16 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
             lease: None,
             observer: false,
             review_lease: None,
-            review_enabled,
-            review_lineage,
+            review_mode: if review_observer_capability {
+                ReviewMode::Observers
+            } else if review_lineage {
+                ReviewMode::Lineage
+            } else if review_enabled {
+                ReviewMode::Original
+            } else {
+                ReviewMode::None
+            },
+            review_lease_kind: ReviewLeaseKind::Author,
             presence,
         },
     ))
@@ -320,7 +366,7 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
             _=heartbeat.tick(), if state.presence!=PresenceMode::None => {
                 if !send_presence(&host,&principal,&state,&mut socket).await { break; }
             }
-            update=review_changed.changed(), if state.review_enabled => {
+            update=review_changed.changed(), if state.review_mode.enabled() => {
                 if update.is_err() { break; }
                 review_changed.borrow_and_update();
                 let p=principal.clone();

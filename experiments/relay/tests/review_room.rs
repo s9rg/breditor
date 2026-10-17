@@ -113,6 +113,93 @@ fn ack(outcome: ReviewAdmission) -> Result<DurableReviewReceipt> {
     };
     Ok(ack)
 }
+#[test]
+fn an_initial_pure_reader_reserves_an_observer_and_receives_comments_without_temporary_write_grants()
+-> Result {
+    let files = Files::new()?;
+    let (profile, mut room) = start(&files)?;
+    room.enable_review("owner")?;
+    room.grant("owner", "dana", Some(Role::Reader))?;
+    assert_eq!(room.review_permissions("dana")?, None);
+    assert!(matches!(
+        room.register_review("dana", ReviewActorId::try_new("dana.reader")?),
+        Err(Error::Permission)
+    ));
+    let doc_identity = room.register_observer("dana")?;
+    let observer = room.register_review_observer("dana", ReviewActorId::try_new("dana.reader")?)?;
+    room.validate_review_observer_lease("dana", &observer.lease)?;
+    let doc =
+        profile.join_frame("room".into(), doc_identity.lease.writer, &room.catchup("dana")?)?;
+    let mut view =
+        doc.create_review_session(policy("dana.reader", "dana", ReviewAccess::ReadOnly)?)?;
+    let before = view.checkpoint_json()?;
+    assert!(create(&doc, &mut view, "Must not author").is_err());
+    assert_eq!(view.checkpoint_json()?, before);
+    let (writer, source, mut metadata) =
+        reviewer(&profile, &mut room, "alice", "alice.comments", ReviewRole::Comment)?;
+    create(&source, &mut metadata, "Visible to a pure reader")?;
+    ack(room.admit_review("alice", &writer.lease, &metadata.export_frame(0)?)?)?;
+    receive(&room, "dana", &doc, &mut view, None)?;
+    assert_eq!(
+        view.view()?.threads[0].messages[0].versions[0].text.as_deref(),
+        Some("Visible to a pure reader")
+    );
+    assert_eq!(view.local_writer_clock()?.through, "0");
+    assert_eq!(room.review_permissions("dana")?, None);
+    let stored = fs::read(&files.path)?;
+    for secret in [&observer.credential, &observer.lease.token] {
+        assert!(!stored.windows(secret.len()).any(|bytes| bytes == secret.as_bytes()));
+    }
+    Ok(())
+}
+#[test]
+fn an_observer_actor_remains_non_authoring_through_promotion_resume_revocation_and_exact_replay()
+-> Result {
+    let files = Files::new()?;
+    let (profile, mut room) = start(&files)?;
+    room.enable_review("owner")?;
+    room.grant("owner", "dana", Some(Role::Reader))?;
+    let actor = ReviewActorId::try_new("dana.reader")?;
+    let observer = room.register_review_observer("dana", actor.clone())?;
+    let doc_identity = room.register_observer("dana")?;
+    let doc =
+        profile.join_frame("room".into(), doc_identity.lease.writer, &room.catchup("dana")?)?;
+    // Simulate a caller bypassing its read-only UI/native policy. The server still owns authority.
+    let mut forged =
+        doc.create_review_session(policy(actor.as_str(), "dana", ReviewAccess::Moderate)?)?;
+    create(&doc, &mut forged, "No writer authority from account promotion")?;
+    let frame = forged.export_frame(0)?;
+    room.grant("owner", "dana", Some(Role::Editor))?;
+    room.grant_review("owner", "dana", Some(ReviewRole::Moderator))?;
+    assert!(room.validate_review_observer_lease("dana", &observer.lease).is_err());
+    let lease = room.resume_review_observer("dana", &actor, &observer.credential)?;
+    room.release_review(&observer.lease);
+    room.validate_review_observer_lease("dana", &lease)?;
+    let before = fs::read(&files.path)?;
+    assert!(matches!(room.admit_review("dana", &lease, &frame), Err(Error::Lease)));
+    assert!(room.resume_review("dana", &actor, &observer.credential).is_err());
+    assert!(room.register_review("dana", actor.clone()).is_err());
+    assert!(room.resume_review_observer("owner", &actor, &observer.credential).is_err());
+    assert!(room.resume_review_observer("dana", &actor, &"0".repeat(64)).is_err());
+    assert_eq!(fs::read(&files.path)?, before);
+    assert_eq!(room.review_writer_clock("dana", &actor)?.through, "0");
+    drop(room);
+    let (mut room, recovery) = Room::open(&files.path)?;
+    assert_eq!(recovery.truncated_bytes, 0);
+    assert!(room.validate_review_observer_lease("dana", &lease).is_err());
+    let lease = room.resume_review_observer("dana", &actor, &observer.credential)?;
+    assert!(matches!(room.admit_review("dana", &lease, &frame), Err(Error::Lease)));
+    let author = room.register_review("dana", ReviewActorId::try_new("dana.author")?)?;
+    assert!(room.resume_review_observer("dana", &author.lease.actor, &author.credential).is_err());
+    room.grant("owner", "dana", None)?;
+    assert!(matches!(room.validate_review_observer_lease("dana", &lease), Err(Error::Permission)));
+    room.grant("owner", "dana", Some(Role::Reader))?;
+    assert!(room.validate_review_observer_lease("dana", &lease).is_err());
+    let resumed = room.resume_review_observer("dana", &actor, &observer.credential)?;
+    room.validate_review_observer_lease("dana", &resumed)?;
+    assert!(room.admit_review("dana", &resumed, &frame).is_err());
+    Ok(())
+}
 fn receive(
     room: &Room,
     principal: &str,

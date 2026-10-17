@@ -311,6 +311,7 @@ impl Room {
             event @ (Event::EnableReviewV1 { .. }
             | Event::GrantReviewV1 { .. }
             | Event::RegisterReviewV1 { .. }
+            | Event::RegisterReviewObserverV1 { .. }
             | Event::CommitReviewV1 { .. }) => self.replay_review(record.sequence, event)?,
         }
         Ok(())

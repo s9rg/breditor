@@ -73,6 +73,11 @@ pub(crate) enum Event {
         actor: breditor_collab_feasibility::review::ReviewActorId,
         resume_hash: [u8; 32],
     },
+    RegisterReviewObserverV1 {
+        principal: String,
+        actor: breditor_collab_feasibility::review::ReviewActorId,
+        resume_hash: [u8; 32],
+    },
     CommitReviewV1 {
         source: crate::ReviewSource,
         frame: String,

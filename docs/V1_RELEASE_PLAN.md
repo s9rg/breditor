@@ -70,7 +70,15 @@ storage and the exported SDK registration/reconnect/retry adapter. Real Wasm and
 the durable host pass offline, failed-save, restart, exact-recovery and selective
 history workflows with synthetic IndexedDB/locks. Shared versions, suggestions,
 original quotes, initial pure-reader registration and clean-installed mixed review
-acceptance remain open; no V1 gate is promoted.
+acceptance remained outside that checkpoint; no V1 gate was promoted.
+The [read-only review checkpoint](qualification/2026-10-17-rich-review-observer-sdk.json)
+now closes initial pure-reader registration without temporary write grants. A
+permanently non-authoring native actor, explicitly negotiated socket capability
+and distinct paired recovery family survive account promotion, read revocation,
+failed saves and host restart. All four selection/history combinations pass with
+actual Wasm and the native host; storage/locks remain synthetic. Shared versions,
+original quotes, suggestions and combined installed review acceptance are still
+active work. This is a local functional checkpoint, not a release gate.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

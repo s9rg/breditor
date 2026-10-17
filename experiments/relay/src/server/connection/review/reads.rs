@@ -12,7 +12,7 @@ pub(super) async fn catchup(
     host.transaction(move |room| {
         current.validate(room, &principal)?;
         let mut page = serde_json::to_value(room.review_catchup(&principal, cursor.as_ref())?)?;
-        if !current.review_lineage {
+        if !current.review_mode.lineage() {
             page.as_object_mut().ok_or(Error::Contract("review page"))?.remove("currentRole");
         }
         Ok(json!({"kind":"reviewCatchup","page":page}))
@@ -37,7 +37,7 @@ pub(super) async fn cursor_proof(
     current: ConnectionState,
     cursor: ReviewCursor,
 ) -> Result<Value> {
-    if !current.review_lineage {
+    if !current.review_mode.lineage() {
         return Err(Error::Contract("review lineage capability required"));
     }
     host.transaction(move|room|{
