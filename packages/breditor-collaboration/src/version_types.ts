@@ -1,5 +1,9 @@
 /** Immutable imported attribution is descriptive, not authentication or a role grant. */
 export interface SharedDocumentVersionInfo {id:string;name:string;author:string;createdAtMs:string}
+/** Pure native historical proof, not host authentication, durable acceptance or a live role. */
+export type SharedDocumentVersionSource=
+ |{kind:"verified";version:SharedDocumentVersionInfo;clocks:readonly {writer:string;counter:string}[]}
+ |{kind:"pending";version:SharedDocumentVersionInfo;missing:readonly {writer:string;counter:string}[]};
 export type SharedVersionTarget={kind:"document"}|{kind:"block";id:string};
 export type SharedVersionAspect="placement"|"text"|"inline_formatting"|"children"|"entity";
 export interface SharedVersionChange {target:SharedVersionTarget;beforeKind:string|null;afterKind:string|null;aspects:readonly SharedVersionAspect[];propertiesChanged:readonly string[]}
@@ -12,6 +16,8 @@ export interface SharedVersionsRustCapability {
  document_versions_version?():string;
  capture_document_version?(observation:unknown,input:string):string;
  read_document_version?(input:string):string;
+ document_version_source_version?():string;
+ verify_document_version_source?(input:string):string;
  compare_document_version?(observation:unknown,input:string):string;
  prepare_document_version_restore?(observation:unknown,input:string,prefix:string):SharedNativeVersionPlan;
  apply_document_version_restore?(plan:SharedNativeVersionPlan):boolean;

@@ -4,6 +4,7 @@ mod capture_version;
 mod compare_version;
 mod prepare_version;
 mod read_version;
+mod verify_source;
 use super::error;
 use crate::rich_replica::DocumentVersionRestorePlan;
 use wasm_bindgen::prelude::*;

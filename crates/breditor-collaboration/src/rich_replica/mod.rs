@@ -114,15 +114,18 @@ pub const MODEL_VERSION: u32 = 11;
 pub use clipboard::{ClipboardContent, PasteTarget};
 pub use clipboard_namespace::ClipboardNamespace;
 pub use document_versions::{
-    DocumentVersionInfo, DocumentVersionRestorePlan, VersionAssetReference, VersionBlockChange,
-    VersionChangeAspect, VersionComparison, VersionNodeTarget,
+    DocumentVersionInfo, DocumentVersionRestorePlan, DocumentVersionSource, VersionAssetReference,
+    VersionBlockChange, VersionChangeAspect, VersionComparison, VersionNodeTarget,
 };
 pub use navigate_grid::GridNavigationResult;
 pub use observation::SharedObservation;
 pub use presence::PresenceResolution;
 pub use presence::{DocumentPresenceResolution, DocumentPresenceSelection};
 pub use profile::SharedRichProfile;
-pub use review_anchor::{ReviewAnchorLoss, ReviewAnchorResolution, ReviewAnchorTarget};
+pub use review_anchor::{
+    ReviewAnchorLoss, ReviewAnchorQuote, ReviewAnchorResolution, ReviewAnchorTarget,
+    ReviewQuoteLoss,
+};
 pub use review_comments::{
     DocumentReviewBatchPreparation, PreparedDocumentReviewBatch, ResolvedReviewAnchor,
     ResolvedReviewThread, ResolvedReviewView,

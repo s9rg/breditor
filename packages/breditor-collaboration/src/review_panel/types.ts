@@ -3,7 +3,7 @@ import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewPolicy,SharedReviewSnapshot,SharedReviewTarget} from "../review_types.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 /** A borrowed native facade, not another editor owner. */
-export type SharedReviewPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"reviewSnapshot"|"subscribeReview"|"captureReviewAnchor"|"dispatchReview"|"undoReview"|"redoReview"|"compareVersion"|"prepareVersionRestore"|"applyVersionRestore">;
+export type SharedReviewPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"reviewSnapshot"|"subscribeReview"|"captureReviewAnchor"|"dispatchReview"|"undoReview"|"redoReview"|"compareVersion"|"prepareVersionRestore"|"applyVersionRestore">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsReviewQuotes"|"readReviewQuote">>;
 /** Host-local catalog/persistence port, implemented by SharedReviewPersistentSession. */
 export interface SharedReviewVersionCatalog {
  versions():readonly SharedDocumentVersionInfo[];versionPacket(id:string):string;

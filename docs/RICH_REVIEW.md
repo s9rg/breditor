@@ -200,8 +200,8 @@ not an account credential. Store declared native recovery records, not UI guards
 
 The native reference host now has opt-in authenticated comment transport and the
 SDK has an automatic paired-storage adapter, described below. A shared version
-catalog and clean-installed mixed acceptance remain unfinished. Original-quote
-capture/presentation also remains review UI work.
+catalog and clean-installed mixed acceptance remain unfinished. Original quotes
+now have a native historical read and optional lazy control, described below.
 Current control tests use actual Wasm with synthetic DOM, IndexedDB and Web Locks;
 physical browser qualification remains a later release phase.
 
@@ -343,7 +343,7 @@ paired reopens, four abrupt host restarts with automatic reconnect, four atomic
 save failures/retries, four missing-native-prefix refusals, sixteen future history
 steps, four guarded version restores, multi-page escaped catchup and four
 write-to-read-only transitions. IndexedDB and Web Locks are synthetic. Clean-installed
-review/UI acceptance, original quotes, authenticated shared
+review/UI acceptance, authenticated shared
 versions and suggestions remain part of the active goal.
 
 ### Permanent read-only metadata observers
@@ -391,5 +391,61 @@ grants, exact reopen, refused authored recovery, failed-save retry, permanently
 read-only policy after promotion, lease replacement, read revoke/regrant and
 abrupt host restart. IndexedDB and Web Locks remain fixtures, not physical browser
 qualification. This completes initial pure-reader integration, not the remaining
-shared version catalog, original quotes, suggestions or combined installed review
+shared version catalog, suggestions or combined installed review
 acceptance.
+
+### Original quotes and proven version sources
+
+The native `read_review_quote` action reads the selected content at the anchor's
+captured causal cut, not today's content at old numeric offsets. A historical
+engine fork retains only that cut's operations; it is never checked out on the
+live owner, authored, published or saved as a second replica. The original
+canonical Rust materializer/schema and semantic selection/clipboard laws supply
+the quote. Current document selection, pending formats, observation tokens and
+both history lanes remain unchanged, including for read-only owners.
+
+Quote results are explicit: `quoted` with complete plain text, `pending` while
+document operations are missing, `document` for a global discussion with no
+selected text, or `unavailable` when text exceeds 64 KiB UTF-8. A caret quotes the
+empty string. Deleted or changed current targets can still quote their original
+text; table columns retain tabs and rows retain newlines, and unselected text is not
+included. Malformed bindings, non-causally-closed clocks and a target invalid at
+the claimed capture cut reject instead of quoting a guessed neighbor. The
+existing 256 KiB anchor/1,024-clock and native document budgets still apply.
+Historical reads require retained native history; no compaction policy is added.
+
+`verify_document_version_source` separately proves that a version's entire
+canonical semantic snapshot equals the actual document at its captured source
+cut. It returns validated descriptive version metadata and numerically sorted
+exclusive document-operation ends, or explicit missing dependencies. A valid
+digest alone is insufficient: a caller can rehash different admitted content
+while claiming an older source. The original `read_document_version` still admits
+such imported descriptive packets under its original contract; only the new
+proof establishes historical content equality. Neither read authenticates an
+author, checks a server's accepted semantic-group boundaries or acknowledges
+durable publication. Those remain required laws of the unfinished shared catalog.
+
+The additional native capability pairs `review_quote_version`/`read_review_quote`
+and `document_version_source_version`/`verify_document_version_source` are version
+1. SDK `supportsReviewQuotes`/`readReviewQuote` and
+`supportsVersionSourceProofs`/`verifyVersionSource` refuse incomplete native pairs;
+older runtimes retain their original comment and imported-version support.
+No existing anchor, review frame, version envelope, view or saved journal gains
+new fields or meanings. The application still exports its same six JS factories
+and proof types, with no research constructors.
+
+The borrowed vanilla and React review panels expose **Show original quotes**.
+They read lazily and cache completed display text only for active immutable anchor
+packets. Ordinary typing, peer replies and rerendering do not reconstruct every
+discussion's old document. Pending quotes require an explicit retry after catchup.
+Display uses literal text, never markup, and remains distinct from current target
+status. Existing borrowed host panel ports without quote methods still mount with
+the new control disabled.
+
+The focused Rust contracts and `probe-review-sdk.mjs` cover old revisions,
+deleted/split Unicode ranges, exact future recovery, table/image properties,
+cross-cell selected text, missing history, refused noncausal cuts and rehashed
+source/content mismatches. `probe-review-controls-sdk.mjs` verifies lazy quote
+display and retention through version restore with actual Wasm and fixture DOM.
+These close original-quote functionality, not the authenticated shared catalog,
+suggestions or final combined installed acceptance.

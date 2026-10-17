@@ -10,7 +10,8 @@ use crate::{
         selection::{self, CellTarget, Selection, TextPoint},
     },
 };
-use breditor_core::rich_content::{BlockId, TableId};
+use breditor_core::rich_content::{BlockId, RichDocument, TableId};
+use loro::LoroDoc;
 
 impl RichReplica {
     /// Resolve a durable review anchor, retaining pending/orphaned targets without publication.
@@ -24,91 +25,88 @@ impl RichReplica {
         if !packet.ready(self)? {
             return Ok(Resolution::Pending);
         }
-        let selection = match &packet.anchors {
-            Anchors::Document => {
-                return Ok(Resolution::Resolved { target: Target::Document });
-            }
-            Anchors::Text { anchor, focus, was_range } => {
-                let (ab, ao) = anchor.resolve(&self.doc)?;
-                let (fb, fo) = focus.resolve(&self.doc)?;
-                for block in [&ab, &fb] {
-                    if self
-                        .document
-                        .block_path(
-                            &BlockId::try_new(block)
-                                .map_err(|_| Error::Contract("review anchor block"))?,
-                        )
-                        .is_none()
-                    {
-                        return Ok(orphan(Loss::TargetDeleted));
-                    }
-                    if !super::super::protocol::Protocol::read(&self.doc)?
-                        .text(&selection::kind(&self.document, block)?)
-                    {
-                        return Ok(orphan(Loss::TargetKindChanged));
-                    }
-                }
-                if *was_range && ab == fb && ao == fo {
-                    return Ok(orphan(Loss::RangeCollapsed));
-                }
-                Selection::TextRange {
-                    anchor: TextPoint {
-                        block: ab,
-                        offset: ao,
-                        affinity: anchor.captured_affinity(),
-                    },
-                    focus: TextPoint { block: fb, offset: fo, affinity: focus.captured_affinity() },
-                }
-            }
-            Anchors::Node { block } => {
-                if self
-                    .document
+        resolve_at(&packet, &self.doc, &self.document)
+    }
+}
+
+pub(super) fn resolve_at(
+    packet: &Packet,
+    doc: &LoroDoc,
+    document: &RichDocument,
+) -> Result<Resolution, Error> {
+    let selection = match &packet.anchors {
+        Anchors::Document => {
+            return Ok(Resolution::Resolved { target: Target::Document });
+        }
+        Anchors::Text { anchor, focus, was_range } => {
+            let (ab, ao) = anchor.resolve(doc)?;
+            let (fb, fo) = focus.resolve(doc)?;
+            for block in [&ab, &fb] {
+                if document
                     .block_path(
                         &BlockId::try_new(block)
-                            .map_err(|_| Error::Contract("review anchor node"))?,
+                            .map_err(|_| Error::Contract("review anchor block"))?,
                     )
                     .is_none()
                 {
                     return Ok(orphan(Loss::TargetDeleted));
                 }
-                Selection::Node { block: block.clone() }
-            }
-            Anchors::Grid { anchor, focus } => {
-                for cell in [anchor, focus] {
-                    if let Some(loss) = self.review_cell_loss(cell)? {
-                        return Ok(orphan(loss));
-                    }
+                if !super::super::protocol::Protocol::read(doc)?
+                    .text(&selection::kind(document, block)?)
+                {
+                    return Ok(orphan(Loss::TargetKindChanged));
                 }
-                Selection::Grid { anchor: anchor.clone(), focus: focus.clone() }
             }
-        };
-        if selection.admit(&self.document).is_err() {
-            return Ok(orphan(Loss::TargetKindChanged));
+            if *was_range && ab == fb && ao == fo {
+                return Ok(orphan(Loss::RangeCollapsed));
+            }
+            Selection::TextRange {
+                anchor: TextPoint { block: ab, offset: ao, affinity: anchor.captured_affinity() },
+                focus: TextPoint { block: fb, offset: fo, affinity: focus.captured_affinity() },
+            }
         }
-        Ok(Resolution::Resolved { target: Target::Selection(selection) })
+        Anchors::Node { block } => {
+            if document
+                .block_path(
+                    &BlockId::try_new(block).map_err(|_| Error::Contract("review anchor node"))?,
+                )
+                .is_none()
+            {
+                return Ok(orphan(Loss::TargetDeleted));
+            }
+            Selection::Node { block: block.clone() }
+        }
+        Anchors::Grid { anchor, focus } => {
+            for cell in [anchor, focus] {
+                if let Some(loss) = review_cell_loss(document, cell)? {
+                    return Ok(orphan(loss));
+                }
+            }
+            Selection::Grid { anchor: anchor.clone(), focus: focus.clone() }
+        }
+    };
+    if selection.admit(document).is_err() {
+        return Ok(orphan(Loss::TargetKindChanged));
     }
+    Ok(Resolution::Resolved { target: Target::Selection(selection) })
+}
 
-    fn review_cell_loss(&self, cell: &CellTarget) -> Result<Option<Loss>, Error> {
-        let Some(table) = self
-            .document
-            .table(
-                &TableId::try_new(&cell.table)
-                    .map_err(|_| Error::Contract("review anchor table"))?,
-            )
-            .map_err(|_| Error::Contract("review anchor geometry"))?
-        else {
-            return Ok(Some(Loss::TargetDeleted));
-        };
-        if table.geometry().is_hidden() {
-            return Ok(Some(Loss::HiddenTable));
-        }
-        if !table.rows().iter().any(|r| r.as_str() == cell.row)
-            || !table.columns().iter().any(|c| c.id().as_str() == cell.column)
-        {
-            return Ok(Some(Loss::TargetDeleted));
-        }
-        Ok(None)
+fn review_cell_loss(document: &RichDocument, cell: &CellTarget) -> Result<Option<Loss>, Error> {
+    let Some(table) = document
+        .table(&TableId::try_new(&cell.table).map_err(|_| Error::Contract("review anchor table"))?)
+        .map_err(|_| Error::Contract("review anchor geometry"))?
+    else {
+        return Ok(Some(Loss::TargetDeleted));
+    };
+    if table.geometry().is_hidden() {
+        return Ok(Some(Loss::HiddenTable));
     }
+    if !table.rows().iter().any(|r| r.as_str() == cell.row)
+        || !table.columns().iter().any(|c| c.id().as_str() == cell.column)
+    {
+        return Ok(Some(Loss::TargetDeleted));
+    }
+    Ok(None)
 }
 fn orphan(reason: Loss) -> Resolution {
     Resolution::Orphaned { reason }

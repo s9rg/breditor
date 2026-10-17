@@ -9,6 +9,8 @@ export type SharedReviewResolution=
  |{kind:"resolved";target:SharedReviewTarget}
  |{kind:"pending"}
  |{kind:"orphaned";reason:"target_deleted"|"hidden_table"|"range_collapsed"|"target_kind_changed"};
+/** Original native text at capture, not today's text at old numeric coordinates. */
+export type SharedReviewQuote={kind:"document"}|{kind:"pending"}|{kind:"quoted";plainText:string}|{kind:"unavailable";reason:"too_large"};
 export type SharedReviewAction=
  |{kind:"create_thread";data:{anchorJson:string;body:string}}
  |{kind:"reply";data:{thread:SharedReviewId;body:string}}
@@ -46,6 +48,8 @@ export interface SharedReviewRustCapability {
  enable_review?(observation:unknown,hostPolicy:string,checkpoint?:string|null):void;
  capture_review_anchor?(observation:unknown,target:string):string;
  resolve_review_anchor?(packet:string):string;
+ review_quote_version?():string;
+ read_review_quote?(packet:string):string;
  review_view_json?(observation:unknown):string;
  dispatch_review?(observation:unknown,input:string):string;
  undo_review?(observation:unknown):string;

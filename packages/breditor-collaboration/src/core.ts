@@ -4,8 +4,8 @@ import type {SharedWriterGroupsV2} from "./types.js";
 import type {RichClipboardTextProjection} from "./types.js";
 import type {SharedSelectionPolicy,SharedEditorView} from "./types.js";
 import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
-import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt} from "./review_types.js";
-import type {SharedDocumentVersionInfo,SharedVersionComparison} from "./version_types.js";
+import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
+import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
@@ -77,6 +77,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  subscribeReview(listener:(snapshot:SharedReviewSnapshot)=>void):()=>void{this.#requireReview();this.#reviewListeners.add(listener);return()=>this.#reviewListeners.delete(listener);}
  captureReviewAnchor(target:SharedReviewTarget,documentRevision?:string):string{this.#check(documentRevision);const r=this.#live();if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use matching native review anchors");return r.capture_review_anchor!(this.#observation,JSON.stringify(target));}
  resolveReviewAnchor(packet:string):SharedReviewResolution{const r=this.#live();if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use matching native review anchors");return JSON.parse(r.resolve_review_anchor!(packet)) as SharedReviewResolution;}
+ /** Optional lazy read: older comment runtimes remain supported without fabricating historical text. */
+ supportsReviewQuotes():boolean{const r=this.#live();return this.supportsReview()&&r.review_quote_version?.()==="1"&&typeof r.read_review_quote==="function";}
+ readReviewQuote(packet:string):SharedReviewQuote{if(!this.supportsReviewQuotes())throw new SharedEditorError("review_quotes_unavailable","Use matching native historical review quotes");return JSON.parse(this.#live().read_review_quote!(packet)) as SharedReviewQuote;}
  dispatchReview(action:SharedReviewAction,guard?:SharedReviewGuard):SharedReviewOutcome{this.#checkReview(guard);return this.#run("local",(raw,o)=>{const result=JSON.parse(raw.dispatch_review!(o,JSON.stringify(action))) as SharedReviewOutcome;if(result.kind==="committed")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
  undoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#reviewHistory(false,guard);}
  redoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#reviewHistory(true,guard);}
@@ -99,6 +102,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Persist the immutable returned packet separately. Host author/time claims are not authentication. */
  captureVersion(name:string,author:string,createdAtMs:string,revision?:string):string{this.#check(revision);return this.#versionOwner().capture_document_version!(this.#observation,JSON.stringify({name,author,createdAtMs}));}
  readVersion(packet:string):SharedDocumentVersionInfo{return JSON.parse(this.#versionOwner().read_document_version!(packet)) as SharedDocumentVersionInfo;}
+ supportsVersionSourceProofs():boolean{const r=this.#live();return this.supportsDocumentVersions()&&r.document_version_source_version?.()==="1"&&typeof r.verify_document_version_source==="function";}
+ /** Prove source content without granting author rights or treating this read as server acceptance. */
+ verifyVersionSource(packet:string):SharedDocumentVersionSource{if(!this.supportsVersionSourceProofs())throw new SharedEditorError("version_source_unavailable","Use matching native historical version proofs");return JSON.parse(this.#live().verify_document_version_source!(packet)) as SharedDocumentVersionSource;}
  compareVersion(packet:string,revision?:string):SharedVersionComparison{this.#check(revision);return JSON.parse(this.#versionOwner().compare_document_version!(this.#observation,packet)) as SharedVersionComparison;}
  /** Prefix is consumed even if preparation fails or its preview is never applied. No accepted state changes. */
  prepareVersionRestore(packet:string,prefix:string,revision?:string):SharedDocumentVersionRestorePlan{this.#check(revision);if(this.#retired||this.#publishing)throw new SharedEditorError("version_preview_unavailable","Cannot prepare a restore while retired or publishing");const raw=this.#versionOwner().prepare_document_version_restore!(this.#observation,packet,prefix);let plan:SharedDocumentVersionRestorePlan;plan=new SharedDocumentVersionRestorePlan(this,raw,()=>this.#versionPlans.delete(plan));this.#versionPlans.add(plan);return plan;}

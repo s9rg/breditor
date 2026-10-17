@@ -1,8 +1,12 @@
 //! Durable review targets have strict orphan laws, independent of ephemeral caret relocation.
 mod capture_review_anchor;
+mod historical_document;
 mod missing_review_dependencies;
 mod packet;
+mod read_review_quote;
 mod resolve_review_anchor;
+
+pub use read_review_quote::{ReviewAnchorQuote, ReviewQuoteLoss};
 
 use super::selection::Selection;
 use serde::{Deserialize, Serialize};

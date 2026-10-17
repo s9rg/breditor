@@ -1,0 +1,69 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "f58e95a",
+  "scope": "Original native historical quotes, lazy borrowed vanilla/React display and separate historical content proof for document versions. Full advanced-review goal remains active.",
+  "artifacts": {
+    "sharedWasmSha256": "43400cac90f76a7dbc07119ab9745bfbccc41d24b6655a8f5381ce3c5488c460",
+    "nativeRelaySha256": "0ecb9aeba0a1cc17ef42ac61c3fedecbc01d76df84ad4597d964641f6986434f",
+    "javascriptExports": 6,
+    "wasmExports": 168,
+    "newNativeHistoricalReadExports": 4
+  },
+  "verification": {
+    "sharedNativeFullSuite": {"passed": 423, "failed": 0},
+    "focusedHistoricalContracts": {"passed": 9, "failed": 0},
+    "researchFacadeHistoricalContracts": {"passed": 9, "failed": 0},
+    "strictLibraryAndFocusedContractClippy": "passed; existing vendor unused-import warning retained",
+    "applicationRuntimeBuildAndSurface": "passed; original six JS exports and no research constructors",
+    "runtimePairingBuildAndPromotionTests": {"passed": 40, "failed": 0},
+    "collaborationTypecheck": "passed",
+    "editorTypecheck": "passed",
+    "editorUnitTests": {"passed": 269, "files": 32},
+    "actualWasmReviewSdk": {
+      "script": "scripts/probe-review-sdk.mjs",
+      "trials": 4,
+      "exactRestores": 4,
+      "exactFuturePairedCheckpoints": 24,
+      "versionRestores": 4,
+      "sourceProofs": 4,
+      "originalQuotes": 4,
+      "pendingQuoteReads": 4,
+      "rehashedSourceRefusals": 4,
+      "passed": true
+    },
+    "actualWasmReviewControls": {
+      "script": "scripts/probe-review-controls-sdk.mjs",
+      "passed": true,
+      "checks": [
+        "Native quote reads remain lazy and completed quote text survives ordinary rerenders without new historical forks.",
+        "Pending status survives refresh, document catchup does not read eagerly, and explicit retry supplies the original quote.",
+        "Loaded original quotes remain readable after version restore deletes their current targets.",
+        "Existing comments, drafts/focus, native permissions, failed-save retry, guarded restore and React StrictMode acceptance remain intact."
+      ]
+    },
+    "actualWasmPairedPersistence": {"trials": 4, "exactReopens": 12, "passed": true},
+    "authenticatedAutomaticReviewSdk": {"trials": 4, "exactReopens": 12, "hostRestarts": 4, "futureHistorySteps": 16, "passed": true},
+    "authenticatedObserverSdk": {"trials": 4, "hostRestarts": 4, "authoredRecoveryRefusals": 4, "passed": true},
+    "scopedRustFormattingAndDiffWhitespace": "passed",
+    "intermediateFixtureCorrections": [
+      "The quote-limit fixture initially exceeded the existing single-insertion byte limit; it now builds the same large text using allowed-size edits without changing that limit.",
+      "The cross-column fixture initially expected a newline. Existing native clipboard semantics use tabs between columns and newlines between rows; quotes preserve those semantics. A fresh full native run passed after correcting the assertion.",
+      "The canonical research compatibility test wrapper was added after the promotion check identified its absence. Final 40-case promotion/pairing checks and the real nine-case research test pass."
+    ]
+  },
+  "contract": {
+    "historicalReads": "Exact causally closed retained native cut, pure canonical Rust projection, no live checkout, authoring, publication or second persistent owner.",
+    "quoteLimit": "Complete plain text up to 64 KiB UTF-8; explicit unavailable rather than truncation. Document scope has no selected quote; original carets quote empty text.",
+    "sourceProof": "Proves exact historical content equality, not author authentication, accepted semantic-group boundaries or durable server acceptance.",
+    "compatibility": "Existing anchor, comment frame/view, version envelope and native journal families retain their fields and meanings. Additive SDK capability pairs fail closed; older native comment/version support remains usable."
+  },
+  "remaining": [
+    "Authenticated shared version catalog, including accepted source-group boundaries, durable idempotent publication and remote discovery/restore controls.",
+    "Suggestions and native previews for text/formatting/structures; queued offline decisions finalized exactly once by the authenticated server with atomic accepted effects.",
+    "Clean-installed combined review/document acceptance.",
+    "Broad physical browser, IME/accessibility, performance, public-host hardening and final V1 qualification remain deferred."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

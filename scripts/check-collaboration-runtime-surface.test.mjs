@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,versionMethods} from "./check-collaboration-runtime-surface.mjs";
+import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 test("clipboard interchange requires the complete separate pure capability",()=>{
  for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
@@ -16,6 +16,7 @@ function fixture(){
  for(const name of clipboardInterchangeMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of reviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of reviewTransportMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of historicalReviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of versionMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["document_json","version_json","comparison_json"])module.SharedVersionRestorePlan.prototype[name]=()=>{};
  for(const name of ["general_copy_version","copy_general_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
@@ -43,6 +44,7 @@ test("comments require the complete native review/anchor pair without extra cons
  for(const name of reviewMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing guarded native review capability/);}
 });
 test("review transport requires separate complete native lineage reads and frozen-prefix export",()=>{for(const name of reviewTransportMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native review lineage capability/);}});
+test("historical reads require native quote and version source proofs without widening old packets",()=>{for(const name of historicalReviewMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native historical review capability/);}});
 test("versions require paired capture/compare/restore and opaque read-only native proofs",()=>{
  for(const name of versionMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing guarded native version capability/);}
  for(const name of ["document_json","version_json","comparison_json"]){const f=fixture();delete f.module.SharedVersionRestorePlan.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native version proof read/);}

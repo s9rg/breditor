@@ -79,6 +79,14 @@ failed saves and host restart. All four selection/history combinations pass with
 actual Wasm and the native host; storage/locks remain synthetic. Shared versions,
 original quotes, suggestions and combined installed review acceptance are still
 active work. This is a local functional checkpoint, not a release gate.
+The [historical review checkpoint](qualification/2026-10-17-rich-review-historical-reads.json)
+adds original captured quotes and a separate native proof that version content
+matches its historical source. It does not check out or author on the live editor.
+Vanilla/React controls load quotes lazily and preserve them after target removal.
+Source proof rejects rehashed mismatches and noncausal cuts; missing history stays
+pending. Shared catalog authorization/durability, suggestions and final combined
+installed review acceptance remain open. Existing formats and constructor exports
+are unchanged.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

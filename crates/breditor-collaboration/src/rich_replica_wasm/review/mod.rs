@@ -4,6 +4,7 @@ mod capture_anchor;
 mod dispatch_review;
 mod enable_review;
 mod export_review;
+mod read_quote;
 mod receive_review;
 mod redo_review;
 mod review_checkpoint;

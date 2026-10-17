@@ -38,6 +38,21 @@ pub(super) enum Anchors {
 }
 
 impl Packet {
+    pub fn vector(&self) -> Result<loro::VersionVector, Error> {
+        self.clocks
+            .iter()
+            .map(|clock| {
+                Ok((
+                    super::super::session::writer_id(&clock.writer)?,
+                    clock
+                        .counter
+                        .parse::<i32>()
+                        .map_err(|_| Error::Contract("review anchor causal clock"))?,
+                ))
+            })
+            .filter(|entry| !matches!(entry, Ok((_, 0))))
+            .collect()
+    }
     pub fn missing(
         &self,
         owner: &RichReplica,

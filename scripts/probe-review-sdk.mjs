@@ -13,6 +13,7 @@ const reply=(thread,body)=>({kind:"reply",data:{thread,body}});
 const point=offset=>({block:"p",offset:String(offset),affinity:"after"});
 const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
 const nodeTarget={kind:"selection",selection:{kind:"node",block:"image-block"}};
+function rehashVersion(input){const {data:d}=input,data={format:d.format,formatVersion:d.formatVersion,name:d.name,author:d.author,createdAtMs:d.createdAtMs,sourceAnchorJson:d.sourceAnchorJson,documentJson:d.documentJson};return JSON.stringify({id:`sha256:${createHash("sha256").update("breditor/document-version/1\0").update(JSON.stringify(data)).digest("hex")}`,data});}
 export async function probeReviewSdk(directory){
  const bytes=readFileSync(resolve(directory,"breditor_shared_bg.wasm"));
  const wasm=await import(pathToFileURL(resolve(directory,"breditor_shared.js")));
@@ -20,7 +21,7 @@ export async function probeReviewSdk(directory){
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify({format:"breditor/shared-rich-profile",formatVersion:3,schema:{name:"example/review-sdk",version:1},extensions:[]}));
  const descriptor=JSON.parse(profile.descriptor_json());
  const seed=JSON.stringify({format:"breditor/document",formatVersion:2,schema:descriptor.schema,schemaFingerprint:descriptor.schemaFingerprint,root:canonical(JSON.parse(readFileSync(resolve(root,"crates/breditor-core/tests/fixtures/rich-local-root.json"),"utf8")))});
- let trials=0,restores=0,future=0,pendingTargets=0,duplicateEchoes=0,blockedReentrant=0,versionRestores=0;
+ let trials=0,restores=0,future=0,pendingTargets=0,duplicateEchoes=0,blockedReentrant=0,versionRestores=0,sourceProofs=0,originalQuotes=0,pendingQuoteReads=0,rehashedSourceRefusals=0;
  try{
   for(const document of [false,true])for(const natural of [false,true]){
    const errors=[];
@@ -35,10 +36,12 @@ export async function probeReviewSdk(directory){
     const version=a.captureVersion("Named draft 日本 🙂","alice","1792200000000");
     assert.equal(a.compareVersion(version).identical,true);
     assert.equal(a.readVersion(version).name,"Named draft 日本 🙂");
+    assert.equal(a.supportsVersionSourceProofs(),true);assert.equal(a.supportsReviewQuotes(),true);assert.equal(a.verifyVersionSource(version).kind,"verified");sourceProofs++;
     assert.throws(()=>a.enableReview(alice),/already has/);
     const before=a.checkpointJson(), rev=a.view().revision;
     const packet=a.captureReviewAnchor(nodeTarget,rev);
     assert.equal(a.resolveReviewAnchor(packet).kind,"resolved");
+    const originalQuote=a.readReviewQuote(packet);assert.equal(originalQuote.kind,"quoted");assert.ok(originalQuote.plainText.includes("xy🙂"));originalQuotes++;
     const created=a.dispatchReview(create(packet,"Literal <b>日本 🙂</b>"),a.reviewSnapshot());assert.equal(created.kind,"committed");
     const thread=created.event;
     assert.equal(a.checkpointJson(),before);assert.equal(a.view().revision,rev);
@@ -66,14 +69,17 @@ export async function probeReviewSdk(directory){
     b.dispatchReview(create(b.captureReviewAnchor(nodeTarget),"After offline typing"));
     assert.equal(a.receiveReview(b.exportReview(),bob).kind,"applied");
     assert.equal(a.reviewSnapshot().view.threads[1].targets[0].resolution.kind,"pending");pendingTargets++;
+    const pendingPacket=a.reviewSnapshot().view.threads[1].targets[0].packet;assert.equal(a.readReviewQuote(pendingPacket).kind,"pending");pendingQuoteReads++;
     const metadata=a.reviewCheckpoint();await a.receiveFrame(b.updateFrame());assert.equal(a.reviewCheckpoint(),metadata);
     assert.equal(a.reviewSnapshot().view.threads[1].targets[0].resolution.kind,"resolved");
+    assert.equal(a.readReviewQuote(pendingPacket).kind,"quoted");
     // Accepted typing never enters review Undo, and comments never enter document Undo.
     a.select({kind:"text",anchor:point(0),focus:point(0)});
     if(natural){a.typeUser("A","1");a.typeUser("🙂","2");}else a.type("A🙂");
     const docBeforeUndo=a.documentJson(), reviewBeforeUndo=a.reviewCheckpoint();a.undo();assert.equal(a.reviewCheckpoint(),reviewBeforeUndo);a.redo();assert.equal(a.documentJson(),docBeforeUndo);
     // Version restore is a new accepted edit, not old writer/review recovery.
     assert.equal(a.compareVersion(version).identical,false);
+    assert.equal(a.verifyVersionSource(version).kind,"verified");const rehashed=JSON.parse(a.captureVersion("Rehashed imported claim","alice","1792200000000"));rehashed.data.sourceAnchorJson=JSON.parse(version).data.sourceAnchorJson;const unproven=rehashVersion(rehashed);assert.equal(a.readVersion(unproven).name,"Rehashed imported claim");assert.throws(()=>a.verifyVersionSource(unproven),/content differs from its historical source cut/);rehashedSourceRefusals++;
     const pairBeforePlan=[a.checkpointJson(),a.reviewCheckpoint()];
     const plan=a.prepareVersionRestore(version,"review-version-restore");
     const preview=plan.documentJson();assert.equal(plan.version().name,"Named draft 日本 🙂");
@@ -83,12 +89,14 @@ export async function probeReviewSdk(directory){
     assert.equal(a.applyVersionRestore(plan),true);versionRestores++;
     assert.equal(a.documentJson(),preview);assert.equal(a.reviewCheckpoint(),pairBeforePlan[1]);
     assert.equal(a.reviewSnapshot().view.threads[0].targets[0].resolution.kind,"orphaned");
+    assert.deepEqual(a.readReviewQuote(packet),originalQuote);
     assert.throws(()=>a.applyVersionRestore(plan),/stale or foreign shared observation/);
     plan.dispose();assert.equal(plan.documentJson(),preview);assert.throws(()=>a.applyVersionRestore(plan),/disposed/);
     const docSaved=a.checkpointJson(),reviewSaved=a.reviewCheckpoint();
     const restore=document?(natural?profile.restore_document_typing.bind(profile):profile.restore_document.bind(profile)):(natural?profile.restore_typing.bind(profile):profile.restore.bind(profile));
     recovered=facade(restore("room",docSaved));recovered.enableReview(alice,reviewSaved);restores++;
     assert.equal(recovered.checkpointJson(),docSaved);assert.equal(recovered.reviewCheckpoint(),reviewSaved);
+    assert.deepEqual(recovered.readReviewQuote(packet),originalQuote);assert.equal(recovered.verifyVersionSource(version).kind,"verified");
     for(const method of ["undoReview","redoReview","undo","redo","undoReview","redoReview"]){
      a[method]();recovered[method]();assert.equal(a.checkpointJson(),recovered.checkpointJson());assert.equal(a.reviewCheckpoint(),recovered.reviewCheckpoint());assert.deepEqual(a.reviewSnapshot().view,recovered.reviewSnapshot().view);future++;
     }
@@ -108,12 +116,14 @@ export async function probeReviewSdk(directory){
   }finally{raw.free();}
   // A partially paired runtime fails closed; no JavaScript metadata tree is fabricated.
   const partial=profile.create(seed,"404");partial.dispatch_review=undefined;const old=new SharedRichEditor(partial);try{assert.equal(old.supportsReview(),false);assert.throws(()=>old.enableReview(alice),/complete matching/);}finally{old.dispose();}
+  const noHistory=profile.create(seed,"405");noHistory.read_review_quote=undefined;noHistory.verify_document_version_source=undefined;const earlier=new SharedRichEditor(noHistory);try{assert.equal(earlier.supportsReview(),true);assert.equal(earlier.supportsDocumentVersions(),true);assert.equal(earlier.supportsReviewQuotes(),false);assert.equal(earlier.supportsVersionSourceProofs(),false);assert.throws(()=>earlier.readReviewQuote("{}"),/matching native historical/);assert.throws(()=>earlier.verifyVersionSource("{}"),/matching native historical/);}finally{earlier.dispose();}
   const sealed=new SharedRichEditor(profile.create(seed,"505"));try{sealed.sealHistoryPolicy("explicit");assert.throws(()=>sealed.enableReview(alice),/stores document history only/);}finally{sealed.dispose();}
   const reviewFirst=new SharedRichEditor(profile.create(seed,"606"));try{reviewFirst.enableReview(alice);assert.throws(()=>reviewFirst.sealHistoryPolicy("explicit"),/paired durable storage/);}finally{reviewFirst.dispose();}
   const preattached=profile.create(seed,"707");const initial=preattached.observe();try{preattached.enable_review(initial,JSON.stringify(alice),null);}finally{initial.free();}assert.throws(()=>new SharedRichEditor(preattached),/explicitly enable\/restore review/);
   const left=new SharedRichEditor(profile.create(seed,"808")),right=new SharedRichEditor(profile.create(seed,"909"));try{left.enableReview(alice);right.enableReview({...alice,actor:"comments-other-owner"});const foreign=left.reviewSnapshot();assert.equal(foreign.documentRevision,right.reviewSnapshot().documentRevision);assert.equal(foreign.reviewRevision,right.reviewSnapshot().reviewRevision);assert.throws(()=>right.setReviewAccess("read_only",foreign),/older document or review|foreign/);assert.throws(()=>right.setReviewAccess("read_only",JSON.parse(JSON.stringify(right.reviewSnapshot()))),/foreign/);assert.equal(right.setReviewAccess("comment",right.reviewSnapshot()),false);}finally{left.dispose();right.dispose();}
  }finally{profile.free();}
  assert.equal(trials,4);assert.equal(future,24);assert.equal(restores,4);assert.equal(pendingTargets,4);assert.equal(duplicateEchoes,4);assert.equal(blockedReentrant,4);assert.equal(versionRestores,4);
- return {format:"breditor/review-programmatic-sdk-probe",formatVersion:1,sharedWasmSha256:createHash("sha256").update(bytes).digest("hex"),trials,exactRestores:restores,exactFuturePairedCheckpoints:future,pendingTargets,duplicateEchoes,blockedReentrant,versionRestores,ownerGuardRefusals:2,passed:true,scope:"Actual Wasm/native comment admission, strict anchors, peer frames, separate history, named version restore preserving current comments, exact paired manual recovery, owner-bound guards and SDK notifications across original/document selection and explicit/natural history. Paired local storage and vanilla/React controls have separate probes. This probe does not qualify physical browsers, authenticated review relay, shared version catalogs or suggestions."};
+ for(const count of [sourceProofs,originalQuotes,pendingQuoteReads,rehashedSourceRefusals])assert.equal(count,4);
+ return {format:"breditor/review-programmatic-sdk-probe",formatVersion:1,sharedWasmSha256:createHash("sha256").update(bytes).digest("hex"),trials,exactRestores:restores,exactFuturePairedCheckpoints:future,pendingTargets,duplicateEchoes,blockedReentrant,versionRestores,sourceProofs,originalQuotes,pendingQuoteReads,rehashedSourceRefusals,ownerGuardRefusals:2,passed:true,scope:"Actual Wasm/native comment admission, strict anchors, peer frames, separate history, original historical quotes, proven version sources, named version restore preserving current comments, exact paired manual recovery, owner-bound guards and SDK notifications across original/document selection and explicit/natural history. Paired local storage and vanilla/React controls have separate probes. This probe does not qualify physical browsers, authenticated shared version catalogs or suggestions."};
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){if(process.argv.length!==3)throw Error("Expected actual shared Wasm directory");console.log(JSON.stringify(await probeReviewSdk(process.argv[2]),null,2));}
