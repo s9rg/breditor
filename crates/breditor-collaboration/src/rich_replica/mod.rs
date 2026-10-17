@@ -142,7 +142,8 @@ pub use reviewed_history::{OwnedSuggestionAcceptance, ReviewedHistoryIdentity};
 pub use session::RichReplica;
 pub use suggestions::{
     DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionEffect,
-    DocumentSuggestionEffectVerification, DocumentSuggestionInfo, DocumentSuggestionPreparation,
+    DocumentSuggestionEffectVerification, DocumentSuggestionFormatRebase,
+    DocumentSuggestionFormatRebaseConflict, DocumentSuggestionInfo, DocumentSuggestionPreparation,
     DocumentSuggestionPreview, DocumentSuggestionRevisionInfo, DocumentSuggestionRevisionSource,
     DocumentSuggestionScope, DocumentSuggestionSource, PreparedDocumentSuggestionEffect,
     SuggestionConflictTarget, VerifiedDocumentSuggestionEffect,

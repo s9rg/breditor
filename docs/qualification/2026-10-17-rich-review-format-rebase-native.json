@@ -1,0 +1,67 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "5ac39a7e0ee236785fd8b744b680a4856f5ca071",
+  "scope": "First native consumer of original-character range proofs: explicit immutable revision of one formatting command, followed by unchanged authenticated host supersession and owned acceptance. This is not automatic rebasing of existing V1 acceptance guards, a general text replacement planner or a new Wasm/SDK/control feature. The full advanced-review goal remains active.",
+  "artifacts": {
+    "newNativeAction": "rebase_document_suggestion_format_guarded",
+    "result": "Pending, Unsupported, Conflict or Captured revision bytes",
+    "existingChildFamily": "breditor/document-suggestion V1",
+    "existingRelationFamily": "breditor/document-suggestion-revision V1",
+    "applicationWasmSha256": "9ddf6e2f3cca4003a8fb67a34d11434a3990e6596afea6ad5d1e92346f2869e0",
+    "existingRevisionFixtureSha256": "ce6e3de5d05aa71fd79e6074491d77249501158946c26bdcbb373e4441d14ea4",
+    "javascriptWasmExports": 8,
+    "wasmExports": 198,
+    "newBrowserApiOrPublicationLane": false,
+    "existingStoredMeaningsOrDefaultsChanged": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 517, "failed": 0, "resultGroupsIncludingEmptyDoctests": 47, "newPublicFormattingRevisionTests": 7},
+    "fullRelayAndServerSuite": {"passed": 79, "failed": 0, "newFormattingRevisionWorkflowTests": 1, "newWorkflowPolicyTrials": 6},
+    "compatibilityFormattingRevisionContracts": {"passed": 7, "failed": 0, "canonicalSourceShim": true},
+    "strictNativeLibraryAndPublicFormattingRevisionClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "strictRelayLibraryAndSuggestionIntegrationClippy": "passed",
+    "changedRustSourcesAndTestsRustfmt": "passed",
+    "sdkAndEditorRegression": {"passed": 357, "failed": 0, "files": 39},
+    "buildSurfaceAndPromotionGuards": {"passed": 54, "failed": 0},
+    "existingActualWasmMixedWorkflowRegression": {"passed": true, "trials": 6, "mixedRevisionCommentVersionReopens": 6, "wireRequests": 2024, "doesNotQualifyNewFormattingRebaseClientDelivery": true}
+  },
+  "nativeContracts": [
+    "The current owner observation is checked first. Only one original SetFormat command is eligible; other edit families and multi-command drafts return Unsupported without omitting a step. Source evaluation must prove a valid nonempty original effect before any child is captured.",
+    "The action resolves a range derived from original native command coordinates against the exact retained source. Character identity comes from the native source replay, not packet-supplied scalar IDs, JavaScript offsets, a text diff or a proposed AST.",
+    "Every original selected character must survive in order in its original protected domain and text kind. Missing source returns Pending. Deleted or equal-reinserted originals, reordering, kind/domain changes or lost endpoints return the explicit range conflict without a partial child.",
+    "New intervening characters are excluded from lowered commands. The complete current value for the edited format kind on each original character must equal its original value; a changed value returns FormatChanged. Different format kinds and unselected text remain intact.",
+    "Capture creates a complete ordinary V1 child at the current accepted source and wraps it in the existing immutable revision relation. It preserves descriptive authorship and changes no live content, selection, clocks, native frame, grouping, history or retained Redo, including under all six read-only selection/history policies.",
+    "At most 64 original V1 commands are lowered. Excessive fragmentation refuses before capture. Repeated format literal bytes are budgeted before cloning, and normal original-range, child-packet, source, label and revision-envelope limits still apply.",
+    "The child retains conservative V1 whole-block guards after capture. No original packet is reinterpreted or accepted automatically. Authenticated pending-only supersession, final Accept/Reject ordering and accepting-user history use the unchanged existing host contracts.",
+    "The reference-host workflow merges real peer insertions and unrelated Italic, supersedes the pending original, accepts the rebased child once and adopts its owned history once under every selection/history policy. Undo restores the exact prior peer document; Redo and reopened histories remain exact. Compensation never reopens the original decision.",
+    "After host restart, the old writer lease is explicitly refused without appending. Authenticated resume then permits retrieval of the original durable Accept receipt, without another effect or decision append."
+  ],
+  "verificationNotes": [
+    "The initial read-only recovery fixture compared a real live read-only-to-writable publication transition with an already-writable restored no-op. The corrected fixture restores the same writable publication before comparing future Redo; no runtime policy or journal rule was changed.",
+    "The fragmentation fixture initially attempted 69 steps in one native action. It now creates the peer edits in legal batches, then specifically verifies refusal at the formatting rebase's 64-step lowering limit. Existing action limits remain unchanged.",
+    "The first restart receipt check reused an invalidated lease and correctly returned Lease. The final test retains that explicit refusal and resumes with the saved writer credential before retrying. No authentication check was bypassed.",
+    "Strict new-code checks pass without lint suppressions. The pinned third-party engine retains its pre-existing unused-import warning. Builds keep existing isolated native, compatibility, server and Wasm target directories.",
+    "The rebuilt actual-Wasm SDK check is an existing revision/comment/version regression on isolated authenticated loopback fixtures, not evidence of a new browser formatting-rebase API or broad cross-browser/accessibility qualification."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_format_rebase_contracts",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release --lib --test suggestion_format_rebase_contracts -- -D warnings",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo clippy --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --lib --test document_suggestions -- -D warnings",
+    "CARGO_TARGET_DIR=target/promoted-shared-wasm cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --no-default-features --target wasm32-unknown-unknown --release --lib -- -D warnings",
+    "node scripts/build-collaboration-runtime.mjs",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node scripts/probe-suggestion-revisions-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestion_revisions_functional"
+  ],
+  "remaining": [
+    "Formatting batch/repeated-child rebasing: a child lowered into multiple commands is currently Unsupported by this single-command helper and needs explicit manual revision.",
+    "Optional Wasm/SDK capture and borrowed vanilla/React revision controls using the existing durable outbox, with focused installed mixed-workflow acceptance.",
+    "Granular text replacement/insertion and direct affine suggestion/effect contracts, including an explicit policy for intervening peer text, without weakening conservative V1 meanings.",
+    "Final API/migration, package-release and production-host/auth checks, storage lifetime/compaction and deferred browser, physical IME, accessibility and performance qualification."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

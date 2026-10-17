@@ -12,6 +12,7 @@ mod prepare_suggestion_effect;
 mod prepare_suggestion_preview;
 mod read_set;
 mod read_suggestion;
+mod rebase_suggestion_format;
 mod revision_packet;
 #[cfg(test)]
 mod tests;
@@ -27,6 +28,9 @@ pub use packet::{
 pub use prepare_suggestion_effect::{DocumentSuggestionEffect, PreparedDocumentSuggestionEffect};
 pub use prepare_suggestion_preview::{DocumentSuggestionPreparation, DocumentSuggestionPreview};
 pub use read_set::SuggestionConflictTarget;
+pub use rebase_suggestion_format::{
+    DocumentSuggestionFormatRebase, DocumentSuggestionFormatRebaseConflict,
+};
 pub use revision_packet::DocumentSuggestionRevisionInfo;
 pub use verify_suggestion_effect::{
     DocumentSuggestionEffectVerification, VerifiedDocumentSuggestionEffect,

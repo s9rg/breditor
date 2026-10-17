@@ -324,6 +324,14 @@ remain explicit. This is not automatic suggestion rebasing: new suggestion
 packets, native effects and opt-in transport/SDK/control integration still remain.
 Existing V1 guards, saved meanings and browser APIs are unchanged.
 
+The [native formatting revision checkpoint](qualification/2026-10-17-rich-review-format-rebase-native.json)
+adds the first range-proof consumer: explicit revision of a single formatting
+command onto its surviving original characters. Peer insertions and unrelated
+marks survive, while changed edited-format values conflict. Reference-host
+supersession and accepting-user Undo/Redo work under all six policies. The child
+uses unchanged V1 guards and decision ordering. Multi-command/replacement rebasing
+and paired Wasm/SDK/control delivery remain open; no release gate advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

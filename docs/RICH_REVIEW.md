@@ -322,6 +322,45 @@ insertion affinity and pre-allocation byte budgets. This is native groundwork;
 affine suggestion packets, guarded effects, transport and client controls remain
 functional work.
 
+### Explicit native formatting revisions
+
+`rebase_document_suggestion_format_guarded` uses the original-character range
+proof to capture an explicit immutable revision of a single `SetFormat` proposal.
+It does not change the old proposal or accepted content. The original V1 packet
+still conflicts after a change in its affected whole text block; the child is a
+new ordinary V1 proposal at the current accepted source, inside the existing
+revision envelope. Current host authentication, pending-only supersession,
+server-ordered Accept/Reject and accepting-user Undo remain separate checks.
+
+The action checks the current observation first, proves the original command's
+nonempty effect at its retained source, and resolves all original selected
+characters. New text between those characters is excluded from the replacement
+formatting commands. A changed current value for the edited format kind on any
+selected original character returns FormatChanged. Other format kinds and text
+outside the original set are preserved. Original-character deletion, reordering,
+changed protected domains/kinds and lost endpoints return the range conflict;
+missing source operations return Pending. No partial child is returned.
+
+Captured bytes belong in the existing revision outbox, not independent child
+publication. Native preview, effect verification, finalization and owned history
+use the unchanged V1 child path. Capture remains pure under all six read-only
+selection/history policies, including exact recovery and retained Redo. The
+reference-host test combines peer insertions and unrelated Italic with actual
+supersession, owned Accept, exact recovered Undo/Redo and the original decision
+receipt after authenticated lease renewal following restart.
+
+This first consumer supports one `SetFormat` command only. Other edits and
+multi-command drafts return Unsupported without dropping steps. Fragmentation
+above 64 lowered commands refuses; repeated format literals are budgeted before
+cloning. The current child keeps ordinary whole-block guards, so later edits can
+require another revision. A child lowered into multiple commands currently needs
+manual revision rather than this single-command helper. Text replacement and its
+intervening-insertion policy are unchanged.
+
+The [native formatting revision checkpoint](qualification/2026-10-17-rich-review-format-rebase-native.json)
+records the source, conflict, recovery and server workflows. The new helper has
+no Wasm/SDK/control entry point yet; paired delivery remains functional work.
+
 ### Staged native suggestion effects
 
 `prepare_document_suggestion_effect` turns a still-current native preview into

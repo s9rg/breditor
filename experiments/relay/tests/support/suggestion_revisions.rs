@@ -3,6 +3,8 @@ use super::*;
 use breditor_collab_relay::{
     StoredSuggestionRevision, SuggestionRevisionAdmission, SuggestionRevisionRequest,
 };
+#[path = "suggestion_format_rebase.rs"]
+mod format_rebase;
 fn revision(source: &RichReplica, previous: &str, title: &str, text: &str) -> Result<String> {
     revision_commands(source, previous, title, vec![insert("p", text)])
 }

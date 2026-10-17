@@ -5,10 +5,12 @@ mod capture_range;
 mod packet;
 mod read_range;
 mod resolve_range;
+mod resolve_source_selection;
 mod source;
 #[cfg(test)]
 mod tests;
 mod types;
+pub(in crate::rich_replica) use resolve_source_selection::resolve_source_selection;
 pub use types::*;
 const MAX_SCALARS: usize = 65_536;
 const MAX_SEGMENTS: usize = 4096;
