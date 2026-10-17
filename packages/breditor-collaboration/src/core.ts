@@ -4,6 +4,9 @@ import type {SharedWriterGroupsV2} from "./types.js";
 import type {RichClipboardTextProjection} from "./types.js";
 import type {SharedSelectionPolicy,SharedEditorView} from "./types.js";
 import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
+import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView} from "./review_types.js";
+import type {SharedDocumentVersionInfo,SharedVersionComparison} from "./version_types.js";
+import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 export class SharedEditorError extends Error {
@@ -22,6 +25,8 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #options:SharedEditorOptions<P>;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
  readonly #selectionPolicy:SharedSelectionPolicy;
  #fixedRanges:"original"|"general-v1"|undefined;
+ #reviewEnabled=false;#reviewRevision=0n;#reviewListeners=new Set<(snapshot:SharedReviewSnapshot)=>void>();
+ #versionPlans=new Set<SharedDocumentVersionRestorePlan>();
  constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
   const options=(args[0]??{}) as SharedEditorOptions<P>;
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
@@ -32,6 +37,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");
    if(typeof raw.descriptor_json!=="function")throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");
    this.#descriptor=raw.descriptor_json();const descriptor=JSON.parse(this.#descriptor) as SharedOwnerDescriptor;
+   if(raw.review_enabled?.()===true)throw new SharedEditorError("review_adoption","Transfer a document owner without an attached review lane, then explicitly enable/restore review through this facade");
    if(descriptor.format!=="breditor/shared-rich-owner"||sharedProtocolLanguage(descriptor)===undefined)throw new SharedEditorError("owner_abi","Unsupported shared Rust ABI/model/history revision");
    if(this.richLanguageVersion()===3&&!this.supportsBlockLayout())throw new SharedEditorError("layout_unavailable","Use matching native layout V3 commands and reads");
    if(this.#selectionPolicy==="document-v1"){
@@ -50,15 +56,45 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #observe(raw:SharedRustOwner):ReturnType<SharedRustOwner["observe"]>{return this.#selectionPolicy==="document-v1"?raw.observe_document!():raw.observe();}
  #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
  #report(error:unknown):void{try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed content. */}}
- #notify(source:"local"|"remote"):void{for(const listener of [...this.#listeners]){if(!this.#raw)break;try{listener({source,view:this.view()});}catch(error){this.#report(error);}}}
+ #notify(source:"local"|"remote"):void{for(const listener of [...this.#listeners]){if(!this.#raw)break;try{listener({source,view:this.view()});}catch(error){this.#report(error);}}this.#notifyReview();}
+ #notifyReview():void{if(!this.#raw||!this.#reviewEnabled||!this.#reviewListeners.size)return;for(const listener of [...this.#reviewListeners]){if(!this.#raw)break;try{listener(this.reviewSnapshot());}catch(error){this.#report(error);}}}
  #run<T>(source:"local"|"remote",work:(raw:SharedRustOwner,observation:unknown)=>T,revision?:string,write=true):T{
   this.#check(revision);if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
   if(write&&this.view().readOnly===true)throw new SharedEditorError("read_only","The shared editor is read-only");
-  const raw=this.#live(),before=this.#view;this.#publishing=true;
-  try{const result=work(raw,this.#observation);const next=this.#observe(raw),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#notify(source);return result;}
+  const raw=this.#live(),before=this.#view,reviewBefore=this.#reviewRevision;this.#publishing=true;
+  try{const result=work(raw,this.#observation);const next=this.#observe(raw),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#notify(source);else if(reviewBefore!==this.#reviewRevision)this.#notifyReview();return result;}
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
  }
  view():SharedEditorView<P>{this.#live();return JSON.parse(this.#view) as SharedEditorView<P>;}
+ /** Complete opt-in native pairing; old binaries must not fall back to JavaScript review state. */
+ supportsReview():boolean{const r=this.#live();return r.review_version?.()==="1"&&[r.review_enabled,r.enable_review,r.capture_review_anchor,r.resolve_review_anchor,r.review_view_json,r.dispatch_review,r.undo_review,r.redo_review,r.set_review_access,r.receive_review,r.export_review,r.review_checkpoint].every(f=>typeof f==="function");}
+ #requireReview():SharedRustOwner{const raw=this.#live();if(!this.#reviewEnabled||!this.supportsReview())throw new SharedEditorError("review_unavailable","Enable the complete matching native review lane first");return raw;}
+ #checkReview(guard?:SharedReviewGuard):void{this.#requireReview();if(guard&&(guard.reviewRevision!==this.#reviewRevision.toString()||guard.documentRevision!==this.view().revision))throw new SharedEditorError("stale_review","The request was prepared from an older document or review publication");}
+ /** Host must hold a separate durable review-writer lease and authenticate this policy. No saved roles are trusted. */
+ enableReview(policy:SharedReviewPolicy,checkpoint?:string,documentRevision?:string):void{if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use a complete matching native review runtime");if(this.#reviewEnabled)throw new SharedEditorError("review_enabled","This owner already has a review lane");if(this.#fixedHistory!==undefined)throw new SharedEditorError("review_persistence_unavailable","This sealed durable session stores document history only; use review-aware paired storage before enabling comments");this.#run("local",(raw,o)=>{raw.enable_review!(o,JSON.stringify(policy),checkpoint);this.#reviewEnabled=true;this.#reviewRevision++;},documentRevision,false);}
+ reviewSnapshot():SharedReviewSnapshot{const r=this.#requireReview();return {documentRevision:this.view().revision,reviewRevision:this.#reviewRevision.toString(),view:JSON.parse(r.review_view_json!(this.#observation)) as SharedReviewView};}
+ subscribeReview(listener:(snapshot:SharedReviewSnapshot)=>void):()=>void{this.#requireReview();this.#reviewListeners.add(listener);return()=>this.#reviewListeners.delete(listener);}
+ captureReviewAnchor(target:SharedReviewTarget,documentRevision?:string):string{this.#check(documentRevision);const r=this.#live();if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use matching native review anchors");return r.capture_review_anchor!(this.#observation,JSON.stringify(target));}
+ resolveReviewAnchor(packet:string):SharedReviewResolution{const r=this.#live();if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use matching native review anchors");return JSON.parse(r.resolve_review_anchor!(packet)) as SharedReviewResolution;}
+ dispatchReview(action:SharedReviewAction,guard?:SharedReviewGuard):SharedReviewOutcome{this.#checkReview(guard);return this.#run("local",(raw,o)=>{const result=JSON.parse(raw.dispatch_review!(o,JSON.stringify(action))) as SharedReviewOutcome;if(result.kind==="committed")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
+ undoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#reviewHistory(false,guard);}
+ redoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#reviewHistory(true,guard);}
+ #reviewHistory(redo:boolean,guard?:SharedReviewGuard):SharedReviewOutcome{this.#checkReview(guard);return this.#run("local",(raw,o)=>{const result=JSON.parse(redo?raw.redo_review!(o):raw.undo_review!(o)) as SharedReviewOutcome;if(result.kind==="committed")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
+ setReviewAccess(access:SharedReviewAccess,guard?:SharedReviewGuard):boolean{this.#checkReview(guard);return this.#run("local",(raw,o)=>{const changed=raw.set_review_access!(o,access);if(changed)this.#reviewRevision++;return changed;},guard?.documentRevision,false);}
+ /** Host-authenticated policy is separate from event bytes; historical catchup needs its verified original grant. Pending is not an ack: retain/retry it. */
+ receiveReview(frame:string,verified:SharedReviewPolicy,guard?:SharedReviewGuard):SharedReviewImportOutcome{this.#checkReview(guard);return this.#run("remote",(raw,o)=>{const result=JSON.parse(raw.receive_review!(o,JSON.stringify(verified),frame)) as SharedReviewImportOutcome;if(result.kind==="applied")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
+ exportReview(after="0"):string{return this.#requireReview().export_review!(this.#observation,after);}
+ reviewCheckpoint(guard?:SharedReviewGuard):string{this.#checkReview(guard);return this.#requireReview().review_checkpoint!(this.#observation);}
+ supportsDocumentVersions():boolean{const raw=this.#live();return raw.document_versions_version?.()==="1"&&[raw.capture_document_version,raw.read_document_version,raw.compare_document_version,raw.prepare_document_version_restore,raw.apply_document_version_restore].every(f=>typeof f==="function");}
+ #versionOwner():SharedRustOwner{if(!this.supportsDocumentVersions())throw new SharedEditorError("versions_unavailable","Use complete matching native document versions");return this.#live();}
+ /** Persist the immutable returned packet separately. Host author/time claims are not authentication. */
+ captureVersion(name:string,author:string,createdAtMs:string,revision?:string):string{this.#check(revision);return this.#versionOwner().capture_document_version!(this.#observation,JSON.stringify({name,author,createdAtMs}));}
+ readVersion(packet:string):SharedDocumentVersionInfo{return JSON.parse(this.#versionOwner().read_document_version!(packet)) as SharedDocumentVersionInfo;}
+ compareVersion(packet:string,revision?:string):SharedVersionComparison{this.#check(revision);return JSON.parse(this.#versionOwner().compare_document_version!(this.#observation,packet)) as SharedVersionComparison;}
+ /** Prefix is consumed even if preparation fails or its preview is never applied. No accepted state changes. */
+ prepareVersionRestore(packet:string,prefix:string,revision?:string):SharedDocumentVersionRestorePlan{this.#check(revision);if(this.#retired||this.#publishing)throw new SharedEditorError("version_preview_unavailable","Cannot prepare a restore while retired or publishing");const raw=this.#versionOwner().prepare_document_version_restore!(this.#observation,packet,prefix);let plan:SharedDocumentVersionRestorePlan;plan=new SharedDocumentVersionRestorePlan(this,raw,()=>this.#versionPlans.delete(plan));this.#versionPlans.add(plan);return plan;}
+ /** Rust rejects a stale/foreign proof before publication. Current comment history is not restored. */
+ applyVersionRestore(plan:SharedDocumentVersionRestorePlan):boolean{return this.#run("local",()=>this.#versionOwner().apply_document_version_restore!(nativeVersionPlan(this,plan)));}
  /** Immutable for this facade's lifetime; recovery must select the same family explicitly. */
  selectionPolicy():P{this.#live();return this.#selectionPolicy as P;}
  supportsDocumentSelection():boolean{const raw=this.#live();return raw.document_selection_version?.()==="1"&&raw.document_typing_version?.()==="1"&&[raw.document_selection_enabled,raw.enable_document_selection,raw.observe_document,raw.document_view_json,raw.select_document,raw.copy_document_clipboard,raw.replace_document_plain_text,raw.replace_document_typing_text,raw.document_checkpoint,raw.document_typing_checkpoint].every(method=>typeof method==="function");}
@@ -127,7 +163,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #typingOwner():SharedRustOwner{if(!this.supportsTypingHistory())throw new SharedEditorError("typing_history_unavailable","Use a matching native shared typing-history owner");return this.#live();}
  enableTypingHistory(revision?:string):boolean{return this.#run("local",(_raw,o)=>{if(this.#fixedHistory==="explicit")throw new SharedEditorError("history_policy","This durable session's history policy is immutable");return this.#typingOwner().enable_typing_history!(o);},revision,false);}
  /** An owning durable session seals its selected policy after native admission, not its content. */
- sealHistoryPolicy(policy:"explicit"|"typing-v1"):void{this.#live();if((policy!=="explicit"&&policy!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==policy)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==policy)throw new SharedEditorError("history_policy","History policy does not match the native owner");this.#fixedHistory=policy;}
+ sealHistoryPolicy(policy:"explicit"|"typing-v1"):void{this.#live();if(this.#reviewEnabled)throw new SharedEditorError("review_persistence_unavailable","Review requires separately declared paired durable storage");if((policy!=="explicit"&&policy!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==policy)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==policy)throw new SharedEditorError("history_policy","History policy does not match the native owner");this.#fixedHistory=policy;}
  closeTypingGroup(revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().close_typing_group!(o),revision,false);}
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
@@ -195,5 +231,5 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   const error=new SharedEditorError("retired","The shared writer retired before queued remote admission");
   for(const entry of pending){entry.cleanup();entry.reject(error);}
  }
- dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
+ dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const plan of [...this.#versionPlans])plan.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
 }

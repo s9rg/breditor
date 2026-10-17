@@ -40,6 +40,15 @@ version or publication status is promoted. No push or deployment was performed.
 
 ## Checkpoint trail
 
+The next advanced-review goal is active. Its
+[native/SDK contract and remaining integration](RICH_REVIEW.md) adds strict durable
+comment anchors, independent comment history and named versions with guarded
+restore-as-new-change. Programmatic Wasm tests combine comments and version
+restore across both selection and history policies; this does not complete review
+persistence/transport/UI, suggestions, the parity audit or any V1 release gate.
+The [focused checkpoint](qualification/2026-10-16-rich-review-native-sdk.json)
+records native suites, actual application-Wasm workflows and remaining bounds.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

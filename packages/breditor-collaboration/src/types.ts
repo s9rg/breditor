@@ -1,5 +1,7 @@
 import type {RichView,RichSelection,RichPoint,FormatLiteral,TextNode} from "@breditor/experimental-rich-content/rendering";
 import type {SharedProtocolBinding} from "./protocol.js";
+import type {SharedReviewRustCapability} from "./review_types.js";
+import type {SharedVersionsRustCapability} from "./version_types.js";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
 export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string}};
@@ -87,7 +89,7 @@ export interface SharedWriterGroups {format:"breditor/shared-writer-groups";form
 /** Explicit atom-lineage transport; never accepted as an original group batch. */
 export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVersion"> {formatVersion:2}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
-export interface SharedRustOwner {
+export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability {
  clipboard_interchange_version?():string;
  admit_clipboard_root?(kind:string,rootJson:string):string;validate_clipboard?(clipboardJson:string):string;
  document_selection_version?():string;document_typing_version?():string;document_selection_enabled?():boolean;

@@ -5,6 +5,9 @@ export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSha
 export {SharedPresence,createSharedDocumentPresence,type SharedPeerIdentity,type SharedPeerView,type SharedPresenceOptions} from "./presence.js";
 export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presence_overlay.js";
 export type * from "./types.js";
+export type * from "./review_types.js";
+export type * from "./version_types.js";
+export {SharedDocumentVersionRestorePlan} from "./version_plan.js";
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeNotice,RichInterchangeFormatReport,RichInterchangeResult} from "@breditor/experimental-rich-content/rendering";
 export {SharedDomEditor,mountSharedEditor,mountSharedDocumentEditor,type SharedDomOptions,type SharedDocumentDomOptions} from "./controller.js";
 export {defaultSharedToolbar,moveSharedToolbar} from "./toolbar.js";

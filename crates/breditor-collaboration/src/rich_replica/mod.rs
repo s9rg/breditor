@@ -30,6 +30,7 @@ mod delete_atom;
 mod delete_typing_range;
 mod document_checkpoint;
 mod document_tools;
+mod document_versions;
 mod enable_document_selection;
 mod enable_typing_history;
 mod exit_code_block;
@@ -85,6 +86,8 @@ mod replace_general_selection_text;
 mod replace_general_typing_text;
 mod replace_plain_text_range;
 mod replay_projections;
+mod review_anchor;
+mod review_comments;
 mod select_document;
 pub mod selection;
 mod selection_coverage;
@@ -110,11 +113,17 @@ pub use actions::Command;
 pub const MODEL_VERSION: u32 = 11;
 pub use clipboard::{ClipboardContent, PasteTarget};
 pub use clipboard_namespace::ClipboardNamespace;
+pub use document_versions::{
+    DocumentVersionInfo, DocumentVersionRestorePlan, VersionAssetReference, VersionBlockChange,
+    VersionChangeAspect, VersionComparison, VersionNodeTarget,
+};
 pub use navigate_grid::GridNavigationResult;
 pub use observation::SharedObservation;
 pub use presence::PresenceResolution;
 pub use presence::{DocumentPresenceResolution, DocumentPresenceSelection};
 pub use profile::SharedRichProfile;
+pub use review_anchor::{ReviewAnchorLoss, ReviewAnchorResolution, ReviewAnchorTarget};
+pub use review_comments::{ResolvedReviewAnchor, ResolvedReviewThread, ResolvedReviewView};
 pub use session::RichReplica;
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{

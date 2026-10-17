@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync,realpathSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
-export const applicationExports=Object.freeze(["SharedEditorOwner","SharedObservation","SharedRichProfile","default","initSync"]);
+export const applicationExports=Object.freeze(["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","default","initSync"]);
 export const documentOwnerMethods=Object.freeze(["document_selection_version","document_typing_version","document_selection_enabled","enable_document_selection","observe_document","document_view_json","select_document","copy_document_clipboard","replace_document_plain_text","replace_document_typing_text","document_checkpoint","document_typing_checkpoint"]);
 export const documentProfileMethods=Object.freeze(["document_selection_version","restore_document","restore_document_typing"]);
 export const documentClipboardMethods=Object.freeze(["document_clipboard_version","paste_document_clipboard"]);
@@ -11,10 +11,12 @@ export const documentNavigationMethods=Object.freeze(["document_navigation_versi
 export const documentToolsMethods=Object.freeze(["document_tools_version","document_selection_coverage_json","document_selection_format_state_json","document_block_layout_state_json","change_document_selection_formats","change_document_selection_layout"]);
 export const documentPresenceMethods=Object.freeze(["document_presence_version","document_presence_frame","resolve_document_presence"]);
 export const clipboardInterchangeMethods=Object.freeze(["clipboard_interchange_version","admit_clipboard_root","validate_clipboard"]);
+export const reviewMethods=Object.freeze(["review_version","review_enabled","enable_review","capture_review_anchor","resolve_review_anchor","review_view_json","dispatch_review","undo_review","redo_review","set_review_access","receive_review","export_review","review_checkpoint"]);
+export const versionMethods=Object.freeze(["document_versions_version","capture_document_version","read_document_version","compare_document_version","prepare_document_version_restore","apply_document_version_restore"]);
 /** Generated glue must expose only configured factories, opaque observations and guarded owners. */
 export function admitApplicationSurface(module,binary,declarations){
  assert.deepEqual(Object.keys(module).sort(),[...applicationExports].sort(),"Application runtime exports must not include research probes");
- for(const name of ["SharedEditorOwner","SharedObservation","SharedRichProfile"]){assert.equal(typeof module[name],"function");assert.match(declarations,new RegExp(`export class ${name}\\s*\\{\\s*private constructor\\(\\);`),`${name} must have no public native constructor`);}
+ for(const name of ["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan"]){assert.equal(typeof module[name],"function");assert.match(declarations,new RegExp(`export class ${name}\\s*\\{\\s*private constructor\\(\\);`),`${name} must have no public native constructor`);}
  for(const name of ["new","join","join_frame","restore"])assert.equal(module.SharedEditorOwner[name],undefined,`Fixed-schema owner constructor ${name} must not ship`);
  for(const name of ["apply","apply_at","receive","undo","redo","updates"])assert.equal(module.SharedEditorOwner.prototype[name],undefined,`Unguarded research method ${name} must not ship`);
  for(const name of ["observe","dispatch","set_selection","set_pending_formats","insert_plain_text","insert_hard_break","replace_plain_text","undo_observed","redo_observed","checkpoint","receive_frame","update_frame","inline_format_state_json","caret_formats_json","writer_groups","writer_clock","presence_frame","resolve_presence"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing application owner capability ${name}`);
@@ -35,6 +37,9 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["writer_transport_v2_version","writer_groups_v2","writer_clock_v2"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native writer transport V2 capability ${name}`);
  for(const name of ["clipboard_text_policy_version","project_clipboard_text"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard text policy capability ${name}`);
  for(const name of clipboardInterchangeMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard interchange capability ${name}`);
+ for(const name of reviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native review capability ${name}`);
+ for(const name of versionMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native version capability ${name}`);
+ for(const name of ["document_json","version_json","comparison_json"])assert.equal(typeof module.SharedVersionRestorePlan.prototype[name],"function",`Missing native version proof read ${name}`);
  for(const name of documentOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document-selection capability ${name}`);
  for(const name of documentProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing document-selection recovery capability ${name}`);
  for(const name of documentClipboardMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document clipboard capability ${name}`);

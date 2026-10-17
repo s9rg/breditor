@@ -21,6 +21,24 @@ pub struct FlowAnchor {
     seen: BTreeMap<String, String>,
 }
 impl FlowAnchor {
+    pub(in crate::rich_replica) const fn captured_affinity(&self) -> Affinity {
+        self.point.affinity
+    }
+    /// Check bounded cursor encodings before a durable review target can wait for dependencies.
+    pub(in crate::rich_replica) fn validate_review_encoding(&self) -> Result<(), Error> {
+        self.anchor.engine_cursor()?;
+        if let Some(binding) = &self.end_binding {
+            binding.engine_cursor()?;
+        }
+        for block in [&self.point.block, &self.point.source] {
+            breditor_core::rich_content::BlockId::try_new(block)
+                .map_err(|_| Error::Contract("review text source identity"))?;
+        }
+        if self.seen.len() > 1024 {
+            return Err(Error::Limit("review anchor cut witnesses"));
+        }
+        Ok(())
+    }
     /// Capture a scalar-aligned source cursor without activating any engine state.
     /// # Errors
     /// Rejects invalid logical coordinates, malformed graphs or missing source history.

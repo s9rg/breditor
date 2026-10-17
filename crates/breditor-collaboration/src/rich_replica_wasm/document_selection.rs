@@ -30,7 +30,10 @@ impl RichReplicaProbe {
     }
     /// Capture an exact opaque guard with a frozen explicit document-view family.
     pub fn observe_document(&self) -> Result<RichSharedObservation, JsValue> {
-        self.inner.observe_document().map(|inner| RichSharedObservation { inner }).map_err(error)
+        self.inner
+            .observe_document()
+            .map(|inner| self.with_review_observation(inner))
+            .map_err(error)
     }
     /// Read only the explicitly enabled document view; old view getters remain closed.
     pub fn document_view_json(&self) -> Result<String, JsValue> {

@@ -5,6 +5,7 @@ mod clipboard_interchange;
 mod clipboard_text_projection;
 mod copy_general_clipboard;
 mod document_selection;
+mod document_versions;
 mod exit_code_block;
 mod flow_navigation;
 mod general_history;
@@ -12,6 +13,7 @@ mod general_range;
 mod insert_general_paragraph;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
+mod review;
 mod selection_formatting;
 mod typing;
 mod writer_transport_v2;
@@ -40,6 +42,7 @@ fn codec() -> Result<DocumentJsonCodecV2, JsValue> {
 #[cfg_attr(not(feature = "research"), wasm_bindgen(js_name = SharedObservation))]
 pub struct RichSharedObservation {
     inner: SharedObservation,
+    review: Option<breditor_core::rich_content::review::ReviewObservation>,
 }
 #[cfg_attr(feature = "research", wasm_bindgen)]
 #[cfg_attr(not(feature = "research"), wasm_bindgen(js_class = SharedObservation))]
@@ -72,10 +75,11 @@ struct ClipboardPaste {
 #[cfg_attr(not(feature = "research"), wasm_bindgen(js_name = SharedEditorOwner))]
 pub struct RichReplicaProbe {
     inner: RichReplica,
+    review: Option<breditor_core::rich_content::review::ReviewSession>,
 }
 impl RichReplicaProbe {
     pub(crate) fn from_replica(inner: RichReplica) -> Self {
-        Self { inner }
+        Self { inner, review: None }
     }
 }
 #[cfg_attr(feature = "research", wasm_bindgen)]
@@ -252,7 +256,7 @@ impl RichReplicaProbe {
     }
     /// Capture content, selection, typing state and history with an exact opaque guard.
     pub fn observe(&self) -> Result<RichSharedObservation, JsValue> {
-        Ok(RichSharedObservation { inner: self.inner.observe().map_err(error)? })
+        Ok(self.with_review_observation(self.inner.observe().map_err(error)?))
     }
     /// Read the current shared view; its serialized revision alone never authorizes a mutation.
     pub fn view_json(&self) -> Result<String, JsValue> {
@@ -331,7 +335,7 @@ impl RichReplicaProbe {
     #[cfg(feature = "research")]
     #[wasm_bindgen(constructor)]
     pub fn new(document: &str, writer: String) -> Result<Self, JsValue> {
-        Ok(Self { inner: RichReplica::new(codec()?, document, writer).map_err(error)? })
+        Ok(Self::from_replica(RichReplica::new(codec()?, document, writer).map_err(error)?))
     }
     /// Join existing causal state with a newly leased writer.
     #[cfg(feature = "research")]
@@ -343,7 +347,7 @@ impl RichReplicaProbe {
     /// Resume the exact same writer after reacquiring its exclusive lease.
     #[cfg(feature = "research")]
     pub fn restore(document: &str, journal: &str) -> Result<Self, JsValue> {
-        Ok(Self { inner: RichReplica::restore(codec()?, document, journal).map_err(error)? })
+        Ok(Self::from_replica(RichReplica::restore(codec()?, document, journal).map_err(error)?))
     }
     /// Apply one bounded closed shared action group through staged Rust adoption.
     #[cfg(feature = "research")]

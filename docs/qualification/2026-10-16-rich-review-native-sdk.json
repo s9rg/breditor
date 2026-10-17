@@ -1,0 +1,71 @@
+{
+  "format": "breditor/rich-review-functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "status": "native-and-programmatic-sdk-foundations-qualified-goal-still-active",
+  "baseCommit": "6d85032",
+  "published": false,
+  "pushed": false,
+  "acceptedContentPolicy": "Pending suggestions leave accepted document content unchanged until an authenticated Accept is finalized.",
+  "checks": {
+    "coreRichNative": { "passed": 2222, "failed": 0, "ignored": 0 },
+    "coreDefaultNative": { "passed": 1388, "failed": 0, "ignored": 0 },
+    "sharedNative": { "passed": 412, "failed": 0, "ignored": 0 },
+    "newSharedResearchCompatibility": { "passed": 20, "failed": 0, "ignored": 0 },
+    "newFocusedNative": { "metadata": 10, "strictAnchors": 8, "documentComments": 6, "namedVersions": 6 },
+    "existingEditorSdk": { "passed": 269, "failed": 0, "files": 32, "environment": "jsdom; existing suite, not a native browser claim" },
+    "runtimeAndPromotionScripts": { "passed": 33, "failed": 0 },
+    "strictCoreClippy": "passed",
+    "strictSharedNativeClippy": "passed",
+    "strictSharedWasmClippy": "passed",
+    "collaborationSdkTypes": "passed",
+    "applicationRuntimeSurface": "passed; six configured exports including a privately constructed opaque native version proof, no research constructors"
+  },
+  "actualWasmSdk": {
+    "command": "node scripts/probe-review-sdk.mjs packages/breditor-collaboration/dist/runtime",
+    "sharedWasmSha256": "c92273cc8667be92908b18a1e879ecedeccd02f4ed853a3f4145bb06b61a7956",
+    "trials": 4,
+    "policies": ["original/explicit", "original/typing-v1", "document-v1/explicit", "document-v1/typing-v1"],
+    "exactPairedRestores": 4,
+    "exactFuturePairedCheckpoints": 24,
+    "pendingDocumentTargets": 4,
+    "duplicateReviewEchoesWithoutPublication": 4,
+    "blockedReentrantCallbacks": 4,
+    "versionRestoresPreservingCurrentComments": 4,
+    "passed": true,
+    "additionalContracts": [
+      "Native metadata observations reject stale writes even when the accepted document is unchanged.",
+      "Partially paired Wasm runtimes cannot fabricate a JavaScript review implementation.",
+      "Old document-only sealed persistence cannot enable comments, nor adopt a preattached review lane.",
+      "Document read-only and independent host-authorized comment rights remain distinct."
+    ]
+  },
+  "repairsDuringQualification": [
+    "The first version-restore implementation attempted a second adoption of an already adopted staged group; native continuity tests reproduced the failure. Restore now uses the existing single atomic publication with an admitted expected-result proof.",
+    "The initial actual-Wasm fixture lacked canonical property ordering and used numeric rather than exact-decimal selection offsets; the fixture now matches existing native input contracts.",
+    "SDK comment notifications now run inside the existing publication barrier, advance metadata guards before queued document remotes drain, and give each subscriber an independent native read.",
+    "Promotion coverage had an outdated fixed 27-file assertion and seven pre-existing missing compatibility shims. Every current shared conformance file now has a tiny research-source shim, including the three new review/version files."
+  ],
+  "remaining": [
+    "Explicit atomic paired durable storage, review-writer leases and version-catalog persistence.",
+    "Host-authenticated review relay admission, historical grants and durable receipts.",
+    "Suggestions, tracked changes and atomic concurrent/offline Accept/Reject semantics.",
+    "Vanilla/React review controls, original-quote presentation and clean-installed mixed acceptance.",
+    "Broad browsers, physical IME/accessibility, long-history performance and final V1 release qualification."
+  ],
+  "limits": {
+    "reviewEvents": 8192,
+    "reviewCheckpointBytes": 16777216,
+    "reviewFrameBytes": 1048576,
+    "reviewFrameEvents": 128,
+    "messageBytes": 16384,
+    "anchorBytes": 262144,
+    "versionPacketBytes": 4194304,
+    "restoreExistingRootBlocks": 63,
+    "restoreFlowBlocks": 64,
+    "automaticCompaction": false,
+    "assetBytesEmbeddedOrUploaded": false,
+    "scope": "Restore uses semantic active geometry, fresh content/binding identities and current authored merge clocks, not old inactive causal merge/retraction provenance. Intermediate native admission may refuse large replacements."
+  },
+  "notClaimed": ["full advanced-review functionality", "automatic review durability", "shared version catalog", "clean installed browser qualification", "full competitor parity", "V1 readiness", "deployment", "publication"]
+}

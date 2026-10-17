@@ -56,6 +56,9 @@ mod shared_profile_wasm;
 /// Failures isolated before a candidate session replaces published state.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// The separate native review lane rejected an action, authority or recovery contract.
+    #[error(transparent)]
+    Review(#[from] breditor_core::rich_content::review::ReviewError),
     /// The live host policy forbids authoring content, history or pending styles.
     #[error("shared editor is read-only")]
     ReadOnly,

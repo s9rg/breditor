@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods} from "./check-collaboration-runtime-surface.mjs";
+import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,versionMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 test("clipboard interchange requires the complete separate pure capability",()=>{
  for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
 });
 function fixture(){
- const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},default:()=>{},initSync:()=>{}};
+ const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},default:()=>{},initSync:()=>{}};
  for(const name of documentOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of documentProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of documentClipboardMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -14,6 +14,9 @@ function fixture(){
  for(const name of documentToolsMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of documentPresenceMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of clipboardInterchangeMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of reviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of versionMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["document_json","version_json","comparison_json"])module.SharedVersionRestorePlan.prototype[name]=()=>{};
  for(const name of ["general_copy_version","copy_general_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_flow_paste_version","paste_general_flow_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_paragraph_version","insert_general_paragraph"])module.SharedEditorOwner.prototype[name]=()=>{};
@@ -30,10 +33,17 @@ function fixture(){
  for(const name of ["general_range_version","enable_general_ranges","replace_general_range_text","replace_general_range_plain_text","replace_general_range_typing_text","general_checkpoint","general_typing_checkpoint","general_inline_paste_version","paste_general_inline_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_range_version","restore_general","restore_general_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
- return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
+ return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
 test("general Copy needs both its explicit version and native observation-scoped read",()=>{
  for(const name of ["general_copy_version","copy_general_clipboard"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native general Copy capability/);}
+});
+test("comments require the complete native review/anchor pair without extra constructor exports",()=>{
+ for(const name of reviewMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing guarded native review capability/);}
+});
+test("versions require paired capture/compare/restore and opaque read-only native proofs",()=>{
+ for(const name of versionMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing guarded native version capability/);}
+ for(const name of ["document_json","version_json","comparison_json"]){const f=fixture();delete f.module.SharedVersionRestorePlan.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native version proof read/);}
 });
 test("document rich paste requires its independent capability and guarded operation",()=>{
  for(const name of documentClipboardMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native document clipboard capability/);}
