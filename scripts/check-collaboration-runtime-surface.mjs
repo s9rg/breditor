@@ -18,6 +18,7 @@ export const versionMethods=Object.freeze(["document_versions_version","capture_
 export const suggestionMethods=Object.freeze(["document_suggestions_version","capture_document_suggestion","read_document_suggestion","verify_document_suggestion_source","prepare_document_suggestion","check_document_suggestion_preview","retained_writer_receipt_v2"]);
 export const suggestionGeneralTextMethods=Object.freeze(["suggestion_general_text_version","plan_suggestion_general_text"]);
 export const suggestionRevisionMethods=Object.freeze(["document_suggestion_revisions_version","capture_document_suggestion_revision","read_document_suggestion_revision","verify_document_suggestion_revision","document_suggestion_revision_packet"]);
+export const suggestionFormatRebaseMethods=Object.freeze(["suggestion_format_rebase_version","rebase_document_suggestion_format"]);
 export const reviewedHistoryMethods=Object.freeze(["reviewed_history_version","reviewed_history_enabled","reviewed_history_identity_json","adopted_suggestion_json","enable_reviewed_history","reviewed_checkpoint","verify_document_suggestion_effect","check_document_suggestion_effect_proof","adopt_suggestion_history"]);
 /** Generated glue must expose only configured factories, opaque observations and guarded owners. */
 export function admitApplicationSurface(module,binary,declarations){
@@ -50,6 +51,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of suggestionMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing pure native suggestion capability ${name}`);
  for(const name of suggestionGeneralTextMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing pure native suggestion range planner ${name}`);
  for(const name of suggestionRevisionMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing pure native suggestion revision capability ${name}`);
+ for(const name of suggestionFormatRebaseMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing pure native formatting rebase capability ${name}`);
  for(const name of reviewedHistoryMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native reviewed-history capability ${name}`);
  for(const name of ["reviewed_history_version","restore_reviewed"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing reviewed-history recovery ${name}`);
  assert.equal(typeof module.SharedSuggestionEffectProof.prototype.summary_json,"function","Missing opaque native effect proof read");

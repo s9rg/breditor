@@ -2,6 +2,7 @@
 mod capture;
 mod packet;
 mod read;
+mod rebase_format;
 mod verify;
 use super::super::RichReplicaProbe;
 use wasm_bindgen::prelude::*;

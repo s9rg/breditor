@@ -332,6 +332,15 @@ supersession and accepting-user Undo/Redo work under all six policies. The child
 uses unchanged V1 guards and decision ordering. Multi-command/replacement rebasing
 and paired Wasm/SDK/control delivery remain open; no release gate advances.
 
+The [formatting revision client checkpoint](qualification/2026-10-17-rich-review-format-rebase-sdk.json)
+removes that single-command limitation for ordered `SetFormat` batches and their
+fragmented children. A separate pure Wasm pair, SDK method and borrowed
+vanilla/React action use the existing durable revision outbox and unchanged
+server finalization. Pending/conflict/unsupported outcomes queue nothing. New
+peer text and unrelated marks remain separate from the original formatting
+targets. Text replacement, final API/migration, package release and deferred
+browser/IME/accessibility/performance gates remain open.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

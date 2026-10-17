@@ -30,6 +30,12 @@ export interface SharedSuggestionRevisionInfo {id:string;previousSuggestionId:st
 export type SharedSuggestionRevisionSource=
  |{kind:"pending";missing:readonly SharedSuggestionDependency[]}
  |{kind:"verified";revision:SharedSuggestionRevisionInfo;clocks:readonly SharedSuggestionDependency[]};
+/** Pure native outcome; Captured bytes are not publication or an accepted document change. */
+export type SharedSuggestionFormatRebase=
+ |{kind:"pending";missing:readonly SharedSuggestionDependency[]}
+ |{kind:"unsupported"}
+ |{kind:"conflict";reason:{kind:"format_changed"}|{kind:"range";reason:"characters_deleted"|"characters_reordered"|"domain_changed"|"kind_changed"|"boundary_deleted"}}
+ |{kind:"captured";revisionPacketJson:string};
 export interface SharedSuggestionPreviewSummary {
  kind:"ready";suggestion:SharedDocumentSuggestionInfo;changes:readonly SharedVersionChange[];
  beforeAssets:readonly SharedVersionAsset[];afterAssets:readonly SharedVersionAsset[];
@@ -65,4 +71,7 @@ export interface SharedSuggestionsRustCapability {
  read_document_suggestion_revision?(previousPacket:string,input:string):string;
  verify_document_suggestion_revision?(previousPacket:string,input:string):string;
  document_suggestion_revision_packet?(previousPacket:string,input:string):string;
+ /** Independent optional pure formatting-batch rebase; no widening of older revision support. */
+ suggestion_format_rebase_version?():string;
+ rebase_document_suggestion_format?(observed:unknown,input:string):string;
 }

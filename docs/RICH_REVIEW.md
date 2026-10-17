@@ -32,9 +32,10 @@ document-author socket are implemented below. Recovered accepting-user history
 has an explicit native/Wasm/SDK contract and paired durable storage. Permanent
 Reader proposal/Reject synchronization uses a separate non-authoring transport.
 Borrowed vanilla/React controls expose those proposals and decisions alongside
-comments and versions. Native immutable revisions and authenticated pending-only
-supersession are implemented below. Revision transport/client controls and
-granular rebasing remain unfinished.
+comments and versions. Immutable revisions, authenticated pending-only
+supersession and durable revision transport/client controls are implemented below.
+Explicit formatting-batch rebasing uses a separate optional native/SDK pair;
+direct character-affine text replacement remains unfinished.
 
 ### Native proposal intents and previews
 
@@ -325,14 +326,15 @@ functional work.
 ### Explicit native formatting revisions
 
 `rebase_document_suggestion_format_guarded` uses the original-character range
-proof to capture an explicit immutable revision of a single `SetFormat` proposal.
+proof to capture an explicit immutable revision of an ordered batch composed
+entirely of `SetFormat` commands.
 It does not change the old proposal or accepted content. The original V1 packet
 still conflicts after a change in its affected whole text block; the child is a
 new ordinary V1 proposal at the current accepted source, inside the existing
 revision envelope. Current host authentication, pending-only supersession,
 server-ordered Accept/Reject and accepting-user Undo remain separate checks.
 
-The action checks the current observation first, proves the original command's
+The action checks the current observation first, proves the original batch's
 nonempty effect at its retained source, and resolves all original selected
 characters. New text between those characters is excluded from the replacement
 formatting commands. A changed current value for the edited format kind on any
@@ -349,17 +351,56 @@ reference-host test combines peer insertions and unrelated Italic with actual
 supersession, owned Accept, exact recovered Undo/Redo and the original decision
 receipt after authenticated lease renewal following restart.
 
-This first consumer supports one `SetFormat` command only. Other edits and
-multi-command drafts return Unsupported without dropping steps. Fragmentation
-above 64 lowered commands refuses; repeated format literals are budgeted before
-cloning. The current child keeps ordinary whole-block guards, so later edits can
-require another revision. A child lowered into multiple commands currently needs
-manual revision rather than this single-command helper. Text replacement and its
-intervening-insertion policy are unchanged.
+Command order is retained, including overlapping ranges and different format
+kinds. A child fragmented into several commands can be rebased again. A mixed
+batch containing any other action returns Unsupported without dropping steps.
+The entire batch is bounded to 64 lowered commands, 65,536 selected scalar
+occurrences (including overlapping steps) and 1 MiB of repeated format literals
+before cloning. Normal range and child/envelope limits also apply. Any late
+conflict or exhausted budget refuses the whole batch. The current child keeps
+ordinary whole-block guards, so later edits can require another revision.
+Text replacement and its intervening-insertion policy are unchanged.
 
 The [native formatting revision checkpoint](qualification/2026-10-17-rich-review-format-rebase-native.json)
-records the source, conflict, recovery and server workflows. The new helper has
-no Wasm/SDK/control entry point yet; paired delivery remains functional work.
+records the initial native single-command source, conflict, recovery and server
+workflows. The optional client contract below adds batch and repeated-child use.
+
+### Optional formatting revision clients
+
+`suggestion_format_rebase_version` V1 and `rebase_document_suggestion_format`
+form a separate pure Wasm capability. The request contains only an exact previous
+packet, title and creation time; it cannot supply a new creator, selected
+characters, weaker format witnesses or an accepted tree. The current observation
+is checked before parsing. Existing complete suggestion/revision runtimes remain
+usable without this pair, and no JavaScript range or command fallback is selected.
+
+`core.supportsSuggestionFormatRebase()` detects the complete pair.
+`core.rebaseSuggestionFormat(previousPacket, title, time, revision?)` returns the
+native Pending, Unsupported, Conflict or Captured result. The recommended durable
+path is `revisions.rebaseFormat({previousSuggestionId, title, createdAtMs,
+revision?})` on the existing `SharedSuggestionRevisions` outbox. It checks the
+retained same-creator pending predecessor and queues only Captured bytes. Queued
+means local revision intent, not supersession or Accept. Other native outcomes
+leave the revision record unchanged.
+
+The existing source-before-outbox save order, exact retry bytes, original
+authenticated receipt and child-handoff rules apply without a new storage
+family, socket, grant or server capability. A failed save or lost reply never
+re-runs the native rebase. The child cannot independently publish or queue a
+decision before supersession and local handoff complete.
+
+Supplying this outbox to `createSharedSuggestionPanelSource` adds “Rebase
+formatting suggestion” to the shared vanilla/React panel when the native pair is
+available. It uses the selected retained proposal's original intent, independent
+of the accepted editor caret or composer action. An empty title field retains
+the proposal's title. Pending/conflict/unsupported results are shown without a
+new child; a captured child remains preview-only until the server commits its
+relation. Preview and Queue Accept remain explicit separate actions.
+
+The [formatting client checkpoint](qualification/2026-10-17-rich-review-format-rebase-sdk.json)
+records focused native, optional capability, durable recovery and installed mixed
+workflow qualification. Direct affine text replacement and final V1 release
+qualification remain separate work.
 
 ### Staged native suggestion effects
 

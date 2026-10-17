@@ -193,9 +193,43 @@ for a document-selection owner. `suggestions.entries()` exposes bounded live
 metadata; `loadSuggestion(id)` lazily caches an authenticated native packet.
 Discovery is not a persisted global catalog, and imported effects do not become
 accepting-user Undo. Stop the suggestion adapter before closing its queue/source;
-it never disposes the borrowed document connection. Reader-only automatic sync,
-accepting-user Undo and proposal controls remain in progress. See
-`docs/RICH_REVIEW.md` for exact contracts and bounds.
+it never disposes the borrowed document connection. Permanent Reader transport,
+accepting-user Undo and borrowed vanilla/React proposal controls are separate
+opt-ins. See [the review contract](../../docs/RICH_REVIEW.md) for exact bounds.
+
+### Immutable revisions and formatting rebase
+
+`SharedSuggestionRevisions` borrows the same source, queue and transport. Pin the
+separately enabled host revision descriptor's binding and supply
+`suggestionRevisions: {binding}` on that transport before connecting. Revisions
+retain exact predecessor and child bytes; the host alone finalizes pending-only
+supersession. A child enters the ordinary suggestion queue only after its
+authenticated revision receipt is saved. Never publish extracted child bytes as
+an independent substitute for that relation.
+
+With the complete optional native pair,
+`core.supportsSuggestionFormatRebase()` is true. An already-open outbox can retain
+a native original-character formatting revision:
+
+```js
+const result = revisions.rebaseFormat({
+  previousSuggestionId: selectedSuggestionId,
+  title: "Rebased formatting",
+  createdAtMs: Date.now().toString(),
+  revision: core.view().revision
+});
+if (result.kind === "queued") await revisions.flush(); // Local intent only.
+```
+
+The native planner preserves ordered `SetFormat` batches, excludes new peer text,
+and retains unrelated formats. Changed values of the edited format kind or lost
+original characters conflict; unsupported/mixed actions queue nothing. The
+whole lowered batch is bounded to 64 steps. Retries preserve exact bytes rather
+than recapturing against newer content. Existing complete revision runtimes
+without the optional pair keep manual revision support with no JavaScript
+fallback. Passing this outbox to `createSharedSuggestionPanelSource` exposes the
+same separate rebase action in vanilla and React controls. Accepted content stays
+unchanged until an independently previewed child is accepted by the server.
 
 ### Shared named versions
 

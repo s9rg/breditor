@@ -1,0 +1,69 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "2e7d522673052cb18bfaf96c6969fac80834e3a5",
+  "scope": "Optional original-character formatting-batch rebase delivered through Rust, paired Wasm/SDK, the existing durable revision outbox and borrowed vanilla/React controls. Existing V1 child guards, authenticated finalization, owned Undo and saved meanings remain unchanged. Direct affine text replacement and final V1 qualification are not completed; the full advanced-review goal remains active.",
+  "artifacts": {
+    "applicationWasmSha256": "1c6977fc0db304d3c96553933c2a13413c048b0df5b2f3cc7854e4e604074d6f",
+    "originalSuggestionHostSha256": "ec16197d8b7a9bc63bdac447e8a0ed0796c4d06ad926b7146c4f3805d0bb7ccc",
+    "revisionHostSha256": "2676ab35f786aca469bcafa0542124988c29f3898ceaa95f6e57c196d5c482ba",
+    "javascriptWasmExports": 8,
+    "wasmExports": 200,
+    "newPureWasmMethods": ["suggestion_format_rebase_version", "rebase_document_suggestion_format"],
+    "newStorageOrServerDecisionFamily": false,
+    "browserAcceptedEffectExecutorAdded": false,
+    "verifiedLocalArchiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "2c3ac8fb992c17c6b09df47c3f848fd18bbc6d405d7e514ba25c36b91d65d4ea",
+      "breditor-editor-0.3.0-alpha.22.tgz": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43"
+    }
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 522, "failed": 0, "resultGroupsIncludingEmptyDoctests": 47, "formattingRebasePublicCases": 12},
+    "fullRelayAndServerSuite": {"passed": 79, "failed": 0},
+    "researchCompatibilityFormattingContracts": {"passed": 12, "failed": 0},
+    "strictNativeLibraryAndFormattingContractClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "strictRelayLibrarySuggestionIntegrationAndBothFixturesClippy": "passed",
+    "changedRustSourcesAndTestsRustfmt": "passed",
+    "sdkAndEditorSuite": {"passed": 364, "failed": 0, "files": 39},
+    "buildSurfaceAndPromotionGuards": {"passed": 55, "failed": 0},
+    "actualWasmRevisionMatrix": {"passed": true, "trials": 6, "formattingControlWorkflows": 12, "readerFormattingRebases": 6, "wireRequests": 3026},
+    "cleanInstalledConsumer": {"passed": true, "strictPublicTypes": true, "packagedWasm": true, "workspaceProductionLinks": false, "originalStockActionCases": 54, "originalOwnedCommentVersionTrials": 6, "permanentReaderTrials": 6, "revisionCommentVersionTrials": 6, "formattingVanillaTrials": 6, "formattingReactTrials": 6, "formattingExactOfflineReopens": 12, "readerFormattingRebases": 6, "readerAuthorRegistrations": 0, "readerAuthorResumes": 0, "readerDocumentSubmissions": 0, "readerWireRequests": 1333, "revisionWireRequests": 3025}
+  },
+  "contracts": [
+    "An ordered batch composed only of SetFormat commands is eligible. Command order and overlapping ranges are preserved. A fragmented child can be rebased again; mixed/non-format commands return Unsupported without discarding a step.",
+    "Native source evaluation proves the complete original batch before resolving original scalar identities. Every selected original character must survive in order and in its original protected domain/kind. Reordering, deletion/equal reinsertion, lost boundaries and changed values of the touched format kind refuse the whole batch. Complete typed properties, including Link target fields, are compared; unrelated format kinds survive.",
+    "New intervening characters are excluded. The entire lowered batch retains the existing 64-command ceiling, with 65,536 selected scalar occurrences including overlapping steps and 1 MiB of repeated literal bytes counted before cloning. Individual source/range, child/envelope and traversal limits still apply. Exactly 64 lowered steps pass; cumulative or single-range fragmentation above the ceiling refuses without a partial result.",
+    "The optional Wasm marker and pure request are separate from complete original revision support. The request contains an exact predecessor, title and creation time, not author authority, a new accepted AST or caller-supplied character/format witnesses. The source observation is checked before parsing. Older complete runtimes retain manual revisions without a JavaScript fallback.",
+    "core.rebaseSuggestionFormat returns native Pending/Unsupported/Conflict/Captured. SharedSuggestionRevisions.rebaseFormat checks the exact retained same-creator pending predecessor and queues only Captured bytes. Other outcomes create no revision row. Saved bytes use the unchanged outbox family, source-before-record order, authenticated receipt and committed child-handoff rules. Network or local-save retry never recaptures against a newer source.",
+    "The shared vanilla/React action uses the selected proposal's native original intent, not the accepted caret or composer draft. A blank title keeps the prior title. Uncommitted children remain preview-only and cannot independently publish or queue a decision through this outbox. Native preview and authenticated Queue Accept remain separate actions.",
+    "Actual authenticated peer edits insert new characters and unrelated marks before capture. Across all six policies, both control variants retain exact offline source/outbox/queue bytes, reopen before supersession, retry original bytes with recapture deliberately disabled, and retain peer text/marks through owned Accept, Undo and Redo. Comment history stays unchanged and the later mixed named-version restore/recovery workflow still passes.",
+    "Permanent Readers capture and publish their own formatting revisions without author registration, author resume or document submission. Native authored counters stay zero; Accept remains refused even though proposal supersession is allowed. Host asset bytes, identity, grants and production isolation remain outside content metadata."
+  ],
+  "verificationNotes": [
+    "The existing six-policy mixed/Reader/revision matrices retain their assertions and default modes. A separate optional formatting flag adds the new workflows; the normal revision probe does not silently require the new pair.",
+    "The installed consumer loads all four production packages, public editor/collaboration exports, its React wrapper and packaged Wasm from clean offline-installed local archives. Strict positive/negative types refuse caller-supplied characters and creator arguments. Test DOM/IDB/locks and loss injection remain fixtures, not physical browser or accessibility evidence.",
+    "The new helper does not introduce image assets or fetch their bytes. Existing mixed review workflows exercise image fields/captions and retain asset references; an asset-byte-inclusive advanced-review acceptance case remains separate work.",
+    "Strict lint uses no new suppressions beyond the existing marker-method unused_self convention. The pinned engine retains its pre-existing unused-import warning. Canonical native, compatibility, host and Wasm caches remain isolated."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_format_rebase_contracts",
+    "node scripts/build-collaboration-runtime.mjs",
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "npm run build:candidate --workspace @breditor/editor",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node scripts/probe-suggestion-format-rebase-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestion_revisions_functional",
+    "node scripts/check-suggestion-format-rebase-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional target/owned-history-relay-native/release/examples/suggestion_revisions_functional"
+  ],
+  "remaining": [
+    "Direct original-character text insertion/replacement and explicit intervening-peer-text policy without reinterpreting stored V1 intents. Captured formatting children still have ordinary conservative guards for edits after capture.",
+    "Asset-byte-inclusive combined advanced-review acceptance with changing anchored targets, offline authors, proposal decisions and named-version restore; preserve host-owned upload/download and retention responsibilities.",
+    "Final API/migration, storage lifetime/compaction, package-release and production auth/hosting work, plus deferred broad browser, physical IME, accessibility and performance qualification."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

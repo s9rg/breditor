@@ -7,7 +7,7 @@ import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
 import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
-import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention,SharedSuggestionRevisionInfo,SharedSuggestionRevisionSource} from "./suggestion_types.js";
+import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention,SharedSuggestionRevisionInfo,SharedSuggestionRevisionSource,SharedSuggestionFormatRebase} from "./suggestion_types.js";
 import {SharedDocumentSuggestionPreview,nativeSuggestionPreview} from "./suggestion_preview.js";
 import {SharedDocumentSuggestionEffectProof,nativeSuggestionEffectProof} from "./suggestion_effect_proof.js";
 import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_validation.js";
@@ -147,6 +147,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  verifySuggestionRevision(previousPacket:string,packet:string):SharedSuggestionRevisionSource{return JSON.parse(this.#revisionOwner().verify_document_suggestion_revision!(previousPacket,packet)) as SharedSuggestionRevisionSource;}
  /** Exact unchanged V1 child bytes. Never independently publish these instead of the revision. */
  revisionSuggestionPacket(previousPacket:string,packet:string):string{return this.#revisionOwner().document_suggestion_revision_packet!(previousPacket,packet);}
+ /** Separate pure marker; older complete revision runtimes keep their existing behavior. */
+ supportsSuggestionFormatRebase():boolean{const r=this.#live();return this.supportsSuggestionRevisions()&&r.suggestion_format_rebase_version?.()==="1"&&typeof r.rebase_document_suggestion_format==="function";}
+ /** Capture an original-character formatting revision, never an accepted edit or JS range diff. */
+ rebaseSuggestionFormat(previousPacketJson:string,title:string,createdAtMs:string,revision?:string):SharedSuggestionFormatRebase{this.#check(revision);if(!this.supportsSuggestionFormatRebase())throw new SharedEditorError("suggestion_format_rebase_unavailable","Use matching native formatting rebase proofs");return JSON.parse(this.#live().rebase_document_suggestion_format!(this.#observation,JSON.stringify({previousPacketJson,title,createdAtMs}))) as SharedSuggestionFormatRebase;}
  /** A ready handle is source-bound, not an Accept command. Pending/conflicting native handles are released immediately. */
  prepareSuggestion(packet:string,revision?:string):SharedDocumentSuggestionPreparation{
   this.#check(revision);if(this.#retired||this.#publishing)throw new SharedEditorError("suggestion_preview_unavailable","Cannot prepare while retired or publishing");

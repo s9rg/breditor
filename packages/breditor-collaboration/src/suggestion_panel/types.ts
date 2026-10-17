@@ -4,6 +4,7 @@ import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo} from ".
 import type {SharedDocumentSuggestionPreview} from "../suggestion_preview.js";
 import type {SharedSuggestionQueueStatus,SharedSuggestionPublication,SharedSuggestionDecision} from "../suggestions/types.js";
 import type {SharedSuggestionSyncState} from "../suggestions/sync.js";
+import type {SharedSuggestionFormatRebaseQueued} from "../suggestion_revisions/types.js";
 import type {RichPresentationModel} from "@breditor/experimental-rich-content/rendering";
 export type SharedSuggestionPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"subscribe"|"supportsDocumentSuggestions"|"prepareSuggestion"|"checkSuggestionPreview">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsSuggestionGeneralText"|"planSuggestionGeneralText">>;
 export interface SharedSuggestionPanelEntry {suggestion:SharedDocumentSuggestionInfo;publication:SharedSuggestionPublication|null;decision:SharedSuggestionDecision|null;local:SharedSuggestionQueueStatus|null;
@@ -25,6 +26,8 @@ export interface SharedSuggestionPanelSource {
  /** Optional complete revision outbox; absent keeps old controls and storage unchanged. */
  canRevise?(id:string):boolean;
  revise?(previousId:string,title:string,time:string,draft:SharedDocumentSuggestionDraft,revision:string):SharedDocumentSuggestionInfo;
+ /** Optional native original-character formatting revision, using the same durable outbox. */
+ rebaseFormat?(previousId:string,title:string,time:string,revision:string):SharedSuggestionFormatRebaseQueued;
  revisionState?():{status:string;pending:number;error:string|null};
 }
 export interface SharedSuggestionComposerField {id:string;label:string;initial?:string;choices?:readonly {value:string;label:string}[]}

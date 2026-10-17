@@ -8,12 +8,13 @@ import type {SharedSuggestionRevisionInfo} from "../suggestion_types.js";
 import {checkRevisionRecord,openRevisionDatabase,readRevisionRecord,writeRevisionRecord} from "./database.js";
 import {revisionsBinding,revisionPacket} from "./transport.js";
 import {captureRevision} from "./capture.js";
+import {captureFormatRevision} from "./rebase_format.js";
 import {readRevisionFeed,checkRevisionFeed} from "./feed.js";
 import {submitRevision} from "./submit.js";
 import {bridgeRevision} from "./bridge.js";
 import {ensureRevisionPrevious} from "./ensure_previous.js";
 import {loadRevision} from "./load.js";
-import type {SharedSuggestionRevisionsOptions,SharedSuggestionRevisionsRecord,SharedSuggestionRevisionRow,SharedSuggestionRevisionReceipt,SharedSuggestionRevisionDraft,SharedSuggestionRevisionRequest} from "./types.js";
+import type {SharedSuggestionRevisionsOptions,SharedSuggestionRevisionsRecord,SharedSuggestionRevisionRow,SharedSuggestionRevisionReceipt,SharedSuggestionRevisionDraft,SharedSuggestionRevisionRequest,SharedSuggestionFormatRebaseDraft,SharedSuggestionFormatRebaseQueued} from "./types.js";
 const attached=new WeakSet<object>();
 export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #options:SharedSuggestionRevisionsOptions<P>;readonly #core;readonly #db:IDBDatabase;
@@ -49,6 +50,8 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #replace(id:string,change:(row:SharedSuggestionRevisionRow)=>SharedSuggestionRevisionRow):void{const row=this.#row(id);this.#mark({...this.#record,retained:this.#record.retained.map(value=>value===row?change(value):value)});}
  /** Pure capture plus local durable intent, not supersession, rejection or accepted document edits. */
  revise(input:SharedSuggestionRevisionDraft):SharedSuggestionRevisionInfo{this.#writable();const captured=captureRevision(this.#options.queue,input);return this.queueRevision(captured.previousPacket,captured.packet);}
+ /** Native formatting-only revision. Non-ready outcomes queue nothing; retry keeps exact bytes. */
+ rebaseFormat(input:SharedSuggestionFormatRebaseDraft):SharedSuggestionFormatRebaseQueued{this.#writable();const captured=captureFormatRevision(this.#options.queue,input);if(captured.result.kind!=="captured")return captured.result;return {kind:"queued",revision:this.queueRevision(captured.previousPacket,captured.result.revisionPacketJson)};}
  /** Retry exactly these bytes; no recapture on network or quota failure. */
  queueRevision(previousPacket:string,input:string):SharedSuggestionRevisionInfo{this.#writable();const packet=revisionPacket(input),info=this.#core.readSuggestionRevision(previousPacket,packet),known=this.#infos.get(info.id);if(known){if(!this.#row(info.id).receipt&&!this.#row(info.id).conflict)this.#replace(info.id,row=>({...row,retry:true}));return structuredClone(known);}this.#mark({...this.#record,retained:[...this.#record.retained,{previousPacket,packet,retry:true,receipt:null,conflict:null}]});return structuredClone(info);}
  revisions():readonly SharedSuggestionRevisionInfo[]{this.#check();return structuredClone([...this.#infos.values()]);}

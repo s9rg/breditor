@@ -15,6 +15,24 @@ function setup(){
  return {raw,prepared,core:new SharedRichEditor(raw as unknown as SharedRustOwner)};
 }
 describe("native-only proposal SDK boundary",()=>{
+ it("captures formatting rebase only through the independent native pair and checks staleness first",()=>{
+  const {core,raw}=setup(),changed=vi.fn(),result={kind:"captured",revisionPacketJson:"exact native revision"},rebase=vi.fn((_observation:unknown,_input:string)=>JSON.stringify(result));
+  Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:vi.fn(),read_document_suggestion_revision:vi.fn(),verify_document_suggestion_revision:vi.fn(),document_suggestion_revision_packet:vi.fn(),suggestion_format_rebase_version:()=>"1",rebase_document_suggestion_format:rebase});core.subscribe(changed);
+  expect(core.supportsSuggestionFormatRebase()).toBe(true);expect(core.rebaseSuggestionFormat("exact predecessor","Rebased","9","0")).toEqual(result);expect(JSON.parse(rebase.mock.calls[0]![1])).toEqual({previousPacketJson:"exact predecessor",title:"Rebased",createdAtMs:"9"});
+  expect(()=>core.rebaseSuggestionFormat("exact predecessor","Rebased","9","stale")).toThrow(expect.objectContaining({code:"stale_observation"}));expect(rebase).toHaveBeenCalledOnce();expect(raw.dispatch).not.toHaveBeenCalled();expect(raw.capture_document_suggestion).not.toHaveBeenCalled();expect(changed).not.toHaveBeenCalled();core.dispose();
+ });
+ it("keeps Pending Conflict and Unsupported native outcomes separate from captured revisions",()=>{
+  for(const result of [{kind:"pending",missing:[{writer:"101",counter:"8"}]},{kind:"conflict",reason:{kind:"format_changed"}},{kind:"conflict",reason:{kind:"range",reason:"characters_deleted"}},{kind:"unsupported"}]){
+   const {core,raw}=setup();Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:vi.fn(),read_document_suggestion_revision:vi.fn(),verify_document_suggestion_revision:vi.fn(),document_suggestion_revision_packet:vi.fn(),suggestion_format_rebase_version:()=>"1",rebase_document_suggestion_format:()=>JSON.stringify(result)});
+   expect(core.rebaseSuggestionFormat("previous","Rebase","0")).toEqual(result);expect(raw.dispatch).not.toHaveBeenCalled();expect(raw.capture_document_suggestion).not.toHaveBeenCalled();core.dispose();
+  }
+ });
+ it("keeps older complete revision runtimes usable without rebase fallbacks",()=>{
+  for(const extra of [{},{suggestion_format_rebase_version:()=>"1"},{rebase_document_suggestion_format:vi.fn()},{suggestion_format_rebase_version:()=>"2",rebase_document_suggestion_format:vi.fn()}]){
+   const {core,raw}=setup();Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:()=>"original revision",read_document_suggestion_revision:vi.fn(),verify_document_suggestion_revision:vi.fn(),document_suggestion_revision_packet:vi.fn(),...extra});
+   expect(core.supportsSuggestionRevisions()).toBe(true);expect(core.supportsSuggestionFormatRebase()).toBe(false);expect(()=>core.rebaseSuggestionFormat("previous","Rebased","0")).toThrow(expect.objectContaining({code:"suggestion_format_rebase_unavailable"}));expect(core.captureSuggestionRevision("previous","Manual","0",draft)).toBe("original revision");expect(raw.dispatch).not.toHaveBeenCalled();core.dispose();
+  }
+ });
  it("captures same-creator immutable revisions through Rust only and checks staleness before native work",()=>{
   const {core,raw}=setup(),revision={id:`sha256:${"d".repeat(64)}`,previousSuggestionId:info.id,suggestion:{...info,id:`sha256:${"e".repeat(64)}`}},changed=vi.fn();
   const capture=vi.fn((_observed:unknown,_input:string)=>"native relation"),read=vi.fn(()=>JSON.stringify(revision)),verify=vi.fn(()=>JSON.stringify({kind:"verified",revision,clocks:[]})),child=vi.fn(()=>"exact native child");

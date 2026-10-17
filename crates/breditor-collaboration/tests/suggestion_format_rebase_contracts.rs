@@ -327,3 +327,160 @@ fn excessive_fragmentation_refuses_instead_of_dropping_any_original_characters()
     assert_eq!(a.checkpoint()?, exact);
     Ok(())
 }
+
+#[test]
+fn ordered_formatting_batches_and_their_fragmented_children_can_be_rebased_again() -> Result {
+    let (_, mut a, mut b) = setup("a🙂b")?;
+    let previous = original(
+        &a,
+        vec![
+            format("p", 0, 4, "breditor/strong", false),
+            format("p", 1, 2, "breditor-inline/italic", true),
+        ],
+    )?;
+    b.apply(vec![insert(0, "P"), insert(2, "X")])?;
+    a.receive_frame(&b.update_frame()?)?;
+    let first = child(&a, &previous)?;
+    let first_raw: Value = serde_json::from_str(&first)?;
+    assert_eq!(first_raw["data"]["draft"]["edit"]["data"].as_array().ok_or("steps")?.len(), 3);
+    b.apply(vec![insert(0, "Q")])?;
+    a.receive_frame(&b.update_frame()?)?;
+    let before = a.document_json().to_owned();
+    let second = child(&a, &first)?;
+    let raw: Value = serde_json::from_str(&second)?;
+    let steps = raw["data"]["draft"]["edit"]["data"].as_array().ok_or("rebased steps")?;
+    assert_eq!(steps.len(), 3);
+    assert_eq!(steps.last().ok_or("last")?["data"]["format"]["type"], "breditor-inline/italic");
+    let DocumentSuggestionPreparation::Ready(preview) =
+        a.prepare_document_suggestion_guarded(&a.observe()?, &second)?
+    else {
+        return Err("second ready".into());
+    };
+    let proposed = characters(preview.document_json(), "p")?;
+    let current = characters(&before, "p")?;
+    assert_eq!(proposed.iter().map(|(c, _)| c).collect::<String>(), "QPaX🙂b");
+    for (c, marks) in &proposed {
+        if matches!(c, 'Q' | 'P' | 'X') {
+            assert_eq!(
+                Some(marks),
+                current.iter().find(|(value, _)| value == c).map(|(_, marks)| marks)
+            );
+        } else {
+            assert!(
+                !marks
+                    .as_array()
+                    .ok_or("marks")?
+                    .iter()
+                    .any(|mark| mark["type"] == "breditor/strong")
+            );
+        }
+    }
+    assert!(
+        proposed
+            .iter()
+            .find(|(c, _)| *c == '🙂')
+            .ok_or("emoji")?
+            .1
+            .as_array()
+            .ok_or("marks")?
+            .iter()
+            .any(|mark| mark["type"] == "breditor-inline/italic")
+    );
+    assert_eq!(a.document_json(), before);
+    Ok(())
+}
+
+#[test]
+fn a_late_protected_caption_format_conflict_returns_no_partial_batch() -> Result {
+    let (_, mut a, mut b) = setup("a🙂b")?;
+    let previous = original(
+        &a,
+        vec![
+            format("p", 0, 4, "breditor/strong", false),
+            format("caption", 0, 2, "breditor/strong", true),
+        ],
+    )?;
+    b.apply(vec![insert(0, "P"), format("caption", 0, 2, "breditor/strong", true)])?;
+    a.receive_frame(&b.update_frame()?)?;
+    let exact = (a.checkpoint()?, a.update_frame()?);
+    assert_eq!(
+        a.rebase_document_suggestion_format_guarded(&a.observe()?, &previous, "Conflict", "1")?,
+        Rebase::Conflict { reason: Conflict::FormatChanged }
+    );
+    assert_eq!((a.checkpoint()?, a.update_frame()?), exact);
+    Ok(())
+}
+
+#[test]
+fn complete_typed_format_properties_are_guarded_not_just_the_kind() -> Result {
+    let (_, mut a, mut b) = setup("a🙂b")?;
+    let link = |href: &str, window: bool| {
+        Command::SetFormat(SetFormat {
+            block: "p".into(),
+            offset: 1,
+            length: 2,
+            format: json!({"type":"breditor-inline/link","properties":{"breditor-inline/href":href,"breditor-inline/new-window":window}}),
+            enabled: true,
+        })
+    };
+    a.apply(vec![link("https://original.invalid", false)])?;
+    b.receive_frame(&a.update_frame()?)?;
+    let previous = original(&a, vec![link("https://proposed.invalid", false)])?;
+    b.apply(vec![format("p", 1, 2, "breditor-inline/italic", true)])?;
+    a.receive_frame(&b.update_frame()?)?;
+    capture(&a, &previous)?;
+    b.apply(vec![link("https://original.invalid", true)])?;
+    a.receive_frame(&b.update_frame()?)?;
+    let exact = a.checkpoint()?;
+    assert_eq!(
+        a.rebase_document_suggestion_format_guarded(&a.observe()?, &previous, "Conflict", "1")?,
+        Rebase::Conflict { reason: Conflict::FormatChanged }
+    );
+    assert_eq!(a.checkpoint()?, exact);
+    Ok(())
+}
+
+#[test]
+fn exactly_sixty_four_lowered_steps_remain_supported_without_truncation() -> Result {
+    let (_, mut a, mut b) = setup(&"a".repeat(64))?;
+    let previous = original(&a, vec![format("p", 0, 64, "breditor/strong", false)])?;
+    b.apply((1..64).rev().map(|offset| insert(offset, "X")).collect())?;
+    a.receive_frame(&b.update_frame()?)?;
+    let packet = child(&a, &previous)?;
+    let raw: Value = serde_json::from_str(&packet)?;
+    assert_eq!(raw["data"]["draft"]["edit"]["data"].as_array().ok_or("steps")?.len(), 64);
+    let DocumentSuggestionPreparation::Ready(preview) =
+        a.prepare_document_suggestion_guarded(&a.observe()?, &packet)?
+    else {
+        return Err("64 steps ready".into());
+    };
+    assert_eq!(
+        characters(preview.document_json(), "p")?
+            .iter()
+            .filter(|(c, marks)| *c == 'a' && marks == &json!([]))
+            .count(),
+        64
+    );
+    Ok(())
+}
+
+#[test]
+fn lowered_step_budget_applies_to_the_entire_ordered_batch() -> Result {
+    let (_, mut a, mut b) = setup(&"a".repeat(40))?;
+    let previous = original(
+        &a,
+        vec![
+            format("p", 0, 40, "breditor/strong", false),
+            format("p", 0, 40, "breditor-inline/italic", true),
+        ],
+    )?;
+    b.apply((1..40).rev().map(|offset| insert(offset, "X")).collect())?;
+    a.receive_frame(&b.update_frame()?)?;
+    let exact = a.checkpoint()?;
+    assert!(matches!(
+        a.rebase_document_suggestion_format_guarded(&a.observe()?, &previous, "Too many", "1"),
+        Err(breditor_collaboration::Error::Limit("format rebase action steps"))
+    ));
+    assert_eq!(a.checkpoint()?, exact);
+    Ok(())
+}

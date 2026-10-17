@@ -3,6 +3,7 @@ import {revisionInfo,revisionReceipt,revisionRequest,revisionsDescriptor} from "
 import {checkRevisionRecord} from "../../breditor-collaboration/src/suggestion_revisions/database.js";
 import {readRevisionFeed,checkRevisionFeed} from "../../breditor-collaboration/src/suggestion_revisions/feed.js";
 import {submitRevision} from "../../breditor-collaboration/src/suggestion_revisions/submit.js";
+import {captureFormatRevision} from "../../breditor-collaboration/src/suggestion_revisions/rebase_format.js";
 const id=(n:number)=>`sha256:${n.toString(16).padStart(64,"0")}`;
 const identity={endpoint:"ws://127.0.0.1:49786/",principal:"alice",room:"room",binding:"b".repeat(64),documentWriter:"101",effectWriter:"202",writerTransport:"atomic-v2" as const},binding="c".repeat(64);
 const descriptor={format:"breditor/relay-suggestion-revisions",formatVersion:1,document:"room",binding,suggestionBinding:identity.binding};
@@ -10,6 +11,15 @@ const permissions={role:"review",canPropose:true,canAccept:true,canReject:true} 
 function receipt(index=1){const previousSuggestionId=id(index),suggestion={id:id(index+1),title:`Replacement ${index}`,author:"alice",createdAtMs:"18446744073709551615"},sequence=9007199254740993n+2n*BigInt(index);return {rootSuggestionId:id(1),revision:{id:id(index+1000),previousSuggestionId,suggestion},previousDecision:{sequence:String(sequence),principal:"alice",suggestionId:previousSuggestionId,decision:"reject" as const,effect:null},publication:{sequence:String(sequence+1n),suggestion}};}
 const stored=receipt(),row={previousPacket:"exact native predecessor",packet:"exact native relation",retry:true,receipt:null,conflict:null};
 const record={format:"breditor/shared-suggestion-revisions",formatVersion:1,identity,binding,retained:[row]};
+describe("pure formatting revision capture",()=>{
+ it("retains native bytes and does not infer ranges or edit commands in JavaScript",()=>{
+  const result={kind:"captured",revisionPacketJson:"opaque native relation"},rebase=vi.fn(()=>result),queue={core:{readSuggestion:()=>({id:id(1),author:"alice"}),rebaseSuggestionFormat:rebase},packet:vi.fn(()=>"opaque predecessor"),identity:()=>identity,status:()=>({decision:null})};
+  expect(captureFormatRevision(queue as never,{previousSuggestionId:id(1),title:"Rebased",createdAtMs:"9",revision:"7"})).toEqual({previousPacket:"opaque predecessor",result});expect(rebase).toHaveBeenCalledExactlyOnceWith("opaque predecessor","Rebased","9","7");
+ });
+ it("refuses final or foreign predecessors before native capture",()=>{
+  for(const [author,decision] of [["bob",null],["alice",{decision:"reject"}]]){const rebase=vi.fn(),queue={core:{readSuggestion:()=>({id:id(1),author}),rebaseSuggestionFormat:rebase},packet:()=>"original",identity:()=>identity,status:()=>({decision})};expect(()=>captureFormatRevision(queue as never,{previousSuggestionId:id(1),title:"Rebased",createdAtMs:"0"})).toThrow("suggestion_revision_predecessor_final_or_foreign");expect(rebase).not.toHaveBeenCalled();}
+ });
+});
 function page(rows:unknown[],after:string,through=after,more=false){return {kind:"suggestionRevisionsPage",page:{descriptor,permissions,revisions:rows,cursor:{binding,after,through},more}};}
 describe("immutable revision metadata is not native source or authentication",()=>{
  it("pins the independent lane and original suggestion activation without authority extras",()=>{revisionsDescriptor(descriptor,binding,identity);for(const change of [{binding:"a".repeat(64)},{suggestionBinding:"a".repeat(64)},{document:"other"},{formatVersion:2},{principal:"alice"}])expect(()=>revisionsDescriptor({...descriptor,...change},binding,identity)).toThrow();});

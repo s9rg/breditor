@@ -12,6 +12,7 @@ mod prepare_suggestion_effect;
 mod prepare_suggestion_preview;
 mod read_set;
 mod read_suggestion;
+mod rebase_format_steps;
 mod rebase_suggestion_format;
 mod revision_packet;
 #[cfg(test)]
