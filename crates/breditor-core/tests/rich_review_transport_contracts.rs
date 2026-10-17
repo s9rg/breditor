@@ -51,6 +51,43 @@ fn reply(a: &mut ReviewSession, text: &str) -> Result {
     Ok(())
 }
 #[test]
+fn retained_receipts_are_pure_and_cannot_import_unknown_events_or_grant_durability() -> Result {
+    let mut source = source()?;
+    let peer = owner("202")?;
+    let observed = source.observe();
+    let before = source.checkpoint_json()?;
+    let frame = source.export_frame(0)?;
+    let mut read = policy("101")?;
+    read.access = ReviewAccess::ReadOnly;
+    let receipt = source.retained_batch_receipt(&observed, &read, &frame)?;
+    assert_eq!(receipt.prefix_digest, source.local_writer_clock()?.prefix_digest);
+    assert_eq!(receipt.through, "1");
+    assert!(peer.retained_batch_receipt(&peer.observe(), &policy("101")?, &frame).is_err());
+    assert!(source.retained_batch_receipt(&observed, &read, &source.export_frame(1)?).is_err());
+    assert_eq!(source.checkpoint_json()?, before);
+    source.check(&observed)?;
+    reply(&mut source, "Newer")?;
+    assert!(source.retained_batch_receipt(&observed, &read, &frame).is_err());
+    assert_eq!(source.retained_batch_receipt(&source.observe(), &read, &frame)?, receipt);
+    Ok(())
+}
+#[test]
+fn captured_export_end_excludes_later_events_and_rejects_nonexistent_or_reversed_ranges() -> Result
+{
+    let mut source = source()?;
+    let first = source.export_frame(0)?;
+    reply(&mut source, "Later action")?;
+    assert_eq!(source.export_frame_through(0, 1)?, first);
+    let suffix: Value = serde_json::from_str(&source.export_frame_through(1, 2)?)?;
+    assert_eq!(suffix["events"].as_array().ok_or("events")?.len(), 1);
+    assert_eq!(suffix["events"][0]["id"]["counter"], "2");
+    let empty: Value = serde_json::from_str(&source.export_frame_through(1, 1)?)?;
+    assert!(empty["events"].as_array().ok_or("events")?.is_empty());
+    assert!(source.export_frame_through(2, 1).is_err());
+    assert!(source.export_frame_through(0, 3).is_err());
+    Ok(())
+}
+#[test]
 fn prepared_batch_is_pure_until_exact_commit_and_outer_json_does_not_change_receipts() -> Result {
     let a = source()?;
     let mut b = owner("202")?;

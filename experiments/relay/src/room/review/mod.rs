@@ -51,14 +51,21 @@ impl Room {
         self.log.ready()?;
         self.review.as_mut().ok_or(Error::Contract("review V1 not enabled"))
     }
-    fn review_role(&self, principal: &str) -> Result<ReviewRole> {
+    /// Current independently granted review access. None means a document reader may sync
+    /// accepted discussions but cannot author new metadata; this is not a historical grant.
+    /// # Errors
+    /// Rejects missing document-read permission, absent review lane and unavailable storage.
+    pub fn review_permissions(&self, principal: &str) -> Result<Option<ReviewRole>> {
         self.reader(principal)?;
         let state = self.review_state()?;
         if principal == self.owner {
-            Ok(ReviewRole::Moderator)
+            Ok(Some(ReviewRole::Moderator))
         } else {
-            state.roles.get(principal).copied().ok_or(Error::Permission)
+            Ok(state.roles.get(principal).copied())
         }
+    }
+    fn review_role(&self, principal: &str) -> Result<ReviewRole> {
+        self.review_permissions(principal)?.ok_or(Error::Permission)
     }
     fn review_source(&self, principal: &str, actor: &ReviewActorId) -> Result<ReviewSource> {
         let role = self.review_role(principal)?;

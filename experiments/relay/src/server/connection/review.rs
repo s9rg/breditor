@@ -2,6 +2,7 @@
 use super::{ConnectionState, Host, Request};
 use crate::{Error, Result, ReviewAdmission};
 use serde_json::{Value, json};
+mod reads;
 
 pub(super) async fn dispatch(
     host: &Host,
@@ -82,24 +83,25 @@ pub(super) async fn dispatch(
             Ok(json!({"kind":"reviewAdmission","admission":outcome}))
         }
         Request::ReviewSync { cursor } => {
-            let current = state.clone();
-            host.transaction(move |room| {
-                current.validate(room,&principal)?;
-                Ok(json!({"kind":"reviewCatchup","page":room.review_catchup(&principal,cursor.as_ref())?}))
-            }).await
+            reads::catchup(host, principal, state.clone(), cursor).await
         }
-        Request::ReviewClock { actor } => {
-            let current = state.clone();
-            host.transaction(move |room| {
-                current.validate(room,&principal)?;
-                Ok(json!({"kind":"reviewClock","clock":room.review_writer_clock(&principal,&actor)?}))
-            }).await
+        Request::ReviewClock { actor } => reads::clock(host, principal, state.clone(), actor).await,
+        Request::ReviewCursorProof { cursor } => {
+            reads::cursor_proof(host, principal, state.clone(), cursor).await
         }
         Request::ReviewGrant { principal: target, role } => {
-            host.transaction(move |room| room.grant_review(&principal, &target, role)).await?;
-            host.notify_review();
-            Ok(json!({"kind":"reviewGranted"}))
+            grant(host, principal, target, role).await
         }
         _ => Err(Error::Contract("not a review request")),
     }
+}
+async fn grant(
+    host: &Host,
+    principal: String,
+    target: String,
+    role: Option<crate::ReviewRole>,
+) -> Result<Value> {
+    host.transaction(move |room| room.grant_review(&principal, &target, role)).await?;
+    host.notify_review();
+    Ok(json!({"kind":"reviewGranted"}))
 }

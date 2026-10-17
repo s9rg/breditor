@@ -23,6 +23,9 @@ export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files
 export {SharedPersistentSession,type SharedSessionOptions,type SharedDocumentSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";
 export {SharedReviewPersistentSession,type SharedReviewSessionOptions,type SharedReviewSessionPolicy,type SharedReviewSaveState} from "./persistence/review_session.js";
 export {SharedRelaySync,createSharedDocumentRelaySync} from "./relay/sync.js";
+export {SharedReviewRelaySync} from "./relay/review_sync.js";
+export {registerSharedReviewWriter} from "./relay/review_registration.js";
+export type * from "./relay/review_types.js";
 export {SharedRelayAssets} from "./relay/assets.js";
 export type {SharedRelayAssetInfo,SharedRelayAssetCache,SharedRelayAssetsOptions} from "./relay/asset_types.js";
 export {registerSharedRelayWriter} from "./relay/registration.js";

@@ -18,13 +18,14 @@ const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof v
 const create=(anchorJson,body)=>({kind:"create_thread",data:{anchorJson,body}});
 const reply=(thread,body)=>({kind:"reply",data:{thread,body}});
 const nodeTarget={kind:"selection",selection:{kind:"node",block:"image-block"}};
-async function start(executable,args){
+export async function startReviewHost(executable,args){
  const child=spawn(executable,args,{stdio:["ignore","pipe","pipe"]});let errors="";child.stderr.on("data",value=>{errors=(errors+value).slice(-8192);});
  const closed=new Promise(resolve=>child.once("exit",(code,signal)=>resolve({code,signal}))),lines=createInterface({input:child.stdout});
  const address=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(`Host start timed out: ${errors}`)),15000);child.once("error",reject);child.once("exit",()=>{clearTimeout(timer);reject(Error(`Host exited: ${errors}`));});lines.on("line",line=>{try{const value=JSON.parse(line);if(value.kind==="listening"){clearTimeout(timer);resolve(value.address);}}catch{/* No payload logging. */}});});
- return {address,async stop(){if(child.exitCode===null&&child.signalCode===null)child.kill("SIGINT");const result=await Promise.race([closed,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error("Host did not stop")),15000);timer.unref();})]);lines.close();assert.equal(result.code,0,errors);}};
+ let crashed=false;
+ return {address,async crash(){crashed=true;if(child.exitCode===null&&child.signalCode===null)child.kill("SIGTERM");await closed;lines.close();},async stop(){if(child.exitCode===null&&child.signalCode===null)child.kill("SIGINT");const result=await Promise.race([closed,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error("Host did not stop")),15000);timer.unref();})]);lines.close();if(!crashed)assert.equal(result.code,0,errors);}};
 }
-class Channel {
+export class ReviewWireFixture {
  constructor(endpoint){this.socket=new WebSocket(endpoint,{headers:{Origin:origin}});this.pending=new Map();this.events=[];this.serial=0;this.opened=new Promise((resolve,reject)=>{this.socket.addEventListener("open",resolve,{once:true});this.socket.addEventListener("error",()=>reject(Error("Socket failed")),{once:true});});this.socket.addEventListener("message",event=>{const envelope=JSON.parse(event.data);assert.equal(envelope.format,"breditor/relay");assert.equal(envelope.formatVersion,1);if(envelope.id===null){this.events.push(envelope.result);assert.ok(this.events.length<512);return;}const pending=this.pending.get(envelope.id);assert.ok(pending,"Only requested responses are accepted");this.pending.delete(envelope.id);clearTimeout(pending.timer);pending.resolve(envelope.result);});this.socket.addEventListener("close",()=>{for(const pending of this.pending.values()){clearTimeout(pending.timer);pending.reject(Error("Socket closed"));}this.pending.clear();});}
  async request(request){await this.opened;const id=String(++this.serial);return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error("Request timed out")),15000);this.pending.set(id,{resolve,reject,timer});this.socket.send(JSON.stringify({format:"breditor/relay",formatVersion:1,id,request}));});}
  close(){this.socket.close();}
@@ -41,15 +42,15 @@ export async function probeReviewRelay(directory,executable){
   const policies=Object.fromEntries(["alice","bob","carol"].map(principal=>[principal,{actor:`${principal}.review`,principal,access:principal==="carol"?"moderate":"comment"}]));
   const cores={},channels={},identities={},cursors={},errors=[];let server,legacy,owner;
   const facade=raw=>natural?createSharedDocumentEditor(raw,{onError:error=>errors.push(error)}):new SharedRichEditor(raw,{onError:error=>errors.push(error)});
-  const connect=async(principal,review=true)=>{const channel=new Channel(`ws://${server.address}/ws`);const authenticated=await channel.request({kind:"authenticate",principal,token:tokens[principal],capabilities:["writerTransportV2",...(review?["reviewV1"]:[])]});assert.equal(authenticated.kind,"authenticated");assert.deepEqual(authenticated.capabilities,["writerTransportV2",...(review?["reviewV1"]:[])]);if(review)assert.equal(authenticated.reviewDescriptor.format,"breditor/relay-review");else assert.equal(authenticated.reviewDescriptor,undefined);return {channel,authenticated};};
+  const connect=async(principal,review=true)=>{const channel=new ReviewWireFixture(`ws://${server.address}/ws`);const authenticated=await channel.request({kind:"authenticate",principal,token:tokens[principal],capabilities:["writerTransportV2",...(review?["reviewV1"]:[])]});assert.equal(authenticated.kind,"authenticated");assert.deepEqual(authenticated.capabilities,["writerTransportV2",...(review?["reviewV1"]:[])]);if(review)assert.equal(authenticated.reviewDescriptor.format,"breditor/relay-review");else assert.equal(authenticated.reviewDescriptor,undefined);return {channel,authenticated};};
   const syncDocument=async principal=>{const result=await channels[principal].request({kind:"sync"});assert.equal(result.kind,"catchup");await cores[principal].receiveFrame(result.frame);};
   const syncReview=async(principal,persist=async()=>{})=>{let more;do{const response=await channels[principal].request({kind:"reviewSync",cursor:cursors[principal]??null});assert.equal(response.kind,"reviewCatchup");const page=response.page;assert.ok(Buffer.byteLength(JSON.stringify(page))<=4*1024*1024);for(const batch of page.batches){const verified={actor:batch.source.actor,principal:batch.source.principal,access:batch.source.role==="moderator"?"moderate":"comment"};assert.notEqual(cores[principal].receiveReview(batch.frame,verified).kind,"pending");}await persist();cursors[principal]=page.cursor;more=page.more;}while(more);};
   const submit=async(principal,after="0")=>{const result=await channels[principal].request({kind:"reviewSubmit",frame:cores[principal].exportReview(after)});assert.equal(result.kind,"reviewAdmission");assert.equal(result.admission.kind,"durable");receipts++;return result.admission;};
   const submitDocument=async(principal,after="0")=>{for(const group of cores[principal].writerGroupsV2(after).groups){const outcome=await channels[principal].request({kind:"submit",group});assert.equal(outcome.kind,"durable");}};
   try{
-   server=await start(executable,[...paths,"127.0.0.1:0"]);
+   server=await startReviewHost(executable,[...paths,"127.0.0.1:0"]);
    ({channel:legacy}=await connect("carol",false));assert.equal((await legacy.request({kind:"reviewSync",cursor:null})).code,"invalid_request");modeRefusals++;
-   ({channel:owner}=await connect("functional-owner"));
+   ({channel:owner}=await connect("functional-owner"));const oldPage=await owner.request({kind:"reviewSync",cursor:null});assert.equal(oldPage.page.currentRole,undefined);assert.equal((await owner.request({kind:"reviewCursorProof",cursor:oldPage.page.cursor})).code,"invalid_request");
    for(const principal of ["alice","bob","carol"]){
     const {channel,authenticated}=await connect(principal);channels[principal]=channel;
     const doc=await channel.request({kind:principal==="carol"?"registerObserver":"register"});assert.equal(doc.kind,principal==="carol"?"observerRegistered":"registered");
@@ -80,7 +81,7 @@ export async function probeReviewRelay(directory,executable){
    // An old channel never receives an unnegotiated review event family.
    await legacy.request({kind:"sync"});assert.ok(!legacy.events.some(event=>event.kind==="reviewChanged"));assert.ok(channels.bob.events.some(event=>event.kind==="reviewChanged"));
    const saved={};for(const principal of ["alice","bob","carol"]){const core=cores[principal];saved[principal]={document:core.checkpointJson(),review:core.reviewCheckpoint()};save(join(temporary,`${principal}.paired.json`),JSON.stringify(saved[principal]));channels[principal].close();core.dispose();}
-   legacy.close();owner.close();await server.stop();server=await start(executable,[...paths,"127.0.0.1:0"]);
+   legacy.close();owner.close();await server.stop();server=await startReviewHost(executable,[...paths,"127.0.0.1:0"]);
    for(const principal of ["alice","bob","carol"]){const {channel}=await connect(principal);channels[principal]=channel;const identity=identities[principal];const resumed=await channel.request({kind:principal==="carol"?"resumeObserver":"resume",writer:identity.document.lease.writer,credential:identity.document.credential});assert.equal(resumed.kind,principal==="carol"?"observerResumed":"resumed");assert.equal((await channel.request({kind:"reviewResume",actor:policies[principal].actor,credential:identity.review.credential})).kind,"reviewResumed");
     const restore=natural?profile.restore_document_typing.bind(profile):profile.restore.bind(profile);const core=facade(restore("room",saved[principal].document));core.enableReview(policies[principal],saved[principal].review);cores[principal]=core;assert.equal(core.checkpointJson(),saved[principal].document);assert.equal(core.reviewCheckpoint(),saved[principal].review);restores++;await syncDocument(principal);await syncReview(principal);
    }

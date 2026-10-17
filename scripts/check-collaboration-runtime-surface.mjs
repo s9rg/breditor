@@ -12,6 +12,7 @@ export const documentToolsMethods=Object.freeze(["document_tools_version","docum
 export const documentPresenceMethods=Object.freeze(["document_presence_version","document_presence_frame","resolve_document_presence"]);
 export const clipboardInterchangeMethods=Object.freeze(["clipboard_interchange_version","admit_clipboard_root","validate_clipboard"]);
 export const reviewMethods=Object.freeze(["review_version","review_enabled","enable_review","capture_review_anchor","resolve_review_anchor","review_view_json","dispatch_review","undo_review","redo_review","set_review_access","receive_review","export_review","review_checkpoint"]);
+export const reviewTransportMethods=Object.freeze(["review_transport_version","local_review_clock","review_writer_clock","retained_review_receipt","export_review_through"]);
 export const versionMethods=Object.freeze(["document_versions_version","capture_document_version","read_document_version","compare_document_version","prepare_document_version_restore","apply_document_version_restore"]);
 /** Generated glue must expose only configured factories, opaque observations and guarded owners. */
 export function admitApplicationSurface(module,binary,declarations){
@@ -38,6 +39,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["clipboard_text_policy_version","project_clipboard_text"])assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard text policy capability ${name}`);
  for(const name of clipboardInterchangeMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard interchange capability ${name}`);
  for(const name of reviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native review capability ${name}`);
+ for(const name of reviewTransportMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native review lineage capability ${name}`);
  for(const name of versionMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native version capability ${name}`);
  for(const name of ["document_json","version_json","comparison_json"])assert.equal(typeof module.SharedVersionRestorePlan.prototype[name],"function",`Missing native version proof read ${name}`);
  for(const name of documentOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document-selection capability ${name}`);

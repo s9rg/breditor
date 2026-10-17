@@ -4,7 +4,7 @@ import type {SharedWriterGroupsV2} from "./types.js";
 import type {RichClipboardTextProjection} from "./types.js";
 import type {SharedSelectionPolicy,SharedEditorView} from "./types.js";
 import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
-import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView} from "./review_types.js";
+import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
 import {sharedProtocolLanguage} from "./protocol.js";
@@ -85,6 +85,14 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Host-authenticated policy is separate from event bytes; historical catchup needs its verified original grant. Pending is not an ack: retain/retry it. */
  receiveReview(frame:string,verified:SharedReviewPolicy,guard?:SharedReviewGuard):SharedReviewImportOutcome{this.#checkReview(guard);return this.#run("remote",(raw,o)=>{const result=JSON.parse(raw.receive_review!(o,JSON.stringify(verified),frame)) as SharedReviewImportOutcome;if(result.kind==="applied")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
  exportReview(after="0"):string{return this.#requireReview().export_review!(this.#observation,after);}
+ /** Additive capability; old comment-only runtimes never synthesize transport proofs in JS. */
+ supportsReviewTransport():boolean{const r=this.#live();return this.supportsReview()&&r.review_transport_version?.()==="1"&&[r.local_review_clock,r.review_writer_clock,r.retained_review_receipt,r.export_review_through].every(f=>typeof f==="function");}
+ #reviewTransportOwner():SharedRustOwner{const r=this.#requireReview();if(!this.supportsReviewTransport())throw new SharedEditorError("review_transport_unavailable","Use matching native review lineage proofs");return r;}
+ localReviewClock():SharedReviewWriterClock{return JSON.parse(this.#reviewTransportOwner().local_review_clock!(this.#observation)) as SharedReviewWriterClock;}
+ exportReviewThrough(after:string,through:string):string{return this.#reviewTransportOwner().export_review_through!(this.#observation,after,through);}
+ reviewWriterClock(actor:string,principal:string,through?:string):SharedReviewWriterClock{return JSON.parse(this.#reviewTransportOwner().review_writer_clock!(this.#observation,JSON.stringify({actor,principal,...(through===undefined?{}:{through})}))) as SharedReviewWriterClock;}
+ /** Proves only already-retained events. It never imports unknown input or acknowledges durability. */
+ retainedReviewReceipt(frame:string,verified:SharedReviewPolicy):SharedReviewBatchReceipt{return JSON.parse(this.#reviewTransportOwner().retained_review_receipt!(this.#observation,JSON.stringify(verified),frame)) as SharedReviewBatchReceipt;}
  reviewCheckpoint(guard?:SharedReviewGuard):string{this.#checkReview(guard);return this.#requireReview().review_checkpoint!(this.#observation);}
  supportsDocumentVersions():boolean{const raw=this.#live();return raw.document_versions_version?.()==="1"&&[raw.capture_document_version,raw.read_document_version,raw.compare_document_version,raw.prepare_document_version_restore,raw.apply_document_version_restore].every(f=>typeof f==="function");}
  #versionOwner():SharedRustOwner{if(!this.supportsDocumentVersions())throw new SharedEditorError("versions_unavailable","Use complete matching native document versions");return this.#live();}

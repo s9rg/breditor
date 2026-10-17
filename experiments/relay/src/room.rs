@@ -17,8 +17,9 @@ mod observers;
 mod review;
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use review::{
-    DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewDescriptor,
-    ReviewLease, ReviewRegistration, ReviewRole, ReviewSource, StoredReviewBatch,
+    DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
+    ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
+    StoredReviewBatch,
 };
 #[cfg(test)]
 mod layout_v3_tests;

@@ -1,4 +1,5 @@
 //! Explicit optional comment lane. Original document views, journals and constructor exports stay closed.
+mod batch_receipt;
 mod capture_anchor;
 mod dispatch_review;
 mod enable_review;
@@ -9,6 +10,7 @@ mod review_checkpoint;
 mod review_view;
 mod set_review_access;
 mod undo_review;
+mod writer_clock;
 use super::{RichReplicaProbe, RichSharedObservation, error};
 use crate::{Error, rich_replica::SharedObservation};
 use breditor_core::rich_content::review::{

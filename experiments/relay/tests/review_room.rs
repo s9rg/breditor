@@ -232,6 +232,11 @@ fn offline_comments_replies_and_independent_undo_recover_with_original_repacked_
     a.undo_review_guarded(&a.observe()?, &mut ar, &observed)?;
     let second_frame = ar.export_frame(1)?;
     let second = ack(room.admit_review("alice", &ra.lease, &second_frame)?)?;
+    let proof = room.review_cursor_proof("alice", &cursor)?;
+    assert_eq!(proof.prefixes.len(), 1);
+    assert_eq!(proof.prefixes[0].principal.as_str(), "alice");
+    assert_eq!(proof.prefixes[0].clock.through, "1");
+    assert_eq!(proof.prefixes[0].clock.prefix_digest, first.receipt.prefix_digest);
     receive(&room, "bob", &b, &mut br, Some(&cursor))?;
     assert_eq!(br.view()?.threads[0].messages.len(), 2);
     assert_eq!(room.catchup("owner")?, document);
@@ -380,11 +385,13 @@ fn live_grants_fence_old_sockets_but_historical_moderator_admission_survives_rev
     assert!(room.admit_review("bob", &lease, &br.export_frame(1)?).is_err());
     assert_eq!(fs::read(&files.path)?, before);
     room.grant("owner", "bob", None)?;
+    assert!(room.review_cursor_proof("bob", &room.review_catchup("alice", None)?.cursor).is_err());
     assert!(room.review_catchup("bob", None).is_err());
     drop(room);
     let (room, _) = Room::open(&files.path)?;
     let page = room.review_catchup("alice", None)?;
     assert_eq!(page.batches[1].source.role, ReviewRole::Moderator);
+    assert_eq!(page.current_role, Some(ReviewRole::Comment));
     receive(&room, "alice", &a, &mut ar, None)?;
     assert_eq!(ar.view()?.threads[0].messages[0].versions[0].text.as_deref(), Some("Moderated"));
     Ok(())

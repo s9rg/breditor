@@ -87,13 +87,28 @@ impl ReviewSession {
     /// # Errors
     /// Serialization or a single over-budget event rejects; no partial event is returned.
     pub fn export_frame(&self, after: u64) -> Result<String, ReviewError> {
-        if after > event::clock(&self.events).get(&self.policy.actor).map_or(0, |c| c.0) {
+        self.export_frame_through(
+            after,
+            event::clock(&self.events).get(&self.policy.actor).map_or(0, |c| c.0),
+        )
+    }
+    /// Export a bounded prefix of a previously captured authored end, excluding later actions.
+    /// # Errors
+    /// Nonexistent/reversed ranges, serialization and the unchanged native frame budgets reject.
+    pub fn export_frame_through(&self, after: u64, through: u64) -> Result<String, ReviewError> {
+        if after > through
+            || through > event::clock(&self.events).get(&self.policy.actor).map_or(0, |c| c.0)
+        {
             return Err(ReviewError::Contract("review export starts beyond local stream"));
         }
         let events = self
             .events
             .iter()
-            .filter(|e| e.id.actor == self.policy.actor && e.id.counter.0 > after)
+            .filter(|e| {
+                e.id.actor == self.policy.actor
+                    && e.id.counter.0 > after
+                    && e.id.counter.0 <= through
+            })
             .cloned()
             .collect::<Vec<_>>();
         let mut frame = Frame {
@@ -113,7 +128,11 @@ impl ReviewSession {
             }
         }
         if frame.events.is_empty()
-            && self.events.iter().any(|e| e.id.actor == self.policy.actor && e.id.counter.0 > after)
+            && self.events.iter().any(|e| {
+                e.id.actor == self.policy.actor
+                    && e.id.counter.0 > after
+                    && e.id.counter.0 <= through
+            })
         {
             return Err(ReviewError::Limit("event frame bytes"));
         }

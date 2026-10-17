@@ -126,4 +126,24 @@ pub struct ReviewCatchup {
     pub more: bool,
     /// Original acceptance order; never arbitrary full-state imports or invented role grants.
     pub batches: Vec<StoredReviewBatch>,
+    /// Current account capability, separate from every original historical source grant.
+    pub current_role: Option<ReviewRole>,
+}
+/// Proof that a restored cursor does not skip missing or divergent native metadata prefixes.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewCursorProof {
+    /// Exact durable log and accepted review sequence.
+    pub cursor: ReviewCursor,
+    /// One canonical accepted prefix per actor through this sequence, including source principal.
+    pub prefixes: Vec<ReviewPrefixProof>,
+}
+/// Historical accepted actor prefix; independent of the account's current access.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewPrefixProof {
+    /// Account bound to the registered exclusive actor.
+    pub principal: ReviewPrincipalId,
+    /// Canonical native prefix, never a browser-reconstructed hash.
+    pub clock: breditor_collab_feasibility::review::ReviewWriterClock,
 }

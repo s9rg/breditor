@@ -1,0 +1,68 @@
+{
+  "format": "breditor/rich-review-relay-sdk-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "8c025c5",
+  "status": "automatic-writer-review-sync-and-paired-progress-functional-goal-active",
+  "pushed": false,
+  "published": false,
+  "actualWasmSha256": "8a2141761e5dce0c0efb0ec7ab8eedbb969be46ce0b12f64bab689a30560b107",
+  "nativeRelaySha256": "28fb0c5f3b97d0422990b2e8751024941c84ccd945f1aeff895a2a739b1e2819",
+  "checks": {
+    "nativeReviewHistoryAndTransport": { "passed": 18, "failed": 0 },
+    "fullNativeRelayWithServer": { "passed": 38, "failed": 0 },
+    "strictCoreTransportClippy": "passed",
+    "strictRelayAllTargetClippy": "passed",
+    "strictApplicationWasmClippy": "passed",
+    "collaborationAndEditorTypes": "passed",
+    "existingEditorSdk": { "passed": 269, "failed": 0, "files": 32 },
+    "topLevelOptionalExports": "verified by actual @breditor/editor collaboration entry import",
+    "runtimeSurfaceTests": { "passed": 22, "failed": 0 },
+    "runtimeBuildAndPromotionTests": { "passed": 39, "failed": 0 },
+    "actualApplicationWasmSurface": { "javascriptExports": 6, "wasmExports": 164, "researchExports": false },
+    "automaticSdk": {
+      "command": "node scripts/probe-review-relay-sdk.mjs packages/breditor-collaboration/dist/runtime target/relay-native/release/examples/review_functional",
+      "passed": true,
+      "trials": 4,
+      "selectionPolicies": ["original", "document-v1"],
+      "historyPolicies": ["explicit", "typing-v1"],
+      "exactPairedReopens": 12,
+      "atomicSaveRefusals": 4,
+      "missingNativeCursorPrefixRefusals": 4,
+      "automaticAbruptHostRestarts": 4,
+      "futureHistorySteps": 16,
+      "guardedVersionRestores": 4,
+      "writeToReadOnlyTransitions": 4,
+      "escapedMultiPageCatchup": true,
+      "apiImplementations": "actual exported SDK review and document sync adapters; actual Wasm and durable authenticated host; synthetic IndexedDB/Web Locks"
+    },
+    "originalReviewWireRegression": { "passed": true, "trials": 2, "exactPairedRestores": 6, "futureHistorySteps": 8, "originalResponseShapesAndNewProofRefusal": true },
+    "existingSdkRegression": { "passed": true, "trials": 4, "exactRestores": 4, "exactFuturePairedCheckpoints": 24 },
+    "existingLocalOnlyPairedStorage": { "passed": true, "trials": 4, "exactReopens": 12, "atomicAbortChecks": 4, "leaseChecks": 12 },
+    "borrowedVanillaAndReactControls": { "passed": true }
+  },
+  "verificationNotes": [
+    "The first editor Vitest invocation ran from the repository root with a package-relative include pattern. It selected unrelated browser diagnostics and failed with file-URL/environment errors (31 failed files, 43 failed tests). Running the package command from packages/breditor-editor correctly selected and passed all 269 SDK tests in 32 files. The failed root invocation is not claimed as passing broad diagnostics.",
+    "Formatting verification is scoped to changed Rust files; the previously recorded unrelated document_presence.rs formatting difference remains unchanged."
+  ],
+  "contracts": [
+    "Complete additive native proof capability; no JavaScript causal ledger, prefix hash reconstruction or metadata reset fallback.",
+    "Native export through a captured authored end excludes later review actions; retained receipts never import unknown events or grant server durability.",
+    "reviewLineageV1 requires reviewV1 and explicitly selects current-role and cursor-proof responses. Original reviewV1 response shapes remain unchanged.",
+    "Separate closed paired relay storage family contains both exact journals, local immutable versions and nonsecret progress in one atomic record; no live grants or credentials.",
+    "The durable progress getter never exposes an attempted or aborted cursor. Save failures retain native state and previous committed recovery for explicit retry.",
+    "Restored cursor prefixes are checked against actual retained Rust events before catchup can be skipped; accepted own prefixes and document writer lineage are independently verified.",
+    "The metadata adapter borrows the paired session and does not submit document edits or acquire document author leases; comment-only observers remain non-authoring document identities.",
+    "Transient network errors retry within configured bounds; fenced/denied writers do not automatically resume. Explicit reconnect may retain read-only catchup after metadata-write revocation.",
+    "Registration requires durable separate host credential storage before authoring; collisions never rename pending history.",
+    "No stored document/review event family is reinterpreted and no default editor imports or publication state changes."
+  ],
+  "remaining": [
+    "initial pure-reader automatic metadata registration without any temporary write grant",
+    "original quote capture and presentation",
+    "attributed native suggestions and atomic server-finalized queued Accept/Reject",
+    "authenticated shared immutable version catalog",
+    "clean-installed combined review UI/offline/version acceptance",
+    "physical browser/IME/accessibility, performance, resource-limited admission and final V1 deployment/release qualification"
+  ]
+}

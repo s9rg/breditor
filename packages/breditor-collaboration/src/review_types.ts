@@ -35,6 +35,10 @@ export interface SharedReviewGuard {
  documentRevision:string;reviewRevision:string;
 }
 export interface SharedReviewSnapshot extends SharedReviewGuard {view:SharedReviewView}
+/** Native lineage proof, not a source permission or durable server acknowledgement. */
+export interface SharedReviewWriterClock {actor:string;through:string;prefixDigest:string}
+/** Inclusive positive review event range; distinct from document operation windows. */
+export interface SharedReviewBatchReceipt extends SharedReviewWriterClock {from:string;batchDigest:string}
 /** Additive complete native capability; old owners remain usable but cannot emulate comments in JS. */
 export interface SharedReviewRustCapability {
  review_version?():string;
@@ -50,4 +54,9 @@ export interface SharedReviewRustCapability {
  receive_review?(observation:unknown,verifiedPolicy:string,frame:string):string;
  export_review?(observation:unknown,after:string):string;
  review_checkpoint?(observation:unknown):string;
+ review_transport_version?():string;
+ local_review_clock?(observation:unknown):string;
+ review_writer_clock?(observation:unknown,input:string):string;
+ retained_review_receipt?(observation:unknown,hostPolicy:string,frame:string):string;
+ export_review_through?(observation:unknown,after:string,through:string):string;
 }

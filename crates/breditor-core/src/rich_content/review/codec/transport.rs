@@ -63,6 +63,28 @@ pub enum ReviewBatchPreparation {
     Prepared(Box<PreparedReviewBatch>),
 }
 impl ReviewSession {
+    /// Read the local writer's exact prefix without parsing recovery data in an adapter.
+    /// # Errors
+    /// An impossible retained stream rejects without changing metadata or policy.
+    pub fn local_writer_clock(&self) -> Result<ReviewWriterClock, ReviewError> {
+        self.writer_clock(&self.policy.actor, &self.policy.principal)
+    }
+    /// Prove the canonical batch was already retained. This is a lineage read, not source
+    /// authentication or new document-anchor admission. Unknown events must arrive through
+    /// the separately authenticated native receive path first; this never imports them.
+    /// # Errors
+    /// Stale/foreign guards, malformed input, forks, empty or unretained events reject purely.
+    pub fn retained_batch_receipt(
+        &self,
+        observed: &ReviewObservation,
+        verified: &ReviewActorPolicy,
+        input: &str,
+    ) -> Result<ReviewBatchReceipt, ReviewError> {
+        match self.prepare_authorized_batch(observed, verified, input, |_| Ok(()))? {
+            ReviewBatchPreparation::Duplicate(receipt) => Ok(receipt),
+            _ => Err(ReviewError::Contract("review receipt requires retained events")),
+        }
+    }
     /// Read the exact admitted source prefix, with separately authenticated principal binding.
     /// # Errors
     /// A mismatched principal or impossible retained stream rejects; no role grant is inferred.

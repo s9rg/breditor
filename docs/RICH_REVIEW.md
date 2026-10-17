@@ -198,10 +198,10 @@ both revisions. Matching revision strings from another owner, or a guard copied
 through JSON, cannot authorize a queued request. This is a source-state guard,
 not an account credential. Store declared native recovery records, not UI guards.
 
-The native reference host now has opt-in authenticated comment transport, described
-below. An automatic review SDK sync adapter and atomic paired storage of catchup
-progress remain unfinished, along with a shared version catalog and clean-installed
-mixed acceptance. Original-quote capture/presentation also remains review UI work.
+The native reference host now has opt-in authenticated comment transport and the
+SDK has an automatic paired-storage adapter, described below. A shared version
+catalog and clean-installed mixed acceptance remain unfinished. Original-quote
+capture/presentation also remains review UI work.
 Current control tests use actual Wasm with synthetic DOM, IndexedDB and Web Locks;
 physical browser qualification remains a later release phase.
 
@@ -269,8 +269,79 @@ The actual-Wasm/socket fixture passes both original explicit and document natura
 history: six exact paired restores, eight future history steps, 16 durable review
 receipts, four pending-dependency responses, moderation under historical grants,
 guarded version restore preserving comments, and permission/capability refusals.
-It explicitly drives wire requests and manual checkpoint persistence. Automatic
-review SDK reconnect/retry, paired IndexedDB cursor persistence and clean-installed
-review acceptance remain subsequent functional work. Public deployment still
+It explicitly drives wire requests and manual checkpoint persistence. The SDK
+checkpoint below adds automatic synchronization and paired progress. Public deployment still
 needs the existing resource-limited import, identity/TLS and storage-lifecycle
 qualification; this loopback host does not establish production readiness.
+
+### Automatic review synchronization
+
+`registerSharedReviewWriter` and `SharedReviewRelaySync` are exported from the
+optional collaboration entry, including `@breditor/editor/collaboration`. The
+registration helper waits for the host's separate credential save before returning
+an author identity. It can use an already reserved editor document writer or
+reserve a permanent observation-only document writer for a comment-only account.
+Failed registration saves can consume reservations; they never silently rename
+unsent events or replace an existing actor's credential.
+
+The adapter borrows one `SharedReviewPersistentSession` and its exact core. It
+submits metadata only, so an existing document relay can run beside it without
+giving comment-only users document-edit authority. It receives document catchup
+too, verifies document-writer lineage before importing it, and retries pending
+comments when their document dependencies reach the server. An optional
+`flushDocument` callback adds a host-selected document-save barrier. Disposal stops
+networking, not either native owner or persistence lease; dispose networking before
+closing the borrowed session.
+
+Native `review_transport_version` capability 1 supplies exact local/historical
+clocks, receipts for already-retained batches and export through a captured event
+end. Older comment runtimes still support their original review API but cannot
+simulate these transport proofs in JavaScript. Unknown own-writer suffixes,
+divergent prefixes, mismatched receipts and server rollback stop sync and retain
+local recovery. Outbound native frames are saved locally before submission. A
+flush uses its captured review end, excluding later review actions from that
+batch. Requests, flush waiters, socket bytes and retry delays remain bounded.
+
+The additional socket capability `reviewLineageV1` explicitly selects current-role
+responses and a native cursor-prefix proof. It requires `reviewV1`; original
+`reviewV1` clients keep their original authenticated/catchup response shapes and
+cannot call the new proof request. Historical source grants remain independent
+of current permissions. A revoked comment writer does not automatically steal its
+lease back; an explicit reconnect can retain read-only catchup when document-read
+permission remains. Initial registration currently needs Comment/Moderator access.
+Automatic initial pure-reader registration without any prior metadata-writer
+reservation remains integration work; it must not require a temporary write grant.
+
+Setting `SharedReviewSessionOptions.relay` selects the distinct
+`breditor/shared-review-relay-checkpoint-record` V1 storage family. It holds both
+exact native journals, the local immutable version catalog, nonsecret relay
+binding, catchup cursor and native accepted prefix in one IndexedDB transaction.
+Credentials and live roles are excluded. Neither local-only paired V1 nor old
+document-only readers are silently upgraded or allowed to omit this progress.
+The unchanged 32 MiB escaped record ceiling includes the new fields.
+
+The durable progress getter changes only after transaction completion. An aborted
+save retains the preceding complete record and cursor, while both in-memory
+native histories remain readable for retry/export. Recovery/export objects do not
+expose mutable internal binding objects. Before using a restored cursor to skip
+pages, the adapter checks every server prefix through that sequence against the
+actual restored Rust sidecar. A valid but incomplete sidecar cannot silently skip
+missing peer discussions just because its cursor looks well formed. Restore
+never resets metadata or manufactures missing local author history.
+
+Reproduce automatic integration with the matching runtime and host:
+
+```sh
+CARGO_INCREMENTAL=0 node scripts/build-collaboration-runtime.mjs
+node_modules/.bin/tsc -p packages/breditor-collaboration/tsconfig.json
+node scripts/probe-review-relay-sdk.mjs packages/breditor-collaboration/dist/runtime \
+  target/relay-native/release/examples/review_functional
+```
+
+The actual-Wasm SDK probe covers both selection/history policies: twelve exact
+paired reopens, four abrupt host restarts with automatic reconnect, four atomic
+save failures/retries, four missing-native-prefix refusals, sixteen future history
+steps, four guarded version restores, multi-page escaped catchup and four
+write-to-read-only transitions. IndexedDB and Web Locks are synthetic. Clean-installed
+review/UI acceptance, original quotes, initial pure readers, authenticated shared
+versions and suggestions remain part of the active goal.

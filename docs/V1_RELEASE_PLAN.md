@@ -64,6 +64,13 @@ requests; automatic review SDK sync/cursor persistence, suggestions and the shar
 version catalog remain functional work. The owner selected queued offline review
 decisions finalized once in authenticated server order; that suggestion path is
 not implemented yet.
+The [automatic review sync checkpoint](qualification/2026-10-17-rich-review-relay-sdk.json)
+adds native lineage proofs, separate capability negotiation, paired atomic cursor
+storage and the exported SDK registration/reconnect/retry adapter. Real Wasm and
+the durable host pass offline, failed-save, restart, exact-recovery and selective
+history workflows with synthetic IndexedDB/locks. Shared versions, suggestions,
+original quotes, initial pure-reader registration and clean-installed mixed review
+acceptance remain open; no V1 gate is promoted.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

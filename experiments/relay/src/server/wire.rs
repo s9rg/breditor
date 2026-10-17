@@ -58,6 +58,9 @@ pub(super) enum Request {
     ReviewClock {
         actor: breditor_collab_feasibility::review::ReviewActorId,
     },
+    ReviewCursorProof {
+        cursor: crate::ReviewCursor,
+    },
     ReviewGrant {
         principal: String,
         role: Option<crate::ReviewRole>,

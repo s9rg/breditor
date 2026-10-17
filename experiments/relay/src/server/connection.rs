@@ -23,6 +23,7 @@ struct ConnectionState {
     observer: bool,
     review_lease: Option<ReviewLease>,
     review_enabled: bool,
+    review_lineage: bool,
     presence: PresenceMode,
 }
 impl ConnectionState {
@@ -74,6 +75,7 @@ async fn dispatch(
         | Request::ReviewSubmit { .. }
         | Request::ReviewSync { .. }
         | Request::ReviewClock { .. }
+        | Request::ReviewCursorProof { .. }
         | Request::ReviewGrant { .. }) => review::dispatch(host, &principal, state, request).await,
         Request::Presence { sequence, frame } => {
             if state.presence != PresenceMode::Original || state.observer {
@@ -187,23 +189,27 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return None;
     };
-    if capabilities.len() > 4
+    if capabilities.len() > 5
         || capabilities.iter().any(|c| {
             c != "assets"
                 && c != "presence"
                 && c != "writerTransportV2"
                 && c != "documentPresenceV1"
                 && c != "reviewV1"
+                && c != "reviewLineageV1"
         })
         || capabilities.iter().any(|c| c == "presence")
             && capabilities.iter().any(|c| c == "documentPresenceV1")
         || capabilities.iter().collect::<std::collections::BTreeSet<_>>().len()
             != capabilities.len()
+        || capabilities.iter().any(|c| c == "reviewLineageV1")
+            && !capabilities.iter().any(|c| c == "reviewV1")
     {
         return None;
     }
     let assets_enabled = host.assets.is_some() && capabilities.iter().any(|c| c == "assets");
     let review_enabled = capabilities.iter().any(|c| c == "reviewV1");
+    let review_lineage = capabilities.iter().any(|c| c == "reviewLineageV1");
     let presence = if capabilities.iter().any(|c| c == "documentPresenceV1") {
         PresenceMode::DocumentV1
     } else if capabilities.iter().any(|c| c == "presence") {
@@ -223,6 +229,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 if presence==PresenceMode::DocumentV1&&room.writer_transport_version()!=2 {return Err(Error::Contract("document presence requires transport V2"));}
                 let mut response=json!({"kind":"authenticated","frame":frame,"descriptor":room.descriptor(&p)?,"capabilities":supported});
                 if review_enabled { response["reviewDescriptor"]=serde_json::to_value(room.review_descriptor(&p)?)?; }
+                if review_lineage {response["reviewRole"]=serde_json::to_value(room.review_permissions(&p)?)?;}
                 Ok(response)
             }).await
         }
@@ -247,6 +254,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
             observer: false,
             review_lease: None,
             review_enabled,
+            review_lineage,
             presence,
         },
     ))
