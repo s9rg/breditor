@@ -1,4 +1,5 @@
 //! Separate exact recovery and owned-stream import; no document checkpoint grammar is widened.
+mod transport;
 use super::{
     ReviewActorId, ReviewActorPolicy, ReviewBinding, ReviewError, ReviewEventId,
     ReviewImportOutcome, ReviewObservation, ReviewSession,
@@ -7,6 +8,9 @@ use super::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+pub use transport::{
+    PreparedReviewBatch, ReviewBatchPreparation, ReviewBatchReceipt, ReviewWriterClock,
+};
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]

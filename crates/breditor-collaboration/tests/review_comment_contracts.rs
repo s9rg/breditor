@@ -1,10 +1,102 @@
 //! Real native document anchors, independent comment history and staged review admission.
 use breditor_collaboration::rich_replica::{
-    Command, ReviewAnchorLoss, ReviewAnchorResolution, ReviewAnchorTarget, RichReplica,
-    SharedRichProfile,
+    Command, DocumentReviewBatchPreparation as Preparation, ReviewAnchorLoss,
+    ReviewAnchorResolution, ReviewAnchorTarget, RichReplica, SharedRichProfile,
     actions::{DeleteBlock, InsertText},
     selection::Selection,
 };
+
+#[test]
+fn relay_preparation_defers_unknown_document_edits_without_publishing_metadata() -> Result {
+    let (_, mut a, mut b) = peers()?;
+    let mut ar = a.create_review_session(policy("comments-a", "alice")?)?;
+    let mut br = b.create_review_session(policy("comments-b", "bob")?)?;
+    b.apply(vec![Command::InsertText(InsertText {
+        block: "p".into(),
+        offset: 0,
+        text: "Before comment ".into(),
+    })])?;
+    let packet = anchor(&b)?;
+    assert!(!a.review_anchor_missing_dependencies(&packet)?.is_empty());
+    create(&b, &mut br, packet)?;
+    let input = br.export_frame(0)?;
+    let before = (a.checkpoint()?, ar.checkpoint_json()?);
+    assert!(matches!(
+        a.prepare_review_batch_guarded(
+            &a.observe()?,
+            &ar,
+            &ar.observe(),
+            &policy("comments-b", "bob")?,
+            &input
+        )?,
+        Preparation::PendingDocument(_)
+    ));
+    assert_eq!((a.checkpoint()?, ar.checkpoint_json()?), before);
+    a.receive_frame(&b.update_frame()?)?;
+    let Preparation::Prepared(prepared) = a.prepare_review_batch_guarded(
+        &a.observe()?,
+        &ar,
+        &ar.observe(),
+        &policy("comments-b", "bob")?,
+        &input,
+    )?
+    else {
+        return Err("ready source must prepare".into());
+    };
+    let receipt = prepared.receipt().clone();
+    let accepted_document = a.checkpoint()?;
+    assert_eq!(ar.checkpoint_json()?, before.1);
+    assert_eq!(a.commit_review_batch(&mut ar, *prepared)?, receipt);
+    assert_eq!(a.checkpoint()?, accepted_document);
+    assert!(matches!(
+        a.review_view_guarded(&a.observe()?, &ar)?.threads[0].targets[0].resolution,
+        ReviewAnchorResolution::Resolved { .. }
+    ));
+    assert!(
+        matches!(a.prepare_review_batch_guarded(&a.observe()?,&ar,&ar.observe(),&policy("comments-b","bob")?,&input)?,Preparation::Duplicate(r) if r==receipt)
+    );
+    Ok(())
+}
+
+#[test]
+fn a_changed_or_foreign_document_cannot_publish_prepared_review_metadata() -> Result {
+    let (_, mut a, b) = peers()?;
+    let mut ar = a.create_review_session(policy("comments-a", "alice")?)?;
+    let mut br = b.create_review_session(policy("comments-b", "bob")?)?;
+    create(&b, &mut br, anchor(&b)?)?;
+    let input = br.export_frame(0)?;
+    let Preparation::Prepared(p) = a.prepare_review_batch_guarded(
+        &a.observe()?,
+        &ar,
+        &ar.observe(),
+        &policy("comments-b", "bob")?,
+        &input,
+    )?
+    else {
+        return Err("preparation".into());
+    };
+    let before = ar.checkpoint_json()?;
+    assert!(b.commit_review_batch(&mut ar, *p).is_err());
+    assert_eq!(ar.checkpoint_json()?, before);
+    let Preparation::Prepared(p) = a.prepare_review_batch_guarded(
+        &a.observe()?,
+        &ar,
+        &ar.observe(),
+        &policy("comments-b", "bob")?,
+        &input,
+    )?
+    else {
+        return Err("preparation".into());
+    };
+    a.apply(vec![Command::InsertText(InsertText {
+        block: "p".into(),
+        offset: 0,
+        text: "Intervening ".into(),
+    })])?;
+    assert!(a.commit_review_batch(&mut ar, *p).is_err());
+    assert_eq!(ar.checkpoint_json()?, before);
+    Ok(())
+}
 use breditor_core::rich_content::review::{
     ReviewAccess, ReviewActorId, ReviewActorPolicy, ReviewImportOutcome, ReviewMessageId,
     ReviewOutcome, ReviewPrincipalId, ReviewSession, ReviewThreadId,

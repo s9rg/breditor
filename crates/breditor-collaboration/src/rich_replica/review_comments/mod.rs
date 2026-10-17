@@ -1,6 +1,8 @@
 //! Document-bound comment admission; metadata never acquires a second document or selection owner.
+mod commit_review_batch;
 mod create_review_session;
 mod dispatch_review;
+mod prepare_review_batch;
 mod receive_review;
 mod redo_review;
 mod restore_review;
@@ -10,6 +12,7 @@ mod undo_review;
 use super::{ReviewAnchorResolution, RichReplica};
 use crate::Error;
 use breditor_core::rich_content::review::{ReviewBinding, ReviewError, ReviewSession};
+pub use prepare_review_batch::{DocumentReviewBatchPreparation, PreparedDocumentReviewBatch};
 pub use review_view::{ResolvedReviewAnchor, ResolvedReviewThread, ResolvedReviewView};
 
 impl RichReplica {

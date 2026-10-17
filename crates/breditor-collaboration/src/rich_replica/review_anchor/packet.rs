@@ -38,6 +38,30 @@ pub(super) enum Anchors {
 }
 
 impl Packet {
+    pub fn missing(
+        &self,
+        owner: &RichReplica,
+    ) -> Result<Vec<super::super::WriterDependency>, Error> {
+        if self.ready(owner)? {
+            return Ok(vec![]);
+        }
+        let current = owner.doc.state_vv();
+        let mut missing = vec![];
+        for clock in &self.clocks {
+            let writer = super::super::session::writer_id(&clock.writer)?;
+            let counter = clock
+                .counter
+                .parse::<i32>()
+                .map_err(|_| Error::Contract("review anchor causal clock"))?;
+            if current.get(&writer).copied().unwrap_or(0) < counter {
+                missing.push(super::super::WriterDependency {
+                    writer: clock.writer.clone(),
+                    counter: clock.counter.clone(),
+                });
+            }
+        }
+        Ok(missing)
+    }
     pub fn capture(owner: &RichReplica, anchors: Anchors) -> Self {
         Self {
             format: "breditor/shared-review-anchor".into(),

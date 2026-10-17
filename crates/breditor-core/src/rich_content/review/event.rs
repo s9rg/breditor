@@ -35,7 +35,7 @@ pub(super) fn genesis(
 ) -> Result<String, ReviewError> {
     hash(b"breditor/review-stream/1\0", &serde_json::to_vec(&(binding, actor, principal))?)
 }
-fn hash(domain: &[u8], bytes: &[u8]) -> Result<String, ReviewError> {
+pub(super) fn hash(domain: &[u8], bytes: &[u8]) -> Result<String, ReviewError> {
     use sha2::{Digest, Sha256};
     use std::fmt::Write as _;
     let digest = Sha256::new().chain_update(domain).chain_update(bytes).finalize();

@@ -123,7 +123,10 @@ pub use presence::PresenceResolution;
 pub use presence::{DocumentPresenceResolution, DocumentPresenceSelection};
 pub use profile::SharedRichProfile;
 pub use review_anchor::{ReviewAnchorLoss, ReviewAnchorResolution, ReviewAnchorTarget};
-pub use review_comments::{ResolvedReviewAnchor, ResolvedReviewThread, ResolvedReviewView};
+pub use review_comments::{
+    DocumentReviewBatchPreparation, PreparedDocumentReviewBatch, ResolvedReviewAnchor,
+    ResolvedReviewThread, ResolvedReviewView,
+};
 pub use session::RichReplica;
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{

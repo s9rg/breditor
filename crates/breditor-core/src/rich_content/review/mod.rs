@@ -11,6 +11,9 @@ mod materialize;
 mod session;
 mod types;
 
+pub use codec::{
+    PreparedReviewBatch, ReviewBatchPreparation, ReviewBatchReceipt, ReviewWriterClock,
+};
 pub use identity::{
     ReviewActorId, ReviewEventId, ReviewMessageId, ReviewPrincipalId, ReviewThreadId,
 };
