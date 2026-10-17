@@ -3,6 +3,14 @@ const identity:SharedReviewedHistoryIdentity={binding:"a".repeat(64),principal:"
 function proofBoundary(raw:SharedRustOwner,profile:SharedRustProfile,effect:SharedDocumentSuggestionEffect,acceptance:SharedOwnedSuggestionAcceptance):void {
  const core=new SharedRichEditor(raw,{reviewedHistory:identity});
  const selected:SharedReviewedHistoryIdentity|null=core.reviewedHistoryIdentity();void selected;
+ if(core.supportsSuggestionGeneralText()){
+  const planned=core.planSuggestionGeneralText({kind:"text",anchor:{block:"first",offset:"0",affinity:"after"},focus:{block:"caption",offset:"1",affinity:"before"}},[{text:"Proposed",formatsJson:"[]"}],"durably-reserved",core.view().revision);
+  core.captureSuggestion("Protected range","alice","1",planned,core.view().revision);
+  // @ts-expect-error Planner targets are explicit text ranges, never implicit document scope.
+  core.planSuggestionGeneralText({kind:"document"},[],"reserved");
+  // @ts-expect-error Input rich runs keep formats as native literals, not a browser AST executor.
+  core.planSuggestionGeneralText({kind:"text",anchor:{block:"p",offset:"0",affinity:"after"},focus:{block:"p",offset:"1",affinity:"after"}},[{text:"x",formats:[]}],"reserved");
+ }
  const verified=core.verifySuggestionEffect("native packet",effect);
  if(verified.kind==="verified"){core.checkSuggestionEffect(verified.proof);core.adoptSuggestionHistory(verified.proof,"native packet",acceptance);verified.proof.dispose();}
  const restored:SharedRustOwner=restoreSharedReviewedEditor(profile,"room",core.checkpointJson());void restored;

@@ -271,6 +271,21 @@ namespace planning, proposal revisions and granular character-affine rebasing
 remain functional work; broad physical-browser and production qualification
 remain deferred. No V1 gate or publication status advances.
 
+The [protected text planner checkpoint](qualification/2026-10-17-rich-review-suggestion-range-planner.json)
+derives proposal coverage and exact empty
+paragraph identities in Rust, including identities retained only in hidden
+history. Its separate Wasm/SDK capability returns the existing V1 draft without
+changing source state or enabling a different journal. The ninth stock action
+replaces text across structures; the original same-flow action and older
+suggestion runtimes keep their behavior. All 485 canonical native tests, five
+compatibility contracts, 344 SDK/editor tests and 48 runtime/build guards pass,
+along with strict native/Wasm lint and SDK/editor types. Installed public SDK/React
+entries pass all nine actions under all six policies, including 54 pure previews
+and final owned Accepts, six partial table/image preservation cases with exact
+floors and owned Undo/Redo, and six permanent Reader control regressions.
+Proposal revisions and granular character-affine rebasing remain functional work;
+no package version, publication status or V1 release gate advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

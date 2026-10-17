@@ -6,6 +6,7 @@ mod check_suggestion_preview;
 mod commit_suggestion_effect;
 mod evaluate_commands;
 mod packet;
+mod plan_suggestion_general_text;
 mod prepare_suggestion_effect;
 mod prepare_suggestion_preview;
 mod read_set;

@@ -51,4 +51,7 @@ export interface SharedSuggestionsRustCapability {
  prepare_document_suggestion?(observed:unknown,input:string):SharedNativeSuggestionPreparation;
  check_document_suggestion_preview?(prepared:SharedNativeSuggestionPreparation,suggestionId:string):void;
  retained_writer_receipt_v2?(input:string):string;
+ /** Additive pure namespace planner. Older complete suggestion runtimes keep their V1 meanings. */
+ suggestion_general_text_version?():string;
+ plan_suggestion_general_text?(observed:unknown,input:string):string;
 }

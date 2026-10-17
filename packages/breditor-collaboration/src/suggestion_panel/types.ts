@@ -5,7 +5,7 @@ import type {SharedDocumentSuggestionPreview} from "../suggestion_preview.js";
 import type {SharedSuggestionQueueStatus,SharedSuggestionPublication,SharedSuggestionDecision} from "../suggestions/types.js";
 import type {SharedSuggestionSyncState} from "../suggestions/sync.js";
 import type {RichPresentationModel} from "@breditor/experimental-rich-content/rendering";
-export type SharedSuggestionPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"subscribe"|"supportsDocumentSuggestions"|"prepareSuggestion"|"checkSuggestionPreview">;
+export type SharedSuggestionPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"subscribe"|"supportsDocumentSuggestions"|"prepareSuggestion"|"checkSuggestionPreview">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsSuggestionGeneralText"|"planSuggestionGeneralText">>;
 export interface SharedSuggestionPanelEntry {suggestion:SharedDocumentSuggestionInfo;publication:SharedSuggestionPublication|null;decision:SharedSuggestionDecision|null;local:SharedSuggestionQueueStatus|null}
 /** One exact borrowed source/queue/network pairing. Custom hosts must retain equivalent native,
  * identity and persistence guards; display policy is never server authority. */
@@ -23,6 +23,8 @@ export interface SharedSuggestionComposerField {id:string;label:string;initial?:
 export interface SharedSuggestionComposerContext {
  readonly view:SharedEditorView<SharedSelectionPolicy>;readonly model:RichPresentationModel;
  readonly values:Readonly<Record<string,string>>;allocate(kind:string):string;
+ /** Optional pure native planner bound to the captured selection and revision. No mutation API. */
+ planText?(runs:readonly {text:string;formatsJson:string}[],prefix:string):SharedDocumentSuggestionDraft;
 }
 /** Pure proposal intent builder, not an ordinary toolbar dispatch or mutable document owner. */
 export interface SharedSuggestionComposerAction {

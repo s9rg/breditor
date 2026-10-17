@@ -704,15 +704,15 @@ configuration. Ordinary parent renders preserve the mounted panel, title/action
 drafts and native preview. A new core or `sessionKey` explicitly replaces controls,
 not their borrowed source or pending requests.
 
-Eight standard action builders produce original typed native intents: text
-replacement, formatting, headings, list wrapping, appended table rows/columns,
-image descriptions and captions. Each builder has a separately named source
-file. Rendering projections only locate selected native identities; they never
+Nine standard action builders produce original typed native intents: same-flow
+and protected-range text replacement, formatting, headings, list wrapping,
+appended table rows/columns, image descriptions and captions. Each builder has a
+separately named source file. Rendering projections only locate selected native identities; they never
 construct an accepted transaction, infer DOM offsets or upload an AST snapshot.
-The text builder emits the original same-flow range command. Protected
-cross-structure ranges need an explicit native general-range draft with its exact
-fresh floor identities; the stock builder does not guess those identities or
-flatten tables/captions. Native capture refuses unsupported placement, schema,
+The original text builder still emits the same-flow range command. The separate
+`replace-protected-text` action uses the optional native planner described below;
+an older runtime disables that action instead of guessing floor identities or
+flattening tables/captions. Native capture refuses unsupported placement, schema,
 scalar boundaries, no-op drafts and original command/packet budgets atomically.
 
 Hosts can supply up to 64 uniquely named typed composer actions, each with up to
@@ -769,8 +769,8 @@ comments and named versions. A separate six-policy permanent Reader UI matrix
 creates, previews and Rejects without author registration, document submission
 or a nonzero authored prefix. Synthetic DOM/storage/locks and an authenticated
 native loopback host establish functional integration, not physical browser or
-V1 release qualification. Protected-range namespace planning, proposal revisions
-and granular character-affine rebasing remain functional work.
+V1 release qualification. That checkpoint precedes the protected-range planner
+below. Proposal revisions and granular character-affine rebasing remain functional work.
 
 ```sh
 node scripts/probe-suggestion-controls-sdk.mjs target/promoted-shared-web \
@@ -778,6 +778,48 @@ node scripts/probe-suggestion-controls-sdk.mjs target/promoted-shared-web \
 node scripts/check-suggestion-controls-installed.mjs \
   target/owned-history-relay-native/release/examples/suggestions_functional
 ```
+
+### Native planning for protected text proposals
+
+`plan_suggestion_general_text_guarded` reads an explicit rich text target and a
+host-reserved namespace. The existing native range planner determines coverage,
+preserves partially selected tables/images and allocates exactly the empty
+paragraph identities required by that result. Full disposable causal evaluation
+also refuses identities retained only in hidden history, not just visible AST
+collisions. The result is the existing Commands-scope `GeneralText` draft;
+`breditor/document-suggestion` V1 and all saved journal meanings are unchanged.
+
+Planning is pure under original, general and document policies, with explicit or
+natural history, including read-only owners. It does not select the target on the
+live editor, enable a journal family, capture a proposal packet, consume writer
+counters or clear Redo. Namespace reservation is the host's permanent obligation,
+including when no floor is required or a request is refused/discarded. Existing
+limits and scalar/schema admission remain authoritative; no-op drafts refuse.
+
+The closed JSON bridge takes `selection`, `runs` with native `formatsJson`
+literals, and `prefix`. It does not reuse a mutation endpoint's authorization or
+change that endpoint's request semantics. Wasm exposes the separate
+`suggestion_general_text_version` marker and `plan_suggestion_general_text` read.
+`supportsSuggestionGeneralText` requires that complete pair beside existing
+suggestion capabilities; `planSuggestionGeneralText` checks the current revision
+before calling Rust. Older suggestion runtimes remain usable for their original
+actions without fabricating protected-range support.
+
+The new stock action consumes one host namespace, then calls a planner closure
+bound to the captured native selection/revision. The panel checks the same source
+again before capture; metadata updates do not run the planner or consume names.
+Proposed text still stays outside accepted content until authenticated server
+Accept. Partial structures, accepted-effect ownership and ordinary compensating
+Undo/Redo keep the native contracts already described above.
+
+The [protected text checkpoint](qualification/2026-10-17-rich-review-suggestion-range-planner.json)
+passes 485 native tests, five research compatibility contracts, 344 SDK/editor
+tests and 48 runtime/build guards. Clean-installed public vanilla/React entries
+exercise all nine actions under six policies, including protected-range native
+floor planning, offline choices, server-finalized owned Accept and exact document
+Undo/Redo. The same run retains mixed comments/versions and permanent Reader
+regressions. This functional qualification uses the paired application Wasm and
+an unchanged native host; saved packet meanings and package versions are unchanged.
 
 ## Durable comments and anchors
 

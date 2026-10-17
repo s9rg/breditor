@@ -130,6 +130,11 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #suggestionOwner():SharedRustOwner{if(!this.supportsDocumentSuggestions())throw new SharedEditorError("suggestions_unavailable","Use complete matching native suggestion capture, preview and receipt reads");return this.#live();}
  /** Pure capture, including read-only documents. Returned attribution still requires host authentication. */
  captureSuggestion(title:string,author:string,createdAtMs:string,draft:SharedDocumentSuggestionDraft,revision?:string):string{this.#check(revision);return this.#suggestionOwner().capture_document_suggestion!(this.#observation,JSON.stringify({title,author,createdAtMs,draft}));}
+ /** Separate pure capability. No JS floor counting, accepted edits or fallback on older binaries. */
+ supportsSuggestionGeneralText():boolean{const r=this.#live();return this.supportsDocumentSuggestions()&&r.suggestion_general_text_version?.()==="1"&&typeof r.plan_suggestion_general_text==="function";}
+ /** Native protected-range draft with exact host-reserved floors, including read-only sources.
+  * Prefixes stay consumed on refusal/discard; capture this result against the same revision. */
+ planSuggestionGeneralText(selection:Extract<RichSelection,{kind:"text"}>,runs:readonly {text:string;formatsJson:string}[],prefix:string,revision?:string):SharedDocumentSuggestionDraft{this.#check(revision);if(!this.supportsSuggestionGeneralText())throw new SharedEditorError("suggestion_general_text_unavailable","Use matching native pure protected-range proposal planning");return JSON.parse(this.#live().plan_suggestion_general_text!(this.#observation,JSON.stringify({selection,runs,prefix}))) as SharedDocumentSuggestionDraft;}
  readSuggestion(packet:string):SharedDocumentSuggestionInfo{return JSON.parse(this.#suggestionOwner().read_document_suggestion!(packet)) as SharedDocumentSuggestionInfo;}
  verifySuggestionSource(packet:string):SharedDocumentSuggestionSource{return JSON.parse(this.#suggestionOwner().verify_document_suggestion_source!(packet)) as SharedDocumentSuggestionSource;}
  /** A ready handle is source-bound, not an Accept command. Pending/conflicting native handles are released immediately. */

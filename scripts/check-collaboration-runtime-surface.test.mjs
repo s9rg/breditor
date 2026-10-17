@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
+import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 test("clipboard interchange requires the complete separate pure capability",()=>{
  for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
@@ -19,6 +19,7 @@ function fixture(){
  for(const name of historicalReviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of versionMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of suggestionMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of suggestionGeneralTextMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of reviewedHistoryMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["reviewed_history_version","restore_reviewed"])module.SharedRichProfile.prototype[name]=()=>{};
  module.SharedSuggestionEffectProof.prototype.summary_json=()=>{};
@@ -52,6 +53,7 @@ test("suggestions require complete native pure proofs and never a browser-side a
  for(const name of ["summary_json","document_json"]){const f=fixture();delete f.module.SharedSuggestionPreparation.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing opaque native suggestion preparation read/);}
  for(const name of ["accept_document_suggestion","commit_document_suggestion_effect","prepare_document_suggestion_effect"]){const f=fixture();f.module.SharedEditorOwner.prototype[name]=()=>{};assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Browser must not bypass server finalization/);}
 });
+test("protected suggestion range planning requires its separate native marker and pure bridge",()=>{for(const name of suggestionGeneralTextMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing pure native suggestion range planner/);}});
 test("general Copy needs both its explicit version and native observation-scoped read",()=>{
  for(const name of ["general_copy_version","copy_general_clipboard"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native general Copy capability/);}
 });

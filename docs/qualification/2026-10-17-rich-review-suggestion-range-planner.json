@@ -1,0 +1,97 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "cca73e0ce17dc447aad20f311f61c6a3a6fd80f9",
+  "scope": "Pure Rust planning of existing protected GeneralText suggestion intents, paired optional Wasm/SDK reads and a separately named vanilla/React composer action. Installed server-finalized Accept and owned Undo/Redo preserve partial tables/images and exact native floor identities across all six history policies. Proposal revisions and granular text rebasing remain active functional work; this is not a V1 release.",
+  "artifacts": {
+    "applicationWasmSha256": "931d0b26071b4ddf700876640c79d773679cdb5ba3556c24b34dbf06acd2bbd9",
+    "suggestionHostSha256": "767896e964d02f0c89685b99668a3499ffdfc02f05d2c2f8f24d11428944840e",
+    "hostBinaryUnchanged": true,
+    "javascriptWasmExports": 8,
+    "wasmExports": 193,
+    "additiveOwnerMethods": ["suggestion_general_text_version", "plan_suggestion_general_text"],
+    "persistedFormatsOrProtocolTagsChanged": false,
+    "browserSideAcceptOrInverseExecutorAdded": false,
+    "verifiedLocalArchiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "4e05b1069277ee87bec7016f74e86768a94f7b9e735a9a2d9eb03ae156fc55c8",
+      "breditor-editor-0.3.0-alpha.22.tgz": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43"
+    }
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 485, "failed": 0, "nonemptyGroups": 43, "resultGroupsIncludingEmptyDoctests": 44, "newPlannerContractTests": 5},
+    "researchCompatibilityPlannerContracts": {"passed": 5, "failed": 0},
+    "fullSdkSuite": {"passed": 344, "failed": 0, "files": 38, "newPlannerBoundaryAndControlTests": 4},
+    "strictNativeLibraryPlannerTestsAndApplicationWasmClippy": "passed",
+    "rustFormattingAndDiffWhitespace": "passed",
+    "strictSdkEditorAndInstalledPublicTypes": "passed",
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 48, "failed": 0},
+    "cleanInstalledAcceptance": {
+      "passed": true,
+      "consolidatedSingleProcessRun": "passed",
+      "publicEntries": ["@breditor/editor/collaboration", "@breditor/editor/collaboration/react"],
+      "packagedWasm": true,
+      "workspaceProductionLinks": false,
+      "installedReactModulesVerified": 3,
+      "mixedOwnedHistoryCommentVersionTrials": 6,
+      "vanillaReactControlTrials": 6,
+      "builtInActionsPerTrial": 9,
+      "pureCapturesAndPreviews": 54,
+      "offlineAcceptChoicesWithoutDocumentMutation": 54,
+      "serverFinalOwnedAccepts": 54,
+      "protectedRangeNativePlans": 6,
+      "exactNativeFloorIds": 12,
+      "partialTableAndImagePreservations": 6,
+      "protectedRangeOwnedUndoRedo": 6,
+      "onceOnlyAfterUndoAndDiscardedRedoRegressions": 6,
+      "authorMatrixWireRequests": 7497,
+      "uiInitiatedLoadOrSyncCallsAfterUnmount": 0,
+      "hostOwnedWireRequestsDuringUnmountWindows": 22,
+      "permanentReaderTransportTrials": 6,
+      "permanentReaderControlRegressions": 6,
+      "readerAuthorRegistrations": 0,
+      "readerAuthorResumes": 0,
+      "readerDocumentSubmissions": 0,
+      "readerMatrixWireRequests": 1315
+    },
+    "originalDefaultAuthorSdkRegression": {"passed": true, "trials": 4, "wireRequests": 1089, "noDomOrReactRequired": true}
+  },
+  "nativeContracts": [
+    "plan_suggestion_general_text_guarded checks the exact current opaque observation and explicit native target. Read-only sources and original/general/document histories may inspect it without enabling a journal family or restaging live selection.",
+    "The original RichGeneralRangePlan determines partial-structure coverage. allocate_general_range_paragraphs derives exactly the required floor identities from the host-reserved prefix; the UI does not count cells, guess floor positions or flatten structures.",
+    "Full original disposable causal evaluation refuses visible and hidden historical identity reuse, invalid final schema, scalar boundaries, original budgets and no-op intent without modifying accepted state, history, writer counters or update frames.",
+    "The closed JSON bridge uses the existing rich-run literals and refuses unknown fields. It returns an existing Commands-scope GeneralText draft, not a new packet family, accepted transaction, saved protocol tag or mutation authorization.",
+    "The native contract matrix proves four required floors, partial merged-table preservation, unselected content, exact checkpoints/frames/views and future recovered Redo across all six history policies and both selection directions. Independent caption and rich-format cases retain partial images and explicit formats.",
+    "Hosts permanently reserve namespaces even on refusal or discard. Planning returns a draft, not a source/permission credential; capture must use the same observed source and authenticated publication still attributes it separately."
+  ],
+  "sdkAndControlContracts": [
+    "supportsSuggestionGeneralText requires the separate native marker and bridge beside the complete existing suggestion capability. Stale SDK revisions reject before native planning. Missing/incomplete/unknown-version planners do not change older V1 suggestion behavior.",
+    "The separately named replace-protected-text action receives only a pure native planner closure bound to the captured selection/revision. It allocates one namespace per actual build, not during metadata refresh or enabled-state reads, and the panel rechecks source revision before capture.",
+    "The original same-flow text action keeps its command semantics and requires no new allocator. An older runtime disables only the new protected action; there is no silent plain-text or browser-AST fallback.",
+    "Actual installed native-host workflows create a four-cell table with a nested image, queue the protected proposal offline, finalize it once, retain two exact native floors and partial table/image properties, then Undo/Redo only its owned accepted effect under every scope/grouping policy.",
+    "Borrowed controls retain comments/version/React drafts and own no source, socket, asset store or persistence lease. Queued choices, original server outcomes and local receipt durability stay distinct; permanent Reader authority remains non-authoring."
+  ],
+  "verificationNotes": [
+    "The first native recovery fixture compared two different runtime read-only transitions. Read-only policy is deliberately not serialized. The fixture now compares future operation bytes from the same unlocked publication; pure read-only planning assertions remain exact.",
+    "The first installed run paused suggestion metadata but left document transport online while authoring its table setup. An ordinary setup echo changed only the recovery journal during an offline assertion; document JSON and update-frame bytes were unchanged. The rerun disconnects both adapters before every offline case and keeps all exact assertions. No product transport, deadline or authorization rule was relaxed.",
+    "Canonical native uses target/historical-source-native, application Wasm target/promoted-shared-wasm, and compatibility target/suggestion-ledger-native. The unchanged native host comes from the separate target/owned-history-relay-native; standalone manifests do not share its target.",
+    "Installed archives include public SDK/React entries and packaged application Wasm with strict positive/negative public types. DOM, IndexedDB/Web Locks and failed/lost transport operations remain fixtures against an authenticated native loopback host, not physical-browser qualification."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_general_text_contracts",
+    "node scripts/build-collaboration-runtime.mjs",
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "npm run build:candidate --workspace @breditor/editor",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node scripts/check-suggestion-controls-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional"
+  ],
+  "remaining": [
+    "Proposal revisions with explicit lineage and immutable finalized decision semantics.",
+    "Granular character-affine text rebasing; existing conservative affected-text source witnesses and packet meanings remain unchanged.",
+    "Final V1 migration/API, package release, storage lifetime/compaction, production auth/hosting and deferred broad browser/IME/accessibility/performance qualification. The advanced-review goal remains active."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}
