@@ -354,6 +354,17 @@ without raising heap limits or weakening the aggregate request gate. Direct
 affine text replacement and the release/production qualification above remain
 open; the advanced-review goal is still active and no V1 gate advances.
 
+The [native text-revision checkpoint](qualification/2026-10-17-rich-review-text-rebase-native.json)
+adds explicit conflict-on-intervening-text
+rebasing of a complete insertion, deletion, rich range or protected general
+range. It retains source character identity, complete selected formatting,
+structural witnesses, original scope and native fresh-floor semantics rather
+than lowering rich ranges into a smaller command batch. The ordinary V1 child
+still uses authenticated supersession and once-only accepting-user history.
+Preserving intervening peer text and paired text-rebase client delivery remain
+open; this native increment does not complete the advanced-review goal or
+advance a release gate.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

@@ -96,6 +96,40 @@ impl SuggestionConflictTarget {
     }
 }
 impl<'a> ReadSet<'a> {
+    /// A text rebase proves selected scalar identity/marks separately. Ignore only those text
+    /// bodies, not their metadata or enclosing structural/subtree guards. Whole atoms retain
+    /// their complete witnesses, including text in descendants that they would remove.
+    pub(super) fn text_rebase_conflicts(
+        &self,
+        current: &Value,
+        doc: &loro::LoroDoc,
+        text_blocks: &std::collections::BTreeSet<String>,
+    ) -> Result<Vec<SuggestionConflictTarget>, Error> {
+        let mut conflicts = vec![];
+        for (target, before) in &self.values {
+            let (target, before) = match target {
+                SuggestionConflictTarget::Characters { block } if text_blocks.contains(block) => {
+                    continue;
+                }
+                SuggestionConflictTarget::Block { block } if text_blocks.contains(block) => {
+                    let header = SuggestionConflictTarget::Header { block: block.clone() };
+                    let before = header.read(self.root, self.doc)?;
+                    if header.read(current, doc)? != before {
+                        conflicts.push(header);
+                    }
+                    continue;
+                }
+                _ => (target, before),
+            };
+            if target.read(current, doc)?.as_ref() != Some(before) {
+                conflicts.push(target.clone());
+            }
+        }
+        conflicts.sort();
+        conflicts.dedup();
+        Ok(conflicts)
+    }
+
     pub fn capture(
         root: &'a Value,
         document: &'a RichDocument,

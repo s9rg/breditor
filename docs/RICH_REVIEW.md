@@ -34,8 +34,10 @@ Reader proposal/Reject synchronization uses a separate non-authoring transport.
 Borrowed vanilla/React controls expose those proposals and decisions alongside
 comments and versions. Immutable revisions, authenticated pending-only
 supersession and durable revision transport/client controls are implemented below.
-Explicit formatting-batch rebasing uses a separate optional native/SDK pair;
-direct character-affine text replacement remains unfinished.
+Explicit formatting-batch rebasing uses a separate optional native/SDK pair.
+Native text-revision capture now has a required conflict-on-intervening-text
+policy; preserving those peer characters and delivering the new text helper to
+paired clients remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -401,6 +403,60 @@ The [formatting client checkpoint](qualification/2026-10-17-rich-review-format-r
 records focused native, optional capability, durable recovery and installed mixed
 workflow qualification. Direct affine text replacement and final V1 release
 qualification remain separate work.
+
+### Explicit native text revisions
+
+`rebase_document_suggestion_text_guarded` captures a new immutable revision of
+one plain insertion, deletion, rich `ReplaceTextRange`, or complete `GeneralText`
+intent. Mixed and multi-command batches return Unsupported without dropping any
+step. A child remains one declarative general-range intent and can be rebased
+again before acceptance. It is not expanded into a 64-command batch: joined
+paragraph/list semantics, partial table/image preservation, wholly selected atom
+removal and exact fresh empty paragraphs use the existing native planner.
+
+The caller must supply `DocumentSuggestionTextRebasePolicy::RejectInterveningText`;
+there is no default. Every original selected character must survive in order in
+its original protected domain and text kind. Its complete formats must still
+match. The mapped current selection must contain exactly that original set; any
+additional selected text conflicts. Disjoint text and mark edits outside the
+original selection survive. Target headers, whole atoms and structural contexts
+retain their existing native-derived witnesses, so this does not authorize
+deleting changed media or silently absorbing a changed table/list topology.
+
+An original collapsed insertion stays collapsed at its directional anchor's
+mapped affinity, even when Before/After endpoints now surround peer text. Plain
+`InsertText` is converted using the complete formats proved by its original
+native source effect, not whatever marks happen to surround today's caret.
+Source validation and original-character proof precede capture. Pending sources,
+changed selected formats, non-original selected text, lost originals and changed
+structural witnesses return explicit non-ready results without a child.
+
+The old packet, accepted content, selection, pending formats and both histories
+stay unchanged during capture, including in read-only mode. The original scope
+and creator are retained. The host permanently reserves the supplied fresh
+namespace even after refusal. The returned ordinary V1 child and revision use
+the existing conservative guards, source-before-publication order, authenticated
+supersession and once-only Accept rules. A later edit can require another
+revision. Existing saved meanings, models, journals and default constructors do
+not change. Direct own-writer general effects still require their existing
+explicit general-history family; pure capture and server-owned acceptance work
+under all six source/history policies.
+
+The existing range bounds apply: 65,536 selected scalars, 4,096 returned segments,
+1 MiB range/proposal bounds, 8 MiB format witnesses per side and four million
+visited scalars per traversal. General rich insertion remains bounded to 1,000
+runs and 64 KiB of text. Original source, floor, child and revision budgets are
+checked without returning a partial result.
+
+The [native text-revision checkpoint](qualification/2026-10-17-rich-review-text-rebase-native.json)
+records 533 canonical native tests, 80 relay/server tests, the matching 11-case
+compatibility contract, strict lint and six-policy capture/acceptance/recovery.
+
+This is a native-only checkpoint. A character-preserving policy for intervening
+peer insertions, text-rebase Wasm/SDK/outbox/vanilla/React delivery and installed
+acceptance remain work toward the full goal. The preserving policy must use
+native identities and structural consequences; copying peer text into a new
+replacement string is not an equivalent implementation.
 
 ### Staged native suggestion effects
 

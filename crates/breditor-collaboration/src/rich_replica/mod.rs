@@ -145,8 +145,9 @@ pub use suggestions::{
     DocumentSuggestionEffectVerification, DocumentSuggestionFormatRebase,
     DocumentSuggestionFormatRebaseConflict, DocumentSuggestionInfo, DocumentSuggestionPreparation,
     DocumentSuggestionPreview, DocumentSuggestionRevisionInfo, DocumentSuggestionRevisionSource,
-    DocumentSuggestionScope, DocumentSuggestionSource, PreparedDocumentSuggestionEffect,
-    SuggestionConflictTarget, VerifiedDocumentSuggestionEffect,
+    DocumentSuggestionScope, DocumentSuggestionSource, DocumentSuggestionTextRebase,
+    DocumentSuggestionTextRebaseConflict, DocumentSuggestionTextRebasePolicy,
+    PreparedDocumentSuggestionEffect, SuggestionConflictTarget, VerifiedDocumentSuggestionEffect,
 };
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{

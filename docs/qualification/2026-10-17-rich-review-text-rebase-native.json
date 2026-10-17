@@ -1,0 +1,72 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "3967f18da4a75e77b252867eb006e68dbeb2b2b5",
+  "scope": "Additive native-only source-character text revision capture with an explicit RejectInterveningText policy. Complete original joined/protected general-range semantics, source-inherited insertion formats, fresh floors, original scope and conservative child guards are retained. This is not the preserving-peer-insertions policy or paired client delivery; the full advanced-review goal remains active.",
+  "contract": {
+    "action": "RichReplica::rebase_document_suggestion_text_guarded",
+    "policyArgumentRequired": true,
+    "implementedPolicies": ["reject_intervening_text"],
+    "defaultPolicy": null,
+    "supportedOriginalIntents": ["one InsertText", "one DeleteText", "one ReplaceTextRange", "one complete GeneralText"],
+    "mixedOrMultiCommandBatch": "Unsupported without dropping any step",
+    "capturedChildKind": "unchanged V1 general_text",
+    "revisionFamilyChanged": false,
+    "modelOrJournalChanged": false,
+    "originalAcceptanceGuardsChanged": false,
+    "newWasmOrSdkCapability": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 533, "failed": 0, "resultGroupsIncludingEmptyDoctests": 48, "newPublicCases": 11},
+    "fullRelayServerSuite": {"passed": 80, "failed": 0, "resultGroupsIncludingEmptyDoctests": 12, "documentSuggestionCases": 21},
+    "researchCompatibilityTextRebaseCases": {"passed": 11, "failed": 0},
+    "nativeReadOnlyExactFutureRecoveryPolicies": 6,
+    "authenticatedSupersessionAcceptOwnedHistoryAndRestartPolicies": 6,
+    "largeProtectedRange": {"rows": 2, "columns": 20, "freshEmptyParagraphs": 38, "childRemainsOneGeneralIntent": true, "expandedCommandBatchAdded": false},
+    "strictNativeLibraryAndPublicContractClippy": "passed",
+    "strictRelayLibraryAndDocumentSuggestionIntegrationClippy": "passed",
+    "changedRustFilesRustfmt": "passed",
+    "promotionAndNativeGraphGuards": {"passed": 9, "failed": 0}
+  },
+  "laws": [
+    "The current observation is checked before untrusted bytes. A complete original source effect is evaluated on a disposable native fork; missing source operations remain Pending. Malformed source intents, no source effect and normal resource/namespace limits reject without live mutation.",
+    "Selected original scalars must survive in order in the same protected domain and text kind. Complete source/current marks on those originals must match. Equal-looking deletion/reinsertion is character loss, not a usable replacement. Unselected text and marks can change without forcing the old whole-text-block guard onto this explicit revision.",
+    "Every selected original segment must lie inside the mapped range, and its total UTF-16 length must equal current native coverage. Otherwise RejectInterveningText reports a conflict rather than deleting a peer insertion or applying a surviving subset. Headers, whole atoms and structural contexts retain native source witnesses; whole images/tables cannot be silently removed after modification.",
+    "Collapsed original insertions remain collapsed at their directional anchor's mapped affinity, even if their Before/After endpoints now surround newly typed text. Plain InsertText recovers the exact source-inherited rich runs from its proved original native effect instead of inheriting current foreign marks.",
+    "A captured child keeps original creator and explicit scope and uses the existing general planner for joins, preserved partial structures, whole-atom deletion and exact fresh floors. A two-by-twenty-cell case requires 38 fresh empty paragraphs and stays one declarative GeneralText intent instead of being cut down to the 64-command ceiling. Repeated children remain rebased declarative intents before acceptance.",
+    "Capture remains pure in read-only mode with retained Redo. Under all six layout-V3 selection/history policies, exact source/frame/view and future history survive capture and native reopen. The old original proposal still conflicts after a disjoint block edit; its saved meaning is not weakened.",
+    "The authenticated reference host supersedes the original pending proposal separately from Accept. Across all six policies, Accept preserves peer prefix/suffix text and unrelated marks, supplies once-only accepting-writer history, recovers exact Undo/Redo and returns the original decision after host restart and lease renewal without another append.",
+    "Direct local own-writer GeneralText effect commit still requires its existing explicit general-history family. Pure proposal capture and authenticated server-owned acceptance are available to original, general and document source-history families. No existing mutation factory or recovery family is silently enabled."
+  ],
+  "bounds": {
+    "originalSelectedScalars": 65536,
+    "resolvedSegments": 4096,
+    "rangeAndProposalBytes": 1048576,
+    "formatWitnessBytesPerSide": 8388608,
+    "visitedScalarsPerTraversal": 4000000,
+    "insertedRichRuns": 1000,
+    "insertedTextBytes": 65536,
+    "note": "Existing source, schema, structural/floor, revision-envelope and historical-cut budgets also apply. No partial child, plain fallback, native identity regeneration or automatic namespace reuse is introduced."
+  },
+  "verificationNotes": [
+    "Canonical tests cover stale-observation precedence, pending source recovery, changed selected formats, intervening text refusal, equal reinsertion, structural witness changes, collapsed affinities, source-inherited formats, repeated children, explicit Document scope, joined atom removal with exact local Undo/Redo, protected tables/captions, wide native floors and pure read-only capture under all six policies. The compatibility target runs the same source file, not a fork.",
+    "The direct local-effect regression initially attempted GeneralText commit in an original-only own-writer history and correctly received the existing general semantic history required refusal. That regression now explicitly enables and restores the general family. The separate server-owned acceptance regression still passes all six original/general/document and explicit/natural combinations.",
+    "An initial relay lint failure for a long test function was repaired with named capture/acceptance helpers, without adding a lint suppression. The pinned engine's existing HasIdSpan unused-import warning remains unchanged.",
+    "These are native Rust and durable reference-host results, not new Wasm, SDK, toolbar, browser, IME or accessibility evidence. Source applications have no new text-rebase runtime capability at this checkpoint. The earlier asset-backed installed checkpoint remains separate evidence for the already delivered review features."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_text_rebase_contracts",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release --lib --test suggestion_text_rebase_contracts -- -D warnings",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo clippy --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --lib --test document_suggestions -- -D warnings",
+    "node --test scripts/collaboration-promotion.test.mjs scripts/collaboration-native-graph.test.mjs"
+  ],
+  "remaining": [
+    "An identity-preserving masked replacement policy for peer characters inserted inside the original replacement, including explicit joined/protected structural consequences. No product default has been selected. Copying and reinserting peer text is not an equivalent implementation.",
+    "Paired optional text-rebase Wasm/SDK capability, durable revision-outbox integration, borrowed vanilla/React controls and clean-installed mixed acceptance. Mixed command-batch text rebasing remains explicitly unsupported rather than partially executed.",
+    "Final API/migration, storage lifetime/compaction, package release and production auth/hosting plus deferred broad browser, physical IME, accessibility and performance qualification."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22", "advancedReviewGoalRemainsActive": true}
+}

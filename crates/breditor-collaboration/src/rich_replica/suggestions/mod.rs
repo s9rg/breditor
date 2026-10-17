@@ -14,6 +14,9 @@ mod read_set;
 mod read_suggestion;
 mod rebase_format_steps;
 mod rebase_suggestion_format;
+mod rebase_suggestion_text;
+mod rebase_text_intent;
+mod rebase_text_target;
 mod revision_packet;
 #[cfg(test)]
 mod tests;
@@ -31,6 +34,10 @@ pub use prepare_suggestion_preview::{DocumentSuggestionPreparation, DocumentSugg
 pub use read_set::SuggestionConflictTarget;
 pub use rebase_suggestion_format::{
     DocumentSuggestionFormatRebase, DocumentSuggestionFormatRebaseConflict,
+};
+pub use rebase_suggestion_text::{
+    DocumentSuggestionTextRebase, DocumentSuggestionTextRebaseConflict,
+    DocumentSuggestionTextRebasePolicy,
 };
 pub use revision_packet::DocumentSuggestionRevisionInfo;
 pub use verify_suggestion_effect::{
