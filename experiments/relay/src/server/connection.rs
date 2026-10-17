@@ -3,11 +3,12 @@ use super::{
     Host,
     wire::{self, Envelope, Request},
 };
-use crate::{Admission, Error, Lease, Result};
+use crate::{Admission, Error, Lease, Result, ReviewLease, Room};
 use axum::extract::ws::{Message, WebSocket};
 use serde_json::{Value, json};
 use std::time::Duration;
 use tokio::sync::OwnedSemaphorePermit;
+mod review;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PresenceMode {
@@ -16,19 +17,42 @@ enum PresenceMode {
     DocumentV1,
 }
 
+#[derive(Clone)]
+struct ConnectionState {
+    lease: Option<Lease>,
+    observer: bool,
+    review_lease: Option<ReviewLease>,
+    review_enabled: bool,
+    presence: PresenceMode,
+}
+impl ConnectionState {
+    fn validate(&self, room: &Room, principal: &str) -> Result<()> {
+        room.reader(principal)?;
+        if let Some(lease) = &self.lease {
+            if self.observer {
+                room.validate_observer_lease(principal, lease)?;
+            } else {
+                room.validate_lease(principal, lease)?;
+            }
+        }
+        if let Some(lease) = &self.review_lease {
+            room.validate_review_lease(principal, lease)?;
+        }
+        Ok(())
+    }
+}
+
 async fn send(socket: &mut WebSocket, id: Option<&str>, value: Value) -> bool {
     let message = Message::Text(wire::reply(id, &value).into());
     // Do not retain the original large snapshot tree across socket backpressure.
     drop(value);
     matches!(tokio::time::timeout(Duration::from_secs(10), socket.send(message)).await, Ok(Ok(())))
 }
-async fn snapshot(host: &Host, principal: &str, lease: Option<&Lease>) -> Result<Value> {
+async fn snapshot(host: &Host, principal: &str, state: &ConnectionState) -> Result<Value> {
     let principal = principal.to_owned();
-    let lease = lease.cloned();
+    let state = state.clone();
     host.transaction(move |room| {
-        if let Some(lease) = lease {
-            room.validate_lease(&principal, &lease)?;
-        }
+        state.validate(room, &principal)?;
         Ok(json!({"kind":"catchup","frame":room.catchup(&principal)?}))
     })
     .await
@@ -36,19 +60,26 @@ async fn snapshot(host: &Host, principal: &str, lease: Option<&Lease>) -> Result
 async fn dispatch(
     host: &Host,
     principal: &str,
-    lease: &mut Option<Lease>,
+    state: &mut ConnectionState,
     request: Request,
-    presence: PresenceMode,
 ) -> Result<Value> {
     let principal = principal.to_owned();
     match request {
         Request::Authenticate { .. } => Err(Error::Contract("already authenticated")),
-        Request::Sync => snapshot(host, &principal, lease.as_ref()).await,
+        Request::Sync => snapshot(host, &principal, state).await,
+        request @ (Request::RegisterObserver
+        | Request::ResumeObserver { .. }
+        | Request::ReviewRegister { .. }
+        | Request::ReviewResume { .. }
+        | Request::ReviewSubmit { .. }
+        | Request::ReviewSync { .. }
+        | Request::ReviewClock { .. }
+        | Request::ReviewGrant { .. }) => review::dispatch(host, &principal, state, request).await,
         Request::Presence { sequence, frame } => {
-            if presence != PresenceMode::Original {
+            if state.presence != PresenceMode::Original || state.observer {
                 return Err(Error::Contract("presence capability required"));
             }
-            let current = lease.clone().ok_or(Error::Lease)?;
+            let current = state.lease.clone().ok_or(Error::Lease)?;
             let changed = host
                 .transaction(move |room| {
                     room.publish_presence(&principal, &current, &sequence, &frame)
@@ -60,10 +91,10 @@ async fn dispatch(
             Ok(json!({"kind":"presenceAccepted","changed":changed}))
         }
         Request::DocumentPresence { sequence, frame } => {
-            if presence != PresenceMode::DocumentV1 {
+            if state.presence != PresenceMode::DocumentV1 || state.observer {
                 return Err(Error::Contract("document presence capability required"));
             }
-            let current = lease.clone().ok_or(Error::Lease)?;
+            let current = state.lease.clone().ok_or(Error::Lease)?;
             let changed = host
                 .transaction(move |room| {
                     room.publish_document_presence(&principal, &current, &sequence, &frame)
@@ -75,22 +106,16 @@ async fn dispatch(
             Ok(json!({"kind":"presenceAccepted","changed":changed}))
         }
         Request::Clock { writer } => {
-            let lease = lease.clone();
+            let state = state.clone();
             host.transaction(move |room| {
-                if let Some(lease) = lease {
-                    room.validate_lease(&principal, &lease)?;
-                }
+                state.validate(room, &principal)?;
                 Ok(json!({"kind":"clock","clock":room.writer_clock(&principal, &writer)?}))
             })
             .await
         }
-        Request::Grant { principal: target, role } => {
-            host.transaction(move |room| room.grant(&principal, &target, role)).await?;
-            host.notify();
-            Ok(json!({"kind":"granted"}))
-        }
+        Request::Grant { principal: target, role } => grant(host, principal, target, role).await,
         Request::Register => {
-            let previous = lease.clone();
+            let previous = state.lease.clone();
             let r = host
                 .transaction(move |room| {
                     let r = room.register(&principal)?;
@@ -100,12 +125,13 @@ async fn dispatch(
                     Ok(r)
                 })
                 .await?;
-            *lease = Some(r.lease.clone());
+            state.lease = Some(r.lease.clone());
+            state.observer = false;
             host.notify();
             Ok(json!({"kind":"registered","registration":r}))
         }
         Request::Resume { writer, credential } => {
-            let previous = lease.clone();
+            let previous = state.lease.clone();
             let next = host
                 .transaction(move |room| {
                     let r = room.resume(&principal, &writer, &credential)?;
@@ -115,12 +141,16 @@ async fn dispatch(
                     Ok(r)
                 })
                 .await?;
-            *lease = Some(next.clone());
+            state.lease = Some(next.clone());
+            state.observer = false;
             host.notify();
             Ok(json!({"kind":"resumed","lease":next}))
         }
         Request::Submit { group } => {
-            let current = lease.clone().ok_or(Error::Lease)?;
+            if state.observer {
+                return Err(Error::Lease);
+            }
+            let current = state.lease.clone().ok_or(Error::Lease)?;
             let outcome =
                 host.transaction(move |room| room.admit(&principal, &current, &group)).await?;
             if matches!(&outcome, Admission::Durable(ack) if !ack.duplicate) {
@@ -131,7 +161,18 @@ async fn dispatch(
     }
 }
 
-async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool, PresenceMode)> {
+async fn grant(
+    host: &Host,
+    principal: String,
+    target: String,
+    role: Option<crate::Role>,
+) -> Result<Value> {
+    host.transaction(move |room| room.grant(&principal, &target, role)).await?;
+    host.notify();
+    Ok(json!({"kind":"granted"}))
+}
+
+async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool, ConnectionState)> {
     let Ok(Some(Ok(Message::Text(input)))) =
         tokio::time::timeout(Duration::from_secs(5), socket.recv()).await
     else {
@@ -146,12 +187,13 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return None;
     };
-    if capabilities.len() > 3
+    if capabilities.len() > 4
         || capabilities.iter().any(|c| {
             c != "assets"
                 && c != "presence"
                 && c != "writerTransportV2"
                 && c != "documentPresenceV1"
+                && c != "reviewV1"
         })
         || capabilities.iter().any(|c| c == "presence")
             && capabilities.iter().any(|c| c == "documentPresenceV1")
@@ -161,6 +203,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
         return None;
     }
     let assets_enabled = host.assets.is_some() && capabilities.iter().any(|c| c == "assets");
+    let review_enabled = capabilities.iter().any(|c| c == "reviewV1");
     let presence = if capabilities.iter().any(|c| c == "documentPresenceV1") {
         PresenceMode::DocumentV1
     } else if capabilities.iter().any(|c| c == "presence") {
@@ -178,7 +221,9 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 let frame=room.catchup(&p)?;
                 if supported.iter().any(|c|c=="writerTransportV2") != (room.writer_transport_version()==2) {return Err(Error::Contract("explicit writer transport negotiation required"));}
                 if presence==PresenceMode::DocumentV1&&room.writer_transport_version()!=2 {return Err(Error::Contract("document presence requires transport V2"));}
-                Ok(json!({"kind":"authenticated","frame":frame,"descriptor":room.descriptor(&p)?,"capabilities":supported}))
+                let mut response=json!({"kind":"authenticated","frame":frame,"descriptor":room.descriptor(&p)?,"capabilities":supported});
+                if review_enabled { response["reviewDescriptor"]=serde_json::to_value(room.review_descriptor(&p)?)?; }
+                Ok(response)
             }).await
         }
         Err(e) => Err(e),
@@ -194,18 +239,28 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
             return None;
         }
     }
-    Some((principal, assets_enabled, presence))
+    Some((
+        principal,
+        assets_enabled,
+        ConnectionState {
+            lease: None,
+            observer: false,
+            review_lease: None,
+            review_enabled,
+            presence,
+        },
+    ))
 }
 pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemaphorePermit) {
     let mut changed = host.changed.subscribe();
     let mut assets_changed = host.assets_changed.subscribe();
     let mut presence_changed = host.presence_changed.subscribe();
+    let mut review_changed = host.review_changed.subscribe();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(5));
     heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-    let Some((principal, assets_enabled, presence)) = handshake(&host, &mut socket).await else {
+    let Some((principal, assets_enabled, mut state)) = handshake(&host, &mut socket).await else {
         return;
     };
-    let mut lease = None;
     loop {
         tokio::select! {
             message = socket.recv() => {
@@ -215,7 +270,7 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
                             Ok(e) => e,
                             Err(error) => { if !send(&mut socket, None, wire::error(&error)).await { break; } continue; }
                         };
-                        let result = dispatch(&host, &principal, &mut lease, envelope.request, presence).await;
+                        let result = dispatch(&host, &principal, &mut state, envelope.request).await;
                         let failed_storage = matches!(result, Err(Error::NeedsRecovery | Error::Io(_)));
                         let value = result.unwrap_or_else(|e| wire::error(&e));
                         if !send(&mut socket, Some(&envelope.id), value).await || failed_storage { break; }
@@ -230,7 +285,7 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
             update = changed.changed() => {
                 if update.is_err() { break; }
                 changed.borrow_and_update();
-                match snapshot(&host, &principal, lease.as_ref()).await {
+                match snapshot(&host, &principal, &state).await {
                     Ok(value) => if !send(&mut socket, None, value).await { break; },
                     Err(error) => { send(&mut socket, None, wire::error(&error)).await; break; }
                 }
@@ -239,10 +294,9 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
                 if update.is_err() { break; }
                 assets_changed.borrow_and_update();
                 let p = principal.clone();
-                let l = lease.clone();
+                let s = state.clone();
                 let permitted = host.transaction(move |room| {
-                    room.reader(&p)?;
-                    if let Some(lease) = l { room.validate_lease(&p,&lease)?; }
+                    s.validate(room,&p)?;
                     Ok(())
                 }).await;
                 match permitted {
@@ -250,20 +304,36 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
                     Err(e) => { send(&mut socket,None,wire::error(&e)).await; break; }
                 }
             }
-            update=presence_changed.changed(), if presence!=PresenceMode::None => {
+            update=presence_changed.changed(), if state.presence!=PresenceMode::None => {
                 if update.is_err() { break; }
                 presence_changed.borrow_and_update();
-                if !send_presence(&host,&principal,lease.as_ref(),presence,&mut socket).await { break; }
+                if !send_presence(&host,&principal,&state,&mut socket).await { break; }
             }
-            _=heartbeat.tick(), if presence!=PresenceMode::None => {
-                if !send_presence(&host,&principal,lease.as_ref(),presence,&mut socket).await { break; }
+            _=heartbeat.tick(), if state.presence!=PresenceMode::None => {
+                if !send_presence(&host,&principal,&state,&mut socket).await { break; }
+            }
+            update=review_changed.changed(), if state.review_enabled => {
+                if update.is_err() { break; }
+                review_changed.borrow_and_update();
+                let p=principal.clone();
+                let s=state.clone();
+                let permitted=host.transaction(move |room| s.validate(room,&p)).await;
+                match permitted {
+                    Ok(()) => if !send(&mut socket,None,json!({"kind":"reviewChanged"})).await {break;},
+                    Err(e) => {send(&mut socket,None,wire::error(&e)).await;break;}
+                }
             }
         }
     }
-    if let Some(lease) = lease {
+    if state.lease.is_some() || state.review_lease.is_some() {
         let _ = host
             .transaction(move |room| {
-                room.release(&lease);
+                if let Some(lease) = state.lease {
+                    room.release(&lease);
+                }
+                if let Some(lease) = state.review_lease {
+                    room.release_review(&lease);
+                }
                 Ok(())
             })
             .await;
@@ -273,13 +343,17 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
 async fn send_presence(
     host: &Host,
     principal: &str,
-    lease: Option<&Lease>,
-    presence: PresenceMode,
+    state: &ConnectionState,
     socket: &mut WebSocket,
 ) -> bool {
     let principal = principal.to_owned();
-    let lease = lease.cloned();
-    match host.transaction(move |room| if presence==PresenceMode::DocumentV1 {room.document_presence_snapshot(&principal,lease.as_ref())}else{room.presence_snapshot(&principal, lease.as_ref())}).await {
+    let state = state.clone();
+    let presence = state.presence;
+    match host.transaction(move |room| {
+        state.validate(room,&principal)?;
+        let lease=if state.observer {None}else{state.lease.as_ref()};
+        if presence==PresenceMode::DocumentV1 {room.document_presence_snapshot(&principal,lease)}else{room.presence_snapshot(&principal, lease)}
+    }).await {
         Ok(peers) => send(socket, None, json!({"kind":if presence==PresenceMode::DocumentV1{"documentPresence"}else{"presence"},"peers":peers})).await,
         Err(e) => {
             send(socket, None, wire::error(&e)).await;

@@ -37,6 +37,31 @@ pub(super) enum Request {
         principal: String,
         role: Option<Role>,
     },
+    RegisterObserver,
+    ResumeObserver {
+        writer: String,
+        credential: String,
+    },
+    ReviewRegister {
+        actor: breditor_collab_feasibility::review::ReviewActorId,
+    },
+    ReviewResume {
+        actor: breditor_collab_feasibility::review::ReviewActorId,
+        credential: String,
+    },
+    ReviewSubmit {
+        frame: String,
+    },
+    ReviewSync {
+        cursor: Option<crate::ReviewCursor>,
+    },
+    ReviewClock {
+        actor: breditor_collab_feasibility::review::ReviewActorId,
+    },
+    ReviewGrant {
+        principal: String,
+        role: Option<crate::ReviewRole>,
+    },
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -73,7 +98,7 @@ pub(super) fn error(error: &Error) -> Value {
         Error::Lease => "lease_rejected",
         Error::NeedsRecovery | Error::Io(_) | Error::Locked => "storage_unavailable",
         Error::Entropy => "entropy_unavailable",
-        Error::Core(_) => "group_rejected",
+        Error::Core(_) | Error::Review(_) => "group_rejected",
         Error::Contract(_) | Error::Json(_) => "invalid_request",
     };
     json!({"kind":"error","code":code})
@@ -97,6 +122,13 @@ mod tests {
             assert!(Envelope::decode(&value.to_string()).is_err());
         }
         assert_eq!(error(&Error::Permission), json!({"kind":"error","code":"permission_denied"}));
+        let review = json!({"format":"breditor/relay","formatVersion":1,"id":"review","request":{"kind":"reviewSubmit","frame":"opaque"}});
+        Envelope::decode(&review.to_string())?;
+        for field in ["principal", "actor", "source", "role", "lease"] {
+            let mut claimed = review.clone();
+            claimed["request"][field] = json!("not connection authority");
+            assert!(Envelope::decode(&claimed.to_string()).is_err());
+        }
         Ok(())
     }
 }

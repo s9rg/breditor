@@ -17,8 +17,14 @@ one native staged transaction. Changed targets produce an explicit conflict or
 require a fresh preview; they must not trigger an unconditional snapshot overwrite.
 Text, formatting, list/table structure and image properties use original native
 actions, with explicit unsupported cases rather than hidden plain-text fallbacks.
-Concurrent Accept/Reject and repeated Accept require an explicit convergence and
-idempotency contract before their shared mutation path is implemented.
+The owner approved a single authenticated server decision order for concurrent
+Accept/Reject. Offline review decisions stay queued until reconnect; ordinary
+offline document edits and comments continue to merge. A suggestion is finalized
+once, and a repeated decision returns its original result rather than inserting
+the accepted change again. A stale Accept must report a target conflict without
+mutating accepted content. The eventual accepted edit and final decision must
+share one durable transaction and a recoverable native publication. This decision
+contract is selected; suggestions and their mutation path are not implemented yet.
 
 ## Durable comments and anchors
 
@@ -192,12 +198,79 @@ both revisions. Matching revision strings from another owner, or a guard copied
 through JSON, cannot authorize a queued request. This is a source-state guard,
 not an account credential. Store declared native recovery records, not UI guards.
 
-Authenticated review relay receipts/historical grants, a shared version catalog
-and clean-installed mixed acceptance remain unfinished. Original-quote
-capture/presentation also remains review UI work. Current control tests use actual
-Wasm with synthetic DOM, IndexedDB and Web Locks; physical browser qualification
-remains a later release phase.
+The native reference host now has opt-in authenticated comment transport, described
+below. An automatic review SDK sync adapter and atomic paired storage of catchup
+progress remain unfinished, along with a shared version catalog and clean-installed
+mixed acceptance. Original-quote capture/presentation also remains review UI work.
+Current control tests use actual Wasm with synthetic DOM, IndexedDB and Web Locks;
+physical browser qualification remains a later release phase.
 
-Suggestions and atomic shared Accept/Reject are not implemented yet. Accepted
-content remains unchanged until an authenticated Accept is finalized. The
-concurrent/offline decision ordering is a separate pending contract choice.
+### Authenticated comment transport
+
+`Room::enable_review` explicitly activates a review V1 lane. Default rooms and
+document writer transport keep their original behavior. New activation, grants,
+metadata-writer registrations and acceptances use separately tagged records in
+the same private durable log as document edits. Older hosts cannot read these new
+records; no silent downgrade or migration is supplied.
+
+Comment and Moderator roles are independent of document Reader/Editor. Every
+metadata actor is bound to an authenticated account, a separately saved hashed
+resume credential and a replaceable connection lease. Account/read-role and
+review-role changes fence old metadata leases; restart invalidates all leases.
+The reserved server metadata actor cannot be registered by a client. Historical
+catchup retains the original server-verified grant, and recovery independently
+rederives it from the preceding durable grant records. Content claims never grant
+authority. Comment-only users can reserve observation-only document identities
+from the same allocation registry as editors. Those identities cannot submit
+document edits, even if the account later becomes an Editor.
+
+Native metadata preparation is pure and checks both exact owners, a contiguous
+single-actor batch, source identity/rights, every newly admitted native anchor and
+captured document dependencies. The host appends and syncs acceptance before
+publishing the candidate or returning a receipt. Missing review or document edits
+remain client-owned pending input: no prefix is published or acknowledged. Native
+clients may still retain valid pending targets during catchup; this is distinct
+from server admission of a comment based on unaccepted document work.
+
+Review receipts use positive **inclusive** event counters, unlike the existing
+document operation windows. Native canonical prefix/batch digests ignore outer
+JSON formatting but preserve exact opaque anchor-string bytes. An overlapping
+batch retains the original acceptance of each known event. A fully known retry
+or repacking returns the terminal supplied event's original durable sequence and
+appends nothing. Hashes witness lineage, not authentication.
+
+Catchup uses ordered pages of at most 4 MiB including JSON escaping, not an
+unbounded metadata checkpoint in a socket message. Each cursor is pinned to a
+random durable review-log binding, so an identically seeded separate room cannot
+reuse it. Clients must persist applied document/review state before advancing
+the cursor. The existing 1 MiB/128-event input and 16 MiB/8,192-event native limits
+still apply. The reference log also retains its 256 MiB/4,096-record ceiling and
+has no compaction. Actor registrations are capped at 1,023 plus the reserved
+receiver; failed/timed-out first registrations can consume an actor reservation.
+
+The socket capability `reviewV1` must be requested explicitly. It enables separate
+review registration/resume/submission, clock, grant and paginated sync requests,
+plus coalesced `reviewChanged` hints. Clients that did not negotiate it receive
+neither a review descriptor nor this event family. The standalone
+`review_functional` host creates only an isolated loopback test room.
+
+Reproduce the focused transport checks:
+
+```sh
+CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_TARGET_DIR=target/relay-native \
+  cargo test --manifest-path experiments/relay/Cargo.toml --release --features server --locked --offline
+CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_TARGET_DIR=target/relay-native \
+  cargo build --manifest-path experiments/relay/Cargo.toml --release --features server --example review_functional --locked --offline
+node scripts/probe-review-relay.mjs packages/breditor-collaboration/dist/runtime \
+  target/relay-native/release/examples/review_functional
+```
+
+The actual-Wasm/socket fixture passes both original explicit and document natural
+history: six exact paired restores, eight future history steps, 16 durable review
+receipts, four pending-dependency responses, moderation under historical grants,
+guarded version restore preserving comments, and permission/capability refusals.
+It explicitly drives wire requests and manual checkpoint persistence. Automatic
+review SDK reconnect/retry, paired IndexedDB cursor persistence and clean-installed
+review acceptance remain subsequent functional work. Public deployment still
+needs the existing resource-limited import, identity/TLS and storage-lifecycle
+qualification; this loopback host does not establish production readiness.

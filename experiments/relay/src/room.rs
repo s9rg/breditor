@@ -13,7 +13,13 @@ use std::{collections::BTreeMap, path::Path};
 mod atomic_transport_v2;
 mod document_presence;
 mod layout_v3;
+mod observers;
+mod review;
 pub use atomic_transport_v2::AtomicTransportProfile;
+pub use review::{
+    DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewDescriptor,
+    ReviewLease, ReviewRegistration, ReviewRole, ReviewSource, StoredReviewBatch,
+};
 #[cfg(test)]
 mod layout_v3_tests;
 
@@ -30,6 +36,7 @@ const MAX_PRINCIPALS: usize = 1024;
 struct Writer {
     principal: String,
     resume_hash: [u8; 32],
+    observer: bool,
 }
 
 /// Exclusively locked durable rich room. Supply only server-authenticated principal identifiers.
@@ -50,6 +57,7 @@ pub struct Room {
     leases: BTreeMap<String, String>,
     receipts: BTreeMap<(String, String, String), DurableReceipt>,
     presence: crate::presence::Presence,
+    review: Option<review::ReviewState>,
 }
 
 impl Room {
@@ -181,6 +189,7 @@ impl Room {
             leases: BTreeMap::new(),
             receipts: BTreeMap::new(),
             presence: crate::presence::Presence::default(),
+            review: None,
         })
     }
 
@@ -254,6 +263,7 @@ impl Room {
             leases: BTreeMap::new(),
             receipts: BTreeMap::new(),
             presence: crate::presence::Presence::default(),
+            review: None,
         };
         for record in records {
             result.replay(record)?;
@@ -279,7 +289,7 @@ impl Room {
                 if self.next_writer()? != writer {
                     return Err(Error::Contract("writer allocation lineage"));
                 }
-                self.writers.insert(writer, Writer { principal, resume_hash });
+                self.writers.insert(writer, Writer { principal, resume_hash, observer: false });
             }
             Event::Commit { principal, writer, frame, receipt } => {
                 self.owns(&principal, &writer)?;
@@ -294,6 +304,13 @@ impl Room {
                 self.replica.commit_writer_group(*prepared)?;
                 self.remember(record.sequence, receipt);
             }
+            Event::RegisterObserverV1 { principal, writer, resume_hash } => {
+                self.replay_observer(principal, writer, resume_hash)?;
+            }
+            event @ (Event::EnableReviewV1 { .. }
+            | Event::GrantReviewV1 { .. }
+            | Event::RegisterReviewV1 { .. }
+            | Event::CommitReviewV1 { .. }) => self.replay_review(record.sequence, event)?,
         }
         Ok(())
     }
@@ -365,7 +382,7 @@ impl Room {
     }
     fn owns(&self, principal: &str, writer: &str) -> Result<()> {
         self.editor(principal)?;
-        if self.writers.get(writer).is_some_and(|w| w.principal == principal) {
+        if self.writers.get(writer).is_some_and(|w| w.principal == principal && !w.observer) {
             Ok(())
         } else {
             Err(Error::Lease)
@@ -392,6 +409,9 @@ impl Room {
         // Permission changes and admission are in the same room serialization domain. Even a
         // later regrant requires a new resume; no stale socket silently regains write authority.
         self.leases.retain(|id, _| self.writers.get(id).is_none_or(|w| w.principal != principal));
+        if let Some(review) = &mut self.review {
+            review.fence(&principal);
+        }
         for (writer, record) in &self.writers {
             if record.principal == principal {
                 self.presence.remove(writer);
@@ -439,7 +459,10 @@ impl Room {
             writer: writer.clone(),
             resume_hash,
         })?;
-        self.writers.insert(writer.clone(), Writer { principal: principal.into(), resume_hash });
+        self.writers.insert(
+            writer.clone(),
+            Writer { principal: principal.into(), resume_hash, observer: false },
+        );
         self.leases.insert(writer.clone(), token.clone());
         Ok(Registration { lease: Lease { writer, token }, credential })
     }

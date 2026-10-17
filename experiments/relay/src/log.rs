@@ -54,6 +54,30 @@ pub(crate) enum Event {
         writer: String,
         resume_hash: [u8; 32],
     },
+    RegisterObserverV1 {
+        principal: String,
+        writer: String,
+        resume_hash: [u8; 32],
+    },
+    EnableReviewV1 {
+        actor: String,
+        binding: String,
+    },
+    GrantReviewV1 {
+        actor: String,
+        principal: String,
+        role: Option<crate::ReviewRole>,
+    },
+    RegisterReviewV1 {
+        principal: String,
+        actor: breditor_collab_feasibility::review::ReviewActorId,
+        resume_hash: [u8; 32],
+    },
+    CommitReviewV1 {
+        source: crate::ReviewSource,
+        frame: String,
+        receipt: breditor_collab_feasibility::review::ReviewBatchReceipt,
+    },
     Commit {
         principal: String,
         writer: String,

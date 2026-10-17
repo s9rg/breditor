@@ -19,6 +19,10 @@ pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
 pub use room::AtomicTransportProfile;
 pub use room::Room;
+pub use room::{
+    DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewDescriptor,
+    ReviewLease, ReviewRegistration, ReviewRole, ReviewSource, StoredReviewBatch,
+};
 
 /// Explicit service rejection. An I/O failure may have reached storage without an acknowledgement;
 /// reopen and retry the exact group instead of assuming that the write was lost.
@@ -42,6 +46,9 @@ pub enum Error {
     /// Native rich-state admission rejected this group or journal.
     #[error(transparent)]
     Core(#[from] breditor_collab_feasibility::Error),
+    /// Native review metadata rejected this source, batch, lineage or permission.
+    #[error(transparent)]
+    Review(#[from] breditor_collab_feasibility::review::ReviewError),
     /// Bounded serialized record is invalid.
     #[error(transparent)]
     Json(#[from] serde_json::Error),

@@ -1,0 +1,86 @@
+{
+  "format": "breditor/rich-review-relay-native-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "baseCommit": "177feac",
+  "nativePreparationCommit": "f5813c7",
+  "status": "native-and-explicit-wire-functional-automatic-sdk-sync-unfinished-goal-active",
+  "pushed": false,
+  "published": false,
+  "actualWasmSha256": "3b3a78515d8bc7c7097f4cfb4c6f1440709b8a1794f45ab83b81674bd8dbc899",
+  "previousPackagedWasmInteropAlsoPassed": "c92273cc8667be92908b18a1e879ecedeccd02f4ed853a3f4145bb06b61a7956",
+  "nativeRelaySha256": "9b3fd9dbb39684a808668878206bcdb06318afce5df688a963bfd07b7730b327",
+  "decision": {
+    "acceptedDocument": "unchanged until authenticated Accept finalization",
+    "offlineReviewDecisions": "queued until reconnect",
+    "finalization": "one authenticated server decision order; repeated decisions return the original final result",
+    "ordinaryOfflineEditsAndComments": "continue merging independently",
+    "implemented": false
+  },
+  "checks": {
+    "nativeStagedReviewTransport": { "passed": 6, "failed": 0 },
+    "existingNativeReviewHistory": { "passed": 10, "failed": 0 },
+    "nativeSharedAnchorsAndComments": { "passed": 16, "failed": 0 },
+    "nativeSharedVersions": { "passed": 6, "failed": 0 },
+    "relayWithServer": { "passed": 38, "failed": 0 },
+    "strictCoreReviewLibAndTransportTestClippy": "passed",
+    "strictSharedNativeClippy": "passed",
+    "strictRelayAllTargetServerClippy": "passed including semantic replay, request authority and credential privacy regressions",
+    "rebuiltApplicationWasmSurface": { "passed": true, "javascriptExports": 6, "wasmExports": 159 },
+    "existingActualWasmRegressions": {
+      "programmaticSdk": { "passed": true, "trials": 4, "exactRestores": 4, "exactFuturePairedCheckpoints": 24 },
+      "pairedPersistence": { "passed": true, "trials": 4, "exactReopens": 12, "atomicAbortChecks": 4, "leaseChecks": 12 },
+      "vanillaAndReactControls": { "passed": true }
+    },
+    "formatting": {
+      "changedRustFiles": "scoped rustfmt and diff whitespace checks pass",
+      "workspaceWideFmt": "existing unrelated formatting difference at experiments/relay/tests/document_presence.rs:112; left unchanged"
+    },
+    "actualWasmAndAuthenticatedSocket": {
+      "command": "node scripts/probe-review-relay.mjs packages/breditor-collaboration/dist/runtime target/relay-native/release/examples/review_functional",
+      "passed": true,
+      "selectionAndHistoryCases": ["original explicit", "document natural"],
+      "exactPairedRestores": 6,
+      "futureHistorySteps": 8,
+      "pendingWithoutAck": 4,
+      "durableReceipts": 16,
+      "moderatorEdits": 2,
+      "guardedVersionRestores": 2,
+      "observerWriteRefusals": 2,
+      "unnegotiatedLaneRefusals": 2,
+      "saveBeforeCursorRefusals": 2,
+      "orchestration": "explicit wire requests and manual paired checkpoint files, not an automatic SDK review sync adapter"
+    }
+  },
+  "contracts": [
+    "Explicit review lane leaves default rooms and existing document writer/seed families unchanged.",
+    "Separate authenticated review roles/actors/credentials/leases; read revocation and grant changes fence old connections.",
+    "Comment-only observation identities share the document allocation registry and never become document authors on account promotion.",
+    "Native preparation publishes nothing; append and fsync precede metadata publication and acknowledgement.",
+    "Missing document or metadata dependencies stay client-owned pending work with no durable receipt.",
+    "Canonical native historical prefixes and inclusive event-range receipts; duplicate/repacked known batches append nothing and retain original terminal-event acceptance sequence.",
+    "Recovery regenerates receipts and independently checks original grants in durable order.",
+    "Catchup pages count escaped JSON bytes, retain original verified grants and bind progress to the exact durable review log.",
+    "Review socket requests and event family require explicit reviewV1 negotiation."
+  ],
+  "bounds": {
+    "inputFrameBytes": 1048576,
+    "inputFrameEvents": 128,
+    "catchupPageBytes": 4194304,
+    "nativeEvents": 8192,
+    "nativeCheckpointBytes": 16777216,
+    "registeredReviewActors": 1023,
+    "relayLogBytes": 268435456,
+    "relayLogRecords": 4096,
+    "compaction": false
+  },
+  "remaining": [
+    "automatic paired SDK review transport, reconnect/retry and native lineage admission",
+    "atomic paired IndexedDB storage of review catchup cursors and save-failure recovery",
+    "suggestions with native attributed intents, target-local previews and atomic server-finalized Accept/Reject",
+    "authenticated shared immutable version catalog",
+    "original quote capture and presentation",
+    "clean-installed mixed review acceptance",
+    "physical browsers, accessibility, performance, import isolation, deployment hardening and final V1 qualification"
+  ]
+}

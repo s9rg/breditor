@@ -56,6 +56,14 @@ The [review controls checkpoint](qualification/2026-10-16-rich-review-controls-s
 adds borrowed vanilla/React comment and version controls, retained drafts, explicit
 restore confirmation and an owner-bound SDK guard repair. It uses actual Wasm with
 synthetic browser APIs; authenticated review relay and suggestions remain open.
+The [review transport checkpoint](qualification/2026-10-16-rich-review-relay-native.json)
+subsequently adds native staged metadata admission, independent comment-only
+authority, original historical grants/receipts, paginated socket catchup and exact
+host/client recovery. Its actual-Wasm acceptance fixture explicitly drives wire
+requests; automatic review SDK sync/cursor persistence, suggestions and the shared
+version catalog remain functional work. The owner selected queued offline review
+decisions finalized once in authenticated server order; that suggestion path is
+not implemented yet.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

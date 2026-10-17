@@ -27,6 +27,7 @@ pub(super) struct Host {
     assets_changed: watch::Sender<u64>,
     asset_operations: Arc<Semaphore>,
     presence_changed: watch::Sender<u64>,
+    review_changed: watch::Sender<u64>,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -47,6 +48,9 @@ impl Host {
     }
     pub fn notify_presence(&self) {
         self.presence_changed.send_modify(|n| *n = n.wrapping_add(1));
+    }
+    pub fn notify_review(&self) {
+        self.review_changed.send_modify(|n| *n = n.wrapping_add(1));
     }
 }
 
@@ -79,6 +83,7 @@ fn build(
     let (changed, _) = watch::channel(0);
     let (assets_changed, _) = watch::channel(0);
     let (presence_changed, _) = watch::channel(0);
+    let (review_changed, _) = watch::channel(0);
     let host = Host {
         room: Arc::new(Mutex::new(room)),
         authentication: Arc::new(authentication),
@@ -88,6 +93,7 @@ fn build(
         assets_changed,
         asset_operations: Arc::new(Semaphore::new(4)),
         presence_changed,
+        review_changed,
     };
     Router::new()
         .route("/health", get(|| async { "breditor-relay-v1" }))
