@@ -1,14 +1,18 @@
-//! Prove the complete original scalar set and retain every non-text source witness.
+//! Prove the complete original scalar set and retain native structural source witnesses.
 use super::{
     DocumentSuggestionDraft, DocumentSuggestionTextRebase as Rebase,
     DocumentSuggestionTextRebaseConflict as Conflict, DocumentSuggestionTextRebasePolicy as Policy,
-    SuggestionConflictTarget, read_set::ReadSet,
+    SuggestionConflictTarget, read_set::ReadSet, rebase_text_intent,
 };
 use crate::{
     Error,
     rich_replica::{
-        AffineTextRangeResolution, AffineTextSegment, RichReplica, actions::ReplaceTextRange,
-        affine_text_range::resolve_source_selection, selection::Selection,
+        AffineTextRangeResolution, AffineTextSegment, RichReplica,
+        actions::ReplaceTextRange,
+        affine_text_range::{
+            NativeResolution, resolve_source_masked_selection, resolve_source_selection,
+        },
+        selection::Selection,
     },
 };
 use breditor_core::rich_content::{RichDocument, RichSelectionCoverage};
@@ -41,8 +45,14 @@ fn targets(
         .collect::<BTreeSet<_>>();
     let before: Value = serde_json::from_str(source.canonical)?;
     let current: Value = serde_json::from_str(owner.document_json())?;
-    ReadSet::capture(&before["root"], source.document, source.doc, &owner.codec, source.draft)?
-        .text_rebase_conflicts(&current["root"], &owner.doc, &blocks)
+    ReadSet::capture_text_rebase(
+        &before["root"],
+        source.document,
+        source.doc,
+        &owner.codec,
+        source.draft,
+    )?
+    .text_rebase_conflicts(&current["root"], &owner.doc, &blocks)
 }
 fn only_originals(
     owner: &RichReplica,
@@ -75,21 +85,24 @@ pub(super) fn resolve(
 ) -> Result<Target, Error> {
     let selection =
         Selection::TextRange { anchor: request.anchor.clone(), focus: request.focus.clone() };
-    let (anchor, mut focus, segments) = match resolve_source_selection(
-        owner,
-        source.anchor,
-        source.canonical,
-        selection.clone(),
-    )? {
-        AffineTextRangeResolution::Pending { missing } => {
-            return Ok(Target::NotReady(Rebase::Pending { missing }));
+    let resolved = if let Some(spans) = rebase_text_intent::mask(&source.draft.edit) {
+        resolve_source_masked_selection(owner, source.doc, source.document, &selection, spans)?
+    } else {
+        match resolve_source_selection(owner, source.anchor, source.canonical, selection.clone())? {
+            AffineTextRangeResolution::Pending { missing } => {
+                return Ok(Target::NotReady(Rebase::Pending { missing }));
+            }
+            AffineTextRangeResolution::Conflict { reason } => NativeResolution::Conflict { reason },
+            AffineTextRangeResolution::Resolved { anchor, focus, segments, .. } => {
+                NativeResolution::Resolved { anchor, focus, segments }
+            }
         }
-        AffineTextRangeResolution::Conflict { reason } => {
+    };
+    let (anchor, mut focus, segments) = match resolved {
+        NativeResolution::Conflict { reason } => {
             return Ok(Target::NotReady(Rebase::Conflict { reason: Conflict::Range { reason } }));
         }
-        AffineTextRangeResolution::Resolved { anchor, focus, segments, .. } => {
-            (anchor, focus, segments)
-        }
+        NativeResolution::Resolved { anchor, focus, segments } => (anchor, focus, segments),
     };
     if segments.iter().any(|segment| segment.source_formats != segment.current_formats) {
         return Ok(Target::NotReady(Rebase::Conflict { reason: Conflict::FormattingChanged }));

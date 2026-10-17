@@ -50,7 +50,7 @@ pub enum DocumentSuggestionTextRebase {
         /// Original exclusive native operation ends.
         missing: Vec<WriterDependency>,
     },
-    /// Only one insertion, deletion, rich range, or a complete general-text intent is supported.
+    /// Only one insertion, deletion, rich range, general-text or masked general-text intent is supported.
     /// Mixed and multi-step command batches are never partially reinterpreted.
     Unsupported,
     /// No child or edit is produced.
@@ -68,11 +68,12 @@ impl RichReplica {
     /// Rebase a complete text intent with an explicitly selected intervening-text policy.
     /// This supports the original joined-flow/list and protected-boundary general semantics,
     /// including fresh native floors, without lowering a rich range into a 64-command batch.
-    /// Disjoint text/mark edits outside the selected originals are retained. Any changed selected
-    /// marks or structural witnesses return an explicit conflict. Intervening text requires an
-    /// explicit policy. Preserving children use a conservative exact-document native read set;
-    /// further rebase of that masked child is unsupported. After server supersession, use an
-    /// explicit manual revision of the child rather than superseding a finalized predecessor again.
+    /// Command-scoped revisions retain disjoint text/mark edits outside the selected originals;
+    /// explicit Document scope keeps its whole-document guard. Changed selected marks or
+    /// structural witnesses return an explicit conflict. Intervening text requires an
+    /// explicit policy. Preserving children retain their conservative exact-document Accept
+    /// witness. A later sparse rebase proves only that child's stored removal spans while
+    /// retaining full structural witnesses; previously retained peer text never becomes a target.
     /// Collapsed original insertions stay collapsed, even if their two affinities map around peer
     /// text. The host permanently reserves `prefix`, including after refusal or discarded capture.
     /// # Errors

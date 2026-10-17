@@ -18,6 +18,8 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+#[path = "support/sparse_text_rebase.rs"]
+mod sparse_text_rebase;
 fn setup(root: Option<Value>) -> Result<(SharedRichProfile, RichReplica, RichReplica)> {
     let profile = SharedRichProfile::from_standard_configuration_json_v3(
         r#"{"format":"breditor/shared-rich-profile","formatVersion":3,"schema":{"name":"example/text-rebase","version":1},"extensions":[]}"#,
@@ -392,10 +394,13 @@ fn stale_guard_is_checked_before_untrusted_bytes_and_repeated_children_remain_de
 fn paragraph(id: &str, text: &str) -> Value {
     json!({"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{"breditor/block-id":id},"children":[{"kind":"text","text":text,"formats":[]}]})
 }
+fn wide_table_root() -> Value {
+    let root = json!({"kind":"element","type":"breditor/document","entityId":null,"properties":{"breditor/document-id":"room"},"children":[{"kind":"element","type":"breditor/table","entityId":null,"properties":{"breditor/block-id":"table-block","breditor/table-id":"t","breditor/columns":(0..20).map(|c|json!({"id":format!("c{c}"),"width":120})).collect::<Vec<_>>(),"breditor/merges":[],"breditor/retracted-merges":[]},"children":(0..2).map(|r|json!({"kind":"element","type":"breditor/table-row","entityId":null,"properties":{"breditor/block-id":format!("row{r}"),"breditor/row-id":format!("r{r}")},"children":(0..20).map(|c|json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":format!("cell-{r}-{c}"),"breditor/column-id":format!("c{c}"),"breditor/header":false},"children":[paragraph(&format!("p{}",r*20+c),"abc")]})).collect::<Vec<_>>()})).collect::<Vec<_>>()}]});
+    root
+}
 #[test]
 fn general_rebase_above_64_structural_steps_keeps_one_intent_and_exact_fresh_floors() -> Result {
-    let root = json!({"kind":"element","type":"breditor/document","entityId":null,"properties":{"breditor/document-id":"room"},"children":[{"kind":"element","type":"breditor/table","entityId":null,"properties":{"breditor/block-id":"table-block","breditor/table-id":"t","breditor/columns":(0..20).map(|c|json!({"id":format!("c{c}"),"width":120})).collect::<Vec<_>>(),"breditor/merges":[],"breditor/retracted-merges":[]},"children":(0..2).map(|r|json!({"kind":"element","type":"breditor/table-row","entityId":null,"properties":{"breditor/block-id":format!("row{r}"),"breditor/row-id":format!("r{r}")},"children":(0..20).map(|c|json!({"kind":"element","type":"breditor/table-cell","entityId":null,"properties":{"breditor/block-id":format!("cell-{r}-{c}"),"breditor/column-id":format!("c{c}"),"breditor/header":false},"children":[paragraph(&format!("p{}",r*20+c),"abc")]})).collect::<Vec<_>>()})).collect::<Vec<_>>()}]});
-    let (_, mut a, mut b) = setup(Some(root))?;
+    let (_, mut a, mut b) = setup(Some(wide_table_root()))?;
     let target = Selection::TextRange {
         anchor: point("p0", 1, Affinity::After),
         focus: point("p39", 2, Affinity::Before),
@@ -581,19 +586,7 @@ fn explicit_preserving_capture_retains_peer_runs_and_exact_read_only_recovery_al
                     .iter()
                     .any(|run| run["text"] == "X" && run["formats"] == peer_formats)
             );
-            // The current masked child is exact-source only; never reinterpret its holes as a
-            // contiguous original range. A fresh rebase can still start from the original packet.
-            assert_eq!(
-                a.rebase_document_suggestion_text_guarded(
-                    &a.observe()?,
-                    &child,
-                    "No broadening",
-                    "3",
-                    "not-reused",
-                    Policy::PreserveInterveningText
-                )?,
-                Rebase::Unsupported
-            );
+            sparse_text_rebase::assert_same_source_repeat(&a, &child)?;
             assert_eq!((save(&a, scope, natural)?, a.update_frame()?, a.view_json()?), exact);
         }
     }

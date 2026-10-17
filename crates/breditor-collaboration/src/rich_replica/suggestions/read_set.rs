@@ -96,9 +96,31 @@ impl SuggestionConflictTarget {
     }
 }
 impl<'a> ReadSet<'a> {
+    /// A new explicit sparse revision proves only its stored removal intent. This does not
+    /// change the original masked child's exact-document Accept witness or explicit Document scope.
+    pub(super) fn capture_text_rebase(
+        root: &'a Value,
+        document: &'a RichDocument,
+        doc: &'a loro::LoroDoc,
+        codec: &'a breditor_core::codec::DocumentJsonCodecV2,
+        draft: &DocumentSuggestionDraft,
+    ) -> Result<Self, Error> {
+        if let DocumentSuggestionEdit::Commands(commands) = &draft.edit
+            && let [Command::ReplaceMaskedGeneralTextRangeV1(value)] = commands.as_slice()
+        {
+            let mut result = Self { root, document, doc, codec, values: BTreeMap::new() };
+            if draft.scope == DocumentSuggestionScope::Document {
+                result.add(SuggestionConflictTarget::Document)?;
+            }
+            result.range(&value.range.anchor, &value.range.focus)?;
+            return Ok(result);
+        }
+        Self::capture(root, document, doc, codec, draft)
+    }
     /// A text rebase proves selected scalar identity/marks separately. Ignore only those text
-    /// bodies, not their metadata or enclosing structural/subtree guards. Whole atoms retain
-    /// their complete witnesses, including text in descendants that they would remove.
+    /// bodies, not their metadata or enclosing structural/subtree guards. Retained row/cell
+    /// axes keep header/child-order witnesses rather than whole-body text guards. Whole atoms
+    /// retain complete witnesses, including text in descendants that they would remove.
     pub(super) fn text_rebase_conflicts(
         &self,
         current: &Value,
@@ -111,7 +133,15 @@ impl<'a> ReadSet<'a> {
                 SuggestionConflictTarget::Characters { block } if text_blocks.contains(block) => {
                     continue;
                 }
-                SuggestionConflictTarget::Block { block } if text_blocks.contains(block) => {
+                SuggestionConflictTarget::Block { block }
+                    if text_blocks.contains(block)
+                        || node(self.root, block).is_some_and(|value| {
+                            matches!(
+                                value["type"].as_str(),
+                                Some("breditor/table-row" | "breditor/table-cell")
+                            )
+                        }) =>
+                {
                     let header = SuggestionConflictTarget::Header { block: block.clone() };
                     let before = header.read(self.root, self.doc)?;
                     if header.read(current, doc)? != before {

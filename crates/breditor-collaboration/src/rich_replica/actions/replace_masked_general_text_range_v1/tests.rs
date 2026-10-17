@@ -321,7 +321,7 @@ fn empty_collapsed_mask_does_not_discard_redo_or_consume_a_history_unit() -> Res
 }
 
 #[test]
-fn automatic_rebase_and_committed_native_effect_keep_actual_peer_character_identities() -> Result {
+fn repeated_rebase_and_committed_native_effect_keep_actual_peer_character_identities() -> Result {
     use crate::rich_replica::{
         DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionPreparation,
         DocumentSuggestionScope, DocumentSuggestionTextRebase, DocumentSuggestionTextRebasePolicy,
@@ -346,7 +346,6 @@ fn automatic_rebase_and_committed_native_effect_keep_actual_peer_character_ident
     )?;
     b.apply(vec![insert("p", 2, "X")])?;
     a.receive_frame(&b.update_frame()?)?;
-    let identities = characters(&a)?;
     let source = a.general_checkpoint()?;
     let DocumentSuggestionTextRebase::Captured { revision_packet_json } = a
         .rebase_document_suggestion_text_guarded(
@@ -362,6 +361,27 @@ fn automatic_rebase_and_committed_native_effect_keep_actual_peer_character_ident
     };
     assert_eq!(a.general_checkpoint()?, source);
     let child = a.document_suggestion_revision_packet(&previous, &revision_packet_json)?;
+    b.apply(vec![insert("p", 3, "Y")])?;
+    a.receive_frame(&b.update_frame()?)?;
+    let identities = characters(&a)?;
+    let source = a.general_checkpoint()?;
+    assert!(matches!(
+        a.prepare_document_suggestion_guarded(&a.observe()?, &child)?,
+        DocumentSuggestionPreparation::Conflict { .. }
+    ));
+    let DocumentSuggestionTextRebase::Captured { revision_packet_json } = a
+        .rebase_document_suggestion_text_guarded(
+            &a.observe()?,
+            &child,
+            "Repeated preserving replacement",
+            "2",
+            "native-peer-proof-repeat",
+            DocumentSuggestionTextRebasePolicy::PreserveInterveningText,
+        )?
+    else {
+        return Err("native repeated preserving child".into());
+    };
+    let child = a.document_suggestion_revision_packet(&child, &revision_packet_json)?;
     let DocumentSuggestionPreparation::Ready(preview) =
         a.prepare_document_suggestion_guarded(&a.observe()?, &child)?
     else {
@@ -370,13 +390,13 @@ fn automatic_rebase_and_committed_native_effect_keep_actual_peer_character_ident
     let effect = a.prepare_document_suggestion_effect(&preview)?;
     assert_eq!(a.general_checkpoint()?, source);
     a.commit_document_suggestion_effect(effect)?;
-    assert_eq!(text_flow::view(&a.doc, "p")?.text(), "aRXd");
-    assert_surviving(&a, &identities, "aXd")?;
+    assert_eq!(text_flow::view(&a.doc, "p")?.text(), "aRXYd");
+    assert_surviving(&a, &identities, "aXYd")?;
     assert!(a.undo()?);
-    assert_eq!(text_flow::view(&a.doc, "p")?.text(), "abX🙂cd");
-    assert_surviving(&a, &identities, "aXd")?;
+    assert_eq!(text_flow::view(&a.doc, "p")?.text(), "abXY🙂cd");
+    assert_surviving(&a, &identities, "aXYd")?;
     assert!(a.redo()?);
-    assert_eq!(text_flow::view(&a.doc, "p")?.text(), "aRXd");
-    assert_surviving(&a, &identities, "aXd")?;
+    assert_eq!(text_flow::view(&a.doc, "p")?.text(), "aRXYd");
+    assert_surviving(&a, &identities, "aXYd")?;
     Ok(())
 }

@@ -416,12 +416,15 @@ removal and exact fresh empty paragraphs use the existing native planner.
 The caller must explicitly choose `RejectInterveningText` or
 `PreserveInterveningText`; there is no default. Every original selected character
 must survive in order in its original protected domain and text kind. Its
-complete formats must still match. Rejecting mode requires the mapped current selection to contain exactly
-that original set; additional selected text conflicts. Preserving mode derives
+complete formats must still match. Rejecting mode requires the mapped current
+selection to contain exactly that original set; additional selected text
+conflicts. Preserving mode derives
 removal spans only from the proven native originals and retains intervening
-characters with their complete current formats. Disjoint text and mark edits
-outside the original selection survive. Target headers, whole atoms and structural contexts
-retain their existing native-derived witnesses, so this does not authorize
+characters with their complete current formats. Command-scoped revisions retain
+disjoint text and mark edits outside the original selection. An explicitly
+document-scoped proposal retains its whole-document guard. Target headers,
+whole atoms and structural contexts retain their existing native-derived
+witnesses, so this does not authorize
 deleting changed media or silently absorbing a changed table/list topology.
 
 An original collapsed insertion stays collapsed at its directional anchor's
@@ -448,12 +451,25 @@ supports rebasing that child again. Preserving mode produces one new
 `ReplaceMaskedGeneralTextRangeV1` command with an exact current range, ordered
 removal spans, desired new runs and exact fresh paragraph floors. Its child
 uses conservative whole-document semantic and native-character witnesses;
-any subsequent accepted document change requires a fresh review. Further
-automatic rebase of this masked child returns Unsupported instead of treating
-its holes as one contiguous original range. Before server supersession, capture
-again from the retained original proposal. After supersession, create an
-explicit manual revision of the pending child; a finalized predecessor cannot
-be independently superseded a second time.
+any subsequent accepted document change requires a fresh review. A further
+explicit rebase admits the stored removal spans at that child's exact historical
+source, proves only those original scalars against current native identities,
+and maps the directional endpoints separately. Previously preserved peer text
+does not become a removal target. Its later edits, formats or deletion can
+survive another revision; changes to a removal original still conflict.
+
+Repeated capture is pure, including in read-only mode with retained Redo.
+It produces another single masked intent with fresh floors recomputed from the
+current retained text. Accept still checks the unchanged exact-document/native
+character witnesses; this sparse capture path does not weaken an old preview.
+Mixed/multi-command batches remain Unsupported. Rejecting mode can be selected
+again only when the mapped range contains no additional text, including any old
+peer holes that remain.
+
+An authenticated revision supersedes only the currently pending predecessor.
+After a child is published, revise that child rather than attempting to
+supersede its finalized parent again. The reference host retains the parent's
+original winning receipt without appending or publishing a second successor.
 
 The masked lowerer deletes only the admitted removal spans. Automatic review
 capture derives these solely from native original-character proofs. In joined
@@ -461,7 +477,10 @@ paragraph/list flow it routes retained text roots into the first owner without
 copying or reinserting their characters. In protected table cells and image
 captions it retains their separate owners and recomputes empty-body floors
 after preserving peer text. Changed whole atoms still conflict; their contents
-are not flattened. `RichMaskedGeneralRangePlan` supplies a pure expected-tree
+are not flattened. For partially crossed tables, retained row/cell axes keep
+their full headers and direct-child order rather than treating every cell body
+as a whole atom to delete. A wholly selected table still keeps its complete
+subtree witness. `RichMaskedGeneralRangePlan` supplies a pure expected-tree
 witness and narrow structural consequences, not a replicated AST replacement.
 The new command is opt-in and requires general history for ordinary local
 dispatch. Older runtimes reject its unknown saved command tag; they must not
@@ -482,8 +501,16 @@ adds the explicit preserving policy, original-character identity assertions,
 offline routing, protected owners, fresh floors and once-only authenticated
 Accept with exact owned-history recovery under all six policies.
 
+The [native sparse-text checkpoint](qualification/2026-10-17-rich-review-sparse-text-native.json)
+adds repeated sparse capture, actual-peer identity checks through committed
+effects, the authenticated pending-child chain, protected-cell floor
+recomputation and unchanged public affine-range limits. A 65,537-character
+retained hole is excluded from the removal-scalar budget; selecting that entire
+source range through the original affine API still refuses at its existing
+65,536-scalar limit. Traversal, format, schema and packet limits remain in force.
+
 Text revisions remain native-only. Paired text-rebase
-Wasm/SDK/outbox/vanilla/React delivery, masked-child rebasing and installed mixed
+Wasm/SDK/outbox/vanilla/React delivery and installed mixed
 acceptance remain work toward the full goal. Neither policy becomes a product
 default through this native increment.
 

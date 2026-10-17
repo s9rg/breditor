@@ -361,14 +361,22 @@ range. It retains source character identity, complete selected formatting,
 structural witnesses, original scope and native fresh-floor semantics rather
 than lowering rich ranges into a smaller command batch. The ordinary V1 child
 still uses authenticated supersession and once-only accepting-user history.
+
 The [native masked-text checkpoint](qualification/2026-10-17-rich-review-masked-text-native.json)
 adds a separately selected preserving policy: only proven originals are removed,
 peer text retains its native identities and current formatting, joined flows
 route rather than copy text, and protected cells/captions keep their owners.
 Fresh floors reflect retained text. Authenticated acceptance and exact owned
 Undo/Redo recovery work under all six policies. Masked children use conservative
-exact-document witnesses; automatic rebase of an already masked child remains
-unsupported. Paired text-rebase client delivery and installed mixed acceptance
+exact-document witnesses for Accept.
+
+The [native sparse-text checkpoint](qualification/2026-10-17-rich-review-sparse-text-native.json)
+adds repeated revisions of those children while proving only their stored
+removal spans; old peer text never becomes a target. Retained table axes keep
+metadata/order guards while peer text survives, fresh floors are recomputed,
+and whole-table atoms retain complete subtree witnesses. Authenticated revision
+chains supersede only the pending child and keep the finalized parent's original
+receipt. Paired text-rebase client delivery and installed mixed acceptance
 remain open. The advanced-review goal stays active and no release gate advances.
 
 The original audit/push baseline was

@@ -27,6 +27,13 @@ struct Current {
     formats: Arc<Vec<Value>>,
     binding: Arc<Binding>,
 }
+/// Internal exact-source proof, without a public contiguous-range packet identity.
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub(in crate::rich_replica) enum NativeResolution {
+    Conflict { reason: Conflict },
+    Resolved { anchor: TextPoint, focus: TextPoint, segments: Vec<AffineTextSegment> },
+}
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SegmentView<'a> {
@@ -141,7 +148,7 @@ impl RichReplica {
                     .review_anchor_missing_dependencies(&packet.data.source_anchor_json)?,
             });
         };
-        let Selection::TextRange { anchor, focus } = &packet.data.selection else {
+        let Selection::TextRange { .. } = &packet.data.selection else {
             return Err(Error::Contract("affine text scope"));
         };
         if super::packet::document_digest(&historical.canonical)?
@@ -151,76 +158,102 @@ impl RichReplica {
         }
         let original =
             source::capture(&historical.doc, &historical.document, &packet.data.selection)?;
-        let ids = original
-            .iter()
-            .enumerate()
-            .map(|(index, scalar)| (scalar.identity.clone(), index))
-            .collect::<BTreeMap<_, _>>();
-        let index = source::bindings(&self.document)?;
-        let (blocks, bindings) = (index.blocks, index.values);
-        let mut current = (0..original.len()).map(|_| None).collect::<Vec<Option<Current>>>();
-        let mut order = vec![];
-        let mut formats = FormatCache::new();
-        text_flow::visit_scalars(&self.doc, &blocks, |scalar| {
-            let Some(index) = ids.get(&scalar.identity).copied() else {
-                return Ok(());
-            };
-            if current[index].is_some() {
-                return Err(Error::Contract("affine duplicate current scalar"));
-            }
-            current[index] = Some(Current {
-                block: Arc::clone(&bindings[scalar.block].block),
-                offset: scalar.offset,
-                character: scalar.character,
-                formats: formats.capture(scalar.formats)?,
-                binding: bindings[scalar.block].clone(),
-            });
-            order.push(index);
-            Ok(())
-        })?;
-        if order.len() != original.len() {
-            return Ok(conflict(Conflict::CharactersDeleted));
-        }
-        if order.iter().enumerate().any(|(index, actual)| index != *actual) {
-            return Ok(conflict(Conflict::CharactersReordered));
-        }
-        let mut segments: Vec<AffineTextSegment> = vec![];
-        let mut bytes = 2usize;
-        for (before, after) in original.iter().zip(current) {
-            let after = after.ok_or(Error::Contract("affine scalar coverage"))?;
-            if let Some(reason) = append_segment(&mut segments, before, &after, &mut bytes)? {
-                return Ok(conflict(reason));
-            }
-        }
-        let Some(mapped_anchor) = endpoint(self, &historical.doc, anchor)? else {
-            return Ok(conflict(Conflict::BoundaryDeleted));
-        };
-        let Some(mapped_focus) = endpoint(self, &historical.doc, focus)? else {
-            return Ok(conflict(Conflict::BoundaryDeleted));
-        };
-        let source_bindings = source::bindings(&historical.document)?.values;
-        for (before, after) in [(anchor, &mapped_anchor), (focus, &mapped_focus)] {
-            let Some(old) = source_bindings.get(&before.block) else {
-                return Err(Error::Contract("affine source endpoint binding"));
-            };
-            let Some(new) = bindings.get(&after.block) else {
-                return Ok(conflict(Conflict::BoundaryDeleted));
-            };
-            if old.domain != new.domain {
-                return Ok(conflict(Conflict::DomainChanged));
-            }
-            if old.kind != new.kind {
-                return Ok(conflict(Conflict::KindChanged));
-            }
-        }
-        let result = Resolution::Resolved {
-            info: Box::new(packet.info()),
-            anchor: mapped_anchor,
-            focus: mapped_focus,
-            segments,
-            clocks: historical.clocks,
+        let resolved = resolve_original_selection(
+            self,
+            &historical.doc,
+            &historical.document,
+            &packet.data.selection,
+            original,
+        )?;
+        let result = match resolved {
+            NativeResolution::Conflict { reason } => return Ok(conflict(reason)),
+            NativeResolution::Resolved { anchor, focus, segments } => Resolution::Resolved {
+                info: Box::new(packet.info()),
+                anchor,
+                focus,
+                segments,
+                clocks: historical.clocks,
+            },
         };
         super::budget::json_size(&result, MAX_BYTES)?;
         Ok(result)
     }
+}
+pub(super) fn resolve_original_selection(
+    owner: &RichReplica,
+    source_doc: &loro::LoroDoc,
+    source_document: &breditor_core::rich_content::RichDocument,
+    selection: &Selection,
+    original: Vec<source::Scalar>,
+) -> Result<NativeResolution, Error> {
+    let Selection::TextRange { anchor, focus } = selection else {
+        return Err(Error::Contract("affine native text scope"));
+    };
+    let lost = |reason| NativeResolution::Conflict { reason };
+    let ids = original
+        .iter()
+        .enumerate()
+        .map(|(index, scalar)| (scalar.identity.clone(), index))
+        .collect::<BTreeMap<_, _>>();
+    let index = source::bindings(&owner.document)?;
+    let (blocks, bindings) = (index.blocks, index.values);
+    let mut current = (0..original.len()).map(|_| None).collect::<Vec<Option<Current>>>();
+    let mut order = vec![];
+    let mut formats = FormatCache::new();
+    text_flow::visit_scalars(&owner.doc, &blocks, |scalar| {
+        let Some(index) = ids.get(&scalar.identity).copied() else {
+            return Ok(());
+        };
+        if current[index].is_some() {
+            return Err(Error::Contract("affine duplicate current scalar"));
+        }
+        current[index] = Some(Current {
+            block: Arc::clone(&bindings[scalar.block].block),
+            offset: scalar.offset,
+            character: scalar.character,
+            formats: formats.capture(scalar.formats)?,
+            binding: bindings[scalar.block].clone(),
+        });
+        order.push(index);
+        Ok(())
+    })?;
+    if order.len() != original.len() {
+        return Ok(lost(Conflict::CharactersDeleted));
+    }
+    if order.iter().enumerate().any(|(index, actual)| index != *actual) {
+        return Ok(lost(Conflict::CharactersReordered));
+    }
+    let mut segments: Vec<AffineTextSegment> = vec![];
+    let mut bytes = 2usize;
+    for (before, after) in original.into_iter().zip(current) {
+        let after = after.ok_or(Error::Contract("affine scalar coverage"))?;
+        if let Some(reason) = append_segment(&mut segments, &before, &after, &mut bytes)? {
+            return Ok(lost(reason));
+        }
+    }
+    let Some(mapped_anchor) = endpoint(owner, source_doc, anchor)? else {
+        return Ok(lost(Conflict::BoundaryDeleted));
+    };
+    let Some(mapped_focus) = endpoint(owner, source_doc, focus)? else {
+        return Ok(lost(Conflict::BoundaryDeleted));
+    };
+    let source_bindings = source::bindings(source_document)?.values;
+    for (before, after) in [(anchor, &mapped_anchor), (focus, &mapped_focus)] {
+        let Some(old) = source_bindings.get(&before.block) else {
+            return Err(Error::Contract("affine source endpoint binding"));
+        };
+        let Some(new) = bindings.get(&after.block) else {
+            return Ok(lost(Conflict::BoundaryDeleted));
+        };
+        if old.domain != new.domain {
+            return Ok(lost(Conflict::DomainChanged));
+        }
+        if old.kind != new.kind {
+            return Ok(lost(Conflict::KindChanged));
+        }
+    }
+    let result =
+        NativeResolution::Resolved { anchor: mapped_anchor, focus: mapped_focus, segments };
+    super::budget::json_size(&result, MAX_BYTES)?;
+    Ok(result)
 }

@@ -1,0 +1,78 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "d2b7083712cb986fa8e52f0539cd143d2e5baaa1",
+  "scope": "Repeated native sparse text revisions preserve the stored removal intent without absorbing old or new peer holes. Capture remains pure and Accept remains exact-source. Retained table axes keep metadata/order guards while allowing peer text to survive; whole table atoms retain complete subtree guards. Authenticated pending-child revision chains and owned history recover exactly. Native-only progress toward the unchanged advanced-review goal.",
+  "contract": {
+    "capture": "RichReplica::rebase_document_suggestion_text_guarded",
+    "additionalSupportedIntent": "one complete ReplaceMaskedGeneralTextRangeV1 command",
+    "originalIntentEvaluation": "Complete original native effect is admitted before deriving any sparse proof",
+    "sourceProof": "Admit the stored current-coordinate spans in the exact retained historical source, derive native scalar identities only inside those spans, resolve all of them in order in the same kind/domain, and independently map the original directional endpoints",
+    "peerHoles": "Excluded from removal identity and selected-format proof. Their edits, formatting or deletion can survive a further preserving revision; original removal characters cannot be lost or reformatted silently.",
+    "acceptWitness": "Unchanged complete semantic document and native-character witnesses for masked children; a later edit still invalidates the old preview",
+    "rebaseWitness": "New explicit capture retains range structure/whole-atom guards, row/cell headers and direct-child order; explicit Document scope retains its whole-document guard",
+    "policy": "Explicit reject_intervening_text or preserve_intervening_text; no product default. Rejecting mode succeeds only if no additional text remains in the mapped range, including old holes.",
+    "mixedOrMultiCommandBatch": "Unsupported without dropping a step",
+    "wireOrSavedCommandFieldsAdded": false,
+    "publicAffineRangeFamilyChanged": false,
+    "originalAcceptGuardsWeakened": false,
+    "modelJournalOrDefaultConstructorChanged": false,
+    "newWasmSdkOrControlCapability": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 551, "failed": 0, "resultGroupsIncludingEmptyDoctests": 48, "publicTextRebaseCases": 22, "newSparseCases": 9, "publicAffineRangeCases": 14},
+    "fullRelayServerFeatureSuite": {"passed": 82, "failed": 0, "resultGroupsIncludingEmptyDoctests": 12, "documentSuggestionCases": 23},
+    "researchCompatibility": {"passed": 36, "failed": 0, "groups": 2, "textRebaseCases": 22, "unchangedAffineRangeCases": 14},
+    "readOnlyRepeatedCaptureExactReopenAndRetainedRedoPolicies": 6,
+    "authenticatedTwoHopSupersessionAcceptOwnedHistoryAndRestartPolicies": 6,
+    "actualPeerIdentity": "Two peer-authored characters retain their native identities through repeated sparse capture, committed own-writer effect, Undo and Redo",
+    "protectedTable": {"rows": 2, "columns": 20, "firstFreshFloors": 38, "secondFreshFloors": 36, "retainedPeerOwners": ["p1", "p20"], "singleSavedCompound": true, "exactEffectUndoRedoAndRecovery": true},
+    "largeHole": {"preservedScalars": 65537, "removalOriginals": 3, "fullContiguousSourceScalars": 65540, "originalFullRangeApiStillRefusesItsScalarBudget": true},
+    "strictNativeLibraryTextAndAffineContractClippy": "passed",
+    "strictRelayLibraryDocumentSuggestionClippy": "passed",
+    "changedRustFilesRustfmt": "passed",
+    "promotionAndNativeGraphGuards": {"passed": 9, "failed": 0}
+  },
+  "laws": [
+    "A sparse child is not reinterpreted as a full contiguous original selection. Historical masks are scalar/range/order/budget admitted before native identities are collected. One source traversal selects those ranges, using ordered interval lookup rather than a traversal per mask. The public contiguous packet still selects its complete range and retains its existing schema, guards and limits.",
+    "Every stored removal original must survive in native order in its original domain and text kind, with unchanged complete formats. Equal-looking reinsertion of an original is still character loss. Changed or deleted peer holes are not mistaken for original loss or new removal intent.",
+    "Old masked-child Ready/Accept witnesses remain exact-document and native-character guarded. Sparse rebasing is a separate explicit capture, not permission to apply an old preview after a peer edit. Pure capture does not restage selection, change pending styles, consume live writer counters, discard Redo or enable a history family.",
+    "Command-scoped sparse capture retains native structural witnesses. Explicit Document scope still conflicts on an unrelated caption edit. Table widths, retained cell headers and child order remain guarded. A wholly selected table retains its entire subtree guard, so new peer text inside that atom cannot be silently discarded.",
+    "The reproduced protected-cell refusal was an overbroad whole-cell-body witness, not lost original characters. Text revisions now compare retained row/cell headers plus their existing child-order guards; complete whole-table/image/list atom witnesses remain intact. With peer text in two intermediate cells, the native planner keeps both old paragraph owners and recomputes 36 fresh floors instead of reusing the first child's 38.",
+    "Repeated capture retains only desired new rich runs in one existing masked compound; old/new peer text is never copied into those runs. Joined flows route native sources, protected flows retain owners, and complete staged results alone are admitted. Existing general-history dispatch and server-owned acceptance rules remain unchanged.",
+    "Authenticated supersession targets only a pending predecessor. After root-to-child publication and another peer edit, child-to-grandchild capture/publish/Accept succeeds under every source/history policy. A competing revision of the finalized root returns its original winning successor without any log append. Final accepted effects and exact owned Undo/Redo recover after restart and original decision retries append nothing."
+  ],
+  "bounds": {
+    "removalOriginalScalars": 65536,
+    "sourceSpansAndResolvedSegments": 4096,
+    "rangeAndProposalBytes": 1048576,
+    "formatWitnessBytesPerSide": 8388608,
+    "visitedScalarsPerTraversal": 4194304,
+    "insertedRichRuns": 1000,
+    "insertedTextBytes": 65536,
+    "note": "Only the existing sparse removal set counts toward selected-original limits. Retained holes remain subject to document/schema, traversal, format, packet, source-cut and structural limits; no budget is raised or truncated result returned."
+  },
+  "verificationNotes": [
+    "All stated complete-suite counts come from terminal successful runs. Focused and compatibility runs are separate evidence and are not added to the canonical totals.",
+    "The wide-table regression first reproduced TargetsChanged for whole-body guards on cell-0-1 and cell-1-0. The repair is limited to the explicit text-rebase comparison of retained axes. The regression then verifies preserved text, reduced fresh floors, exact effect/recovery, a changed cell-header refusal and a separate complete whole-table-body refusal.",
+    "The shared native resolver was factored without changing public affine packet fields or accepting caller-supplied native scalar IDs. Its original 14 public contracts pass, including pure read-only capture/reopen under all six policies and source identity/domain/order losses. A 65,540-scalar contiguous source still returns the original affine selected scalars limit while its sparse three-original replacement succeeds.",
+    "Strict selected production/changed-contract lint and formatting pass without new suppressions. The pinned engine's existing HasIdSpan warning remains unchanged. The broader pre-existing all-target test-style findings recorded in the prior masked checkpoint were not broadened into this functional increment.",
+    "No Core source, application Wasm runtime, SDK declarations, revision outbox, vanilla/React control, installed consumer or browser was changed here. Existing installed asset/review qualification remains separate evidence. This checkpoint is not end-to-end client delivery, full parity or V1 readiness."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release --test suggestion_text_rebase_contracts --test affine_text_range_contracts",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_text_rebase_contracts --test affine_text_range_contracts",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release --lib --test suggestion_text_rebase_contracts --test affine_text_range_contracts -- -D warnings",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo clippy --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --lib --test document_suggestions -- -D warnings",
+    "node --test scripts/collaboration-promotion.test.mjs scripts/collaboration-native-graph.test.mjs"
+  ],
+  "remaining": [
+    "Paired optional text-rebase Wasm/SDK capability, durable revision-outbox integration, borrowed vanilla/React controls and clean-installed combined acceptance under every history policy. Neither text policy has a product default.",
+    "Mixed-command text rebasing remains explicitly unsupported; complete explicit manual proposal revisions remain available rather than executing a surviving subset.",
+    "Final API/migration, storage lifetime/compaction, package release, production auth/hosting and deferred broad browser, physical IME, accessibility and performance qualification."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22", "advancedReviewGoalRemainsActive": true}
+}
