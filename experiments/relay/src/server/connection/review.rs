@@ -16,36 +16,6 @@ pub(super) async fn dispatch(
     }
     let principal = principal.to_owned();
     match request {
-        Request::RegisterObserver => {
-            let previous = state.lease.clone();
-            let registration = host
-                .transaction(move |room| {
-                    let registration = room.register_observer(&principal)?;
-                    if let Some(old) = previous {
-                        room.release(&old);
-                    }
-                    Ok(registration)
-                })
-                .await?;
-            state.lease = Some(registration.lease.clone());
-            state.observer = true;
-            Ok(json!({"kind":"observerRegistered","registration":registration}))
-        }
-        Request::ResumeObserver { writer, credential } => {
-            let previous = state.lease.clone();
-            let lease = host
-                .transaction(move |room| {
-                    let lease = room.resume_observer(&principal, &writer, &credential)?;
-                    if let Some(old) = previous {
-                        room.release(&old);
-                    }
-                    Ok(lease)
-                })
-                .await?;
-            state.lease = Some(lease.clone());
-            state.observer = true;
-            Ok(json!({"kind":"observerResumed","lease":lease}))
-        }
         Request::ReviewRegister { actor } => {
             let previous = state.review_lease.clone();
             let registration = host

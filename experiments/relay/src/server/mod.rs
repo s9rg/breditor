@@ -32,6 +32,7 @@ pub(super) struct Host {
     review_changed: watch::Sender<u64>,
     versions_changed: watch::Sender<u64>,
     version_operations: Arc<Semaphore>,
+    suggestions_changed: watch::Sender<u64>,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -58,6 +59,9 @@ impl Host {
     }
     pub fn notify_document_versions(&self) {
         self.versions_changed.send_modify(|n| *n = n.wrapping_add(1));
+    }
+    pub fn notify_document_suggestions(&self) {
+        self.suggestions_changed.send_modify(|n| *n = n.wrapping_add(1));
     }
 }
 
@@ -92,6 +96,7 @@ fn build(
     let (presence_changed, _) = watch::channel(0);
     let (review_changed, _) = watch::channel(0);
     let (versions_changed, _) = watch::channel(0);
+    let (suggestions_changed, _) = watch::channel(0);
     let host = Host {
         room: Arc::new(Mutex::new(room)),
         authentication: Arc::new(authentication),
@@ -104,6 +109,7 @@ fn build(
         review_changed,
         versions_changed,
         version_operations: Arc::new(Semaphore::new(4)),
+        suggestions_changed,
     };
     Router::new()
         .route("/health", get(|| async { "breditor-relay-v1" }))

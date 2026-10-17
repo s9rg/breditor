@@ -47,6 +47,11 @@ name = "review_functional"
 path = "examples/review_functional.rs"
 required-features = ["server"]
 
+[[example]]
+name = "suggestions_functional"
+path = "examples/suggestions_functional.rs"
+required-features = ["server"]
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"

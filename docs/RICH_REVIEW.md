@@ -25,9 +25,10 @@ the accepted change again. A stale Accept must report a target conflict without
 mutating accepted content. The eventual accepted edit and final decision must
 share one durable transaction and a recoverable native publication. This decision
 contract is selected. Native proposal capture, historical source validation,
-guarded previews, staged effects and the opt-in native reference-host decision
-ledger are implemented below. Accepting-user history and paired browser/SDK
-decision integration remain unfinished.
+guarded previews, staged effects, the opt-in native reference-host decision
+ledger and an explicitly negotiated reference socket lane are implemented below.
+Accepting-user history, automatic durable browser/SDK decision queues and paired
+review controls remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -234,12 +235,60 @@ registered document authors, retaining native source-clock capacity for genesis
 and the host effect author; permanent non-authoring observers do not consume
 that author allowance. Existing disabled-room writer limits are unchanged.
 
-This is a native reference-host component, not a new HTTP/WebSocket capability,
-installed editor or shipping Accept button. Hosts still own account
+This native component by itself is not an installed editor or shipping Accept
+button. The subsequent opt-in reference socket layer is described below. Hosts still own account
 authentication, permanent fresh-ID allocation and referenced asset
 admission/retention. The host effect's native history is NOT accepting-user Undo.
 That adoption path, durable offline client queues, proposal revision/rebasing and
 paired Wasm/SDK/vanilla/React controls remain functional work.
+
+### Opt-in reference suggestion socket
+
+`documentSuggestionsV1` is a separate authenticated socket capability, requiring
+an already enabled V2 reference room. It adds `documentSuggestionsDescriptor`
+and current `documentSuggestionsPermissions` only to explicitly negotiating
+clients. Old handshakes, request/reply shapes and unsolicited events stay
+unchanged. The eight-capability ceiling now admits the full compatible optional
+stack; mutually exclusive presence modes and original review dependencies remain
+strict. There is no remote request that silently enables suggestions on a room.
+
+Every transport action has its own documented Rust file. `suggestionPublish`
+binds a packet to the negotiated lane and current authenticated creator.
+`suggestionSync` returns frozen immutable pages; `suggestionRead` returns current
+pending/final state and live permissions; `suggestionPacket` returns the first
+exact immutable packet. IDs and saved lane bindings are not read grants.
+`suggestionGrant` is owner-only administration of independent rights. All reads
+and mutations repeat current native authority checks inside the serialized room
+transaction, rather than trusting the handshake's permission display.
+
+`suggestionDecide` contains only an explicit decision request with `binding`,
+`suggestionId` and `decision`. Accept always uses the socket's exact current
+document-author lease; there is no payload writer, principal, lease, effect or
+frame authority. A permanently non-authoring observer cannot Accept even after
+its account becomes an Editor. Reader reviewers can Reject without a document
+author lease. A suggestion-only reader can register/resume a non-authoring
+document observer without negotiating the separate comment lane; original
+review clients retain their original observer request/response meanings.
+
+Successful new publication/decision/grant emits a coalesced
+`documentSuggestionsChanged` hint only to negotiating clients. Its permission
+display is freshly read, not a credential. Accept also triggers ordinary
+document catchup after the shared decision/effect record is durable. The durable
+decision and document frame can reach different clients in different orders;
+clients must import the native effect before exposing an accepting-user history
+item. No client should re-execute the proposal commands on an acknowledgment.
+Known retries return the original winner, original device ownership and native
+receipt, including an opposite queued choice after reconnect.
+
+The existing bounded socket envelopes, connection/backpressure limits, native
+packet/page bounds and durable room fencing remain in force. This checkpoint
+uses native proposal-capture fixtures and actual application-Wasm receivers;
+it does not add proposal Wasm methods, an automatic SDK queue, persistence/UI
+integration or accepting-user Undo. Ordinary client Undo/Redo remains selective
+for that client's own edits and does not adopt the imported host effect. Host
+asset admission/retention and public-host isolation remain host responsibilities.
+See the [socket functional record](qualification/2026-10-17-rich-review-suggestion-relay.json)
+for the exact tested scope and remaining work.
 
 ## Durable comments and anchors
 

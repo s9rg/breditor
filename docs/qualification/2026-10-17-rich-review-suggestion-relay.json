@@ -1,0 +1,85 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "1b7f03a",
+  "scope": "Explicitly negotiated native reference suggestion socket transport. Native source-proven proposals, one durable authenticated owned Accept/Reject, immutable reads/pages and current independent grants are exercised with real application-Wasm receivers. This is explicit wire-fixture acceptance, not automatic SDK queues, proposal Wasm/control integration, accepting-user Undo or final V1 qualification. The advanced-review goal remains active.",
+  "artifacts": {
+    "suggestionHostSha256": "d5a7c67da0d71cff2313bef354aa3756faaf1702fdbf60579e57920877bce83d",
+    "existingReviewAndCatalogHostSha256": "8c328b2ba966b0efdd6a428c86c3487e1a4013c780e247da5ef422a716293d70",
+    "applicationWasmSha256": "f5f8db1f2376c04389754fd90fdf1e13d8008e603df649171c3ed3f725867c2d",
+    "applicationWasmRebuiltThisCheckpoint": false,
+    "applicationWasmScope": "Existing promoted application artifact, used as an unchanged native-frame consumer. Proposal capture uses the current native core, not an unimplemented Wasm suggestion API."
+  },
+  "verification": {
+    "fullRelayServerRegressionSuite": {"passed": 64, "failed": 0},
+    "strictAllTargetRelayServerClippy": "passed; existing dependency unused-import warning retained",
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 35, "failed": 0},
+    "nativeCoreBaseline": {"commit": "1b7f03a", "passed": 456, "rerunThisTransportCheckpoint": false, "coreCodeChangedThisTransportCheckpoint": false},
+    "primarySocketAndWasmProbe": {
+      "command": "node scripts/probe-suggestion-relay.mjs target/promoted-shared-web target/suggestion-ledger-native/release/examples/suggestions_functional",
+      "passed": true,
+      "trials": 2,
+      "historyPolicies": ["explicit", "document natural typing-v1"],
+      "ownedAcceptWorkflows": 2,
+      "sameAccountDeviceRetriesRetainOriginalOwner": 2,
+      "opposingRetriesReturnOriginalWinner": 2,
+      "realConcurrentReviewerRaces": 2,
+      "exactHostRestarts": 2,
+      "missingOfflineSourcesNotAcknowledged": 2,
+      "changedTextTargetsRemainPendingUntilReject": 2,
+      "exactOriginalPacketFetches": 2,
+      "ordinaryOfflineEditsPreserved": 2,
+      "importedHostEffectDoesNotAdoptForeignHistory": 2,
+      "exactClientRestores": 2,
+      "ordinaryPeerPreservingUndoRedoWorkflows": 2,
+      "permanentObserverAcceptRefusalsAfterAccountPromotionAndResume": 2,
+      "fullEightCapabilityHandshakes": 2,
+      "freshReadRevocationRefusals": 2,
+      "serverTableMergeImportsIntoWasm": 2,
+      "fixtureOwnedDurableOfflineChoicesReplayedAfterReconnect": 2,
+      "automaticSdkOfflineQueueImplemented": false
+    },
+    "additionalCompleteProbeRepetitions": {"passed": 3, "failed": 0, "trialsPerRepetition": 2, "scope": "Repeated overlapping functional workflows; not unique feature counts or broad reliability qualification"},
+    "unchangedReviewSocketRegression": {"passed": true, "trials": 2, "exactPairedRestores": 6, "futureHistorySteps": 8, "pendingWithoutAck": 4, "guardedVersionRestores": 2},
+    "unchangedVersionCatalogHttpAndSocketRegression": {"passed": true, "trials": 2, "exactHostRestarts": 2, "guardedRemoteVersionRestores": 2, "permissionRefusals": 4},
+    "scopedRustFormattingJavaScriptSyntaxAndWhitespace": "passed"
+  },
+  "contracts": [
+    "documentSuggestionsV1 is separately negotiated against an already enabled writer-transport V2 room. Unnegotiated clients receive neither suggestion descriptor/permission fields nor suggestion hints. No remote lane-activation request is added.",
+    "The compatible optional stack admits eight requested capabilities; mutually exclusive presence modes and original review capability dependencies retain their original checks. Unsupported optional assets remain unadvertised.",
+    "Every suggestion transport action has its own named documented Rust file. Publication/read/page/packet operations bind the exact durable lane. Grant is owner-only; authenticated target account selectors are never actor authority.",
+    "Accept derives the exact current document-author lease from connection state. Payload principal/writer/lease/effect/frame claims are refused by closed envelopes. Reject may use a Reader reviewer without a document-author lease.",
+    "All requests recheck current native authority inside the serialized room transaction. Handshake and changed-hint permission displays are not credentials. Native uncertain-storage fencing remains unchanged.",
+    "A suggestion-only reader can register/resume a permanently non-authoring document identity without negotiating comments. Promotion invalidates old leases and requires resume, but never converts that identity into an author. Existing review observer response meanings are retained.",
+    "New durable decisions emit coalesced suggestion hints and ordinary document catchup only after the single decision/effect fsync. Receipt and frame delivery order is not a license to re-execute commands or infer history ownership.",
+    "Opposing and queued retries return the original durable winner, receipt, principal and exact accepting device, without another append or document effect. A client-owned offline choice is not server-finalized until reconnect.",
+    "Native source conflicts remain pending; Reject does not delete accepted content. Ordinary offline document edits continue through their own streams and retain selective native Undo/Redo independently from imported host effects.",
+    "The original bounded socket envelope, native packet/page budgets, connection limits and backpressure remain in force. No existing persisted journal or transport frame changes meaning."
+  ],
+  "verificationNotes": [
+    "The initial probe wrongly expected a heading-only proposal to conflict after text changed. Native dependencies correctly preserve independent heading/text fields; the conflict fixture was corrected to a text intent. Production semantics were not changed to satisfy that assertion.",
+    "An initial restart assertion compared a Reader's live permission display with an Editor's. Immutable events/cursors matched; the corrected assertion verifies identical retained events with each account's fresh current permissions.",
+    "The promotion probe initially reused an invalidated observer lease and hit the existing deliberate connection fence. Request-name-only diagnostics identified the exact failed read. The final test reconnects/resumes the same permanent observer, then proves Accept is still refused under fresh Editor rights. No lease-fencing behavior was weakened.",
+    "One diagnostic edit attempt timed out in automatic permission review before applying; a scoped retry succeeded. This was not treated as a security rejection.",
+    "Formatting is scoped to changed Rust files. Unrelated pre-existing document_presence.rs formatting remains unchanged."
+  ],
+  "compatibility": {
+    "constructorDefaultsChanged": false,
+    "existingStoredFamiliesChangedMeaning": false,
+    "newDefaultNetworkCapabilities": false,
+    "newHttpSuggestionEndpoints": false,
+    "sdkAndApplicationWasmSourceChanged": false,
+    "dependenciesOrLockfilesChanged": false,
+    "vendorEngineChanged": false,
+    "hostResponsibilities": ["account authentication", "exclusive writer/fresh-ID allocation", "referenced asset admission and retention", "public-host admission isolation and deployment hardening"]
+  },
+  "remaining": [
+    "Accepting-user ordinary selective Undo/Redo for authenticated host effects, with one ordered local history, invisible items, cursor repair and exact replay. Imported host effects deliberately remain foreign until this separate contract is implemented.",
+    "Proposal Wasm/proof methods, typed durable offline proposal/decision queues, negotiated SDK sync and paired atomic recovery. The probe's private saved decision JSON is fixture orchestration, not that SDK implementation.",
+    "Borrowed vanilla/React proposal and review controls, original-versus-winning outcomes, explicit pending/conflict/revision flows and clean-installed combined review acceptance.",
+    "Granular character-affine text rebasing and proposal revision; current affected-text witnesses remain conservative.",
+    "Final V1, public hosting/storage lifecycle, performance and physical browser/IME/accessibility qualification. No historical WebKit repair or full feature-parity claim is made."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

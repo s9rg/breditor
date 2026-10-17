@@ -162,6 +162,18 @@ Strict scoped native and all-target relay linting also pass. The linked record
 retains the precise functional bounds. Application Wasm and SDK surfaces remain
 unchanged.
 
+The [suggestion socket checkpoint](qualification/2026-10-17-rich-review-suggestion-relay.json)
+adds explicitly negotiated authenticated publication, owned Accept/Reject,
+immutable reads/pages and independent grants. Native intents and actual
+application-Wasm clients retain ordinary offline edits, exact selective client
+history and server-authored table merges across reconnect and host restart.
+Concurrent reviewers and persisted fixture-owned offline choices retain the
+original server winner. Old review/catalog socket and HTTP workflows remain
+regressions, not new default behavior. This is explicit wire-fixture acceptance:
+automatic durable SDK queues, proposal Wasm/controls, accepting-user Undo and
+clean-installed combined review acceptance remain active work. No V1 gate or
+publication status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

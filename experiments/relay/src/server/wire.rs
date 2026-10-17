@@ -72,6 +72,31 @@ pub(super) enum Request {
         principal: String,
         role: Option<crate::ReviewRole>,
     },
+    SuggestionPublish {
+        binding: String,
+        packet: String,
+    },
+    SuggestionDecide {
+        decision: crate::SuggestionDecisionRequest,
+    },
+    SuggestionSync {
+        binding: String,
+        cursor: Option<crate::DocumentSuggestionsCursor>,
+    },
+    SuggestionRead {
+        binding: String,
+        #[serde(rename = "suggestionId")]
+        suggestion_id: String,
+    },
+    SuggestionPacket {
+        binding: String,
+        #[serde(rename = "suggestionId")]
+        suggestion_id: String,
+    },
+    SuggestionGrant {
+        principal: String,
+        role: Option<crate::SuggestionRole>,
+    },
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -138,6 +163,16 @@ mod tests {
             let mut claimed = review.clone();
             claimed["request"][field] = json!("not connection authority");
             assert!(Envelope::decode(&claimed.to_string()).is_err());
+        }
+        let decision = json!({"format":"breditor/relay","formatVersion":1,"id":"choice","request":{"kind":"suggestionDecide","decision":{"binding":"lane","suggestionId":"proposal","decision":"accept"}}});
+        Envelope::decode(&decision.to_string())?;
+        for field in ["principal", "writer", "acceptingWriter", "lease", "effect", "frame"] {
+            let mut claimed = decision.clone();
+            claimed["request"][field] = json!("not connection authority");
+            assert!(Envelope::decode(&claimed.to_string()).is_err());
+            let mut nested = decision.clone();
+            nested["request"]["decision"][field] = json!("not connection authority");
+            assert!(Envelope::decode(&nested.to_string()).is_err());
         }
         Ok(())
     }

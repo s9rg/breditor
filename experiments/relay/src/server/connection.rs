@@ -8,7 +8,9 @@ use axum::extract::ws::{Message, WebSocket};
 use serde_json::{Value, json};
 use std::time::Duration;
 use tokio::sync::OwnedSemaphorePermit;
+mod document_observer;
 mod review;
+mod suggestions;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PresenceMode {
@@ -61,6 +63,7 @@ struct ConnectionState {
     review_lease_kind: ReviewLeaseKind,
     presence: PresenceMode,
     versions: bool,
+    suggestions: bool,
 }
 impl ConnectionState {
     fn validate(&self, room: &Room, principal: &str) -> Result<()> {
@@ -108,9 +111,18 @@ async fn dispatch(
     match request {
         Request::Authenticate { .. } => Err(Error::Contract("already authenticated")),
         Request::Sync => snapshot(host, &principal, state).await,
-        request @ (Request::RegisterObserver
-        | Request::ResumeObserver { .. }
-        | Request::ReviewRegister { .. }
+        request @ (Request::SuggestionPublish { .. }
+        | Request::SuggestionDecide { .. }
+        | Request::SuggestionSync { .. }
+        | Request::SuggestionRead { .. }
+        | Request::SuggestionPacket { .. }
+        | Request::SuggestionGrant { .. }) => {
+            suggestions::dispatch(host, &principal, state, request).await
+        }
+        request @ (Request::RegisterObserver | Request::ResumeObserver { .. }) => {
+            document_observer::dispatch(host, &principal, state, request).await
+        }
+        request @ (Request::ReviewRegister { .. }
         | Request::ReviewResume { .. }
         | Request::ReviewRegisterObserver { .. }
         | Request::ReviewResumeObserver { .. }
@@ -218,6 +230,7 @@ async fn grant(
 ) -> Result<Value> {
     host.transaction(move |room| room.grant(&principal, &target, role)).await?;
     host.notify();
+    host.notify_document_suggestions();
     Ok(json!({"kind":"granted"}))
 }
 
@@ -236,7 +249,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return None;
     };
-    if capabilities.len() > 7
+    if capabilities.len() > 8
         || capabilities.iter().any(|c| {
             c != "assets"
                 && c != "presence"
@@ -246,6 +259,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 && c != "reviewLineageV1"
                 && c != "reviewObserverV1"
                 && c != "documentVersionsV1"
+                && c != "documentSuggestionsV1"
         })
         || capabilities.iter().any(|c| c == "presence")
             && capabilities.iter().any(|c| c == "documentPresenceV1")
@@ -262,6 +276,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let review_mode = ReviewMode::from_capabilities(&capabilities);
     let review_enabled = review_mode.enabled();
     let versions = capabilities.iter().any(|c| c == "documentVersionsV1");
+    let suggestions = capabilities.iter().any(|c| c == "documentSuggestionsV1");
     let review_lineage = review_mode.lineage();
     let presence = if capabilities.iter().any(|c| c == "documentPresenceV1") {
         PresenceMode::DocumentV1
@@ -284,6 +299,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 if review_enabled { response["reviewDescriptor"]=serde_json::to_value(room.review_descriptor(&p)?)?; }
                 if review_lineage {response["reviewRole"]=serde_json::to_value(room.review_permissions(&p)?)?;}
                 if versions {response["documentVersionsDescriptor"]=serde_json::to_value(room.document_versions_descriptor(&p)?)?;response["documentVersionsCanPublish"]=serde_json::to_value(room.document_versions_can_publish(&p)?)?;}
+                if suggestions {response["documentSuggestionsDescriptor"]=serde_json::to_value(room.document_suggestions_descriptor(&p)?)?;response["documentSuggestionsPermissions"]=serde_json::to_value(room.suggestion_permissions(&p)?)?;}
                 Ok(response)
             }).await
         }
@@ -311,6 +327,7 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
             review_lease_kind: ReviewLeaseKind::Author,
             presence,
             versions,
+            suggestions,
         },
     ))
 }
@@ -320,6 +337,7 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
     let mut presence_changed = host.presence_changed.subscribe();
     let mut review_changed = host.review_changed.subscribe();
     let mut versions_changed = host.versions_changed.subscribe();
+    let mut suggestions_changed = host.suggestions_changed.subscribe();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(5));
     heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let Some((principal, assets_enabled, mut state)) = handshake(&host, &mut socket).await else {
@@ -390,14 +408,18 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
             update=versions_changed.changed(), if state.versions => {
                 if update.is_err(){break;}
                 versions_changed.borrow_and_update();
-                let p=principal.clone();let s=state.clone();
-                match host.transaction(move |room| s.validate(room,&p)).await {
-                    Ok(())=>if !send(&mut socket,None,json!({"kind":"documentVersionsChanged"})).await{break;},
-                    Err(error)=>{send(&mut socket,None,wire::error(&error)).await;break;}
-                }
+                if !send_versions_changed(&host,&principal,&state,&mut socket).await {break;}
+            }
+            update=suggestions_changed.changed(), if state.suggestions => {
+                if update.is_err(){break;}
+                suggestions_changed.borrow_and_update();
+                if !suggestions::send_changed(&host,&principal,&state,&mut socket).await {break;}
             }
         }
     }
+    release_connection(&host, state).await;
+}
+async fn release_connection(host: &Host, state: ConnectionState) {
     if state.lease.is_some() || state.review_lease.is_some() {
         let _ = host
             .transaction(move |room| {
@@ -411,6 +433,22 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
             })
             .await;
         host.notify_presence();
+    }
+}
+async fn send_versions_changed(
+    host: &Host,
+    principal: &str,
+    state: &ConnectionState,
+    socket: &mut WebSocket,
+) -> bool {
+    let principal = principal.to_owned();
+    let state = state.clone();
+    match host.transaction(move |room| state.validate(room, &principal)).await {
+        Ok(()) => send(socket, None, json!({"kind":"documentVersionsChanged"})).await,
+        Err(error) => {
+            send(socket, None, wire::error(&error)).await;
+            false
+        }
     }
 }
 async fn send_presence(
