@@ -2,6 +2,7 @@
 //! Existing developer rooms and original constructors are never migrated by this example.
 use breditor_collab_relay::{
     AtomicTransportProfile, Role, Room,
+    assets::AssetStore,
     server::{self, Authentication},
 };
 use serde_json::json;
@@ -19,9 +20,14 @@ fn bounded(path: &str, max: u64) -> Result<String, Box<dyn std::error::Error>> {
 #[tokio::main(worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
-    let [log, configuration, document, auth, bind] = args.as_slice() else {
-        return Err("expected LOG PROFILE_JSON DOCUMENT_JSON AUTH_JSON LOOPBACK_ADDRESS".into());
+    let [log, configuration, document, auth, bind, ..] = args.as_slice() else {
+        return Err(
+            "expected LOG PROFILE_JSON DOCUMENT_JSON AUTH_JSON LOOPBACK_ADDRESS [ASSETS]".into()
+        );
     };
+    if args.len() > 6 {
+        return Err("unexpected functional host argument".into());
+    }
     let address: SocketAddr = bind.parse()?;
     if !address.ip().is_loopback() {
         return Err("functional host requires loopback".into());
@@ -43,7 +49,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if room.writer_transport_version() != 2 {
         return Err("functional host requires an explicitly created V2 room".into());
     }
-    let router = server::router(room, Authentication::from_json(&bounded(auth, 256 * 1024)?)?);
+    let authentication = Authentication::from_json(&bounded(auth, 256 * 1024)?)?;
+    // Asset transport is explicit. Existing five-argument document-only runs stay unchanged.
+    let router = if let Some(path) = args.get(5) {
+        let assets = AssetStore::open(Path::new(path), room.asset_binding())?;
+        server::router_with_assets(room, authentication, assets)?
+    } else {
+        server::router(room, authentication)
+    };
     let listener = tokio::net::TcpListener::bind(address).await?;
     println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string()}));
     axum::serve(listener, router)

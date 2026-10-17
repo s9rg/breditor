@@ -937,10 +937,12 @@ now covers explicit Wasm/SDK/reference-relay wiring, two offline authors, exact
 general explicit/natural journal recovery after host restart, and peer-preserving
 selective Undo/Redo. It does not change original writer digests or migrate rooms.
 
-Remaining combined installed editing/transport acceptance is required. Foreign
-clipboard now has a focused managed integration probe; native IME/accessibility and
-the historical WebKit reliability observations remain separate deferred
-qualifications. The general-selections readiness row stays partial.
+The [combined installed acceptance](qualification/2026-10-16-mixed-workflow-functional.json)
+now passes explicit and natural histories with independent authors, mixed-content
+editing, foreign clipboard, exact future history, local/server reopen and actual
+asset transfer. Native IME/accessibility and the historical WebKit reliability
+observations remain separate deferred qualifications. The general-selections
+readiness row stays partial; this is functional completion, not V1 promotion.
 
 The [shared foundation qualification](qualification/2026-10-16-general-range-shared-foundation.json)
 retains the original adapter's two refusal reproductions and earlier-runtime

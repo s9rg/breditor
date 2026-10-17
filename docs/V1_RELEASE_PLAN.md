@@ -1,9 +1,10 @@
 # Breditor V1 release preparation
 
-Breditor has a functional tables, images and offline collaboration implementation,
-but it is not ready for a V1 release or a feature-parity claim. The next milestone
-is a coherent installable editor: everyday formatting, structural editing and
-interchange must work with the same rich Rust owner, not merely in separate demos.
+Breditor has an independently installable rich-editor candidate combining tables,
+images, offline collaboration, everyday formatting, structural editing and
+interchange under the same Rust owner. The everyday-editing functional goal is
+complete at the checkpoint below. It is not a V1 release or a feature-parity claim:
+advanced review/document workflows and production qualification remain open.
 
 The comparison baseline is Tiptap 3.x and current CKEditor 5, the modern editor in
 the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
@@ -11,7 +12,33 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
-## Current checkpoint
+## Current functional checkpoint
+
+The [combined installed checkpoint](qualification/2026-10-16-mixed-workflow-functional.json)
+completes the selected everyday-editing goal. Two independent installed consumers
+per history policy combine headings, nested lists/tasks, formatted table cells,
+linked captions, cross-cell Enter/composition, foreign paste, whole-document
+Copy/Paste, offline edits, image upload/download and selective Undo/Redo. Explicit
+and natural histories both pass: 70 convergence checks, 64 exact future writer
+checkpoints, four exact local restores, two native host restarts and four
+fresh-cache image downloads. These use actual application Wasm, native relay and
+HTTP/WebSocket transport, with synthetic DOM/clipboard/IDB/locks/raster admission.
+
+The combined test exposed cumulative peer-update retention at the unchanged
+16 MiB journal ceiling. Native repair `f19bc7b` retains only new admitted operations
+in general/document histories, preserves pending inputs and leaves original
+replay families unchanged. Old/new readers retain exact saved/future history.
+The final combined run observes at most 1,434,527 journal bytes and 110 known
+echo admissions without growth. No existing save is automatically compacted.
+
+This checkpoint also passes 392 shared-native tests, 31 relay tests, 269 SDK tests
+and the 44-case clean-installed clipboard probe. The linked record retains the
+earlier timeout attempts and eight pre-existing integration-test lint failures.
+Recovered-host startup was 11.5..14.7 seconds in the final functional run;
+performance qualification is still open. No readiness row, release gate, package
+version or publication status is promoted. No push or deployment was performed.
+
+## Checkpoint trail
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
@@ -19,7 +46,7 @@ pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.
 Source packages remain `0.3.0-alpha.22`; no registry publication, release tag or
 public deployment is part of this preparation.
 
-The latest functional implementation checkpoint is `2e44eaa` (saved locally,
+An early functional implementation checkpoint is `2e44eaa` (saved locally,
 not yet pushed). The explicitly selected standard inline V1 preset declares
 all twelve formats in Rust and supplies checked rendering for both local and
 shared owners. Its original profile constructors remain unchanged. The
@@ -538,13 +565,13 @@ pretending either core extension alone solves every hosting concern.
 
 ## Implementation order and reproducible exits
 
-The current implementation priority is functional completion: finish general
-rich clipboard editing, cross-structure paragraph and whole-document editing,
-transport V2 integration, and external HTML/Markdown/Office interchange. Keep
-focused native, type and functional integration tests with each change. Broad
-cross-browser matrices, physical input/accessibility, performance and final
-release qualification follow feature completion. This changes the order of
-work, not the V1 acceptance criteria or the independent original protocols.
+The completed everyday-editing phase prioritized general rich clipboard editing,
+cross-structure paragraph and whole-document editing, transport V2 integration,
+and external HTML/Markdown/representative Office interchange, with focused
+native, type and functional integration tests. Broad cross-browser matrices,
+physical input/accessibility, performance and final release qualification remain
+open. The next functional workstream is advanced review/document workflows.
+This order does not waive the V1 acceptance criteria or change original protocols.
 
 The [2026-10-16 transport checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
 completes explicit Wasm/SDK/reference-relay V2 integration with real offline
@@ -562,11 +589,12 @@ The [native document-selection foundation](qualification/2026-10-16-document-sel
 adds an explicit Core/Wasm whole-root scope, semantic Copy, atomic plain
 replacement/deletion and separate exact explicit/natural recovery. Its extended
 view family leaves original selection commands, views and stored families
-strict. Shared lowering, whole-document rich paste and immutable SDK/storage/DOM
-routing remain required before this feature is end-to-end. External interchange
-remains part of the unchanged functional-completion goal.
+strict. At that foundation, shared lowering, whole-document rich paste and
+immutable SDK/storage/DOM routing remained required. The subsequent document
+SDK/DOM, relay and interchange checkpoints now complete those paths; the combined
+installed checkpoint above qualifies their selected functional workflow together.
 
-The active implementation goal covers the first two workstreams: a unified
+The completed everyday-editing goal covers the first two workstreams: a unified
 installable rich editor, then everyday editing and external interchange. This
 includes the distribution, editing and interchange checkpoints below. Completion
 requires the installed mixed-content and offline/concurrent acceptance tests,
@@ -625,14 +653,15 @@ SDK/React integration and host-owned image registry mappings. Both workspace and
 clean-installed archives pass 44 paste/recovery scenarios, 176 future checkpoint
 comparisons and 32 dropped-format Cut refusals. Installed consumer types and
 production parser separation also pass. Combined installed editing/transport
-workflows remain the next functional acceptance checkpoint; final browser and
-release qualification stays deferred under the current priority.
+workflows now pass both history policies in the current functional checkpoint;
+final browser and release qualification remain separate.
 
 Introduce separate bounded HTML and Markdown import/export adapters with
 schema/version binding, safe URL/asset policies and explicit loss reports.
 Keep editing DOM, canonical AST and external data representations separate.
-Then add real Office/Docs/Excel fixtures rather than equating plain text with
-format-preserving paste.
+Representative Office/Docs/Excel markup fixtures now exercise that path rather
+than equating plain text with rich paste. Captured application clipboard fixtures
+and broader producer fidelity still need separate qualification.
 
 Exit: round-trip fixtures cover Unicode, formatting, lists, tables/merges,
 captions, links and image references. Unsupported structures have visible loss

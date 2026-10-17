@@ -194,8 +194,19 @@ It covers both owner and history families, 44 pastes, 44 exact restores,
 Cuts with dropped formats. Priority, stale guards, queued reports, host-owned
 images and live React callbacks are included.
 
+The subsequent [combined installed checkpoint](qualification/2026-10-16-mixed-workflow-functional.json)
+also passes both history policies with two independent authors: representative
+Word/Docs/Excel paste, code/caption text-with-losses, whole-document rich Copy/Paste,
+offline edits, selective history, exact local/server reopen and actual asset
+transfer work together. It reproduced and repaired cumulative peer-update journal
+growth without changing existing stored formats or resource ceilings. Retained
+timing/lint failures and deferred release gates are recorded separately.
+
 Run `scripts/probe-browser-interchange.mjs` with the paired runtime directories.
 `scripts/check-interchange-package.mjs` repeats it using packed archives and bare
 package imports, checks consumer types, and verifies parser separation in
 production bundles. OS clipboard applications, broader browser reliability and
 final release acceptance remain separate qualifications.
+`scripts/check-editor-mixed-workflows.mjs` adds the combined workflow using an
+explicitly built isolated native host; its full build/reproduction commands and
+artifact hashes are in the combined checkpoint.

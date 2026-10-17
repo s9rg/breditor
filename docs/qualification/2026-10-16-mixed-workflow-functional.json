@@ -1,0 +1,176 @@
+{
+  "format": "breditor/mixed-workflow-functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-16",
+  "version": "0.3.0-alpha.22",
+  "nativeRepairCommit": "f19bc7b",
+  "status": "everyday-editing-functional-goal-complete-not-release-qualified",
+  "scope": "Everyday mixed-content functionality through installed packages, actual local/shared application Wasm and the isolated durable native reference relay. Browser/clipboard/IndexedDB/locks and known-raster admission are fixtures, not physical browser or release qualification.",
+  "precedingFunctionalEvidence": [
+    {"requirement":"Native general-range rich Copy/Cut/paste","checkpoint":"docs/qualification/2026-10-16-general-clipboard-functional.json"},
+    {"requirement":"Atomic cross-structure paragraph insertion","checkpoint":"docs/qualification/2026-10-16-general-paragraph-functional.json"},
+    {"requirement":"Whole-document editing and composition through local/shared SDK and React","checkpoints":["docs/qualification/2026-10-16-document-sdk.json","docs/qualification/2026-10-16-document-dom.json","docs/qualification/2026-10-16-shared-document-dom.json"]},
+    {"requirement":"Explicit atom-lineage writer transport V2 and exact recovery","checkpoints":["docs/qualification/2026-10-16-writer-transport-v2-functional.json","docs/qualification/2026-10-16-document-relay.json"]},
+    {"requirement":"Separate native-admitted HTML/Markdown import/export and representative producer fixtures","checkpoints":["docs/qualification/2026-10-16-clipboard-interchange.json","docs/qualification/2026-10-16-foreign-interchange.json","docs/qualification/2026-10-16-browser-interchange.json"]}
+  ],
+  "contracts": {
+    "nativeDocumentModelRemainsAuthoritative": true,
+    "captionAndCodeRichBlockPaste": "Insert native-projected text and report formatting loss after acceptance; inline fragments retain their original contract",
+    "semanticRemoteRetention": "Fully admitted new operations use a smaller native delta; fully known echoes preserve the complete checkpoint, publication and typing continuation",
+    "pendingRemoteRetention": "Preserve original bytes while causal dependencies remain pending",
+    "originalReplayRetention": "Original history families retain exact original input bytes",
+    "storedProtocolGrammarChanged": false,
+    "originalApiAndConstructorDefaultsChanged": false,
+    "journalByteCeiling": 16777216,
+    "remoteUpdateByteCeiling": 1048576,
+    "resourceCeilingsRaised": false,
+    "existingJournalsAutomaticallyCompacted": false,
+    "checkpointFieldsExcludedFromExactComparisons": []
+  },
+  "repairReproduction": {
+    "retainedDirectory": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-installed-mixed-HiwJym",
+    "failure": "Fifth Alice selective Undo rejected a cumulative peer update at the unchanged journal ceiling",
+    "checkpointBytes": 16372883,
+    "remoteRecords": 23,
+    "remoteRecordBytes": 15234737,
+    "nativeRegressionFailedBeforeRepair": true,
+    "actualOldRuntimeEchoGrowthBytesAcrossFourCases": 857132,
+    "repairedKnownEchoCasesAreExactNoops": 4
+  },
+  "verification": {
+    "sharedNativeTests": {"passed": 392, "suites": 35, "failed": 0},
+    "newNativeRemoteHistoryRegressions": 5,
+    "relayNativeTests": {"passed": 31, "suites": 8, "failed": 0},
+    "sdkTests": {"passed": 269, "files": 32, "maximumWorkers": 2},
+    "strictProductLibraryClippy": true,
+    "applicationWasmBuildAndSurfaceChecks": true,
+    "touchedRustFormatting": true,
+    "javascriptSyntaxAndDiffChecks": true,
+    "oldNewApplicationWasm": {
+      "profile": "Explicit standard layout V3",
+      "families": ["original", "general", "document"],
+      "historyPolicies": ["explicit", "typing-v1"],
+      "cases": 6,
+      "byteExactRestores": 18,
+      "byteExactFutureCheckpoints": 48,
+      "originalRemoteByteComparisons": 2,
+      "newSemanticDeltaCases": 4,
+      "nearBudgetFailureCheckpointsRestoredUnchanged": 2,
+      "passed": true
+    },
+    "installedClipboard": {
+      "pastes": 44,
+      "exactRestores": 44,
+      "exactFutureCheckpoints": 176,
+      "durableSharedResumes": 22,
+      "droppedFormatCutRefusals": 32,
+      "actualReactOwners": 8,
+      "strictConsumerTypes": true,
+      "workspaceLinks": false,
+      "defaultForeignParserModules": 0,
+      "passed": true
+    },
+    "combinedInstalledWorkflow": {
+      "passed": true,
+      "histories": ["explicit", "typing-v1"],
+      "authorsPerCase": 2,
+      "cases": 2,
+      "independentConsumerProcesses": 4,
+      "convergenceComparisons": 70,
+      "exactLocalRestores": 4,
+      "exactFutureWriterCheckpoints": 64,
+      "uploads": 2,
+      "freshCacheDownloads": 4,
+      "nativeServerRestarts": 2,
+      "foreignPastes": 10,
+      "atomicCrossCellEnters": 2,
+      "syntheticCompositionCommits": 2,
+      "maximumObservedJournalBytes": 1434527,
+      "knownCausalEchoAdmissionsWithoutJournalGrowth": 110,
+      "currentInstalledArtifactFilesCompared": 400,
+      "perHistoryProcessIsolation": true,
+      "perHistoryTimeoutMs": 600000,
+      "originalRpcTimeoutMsUnchanged": 25000,
+      "functionalHostReadinessTimeoutMs": 60000,
+      "nativeHostRecoveryMs": {"explicit": 11480, "typing-v1": 14611},
+      "verifiedReconnectMsIncludingReferenceReplay": {
+        "explicit": {"alice": 6130, "bob": 3494},
+        "typing-v1": {"alice": 7903, "bob": 4113}
+      },
+      "exactReferenceAtRemoteOnlyComparisons": true,
+      "retainedPrivateWriterIdentitiesAndRestartCheckpoints": true,
+      "scope": "Headings, nested lists/tasks, formatted table cells, linked captions, cross-cell Enter/composition, Word/Docs/Excel-style HTML, code/caption loss notices, whole-document private rich Copy/Paste, offline authors, live selective history, durable session reopen, host restart and fresh-cache verified asset bytes. DOM/input/clipboard/IDB/locks/raster admission are fixtures; actual Wasm, native server and HTTP/WebSocket transport are used."
+    }
+  },
+  "artifacts": {
+    "localWasmSha256": "17963624e85cd0cf3fada236bfb4ddd0621b821fae9518e392e1cebf29a512f5",
+    "oldSharedWasmSha256": "90f08ec88f2618eb025db9b34b4b22e78eb2c511a5d107f894256c29fe38b561",
+    "sharedWasmSha256": "19df88a05ee7d437c51f8d09ec2edbc83b4ed1ba2d8caec3fd102cd0ad3c515c",
+    "nativeRelaySha256": "03a638b0051309c21fd3e93dc5853906a33bc578b0949ffb5cb1226c643c8333",
+    "installedConsumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-interchange-consumer-6UMlIa/consumer",
+    "archiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "@breditor/collaboration": "ed7cc10703681e906a3fb3e3dbae4913597c0f82699fe7077d69f6d64de116a6",
+      "@breditor/editor": "c11eab0625e6a6d1ee4e0e5c07d07fe0a3d138bfde1395052850f9ee2a6d0810",
+      "@breditor/interchange": "e71c892645d5adbc5c680c4b4569d05e35a4547b4060e8ff9d83b697a2c030fe"
+    }
+  },
+  "retainedEvidence": [
+    {"path":"target/block-layout-shared-qualification/semantic-remote-native-release-tests.log","bytes":46202,"sha256":"958ce93fdce5ba933277748f7d353862a31a2b3ce48707222505805a02eb101c"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-relay-tests-final.log","bytes":5271,"sha256":"fa35ec591ccc8e040680af1b1a0122aad55ce98c731bfbcdb2faa3f30c2b3e89"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-sdk-unit-final.log","bytes":529,"sha256":"d838ec34ccddd4acd312dbc9d556279c2dba07adcb939bfb58141d35409df0d7"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-library-clippy-final.log","bytes":507,"sha256":"03c97eb138e07b4a4380e86e3a7d8e547d4d460d78187f96d18d2c2a19628cf6"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-native-clippy-final.log","bytes":7921,"sha256":"7fdb1584b8b2fc72d7ef75f0091a06babfe45b9d7062dae8d85c72dc626ec562"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-compat-final.json","bytes":1010,"sha256":"085316508dc87674ed1a1df025562f0f3c5e037b37f784ce2945e531985eb277"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-installed-consumer-final.json","bytes":2728,"sha256":"588fe481d20216542282b635262513f71afbe1e98b7e21c7908d7df659518045"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-mixed-workflows-final.json","bytes":3516,"sha256":"bc981b052758bf931d439f5fec4e3063a65835734f650ce29343fb268d762e21"},
+    {"path":"target/block-layout-shared-qualification/semantic-remote-reconnect-timings-final.json","bytes":2069,"sha256":"075a85bb8b817898e7fc38f6f9772bfd5461d0bf3d582e4fe3a23139cbc2b2e6"},
+    {"path":"target/block-layout-shared-qualification/mixed-room-startup-diagnostic.json","bytes":273,"sha256":"4d09f7187a98843bb9d615e0fc2c1087ba4410209e382489bebc6069004b3f9c"}
+  ],
+  "nonpassingAttempts": [
+    {
+      "check": "Initial recovered-host readiness deadline",
+      "result": "The first test harness exceeded its 10-second startup deadline",
+      "diagnostic": "The exact retained room recovered successfully in 18,338 ms under the optimized host",
+      "functionalTestChange": "Use an explicit 60-second readiness budget and retain every fresh/recovery startup duration",
+      "productionLatencyContractOrDefaultChanged": false,
+      "performanceQualification": "Deferred; this is not a startup performance repair"
+    },
+    {
+      "check": "First complete installed workflow after the native repair",
+      "result": "Peer online exceeded the unchanged 25-second test RPC deadline after local/server reopen",
+      "observation": "The test-only reference replica accumulated the other author's admitted frames until reconnect; phase timings were not captured in that run",
+      "functionalTestChange": "Verify reference replay during each remote-only state comparison; retain private restart checkpoints and content-free reconnect phase timings",
+      "finalResult": "Both history policies pass the unchanged 25-second RPC deadline; all four reconnects include exact reference verification in 3,494..7,903 ms",
+      "productTimeoutsChanged": false,
+      "originalTimeoutCauseProven": false
+    },
+    {
+      "check": "Strict Clippy over all native integration-test targets",
+      "passed": false,
+      "errors": 8,
+      "unchangedFile": "crates/breditor-collaboration/tests/general_inline_clipboard_contracts.rs",
+      "categories": ["manual_assert_eq", "items_after_statements"],
+      "productLibraryStrictLintAndFunctionalTestsPassed": true,
+      "deferred": "Legacy test-style cleanup, not a functional pass or release waiver"
+    }
+  ],
+  "reproduce": [
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_TARGET_DIR=target/relay-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --release --lib --tests --locked --offline",
+    "CARGO_INCREMENTAL=0 node scripts/build-collaboration-runtime.mjs",
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_TARGET_DIR=target/relay-native cargo build --manifest-path experiments/relay/Cargo.toml --release --example transport_v2_functional --features server --locked --offline",
+    "node scripts/check-editor-mixed-workflows.mjs",
+    "node scripts/probe-semantic-remote-compat.mjs OLD_SHARED_WASM_DIRECTORY NEW_SHARED_WASM_DIRECTORY OPTIONAL_REPRODUCTION_DIRECTORY"
+  ],
+  "functionalGoalComplete": true,
+  "readinessRowsPromoted": [],
+  "releaseReady": false,
+  "pushed": false,
+  "publishedOrDeployed": false,
+  "remaining": [
+    "Advanced review/document parity beyond this everyday-editing goal",
+    "Deferred native clipboard, captured Office producers, broader browser/historical WebKit, IME/accessibility, performance, API/package promotion and final release qualification",
+    "History lifetime, backup/compaction and public service hardening before production"
+  ]
+}
