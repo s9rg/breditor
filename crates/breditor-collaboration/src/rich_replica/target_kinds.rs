@@ -103,6 +103,11 @@ impl TargetKinds {
     }
     fn record_original(&mut self, command: &Command) -> Result<(), Error> {
         match command {
+            Command::ReplaceMaskedGeneralTextRangeV1(value) => {
+                for id in &value.empty {
+                    self.insert(id, "breditor/paragraph")?;
+                }
+            }
             Command::PasteGeneralFlowAtTextV1(value) => {
                 self.insert(&value.right, "breditor/paragraph")?;
                 for node in &value.nodes {

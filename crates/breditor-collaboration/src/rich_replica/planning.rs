@@ -15,6 +15,7 @@ pub(super) fn handles(command: &Command) -> bool {
             | Command::ChangeDocumentLayoutV1(_)
             | Command::InsertGeneralParagraphV1(_)
             | Command::PasteGeneralFlowAtTextV1(_)
+            | Command::ReplaceMaskedGeneralTextRangeV1(_)
             | Command::PasteFlowAtText(_)
             | Command::PasteBlocks(_)
             | Command::PasteTableCells(_)
@@ -153,6 +154,9 @@ fn validate_geometry(
         }
         Command::PasteGeneralFlowAtTextV1(value) => {
             value.preview(doc, codec, document)?;
+        }
+        Command::ReplaceMaskedGeneralTextRangeV1(value) => {
+            value.plan(codec, document)?;
         }
         Command::PasteFlowAtText(value) => {
             value.preview(doc, codec, document)?;

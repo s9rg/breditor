@@ -34,6 +34,16 @@ impl RangePlan {
         after: &RichDocument,
         end: &str,
     ) -> Result<Self, Error> {
+        Self::capture_retaining_text(codec, before, after, &[end])
+    }
+    /// Routed text roots disappear from the AST without tombstoning their original containers.
+    pub fn capture_retaining_text(
+        codec: &DocumentJsonCodecV2,
+        before: &RichDocument,
+        after: &RichDocument,
+        retained: &[&str],
+    ) -> Result<Self, Error> {
+        let retained = retained.iter().copied().collect::<std::collections::BTreeSet<_>>();
         let a = nodes(
             &serde_json::from_str::<Value>(
                 &codec
@@ -54,7 +64,7 @@ impl RangePlan {
         let deletes = a
             .iter()
             .filter(|(id, node)| {
-                id.as_str() != end
+                !retained.contains(id.as_str())
                     && !b.contains_key(*id)
                     && node.parent.as_ref().is_none_or(|parent| b.contains_key(parent))
             })

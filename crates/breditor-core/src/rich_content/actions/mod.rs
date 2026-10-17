@@ -40,6 +40,8 @@ mod list_boundary_patch;
 mod list_helpers;
 mod list_parts;
 pub(crate) mod local_replay;
+mod masked_general_range_plan;
+mod masked_text;
 mod merge_table_cells;
 mod move_axis;
 mod move_table_column;
@@ -111,6 +113,8 @@ pub use insert_text::InsertText;
 pub use join_list_items::JoinListItems;
 pub use join_task_items::JoinTaskItems;
 pub use join_text_blocks::JoinTextBlocks;
+pub use masked_general_range_plan::RichMaskedGeneralRangePlan;
+pub use masked_text::RichMaskedTextSpan;
 pub use merge_table_cells::MergeTableCells;
 pub use move_table_column::MoveTableColumn;
 pub use move_table_row::MoveTableRow;
@@ -414,6 +418,9 @@ impl RichEdit {
 /// Payload-free failure of a captured local rich-content action.
 #[derive(Debug, thiserror::Error)]
 pub enum RichActionError {
+    /// A masked replacement cannot remove a whole rich atom containing unselected text.
+    #[error("rich masked replacement would remove retained text inside a whole atom")]
+    MaskedStructure,
     /// General range repair requires exactly one fresh, non-reused block ID per native floor.
     #[error("rich range floor identities must be exact, unique and fresh")]
     RangeFloorIds,

@@ -16,6 +16,7 @@ mod rebase_format_steps;
 mod rebase_suggestion_format;
 mod rebase_suggestion_text;
 mod rebase_text_intent;
+mod rebase_text_masked;
 mod rebase_text_target;
 mod revision_packet;
 #[cfg(test)]

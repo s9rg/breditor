@@ -316,6 +316,7 @@ impl<'a> ReadSet<'a> {
             Command::ChangeDocumentFormatsV1(_)
             | Command::ChangeDocumentLayoutV1(_)
             | Command::PasteDocumentClipboardV1(_)
+            | Command::ReplaceMaskedGeneralTextRangeV1(_)
             | Command::ReplaceDocumentPlainTextV1(_) => {
                 self.add(SuggestionConflictTarget::Document)?;
             }

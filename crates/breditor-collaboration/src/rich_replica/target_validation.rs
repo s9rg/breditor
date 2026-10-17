@@ -65,7 +65,9 @@ pub(super) fn validate_context(owner: &Context<'_>, commands: &[Command]) -> Res
         }
         if matches!(
             command,
-            Command::PasteGeneralFlowAtTextV1(_) | Command::InsertGeneralParagraphV1(_)
+            Command::PasteGeneralFlowAtTextV1(_)
+                | Command::InsertGeneralParagraphV1(_)
+                | Command::ReplaceMaskedGeneralTextRangeV1(_)
         ) && (!owner.general_ranges_enabled() || commands.len() != 1)
         {
             return Err(Error::Contract(

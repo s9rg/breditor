@@ -1,0 +1,90 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "64d819efc359e101faacf30267d2baa8e27e4d33",
+  "scope": "Additive native-only preserving text-revision policy and versioned masked general replacement. Remove only proven original characters, retain peer native identities and current formats, route joined flow without reinsertion, retain protected owners and recompute fresh floors. Both policies remain explicit with no product default. The advanced-review goal remains active.",
+  "contract": {
+    "capture": "RichReplica::rebase_document_suggestion_text_guarded",
+    "implementedPolicies": ["reject_intervening_text", "preserve_intervening_text"],
+    "policyArgumentRequired": true,
+    "defaultPolicy": null,
+    "newCorePlan": "RichMaskedGeneralRangePlan",
+    "newSavedCommandTag": "replace_masked_general_text_range_v1",
+    "maskedCommandFields": ["range", "spans", "empty"],
+    "maskedSpanFields": ["block", "start", "end"],
+    "spanCoordinates": "Checked current-source scalar-aligned UTF-16 boundaries, not durable identity or permissions. Automatic review capture derives them only from complete native original-character proofs.",
+    "ordinaryLocalDispatch": "Sole command in explicitly enabled general/document history; no implicit family enablement",
+    "suggestionCaptureAndServerOwnedAcceptance": "All six original/general/document and explicit/natural history configurations",
+    "maskedChildWitness": "Complete current semantic document and native-character witnesses, including equal-text reinsertion conflicts",
+    "maskedChildFurtherAutomaticRebase": "Unsupported; before server supersession recapture from the original, afterward make an explicit manual revision of the pending child. A finalized predecessor cannot independently supersede twice.",
+    "oldRangeCommandMeaningsChanged": false,
+    "existingPacketOrRevisionFamilyChanged": false,
+    "modelOrJournalVersionChanged": false,
+    "defaultConstructorsChanged": false,
+    "olderRuntimeRecovery": "Unknown additive saved command tag rejects rather than reinterpreting it as the original unmasked range",
+    "newWasmSdkOrControlsCapability": false
+  },
+  "verification": {
+    "coreLibraryInternalTests": {"passed": 1220, "failed": 0, "groups": 1},
+    "fullCanonicalNativeSuite": {"passed": 542, "failed": 0, "resultGroupsIncludingEmptyDoctests": 48, "maskedInternalCases": 7, "publicTextRebaseCases": 13},
+    "coreRangeAndCoverageRegressions": {"passed": 42, "failed": 0, "groups": 4, "newMaskedCases": 10},
+    "fullRelayServerFeatureSuite": {"passed": 81, "failed": 0, "resultGroupsIncludingEmptyDoctests": 12, "documentSuggestionCases": 22},
+    "researchCompatibilityTextRebaseCases": {"passed": 13, "failed": 0},
+    "pureReadOnlyPreservingCaptureAndExactReopenPolicies": 6,
+    "preservingAuthenticatedSupersessionAcceptOwnedHistoryRestartPolicies": 6,
+    "existingRejectingAuthenticatedAcceptAndRestartPolicies": 6,
+    "joinedDirectionalOrdinaryAndDocumentExplicitNaturalRecoveryCombinations": 8,
+    "strictNativeLibraryAndPublicTextContractClippy": "passed",
+    "strictCoreLibraryAndMaskedContractClippy": "passed",
+    "strictRelayLibraryAndDocumentSuggestionIntegrationClippy": "passed",
+    "changedRustFilesRustfmt": "passed",
+    "promotionAndNativeGraphGuards": {"passed": 9, "failed": 0}
+  },
+  "laws": [
+    "Complete original source evaluation, scalar survival/order, selected original formatting and structural witnesses are proved before preserving capture. Lost originals, equal-looking reinsertion and changed original marks cannot become a usable subset.",
+    "The new compound removes only the ordered admitted masks. The pure Core expected tree can contain retained values, but the native executor never copies that tree or reinserts retained peer text. Only desired new runs author new characters.",
+    "Joined paragraphs and supported list heads route all retained source roots in reading order into the first root, excluding those roots from structural tombstoning. The exact expected AST is verified only after the complete staged compound. A later offline update to an old joined source still routes into the surviving flow.",
+    "Protected table cells and image captions retain their owners. Intermediate text with retained peer characters stays present and suppresses an otherwise unnecessary empty-body floor. Truly emptied bodies require exactly the fresh native floors; wrong counts, visible reuse and native historical creation guards refuse atomically.",
+    "Whole selected non-text atoms containing unmasked text refuse instead of hoisting or flattening their contents. Automatic rebase also retains complete original whole-atom and structural witnesses. Existing unmasked Core range semantics remain unchanged.",
+    "Actual peer-authored X keeps the same native scalar identity through automatic preserving revision capture, Ready preview, own-writer effect commit, Undo and Redo. Capture and effect preparation leave source checkpoints unchanged. Additional native tests compare surviving identities and complete current formats across joins, list tails, cells and captions.",
+    "Capture is a pure read in read-only mode under all six policies. Creator and explicit scope remain original. The host permanently consumes the supplied namespace even after refusal. Empty collapsed masked edits retain the exact checkpoint/frame/view and Redo, and malformed masks or disabled/mixed history requests publish nothing.",
+    "Authenticated supersession remains separate from Accept. Preserving Accept retains peer text and formatting, supplies once-only accepting-user history, recovers exact Undo/Redo and returns the original immutable decision after host restart and lease renewal without another append. The rejecting policy continues to pass its original host workflow.",
+    "The masked child's stronger whole-document/native-character read set refuses later edits, including deletion/reinsertion of an equal peer character. It is not automatically rebased as a contiguous range; repeated masked capture is explicitly Unsupported. Recapture from the original before supersession, or explicitly revise the pending child after supersession; the finalized original cannot supersede again. No default policy or broad compatibility reinterpretation is introduced."
+  ],
+  "bounds": {
+    "maskedSpans": 4096,
+    "removedOriginalScalars": 65536,
+    "nativeFreshFloorIds": 4096,
+    "insertedRichRuns": 1000,
+    "insertedTextBytes": 65536,
+    "existingAffineSourceSegments": 4096,
+    "existingRangeAndProposalBytes": 1048576,
+    "visitedScalarsPerTraversal": 4194304,
+    "note": "Existing source/schema, traversal, selected-format, historical-cut, structural, child and revision-envelope budgets also apply. Core masks refuse overlap, reordering, scalar splits, outside-range coordinates and complete-work budget overflow. No truncation or plain-text fallback occurs."
+  },
+  "verificationNotes": [
+    "The complete final canonical run exits successfully with 542 tests. A prior full run without the final actual-peer unit case passed 541; it is not added to the final count. The final server-feature run exits successfully with 81 tests. The separate Core library run passes 1,220 internal tests. Focused/repeated runs are separate evidence, not additive totals.",
+    "Early test harness corrections used the existing RichSelection::try_new constructor and correct module visibility. The list expectation now retains masked-out text that really lies inside the joined range. The peer-format assertion compares the complete current mark set, including the source fixture's inherited strong mark, rather than incorrectly expecting italic alone.",
+    "An offline insertion inside concurrently deleted text follows the pinned native engine's causal ordering when selective Undo restores deleted scalars. Tests assert that the peer insertion remains present, its retained identity is unchanged, and recovered future Undo/Redo is exact; they do not reposition it by copying text.",
+    "Strict production/changed-contract Core, shared and relay checks pass without new lint suppressions. An exploratory all-target shared lint sweep encountered existing test-style diagnostics outside this increment: equality assertions/nested helper placement in general_inline_clipboard_contracts, and an unnecessary Result in the existing affine segment-budget test when that library-test target is reached. Those unrelated files remain unchanged. The pinned engine's existing HasIdSpan warning also remains unchanged.",
+    "No application Wasm, SDK declaration, outbox, panel, React control, installed consumer or browser was changed for text rebasing in this checkpoint. Earlier installed asset/review qualification remains separate evidence; this native result does not complete the advanced-review or V1 release goals."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-core/Cargo.toml --locked --offline --features experimental-rich-content --release --lib",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-core/Cargo.toml --locked --offline --features experimental-rich-content --release --test rich_masked_range --test rich_general_range --test rich_text_range --test rich_selection_coverage",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_text_rebase_contracts",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo clippy --manifest-path crates/breditor-core/Cargo.toml --locked --offline --features experimental-rich-content --release --test rich_masked_range -- -D warnings",
+    "CARGO_TARGET_DIR=target/historical-source-native cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release --lib --test suggestion_text_rebase_contracts -- -D warnings",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo clippy --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --lib --test document_suggestions -- -D warnings",
+    "node --test scripts/collaboration-promotion.test.mjs scripts/collaboration-native-graph.test.mjs"
+  ],
+  "remaining": [
+    "Automatic rebase of a masked child while retaining its sparse original intent, without broadening it to include previously preserved peer text. Mixed command-batch text rebasing also remains explicitly unsupported.",
+    "Paired optional text-rebase Wasm/SDK capability, durable revision-outbox integration, borrowed vanilla/React controls and clean-installed combined acceptance under every history policy. Neither preserving nor rejecting mode has been selected as a product default.",
+    "Final API/migration, storage lifetime/compaction, package release, production auth/hosting and deferred broad browser, physical IME, accessibility and performance qualification."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22", "advancedReviewGoalRemainsActive": true}
+}

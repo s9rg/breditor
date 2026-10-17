@@ -1,4 +1,5 @@
 //! Native cross-container trimming with explicit structural floors, never an authored root register.
+use super::masked_text::TextMask;
 use super::{RichActionError, replace_text_range::ordered, text_patch};
 use crate::{
     document::{NodeRef, TextFragment},
@@ -86,6 +87,22 @@ impl RichRangeReplacementPlan {
         selection: &RichSelection,
         inserted: &TextFragment,
     ) -> Result<Self, RichActionError> {
+        Self::capture_inner(document, selection, inserted, None)
+    }
+    pub(super) fn capture_masked(
+        document: &RichDocument,
+        selection: &RichSelection,
+        inserted: &TextFragment,
+        mask: &TextMask,
+    ) -> Result<Self, RichActionError> {
+        Self::capture_inner(document, selection, inserted, Some(mask))
+    }
+    fn capture_inner(
+        document: &RichDocument,
+        selection: &RichSelection,
+        inserted: &TextFragment,
+        mask: Option<&TextMask>,
+    ) -> Result<Self, RichActionError> {
         selection.resolve(document)?;
         let RichSelectionKind::TextRange { anchor, focus } = selection.kind() else {
             return Err(RichActionError::SelectionKind);
@@ -106,6 +123,7 @@ impl RichRangeReplacementPlan {
             floors: vec![],
             maps: vec![],
             tree: vec![],
+            mask,
         };
         let root = builder.walk(document.document().root())?;
         Ok(Self {
@@ -210,6 +228,7 @@ impl RichRangeReplacementPlan {
 }
 
 struct Builder<'a> {
+    mask: Option<&'a TextMask>,
     covered: BTreeMap<BlockId, RichCoverageExtent>,
     spans: BTreeMap<BlockId, &'a RichCoveredText>,
     start: &'a BlockId,
@@ -292,14 +311,28 @@ impl Builder<'_> {
             match self.covered.get(id) {
                 None => return Ok(Decision::Retained(self.push(Tree::Keep(node.clone())))),
                 Some(RichCoverageExtent::Whole)
-                    if !matches!(kind, "breditor/table-row" | "breditor/table-cell") =>
+                    if !matches!(kind, "breditor/table-row" | "breditor/table-cell")
+                        && self.mask.is_none_or(|mask| {
+                            !super::masked_text::is_text(kind) || mask.full_text(id, node)
+                        }) =>
                 {
+                    if let Some(mask) = self.mask {
+                        mask.require_whole(node)?;
+                    }
                     self.deletes.push(id.clone());
                     return Ok(Decision::Removed);
                 }
                 _ => {}
             }
             if let Some(span) = self.spans.get(id).copied() {
+                if let Some(mask) = self.mask {
+                    let (after, maps) = mask.rebuild(node, id, self.inserted)?;
+                    if &after != node {
+                        self.maps.extend(maps);
+                        self.ranges.push(span.clone());
+                    }
+                    return Ok(Decision::Retained(self.push(Tree::Keep(after))));
+                }
                 let old = text_patch::fragment(node)?;
                 let (prefix, tail) =
                     old.split_at(span.start()).map_err(|_| RichActionError::TextRange)?;

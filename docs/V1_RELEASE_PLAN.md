@@ -361,9 +361,15 @@ range. It retains source character identity, complete selected formatting,
 structural witnesses, original scope and native fresh-floor semantics rather
 than lowering rich ranges into a smaller command batch. The ordinary V1 child
 still uses authenticated supersession and once-only accepting-user history.
-Preserving intervening peer text and paired text-rebase client delivery remain
-open; this native increment does not complete the advanced-review goal or
-advance a release gate.
+The [native masked-text checkpoint](qualification/2026-10-17-rich-review-masked-text-native.json)
+adds a separately selected preserving policy: only proven originals are removed,
+peer text retains its native identities and current formatting, joined flows
+route rather than copy text, and protected cells/captions keep their owners.
+Fresh floors reflect retained text. Authenticated acceptance and exact owned
+Undo/Redo recovery work under all six policies. Masked children use conservative
+exact-document witnesses; automatic rebase of an already masked child remains
+unsupported. Paired text-rebase client delivery and installed mixed acceptance
+remain open. The advanced-review goal stays active and no release gate advances.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

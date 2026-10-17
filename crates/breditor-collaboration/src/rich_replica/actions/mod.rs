@@ -32,6 +32,7 @@ mod paste_table_cells;
 mod replace_document_plain_text_v1;
 mod replace_general_text_range_v1;
 mod replace_image;
+mod replace_masked_general_text_range_v1;
 mod replace_text_range;
 mod resize_column;
 mod resize_image;
@@ -91,6 +92,7 @@ pub use paste_table_cells::{PasteTableCells, PastedCell, PastedMerge};
 pub use replace_document_plain_text_v1::ReplaceDocumentPlainTextV1;
 pub use replace_general_text_range_v1::ReplaceGeneralTextRangeV1;
 pub use replace_image::ReplaceImage;
+pub use replace_masked_general_text_range_v1::{MaskedTextSpanV1, ReplaceMaskedGeneralTextRangeV1};
 pub use replace_text_range::{RangeTextRun, ReplaceTextRange};
 pub use resize_column::ResizeColumn;
 pub use resize_image::ResizeImage;
@@ -132,6 +134,8 @@ pub enum Command {
     InsertGeneralParagraphV1(InsertGeneralParagraphV1),
     /// Additive atomic general-range flow paste; requires explicitly enabled general history.
     PasteGeneralFlowAtTextV1(PasteGeneralFlowAtTextV1),
+    /// Explicit current-coordinate masked replacement; sole command in general history.
+    ReplaceMaskedGeneralTextRangeV1(ReplaceMaskedGeneralTextRangeV1),
     /// Patch independently owned bounded layout fields under explicit shared model 13.
     SetBlockLayout(SetBlockLayout),
     /// Insert one V2 atomic rule at an explicit flow position.
@@ -262,6 +266,7 @@ impl Command {
             Self::ReplaceDocumentPlainTextV1(value) => value.prepare(doc, codec, document)?,
             Self::InsertGeneralParagraphV1(value) => value.prepare(doc, codec, document)?,
             Self::PasteGeneralFlowAtTextV1(value) => value.prepare(doc, codec, document)?,
+            Self::ReplaceMaskedGeneralTextRangeV1(value) => value.prepare(doc, codec, document)?,
             Self::SetBlockLayout(value) => value.prepare(doc)?,
             Self::InsertHorizontalRule(value) => value.prepare(doc)?,
             Self::DeleteHorizontalRule(value) => value.prepare(doc)?,
@@ -367,6 +372,9 @@ impl Command {
             Self::ReplaceDocumentPlainTextV1(value) => value.apply(doc, codec, document, stamp),
             Self::InsertGeneralParagraphV1(value) => value.apply(doc, codec, document, stamp),
             Self::PasteGeneralFlowAtTextV1(value) => value.apply(doc, codec, document, stamp),
+            Self::ReplaceMaskedGeneralTextRangeV1(value) => {
+                value.apply(doc, codec, document, stamp)
+            }
             Self::SetBlockLayout(value) => value.apply(doc, codec, document, stamp),
             Self::InsertHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),
             Self::DeleteHorizontalRule(value) => value.apply(doc, codec, document, stamp, ordinal),

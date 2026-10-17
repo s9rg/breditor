@@ -23,7 +23,7 @@ pub(super) struct Source<'a> {
     pub draft: &'a DocumentSuggestionDraft,
 }
 pub(super) enum Target {
-    Ready(Selection),
+    Ready { selection: Selection, segments: Vec<AffineTextSegment> },
     NotReady(Rebase),
 }
 fn targets(
@@ -111,6 +111,8 @@ pub(super) fn resolve(
         Policy::RejectInterveningText if !only_originals(owner, &target, &segments)? => {
             Ok(Target::NotReady(Rebase::Conflict { reason: Conflict::InterveningText }))
         }
-        Policy::RejectInterveningText => Ok(Target::Ready(target)),
+        Policy::RejectInterveningText | Policy::PreserveInterveningText => {
+            Ok(Target::Ready { selection: target, segments })
+        }
     }
 }

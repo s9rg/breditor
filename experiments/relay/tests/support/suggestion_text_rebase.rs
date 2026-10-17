@@ -13,6 +13,7 @@ fn accept_text_revision(
     source: &mut RichReplica,
     registration: &Registration,
     previous: &str,
+    policy: DocumentSuggestionTextRebasePolicy,
 ) -> Result<(String, DurableSuggestionDecision)> {
     let exact = source.reviewed_checkpoint()?;
     let DocumentSuggestionTextRebase::Captured { revision_packet_json } = source
@@ -22,7 +23,7 @@ fn accept_text_revision(
             "Rebased text",
             "1",
             "host-text-rebase",
-            DocumentSuggestionTextRebasePolicy::RejectInterveningText,
+            policy,
         )?
     else {
         return Err("text revision capture".into());
@@ -56,6 +57,14 @@ fn accept_text_revision(
 #[test]
 fn rebased_text_accept_owned_history_and_original_receipt_recover_under_all_six_policies() -> Result
 {
+    exercise_text_revision(false)
+}
+#[test]
+fn preserving_text_accept_is_once_only_and_keeps_peer_runs_with_owned_history_all_six_policies()
+-> Result {
+    exercise_text_revision(true)
+}
+fn exercise_text_revision(preserve: bool) -> Result {
     for scope in 0..=2 {
         for natural in [false, true] {
             let files = Files::new()?;
@@ -79,8 +88,8 @@ fn rebased_text_accept_owned_history_and_original_receipt_recover_under_all_six_
                 "alice",
                 "Replace original emoji",
                 vec![Command::ReplaceTextRange(ReplaceTextRange {
-                    anchor: point(1, Affinity::After),
-                    focus: point(3, Affinity::Before),
+                    anchor: point(u32::from(!preserve), Affinity::After),
+                    focus: point(if preserve { 4 } else { 3 }, Affinity::Before),
                     runs: vec![RangeTextRun { text: "R🙂".into(), formats: vec![] }],
                 })],
             )?;
@@ -97,6 +106,22 @@ fn rebased_text_accept_owned_history_and_original_receipt_recover_under_all_six_
                     enabled: true,
                 }),
             ])?;
+            if preserve {
+                peer.apply(vec![
+                    Command::InsertText(InsertText {
+                        block: "p".into(),
+                        offset: 2,
+                        text: "X".into(),
+                    }),
+                    Command::SetFormat(SetFormat {
+                        block: "p".into(),
+                        offset: 2,
+                        length: 1,
+                        format: json!({"type":"breditor-inline/italic","properties":{}}),
+                        enabled: true,
+                    }),
+                ])?;
+            }
             flush(&mut room, "bob", &peer_registration, &peer, "0")?;
             source.receive_frame(&room.catchup("alice")?)?;
             assert!(matches!(
@@ -104,9 +129,18 @@ fn rebased_text_accept_owned_history_and_original_receipt_recover_under_all_six_
                 DocumentSuggestionPreparation::Conflict { .. }
             ));
             let before = source.document_json().to_owned();
-            let (expected, accepted) =
-                accept_text_revision(&mut room, &mut source, &registration, &previous)?;
-            assert_eq!(text(&source, "p")?, "PaR🙂bQ");
+            let (expected, accepted) = accept_text_revision(
+                &mut room,
+                &mut source,
+                &registration,
+                &previous,
+                if preserve {
+                    DocumentSuggestionTextRebasePolicy::PreserveInterveningText
+                } else {
+                    DocumentSuggestionTextRebasePolicy::RejectInterveningText
+                },
+            )?;
+            assert_eq!(text(&source, "p")?, if preserve { "PR🙂XQ" } else { "PaR🙂bQ" });
             assert!(source.document_json().contains("breditor-inline/italic"));
             let mut reopened = profile.restore_reviewed("room", &source.reviewed_checkpoint()?)?;
             assert!(source.undo()?);
@@ -120,21 +154,27 @@ fn rebased_text_accept_owned_history_and_original_receipt_recover_under_all_six_
             assert_eq!(source.reviewed_checkpoint()?, reopened.reviewed_checkpoint()?);
             flush(&mut room, "alice", &registration, &source, &through)?;
             drop(room);
-            let (mut room, _) = Room::open(&files.path)?;
-            let renewed =
-                room.resume("alice", &registration.lease.writer, &registration.credential)?;
-            let durable = fs::read(&files.path)?;
-            let choice =
-                request(&room, &accepted.decision.suggestion_id, SuggestionDecision::Accept)?;
-            let DocumentSuggestionDecisionAdmission::Durable(repeated) =
-                room.accept_document_suggestion_owned("alice", &renewed, &choice)?
-            else {
-                return Err("original text decision".into());
-            };
-            assert!(repeated.duplicate);
-            assert_eq!(repeated.decision, accepted.decision);
-            assert_eq!(fs::read(&files.path)?, durable);
+            restart_retains_original_text_decision(&files, &registration, &accepted)?;
         }
     }
+    Ok(())
+}
+fn restart_retains_original_text_decision(
+    files: &Files,
+    registration: &Registration,
+    accepted: &DurableSuggestionDecision,
+) -> Result {
+    let (mut room, _) = Room::open(&files.path)?;
+    let renewed = room.resume("alice", &registration.lease.writer, &registration.credential)?;
+    let durable = fs::read(&files.path)?;
+    let choice = request(&room, &accepted.decision.suggestion_id, SuggestionDecision::Accept)?;
+    let DocumentSuggestionDecisionAdmission::Durable(repeated) =
+        room.accept_document_suggestion_owned("alice", &renewed, &choice)?
+    else {
+        return Err("original text decision".into());
+    };
+    assert!(repeated.duplicate);
+    assert_eq!(repeated.decision, accepted.decision);
+    assert_eq!(fs::read(&files.path)?, durable);
     Ok(())
 }

@@ -2,7 +2,7 @@
 use super::{
     SuggestionConflictTarget, evaluate_commands,
     packet::Packet,
-    rebase_text_intent,
+    rebase_text_intent, rebase_text_masked,
     rebase_text_target::{self, Source, Target},
 };
 use crate::{
@@ -12,13 +12,15 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 /// Required opt-in policy. No default or guessed disposition of intervening peer text exists.
-/// Preserving an intervening insertion needs a separate masked structural edit contract; it is
-/// deliberately not emulated by deleting/reinserting those foreign characters.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DocumentSuggestionTextRebasePolicy {
     /// A nonempty replacement conflicts if its mapped selection includes any non-original text.
     RejectInterveningText,
+    /// Remove only surviving selected originals and retain intervening native characters.
+    /// Uses a new explicit masked compound, never a reinterpretation of old range commands.
+    /// Whole atoms with changed text/structure still conflict; their contents are not flattened.
+    PreserveInterveningText,
 }
 /// Native refusal, not permission to apply a surviving subset or copy foreign characters.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -67,7 +69,10 @@ impl RichReplica {
     /// This supports the original joined-flow/list and protected-boundary general semantics,
     /// including fresh native floors, without lowering a rich range into a 64-command batch.
     /// Disjoint text/mark edits outside the selected originals are retained. Any changed selected
-    /// marks, non-original selected characters or structural witnesses return an explicit conflict.
+    /// marks or structural witnesses return an explicit conflict. Intervening text requires an
+    /// explicit policy. Preserving children use a conservative exact-document native read set;
+    /// further rebase of that masked child is unsupported. After server supersession, use an
+    /// explicit manual revision of the child rather than superseding a finalized predecessor again.
     /// Collapsed original insertions stay collapsed, even if their two affinities map around peer
     /// text. The host permanently reserves `prefix`, including after refusal or discarded capture.
     /// # Errors
@@ -106,7 +111,7 @@ impl RichReplica {
             return Err(Error::Contract("text rebase requires original source effect"));
         }
         let request = rebase_text_intent::request(&packet.data.draft.edit, &original.doc)?;
-        let target = match rebase_text_target::resolve(
+        let (target, segments) = match rebase_text_target::resolve(
             self,
             &Source {
                 doc: &source.doc,
@@ -118,12 +123,18 @@ impl RichReplica {
             &request,
             policy,
         )? {
-            Target::Ready(selection) => selection,
+            Target::Ready { selection, segments } => (selection, segments),
             Target::NotReady(result) => return Ok(result),
         };
         let inserted = request.fragment(&self.codec)?;
-        let mut draft =
-            self.plan_suggestion_general_text_guarded(observed, &target, &inserted, prefix)?;
+        let mut draft = match policy {
+            DocumentSuggestionTextRebasePolicy::RejectInterveningText => {
+                self.plan_suggestion_general_text_guarded(observed, &target, &inserted, prefix)?
+            }
+            DocumentSuggestionTextRebasePolicy::PreserveInterveningText => {
+                rebase_text_masked::draft(self, &target, &segments, &inserted, prefix)?
+            }
+        };
         draft.scope = packet.data.draft.scope;
         let revision_packet_json = self.capture_document_suggestion_revision_guarded(
             observed,

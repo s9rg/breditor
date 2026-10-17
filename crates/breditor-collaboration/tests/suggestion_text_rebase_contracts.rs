@@ -100,6 +100,16 @@ fn text(input: &str, id: &str) -> Result<String> {
         .filter_map(|run| run["text"].as_str())
         .collect())
 }
+fn run_formats(input: &str, id: &str, text: &str) -> Result<Value> {
+    let current: Value = serde_json::from_str(input)?;
+    Ok(node(&current["root"], id).ok_or("current block")?["children"]
+        .as_array()
+        .ok_or("current runs")?
+        .iter()
+        .find(|run| run["text"] == text)
+        .ok_or("current run")?["formats"]
+        .clone())
+}
 fn save(a: &RichReplica, scope: u8, natural: bool) -> Result<String> {
     Ok(match (scope, natural) {
         (0, false) => a.checkpoint()?,
@@ -463,7 +473,11 @@ fn joined_rebase_removes_only_whole_original_atoms_and_undo_preserves_peer_text(
 #[test]
 fn explicit_document_scope_and_required_policy_are_not_silently_changed() -> Result {
     assert!(serde_json::from_str::<Policy>("null").is_err());
-    assert!(serde_json::from_str::<Policy>("\"preserve_intervening_text\"").is_err());
+    assert_eq!(
+        serde_json::from_str::<Policy>("\"preserve_intervening_text\"")?,
+        Policy::PreserveInterveningText
+    );
+    assert!(serde_json::from_str::<Policy>("\"silently_delete_peer_text\"").is_err());
     let (_, a, _) = setup(None)?;
     let previous = a.capture_document_suggestion_guarded(
         &a.observe()?,
@@ -479,5 +493,189 @@ fn explicit_document_scope_and_required_policy_are_not_silently_changed() -> Res
     )?;
     let packet: Value = serde_json::from_str(&child(&a, &previous, "same-explicit-scope")?)?;
     assert_eq!(packet["data"]["draft"]["scope"], "document");
+    Ok(())
+}
+
+#[test]
+fn explicit_preserving_capture_retains_peer_runs_and_exact_read_only_recovery_all_policies()
+-> Result {
+    for scope in 0..=2 {
+        for natural in [false, true] {
+            let (profile, mut a, mut b) = setup(None)?;
+            if scope >= 1 {
+                a.enable_general_ranges_guarded(&a.observe()?)?;
+            }
+            if scope == 2 {
+                a.enable_document_selection_guarded(&a.observe()?)?;
+            }
+            if natural {
+                a.enable_typing_history_guarded(&a.observe()?)?;
+            }
+            let previous = original(
+                &a,
+                DocumentSuggestionEdit::Commands(vec![Command::ReplaceTextRange(range(
+                    "p", 0, 4, "R",
+                ))]),
+            )?;
+            let italic = json!({"type":"breditor-inline/italic","properties":{}});
+            b.apply(vec![
+                insert("p", 1, "X"),
+                Command::SetFormat(SetFormat {
+                    block: "p".into(),
+                    offset: 1,
+                    length: 1,
+                    format: italic.clone(),
+                    enabled: true,
+                }),
+            ])?;
+            a.receive_frame(&b.update_frame()?)?;
+            let peer_formats = run_formats(a.document_json(), "p", "X")?;
+            assert!(peer_formats.as_array().ok_or("peer marks")?.contains(&italic));
+            assert_eq!(
+                result(&a, &previous, "conflict-policy")?,
+                Rebase::Conflict { reason: Conflict::InterveningText }
+            );
+            a.set_read_only_guarded(&a.observe()?, true)?;
+            let exact = (save(&a, scope, natural)?, a.update_frame()?, a.view_json()?);
+            let capture = |owner: &RichReplica| -> Result<String> {
+                match owner.rebase_document_suggestion_text_guarded(
+                    &owner.observe()?,
+                    &previous,
+                    "Preserving revision",
+                    "2",
+                    "preserving-child",
+                    Policy::PreserveInterveningText,
+                )? {
+                    Rebase::Captured { revision_packet_json } => Ok(revision_packet_json),
+                    other => Err(format!("preserving capture: {other:?}").into()),
+                }
+            };
+            let revision = capture(&a)?;
+            assert_eq!((save(&a, scope, natural)?, a.update_frame()?, a.view_json()?), exact);
+            let reopened = restore(&profile, &exact.0, scope, natural)?;
+            assert_eq!(capture(&reopened)?, revision);
+            let child = a.document_suggestion_revision_packet(&previous, &revision)?;
+            let raw: Value = serde_json::from_str(&child)?;
+            assert_eq!(
+                raw["data"]["draft"]["edit"]["data"].as_array().ok_or("one compound")?.len(),
+                1
+            );
+            assert_eq!(
+                raw["data"]["draft"]["edit"]["data"][0]["kind"],
+                "replace_masked_general_text_range_v1"
+            );
+            assert_eq!(
+                a.read_document_suggestion_revision(&previous, &revision)?
+                    .suggestion
+                    .author
+                    .as_str(),
+                "alice"
+            );
+            let proposal = proposed(&a, &child)?;
+            assert_eq!(text(&proposal, "p")?, "RX");
+            let proposal: Value = serde_json::from_str(&proposal)?;
+            assert!(
+                node(&proposal["root"], "p").ok_or("proposed p")?["children"]
+                    .as_array()
+                    .ok_or("runs")?
+                    .iter()
+                    .any(|run| run["text"] == "X" && run["formats"] == peer_formats)
+            );
+            // The current masked child is exact-source only; never reinterpret its holes as a
+            // contiguous original range. A fresh rebase can still start from the original packet.
+            assert_eq!(
+                a.rebase_document_suggestion_text_guarded(
+                    &a.observe()?,
+                    &child,
+                    "No broadening",
+                    "3",
+                    "not-reused",
+                    Policy::PreserveInterveningText
+                )?,
+                Rebase::Unsupported
+            );
+            assert_eq!((save(&a, scope, natural)?, a.update_frame()?, a.view_json()?), exact);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn preserving_policy_does_not_weaken_selected_marks_or_character_loss_or_child_witnesses() -> Result
+{
+    for changed_mark in [false, true] {
+        let (_, mut a, mut b) = setup(None)?;
+        let previous = original(
+            &a,
+            DocumentSuggestionEdit::Commands(vec![Command::ReplaceTextRange(range(
+                "p", 0, 4, "R",
+            ))]),
+        )?;
+        b.apply(if changed_mark {
+            vec![Command::SetFormat(SetFormat {
+                block: "p".into(),
+                offset: 1,
+                length: 2,
+                format: json!({"type":"breditor-inline/italic","properties":{}}),
+                enabled: true,
+            })]
+        } else {
+            vec![
+                Command::DeleteText(DeleteText { block: "p".into(), offset: 1, length: 2 }),
+                insert("p", 1, "🙂"),
+            ]
+        })?;
+        a.receive_frame(&b.update_frame()?)?;
+        let before = a.checkpoint()?;
+        let result = a.rebase_document_suggestion_text_guarded(
+            &a.observe()?,
+            &previous,
+            "Refused preserving",
+            "1",
+            "refused-preserving",
+            Policy::PreserveInterveningText,
+        )?;
+        assert_eq!(
+            result,
+            Rebase::Conflict {
+                reason: if changed_mark {
+                    Conflict::FormattingChanged
+                } else {
+                    Conflict::Range { reason: AffineTextRangeConflict::CharactersDeleted }
+                }
+            }
+        );
+        assert_eq!(a.checkpoint()?, before);
+    }
+    let (_, mut a, mut b) = setup(None)?;
+    let previous = original(
+        &a,
+        DocumentSuggestionEdit::Commands(vec![Command::ReplaceTextRange(range("p", 0, 4, "R"))]),
+    )?;
+    b.apply(vec![insert("p", 1, "X")])?;
+    a.receive_frame(&b.update_frame()?)?;
+    let revision = match a.rebase_document_suggestion_text_guarded(
+        &a.observe()?,
+        &previous,
+        "Exact child",
+        "1",
+        "exact-masked-child",
+        Policy::PreserveInterveningText,
+    )? {
+        Rebase::Captured { revision_packet_json } => revision_packet_json,
+        other => return Err(format!("capture {other:?}").into()),
+    };
+    let child = a.document_suggestion_revision_packet(&previous, &revision)?;
+    assert_eq!(text(&proposed(&a, &child)?, "p")?, "RX");
+    // Equal text is not equal identity: replacing the retained peer character must invalidate
+    // even an otherwise identical whole-document semantic projection.
+    a.apply(vec![
+        Command::DeleteText(DeleteText { block: "p".into(), offset: 1, length: 1 }),
+        insert("p", 1, "X"),
+    ])?;
+    assert!(matches!(
+        a.prepare_document_suggestion_guarded(&a.observe()?, &child)?,
+        DocumentSuggestionPreparation::Conflict { .. }
+    ));
     Ok(())
 }
