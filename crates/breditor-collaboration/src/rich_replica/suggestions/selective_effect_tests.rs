@@ -274,7 +274,8 @@ fn checked_foreign_inverse_composes_with_an_ordered_mixed_history_without_marker
         host.receive_frame(&peer.update_frame()?)?;
         let doc = local.doc.fork();
         super::super::super::text_flow::configure(&doc);
-        doc.set_peer_id(303)?;
+        // Continue the accepting user's actual stream, including compensation of the host span.
+        doc.set_peer_id(101)?;
         for (index, redo) in [(2, false), (1, false), (0, false), (0, true), (1, true), (2, true)] {
             let (before, after) = &spans[index];
             spans[index] = inverse(&doc, before, after)?;

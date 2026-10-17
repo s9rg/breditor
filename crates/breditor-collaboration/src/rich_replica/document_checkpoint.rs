@@ -45,12 +45,14 @@ pub(super) fn validate_journal_scope(
                 check(after_ui)?;
             }
             Entry::GeneralRangeV1 { before_ui, after_ui, .. }
+            | Entry::AdoptSuggestionV1 { before_ui, after_ui, .. }
             | Entry::Undo { before_ui, after_ui, .. }
             | Entry::Redo { before_ui, after_ui, .. } => {
                 check(before_ui)?;
                 check(after_ui)?;
             }
             Entry::Remote { .. } => {}
+            Entry::ReviewedHistoryV1 { ui, .. } => check(ui)?,
         }
     }
     Ok(())

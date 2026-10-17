@@ -89,6 +89,7 @@ mod replay_projections;
 mod retained_history;
 mod review_anchor;
 mod review_comments;
+mod reviewed_history;
 mod select_document;
 pub mod selection;
 mod selection_coverage;
@@ -132,6 +133,7 @@ pub use review_comments::{
     DocumentReviewBatchPreparation, PreparedDocumentReviewBatch, ResolvedReviewAnchor,
     ResolvedReviewThread, ResolvedReviewView,
 };
+pub use reviewed_history::{OwnedSuggestionAcceptance, ReviewedHistoryIdentity};
 pub use session::RichReplica;
 pub use suggestions::{
     DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionEffect,

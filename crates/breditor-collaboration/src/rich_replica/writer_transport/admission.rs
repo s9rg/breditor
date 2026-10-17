@@ -8,6 +8,7 @@ use super::{
 use crate::Error;
 use loro::{ContainerID, ContainerType, IdSpan};
 use serde::{Deserialize, Serialize};
+mod checkpoint_reviewed_history;
 
 /// Integrated operation identity suitable for a relay's later durable acknowledgement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

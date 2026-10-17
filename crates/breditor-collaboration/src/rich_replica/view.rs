@@ -81,6 +81,10 @@ impl RichReplica {
             view["historyGrouping"] = json!("typing-v1");
             view["historyStepCount"] = json!(self.history_step_count());
         }
+        if self.reviewed_history_enabled() {
+            view["historyPolicy"] = json!("reviewed-v1");
+            view["historyStepCount"] = json!(self.history_step_count());
+        }
         if let Some(revision) = &self.read_only_revision {
             view["readOnlyRevision"] = json!(revision);
         }

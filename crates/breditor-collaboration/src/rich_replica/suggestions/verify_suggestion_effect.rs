@@ -26,6 +26,9 @@ pub struct VerifiedDocumentSuggestionEffect {
     pub(super) after: Frontiers,
 }
 impl VerifiedDocumentSuggestionEffect {
+    pub(in crate::rich_replica) fn semantic_frontiers(&self) -> (&Frontiers, &Frontiers) {
+        (&self.before, &self.after)
+    }
     /// Native-proven original proposal metadata; authenticated attribution remains host-owned.
     #[must_use]
     pub const fn info(&self) -> &DocumentSuggestionInfo {

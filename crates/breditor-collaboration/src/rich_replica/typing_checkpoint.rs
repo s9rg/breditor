@@ -36,7 +36,7 @@ struct Envelope {
     #[serde(deserialize_with = "join_records")]
     joins: Vec<u32>,
 }
-struct BoundedEntries(Vec<Entry>);
+pub(super) struct BoundedEntries(pub(super) Vec<Entry>);
 impl<'de> Deserialize<'de> for BoundedEntries {
     fn deserialize<D: Deserializer<'de>>(reader: D) -> Result<Self, D::Error> {
         struct Entries;
@@ -65,7 +65,7 @@ impl<'de> Deserialize<'de> for BoundedEntries {
         reader.deserialize_seq(Entries)
     }
 }
-fn join_records<'de, D: Deserializer<'de>>(reader: D) -> Result<Vec<u32>, D::Error> {
+pub(super) fn join_records<'de, D: Deserializer<'de>>(reader: D) -> Result<Vec<u32>, D::Error> {
     struct Records;
     impl<'de> Visitor<'de> for Records {
         type Value = Vec<u32>;
@@ -127,6 +127,9 @@ impl RichReplica {
         self.encode_typing_checkpoint(super::general_history::TYPING_ENVELOPE)
     }
     pub(super) fn encode_typing_checkpoint(&self, format: &'static str) -> Result<String, Error> {
+        if self.reviewed_contract {
+            return Err(Error::Contract("use explicit reviewed checkpoint"));
+        }
         let history =
             self.typing.as_ref().ok_or(Error::Contract("shared typing history disabled"))?;
         history.validate(&self.journal)?;

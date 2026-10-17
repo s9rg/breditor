@@ -28,8 +28,9 @@ contract is selected. Native proposal capture, historical source validation,
 guarded previews, staged effects, the opt-in native reference-host decision
 ledger, an explicitly negotiated reference socket lane, native/Wasm proposal
 pairing, a durable SDK intent queue and automatic synchronization on the existing
-document-author socket are implemented below. Accepting-user history, Reader-only
-metadata synchronization and paired suggestion controls remain unfinished.
+document-author socket are implemented below. Recovered accepting-user history
+is available through an explicit native contract. Its Wasm/SDK adoption,
+Reader-only metadata synchronization and paired suggestion controls remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -140,18 +141,17 @@ exposed by this checkpoint.
 Private disposable-document tests also compare checked native selective inverses
 with ordinary author Undo/Redo for text, formatting, lists, table structure and
 captions. They preserve same-block peer insertions and later formatting priority.
-This is a test of the inverse mechanism, not a recovered accepting-user history
-implementation. Receipt admission, ordering with normal typing, invisible-item
-handling, selection/cursor repair and exact local recovery must still be
-implemented together before that history path is exposed.
+These inverse-mechanism tests complement the opt-in native owner below. The
+browser path must pair receipt admission, ordinary typing, invisible-item
+handling, cursor repair and exact local recovery before exposing owned history.
 
 A foreign effect writer does not automatically join the accepting client's
-ordinary Undo stack. That history ownership, exact recovery and offline
+ordinary Undo stack. Explicit owned adoption and its exact recovery and offline
 compensation contract remain necessary before exposing a complete browser/SDK
 acceptance workflow. Ordinary offline document editing remains available while
 review decisions are queued. The client sections below add local persistence,
-Wasm proofs and automatic author transport. Accepting-user history, proposal
-controls and combined installed suggestion acceptance remain open; native effect
+Wasm proofs and automatic author transport. Browser accepting-user history,
+proposal controls and combined installed suggestion acceptance remain open; native effect
 staging alone does not complete tracked changes.
 
 The proposal contracts and compatibility shim cover 14 workflows plus three
@@ -207,40 +207,77 @@ atoms reject before reconstruction, even with a valid atom-range digest.
 
 The [native effect-proof checkpoint](qualification/2026-10-17-rich-review-effect-proof-native.json)
 records the source-reconstruction repair, semantic proof workflows and mixed
-selective-inverse comparisons. These are prerequisites, not a claim that the
-accepting user's recovered Undo stack is implemented.
+selective-inverse comparisons. The recovered owner below adds a separate local
+history contract on top of those proof prerequisites.
 
-### Accepting user history integration plan
+### Native ordered accepting user history
 
-The next integration uses one opt-in local history contract for ordinary edits
-and authenticated owned Accepts. It must retain all original/general/document
-selection families and explicit/natural grouping policies. Existing readers and
-saves keep their meanings; a new explicitly selected local recovery envelope
-will record activation and adoption. No marker roots are added to replicated
-content, and the existing document transport remains unchanged.
+`enable_reviewed_history_guarded` explicitly selects one ordered local history
+for ordinary edits and authenticated owned Accepts. Activation retains existing
+Undo/Redo, UI and writer counters, and closes the current natural typing group.
+The pinned `ReviewedHistoryIdentity` binds a suggestion lane, local account and
+separate host effect writer. It cannot change later or grant a live permission.
+All six original/general/document and explicit/natural policies remain available,
+including later one-way policy upgrades.
 
-Activation must preserve the current ordinary Undo/Redo, local UI and exact
-writer end. Adoption is a local history event, not another application of the
-proposal. It requires the native semantic proof plus the authenticated original
-decision's exact account, accepting writer, proposal, lane and effect. Another
-device on the same account cannot inherit that ownership. Replaying an already
-adopted decision must remain a no-op even after Undo, Redo or a new edit discards
-Redo; adoption identity cannot disappear with a stack item.
+`adopt_suggestion_history_guarded` requires an exact live native semantic proof
+and `OwnedSuggestionAcceptance` from an already authenticated original server
+decision. The integration separately authenticates finality and the deciding
+account; native strings and saved attribution are not credentials. Rust checks
+the exact local accepting device, lane, account, effect writer, proposal, receipt
+and unique positive server order. Another device on the same account cannot
+inherit ownership. A second proposal cannot claim an overlapping effect range.
 
-The native ordered stack must distinguish accepted effects from foreign edits
-that remain unowned, close a natural typing group at adoption, and prevent an
-invisible ordinary item from skipping over an intervening accepted item. Checked
-selective inverses must preserve later peer text and original formatting
-priority, excluding permanent preparation. UI recipes need their own captured
-causal basis so native cursor repair does not use the host's caret or a replaced
-AST. Read-only and stale-owner guards remain in force for Undo/Redo.
+Adoption authors no document operation and never reapplies the proposal. Its
+history item is appended when the final acceptance arrives, after any local
+typing completed while waiting. Repeated original receipts are no-ops even after
+Undo, Redo or a new branch discards Redo. Receipt identity remains independent
+of the stack item. Undo/Redo authors ordinary compensating document operations;
+it never reopens the finalized server decision. Past authenticated ownership can
+be retained in read-only mode, but Undo/Redo still require the current writable
+policy. Their guarded
+variants additionally reject stale or foreign publications.
 
-Exact recovery must retain adoption order, idempotency, cursor recipes, typing
-boundaries and all future author operations. The borrowed document/comment owner
-must durably save that history before the dependent final decision cache can
-acknowledge it. A lost reply or failed receipt save must not create a second Undo
-item on retry. Combined native, Wasm, SDK and installed review workflows must
-prove this path before the ordinary Undo controls expose it.
+The new ordered stack applies checked native selective inverses under the actual
+local writer, excluding permanent preparation. It preserves later peer text and
+does not let an invisible ordinary item skip an intervening owned Accept.
+Foreign edits without explicit owned adoption remain outside local history.
+UI recipes use this device's caret at adoption rather than the host's caret.
+Original and opposite cursor recipes map intervening changes in their captured
+semantic basis: including recreated text in that mapping would collapse a
+restored selection. No AST replacement, replicated marker root or writer-counter
+reservation is introduced.
+
+Ordered native rows keep later owned edits separate from external deltas. A
+fresh checkout diff after undoing a newer replacement would mistake recreated
+accepted characters for peer insertions and fail to remove them. Arrival uses
+an explicit row barrier because older items already observed the host effect
+as external. Its first inverse maps that earlier row correctly; subsequent
+Undo/Redo uses ordinary authored native spans.
+
+`reviewed_checkpoint` emits only `breditor/shared-reviewed-history-session` V1;
+`SharedRichProfile::restore_reviewed` is its matching leased-writer factory.
+The closed wrapper records the selected replay family, exact typing partition,
+activation and adoption. Recovery re-proves original effects and reconstructs
+ordered history, once-only receipts, cursor recipes and future operations.
+Existing checkpoint encoders refuse an enabled reviewed owner, and old factories
+reject both the wrapper and its reviewed inner records before native replay.
+An incoming `PreparedWriterGroup::reviewed_checkpoint` retains that same family
+before transport commit. Owned inverses travel as ordinary atomic V2 groups
+under the accepting device's writer, without giving receiving peers ownership.
+The 1,000-entry and 16 MiB whole-save limits remain; there is no compaction.
+Recovery restores no live permission, author lease or authenticated connection;
+the host must reapply its current runtime policy before exposing the owner.
+
+The [native reviewed-history checkpoint](qualification/2026-10-17-rich-review-owned-history-native.json)
+covers exact recovery across all six policies, local/accepted/local ordering,
+peer text, invisible items, overlapping receipts, once-only adoption, policy
+upgrades, read-only refusal and recreated directional selections. These APIs are
+native-only. The next Wasm/SDK integration must durably save adopted source
+history before persisting the dependent final decision receipt. Lost replies or
+failed writes must not create a second history item. Reader-only transport,
+proposal revision/rebasing, borrowed vanilla/React controls and clean-installed
+combined acceptance remain functional work.
 
 ### Native ordered proposal and decision ledger
 
@@ -315,7 +352,7 @@ This native component by itself is not an installed editor or shipping Accept
 button. The subsequent opt-in reference socket layer is described below. Hosts still own account
 authentication, permanent fresh-ID allocation and referenced asset
 admission/retention. The host effect's native history is NOT accepting-user Undo.
-That adoption path, proposal revision/rebasing and paired vanilla/React suggestion
+Browser adoption, proposal revision/rebasing and paired vanilla/React suggestion
 controls remain functional work. Subsequent client sections add Wasm proofs,
 durable offline queues and automatic author transport.
 
@@ -443,7 +480,7 @@ The [client functional record](qualification/2026-10-17-rich-review-suggestion-c
 combines actual application Wasm, this exported queue, paired native journals and
 the authenticated durable host. Wire driving and IndexedDB/Web Locks remain
 fixtures. The automatic adapter below shares the existing document author's
-socket for owned Accept. Accepting-user history, borrowed vanilla/React suggestion
+socket for owned Accept. Browser accepting-user history, borrowed vanilla/React suggestion
 controls and clean-installed combined review acceptance remain active work.
 Host-owned assets and explicit conversion-loss policies are unchanged.
 
@@ -497,8 +534,9 @@ authenticated Rust host across both selection and history policies. It covers
 exact offline reopen, lazy remote packets, source-dependent retry, conflict to
 Reject, opposing outcomes, failed local/receipt saves, lost decision replies,
 live grants, host restart and no idle polling. IndexedDB/Web Locks and transport
-loss are fixtures. Imported effects remain foreign to ordinary Undo; accepting-user
-history, proposal controls and installed combined review acceptance remain open.
+loss are fixtures. This SDK still leaves imported effects foreign to ordinary
+Undo; pairing native accepting-user history, proposal controls and installed
+combined review acceptance remains open.
 
 ## Durable comments and anchors
 

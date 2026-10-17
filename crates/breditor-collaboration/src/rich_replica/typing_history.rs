@@ -72,7 +72,10 @@ impl RichReplica {
     /// Original input contributions retained on the native Undo/Redo stacks, not group count.
     #[must_use]
     pub fn history_step_count(&self) -> usize {
-        self.history_keys.steps()
+        self.reviewed_history.as_ref().map_or_else(
+            || self.history_keys.steps(),
+            super::reviewed_history::ReviewedHistory::steps,
+        )
     }
     pub(super) fn typing_before(&self, kind: Kind, clock: u64) -> Result<Request, Error> {
         let history =

@@ -214,6 +214,19 @@ documented; adoption, paired controls and installed combined acceptance remain
 active work. Existing saved meanings and the application export surface remain
 unchanged, and no V1 gate or publication status advances.
 
+The [native owned-history checkpoint](qualification/2026-10-17-rich-review-owned-history-native.json)
+adds one explicit recovered Rust history for ordinary edits and authenticated
+device-owned Accepts. Adoption appends when acceptance arrives, authors no
+document operations and remains once-only after Undo or discarded Redo branches.
+Checked native inverses preserve peer text and repair recreated selections;
+invisible ordinary items cannot skip an intervening accepted suggestion. The
+new closed recovery wrapper retains all six scope/grouping policies while old
+readers and save meanings remain unchanged. This checkpoint is native-only:
+Wasm/SDK history adoption with source-before-receipt persistence, Reader-only
+suggestion synchronization, revision/rebasing, paired controls and installed
+combined acceptance remain active work. No V1 gate, version or publication
+status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

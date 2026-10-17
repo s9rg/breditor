@@ -37,6 +37,16 @@ enum Origin {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(super) enum Entry {
+    ReviewedHistoryV1 {
+        identity: super::ReviewedHistoryIdentity,
+        ui: UiState,
+    },
+    AdoptSuggestionV1 {
+        packet: String,
+        acceptance: super::OwnedSuggestionAcceptance,
+        before_ui: UiState,
+        after_ui: UiState,
+    },
     GeneralRangeV1 {
         action: super::actions::ReplaceGeneralTextRangeV1,
         selection_update: SelectionUpdate,
@@ -74,6 +84,9 @@ pub(super) enum Entry {
     },
 }
 impl Entry {
+    pub(super) const fn reviewed_only(&self) -> bool {
+        matches!(self, Self::ReviewedHistoryV1 { .. } | Self::AdoptSuggestionV1 { .. })
+    }
     pub(super) const fn authored(&self) -> bool {
         matches!(self, Self::Local { .. } | Self::GeneralRangeV1 { .. })
     }
@@ -152,6 +165,8 @@ pub struct RichReplica {
     pub(super) cursors: super::history_cursors::HistoryCursors,
     pub(super) history_keys: super::history_keys::HistoryKeys,
     pub(super) typing: Option<super::typing_history::TypingHistory>,
+    pub(super) reviewed_contract: bool,
+    pub(super) reviewed_history: Option<super::reviewed_history::ReviewedHistory>,
     pub(super) writer_windows: Vec<super::writer_transport::Window>,
     pub(super) read_only: bool,
     pub(super) read_only_revision: Option<String>,
@@ -324,6 +339,8 @@ impl RichReplica {
             cursors: super::history_cursors::HistoryCursors::default(),
             history_keys: super::history_keys::HistoryKeys::default(),
             typing: None,
+            reviewed_contract: false,
+            reviewed_history: None,
             writer_windows: Vec::new(),
             read_only: false,
             read_only_revision: None,
@@ -356,6 +373,7 @@ impl RichReplica {
             joins,
             leave_open,
             super::general_history::ReplayContract::Original,
+            false,
             replay_projections,
         )
     }
@@ -366,14 +384,15 @@ impl RichReplica {
         leave_open: bool,
         contract: super::general_history::ReplayContract,
     ) -> Result<Self, Error> {
-        Self::from_journal_contract_cached(codec, journal, joins, leave_open, contract, None)
+        Self::from_journal_contract_cached(codec, journal, joins, leave_open, contract, false, None)
     }
-    fn from_journal_contract_cached(
+    pub(super) fn from_journal_contract_cached(
         codec: DocumentJsonCodecV2,
         journal: Journal,
         joins: Option<Vec<u32>>,
         leave_open: bool,
         contract: super::general_history::ReplayContract,
+        reviewed: bool,
         replay_projections: Option<super::replay_projections::ReplayProjections>,
     ) -> Result<Self, Error> {
         let protocol = super::protocol::Protocol::from_codec(&codec)?;
@@ -383,6 +402,9 @@ impl RichReplica {
         }
         if journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
+        }
+        if !reviewed && journal.entries.iter().any(Entry::reviewed_only) {
+            return Err(Error::Contract("reviewed records require explicit history family"));
         }
         super::document_checkpoint::validate_journal_scope(&journal, contract)?;
         if contract == super::general_history::ReplayContract::Original
@@ -395,6 +417,7 @@ impl RichReplica {
         base.ui = UiState::default();
         let mut candidate = Self::base(codec, base)?;
         candidate.replay_contract = contract;
+        candidate.reviewed_contract = reviewed;
         if let Some(replay_projections) = replay_projections {
             candidate.replay_projections = replay_projections;
         }
@@ -418,6 +441,9 @@ impl RichReplica {
             candidate.replay(entry, join, keep_open)?;
         }
         candidate.journal = journal;
+        if reviewed && candidate.reviewed_history.is_none() {
+            return Err(Error::Contract("reviewed history activation missing"));
+        }
         candidate.replay_projections.finish_replay();
         candidate.validate_adoption()?;
         Ok(candidate)
@@ -533,12 +559,18 @@ impl RichReplica {
             }
             Some(self.history_keys.undo.last().ok_or(Error::ReplayMismatch)?.key.clone())
         } else {
+            let before_preparation = self.doc.state_frontiers();
             self.undo.pause();
             for command in commands {
                 command.prepare(&self.doc, &self.codec, &self.document)?;
             }
             self.doc.commit();
             self.undo.resume();
+            if self.reviewed_history.is_some() {
+                let prepared: loro_internal::undo::DiffBatch =
+                    self.doc.diff(&before_preparation, &self.doc.state_frontiers())?.into();
+                self.reviewed_external(&prepared)?;
+            }
             None
         };
         self.refresh_document()?;
@@ -548,7 +580,7 @@ impl RichReplica {
         marker.set_value(history_key.clone().into());
         self.metadata.lock().push = marker;
         let frontier = self.doc.state_frontiers();
-        let undo_count = self.undo_count();
+        let undo_count = self.undo.undo_count();
         if !join {
             self.undo.group_start()?;
         }
@@ -562,7 +594,7 @@ impl RichReplica {
             self.undo.group_end();
         }
         let authored = self.doc.state_frontiers() != frontier;
-        if self.undo_count() != undo_count {
+        if self.undo.undo_count() != undo_count {
             if join {
                 return Err(Error::ReplayMismatch);
             }
@@ -586,9 +618,11 @@ impl RichReplica {
             history_key.clone(),
             Recipe { before: before_ui, after: self.journal.ui.clone() },
         );
-        if let Some(key) = group_key {
-            self.recipes.get_mut(&key).ok_or(Error::ReplayMismatch)?.after =
-                self.journal.ui.clone();
+        if let Some(key) = &group_key {
+            self.recipes.get_mut(key).ok_or(Error::ReplayMismatch)?.after = self.journal.ui.clone();
+        }
+        if authored {
+            self.record_reviewed_local(group_key.as_deref().unwrap_or(&history_key), join)?;
         }
         Ok(history_key)
     }
@@ -597,6 +631,16 @@ impl RichReplica {
         let before = self.doc.oplog_vv();
         let applied_before = self.doc.state_vv();
         let expected = match entry {
+            Entry::ReviewedHistoryV1 { identity, ui } => {
+                self.journal.ui.clone_from(ui);
+                self.validate_ui()?;
+                self.initialize_reviewed_history(identity.clone())?;
+                None
+            }
+            Entry::AdoptSuggestionV1 { packet, acceptance, before_ui, after_ui } => {
+                self.replay_owned_suggestion(packet, acceptance, before_ui, after_ui)?;
+                None
+            }
             Entry::GeneralRangeV1 {
                 action,
                 selection_update,
@@ -686,6 +730,7 @@ impl RichReplica {
             self.typing.as_ref().map(|history| history.joins.clone()),
             leave_open,
             self.replay_contract,
+            self.reviewed_contract,
             Some(self.replay_projections.fork_for_replay()),
         )?;
         candidate.read_only = self.read_only;
@@ -756,7 +801,7 @@ impl RichReplica {
         self.journal.ui.candidate(&self.doc, &self.document)
     }
 
-    fn validate_ui(&self) -> Result<(), Error> {
+    pub(super) fn validate_ui(&self) -> Result<(), Error> {
         let mut normalized = self.journal.ui.clone();
         let selection = self.selection_for_mapping()?;
         normalized.normalize(&self.doc, &self.document, selection.as_ref())?;
@@ -902,6 +947,11 @@ impl RichReplica {
         self.history_keys.validate(self.undo.undo_count(), self.undo.redo_count())?;
         if let Some(history) = &self.typing {
             history.validate(&self.journal)?;
+        }
+        if self.reviewed_contract {
+            self.reviewed_history.as_ref().ok_or(Error::ReplayMismatch)?.validate(self)?;
+            self.reviewed_checkpoint()?;
+        } else if self.typing.is_some() {
             if self.document_selection_enabled() {
                 self.document_typing_checkpoint()?;
             } else if self.general_ranges_enabled() {
@@ -935,6 +985,7 @@ impl RichReplica {
         let diff: loro_internal::undo::DiffBatch =
             self.doc.diff(&before, &self.doc.state_frontiers())?.into();
         self.cursors.imported(&diff)?;
+        self.reviewed_external(&diff)?;
         Ok(status)
     }
     /// Import authorized engine changes atomically; pending causal dependencies are retained.
@@ -975,9 +1026,9 @@ impl RichReplica {
         let mut candidate = self.staged()?;
         let before = candidate.doc.oplog_vv();
         let before_ui = candidate.journal.ui.clone();
-        let counts = (candidate.undo.undo_count(), candidate.undo.redo_count());
+        let counts = (candidate.undo_count(), candidate.redo_count());
         let (changed, popped) = candidate.perform_history(redo)?;
-        if !changed && counts == (candidate.undo.undo_count(), candidate.undo.redo_count()) {
+        if !changed && counts == (candidate.undo_count(), candidate.redo_count()) {
             return Ok(false);
         }
         let expected = effects(&candidate.doc, &before)?;
@@ -992,6 +1043,9 @@ impl RichReplica {
     }
 
     fn perform_history(&mut self, redo: bool) -> Result<(bool, Vec<String>), Error> {
+        if self.reviewed_history.is_some() {
+            return self.perform_reviewed_history(redo);
+        }
         let previous = self.selection_for_mapping()?;
         let opposites = self
             .recipes
@@ -1099,6 +1153,9 @@ impl RichReplica {
         self.encode_explicit_journal()
     }
     pub(super) fn encode_explicit_journal(&self) -> Result<String, Error> {
+        if self.reviewed_contract {
+            return Err(Error::Contract("use explicit reviewed checkpoint"));
+        }
         let value = serde_json::to_string(&self.journal)?;
         if value.len() > MAX_JOURNAL_BYTES {
             return Err(Error::Limit("rich journal bytes"));
@@ -1150,11 +1207,15 @@ impl RichReplica {
     /// Writer-local undo depth; remote work never adds a step.
     #[must_use]
     pub fn undo_count(&self) -> usize {
-        self.undo.undo_count()
+        self.reviewed_history
+            .as_ref()
+            .map_or_else(|| self.undo.undo_count(), |history| history.undo.len())
     }
     /// Writer-local redo depth, including after same-writer restart.
     #[must_use]
     pub fn redo_count(&self) -> usize {
-        self.undo.redo_count()
+        self.reviewed_history
+            .as_ref()
+            .map_or_else(|| self.undo.redo_count(), |history| history.redo.len())
     }
 }

@@ -1,0 +1,94 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "896e8d25e25759f23104598da68a7a3e19e4b68e",
+  "scope": "Explicit recovered native document history for ordinary edits and authenticated device-owned suggestion Accepts. Ordered selective inverses, once-only adoption, UI repair, all six replay/grouping policies and ordinary V2 inverse transport are implemented in Rust. Browser adoption and combined installed suggestion controls remain active goal work; this is not a V1 or complete tracked-changes release.",
+  "artifacts": {
+    "applicationWasmSha256": "a115599394038e4495b045378292076efe0b25f7c8f41484af1e7c1c77189869",
+    "nativeReviewedHistoryContractsExecutableSha256": "5f90548d5b08021d0de4f8abbf59ea38c7a02569e629e3ad1a5697e298f17c73",
+    "suggestionHostSha256": "767896e964d02f0c89685b99668a3499ffdfc02f05d2c2f8f24d11428944840e",
+    "reviewAndCatalogHostSha256": "eec29d3c48077f2992255ff90702046f632441ac28a777fb08d2b63cf04346c0",
+    "javascriptExports": 7,
+    "wasmExports": 178,
+    "applicationWasmRebuiltFromFinalCanonicalRust": true,
+    "reviewedHistoryApiExportedToWasm": false,
+    "browserSideInverseExecutorAdded": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 480, "failed": 0, "groups": 42, "libraryTests": 55, "reviewedHistoryContractTests": 14},
+    "fullIsolatedRelayServerSuite": {"passed": 64, "failed": 0},
+    "researchCompatibilityReviewedContracts": {"passed": 14, "failed": 0},
+    "fullSdkSuite": {"passed": 305, "failed": 0, "files": 35},
+    "strictCandidateConsumerTypes": "passed",
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 51, "failed": 0},
+    "strictNativeLibraryAndReviewedContractClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "existingActualWasmSdkRegressions": {
+      "newNativeReviewedHistoryAdoptedByTheseBrowserProbes": false,
+      "proposalAndEffectSources": {"passed": true, "socketTrials": 2, "sdkCaptures": 8, "acceptedCreationSourceReproofs": 4, "additionalPureSemanticIntentShapes": 28},
+      "durableQueue": {"passed": true, "trials": 4, "exactOfflineReopens": 8, "localSaveRefusals": 4, "receiptSaveRefusals": 4, "originalLostReplyRecoveries": 4, "originalHistoryWorkflows": 4},
+      "automaticSuggestionSync": {"passed": true, "trials": 4, "automaticOwnedAccepts": 4, "acceptedCreationQueueReopens": 4, "sourceBeforePublication": 4, "opposingOfflineChoices": 4, "lostDecisionReplies": 4, "hostRestarts": 4, "idleWithoutPolling": 4},
+      "commentsAndVersions": {"passed": true, "trials": 4, "exactOfflineReopens": 16, "localSaveRefusals": 8, "localReceiptSaveRefusals": 4, "lostReplyRecoveries": 4, "guardedRemoteRestores": 4, "hostRestarts": 4, "sharedSyntheticDomControlWorkflows": 1}
+    },
+    "nativeWorkflows": [
+      "Activation retains preexisting Undo and Redo, UI and exact operation bytes under all six original/general/document and explicit/natural policies",
+      "Text, heading, list, table-row and caption Accepts sit between ordinary edits and retain exact future recovery",
+      "Late final acceptance appends at arrival, after typing completed while waiting, and preserves same-block peer text under all six policies",
+      "Original account, local writer, lane, effect writer, exact semantic proof and unique canonical server order are checked before adoption",
+      "Repeated original receipts remain no-ops after Undo, Redo and discarded Redo branches; overlapping native effects cannot acquire a second proposal identity",
+      "An invisible ordinary item cannot skip an intervening owned Accept; a wholly invisible pop changes history without authoring operations",
+      "Natural groups close at activation/adoption; recreated text restores directional selections and the accepting device's caret rather than the host's caret",
+      "Protected general-range replacements share the ordered stack across both scope families, both grouping policies and both selection directions",
+      "Later peer formatting choices retain priority through owned Undo and Redo",
+      "Read-only owners may retain prior authenticated ownership but cannot Undo or Redo; stale and foreign proofs refuse atomically",
+      "Later scope/grouping upgrades and whole-document selection retain exact reviewed recovery",
+      "Owned inverses export as ordinary atomic V2 groups on the accepting local writer; staged reviewed receiver saves replay exactly and foreign receivers gain no ownership",
+      "Old factories reject the new wrapper and reviewed inner records; unknown fields, missing activation and altered bindings/partitions refuse recovery"
+    ]
+  },
+  "repairs": [
+    {
+      "reproduced": true,
+      "prototypeFailure": "Undo after deleting a selected range restored its text but collapsed the directional selection to its end",
+      "cause": "A full checkout diff included recreated character IDs in the cursor transform",
+      "fix": "Keep original/opposite metadata in the ordered native row basis and map external changes separately; owned arrival uses an explicit UI transition"
+    },
+    {
+      "reproduced": true,
+      "prototypeFailure": "Undoing a newer protected replacement and then an accepted replacement left accepted text behind",
+      "cause": "A newly calculated original-effect-to-current diff treated characters recreated by the newer owned Undo as foreign insertions",
+      "fix": "Retain ordered native rows with composed external deltas. Received owned effects enter through an arrival-basis barrier because older items already saw their original operations as external. Subsequent compensation spans use ordinary native row transforms"
+    }
+  ],
+  "contracts": [
+    "enable_reviewed_history_guarded pins a nonsecret ReviewedHistoryIdentity without document operations. It is one-way and retains old ordinary history rather than resetting it.",
+    "adopt_suggestion_history_guarded requires an exact live VerifiedDocumentSuggestionEffect and OwnedSuggestionAcceptance from an already authenticated ORIGINAL server decision. Matching strings, saved attribution and native hashes do not authenticate an account, grant a role or prove fsync.",
+    "Adoption never executes the proposal again or reserves writer counters. Its item appends at final-acceptance arrival. Another device on the same account cannot inherit the original accepting writer's history.",
+    "A permanent adopted-receipt map survives stack removal and discarded Redo branches. Once-only ownership is not a property of a currently visible history item.",
+    "Undo/Redo authors checked native compensating operations under the existing local writer. It does not reopen or change the server's finalized Accept decision. No public arbitrary-inverse API, AST replacement or replicated marker root is introduced.",
+    "Native ordered row keys must exactly match both local stacks. Group/remote witnesses are independently copied at activation and reconstructed from exact replay, not shared mutable cursor rows or serialized arbitrary inverse batches.",
+    "reviewed_checkpoint and SharedRichProfile::restore_reviewed select breditor/shared-reviewed-history-session V1. The closed wrapper retains the exact existing replay family and optional natural partition. Old factories and encoders do not silently reinterpret this family.",
+    "Recovery re-proves every original effect and preserves future native operation bytes, selections, grouping, history and receipt identity. It restores no authenticated connection, exclusive lease or current runtime policy; hosts must reapply permissions before exposing the owner.",
+    "PreparedWriterGroup::reviewed_checkpoint permits source-selected durable receiver persistence before transport commit. V2 document transport and server decision formats remain unchanged.",
+    "Existing 1000-entry, 16 MiB whole-save, native schema and transport limits remain. No automatic history compaction or eviction policy is added. Current partial-table/caption preservation and scalar-boundary validation remain intact.",
+    "The next opt-in Wasm/SDK path must durably persist native adoption in the borrowed source before persisting its dependent final decision receipt. A retained operation hash alone is insufficient for semantic ownership. Existing browser defaults remain unchanged."
+  ],
+  "verificationNotes": [
+    "The expanded protected-range fixture initially attempted offset 1 after the remaining caption began with an emoji surrogate pair. Native selection admission correctly refused it; only the fixture endpoint changed, not scalar validation.",
+    "The new canonical contract file has a research compatibility shim. Promotion guards initially caught the missing shim; all 51 guards pass after registration.",
+    "Sharing a target directory between the standalone compatibility and relay manifests caused duplicate serde_core type-identity compiler errors during a subsequent host example build. No source or dependency workaround was added. A fresh relay-only target passed all 64 tests and built both final probe hosts. Keep standalone manifests in separate target directories.",
+    "Final relay artifacts use target/owned-history-relay-native with experiments/relay/Cargo.toml and the server feature. Canonical native uses target/historical-source-native; canonical Wasm uses target/promoted-shared-wasm. The standalone compatibility run must not reuse the relay target in future builds.",
+    "The four regression probes use the final rebuilt application Wasm and final isolated authenticated Rust host binaries. IndexedDB/Web Locks, transport loss and the catalog panel's DOM are fixtures; they do not implement or qualify the new browser-owned history path.",
+    "Rust formatting is scoped to changed files. The existing dependency HasIdSpan unused-import warning remains; dependencies, lockfiles, versions and vendor sources are unchanged.",
+    "No broad browser, physical clipboard, Japanese input, VoiceOver, performance, public hosting or historical WebKit repair qualification is claimed."
+  ],
+  "remaining": [
+    "Pair the native proof, opt-in history activation/adoption and new recovery factory with Wasm and typed SDK capabilities, explicit source storage and durable source-before-final-receipt ordering.",
+    "Verify lost replies, failed source/receipt saves, exact paired reopen, owned/offline inverse export and another-device/unowned refusal through actual Wasm/SDK history adoption.",
+    "Reader-only automatic proposal/Reject synchronization, borrowed vanilla/React suggestion controls and clean-installed combined comment/suggestion/version acceptance.",
+    "Proposal revisions and granular character-affine text rebasing; the existing conservative affected-text source witness remains unchanged.",
+    "Final V1 migration/API, packaging, storage lifetime/compaction, production auth/hosting, broad browser/IME/accessibility and performance qualification remain separate. The advanced-review goal remains active."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

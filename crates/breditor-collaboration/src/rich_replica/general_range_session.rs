@@ -62,10 +62,16 @@ impl RichReplica {
         let before_ui = self.journal.ui.clone();
         let before_selection = self.selection_for_mapping()?;
         let stamp = Stamp::next(&self.doc)?;
+        let before_preparation = self.doc.state_frontiers();
         self.undo.pause();
         action.prepare(&self.doc, &plan)?;
         self.doc.commit();
         self.undo.resume();
+        if self.reviewed_history.is_some() {
+            let prepared: loro_internal::undo::DiffBatch =
+                self.doc.diff(&before_preparation, &self.doc.state_frontiers())?.into();
+            self.reviewed_external(&prepared)?;
+        }
         self.refresh_document()?;
         if self.document.document() != source.document() {
             return Err(Error::Contract("general preparation changed visible source"));
@@ -76,7 +82,7 @@ impl RichReplica {
         marker.set_value(history_key.clone().into());
         self.metadata.lock().push = marker;
         let frontier = self.doc.state_frontiers();
-        let undo_count = self.undo_count();
+        let undo_count = self.undo.undo_count();
         self.undo.group_start()?;
         action.apply(&self.doc, &self.codec, &self.document, stamp, &plan)?;
         self.doc.commit();
@@ -84,7 +90,7 @@ impl RichReplica {
         if !keep_open {
             self.undo.group_end();
         }
-        if self.undo_count() == undo_count {
+        if self.undo.undo_count() == undo_count {
             return Err(Error::Contract("general semantic edit created no history"));
         }
         self.cursors.authored(history_key.clone(), frontier, self.doc.state_frontiers(), meta)?;
@@ -95,6 +101,7 @@ impl RichReplica {
             history_key.clone(),
             Recipe { before: before_ui, after: self.journal.ui.clone() },
         );
+        self.record_reviewed_local(&history_key, false)?;
         Ok(history_key)
     }
 }
