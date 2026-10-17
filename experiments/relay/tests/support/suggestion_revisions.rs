@@ -48,6 +48,77 @@ fn revised(
     Ok(result.revision)
 }
 #[test]
+fn revision_discovery_is_bounded_frozen_bound_to_commits_and_exact_after_restart() -> Result {
+    let files = Files::new()?;
+    let (profile, mut room) = start(&files, true)?;
+    room.enable_document_suggestions("owner")?;
+    room.enable_document_suggestion_revisions("owner")?;
+    let (_, source) = author(&profile, &mut room, "alice")?;
+    let empty = room.document_suggestion_revisions_page("alice", None)?;
+    assert!(empty.revisions.is_empty());
+    let mut previous = proposal(&source, "alice", "Root", vec![insert("p", "Root ")])?;
+    publish(&mut room, "alice", &previous)?;
+    let mut expected = vec![];
+    for index in 0..65 {
+        let packet = revision(&source, &previous, &format!("Child {index}"), &format!("{index} "))?;
+        let child = source.document_suggestion_revision_packet(&previous, &packet)?;
+        let request = revision_request(&room, &source, &previous, packet)?;
+        expected.push(revised(&mut room, &request)?);
+        previous = child;
+    }
+    let first = room.document_suggestion_revisions_page("alice", None)?;
+    assert_eq!(first.revisions, expected[..64]);
+    assert!(first.more);
+    let packet = revision(&source, &previous, "Later", "Later ")?;
+    let request = revision_request(&room, &source, &previous, packet)?;
+    let later = revised(&mut room, &request)?;
+    let second = room.document_suggestion_revisions_page("alice", Some(&first.cursor))?;
+    assert_eq!(second.revisions, expected[64..]);
+    assert!(!second.more);
+    assert_eq!(first.cursor.through, second.cursor.through);
+    assert!(
+        room.document_suggestion_revisions_page("alice", Some(&second.cursor))?
+            .revisions
+            .is_empty()
+    );
+    assert!(
+        room.document_suggestion_revisions_page("alice", Some(&empty.cursor))?.revisions.is_empty()
+    );
+    for cursor in [
+        breditor_collab_relay::SuggestionRevisionsCursor {
+            binding: "0".repeat(64),
+            ..first.cursor.clone()
+        },
+        breditor_collab_relay::SuggestionRevisionsCursor {
+            after: expected[0].previous_decision.sequence.clone(),
+            ..first.cursor.clone()
+        },
+        breditor_collab_relay::SuggestionRevisionsCursor {
+            through: format!("0{}", first.cursor.through),
+            ..first.cursor.clone()
+        },
+        breditor_collab_relay::SuggestionRevisionsCursor {
+            after: later.publication.sequence.clone(),
+            ..first.cursor.clone()
+        },
+    ] {
+        assert!(room.document_suggestion_revisions_page("alice", Some(&cursor)).is_err());
+    }
+    drop(room);
+    let (mut room, _) = Room::open(&files.path)?;
+    assert_eq!(room.document_suggestion_revisions_page("alice", Some(&first.cursor))?, second);
+    assert_eq!(
+        room.document_suggestion_revisions_page("alice", None)?.cursor.through,
+        later.publication.sequence
+    );
+    room.grant("owner", "alice", None)?;
+    assert!(matches!(
+        room.document_suggestion_revisions_page("alice", None),
+        Err(Error::Permission)
+    ));
+    Ok(())
+}
+#[test]
 fn revisions_are_separately_enabled_author_only_and_available_to_non_authoring_proposers() -> Result
 {
     let files = Files::new()?;

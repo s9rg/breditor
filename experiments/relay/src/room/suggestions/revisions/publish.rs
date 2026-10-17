@@ -54,6 +54,7 @@ impl Room {
             receipt.revision.id.clone(),
             RetainedRevision { receipt: receipt.clone(), packet: prepared.request.revision_packet },
         );
+        revisions.updates.insert(second, receipt.revision.id.clone());
         Ok(receipt)
     }
     /// Replace only an account's own still-pending intent. Current Propose permission is sufficient

@@ -9,7 +9,7 @@ pub(super) async fn dispatch(
     state: &mut ConnectionState,
     request: Request,
 ) -> Result<Value> {
-    if !state.review_mode.enabled() && !state.suggestions {
+    if !state.review_mode.enabled() && !state.suggestions.enabled() {
         return Err(Error::Contract("read-only document stream capability required"));
     }
     let principal = principal.to_owned();

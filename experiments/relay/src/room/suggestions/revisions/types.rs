@@ -1,6 +1,7 @@
 //! Explicit revision capability; existing proposal/decision DTOs retain their exact meanings.
 use super::super::{
     DocumentSuggestionEntry, DocumentSuggestionPublication, StoredSuggestionDecision,
+    SuggestionPermissions,
 };
 use breditor_collab_feasibility::rich_replica::{DocumentSuggestionRevisionInfo, WriterDependency};
 use serde::{Deserialize, Serialize};
@@ -73,4 +74,30 @@ pub enum SuggestionRevisionAdmission {
         /// Original winning revision, if that caused the predecessor to close.
         successor: Option<Box<StoredSuggestionRevision>>,
     },
+}
+/// Frozen accepted revision interval; arbitrary room-log offsets and other lane bindings reject.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SuggestionRevisionsCursor {
+    /// Exact separately activated revision lane.
+    pub binding: String,
+    /// Last consumed committed revision or this lane's activation sequence.
+    pub after: String,
+    /// Frozen last committed revision captured when paging started.
+    pub through: String,
+}
+/// Bounded immutable revision discovery; packet bytes and current child state are separate reads.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SuggestionRevisionsPage {
+    /// Exact enabled revision lane and underlying proposal binding.
+    pub descriptor: SuggestionRevisionsDescriptor,
+    /// At most 64 original committed relation receipts, in strict commit order.
+    pub revisions: Vec<StoredSuggestionRevision>,
+    /// Advanced frozen interval.
+    pub cursor: SuggestionRevisionsCursor,
+    /// More committed relations exist inside this same interval.
+    pub more: bool,
+    /// Current display rights, not historical event authorization or a future grant.
+    pub permissions: SuggestionPermissions,
 }

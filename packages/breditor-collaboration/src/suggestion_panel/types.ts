@@ -6,7 +6,11 @@ import type {SharedSuggestionQueueStatus,SharedSuggestionPublication,SharedSugge
 import type {SharedSuggestionSyncState} from "../suggestions/sync.js";
 import type {RichPresentationModel} from "@breditor/experimental-rich-content/rendering";
 export type SharedSuggestionPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"subscribe"|"supportsDocumentSuggestions"|"prepareSuggestion"|"checkSuggestionPreview">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsSuggestionGeneralText"|"planSuggestionGeneralText">>;
-export interface SharedSuggestionPanelEntry {suggestion:SharedDocumentSuggestionInfo;publication:SharedSuggestionPublication|null;decision:SharedSuggestionDecision|null;local:SharedSuggestionQueueStatus|null}
+export interface SharedSuggestionPanelEntry {suggestion:SharedDocumentSuggestionInfo;publication:SharedSuggestionPublication|null;decision:SharedSuggestionDecision|null;local:SharedSuggestionQueueStatus|null;
+ supersededBy?:string;
+ /** Separate immutable relation. A draft child is previewable but cannot independently publish. */
+ revision?:{id:string;previousSuggestionId:string;rootSuggestionId:string|null;state:"queued"|"stopped"|"published"|"conflict";canDecide:boolean;winningSuccessor:string|null};
+}
 /** One exact borrowed source/queue/network pairing. Custom hosts must retain equivalent native,
  * identity and persistence guards; display policy is never server authority. */
 export interface SharedSuggestionPanelSource {
@@ -18,6 +22,10 @@ export interface SharedSuggestionPanelSource {
  flush():Promise<void>;retry():Promise<void>;subscribe(listener:()=>void):()=>void;
  state():{failed:boolean;closed:boolean;retiring:boolean};
  syncState?():SharedSuggestionSyncState;sync?():Promise<void>;load?(id:string):Promise<string>;
+ /** Optional complete revision outbox; absent keeps old controls and storage unchanged. */
+ canRevise?(id:string):boolean;
+ revise?(previousId:string,title:string,time:string,draft:SharedDocumentSuggestionDraft,revision:string):SharedDocumentSuggestionInfo;
+ revisionState?():{status:string;pending:number;error:string|null};
 }
 export interface SharedSuggestionComposerField {id:string;label:string;initial?:string;choices?:readonly {value:string;label:string}[]}
 export interface SharedSuggestionComposerContext {

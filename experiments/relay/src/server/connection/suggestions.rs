@@ -5,10 +5,27 @@ mod packet;
 mod page;
 mod publish;
 mod read;
+mod revisions;
 use super::{ConnectionState, Host, Request};
 use crate::{Error, Result, Room};
 use axum::extract::ws::WebSocket;
 use serde_json::{Value, json};
+pub(super) fn handles(request: &Request) -> bool {
+    matches!(
+        request,
+        Request::SuggestionPublish { .. }
+            | Request::SuggestionDecide { .. }
+            | Request::SuggestionSync { .. }
+            | Request::SuggestionRead { .. }
+            | Request::SuggestionPacket { .. }
+            | Request::SuggestionGrant { .. }
+            | Request::SuggestionRevisionPublish { .. }
+            | Request::SuggestionRevisionSync { .. }
+            | Request::SuggestionRevisionRead { .. }
+            | Request::SuggestionRevisionPacket { .. }
+            | Request::SuggestionRevisionSuccessor { .. }
+    )
+}
 
 fn bound(room: &Room, principal: &str, binding: &str) -> Result<()> {
     if room.document_suggestions_descriptor(principal)?.binding != binding {
@@ -51,11 +68,18 @@ pub(super) async fn dispatch(
     state: &ConnectionState,
     request: Request,
 ) -> Result<Value> {
-    if !state.suggestions {
+    if !state.suggestions.enabled() {
         return Err(Error::Contract("document suggestions V1 capability required"));
     }
     let principal = principal.to_owned();
     match request {
+        request @ (Request::SuggestionRevisionPublish { .. }
+        | Request::SuggestionRevisionSync { .. }
+        | Request::SuggestionRevisionRead { .. }
+        | Request::SuggestionRevisionPacket { .. }
+        | Request::SuggestionRevisionSuccessor { .. }) => {
+            revisions::dispatch(host, principal, state.clone(), request).await
+        }
         Request::SuggestionPublish { binding, packet } => {
             publish::publish(host, principal, state.clone(), binding, packet).await
         }

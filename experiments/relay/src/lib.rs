@@ -25,8 +25,8 @@ pub use room::{
     DocumentSuggestionsPage, DurableDocumentSuggestion, DurableSuggestionDecision,
     DurableSuggestionRevision, StoredSuggestionDecision, StoredSuggestionRevision,
     SuggestionDecision, SuggestionDecisionRequest, SuggestionEffect, SuggestionPermissions,
-    SuggestionRevisionAdmission, SuggestionRevisionRequest, SuggestionRevisionsDescriptor,
-    SuggestionRole, SuggestionUpdate,
+    SuggestionRevisionAdmission, SuggestionRevisionRequest, SuggestionRevisionsCursor,
+    SuggestionRevisionsDescriptor, SuggestionRevisionsPage, SuggestionRole, SuggestionUpdate,
 };
 pub use room::{
     DocumentVersionAdmission, DocumentVersionCatalogEntry, DocumentVersionCatalogPage,

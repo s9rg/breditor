@@ -15,12 +15,12 @@ impl Room {
         }
         if self.suggestions_state()?.revisions.is_none() {
             let binding = credentials::issue()?;
-            self.log.append(Event::EnableDocumentSuggestionRevisionsV1 {
+            let sequence = self.log.append(Event::EnableDocumentSuggestionRevisionsV1 {
                 actor: principal.into(),
                 binding: binding.clone(),
             })?;
             self.suggestions.as_mut().ok_or(Error::NeedsRecovery)?.revisions =
-                Some(RevisionsState::new(&binding));
+                Some(RevisionsState::new(&binding, sequence));
         }
         self.document_suggestion_revisions_descriptor(principal)
     }

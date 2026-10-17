@@ -15,6 +15,18 @@ function setup(){
  return {raw,prepared,core:new SharedRichEditor(raw as unknown as SharedRustOwner)};
 }
 describe("native-only proposal SDK boundary",()=>{
+ it("captures same-creator immutable revisions through Rust only and checks staleness before native work",()=>{
+  const {core,raw}=setup(),revision={id:`sha256:${"d".repeat(64)}`,previousSuggestionId:info.id,suggestion:{...info,id:`sha256:${"e".repeat(64)}`}},changed=vi.fn();
+  const capture=vi.fn((_observed:unknown,_input:string)=>"native relation"),read=vi.fn(()=>JSON.stringify(revision)),verify=vi.fn(()=>JSON.stringify({kind:"verified",revision,clocks:[]})),child=vi.fn(()=>"exact native child");
+  Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:capture,read_document_suggestion_revision:read,verify_document_suggestion_revision:verify,document_suggestion_revision_packet:child});core.subscribe(changed);
+  expect(core.supportsSuggestionRevisions()).toBe(true);expect(core.captureSuggestionRevision("previous exact","Replacement","9",draft,"0")).toBe("native relation");expect(JSON.parse(capture.mock.calls[0]![1])).toEqual({previousPacketJson:"previous exact",title:"Replacement",createdAtMs:"9",draft});
+  expect(core.readSuggestionRevision("previous exact","native relation")).toEqual(revision);expect(core.verifySuggestionRevision("previous exact","native relation")).toEqual({kind:"verified",revision,clocks:[]});expect(core.revisionSuggestionPacket("previous exact","native relation")).toBe("exact native child");expect(read).toHaveBeenCalledWith("previous exact","native relation");
+  expect(()=>core.captureSuggestionRevision("previous exact","Replacement","9",draft,"old")).toThrow(expect.objectContaining({code:"stale_observation"}));expect(capture).toHaveBeenCalledOnce();expect(raw.capture_document_suggestion).not.toHaveBeenCalled();expect(raw.dispatch).not.toHaveBeenCalled();expect(changed).not.toHaveBeenCalled();core.dispose();
+ });
+ it("requires all revision proof methods without disabling unchanged V1 proposals on older owners",()=>{
+  const complete={document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:()=>"revision",read_document_suggestion_revision:()=>"{}",verify_document_suggestion_revision:()=>"{}",document_suggestion_revision_packet:()=>"child"};
+  for(const key of Object.keys(complete)){const {raw,core}=setup(),partial={...complete};delete partial[key as keyof typeof partial];Object.assign(raw,partial);expect(core.supportsDocumentSuggestions()).toBe(true);expect(core.supportsSuggestionRevisions()).toBe(false);expect(()=>core.captureSuggestionRevision("old","new","0",draft)).toThrow(expect.objectContaining({code:"suggestion_revisions_unavailable"}));expect(core.captureSuggestion("Old","alice","0",draft)).toBe("native packet");expect(raw.dispatch).not.toHaveBeenCalled();core.dispose();}
+ });
  it("plans protected text only through the separate native pair without capture, dispatch or publication",()=>{
   const {raw,core}=setup(),published=vi.fn(),selection={kind:"text",anchor:{block:"p",offset:"1",affinity:"after"},focus:{block:"caption",offset:"3",affinity:"before"}} as const;
   const runs=[{text:"Native planned 🙂",formatsJson:"[]"}],planned:SharedDocumentSuggestionDraft={scope:"commands",edit:{kind:"general_text",data:{range:{anchor:{block:"p",offset:1,affinity:"after"},focus:{block:"caption",offset:3,affinity:"before"},runs:[{text:"Native planned 🙂",formats:[]}]},empty:["host:range:0"]}}};

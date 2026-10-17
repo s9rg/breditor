@@ -301,6 +301,20 @@ paired controls and granular text rebasing remain functional work. Browser
 exports, existing packet meanings and package versions remain unchanged; no V1
 gate or publication status advances.
 
+The [revision client checkpoint](qualification/2026-10-17-rich-review-suggestion-revisions-sdk.json)
+connects that native contract end to end. An additional explicit capability uses
+the existing authenticated author or permanent Reader connection. Pure paired
+Wasm/SDK capture and source proofs feed a separately selected durable revision
+outbox; children enter the unchanged proposal queue only after committed
+supersession and saved receipts. Offline races retain losing drafts and original
+winners. Bounded immutable discovery, lazy native proof downloads and borrowed
+vanilla/React controls expose chain links without changing accepted content during
+capture or preview. Focused tests cover all six selection/history policies, save
+failures, exact recovery, host restart, lost replies and owned child Accept/Undo.
+Granular character-affine text rebasing, final API/migration and package-release
+checks, production hosting/auth and deferred browser/IME/accessibility/performance
+qualification remain open. This is a local functional checkpoint, not V1 readiness.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

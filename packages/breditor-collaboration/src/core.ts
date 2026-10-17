@@ -7,7 +7,7 @@ import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
 import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
-import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention} from "./suggestion_types.js";
+import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention,SharedSuggestionRevisionInfo,SharedSuggestionRevisionSource} from "./suggestion_types.js";
 import {SharedDocumentSuggestionPreview,nativeSuggestionPreview} from "./suggestion_preview.js";
 import {SharedDocumentSuggestionEffectProof,nativeSuggestionEffectProof} from "./suggestion_effect_proof.js";
 import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_validation.js";
@@ -137,6 +137,16 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  planSuggestionGeneralText(selection:Extract<RichSelection,{kind:"text"}>,runs:readonly {text:string;formatsJson:string}[],prefix:string,revision?:string):SharedDocumentSuggestionDraft{this.#check(revision);if(!this.supportsSuggestionGeneralText())throw new SharedEditorError("suggestion_general_text_unavailable","Use matching native pure protected-range proposal planning");return JSON.parse(this.#live().plan_suggestion_general_text!(this.#observation,JSON.stringify({selection,runs,prefix}))) as SharedDocumentSuggestionDraft;}
  readSuggestion(packet:string):SharedDocumentSuggestionInfo{return JSON.parse(this.#suggestionOwner().read_document_suggestion!(packet)) as SharedDocumentSuggestionInfo;}
  verifySuggestionSource(packet:string):SharedDocumentSuggestionSource{return JSON.parse(this.#suggestionOwner().verify_document_suggestion_source!(packet)) as SharedDocumentSuggestionSource;}
+ /** Optional immutable revisions never change the old complete proposal capability. */
+ supportsSuggestionRevisions():boolean{const r=this.#live();return this.supportsDocumentSuggestions()&&r.document_suggestion_revisions_version?.()==="1"&&[r.capture_document_suggestion_revision,r.read_document_suggestion_revision,r.verify_document_suggestion_revision,r.document_suggestion_revision_packet].every(f=>typeof f==="function");}
+ #revisionOwner():SharedRustOwner{if(!this.supportsSuggestionRevisions())throw new SharedEditorError("suggestion_revisions_unavailable","Use complete matching native immutable revision proofs");return this.#live();}
+ /** Full replacement intent at the accepted source, not a delta against a proposed document.
+  * The predecessor fixes attribution. No publication, accepted mutation or Accept occurs here. */
+ captureSuggestionRevision(previousPacketJson:string,title:string,createdAtMs:string,draft:SharedDocumentSuggestionDraft,revision?:string):string{this.#check(revision);return this.#revisionOwner().capture_document_suggestion_revision!(this.#observation,JSON.stringify({previousPacketJson,title,createdAtMs,draft}));}
+ readSuggestionRevision(previousPacket:string,packet:string):SharedSuggestionRevisionInfo{return JSON.parse(this.#revisionOwner().read_document_suggestion_revision!(previousPacket,packet)) as SharedSuggestionRevisionInfo;}
+ verifySuggestionRevision(previousPacket:string,packet:string):SharedSuggestionRevisionSource{return JSON.parse(this.#revisionOwner().verify_document_suggestion_revision!(previousPacket,packet)) as SharedSuggestionRevisionSource;}
+ /** Exact unchanged V1 child bytes. Never independently publish these instead of the revision. */
+ revisionSuggestionPacket(previousPacket:string,packet:string):string{return this.#revisionOwner().document_suggestion_revision_packet!(previousPacket,packet);}
  /** A ready handle is source-bound, not an Accept command. Pending/conflicting native handles are released immediately. */
  prepareSuggestion(packet:string,revision?:string):SharedDocumentSuggestionPreparation{
   this.#check(revision);if(this.#retired||this.#publishing)throw new SharedEditorError("suggestion_preview_unavailable","Cannot prepare while retired or publishing");

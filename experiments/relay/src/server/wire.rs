@@ -97,6 +97,28 @@ pub(super) enum Request {
         principal: String,
         role: Option<crate::SuggestionRole>,
     },
+    SuggestionRevisionPublish {
+        revision: crate::SuggestionRevisionRequest,
+    },
+    SuggestionRevisionSync {
+        binding: String,
+        cursor: Option<crate::SuggestionRevisionsCursor>,
+    },
+    SuggestionRevisionRead {
+        binding: String,
+        #[serde(rename = "revisionId")]
+        revision_id: String,
+    },
+    SuggestionRevisionPacket {
+        binding: String,
+        #[serde(rename = "revisionId")]
+        revision_id: String,
+    },
+    SuggestionRevisionSuccessor {
+        binding: String,
+        #[serde(rename = "suggestionId")]
+        suggestion_id: String,
+    },
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

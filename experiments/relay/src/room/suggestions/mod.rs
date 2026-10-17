@@ -17,7 +17,8 @@ use crate::{Error, Result};
 use breditor_collab_feasibility::rich_replica::RichReplica;
 pub use revisions::{
     DurableSuggestionRevision, StoredSuggestionRevision, SuggestionRevisionAdmission,
-    SuggestionRevisionRequest, SuggestionRevisionsDescriptor,
+    SuggestionRevisionRequest, SuggestionRevisionsCursor, SuggestionRevisionsDescriptor,
+    SuggestionRevisionsPage,
 };
 use std::collections::BTreeMap;
 pub use types::*;

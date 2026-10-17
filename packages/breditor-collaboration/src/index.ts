@@ -26,6 +26,8 @@ export type {SharedSuggestionTransport} from "./suggestions/transport_port.js";
 export type {SharedSuggestionObserverIdentity,SharedSuggestionObserverRegistrationOptions,SharedSuggestionObserverRegistration,SharedSuggestionObserverOptions} from "./suggestions/observer_types.js";
 export type {SharedSuggestionSyncState,SharedSuggestionSyncOptions} from "./suggestions/sync.js";
 export type {SharedSuggestionRelayBinding,SharedSuggestionRelayState,SharedSuggestionPermissions} from "./relay/suggestion_types.js";
+export type * from "./suggestion_revisions/types.js";
+export {SharedSuggestionRevisions} from "./suggestion_revisions/outbox.js";
 export type {SuggestionEntry as SharedSuggestionEntry} from "./suggestions/transport.js";
 export {mountSharedReviewPanel} from "./review_panel/mount.js";
 export type {SharedReviewPanel,SharedReviewPanelCore,SharedReviewPanelOptions,SharedReviewVersionCatalog} from "./review_panel/types.js";

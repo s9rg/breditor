@@ -1,0 +1,231 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "b2676352174aa8e7b266302455d5f6a88daecead",
+  "scope": "End-to-end immutable pending-proposal revisions: original Rust source contracts, additive pure application Wasm/SDK, separately negotiated authenticated author/Reader transport, a separate durable revision outbox and borrowed vanilla/React controls. Revised children retain the original decision and accepting-user history contracts beside authenticated comments and named-version restore. Granular text rebasing and production qualification remain open; the advanced-review goal stays active.",
+  "artifacts": {
+    "applicationWasmSha256": "1b65cac66f582b4e52d94fe023cd9996e099235d034d05d5dfe805dc66a4e428",
+    "suggestionHostSha256": "61f10881154ba7b4c0f4fc9b8130a7857659227e9325ae3952c3fa1e939e336f",
+    "revisionHostSha256": "f6f6901e4897ecdf71d850a3c758107c23378ffa25819c6dd4e6b2ca312bcfdb",
+    "javascriptWasmExports": 8,
+    "wasmExports": 198,
+    "revisionEnvelopeMaximumBytes": 2101248,
+    "localRevisionRecord": "breditor/shared-suggestion-revisions V1",
+    "socketCapability": "documentSuggestionRevisionsV1",
+    "existingPacketsJournalsOrProtocolTagsReinterpreted": false,
+    "browserSideEffectOrInverseExecutorAdded": false,
+    "verifiedLocalArchiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "f3730e905ffa9e74c03bf9e409399949b1dfe745842915eb17ab1a857c40b612",
+      "breditor-editor-0.3.0-alpha.22.tgz": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43"
+    }
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {
+      "passed": 491,
+      "failed": 0,
+      "resultGroupsIncludingEmptyDoctests": 45
+    },
+    "fullRelayAndServerSuite": {
+      "passed": 78,
+      "failed": 0,
+      "newFrozenDiscoveryTest": 1,
+      "newCapabilityContractTests": 2
+    },
+    "researchCompatibilityRevisionContracts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "strictCanonicalNativeLibraryAndPublicRevisionClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "strictRelayLibraryRevisionFixtureAndDocumentSuggestionClippy": "passed",
+    "fullSdkEditorRegression": {
+      "passed": 357,
+      "failed": 0,
+      "files": 39
+    },
+    "collaborationAndEditorTypechecks": "passed",
+    "runtimeBuildSurfaceAndPromotionGuards": {
+      "passed": 49,
+      "failed": 0
+    },
+    "actualWorkspaceWasmRevisionMatrix": {
+      "passed": true,
+      "trials": 6,
+      "wireRequests": 2038,
+      "mixedCommentVersionReopens": 6,
+      "receiptSaveReopens": 6,
+      "finalAcceptConflicts": 6
+    },
+    "cleanInstalledExistingMixedWorkflows": {
+      "passed": true,
+      "ownedHistoryCommentVersionTrials": 6,
+      "vanillaReactControlTrials": 6,
+      "stockActionCases": 54,
+      "protectedFloorIds": 12,
+      "permanentReaderTransportAndControlTrials": 6,
+      "readerAuthorRegistrations": 0,
+      "readerAuthorResumes": 0,
+      "readerDocumentSubmissions": 0,
+      "strictPublicTypes": true,
+      "packagedWasm": true,
+      "workspaceProductionLinks": false,
+      "authorWireRequests": 7516,
+      "readerWireRequests": 1337
+    },
+    "cleanInstalledRevisionMatrix": {
+      "format": "breditor/suggestion-revisions-sdk-probe",
+      "formatVersion": 1,
+      "sharedWasmSha256": "1b65cac66f582b4e52d94fe023cd9996e099235d034d05d5dfe805dc66a4e428",
+      "nativeRelaySha256": "f6f6901e4897ecdf71d850a3c758107c23378ffa25819c6dd4e6b2ca312bcfdb",
+      "trials": 6,
+      "pureOfflineCaptures": 6,
+      "exactOfflineReopens": 6,
+      "originalSupersessions": 6,
+      "onceOnlyOwnedAccepts": 6,
+      "retainedLosingDrafts": 6,
+      "sourceSaveRefusals": 6,
+      "outboxSaveRefusals": 6,
+      "receiptSaveReopens": 6,
+      "finalAcceptConflicts": 6,
+      "mixedCommentVersionReopens": 6,
+      "lostRevisionReplies": 6,
+      "hostRestarts": 6,
+      "readerRevisions": 6,
+      "lazyNativeRevisionProofs": 6,
+      "oldCapabilityRefusals": 6,
+      "idleWithoutPolling": 6,
+      "controls": [
+        {
+          "trial": 0,
+          "pureUncommittedPreview": true,
+          "uncommittedDecisionRefusal": true,
+          "authenticatedSupersession": true,
+          "ownedChildAccept": true,
+          "linkedOriginalOutcome": true,
+          "passed": true
+        },
+        {
+          "trial": 1,
+          "pureUncommittedPreview": true,
+          "uncommittedDecisionRefusal": true,
+          "authenticatedSupersession": true,
+          "ownedChildAccept": true,
+          "linkedOriginalOutcome": true,
+          "passed": true
+        },
+        {
+          "trial": 2,
+          "pureUncommittedPreview": true,
+          "uncommittedDecisionRefusal": true,
+          "authenticatedSupersession": true,
+          "ownedChildAccept": true,
+          "linkedOriginalOutcome": true,
+          "passed": true
+        },
+        {
+          "trial": 3,
+          "pureUncommittedPreview": true,
+          "uncommittedDecisionRefusal": true,
+          "authenticatedSupersession": true,
+          "ownedChildAccept": true,
+          "linkedOriginalOutcome": true,
+          "passed": true
+        },
+        {
+          "trial": 4,
+          "pureUncommittedPreview": true,
+          "uncommittedDecisionRefusal": true,
+          "authenticatedSupersession": true,
+          "ownedChildAccept": true,
+          "linkedOriginalOutcome": true,
+          "passed": true
+        },
+        {
+          "trial": 5,
+          "pureUncommittedPreview": true,
+          "uncommittedDecisionRefusal": true,
+          "authenticatedSupersession": true,
+          "ownedChildAccept": true,
+          "linkedOriginalOutcome": true,
+          "passed": true
+        }
+      ],
+      "wireRequests": 2026,
+      "requestKinds": {
+        "authenticate": 84,
+        "reviewRegister": 6,
+        "clock": 512,
+        "resume": 48,
+        "sync": 379,
+        "suggestionRevisionSync": 187,
+        "suggestionPublish": 36,
+        "suggestionRevisionPublish": 42,
+        "suggestionRead": 473,
+        "suggestionSync": 60,
+        "suggestionDecide": 18,
+        "submit": 42,
+        "suggestionRevisionRead": 6,
+        "registerObserver": 6,
+        "resumeObserver": 6,
+        "suggestionRevisionPacket": 6,
+        "suggestionPacket": 6,
+        "reviewClock": 24,
+        "reviewResume": 12,
+        "reviewSync": 49,
+        "reviewSubmit": 18,
+        "reviewCursorProof": 6
+      },
+      "passed": true,
+      "scope": "Actual application Wasm and exported durable revision outbox on authenticated native author/Reader connections across six selection/history policies. Exact offline/restart recovery, retained losing drafts, once-only owned child acceptance/Undo/Redo, source/outbox aborts, lost replies and original protocol refusals. Borrowed vanilla composer previews uncommitted children without decision/publication fallback, links supersession and queues owned child Accept. Remote lazy downloads share native relation/source proofs without creating local intent. OS/browser/accessibility/performance and granular rebasing remain unqualified."
+    }
+  },
+  "contracts": [
+    "The complete optional pure Wasm pair captures full replacement intent at accepted content, retains the predecessor creator, proves both native historical sources and extracts exact V1 child bytes. Old complete suggestion runtimes remain usable without the new pair. Stale capture guards refuse before native work.",
+    "The additional socket capability requires both original suggestions and writer transport V2. Its separate random activation binding pins the original suggestion lane. Author and permanent Reader adapters use their existing authenticated socket and combined two-request budget; no second author lease or implicit grant is acquired.",
+    "Frozen discovery returns at most 64 original immutable relations per page and accepts only activation or committed revision cursor boundaries. Clients check exact large decimal order, adjacent supersession/publication, roots, unique successors, bounded progress and remembered receipts before replacing live metadata.",
+    "The explicit revision outbox borrows the existing native source, base queue and transport. Its separate closed IndexedDB family retains exact predecessor/envelope bytes, retry intent, original receipt or original winning conflict. Credentials and current grants are not stored.",
+    "Source and base queue persistence precede dependent revision records. Source/outbox/receipt aborts preserve exact bytes for retry and recovery. Local persistence retry does not reconnect a stopped synchronizer or recapture a new packet.",
+    "The child stays outside ordinary publication and decision queues until authenticated supersession commits and its receipt saves. The bridge then retains the original predecessor Reject and caches the unchanged child with its original publication. No failure path substitutes independent publication of the extracted child.",
+    "An uncommitted revision child is previewable but cannot queue Accept/Reject. Published suggestions retain existing offline review choices; the authenticated server finalizes once. A final Accept or competing revision retains the losing draft and original winner without publishing its child or reopening the predecessor.",
+    "An intervening Accept's actual operations must be retained in the saved native source before its dependent conflict receipt can be persisted or reopened. Child Accept uses unchanged native semantic effect proof and accepting-user history adoption; duplicate revision discovery does not recreate an Undo group.",
+    "Lazy revision downloads coalesce matching requests and verify the exact native predecessor/child relation and source without creating local publication intent. Metadata and document hints wake pending work; idle synchronization does not poll.",
+    "The existing composer optionally borrows the outbox through the third createSharedSuggestionPanelSource argument. Creator-only revision controls build complete intent at accepted content, retain fields and losing drafts, link supersession, and keep uncommitted children preview-only. Vanilla and React lifetimes close no borrowed source, queue or socket.",
+    "Combined tests use revised rich text/image fields, authenticated independent comment transport, named version publication, guarded restore-as-new-edit with fresh structural identities, selective Undo/Redo and exact future paired recovery under all six selection/history policies."
+  ],
+  "verificationNotes": [
+    "An early lost-reply test checked the child queue after local receipt persistence but before the asynchronous bridge finished. The final assertion waits for both the exact receipt and child handoff, preserving separate observable durability states.",
+    "Malformed closed wire requests have no admitted correlation ID and are reported with id:null. The final fixture checks that explicit refusal instead of waiting for a response to an unadmitted ID.",
+    "Strict lint prompted an explicit None/Original/Revisions negotiated mode plus a dedicated capability validator rather than adding more independent booleans or suppressing warnings.",
+    "The combined HTTP test initially omitted the Origin header automatically supplied by browsers; the host correctly refused it. The Node fixture now supplies the existing allowed loopback Origin without relaxing authentication or server validation.",
+    "The first mixed restore assertion incorrectly expected original object IDs. Restore-as-new-edit intentionally creates fresh identities. The final test asserts that difference, compares committed bytes to the exact guarded native restore plan and verifies Undo/Redo and exact reopen.",
+    "Canonical native, application Wasm, research compatibility and relay targets remain separate. Native hosts, HTTP/WebSocket traffic, random test accounts and local archives are isolated fixtures. DOM, IndexedDB, Web Locks and injected I/O/transport failures are synthetic; no physical-browser, IME, VoiceOver or production qualification is claimed."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "CARGO_TARGET_DIR=target/suggestion-ledger-native cargo test --manifest-path experiments/collaboration/Cargo.toml --locked --offline --release --test suggestion_revision_contracts",
+    "node scripts/build-collaboration-runtime.mjs",
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "npm run build:candidate --workspace @breditor/editor",
+    "npm run test:candidate --workspace @breditor/editor",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo build --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --example suggestions_functional --example suggestion_revisions_functional",
+    "node scripts/probe-suggestion-revisions-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestion_revisions_functional",
+    "node scripts/check-suggestion-revisions-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional target/owned-history-relay-native/release/examples/suggestion_revisions_functional"
+  ],
+  "remaining": [
+    "Granular character-affine text rebasing must use an additive native contract; existing conservative V1 witnesses and stored meanings remain unchanged.",
+    "Review final public API/migration and package release requirements, production authentication/hosting, and retained-history/metadata lifetime and compaction before V1.",
+    "Deferred broad browser, historical WebKit reliability, physical IME, accessibility and performance/release qualification remain separate work. No feature-parity or V1-readiness claim is made."
+  ],
+  "advancedReviewGoalStatus": "active",
+  "publication": {
+    "localCheckpointOnly": true,
+    "pushed": false,
+    "published": false,
+    "deployed": false,
+    "versionUnchanged": "0.3.0-alpha.22"
+  }
+}

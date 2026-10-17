@@ -8,9 +8,34 @@ use axum::extract::ws::{Message, WebSocket};
 use serde_json::{Value, json};
 use std::time::Duration;
 use tokio::sync::OwnedSemaphorePermit;
+mod capabilities;
 mod document_observer;
 mod review;
 mod suggestions;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SuggestionMode {
+    None,
+    Original,
+    Revisions,
+}
+impl SuggestionMode {
+    fn from_capabilities(capabilities: &[String]) -> Self {
+        if capabilities.iter().any(|c| c == "documentSuggestionRevisionsV1") {
+            Self::Revisions
+        } else if capabilities.iter().any(|c| c == "documentSuggestionsV1") {
+            Self::Original
+        } else {
+            Self::None
+        }
+    }
+    fn enabled(self) -> bool {
+        self != Self::None
+    }
+    fn revisions(self) -> bool {
+        self == Self::Revisions
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PresenceMode {
@@ -63,7 +88,7 @@ struct ConnectionState {
     review_lease_kind: ReviewLeaseKind,
     presence: PresenceMode,
     versions: bool,
-    suggestions: bool,
+    suggestions: SuggestionMode,
 }
 impl ConnectionState {
     fn validate(&self, room: &Room, principal: &str) -> Result<()> {
@@ -111,12 +136,7 @@ async fn dispatch(
     match request {
         Request::Authenticate { .. } => Err(Error::Contract("already authenticated")),
         Request::Sync => snapshot(host, &principal, state).await,
-        request @ (Request::SuggestionPublish { .. }
-        | Request::SuggestionDecide { .. }
-        | Request::SuggestionSync { .. }
-        | Request::SuggestionRead { .. }
-        | Request::SuggestionPacket { .. }
-        | Request::SuggestionGrant { .. }) => {
+        request if suggestions::handles(&request) => {
             suggestions::dispatch(host, &principal, state, request).await
         }
         request @ (Request::RegisterObserver | Request::ResumeObserver { .. }) => {
@@ -203,6 +223,7 @@ async fn dispatch(
             Ok(json!({"kind":"resumed","lease":next}))
         }
         Request::Submit { group } => submit(host, principal, state, group).await,
+        _ => Err(Error::Contract("unsupported request")),
     }
 }
 async fn submit(
@@ -249,34 +270,14 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
     let Request::Authenticate { principal, token, capabilities } = envelope.request else {
         return None;
     };
-    if capabilities.len() > 8
-        || capabilities.iter().any(|c| {
-            c != "assets"
-                && c != "presence"
-                && c != "writerTransportV2"
-                && c != "documentPresenceV1"
-                && c != "reviewV1"
-                && c != "reviewLineageV1"
-                && c != "reviewObserverV1"
-                && c != "documentVersionsV1"
-                && c != "documentSuggestionsV1"
-        })
-        || capabilities.iter().any(|c| c == "presence")
-            && capabilities.iter().any(|c| c == "documentPresenceV1")
-        || capabilities.iter().collect::<std::collections::BTreeSet<_>>().len()
-            != capabilities.len()
-        || capabilities.iter().any(|c| c == "reviewLineageV1")
-            && !capabilities.iter().any(|c| c == "reviewV1")
-        || capabilities.iter().any(|c| c == "reviewObserverV1")
-            && !capabilities.iter().any(|c| c == "reviewLineageV1")
-    {
+    if !capabilities::valid(&capabilities) {
         return None;
     }
     let assets_enabled = host.assets.is_some() && capabilities.iter().any(|c| c == "assets");
     let review_mode = ReviewMode::from_capabilities(&capabilities);
     let review_enabled = review_mode.enabled();
     let versions = capabilities.iter().any(|c| c == "documentVersionsV1");
-    let suggestions = capabilities.iter().any(|c| c == "documentSuggestionsV1");
+    let suggestions = SuggestionMode::from_capabilities(&capabilities);
     let review_lineage = review_mode.lineage();
     let presence = if capabilities.iter().any(|c| c == "documentPresenceV1") {
         PresenceMode::DocumentV1
@@ -299,7 +300,8 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
                 if review_enabled { response["reviewDescriptor"]=serde_json::to_value(room.review_descriptor(&p)?)?; }
                 if review_lineage {response["reviewRole"]=serde_json::to_value(room.review_permissions(&p)?)?;}
                 if versions {response["documentVersionsDescriptor"]=serde_json::to_value(room.document_versions_descriptor(&p)?)?;response["documentVersionsCanPublish"]=serde_json::to_value(room.document_versions_can_publish(&p)?)?;}
-                if suggestions {response["documentSuggestionsDescriptor"]=serde_json::to_value(room.document_suggestions_descriptor(&p)?)?;response["documentSuggestionsPermissions"]=serde_json::to_value(room.suggestion_permissions(&p)?)?;}
+                if suggestions.enabled() {response["documentSuggestionsDescriptor"]=serde_json::to_value(room.document_suggestions_descriptor(&p)?)?;response["documentSuggestionsPermissions"]=serde_json::to_value(room.suggestion_permissions(&p)?)?;}
+                if suggestions.revisions() {response["documentSuggestionRevisionsDescriptor"]=serde_json::to_value(room.document_suggestion_revisions_descriptor(&p)?)?;}
                 Ok(response)
             }).await
         }
@@ -410,7 +412,7 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
                 versions_changed.borrow_and_update();
                 if !send_versions_changed(&host,&principal,&state,&mut socket).await {break;}
             }
-            update=suggestions_changed.changed(), if state.suggestions => {
+            update=suggestions_changed.changed(), if state.suggestions.enabled() => {
                 if update.is_err(){break;}
                 suggestions_changed.borrow_and_update();
                 if !suggestions::send_changed(&host,&principal,&state,&mut socket).await {break;}

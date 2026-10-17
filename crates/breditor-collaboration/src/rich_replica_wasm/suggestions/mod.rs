@@ -5,6 +5,7 @@ mod plan_general_text;
 mod prepare;
 mod read;
 mod retained_receipt;
+mod revisions;
 mod verify_source;
 use super::error;
 use crate::{Error, rich_replica::DocumentSuggestionPreparation};

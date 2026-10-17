@@ -12,6 +12,8 @@ import type {SharedSuggestionRelayState,SharedSuggestionRelayRequest,SharedSugge
 import type {SharedSuggestionQueueIdentity} from "../suggestions/types.js";
 import {suggestionBinding,suggestionDescriptor,suggestionPermissions,suggestionCursor} from "../suggestions/transport.js";
 import {packetText} from "../suggestions/validation.js";
+import {revisionsBinding,revisionsDescriptor,revisionRequest} from "../suggestion_revisions/transport.js";
+import type {SharedSuggestionRevisionRequest} from "../suggestion_revisions/types.js";
 
 interface Waiter {target:string;resolve:()=>void;reject:(error:SharedRelayError)=>void;timer:ReturnType<typeof setTimeout>}
 interface Run {epoch:number;promise:Promise<void>}
@@ -36,6 +38,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  #transport:1|2;
  #suggestionPermissions:SharedSuggestionPermissions|null=null;#suggestionRevision=0;#suggestionsNegotiated=false;
  #suggestionDocumentRevision=0;
+ #revisionsNegotiated=false;
  #listeners=new Set<()=>void>();#suggestionRequests=0;
 
  constructor(core:SharedRichEditor<P>,options:SharedRelayOptions<P>&(P extends "document-v1"?SharedDocumentRelayOptions:unknown)){
@@ -53,6 +56,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
    this.#options={...this.#options,suggestions:binding};
   }
   if(policy==="document-v1"&&this.#transport!==2)throw new SharedRelayError("document_writer_transport_required");
+  if(options.suggestionRevisions){if(!options.suggestions||!core.supportsSuggestionRevisions())throw new SharedRelayError("suggestion_revisions_unavailable");this.#options={...this.#options,suggestionRevisions:revisionsBinding(options.suggestionRevisions)};}
   this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30_000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30_000)throw new SharedRelayError("reconnect_limits");
   if(this.#transport===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
@@ -69,6 +73,8 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  /** Notifications share this adapter's lifetime; subscribers do not own its core or socket. */
  subscribe(listener:()=>void):()=>void{if(this.#closed)throw new SharedRelayError("closed");this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  suggestionState():SharedSuggestionRelayState{return {ready:this.#ready&&this.#suggestionsNegotiated,revision:this.#suggestionRevision,documentRevision:this.#suggestionDocumentRevision,permissions:this.#suggestionPermissions?{...this.#suggestionPermissions}:null};}
+ suggestionRevisionsReady():boolean{return this.#ready&&this.#revisionsNegotiated;}
+ checkSuggestionRevisions(core:SharedRichEditor<P>,identity:SharedSuggestionQueueIdentity,binding:string):void{this.checkSuggestionQueue(core,identity);if(!this.#options.suggestionRevisions||this.#options.suggestionRevisions.binding!==binding)throw new SharedRelayError("suggestion_revision_lane_mismatch");}
  /** Nonsecret exact binding check for a borrowed durable queue; never transfers the author lease. */
  checkSuggestionQueue(core:SharedRichEditor<P>,identity:SharedSuggestionQueueIdentity):void{
   const binding=this.#options.suggestions;
@@ -92,6 +98,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   this.#presence?.stop();this.#presenceEnabled=false;
   this.#presenceNegotiated=false;this.#presenceStarted=false;this.#earlyPresence=undefined;
   this.#suggestionsNegotiated=false;this.#suggestionPermissions=null;
+  this.#revisionsNegotiated=false;
  }
  #fail(error:SharedRelayError,epoch:number):void{
   if(!this.#active(epoch))return;this.#stop();this.#error=error.code;
@@ -141,7 +148,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   const channel=await(this.#options.suggestions?RelayChannel.openSuggestions(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),this.#core.selectionPolicy(),abort.signal):open(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),abort.signal));
   if(!this.#active(epoch)){channel.close();throw new SharedRelayError("disconnected");}this.#channel=channel;
   const presenceCapability=this.#core.selectionPolicy()==="document-v1"?"documentPresenceV1":"presence";
-  const wanted=[...(this.#options.onAssetsChanged?["assets"]:[]),...(this.#presence?[presenceCapability]:[]),...(this.#transport===2?["writerTransportV2"]:[]),...(this.#options.suggestions?["documentSuggestionsV1"]:[])];
+  const wanted=[...(this.#options.onAssetsChanged?["assets"]:[]),...(this.#presence?[presenceCapability]:[]),...(this.#transport===2?["writerTransportV2"]:[]),...(this.#options.suggestions?["documentSuggestionsV1"]:[]),...(this.#options.suggestionRevisions?["documentSuggestionRevisionsV1"]:[])];
   const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token,...(wanted.length?{capabilities:wanted}:{})});
   if(authenticated["kind"]!=="authenticated")throw new SharedRelayError("protocol_error");checkDescriptor(this.#core,descriptor(authenticated["descriptor"]));
   let confirmed=authenticated["capabilities"];
@@ -150,6 +157,10 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
    confirmed=confirmed.filter(c=>c!=="documentSuggestionsV1");
    suggestionDescriptor(authenticated["documentSuggestionsDescriptor"],{...this.#options.suggestions,room:this.#identity.room});
    this.#suggestionPermissions=suggestionPermissions(authenticated["documentSuggestionsPermissions"]);this.#suggestionsNegotiated=true;this.#suggestionRevision++;
+  }
+  if(this.#options.suggestionRevisions){
+   if(!Array.isArray(confirmed)||confirmed.filter(c=>c==="documentSuggestionRevisionsV1").length!==1)throw new SharedRelayError("suggestion_revision_protocol_unavailable");
+   confirmed=confirmed.filter(c=>c!=="documentSuggestionRevisionsV1");revisionsDescriptor(authenticated["documentSuggestionRevisionsDescriptor"],this.#options.suggestionRevisions.binding,{room:this.#identity.room,binding:this.#options.suggestions!.binding});this.#revisionsNegotiated=true;
   }
   const capabilities=transportCapabilities(confirmed,this.#transport,this.#core.selectionPolicy());
   this.#assetHints=!!this.#options.onAssetsChanged&&capabilities.includes("assets");
@@ -185,6 +196,15 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
    default:throw new SharedRelayError("invalid_request");
   }
   this.#suggestionRequests++;
+  try{const result=await channel.request(payload);if(!this.#active(epoch)||this.#channel!==channel)throw new SharedRelayError("disconnected");return result;}
+  catch(error){if(error instanceof SharedRelayError&&(error.code==="lease_rejected"||transient.has(error.code)))this.#fail(error,epoch);throw error;}
+  finally{this.#suggestionRequests--;}
+ }
+ /** Same authenticated socket and combined two-request budget; never an implicit child publish. */
+ async requestSuggestionRevision(request:SharedSuggestionRevisionRequest):Promise<Record<string,unknown>>{
+  const binding=this.#options.suggestionRevisions,channel=this.#channel,epoch=this.#epoch;
+  if(!binding||!channel||!this.suggestionRevisionsReady())throw new SharedRelayError("suggestion_revision_offline");
+  if(this.#suggestionRequests>=2)throw new SharedRelayError("suggestion_request_budget");const payload=revisionRequest(request,binding.binding);this.#suggestionRequests++;
   try{const result=await channel.request(payload);if(!this.#active(epoch)||this.#channel!==channel)throw new SharedRelayError("disconnected");return result;}
   catch(error){if(error instanceof SharedRelayError&&(error.code==="lease_rejected"||transient.has(error.code)))this.#fail(error,epoch);throw error;}
   finally{this.#suggestionRequests--;}

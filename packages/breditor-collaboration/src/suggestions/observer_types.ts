@@ -4,6 +4,7 @@ import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRelayAuthentication,SharedRelayState} from "../relay/types.js";
 import type {SharedSuggestionPermissions} from "../relay/suggestion_types.js";
 import type {SharedSuggestionQueueIdentity} from "./types.js";
+import type {SharedSuggestionRevisionsBinding} from "../suggestion_revisions/types.js";
 /** Separate host-protected observer credential. No document-author credential is present. */
 export interface SharedSuggestionObserverIdentity extends SharedSuggestionQueueIdentity {readonly observerCredential:string}
 export interface SharedSuggestionObserverRegistrationOptions extends SharedRelayAuthentication {
@@ -16,6 +17,8 @@ export interface SharedSuggestionObserverRegistration {
 }
 export interface SharedSuggestionObserverOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  identity:SharedSuggestionObserverIdentity;
+ /** Explicit revision lane. Still never acquires an author lease or executes Accept. */
+ suggestionRevisions?:SharedSuggestionRevisionsBinding;
  /** Existing durable source; neither source/core nor its local lease is owned by networking. */
  storage:{readonly core:SharedRichEditor<P>;save():void;flush():Promise<void>};
  getToken:(signal:AbortSignal)=>string|Promise<string>;

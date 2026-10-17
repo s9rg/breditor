@@ -169,13 +169,10 @@ not reopen the predecessor or undo the authenticated revision receipt. Native
 tests combine revised rich text, formatting, lists, rows/columns and image sizing
 with exact owned-history recovery under all six policies.
 
-This checkpoint is native-first. Revision socket negotiation, a separately
-selected durable client queue, source-before-receipt recovery and borrowed
-vanilla/React revision controls remain integration work. They must submit the
-revision transaction, never fall back to publishing its child independently.
-Offline revision/decision races must retain the losing draft and original server
-outcome explicitly. Granular character-affine rebasing remains separate work;
-existing conservative V1 source witnesses are unchanged.
+The native checkpoint introduced the relation and transaction first. The client
+integration below adds explicit transport, recovery and controls without changing
+conservative V1 source witnesses. Granular character-affine rebasing remains
+separate work.
 
 The [native revision checkpoint](qualification/2026-10-17-rich-review-suggestion-revisions-native.json)
 passes 491 canonical native tests, 75 relay/server tests and three compatibility
@@ -184,8 +181,89 @@ Strict native/Wasm, relay and document-suggestion integration-test lint passes.
 All 344 SDK/editor regressions and 48 runtime/build guards pass. Rebuilt native
 hosts and application Wasm also pass the original four-policy author workflow
 and clean-installed six-policy mixed controls/Reader regressions. Those client
-runs keep revisions disabled; they qualify existing behavior, not unfinished
-revision-client delivery.
+runs kept revisions disabled; the separate client checkpoint below qualifies
+revision delivery.
+
+### Durable revision clients and controls
+
+The additional `documentSuggestionRevisionsV1` capability requires both
+`documentSuggestionsV1` and `writerTransportV2`. The authenticated descriptor pins
+an independent revision binding and the original suggestion binding. Author and
+permanent Reader adapters select `suggestionRevisions: { binding }` explicitly on
+their existing connection. No extra author lease, temporary grant or second
+socket is acquired. Old clients receive no revision descriptor and cannot send
+revision requests. The old proposal/decision methods and saved families retain
+their exact meanings.
+
+The complete optional Wasm pair adds pure capture, descriptive admission,
+historical-source proof and exact child extraction. The SDK exposes
+`supportsSuggestionRevisions`, `captureSuggestionRevision`,
+`readSuggestionRevision`, `verifySuggestionRevision` and
+`revisionSuggestionPacket`. A stale observation refuses before capture. An older
+runtime can keep its complete original suggestion capability while refusing only
+the new revision path. Extracted child bytes are for preview and subsequent
+committed review, never an independent-publication fallback.
+
+`SharedSuggestionRevisions.open` borrows the existing proposal queue, durable
+native source and explicitly matching transport. Its separate
+`breditor/shared-suggestion-revisions` V1 record retains exact predecessor and
+revision bytes, local retry state, the original committed receipt or the winning
+conflict. It saves the complete source and base queue before its dependent
+record. A failed write retains the same draft; `retry()` retries local persistence
+without reconnecting a stopped synchronizer. `connect()` or `synchronize()` is an
+explicit network action. Credentials and current permissions are not stored in
+this outbox. Each local queue retains at most 256 entries and 32 MiB, independently
+of the host's existing proposal/metadata limits; there is no automatic compaction.
+
+Offline capture and preview change neither accepted content nor native history.
+The new child stays outside the ordinary publication queue until authenticated
+supersession commits and its receipt saves locally. The handoff then retains the
+predecessor's original not-accepted outcome and caches the unchanged child with
+its original publication. Existing decision syncing and accepting-user Undo/Redo
+handle that child. An uncommitted revision child cannot queue Accept/Reject;
+supersession must complete first. Existing published proposals retain offline
+decision queuing. A losing revision keeps its exact draft and original server
+winner, without publishing the child or reopening the predecessor. An intervening
+Accept's operations must be retained in the durable native source before its
+dependent conflict receipt is stored.
+
+Discovery freezes the last committed revision sequence and returns at most 64
+immutable relations per page. Cursors admit only activation or committed revision
+boundaries, not arbitrary room-log offsets. Clients validate chain roots, unique
+successors, adjacent supersession/publication order and remembered receipts before
+replacing their live feed. Later child decisions do not alter those receipts.
+`loadRevision` coalesces matching lazy downloads and asks Rust to verify the exact
+relation and both historical sources; remote downloads do not become local
+publication intent. Source synchronization and metadata hints wake pending work;
+idle clients do not poll.
+
+Passing the outbox as the third argument to
+`createSharedSuggestionPanelSource(queue, suggestionSync, revisions)` enables
+“Revise selected suggestion” in the existing vanilla and React composer. The
+selected action builds full replacement intent at accepted content, not a delta
+against the old preview. Only the creator's retained pending suggestion is
+eligible. Controls distinguish queued revisions, uncommitted child previews,
+committed successors and retained losing drafts, and link the predecessor's
+not-accepted outcome to its successor. Unmount frees only UI subscriptions and
+preview handles; it leaves the source, queues and connection host-owned.
+
+The [revision client checkpoint](qualification/2026-10-17-rich-review-suggestion-revisions-sdk.json)
+records native, SDK and clean-installed acceptance. Its focused functional matrix
+covers all six selection/history policies, Reader-only revisions, offline reopen,
+source/outbox/receipt save failures, final-decision races, lost replies, host
+restart, native proof downloads and borrowed composer handoff. Storage, locks and
+DOM are fixtures; granular text rebasing and final production qualification remain
+open.
+
+```sh
+CARGO_TARGET_DIR=target/owned-history-relay-native cargo build \
+  --manifest-path experiments/relay/Cargo.toml --locked --offline --release \
+  --features server --example suggestions_functional \
+  --example suggestion_revisions_functional
+node scripts/check-suggestion-revisions-installed.mjs \
+  target/owned-history-relay-native/release/examples/suggestions_functional \
+  target/owned-history-relay-native/release/examples/suggestion_revisions_functional
+```
 
 ### Staged native suggestion effects
 
@@ -858,7 +936,8 @@ creates, previews and Rejects without author registration, document submission
 or a nonzero authored prefix. Synthetic DOM/storage/locks and an authenticated
 native loopback host establish functional integration, not physical browser or
 V1 release qualification. That checkpoint precedes the protected-range planner
-below. Proposal revisions and granular character-affine rebasing remain functional work.
+below. The later revision-client section adds immutable revisions; granular
+character-affine rebasing remains functional work.
 
 ```sh
 node scripts/probe-suggestion-controls-sdk.mjs target/promoted-shared-web \

@@ -25,6 +25,11 @@ export type SharedDocumentSuggestionDraft=
 export type SharedDocumentSuggestionSource=
  |{kind:"pending";missing:readonly SharedSuggestionDependency[]}
  |{kind:"verified";info:SharedDocumentSuggestionInfo;clocks:readonly SharedSuggestionDependency[]};
+/** Immutable same-creator replacement relation; descriptive identity is not server authority. */
+export interface SharedSuggestionRevisionInfo {id:string;previousSuggestionId:string;suggestion:SharedDocumentSuggestionInfo}
+export type SharedSuggestionRevisionSource=
+ |{kind:"pending";missing:readonly SharedSuggestionDependency[]}
+ |{kind:"verified";revision:SharedSuggestionRevisionInfo;clocks:readonly SharedSuggestionDependency[]};
 export interface SharedSuggestionPreviewSummary {
  kind:"ready";suggestion:SharedDocumentSuggestionInfo;changes:readonly SharedVersionChange[];
  beforeAssets:readonly SharedVersionAsset[];afterAssets:readonly SharedVersionAsset[];
@@ -54,4 +59,10 @@ export interface SharedSuggestionsRustCapability {
  /** Additive pure namespace planner. Older complete suggestion runtimes keep their V1 meanings. */
  suggestion_general_text_version?():string;
  plan_suggestion_general_text?(observed:unknown,input:string):string;
+ /** Separate complete pure revision pair. Existing proposal V1 capability stays unchanged. */
+ document_suggestion_revisions_version?():string;
+ capture_document_suggestion_revision?(observed:unknown,input:string):string;
+ read_document_suggestion_revision?(previousPacket:string,input:string):string;
+ verify_document_suggestion_revision?(previousPacket:string,input:string):string;
+ document_suggestion_revision_packet?(previousPacket:string,input:string):string;
 }

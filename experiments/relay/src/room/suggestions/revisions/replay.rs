@@ -15,7 +15,7 @@ impl Room {
                 self.reader(&actor)?;
                 credentials::hash(&binding)?;
                 self.suggestions.as_mut().ok_or(Error::NeedsRecovery)?.revisions =
-                    Some(RevisionsState::new(&binding));
+                    Some(RevisionsState::new(&binding, sequence));
             }
             Event::PrepareDocumentSuggestionRevisionV1 { principal, request } => {
                 let RevisionPreparation::New(prepared) =

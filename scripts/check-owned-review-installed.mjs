@@ -8,8 +8,9 @@ import {dirname,join,resolve,sep} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {probeSuggestionSyncSdk} from "./probe-suggestion-sync-sdk.mjs";
 import {probeSuggestionObserverSdk} from "./probe-suggestion-observer-sdk.mjs";
+import {probeSuggestionRevisionsSdk} from "./probe-suggestion-revisions-sdk.mjs";
 
-export async function checkOwnedReviewInstalled(executable,{includeObserver=false,includeControls=false}={}){
+export async function checkOwnedReviewInstalled(executable,{includeObserver=false,includeControls=false,revisionExecutable}={}){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdtempSync(join(tmpdir(),"breditor-owned-review-installed-")),archives=join(temporary,"archives"),consumer=join(temporary,"consumer");
  mkdirSync(archives);mkdirSync(consumer);writeFileSync(join(consumer,"package.json"),JSON.stringify({name:"breditor-owned-review-consumer",private:true,type:"module"}));
  const packages=["@breditor/browser","@breditor/experimental-rich-content","@breditor/collaboration","@breditor/editor"];
@@ -20,14 +21,16 @@ export async function checkOwnedReviewInstalled(executable,{includeObserver=fals
  for(const file of installed)assert.ok(file.startsWith(realpathSync(consumer)+sep),"Production dependencies must resolve in the clean installed consumer");
  cpSync(join(root,"scripts/fixtures/editor-consumer/types-reviewed.ts"),join(consumer,"types-reviewed.ts"));
  if(includeControls)cpSync(join(root,"scripts/fixtures/editor-consumer/types-suggestion-react.ts"),join(consumer,"types-suggestion-react.ts"));
- execFileSync(join(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","types-reviewed.ts",...(includeControls?["types-suggestion-react.ts"]:[])],{cwd:consumer,stdio:["ignore","ignore","pipe"]});
+ if(revisionExecutable)cpSync(join(root,"scripts/fixtures/editor-consumer/types-suggestion-revisions.ts"),join(consumer,"types-suggestion-revisions.ts"));
+ execFileSync(join(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","types-reviewed.ts",...(includeControls?["types-suggestion-react.ts"]:[]),...(revisionExecutable?["types-suggestion-revisions.ts"]:[])],{cwd:consumer,stdio:["ignore","ignore","pipe"]});
  const sdkDirectory=pathToFileURL(dirname(installed[2])+sep),sdkModule=pathToFileURL(realpathSync(fileURLToPath(resolved[4]))),wasmDirectory=dirname(realpathSync(fileURLToPath(resolved[5])));
  assert.ok(fileURLToPath(sdkModule).startsWith(realpathSync(consumer)+sep));
  const reactOptions=includeControls?{controls:true,reactModule:resolved[6],reactRuntime:resolved[7],reactDomRuntime:resolved[8]}:{};
  if(includeControls)for(const url of resolved.slice(6))assert.ok(realpathSync(fileURLToPath(url)).startsWith(realpathSync(consumer)+sep),"React and its public wrapper must resolve in the installed consumer");
  const result=await probeSuggestionSyncSdk(wasmDirectory,resolve(executable),{ownedHistory:true,sdkDirectory,sdkModule,...reactOptions});
  const observer=includeObserver?await probeSuggestionObserverSdk(wasmDirectory,resolve(executable),{sdkDirectory,sdkModule,controls:includeControls}):undefined;
- const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,...(includeControls?{installedReactModules:resolved.slice(6)}:{}),...(observer?{observer}:{}),scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm")+(observer?" An additional installed permanent-observer matrix covers non-authoring Readers.":"")};
+ const revisions=revisionExecutable?await probeSuggestionRevisionsSdk(wasmDirectory,resolve(revisionExecutable),{sdkModule}):undefined;
+ const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,...(includeControls?{installedReactModules:resolved.slice(6)}:{}),...(observer?{observer}:{}),...(revisions?{revisions}:{}),scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm")+(observer?" An additional installed permanent-observer matrix covers non-authoring Readers.":"")+(revisions?" A separate installed immutable-revision matrix uses only the opt-in revision host.":"")};
  writeFileSync(join(temporary,"result.json"),JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
