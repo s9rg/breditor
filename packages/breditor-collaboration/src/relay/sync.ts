@@ -1,6 +1,6 @@
 import {SharedRichEditor} from "../core.js";
 import type {SharedWriterClock,SharedSelectionPolicy} from "../types.js";
-import {checkCheckpoint,checkDocumentCheckpoint} from "../persistence/session_database.js";
+import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {RelayChannel} from "./channel.js";
 import {RelayPresence} from "./presence.js";
 import {accountToken} from "./registration.js";
@@ -44,8 +44,11 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   if(attached.has(core))throw new SharedRelayError("relay_already_attached");
   this.#core=core;this.#identity=identity(options.identity);this.#options={...options,identity:this.#identity};
   this.#transport=transportVersion(this.#identity.writerTransport);
+  const reviewed=core.reviewedHistoryIdentity?.()??null;
+  if(reviewed&&(reviewed.principal!==this.#identity.principal||this.#transport!==2||typeof options.persistLocal!=="function"))throw new SharedRelayError("reviewed_transport_required");
   if(options.suggestions){
    const binding=suggestionBinding(options.suggestions);
+   if(reviewed&&(reviewed.binding!==binding.binding||reviewed.effectWriter!==binding.effectWriter))throw new SharedRelayError("reviewed_transport_identity");
    if(this.#transport!==2||!core.supportsDocumentSuggestions()||typeof options.persistLocal!=="function"||binding.effectWriter===this.#identity.writer)throw new SharedRelayError("suggestion_transport_required");
    this.#options={...this.#options,suggestions:binding};
   }
@@ -54,8 +57,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30_000)throw new SharedRelayError("reconnect_limits");
   if(this.#transport===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   // The owner declares its local recovery family; transport/model bindings stay unchanged.
-  if(policy==="document-v1")checkDocumentCheckpoint(core.checkpointJson(),this.#identity.room,this.#identity.writer,core.richLanguageVersion(),core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit");
-  else checkCheckpoint(core.checkpointJson(),this.#identity.room,this.#identity.writer,core.richLanguageVersion(),core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit",core.view().rangeEditing??"original");
+  checkSourceCheckpoint(core,this.#identity.room,this.#identity.writer);
   this.#local=this.#clock().through;
   if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
   this.#unsubscribe=core.subscribe(()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}});

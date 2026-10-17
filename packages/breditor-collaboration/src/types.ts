@@ -3,9 +3,10 @@ import type {SharedProtocolBinding} from "./protocol.js";
 import type {SharedReviewRustCapability} from "./review_types.js";
 import type {SharedVersionsRustCapability} from "./version_types.js";
 import type {SharedSuggestionsRustCapability} from "./suggestion_types.js";
+import type {SharedReviewedHistoryRustCapability,SharedReviewedHistoryIdentity} from "./reviewed_history_types.js";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
 export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
-export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string}};
+export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string};historyPolicy?:"reviewed-v1"};
 /** Independent explicit scope policy; original view and selection DTOs stay closed. */
 export type SharedSelectionPolicy="original"|"document-v1";
 export type SharedDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
@@ -90,7 +91,7 @@ export interface SharedWriterGroups {format:"breditor/shared-writer-groups";form
 /** Explicit atom-lineage transport; never accepted as an original group batch. */
 export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVersion"> {formatVersion:2}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
-export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability,SharedSuggestionsRustCapability {
+export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability,SharedSuggestionsRustCapability,SharedReviewedHistoryRustCapability {
  clipboard_interchange_version?():string;
  admit_clipboard_root?(kind:string,rootJson:string):string;validate_clipboard?(clipboardJson:string):string;
  document_selection_version?():string;document_typing_version?():string;document_selection_enabled?():boolean;
@@ -168,6 +169,9 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersio
  receive_frame(frame:string):void;update_frame():string;checkpoint():string;free():void;
 }
 export interface SharedPublication<P extends SharedSelectionPolicy="original"> {source:"local"|"remote";view:SharedEditorView<P>}
-export interface SharedEditorOptions<P extends SharedSelectionPolicy="original"> {selectionEditing?:P;maxPendingFrames?:number;maxPendingBytes?:number;onError?:(error:unknown)=>void}
+export interface SharedEditorOptions<P extends SharedSelectionPolicy="original"> {selectionEditing?:P;maxPendingFrames?:number;maxPendingBytes?:number;onError?:(error:unknown)=>void;
+ /** Explicit new recovery family. Durable callers must use reviewed-aware paired storage. */
+ reviewedHistory?:SharedReviewedHistoryIdentity;
+}
 /** Cancel only a queued remote publication; a synchronous admitted Rust commit cannot be rewound. */
 export interface SharedRemoteOptions {signal?:AbortSignal}

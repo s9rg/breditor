@@ -9,6 +9,9 @@ import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVer
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
 import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention} from "./suggestion_types.js";
 import {SharedDocumentSuggestionPreview,nativeSuggestionPreview} from "./suggestion_preview.js";
+import {SharedDocumentSuggestionEffectProof,nativeSuggestionEffectProof} from "./suggestion_effect_proof.js";
+import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_validation.js";
+import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,SharedDocumentSuggestionEffect,SharedSuggestionEffectSummary,SharedSuggestionEffectVerification} from "./reviewed_history_types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 export class SharedEditorError extends Error {
@@ -31,6 +34,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #reviewOwner=Object.freeze({});
  #versionPlans=new Set<SharedDocumentVersionRestorePlan>();
  #suggestionPreviews=new Set<SharedDocumentSuggestionPreview>();
+ #suggestionEffects=new Set<SharedDocumentSuggestionEffectProof>();
  constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
   const options=(args[0]??{}) as SharedEditorOptions<P>;
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
@@ -48,7 +52,15 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
     if(!this.supportsDocumentSelection())throw new SharedEditorError("document_selection_unavailable","Use complete matching native document-selection capabilities");
     if(!raw.document_selection_enabled!()){const initial=raw.observe();try{raw.enable_document_selection!(initial);}finally{initial.free();}}
    }else if(raw.document_selection_enabled?.()===true)throw new SharedEditorError("selection_policy","Document-family recovery requires explicit selectionEditing document-v1");
+   if(options.reviewedHistory!==undefined){
+    const identity=reviewedHistoryIdentity(options.reviewedHistory);
+    if(!this.supportsReviewedHistory())throw new SharedEditorError("reviewed_history_unavailable","Use complete matching native history/proof capabilities");
+    if(!raw.reviewed_history_enabled!()){const initial=this.#observe(raw);try{raw.enable_reviewed_history!(initial,JSON.stringify(identity));}finally{initial.free();}}
+    const actual=JSON.parse(raw.reviewed_history_identity_json!()) as SharedReviewedHistoryIdentity|null;
+    if(!actual||!sameReviewedHistory(identity,reviewedHistoryIdentity(actual)))throw new SharedEditorError("reviewed_history_identity","Recovered native history has another identity");
+   }else if(raw.reviewed_history_enabled?.()===true)throw new SharedEditorError("reviewed_history_policy","Reviewed recovery requires explicitly pinned reviewedHistory");
    this.#observation=this.#observe(raw);this.#view=this.#observation.view_json();const view=this.view();
+   if(options.reviewedHistory!==undefined?view.historyPolicy!=="reviewed-v1":view.historyPolicy!==undefined)throw new SharedEditorError("reviewed_history_policy","Native view must match explicitly selected reviewed history");
    if(view.format!==(this.#selectionPolicy==="document-v1"?"breditor/shared-document-view":"breditor/shared-rich-view")||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching explicitly selected shared view family");
    if(this.#selectionPolicy==="document-v1"&&(!("selectionEditing" in view)||view.selectionEditing!=="document-v1"))throw new SharedEditorError("selection_policy","Native document view did not declare the selected scope policy");
    if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
@@ -131,6 +143,22 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  checkSuggestionPreview(preview:SharedDocumentSuggestionPreview,suggestionId?:string):void{const prepared=nativeSuggestionPreview(this,preview);this.#suggestionOwner().check_document_suggestion_preview!(prepared.raw,suggestionId??prepared.id);}
  /** Checks native retained operations only; the caller must authenticate the server decision separately. */
  retainedWriterReceiptV2(receipt:SharedWriterReceiptV2):SharedWriterReceiptRetention{return JSON.parse(this.#suggestionOwner().retained_writer_receipt_v2!(JSON.stringify(receipt))) as SharedWriterReceiptRetention;}
+ /** Complete native pairing only. No JS operation/AST fallback is permitted. */
+ supportsReviewedHistory():boolean{const r=this.#live();return r.reviewed_history_version?.()==="1"&&[r.reviewed_history_enabled,r.reviewed_history_identity_json,r.adopted_suggestion_json,r.enable_reviewed_history,r.reviewed_checkpoint,r.verify_document_suggestion_effect,r.check_document_suggestion_effect_proof,r.adopt_suggestion_history].every(f=>typeof f==="function");}
+ #reviewedOwner():SharedRustOwner{if(!this.supportsReviewedHistory())throw new SharedEditorError("reviewed_history_unavailable","Use matching native reviewed history");return this.#live();}
+ reviewedHistoryIdentity():SharedReviewedHistoryIdentity|null{const r=this.#live();return r.reviewed_history_enabled?.()===true?reviewedHistoryIdentity(JSON.parse(this.#reviewedOwner().reviewed_history_identity_json!()) as SharedReviewedHistoryIdentity):null;}
+ adoptedSuggestion(id:string):SharedOwnedSuggestionAcceptance|null{return JSON.parse(this.#reviewedOwner().adopted_suggestion_json!(id)) as SharedOwnedSuggestionAcceptance|null;}
+ /** Pure semantic verification, including read-only. Final server authority remains separate. */
+ verifySuggestionEffect(packet:string,effect:SharedDocumentSuggestionEffect,revision?:string):SharedSuggestionEffectVerification{
+  this.#check(revision);if(this.#retired||this.#publishing)throw new SharedEditorError("suggestion_effect_unavailable","Cannot verify while retired or publishing");
+  const raw=this.#reviewedOwner().verify_document_suggestion_effect!(this.#observation,packet,JSON.stringify(effect));let summary:SharedSuggestionEffectSummary;
+  try{summary=JSON.parse(raw.summary_json()) as SharedSuggestionEffectSummary;if(summary.kind!=="verified"&&summary.kind!=="pending")throw new SharedEditorError("suggestion_effect_invalid","Native proof did not declare a result");}catch(error){raw.free();throw error;}
+  if(summary.kind==="pending"){raw.free();return summary;}
+  let proof:SharedDocumentSuggestionEffectProof;proof=new SharedDocumentSuggestionEffectProof(this,raw,summary,()=>this.#suggestionEffects.delete(proof));this.#suggestionEffects.add(proof);return {kind:"verified",proof};
+ }
+ checkSuggestionEffect(proof:SharedDocumentSuggestionEffectProof):void{this.#reviewedOwner().check_document_suggestion_effect_proof!(nativeSuggestionEffectProof(this,proof));}
+ /** Caller authenticates the ORIGINAL owned server decision first. No accepted command is rerun. */
+ adoptSuggestionHistory(proof:SharedDocumentSuggestionEffectProof,packet:string,acceptance:SharedOwnedSuggestionAcceptance):boolean{return this.#run("local",()=>this.#reviewedOwner().adopt_suggestion_history!(nativeSuggestionEffectProof(this,proof),packet,JSON.stringify(acceptance)),undefined,false);}
  /** Immutable for this facade's lifetime; recovery must select the same family explicitly. */
  selectionPolicy():P{this.#live();return this.#selectionPolicy as P;}
  supportsDocumentSelection():boolean{const raw=this.#live();return raw.document_selection_version?.()==="1"&&raw.document_typing_version?.()==="1"&&[raw.document_selection_enabled,raw.enable_document_selection,raw.observe_document,raw.document_view_json,raw.select_document,raw.copy_document_clipboard,raw.replace_document_plain_text,raw.replace_document_typing_text,raw.document_checkpoint,raw.document_typing_checkpoint].every(method=>typeof method==="function");}
@@ -206,7 +234,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
  deleteUserRange(selection:Extract<RichSelection,{kind:"text"}>,direction:"backward"|"forward",clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().delete_typing_range!(o,JSON.stringify({selection,direction,clockMs})),revision);}
- checkpointJson():string{const view=this.view();if(this.#selectionPolicy==="document-v1")return view.historyGrouping==="typing-v1"?this.#documentOwner().document_typing_checkpoint!():this.#documentOwner().document_checkpoint!();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
+ checkpointJson():string{const view=this.view();if(view.historyPolicy==="reviewed-v1")return this.#reviewedOwner().reviewed_checkpoint!();if(this.#selectionPolicy==="document-v1")return view.historyGrouping==="typing-v1"?this.#documentOwner().document_typing_checkpoint!():this.#documentOwner().document_checkpoint!();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
  /** Separate read capability; neither method publishes, imports content or changes local UI. */
  supportsDocumentPresence():boolean{const raw=this.#live();return this.supportsDocumentSelection()&&raw.document_presence_version?.()==="1"&&typeof raw.document_presence_frame==="function"&&typeof raw.resolve_document_presence==="function";}
@@ -269,5 +297,5 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   const error=new SharedEditorError("retired","The shared writer retired before queued remote admission");
   for(const entry of pending){entry.cleanup();entry.reject(error);}
  }
- dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const plan of [...this.#versionPlans])plan.dispose();for(const preview of [...this.#suggestionPreviews])preview.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
+ dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const plan of [...this.#versionPlans])plan.dispose();for(const preview of [...this.#suggestionPreviews])preview.dispose();for(const proof of [...this.#suggestionEffects])proof.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
 }

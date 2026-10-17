@@ -49,6 +49,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  static openDocument(options:SharedDocumentSessionOptions):Promise<SharedPersistentSession<"document-v1">>{return SharedPersistentSession.#open(options,"document-v1");}
  static async #open<Q extends SharedSelectionPolicy>(options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:Q):Promise<SharedPersistentSession<Q>>{
   options={...options};
+  if(options.editor?.reviewedHistory!==undefined)throw new SharedEditorError("reviewed_session_factory","Document-only storage cannot retain reviewed ownership; use the explicit reviewed paired session");
   if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new SharedEditorError("session_identity","Expected richLanguage 1, 2 or 3");
   if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new SharedEditorError("session_history","Expected history explicit or typing-v1");
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new SharedEditorError("session_range","Expected rangeEditing original or general-v1");

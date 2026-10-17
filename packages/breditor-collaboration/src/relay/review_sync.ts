@@ -4,7 +4,7 @@ import type {SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewPolicy
 import type {SharedReviewRelayIdentity,SharedReviewRelayOptions,SharedReviewRelayProgress,SharedReviewRelayState,SharedReviewRelayRole} from "./review_types.js";
 import type {SharedRelayStatus} from "./types.js";
 import {RelayChannel} from "./channel.js";
-import {checkCheckpoint,checkDocumentCheckpoint} from "../persistence/session_database.js";
+import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {accountToken} from "./registration.js";
 import {SharedRelayError,checkClock,checkDescriptor,clock,decimal,descriptor,frame,object,string,timeout,transportVersion} from "./validation.js";
 import {reviewAccess,reviewBinding,reviewClock,reviewCursor,reviewIdentity,reviewProgress,reviewReceipt,reviewRole,reviewSource,reviewStorageIdentity,sameReceipt,reviewPending} from "./review_validation.js";
@@ -23,7 +23,7 @@ export class SharedReviewRelaySync<P extends SharedSelectionPolicy=SharedSelecti
   this.#options={...options};this.#core=options.storage.core;this.#identity=reviewIdentity(options.identity);
   if(attached.has(this.#core))throw new SharedRelayError("review_relay_already_attached");if(!this.#core.supportsReviewTransport())throw new SharedRelayError("review_transport_unavailable");
   const stored=options.storage.reviewRelayIdentity();if(!stored||JSON.stringify(reviewStorageIdentity(stored))!==JSON.stringify(reviewStorageIdentity(this.#identity)))throw new SharedRelayError("review_relay_storage_mismatch");
-  const history=this.#core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";if(this.#core.selectionPolicy()==="document-v1")checkDocumentCheckpoint(this.#core.checkpointJson(),this.#identity.room,this.#identity.documentWriter,this.#core.richLanguageVersion(),history);else checkCheckpoint(this.#core.checkpointJson(),this.#identity.room,this.#identity.documentWriter,this.#core.richLanguageVersion(),history,this.#core.view().rangeEditing??"original");
+  checkSourceCheckpoint(this.#core,this.#identity.room,this.#identity.documentWriter);
   if(transportVersion(this.#identity.writerTransport)===2?!this.#core.supportsWriterTransportV2():!this.#core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   const own=this.#core.localReviewClock();this.#local=own.through;if(own.actor!==this.#identity.actor)throw new SharedRelayError("review_actor_mismatch");this.#core.reviewWriterClock(own.actor,this.#identity.principal);
   if(this.#identity.reviewEditing==="read_only"&&own.through!=="0")throw new SharedRelayError("review_observer_authored");

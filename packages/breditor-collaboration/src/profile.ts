@@ -27,12 +27,18 @@ export type SharedProfileDescriptor=SharedProtocolBinding&Pick<SharedOwnerDescri
 };
 /** Independent compiled factory. Caller frees it after all create/restore callbacks finish. */
 export interface SharedRustProfile {
+ reviewed_history_version?():string;restore_reviewed?(room:string,journal:string):SharedRustOwner;
  descriptor_json():string;inline_catalog_json():string;create(document:string,writer:string):SharedRustOwner;
  join_frame(room:string,writer:string,frame:string):SharedRustOwner;
  restore(room:string,journal:string):SharedRustOwner;free():void;
  typing_history_version?():string;restore_typing?(room:string,journal:string):SharedRustOwner;
  general_range_version?():string;restore_general?(room:string,journal:string):SharedRustOwner;restore_general_typing?(room:string,journal:string):SharedRustOwner;
  document_selection_version?():string;restore_document?(room:string,journal:string):SharedRustOwner;restore_document_typing?(room:string,journal:string):SharedRustOwner;
+}
+/** Explicit reviewed replay, never a fallback to old factories or document import. */
+export function restoreSharedReviewedEditor(profile:SharedRustProfile,room:string,journal:string):SharedRustOwner{
+ if(profile.reviewed_history_version?.()!=="1"||typeof profile.restore_reviewed!=="function")throw new SharedEditorError("reviewed_history_unavailable","Use matching native reviewed-history recovery");
+ return profile.restore_reviewed(room,journal);
 }
 /** Explicit document-scope pairing, never inferred from the contents of a saved journal. */
 export function supportsSharedDocumentSelection(profile:SharedRustProfile):boolean{return profile.document_selection_version?.()==="1"&&typeof profile.restore_document==="function"&&typeof profile.restore_document_typing==="function";}

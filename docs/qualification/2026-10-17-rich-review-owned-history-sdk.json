@@ -1,0 +1,94 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "b121967cd2a472817af8ab4ae4ec263fc01426f7",
+  "scope": "Opt-in native/Wasm/SDK owned suggestion history, explicit paired recovery and source-before-final-receipt persistence. Actual Wasm and clean-installed mixed suggestion/comment/version workflows cover all six scope/grouping policies. This is a functional SDK checkpoint, not complete suggestion controls, granular rebasing or a V1 release.",
+  "artifacts": {
+    "applicationWasmSha256": "a07fff8be589fbc9d2909f37b04b5a4607f9f9dc2c61721d66403fff6c98f196",
+    "suggestionHostSha256": "767896e964d02f0c89685b99668a3499ffdfc02f05d2c2f8f24d11428944840e",
+    "reviewAndCatalogHostSha256": "eec29d3c48077f2992255ff90702046f632441ac28a777fb08d2b63cf04346c0",
+    "javascriptExports": 8,
+    "wasmExports": 191,
+    "packagedWasmMatchesGeneratedRuntime": true,
+    "publicNativeProofConstructor": false,
+    "browserSideEffectOrArbitraryInverseExecutor": false,
+    "nativeHistorySemanticsChangedSinceBaseCommit": false
+  },
+  "verification": {
+    "fullSdkSuite": {"passed": 315, "failed": 0, "files": 36, "newOwnedHistoryBoundaryTests": 10},
+    "strictCandidateSdkAndEditorTypes": "passed",
+    "strictApplicationWasmClippy": "passed",
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 47, "failed": 0},
+    "actualWasmOwnedHistoryMatrix": {
+      "passed": true,
+      "trials": 6,
+      "scopePolicies": ["original", "general-v1", "document-v1"],
+      "groupingPolicies": ["explicit", "typing-v1"],
+      "exactOfflineReopens": 6,
+      "acceptedCreationQueueReopens": 6,
+      "automaticOwnedAccepts": 6,
+      "localSourceBeforeOwnedReceiptRefusals": 6,
+      "failedReceiptNativeReopens": 6,
+      "onceOnlyAfterUndoAndDiscardedRedo": 6,
+      "foreignAcceptingWriterRefusals": 6,
+      "olderSourceRollbackRefusals": 6,
+      "mixedCommentVersionReopens": 6,
+      "opposingOfflineChoices": 6,
+      "lostDecisionReplies": 6,
+      "automaticHostRestarts": 6,
+      "idleWithoutPolling": 6
+    },
+    "cleanInstalledMixedSdkMatrix": {
+      "passed": true,
+      "trials": 6,
+      "strictInstalledConsumerTypes": "passed",
+      "productionArchives": ["@breditor/browser", "@breditor/experimental-rich-content", "@breditor/collaboration", "@breditor/editor"],
+      "publicEntry": "@breditor/editor/collaboration",
+      "runtime": "@breditor/collaboration/wasm",
+      "workspaceProductionLinks": false,
+      "mixedCommentVersionReopens": 6,
+      "sourceAndReceiptFailureRecovery": true,
+      "guardedVersionRestoreAndIndependentUndoRedo": true
+    },
+    "existingDefaultActualWasmRegressions": {
+      "automaticSuggestionSync": {"passed": true, "trials": 4, "importedAcceptEffectsRemainForeign": true},
+      "commentsAndVersions": {"passed": true, "trials": 4, "exactOfflineReopens": 16, "localSaveRefusals": 8, "localReceiptSaveRefusals": 4, "lostReplyRecoveries": 4, "guardedRemoteRestores": 4, "hostRestarts": 4}
+    },
+    "priorNativeSemanticsEvidence": "2026-10-17-rich-review-owned-history-native.json retains the 480-test canonical native suite, 64 relay/server tests and 14 research compatibility workflows. This checkpoint adds architecture-gated Wasm glue and SDK/storage integration; it does not change those native history semantics."
+  },
+  "contracts": [
+    "Complete reviewed_history_version native capabilities are required. Opaque effect proofs remain owner/publication-bound, pure in read-only mode, disposable and separate from authenticated server finality.",
+    "SharedRichEditor reviewedHistory explicitly pins the original suggestion lane, deciding account and host effect writer. A recovered enabled native owner cannot enter through ordinary options or select a different identity.",
+    "SharedReviewPersistentSession.openReviewed uses a separate restoreReviewed callback and breditor/shared-reviewed-review-checkpoint-record V1. Both exact native histories, local versions and optional comment-relay accepted-prefix progress share one transaction. Old factories reject it without implicit migration.",
+    "The reviewed storage header checks closed identity, family and budgets only. Rust remains responsible for exact semantic replay and reconstructing once-only ownership. No saved principal, cursor or hash grants live authority.",
+    "SharedSuggestionQueue ownedHistory reviewed-v1 selects breditor/shared-owned-suggestion-queue V1. The original account and exact accepting local writer are required for adoption; another device/account or administrative unowned acceptance stays foreign.",
+    "An authenticated final Accept first receives full native semantic effect verification. Adoption authors no operations. The borrowed paired source is saved and flushed before the dependent final queue receipt is committed.",
+    "A failed source save cannot persist a final queue receipt. A failed receipt save may leave a newer durable source; retry/reopen uses the same native adoption once. A valid older source missing a cached final adoption is refused rather than repaired from cache.",
+    "Undo/Redo authors ordinary native compensation and does not reopen final server decisions. Replaying an original receipt after Undo or discarded Redo does not change history or source operations.",
+    "Reviewed document transport pins the authenticated principal, atomic V2 and source persistence hook. When suggestions are selected, lane/effect writer must also match. It reuses the existing document-author socket and lease.",
+    "Original constructor defaults, old stored formats, document/review transport meanings, host-owned assets and existing native/source/cache budgets remain unchanged. No automatic compaction, eviction or document-only reviewed durable factory is introduced."
+  ],
+  "reproduce": [
+    "CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_DEBUG=0 node scripts/build-collaboration-runtime.mjs",
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "npm run typecheck:candidate --workspace @breditor/editor",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node scripts/probe-owned-suggestion-sync-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestions_functional",
+    "node scripts/check-owned-review-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional"
+  ],
+  "verificationNotes": [
+    "Native host binaries are isolated loopback reference fixtures. IndexedDB/Web Locks, failed writes, lost replies and low-level cache rollback injection are deterministic test fixtures, not physical-browser or production durability qualification.",
+    "The installed probe packs local archives without publishing, installs offline into a separate temporary consumer, resolves each production package there, checks strict positive/negative public type contracts, and runs through the installed editor collaboration entry point with packaged Wasm. Test backend imports for storage fault injection also point into the installed collaboration package. The harness alone uses workspace test dependencies and native fixtures.",
+    "The mixed fixture initially omitted reviewV1 from its admin connection and Origin from its HTTP fetch shim. Existing authorization correctly refused both. Only the fixture was corrected; no production admission check was relaxed.",
+    "Standalone compatibility and relay manifests require separate target directories. Final host artifacts use target/owned-history-relay-native, canonical Wasm uses target/promoted-shared-wasm; no build cache is deleted.",
+    "The vendored loro-internal HasIdSpan unused-import warning remains unchanged. No dependency versions, lockfiles or vendor sources are edited."
+  ],
+  "remaining": [
+    "Reader-only automatic suggestion discovery, publication and Reject synchronization without a document-author lease.",
+    "Borrowed vanilla/React suggestion controls with pure previews, explicit conflicts, queued decisions and original final outcomes.",
+    "Proposal revisions and granular character-affine text rebasing; conservative affected-text witnesses remain unchanged.",
+    "Final V1 migration/API, packaging, storage lifetime/compaction, production auth/hosting, broad browser/IME/accessibility and performance qualification. The advanced-review goal remains active."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

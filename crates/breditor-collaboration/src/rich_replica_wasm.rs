@@ -14,6 +14,7 @@ mod insert_general_paragraph;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod review;
+mod reviewed_history;
 mod selection_formatting;
 mod suggestions;
 mod typing;

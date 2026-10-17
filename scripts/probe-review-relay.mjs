@@ -9,7 +9,6 @@ import {tmpdir} from "node:os";
 import {resolve,join} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {WebSocket} from "undici";
-import {SharedRichEditor,createSharedDocumentEditor} from "../packages/breditor-collaboration/dist/core.js";
 
 const root=resolve(fileURLToPath(new URL("..",import.meta.url))),origin="http://127.0.0.1:49785";
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
@@ -31,6 +30,7 @@ export class ReviewWireFixture {
  close(){this.socket.close();}
 }
 export async function probeReviewRelay(directory,executable){
+ const {SharedRichEditor,createSharedDocumentEditor}=await import("../packages/breditor-collaboration/dist/core.js");
  const bytes=readFileSync(resolve(directory,"breditor_shared_bg.wasm")),wasm=await import(pathToFileURL(resolve(directory,"breditor_shared.js")));await wasm.default({module_or_path:bytes});
  const configuration=JSON.stringify({format:"breditor/shared-rich-profile",formatVersion:3,schema:{name:"example/review-network-functional",version:1},extensions:[]});
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(configuration),descriptor=JSON.parse(profile.descriptor_json());

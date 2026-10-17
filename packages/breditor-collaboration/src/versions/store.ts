@@ -1,6 +1,6 @@
 /** Durable immutable catalog/packet cache. Borrowed source journals are saved first, never replaced. */
 import {SharedRelayError} from "../relay/validation.js";
-import {checkCheckpoint,checkDocumentCheckpoint} from "../persistence/session_database.js";
+import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {VersionCatalogLease} from "./lease.js";
 import {checkCatalogRecord,openCatalogDatabase,readCatalogRecord,writeCatalogRecord} from "./database.js";
 import {catalogSnapshot,packetText,sameEntry,sameInfo,versionEntry,versionIdentity} from "./validation.js";
@@ -20,8 +20,7 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  static async open<Q extends SharedSelectionPolicy>(input:SharedDocumentVersionsOptions<Q>):Promise<VersionCatalogStore<Q>>{
   const options={...input,identity:versionIdentity(input.identity)},core=options.storage.core,identity=options.identity;
   if(!core.supportsVersionSourceProofs())throw new SharedRelayError("version_source_unavailable");
-  const history=core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";
-  if(core.selectionPolicy()==="document-v1")checkDocumentCheckpoint(core.checkpointJson(),identity.room,identity.documentWriter,core.richLanguageVersion(),history);else checkCheckpoint(core.checkpointJson(),identity.room,identity.documentWriter,core.richLanguageVersion(),history,core.view().rangeEditing??"original");
+  checkSourceCheckpoint(core,identity.room,identity.documentWriter);
   const lease=await VersionCatalogLease.acquire(identity);let db:IDBDatabase|undefined,store:VersionCatalogStore<Q>|undefined;
   try{db=await openCatalogDatabase(options.database);const saved=await readCatalogRecord(db,identity),record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]};store=new VersionCatalogStore(options,db,lease,record);store.#pending=record;store.#start();await store.flush();return store;}
   catch(error){if(store)await store.discardAndClose();else{db?.close();await lease.close();}throw error;}

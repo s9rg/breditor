@@ -227,6 +227,21 @@ suggestion synchronization, revision/rebasing, paired controls and installed
 combined acceptance remain active work. No V1 gate, version or publication
 status advances.
 
+The [owned-history SDK checkpoint](qualification/2026-10-17-rich-review-owned-history-sdk.json)
+pairs native semantic proofs and exact owned Undo/Redo with Wasm, typed SDKs and
+explicit durable source/queue families. Adopted history is saved before its
+dependent final receipt; failures, reopen and duplicate original decisions never
+add a second history item. Actual application-Wasm tests cover all six
+scope/grouping policies beside authenticated comment sync and shared named
+versions, including guarded restore and independent histories. The same mixed
+matrix passes through clean-installed local archives and packaged Wasm using the
+editor collaboration entry point. All 315 SDK/editor tests and 47 scoped
+runtime/build/promotion guards pass, along with strict SDK, installed consumer
+types and application-Wasm lint. Existing default suggestion and comment/version
+workflows remain intact. Reader-only automatic suggestion sync, borrowed
+vanilla/React suggestion controls and proposal revision/granular rebasing remain
+functional work. No V1 gate, package version or publication status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

@@ -29,8 +29,9 @@ guarded previews, staged effects, the opt-in native reference-host decision
 ledger, an explicitly negotiated reference socket lane, native/Wasm proposal
 pairing, a durable SDK intent queue and automatic synchronization on the existing
 document-author socket are implemented below. Recovered accepting-user history
-is available through an explicit native contract. Its Wasm/SDK adoption,
-Reader-only metadata synchronization and paired suggestion controls remain unfinished.
+has an explicit native/Wasm/SDK contract and paired durable storage. Reader-only
+metadata synchronization, paired suggestion controls and granular rebasing remain
+unfinished.
 
 ### Native proposal intents and previews
 
@@ -272,12 +273,86 @@ the host must reapply its current runtime policy before exposing the owner.
 The [native reviewed-history checkpoint](qualification/2026-10-17-rich-review-owned-history-native.json)
 covers exact recovery across all six policies, local/accepted/local ordering,
 peer text, invisible items, overlapping receipts, once-only adoption, policy
-upgrades, read-only refusal and recreated directional selections. These APIs are
-native-only. The next Wasm/SDK integration must durably save adopted source
-history before persisting the dependent final decision receipt. Lost replies or
-failed writes must not create a second history item. Reader-only transport,
-proposal revision/rebasing, borrowed vanilla/React controls and clean-installed
-combined acceptance remain functional work.
+upgrades, read-only refusal and recreated directional selections. The following
+explicit Wasm/SDK pairing saves adopted source history before persisting its
+dependent final receipt. Reader-only transport, proposal revision/rebasing,
+borrowed vanilla/React controls remain functional work.
+
+### Wasm and SDK owned history
+
+The `reviewed_history_version` capability pairs native activation, semantic
+effect proofs, adoption and exact recovery. `SharedSuggestionEffectProof` has no
+public native constructor. Its frozen summary is not proof of authenticated
+server finality; native owner/publication guards still apply. Pending proofs are
+released immediately, verified proofs are owner-bound, and disposing the editor
+releases all retained proof handles. No browser command executor or arbitrary
+inverse API is exported.
+
+`SharedRichEditor` requires an explicit `reviewedHistory` identity. It refuses
+partial native capabilities, an identity different from recovered history, or an
+already enabled owner passed through the ordinary constructor options. The typed
+`restoreSharedReviewedEditor` factory selects only native `restore_reviewed`;
+it cannot fall back to an old reader or import a document snapshot. Existing
+constructor defaults and old checkpoint families remain unchanged.
+
+Durable paired ownership uses `SharedReviewPersistentSession.openReviewed` with
+`reviewedHistory` and a separate `restoreReviewed` callback. Its closed
+`breditor/shared-reviewed-review-checkpoint-record` V1 retains the reviewed native
+document journal, independent comment journal and local immutable versions in one
+transaction. Optional nonsecret comment-relay identity and exact accepted-prefix
+progress are paired in that same record. Account, actor, writer, selected replay
+family and grouping must match before recovery. Current permissions and secrets
+are never restored from this record. Old paired factories reject the new family;
+there is no automatic migration or document-only durable reviewed factory.
+
+`SharedSuggestionQueue.open` additionally selects `ownedHistory: "reviewed-v1"`.
+Its new `breditor/shared-owned-suggestion-queue` V1 family keeps the previous queue
+fields and limits. Queue and source must pin the same account, lane and host
+effect writer. The authenticated document transport requires atomic V2 and a
+source persistence hook; it uses the existing author connection and lease.
+
+On a final Accept, the queue first proves the retained effect's full original
+semantics. Only the original deciding account and exact accepting local writer
+can adopt it. Another device's acceptance remains foreign. The queue saves and
+flushes the adopted native source before committing the dependent final receipt.
+A failed source save cannot acknowledge the receipt. A failed queue save may
+leave a newer durable source; reopening and replaying the original decision
+retains that same history item once. An existing final queue receipt with no
+matching native adoption is a recovery error, not permission to reconstruct lost
+history from the cache. Duplicate receipts do not restore a discarded Redo branch.
+
+The original queue and SDK defaults still leave imported effects foreign. Owned
+Undo/Redo is available only through this explicitly paired contract. Receipt
+retention never changes server finality, reapplies a proposal or replaces either
+native owner. The existing history, source, packet and queue budgets remain.
+
+Reproduce the owned-history workflow with the matching generated application
+runtime and isolated authenticated suggestion host:
+
+```sh
+node scripts/probe-owned-suggestion-sync-sdk.mjs target/promoted-shared-web \
+  target/owned-history-relay-native/release/examples/suggestions_functional
+```
+
+The [owned SDK checkpoint](qualification/2026-10-17-rich-review-owned-history-sdk.json)
+covers all six policies with actual application Wasm and the authenticated Rust
+host. It includes failed source and receipt writes, exact recovery, duplicate
+finality after discarded Redo, another-device refusal and older-source rollback
+refusal. The mixed workflow also syncs independent comments and their durable
+progress, publishes and downloads named versions, and performs guarded version
+restore with document and comment Undo/Redo.
+
+The installed acceptance packs four local archives, installs them offline in a
+separate consumer, checks the strict public types and repeats that same six-policy
+workflow through `@breditor/editor/collaboration` and packaged Wasm. Production
+dependencies resolve inside the installed consumer, not workspace links. Native
+host and storage/transport fault injection remain test fixtures; this is not
+physical-browser, UI or production release qualification.
+
+```sh
+node scripts/check-owned-review-installed.mjs \
+  target/owned-history-relay-native/release/examples/suggestions_functional
+```
 
 ### Native ordered proposal and decision ledger
 
@@ -480,8 +555,9 @@ The [client functional record](qualification/2026-10-17-rich-review-suggestion-c
 combines actual application Wasm, this exported queue, paired native journals and
 the authenticated durable host. Wire driving and IndexedDB/Web Locks remain
 fixtures. The automatic adapter below shares the existing document author's
-socket for owned Accept. Browser accepting-user history, borrowed vanilla/React suggestion
-controls and clean-installed combined review acceptance remain active work.
+socket for owned Accept. Its original default leaves effects foreign; the
+explicit owned-history pairing above adds accepting-user Undo and installed mixed
+SDK acceptance. Borrowed vanilla/React suggestion controls remain active work.
 Host-owned assets and explicit conversion-loss policies are unchanged.
 
 ### Automatic suggestion synchronization for document authors
@@ -534,9 +610,10 @@ authenticated Rust host across both selection and history policies. It covers
 exact offline reopen, lazy remote packets, source-dependent retry, conflict to
 Reject, opposing outcomes, failed local/receipt saves, lost decision replies,
 live grants, host restart and no idle polling. IndexedDB/Web Locks and transport
-loss are fixtures. This SDK still leaves imported effects foreign to ordinary
-Undo; pairing native accepting-user history, proposal controls and installed
-combined review acceptance remains open.
+loss are fixtures. This original default leaves imported effects foreign to
+ordinary Undo; accepting-user history uses the separate opt-in pairing above.
+Proposal controls remain open; the separate owned-history checkpoint covers
+installed mixed SDK acceptance.
 
 ## Durable comments and anchors
 
