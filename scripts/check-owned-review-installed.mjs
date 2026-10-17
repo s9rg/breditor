@@ -11,8 +11,9 @@ import {probeSuggestionObserverSdk} from "./probe-suggestion-observer-sdk.mjs";
 import {probeSuggestionRevisionsSdk} from "./probe-suggestion-revisions-sdk.mjs";
 import {probeReviewAssetsMatrix} from "./probe-review-assets-matrix.mjs";
 
-export async function checkOwnedReviewInstalled(executable,{includeObserver=false,includeControls=false,revisionExecutable,formatRebase=false,assetWorkflow=false}={}){
+export async function checkOwnedReviewInstalled(executable,{includeObserver=false,includeControls=false,revisionExecutable,formatRebase=false,textRebase=false,assetWorkflow=false}={}){
  if(formatRebase&&(!revisionExecutable||!includeControls))throw Error("Formatting rebase qualification requires the revision fixture and paired controls");
+ if(textRebase&&(!revisionExecutable||!includeControls))throw Error("Text rebase qualification requires the revision fixture and paired controls");
  if(assetWorkflow&&!includeControls)throw Error("The installed asset matrix requires installed vanilla/React controls, not workspace fallbacks");
  if(assetWorkflow&&includeObserver)throw Error("The separate asset-enabled fixture does not replace the observer fixture's argument contract");
  const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),temporary=mkdtempSync(join(tmpdir(),"breditor-owned-review-installed-")),archives=join(temporary,"archives"),consumer=join(temporary,"consumer");
@@ -27,16 +28,18 @@ export async function checkOwnedReviewInstalled(executable,{includeObserver=fals
  if(includeControls)cpSync(join(root,"scripts/fixtures/editor-consumer/types-suggestion-react.ts"),join(consumer,"types-suggestion-react.ts"));
  if(revisionExecutable)cpSync(join(root,"scripts/fixtures/editor-consumer/types-suggestion-revisions.ts"),join(consumer,"types-suggestion-revisions.ts"));
  if(formatRebase)cpSync(join(root,"scripts/fixtures/editor-consumer/types-suggestion-format-rebase.ts"),join(consumer,"types-suggestion-format-rebase.ts"));
+ if(textRebase)cpSync(join(root,"scripts/fixtures/editor-consumer/types-suggestion-text-rebase.ts"),join(consumer,"types-suggestion-text-rebase.ts"));
  if(assetWorkflow)cpSync(join(root,"scripts/fixtures/editor-consumer/types-review-assets.ts"),join(consumer,"types-review-assets.ts"));
- execFileSync(join(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","types-reviewed.ts",...(includeControls?["types-suggestion-react.ts"]:[]),...(revisionExecutable?["types-suggestion-revisions.ts"]:[]),...(formatRebase?["types-suggestion-format-rebase.ts"]:[]),...(assetWorkflow?["types-review-assets.ts"]:[])],{cwd:consumer,stdio:["ignore","ignore","pipe"]});
+ execFileSync(join(root,"node_modules/.bin/tsc"),["--noEmit","--strict","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","types-reviewed.ts",...(includeControls?["types-suggestion-react.ts"]:[]),...(revisionExecutable?["types-suggestion-revisions.ts"]:[]),...(formatRebase?["types-suggestion-format-rebase.ts"]:[]),...(textRebase?["types-suggestion-text-rebase.ts"]:[]),...(assetWorkflow?["types-review-assets.ts"]:[])],{cwd:consumer,stdio:["ignore","ignore","pipe"]});
  const sdkDirectory=pathToFileURL(dirname(installed[2])+sep),sdkModule=pathToFileURL(realpathSync(fileURLToPath(resolved[4]))),wasmDirectory=dirname(realpathSync(fileURLToPath(resolved[5])));
  assert.ok(fileURLToPath(sdkModule).startsWith(realpathSync(consumer)+sep));
  const reactOptions=includeControls?{controls:true,reactModule:resolved[6],reactRuntime:resolved[7],reactDomRuntime:resolved[8]}:{};
  if(includeControls)for(const url of resolved.slice(6))assert.ok(realpathSync(fileURLToPath(url)).startsWith(realpathSync(consumer)+sep),"React and its public wrapper must resolve in the installed consumer");
  const result=assetWorkflow?await probeReviewAssetsMatrix(wasmDirectory,resolve(executable),{sdkDirectory,sdkModule,...reactOptions,editorModule:resolved[3]}):await probeSuggestionSyncSdk(wasmDirectory,resolve(executable),{ownedHistory:true,sdkDirectory,sdkModule,...reactOptions});
  const observer=includeObserver?await probeSuggestionObserverSdk(wasmDirectory,resolve(executable),{sdkDirectory,sdkModule,controls:includeControls}):undefined;
- const revisions=revisionExecutable?await probeSuggestionRevisionsSdk(wasmDirectory,resolve(revisionExecutable),{sdkModule,formatRebase,...reactOptions}):undefined;
- const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,...(includeControls?{installedReactModules:resolved.slice(6)}:{}),...(observer?{observer}:{}),...(revisions?{revisions}:{}),scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm")+(observer?" An additional installed permanent-observer matrix covers non-authoring Readers.":"")+(revisions?" A separate installed immutable-revision matrix uses only the opt-in revision host.":"")};
+ const revisions=revisionExecutable?await probeSuggestionRevisionsSdk(wasmDirectory,resolve(revisionExecutable),{sdkModule,formatRebase,textRebase,...reactOptions}):undefined;
+ const textBoundary=textRebase?await(await import("./probe-suggestion-text-rebase-boundary.mjs")).probeTextRebaseBoundary(wasmDirectory):undefined;
+ const report={...result,format:"breditor/owned-review-installed-probe",consumer,archives:paths,installedProductionModules:installed,publicEntry:fileURLToPath(sdkModule),strictInstalledTypes:true,packagedWasm:true,...(includeControls?{installedReactModules:resolved.slice(6)}:{}),...(observer?{observer}:{}),...(revisions?{revisions}:{}),...(textBoundary?{textBoundary}:{}),scope:result.scope.replace("Actual application Wasm","Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm")+(observer?" An additional installed permanent-observer matrix covers non-authoring Readers.":"")+(revisions?" A separate installed immutable-revision matrix uses only the opt-in revision host.":"")};
  writeFileSync(join(temporary,"result.json"),JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){

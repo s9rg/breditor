@@ -13,6 +13,7 @@ export interface SharedSuggestionGeneralRange {range:Extract<SharedCommand,{kind
 export type SharedSuggestionCommand=SharedCommand
  |{kind:"insert_general_paragraph_v1";data:{selection:RichSelection;prefix:string}}
  |{kind:"paste_general_flow_at_text_v1";data:{deletion:SharedSuggestionGeneralRange;right:string;nodes:readonly SharedNode[]}}
+ |{kind:"replace_masked_general_text_range_v1";data:SharedSuggestionGeneralRange&{spans:readonly {block:string;start:number;end:number}[]}}
  |{kind:"replace_document_plain_text_v1";data:{paragraph:string;text:string}}
  |{kind:"paste_document_clipboard_v1";data:{clipboard_json:string;prefix:string}}
  |{kind:"change_document_formats_v1";data:{changes_json:string}}
@@ -35,6 +36,14 @@ export type SharedSuggestionFormatRebase=
  |{kind:"pending";missing:readonly SharedSuggestionDependency[]}
  |{kind:"unsupported"}
  |{kind:"conflict";reason:{kind:"format_changed"}|{kind:"range";reason:"characters_deleted"|"characters_reordered"|"domain_changed"|"kind_changed"|"boundary_deleted"}}
+ |{kind:"captured";revisionPacketJson:string};
+/** Required choice, not a product default. Peer text is never copied into replacement runs. */
+export type SharedSuggestionTextRebasePolicy="reject_intervening_text"|"preserve_intervening_text";
+/** Pure original-character result. Captured is neither publication nor an accepted edit. */
+export type SharedSuggestionTextRebase=
+ |{kind:"pending";missing:readonly SharedSuggestionDependency[]}
+ |{kind:"unsupported"}
+ |{kind:"conflict";reason:{kind:"formatting_changed"|"intervening_text"}|{kind:"targets_changed";targets:readonly SharedSuggestionConflictTarget[]}|{kind:"range";reason:"characters_deleted"|"characters_reordered"|"domain_changed"|"kind_changed"|"boundary_deleted"}}
  |{kind:"captured";revisionPacketJson:string};
 export interface SharedSuggestionPreviewSummary {
  kind:"ready";suggestion:SharedDocumentSuggestionInfo;changes:readonly SharedVersionChange[];
@@ -74,4 +83,7 @@ export interface SharedSuggestionsRustCapability {
  /** Independent optional pure formatting-batch rebase; no widening of older revision support. */
  suggestion_format_rebase_version?():string;
  rebase_document_suggestion_format?(observed:unknown,input:string):string;
+ /** Separate pure complete-text rebase. Older complete revisions remain independently usable. */
+ suggestion_text_rebase_version?():string;
+ rebase_document_suggestion_text?(observed:unknown,input:string):string;
 }

@@ -15,6 +15,27 @@ function setup(){
  return {raw,prepared,core:new SharedRichEditor(raw as unknown as SharedRustOwner)};
 }
 describe("native-only proposal SDK boundary",()=>{
+ it("passes an explicit text policy and host namespace through the separate pure native pair",()=>{
+  for(const policy of ["reject_intervening_text","preserve_intervening_text"] as const){
+   const {core,raw}=setup(),changed=vi.fn(),result={kind:"captured",revisionPacketJson:"exact sparse native revision"},rebase=vi.fn((_observation:unknown,_input:string)=>JSON.stringify(result));
+   Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:vi.fn(),read_document_suggestion_revision:vi.fn(),verify_document_suggestion_revision:vi.fn(),document_suggestion_revision_packet:vi.fn(),suggestion_text_rebase_version:()=>"1",rebase_document_suggestion_text:rebase});core.subscribe(changed);
+   expect(core.supportsSuggestionTextRebase()).toBe(true);expect(core.supportsSuggestionFormatRebase()).toBe(false);expect(core.rebaseSuggestionText("exact predecessor","Rebased","9","reserved-text-prefix",policy,"0")).toEqual(result);
+   expect(JSON.parse(rebase.mock.calls[0]![1])).toEqual({previousPacketJson:"exact predecessor",title:"Rebased",createdAtMs:"9",prefix:"reserved-text-prefix",policy});
+   expect(()=>core.rebaseSuggestionText("bad bytes","Rebased","9","reserved-other",policy,"stale")).toThrow(expect.objectContaining({code:"stale_observation"}));expect(rebase).toHaveBeenCalledOnce();expect(raw.dispatch).not.toHaveBeenCalled();expect(raw.capture_document_suggestion).not.toHaveBeenCalled();expect(changed).not.toHaveBeenCalled();core.dispose();
+  }
+ });
+ it("keeps non-ready text outcomes separate without a dispatch or formatting fallback",()=>{
+  for(const result of [{kind:"pending",missing:[{writer:"101",counter:"8"}]},{kind:"unsupported"},{kind:"conflict",reason:{kind:"intervening_text"}},{kind:"conflict",reason:{kind:"formatting_changed"}},{kind:"conflict",reason:{kind:"targets_changed",targets:[{kind:"header",block:"cell"}]}},{kind:"conflict",reason:{kind:"range",reason:"characters_deleted"}}]){
+   const {core,raw}=setup();Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:vi.fn(),read_document_suggestion_revision:vi.fn(),verify_document_suggestion_revision:vi.fn(),document_suggestion_revision_packet:vi.fn(),suggestion_text_rebase_version:()=>"1",rebase_document_suggestion_text:()=>JSON.stringify(result)});
+   expect(core.rebaseSuggestionText("previous","Rebase","0","host-prefix","preserve_intervening_text")).toEqual(result);expect(raw.dispatch).not.toHaveBeenCalled();expect(raw.capture_document_suggestion).not.toHaveBeenCalled();core.dispose();
+  }
+ });
+ it("preserves older complete revision owners when the optional text pair is absent or partial",()=>{
+  for(const extra of [{},{suggestion_text_rebase_version:()=>"1"},{rebase_document_suggestion_text:vi.fn()},{suggestion_text_rebase_version:()=>"2",rebase_document_suggestion_text:vi.fn()}]){
+   const {core,raw}=setup();Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:()=>"original manual revision",read_document_suggestion_revision:vi.fn(),verify_document_suggestion_revision:vi.fn(),document_suggestion_revision_packet:vi.fn(),...extra});
+   expect(core.supportsSuggestionRevisions()).toBe(true);expect(core.supportsSuggestionTextRebase()).toBe(false);expect(()=>core.rebaseSuggestionText("previous","Rebase","0","host-prefix","reject_intervening_text")).toThrow(expect.objectContaining({code:"suggestion_text_rebase_unavailable"}));expect(core.captureSuggestionRevision("previous","Manual","0",draft)).toBe("original manual revision");expect(raw.dispatch).not.toHaveBeenCalled();core.dispose();
+  }
+ });
  it("captures formatting rebase only through the independent native pair and checks staleness first",()=>{
   const {core,raw}=setup(),changed=vi.fn(),result={kind:"captured",revisionPacketJson:"exact native revision"},rebase=vi.fn((_observation:unknown,_input:string)=>JSON.stringify(result));
   Object.assign(raw,{document_suggestion_revisions_version:()=>"1",capture_document_suggestion_revision:vi.fn(),read_document_suggestion_revision:vi.fn(),verify_document_suggestion_revision:vi.fn(),document_suggestion_revision_packet:vi.fn(),suggestion_format_rebase_version:()=>"1",rebase_document_suggestion_format:rebase});core.subscribe(changed);

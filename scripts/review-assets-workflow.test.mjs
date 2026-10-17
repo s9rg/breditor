@@ -51,6 +51,15 @@ test("process matrix preserves six distinct policies, hashes and the original to
  assert.throws(()=>collectReviewAssetMatrix(reports.slice(1)),/Every original policy/);
  for(const mutation of [rows=>rows[1].policies=rows[0].policies,rows=>rows[1].sharedWasmSha256="different",rows=>rows[1].exactOfflineReopens=0,rows=>rows[1].wireRequests=6000,rows=>rows[1].controlWorkflows[0].builtInActions=8]){const copy=structuredClone(reports);mutation(copy);assert.throws(()=>collectReviewAssetMatrix(copy));}
 });
+test("exact asynchronous capture checks pause document traffic as well as suggestion metadata",()=>{
+ const controls=read("scripts/probe-suggestion-controls-workflow.mjs");
+ assert.match(controls,/function pauseAuthor\(\)\{syncs\.alice\.disconnect\(\);documents\.alice\.disconnect\(\);\}/);
+ for(const phase of ["stale native preview and explicit conflict","local save retry without recapture"])assert.ok(controls.includes(`phase="${phase}";pauseAuthor();`));
+ assert.match(controls,/assert\.equal\(documents\.alice\.state\(\)\.status,"offline"/);
+ assert.match(controls,/unchangedSource\(before,"Synchronous native capture/);
+ assert.match(controls,/unchangedSource\(before,"Capturing and saving a proposal/);
+ assert.match(controls,/after\.every\(\(value,index\)=>value===before\[index\]\)/,"Checkpoint, frame and document retain exact byte comparisons");
+});
 test("separate asset fixture validates room binding without upgrading existing logs",()=>{
  const fixture=read("experiments/relay/examples/review_assets_functional.rs");
  assert.match(fixture,/if Path::new\(log\).exists\(\) \{\s*Room::open/);

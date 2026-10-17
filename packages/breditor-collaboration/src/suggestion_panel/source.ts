@@ -4,6 +4,7 @@ import type {SharedSuggestionQueue} from "../suggestions/queue.js";
 import type {SharedSuggestionSync} from "../suggestions/sync.js";
 import type {SharedSuggestionPanelSource,SharedSuggestionPanelEntry} from "./types.js";
 import type {SharedSuggestionRevisions} from "../suggestion_revisions/outbox.js";
+import type {SharedSuggestionTextRebasePolicy} from "../suggestion_types.js";
 /** Retain the exact native source and queue. This helper opens/closes no owners or connections. */
 export function createSharedSuggestionPanelSource<P extends SharedSelectionPolicy>(queue:SharedSuggestionQueue<P>,sync?:SharedSuggestionSync<P>,revisions?:SharedSuggestionRevisions<P>):SharedSuggestionPanelSource {
  const core=queue.core;
@@ -22,5 +23,6 @@ export function createSharedSuggestionPanelSource<P extends SharedSelectionPolic
   ...(sync?{syncState:()=>sync.state(),sync:async()=>{check();await sync.connect();await revisions?.connect();check();},load:async(id:string)=>{check();const packet=await sync.loadSuggestion(id);check();return packet;}}:revisions?{sync:async()=>{check();await revisions.connect();check();}}:{}),
   ...(revisions?{canRevise(id:string){check();const info=queue.proposals().find(row=>row.id===id),final=queue.proposals().some(row=>row.id===id)&&queue.status(id).decision||sync?.entries().find(row=>row.publication.suggestion.id===id)?.decision;return !!info&&info.author===queue.identity().principal&&!final;},revise(previousId:string,title:string,time:string,draft:Parameters<typeof queue.propose>[2],revision:string){check();return revisions.revise({previousSuggestionId:previousId,title,createdAtMs:time,draft,revision}).suggestion;},revisionState:()=>revisions.state()}:{}),
   ...(revisions&&core.supportsSuggestionFormatRebase()?{rebaseFormat(previousSuggestionId:string,title:string,createdAtMs:string,revision:string){check();return revisions.rebaseFormat({previousSuggestionId,title,createdAtMs,revision});}}:{}),
+  ...(revisions&&core.supportsSuggestionTextRebase()?{rebaseText(previousSuggestionId:string,title:string,createdAtMs:string,prefix:string,policy:SharedSuggestionTextRebasePolicy,revision:string){check();return revisions.rebaseText({previousSuggestionId,title,createdAtMs,prefix,policy,revision});}}:{}),
  });
 }

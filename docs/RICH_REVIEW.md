@@ -1,9 +1,17 @@
 # Rich document review contract
 
-The next functional milestone adds threaded comments, proposed changes and named
+The advanced-review milestone adds threaded comments, proposed changes and named
 document versions to the existing Rust-owned rich editor. These are opt-in review
 features, not replacements for the canonical AST, ordinary edit history or writer
 transport. Existing constructors and saved protocol families keep their meanings.
+
+The [selected functional goal is complete](qualification/2026-10-17-rich-review-text-rebase-sdk.json):
+comments, suggestions/decisions/revisions and named versions have their native,
+optional Wasm/SDK, durable transport/recovery and borrowed vanilla/React paths.
+The current installed combined acceptance covers two offline authors, changing
+discussion targets, conflicting reviews, selective histories and image bytes
+under all six policies. The bounds below remain explicit. This milestone does
+not promote V1 readiness or deferred platform/production qualification.
 
 ## Accepted content and proposed changes
 
@@ -35,9 +43,10 @@ Borrowed vanilla/React controls expose those proposals and decisions alongside
 comments and versions. Immutable revisions, authenticated pending-only
 supersession and durable revision transport/client controls are implemented below.
 Explicit formatting-batch rebasing uses a separate optional native/SDK pair.
-Native text-revision capture now has a required conflict-on-intervening-text
-policy; preserving those peer characters and delivering the new text helper to
-paired clients remain unfinished.
+Text revisions have their own optional Wasm/SDK pair and durable vanilla/React
+controls, with a required choice to reject or preserve intervening peer text.
+Repeated sparse revisions preserve previously retained peer text without making
+it a new removal target. Neither policy is a product default.
 
 ### Native proposal intents and previews
 
@@ -509,10 +518,80 @@ retained hole is excluded from the removal-scalar budget; selecting that entire
 source range through the original affine API still refuses at its existing
 65,536-scalar limit. Traversal, format, schema and packet limits remain in force.
 
-Text revisions remain native-only. Paired text-rebase
-Wasm/SDK/outbox/vanilla/React delivery and installed mixed
-acceptance remain work toward the full goal. Neither policy becomes a product
-default through this native increment.
+### Optional text revision clients
+
+`suggestion_text_rebase_version` V1 and `rebase_document_suggestion_text` form a
+separate pure Wasm pair. The closed request carries the exact predecessor packet,
+title, creation time, a permanently host-reserved prefix and a required policy:
+`reject_intervening_text` or `preserve_intervening_text`. Neither becomes a default.
+The observation is checked before parsing. The request cannot supply character
+identities, weaker witnesses, a new author or a replacement draft. Existing
+complete suggestion/revision runtimes remain usable without this optional pair.
+
+`core.supportsSuggestionTextRebase()` detects the pair.
+`core.rebaseSuggestionText(previousPacket, title, time, prefix, policy, revision?)`
+returns the native Pending, Unsupported, Conflict or Captured result without
+publishing accepted content. The durable entry is
+`revisions.rebaseText({previousSuggestionId, title, createdAtMs, prefix, policy,
+revision?})`. It requires a retained same-creator pending predecessor and queues
+only Captured bytes. Other outcomes leave the revision outbox unchanged.
+
+Source-before-outbox saving, exact retries, authenticated supersession and saved
+receipt handoff use the existing revision path. Recovery never re-runs native
+capture. An uncommitted child is preview-only and cannot independently publish
+or queue Accept/Reject. Once the server commits supersession, a later edit can
+be addressed by explicitly rebasing that pending child. Accept remains a
+separate server decision against its conservative current-source witnesses.
+
+The borrowed vanilla/React suggestion panel shows “Text revision” only when the
+source exposes the complete capability. “Peer text handling” starts blank; the
+user must choose a policy before “Rebase text suggestion” is enabled. A durable
+host allocator is required and its prefix stays consumed on refusal or discard.
+An allocator-side source change refuses capture. The action uses the selected
+proposal's retained native intent, independent of the accepted caret and composer
+action. It keeps drafts and the explicit policy across refreshes; an empty title
+retains the predecessor's title. It does not automatically switch a rejecting
+policy to preservation after a conflict.
+
+The masked compound is described in the proposal-only SDK command union. The
+ordinary `SharedCommand` union and existing default constructors are unchanged;
+JavaScript does not derive masks, copy peer text into runs or reconstruct an
+accepted AST. Fresh namespaces, asset bytes, authentication and production
+hosting remain host responsibilities.
+
+The [text client checkpoint](qualification/2026-10-17-rich-review-text-rebase-sdk.json)
+records 551 native collaboration tests, 82 relay/server tests, 374 SDK/editor
+tests and 48 runtime/build/fixture guards. Workspace and clean-installed runs
+each pass all six policies, including 12 vanilla/React text-revision cases,
+24 exact text-outbox reopens, six read-only creator cases and the existing
+save-abort, lost-reply, restart, losing-draft and owned-history checks. The
+formatting-client matrix remains a separate six-policy regression. The native
+request-boundary probe also verifies closed fields, required policy/prefix,
+stale-before-decode, missing source, unsupported intent and pure read-only capture.
+
+Exact asynchronous capture checks must pause the document adapter as well as
+suggestion metadata. Original replay intentionally retains an admitted known
+echo and advances its publication even when accepted content, causal clocks and
+edit history do not change. The actual-Wasm probe reproduces this distinction;
+the combined UI fixture now requires offline document traffic and checks exact
+state both immediately after capture and after saving. Existing replay meanings
+and all exact comparison and request-budget gates are retained.
+
+The final installed combined asset/review regression passes all six policies,
+54 stock proposal cases, 36 exact author reopens, 24 asset-cache reopens, six
+guarded version restores and 12 cold downloads after host restart. It uses the
+same qualified package archives and Wasm as the installed text-revision run.
+This closes the selected functional implementation goal; release/API/lifecycle
+and the deferred broad browser, input, accessibility and performance checks are
+separate work.
+
+```sh
+node scripts/probe-suggestion-text-rebase-sdk.mjs target/promoted-shared-web \
+  target/owned-history-relay-native/release/examples/suggestion_revisions_functional
+node scripts/check-suggestion-text-rebase-installed.mjs \
+  target/owned-history-relay-native/release/examples/suggestions_functional \
+  target/owned-history-relay-native/release/examples/suggestion_revisions_functional
+```
 
 ### Staged native suggestion effects
 

@@ -3,8 +3,9 @@
 Breditor has an independently installable rich-editor candidate combining tables,
 images, offline collaboration, everyday formatting, structural editing and
 interchange under the same Rust owner. The everyday-editing functional goal is
-complete at the checkpoint below. It is not a V1 release or a feature-parity claim:
-advanced review/document workflows and production qualification remain open.
+complete at the checkpoint below. The selected advanced-review functional goal is
+also complete. Neither is a V1 release or a feature-parity claim: production and
+release qualification remain open.
 
 The comparison baseline is Tiptap 3.x and current CKEditor 5, the modern editor in
 the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
@@ -38,10 +39,37 @@ Recovered-host startup was 11.5..14.7 seconds in the final functional run;
 performance qualification is still open. No readiness row, release gate, package
 version or publication status is promoted. No push or deployment was performed.
 
+## Advanced review functional checkpoint
+
+The [advanced review checkpoint](qualification/2026-10-17-rich-review-text-rebase-sdk.json)
+completes the selected functional goal: durable anchored discussions with
+independent history; attributed rich suggestions with queued offline decisions,
+authenticated once-only Accept/Reject and owned Undo/Redo; and immutable named
+versions with semantic comparison and guarded restore as a new edit. Manual,
+formatting-batch and complete sparse-text revisions are connected through
+optional Wasm/SDK capabilities and borrowed vanilla/React controls.
+
+The current clean-installed combined matrix passes all six policies, 54 stock
+proposal actions, 36 exact author reopens, 24 asset-cache reopens, six guarded
+restores and 12 cold downloads after restart. Separate workspace and installed
+text-revision matrices each pass 12 paired control cases, 24 exact text reopens
+and six read-only creators. Native collaboration, relay/server and SDK/editor
+suites pass 551, 82 and 374 tests respectively. Runtime/build/fixture guards pass
+48 tests. All runs retain their original request and recovery gates.
+
+The functionality is bounded as specified in the [review contract](RICH_REVIEW.md):
+automatic text rebase does not accept mixed-command batches, masked children
+retain conservative Accept guards, and caches/history/restore retain their
+existing limits. Host credentials, fresh namespaces, asset availability and
+retention stay host-owned. Public API/migration and storage lifecycle review,
+package/production preparation and deferred browser/IME/accessibility/performance
+qualification precede V1. No readiness row, package version, release tag,
+publication or deployment is promoted by this functional milestone.
+
 ## Checkpoint trail
 
-The next advanced-review goal is active. Its
-[native/SDK contract and remaining integration](RICH_REVIEW.md) adds strict durable
+The advanced-review goal began with its
+[native/SDK contract](RICH_REVIEW.md), adding strict durable
 comment anchors, independent comment history and named versions with guarded
 restore-as-new-change. Programmatic Wasm tests combine comments and version
 restore across both selection and history policies; this does not complete review
@@ -378,6 +406,20 @@ and whole-table atoms retain complete subtree witnesses. Authenticated revision
 chains supersede only the pending child and keep the finalized parent's original
 receipt. Paired text-rebase client delivery and installed mixed acceptance
 remain open. The advanced-review goal stays active and no release gate advances.
+
+The [text revision client checkpoint](qualification/2026-10-17-rich-review-text-rebase-sdk.json)
+connects complete native text revisions to their optional Wasm/SDK pair, existing
+durable revision outbox and borrowed vanilla/React controls. Both policies are
+explicit; controls start with no policy selected and require host-reserved fresh
+namespaces. Repeated sparse children retain peer text, while authenticated
+supersession and Accept stay separate. Workspace and clean-installed runs each
+pass six policies, 12 paired control cases, 24 exact text reopens and six
+read-only creator cases. Existing formatting revisions pass their six-policy
+regression, alongside 551 native collaboration, 82 relay/server, 374 SDK/editor
+and 48 runtime/build/fixture tests. Original stored meanings, source package
+versions and V1 release gates are unchanged. Public API/migration, storage
+lifetime, production hosting/auth and deferred browser/input/accessibility/
+performance qualification remain release work.
 
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),

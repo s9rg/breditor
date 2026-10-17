@@ -1,10 +1,10 @@
 import type {SharedRichEditor} from "../core.js";
 import type {SharedEditorView,SharedSelectionPolicy} from "../types.js";
-import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo} from "../suggestion_types.js";
+import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedSuggestionTextRebasePolicy} from "../suggestion_types.js";
 import type {SharedDocumentSuggestionPreview} from "../suggestion_preview.js";
 import type {SharedSuggestionQueueStatus,SharedSuggestionPublication,SharedSuggestionDecision} from "../suggestions/types.js";
 import type {SharedSuggestionSyncState} from "../suggestions/sync.js";
-import type {SharedSuggestionFormatRebaseQueued} from "../suggestion_revisions/types.js";
+import type {SharedSuggestionFormatRebaseQueued,SharedSuggestionTextRebaseQueued} from "../suggestion_revisions/types.js";
 import type {RichPresentationModel} from "@breditor/experimental-rich-content/rendering";
 export type SharedSuggestionPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"subscribe"|"supportsDocumentSuggestions"|"prepareSuggestion"|"checkSuggestionPreview">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsSuggestionGeneralText"|"planSuggestionGeneralText">>;
 export interface SharedSuggestionPanelEntry {suggestion:SharedDocumentSuggestionInfo;publication:SharedSuggestionPublication|null;decision:SharedSuggestionDecision|null;local:SharedSuggestionQueueStatus|null;
@@ -28,6 +28,8 @@ export interface SharedSuggestionPanelSource {
  revise?(previousId:string,title:string,time:string,draft:SharedDocumentSuggestionDraft,revision:string):SharedDocumentSuggestionInfo;
  /** Optional native original-character formatting revision, using the same durable outbox. */
  rebaseFormat?(previousId:string,title:string,time:string,revision:string):SharedSuggestionFormatRebaseQueued;
+ /** Optional pure complete-text revision, with an explicit policy and host-reserved namespace. */
+ rebaseText?(previousId:string,title:string,time:string,prefix:string,policy:SharedSuggestionTextRebasePolicy,revision:string):SharedSuggestionTextRebaseQueued;
  revisionState?():{status:string;pending:number;error:string|null};
 }
 export interface SharedSuggestionComposerField {id:string;label:string;initial?:string;choices?:readonly {value:string;label:string}[]}
@@ -50,8 +52,8 @@ export interface SharedSuggestionPanelOptions {
  policy?:()=>{canPropose:boolean;canAccept:boolean;canReject:boolean};
  /** Immutable action set; omitted selects the standard supported proposal builders. */
  actions?:readonly SharedSuggestionComposerAction[];
- /** Permanently consume fresh IDs, including for refused/discarded drafts. Required only for
-  * structural builders; a missing allocator refuses rather than guessing an identity. */
+ /** Permanently consume fresh IDs, including for refused/discarded drafts. Required for
+  * structural builders and text rebases; a missing allocator refuses rather than guessing. */
  allocate?:(kind:string)=>string;nowMs?:()=>string;onError?:(error:unknown)=>void;
 }
 export interface SharedSuggestionPanel {readonly element:HTMLElement;refresh():void;dispose():void}

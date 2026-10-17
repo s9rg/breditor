@@ -1,0 +1,228 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "364e74341877672a9c25c00499e3231333be64ad",
+  "scope": "Complete native text revisions connected through a separate optional Wasm/SDK pair, the existing durable revision outbox and borrowed vanilla/React controls. Repeated sparse revisions preserve peer holes; offline choices remain queued for authenticated once-only finalization. This is functional verification, not feature-parity or V1 release qualification.",
+  "artifacts": {
+    "applicationWasmSha256": "e7f27b05dfa54cfe2157e4f5acaf9d87b0fb5bfd742a2ed7fd03a59cddf5935f",
+    "revisionHostSha256": "5385c31f873c6be5d132165e77f053e127dcf1744c11c020663337b3056509d3",
+    "assetHostSha256": "4bf1c50325cacd4d9ac38dde695e5dc1389ae57ebdfc9a948260f86d59ab99d2",
+    "javascriptWasmExports": 8,
+    "wasmExports": 202,
+    "newPureWasmMethods": [
+      "suggestion_text_rebase_version",
+      "rebase_document_suggestion_text"
+    ],
+    "verifiedLocalArchiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "cd23b5dfd7fc2b45a85f516a67204740f38baa47238264e12f7d585bccd4ccc2",
+      "breditor-editor-0.3.0-alpha.22.tgz": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43"
+    },
+    "newStorageOrServerDecisionFamily": false,
+    "browserAcceptedEffectExecutorAdded": false,
+    "ordinarySharedCommandUnionWidened": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {
+      "passed": 551,
+      "failed": 0,
+      "resultGroupsIncludingEmptyDoctests": 48
+    },
+    "fullRelayServerSuite": {
+      "passed": 82,
+      "failed": 0,
+      "resultGroupsIncludingEmptyDoctests": 12
+    },
+    "sdkAndEditorSuite": {
+      "passed": 374,
+      "failed": 0,
+      "files": 39
+    },
+    "focusedSdkControlsAndOutboxSubset": {
+      "passed": 57,
+      "failed": 0,
+      "files": 3
+    },
+    "runtimeBuildPromotionAndFixtureGuards": {
+      "passed": 48,
+      "failed": 0
+    },
+    "strictApplicationWasmLibraryClippy": "passed",
+    "changedRustSourcesRustfmt": "passed",
+    "collaborationAndEditorTypechecks": "passed",
+    "collaborationAndEditorCandidateBuilds": "passed",
+    "actualWasmTextMatrix": {
+      "passed": true,
+      "trials": 6,
+      "pureOfflineCaptures": 6,
+      "exactOfflineReopens": 6,
+      "originalSupersessions": 6,
+      "onceOnlyOwnedAccepts": 6,
+      "retainedLosingDrafts": 6,
+      "sourceSaveRefusals": 6,
+      "outboxSaveRefusals": 6,
+      "receiptSaveReopens": 6,
+      "finalAcceptConflicts": 6,
+      "mixedCommentVersionReopens": 6,
+      "lostRevisionReplies": 6,
+      "hostRestarts": 6,
+      "readerRevisions": 6,
+      "lazyNativeRevisionProofs": 6,
+      "oldCapabilityRefusals": 6,
+      "idleWithoutPolling": 6,
+      "wireRequests": 3440,
+      "controlCases": 12,
+      "exactTextReopens": 24,
+      "readOnlyCreatorCases": 6
+    },
+    "formattingRegression": {
+      "passed": true,
+      "trials": 6,
+      "controlCases": 12,
+      "readOnlyCreatorCases": 6,
+      "wireRequests": 3044
+    },
+    "wasmRequestBoundary": {
+      "format": "breditor/text-rebase-wasm-boundary",
+      "formatVersion": 1,
+      "closedInvalidRequests": 8,
+      "explicitPolicies": 2,
+      "noAcceptedMutation": true,
+      "pureReadOnlyCapture": true,
+      "staleBeforeDecode": true,
+      "boundedRequest": true,
+      "unsupportedWithoutFallback": true,
+      "missingSourcePending": true,
+      "originalReplayKnownEchoChangesOnlyCheckpointAndPublication": true,
+      "passed": true
+    },
+    "cleanInstalledConsumer": {
+      "passed": true,
+      "strictPublicTypes": true,
+      "packagedWasm": true,
+      "workspaceProductionLinks": false,
+      "installedReactInstance": true,
+      "originalOwnedCommentVersionTrials": 6,
+      "originalStockActionCases": 54,
+      "originalAuthorWireRequests": 7536,
+      "permanentReaderTrials": 6,
+      "readerWireRequests": 1306,
+      "textRevisionTrials": 6,
+      "textVanillaAndReactCases": 12,
+      "exactTextOutboxReopens": 24,
+      "readOnlyTextCreatorCases": 6,
+      "revisionWireRequests": 3408
+    },
+    "cleanInstalledCombinedAssets": {
+      "passed": true,
+      "trials": 6,
+      "policies": [
+        {
+          "scope": "original",
+          "natural": false
+        },
+        {
+          "scope": "original",
+          "natural": true
+        },
+        {
+          "scope": "general-v1",
+          "natural": false
+        },
+        {
+          "scope": "general-v1",
+          "natural": true
+        },
+        {
+          "scope": "document-v1",
+          "natural": false
+        },
+        {
+          "scope": "document-v1",
+          "natural": true
+        }
+      ],
+      "strictInstalledTypes": true,
+      "packagedWasm": true,
+      "wasm": "e7f27b05dfa54cfe2157e4f5acaf9d87b0fb5bfd742a2ed7fd03a59cddf5935f",
+      "host": "4bf1c50325cacd4d9ac38dde695e5dc1389ae57ebdfc9a948260f86d59ab99d2",
+      "wireRequests": 9823,
+      "matrixIsolation": "process-per-policy",
+      "controlCases": 54,
+      "ownedAccepts": 54,
+      "exactAuthorReopens": 36,
+      "assetCacheReopens": 24,
+      "imageDecisions": 12,
+      "threadConflicts": 6,
+      "guardedRestores": 6,
+      "staleRestoreRefusals": 6,
+      "coldDownloads": 12,
+      "workspaceProductionLinks": false,
+      "installedReactInstance": true,
+      "totalRequestBudget": 16000
+    }
+  },
+  "contracts": [
+    "The pure closed Wasm request requires the exact predecessor, title, creation time, permanently reserved prefix and an explicit reject_intervening_text or preserve_intervening_text policy. It admits no supplied scalar IDs, author override, weaker witnesses or replacement draft. Observation admission precedes parsing; no product default is inferred.",
+    "SDK and outbox helpers pass original intent to Rust without rebuilding ranges, copying peer text into new runs or constructing an accepted AST. The predecessor must be retained, pending and authored by the queue principal. Pending, Unsupported and Conflict queue nothing. Older complete revision runtimes retain manual support without a JavaScript fallback.",
+    "Captured bytes use the unchanged source-before-outbox persistence order, exact retry records and authenticated receipt handoff. They are not independent child publication, supersession or Accept. The server alone orders pending-only supersession and final review decisions. Losing drafts and original winning receipts remain retained.",
+    "Both control variants start with a blank text policy and require a durable host namespace allocator. Refusal/discard consumes its namespace. Allocator-side publication changes refuse capture. Accepted selection/composer state is not the original-intent source; uncommitted children remain preview-only and cannot decide.",
+    "Across all six selection/history policies, actual native peer text is inserted between original caption characters. Rejecting policy conflicts explicitly. Preserving capture creates a masked child, then another peer insertion requires a second sparse revision. The child and grandchild each reopen from exact queued bytes, with recapture deliberately disabled during retry. Authenticated grandchild Accept and owned Undo/Redo retain peer text and independent comment history.",
+    "Permanent Reader creators can capture and publish their own text revision without acquiring a document author stream. Native authored-through stays zero and Accept remains refused.",
+    "Saved packet meanings, models, journals, default constructors, history choices and resource budgets remain unchanged. Masked compound types are proposal-only in the public SDK. Asset bytes, fresh namespaces, credentials and current authority remain host-owned."
+  ],
+  "verificationNotes": [
+    "Complete native, relay and SDK suite totals are terminal successful runs; focused subset counts are not added to full totals. Clippy passes on the application Wasm library; the pinned engine retains its pre-existing HasIdSpan unused-import warning.",
+    "Source and installed revision matrices retain all original source/outbox/receipt abort, lost reply, restart, final Accept race, losing draft, lazy proof and idle-no-polling checks. Their existing 10000-request anti-spin gate is unchanged.",
+    "The first combined installed asset run failed an exact asynchronous UI capture check in the stale-preview phase. Suggestion metadata had been paused but ordinary document traffic remained live after protected-range Undo/Redo. A diagnostic rerun passed immediate and post-save exact checks. Actual Wasm separately reproduces an admitted known echo changing original replay/checkpoint publication without changing document content, causal clocks, selection or edit history.",
+    "The fixture now pauses both adapters for exact offline capture/save phases, requires an offline document state before capture and checks exact source bytes both synchronously and after persistence. No production engine/replay semantic was changed. A guard test pins these preconditions; original exact comparisons, nine stock actions and request budgets are retained.",
+    "DOM, IndexedDB, Web Locks, two known PNGs and injected network/storage loss are test fixtures. These runs do not qualify physical browsers, historical WebKit reliability, Japanese IME, accessibility, arbitrary raster decoding or production memory/performance."
+  ],
+  "bounds": [
+    "Automatic text rebase accepts one complete supported text intent or masked child, not a mixed or multi-command batch. Full manual revisions remain available; Unsupported never executes a subset.",
+    "Masked children retain exact-document semantic/native-character Accept witnesses, so later accepted changes require a new preview/revision. Explicit Document scope retains whole-document guarding.",
+    "Existing native scalar/span/traversal/packet/run/text/floor budgets apply; no limit is raised. Prefix reservations stay a durable host responsibility, including on refusal.",
+    "Review event/checkpoint limits, bounded local/shared version catalogs, retained-history lifetime, version restore limits and host asset retention remain as documented in RICH_REVIEW.md."
+  ],
+  "reproduce": [
+    "CARGO_TARGET_DIR=target/historical-source-native cargo test --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --release",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release",
+    "node scripts/build-collaboration-runtime.mjs",
+    "CARGO_TARGET_DIR=target/promoted-shared-wasm cargo clippy --manifest-path crates/breditor-collaboration/Cargo.toml --locked --offline --no-default-features --target wasm32-unknown-unknown --release --lib -- -D warnings",
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "npm run build:candidate --workspace @breditor/editor",
+    "npm run typecheck:candidate --workspace @breditor/collaboration",
+    "npm run typecheck:candidate --workspace @breditor/editor",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node --test scripts/check-collaboration-runtime-surface.test.mjs scripts/build-collaboration-runtime.test.mjs scripts/collaboration-promotion.test.mjs scripts/review-assets-workflow.test.mjs",
+    "node scripts/probe-suggestion-text-rebase-boundary.mjs target/promoted-shared-web",
+    "node scripts/probe-suggestion-text-rebase-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestion_revisions_functional",
+    "node scripts/probe-suggestion-format-rebase-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestion_revisions_functional",
+    "node scripts/check-suggestion-text-rebase-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional target/owned-history-relay-native/release/examples/suggestion_revisions_functional",
+    "CARGO_TARGET_DIR=target/owned-history-relay-native cargo build --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --example review_assets_functional",
+    "node scripts/check-review-assets-installed.mjs target/owned-history-relay-native/release/examples/review_assets_functional"
+  ],
+  "remaining": [
+    "Final public API/migration and storage lifetime/compaction review, package release and production authentication/hosting.",
+    "Deferred broad browser/historical WebKit, physical IME, accessibility and performance qualification. No full feature-parity or V1-readiness claim."
+  ],
+  "publication": {
+    "localCheckpointOnly": true,
+    "pushed": false,
+    "published": false,
+    "deployed": false,
+    "versionUnchanged": "0.3.0-alpha.22",
+    "advancedReviewFunctionalGoalComplete": true
+  },
+  "functionalGoalStatus": "complete",
+  "goalAcceptance": {
+    "durableThreadedComments": "Implemented anchored threads, attributed replies/edits, explicit resolution/reanchoring, historical quotations, independent selective history, authenticated transport and exact paired recovery. Native contracts plus current two-offline-author installed mixed cases cover changing and orphaned targets.",
+    "attributedRichSuggestions": "Supported native text/format/list/table/image intents, pure previews, queued offline decisions, authenticated once-only effects and accepting-user history are implemented. Immutable manual revisions, ordered formatting batches and complete sparse text revisions use additive optional contracts; unsupported automatic mixed batches retain full manual revision support.",
+    "namedImmutableVersions": "Implemented authenticated immutable catalog publication/download, native source proof and semantic comparison, guarded fresh-ID restore as a new undoable edit, retained current discussions, independent cache and exact recovery.",
+    "pairedClients": "Opt-in native/Wasm/SDK and borrowed vanilla/React controls use the existing source/review/queue/catalog ownership boundaries; no default or saved meaning changes.",
+    "focusedEndToEndAcceptance": "Current native, relay, SDK, runtime/type, source and clean-installed author/Reader/revision/asset mixed workflows pass under every selected policy. Broad platform and V1 release qualification remain explicitly deferred.",
+    "hostResponsibilities": "Credentials/current grants, permanent fresh namespaces, image bytes/availability and asset/history retention remain explicit host concerns; unsupported/lossy conversions are not silently substituted."
+  }
+}

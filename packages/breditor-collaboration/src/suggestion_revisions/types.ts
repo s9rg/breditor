@@ -1,4 +1,4 @@
-import type {SharedSuggestionRevisionInfo,SharedDocumentSuggestionDraft,SharedSuggestionFormatRebase} from "../suggestion_types.js";
+import type {SharedSuggestionRevisionInfo,SharedDocumentSuggestionDraft,SharedSuggestionFormatRebase,SharedSuggestionTextRebase,SharedSuggestionTextRebasePolicy} from "../suggestion_types.js";
 import type {SharedSuggestionDecision,SharedSuggestionPublication,SharedSuggestionQueueOptions} from "../suggestions/types.js";
 import type {SharedSuggestionsCursor} from "../relay/suggestion_types.js";
 import type {SharedSelectionPolicy} from "../types.js";
@@ -37,3 +37,10 @@ export interface SharedSuggestionRevisionDraft {previousSuggestionId:string;titl
 export type SharedSuggestionFormatRebaseDraft=Omit<SharedSuggestionRevisionDraft,"draft">;
 /** Queued means local immutable revision intent only, not server supersession or Accept. */
 export type SharedSuggestionFormatRebaseQueued=Exclude<SharedSuggestionFormatRebase,{kind:"captured"}>|{kind:"queued";revision:SharedSuggestionRevisionInfo};
+/** Reuse complete native text intent; no caller ranges, scalar IDs or replacement ASTs. */
+export interface SharedSuggestionTextRebaseDraft extends Omit<SharedSuggestionRevisionDraft,"draft"> {
+ /** Permanently host-reserved even after refusal/discard. */
+ prefix:string;policy:SharedSuggestionTextRebasePolicy;
+}
+/** Local immutable revision only; server supersession and Accept remain separate. */
+export type SharedSuggestionTextRebaseQueued=Exclude<SharedSuggestionTextRebase,{kind:"captured"}>|{kind:"queued";revision:SharedSuggestionRevisionInfo};
