@@ -81,7 +81,7 @@ impl SuggestionConflictTarget {
         Ok(match self {
             Self::Document => Some(root.clone()),
             Self::Block { block } => node(root, block).cloned(),
-            Self::Characters { block } => node(root, block).map(|_| super::text_witness::capture(doc, block)).transpose()?,
+            Self::Characters { block } => node(root, block).map(|node| super::text_witness::capture(doc, block, node)).transpose()?,
             Self::Header { block } => node(root, block).map(|value| json!({"type":value["type"],"properties":value["properties"],"entity":value.get("entityId")})),
             Self::Children { parent } => {
                 let value = if let Some(block) = parent { node(root, block) } else { Some(root) };

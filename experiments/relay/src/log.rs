@@ -91,6 +91,33 @@ pub(crate) enum Event {
         principal: String,
         packet: String,
     },
+    EnableDocumentSuggestionsV1 {
+        actor: String,
+        binding: String,
+        effect_writer: String,
+    },
+    GrantDocumentSuggestionsV1 {
+        actor: String,
+        principal: String,
+        role: Option<crate::SuggestionRole>,
+    },
+    PublishDocumentSuggestionV1 {
+        principal: String,
+        packet: String,
+    },
+    DecideDocumentSuggestionV1 {
+        principal: String,
+        request: crate::SuggestionDecisionRequest,
+        effect: Option<crate::SuggestionEffect>,
+        frame: Option<String>,
+    },
+    DecideOwnedDocumentSuggestionV1 {
+        principal: String,
+        accepting_writer: String,
+        request: crate::SuggestionDecisionRequest,
+        effect: Option<crate::SuggestionEffect>,
+        frame: Option<String>,
+    },
     Commit {
         principal: String,
         writer: String,
@@ -225,6 +252,12 @@ impl Log {
     }
     pub fn invalidate(&mut self) {
         self.poisoned = true;
+    }
+    #[cfg(test)]
+    pub(crate) fn use_read_only_handle_for_test(&mut self, path: &Path) -> Result<()> {
+        // A real OS write failure after native preparation, not a fake acknowledgement or core.
+        self.file = File::open(path)?;
+        Ok(())
     }
     pub fn append(&mut self, event: Event) -> Result<u64> {
         self.ready()?;

@@ -137,6 +137,31 @@ nine research-compatibility effect contracts, 35 runtime/promotion guards and
 strict scoped native/relay lint checks also pass. Application Wasm and SDK
 surfaces remain unchanged.
 
+The [native ordered-decision checkpoint](qualification/2026-10-17-rich-review-suggestion-ledger-native.json)
+adds explicit proposal/review grants, immutable authenticated publication and
+one final Accept/Reject in the reference room's durable order. Accept's native
+effect and final decision share one synced record; opposing retries return the
+original outcome, while source conflicts remain pending. A separate reserved
+host writer leaves ordinary offline streams available and keeps genesis
+immutable. Native combined workflows retain anchored comments, independent
+review history and named-version restore across accepted host effects. This is
+an opt-in native reference-host layer, not new network endpoints or browser/SDK
+acceptance. Accepting-user history, durable offline queues, proposal
+revision/rebasing and paired controls remain active work; no V1 gate advances.
+All 64 relay/server tests pass, including twelve suggestion workflows and six
+private durability audits. Two real reviewer races finalize once, all six client
+history policies recover exact future edits, and the mixed native review/version
+workflow survives restart. Owned acceptance records the exact authenticated
+device writer without reserving its counters or transferring native Undo yet.
+Server table-merge clocks retain exact decimal strings through versions/recovery.
+A reproduced native witness failure for unactivated empty cells, including old
+source cuts after peer input, is repaired without creating text infrastructure
+during reads. The complete shared-native suite passes 456 tests, the research
+compatibility suggestion suite passes 15, and 35 runtime/source guards pass.
+Strict scoped native and all-target relay linting also pass. The linked record
+retains the precise functional bounds. Application Wasm and SDK surfaces remain
+unchanged.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

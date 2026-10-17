@@ -15,12 +15,21 @@ mod document_presence;
 mod layout_v3;
 mod observers;
 mod review;
+mod source_boundaries;
+mod suggestions;
 mod versions;
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use review::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
     ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
     StoredReviewBatch,
+};
+pub use suggestions::{
+    DocumentSuggestionAdmission, DocumentSuggestionDecisionAdmission, DocumentSuggestionEntry,
+    DocumentSuggestionPublication, DocumentSuggestionsCursor, DocumentSuggestionsDescriptor,
+    DocumentSuggestionsPage, DurableDocumentSuggestion, DurableSuggestionDecision,
+    StoredSuggestionDecision, SuggestionDecision, SuggestionDecisionRequest, SuggestionEffect,
+    SuggestionPermissions, SuggestionRole, SuggestionUpdate,
 };
 pub use versions::{
     DocumentVersionAdmission, DocumentVersionCatalogEntry, DocumentVersionCatalogPage,
@@ -65,6 +74,7 @@ pub struct Room {
     presence: crate::presence::Presence,
     review: Option<review::ReviewState>,
     versions: Option<versions::VersionsState>,
+    suggestions: Option<suggestions::SuggestionsState>,
     /// Immutable seed boundary; later service-authored actions must not redefine genesis.
     seed_writer_through: String,
 }
@@ -201,6 +211,7 @@ impl Room {
             presence: crate::presence::Presence::default(),
             review: None,
             versions: None,
+            suggestions: None,
             seed_writer_through,
         })
     }
@@ -278,6 +289,7 @@ impl Room {
             presence: crate::presence::Presence::default(),
             review: None,
             versions: None,
+            suggestions: None,
             seed_writer_through,
         };
         for record in records {
@@ -330,6 +342,13 @@ impl Room {
             event @ (Event::EnableDocumentVersionsV1 { .. }
             | Event::PublishDocumentVersionV1 { .. }) => {
                 self.replay_document_versions(record.sequence, event)?;
+            }
+            event @ (Event::EnableDocumentSuggestionsV1 { .. }
+            | Event::GrantDocumentSuggestionsV1 { .. }
+            | Event::PublishDocumentSuggestionV1 { .. }
+            | Event::DecideDocumentSuggestionV1 { .. }
+            | Event::DecideOwnedDocumentSuggestionV1 { .. }) => {
+                self.replay_document_suggestions(record.sequence, event)?;
             }
         }
         Ok(())
@@ -470,6 +489,9 @@ impl Room {
     /// Rejects missing write permission, allocation budget, entropy and persistence failures.
     pub fn register(&mut self, principal: &str) -> Result<Registration> {
         self.editor(principal)?;
+        if self.suggestions.is_some() {
+            self.check_suggestion_author_budget(1)?;
+        }
         let writer = self.next_writer()?;
         let credential = credentials::issue()?;
         let resume_hash = credentials::hash(&credential)?;

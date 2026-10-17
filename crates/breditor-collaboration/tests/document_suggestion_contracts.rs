@@ -564,3 +564,107 @@ fn malformed_foreign_stale_noop_and_over_budget_proposals_never_mutate_accepted_
     assert_eq!((a.checkpoint()?, a.update_frame()?, a.view_json()?), exact);
     Ok(())
 }
+fn derived_cell_input(block: &str) -> Draft {
+    let point = TextPoint {
+        block: block.into(),
+        offset: 0,
+        affinity: breditor_collaboration::anchor::Affinity::After,
+    };
+    Draft {
+        scope: Scope::Commands,
+        edit: Edit::GeneralText(ReplaceGeneralTextRangeV1 {
+            range: ReplaceTextRange {
+                anchor: point.clone(),
+                focus: point,
+                runs: vec![RangeTextRun { text: "Peer text ".into(), formats: vec![] }],
+            },
+            empty: vec![],
+        }),
+    }
+}
+#[test]
+fn empty_derived_cells_have_pure_merge_and_document_proposals_without_creating_text_roots() -> Result
+{
+    use breditor_collaboration::rich_replica::actions::MergeCells;
+    let (_, mut a, mut b) = peers()?;
+    a.apply(vec![Command::InsertColumn(InsertColumn {
+        block: "table-block".into(),
+        column: "c2".into(),
+        width: 150,
+        before: None,
+    })])?;
+    let tree: Value = serde_json::from_str(a.document_json())?;
+    let row = find(&tree["root"], "row").ok_or("row")?;
+    let cell = row["children"]
+        .as_array()
+        .ok_or("cells")?
+        .iter()
+        .find(|cell| cell["properties"]["breditor/column-id"] == "c2")
+        .ok_or("new derived cell")?;
+    let cell_block =
+        cell["properties"]["breditor/block-id"].as_str().ok_or("derived cell identity")?;
+    let paragraph = cell["children"][0]["properties"]["breditor/block-id"]
+        .as_str()
+        .ok_or("derived paragraph")?
+        .to_owned();
+    assert!(paragraph.starts_with("breditor-virtual:"));
+    let exact = (a.checkpoint()?, a.update_frame()?, a.view_json()?);
+    let merge = capture(
+        &a,
+        vec![Command::MergeCells(MergeCells {
+            block: "table-block".into(),
+            merge: "proposed-merge".into(),
+            anchor: "cell".into(),
+            focus: cell_block.into(),
+        })],
+    )?;
+    ready(&a, &merge).map_err(|error| format!("derived-cell merge preview: {error}"))?;
+    drop(
+        a.prepare_document_suggestion_effect(&ready(&a, &merge)?)
+            .map_err(|error| format!("derived-cell merge effect: {error}"))?,
+    );
+    let document = a.capture_document_suggestion_guarded(
+        &a.observe()?,
+        "Replace empty-floor document",
+        ReviewPrincipalId::try_new("alice")?,
+        "0",
+        Draft {
+            scope: Scope::Document,
+            edit: Edit::Commands(vec![Command::ReplaceDocumentPlainTextV1(
+                ReplaceDocumentPlainTextV1 {
+                    paragraph: "proposed-whole".into(),
+                    text: "Replacement".into(),
+                },
+            )]),
+        },
+    )?;
+    ready(&a, &document).map_err(|error| format!("derived-cell document preview: {error}"))?;
+    let input = a
+        .capture_document_suggestion_guarded(
+            &a.observe()?,
+            "Type in the empty derived cell",
+            ReviewPrincipalId::try_new("alice")?,
+            "0",
+            derived_cell_input(&paragraph),
+        )
+        .map_err(|error| format!("empty-cell intent capture: {error}"))?;
+    ready(&a, &input).map_err(|error| format!("empty-cell preview: {error}"))?;
+    assert_eq!((a.checkpoint()?, a.update_frame()?, a.view_json()?), exact);
+    b.receive_frame(&a.update_frame()?)?;
+    b.enable_general_ranges_guarded(&b.observe()?)?;
+    let peer_preview =
+        ready(&b, &input).map_err(|error| format!("peer empty-cell preview: {error}"))?;
+    let prepared = b
+        .prepare_document_suggestion_effect(&peer_preview)
+        .map_err(|error| format!("peer empty-cell effect: {error}"))?;
+    b.commit_document_suggestion_effect(prepared)?;
+    a.receive_frame(&b.update_frame()?).map_err(|error| format!("peer input receive: {error}"))?;
+    for packet in [&merge, &document] {
+        assert!(matches!(
+            a.prepare_document_suggestion_guarded(&a.observe()?, packet)
+                .map_err(|error| format!("peer changed source conflict: {error}"))?,
+            Preparation::Conflict { .. }
+        ));
+    }
+    Ok(())
+}

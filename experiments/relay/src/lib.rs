@@ -20,6 +20,13 @@ pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registra
 pub use room::AtomicTransportProfile;
 pub use room::Room;
 pub use room::{
+    DocumentSuggestionAdmission, DocumentSuggestionDecisionAdmission, DocumentSuggestionEntry,
+    DocumentSuggestionPublication, DocumentSuggestionsCursor, DocumentSuggestionsDescriptor,
+    DocumentSuggestionsPage, DurableDocumentSuggestion, DurableSuggestionDecision,
+    StoredSuggestionDecision, SuggestionDecision, SuggestionDecisionRequest, SuggestionEffect,
+    SuggestionPermissions, SuggestionRole, SuggestionUpdate,
+};
+pub use room::{
     DocumentVersionAdmission, DocumentVersionCatalogEntry, DocumentVersionCatalogPage,
     DocumentVersionsCursor, DocumentVersionsDescriptor, DurableDocumentVersion,
 };

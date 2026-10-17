@@ -24,9 +24,10 @@ once, and a repeated decision returns its original result rather than inserting
 the accepted change again. A stale Accept must report a target conflict without
 mutating accepted content. The eventual accepted edit and final decision must
 share one durable transaction and a recoverable native publication. This decision
-contract is selected. Native proposal capture, historical source validation and
-guarded previews and staged native effects are implemented below. The
-authenticated decision ledger and accepting-user history path remain unfinished.
+contract is selected. Native proposal capture, historical source validation,
+guarded previews, staged effects and the opt-in native reference-host decision
+ledger are implemented below. Accepting-user history and paired browser/SDK
+decision integration remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -75,6 +76,16 @@ character identities. This closes a reproduced case where a peer deleted a sourc
 character and inserted an equal-looking character with identical formatting: AST
 equality alone incorrectly considered the original target unchanged. The native
 scalar witness now reports a conflict instead of targeting the replacement.
+
+An empty derived table-cell paragraph can be visible before its native text root
+is activated. Its witness contains zero character identities without creating
+that root. A later peer can register the text container while an earlier
+historical cut still has no characters or flow definition; container knowledge
+must not be mistaken for character presence. This closes a reproduced
+`text-flow owner` failure in merge/document proposals and in conflict checking
+after a peer types into the formerly empty cell. Only admitted empty derived
+text blocks with no source characters use that rule. Missing real, nonempty,
+mismatched or malformed flows are not converted to empty witnesses.
 
 A Ready preview contains the admitted proposed tree, semantic changes and asset
 references, without fetching asset bytes. Its exact live-owner witness cannot be
@@ -132,14 +143,13 @@ implementation. Receipt admission, ordering with normal typing, invisible-item
 handling, selection/cursor repair and exact local recovery must still be
 implemented together before that history path is exposed.
 
-Acceptance still needs one authenticated ordered decision record atomically
-paired with its accepted native effects. A foreign effect writer does not
-automatically join the accepting client's ordinary Undo stack. That history
-ownership, exact recovery and offline compensation contract must be implemented
-before the server/client acceptance API is exposed. Ordinary offline document
-editing must remain available while decisions are queued. Proposal persistence,
-Wasm/SDK/control integration and combined installed suggestion acceptance are
-also open; this native checkpoint does not complete tracked changes.
+A foreign effect writer does not automatically join the accepting client's
+ordinary Undo stack. That history ownership, exact recovery and offline
+compensation contract remain necessary before exposing a complete browser/SDK
+acceptance workflow. Ordinary offline document editing remains available while
+review decisions are queued. Local proposal/decision persistence, Wasm/SDK/control
+integration and combined installed suggestion acceptance remain open; native
+effect staging alone does not complete tracked changes.
 
 The proposal contracts and compatibility shim cover 14 workflows plus three
 private packet tests. Ordinary native edits serve as preview oracles, with
@@ -154,6 +164,82 @@ both preselected and unselected document scope, repeated preparation, dropped
 typing candidates, protected ranges in both directions, and an independent host
 writer with concurrent offline edits. Current checkpoint results are recorded in
 the release trail.
+
+### Native ordered proposal and decision ledger
+
+The reference relay's `enable_document_suggestions` explicitly enables
+`breditor/relay-document-suggestions` V1 in a writer-transport V2 room. Existing
+rooms remain disabled, and V1-transport rooms are refused rather than migrated.
+A separate durable random binding identifies this lane. The server reserves
+effect writer `18446744073709551614`; it is neither genesis writer `1` nor any
+ordinary client allocation, and it never receives a client lease.
+
+Suggestion permissions are independent of document and comment roles. Propose
+allows attributed publication, including from a document Reader. Review also
+allows Reject; Accept additionally requires current document Editor permission.
+The initial owner administers these grants. An Editor or comment Moderator does
+not automatically become a suggestion reviewer. Every operation checks current
+host-authenticated account rights. Stored roles and content-addressed IDs confer
+no authority.
+
+Publication verifies native attribution, historical intent and complete accepted
+semantic source cuts before append and sync. Missing document operations stay
+client-owned Pending work. Repacked retries return the first immutable packet
+and publication sequence, without appending or changing accepted content. A
+published proposal remains pending until one durable finalization wins.
+
+Accept stages the exact native intent under the exclusive host writer and
+independently admits its version-two group into an unpublished room receiver.
+Reject stages no document edit. One ordered log record retains the deciding
+account, request, native effect bounds/lineage and effect frame. Only after that
+record is synced are the accepted room, host author and final decision published.
+A retry, including an opposing reviewer choice, returns the ORIGINAL final
+decision and sequence. No second effect is authored. Changed targets return an
+explicit Conflict and leave the proposal pending; there is no snapshot fallback.
+
+An owned Accept additionally authenticates the exact active document-writer
+lease. Its separate durable record retains `acceptingWriter`, not the lease token
+or resume credential. A second device on the same account cannot take ownership
+through a retry: it receives the original stream identity. Neither client stream
+has counters reserved or advanced by server acceptance. Explicitly unowned
+administrative decisions remain unowned, and Reject has no document history
+owner. Recovery rechecks original registered account/stream ownership, including
+permanent observer restrictions, rather than inferring ownership from a matching
+display author. Recording this identity does not yet adopt the effect into the
+accepting client's ordinary Undo stack.
+
+Recovery rechecks the original grants, source intent, native effect, exact
+semantic start and canonical operation receipt in original room order. A crash
+after sync but before publication recovers both decision and effect. An
+incomplete final record recovers the pending proposal and prior author clock;
+retry can then finalize the same native effect once. A complete invalid record
+fails recovery before any incomplete tail is truncated. Uncertain write errors
+fence all room reads and writes until recovery.
+
+Accepted host-effect boundaries become valid historical source cuts for later
+proposals and named versions. The immutable genesis boundary is unchanged.
+Comments continue resolving through the same native document history. The
+combined native workflow covers anchored comments, acceptance, independent
+comment Undo, named-version restore, explicit orphaning/reattachment and host
+restart without deleting discussions.
+
+Authenticated readers can fetch immutable packets, read current pending/final
+state and page immutable publication/decision events through a frozen cut. A
+decision after that cut does not leak into an earlier publication entry. Pages
+contain at most 64 events; packets are bounded to 1 MiB, with at most 1,024
+proposals and 32 MiB of raw retained packets. Native checkpoint/frame budgets and
+the existing 20 MiB-record, 256 MiB-log and 4,096-record ceilings can refuse work
+earlier. There is no automatic compaction. The opt-in lane allows at most 1,022
+registered document authors, retaining native source-clock capacity for genesis
+and the host effect author; permanent non-authoring observers do not consume
+that author allowance. Existing disabled-room writer limits are unchanged.
+
+This is a native reference-host component, not a new HTTP/WebSocket capability,
+installed editor or shipping Accept button. Hosts still own account
+authentication, permanent fresh-ID allocation and referenced asset
+admission/retention. The host effect's native history is NOT accepting-user Undo.
+That adoption path, durable offline client queues, proposal revision/rebasing and
+paired Wasm/SDK/vanilla/React controls remain functional work.
 
 ## Durable comments and anchors
 

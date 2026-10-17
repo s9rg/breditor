@@ -36,37 +36,14 @@ impl Room {
         match self.replica.verify_document_version_source(packet)? {
             DocumentVersionSource::Pending { missing, .. } => {
                 for clock in &missing {
-                    self.check_version_writer(&clock.writer)?;
+                    self.check_document_source_writer(&clock.writer)?;
                 }
                 Ok(Preparation::Pending(missing))
             }
             DocumentVersionSource::Verified { version, clocks } => {
-                self.check_version_cuts(&clocks)?;
+                self.check_document_source_cuts(&clocks)?;
                 Ok(Preparation::New(version))
             }
         }
-    }
-    fn check_version_writer(&self, writer: &str) -> Result<()> {
-        if writer != "1" && self.writers.get(writer).is_none_or(|author| author.observer) {
-            return Err(Error::Contract("version source has no registered document author"));
-        }
-        Ok(())
-    }
-    fn check_version_cuts(&self, clocks: &[WriterDependency]) -> Result<()> {
-        if !clocks.iter().any(|clock| clock.writer == "1") {
-            return Err(Error::Contract("version source omits genesis"));
-        }
-        for clock in clocks {
-            self.check_version_writer(&clock.writer)?;
-            if clock.writer == "1" && clock.counter == self.seed_writer_through {
-                continue;
-            }
-            if !self.receipts.values().any(|accepted| {
-                accepted.receipt.writer == clock.writer && accepted.receipt.through == clock.counter
-            }) {
-                return Err(Error::Contract("version source cuts an unaccepted semantic group"));
-            }
-        }
-        Ok(())
     }
 }
