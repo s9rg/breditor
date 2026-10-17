@@ -187,6 +187,20 @@ new runtime. Queue transport is still explicitly driven by the probe; automatic
 owned-decision wiring, accepting-user Undo, controls and installed combined
 review acceptance remain functional work, not completed release gates.
 
+The [automatic suggestion client checkpoint](qualification/2026-10-17-rich-review-suggestion-sync-sdk.json)
+adds opt-in publication/decision syncing on the existing document-author socket,
+bounded live discovery and lazy remote packet caching. Four selection/history
+combinations pass with actual application Wasm, exported SDK adapters and the
+authenticated native host: offline reopen, owned Accept, missing peer sources,
+conflict to Reject, opposing offline choices, failed local/receipt saves, lost
+decision replies, fresh grants, automatic host restart and no idle polling.
+All 305 SDK/editor tests and 36 runtime compatibility guards pass, and the
+automatic comments/version regression remains intact. Native core/host sources
+and saved families are unchanged from the preceding 457/64-test checkpoint.
+Accepting-user Undo, Reader-only automatic metadata sync, suggestion controls,
+granular rebasing and installed combined review acceptance remain functional
+work. No V1 gate, package version or publication status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

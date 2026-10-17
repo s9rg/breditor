@@ -5,9 +5,10 @@ import {checkQueueRecord,openQueueDatabase,readQueueRecord,writeQueueRecord} fro
 import {SuggestionQueueLease} from "./lease.js";
 import {queueIdentity,packetText,publication,decision,intent,same} from "./validation.js";
 import type {SharedSelectionPolicy} from "../types.js";
+import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo} from "../suggestion_types.js";
 import type {SharedDocumentSuggestionPreview} from "../suggestion_preview.js";
-import type {SharedSuggestionQueueOptions,SharedSuggestionQueueRecord,SharedRetainedSuggestion,SharedSuggestionQueueStatus,SharedSuggestionPublication,SharedSuggestionDecision} from "./types.js";
+import type {SharedSuggestionQueueIdentity,SharedSuggestionQueueOptions,SharedSuggestionQueueRecord,SharedRetainedSuggestion,SharedSuggestionQueueStatus,SharedSuggestionPublication,SharedSuggestionDecision} from "./types.js";
 const attached=new WeakSet<object>();
 export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #options:SharedSuggestionQueueOptions<P>;readonly #db:IDBDatabase;readonly #lease:SuggestionQueueLease;
@@ -28,6 +29,10 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
   catch(error){if(queue)await queue.discardAndClose();else{db?.close();await lease?.close();attached.delete(core);}throw error;}
  }
  #live():void{if(this.#closed)throw new SharedRelayError("suggestion_queue_closed");this.#lease.assertLive();}
+ /** Borrowed source only; closing this queue never disposes it. A changed source owner refuses. */
+ get core():SharedRichEditor<P>{this.#live();this.#assertSource();return this.#options.storage.core;}
+ /** Detached nonsecret binding for an explicitly matching transport. */
+ identity():SharedSuggestionQueueIdentity{this.#live();return {...this.#record.identity};}
  #writable():void{this.#live();this.#assertSource();if(this.#retiring)throw new SharedRelayError("suggestion_queue_closing");}
  #admit(record:SharedSuggestionQueueRecord):Map<string,{info:SharedDocumentSuggestionInfo;row:SharedRetainedSuggestion}>{
   const result=new Map<string,{info:SharedDocumentSuggestionInfo;row:SharedRetainedSuggestion}>(),core=this.#options.storage.core;

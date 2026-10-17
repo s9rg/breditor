@@ -166,8 +166,36 @@ arriving before its native effect returns `waitingForDocument`; import actual
 catchup and retry instead of re-executing the proposal. Native V2 receipt checks
 prove retained operations, not account roles, server durability or Undo ownership.
 The server winner remains distinct from an opposite locally queued choice.
-Automatic queue transport, accepting-user Undo and proposal/review controls are
-still in progress. See `docs/RICH_REVIEW.md` for exact contracts and bounds.
+For document authors, the optional automatic adapter shares the existing author
+socket instead of opening another writer lease:
+
+```js
+const documentSync = new SharedRelaySync(reviewSession.core, {
+  identity: documentIdentity, // Explicit atomic-v2 identity.
+  getToken,
+  suggestions: {
+    binding: queue.identity().binding,
+    effectWriter: queue.identity().effectWriter
+  },
+  persistLocal: async () => {
+    reviewSession.save();
+    await reviewSession.flush();
+  },
+  autoConnect: false
+});
+const suggestions = new SharedSuggestionSync(queue, documentSync);
+await documentSync.connect();
+await suggestions.flushShared(); // Current queued targets, server outcome and local receipt.
+```
+
+Use `createSharedDocumentRelaySync` with explicit `selectionEditing: 'document-v1'`
+for a document-selection owner. `suggestions.entries()` exposes bounded live
+metadata; `loadSuggestion(id)` lazily caches an authenticated native packet.
+Discovery is not a persisted global catalog, and imported effects do not become
+accepting-user Undo. Stop the suggestion adapter before closing its queue/source;
+it never disposes the borrowed document connection. Reader-only automatic sync,
+accepting-user Undo and proposal controls remain in progress. See
+`docs/RICH_REVIEW.md` for exact contracts and bounds.
 
 ### Shared named versions
 

@@ -1,6 +1,7 @@
 import type {SharedProfileDescriptor} from "../profile.js";
 import type {SharedPresence} from "../presence.js";
 import type {SharedSelectionPolicy} from "../types.js";
+import type {SharedSuggestionRelayBinding} from "./suggestion_types.js";
 
 /** Separate host-protected credential record. Never place this in a portable document/journal. */
 export interface SharedRelayIdentity {
@@ -45,6 +46,9 @@ export interface SharedRelayOptions<P extends SharedSelectionPolicy="original"> 
  onAssetsChanged?:()=>void;
  /** Opt-in ephemeral registry for this same core. The sync adapter does not dispose it. */
  presence?:SharedPresence<P>;
+ /** Explicit optional lane on this SAME author socket. Requires atomic-v2, native proposal
+  * proofs and persistLocal. Default document channels still reject suggestion hints. */
+ suggestions?:SharedSuggestionRelayBinding;
 }
 /** Document replay requires atom-lineage transport V2; old room seeds/digests never upgrade. */
 export type SharedDocumentRelayOptions=SharedRelayOptions<"document-v1">&{selectionEditing:"document-v1";identity:SharedRelayIdentity&{writerTransport:"atomic-v2"}};

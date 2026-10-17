@@ -1,0 +1,98 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "e290c16",
+  "scope": "Opt-in automatic proposal/decision synchronization on the existing authenticated document-author socket, bounded live metadata discovery and lazy remote packet caching. Actual application Wasm, exported paired/source queue and document/suggestion SDK adapters use the native durable host. IndexedDB/Web Locks and transport loss are fixtures. Accepting-user Undo, metadata-only Reader synchronization, review controls and clean-installed combined review acceptance remain active goal work.",
+  "artifacts": {
+    "applicationWasmSha256": "dc14b25bb197814aa915b74da0a21818d3645e761821d9c57d157d6c1a00252e",
+    "suggestionHostSha256": "29b9965b23645c93f32edc2b1874e32e2f4a5d7fc0240080c6cfaa766c2ebc54",
+    "existingReviewAndCatalogHostSha256": "48f6658932be7df68661a533bd2ca17900ff34be573776306f2c23e36d3f14ca",
+    "nativeAndApplicationWasmSourcesChangedThisCheckpoint": false,
+    "artifactBaseline": "e290c16"
+  },
+  "verification": {
+    "fullSdkSuite": {"passed": 305, "failed": 0, "files": 35, "newTransportAndFeedTests": 14},
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 36, "failed": 0},
+    "sdkBuildAndEditorStrictTypes": "passed",
+    "nativeBaseline": {"commit": "e290c16", "sharedNativePassed": 457, "relayPassed": 64, "nativeAndRelaySuitesRerunThisAdapterCheckpoint": false},
+    "automaticSuggestionProbe": {
+      "command": "node scripts/probe-suggestion-sync-sdk.mjs target/promoted-shared-web target/suggestion-ledger-native/release/examples/suggestions_functional",
+      "passed": true,
+      "trials": 4,
+      "exactOfflineReopens": 4,
+      "automaticOwnedAccepts": 4,
+      "lazyRemotePacketsWithConcurrentLoadCoalescing": 4,
+      "sourceBeforePublication": 4,
+      "pendingPeerSourceRecoveriesWithoutChangedLocalProjection": 4,
+      "originalIndependentHistories": 4,
+      "conflictThenExplicitReject": 4,
+      "opposingOfflineChoiceReconciliations": 4,
+      "localSaveRefusalsBeforePublication": 4,
+      "publicationReceiptSaveRefusals": 4,
+      "lostDecisionRepliesRecoveredAutomatically": 4,
+      "automaticNativeHostRestarts": 4,
+      "liveIndependentPermissionTransitions": 4,
+      "idleWithoutPolling": 4,
+      "acceptingUserUndoAdoptionImplemented": false
+    },
+    "additionalOverlappingAutomaticProbeRepetitions": {"passed": 2, "failed": 0, "trialsPerRun": 4, "scope": "Repeated functional workflows, not unique feature counts or browser/reliability certification"},
+    "nativeBackedProposalRegression": {"passed": true, "socketTrials": 2, "sdkCaptures": 8, "pendingAndConflictReads": 4, "retainedReceiptReads": 4, "pureSemanticIntentShapes": 28},
+    "durableSelectedQueueRegression": {"passed": true, "trials": 4, "exactOfflineReopens": 8, "scope": "Existing source-first/receipt failure, missing-source/effect, owner replacement, cross-database lease, preview identity, original histories and original winner workflows"},
+    "existingAutomaticCommentsAndVersionsRegression": {
+      "passed": true,
+      "trials": 4,
+      "exactOfflineReopens": 16,
+      "localSaveRefusals": 8,
+      "localRetryWithoutNetworkAcceptance": 4,
+      "localReceiptSaveRefusals": 4,
+      "lostReplyRecoveries": 4,
+      "automaticHostRestarts": 4,
+      "guardedRemoteRestores": 4,
+      "leaseRefusals": 8,
+      "missingLocalSourceRefusals": 4,
+      "rollbackRefusals": 8,
+      "permissionTransitions": 4,
+      "unicodeAccounts": 1,
+      "syntheticDomSharedControlWorkflows": 1
+    }
+  },
+  "contracts": [
+    "The new suggestion event family is opt-in. Original document, document-presence, comment and version channels remain closed to suggestion hints, and original transport capability validation is unchanged.",
+    "The existing document adapter negotiates the exact pinned lane, requires atomic-v2 and complete native proposal proofs, and requires a local persistence hook. One authenticated document-author connection resumes once and carries owned Accept; no second resume steals its lease.",
+    "The bridge reconstructs bounded request envelopes with its pinned lane. Payload principal/writer/lease claims cannot grant authority. Metadata permission errors do not stop ordinary document editing; invalid author leases still fence the same document adapter.",
+    "The automatic adapter borrows the exact existing native owner, durable queue and document connection. It never closes them. Disconnecting metadata alone leaves ordinary document sync running, and metadata does not silently recover a fenced author with another socket.",
+    "Local source and queue persistence precede network requests. Authored source is server-durable before proposal publication or Accept. A final receipt waits for actual native effect import and retained V2 proof before its dependent source-first queue save.",
+    "A pending source can become host-durable without changing the local owner, because it was already received offline. An unsolicited document catchup wakes the queue independently from projection changes. Explicit refresh responses cannot be lost behind earlier queued frames.",
+    "Original queued choices remain distinct from the authenticated original final winner. Lost replies, another device's Accept and opposing offline retries reconcile that winner instead of executing commands again. Imported effects remain foreign to ordinary client history.",
+    "Conflicting Accept remains pending with native conflict targets. Reject requires an explicit replacement of the active retry. Stopping retry is not withdrawal of an already admitted server action.",
+    "Live discovery reconstructs a frozen full interval with at most 1024 proposals, 2048 events and 64 events per page. Duplicate/contradictory events, changed terminal cuts, nonprogressing pages and rollback of observed or cached receipts refuse.",
+    "The global feed is detached live metadata, not a persisted cursor or an implicitly widened saved family. The existing selected packet/intent queue retains its 256-row/1-MiB-packet/32-MiB-record limits. Cached packets remain readable offline; uncached packets require current authenticated read permission.",
+    "At most two extension requests can occupy the author socket, at most four distinct lazy downloads can queue, matching downloads and refreshes coalesce, and idle automatic adapters do not poll.",
+    "Current rights are recomputed by the native host for each request. A revoked suggestion role does not revoke unrelated document editing or cause the client to infer authority from cached grants. Restoring a live proposal grant resumes retained choices through the existing connection."
+  ],
+  "verificationNotes": [
+    "The first real-host test incorrectly expected comment Undo to return a boolean. Its existing committed-event result was asserted correctly; no production history contract changed.",
+    "An initial missing-source assertion sampled waitingForDocument during an automatically queued synchronization pass. The test now waits for the pending idle state before releasing the peer source, and then requires publication without manual refresh.",
+    "The focused unit fixture initially supplied a noncanonical account token and correctly failed before imports. Its token was corrected; account authentication validation was not weakened.",
+    "Separate lane-permission and document-catchup notification revisions prevent document activity from replacing fresher metadata permissions with an older handshake display. Neither revision is a credential or durable cursor."
+  ],
+  "compatibility": {
+    "constructorDefaultsChanged": false,
+    "existingStoredFamiliesChangedMeaning": false,
+    "newDefaultNetworkCapabilities": false,
+    "nativeCoreRelayOrWasmSourceChanged": false,
+    "dependenciesOrLockfilesChanged": false,
+    "vendorEngineChanged": false,
+    "hostResponsibilities": ["account authentication", "exclusive writer/fresh-ID allocation", "referenced asset admission and retention", "public-host admission isolation and deployment hardening"]
+  },
+  "remaining": [
+    "Accepting-user selective Undo/Redo for authenticated host effects, one ordered history with invisible-item boundaries, native cursor repair and exact replay. Imported effects deliberately remain foreign.",
+    "Metadata-only Reader proposal/Reject automatic synchronization without a document-author connection; the existing native lane and low-level queue already support non-authoring review.",
+    "Persisted bounded global catalog discovery, rather than only live full-feed discovery and a durable selected packet/intent cache.",
+    "Borrowed vanilla/React proposal and review controls with requested-versus-winning outcomes, explicit pending/conflict/revision flows and clean-installed combined review acceptance.",
+    "Granular character-affine text rebasing and proposal revision; conservative affected-text witnesses remain unchanged.",
+    "Final V1 qualification, production hosting/storage lifecycle, performance and physical browser/IME/accessibility work remain deferred. No historical WebKit repair or full feature-parity claim is made."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

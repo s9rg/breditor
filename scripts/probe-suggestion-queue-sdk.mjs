@@ -233,7 +233,7 @@ export async function probeSuggestionQueueSdk(directory, executable) {
   for (const [name, count] of Object.entries(counts)) assert.equal(count, name === "exactOfflineReopens" ? 8 : 4, name);
   return {format: "breditor/suggestion-queue-sdk-probe", formatVersion: 1, sharedWasmSha256: hash(bytes),
     nativeRelaySha256: hash(readFileSync(executable)), ...counts, passed: true,
-    scope: "Actual application Wasm, exported durable suggestion queue and paired document/comment sessions, with authenticated native publication/decisions. Four selection/history combinations, real native source/effect proof, exact IDB recovery, failed local/receipt saves, lost/opposing retries, selective original histories and host restart. IDB/locks and wire driving are fixtures. Automatic queue transport, accepting-user Undo, review UI and installed mixed acceptance remain active work."};
+    scope: "Actual application Wasm, exported durable suggestion queue and paired document/comment sessions, with authenticated native publication/decisions. Four selection/history combinations, real native source/effect proof, exact IDB recovery, failed local/receipt saves, lost/opposing retries, selective original histories and host restart. IDB/locks and wire driving are fixtures. Automatic author transport has a separate probe; accepting-user Undo, review UI and installed mixed acceptance remain active work."};
 }
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length !== 4) throw Error("Expected matching application Wasm and isolated native suggestion host");

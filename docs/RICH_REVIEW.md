@@ -27,8 +27,9 @@ share one durable transaction and a recoverable native publication. This decisio
 contract is selected. Native proposal capture, historical source validation,
 guarded previews, staged effects, the opt-in native reference-host decision
 ledger, an explicitly negotiated reference socket lane, native/Wasm proposal
-pairing and a durable SDK intent queue are implemented below. Accepting-user
-history, automatic queue transport and paired review controls remain unfinished.
+pairing, a durable SDK intent queue and automatic synchronization on the existing
+document-author socket are implemented below. Accepting-user history, Reader-only
+metadata synchronization and paired suggestion controls remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -148,9 +149,10 @@ A foreign effect writer does not automatically join the accepting client's
 ordinary Undo stack. That history ownership, exact recovery and offline
 compensation contract remain necessary before exposing a complete browser/SDK
 acceptance workflow. Ordinary offline document editing remains available while
-review decisions are queued. Local proposal/decision persistence, Wasm/SDK/control
-integration and combined installed suggestion acceptance remain open; native
-effect staging alone does not complete tracked changes.
+review decisions are queued. The client sections below add local persistence,
+Wasm proofs and automatic author transport. Accepting-user history, proposal
+controls and combined installed suggestion acceptance remain open; native effect
+staging alone does not complete tracked changes.
 
 The proposal contracts and compatibility shim cover 14 workflows plus three
 private packet tests. Ordinary native edits serve as preview oracles, with
@@ -239,8 +241,9 @@ This native component by itself is not an installed editor or shipping Accept
 button. The subsequent opt-in reference socket layer is described below. Hosts still own account
 authentication, permanent fresh-ID allocation and referenced asset
 admission/retention. The host effect's native history is NOT accepting-user Undo.
-That adoption path, durable offline client queues, proposal revision/rebasing and
-paired Wasm/SDK/vanilla/React controls remain functional work.
+That adoption path, proposal revision/rebasing and paired vanilla/React suggestion
+controls remain functional work. Subsequent client sections add Wasm proofs,
+durable offline queues and automatic author transport.
 
 ### Opt-in reference suggestion socket
 
@@ -365,11 +368,63 @@ a proposal or revoke a finalized server decision.
 The [client functional record](qualification/2026-10-17-rich-review-suggestion-client.json)
 combines actual application Wasm, this exported queue, paired native journals and
 the authenticated durable host. Wire driving and IndexedDB/Web Locks remain
-fixtures. Automatic synchronization must share the existing document author's
-socket for owned Accept rather than resuming and stealing that writer on another
-connection. That adapter, accepting-user history, borrowed vanilla/React controls
-and clean-installed combined review acceptance remain active work. Host-owned
-assets and explicit conversion-loss policies are unchanged.
+fixtures. The automatic adapter below shares the existing document author's
+socket for owned Accept. Accepting-user history, borrowed vanilla/React suggestion
+controls and clean-installed combined review acceptance remain active work.
+Host-owned assets and explicit conversion-loss policies are unchanged.
+
+### Automatic suggestion synchronization for document authors
+
+`SharedRelaySync` explicitly opts in with `suggestions: {binding, effectWriter}`.
+The exact lane must be pinned from authenticated host metadata, the document
+transport must be `atomic-v2`, and a `persistLocal` hook must save the current
+source journal. The same connection authenticates, resumes the document writer
+once, submits ordinary edits and requests owned suggestion decisions. No second
+author socket or payload principal/writer authority is introduced. Original
+document, comment and version channels still refuse suggestion hints.
+
+`SharedSuggestionSync(queue, documentSync)` verifies the exact borrowed native
+owner and nonsecret queue/transport identity. It saves pending source and queue
+records before sending, flushes authored source operations before publication or
+Accept, and imports and proves a final effect before persisting its decision.
+Missing peer sources remain pending. A subsequent server catchup wakes retry
+even when the owner already retained those peer operations offline, so unchanged
+local content cannot leave a proposal stranded. Current permissions are read
+again; saved attribution and previous permission displays confer no authority.
+
+Offline choices survive reconnect, failed local writes and lost replies. The
+server's original winner remains separate from the requested choice, including
+an offline Reject after another device accepted. Conflicting Accept leaves the
+proposal pending with explicit native targets; changing to Reject requires
+stopping the old retry first. `flushShared` captures current publication/decision
+targets and waits for their authenticated outcomes and local receipts. It does
+not mean the requested choice won. A local save failure requires explicit local
+retry and reconnect; it never becomes a network acknowledgment.
+
+Discovery reconstructs a frozen live feed of at most 1,024 proposals and 2,048
+events, with 64 events per page. It rejects changed cuts, duplicate/contradictory
+events and rollback of already observed or cached receipts. `entries()` returns
+detached live metadata. `loadSuggestion(id)` lazily fetches a packet under current
+read permission and caches it natively; cached packets remain readable offline.
+At most four distinct downloads are queued, matching downloads and refreshes
+coalesce, and idle adapters do not poll. This live feed is not a new persisted
+global catalog: the existing 256-row selected cache retains its original limits.
+
+The adapter borrows both queue and document connection. Dispose it before closing
+the queue/source; disconnecting it alone leaves ordinary document sync running.
+Ordinary author reconnection controls lease recovery. A fenced author is not
+silently resumed by a new metadata connection. Reader-only automatic proposal and
+Reject workflows still need a separate non-authoring adapter; the native socket
+and low-level durable queue already support them without an author lease.
+
+The [automatic client checkpoint](qualification/2026-10-17-rich-review-suggestion-sync-sdk.json)
+combines actual application Wasm, exported document/queue/sync adapters and the
+authenticated Rust host across both selection and history policies. It covers
+exact offline reopen, lazy remote packets, source-dependent retry, conflict to
+Reject, opposing outcomes, failed local/receipt saves, lost decision replies,
+live grants, host restart and no idle polling. IndexedDB/Web Locks and transport
+loss are fixtures. Imported effects remain foreign to ordinary Undo; accepting-user
+history, proposal controls and installed combined review acceptance remain open.
 
 ## Durable comments and anchors
 
