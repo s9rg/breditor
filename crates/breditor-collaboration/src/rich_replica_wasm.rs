@@ -15,6 +15,7 @@ mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod review;
 mod selection_formatting;
+mod suggestions;
 mod typing;
 mod writer_transport_v2;
 use crate::{

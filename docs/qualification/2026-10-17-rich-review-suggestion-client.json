@@ -1,0 +1,110 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "c9f4818",
+  "scope": "Native-backed application Wasm/SDK proposal capture, pure source and preview proofs, exact retained V2 effect receipts and a durable selected-proposal/offline-decision client queue. Actual SDK queues and paired document/comment sessions use the authenticated native host, with wire driving and IndexedDB/Web Locks fixtures. Automatic suggestion transport, accepting-user Undo and review controls remain active goal work; this is not final V1 qualification.",
+  "artifacts": {
+    "applicationWasmSha256": "dc14b25bb197814aa915b74da0a21818d3645e761821d9c57d157d6c1a00252e",
+    "suggestionHostSha256": "29b9965b23645c93f32edc2b1874e32e2f4a5d7fc0240080c6cfaa766c2ebc54",
+    "existingReviewAndCatalogHostSha256": "48f6658932be7df68661a533bd2ca17900ff34be573776306f2c23e36d3f14ca",
+    "applicationWasmRebuiltThisCheckpoint": true,
+    "javascriptExports": 7,
+    "wasmExports": 178,
+    "serverEffectExecutorsAndNativePreparationConstructorExported": false
+  },
+  "verification": {
+    "fullCanonicalNativeSuite": {"passed": 457, "failed": 0},
+    "fullRelayServerSuite": {"passed": 64, "failed": 0},
+    "fullSdkSuite": {"passed": 291, "failed": 0, "files": 34},
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 36, "failed": 0},
+    "strictNativeLibraryAndWriterReceiptContractClippy": "passed",
+    "strictApplicationWasmLibraryClippy": "passed",
+    "strictAllTargetRelayServerClippy": "passed",
+    "sdkBuildAndEditorStrictTypes": "passed",
+    "nativeBackedSdkProbe": {
+      "command": "node scripts/probe-suggestion-sdk.mjs target/promoted-shared-web target/suggestion-ledger-native/release/examples/suggestions_functional",
+      "passed": true,
+      "socketTrials": 2,
+      "sdkCaptures": 8,
+      "sdkPendingAndConflictReads": 4,
+      "sdkRetainedReceiptReads": 4,
+      "additionalPureSemanticIntentShapes": 28,
+      "additionalSemanticForms": ["general text", "general paragraph", "general rich flow", "whole-document plain text", "whole-document rich clipboard", "document formats", "document layout"],
+      "scope": "Source-preserving capture/preview, explicit/natural histories, exact source conflicts, independent field changes, native table effects, once-only owned server decisions, old receipts after later host effects and exact host/client recovery. The 28 extra shapes combine seven forms with both selection and history policies."
+    },
+    "durableQueueSdkProbe": {
+      "command": "node scripts/probe-suggestion-queue-sdk.mjs target/promoted-shared-web target/suggestion-ledger-native/release/examples/suggestions_functional",
+      "passed": true,
+      "trials": 4,
+      "exactOfflineReopens": 8,
+      "localSaveRefusals": 4,
+      "receiptSaveRefusals": 4,
+      "receiptBeforeEffectRefusals": 4,
+      "opposingQueuedChoiceReconciliations": 4,
+      "originalLostReplyRecoveries": 4,
+      "missingSourceRefusals": 4,
+      "missingEffectRefusals": 4,
+      "originalHistoryWorkflows": 4,
+      "hostRestarts": 4,
+      "crossDatabaseLeaseRefusals": 4,
+      "borrowedOwnerReplacementRefusals": 4,
+      "nativePreviewIdentityRefusals": 4,
+      "scope": "Exported queue, actual application Wasm and actual exported paired persistence owners. IndexedDB/Web Locks and wire orchestration are fixtures. No automatic networking, accepting-user history adoption or installed review controls are inferred."
+    },
+    "additionalOverlappingProbeRepetitions": {"durableQueueRunsPassed": 2, "durableQueueTrialsPerRun": 4, "nativeBackedSdkRunsPassed": 1, "scope": "Repeated functional workflows, not unique feature counts or broad reliability certification"},
+    "existingAutomaticCommentsAndVersionsRegression": {
+      "passed": true,
+      "trials": 4,
+      "exactOfflineReopens": 16,
+      "localSaveRefusals": 8,
+      "localRetryWithoutNetworkAcceptance": 4,
+      "localReceiptSaveRefusals": 4,
+      "lostReplyRecoveries": 4,
+      "automaticHostRestarts": 4,
+      "guardedRemoteRestores": 4,
+      "leaseRefusals": 8,
+      "missingLocalSourceRefusals": 4,
+      "rollbackRefusals": 8,
+      "permissionTransitions": 4,
+      "unicodeAccounts": 1,
+      "syntheticDomSharedControlWorkflows": 1
+    }
+  },
+  "contracts": [
+    "The native proposal methods are pure: accepted document, comments, publication and original Undo/Redo do not change. Ready previews retain private native ownership and exact proposal identity; Pending/Conflict are explicit.",
+    "Public JavaScript preview summaries cannot authorize another proposal. The exact immutable native preparation ID and current source owner/publication are checked before an Accept intent queues.",
+    "The new proposal-only command union includes general and document operations without widening the existing ordinary SharedCommand/SharedDispatch contract. Document-only intents remain excluded from commands scope.",
+    "Native retained-receipt verification requires applied operations and recomputes the exact V2 author prefix and group, including earlier ends after later author operations. It imports nothing and does not prove server authority, durability, semantic boundaries or accepting-user history ownership.",
+    "The closed breditor/shared-suggestion-queue V1 record binds endpoint, authenticated principal, room, suggestion lane, document writer, independently pinned host effect writer and atomic-v2 transport. It stores no credentials or live authority grants.",
+    "The selected local cache is bounded to 256 rows, 1 MiB per packet and 32 MiB serialized total. It is not a silently truncated copy of the native server's 1024-proposal catalog; global feed discovery remains future work.",
+    "The borrowed document or paired review owner saves and flushes before its dependent suggestion cache transaction. This is ordered durability across separate databases, not a claim of one cross-database atomic transaction. Newer source with an older queue is recoverable; dependent receipts never lead their required source/effect.",
+    "A source owner replaced during asynchronous persistence refuses before queue commit. A single owner attachment and cross-database Web Lock protect each identity; failed close retains readable recovery and does not dispose the borrowed document/comment owner.",
+    "The original offline choice and the authenticated final server winner are separate values. Opposing retries recover the original winner; a failed receipt save remains locally unsaved and retries that same winner without another effect.",
+    "Accept receipts wait for their actual native effect before acknowledgement/persistence. Reopening with older missing local source or required effect refuses without resetting the retained queue.",
+    "Host-verified metadata entry points are integration boundaries, not authentication by arbitrary payload. Original ordinary document/comment selective histories remain independent, and imported host effects remain foreign.",
+    "Automatic owned decisions must share the existing authenticated author transport. Opening a second resume socket would steal its author lease and is not an acceptable adapter implementation."
+  ],
+  "verificationNotes": [
+    "The initial extra semantic probe omitted canonical root-property ordering and correctly failed schema admission. The fixture was corrected; production codecs and canonical admission were not relaxed.",
+    "Two pre-existing instance capability query methods needed scoped unused_self lint annotations under strict application-Wasm Clippy. Their instance semantics and wire values remain unchanged.",
+    "The existing vendored dependency unused HasIdSpan import warning is retained. Dependencies, lockfiles and vendor code are unchanged.",
+    "Qualification uses isolated native, application-Wasm and relay target directories. Unrelated existing document_presence.rs formatting is unchanged."
+  ],
+  "compatibility": {
+    "constructorDefaultsChanged": false,
+    "existingStoredFamiliesChangedMeaning": false,
+    "newDefaultNetworkCapabilities": false,
+    "dependenciesOrLockfilesChanged": false,
+    "vendorEngineChanged": false,
+    "hostResponsibilities": ["account authentication", "exclusive writer/fresh-ID allocation", "referenced asset admission and retention", "public-host admission isolation and deployment hardening"]
+  },
+  "remaining": [
+    "Automatic durable suggestion transport and bounded remote discovery, borrowing the existing author socket for owned Accept, with fresh authority, reconnect and lost-reply reconciliation.",
+    "Accepting-user ordinary selective Undo/Redo for authenticated host effects, one ordered history with invisible-item boundaries, cursor repair and exact replay. No adoption is claimed by this queue checkpoint.",
+    "Borrowed vanilla/React proposal/review controls, original-versus-winning outcomes and explicit pending/conflict/revision flows; clean-installed combined review acceptance.",
+    "Granular character-affine text rebasing and proposal revision; current affected-text witnesses remain conservative.",
+    "Final V1 qualification, production hosting/storage lifecycle, performance and physical browser/IME/accessibility work remain deferred. No historical WebKit repair or full feature-parity claim is made."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}

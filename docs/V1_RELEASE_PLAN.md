@@ -174,6 +174,19 @@ automatic durable SDK queues, proposal Wasm/controls, accepting-user Undo and
 clean-installed combined review acceptance remain active work. No V1 gate or
 publication status advances.
 
+The [suggestion client checkpoint](qualification/2026-10-17-rich-review-suggestion-client.json)
+adds pure native/Wasm/SDK proposals, complete typed semantic intents, opaque
+previews and native retained-effect receipts. A separate durable SDK queue
+survives offline reloads and aborted local/receipt saves beside exact paired
+document/comment journals. Four selection/history combinations retain original
+server winners, ordinary selective history and native host restart; mismatched
+preview IDs and borrowed-owner replacement refuse without a false save claim.
+All 457 canonical native tests, 64 relay tests, 291 SDK/editor tests and 36 runtime
+guards pass. The automatic comment/version SDK regression also passes with the
+new runtime. Queue transport is still explicitly driven by the probe; automatic
+owned-decision wiring, accepting-user Undo, controls and installed combined
+review acceptance remain functional work, not completed release gates.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

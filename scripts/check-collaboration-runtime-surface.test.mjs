@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods} from "./check-collaboration-runtime-surface.mjs";
+import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 test("clipboard interchange requires the complete separate pure capability",()=>{
  for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
 });
 function fixture(){
- const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},default:()=>{},initSync:()=>{}};
+ const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},default:()=>{},initSync:()=>{}};
  for(const name of documentOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of documentProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of documentClipboardMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -18,6 +18,8 @@ function fixture(){
  for(const name of reviewTransportMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of historicalReviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of versionMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of suggestionMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["summary_json","document_json"])module.SharedSuggestionPreparation.prototype[name]=()=>{};
  for(const name of ["document_json","version_json","comparison_json"])module.SharedVersionRestorePlan.prototype[name]=()=>{};
  for(const name of ["general_copy_version","copy_general_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_flow_paste_version","paste_general_flow_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
@@ -35,8 +37,13 @@ function fixture(){
  for(const name of ["general_range_version","enable_general_ranges","replace_general_range_text","replace_general_range_plain_text","replace_general_range_typing_text","general_checkpoint","general_typing_checkpoint","general_inline_paste_version","paste_general_inline_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_range_version","restore_general","restore_general_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
- return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
+ return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
+test("suggestions require complete native pure proofs and never a browser-side acceptance executor",()=>{
+ for(const name of suggestionMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing pure native suggestion capability/);}
+ for(const name of ["summary_json","document_json"]){const f=fixture();delete f.module.SharedSuggestionPreparation.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing opaque native suggestion preparation read/);}
+ for(const name of ["accept_document_suggestion","commit_document_suggestion_effect","prepare_document_suggestion_effect"]){const f=fixture();f.module.SharedEditorOwner.prototype[name]=()=>{};assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Browser must not bypass server finalization/);}
+});
 test("general Copy needs both its explicit version and native observation-scoped read",()=>{
  for(const name of ["general_copy_version","copy_general_clipboard"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native general Copy capability/);}
 });

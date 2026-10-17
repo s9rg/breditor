@@ -7,11 +7,11 @@ use super::{
 };
 use crate::Error;
 use loro::{ContainerID, ContainerType, IdSpan};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Integrated operation identity suitable for a relay's later durable acknowledgement.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WriterReceipt {
     /// Author authorized by the host, not selected by the payload.
     pub writer: String,

@@ -14,6 +14,95 @@ use std::fmt::Write;
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const A: &str = "9007199254740993";
 const B: &str = "9007199254740995";
+#[test]
+fn retained_v2_receipts_prove_old_foreign_ranges_without_importing_or_owning_history() -> Result {
+    use breditor_collaboration::rich_replica::{
+        WriterDependency, WriterReceipt, WriterReceiptRetention,
+    };
+    let (_, _, mut server, mut a, mut b) = room()?;
+    a.apply(vec![insert("p", "Accepted 日本 🙂 ")])?;
+    let first: Value = serde_json::from_str(&a.writer_groups_v2_guarded(&a.observe()?, "0")?)?;
+    let group = first["groups"][0].as_str().ok_or("V2 group")?;
+    let WriterGroupPreparation::Prepared(prepared) = server.prepare_writer_group_v2(A, group)?
+    else {
+        return Err("prepared group".into());
+    };
+    let receipt = prepared.receipt().clone();
+    let original: Value = batch(&a, "0")?;
+    let WriterGroupPreparation::Prepared(old) =
+        server.prepare_writer_group(A, original["groups"][0].as_str().ok_or("old group")?)?
+    else {
+        return Err("old prepared group".into());
+    };
+    let original_receipt = old.receipt().clone();
+    drop(old);
+    let before = b.checkpoint()?;
+    let observed = b.observe()?;
+    assert_eq!(
+        b.retained_writer_receipt_v2(&receipt)?,
+        WriterReceiptRetention::Pending {
+            missing: WriterDependency { writer: A.into(), counter: receipt.through.clone() },
+        }
+    );
+    assert_eq!(b.checkpoint()?, before);
+    b.check(&observed)?;
+    server.commit_writer_group(*prepared)?;
+    b.receive_frame(&server.update_frame()?)?;
+    assert_eq!(
+        b.retained_writer_receipt_v2(&receipt)?,
+        WriterReceiptRetention::Verified { receipt: receipt.clone() }
+    );
+    assert_eq!(b.undo_count(), 0);
+    let from = a.writer_clock_v2(A)?.through;
+    a.apply(vec![insert("caption", "Later same-author edit ")])?;
+    let second: Value = serde_json::from_str(&a.writer_groups_v2_guarded(&a.observe()?, &from)?)?;
+    let WriterGroupPreparation::Prepared(prepared) =
+        server.prepare_writer_group_v2(A, second["groups"][0].as_str().ok_or("second group")?)?
+    else {
+        return Err("second prepared".into());
+    };
+    server.commit_writer_group(*prepared)?;
+    b.receive_frame(&server.update_frame()?)?;
+    assert_ne!(b.writer_clock_v2(A)?.through, receipt.through);
+    let before = (b.checkpoint()?, b.update_frame()?, b.document_json().to_owned());
+    let observed = b.observe()?;
+    assert_eq!(
+        b.retained_writer_receipt_v2(&receipt)?,
+        WriterReceiptRetention::Verified { receipt: receipt.clone() }
+    );
+    assert!(
+        b.retained_writer_receipt_v2(&original_receipt).is_err(),
+        "V1 digests are not V2 proof"
+    );
+    for variant in 0..7 {
+        let mut altered = receipt.clone();
+        match variant {
+            0 => altered.from = altered.through.clone(),
+            1 => altered.from = "00".into(),
+            2 => altered.through = "01".into(),
+            3 => {
+                altered.prefix_digest =
+                    "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                        .into();
+            }
+            4 => {
+                altered.group_digest =
+                    "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                        .into();
+            }
+            5 => altered.writer = "0".into(),
+            _ => altered.group_digest = "not a digest".into(),
+        }
+        assert!(b.retained_writer_receipt_v2(&altered).is_err(), "variant {variant}");
+    }
+    let mut extra = serde_json::to_value(&receipt)?;
+    extra["principal"] = json!("claimed authority");
+    assert!(serde_json::from_value::<WriterReceipt>(extra).is_err());
+    assert_eq!((b.checkpoint()?, b.update_frame()?, b.document_json().to_owned()), before);
+    b.check(&observed)?;
+    assert_eq!(b.undo_count(), 0);
+    Ok(())
+}
 fn room() -> Result<(SharedRichProfile, String, RichReplica, RichReplica, RichReplica)> {
     let profile = SharedRichProfile::from_configuration_json(
         r#"{"format":"breditor/shared-rich-profile","formatVersion":1,"schema":{"name":"example/relay-groups","version":1},"extensions":[]}"#,

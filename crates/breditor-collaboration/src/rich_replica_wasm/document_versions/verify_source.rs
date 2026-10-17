@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 impl RichReplicaProbe {
     /// Separate native capability proving content against retained historical causal cuts.
     #[must_use]
+    #[allow(clippy::unused_self)] // Capability is intentionally queried on a live generated owner.
     pub fn document_version_source_version(&self) -> String {
         "1".into()
     }

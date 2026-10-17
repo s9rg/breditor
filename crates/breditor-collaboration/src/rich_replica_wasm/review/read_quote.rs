@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 impl RichReplicaProbe {
     /// Complete additive historical quote capability, not a change to review V1 packet meaning.
     #[must_use]
+    #[allow(clippy::unused_self)] // Capability is intentionally queried on a live generated owner.
     pub fn review_quote_version(&self) -> String {
         "1".into()
     }

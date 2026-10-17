@@ -7,6 +7,10 @@ export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presenc
 export type * from "./types.js";
 export type * from "./review_types.js";
 export type * from "./version_types.js";
+export type * from "./suggestion_types.js";
+export {SharedDocumentSuggestionPreview} from "./suggestion_preview.js";
+export {SharedSuggestionQueue} from "./suggestions/queue.js";
+export type * from "./suggestions/types.js";
 export {mountSharedReviewPanel} from "./review_panel/mount.js";
 export type {SharedReviewPanel,SharedReviewPanelCore,SharedReviewPanelOptions,SharedReviewVersionCatalog} from "./review_panel/types.js";
 export {SharedDocumentVersionRestorePlan} from "./version_plan.js";

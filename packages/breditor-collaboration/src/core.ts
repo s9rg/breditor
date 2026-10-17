@@ -7,6 +7,8 @@ import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
 import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
+import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention} from "./suggestion_types.js";
+import {SharedDocumentSuggestionPreview,nativeSuggestionPreview} from "./suggestion_preview.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
 export class SharedEditorError extends Error {
@@ -28,6 +30,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #reviewEnabled=false;#reviewRevision=0n;#reviewListeners=new Set<(snapshot:SharedReviewSnapshot)=>void>();
  readonly #reviewOwner=Object.freeze({});
  #versionPlans=new Set<SharedDocumentVersionRestorePlan>();
+ #suggestionPreviews=new Set<SharedDocumentSuggestionPreview>();
  constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
   const options=(args[0]??{}) as SharedEditorOptions<P>;
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
@@ -110,6 +113,24 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  prepareVersionRestore(packet:string,prefix:string,revision?:string):SharedDocumentVersionRestorePlan{this.#check(revision);if(this.#retired||this.#publishing)throw new SharedEditorError("version_preview_unavailable","Cannot prepare a restore while retired or publishing");const raw=this.#versionOwner().prepare_document_version_restore!(this.#observation,packet,prefix);let plan:SharedDocumentVersionRestorePlan;plan=new SharedDocumentVersionRestorePlan(this,raw,()=>this.#versionPlans.delete(plan));this.#versionPlans.add(plan);return plan;}
  /** Rust rejects a stale/foreign proof before publication. Current comment history is not restored. */
  applyVersionRestore(plan:SharedDocumentVersionRestorePlan):boolean{return this.#run("local",()=>this.#versionOwner().apply_document_version_restore!(nativeVersionPlan(this,plan)));}
+ /** Proposals always use Rust source witnesses and semantic previews, never a JavaScript AST diff. */
+ supportsDocumentSuggestions():boolean{const r=this.#live();return r.document_suggestions_version?.()==="1"&&[r.capture_document_suggestion,r.read_document_suggestion,r.verify_document_suggestion_source,r.prepare_document_suggestion,r.check_document_suggestion_preview,r.retained_writer_receipt_v2].every(f=>typeof f==="function");}
+ #suggestionOwner():SharedRustOwner{if(!this.supportsDocumentSuggestions())throw new SharedEditorError("suggestions_unavailable","Use complete matching native suggestion capture, preview and receipt reads");return this.#live();}
+ /** Pure capture, including read-only documents. Returned attribution still requires host authentication. */
+ captureSuggestion(title:string,author:string,createdAtMs:string,draft:SharedDocumentSuggestionDraft,revision?:string):string{this.#check(revision);return this.#suggestionOwner().capture_document_suggestion!(this.#observation,JSON.stringify({title,author,createdAtMs,draft}));}
+ readSuggestion(packet:string):SharedDocumentSuggestionInfo{return JSON.parse(this.#suggestionOwner().read_document_suggestion!(packet)) as SharedDocumentSuggestionInfo;}
+ verifySuggestionSource(packet:string):SharedDocumentSuggestionSource{return JSON.parse(this.#suggestionOwner().verify_document_suggestion_source!(packet)) as SharedDocumentSuggestionSource;}
+ /** A ready handle is source-bound, not an Accept command. Pending/conflicting native handles are released immediately. */
+ prepareSuggestion(packet:string,revision?:string):SharedDocumentSuggestionPreparation{
+  this.#check(revision);if(this.#retired||this.#publishing)throw new SharedEditorError("suggestion_preview_unavailable","Cannot prepare while retired or publishing");
+  const raw=this.#suggestionOwner().prepare_document_suggestion!(this.#observation,packet);let summary:SharedSuggestionPreparationSummary;
+  try{summary=JSON.parse(raw.summary_json()) as SharedSuggestionPreparationSummary;if(summary.kind!=="ready"&&summary.kind!=="pending"&&summary.kind!=="conflict")throw new SharedEditorError("suggestion_preview_invalid","Native preparation did not declare a result");}catch(error){raw.free();throw error;}
+  if(summary.kind!=="ready"){raw.free();return summary;}
+  let preview:SharedDocumentSuggestionPreview;preview=new SharedDocumentSuggestionPreview(this,raw,summary,()=>this.#suggestionPreviews.delete(preview));this.#suggestionPreviews.add(preview);return {kind:"ready",preview};
+ }
+ checkSuggestionPreview(preview:SharedDocumentSuggestionPreview,suggestionId?:string):void{const prepared=nativeSuggestionPreview(this,preview);this.#suggestionOwner().check_document_suggestion_preview!(prepared.raw,suggestionId??prepared.id);}
+ /** Checks native retained operations only; the caller must authenticate the server decision separately. */
+ retainedWriterReceiptV2(receipt:SharedWriterReceiptV2):SharedWriterReceiptRetention{return JSON.parse(this.#suggestionOwner().retained_writer_receipt_v2!(JSON.stringify(receipt))) as SharedWriterReceiptRetention;}
  /** Immutable for this facade's lifetime; recovery must select the same family explicitly. */
  selectionPolicy():P{this.#live();return this.#selectionPolicy as P;}
  supportsDocumentSelection():boolean{const raw=this.#live();return raw.document_selection_version?.()==="1"&&raw.document_typing_version?.()==="1"&&[raw.document_selection_enabled,raw.enable_document_selection,raw.observe_document,raw.document_view_json,raw.select_document,raw.copy_document_clipboard,raw.replace_document_plain_text,raw.replace_document_typing_text,raw.document_checkpoint,raw.document_typing_checkpoint].every(method=>typeof method==="function");}
@@ -248,5 +269,5 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   const error=new SharedEditorError("retired","The shared writer retired before queued remote admission");
   for(const entry of pending){entry.cleanup();entry.reject(error);}
  }
- dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const plan of [...this.#versionPlans])plan.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
+ dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const plan of [...this.#versionPlans])plan.dispose();for(const preview of [...this.#suggestionPreviews])preview.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
 }

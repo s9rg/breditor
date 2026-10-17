@@ -34,7 +34,7 @@ use `ESNext.Disposable`.
 
 The generated module exposes configured `SharedRichProfile` factories,
 `SharedEditorOwner`, opaque `SharedObservation` values, privately constructed
-`SharedVersionRestorePlan` proofs and initialization only.
+`SharedVersionRestorePlan` and `SharedSuggestionPreparation` proofs and initialization only.
 Its generated types have no public constructors for those classes. Fixed-schema
 probe constructors, exercise functions, raw engine import/export and unguarded
 research authoring methods are excluded from the application build. Use the
@@ -140,6 +140,34 @@ use the programmatic shared facade. Authenticated review synchronization and a
 separate shared version client are opt-in; suggestions and final combined
 installed/browser qualification remain open. See `docs/RICH_REVIEW.md` for the
 paired review relay contract and exact recovery requirements.
+
+### Proposed changes and durable choices
+
+`core.supportsDocumentSuggestions()` requires the complete matching native
+capture/source/preview/receipt pair. `captureSuggestion`, `readSuggestion`,
+`verifySuggestionSource` and `prepareSuggestion` are pure, including in read-only
+documents. Ready previews are disposable native-backed handles; check them with
+`checkSuggestionPreview` before use. Their frozen content remains readable after
+disposal, but the proof cannot be reused. Proposals do not change accepted content.
+
+`SharedSuggestionQueue.open({database, identity, storage})` borrows a durable
+document or paired review session. Pin its nonsecret identity from the
+authenticated suggestion lane and exact document writer; keep credentials and
+live roles elsewhere. `propose` retains an immutable native packet.
+`queueDecision` retains an offline choice; a new Accept needs a current preview
+for that exact proposal. `flush` saves source journals before the dependent queue.
+It does not claim server finalization, and the queue never closes the borrowed
+session. Close it before closing that session; failed close retains readable
+recovery and the cache lease for retry or explicit discard.
+
+Authenticated host integrations use the explicit `receiveVerifiedPublication`,
+`cacheVerifiedProposal` and `receiveVerifiedDecision` methods. An Accept receipt
+arriving before its native effect returns `waitingForDocument`; import actual
+catchup and retry instead of re-executing the proposal. Native V2 receipt checks
+prove retained operations, not account roles, server durability or Undo ownership.
+The server winner remains distinct from an opposite locally queued choice.
+Automatic queue transport, accepting-user Undo and proposal/review controls are
+still in progress. See `docs/RICH_REVIEW.md` for exact contracts and bounds.
 
 ### Shared named versions
 

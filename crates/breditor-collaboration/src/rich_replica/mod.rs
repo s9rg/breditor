@@ -141,4 +141,5 @@ pub use suggestions::{
 pub use ui_state::{PendingFormatsUpdate, SelectionUpdate};
 pub use writer_transport::{
     PreparedWriterGroup, WriterClock, WriterDependency, WriterGroupPreparation, WriterReceipt,
+    WriterReceiptRetention,
 };

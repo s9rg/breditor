@@ -26,9 +26,9 @@ mutating accepted content. The eventual accepted edit and final decision must
 share one durable transaction and a recoverable native publication. This decision
 contract is selected. Native proposal capture, historical source validation,
 guarded previews, staged effects, the opt-in native reference-host decision
-ledger and an explicitly negotiated reference socket lane are implemented below.
-Accepting-user history, automatic durable browser/SDK decision queues and paired
-review controls remain unfinished.
+ledger, an explicitly negotiated reference socket lane, native/Wasm proposal
+pairing and a durable SDK intent queue are implemented below. Accepting-user
+history, automatic queue transport and paired review controls remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -281,14 +281,95 @@ Known retries return the original winner, original device ownership and native
 receipt, including an opposite queued choice after reconnect.
 
 The existing bounded socket envelopes, connection/backpressure limits, native
-packet/page bounds and durable room fencing remain in force. This checkpoint
-uses native proposal-capture fixtures and actual application-Wasm receivers;
-it does not add proposal Wasm methods, an automatic SDK queue, persistence/UI
-integration or accepting-user Undo. Ordinary client Undo/Redo remains selective
+packet/page bounds and durable room fencing remain in force. The socket-only
+checkpoint uses native capture fixtures and actual application-Wasm receivers;
+the subsequent native/Wasm pairing and client queue follow below. Ordinary client Undo/Redo remains selective
 for that client's own edits and does not adopt the imported host effect. Host
 asset admission/retention and public-host isolation remain host responsibilities.
 See the [socket functional record](qualification/2026-10-17-rich-review-suggestion-relay.json)
 for the exact tested scope and remaining work.
+
+### Native proposal Wasm and SDK
+
+The complete additive `document_suggestions_version` V1 capability pairs pure
+capture, native packet/source reads, opaque preparation, exact preview checks
+and retained V2 receipt reads. Earlier owners report it unavailable; the SDK
+does not derive a JavaScript document diff or silently execute a proposal as an
+ordinary edit. Read-only document owners may capture and preview. The original
+ordinary-dispatch DTO is unchanged: proposal-specific types separately cover
+general text, paragraph/flow operations and explicit whole-document replacement,
+clipboard, formatting and layout commands. Inner strict JSON intents remain
+strings so native admission can still reject duplicate fields.
+
+`SharedSuggestionPreparation` has no public native constructor. The SDK returns
+Pending/Conflict as detached values and immediately releases their native
+handles. Ready returns a `SharedDocumentSuggestionPreview` with frozen admitted
+content, semantic changes and asset references. The source owner disposes any
+remaining handles on disposal; frozen reads remain readable. Native checking
+binds the exact live publication, owner and proposal ID, not the preview's public
+JavaScript summary method. A preview for one proposal cannot queue another
+proposal's Accept, even if its displayed summary is replaced.
+
+`retained_writer_receipt_v2` proves a descriptive receipt's exact original
+operation range and prefix using native V2 lineage. It works after later edits
+by that author, returns Pending when required operations are not yet applied,
+and refuses different retained operations. It imports nothing and changes no
+publication, native roots or history. This is not account authentication, server
+durability, a semantic-group boundary proof or accepting-user Undo ownership.
+
+### Durable client suggestion queue
+
+`SharedSuggestionQueue` borrows the existing durable document or paired review
+session. Its separate closed `breditor/shared-suggestion-queue` V1 record retains
+exact immutable packets, publication intents, desired decisions and original
+authenticated outcomes. Native journals are saved first; only then is the
+dependent queue transaction committed. This is ordered dependent storage, not a
+single transaction spanning the source and queue databases. A crash can leave a
+newer source journal and an older queue; it cannot make a queue acknowledgment
+depend on a native effect that was never saved.
+
+Reopening validates the exact native writer/policy, proves every local packet's
+historical source, and verifies every retained Accept effect against native
+operations. A valid but older source owner cannot reset or open the newer queue.
+The queue pins its borrowed owner and refuses replacement both before mutation
+and after asynchronous source persistence. Its lock excludes a second mutation
+owner even when it uses a different database name. Credentials and live grants
+are absent; cached attribution never restores current permission or proves fresh
+server authority.
+
+`propose` and `queuePacket` retain one original source/title/time and never
+recapture on retry. `queueDecision` records a choice without changing accepted
+content or either history. A new Accept intent requires a current native preview
+for that exact packet. Duplicate choices retain their original queue time;
+changing an active choice requires explicitly stopping retries first. Stopping
+retries does not withdraw a request the server already received. An opposite
+server winner remains distinct from the locally requested choice.
+
+The host integration supplies authenticated publication and decision metadata to
+`receiveVerifiedPublication`, `cacheVerifiedProposal` and
+`receiveVerifiedDecision`. The latter returns `waitingForDocument` without
+persisting a final Accept when its native effect is missing. After actual catchup,
+source journals are saved before the final metadata. A failed queue save may
+leave the server outcome visible in memory, but `localSaved` stays false. Exact
+retry/reopen retains the old durable intent and reconciles the server's original
+winner rather than executing its commands again.
+
+Failed close retires queue mutations while preserving readable recovery and its
+lease for retry or explicit discard. Closing the queue never closes or disposes
+the borrowed native owner. Local retry means local persistence only, not network
+acceptance. The cache retains at most 256 packets, each at most 1 MiB, under a
+32 MiB serialized-record budget. This is a local packet/intent cache, not a
+reduction of the host's 1,024-proposal catalog. Explicit eviction does not delete
+a proposal or revoke a finalized server decision.
+
+The [client functional record](qualification/2026-10-17-rich-review-suggestion-client.json)
+combines actual application Wasm, this exported queue, paired native journals and
+the authenticated durable host. Wire driving and IndexedDB/Web Locks remain
+fixtures. Automatic synchronization must share the existing document author's
+socket for owned Accept rather than resuming and stealing that writer on another
+connection. That adapter, accepting-user history, borrowed vanilla/React controls
+and clean-installed combined review acceptance remain active work. Host-owned
+assets and explicit conversion-loss policies are unchanged.
 
 ## Durable comments and anchors
 

@@ -32,7 +32,7 @@ async function until(predicate) {
   }
   throw Error("Timed out waiting for suggestion notification");
 }
-export async function probeSuggestionRelay(directory, executable) {
+export async function probeSuggestionRelay(directory, executable, options = {}) {
   const bytes = readFileSync(resolve(directory, "breditor_shared_bg.wasm"));
   const wasm = await import(pathToFileURL(resolve(directory, "breditor_shared.js")));
   await wasm.default({module_or_path: bytes});
@@ -49,6 +49,7 @@ export async function probeSuggestionRelay(directory, executable) {
     exactClientRestores: 0, ordinaryUndoRedoWorkflows: 0, observerAcceptRefusals: 0,
     fullCapabilityHandshakes: 0, liveReadRevocationRefusals: 0, serverMergeImports: 0,
     fixtureQueuedOfflineDecisionReplays: 0};
+  let sdkCaptures = 0, sdkSourceStates = 0, sdkRetainedReceipts = 0;
   try {
     for (const natural of [false, true]) {
       const temporary = mkdtempSync(join(tmpdir(), "breditor-suggestion-socket-"));
@@ -76,6 +77,27 @@ export async function probeSuggestionRelay(directory, executable) {
         return {wire, auth};
       };
       const capture = (frame, author, title, commands) => {
+        if (options.proposalCapture === "wasm-sdk") {
+          const source = facade(profile.join_frame("room", "900", frame));
+          try {
+            assert.equal(source.supportsDocumentSuggestions(), true);
+            source.setReadOnly(true);
+            const before = [source.checkpointJson(), source.updateFrame(), source.documentJson()];
+            const packet = source.captureSuggestion(title, author, "1792200000000", draft(commands));
+            const info = source.readSuggestion(packet), verified = source.verifySuggestionSource(packet);
+            assert.equal(info.title, title); assert.equal(info.author, author);
+            assert.equal(verified.kind, "verified"); assert.deepEqual(verified.info, info);
+            const prepared = source.prepareSuggestion(packet); assert.equal(prepared.kind, "ready");
+            const preview = prepared.preview, frozen = preview.documentJson();
+            source.checkSuggestionPreview(preview); assert.deepEqual(preview.summary().suggestion, info);
+            assert.deepEqual([source.checkpointJson(), source.updateFrame(), source.documentJson()], before);
+            source.select({kind: "node", block: "image-block"});
+            assert.throws(() => source.checkSuggestionPreview(preview), /stale or foreign/);
+            assert.equal(preview.documentJson(), frozen); preview.dispose(); preview.dispose();
+            assert.throws(() => source.checkSuggestionPreview(preview), /disposed/);
+            sdkCaptures++; return packet;
+          } finally { source.dispose(); }
+        }
         const framePath = join(temporary, "capture-frame.json"), draftPath = join(temporary, "capture-draft.json");
         save(framePath, frame); save(draftPath, JSON.stringify(draft(commands)));
         return execFileSync(executable, ["capture", paths[1], framePath, author, title, draftPath],
@@ -152,8 +174,15 @@ export async function probeSuggestionRelay(directory, executable) {
         const accepted = await decide(alice, pendingId);
         assert.equal(accepted.decision.acceptingWriter, ar.lease.writer);
         assert.equal(accepted.decision.effect.writerGroup.writer, "18446744073709551614");
+        if (options.proposalCapture === "wasm-sdk") {
+          assert.equal(a.retainedWriterReceiptV2(accepted.decision.effect.writerGroup).kind, "pending");
+        }
         counts.ownedAcceptWorkflows++;
         await a.receiveFrame((await alice.request({kind: "sync"})).frame);
+        if (options.proposalCapture === "wasm-sdk") {
+          assert.deepEqual(a.retainedWriterReceiptV2(accepted.decision.effect.writerGroup),
+            {kind: "verified", receipt: accepted.decision.effect.writerGroup}); sdkRetainedReceipts++;
+        }
         assert.match(a.documentJson(), /Offline alt/); assert.match(a.documentJson(), /breditor\/heading/);
         assert.deepEqual([a.view().undoDepth, a.view().redoDepth], ownHistory); counts.unchangedClientHistory++;
         await flush(a, alice); counts.offlineEditsPreserved++;
@@ -192,6 +221,10 @@ export async function probeSuggestionRelay(directory, executable) {
         const through = a.writerClockV2(ar.lease.writer).through;
         a.dispatch({commands: [insert("p", "Offline source ")]});
         const offline = capture(a.updateFrame(), "alice", "Depends on offline source", [insert("p", "Pending proposal ")]);
+        if (options.proposalCapture === "wasm-sdk") {
+          const before = b.checkpointJson(); assert.equal(b.prepareSuggestion(offline).kind, "pending");
+          assert.equal(b.checkpointJson(), before); sdkSourceStates++;
+        }
         const beforePending = readFileSync(paths[0]); await publish(alice, offline, "pending");
         assert.deepEqual(readFileSync(paths[0]), beforePending); counts.missingSources++;
         await flush(a, alice, through); await publish(alice, offline);
@@ -201,6 +234,11 @@ export async function probeSuggestionRelay(directory, executable) {
         await decide(bob, JSON.parse(offline).id, "accept", "conflict");
         assert.deepEqual(readFileSync(paths[0]), beforeConflict);
         assert.equal((await reader.request({kind: "suggestionRead", binding, suggestionId: JSON.parse(offline).id})).entry.decision, null);
+        if (options.proposalCapture === "wasm-sdk") {
+          await b.receiveFrame((await bob.request({kind: "sync"})).frame);
+          const before = b.checkpointJson(); assert.equal(b.prepareSuggestion(offline).kind, "conflict");
+          assert.equal(b.checkpointJson(), before); sdkSourceStates++;
+        }
         await decide(reader, JSON.parse(offline).id, "reject"); counts.conflictsRemainPending++;
         // Two real sockets race; a lost/opposing reply is the same original winner forever.
         const frame = (await alice.request({kind: "sync"})).frame;
@@ -228,6 +266,12 @@ export async function probeSuggestionRelay(directory, executable) {
           assert.ok(core.view().tables[0].cells.some(cell => cell.columnSpan === 2));
         }
         assert.equal(a.documentJson(), b.documentJson()); counts.serverMergeImports++;
+        if (options.proposalCapture === "wasm-sdk") {
+          assert.deepEqual(b.retainedWriterReceiptV2(accepted.decision.effect.writerGroup),
+            {kind: "verified", receipt: accepted.decision.effect.writerGroup});
+          assert.throws(() => b.retainedWriterReceiptV2({...accepted.decision.effect.writerGroup,
+            prefixDigest: `sha256:${"f".repeat(64)}`}), /lineage differs/); sdkRetainedReceipts++;
+        }
         const replayFrame = (await alice.request({kind: "sync"})).frame;
         const replayPage = (await reader.request({kind: "suggestionSync", binding, cursor: null})).page;
         assert.ok(!legacy.events.some(event => event.kind === "documentSuggestionsChanged"));
@@ -268,8 +312,12 @@ export async function probeSuggestionRelay(directory, executable) {
     }
   } finally { profile.free(); }
   for (const [name, count] of Object.entries(counts)) assert.equal(count, 2, name);
+  if (options.proposalCapture === "wasm-sdk") {
+    assert.equal(sdkCaptures, 8); assert.equal(sdkSourceStates, 4); assert.equal(sdkRetainedReceipts, 4);
+  }
   return {format: "breditor/suggestion-relay-functional-probe", formatVersion: 1,
     nativeRelaySha256: hash(readFileSync(executable)), sharedWasmSha256: hash(bytes), ...counts, passed: true,
+    proposalCapture: options.proposalCapture ?? "native-fixture", sdkCaptures, sdkSourceStates, sdkRetainedReceipts,
     scope: "Actual native source-proven proposals and durable authenticated WebSocket host, with actual application Wasm clients under explicit/natural history. Exact writer-owned Accept, immutable packets, offline source retry, ordinary offline edit retention, conflict/Reject, races, original-winner retry, independent live rights and exact restart. Explicit fixture, not automatic SDK queues, accepting-user Undo, UI, physical browser or production qualification."};
 }
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
