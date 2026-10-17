@@ -3,6 +3,7 @@ import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewPolicy,SharedReviewSnapshot,SharedReviewTarget} from "../review_types.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsState,SharedDocumentVersionStatus} from "../versions/types.js";
+import type {SharedSuggestionPanelOptions} from "../suggestion_panel/types.js";
 /** A borrowed native facade, not another editor owner. */
 export type SharedReviewPanelCore=Pick<SharedRichEditor<SharedSelectionPolicy>,"view"|"reviewSnapshot"|"subscribeReview"|"captureReviewAnchor"|"dispatchReview"|"undoReview"|"redoReview"|"compareVersion"|"prepareVersionRestore"|"applyVersionRestore">&Partial<Pick<SharedRichEditor<SharedSelectionPolicy>,"supportsReviewQuotes"|"readReviewQuote">>;
 /** Borrowed local or shared catalog. Optional remote methods do not change local synchronous use. */
@@ -22,6 +23,8 @@ export interface SharedReviewPanelOptions {
  /** Explicit target override; null means no selected target. No selection never means the document. */
  target?:()=>SharedReviewTarget|null;
  versions?:SharedReviewVersionCatalog;
+ /** Optional borrowed suggestion controls. They must reference this exact native core. */
+ suggestions?:SharedSuggestionPanelOptions;
  /** Permanently consume a fresh namespace on every restore preview, including refusal/discard. */
  allocatePrefix?:()=>string;
  nowMs?:()=>string;onError?:(error:unknown)=>void;

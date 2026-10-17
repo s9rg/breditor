@@ -50,6 +50,8 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
  subscribe(listener:()=>void):()=>void{if(this.#closed)throw new SharedRelayError("closed");this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  /** Detached live metadata only. Cached packet/intent recovery remains in the borrowed queue. */
  entries():readonly SuggestionEntry[]{return structuredClone([...this.#entries.values()]);}
+ /** Exact borrowed queue/core pairing for UI adapters; never transfers either owner. */
+ checkQueue(queue:SharedSuggestionQueue<P>):void{if(this.#closed||queue!==this.#queue)throw new SharedRelayError("suggestion_sync_queue_mismatch");this.#relay.checkSuggestionQueue(queue.core,this.#identity);}
  #effectivePermissions(input:SharedSuggestionPermissions):SharedSuggestionPermissions;
  #effectivePermissions(input:SharedSuggestionPermissions|null):SharedSuggestionPermissions|null;
  #effectivePermissions(input:SharedSuggestionPermissions|null):SharedSuggestionPermissions|null{return input&&this.#relay.suggestionDecisionMode==="observer"?{...input,canAccept:false}:input;}

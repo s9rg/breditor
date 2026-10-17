@@ -256,6 +256,21 @@ defaults remain unchanged. Borrowed vanilla/React suggestion controls and
 proposal revision/granular rebasing remain functional work; no release gate or
 publication status advances.
 
+The [suggestion-controls checkpoint](qualification/2026-10-17-rich-review-suggestion-controls-sdk.json)
+adds borrowed standalone/combined vanilla and React proposal controls with eight
+separately named native-intent builders. Pure previews, offline choices, original
+server outcomes and local receipt durability remain distinct. Failed persistence
+retries retain the immutable packet; stale loads/previews refuse without clearing
+drafts. All six history policies pass with actual Wasm, including 48 stock-action
+captures/previews/final owned Accepts, mixed comment/version controls and stable
+React drafts. Installed public SDK/React entries repeat this functional matrix;
+permanent Reader controls also create/preview/Reject under all six policies without
+authoring. All 340 SDK/editor tests and 47 runtime/build guards pass. Native/Wasm,
+saved formats and package versions remain unchanged. Native protected-range
+namespace planning, proposal revisions and granular character-affine rebasing
+remain functional work; broad physical-browser and production qualification
+remain deferred. No V1 gate or publication status advances.
+
 The original audit/push baseline was
 [`85b21d1`](https://github.com/s9rg/breditor/commit/85b21d1b21187dfc999decf2754686bab8d05eef),
 pushed to [s9rg/breditor](https://github.com/s9rg/breditor) on October 15, 2026.

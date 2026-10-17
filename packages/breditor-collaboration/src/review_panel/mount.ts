@@ -3,6 +3,9 @@ import type {PanelContext,SharedReviewPanel,SharedReviewPanelCore,SharedReviewPa
 import {button,field,idKey,sameGuard} from "./dom.js";
 import {threadCard} from "./thread_card.js";
 import {versionControls} from "./version_controls.js";
+import {mountSharedSuggestionPanel} from "../suggestion_panel/mount.js";
+import type {SharedSuggestionPanelCore} from "../suggestion_panel/types.js";
+function requireSuggestionCore(core:SharedReviewPanelCore):asserts core is SharedReviewPanelCore&SharedSuggestionPanelCore{const candidate:Partial<SharedSuggestionPanelCore>=core;for(const method of ["subscribe","supportsDocumentSuggestions","prepareSuggestion","checkSuggestionPreview"] as const)if(typeof candidate[method]!=="function")throw Error("Suggestion controls require matching native proposal capabilities");}
 /** Borrow one enabled native review facade; this mount never opens, replaces or closes a writer. */
 export function mountSharedReviewPanel(host:HTMLElement,core:SharedReviewPanelCore,options:SharedReviewPanelOptions):SharedReviewPanel {
  const initial=core.reviewSnapshot(),d=host.ownerDocument,element=d.createElement("section"),heading=d.createElement("h2"),status=d.createElement("p"),discussions=d.createElement("div"),compose=field(d,"New comment");
@@ -14,16 +17,16 @@ export function mountSharedReviewPanel(host:HTMLElement,core:SharedReviewPanelCo
  const useSelection=button(d,"Use editor selection",()=>capture(context.target())),useDocument=button(d,"Use document",()=>capture({kind:"document"}));
  const post=button(d,"Post comment",()=>context.run(()=>{if(!anchorJson||!guard)throw Error("Choose a comment target first");core.dispatchReview({kind:"create_thread",data:{anchorJson,body:compose.input.value}},guard);compose.input.value="";anchorJson=undefined;guard=undefined;targetStatus.textContent="Choose a target for the next comment.";}));
  const undo=button(d,"Undo comment",()=>context.run(()=>{core.undoReview(core.reviewSnapshot());})),redo=button(d,"Redo comment",()=>context.run(()=>{core.redoReview(core.reviewSnapshot());}));
- const cards=new Map<string,ReturnType<typeof threadCard>>();let versions:ReturnType<typeof versionControls>;
+ const cards=new Map<string,ReturnType<typeof threadCard>>();let versions:ReturnType<typeof versionControls>,suggestions:ReturnType<typeof mountSharedSuggestionPanel>|undefined;
  function refresh(){if(closed)return;context.snapshot=core.reviewSnapshot();
   const allowed=context.commentAllowed();useSelection.disabled=!allowed||context.target()===null;useDocument.disabled=!allowed;post.disabled=!allowed||!anchorJson||!guard||!sameGuard(guard,context.snapshot)||!compose.input.value.trim();
   undo.disabled=!allowed||context.snapshot.view.undoDepth===0;redo.disabled=!allowed||context.snapshot.view.redoDepth===0;
   if(guard&&!sameGuard(guard,context.snapshot))targetStatus.textContent="The captured publication changed. Choose the target again; your draft is retained.";
   const keep=new Set<string>();for(const next of context.snapshot.view.threads){const key=idKey(next.thread.id);keep.add(key);let card=cards.get(key);if(!card){card=threadCard(context);cards.set(key,card);discussions.append(card.element);}card.render(next);}
-  for(const [key,card]of cards)if(!keep.has(key)){card.element.remove();cards.delete(key);}versions?.refresh();
+  for(const [key,card]of cards)if(!keep.has(key)){card.element.remove();cards.delete(key);}versions?.refresh();suggestions?.refresh();
  }
  compose.input.oninput=refresh;
- try{versions=versionControls(context);element.append(heading,compose.label,useSelection,useDocument,targetStatus,post,undo,redo,discussions);if(versions)element.append(versions.element);element.append(status);refresh();}catch(error){versions?.dispose();throw error;}
- const unsubscribe=core.subscribeReview(()=>{try{refresh();}catch(error){context.report(error);}});host.append(element);
- return {element,refresh,dispose(){if(closed)return;closed=true;unsubscribe();versions?.dispose();element.remove();cards.clear();}};
+ try{versions=versionControls(context);element.append(heading,compose.label,useSelection,useDocument,targetStatus,post,undo,redo,discussions);if(versions)element.append(versions.element);if(options.suggestions){requireSuggestionCore(core);suggestions=mountSharedSuggestionPanel(element,core,options.suggestions);}element.append(status);refresh();}catch(error){suggestions?.dispose();versions?.dispose();throw error;}
+ let unsubscribe:()=>void;try{unsubscribe=core.subscribeReview(()=>{try{refresh();}catch(error){context.report(error);}});host.append(element);}catch(error){suggestions?.dispose();versions?.dispose();element.remove();throw error;}
+ return {element,refresh,dispose(){if(closed)return;closed=true;unsubscribe();suggestions?.dispose();versions?.dispose();element.remove();cards.clear();}};
 }

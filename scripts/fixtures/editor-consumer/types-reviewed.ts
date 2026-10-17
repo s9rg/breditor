@@ -30,3 +30,14 @@ async function reader(options:Omit<SharedSuggestionQueueOptions,"identity">,iden
  registerSharedSuggestionObserver({endpoint:identity.endpoint,room:identity.room,principal:identity.principal,getToken:()=>"token",saveIdentity(){}});
 }
 void reader;
+import {mountSharedSuggestionPanel,createSharedSuggestionPanelSource,mountSharedReviewPanel,standardSharedSuggestionActions,type SharedSuggestionSync,type SharedSuggestionPanelOptions,type SharedSelectionPolicy,type SharedSuggestionPanelCore} from "@breditor/editor/collaboration";
+function proposalControls(host:HTMLElement,queue:SharedSuggestionQueue<SharedSelectionPolicy>,sync:SharedSuggestionSync<SharedSelectionPolicy>):void{
+ const source=createSharedSuggestionPanelSource(queue,sync),options:SharedSuggestionPanelOptions={source,actions:standardSharedSuggestionActions,allocate:kind=>`fresh-${kind}`,policy:()=>({canPropose:true,canAccept:true,canReject:true})};
+ const core:SharedSuggestionPanelCore=queue.core,panel=mountSharedSuggestionPanel(host,core,options);panel.refresh();panel.dispose();
+ mountSharedReviewPanel(host,queue.core,{policy:()=>({principal:"alice",access:"comment"}),suggestions:options});
+ // @ts-expect-error Strings cannot substitute for current opaque native previews.
+ source.queueDecision("id","accept","1","snapshot JSON");
+ // @ts-expect-error No accepted-document dispatcher is provided to pure action builders.
+ options.actions?.[0]?.draft({core:queue.core,view:core.view(),values:{},model:{} as never,allocate:kind=>kind});
+}
+void proposalControls;

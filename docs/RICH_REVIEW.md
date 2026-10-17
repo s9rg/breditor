@@ -31,7 +31,8 @@ pairing, a durable SDK intent queue and automatic synchronization on the existin
 document-author socket are implemented below. Recovered accepting-user history
 has an explicit native/Wasm/SDK contract and paired durable storage. Permanent
 Reader proposal/Reject synchronization uses a separate non-authoring transport.
-Paired suggestion controls and granular rebasing remain unfinished.
+Borrowed vanilla/React controls expose those proposals and decisions alongside
+comments and versions. Proposal revisions and granular rebasing remain unfinished.
 
 ### Native proposal intents and previews
 
@@ -275,8 +276,8 @@ covers exact recovery across all six policies, local/accepted/local ordering,
 peer text, invisible items, overlapping receipts, once-only adoption, policy
 upgrades, read-only refusal and recreated directional selections. The following
 explicit Wasm/SDK pairing saves adopted source history before persisting its
-dependent final receipt. Proposal revision/rebasing,
-borrowed vanilla/React controls remain functional work.
+dependent final receipt. Proposal revision/rebasing remains functional work;
+borrowed vanilla/React controls are described below.
 
 ### Wasm and SDK owned history
 
@@ -557,7 +558,7 @@ the authenticated durable host. Wire driving and IndexedDB/Web Locks remain
 fixtures. The automatic adapter below shares the existing document author's
 socket for owned Accept. Its original default leaves effects foreign; the
 explicit owned-history pairing above adds accepting-user Undo and installed mixed
-SDK acceptance. Borrowed vanilla/React suggestion controls remain active work.
+SDK acceptance. Borrowed vanilla/React suggestion controls are described below.
 Host-owned assets and explicit conversion-loss policies are unchanged.
 
 ### Automatic suggestion synchronization for document authors
@@ -612,8 +613,8 @@ Reject, opposing outcomes, failed local/receipt saves, lost decision replies,
 live grants, host restart and no idle polling. IndexedDB/Web Locks and transport
 loss are fixtures. This original default leaves imported effects foreign to
 ordinary Undo; accepting-user history uses the separate opt-in pairing above.
-Proposal controls remain open; the separate owned-history checkpoint covers
-installed mixed SDK acceptance.
+The separate owned-history checkpoint covers installed mixed SDK acceptance;
+borrowed suggestion controls are described below.
 
 ### Automatic suggestions for permanent observers
 
@@ -675,13 +676,106 @@ lost Reject replies, failed source saves, host restart and idle behavior pass.
 Clean-installed acceptance repeats both the six-policy mixed owned-history
 workflow and this six-policy observer workflow through installed public editor
 exports and packaged Wasm, with strict consumer type checks. Browser storage,
-locks and transport failures remain fixtures; suggestion controls and granular
-rebasing remain functional work.
+locks and transport failures remain fixtures. Suggestion controls are described
+below; granular rebasing remains functional work.
 
 ```sh
 node scripts/probe-suggestion-observer-sdk.mjs target/promoted-shared-web \
   target/owned-history-relay-native/release/examples/suggestions_functional
 node scripts/check-suggestion-observer-installed.mjs \
+  target/owned-history-relay-native/release/examples/suggestions_functional
+```
+
+### Borrowed suggestion controls
+
+`createSharedSuggestionPanelSource(queue, sync?)` binds the exact native core,
+durable queue and optional existing synchronization adapter. `checkQueue` rejects
+a different queue instance; neither matching labels nor a copied source object
+transfer its lifetime or authority. The source helper opens or closes no owner,
+lease, database or socket. A local-only panel can operate without networking;
+remote discovery and packet loading require the explicitly borrowed adapter.
+
+`mountSharedSuggestionPanel` creates standalone vanilla controls. The optional
+`SharedReviewPanelOptions.suggestions` places those same controls beside threaded
+comments and named versions without replacing their mounts or drafts.
+`BreditorSharedSuggestionPanel` exposes the standalone controls through the React
+collaboration entry point; `BreditorSharedReviewPanel` accepts the combined
+configuration. Ordinary parent renders preserve the mounted panel, title/action
+drafts and native preview. A new core or `sessionKey` explicitly replaces controls,
+not their borrowed source or pending requests.
+
+Eight standard action builders produce original typed native intents: text
+replacement, formatting, headings, list wrapping, appended table rows/columns,
+image descriptions and captions. Each builder has a separately named source
+file. Rendering projections only locate selected native identities; they never
+construct an accepted transaction, infer DOM offsets or upload an AST snapshot.
+The text builder emits the original same-flow range command. Protected
+cross-structure ranges need an explicit native general-range draft with its exact
+fresh floor identities; the stock builder does not guess those identities or
+flatten tables/captions. Native capture refuses unsupported placement, schema,
+scalar boundaries, no-op drafts and original command/packet budgets atomically.
+
+Hosts can supply up to 64 uniquely named typed composer actions, each with up to
+16 fields. The panel snapshots their configuration for its lifetime. A builder
+receives a read-only native view projection, entered values and the host's fresh
+ID allocator, not an accepted-document dispatcher. Missing structural allocation
+refuses rather than recycling or inventing IDs. Names consumed by refused or
+discarded drafts remain consumed. Custom format properties, structural edits and
+document-scope intents use the existing native draft contract; this UI is not a
+new JSON protocol or arbitrary inverse executor.
+
+Creating a suggestion performs pure native capture and saves the original packet;
+accepted content and document history remain unchanged. Preview uses the opaque
+native preparation and displays proposed document/semantic changes separately.
+The default preview is literal JSON, including asset references; it neither
+interprets user HTML nor fetches asset bytes. Accept requires that same current
+owner-bound preview and selected suggestion. A changed editor publication, choice
+or final decision disposes the proof. An asynchronous remote load must still match
+its captured source and choice before creating a preview. Pending history and
+native conflict results stay explicit; they do not become a plaintext fallback.
+
+Accept/Reject buttons queue choices and save locally. Only authenticated server
+finalization changes accepted content. The panel displays requested choice,
+publication status, original final winner and local receipt durability separately,
+including an opposite winner or a final outcome whose native effect is still
+missing locally. A locally saved older packet cannot count as a saved final
+receipt. Active decision retries must be stopped before switching choices.
+Stopping retries cannot cancel a request already received by the server.
+
+Publication retry requeues the original immutable packet; it does not recapture
+its source, title, time or fresh IDs. A failed save keeps the packet and draft,
+disables duplicate creation and offers local persistence retry separately from
+network synchronization. A native-invalid/no-op draft remains editable without
+requiring an unrelated storage retry. Title and per-action field drafts survive
+metadata updates and action switching; selection fields honor both input and
+change events.
+
+Live permissions drive display affordances. Offline panels may use an explicit
+host callback or their in-memory last observed rights, neither of which grants
+server authority. Read-only owners can still propose/preview and queue Reject;
+Accept stays unavailable. Every native capture, preview and decision retains its
+original source/owner checks, and the server independently checks current grants.
+Unmount disposes only UI subscriptions and native preview handles. Already
+queued choices, transmitted requests and pending saves remain host-owned; no
+source, lease, network adapter or asset store is silently closed or erased.
+
+The [suggestion-controls checkpoint](qualification/2026-10-17-rich-review-suggestion-controls-sdk.json)
+records 340 SDK/editor tests, strict public vanilla/React consumer types and 47
+runtime/build guards. Actual application Wasm exercises all eight stock actions
+under all six scope/grouping policies: capture and preview are pure, offline
+choices do not mutate accepted content, and server-finalized Accepts retain owned
+history. The same workflows run through clean-installed local archives alongside
+comments and named versions. A separate six-policy permanent Reader UI matrix
+creates, previews and Rejects without author registration, document submission
+or a nonzero authored prefix. Synthetic DOM/storage/locks and an authenticated
+native loopback host establish functional integration, not physical browser or
+V1 release qualification. Protected-range namespace planning, proposal revisions
+and granular character-affine rebasing remain functional work.
+
+```sh
+node scripts/probe-suggestion-controls-sdk.mjs target/promoted-shared-web \
+  target/owned-history-relay-native/release/examples/suggestions_functional
+node scripts/check-suggestion-controls-installed.mjs \
   target/owned-history-relay-native/release/examples/suggestions_functional
 ```
 

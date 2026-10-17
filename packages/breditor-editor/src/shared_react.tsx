@@ -5,6 +5,7 @@ import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextP
 import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-content";
 export {BreditorSharedDocumentEditor,type BreditorSharedDocumentEditorProps,type BreditorSharedDocumentEditorHandle} from "./shared_document_react.js";
 export {BreditorSharedReviewPanel,type BreditorSharedReviewPanelProps,type BreditorSharedReviewPanelHandle} from "./shared_review_react.js";
+export {BreditorSharedSuggestionPanel,type BreditorSharedSuggestionPanelProps,type BreditorSharedSuggestionPanelHandle} from "./shared_suggestion_react.js";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;

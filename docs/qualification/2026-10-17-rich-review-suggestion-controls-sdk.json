@@ -1,0 +1,121 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-17",
+  "baseCommit": "8a4d80ed826b3ee0ce73b9b71ad6fa2ca4809925",
+  "scope": "Borrowed standalone/paired vanilla and React suggestion controls: typed native proposal builders, pure previews, offline choices, original server outcomes and independent local receipt status. Actual application Wasm and installed public SDK/React entry points cover mixed comments/versions and permanent Reader controls. Protected-range namespace planning and proposal revision/rebasing remain functional work; this is not a V1 release.",
+  "artifacts": {
+    "applicationWasmSha256": "a07fff8be589fbc9d2909f37b04b5a4607f9f9dc2c61721d66403fff6c98f196",
+    "suggestionHostSha256": "767896e964d02f0c89685b99668a3499ffdfc02f05d2c2f8f24d11428944840e",
+    "javascriptWasmExports": 8,
+    "wasmExports": 191,
+    "nativeSourcesChanged": false,
+    "wasmBytesChanged": false,
+    "persistedFormatsOrProtocolTagsChanged": false,
+    "verifiedLocalArchiveSha256": {
+      "breditor-browser-0.3.0-alpha.22.tgz": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "breditor-experimental-rich-content-0.3.0-alpha.22.tgz": "72b2905e2b5d1f8ca83278b34a0b30e5ec1a3b939dac23730851d0abe51b2981",
+      "breditor-collaboration-0.3.0-alpha.22.tgz": "ed319cfa9d37763ec93782c1289a29bec05e72b671a33edac83980a153685f9e",
+      "breditor-editor-0.3.0-alpha.22.tgz": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43"
+    }
+  },
+  "verification": {
+    "fullSdkSuite": {"passed": 340, "failed": 0, "files": 38, "newSuggestionControlTests": 15},
+    "strictSdkEditorAndInstalledPublicTypes": "passed",
+    "runtimeBuildSurfaceAndPromotionGuards": {"passed": 47, "failed": 0},
+    "actualWasmVanillaReactControlMatrix": {
+      "passed": true,
+      "trials": 6,
+      "scopePolicies": ["original", "general-v1", "document-v1"],
+      "groupingPolicies": ["explicit", "typing-v1"],
+      "builtInActionCaptures": 48,
+      "pureNativePreviews": 48,
+      "offlineAcceptChoicesWithoutDocumentMutation": 48,
+      "serverFinalOwnedAccepts": 48,
+      "stalePreviewConflictRejects": 6,
+      "localRetriesWithoutRecapture": 6,
+      "oppositeOriginalServerOutcomes": 6,
+      "staleAsynchronousLoadRefusals": 6,
+      "readOnlyAcceptRefusals": 6,
+      "reactStableDrafts": 6,
+      "combinedCommentVersionDrafts": 6
+    },
+    "cleanInstalledAcceptance": {
+      "passed": true,
+      "consolidatedSingleProcessRun": "passed",
+      "publicEntries": ["@breditor/editor/collaboration", "@breditor/editor/collaboration/react"],
+      "packagedWasm": true,
+      "workspaceProductionLinks": false,
+      "installedReactModulesVerified": 3,
+      "mixedOwnedHistoryCommentVersionTrials": 6,
+      "vanillaReactControlTrials": 6,
+      "pureNativePreviews": 48,
+      "serverFinalOwnedAccepts": 48,
+      "authorMatrixWireRequests": 5950,
+      "uiInitiatedLoadOrSyncCallsAfterUnmount": 0,
+      "hostOwnedWireRequestsDuringUnmountWindows": 19,
+      "permanentReaderTransportTrials": 6,
+      "permanentReaderControlTrials": 6,
+      "permanentReaderPurePreviews": 6,
+      "permanentReaderOfflineRejects": 6,
+      "permanentReaderServerFinalRejects": 6,
+      "permanentReaderAuthoredThrough": "0",
+      "readerAuthorRegistrations": 0,
+      "readerAuthorResumes": 0,
+      "readerDocumentSubmissions": 0,
+      "readerMatrixWireRequests": 1317,
+      "readerSourceAndTransportRetainedAfterUiDisposal": true
+    },
+    "originalDefaultAuthorSdkRegression": {"passed": true, "trials": 4, "noDomOrReactRequired": true},
+    "nativeSemanticsEvidence": "Prior reviewed-history qualifications retain the canonical 480 native and 64 relay/server tests. This checkpoint changes UI/SDK code only; native history, effect proofs, server finality, Wasm and host artifacts are unchanged."
+  },
+  "repairs": [
+    {
+      "reproduced": true,
+      "failure": "A select field changed through a change event retained its initial value in the proposed native command",
+      "cause": "Composer fields handled input only; heading/format change events did not update retained field values",
+      "fix": "Handle input and change through the same field update. A regression asserts heading rank 4 and the actual selected italic format rather than their initial defaults. Native no-op admission remains unchanged."
+    },
+    {
+      "reproduced": true,
+      "failure": "An older locally saved packet could visually imply that a newly discovered final receipt was already retained",
+      "cause": "The display checked localSaved without comparing the locally retained final sequence to the discovered original decision",
+      "fix": "Display uncached/pending final receipt, unconfirmed save and locally confirmed final receipt separately. A dedicated regression retains the older saved packet while final metadata arrives."
+    }
+  ],
+  "contracts": [
+    "createSharedSuggestionPanelSource retains the exact native core, queue and optional existing sync adapter. checkQueue rejects a different queue instance. The bridge opens/closes no owner, database, lease, socket or asset store.",
+    "mountSharedSuggestionPanel is standalone; optional review-panel suggestions embeds the same controls beside independent comments/versions. BreditorSharedSuggestionPanel and the combined React review panel retain drafts and preview lifetime across ordinary parent renders.",
+    "Eight separately named action modules build original native text/format/heading/list/table/image intents. Native capture validates the complete source, schema, scalar boundaries, no-op refusal and budgets. No accepted AST snapshot, arbitrary inverse or browser effect executor is introduced.",
+    "The standard text builder emits the original same-flow range command. Protected cross-structure text needs the explicit native general-range draft and exact fresh floor identities; the stock builder does not guess them or silently flatten structures.",
+    "Up to 64 uniquely named typed actions with up to 16 fields are snapshotted per panel. Builders receive a read-only current view projection, entered values and explicit host fresh-ID allocation, not an accepted-document dispatcher. Missing allocation refuses and consumed namespaces remain consumed.",
+    "Capture and native preview leave document JSON, exact checkpoint and update frame unchanged. Accept needs a current owner-bound preview for the selected packet. Changed publication, selection choice or finality disposes it. Async packet loads recheck the same source and choice before preparing.",
+    "Accept/Reject queue locally without changing accepted content. Current authenticated server decisions finalize once; requested choice, final winner and local receipt durability remain separate. An opposite winner is displayed explicitly, not rewritten as success for the requested choice.",
+    "Failed saves retain the existing immutable packet and drafts. Local retry does not recapture. Publication retry requeues original bytes; stopping retries cannot withdraw requests already received by the server. Native-invalid/no-op drafts stay editable without a storage retry.",
+    "Read-only owners can capture/preview and Reject but cannot queue Accept through the UI. The actual permanent-observer transport additionally prevents author registration/resume/submit and Accept at the request layer; its native authored prefix stays zero.",
+    "Display policy callbacks and in-memory last rights do not authenticate current grants. Source/core/native guards and host authorization remain independently authoritative.",
+    "Disposal removes only owned UI DOM, subscriptions and preview handles. Already queued choices and pending saves remain host-owned. Still-running collaboration adapters may finish their own work after UI unmount; UI-port initiation is tested separately from host-owned wire traffic.",
+    "Preview content uses literal JSON/text and host-owned asset references, not executable HTML or implicit uploads. Existing source, queue, native, asset and storage meanings/limits are unchanged."
+  ],
+  "reproduce": [
+    "npm run build:candidate --workspace @breditor/collaboration",
+    "npm run build:candidate --workspace @breditor/editor",
+    "npm run test:candidate --workspace @breditor/editor",
+    "node scripts/probe-suggestion-controls-sdk.mjs target/promoted-shared-web target/owned-history-relay-native/release/examples/suggestions_functional",
+    "node scripts/check-suggestion-controls-installed.mjs target/owned-history-relay-native/release/examples/suggestions_functional"
+  ],
+  "verificationNotes": [
+    "The installed archive set includes both public SDK and optional React entries; React and React DOM resolve inside the installed consumer, not a workspace copy. Strict positive/negative type checks use those installed declarations.",
+    "The consolidated single-process installed command passes the owned-history/comment/version/control matrix followed by the permanent Reader/control matrix using the same four archive hashes. The Reader panel was additionally exercised against the earlier identical already-installed archive set: six pure previews/offline Rejects/final Rejects, zero author operations, and a readable native core/queue/live transport after UI disposal.",
+    "Synthetic DOM events stay in their own window realm. Replacing Node's global Event made native WebSocket EventTarget reject DOM events; only the harness was corrected. This is not a historical WebKit repair claim.",
+    "A post-unmount test initially counted every still-running host-owned adapter's wire request as UI polling. It now counts calls initiated through the UI load/sync port, while retaining the original whole-SDK no-idle-polling checks. The UI must not silently close those borrowed adapters.",
+    "The control-heavy fixture retains its original bounded network deadlines and verifies recovery before success; recovered request_timeout reports are allowed only in the expanded controls fixture. Original default regression admission stays unchanged. No production timeout or authorization check is relaxed.",
+    "IndexedDB/Web Locks, DOM, failed writes and lost replies are fixtures against an actual isolated native authenticated loopback host. Physical browser/clipboard/IME/accessibility/performance and final release qualification remain deferred."
+  ],
+  "remaining": [
+    "Native namespace planning for stock protected cross-structure text suggestions, preserving exact floor identities without UI guessing. Existing typed native general-range drafts remain available to host action extensions.",
+    "Proposal revisions and granular character-affine text rebasing; conservative affected-text source witnesses remain unchanged.",
+    "Final V1 migration/API, package release, storage lifetime/compaction, production auth/hosting and deferred broad browser/IME/accessibility/performance qualification. The advanced-review goal remains active."
+  ],
+  "publication": {"localCheckpointOnly": true, "pushed": false, "published": false, "deployed": false, "versionUnchanged": "0.3.0-alpha.22"}
+}
