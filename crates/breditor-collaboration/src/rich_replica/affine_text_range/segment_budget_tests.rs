@@ -40,7 +40,7 @@ fn incremental_json_count_matches_real_escaping_lengths_and_coalesced_output() -
     Ok(())
 }
 #[test]
-fn oversized_repeated_marks_refuse_before_a_segment_or_budget_is_retained() -> Result {
+fn oversized_repeated_marks_refuse_before_a_segment_or_budget_is_retained() {
     let marks = Arc::new(vec![Value::String("x".repeat(MAX_BYTES / 2))]);
     let before = scalar('x', 0, marks);
     let mut segments = vec![];
@@ -48,5 +48,4 @@ fn oversized_repeated_marks_refuse_before_a_segment_or_budget_is_retained() -> R
     assert!(append_segment(&mut segments, &before, &current(&before), &mut bytes).is_err());
     assert!(segments.is_empty());
     assert_eq!(bytes, 2);
-    Ok(())
 }

@@ -13,9 +13,7 @@ pub(super) fn envelope(doc: &LoroDoc) -> Result<Value, Error> {
     let flows = super::text_flow::Projection::read(doc)?;
     let placements = super::placement::Projection::read(doc)?;
     let mut value = header(doc)?;
-    let document = value
-        .pointer("/root/properties/breditor~1document-id")
-        .and_then(Value::as_str)
+    let document = super::document_identity::from_header(&value)
         .ok_or(Error::Contract("shared document identity"))?
         .to_owned();
     let mut children = vec![];

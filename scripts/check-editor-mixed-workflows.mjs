@@ -5,6 +5,7 @@ import {readFileSync,writeFileSync,cpSync,readdirSync} from "node:fs";
 import {resolve,dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
+import {runtimeNoticeFiles} from "./build-runtime-notices.mjs";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),".."),args=process.argv.slice(2),reuse=args.includes("--reuse-installed"),binary=resolve(args.find(a=>a!=="--reuse-installed")??join(root,"target/relay-native/release/examples/transport_v2_functional"));
 if(!reuse)execFileSync(process.execPath,["scripts/check-interchange-package.mjs"],{cwd:root,stdio:"inherit"});
 const installed=JSON.parse(readFileSync(join(root,"target/interchange-installed-consumer.json"),"utf8"));assert.equal(installed.passed,true);const consumer=installed.consumer,hash=b=>createHash("sha256").update(b).digest("hex");
@@ -14,7 +15,7 @@ function compareFiles(path,relative=""){
   if(entry.name==="node_modules")continue;
   const file=join(relative,entry.name);
   if(entry.isDirectory()){compareFiles(path,file);continue;}
-  if(!/\.(?:js|ts|wasm)$/.test(entry.name))continue;
+  if(!/\.(?:js|ts|wasm)$/.test(entry.name)&&!runtimeNoticeFiles.includes(entry.name))continue;
   const packageName=path.slice(path.indexOf("node_modules/")+13),source=join(root,"packages",`breditor-${packageName.split("/")[1]}`,file);
   assert.equal(hash(readFileSync(join(path,file))),hash(readFileSync(source)),`Installed artifact is not current: ${packageName}/${file}`);compared++;
  }

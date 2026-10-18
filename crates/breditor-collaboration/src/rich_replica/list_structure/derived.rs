@@ -1,5 +1,7 @@
 //! Retain visible normalization text as movable structure before its first structural list use.
-use super::super::{creation, materialize, model, paragraphs, placement, text_flow};
+use super::super::{
+    creation, document_identity, materialize, model, paragraphs, placement, text_flow,
+};
 use crate::Error;
 use loro::{LoroDoc, ToJson};
 use serde_json::Value;
@@ -58,9 +60,7 @@ fn base(doc: &LoroDoc, parent: Option<&str>) -> Result<String, Error> {
         Ok(model::virtual_id("flow", &[parent]))
     } else {
         let header = materialize::header(doc)?;
-        let document = header
-            .pointer("/root/properties/breditor~1document-id")
-            .and_then(Value::as_str)
+        let document = document_identity::from_header(&header)
             .ok_or(Error::Contract("retained normalization document"))?;
         Ok(model::virtual_id("root", &[document]))
     }

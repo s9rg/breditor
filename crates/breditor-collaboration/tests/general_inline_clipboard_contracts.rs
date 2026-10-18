@@ -12,6 +12,9 @@ use breditor_collaboration::{
 use breditor_core::schema::DocumentLimits;
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+fn count(node: &Value) -> usize {
+    1 + node["children"].as_array().map_or(0, |nodes| nodes.iter().map(count).sum())
+}
 fn range(a: &str, x: u32, b: &str, y: u32) -> Selection {
     Selection::TextRange {
         anchor: TextPoint { block: a.into(), offset: x, affinity: Affinity::After },
@@ -94,14 +97,14 @@ fn future(p: &SharedRichProfile, a: &mut RichReplica) -> Result {
     } else {
         p.restore_general("room", &exact)?
     };
-    assert!(saved(&b)? == exact);
+    assert_eq!(saved(&b)?, exact);
     for redo in [false, true, false, true] {
         if redo {
             assert_eq!(a.redo()?, b.redo()?);
         } else {
             assert_eq!(a.undo()?, b.undo()?);
         }
-        assert!(saved(a)? == saved(&b)?);
+        assert_eq!(saved(a)?, saved(&b)?);
     }
     Ok(())
 }
@@ -153,9 +156,6 @@ fn caption_replacement_and_deleted_before_caret_survive_exact_recovery_at_source
         for (start, x, end, y) in [("caption", 1, "q1", 2), ("z-intro", 1, "code", 1)] {
             let (_, probe) = setup(3, DocumentLimits::default())?;
             let raw: Value = serde_json::from_str(probe.document_json())?;
-            fn count(node: &Value) -> usize {
-                1 + node["children"].as_array().map_or(0, |nodes| nodes.iter().map(count).sum())
-            }
             let limits = DocumentLimits::default().with_max_nodes(count(&raw["root"]));
             let (p, mut a) = setup(3, limits)?;
             a.enable_general_ranges_guarded(&a.observe()?)?;
@@ -207,7 +207,7 @@ fn general_clipboard_decoding_refuses_unknown_duplicate_wrong_kind_and_unadmitte
             )
             .is_err()
         );
-        assert!(saved(&a)? == exact);
+        assert_eq!(saved(&a)?, exact);
         assert_eq!(a.update_frame()?, frame);
     }
     for (key, value) in
@@ -224,7 +224,7 @@ fn general_clipboard_decoding_refuses_unknown_duplicate_wrong_kind_and_unadmitte
             )
             .is_err()
         );
-        assert!(saved(&a)? == exact);
+        assert_eq!(saved(&a)?, exact);
     }
     let mut clip = clipboard(&p);
     clip["document"]["schemaFingerprint"] = json!("sha256:bad");
@@ -234,20 +234,20 @@ fn general_clipboard_decoding_refuses_unknown_duplicate_wrong_kind_and_unadmitte
         a.paste_general_inline_clipboard_namespace_json_guarded(&a.observe()?, &bad.to_string())
             .is_err()
     );
-    assert!(saved(&a)? == exact);
+    assert_eq!(saved(&a)?, exact);
     let raw = format!(
         "{{\"selection\":{},\"prefix\":\"floor\",\"clipboardJson\":{},\"clipboardJson\":{}}}",
         valid["selection"], valid["clipboardJson"], valid["clipboardJson"]
     );
     assert!(a.paste_general_inline_clipboard_namespace_json_guarded(&a.observe()?, &raw).is_err());
-    assert!(saved(&a)? == exact);
+    assert_eq!(saved(&a)?, exact);
     let stale = a.observe()?;
     a.set_selection(Some(&range("q2", 2, "q2", 2)))?;
     assert!(a.paste_general_inline_clipboard_namespace_json_guarded(&stale, "bad").is_err());
     a.set_read_only_guarded(&a.observe()?, true)?;
     let exact = saved(&a)?;
     assert!(a.paste_general_inline_clipboard_namespace_json_guarded(&a.observe()?, "bad").is_err());
-    assert!(saved(&a)? == exact);
+    assert_eq!(saved(&a)?, exact);
     Ok(())
 }
 #[test]

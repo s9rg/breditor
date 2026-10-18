@@ -1474,6 +1474,13 @@ archive checks, stress/fault resolution, native qualification, and accepted
 size/performance gates described in [Nested lists](docs/NESTED_LISTS.md).
 Individual setup/check commands remain below for targeted development.
 
+For the current opt-in rich/shared/interchange/review target, use
+`npm run verify:candidate:functional` or the full `npm run verify:candidate`.
+These retain source-bound stage logs and installed-consumer evidence as described
+in [V1 candidate checks](docs/V1_CANDIDATE_CHECKS.md). The functional profile is
+not V1 readiness; the full profile additionally requires the reviewed readiness
+ledger to be complete. Neither command publishes or deploys.
+
 ```sh
 export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
 export WASM_BINDGEN_TEST_RUNNER_BIN=/absolute/path/to/wasm-bindgen-test-runner

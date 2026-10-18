@@ -9,7 +9,9 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 fn bounded(path: &str, max: u64) -> Result<String> {
     let mut value = String::new();
     File::open(path)?.take(max + 1).read_to_string(&mut value)?;
-    if u64::try_from(value.len())? > max { return Err("functional input budget".into()); }
+    if u64::try_from(value.len())? > max {
+        return Err("functional input budget".into());
+    }
     Ok(value)
 }
 #[tokio::main(worker_threads = 2)]
@@ -19,11 +21,18 @@ async fn main() -> Result {
         return Err("expected LOG PROFILE_JSON DOCUMENT_JSON AUTH_JSON LOOPBACK_ADDRESS".into());
     };
     let address: SocketAddr = bind.parse()?;
-    if !address.ip().is_loopback() { return Err("functional host requires loopback".into()); }
-    let room = if Path::new(log).exists() { Room::open(Path::new(log))?.0 } else {
+    if !address.ip().is_loopback() {
+        return Err("functional host requires loopback".into());
+    }
+    let room = if Path::new(log).exists() {
+        Room::open(Path::new(log))?.0
+    } else {
         let mut room = Room::create_atomic_transport_v2(
-            Path::new(log), &bounded(configuration, 262_144)?, &bounded(document, 4_194_304)?,
-            "functional-owner", AtomicTransportProfile::LayoutV3 { standard_inline_v1: true },
+            Path::new(log),
+            &bounded(configuration, 262_144)?,
+            &bounded(document, 4_194_304)?,
+            "functional-owner",
+            AtomicTransportProfile::LayoutV3 { standard_inline_v1: true },
         )?;
         room.enable_document_suggestions("functional-owner")?;
         room.enable_document_suggestion_revisions("functional-owner")?;
@@ -31,9 +40,15 @@ async fn main() -> Result {
         room.enable_document_versions("functional-owner")?;
         for principal in ["alice", "bob"] {
             room.grant("functional-owner", principal, Some(Role::Editor))?;
-            room.grant_document_suggestions("functional-owner", principal, Some(SuggestionRole::Review))?;
+            room.grant_document_suggestions(
+                "functional-owner",
+                principal,
+                Some(SuggestionRole::Review),
+            )?;
         }
-        for (principal, role) in [("carol", SuggestionRole::Propose), ("dana", SuggestionRole::Review)] {
+        for (principal, role) in
+            [("carol", SuggestionRole::Propose), ("dana", SuggestionRole::Review)]
+        {
             room.grant("functional-owner", principal, Some(Role::Reader))?;
             room.grant_document_suggestions("functional-owner", principal, Some(role))?;
         }
@@ -43,8 +58,10 @@ async fn main() -> Result {
     let authentication = Authentication::from_json(&bounded(auth, 262_144)?)?;
     let listener = tokio::net::TcpListener::bind(address).await?;
     println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string()}));
-    axum::serve(listener, server::router(room, authentication)).with_graceful_shutdown(async {
-        let _ = tokio::signal::ctrl_c().await;
-    }).await?;
+    axum::serve(listener, server::router(room, authentication))
+        .with_graceful_shutdown(async {
+            let _ = tokio::signal::ctrl_c().await;
+        })
+        .await?;
     Ok(())
 }

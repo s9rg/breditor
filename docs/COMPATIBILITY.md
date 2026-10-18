@@ -7,9 +7,49 @@ The source is not a V1 release. The [V1 plan](V1_RELEASE_PLAN.md) and
 work before any broader compatibility promise. The private rich-content and
 collaboration packages implement additional functionality without widening
 the default package promises below. Their matching shared factory still uses
-an isolated generated module; private ABI 1/model 11/journal V12 must not be
-confused with the default ABI 5 or the older document/session wire families.
+an isolated generated module with private ABI 1. Rich language 1 uses model 11 /
+journal 12, structural language 2 uses model 12 / journal 13, and layout language
+3 uses model 13 / journal 14. These explicit bindings must not be confused with
+the default ABI 5 or the older document/session wire families.
 No automatic migration or stable arbitrary-node plugin contract is implied.
+
+### Opt-in rich and shared recovery
+
+Grammar, schema/profile configuration, selection scope, history policy and writer
+transport are separate choices. Choosing layout language 3 does not enable general
+ranges, whole-document selection, natural typing history or review metadata.
+The matching factories and immutable opening options must select those features
+explicitly. A remote descriptor, document shape or optional method's presence
+cannot silently select a different saved-data contract.
+
+Original, general and document-selection histories keep distinct recovery paths.
+Natural typing history and reviewed accepting-user history add separate envelopes;
+they do not reinterpret an existing ordinary journal. Supported explicit upgrade
+paths restore the original native history, including its Redo branch, before
+writing the selected new storage record. They do not approximate a migration by
+loading only the visible AST. A failed durable write retains the prior record;
+keep the same language/profile and history options when reopening.
+
+Comments/review transport, suggestion queues and revisions, shared version
+catalogs, and asset caches retain their own identities and storage contracts.
+Enabling one does not silently enable the others. Pending suggestions leave the
+accepted document unchanged; accepting them requires authenticated server
+finalization. A named-version restore is an explicitly guarded new edit with fresh
+identities, not writer-credential recovery or a rewrite of the room's history.
+Document export does not stand in for a complete review/outbox/asset backup.
+
+A failed shared close retains its native owner and writer lease for retry or an
+explicit discard. Never clone a live writer checkpoint to create a second author,
+infer credentials from content hashes or drop a failed owner's recovery handle.
+Writer transport V2 requires an explicitly created matching room; existing V1
+rooms/logs are not upgraded in place. See the
+[editor recovery APIs](../packages/breditor-editor/README.md),
+[review contract](RICH_REVIEW.md) and [backup contract](SESSION_BACKUPS.md).
+
+These are current opt-in source contracts, not a frozen V1 API or an unlimited
+history/asset-retention promise. The [candidate checks](V1_CANDIDATE_CHECKS.md)
+exercise current recovery and installed consumers. Historical fixtures, complete
+migration/support promises and immutable RC qualification remain release gates.
 
 ## Current default package policy
 

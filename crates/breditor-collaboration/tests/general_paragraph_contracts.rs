@@ -11,9 +11,13 @@ use breditor_collaboration::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
-fn range(a: &str, x: u32, b: &str, y: u32) -> Selection {
-    let p = |id: &str, offset| TextPoint { block: id.into(), offset, affinity: Affinity::After };
-    Selection::TextRange { anchor: p(a, x), focus: p(b, y) }
+fn range(first_block: &str, first_offset: u32, last_block: &str, last_offset: u32) -> Selection {
+    let point =
+        |id: &str, offset| TextPoint { block: id.into(), offset, affinity: Affinity::After };
+    Selection::TextRange {
+        anchor: point(first_block, first_offset),
+        focus: point(last_block, last_offset),
+    }
 }
 fn setup() -> Result<(SharedRichProfile, RichReplica)> {
     let p=SharedRichProfile::from_standard_configuration_json_v3(&json!({"format":"breditor/shared-rich-profile","formatVersion":3,"schema":{"name":"example/shared-general-paragraph","version":1},"extensions":[]}).to_string())?;

@@ -30,6 +30,7 @@ mod creation;
 mod delete_atom;
 mod delete_typing_range;
 mod document_checkpoint;
+mod document_identity;
 mod document_tools;
 mod document_versions;
 mod enable_document_selection;

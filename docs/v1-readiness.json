@@ -1,8 +1,8 @@
 {
   "format": "breditor/v1-readiness",
   "formatVersion": 1,
-  "reviewedAt": "2026-10-16",
-  "baselineCommit": "7af02a24fb3c79807720f499c671f780d26af843",
+  "reviewedAt": "2026-10-18",
+  "baselineCommit": "fa8a75455ccd2363041010b1eb4b86926631c1bc",
   "coverage": "grouped-audit-not-exhaustive",
   "target": "Feature parity is the requested target. No smaller V1 scope has been approved.",
   "sources": [
@@ -314,27 +314,27 @@
       "sources":["tiptap-extension","ckeditor-overview"]
     },
     {
-      "id":"comments","area":"Extended parity","status":"missing",
+      "id":"comments","area":"Extended parity","status":"implemented",
       "summary":"Threaded comments and review annotations",
-      "current":"Internal format/provenance annotations and presence anchors are not a comment product: no durable discussion, resolution or review sidebar API exists.",
+      "current":"Opt-in native/Wasm/SDK and vanilla/React controls provide durable attributed discussions, mapped/orphaned anchors, resolution, independent comment history, authenticated comment authority and offline transport/recovery. Clean-installed combined review/asset workflows exercise exact reopens and host restart. Host identity/tenant integration and final platform/storage qualification remain release gates, not comments API claims.",
       "acceptance":"Design durable mapped anchors, thread permissions, resolution/orphan policy, offline merging and independent comment history before building UI.",
-      "evidence":["crates/breditor-collaboration/src/rich_replica/annotations.rs","packages/breditor-collaboration/src/index.ts"],
+      "evidence":["docs/RICH_REVIEW.md","docs/qualification/2026-10-17-rich-review-text-rebase-sdk.json","scripts/check-review-assets-installed.mjs","packages/breditor-collaboration/src/index.ts"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
-      "id":"tracked-changes","area":"Extended parity","status":"missing",
+      "id":"tracked-changes","area":"Extended parity","status":"partial",
       "summary":"Suggestions and tracked changes",
-      "current":"Operation provenance/selective Undo is not accept/reject review mode.",
+      "current":"Source-bound attributed text, formatting, list, table and image proposals leave accepted content unchanged until an authenticated once-only server decision. Offline decision queues, owned accepted-effect Undo/Redo, manual revisions and bounded automatic formatting/text rebasing reach installed vanilla/React controls. Accepted document export remains separate from proposal/review metadata and outboxes. Explicit review-aware export qualification, production permissions and release promotion remain open; mixed-command automatic text rebase is unsupported.",
       "acceptance":"Define suggestions for text, formatting, lists, tables and images with attribution, permissions, concurrent accept/reject and explicit export semantics.",
-      "evidence":["experiments/collaboration/README.md"],
+      "evidence":["docs/RICH_REVIEW.md","docs/qualification/2026-10-17-rich-review-text-rebase-sdk.json","scripts/check-suggestion-text-rebase-installed.mjs","scripts/check-suggestion-format-rebase-installed.mjs","scripts/check-review-assets-installed.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
       "id":"version-history","area":"Extended parity","status":"partial",
       "summary":"Named versions, comparison and restore",
-      "current":"Exact journals and recovery exist; there is no named revision browser, semantic diff or shared restore-as-new-change workflow.",
+      "current":"Immutable named versions retain source proofs, semantic comparison and explicit guarded restore as a fresh edit. An authenticated shared catalog, optional SDK cache and borrowed vanilla/React controls preserve independent document/review journals and fresh writer identity. Clean-installed combined workflows cover stale/conflicting restore, exact recovery, offline edits and host restart. Asset retention, bounded catalog/journal lifetime and final production qualification remain open release gates.",
       "acceptance":"Separate user-facing document versions from runtime journals and GC; restore without reusing old writer identity or overwriting concurrent work.",
-      "evidence":["docs/SESSION_BACKUPS.md","experiments/shared-browser/persistence.spec.mjs"],
+      "evidence":["docs/RICH_REVIEW.md","docs/SESSION_BACKUPS.md","docs/qualification/2026-10-17-rich-review-text-rebase-sdk.json","scripts/check-review-assets-installed.mjs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
@@ -398,13 +398,13 @@
     {"id":"catalog-coverage","status":"open","summary":"Finish the feature-by-feature baseline review","acceptance":"Expand grouped rows into versioned acceptance cases for every selected Tiptap/CKEditor capability. Group counts are not a parity percentage; record intentional differences and obtain approval for exclusions.","evidence":["docs/V1_RELEASE_PLAN.md"]},
     {"id":"distribution","status":"open","summary":"Promote rich/shared Rust, Wasm and browser packages","acceptance":"Independent clean consumers install one supported paired profile and production module; no experiments path, manual target artifact or source-only link is required.","evidence":["crates/breditor-collaboration/Cargo.toml","packages/breditor-collaboration/package.json","packages/breditor-editor/README.md","scripts/check-collaboration-native-consumer.mjs","scripts/build-collaboration-runtime.mjs","scripts/check-editor-package.mjs","scripts/build-shared-runtime.mjs","scripts/check-shared-package.mjs"]},
     {"id":"compatibility","status":"open","summary":"Freeze V1 APIs and explicit migration contracts","acceptance":"Document source, ABI, schema, journal and asset compatibility separately; add supported old-version recovery/migration fixtures and deliberate rejection paths.","evidence":["docs/COMPATIBILITY.md","experiments/collaboration/README.md"]},
-    {"id":"release-ci","status":"open","summary":"Cover every distributed feature in the release pipeline","acceptance":"Default verify:release alone is insufficient. Run default, rich, shared, relay and installed-consumer checks reproducibly in CI, retaining exact candidate hashes and failed runs.","evidence":["scripts/verify-release.mjs","scripts/check-shared-browser.mjs","scripts/check-rich-browser.mjs","scripts/check-collaboration-feasibility.mjs"]},
+    {"id":"release-ci","status":"open","summary":"Cover every distributed feature in the release pipeline","acceptance":"Default verify:release alone is insufficient. Run default, rich, shared, relay and installed-consumer checks reproducibly in CI, retaining exact candidate hashes and failed runs.","evidence":["scripts/verify-candidate.mjs","docs/V1_CANDIDATE_CHECKS.md","scripts/verify-release.mjs","scripts/check-shared-browser.mjs","scripts/check-rich-browser.mjs","scripts/check-collaboration-feasibility.mjs"]},
     {"id":"browser-reliability","status":"open","summary":"Qualify browser faults and native clipboard","acceptance":"Close or explicitly resolve the historical WebKit fault with a reproducible cause/fix or supported-environment policy, and qualify native Safari/Chrome plus repeated lifecycle/clipboard sessions. Passing isolated files is not an engine repair.","evidence":["docs/FEATURE_EXPANSION_BETA.md","docs/RICH_CONTENT_AND_COLLABORATION.md"]},
     {"id":"accessibility-input-mobile","status":"open","summary":"Qualify physical input, accessibility and touch","acceptance":"On the final integrated artifact, complete real IME, screen-reader, keyboard-only and supported mobile/touch testing. Earlier bounded or synthetic cases do not certify V1.","evidence":["docs/FEATURE_EXPANSION_BETA.md","packages/breditor-collaboration/src/controller.ts"]},
     {"id":"performance-and-size","status":"open","summary":"Approve measured latency, memory and download budgets","acceptance":"Set supported document/table/image/history/peer sizes and measure startup, typing, paste, Undo, reconnect and long-session memory on named hardware/browser versions. Do not silently raise existing default budgets.","evidence":["docs/SIZE_BUDGETS.md","scripts/check-size-budgets.mjs","packages/breditor-experimental-rich-content/src/render.ts"]},
     {"id":"public-relay-hardening","status":"open","summary":"Qualify safe public relay deployment","acceptance":"Provide import/decode work isolation, TLS/identity/tenant integration, abuse limits, observability and deployment tests. Loopback demo tokens and best-effort decoder limits are not public production isolation.","evidence":["experiments/relay/README.md"]},
     {"id":"storage-lifecycle","status":"open","summary":"Handle history limits, backup and compaction","acceptance":"Define document lifetime at current journal/log/asset bounds, safe compaction and asset retention, restore drills and credential/writer recovery without cloning a live author.","evidence":["experiments/relay/README.md","packages/breditor-experimental-collaboration/README.md"]},
-    {"id":"dependency-and-license-review","status":"open","summary":"Audit the actual V1 dependency and license graph","acceptance":"Generate and review notices/SBOM for browser, Wasm and native relay artifacts, including the pinned replication patch and decoders; verify reproducibility and vulnerability response ownership.","evidence":["scripts/check-package-licenses.mjs","packages/breditor-wasm/THIRD_PARTY_NOTICES.md","experiments/relay/Cargo.toml"]},
+    {"id":"dependency-and-license-review","status":"open","summary":"Audit the actual V1 dependency and license graph","acceptance":"Generate and review notices/SBOM for browser, Wasm and native relay artifacts, including the pinned replication patch and decoders; verify reproducibility and vulnerability response ownership.","evidence":["scripts/build-runtime-notices.mjs","scripts/candidate-dependencies/inventory.mjs","scripts/check-package-licenses.mjs","packages/breditor-wasm/THIRD_PARTY_NOTICES.md","experiments/relay/Cargo.toml"]},
     {"id":"integration-docs-and-support","status":"open","summary":"Ship coherent SDK documentation and support policy","acceptance":"Publish one install/quickstart, capability/support matrix, host asset/auth responsibilities, security reporting, troubleshooting, upgrade guide and contribution policy that match the actual archives.","evidence":["README.md","docs/COMPATIBILITY.md","CONTRIBUTING.md"]},
     {"id":"pilot","status":"open","summary":"Complete a real application pilot","acceptance":"Run sustained mixed-content use with independent collaborators, disconnects, reloads and backup restoration; record incidents, data integrity and supported operating limits.","evidence":["experiments/shared-browser/network-demo.spec.mjs"]},
     {"id":"final-rc","status":"open","summary":"Approve the exact release candidate","acceptance":"After all required scope and qualification work, tag a reviewed RC, verify clean installs and every gate against immutable hashes, then obtain separate publication/deployment approval.","evidence":["docs/V1_RELEASE_PLAN.md","scripts/verify-release.mjs"]}

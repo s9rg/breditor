@@ -1,0 +1,42 @@
+{
+  "format": "breditor/pinned-upstream-notices",
+  "formatVersion": 1,
+  "entries": [
+    {
+      "key": "append-only-bytes@0.1.12",
+      "license": "MIT",
+      "revision": "5ee04bd3e3249c6bfeb9c3d31644ada87bb90cbe",
+      "pathInVcs": "",
+      "url": "https://raw.githubusercontent.com/zxch3n/append-only-bytes/5ee04bd3e3249c6bfeb9c3d31644ada87bb90cbe/LICENSE",
+      "text": "MIT License\n\nCopyright (c) 2022 Zixuan Chen\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+      "sha256": "a9ec532f4f11817f427e4f3ca0432b176138721e0866f152864b17ebdeac6bbf"
+    },
+    {
+      "key": "arref@0.1.0",
+      "license": "MIT",
+      "revision": "57fb0d2eedc68c3d9a9bd3fc4fd8fa5b6f9ae78f",
+      "pathInVcs": "",
+      "url": "https://raw.githubusercontent.com/zxch3n/arref/57fb0d2eedc68c3d9a9bd3fc4fd8fa5b6f9ae78f/LICENSE",
+      "text": "MIT License\n\nCopyright (c) 2022 Zixuan Chen\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+      "sha256": "a9ec532f4f11817f427e4f3ca0432b176138721e0866f152864b17ebdeac6bbf"
+    },
+    {
+      "key": "serde_columnar@0.3.14",
+      "license": "MIT OR Apache-2.0",
+      "revision": "06663cfc569c6c770b28688f015f8a87fc04e156",
+      "pathInVcs": "columnar",
+      "url": "https://raw.githubusercontent.com/loro-dev/columnar/06663cfc569c6c770b28688f015f8a87fc04e156/LICENSE",
+      "text": "MIT License\r\n\r\nCopyright (c) 2022 Leonzhao\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.\r\n",
+      "sha256": "a9af0e3a3ded007f9914a1125b736ec526d469105c6577e367e2a9ca4de39d6b"
+    },
+    {
+      "key": "serde_columnar_derive@0.3.7",
+      "license": "MIT OR Apache-2.0",
+      "revision": "82588626dfa4332971c1e98f2839eb6d1c3dae1d",
+      "pathInVcs": "columnar_derive",
+      "url": "https://raw.githubusercontent.com/loro-dev/columnar/82588626dfa4332971c1e98f2839eb6d1c3dae1d/LICENSE",
+      "text": "MIT License\r\n\r\nCopyright (c) 2022 Leonzhao\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.\r\n",
+      "sha256": "a9af0e3a3ded007f9914a1125b736ec526d469105c6577e367e2a9ca4de39d6b"
+    }
+  ]
+}

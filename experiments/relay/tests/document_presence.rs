@@ -112,7 +112,10 @@ fn document_replacement_and_future_history_cross_v2_room_restart_without_changin
     let mut lease = registration.lease.clone();
     let mut a = p.join_frame("room".into(), lease.writer.clone(), &room.catchup("alice")?)?;
     enable(&mut a)?;
-    a.replace_document_plain_text_json_guarded(&a.observe_document()?, &json!({"paragraph":"fresh","text":"Q🙂"}).to_string())?;
+    a.replace_document_plain_text_json_guarded(
+        &a.observe_document()?,
+        &json!({"paragraph":"fresh","text":"Q🙂"}).to_string(),
+    )?;
     a.select_document_guarded(&a.observe_document()?)?;
     let frame = packet(&a)?;
     let before = room.catchup("alice")?;

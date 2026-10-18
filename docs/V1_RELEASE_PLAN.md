@@ -1088,6 +1088,8 @@ npm run audit:v1
 npm run audit:v1 -- --json
 npm run check:v1
 node --test scripts/check-v1-readiness.test.mjs
+npm run verify:candidate -- --dry-run
+npm run verify:candidate:functional
 ```
 
 The audit validates references and prints remaining work. `check:v1` deliberately
@@ -1095,6 +1097,12 @@ fails while any feature or gate is open. It is a reviewed-ledger guard, not a
 behavioral test runner or automatic certification; marking JSON entries complete
 does not manufacture evidence. `npm run verify:release` still covers only the
 default packages, not the full rich/shared V1 target.
+
+The [candidate verifier](V1_CANDIDATE_CHECKS.md) adds repeatable native, paired
+Wasm, SDK and clean-installed rich/shared/interchange/review checks with retained
+source hashes and failure logs. Its full profile also invokes the existing
+default release/browser checks and the fail-closed readiness guard. The functional
+profile does not qualify deferred platforms or approve a smaller product scope.
 
 Reproduce the existing functional implementation separately:
 
