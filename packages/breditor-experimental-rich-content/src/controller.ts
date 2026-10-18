@@ -17,6 +17,9 @@ import {blockLayoutShortcut} from "./block_layout_controls.js";
 import {encodeBlockLayoutPatch} from "./block_layout_serialization.js";
 import type {RichClipboardTextProjection} from "./core.js";
 import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus,type RichClipboardInterchange,type RichClipboardInterchangeReport,type RichInterchangeFormatReport} from "./clipboard_interchange.js";
+import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
+import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "./search_host.js";
+import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
 
 export interface RichEditorOptions<P extends RichSelectionPolicy="original"> extends RenderOptions {
  core:RichCoreEditor<P>;
@@ -47,7 +50,7 @@ function sameSelection(a:RichDocumentSelection|null,b:RichDocumentSelection|null
  if(a.kind==="text"&&b.kind==="text")return a.anchor.block===b.anchor.block&&a.anchor.offset===b.anchor.offset&&a.anchor.affinity===b.anchor.affinity&&a.focus.block===b.focus.block&&a.focus.offset===b.focus.offset&&a.focus.affinity===b.focus.affinity;
  return false;
 }
-interface Work {command:RichCommand|DocumentIntent;revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined}
+type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never}|{command?:never;search:RichSearchIntent});
 type Composition={block:string;original:string;revision:string;finishing:boolean;target?:Extract<RichSelection,{kind:"text"}>}|{document:true;revision:string;finishing:boolean};
 export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;
@@ -58,6 +61,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
  #general=false;
  readonly #interchange:RichClipboardInterchange|undefined;
+ readonly #searchEvents=new RichSearchEvents();
  constructor(root:HTMLElement,options:RichEditorOptions<P>&(P extends "document-v1"?RichDocumentEditorOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
@@ -142,20 +146,25 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  }
  #executeIntent(command:RichCommand|DocumentIntent,focus=true,expectedRevision=this.#model.view.revision,accepted?:((display:boolean)=>void)):RichCommandOutcome|"queued" {
   this.#live();
+  if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
   // Validate layout before the queue's detached JSON snapshot can turn nonfinite values into Clear.
   const intent=command.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command;
-  this.#queue.push({command:JSON.parse(JSON.stringify(intent)) as Work["command"],revision:expectedRevision,focus,accepted});
+  this.#queue.push({command:JSON.parse(JSON.stringify(intent)) as RichCommand|DocumentIntent,revision:expectedRevision,focus,accepted});
+  return this.#drain();
+ }
+ #drain():RichCommandOutcome|"queued" {
   if(this.#busy||this.#composition)return "queued";
   this.#busy=true;let first:RichCommandOutcome|undefined,drained=0;
   try {while(this.#queue.length){
-   if(++drained>128){this.#queue=[];throw Error("Rich editor callback command loop exceeded its bound");}
+   if(++drained>128){const error=Error("Rich editor callback command loop exceeded its bound");this.#cancelQueue(error);throw error;}
    const work=this.#queue.shift()!;
    let published=false,display=true;
    try {
     const active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
     let outcome:RichCommandOutcome;
-    if(isDocumentIntent(work.command)){if(!this.#document)throw Error("Use the explicit document-selection DOM owner");outcome=publishDocumentIntent(this.#document,work.command,work.revision);}else outcome=this.#options.core.execute(work.command,work.revision);
+    if(work.search)outcome=publishRichSearchIntent(this.#options.core,work.search,work.revision);
+    else if(isDocumentIntent(work.command)){if(!this.#document)throw Error("Use the explicit document-selection DOM owner");outcome=publishDocumentIntent(this.#document,work.command,work.revision);}else outcome=this.#options.core.execute(work.command,work.revision);
     published=true;first??=outcome;this.#model=this.#read();this.#logicalSelection=this.#logical();
     if(outcome==="content"||outcome==="undo"||outcome==="redo")render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
     // An asynchronous focus:false edit must retain an already-owned caret after
@@ -163,19 +172,30 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     if(work.focus||ownedFocus){this.surface.focus({preventScroll:true});restoreDocumentNative(this.surface,this.#model.view.selection);}
     this.#refreshControls();this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}${outcome} · revision ${this.#model.view.revision}`;
     if(outcome!=="unchanged")this.#options.onChange?.(this.#options.core.view(),outcome);
-   }catch(error){display=false;if(first===undefined)throw error;this.#report(error);}
-   finally{if(published)work.accepted?.(display);}
-  }}finally{this.#busy=false;}
+   }catch(error){display=false;if(!published)work.completion?.reject(error);if(first===undefined)throw error;this.#report(error);}
+   finally{if(published){work.completion?.resolve();work.accepted?.(display);}}
+  }}finally{this.#busy=false;this.#notifySearch();}
   return first??"unchanged";
  }
+ #notifySearch():void{this.#searchEvents.emit(error=>this.#report(error));}
+ #cancelQueue(error:unknown):void{const pending=this.#queue;this.#queue=[];for(const work of pending)work.completion?.reject(error);}
+ #repeatWork(work:Work):void{if(this.#disposed){work.completion?.reject(Error("The rich DOM editor is disposed"));return;}if(this.#queue.length>=128){work.completion?.reject(Error("Rich editor command queue is full"));throw Error("Rich editor command queue is full");}this.#queue.push(work);this.#drain();}
+ #searchAction(search:RichSearchIntent,revision:string):Promise<void>{return new Promise((resolve,reject)=>{try{this.#live();if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Rich editor command queue is full");this.#queue.push({search,revision,focus:false,completion:{resolve,reject}});this.#drain();}catch(error){reject(error);}});}
+ searchState():RichSearchHostState{const view=this.#model.view,closed=this.#disposed,available=!closed&&this.#options.core.supportsSearch?.()===true;return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available,readOnly:view.readOnly===true,canReplace:available&&view.readOnly!==true});}
+ subscribeSearch(listener:()=>void):()=>void{this.#live();return this.#searchEvents.subscribe(listener);}
+ findText(query:RichSearchQuery,revision=this.#model.view.revision):RichSearchResults{this.#live();const core=this.#options.core;if(core.supportsSearch?.()!==true||!core.findText)throw Error("Use matching native search");return core.findText(query,revision);}
+ checkSearchResults(results:RichSearchResults,revision=this.#model.view.revision):void{this.#live();const core=this.#options.core;if(!core.checkSearchResults)throw Error("Use matching native search");core.checkSearchResults(results,revision);}
+ selectSearchMatch(results:RichSearchResults,index:string,revision=this.#model.view.revision):Promise<void>{return this.#searchAction({kind:"select",results,index},revision);}
+ replaceSearchOne(results:RichSearchResults,index:string,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction({kind:"replaceOne",results,index,replacement:frozen},revision);}
+ replaceSearchAll(results:RichSearchResults,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction({kind:"replaceAll",results,replacement:frozen},revision);}
  view():RichEditorView<P> {this.#live();return this.#options.core.view();}
  checkpointJson():string {this.#live();return this.#options.core.checkpointJson();}
  /** Close native continuation without rendering, moving focus, or inventing a content outcome. */
  closeTypingGroup(revision=this.#options.core.view().revision):boolean {
-  this.#live();if(this.#busy||this.#composition)throw Error("History boundaries cannot publish during a command or composition");
+  this.#live();if(this.#busy||this.#composition||this.#searchEvents.notifying)throw Error("History boundaries cannot publish during a command, composition or search notification");
   const core=this.#options.core;
   if(core.supportsTypingHistory?.()!==true||!core.closeTypingGroup){if(this.#model.view.historyGrouping==="typing-v1")throw Error("Use matching native typing history");return false;}
-  const changed=core.closeTypingGroup(revision);if(changed){this.#model=this.#read();this.#refreshControls();}return changed;
+  const changed=core.closeTypingGroup(revision);if(changed){this.#model=this.#read();this.#refreshControls();this.#notifySearch();}return changed;
  }
  #boundary():void {if(this.#model.view.historyGrouping==="typing-v1"&&!this.#busy&&!this.#composition)this.#attempt(()=>{this.closeTypingGroup();});}
  #clock():string {const clock=Math.floor(this.surface.ownerDocument.defaultView!.performance.now());if(!Number.isSafeInteger(clock)||clock<0)throw Error("Expected a finite monotonic typing clock");return String(clock);}
@@ -190,9 +210,9 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  }
  /** Change native host policy immediately, cancelling provisional composition and queued edits. */
  setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean {
-  this.#live();if(this.#busy)throw Error("Editing policy cannot publish reentrantly");
+  this.#live();if(this.#busy||this.#searchEvents.notifying)throw Error("Editing policy cannot publish reentrantly");
   const core=this.#options.core;if(!core.setReadOnly||core.supportsReadOnly?.()!==true)throw Error("Use a matching native owner with read-only enforcement");
-  const changed=core.setReadOnly(value,revision);if(changed){this.#composition=undefined;this.#queue=[];this.#reconcile();this.status.textContent=`${value?"Read-only":"Editable"} · revision ${this.#model.view.revision}`;}return changed;
+  const changed=core.setReadOnly(value,revision);if(changed){this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));this.#reconcile();this.status.textContent=`${value?"Read-only":"Editable"} · revision ${this.#model.view.revision}`;this.#notifySearch();}return changed;
  }
  focus():void {this.#live();this.surface.focus();restoreDocumentNative(this.surface,this.#model.view.selection);}
  #pick(event:PointerEvent):void {
@@ -385,7 +405,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  #files(files:readonly File[]):void {if(this.#options.core.view().readOnly===true)return;this.#boundary();this.#attempt(()=>{this.#sync();if(this.#model.view.selection?.kind==="document"){if(!this.#options.onDocumentFiles)throw Error("Whole-document image replacement requires a document-aware asset host");void Promise.resolve(this.#options.onDocumentFiles(files,this.#model.view.revision)).catch(error=>this.#report(error));return;}if(!this.#options.onFiles)throw Error("Image file insertion requires an asset host");void Promise.resolve(this.#options.onFiles(files,positionAfter(this.#context()))).catch(error=>this.#report(error));});}
  #replaceDocumentInput(text:string,typing:boolean):RichCommandOutcome|"queued" {const paragraph=this.#allocate("p");return this.#executeIntent(typing&&this.#model.view.historyGrouping==="typing-v1"?{kind:"replaceDocumentTypingText",paragraph,text,clockMs:this.#clock()}:{kind:"replaceDocumentPlainText",paragraph,text});}
  #pasteLoss(report:RichClipboardTextProjection):void{this.status.textContent=`Pasted text into ${report.target}; formatting loss: ${report.losses.join(", ")}.`;try{this.#options.onPasteLoss?.(report);}catch(error){this.#report(error);}}
- #startComposition():void {if(this.#composition||this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{if(this.#model.view.readOnly===true)return;this.#sync();const selection=this.#model.view.selection;if(selection?.kind==="document"&&this.#document){this.#composition={document:true,revision:this.#model.view.revision,finishing:false};return;}if(selection?.kind!=="text")return;const cross=selection.anchor.block!==selection.focus.block;if(cross&&!this.#general)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false,...(cross?{target:structuredClone(selection)}:{})};});}
+ #startComposition():void {if(this.#composition||this.#model.view.readOnly===true)return;this.#boundary();this.#attempt(()=>{if(this.#model.view.readOnly===true)return;this.#sync();const selection=this.#model.view.selection;if(selection?.kind==="document"&&this.#document){this.#composition={document:true,revision:this.#model.view.revision,finishing:false};return;}if(selection?.kind!=="text")return;const cross=selection.anchor.block!==selection.focus.block;if(cross&&!this.#general)return;const node=this.#model.nodes.get(selection.focus.block);if(node)this.#composition={block:id(node),original:text(node),revision:this.#model.view.revision,finishing:false,...(cross?{target:structuredClone(selection)}:{})};});this.#notifySearch();}
  #endComposition(committedText:string):void {
   const composition=this.#composition;if(!composition)return;composition.finishing=true;
   this.surface.ownerDocument.defaultView?.requestAnimationFrame(()=>{
@@ -394,7 +414,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     this.#composition=undefined;const pending=this.#queue;this.#queue=[];
     try{if(committedText)this.#executeIntent({kind:"replaceDocumentPlainText",paragraph:this.#allocate("p"),text:committedText},true,composition.revision);}
     catch(error){this.#report(error);}
-    finally{for(const work of pending){try{this.#executeIntent(work.command,work.focus,work.revision,work.accepted);}catch(error){this.#report(error);}}this.#reconcile();}
+    finally{for(const work of pending){try{this.#repeatWork(work);}catch(error){this.#report(error);}}this.#reconcile();this.#notifySearch();}
     return;
    }
    // The browser may provisionally rewrite several containers. Only its final committed
@@ -403,7 +423,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     this.#composition=undefined;const pending=this.#queue;this.#queue=[];
     try{if(committedText)this.execute({kind:"replaceGeneralRangePlainText",data:{selection:composition.target,text:committedText,prefix:this.#allocate("range")}},true,composition.revision);}
     catch(error){this.#report(error);}
-    finally{for(const work of pending){try{this.#executeIntent(work.command,work.focus,work.revision,work.accepted);}catch(error){this.#report(error);}}this.#reconcile();}
+    finally{for(const work of pending){try{this.#repeatWork(work);}catch(error){this.#report(error);}}this.#reconcile();this.#notifySearch();}
     return;
    }
    const block=[...this.surface.querySelectorAll<HTMLElement>("[data-rich-text]")].find(node=>node.dataset["richText"]===composition.block),final=block?.textContent??composition.original;
@@ -416,11 +436,11 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
    const pending=this.#queue;this.#queue=[];
    try {if(composition.original!==final){const point={block:composition.block,affinity:"after" as const};this.execute({kind:"replaceTextRange",data:{selection:{kind:"text",anchor:{...point,offset:String(prefix)},focus:{...point,offset:String(oldEnd)}},text:final.slice(prefix,newEnd)}},true,composition.revision);}}
    catch(error){this.#report(error);}
-   finally {for(const work of pending){try{this.#executeIntent(work.command,work.focus,work.revision,work.accepted);}catch(error){this.#report(error);}}this.#reconcile();}
+   finally {for(const work of pending){try{this.#repeatWork(work);}catch(error){this.#report(error);}}this.#reconcile();this.#notifySearch();}
   });
  }
  /** Unmount the surface and release its transferred exclusive core owner. */
- dispose():void {if(this.#disposed)return;this.#disposed=true;this.#abort.abort();this.#queue=[];this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
+ dispose():void {if(this.#disposed)return;this.#disposed=true;this.#abort.abort();this.#cancelQueue(Error("The rich DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
 }
 export function mountRichEditor(root:HTMLElement,options:RichEditorOptions):RichDomEditor{return new RichDomEditor(root,options);}
 /** Opt-in extended coordinator; ordinary mounts and original execute/selection DTOs stay closed. */

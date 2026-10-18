@@ -3,11 +3,11 @@ import {createRoot,type Root} from "react-dom/client";
 import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
 import type {LocalDocumentEditor} from "../src/local_document.js";
 import type {SharedDocumentEditorSession} from "../src/shared_document_session.js";
-const mocks=vi.hoisted(()=>({local:vi.fn(),shared:vi.fn()}));
+const mocks=vi.hoisted(()=>({local:vi.fn(),shared:vi.fn(),search:vi.fn()}));
 vi.mock("../src/local_document.js",()=>({openLocalDocumentEditor:mocks.local}));
-vi.mock("../src/shared_document_session.js",()=>({openSharedDocumentEditor:mocks.shared}));
+vi.mock("../src/shared_document_session.js",()=>({openSharedDocumentEditor:mocks.shared,openSharedDocumentSearchEditor:mocks.search}));
 import {BreditorDocumentEditor,type BreditorDocumentEditorHandle} from "../src/document_react.js";
-import {BreditorSharedDocumentEditor,type BreditorSharedDocumentEditorHandle} from "../src/shared_document_react.js";
+import {BreditorSharedDocumentEditor,BreditorSharedDocumentSearchEditor,type BreditorSharedDocumentEditorHandle} from "../src/shared_document_react.js";
 import {SharedDocumentEditorOpenError} from "../src/shared_document_open_error.js";
 import type {SharedPersistentSession} from "@breditor/collaboration";
 (globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
@@ -16,9 +16,14 @@ const localOptions={selectionEditing:"document-v1" as const},sharedOptions={...l
 const local=()=>({dispose:vi.fn(),focus:vi.fn(),checkpointJson:()=>"exact document",execute:vi.fn(()=>"content"),selectDocument:vi.fn(()=>"ui"),replaceDocumentPlainText:vi.fn(()=>"content"),pasteDocumentClipboard:vi.fn(()=>"content"),collapseDocumentSelection:vi.fn(()=>"ui"),setReadOnly:vi.fn(()=>true),closeTypingGroup:vi.fn(()=>true)} as unknown as LocalDocumentEditor);
 const shared=()=>({...local(),selectionPolicy:()=>"document-v1",rangePolicy:()=>"general-v1",historyPolicy:()=>"typing-v1",close:vi.fn(async()=>{}),discardAndClose:vi.fn(async()=>{}),flush:vi.fn(async()=>{})} as unknown as SharedDocumentEditorSession);
 async function settle(){await act(async()=>{for(let i=0;i<12;i++)await Promise.resolve();});}
-beforeEach(()=>{mocks.local.mockReset();mocks.shared.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
+beforeEach(()=>{mocks.local.mockReset();mocks.shared.mockReset();mocks.search.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
 afterEach(async()=>{await act(async()=>root.unmount());await settle();container.remove();});
 describe("explicit React document ownership",()=>{
+ it("document search selects only its explicit startup factory and preserves one owner across rerenders",async()=>{
+  const owned=shared(),ref=createRef<BreditorSharedDocumentEditorHandle>(),initial={...sharedOptions,richLanguage:3 as const,history:"typing-v1" as const,initial:{kind:"searchCheckpoint" as const,checkpointJson:"search document journal"}};mocks.search.mockResolvedValue(owned);
+  await act(async()=>root.render(<StrictMode><BreditorSharedDocumentSearchEditor ref={ref} initialOptions={initial} onCloseError={()=>{}}/></StrictMode>));await settle();expect(mocks.search).toHaveBeenCalledOnce();expect(mocks.shared).not.toHaveBeenCalled();expect(mocks.search.mock.calls[0]![0]).toMatchObject(initial);
+  await act(async()=>root.render(<StrictMode><BreditorSharedDocumentSearchEditor ref={ref} initialOptions={{...initial,history:"explicit"}} readOnly={true} onCloseError={()=>{}}/></StrictMode>));await settle();expect(ref.current?.getEditor()).toBe(owned);expect(mocks.search).toHaveBeenCalledOnce();expect(owned.setReadOnly).toHaveBeenLastCalledWith(true);ref.current?.selectDocument("4");expect(owned.selectDocument).toHaveBeenCalledWith("4");
+ });
  it("StrictMode announces one owner of each family and exposes named document intents",async()=>{
   const a=local(),b=shared(),ra=createRef<BreditorDocumentEditorHandle>(),rb=createRef<BreditorSharedDocumentEditorHandle>();mocks.local.mockResolvedValue(a);mocks.shared.mockResolvedValue(b);
   await act(async()=>root.render(<StrictMode><BreditorDocumentEditor ref={ra} initialOptions={localOptions}/><BreditorSharedDocumentEditor ref={rb} initialOptions={sharedOptions} onCloseError={()=>{}}/></StrictMode>));await settle();expect(mocks.local).toHaveBeenCalledOnce();expect(mocks.shared).toHaveBeenCalledOnce();expect(ra.current?.getEditor()).toBe(a);expect(rb.current?.getEditor()).toBe(b);

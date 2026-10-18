@@ -12,5 +12,6 @@ export {applyBlockLayout} from "./dist/browser/block_layout_presentation.js";
 export {blockLayoutControls,blockLayoutShortcut} from "./dist/browser/block_layout_controls.js";
 export {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
+export {RichSearchEvents} from "./dist/browser/search_host.js";
 export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";
 export {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClipboard,clipboardInterchangeReport,clipboardInterchangeStatus} from "./dist/browser/clipboard_interchange.js";

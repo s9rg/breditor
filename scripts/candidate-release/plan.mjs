@@ -47,10 +47,15 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("editor-build",npm,["run","build:candidate","--workspace","@breditor/editor"]),
   stage("typescript-tests-and-script-contracts",npm,["test"]),
   stage("editor-sdk-tests",npm,["run","test:candidate","--workspace","@breditor/editor"]),
+  script("search-programmatic-sdk","probe-search-sdk.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
+  script("search-persistent-sessions","probe-search-persistence-sdk.mjs",["target/promoted-shared-web"]),
+  script("search-borrowed-controls","probe-search-ui.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
+  script("search-managed-startup","probe-search-root-sdk.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
   stage("workspace-types",npm,["run","typecheck"]),
   stage("collaboration-types",npm,["run","typecheck:candidate","--workspace","@breditor/collaboration"]),
   stage("editor-types",npm,["run","typecheck:candidate","--workspace","@breditor/editor"]),
   script("installed-editor-pairing","check-editor-package.mjs",[],[{path:"target/editor-installed-consumer.json",fresh:true}]),
+  script("installed-search-workflows","check-search-installed.mjs",[],[{path:"target/search-installed-consumer.json",fresh:true}]),
   script("installed-rich-interchange","check-interchange-package.mjs",[],[{path:"target/interchange-installed-consumer.json",fresh:true}]),
   relayCargo("functional-native-fixtures",["build","--features","server","--locked","--offline","--release","--example","transport_v2_functional","--example","suggestions_functional","--example","suggestion_revisions_functional","--example","review_assets_functional"],["transport_v2_functional","suggestions_functional","suggestion_revisions_functional","review_assets_functional"].map(executablePath)),
   script("installed-everyday-mixed-workflows","check-editor-mixed-workflows.mjs",["--reuse-installed",executable("transport_v2_functional")],[{path:"target/editor-mixed-workflows.json",fresh:true}]),
@@ -60,6 +65,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("readiness-inventory","check-v1-readiness.mjs",["--json"]),
  ];
  if(profile==="full")checks.push(
+  script("installed-search-browser","check-search-browser.mjs",[],[{path:"target/search-installed-browser.json",fresh:true}]),
   script("default-package-release-matrix","verify-release.mjs",[],[],7200000),
   script("installed-editor-browser-matrix","check-editor-browser.mjs",[],[],7200000),
   script("reviewed-v1-readiness","check-v1-readiness.mjs",["--require-ready"]),

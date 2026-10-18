@@ -2,9 +2,9 @@ import {StrictMode,act,createRef} from "react";
 import {createRoot,type Root} from "react-dom/client";
 import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
 import type {SharedEditorSession} from "../src/shared_session.js";
-const mocks=vi.hoisted(()=>({open:vi.fn()}));
-vi.mock("../src/shared_session.js",()=>({openSharedEditor:mocks.open}));
-import {BreditorSharedEditor,type BreditorSharedEditorHandle} from "../src/shared_react.js";
+const mocks=vi.hoisted(()=>({open:vi.fn(),search:vi.fn()}));
+vi.mock("../src/shared_session.js",()=>({openSharedEditor:mocks.open,openSharedSearchEditor:mocks.search}));
+import {BreditorSharedEditor,BreditorSharedSearchEditor,type BreditorSharedEditorHandle} from "../src/shared_react.js";
 import {SharedEditorOpenError} from "../src/shared_open_error.js";
 import type {SharedPersistentSession} from "@breditor/collaboration";
 (globalThis as typeof globalThis&{IS_REACT_ACT_ENVIRONMENT:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
@@ -12,9 +12,18 @@ let root:Root,container:HTMLDivElement;
 const options={database:"react-test",room:"room",writer:"101"};
 const editor=()=>({close:vi.fn(async()=>{}),discardAndClose:vi.fn(async()=>{}),focus:vi.fn(),checkpointJson:()=>"exact causal journal",execute:vi.fn(),setReadOnly:vi.fn(()=>true),closeTypingGroup:vi.fn(()=>true),flush:vi.fn(async()=>{})} as unknown as SharedEditorSession);
 async function settle(){await act(async()=>{for(let i=0;i<12;i++)await Promise.resolve();});}
-beforeEach(()=>{mocks.open.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
+beforeEach(()=>{mocks.open.mockReset();mocks.search.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
 afterEach(async()=>{await act(async()=>root.unmount());await settle();container.remove();});
 describe("durable React writer ownership",()=>{
+ it("search startup is a separate immutable family and retains failed retirement before replacement",async()=>{
+  const first=editor(),second=editor(),ref=createRef<BreditorSharedEditorHandle>(),failure=vi.fn(),initial={...options,richLanguage:3 as const,rangeEditing:"general-v1" as const,history:"typing-v1" as const,initial:{kind:"searchCheckpoint" as const,checkpointJson:"search journal"}};
+  mocks.search.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+  const render=(key:string)=><BreditorSharedSearchEditor ref={ref} sessionKey={key} initialOptions={initial} onCloseError={failure}/>;
+  await act(async()=>root.render(<StrictMode>{render("first")}</StrictMode>));await settle();expect(mocks.search).toHaveBeenCalledOnce();expect(mocks.open).not.toHaveBeenCalled();expect(mocks.search.mock.calls[0]![0]).toMatchObject(initial);
+  await act(async()=>root.render(<StrictMode><BreditorSharedSearchEditor ref={ref} sessionKey="first" initialOptions={{...initial,history:"explicit"}} onCloseError={failure}/></StrictMode>));await settle();expect(mocks.search).toHaveBeenCalledOnce();expect(ref.current?.getEditor()).toBe(first);
+  vi.mocked(first.close).mockRejectedValue(Error("Quota"));await act(async()=>root.render(<StrictMode>{render("second")}</StrictMode>));await settle();expect(ref.current?.getRecovery()).toBe(first);expect(first.discardAndClose).not.toHaveBeenCalled();expect(mocks.search).toHaveBeenCalledOnce();
+  vi.mocked(first.close).mockResolvedValue(undefined);await act(async()=>ref.current?.retry());await settle();expect(ref.current?.getEditor()).toBe(second);expect(mocks.search).toHaveBeenCalledTimes(2);expect(mocks.open).not.toHaveBeenCalled();
+ });
  it("general policy is immutable per key and failed retirement retains its exact family before replacement",async()=>{
   const first=editor(),second=editor(),ref=createRef<BreditorSharedEditorHandle>(),failed=vi.fn();Object.assign(first,{rangePolicy:()=>"general-v1",historyPolicy:()=>"typing-v1"});Object.assign(second,{rangePolicy:()=>"original",historyPolicy:()=>"explicit"});vi.mocked(first.close).mockRejectedValue(Error("Quota"));mocks.open.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
   await act(async()=>root.render(<BreditorSharedEditor ref={ref} sessionKey="general" initialOptions={{...options,rangeEditing:"general-v1",history:"typing-v1",initial:{kind:"generalTypingCheckpoint",checkpointJson:"exact causal journal"}}} onCloseError={failed}/>));await settle();expect(mocks.open.mock.calls[0]![0]).toMatchObject({rangeEditing:"general-v1",history:"typing-v1",initial:{kind:"generalTypingCheckpoint"}});

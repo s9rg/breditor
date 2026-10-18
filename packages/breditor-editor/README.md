@@ -19,6 +19,56 @@ fixed per core/`sessionKey`; live policy callbacks may read current host state.
 Close the paired session explicitly after borrowed controls are removed. Existing
 managed document-only openings do not silently enable or persist review metadata.
 
+## Find and replace
+
+Local owners expose a borrowed `editor.search()` port. Mount its controls in a
+separate host, outside the editor's host and editable surface:
+
+```js
+import {openLocalEditor, mountSearchPanel} from '@breditor/editor';
+
+const editor = await openLocalEditor({host: editorHost, richLanguage: 3});
+const panel = mountSearchPanel(controlsHost, editor.search(), {
+  initialQuery: {pattern: 'word', mode: 'literal', caseSensitive: false, wholeWords: true},
+  initialReplacement: {text: 'replacement', mode: 'literal'}
+});
+// Later: close/focus retain drafts; dispose releases only these borrowed controls.
+panel.close();
+panel.focus();
+panel.dispose();
+editor.dispose();
+```
+
+The panel supports regex, capture expansion, Previous/Next and atomic Replace
+One/All. Rust owns matching, source guards, selection, replacement and history;
+highlights do not modify the editing DOM. `next`, `replaceOne` and `replaceAll`
+return promises from the editor's guarded command queue. Composition, stale
+source and policy changes cannot silently retry an edit. Read-only owners may
+navigate but cannot replace. `BreditorSearchPanel` from either React entry accepts
+`editor={editor.search()}` and optional `initialOptions`; parent rerenders preserve
+drafts. It never owns or closes the editor/writer. Remove borrowed panels before
+retiring their owner. No default hotkey is installed.
+
+Shared replacement requires `openSharedSearchEditor` or
+`openSharedDocumentSearchEditor` from `@breditor/editor/collaboration`, not a
+runtime flag on the original startup factory. Both require `richLanguage` and
+`history` explicitly. The first additionally requires `rangeEditing` (`original`
+or `general-v1`); the second requires `selectionEditing: 'document-v1'`. They
+accept the usual room/database/writer and empty/document/frame/resume seeds,
+with a separate `{kind: 'searchCheckpoint', checkpointJson}` recovery seed.
+Existing stored records take precedence. Old keys/factories reject search saves;
+search factories reject old saves without rewriting them. Choose a separate key
+or an explicitly designed future migration, never import only the AST to discard
+history. Failed closure retains exact readable recovery and the writer lease.
+
+`BreditorSharedSearchEditor` and `BreditorSharedDocumentSearchEditor` from the
+shared React entry use the same explicit options and old-writer retirement rules.
+Their normal `onCloseError(error, recovery)` handler remains required. Recovery
+exposes `searchHistoryPolicy()` along with the existing scope/history metadata.
+Ordinary shared owners can search/navigate without becoming search-aware writers;
+their replacement controls stay disabled. Paired review persistence remains an
+explicit lower-level session, not implicit document-only startup behavior.
+
 ## General range editing
 
 Pass `rangeEditing: 'general-v1'` to local or shared openings, or to React

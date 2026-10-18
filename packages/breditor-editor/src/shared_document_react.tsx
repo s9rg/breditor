@@ -1,5 +1,5 @@
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement} from "react";
-import {openSharedDocumentEditor,type SharedDocumentEditorSession,type SharedDocumentEditorSessionOptions} from "./shared_document_session.js";
+import {openSharedDocumentEditor,openSharedDocumentSearchEditor,type SharedDocumentEditorSession,type SharedDocumentEditorSessionOptions,type SharedDocumentSearchEditorSessionOptions} from "./shared_document_session.js";
 import {SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery} from "./shared_document_open_error.js";
 import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextProjection} from "@breditor/collaboration";
 import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-content";
@@ -13,6 +13,12 @@ export interface BreditorSharedDocumentEditorProps {
  /** Required even after unmount: retain/export exact document recovery or explicitly discard it. */
  onCloseError:(error:unknown,editor:SharedDocumentEditorRecovery)=>void;
 }
+export interface BreditorSharedDocumentSearchEditorProps extends Omit<BreditorSharedDocumentEditorProps,"initialOptions"> {
+ initialOptions:Omit<SharedDocumentSearchEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
+}
+type DocumentReactProps<O extends SharedDocumentEditorSessionOptions|SharedDocumentSearchEditorSessionOptions>=Omit<BreditorSharedDocumentEditorProps,"initialOptions">&{initialOptions:Omit<O,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">};
+type ManagedDocumentKeys="host"|"signal"|"readOnly"|"onChange"|"onError"|"onSaveState"|"onClosing"|"onPasteLoss"|"onInterchange";
+type DocumentReactOpening<O extends SharedDocumentEditorSessionOptions|SharedDocumentSearchEditorSessionOptions>=Omit<O,ManagedDocumentKeys>&Pick<SharedDocumentEditorSessionOptions,ManagedDocumentKeys>;
 export interface BreditorSharedDocumentEditorHandle {
  getEditor():SharedDocumentEditorSession|null;getRecovery():SharedDocumentEditorRecovery|null;focus():void;checkpointJson():string|null;
  execute(request:SharedDispatch,focus?:boolean,revision?:string):void;
@@ -20,7 +26,7 @@ export interface BreditorSharedDocumentEditorHandle {
  setReadOnly(value:boolean,revision?:string):boolean|null;closeTypingGroup(revision?:string):boolean|null;flush():Promise<void>|null;retry():void;
 }
 /** Exact durable document ownership; replacement waits until the previous writer has safely retired. */
-export const BreditorSharedDocumentEditor=forwardRef<BreditorSharedDocumentEditorHandle,BreditorSharedDocumentEditorProps>(function BreditorSharedDocumentEditor(props,ref):ReactElement{
+function documentReactEditor<O extends SharedDocumentEditorSessionOptions|SharedDocumentSearchEditorSessionOptions>(open:(options:DocumentReactOpening<O>)=>Promise<SharedDocumentEditorSession>){return forwardRef<BreditorSharedDocumentEditorHandle,DocumentReactProps<O>>(function BreditorSharedDocumentEditor(props,ref):ReactElement{
  const [host,setHost]=useState<HTMLDivElement|null>(null),[attempt,setAttempt]=useState(0),[phase,setPhase]=useState<"starting"|"ready"|"failed">("starting");
  const current=useRef<SharedDocumentEditorSession|null>(null),recovery=useRef<SharedDocumentEditorRecovery|null>(null),callbacks=useRef(props),configuration=useRef(props.initialOptions),lane=useRef<Promise<void>>(Promise.resolve());
  useEffect(()=>{callbacks.current=props;configuration.current=props.initialOptions;});
@@ -35,7 +41,9 @@ export const BreditorSharedDocumentEditor=forwardRef<BreditorSharedDocumentEdito
   const retire=async(editor:SharedDocumentEditorRecovery)=>{try{await editor.close();if(recovery.current===editor)recovery.current=null;}catch(error){handoff(error,editor);throw error;}};
   const opening=lane.current.then(async()=>{if(abort.signal.aborted)return;try{
    if(recovery.current)await retire(recovery.current);if(abort.signal.aborted)return;
-   const policy=callbacks.current.readOnly,editor=await openSharedDocumentEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
+   // This type projection only removes React-managed fields; no initial native policy is rewritten.
+   const initialFields=initial as Omit<O,ManagedDocumentKeys>;
+   const policy=callbacks.current.readOnly,editor=await open({...initialFields,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
     onChange:event=>callbacks.current.onChange?.(event),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),onInterchange:value=>(callbacks.current.onInterchange??initial.onInterchange)?.(value),onSaveState:state=>callbacks.current.onSaveState?.(state),onClosing:editor=>callbacks.current.onClosing?.(editor),onError:report});
    if(abort.signal.aborted){await retire(editor);return;}try{if(callbacks.current.readOnly!==undefined)editor.setReadOnly(callbacks.current.readOnly);}catch(error){await retire(editor);throw error;}
    owned=editor;current.current=editor;setPhase("ready");try{callbacks.current.onReady?.(editor);}catch(error){report(error);}
@@ -43,4 +51,8 @@ export const BreditorSharedDocumentEditor=forwardRef<BreditorSharedDocumentEdito
   lane.current=opening.catch(report);return()=>{abort.abort();if(current.current===owned)current.current=null;lane.current=lane.current.then(async()=>{const editor=owned;owned=undefined;if(editor)await retire(editor);}).catch(report);};
  },[host,props.sessionKey,attempt]);
  return <section className={props.className} data-breditor-phase={phase} aria-busy={phase==="starting"}><div ref={setHost}/>{phase==="failed"?<p role="alert">The shared document editor could not start. <button type="button" onClick={()=>setAttempt(value=>value+1)}>Retry</button></p>:null}</section>;
-});
+});}
+export const BreditorSharedDocumentEditor=documentReactEditor<SharedDocumentEditorSessionOptions>(openSharedDocumentEditor);
+/** Explicit document/search recovery, with the same retained failed-close handoff. */
+export const BreditorSharedDocumentSearchEditor=documentReactEditor<SharedDocumentSearchEditorSessionOptions>(openSharedDocumentSearchEditor);
+BreditorSharedDocumentSearchEditor.displayName="BreditorSharedDocumentSearchEditor";

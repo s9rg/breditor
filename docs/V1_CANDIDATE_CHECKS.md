@@ -23,6 +23,13 @@ builds, TypeScript builds/tests/types,
 installed-package checks and installed mixed editing, review and asset workflows.
 It ends with the readiness inventory, not a release-readiness assertion.
 
+Search adds actual-Wasm programmatic, persistence, borrowed-control and managed
+startup probes, plus independent installed vanilla/React workflows. The installed
+search check seeds and verifies external registry artifacts against the producer
+lock; it does not use workspace links. Its explicit `--reuse-runtimes` mode is
+available for focused development checks and records that no fresh producer
+rebuild was qualified. The candidate profile does not select that mode.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and
@@ -39,7 +46,8 @@ Use the separate research builds for custom compiler experiments. Paths with
 spaces and symlinked build roots are supported by the remapping guard.
 
 The default full profile also runs the existing default-package release matrix,
-the installed editor browser matrix and the fail-closed reviewed readiness guard.
+the installed editor browser matrix, one installed search production-browser
+functional/geometry check and the fail-closed reviewed readiness guard.
 That last guard fails while any capability or qualification gate remains open.
 Neither profile supplies manual qualification or release approval. The functional
 profile is a qualification subset, not a smaller approved V1 product scope.

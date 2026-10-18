@@ -9,7 +9,7 @@ import {initializeLocalRuntime,createLocalProfile,emptyDocumentJson} from "@bred
 import {initializeSharedRuntime,createSharedProfile,SharedRichEditor} from "@breditor/editor/collaboration";
 import * as applicationWasm from "@breditor/collaboration/wasm";
 const require=createRequire(import.meta.url);
-assert.deepEqual(Object.keys(applicationWasm).sort(),["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","default","initSync"].sort());
+assert.deepEqual(Object.keys(applicationWasm).sort(),["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults","default","initSync"].sort());
 for(const name of ["accept_document_suggestion","prepare_document_suggestion_effect","commit_document_suggestion_effect","apply_inverse","apply_diff"])assert.equal(applicationWasm.SharedEditorOwner.prototype[name],undefined,"Installed browser runtime must not expose server effects or arbitrary inverses");
 assert.equal(applicationWasm.SharedEditorOwner.prototype.undo,undefined);assert.equal(applicationWasm.SharedEditorOwner.prototype.apply,undefined);
 assert.match(renderToString(createElement(BreditorEditor)),/data-breditor-phase="starting"/);

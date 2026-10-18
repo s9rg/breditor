@@ -13,11 +13,16 @@ Separate Replace One and Replace All entry points stage complete semantic splice
 plans and publish one history group. Shared replacement uses an explicitly
 selected recovery family. Optional Wasm and programmatic SDK APIs now expose
 owned results and exact persistent-session recovery. Borrowed vanilla/React
-controls, decorations and connected installed acceptance remain active work.
+controls, out-of-tree decorations and separately named managed shared startup
+now use the same guarded native operations through independently installed packages.
 
 The [Wasm and SDK recovery checkpoint](qualification/2026-10-18-search-wasm-sdk-recovery.json)
 pins the actual runtime binaries, tested source and 25 selected checks. It is not
 the full candidate profile or release approval.
+The subsequent [controls and installed integration checkpoint](qualification/2026-10-18-search-controls-installed.json)
+pins 25 selected checks, independent public-package workflows and one successful
+production-browser proof. Its source-verified reused runtimes do not qualify a
+fresh official producer build.
 
 ## Search domains and order
 
@@ -153,8 +158,8 @@ A certified fast path indexes a complete plain birth source once. It keeps the
 same original character operations and provenance marks; formatted, fragmented,
 hidden-source and empty-body reinsertion cases use ordinary logical lowering.
 It does not copy unmatched characters, change causal formats or provide a
-wall-clock performance guarantee. Connected installed-editor acceptance remains
-separate from native and programmatic SDK recovery.
+wall-clock performance guarantee. Installed-editor workflows exercise the same
+native operations; browser and release qualification have separate gates.
 
 ## Wasm and programmatic SDK ownership
 
@@ -216,6 +221,58 @@ overwrite, retained versions and optional relay bindings. The matrices qualify
 these programmatic contracts, not native browser storage, installed archives,
 borrowed controls or a production deployment.
 
+## Borrowed controls and managed startup
+
+`mountSearchPanel(controlsHost, editor.search(), options)` is available from
+`@breditor/editor`; the collaboration entry also exports `mountSharedSearchPanel`.
+The controls host must be separate from the canonical editing surface in the
+same document. `BreditorSearchPanel` from either React entry borrows the same
+port. Neither control creates, closes or replaces a document owner or writer.
+Ordinary rerenders retain drafts; a different owner or React `sessionKey`
+creates a new panel. Closing and reopening preserve query/replacement drafts.
+Dispose the panel before closing its owner.
+
+The panel supports literal/regex queries, case/whole-word switches, wrapping,
+Previous/Next, literal/capture replacement and Replace One/All. Rust owns the
+complete result and navigation. Controls submit named asynchronous operations
+through the existing DOM command coordinator, not the old serialized command
+union. Each queued operation retains its opaque result, detached replacement
+input and original revision. Accepted composition, intervening source changes,
+policy changes, disposal and queue exhaustion reject stale work rather than
+rerunning a query or silently moving the replacement. Editor and query-field
+composition disable panel actions. Read-only notifications cannot publish
+reentrantly; a display callback failure cannot rewind an accepted native edit.
+
+Decorations map admitted block IDs and UTF-16 intervals into transient DOM
+ranges. They are painted outside the editable DOM, never inserted as text or
+formatting. Freshness is checked before paint; composition, busy/closed owners
+and stale results clear it. Scroll, resize and surface mutation update paint.
+Only visible rectangles are painted, with a separate 8,192-rectangle cap and an
+explicit clipping notice. This presentation bound does not truncate native
+results or Replace All. Navigation keeps control focus; closing returns focus
+to the editor without authoring content.
+
+Local managed openings expose search without changing local save families.
+Shared replacement uses `openSharedSearchEditor` or
+`openSharedDocumentSearchEditor` from `@breditor/editor/collaboration`.
+Both require explicit language and history choices; the former also requires an
+explicit range policy, and the latter requires document selection. First-opening
+checkpoint seeds use only `{kind: 'searchCheckpoint', checkpointJson}`.
+Stored records still take precedence, and `{kind: 'resume'}` requires exact
+recovery. Old openings and keys do not implicitly upgrade to search records.
+Recovery handles expose `searchHistoryPolicy()` alongside their existing policy
+metadata; failed closure retains the exact owner and lease for retry.
+An independent durable key does not make a checkpoint safe to clone: never
+duplicate a live causal writer. New documents need fresh room/writer identities;
+migration needs explicit writer retirement and exact-history recovery.
+
+`BreditorSharedSearchEditor` and `BreditorSharedDocumentSearchEditor` select those
+factories immutably. Existing StrictMode, cancellation, old-writer retirement and
+failed-close recovery contracts remain shared with the original wrappers. The
+old components and checkpoint tags retain their meanings. Review-aware durable
+sessions continue to use the explicit paired persistent factory; a document-only
+managed opening does not silently enable or persist review metadata.
+
 ## Resource admission and integration
 
 Pattern size, compiled NFA/lazy-DFA cache memory, visited or queued AST nodes,
@@ -242,14 +299,18 @@ a zero-operation host transaction policy rejects a changed plan. These bounds do
 not widen ordinary action batches, shared command batches, document admission,
 retained history capacity or checkpoint byte limits.
 
-Borrowed vanilla/React controls and decorations still need explicit owner and
-composition/queue integration. An older runtime refuses the optional feature
-without altering ordinary editing. Closing the search UI must preserve the
-editor, drafts and history; asynchronous or stale view results cannot publish an
-edit. Search presentation must remain separate from canonical editing DOM.
+An older runtime refuses the optional controls before mutating their host,
+without altering ordinary editing. Public package probes cover the borrowed
+controls and root/React startup with actual paired Wasm, exact reopens and future
+Undo/Redo. Independent offline archives retain producer-locked registry artifacts,
+strict consumer types and local/shared/React bundle isolation. Mixed merged-table
+and caption workflows preserve peer edits, independent comments and named versions.
 
 Acceptance requires native Unicode/formatting/merged-table fixtures, both local
 and shared ownership, literal and regex/capture replacement, zero-width progress,
 one-step Undo/Redo, exact reopen and peer-preserving offline/concurrent workflows
-through installed packages. Performance, supported-browser/input and final V1
-qualification remain tracked in the release plan.
+through installed packages. One headless Chromium production-bundle check also
+checks actual geometry, source-DOM isolation, live refresh, readonly navigation
+and one-step replacement Undo using browser IndexedDB and Web Locks. It is not
+physical input/clipboard, cross-browser, historical WebKit, performance or V1
+qualification. Those remain tracked in the release plan.

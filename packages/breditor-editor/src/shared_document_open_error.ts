@@ -12,6 +12,6 @@ export class SharedDocumentEditorOpenError extends Error {
  constructor(cause:unknown,session:SharedPersistentSession<"document-v1">){
   super("Document editor opening failed and its durable writer could not close; retry recovery.close() or explicitly discard it",{cause});
   this.name="SharedDocumentEditorOpenError";
-  this.recovery={selectionPolicy:()=>"document-v1",historyPolicy:()=>session.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit",rangePolicy:()=>"general-v1",checkpointJson:()=>session.core.checkpointJson(),close:()=>session.close(),discardAndClose:()=>session.discardAndClose()};
+  this.recovery={selectionPolicy:()=>"document-v1",historyPolicy:()=>session.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit",rangePolicy:()=>"general-v1",searchHistoryPolicy:()=>session.core.searchHistoryPolicy?.()??null,checkpointJson:()=>session.core.checkpointJson(),close:()=>session.close(),discardAndClose:()=>session.discardAndClose()};
  }
 }

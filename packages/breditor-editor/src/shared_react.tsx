@@ -1,11 +1,12 @@
 import {forwardRef,useEffect,useImperativeHandle,useRef,useState,type ReactElement} from "react";
-import {openSharedEditor,type SharedEditorSession,type SharedEditorSessionOptions} from "./shared_session.js";
+import {openSharedEditor,openSharedSearchEditor,type SharedEditorSession,type SharedEditorSessionOptions,type SharedSearchEditorSessionOptions} from "./shared_session.js";
 import {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
 import type {SharedDispatch,SharedPublication,SharedSaveState,RichClipboardTextProjection} from "@breditor/collaboration";
 import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-content";
-export {BreditorSharedDocumentEditor,type BreditorSharedDocumentEditorProps,type BreditorSharedDocumentEditorHandle} from "./shared_document_react.js";
+export {BreditorSharedDocumentEditor,BreditorSharedDocumentSearchEditor,type BreditorSharedDocumentEditorProps,type BreditorSharedDocumentSearchEditorProps,type BreditorSharedDocumentEditorHandle} from "./shared_document_react.js";
 export {BreditorSharedReviewPanel,type BreditorSharedReviewPanelProps,type BreditorSharedReviewPanelHandle} from "./shared_review_react.js";
 export {BreditorSharedSuggestionPanel,type BreditorSharedSuggestionPanelProps,type BreditorSharedSuggestionPanelHandle} from "./shared_suggestion_react.js";
+export {BreditorSearchPanel,type BreditorSearchPanelProps,type BreditorSearchPanelHandle} from "./search_react.js";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
@@ -21,6 +22,12 @@ export interface BreditorSharedEditorProps {
  /** Required recovery handoff, including after unmount. Keep/export this writer or explicitly discard it. */
  onCloseError:(error:unknown,editor:SharedEditorRecovery)=>void;
 }
+export interface BreditorSharedSearchEditorProps extends Omit<BreditorSharedEditorProps,"initialOptions"> {
+ initialOptions:Omit<SharedSearchEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;
+}
+type SharedReactProps<O extends SharedEditorSessionOptions|SharedSearchEditorSessionOptions>=Omit<BreditorSharedEditorProps,"initialOptions">&{initialOptions:Omit<O,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">};
+type ManagedSharedKeys="host"|"signal"|"readOnly"|"onChange"|"onError"|"onSaveState"|"onClosing"|"onPasteLoss"|"onInterchange";
+type SharedReactOpening<O extends SharedEditorSessionOptions|SharedSearchEditorSessionOptions>=Omit<O,ManagedSharedKeys>&Pick<SharedEditorSessionOptions,ManagedSharedKeys>;
 export interface BreditorSharedEditorHandle {
  getEditor():SharedEditorSession|null;
  getRecovery():SharedEditorRecovery|null;
@@ -34,7 +41,7 @@ export interface BreditorSharedEditorHandle {
 }
 
 /** React owns the host, not its editable children. Writer retirement is serialized with subsequent openings. */
-export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,BreditorSharedEditorProps>(function BreditorSharedEditor(props,ref):ReactElement{
+function sharedReactEditor<O extends SharedEditorSessionOptions|SharedSearchEditorSessionOptions>(open:(options:SharedReactOpening<O>)=>Promise<SharedEditorSession>){return forwardRef<BreditorSharedEditorHandle,SharedReactProps<O>>(function BreditorSharedEditor(props,ref):ReactElement{
  const [host,setHost]=useState<HTMLDivElement|null>(null),[attempt,setAttempt]=useState(0),[phase,setPhase]=useState<"starting"|"ready"|"failed">("starting");
  const current=useRef<SharedEditorSession|null>(null),recovery=useRef<SharedEditorRecovery|null>(null);
  const callbacks=useRef(props),configuration=useRef(props.initialOptions),lane=useRef<Promise<void>>(Promise.resolve());
@@ -70,7 +77,9 @@ export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,Breditor
     if(recovery.current)await retire(recovery.current);
     if(abort.signal.aborted)return;
     const policy=callbacks.current.readOnly;
-    const editor=await openSharedEditor({...initial,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
+    // Project away React-managed fields for typing only; the initial snapshot still supplies every native policy.
+    const initialFields=initial as Omit<O,ManagedSharedKeys>;
+    const editor=await open({...initialFields,...(policy!==undefined?{readOnly:policy}:{}),host,signal:abort.signal,
      onChange:event=>callbacks.current.onChange?.(event),onPasteLoss:loss=>(callbacks.current.onPasteLoss??initial.onPasteLoss)?.(loss),onInterchange:value=>(callbacks.current.onInterchange??initial.onInterchange)?.(value),
      onSaveState:state=>callbacks.current.onSaveState?.(state),onClosing:editor=>callbacks.current.onClosing?.(editor),onError:report});
     if(abort.signal.aborted){await retire(editor);return;}
@@ -93,4 +102,8 @@ export const BreditorSharedEditor=forwardRef<BreditorSharedEditorHandle,Breditor
   <div ref={setHost}/>
   {phase==="failed"?<p role="alert">The shared editor could not start. <button type="button" onClick={()=>setAttempt(value=>value+1)}>Retry</button></p>:null}
  </section>;
-});
+});}
+export const BreditorSharedEditor=sharedReactEditor<SharedEditorSessionOptions>(openSharedEditor);
+/** Explicit search-family startup; ordinary React renders cannot change a live writer's replay family. */
+export const BreditorSharedSearchEditor=sharedReactEditor<SharedSearchEditorSessionOptions>(openSharedSearchEditor);
+BreditorSharedSearchEditor.displayName="BreditorSharedSearchEditor";

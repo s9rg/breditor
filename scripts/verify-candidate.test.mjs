@@ -24,6 +24,9 @@ test("functional and full plans cover current candidate work without weakening t
  assert.equal(full.checks.at(-1).args.at(-1),"--require-ready");
  assert.ok(!functional.checks.some(check=>check.id==="reviewed-v1-readiness"));
  assert.ok(functional.deferred.includes("native-clipboard-ime-screen-reader-mobile"));
+ for(const id of ["search-programmatic-sdk","search-persistent-sessions","search-borrowed-controls","search-managed-startup","installed-search-workflows"])assert.ok(functional.checks.some(check=>check.id===id),id);
+ const search=functional.checks.find(check=>check.id==="installed-search-workflows");assert.deepEqual(search.args,["scripts/check-search-installed.mjs"]);assert.deepEqual(search.artifacts,[{path:"target/search-installed-consumer.json",fresh:true}]);
+ assert.ok(!functional.checks.some(check=>check.id==="installed-search-browser"));const searchBrowser=full.checks.find(check=>check.id==="installed-search-browser");assert.deepEqual(searchBrowser.args,["scripts/check-search-browser.mjs"]);assert.deepEqual(searchBrowser.artifacts,[{path:"target/search-installed-browser.json",fresh:true}]);
  assert.throws(()=>candidateReleasePlan({profile:"skip-hard-parts"}));
  for(const check of full.checks){assert.ok(Object.isFrozen(check)&&Object.isFrozen(check.args)&&Object.isFrozen(check.artifacts));assert.ok(!check.args.some(arg=>/^(publish|push|tag|--skip-tests|--retries)$/.test(arg)));}
 });

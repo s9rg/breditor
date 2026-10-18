@@ -3,6 +3,7 @@
 // uploads are explicit host services, never command side effects.
 import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
+export {mountRichSearchPanel} from "./dist/browser/search_panel.js";
 
 const searchResults=new WeakMap();
 class OwnedRichSearchResults {

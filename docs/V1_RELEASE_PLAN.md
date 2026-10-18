@@ -43,6 +43,23 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [search controls integration checkpoint](qualification/2026-10-18-search-controls-installed.json)
+connects borrowed Find/Replace controls to vanilla and React integrations.
+Separately named shared/document search startup retains
+explicit save families, failed-close recovery and writer leases. Independent
+installed archives exercise all three grammars, exact reopens, future Undo/Redo,
+mixed merged-table/caption content, comments, versions and offline peer edits.
+Local-only production bundles exclude the optional shared and React graphs.
+A separate headless Chromium production example verifies out-of-tree highlight
+geometry and live navigation/replacement/Undo with browser storage and locks.
+This is functional progress, not a fresh official producer rebuild or final
+platform/release qualification. The original 13 V1 gates remain open.
+All 25 selected checks pass, including 71 focused canonical native tests, 23
+repeated compatibility tests, 464 script tests and 376 editor regressions; three
+existing script checks remain skipped. The linked evidence records the exact
+tested source, binary/installed-archive identities, failed development attempts
+and successful browser screenshot.
+
 The [search boundary and persistence checkpoint](qualification/2026-10-18-search-wasm-sdk-recovery.json)
 adds optional local/application
 Wasm results, complete metadata and programmatic SDK navigation/replacement.
@@ -52,8 +69,10 @@ tests pass 18 document-only and 12 paired sessions, 73 exact reopens and 13
 deliberately aborted writes, retaining failed-close recovery and writer leases.
 The new search-aware durable families preserve explicit original/general/document,
 natural and reviewed-history choices while old readers continue rejecting them.
-Borrowed controls, decorations, top-level vanilla/React startup, installed
-combined workflows and release qualification remain unfinished. The linked
+At that earlier boundary checkpoint, borrowed controls, decorations, top-level
+startup and installed combined workflows were unfinished; the integration above
+adds them without reinterpreting the earlier evidence. Release qualification
+remains open. The linked
 evidence pins the tested source and actual binary identities. All 25 selected
 checks pass, including strict Rust checks, 34 focused canonical native tests,
 23 repeated compatibility tests, 461 script tests and 374 editor regressions;
@@ -75,9 +94,9 @@ peer text is preserved, but restored local chunks need not retain the old
 per-character interleaving. The linked evidence retains the failed diagnostic,
 lint and packaging attempts and proves unchanged canonical inputs for the
 research-wrapper follow-up. The subsequent programmatic Wasm/SDK exposure above
-does not complete search controls, decorations or connected installed acceptance.
-These follow-ups are separate from
-the source-pinned functional candidate qualification above and closes no release gate.
+is followed by the borrowed controls and installed integration above. These
+follow-ups are separate from the source-pinned functional candidate qualification
+above and close no release gate.
 
 The [combined installed checkpoint](qualification/2026-10-16-mixed-workflow-functional.json)
 completes the selected everyday-editing goal. Two independent installed consumers

@@ -1,5 +1,6 @@
 export {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "./core.js";
 export {SharedSearchResults} from "./search_results.js";
+export {mountRichSearchPanel as mountSharedSearchPanel,type RichSearchHost,type RichSearchHostState,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState} from "@breditor/experimental-rich-content";
 export {supportsSharedSearchHistory,restoreSharedSearchEditor} from "./profile.js";
 export type {RichSearchQuery,RichSearchReplacement,RichSearchMetadata} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";

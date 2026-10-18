@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90" viewBox="0 0 160 90" role="img" aria-label="Connected document blocks">
+  <rect width="160" height="90" rx="10" fill="#edf3f0"/>
+  <path d="M45 45h70M80 45v23" stroke="#527269" stroke-width="3"/>
+  <g fill="#fff" stroke="#527269" stroke-width="2">
+    <rect x="15" y="25" width="40" height="36" rx="5"/>
+    <rect x="105" y="25" width="40" height="36" rx="5"/>
+    <rect x="60" y="60" width="40" height="20" rx="5"/>
+  </g>
+  <path d="M24 36h22M24 44h15M114 36h22M114 44h15M69 70h22" stroke="#9dbbb0" stroke-width="3"/>
+</svg>

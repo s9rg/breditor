@@ -1,5 +1,6 @@
 import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
 import {refreshAssets} from "@breditor/experimental-rich-content/rendering";
+import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
@@ -29,6 +30,8 @@ export interface LocalEditor {
  view():RichView;checkpointJson():string;focus():void;refreshAssets():void;
  setReadOnly(value:boolean,revision?:string):boolean;
  closeTypingGroup(revision?:string):boolean;
+ /** Borrow queued search/navigation UI; disposing its panel never disposes this owner. */
+ search():RichSearchHost;
  insertImageFiles(store:RichAssetStore,files:readonly File[],position:FlowPosition):Promise<readonly AssetInfo[]>;
  dispose():void;
 }
@@ -53,6 +56,7 @@ class LocalEditorOwner implements LocalEditor {
  refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
  setReadOnly(value:boolean,revision?:string):boolean{return this.#dom.setReadOnly(value,revision);}
  closeTypingGroup(revision?:string):boolean{return this.#dom.closeTypingGroup(revision);}
+ search():RichSearchHost{this.#dom.view();return this.#dom;}
  insertImageFiles(store:RichAssetStore,files:readonly File[],position:FlowPosition):Promise<readonly AssetInfo[]>{return insertImageFiles(this.#dom,store,files,position);}
  dispose():void{if(this.#disposed)return;this.#disposed=true;try{this.#dom.dispose();}finally{this.#release();}}
 }
