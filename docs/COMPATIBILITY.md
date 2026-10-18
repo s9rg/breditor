@@ -51,6 +51,29 @@ history/asset-retention promise. The [candidate checks](V1_CANDIDATE_CHECKS.md)
 exercise current recovery and installed consumers. Historical fixtures, complete
 migration/support promises and immutable RC qualification remain release gates.
 
+### Current bounded lifetime
+
+The shared replica currently admits at most 1,000 replay-journal entries and a
+16 MiB journal. Local changes, new remote records, Undo/Redo and reviewed-history
+records share that entry budget. It is not a rolling window of 1,000 Undo actions,
+and natural typing groups do not remove the journal-entry ceiling. See the
+[shared session source](../crates/breditor-collaboration/src/rich_replica/session.rs).
+
+The reference relay has separate bounds: 4,096 durable records, a 256 MiB log and
+a 20 MiB individual record. Its immutable asset store admits at most 1,024 assets
+and 256 MiB of encoded bytes, with 10 MiB per asset. These are current admission
+ceilings, not automatic rotation, archival or garbage collection. The
+[log](../experiments/relay/src/log.rs) and
+[asset bounds](../experiments/relay/src/assets/mod.rs) are authoritative; this list
+is not a complete or approved V1 operating envelope.
+
+V1 still needs an explicit lifetime/retention contract and tested rotation,
+backup and restore procedures. A proposed rolling Undo policy is not implemented
+or approved by this documentation. Rotation must preserve pending updates, writer
+ownership, authenticated receipts and final review decisions, existing reader
+contracts, and retained version/asset references. Raising old counters, copying a
+live writer or exporting only the visible AST does not solve those requirements.
+
 ## Current default package policy
 
 Current alpha.22 addition: explicit session-backup startup and a recovery picker

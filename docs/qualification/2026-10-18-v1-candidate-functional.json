@@ -1,0 +1,496 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "e929cc78b0703463126454684d8a1385c3a78c2b",
+  "scope": "Clean-source functional candidate qualification and V1 preparation, not full catalog parity, the full release/browser profile or V1 approval. The subsequent workflow/documentation-only follow-up does not retroactively change this pinned qualification source.",
+  "source": {
+    "commit": "e929cc78b0703463126454684d8a1385c3a78c2b",
+    "dirty": false,
+    "sha256": "0846803979e762d2886dccc6229203c4a0191d9e6450229c40858edaade0fb7d",
+    "files": 4096,
+    "bytes": 36398436
+  },
+  "qualification": {
+    "profile": "functional",
+    "passed": true,
+    "selectedChecks": 32,
+    "startedAt": "2026-10-18T17:56:52.313Z",
+    "finishedAt": "2026-10-18T18:49:44.280Z",
+    "environment": {
+      "node": "v22.14.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "manifest": "target/v1-candidate-runs/run-Z0YIYg/result.json",
+    "manifestSha256": "24ff7c5701627889ef4289ff1f0f3a5d378895fa9ba4e93e3f5e20f114c79e95",
+    "evidenceRetention": "local ignored target directory; not an immutable RC archive",
+    "stages": [
+      {
+        "id": "candidate-runner-contracts",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/01-candidate-runner-contracts.log",
+        "logSha256": "180f046036f9b88047f806e5b2bad6d02a7473c5c50059f6a922dfd489119452"
+      },
+      {
+        "id": "rust-toolchain",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/02-rust-toolchain.log",
+        "logSha256": "fc5da452af509c1010d5949e8773b2d2e1a28f2ed00e5e4cdbf72c204fc62c32"
+      },
+      {
+        "id": "workspace-format",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/03-workspace-format.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "workspace-lint",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/04-workspace-lint.log",
+        "logSha256": "343c13e7f6f2d320993b573f830525e33b59b3c32656ef426e015b1e30f3fdc2"
+      },
+      {
+        "id": "workspace-native",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/05-workspace-native.log",
+        "logSha256": "bf6f1397d63b41dbdd947ac1bec1545f3a419115b77e6e099d01c56c21ed16e3"
+      },
+      {
+        "id": "workspace-docs",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/06-workspace-docs.log",
+        "logSha256": "4cc253e48b1ae784f87252db44b7eb8169f3f1fe5bd487590b68f87334af07c6"
+      },
+      {
+        "id": "shared-format",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/07-shared-format.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "shared-lint",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/08-shared-lint.log",
+        "logSha256": "aabe17eef736e3d123d156d9dd1a2961241236eaae3006df91d2507e4e712eb6"
+      },
+      {
+        "id": "shared-native",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/09-shared-native.log",
+        "logSha256": "8dec5d6922efc90461e3ced5c67c4410cdb35a0b8bcc58fb821019013b6ca33d"
+      },
+      {
+        "id": "relay-format",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/10-relay-format.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "relay-lint",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/11-relay-lint.log",
+        "logSha256": "071500a93240615426cb51fe05535f2db8188836b9c559e5a4638e3e5385aae6"
+      },
+      {
+        "id": "relay-native",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/12-relay-native.log",
+        "logSha256": "4c0297f3a3715e83707a62d524d71e92ff87866ff03e4f58607f682754e6ef02"
+      },
+      {
+        "id": "independent-native-consumer",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/13-independent-native-consumer.log",
+        "logSha256": "2eadb57fc4adb4ba5e02edfb9ade92a0dd221619d79d097a9278493300363b10"
+      },
+      {
+        "id": "default-typescript-build",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/14-default-typescript-build.log",
+        "logSha256": "70c875d9d11813490d8542e971cceb869ed21b85c543f2595f81f649667f7535"
+      },
+      {
+        "id": "paired-local-runtime",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/15-paired-local-runtime.log",
+        "logSha256": "7dc55259b485e41809640edd81308dd9996bffd66d964ec5c7c71e28387e51b1"
+      },
+      {
+        "id": "paired-shared-runtime",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/16-paired-shared-runtime.log",
+        "logSha256": "10c02155132df09abe32f96204a891c31b1fe4583297075d41f5810328fe8dce"
+      },
+      {
+        "id": "shared-wasm-lint",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/17-shared-wasm-lint.log",
+        "logSha256": "e6ec87ac932861a7c42d04d6a9d2df8d4fd1d0e180c11ec57148abd8700885e9"
+      },
+      {
+        "id": "collaboration-build",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/18-collaboration-build.log",
+        "logSha256": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12"
+      },
+      {
+        "id": "editor-build",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/19-editor-build.log",
+        "logSha256": "1310c2fdb084ee048dc83520d840d200e7f41bfad549bd6f349c38aef1c38b44"
+      },
+      {
+        "id": "typescript-tests-and-script-contracts",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/20-typescript-tests-and-script-contracts.log",
+        "logSha256": "7bd946e75699f13fe3395f6173a6ddb748e323ef4779022e424f50b753da4ce5"
+      },
+      {
+        "id": "editor-sdk-tests",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/21-editor-sdk-tests.log",
+        "logSha256": "2e818141eb6cf012988c980cc7e6e732571a70773e63f868288d30e21f1e06f5"
+      },
+      {
+        "id": "workspace-types",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/22-workspace-types.log",
+        "logSha256": "ff2b7d73a790f5c53c02c54cf8b67d6ed1036e66eae4f636f307f8f2d960c48c"
+      },
+      {
+        "id": "collaboration-types",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/23-collaboration-types.log",
+        "logSha256": "420af9e6b28474243a0fd35510d2c8039b52f408426ec54c2b14dc6177522b1a"
+      },
+      {
+        "id": "editor-types",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/24-editor-types.log",
+        "logSha256": "4ed1577b26f7965af6b47dde9307902ced45570b6d37297049bd7086fd0d55a2"
+      },
+      {
+        "id": "installed-editor-pairing",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/25-installed-editor-pairing.log",
+        "logSha256": "212a4fdd69d2792508b462fcf54a356ed812eb4c69b3979236fe65021bbafdaa"
+      },
+      {
+        "id": "installed-rich-interchange",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/26-installed-rich-interchange.log",
+        "logSha256": "041a8b8b29f43013c490c1fb976e0437083daa5c2e0dd558e82b3161b22b6768"
+      },
+      {
+        "id": "functional-native-fixtures",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/27-functional-native-fixtures.log",
+        "logSha256": "478de6fefc768ca6b361f93053a6260b3503ee3e89fc91474cc7ed77cce17849"
+      },
+      {
+        "id": "installed-everyday-mixed-workflows",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/28-installed-everyday-mixed-workflows.log",
+        "logSha256": "6db3745a998f34d56de3115d101c42aa95cf9dd6d93d2c9e07ec615661772b71"
+      },
+      {
+        "id": "installed-text-review-and-readers",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/29-installed-text-review-and-readers.log",
+        "logSha256": "a3128e9fa943a7147ddac7b1aff96fd234c73db89fdbad1360b7f3535c8f1565"
+      },
+      {
+        "id": "installed-formatting-review-and-readers",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/30-installed-formatting-review-and-readers.log",
+        "logSha256": "4e79be744e0f4cd70c5918e950806ebb226546a38a89c81b056140a9078a029b"
+      },
+      {
+        "id": "installed-assets-comments-versions",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/31-installed-assets-comments-versions.log",
+        "logSha256": "0a843cb0ef8141966dd6ba956359dc01b89bf3abdc55bee79679863811726157"
+      },
+      {
+        "id": "readiness-inventory",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-Z0YIYg/32-readiness-inventory.log",
+        "logSha256": "b019ecb066416eab087fbe27a1684c14b08d12c0c9b67349fce4335d7e44a841"
+      }
+    ]
+  },
+  "verification": {
+    "rust": {
+      "workspace": {
+        "passed": 2530,
+        "failed": 0,
+        "ignored": 0
+      },
+      "collaboration": {
+        "passed": 553,
+        "failed": 0,
+        "ignored": 0
+      },
+      "relayServer": {
+        "passed": 82,
+        "failed": 0,
+        "ignored": 0
+      },
+      "totalTestsAndDoctests": 3165,
+      "strictFormattingLintAndWorkspaceDocs": "passed"
+    },
+    "editor": {
+      "passed": 374,
+      "failed": 0,
+      "files": 39
+    },
+    "scripts": {
+      "passed": 448,
+      "failed": 0,
+      "skipped": 3,
+      "skippedCases": [
+        "timer completion works when animation-frame polling is suppressed",
+        "WebKit captures engine exceptions at every diagnostic catch site",
+        "WebKit replay accepts retained bytes after source deletion"
+      ],
+      "browserQualificationImplied": false
+    },
+    "independentNativeConsumer": "passed",
+    "installedInterchange": {
+      "strictConsumerTypes": true,
+      "workspaceLinks": false,
+      "format": "breditor/browser-interchange-functional-probe",
+      "formatVersion": 1,
+      "localWasmSha256": "534152a76cc37bfb1c7c8faafa48b850e8d6ae48c14e7e7cd16a1e7e0c7c0cfb",
+      "sharedWasmSha256": "dc67a2dcbf43593d557eab6c18524c986876ef1c26a205cffe05ce49fa31b165",
+      "passed": true,
+      "pastes": 44,
+      "exactRestores": 44,
+      "exactFutureCheckpoints": 176,
+      "durableSharedResumes": 22,
+      "retentionRefusals": 32,
+      "priorityCases": 24,
+      "cutCases": 8,
+      "readOnlyCases": 8,
+      "staleRefusals": 8,
+      "queuedReportCases": 8,
+      "failedConversions": 16,
+      "hostOwnedImageCases": 8,
+      "actualReactOwners": 8,
+      "scope": "Installed archives with bare package imports and bundled paired Wasm; compiled managed SDK/React synthetic DOM/clipboard/IDB/locks. Not OS clipboard, captured Office applications, cross-browser, IME, accessibility or release qualification."
+    },
+    "installedMixedWorkflow": {
+      "passed": true,
+      "histories": [
+        "explicit",
+        "typing-v1"
+      ],
+      "consumerProcesses": 4,
+      "comparisons": 70,
+      "exactRestores": 4,
+      "exactFutureWriterCheckpoints": 64,
+      "uploads": 2,
+      "downloads": 4,
+      "serverRestarts": 2,
+      "foreignPastes": 10,
+      "atomicEnters": 2,
+      "compositions": 2,
+      "maximumJournalBytes": 1438731,
+      "knownNoopAdmissions": 110,
+      "scope": "Two independent installed Node consumer processes per history mode with actual native Wasm, durable relay and asset HTTP upload/download, complete future checkpoint equality under actual admitted frames, durably retained writer identities and local exact journal reopen. DOM, clipboard, IndexedDB, locks and a known-PNG decoder are fixtures; not native browsers, arbitrary image decoding, captured Office applications, accessibility, performance or release qualification."
+    },
+    "installedTextReview": {
+      "passed": true,
+      "authorPolicies": 6,
+      "permanentReaderPolicies": 6,
+      "revisionPolicies": 6,
+      "vanillaReactPolicyPairs": 6,
+      "requestBoundaryCases": 8
+    },
+    "installedFormattingReview": {
+      "passed": true,
+      "authorPolicies": 6,
+      "permanentReaderPolicies": 6,
+      "revisionPolicies": 6,
+      "vanillaReactPolicyPairs": 6
+    },
+    "installedAssetsCommentsVersions": {
+      "passed": true,
+      "policies": [
+        {
+          "scope": "original",
+          "natural": false
+        },
+        {
+          "scope": "original",
+          "natural": true
+        },
+        {
+          "scope": "general-v1",
+          "natural": false
+        },
+        {
+          "scope": "general-v1",
+          "natural": true
+        },
+        {
+          "scope": "document-v1",
+          "natural": false
+        },
+        {
+          "scope": "document-v1",
+          "natural": true
+        }
+      ],
+      "matrixIsolation": "process-per-policy",
+      "strictInstalledTypes": true,
+      "packagedWasm": true,
+      "authorPolicies": 6,
+      "stockActionCases": 54,
+      "serverFinalOwnedAccepts": 54,
+      "exactAuthorReopens": 36,
+      "cacheReopens": 24,
+      "guardedVersionRestores": 6,
+      "coldDownloadsAfterRestart": 12,
+      "wireRequests": 9889,
+      "scope": "Clean-installed local package archives, installed editor/collaboration exports and packaged application Wasm, explicit reviewed paired source and owned queue, automatic authenticated decisions, local accepting-writer Undo/Redo and exact reopen across all six scope/grouping policies. Source aborts cannot persist final receipts; receipt aborts reopen native adoption once; replay after Undo/discarded Redo changes no source state. Authenticated comment sync/progress and named version publication, download, guarded restore and independent Undo/Redo survive exact mixed recovery. Existing conflicts, opposing outcomes, lost replies and host restart remain covered. IndexedDB/locks/transport loss are fixtures; Vanilla/React suggestion controls cover pure native previews, queued decisions, original outcomes and lifecycle on these owners; separate observer transport is not exercised here. Proposal revision/rebasing and release qualification remain open. A separately selected asset-enabled host also covers two raster hashes, offline authors, anchored threads, once-only image decisions, selective history, exact paired/catalog/cache reload, guarded restore, cold authenticated downloads and durable server restart. Raster decoding and OS storage remain fixtures."
+    }
+  },
+  "artifacts": {
+    "localWasmSha256": "534152a76cc37bfb1c7c8faafa48b850e8d6ae48c14e7e7cd16a1e7e0c7c0cfb",
+    "sharedWasmSha256": "dc67a2dcbf43593d557eab6c18524c986876ef1c26a205cffe05ce49fa31b165",
+    "nativeAssetHostSha256": "9038f1f1fa2abb55b3c8fb620833dd3436c2d653b385ad3b3e1924c2d8f5f8a7",
+    "archives": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "87052b9d6590612918b58a94a6b03ad9797be5b4a5d01e7e0471f3c7f92e2a5d",
+      "@breditor/collaboration": "fe3250b42a47d0624641e7836e8283069309ab1f2102e896aa8eb7bf216b7807",
+      "@breditor/editor": "1a1ac8f306ff9479d3a39958cf308387bbdd187e118bea3e72682d77dd1d8a43",
+      "@breditor/interchange": "e71c892645d5adbc5c680c4b4569d05e35a4547b4060e8ff9d83b697a2c030fe"
+    }
+  },
+  "dependencyInventory": {
+    "local": {
+      "sha256": "de694d90a9788f50cc077deadd59258bb545ef01ae65fad07cbb5e50ee66bf1f",
+      "runtimeWasmSha256": "534152a76cc37bfb1c7c8faafa48b850e8d6ae48c14e7e7cd16a1e7e0c7c0cfb",
+      "noticeBundleSha256": "17bff9328beb9af2f54add7f9562798cb6d7cc8dac68c5dbf3803d13d8598d82",
+      "cargoLockSha256": "b92b8ee8895ba2a5b9a8074000cd4dfc31e56c8e82f375306736f7b3341a9f84",
+      "rust": {
+        "release": "1.98.0",
+        "libraryNoticeSha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+      },
+      "gaps": [],
+      "licenseReview": "not-approved",
+      "publicationApproved": false
+    },
+    "shared": {
+      "sha256": "c6579d402691d4f730b62369a77dd58c65f2b9bfc7e592f506293e3c98487b69",
+      "runtimeWasmSha256": "dc67a2dcbf43593d557eab6c18524c986876ef1c26a205cffe05ce49fa31b165",
+      "noticeBundleSha256": "55b35dd5b74a8d52cbcd076f3fa060a02bbda27a5736441791d8eb22b6f87624",
+      "cargoLockSha256": "eb494b91e63187ace4103482619a62b0c294f52d1b6a4e928a4c34f975b95ca4",
+      "rust": {
+        "release": "1.98.0",
+        "libraryNoticeSha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+      },
+      "gaps": [
+        {
+          "package": "generic-btree@0.10.7",
+          "reason": "no-notice-text-in-cargo-source"
+        }
+      ],
+      "licenseReview": "not-approved",
+      "publicationApproved": false
+    },
+    "registrySourceVerification": "not-performed",
+    "completeBrowserRelaySbomAndLicenseReview": "open"
+  },
+  "originalRuntimeCompatibility": {
+    "format": "breditor/shared-v1-runtime-comparison",
+    "formatVersion": 1,
+    "beforeWasmSha256": "e7f27b05dfa54cfe2157e4f5acaf9d87b0fb5bfd742a2ed7fd03a59cddf5935f",
+    "afterWasmSha256": "dc67a2dcbf43593d557eab6c18524c986876ef1c26a205cffe05ce49fa31b165",
+    "comparedCheckpoints": 49,
+    "crossVersionRestores": 2,
+    "futureHistorySteps": 12,
+    "modelVersion": 11,
+    "journalVersion": 12,
+    "passed": true
+  },
+  "retainedAttempts": [
+    {
+      "path": "target/v1-candidate-runs/run-ZMTSeS/result.json",
+      "status": "failed",
+      "passedStages": 6,
+      "lastStage": "shared-format",
+      "lastStageStatus": "failed"
+    },
+    {
+      "path": "target/v1-candidate-runs/run-iOatBD/result.json",
+      "status": "failed",
+      "passedStages": 9,
+      "lastStage": "relay-format",
+      "lastStageStatus": "failed"
+    },
+    {
+      "path": "target/v1-candidate-runs/run-Uvmevb/result.json",
+      "status": "failed",
+      "passedStages": 12,
+      "lastStage": "default-typescript-build",
+      "lastStageStatus": "failed"
+    },
+    {
+      "path": "target/v1-candidate-runs/run-G4Tngd/result.json",
+      "status": "interrupted",
+      "passedStages": 26,
+      "lastStage": "installed-everyday-mixed-workflows",
+      "lastStageStatus": "interrupted"
+    }
+  ],
+  "workflowFollowUp": {
+    "prepared": true,
+    "manualOnly": true,
+    "pushed": false,
+    "dispatched": false,
+    "hostedExecution": "not-run",
+    "localWorkflowContractsPassed": 7,
+    "allScriptContracts": {
+      "passed": 455,
+      "failed": 0,
+      "skipped": 3
+    },
+    "independentOfflineNpmBootstrap": {
+      "passed": true,
+      "workspaces": 11,
+      "lifecycleScriptsDisabled": true,
+      "packageLockSha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+      "scope": "Fresh manifest-only macOS/Node workspace, not hosted Ubuntu or Rust/browser bootstrap."
+    }
+  },
+  "lifecycle": {
+    "sharedReplayEntries": 1000,
+    "sharedJournalBytes": 16777216,
+    "relayRecords": 4096,
+    "relayLogBytes": 268435456,
+    "relayRecordBytes": 20971520,
+    "relayAssetCount": 1024,
+    "relayAssetBytes": 268435456,
+    "individualAssetBytes": 10485760,
+    "rollingUndoImplemented": false,
+    "retentionPolicyApproved": false,
+    "notCompleteOperatingEnvelope": true
+  },
+  "remaining": [
+    "Complete grouped catalog/parity coverage and remaining functionality; no smaller V1 scope was approved.",
+    "Explicit long-session client/relay rotation, complete backup/restore and asset/version retention contract.",
+    "Public API/distribution/migration support freeze and full dependency/source-availability review, including generic-btree notice gap.",
+    "Hosted full release/browser checks, historical WebKit investigation and final supported-platform/input/accessibility qualification.",
+    "Performance/size/document/peer/history budgets, public deployment/auth/work isolation and sustained application pilot.",
+    "Reviewed immutable RC and separate publication/deployment authorization."
+  ],
+  "v1Ready": false,
+  "qualificationGatesPassed": 0,
+  "publicationApproved": false,
+  "tagCreated": false,
+  "pushed": false,
+  "deployed": false
+}

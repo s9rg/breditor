@@ -57,6 +57,31 @@ aliases. `BREDITOR_RUSTC`, `BREDITOR_WASM_BINDGEN` and
 Conflicting aliases resolve to the explicit `BREDITOR_*` choice, which is recorded
 for each stage; executable paths containing spaces remain one argument.
 
+## Prepared hosted qualification
+
+The manual workflow in
+[GitHub Actions](../.github/workflows/candidate-qualification.yml) defaults to the
+full profile and offers the functional profile explicitly. It has read-only
+repository permissions, exact upstream Action revisions and no retained checkout
+credentials, publishing or deployment step. Profile dispatch uses a validated
+environment value rather than interpolating input into a command.
+
+The workflow installs the baseline Node/Rust/bindgen pair, fetches the three
+locked Cargo graphs before offline qualification, and installs all three
+Playwright engines for the full profile. It retains only the run-owned candidate
+results/logs for 14 days, including failure logs; setup failures remain CI failures
+even when no candidate manifest exists. Upload scope excludes arbitrary target
+data, application stores, credential files and hidden files. Log content must
+still be reviewed before publishing evidence.
+
+The file is JSON-formatted YAML so contract tests can inspect its structure
+without introducing another parser dependency. Local tests validate its dispatch,
+failure propagation, exact tools/actions, shell syntax and artifact scope. An
+independent manifest-only offline npm installation also loads the baseline tools
+with lifecycle scripts disabled. These checks do not establish successful hosted
+Ubuntu execution, browser installation or Rust bootstrap. No workflow was pushed
+or dispatched in this checkpoint, and the release-CI gate remains open.
+
 ## Retained evidence
 
 Each execution owns a fresh `target/v1-candidate-runs/run-*` directory containing

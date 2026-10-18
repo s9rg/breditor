@@ -13,6 +13,34 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## V1 candidate qualification checkpoint
+
+The [2026-10-18 functional qualification](qualification/2026-10-18-v1-candidate-functional.json)
+pins clean source commit e929cc78b0703463126454684d8a1385c3a78c2b. All 32 selected
+functional stages pass, including strict Rust checks, 3,165 Rust tests/doctests,
+374 editor tests, independent installed consumers and combined editing,
+text/formatting review, permanent-reader, image/comment/version workflows. The
+script suite passes 448 tests with three existing opt-in browser checks skipped;
+those skips are recorded, not counted as platform qualification.
+
+The checkpoint repairs reproduced absolute build/user-home paths in both actual
+opt-in Wasm binaries without weakening the path guard. The shared header accessor
+retains the original lookup semantics. Old/new original-family runtimes pass
+49 exact checkpoint comparisons, two cross-version restores and 12 future
+Undo/Redo steps. Runtime archives also carry Wasm-bound dependency inventories,
+available pinned notice texts and the pinned Rust library notices. A remaining
+notice gap, complete license/source-availability review and cross-host
+reproducibility remain release work.
+
+This is functional qualification, not the full candidate profile or V1 readiness.
+The manual hosted workflow is prepared and locally checked, not pushed or run.
+All 13 qualification gates remain open. The
+[compatibility policy](COMPATIBILITY.md#current-bounded-lifetime) now states the
+separate client-journal, relay-log and asset-store ceilings. Long-session
+rotation/recovery and remaining feature parity are substantive work, not waived
+by passing the current tests. No package version, public API freeze, tag,
+publication or deployment is promoted.
+
 ## Current functional checkpoint
 
 The [combined installed checkpoint](qualification/2026-10-16-mixed-workflow-functional.json)
@@ -891,8 +919,8 @@ Recheck these mutable catalogs before freezing the RC baseline.
 The inspected [Tiptap StarterKit assembly](https://raw.githubusercontent.com/ueberdosis/tiptap/main/packages/starter-kit/src/starter-kit.ts)
 registers optional features separately. The useful lesson is a complete, tested
 starter profile with explicit additions, not reproducing its extension protocol.
-Breditor is missing common structural blocks and has not integrated every default
-format into the rich/shared editor.
+Breditor now has candidate structural blocks and shared formatting controls. This
+does not freeze its V1 grammar/API or establish full catalog parity.
 
 The inspected [Tiptap table implementation](https://raw.githubusercontent.com/ueberdosis/tiptap/main/packages/extension-table/src/table/table.ts)
 keeps commands, selection/navigation plugins and data conversion as distinct
@@ -901,8 +929,9 @@ numeric width commands do not establish resize-handle, rich-paste or export pari
 
 The inspected [CKEditor clipboard pipeline](https://raw.githubusercontent.com/ckeditor/ckeditor5/master/packages/ckeditor5-clipboard/src/clipboardpipeline.ts)
 separates input transformation, model insertion and output transformation.
-Breditor likewise needs explicit foreign-content adapters. Its internal rich JSON
-clipboard and default safe HTML copy/plain-text admission are not Office paste.
+Breditor now has an explicit opt-in foreign-content adapter. Its authored Office
+fixtures and Rust admission are not captured-producer or native clipboard
+qualification; the original default safe HTML/plain-text path remains distinct.
 No competitor implementation was copied into Breditor.
 
 ## Most important integration gaps
@@ -916,16 +945,19 @@ No competitor implementation was copied into Breditor.
    including Link, scalar fields and caret styles. They still need promotion into
    the public V1 distribution. Complete-map replacement remains explicit; separate
    Rust-planned property patches now preserve other observed mixed properties.
-   Foreign interchange and optional automatic Link detection remain open.
+   Optional foreign interchange now exists; broader producer fidelity and
+   automatic Link detection remain open.
 2. **Complete editing grammar.** Explicit V2 blockquote, code, horizontal-rule
    and task contracts now reach Wasm, local/shared SDKs and the reference relay.
    Named hard breaks have a one-LF policy; code exit preserves the original source.
-   Finish atomic-block navigation and general selections across
-   container boundaries and natural typing history groups. Unsupported ranges
-   currently reject; arbitrary flattening is not an acceptable shortcut.
-3. **Interchange.** Add sanitized rich HTML and Markdown adapters, then realistic
-   Office/Docs/Excel paste. Deterministic JSON remains canonical; foreign import
-   needs declared losses, fresh IDs and one guarded transaction.
+   Atomic-block navigation, general/document selections and natural typing
+   histories now have installed functional paths. Complete supported-environment
+   and bidi editing qualification without flattening unsupported structures.
+3. **Interchange.** The optional bounded HTML/Markdown adapter and authored
+   Office/Docs/Excel fixtures now reach installed mixed workflows. Finish captured
+   producer fidelity and native clipboard qualification. Deterministic JSON
+   remains canonical; imports retain declared losses, fresh IDs and one guarded
+   transaction.
 4. **Product UI and host contracts.** Live native read-only mode is implemented;
    finish contextual controls, accessible resize interaction, search and coherent
    application integration. Relay Reader authority remains separate from local
@@ -951,7 +983,8 @@ cross-structure paragraph and whole-document editing, transport V2 integration,
 and external HTML/Markdown/representative Office interchange, with focused
 native, type and functional integration tests. Broad cross-browser matrices,
 physical input/accessibility, performance and final release qualification remain
-open. The next functional workstream is advanced review/document workflows.
+open. The selected advanced-review functional portion is also complete. Remaining
+parity features, storage lifecycle and production/release integration are next.
 This order does not waive the V1 acceptance criteria or change original protocols.
 
 The [2026-10-16 transport checkpoint](qualification/2026-10-16-writer-transport-v2-functional.json)
@@ -1006,7 +1039,9 @@ Exit: a clean external consumer installs the built archives and edits headings,
 nested lists, a formatted table cell and a linked image caption, then reloads
 exact history. Two independent consumers demonstrate offline edits, asset upload,
 reconnect and selective Undo without workspace links or manual `target` files.
-Existing default consumers and ABI checks still pass.
+Existing default consumer and ABI guarantees must remain intact during V1
+qualification; the functional candidate profile does not replace the full
+default-package release matrix.
 
 ### Second checkpoint close everyday editor gaps
 
