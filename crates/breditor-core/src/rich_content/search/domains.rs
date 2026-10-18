@@ -6,7 +6,9 @@ use crate::{
     rich_content::{BlockId, RichDocument, TableId, ast_properties},
 };
 
-pub(super) fn domains(document: &RichDocument) -> Result<Vec<BlockId>, RichSearchError> {
+pub(in crate::rich_content) fn domains(
+    document: &RichDocument,
+) -> Result<Vec<BlockId>, RichSearchError> {
     let mut stack = vec![NodePath::root()];
     let mut result = Vec::new();
     let mut visited = 0usize;
@@ -86,7 +88,7 @@ fn charge(visited: &mut usize, added: usize, pending: usize) -> Result<(), RichS
     Ok(())
 }
 
-pub(super) fn text(
+pub(in crate::rich_content) fn text(
     document: &RichDocument,
     block: &BlockId,
     remaining_bytes: usize,

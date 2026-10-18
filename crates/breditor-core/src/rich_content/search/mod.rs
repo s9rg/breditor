@@ -1,6 +1,6 @@
 //! Snapshot-bound native document search; no DOM, history publication or browser regex.
 mod capture_replacements;
-mod domains;
+pub(super) mod domains;
 mod error;
 mod matcher;
 mod preview_with_selection;
@@ -45,7 +45,7 @@ pub const RICH_SEARCH_MAX_REPLACEMENT_BYTES: usize = 64 * 1024;
 /// Maximum aggregate inserted UTF-8 bytes in the changed edits of one replacement plan.
 pub const RICH_SEARCH_MAX_INSERTED_BYTES: usize = 1024 * 1024;
 const MAX_REPLACEMENT_PARTS: usize = 1024;
-const MAX_DOMAINS: usize = 8192;
+pub(in crate::rich_content) const MAX_DOMAINS: usize = 8192;
 const MAX_CAPTURE_GROUPS: usize = 65;
 const MAX_NFA_BYTES: usize = 1024 * 1024;
 const MAX_REGEX_CACHE_BYTES: usize = 256 * 1024;

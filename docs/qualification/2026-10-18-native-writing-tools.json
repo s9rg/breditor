@@ -1,0 +1,956 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "d03c4f7577f3928f59fe83a1ff1fde5ce2c783dd",
+  "scope": "Native Rust accepted-document counts and stable-ID heading outline, with exact shared-publication guarded reads. Native-only functionality: no new Wasm/SDK utility capability or browser utility controls are claimed.",
+  "source": {
+    "commit": "d03c4f7577f3928f59fe83a1ff1fde5ce2c783dd",
+    "dirty": true,
+    "sha256": "4cd2a7874e1b2b73c10fe142680a57391d3bf7ca53556da6ddcf4ed27e18a668",
+    "files": 4243,
+    "bytes": 37487122
+  },
+  "sourceBinding": {
+    "documentationOnlyFollowUp": "This record, documentation links and release-plan/evidence references follow the frozen passing matrix. All listed code/build inputs and the complete non-docs tree remain byte-identical.",
+    "codeAndBuildInputsUnchangedAfterVerification": true,
+    "nonDocumentationTree": {
+      "sha256": "edd0240bfa6b67c3b5b389c8eba5c8b9799f2cf3bb840d20a88bbb0fa4f649b1",
+      "count": 3811,
+      "bytes": 31441696
+    },
+    "codeAndBuildInputs": [
+      {
+        "path": "Cargo.lock",
+        "bytes": 17432,
+        "sha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c"
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 1892,
+        "sha256": "2dd0e23ab0a4a8d642a1b11607a501c7a57b0bc9e92013538a258a0fa9f0110c"
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.lock",
+        "bytes": 39247,
+        "sha256": "d76d57f59a66c1b6fb52b41ca199d65fd1da19af7e85079c4630f307af011cdb"
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.toml",
+        "bytes": 1634,
+        "sha256": "34c9bbafb8ac65659367874fe6bfcc98d6c44a839f9cc88b16952a6d3f8f2959"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/mod.rs",
+        "bytes": 5049,
+        "sha256": "6eae27d49c1ddb90c11913e51fe9a624e5c5280d3b16bb5a420dc0783b31bdb4"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/writing_tools.rs",
+        "bytes": 1145,
+        "sha256": "ec8cda3a05d40f1602957ebd4150935b4d103282f155f10171d33db589051b74"
+      },
+      {
+        "path": "crates/breditor-collaboration/tests/writing_tools_contracts.rs",
+        "bytes": 6679,
+        "sha256": "93bc926ad1b03446649eb1751e2eef7c967cfbafc6abd0ca55f1c0169994d477"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/mod.rs",
+        "bytes": 5676,
+        "sha256": "a66b8c7800c6048f5ce6c7e3422d944877066a6a605b2f1eafdfd273874c22ab"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/domains.rs",
+        "bytes": 5055,
+        "sha256": "1bcebbef4a78ca6950d90a22d918d8d5a59a1cc09f233d889c98b7c30be47f98"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/mod.rs",
+        "bytes": 2331,
+        "sha256": "0b6aaee332d68d0dc536f18f9cfcfd1ce85626909dcd95be3891f06e69dc979e"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/writing_tools/counts.rs",
+        "bytes": 2302,
+        "sha256": "826e875c5c266901ba14e7023e088f3e123d10c56288334de3695910656c7f9d"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/writing_tools/error.rs",
+        "bytes": 468,
+        "sha256": "63c6aab703a42547a488649f42bba47d5acf077a83742457d85ae8aebf5380bb"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/writing_tools/inspect.rs",
+        "bytes": 2257,
+        "sha256": "501658bb881b48ea3db47c712673e52a77bc89c375ce87e8ae5a507931e0d80d"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/writing_tools/mod.rs",
+        "bytes": 967,
+        "sha256": "b2bec789540a47a536b9d09d36a2a7e5ba741b84e77396b0f3b3c8907dc9a9a1"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/writing_tools/outline.rs",
+        "bytes": 1585,
+        "sha256": "d0ab3f029ce7e5e39070e6ac5abb1a06350ff3373e2e79a89626ae851513786e"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/writing_tools/result.rs",
+        "bytes": 933,
+        "sha256": "6988cacf48e0802e41794f61835b77f0299020ae2b74b20d9e616b0ae7932bda"
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_writing_tools.rs",
+        "bytes": 14308,
+        "sha256": "8e7dbca79fe06bc5a91c956b3dcbc3f6e0058023ef5ac621ed222ca4fe122962"
+      },
+      {
+        "path": "experiments/collaboration/Cargo.lock",
+        "bytes": 39386,
+        "sha256": "d3b1a16695479ab94e4747a3826c69dae55d6a16b8d4306832757299d35d72ca"
+      },
+      {
+        "path": "experiments/collaboration/Cargo.toml",
+        "bytes": 1671,
+        "sha256": "8cff35276066fcff3f345607dd0331500c03a0deb9f2aad463f2bee177ab55d2"
+      },
+      {
+        "path": "experiments/collaboration/tests/writing_tools_contracts.rs",
+        "bytes": 260,
+        "sha256": "a846f8ebacd29aeadab66e9e1e682953831c48dbb62e4a363c61d43f56a9ff04"
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 123,
+        "sha256": "81e722cea65ca61d2a17462fc3dc015f3d4c804024d15b6afa395ec454519a9f"
+      },
+      {
+        "path": "scripts/candidate-release/plan.mjs",
+        "bytes": 10066,
+        "sha256": "85c671d9c3dcea40566af58a2f0b5a57b8e586a86a757840cce01d2b1b6a2491"
+      },
+      {
+        "path": "scripts/candidate-runtime-paths.mjs",
+        "bytes": 1766,
+        "sha256": "66e23594a56a9e8725ad8a5409dcbef07db1ea181c4cc5cde620560b8aab1b26"
+      }
+    ],
+    "changedPaths": [
+      "crates/breditor-collaboration/src/rich_replica/mod.rs",
+      "crates/breditor-collaboration/src/rich_replica/writing_tools.rs",
+      "crates/breditor-collaboration/tests/writing_tools_contracts.rs",
+      "crates/breditor-core/src/rich_content/mod.rs",
+      "crates/breditor-core/src/rich_content/search/domains.rs",
+      "crates/breditor-core/src/rich_content/search/mod.rs",
+      "crates/breditor-core/src/rich_content/writing_tools/counts.rs",
+      "crates/breditor-core/src/rich_content/writing_tools/error.rs",
+      "crates/breditor-core/src/rich_content/writing_tools/inspect.rs",
+      "crates/breditor-core/src/rich_content/writing_tools/mod.rs",
+      "crates/breditor-core/src/rich_content/writing_tools/outline.rs",
+      "crates/breditor-core/src/rich_content/writing_tools/result.rs",
+      "crates/breditor-core/tests/rich_writing_tools.rs",
+      "experiments/collaboration/tests/writing_tools_contracts.rs"
+    ]
+  },
+  "verification": {
+    "manifest": {
+      "path": "target/v1-candidate-runs/run-rIecfc/result.json",
+      "bytes": 27923,
+      "sha256": "f3db6d1c836dfc5c30c59083cc98b5d39b245fac3c8fb43e5c56d97f65d630ad",
+      "modifiedAtMs": 1792367728139.842
+    },
+    "result": {
+      "format": "breditor/candidate-qualification",
+      "formatVersion": 1,
+      "profile": "functional",
+      "status": "passed",
+      "v1Ready": false,
+      "publicationApproved": false,
+      "source": {
+        "commit": "d03c4f7577f3928f59fe83a1ff1fde5ce2c783dd",
+        "dirty": true,
+        "sha256": "4cd2a7874e1b2b73c10fe142680a57391d3bf7ca53556da6ddcf4ed27e18a668",
+        "files": 4243,
+        "bytes": 37487122
+      },
+      "environment": {
+        "node": "v22.14.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "startedAt": "2026-10-18T23:45:50.832Z",
+      "deferred": [
+        "Native Rust counts/outline and exact shared guarded reads only; no Wasm/SDK utility capability, browser controls, installed utility consumer, placeholder or fullscreen is implemented by this checkpoint.",
+        "Wasm32 strict compilation and existing JS/editor regressions do not claim a rebuilt/installed utility feature or physical input qualification.",
+        "All thirteen V1 gates remain open, including historical WebKit/native input, API/migrations/storage, deployment/auth/assets, dependency/license/performance and final RC/pilot."
+      ],
+      "stages": [
+        {
+          "id": "workspace-format",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:45:51.416Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "fmt",
+            "--package",
+            "breditor-core",
+            "--package",
+            "breditor-wasm",
+            "--",
+            "--check"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/01-workspace-format.log",
+          "finishedAt": "2026-10-18T23:45:53.627Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 0,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/01-workspace-format.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "modifiedAtMs": 1792367151416.7236
+          },
+          "artifacts": []
+        },
+        {
+          "id": "shared-format",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:45:54.182Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "fmt",
+            "--manifest-path",
+            "crates/breditor-collaboration/Cargo.toml",
+            "--package",
+            "breditor-collaboration",
+            "--",
+            "--check"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/02-shared-format.log",
+          "finishedAt": "2026-10-18T23:45:54.720Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 0,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/02-shared-format.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "modifiedAtMs": 1792367154182.9348
+          },
+          "artifacts": []
+        },
+        {
+          "id": "workspace-lint",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:45:55.267Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--all-features",
+            "--locked",
+            "--offline",
+            "--release",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/03-workspace-lint.log",
+          "finishedAt": "2026-10-18T23:45:55.717Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 62,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/03-workspace-lint.log",
+            "bytes": 62,
+            "sha256": "2d5694fb348541fae3d68a033b004800c9c79f8f6edb468d5763b1d8f389597a",
+            "modifiedAtMs": 1792367155460.1658
+          },
+          "artifacts": []
+        },
+        {
+          "id": "shared-lint",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:45:56.257Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "clippy",
+            "--manifest-path",
+            "crates/breditor-collaboration/Cargo.toml",
+            "--all-targets",
+            "--all-features",
+            "--locked",
+            "--offline",
+            "--release",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/04-shared-lint.log",
+          "finishedAt": "2026-10-18T23:45:56.533Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 507,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/04-shared-lint.log",
+            "bytes": 507,
+            "sha256": "594aa8d1315156242f767d7044ebaaf31e726348cd2877582978f1cb44b6aa2a",
+            "modifiedAtMs": 1792367156411.2559
+          },
+          "artifacts": []
+        },
+        {
+          "id": "workspace-native",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:45:57.075Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "test",
+            "--workspace",
+            "--all-features",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/05-workspace-native.log",
+          "finishedAt": "2026-10-18T23:49:23.070Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 312202,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/05-workspace-native.log",
+            "bytes": 312202,
+            "sha256": "dc72e9ffea999ce1011f25bd3408c566b00f3c86c30dde59a500af5a4bf7b746",
+            "modifiedAtMs": 1792367363066.628
+          },
+          "artifacts": []
+        },
+        {
+          "id": "shared-native",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:49:24.011Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "test",
+            "--manifest-path",
+            "crates/breditor-collaboration/Cargo.toml",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/06-shared-native.log",
+          "finishedAt": "2026-10-18T23:54:02.557Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 69379,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/06-shared-native.log",
+            "bytes": 69379,
+            "sha256": "78ef99cdb0184f2029e09a64e3bcc1448b8bb19427408f6a015d104390e1c84b",
+            "modifiedAtMs": 1792367642553.5237
+          },
+          "artifacts": []
+        },
+        {
+          "id": "research-writing-contracts",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:54:03.142Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "test",
+            "--manifest-path",
+            "experiments/collaboration/Cargo.toml",
+            "--test",
+            "writing_tools_contracts",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/07-research-writing-contracts.log",
+          "finishedAt": "2026-10-18T23:54:23.288Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 1116,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/07-research-writing-contracts.log",
+            "bytes": 1116,
+            "sha256": "43e719ef6b49cb7f8522ca0e1d6fe38c7a9de4d7b4fd8fc6d482fa8b20e72a17",
+            "modifiedAtMs": 1792367663286.468
+          },
+          "artifacts": []
+        },
+        {
+          "id": "workspace-docs",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:54:23.878Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "doc",
+            "--workspace",
+            "--all-features",
+            "--no-deps",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native",
+            "RUSTDOCFLAGS": "-D warnings"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/08-workspace-docs.log",
+          "finishedAt": "2026-10-18T23:54:37.199Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 444,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/08-workspace-docs.log",
+            "bytes": 444,
+            "sha256": "810aca15ac0793660a6b3d2f57d7d629573049ec685cc5b3b68fd6f6a42aa1c2",
+            "modifiedAtMs": 1792367677197.5923
+          },
+          "artifacts": []
+        },
+        {
+          "id": "shared-docs",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:54:37.800Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "doc",
+            "--manifest-path",
+            "crates/breditor-collaboration/Cargo.toml",
+            "--all-features",
+            "--no-deps",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native",
+            "RUSTDOCFLAGS": "-D warnings"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/09-shared-docs.log",
+          "finishedAt": "2026-10-18T23:54:41.769Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 696,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/09-shared-docs.log",
+            "bytes": 696,
+            "sha256": "f1e7496d2f5ee06210c4ef8682a3b2a3b93798a885f6ea13212ec224902d3321",
+            "modifiedAtMs": 1792367681768.0103
+          },
+          "artifacts": []
+        },
+        {
+          "id": "local-wasm32-lint",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:54:42.377Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "clippy",
+            "--workspace",
+            "--all-features",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--locked",
+            "--offline",
+            "--release",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/rich-browser-wasm",
+            "CARGO_ENCODED_RUSTFLAGS": "--remap-path-prefix=/Users/s/code/breditor/target/rich-browser-wasm=target\u001f--remap-path-prefix=/Users/s/.cargo=cargo\u001f--remap-path-prefix=/Users/s/code/breditor=breditor"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/10-local-wasm32-lint.log",
+          "finishedAt": "2026-10-18T23:54:57.573Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 241,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/10-local-wasm32-lint.log",
+            "bytes": 241,
+            "sha256": "c31b987288ea1a67a03e9400d0cb0ab9fc88b063e301c070e406b50de30247a5",
+            "modifiedAtMs": 1792367697566.8
+          },
+          "artifacts": []
+        },
+        {
+          "id": "shared-wasm-lint",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:54:58.146Z",
+          "command": "/Users/s/.cargo/bin/cargo",
+          "args": [
+            "clippy",
+            "--manifest-path",
+            "crates/breditor-collaboration/Cargo.toml",
+            "--no-default-features",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--locked",
+            "--offline",
+            "--release",
+            "--lib",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/promoted-shared-wasm",
+            "CARGO_ENCODED_RUSTFLAGS": "--remap-path-prefix=/Users/s/code/breditor/target/promoted-shared-wasm=target\u001f--remap-path-prefix=/Users/s/.cargo=cargo\u001f--remap-path-prefix=/Users/s/code/breditor=breditor"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/11-shared-wasm-lint.log",
+          "finishedAt": "2026-10-18T23:55:14.198Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 704,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/11-shared-wasm-lint.log",
+            "bytes": 704,
+            "sha256": "0d8b631dee676f0108a40a9370607c77598ba79bded6b8af26b3ace0835b51f7",
+            "modifiedAtMs": 1792367714189.586
+          },
+          "artifacts": []
+        },
+        {
+          "id": "all-script-contracts",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:55:14.768Z",
+          "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+          "args": [
+            "--test",
+            "scripts/build-collaboration-runtime.test.mjs",
+            "scripts/build-experimental-nested-list.test.mjs",
+            "scripts/build-opt-in-flat-list-package.test.mjs",
+            "scripts/build-opt-in-nested-list-package.test.mjs",
+            "scripts/build-rich-runtime.test.mjs",
+            "scripts/build-runtime-notices.test.mjs",
+            "scripts/build-shared-runtime.test.mjs",
+            "scripts/candidate-ci.test.mjs",
+            "scripts/candidate-dependencies.test.mjs",
+            "scripts/candidate-runtime-paths.test.mjs",
+            "scripts/check-collaboration-runtime-surface.test.mjs",
+            "scripts/check-editor-browser.test.mjs",
+            "scripts/check-flat-list-declarations.test.mjs",
+            "scripts/check-heading-declarations.test.mjs",
+            "scripts/check-nested-list-declarations.test.mjs",
+            "scripts/check-v1-readiness.test.mjs",
+            "scripts/checkpoint-predicate-exits.test.mjs",
+            "scripts/child-count-return-diagnostics.test.mjs",
+            "scripts/collaboration-browser-runs.test.mjs",
+            "scripts/collaboration-native-graph.test.mjs",
+            "scripts/collaboration-promotion.test.mjs",
+            "scripts/composition-failure-diagnostics.test.mjs",
+            "scripts/direct-getter-bridge.test.mjs",
+            "scripts/document-export-diagnostics.test.mjs",
+            "scripts/editor-package-contract.test.mjs",
+            "scripts/element-type-return-diagnostics.test.mjs",
+            "scripts/exception-constructor-probe.test.mjs",
+            "scripts/fixture-completion.test.mjs",
+            "scripts/format-property-diagnostics.test.mjs",
+            "scripts/gecko-profile-summary.test.mjs",
+            "scripts/getter-u32-comparison-mode.test.mjs",
+            "scripts/heading-comparison-trial.test.mjs",
+            "scripts/input-rule-intent.test.mjs",
+            "scripts/input-rule-probe-policy.test.mjs",
+            "scripts/integer-word-diagnostics.test.mjs",
+            "scripts/measure-opt-in-flat-list-size.test.mjs",
+            "scripts/measure-opt-in-nested-list-size.test.mjs",
+            "scripts/nested-list-build-transport.test.mjs",
+            "scripts/nested-list-stress-mode.test.mjs",
+            "scripts/nested-performance-replay-query.test.mjs",
+            "scripts/opt-in-demo-runtime.test.mjs",
+            "scripts/owner-immediate-exits.test.mjs",
+            "scripts/prepare-retained-bootstrap-failure-trace.test.mjs",
+            "scripts/prepare-retained-nested-layout-trace.test.mjs",
+            "scripts/private-word-projection-adapter.test.mjs",
+            "scripts/probe-nested-checkpoint-validator.test.mjs",
+            "scripts/probe-shared-history-clock.test.mjs",
+            "scripts/probe-shared-input-cost.test.mjs",
+            "scripts/projection-word-bindings.test.mjs",
+            "scripts/queue-failure-diagnostics.test.mjs",
+            "scripts/rendering-trace-summary.test.mjs",
+            "scripts/replay-browser.test.mjs",
+            "scripts/retain-nested-list-failure.test.mjs",
+            "scripts/retained-bootstrap-failure-trace.test.mjs",
+            "scripts/retained-nested-layout-trace.test.mjs",
+            "scripts/retained-nested-pair.test.mjs",
+            "scripts/review-assets-workflow.test.mjs",
+            "scripts/rich-structural-module-contract.test.mjs",
+            "scripts/runtime-notice-consumer.test.mjs",
+            "scripts/search-consumer-lock.test.mjs",
+            "scripts/search-metadata.test.mjs",
+            "scripts/shared-browser-runs.test.mjs",
+            "scripts/verify-candidate.test.mjs",
+            "scripts/verify-release.test.mjs",
+            "scripts/wasm-function-names.test.mjs",
+            "scripts/webkit-replay-tier.test.mjs",
+            "scripts/word-capability-admission-diagnostics.test.mjs",
+            "scripts/word-child-count.test.mjs",
+            "scripts/word-editor-stress-mode.test.mjs"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/12-all-script-contracts.log",
+          "finishedAt": "2026-10-18T23:55:20.368Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 89943,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/12-all-script-contracts.log",
+            "bytes": 89943,
+            "sha256": "7da460d92318c800ddaa7a836550e6c436c719460052abfd18ade6dcd965cfd0",
+            "modifiedAtMs": 1792367720365.2444
+          },
+          "artifacts": []
+        },
+        {
+          "id": "editor-sdk-tests",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:55:20.939Z",
+          "command": "npm",
+          "args": [
+            "run",
+            "test:candidate",
+            "--workspace",
+            "@breditor/editor"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/13-editor-sdk-tests.log",
+          "finishedAt": "2026-10-18T23:55:26.191Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 619,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/13-editor-sdk-tests.log",
+            "bytes": 619,
+            "sha256": "636d52a63f24a818a291bf0acf93bb56c00a27ae39421883d8ed847bfd0876ad",
+            "modifiedAtMs": 1792367726139.6553
+          },
+          "artifacts": []
+        },
+        {
+          "id": "default-dependency-guard",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:55:26.743Z",
+          "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+          "args": [
+            "scripts/check-wasm-third-party-notices.mjs"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/14-default-dependency-guard.log",
+          "finishedAt": "2026-10-18T23:55:27.026Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 111,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/14-default-dependency-guard.log",
+            "bytes": 111,
+            "sha256": "886591c8a0956dfdb6837c7c9e6f65af1f9f409051641d44bd1e0cec537de06a",
+            "modifiedAtMs": 1792367727023.9907
+          },
+          "artifacts": []
+        },
+        {
+          "id": "readiness-inventory",
+          "status": "passed",
+          "startedAt": "2026-10-18T23:55:27.565Z",
+          "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+          "args": [
+            "scripts/check-v1-readiness.mjs",
+            "--json"
+          ],
+          "env": {
+            "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+            "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+            "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+            "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+            "RUSTC": "/Users/s/.cargo/bin/rustc",
+            "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+            "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+            "NPM_BIN": "npm",
+            "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+          },
+          "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-rIecfc/15-readiness-inventory.log",
+          "finishedAt": "2026-10-18T23:55:27.607Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 15485,
+          "log": {
+            "path": "target/v1-candidate-runs/run-rIecfc/15-readiness-inventory.log",
+            "bytes": 15485,
+            "sha256": "99abb86b229c4f9a39e0e8706330aa36de35a6d46585d2d5b19af8cc9526b6ef",
+            "modifiedAtMs": 1792367727605.1523
+          },
+          "artifacts": []
+        }
+      ],
+      "finishedAt": "2026-10-18T23:55:28.139Z",
+      "selectedChecksPassed": true
+    }
+  },
+  "tests": {
+    "workspace": {
+      "groups": 169,
+      "passed": 2607,
+      "failed": 0,
+      "ignored": 0
+    },
+    "shared": {
+      "groups": 51,
+      "passed": 596,
+      "failed": 0,
+      "ignored": 0
+    },
+    "research": {
+      "groups": 1,
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    "focusedWriting": {
+      "coreTests": 9,
+      "unicodePropertyCases": 64,
+      "sharedTests": 2,
+      "sharedGrammarScopeHistoryConfigurations": 18,
+      "exactSharedFutureComparisons": 72
+    },
+    "scripts": {
+      "passed": 472,
+      "failed": 0,
+      "skipped": 3,
+      "scope": "Existing opt-in browser checks remain skipped; script success is not platform qualification."
+    },
+    "editor": {
+      "files": 39,
+      "passed": 376,
+      "failed": 0,
+      "scope": "Existing unchanged SDK regression suite; not a browser writing-utility feature test."
+    }
+  },
+  "contract": {
+    "native": "inspect_rich_writing_tools(&RichDocument) and RichReplica::writing_tools_guarded(&SharedObservation). Counts/results/outline are detached native read values, not mutation authority.",
+    "counts": "Pinned Unicode word segments and extended graphemes across formatting runs within each paragraph/heading/code domain; scalar, UTF-16, UTF-8 and text-domain totals stay distinct. No invented structural separators or cross-block words.",
+    "included": "Accepted visible body text, including code/captions and each visible merged-source partition exactly once in semantic presentation order.",
+    "excluded": "Hidden tables, metadata/alt text/assets/IDs, generated list markers, comments and pending proposals.",
+    "outline": "Original heading rank and stable block ID in presentation order. Labels are literal prefixes of complete extended graphemes within 1024 UTF-8 bytes, with explicit truncation; complete counts are independent of shortened labels.",
+    "budgets": {
+      "aggregateUtf8Bytes": 4194304,
+      "textDomains": 8192,
+      "visitedOrQueuedNodes": 65536,
+      "outlineLabelUtf8Bytes": 1024,
+      "source": "Shared internal bounded native Find traversal, with unchanged algorithms/limits; changes to existing search code are visibility only."
+    },
+    "guard": "Stale/foreign shared observations reject before reading; read-only reads retain the exact token, causal state, selection, pending formats, saved history and future Redo.",
+    "unchanged": "No dependencies, existing operation/command/view/checkpoint formats, schema bindings, default enable flags or saved recipe meanings changed."
+  },
+  "developmentObservations": [
+    {
+      "retainedWhere": "Development tool outputs in this chat, not invented source-frozen failure manifests.",
+      "observation": "An initial test fixture declaration had invalid Rust syntax; corrected before the final matrix."
+    },
+    {
+      "retainedWhere": "Development native test output (7 passed / 1 failed, subsequently 9 passed).",
+      "observation": "A recursive JSON fixture used IndexMut on text children and introduced a children:null field. Admission correctly refused it; get_mut now visits only existing child arrays. No production admission was weakened."
+    },
+    {
+      "retainedWhere": "Development strict Clippy output.",
+      "observation": "The test fixture borrowed its owned root inside json!, triggering needless_pass_by_value. The root is now consumed by assigning it into the fixture envelope."
+    },
+    {
+      "retainedWhere": "Compiler caches retained; no deletion performed.",
+      "observation": "The first development invocation used the default target cache. All final checks explicitly use the selected scoped caches."
+    }
+  ],
+  "notQualified": [
+    "Optional versioned Wasm/SDK writing reads, borrowed vanilla/React controls and independently installed utility acceptance.",
+    "Placeholder structural-empty semantics and fullscreen ownership/focus/selection behavior. Zero words or zero text domains does not prove an atom-only document empty.",
+    "Incremental indexing, measured latency/memory/download/long-session performance or language morphology. Japanese ideographs are Unicode word segments, not dictionary words.",
+    "Fresh rebuilt/installed utility Wasm or physical browser/clipboard/IME/accessibility/mobile qualification; wasm32 stages are strict compilation only.",
+    "Historical WebKit fault, API/migration and storage-lifecycle decisions, deployment/auth/assets, dependency/license review, full parity, pilot and final RC approval."
+  ],
+  "readiness": {
+    "writingUtilities": "partial",
+    "featureGroups": {
+      "implemented": 10,
+      "partial": 27,
+      "missing": 9,
+      "notAPercentage": true
+    },
+    "openV1Gates": 13,
+    "v1Ready": false,
+    "publicationApproved": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

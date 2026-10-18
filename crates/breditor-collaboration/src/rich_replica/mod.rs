@@ -116,6 +116,7 @@ mod ui_state;
 mod update_frame;
 mod view;
 mod writer_transport;
+mod writing_tools;
 
 pub use actions::Command;
 /// Private shared projection revision; incompatible causal interpretations must reject old frames.

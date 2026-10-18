@@ -43,6 +43,20 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native writing-tools checkpoint](qualification/2026-10-18-native-writing-tools.json)
+adds accepted-document Unicode counts and a stable-ID heading outline through
+pure core and guarded shared Rust reads. All 15 selected checks pass: 2,607
+workspace and 596 shared tests/doctests, two repeated compatibility contracts,
+strict lint/docs/wasm32 checks, 472 script tests and 376 editor regressions, with
+three existing script checks skipped. Counts cross format runs and follow merged
+source order, while reads retain exact observations, saved history and future
+Redo. Heading label truncation is explicit and does not shorten counts.
+
+This is a native foundation, not a browser utility release. Optional Wasm/SDK
+reads, borrowed controls, installed acceptance, placeholder and fullscreen remain
+active work. Writing utilities move from missing to partial; no V1 gate closes
+and no version, push, tag, publication or deployment is promoted.
+
 The [input-rule candidate pipeline checkpoint](qualification/2026-10-18-input-rules-candidate-pipeline.json)
 adds mandatory portable DOM/root/React and fresh installed acceptance to both
 official profiles. Ten selected checks are satisfied through seven passing

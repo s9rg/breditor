@@ -282,11 +282,11 @@
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
-      "id":"writing-utilities","area":"Productivity","status":"missing",
+      "id":"writing-utilities","area":"Productivity","status":"partial",
       "summary":"Counts, placeholder, fullscreen and outline",
-      "current":"No unified public utility package supplies these workflows for the combined editor.",
+      "current":"Native Rust counts and a stable-ID heading outline derive accepted visible body text in shared merged-source order. Unicode metrics cross format runs, reads preserve exact history/observations, labels truncate explicitly and stale/foreign shared reads reject. Wasm/SDK exposure, borrowed controls, installed acceptance, placeholder and fullscreen remain unfinished; there is no unified public browser utility package yet.",
       "acceptance":"Derive counts/outline from admitted AST snapshots, keep placeholders out of content, and preserve focus/selection through fullscreen transitions.",
-      "evidence":["packages/breditor-collaboration/src/index.ts"],
+      "evidence":["docs/RICH_WRITING_TOOLS.md","crates/breditor-core/src/rich_content/writing_tools/mod.rs","crates/breditor-core/tests/rich_writing_tools.rs","crates/breditor-collaboration/src/rich_replica/writing_tools.rs","crates/breditor-collaboration/tests/writing_tools_contracts.rs","experiments/collaboration/tests/writing_tools_contracts.rs","docs/qualification/2026-10-18-native-writing-tools.json"],
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {

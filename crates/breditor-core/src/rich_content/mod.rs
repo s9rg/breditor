@@ -44,6 +44,7 @@ mod structural_drafts;
 mod table_draft;
 mod table_geometry;
 mod table_paste_draft;
+mod writing_tools;
 
 pub use ast_properties::{RichColumn, RichTableView};
 pub use atom_edit::{AtomDeletionPlan, plan_atom_deletion, selected_flow_atom};
@@ -112,6 +113,11 @@ pub use standard_inline_v1::{
 pub use structural_drafts::{RichTaskItemDraft, RichTaskListDraft};
 pub use table_draft::TableDraft;
 pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerge};
+pub use writing_tools::{
+    RICH_WRITING_MAX_TEXT_BLOCKS, RICH_WRITING_MAX_TEXT_BYTES, RICH_WRITING_MAX_VISITED_NODES,
+    RICH_WRITING_OUTLINE_LABEL_BYTES, RichHeadingOutlineEntry, RichWritingCounts, RichWritingError,
+    RichWritingTools, inspect_rich_writing_tools,
+};
 
 pub use identity::{
     AssetGeneration, AssetId, BlockId, CellId, ChangeId, ColumnId, DocumentId, ImageId, MergeId,
