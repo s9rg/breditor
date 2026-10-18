@@ -2,7 +2,7 @@
 
 use super::{
     RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot, RichLocalState,
-    RichPendingFormatsUpdate, RichSelectionUpdate, history_entry::RichHistoryEntry,
+    RichPendingFormatsUpdate, RichSelectionUpdate,
 };
 use crate::rich_content::{
     RichSelection, RichSelectionKind,
@@ -99,28 +99,11 @@ impl RichLocalSession {
         }
         let edit = edit.ok_or(RichLocalSessionError::HistoryMismatch)?;
         let inverse = edit.into_parts().1;
-        let entry = RichHistoryEntry {
-            before: self.state.clone(),
-            after: candidate.clone(),
-            forward: super::history_recipe::HistoryRecipe::Actions(actions.to_vec()),
-            inverse: super::history_recipe::HistoryRecipe::Actions(inverse),
-        };
-        if let Some(history) = &mut self.typing_history {
-            history.append(self.cursor, self.capacity.as_usize());
-        }
-        self.entries.truncate(self.cursor);
-        if self.capacity.get() == 0 {
-            self.entries.clear();
-            self.cursor = 0;
-        } else {
-            self.entries.push(entry);
-            if self.entries.len() > self.capacity.as_usize() {
-                self.entries.remove(0);
-            }
-            self.cursor = self.entries.len();
-        }
-        self.publish(candidate);
-        Ok(RichLocalOutcome::ContentCommitted)
+        Ok(self.commit_content(
+            candidate,
+            super::history_recipe::HistoryRecipe::Actions(actions.to_vec()),
+            super::history_recipe::HistoryRecipe::Actions(inverse),
+        ))
     }
 
     /// Validate and publish only logical selection; this does not create user undo.

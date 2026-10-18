@@ -108,6 +108,7 @@ dependencies = [
 name = "breditor-core"
 version = "0.3.0-alpha.22"
 dependencies = [
+ "regex-automata",
  "serde",
  "serde_json",
  "sha2",

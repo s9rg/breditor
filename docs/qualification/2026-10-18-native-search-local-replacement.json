@@ -1,0 +1,430 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "ab98931e9c8e24a306c15188aa13c3bff656ab16",
+  "scope": "Native Rust search and atomic local replacement, with full workspace/shared native regressions. This is not an integrated Wasm/SDK search feature, shared Replace All, the full candidate profile or V1 release approval.",
+  "source": {
+    "commit": "ab98931e9c8e24a306c15188aa13c3bff656ab16",
+    "dirty": true,
+    "sha256": "e32c62d0f0ddc37221bd9a489c114ed8b533238cb221aacb8c35063550948fff",
+    "files": 4120,
+    "bytes": 36551717
+  },
+  "sourceBinding": {
+    "unchangedAcrossNativeMatrix": true,
+    "codeAndBuildInputs": [
+      {
+        "path": "Cargo.lock",
+        "bytes": 17432,
+        "sha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c"
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.lock",
+        "bytes": 39247,
+        "sha256": "d76d57f59a66c1b6fb52b41ca199d65fd1da19af7e85079c4630f307af011cdb"
+      },
+      {
+        "path": "crates/breditor-core/Cargo.toml",
+        "bytes": 1319,
+        "sha256": "e4cbac2873f31a2e07097e5ef5a009e0952c27b6c5ef6800793141897e05b462"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/commit_content.rs",
+        "bytes": 1193,
+        "sha256": "7a37b37c775508f46a543c083bfdba35e9164699cd4fcfe53159d5f5e383c82b"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/dispatch.rs",
+        "bytes": 4684,
+        "sha256": "fb917ffd265b37349d5d2cc1d5fd5c4116b07021573a15b5ddb4873b2bc56cfd"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/error.rs",
+        "bytes": 2844,
+        "sha256": "cd0d2a7ee8cb8d5be5372ec9c91a84c6c514b1de848588c8a7c6b885cba503e3"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/history_recipe.rs",
+        "bytes": 1037,
+        "sha256": "f44d6c55c7bb009d9e40910c55dce3bc2dde802e1b1437146059aa88348d39c0"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/mod.rs",
+        "bytes": 7691,
+        "sha256": "4821884143440b9ba19f12544a3a2c6d56a976ebba71c7fd2362ff77c32ce9b1"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/replace_search_all.rs",
+        "bytes": 1214,
+        "sha256": "41445e88e2e4aff2267f1b395cef07e471b36d2e4bdcd7577b3fccee20acc87c"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/replace_search_one.rs",
+        "bytes": 1221,
+        "sha256": "fb2a5036c583281b18010744f673a89244e7f25b9aef6f5f8c8be34ae3f25da8"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/replace_search_plan.rs",
+        "bytes": 2177,
+        "sha256": "d06c43483037cfb671babf30e510a47b8ee55e79a923327e8bd521c02ffb9c7d"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/mod.rs",
+        "bytes": 5056,
+        "sha256": "aeb2f6ca69b5f2666f57ddc6ec00c498a96af5a85be3c91d9fb2d03725aa9706"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/rich_text_mapping.rs",
+        "bytes": 6182,
+        "sha256": "66673efe0156788e6dddbeb91499f1049525a21b95f22d01beecfc909db8f332"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/domains.rs",
+        "bytes": 5014,
+        "sha256": "305b53b88cc7b5a2e69673dcc63865dad775071a1b507255c93c2d831ef8c608"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/error.rs",
+        "bytes": 2324,
+        "sha256": "5896d5bb9f31d813d5ef3b02e59dd5d2dd2784863e7193b6010b72e507ae994d"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/matcher.rs",
+        "bytes": 2289,
+        "sha256": "cd7063a46dea02ece2c3204933fb24b3774da5cecc8a45f6b4595ac77d24a871"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/mod.rs",
+        "bytes": 2104,
+        "sha256": "c04b0cd98c6780dec873fad5735da3ac8e3b6c208a89ba1c7c7f97063b9a3d7f"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/query.rs",
+        "bytes": 2606,
+        "sha256": "f420b00a67755c7276bc5a56c28e94e46ea0274f441362985364c2c8e6da3bef"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replace_all.rs",
+        "bytes": 709,
+        "sha256": "caa3c2f2f6bcff58cc84d057c14d0e59dc04f7ae1692fca8cd09286b974a4b1c"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replace_one.rs",
+        "bytes": 743,
+        "sha256": "624716427392df53fd5bb3cb87c484d30a84777dd2c0bfb96541ff914deb7e41"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replacement.rs",
+        "bytes": 1913,
+        "sha256": "2527032007704a6d6cbfc43b4c15f9e89a2a58759576691a8ff82f5eca3e2cb5"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replacement_plan.rs",
+        "bytes": 6576,
+        "sha256": "544564cf0d954924678d1b30b170a6445b187137977066ab7d8477a04a0ea5f2"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replacement_preview.rs",
+        "bytes": 7378,
+        "sha256": "55b417e50e40f84e1c74bdb2c21178a916a575db0438391edf0f9a7c7faad587"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replacement_selection.rs",
+        "bytes": 1522,
+        "sha256": "ec010b6f9be997ad4281d9843c8d0c181c325c740a90bc8a15bda1d81b495231"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replacement_template.rs",
+        "bytes": 4744,
+        "sha256": "2af3e06db386f779e9d77a0d49f70d1116ed4258265031c0bb2a18870d5cbfe7"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/results.rs",
+        "bytes": 6446,
+        "sha256": "433ee1cd8d3195b8448c7967502990e78fbcbf471f3a8425a856f9e783b895d2"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/scan.rs",
+        "bytes": 6691,
+        "sha256": "ecc65152feea8fbe98c3ed45cdfc1e3482dfd53ed54a14178d515dfd649afce7"
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_search.rs",
+        "bytes": 16817,
+        "sha256": "946494aa739b79c05d6d3d8f4f9010be8d99060331450813762ca53af0811603"
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_search_replacement.rs",
+        "bytes": 30598,
+        "sha256": "8709480823f1257f9adbc05f721a78f2e3c31e9e1fad5f38c39c7baf4ff24ed0"
+      },
+      {
+        "path": "experiments/collaboration/Cargo.lock",
+        "bytes": 39386,
+        "sha256": "d3b1a16695479ab94e4747a3826c69dae55d6a16b8d4306832757299d35d72ca"
+      },
+      {
+        "path": "experiments/relay/Cargo.lock",
+        "bytes": 53452,
+        "sha256": "2567d00fb4e56c8832d35fa0dc49cfffe8ddf26e4f2473eefdbed13672cd62fb"
+      },
+      {
+        "path": "scripts/fixtures/shared-structural-v2-compat/Cargo.lock",
+        "bytes": 39388,
+        "sha256": "e805babecfd1b030b9d555bfd19343b49161569ba2c7165a9eb3637559c0d8dc"
+      }
+    ],
+    "followup": "Only the qualification record and explanatory repository documentation are added or refined after the source-pinned native matrix. Code/build input hashes remain exact; the final commit is not claimed to have the matrix's whole-tree source hash."
+  },
+  "verification": {
+    "nativeMatrix": {
+      "status": "passed",
+      "startedAt": "2026-10-18T19:48:19.909Z",
+      "finishedAt": "2026-10-18T19:59:08.898Z",
+      "manifest": "/private/tmp/breditor-native-search-matrix-20261018.json",
+      "manifestSha256": "38811d874c59279bd679dcfaf7daf7e1d2d02d7d8a2c6aacfa2e646981c27c28",
+      "stages": [
+        {
+          "id": "workspace-lint",
+          "args": [
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--all-features",
+            "--locked",
+            "--offline",
+            "--release",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "log": "/private/tmp/breditor-native-search-matrix-20261018-workspace-lint.log",
+          "startedAt": "2026-10-18T19:48:20.182Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T19:48:43.057Z",
+          "logSha256": "c0c53b0996bc035e3e5b7ed8e420def6898b6815e7707334c34db55e18f7ff1f",
+          "bytes": 241
+        },
+        {
+          "id": "workspace-native",
+          "args": [
+            "test",
+            "--workspace",
+            "--all-features",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "log": "/private/tmp/breditor-native-search-matrix-20261018-workspace-native.log",
+          "startedAt": "2026-10-18T19:48:43.650Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T19:53:14.106Z",
+          "logSha256": "5518c254a71d973e738aeec1a3fea972db90cb1b925eff15f9ce27a1ca2feaed",
+          "bytes": 307620,
+          "resultGroups": 165,
+          "passed": 2566,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "id": "workspace-docs",
+          "args": [
+            "doc",
+            "--workspace",
+            "--all-features",
+            "--no-deps",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "log": "/private/tmp/breditor-native-search-matrix-20261018-workspace-docs.log",
+          "startedAt": "2026-10-18T19:53:15.098Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T19:53:29.901Z",
+          "logSha256": "86de843bc3d4033f500b01f8d5fb5f16f042f1dc15445490b6a05eef21c8936a",
+          "bytes": 444
+        },
+        {
+          "id": "shared-lint",
+          "args": [
+            "clippy",
+            "--manifest-path",
+            "crates/breditor-collaboration/Cargo.toml",
+            "--all-targets",
+            "--locked",
+            "--offline",
+            "--release",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "log": "/private/tmp/breditor-native-search-matrix-20261018-shared-lint.log",
+          "startedAt": "2026-10-18T19:53:30.514Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T19:53:49.499Z",
+          "logSha256": "61a0a0a798f636f51aa67bedd7104199a40ed8f23cac4d614af1189d8cc02fd6",
+          "bytes": 704
+        },
+        {
+          "id": "shared-native",
+          "args": [
+            "test",
+            "--manifest-path",
+            "crates/breditor-collaboration/Cargo.toml",
+            "--locked",
+            "--offline",
+            "--release"
+          ],
+          "log": "/private/tmp/breditor-native-search-matrix-20261018-shared-native.log",
+          "startedAt": "2026-10-18T19:53:50.102Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T19:59:08.458Z",
+          "logSha256": "7631ba26d09a2253bcb500e550a64947ac558d7f8ef22c924a57f3cca28fbb10",
+          "bytes": 64567,
+          "resultGroups": 48,
+          "passed": 553,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "evidenceRetention": "Owned local temporary logs; not an immutable RC archive"
+    },
+    "nativeTotal": {
+      "passed": 3119,
+      "failed": 0,
+      "ignored": 0,
+      "note": "2566 workspace plus 553 shared tests/doctests; preliminary and repeated focused runs are not counted again."
+    },
+    "newSearchCoverage": {
+      "coreUnitTests": 3,
+      "searchIntegrationTests": 15,
+      "replacementIntegrationTests": 18,
+      "propertyTests": 4,
+      "successfulCasesPerProperty": 64
+    },
+    "supplementary": {
+      "preliminaryCore": {
+        "log": "/private/tmp/breditor-native-search-replacement-20261018.log",
+        "logSha256": "0c57c7c0379b8ece5c8a51ffa113fbaa799ca806b166af563686be96bb5866f5",
+        "bytes": 289281,
+        "resultGroups": 147,
+        "passed": 2413,
+        "failed": 0,
+        "ignored": 0
+      },
+      "wasm32Typechecks": {
+        "localRich": {
+          "passed": true,
+          "log": "/private/tmp/breditor-native-search-replacement-wasm-check-20261018.log",
+          "logSha256": "cab8f844e36d6386a194e0d353bf6d06872a31057904ec9268addad288453695",
+          "bytes": 857
+        },
+        "sharedOwner": {
+          "passed": true,
+          "log": "/private/tmp/breditor-native-search-replacement-shared-wasm-check-20261018.log",
+          "logSha256": "9bc94b838869ced23c7c149bf649f5c53d6278df10bdc52ddaff1658f17b9341",
+          "bytes": 1115
+        },
+        "note": "Actual wasm32-unknown-unknown Rust boundary compilation with canonical path remapping, not exported search methods or browser execution."
+      },
+      "scriptContracts": {
+        "passed": 455,
+        "failed": 0,
+        "skipped": 3,
+        "log": "/private/tmp/breditor-native-search-replacement-scripts-20261018.log",
+        "logSha256": "04abbdf9ef34b83d08c802535b6ad755f1e38dfbf0d7ae4f54b7c4312ec610e5",
+        "bytes": 86059,
+        "note": "The three existing opt-in browser skips remain explicit, not platform qualification."
+      }
+    },
+    "defaultDependencyGuard": {
+      "passed": true,
+      "command": "CARGO_BIN=/Users/s/.cargo/bin/cargo RUSTC_BIN=/Users/s/.cargo/bin/rustc node scripts/check-wasm-third-party-notices.mjs",
+      "dependencies": 29,
+      "edges": 50,
+      "exactNotices": 5,
+      "rust": "1.98.0"
+    },
+    "workspaceRustfmt": "passed",
+    "gitDiffCheck": "passed",
+    "preExistingWarning": "The Loro dependency's HasIdSpan unused-import warning remains visible. No vendor code or lint suppression was changed."
+  },
+  "functionalCases": [
+    "Native literal and UTF-8 regex matching, Unicode simple case folding, explicit whole-word filtering and original-domain anchor context.",
+    "Formatting-transparent text domains, scalar-aligned UTF-16 positions, original merged-table source order, captions and exclusion of metadata/hidden tables.",
+    "Bounded complete results, guarded captures and navigation, exact whole-AST source binding and pure read-only search without clearing Redo.",
+    "Separate Replace One/All native plans; explicit literal or checked capture templates including named/optional groups and zero-width progress.",
+    "Linear assembly of each changed text body, affected-ancestor rebuilding and one complete final admission instead of per-hit growth states.",
+    "4096 replacements in one local history step under both explicit and natural policies, with exact before/after Undo/Redo and reopen.",
+    "Preserved structural identities, untouched formatting, actual directional/node/grid/document selection and pending caret formats.",
+    "True identity/no-hit behavior and atomic stale/foreign/read-only/template/expansion/document-limit rejection.",
+    "Original local and typing checkpoint families retain semantic branch recipes, not saved regex queries or capture templates.",
+    "Generated literal replacement and selection-mapping comparisons against independent string replacement and witnessed ordinary splices."
+  ],
+  "limits": {
+    "queryUtf8Bytes": 1024,
+    "visitedTextUtf8Bytes": 4194304,
+    "visitedOrQueuedNodes": 65536,
+    "textDomains": 8192,
+    "completeMatches": 4096,
+    "captureSlotsIncludingZero": 65,
+    "nfaBytes": 1048576,
+    "lazyDfaCacheBytes": 262144,
+    "summedRegexSuffixBytes": 67108864,
+    "replacementInputUtf8Bytes": 65536,
+    "replacementTemplateParts": 1024,
+    "aggregateChangedInsertedUtf8Bytes": 1048576,
+    "note": "Structural/work-volume admission, not a wall-clock, total-heap or approved V1 performance guarantee. Existing document, history and checkpoint policies remain in force."
+  },
+  "dependency": {
+    "name": "regex-automata",
+    "version": "0.4.18",
+    "checksum": "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2",
+    "vcsMetadata": {
+      "git": {
+        "sha1": "e6ad938198e68339a593f85d228f2d44cb54718f"
+      },
+      "path_in_vcs": "regex-automata"
+    },
+    "mitNoticeSha256": "6485b8ed310d3f0340bf1ad1f47645069ce4069dcc6bb46c7d5c6faf41de1fdb",
+    "apacheNoticeSha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "activation": "Only the existing optional experimental-rich-content grammar enables the pinned engine; default packages retain their dependency graph.",
+    "provenance": "Cargo checksum-validated cached registry source and its packaged VCS metadata. This does not assert independent upstream Git verification or complete license approval."
+  },
+  "preserved": {
+    "documentGrammarVersions": true,
+    "defaultWasmAbi5": true,
+    "richBoundaryAbi1": true,
+    "originalSerializedLocalHistoryMeanings": true,
+    "sharedModelsFramesCommandsAndJournals": true,
+    "historyRetentionDefaults": true,
+    "packageVersions": true
+  },
+  "remaining": [
+    "Shared replacement must bind the live causal observation, target original characters and retain peer-preserving selective Undo/recovery.",
+    "The existing shared 64-command batch cannot carry a 4096-match Replace All; add an explicitly selected carrier/family without widening old readers or splitting the user action into separate Undo groups.",
+    "Honor actual shared update/journal/outbox budgets before publication; do not replace whole text blocks or root JSON.",
+    "Add paired optional local/shared Wasm and SDK capabilities, borrowed vanilla/React controls, navigation and decorations outside canonical editing DOM.",
+    "Verify combined installed workflows, failed saves, offline/concurrent authors, peer-preserving Undo and exact future recovery.",
+    "Qualify public API/migration, storage lifecycle, packaging/dependencies, performance, supported platforms and all remaining V1 gates."
+  ],
+  "release": {
+    "v1Ready": false,
+    "qualificationGatesClosed": 0,
+    "fullCandidateProfileRunOnThisSource": false,
+    "newSearchWasmExports": false,
+    "newSearchSdkOrUi": false,
+    "sharedSearchMutation": false,
+    "versionBump": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

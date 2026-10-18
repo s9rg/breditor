@@ -1,4 +1,7 @@
-//! Captured runtime actions or replay-proved durable local branch recipes.
+//! Captured runtime actions or replay-proved local branch recipes.
+//!
+//! A native compound replacement uses the already-supported exact local branch
+//! recipe, also used on reopen. Queries never become commands in a saved family.
 
 use super::{RichLocalSessionError, local_rewrite::LocalRewrite};
 use crate::{

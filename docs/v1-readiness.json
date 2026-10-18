@@ -258,11 +258,11 @@
       "sources":["tiptap-catalog","ckeditor-overview"]
     },
     {
-      "id":"find-replace","area":"Productivity","status":"missing",
+      "id":"find-replace","area":"Productivity","status":"partial",
       "summary":"Find and replace",
-      "current":"There is no integrated document search/decorations/replacement workflow.",
+      "current":"The optional Rust rich core has source-bound Unicode literal/regex search, semantic table/caption traversal, capture results/navigation and atomic local Replace One/All. Replacement retains untouched formats/identities, maps the actual selection and uses existing replay-proved local branch history rather than persisting queries. Wasm/SDK exposure, search controls/decorations and shared original-character lowering/durable history remain unfinished; this is not an integrated or qualified V1 feature.",
       "acceptance":"Define literal/Unicode search, navigation and replace-all as one bounded semantic action, excluding hidden or noneditable content by explicit policy.",
-      "evidence":["packages/breditor-collaboration/src/index.ts"],
+      "evidence":["docs/RICH_SEARCH.md","crates/breditor-core/src/rich_content/search/mod.rs","crates/breditor-core/src/rich_content/local_session/replace_search_all.rs","crates/breditor-core/tests/rich_search.rs","crates/breditor-core/tests/rich_search_replacement.rs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {

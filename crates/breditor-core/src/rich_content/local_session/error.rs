@@ -3,6 +3,9 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// Native source-bound search/replacement planning or final admission failed.
+    #[error(transparent)]
+    Search(#[from] crate::rich_content::RichSearchError),
     /// An already captured clipboard fragment fails receiving kind/schema/policy admission.
     #[error(transparent)]
     Clipboard(#[from] crate::rich_content::RichClipboardError),

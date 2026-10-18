@@ -13,7 +13,7 @@ publish = false
 # paragraph-only until the complete structural editing contract is qualified.
 experimental-structural-properties = []
 # Separate rich AST admission and semantic values; existing profiles stay exact.
-experimental-rich-content = ["experimental-structural-properties"]
+experimental-rich-content = ["experimental-structural-properties", "dep:regex-automata"]
 
 [dependencies]
 serde.workspace = true
@@ -21,6 +21,9 @@ serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 unicode-segmentation.workspace = true
+# Native search is opt-in with the rich grammar. Default packages keep their
+# existing graph; Unicode matching never uses a browser regex or backtracking VM.
+regex-automata = { version = "=0.4.18", default-features = false, features = ["std", "meta", "unicode", "perf", "hybrid"], optional = true }
 
 [dev-dependencies]
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }

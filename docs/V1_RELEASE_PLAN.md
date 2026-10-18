@@ -43,6 +43,16 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native search checkpoint](qualification/2026-10-18-native-search-local-replacement.json)
+adds bounded Unicode literal/regex search and atomic local replacement under the
+[native contract](RICH_SEARCH.md). All 2,566 workspace and 553 shared native
+tests/doctests pass, including 33 search/replacement integration tests. Strict
+lint, Rust documentation, both wasm32 boundary typechecks and 455 script contracts
+also pass; three existing opt-in browser checks remain skipped. Wasm/SDK search
+controls, decorations and shared replacement/recovery are not connected yet. This
+follow-up is separate from the source-pinned functional candidate qualification
+above and closes no release gate.
+
 The [combined installed checkpoint](qualification/2026-10-16-mixed-workflow-functional.json)
 completes the selected everyday-editing goal. Two independent installed consumers
 per history policy combine headings, nested lists/tasks, formatted table cells,

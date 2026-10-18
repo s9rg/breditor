@@ -34,6 +34,7 @@ mod rich_range_mapping;
 mod rich_selection;
 mod rich_selection_mapping;
 mod rich_text_mapping;
+mod search;
 mod selection_coverage;
 mod selection_format_change;
 mod selection_format_state;
@@ -82,6 +83,14 @@ pub use rich_selection::{
 };
 pub use rich_selection_mapping::{
     RichSelectionLoss, RichSelectionMapping, RichSelectionMappingOutcome, rebase_rich_selection,
+};
+pub use search::{
+    RICH_SEARCH_MAX_ENGINE_BYTES, RICH_SEARCH_MAX_INSERTED_BYTES, RICH_SEARCH_MAX_MATCHES,
+    RICH_SEARCH_MAX_PATTERN_BYTES, RICH_SEARCH_MAX_REPLACEMENT_BYTES, RICH_SEARCH_MAX_TEXT_BYTES,
+    RICH_SEARCH_MAX_VISITED_NODES, RichSearchDirection, RichSearchError, RichSearchMatch,
+    RichSearchMode, RichSearchQuery, RichSearchReplacePlan, RichSearchReplacement,
+    RichSearchReplacementMode, RichSearchResults, RichSearchTextEdit, find_rich_text,
+    plan_rich_search_replace_all, plan_rich_search_replace_one,
 };
 pub use selection_coverage::{
     RichCoverageDomain, RichCoverageExtent, RichCoveredNode, RichCoveredText, RichSelectionCoverage,

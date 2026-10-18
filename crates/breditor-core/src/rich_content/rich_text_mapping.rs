@@ -39,24 +39,36 @@ impl RichTextMap {
         offset: TextOffset,
         affinity: Affinity,
     ) -> Result<TextOffset, RichSelectionError> {
-        let x = offset.get();
-        let start = self.start.get();
-        let end = self.end.get();
-        let value = if x < start {
-            x
-        } else if x >= end && end > start {
-            x.checked_sub(end - start)
-                .and_then(|x| x.checked_add(self.inserted.get()))
-                .ok_or(RichSelectionError::Offset)?
-        } else if x > end {
-            x.checked_add(self.inserted.get()).ok_or(RichSelectionError::Offset)?
-        } else if affinity == Affinity::Before {
-            start
-        } else {
-            start.checked_add(self.inserted.get()).ok_or(RichSelectionError::Offset)?
-        };
-        TextOffset::try_new(value).map_err(|_| RichSelectionError::Offset)
+        map_offset(offset, affinity, self.start, self.end, self.inserted)
     }
+}
+
+/// The same checked splice-boundary policy used by witnessed ordinary edits and
+/// disjoint native search plans. Coordinates are relative to the map's input.
+pub(crate) fn map_offset(
+    offset: TextOffset,
+    affinity: Affinity,
+    start: TextOffset,
+    end: TextOffset,
+    inserted: TextOffset,
+) -> Result<TextOffset, RichSelectionError> {
+    let x = offset.get();
+    let start = start.get();
+    let end = end.get();
+    let value = if x < start {
+        x
+    } else if x >= end && end > start {
+        x.checked_sub(end - start)
+            .and_then(|x| x.checked_add(inserted.get()))
+            .ok_or(RichSelectionError::Offset)?
+    } else if x > end {
+        x.checked_add(inserted.get()).ok_or(RichSelectionError::Offset)?
+    } else if affinity == Affinity::Before {
+        start
+    } else {
+        start.checked_add(inserted.get()).ok_or(RichSelectionError::Offset)?
+    };
+    TextOffset::try_new(value).map_err(|_| RichSelectionError::Offset)
 }
 
 /// Witnessed split/join relation; inverse direction retains all original rich runs.
