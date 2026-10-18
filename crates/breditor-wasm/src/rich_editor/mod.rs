@@ -20,6 +20,7 @@ mod exit_code_block;
 mod flow_navigation;
 mod general_range;
 mod inline_format_state;
+mod input_rules;
 mod observation;
 mod paste_document_clipboard;
 mod profile;

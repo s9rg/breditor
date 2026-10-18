@@ -10,6 +10,8 @@ export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
 export type RichSelectionPolicy="original"|"document-v1";
 export type RichHistoryPolicy="explicit"|"typing-v1";
+/** Refused means literal input committed; report separately and never retry it. */
+export type RichInputRuleOutcome="unchanged"|"inserted"|"applied"|"refused";
 /** Explicit native matching intent; never a persisted editor command. */
 export interface RichSearchQuery {pattern:string;mode:"literal"|"regex";caseSensitive:boolean;wholeWords:boolean}
 export interface RichSearchReplacement {text:string;mode:"literal"|"captures"}
@@ -76,6 +78,10 @@ export interface RichView {
 export interface RichDocumentView extends Omit<RichView,"format"|"selection"> {format:"breditor/rich-document-view";selection:RichDocumentSelection|null}
 export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "document-v1"?RichDocumentView:RichView;
 export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
+  /** Both exclusive native calls must be present; no JS matching or older-runtime fallback. */
+  supportsMarkdownInputRules?():boolean;
+  insertPlainTextWithMarkdownRules?(text:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
+  insertTypingTextWithMarkdownRules?(text:string,clockMs:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
   /** Complete optional Rust capability; absent/older runtimes never fall back to DOM matching. */
   supportsSearch?():boolean;
   findText?(query:RichSearchQuery,expectedRevision?:string):RichSearchResults;

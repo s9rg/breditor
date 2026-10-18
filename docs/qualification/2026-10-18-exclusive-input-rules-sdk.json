@@ -1,0 +1,738 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "1c944c1eca39a1e03260245536bd28f208756c00",
+  "scope": "Exclusive local/shared Rust typing plus optional Markdown-rule conversion, additive optional Wasm/SDK calls, payload-free accepted-input refusal, final-only shared notification, and exact earlier-reader recovery. Programmatic feature boundary only; automatic DOM/React routing and installed archives remain unfinished.",
+  "source": {
+    "commit": "1c944c1eca39a1e03260245536bd28f208756c00",
+    "dirty": true,
+    "sha256": "5795d3cf4e137dab1a2fef5cac5f6122f5c2161e1b79a73c1464d90e457e531e",
+    "files": 4220,
+    "bytes": 37202172
+  },
+  "sourceBinding": {
+    "codeAndBuildInputsUnchangedAfterVerification": true,
+    "documentationOnlyFollowUp": "This record and documentation links are added after the frozen passing run; the forty listed code/build inputs stay byte-identical.",
+    "codeAndBuildInputs": [
+      {
+        "path": "Cargo.lock",
+        "bytes": 17432,
+        "sha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c",
+        "modifiedAtMs": 1792350124024.3672
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 1892,
+        "sha256": "2dd0e23ab0a4a8d642a1b11607a501c7a57b0bc9e92013538a258a0fa9f0110c",
+        "modifiedAtMs": 1792093639056.6235
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.lock",
+        "bytes": 39247,
+        "sha256": "d76d57f59a66c1b6fb52b41ca199d65fd1da19af7e85079c4630f307af011cdb",
+        "modifiedAtMs": 1792350663415.8357
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.toml",
+        "bytes": 1634,
+        "sha256": "34c9bbafb8ac65659367874fe6bfcc98d6c44a839f9cc88b16952a6d3f8f2959",
+        "modifiedAtMs": 1792362024879.8743
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/insert_plain_text_with_markdown_rules.rs",
+        "bytes": 2158,
+        "sha256": "5e4252c4eecef9c10fbfd8b9d0319920c3afa816c8e5c08e0be295dff3f04106",
+        "modifiedAtMs": 1792363197803.7292
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/insert_typing_text_with_markdown_rules.rs",
+        "bytes": 1175,
+        "sha256": "2ad70f6aaebac55ee7da0cfd25cfd92e6332c413a3e83f4eab88cc1c20e741e7",
+        "modifiedAtMs": 1792363237766.1533
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/mod.rs",
+        "bytes": 5030,
+        "sha256": "307cfe3c8e4fa7e28e9112baaf40cb45b0023c06bff42a4685603b9d14396356",
+        "modifiedAtMs": 1792363197876.189
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica_wasm.rs",
+        "bytes": 18450,
+        "sha256": "f5bd7a1964f438cc1dab39bd24d2b001286e5acfd0d14afe6fb744d4d7c64a43",
+        "modifiedAtMs": 1792363339329.5227
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica_wasm/input_rules/insert_plain_text.rs",
+        "bytes": 1090,
+        "sha256": "8b7a34346517b8d3e392136734fd274de9cc4e4d0cbea73544ac492ff6d18074",
+        "modifiedAtMs": 1792363339320.4211
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica_wasm/input_rules/insert_typing_text.rs",
+        "bytes": 1223,
+        "sha256": "9851077af9185ae347fb7c50f194dcfc8c331f96d885305c22ba51826712338e",
+        "modifiedAtMs": 1792363293449.742
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica_wasm/input_rules/mod.rs",
+        "bytes": 1158,
+        "sha256": "76b8c0e5633f4b5d5937b38d46ea10db860615920b1c14e01fed6364c38ff1ec",
+        "modifiedAtMs": 1792363293372.109
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica_wasm/typing/mod.rs",
+        "bytes": 1000,
+        "sha256": "78b5c169ecdc94692e7529627d15d05b0e747278798db8ec3f69816c2ed905d6",
+        "modifiedAtMs": 1792363293529.9126
+      },
+      {
+        "path": "crates/breditor-collaboration/tests/input_rule_contracts.rs",
+        "bytes": 19804,
+        "sha256": "6196fc901a96286b1c4d5991fb985ee8a9154691c05b0b0974c4e9ef3055911b",
+        "modifiedAtMs": 1792363249695.1248
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/mod.rs",
+        "bytes": 982,
+        "sha256": "9528e58fe75cd5e23555cc0824098ae7d317978e4ccc0f1eadabc073b1ea6ae6",
+        "modifiedAtMs": 1792363197626.2954
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/outcome.rs",
+        "bytes": 1197,
+        "sha256": "89ee601c4ed2969a1d38874393c21bef4cea04f598997fdc2a6aeb3135361ba9",
+        "modifiedAtMs": 1792363197590.3682
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/insert_plain_text_with_markdown_rules.rs",
+        "bytes": 1702,
+        "sha256": "f269eec8a6539dd038f2e9b540f48bd1866bff1626a5dcb451e6279069228b0a",
+        "modifiedAtMs": 1792363197697.6746
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/insert_typing_text_with_markdown_rules.rs",
+        "bytes": 1048,
+        "sha256": "5baa90a9bd7cac120b0e7a5449c654583d8472efb596a6a7db9c38c1fabd8bfe",
+        "modifiedAtMs": 1792363197733.696
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/mod.rs",
+        "bytes": 7832,
+        "sha256": "d6b0e54f868d4214d0b8216df014138cf0f2ac3bef72733004ac7f93d31d985f",
+        "modifiedAtMs": 1792363197768.7825
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/mod.rs",
+        "bytes": 5343,
+        "sha256": "8229c4fe5862d9ebf63a792ea17e10be6a891f38b243ed7a35ec6c2ce480c654",
+        "modifiedAtMs": 1792363197662.5881
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_input_rules.rs",
+        "bytes": 22819,
+        "sha256": "915f228a5eed67f0917ca0d8ca65f76dace7f5ed8049b4102bb71f4d8b801a79",
+        "modifiedAtMs": 1792363248682.2397
+      },
+      {
+        "path": "crates/breditor-wasm/src/rich_editor/input_rules/insert_plain_text.rs",
+        "bytes": 1283,
+        "sha256": "c2642723f711f59d53c077021d8e4935267ebf4966e4229defcb9cf3387f1319",
+        "modifiedAtMs": 1792363338779.5593
+      },
+      {
+        "path": "crates/breditor-wasm/src/rich_editor/input_rules/insert_typing_text.rs",
+        "bytes": 1426,
+        "sha256": "86cd8a7cd06543441b0122c43352cd37bfa4e2c6729764f0465cb0093e26c699",
+        "modifiedAtMs": 1792363293201.262
+      },
+      {
+        "path": "crates/breditor-wasm/src/rich_editor/input_rules/mod.rs",
+        "bytes": 1231,
+        "sha256": "a665dee68479f7c9cae3fc2ee02728e16aecab16a7ad96300b2ea2eed22521f2",
+        "modifiedAtMs": 1792363293122.6096
+      },
+      {
+        "path": "crates/breditor-wasm/src/rich_editor/mod.rs",
+        "bytes": 1310,
+        "sha256": "8d244c90f32b969ef57559b8ce251a4620f4aca47eaaa2e367af92295fa8d1a4",
+        "modifiedAtMs": 1792363293240.0835
+      },
+      {
+        "path": "crates/breditor-wasm/tests/rich_editor.rs",
+        "bytes": 49971,
+        "sha256": "51c8689495005fa20a29aa947ecefa10b5396ebc683c8dd0e1c829159700bf77",
+        "modifiedAtMs": 1792363404322.2212
+      },
+      {
+        "path": "experiments/collaboration/Cargo.lock",
+        "bytes": 39386,
+        "sha256": "d3b1a16695479ab94e4747a3826c69dae55d6a16b8d4306832757299d35d72ca",
+        "modifiedAtMs": 1792350663998.4712
+      },
+      {
+        "path": "experiments/collaboration/Cargo.toml",
+        "bytes": 1671,
+        "sha256": "8cff35276066fcff3f345607dd0331500c03a0deb9f2aad463f2bee177ab55d2",
+        "modifiedAtMs": 1792093639096.3213
+      },
+      {
+        "path": "package-lock.json",
+        "bytes": 82558,
+        "sha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+        "modifiedAtMs": 1792192061899.6638
+      },
+      {
+        "path": "package.json",
+        "bytes": 4684,
+        "sha256": "e969211d47d4270569c11ca11bf42b2bc1a8b84922d39fffcc69c4ff126fbd52",
+        "modifiedAtMs": 1792341117294.9895
+      },
+      {
+        "path": "packages/breditor-collaboration/src/core.ts",
+        "bytes": 67371,
+        "sha256": "b02cad58102bac6d92beb1d07a5dd451b92d5707bf11b6de2845bdd4d9d7f4e8",
+        "modifiedAtMs": 1792363325786.8352
+      },
+      {
+        "path": "packages/breditor-collaboration/src/index.ts",
+        "bytes": 6496,
+        "sha256": "fdae36a7c38381edf12d0cc8bebf90dad9ffc9c844b4a1161789fccfb3b83a86",
+        "modifiedAtMs": 1792363325821.0752
+      },
+      {
+        "path": "packages/breditor-collaboration/src/types.ts",
+        "bytes": 15488,
+        "sha256": "b6c5fba88e74ae03b99b55de6601b44a093f8307c4875234ce54060cd99cc985",
+        "modifiedAtMs": 1792363325751.883
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/index.js",
+        "bytes": 25959,
+        "sha256": "be9ff003ada915bb27eccd38ce8a3b8e1c7da9b73690d9cd0f071ffd5672a53c",
+        "modifiedAtMs": 1792363325717.2627
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/src/core.ts",
+        "bytes": 13120,
+        "sha256": "6285d2296a940d59be8890a726ce98fd4987f120898f1df48a84ba137f07d315",
+        "modifiedAtMs": 1792363325683.1333
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 123,
+        "sha256": "81e722cea65ca61d2a17462fc3dc015f3d4c804024d15b6afa395ec454519a9f",
+        "modifiedAtMs": 1788226262447.9456
+      },
+      {
+        "path": "scripts/candidate-release/evidence.mjs",
+        "bytes": 2776,
+        "sha256": "64554e906a09591e442556fc07e75b6e00d220b9debf0e5e8dd6e3054dc29ddb",
+        "modifiedAtMs": 1792344199096.3271
+      },
+      {
+        "path": "scripts/candidate-release/process.mjs",
+        "bytes": 2380,
+        "sha256": "8b3eed3af8d71d2fc59b964b582b28b62f919ce357a7c824f3f3ba00fbca23a8",
+        "modifiedAtMs": 1792341117228.4475
+      },
+      {
+        "path": "scripts/candidate-runtime-paths.mjs",
+        "bytes": 1766,
+        "sha256": "66e23594a56a9e8725ad8a5409dcbef07db1ea181c4cc5cde620560b8aab1b26",
+        "modifiedAtMs": 1792345742594.004
+      },
+      {
+        "path": "scripts/probe-input-rules-sdk.mjs",
+        "bytes": 14280,
+        "sha256": "82d296e778491720fdb5325be150cbcebead17241d9b9aafe4690c7f7464faaf",
+        "modifiedAtMs": 1792363524872.0537
+      },
+      {
+        "path": "scripts/verify-candidate.mjs",
+        "bytes": 5193,
+        "sha256": "4bc05664c20047c2a151e88b0c370cc5db7506d5aa4657f29ca115f63fd0f64f",
+        "modifiedAtMs": 1792344199063.1265
+      }
+    ]
+  },
+  "verification": {
+    "profile": "functional",
+    "status": "passed",
+    "oneSinglePassingNineteenStageRun": true,
+    "selectedChecks": 19,
+    "selectedChecksPassed": 19,
+    "startedAt": "2026-10-18T22:47:27.941Z",
+    "finishedAt": "2026-10-18T22:56:57.466Z",
+    "manifest": {
+      "path": "target/v1-candidate-runs/run-M4IFEP/result.json",
+      "bytes": 24900,
+      "sha256": "90557b6dd80ee736d84002d42f6b546a15babaeffcbf94b4cbd2658230cf684d",
+      "modifiedAtMs": 1792364217466.3235
+    },
+    "workspaceNative": {
+      "groups": 168,
+      "passed": 2597,
+      "failed": 0,
+      "ignored": 0
+    },
+    "sharedNative": {
+      "groups": 50,
+      "passed": 591,
+      "failed": 0,
+      "ignored": 0
+    },
+    "researchContracts": {
+      "groups": 1,
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0
+    },
+    "scriptContracts": {
+      "passed": 464,
+      "failed": 0,
+      "skipped": 3,
+      "reason": "Existing opt-in browser checks are intentionally excluded from the script-only default."
+    },
+    "editorRegressions": {
+      "passed": 376,
+      "files": 39
+    },
+    "strictFormatting": true,
+    "strictLint": true,
+    "strictRustdoc": true,
+    "actualWasmPair": true,
+    "sharedWasm32StrictLint": true,
+    "optionalSdkTypeBuilds": true,
+    "defaultDependencyGuard": true,
+    "readinessLedgerConsistency": true
+  },
+  "sdkProbe": {
+    "report": {
+      "path": "target/input-rules-sdk-qualified-20261018.json",
+      "bytes": 1260,
+      "sha256": "d5849d466ab61bda06458433ea9a2cef517fcb5584fc8d74c542146be0fa0b51",
+      "modifiedAtMs": 1792364200632.7388
+    },
+    "format": "breditor/input-rules-sdk-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "localWasmSha256": "2a71b94024f397879b8233efd7a0bc5ce20c5c2086e18682902aee2f12871eef",
+    "sharedWasmSha256": "c6aeff4eccdc77321e6517d9740849c25f967de7bdcdb0d4755a3f99aeff3e8a",
+    "earlierWasmSha256": {
+      "local": "223162260274b7e05bc50985bfc5f121d7b935466c6aa4bdc5423eafbe0a5572",
+      "shared": "ec92c59007ac71822025747547a5324d8b6c42602b0e838e8c5512a261059921"
+    },
+    "localCases": 12,
+    "sharedCases": 72,
+    "exactEarlierRestores": 84,
+    "exactFutureCheckpoints": 336,
+    "earlierCapabilityRefusals": 84,
+    "finalOnlyPublications": 72,
+    "reentrantRefusals": 72,
+    "acceptedLiteralRefusals": 4,
+    "queuedRemotes": 1,
+    "rawBoundaryRefusals": 10,
+    "scope": "Actual current local/shared Wasm through optional compiled SDKs; three grammars, local/document and shared original/general/document, explicit/natural/reviewed/search histories, accepted literal refusal, final-only callback publication, reentrant rejection, queued remote convergence, strict request/clock/old-union refusal, and exact independently pinned earlier-binary recovery with future Undo/Redo. No DOM/React auto-routing, installed archives, physical browser/input, latency or V1 release approval."
+  },
+  "searchRegression": {
+    "format": "breditor/search-programmatic-sdk-probe",
+    "formatVersion": 1,
+    "localWasmSha256": "2a71b94024f397879b8233efd7a0bc5ce20c5c2086e18682902aee2f12871eef",
+    "sharedWasmSha256": "c6aeff4eccdc77321e6517d9740849c25f967de7bdcdb0d4755a3f99aeff3e8a",
+    "localCases": 12,
+    "sharedCases": 36,
+    "exactRestores": 48,
+    "exactFutureCheckpoints": 192,
+    "readonlyNavigations": 48,
+    "ownerRefusals": 49,
+    "resourceCaps": 2,
+    "queuedRemotes": 1,
+    "mixedDomains": 2,
+    "passed": true,
+    "scope": "Actual local and application shared Wasm, all three grammars, local/document and shared original/general/document scopes, explicit/natural and reviewed histories, opaque disposal/ownership, canonical indices, readonly navigation, exact replay/future Undo/Redo, bounded handles, mixed merged table domains and queued remote invalidation. No DOM, React, durable storage, installed-package or physical-browser qualification."
+  },
+  "runtimeBuild": {
+    "target": "target/rich-browser-wasm",
+    "output": "target/input-rules-runtime-yrJqQX",
+    "policy": "Fresh local and application shared runtime outputs reuse the retained canonical remapped cache. This is not the official distribution/installed-archive build, package promotion, license approval or performance qualification.",
+    "artifacts": [
+      {
+        "path": "target/input-rules-runtime-yrJqQX/local/breditor_wasm.d.ts",
+        "bytes": 94764,
+        "sha256": "f9fe4af40e7df08736da67060cb433c2c62e6032a7cf1db0c39daa6cba874d1d",
+        "modifiedAtMs": 1792364171175.732
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/local/breditor_wasm.js",
+        "bytes": 172639,
+        "sha256": "8d22f36e2ceaf7c06b0da9fb5de7196c26680c9e5ff4986b3e1d8ecc5167c298",
+        "modifiedAtMs": 1792364171175.1467
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/local/breditor_wasm_bg.wasm",
+        "bytes": 5878930,
+        "sha256": "2a71b94024f397879b8233efd7a0bc5ce20c5c2086e18682902aee2f12871eef",
+        "modifiedAtMs": 1792364171173.7139
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/local/breditor_wasm_bg.wasm.d.ts",
+        "bytes": 28342,
+        "sha256": "c6c06bba2db9f2d6633f063c60bc3eb233164e0a9dfe97e62cde3e702f38d477",
+        "modifiedAtMs": 1792364171176.537
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/local/snippets/breditor-wasm-f24fc87645faed5a/inline0.js",
+        "bytes": 240,
+        "sha256": "c734f62ce43b5fee47e095fd5b4e94deb2a0c92c0e8a5eb621a6a510e6d17826",
+        "modifiedAtMs": 1792364171174.0671
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/shared/breditor_shared.d.ts",
+        "bytes": 62051,
+        "sha256": "8eb10f66d61e2c436a01de334a2e56aa4f9c40803d2f396e7769af5c6562db16",
+        "modifiedAtMs": 1792364172127.3914
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/shared/breditor_shared.js",
+        "bytes": 163913,
+        "sha256": "665477e26f9531714927d248a15b9749249db983fb91b42c9b7b65096cc1be11",
+        "modifiedAtMs": 1792364172127.1665
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/shared/breditor_shared_bg.wasm",
+        "bytes": 12887224,
+        "sha256": "c6aeff4eccdc77321e6517d9740849c25f967de7bdcdb0d4755a3f99aeff3e8a",
+        "modifiedAtMs": 1792364172125.413
+      },
+      {
+        "path": "target/input-rules-runtime-yrJqQX/shared/breditor_shared_bg.wasm.d.ts",
+        "bytes": 24433,
+        "sha256": "0205337703cbd5972778d888d07dbaaf13d2d55fff5d83cf67730f4be0cd48b9",
+        "modifiedAtMs": 1792364172127.618
+      }
+    ]
+  },
+  "stages": [
+    {
+      "id": "workspace-format",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:47:28.820Z",
+      "finishedAt": "2026-10-18T22:47:31.022Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/01-workspace-format.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "modifiedAtMs": 1792363648820.2788
+      },
+      "artifacts": []
+    },
+    {
+      "id": "shared-format",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:47:31.571Z",
+      "finishedAt": "2026-10-18T22:47:32.108Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/02-shared-format.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "modifiedAtMs": 1792363651571.3975
+      },
+      "artifacts": []
+    },
+    {
+      "id": "workspace-lint",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:47:32.645Z",
+      "finishedAt": "2026-10-18T22:47:33.041Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/03-workspace-lint.log",
+        "bytes": 62,
+        "sha256": "7a7bb64a28cdda9b91e6e27f41be455104d929b5d7ad6dd5beca75fc5a47f1f4",
+        "modifiedAtMs": 1792363652785.153
+      },
+      "artifacts": []
+    },
+    {
+      "id": "shared-lint",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:47:33.591Z",
+      "finishedAt": "2026-10-18T22:47:49.805Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/04-shared-lint.log",
+        "bytes": 704,
+        "sha256": "43c1840d6462d4fb2ca07b0a344cd3459dc4e6866e2298c092904f66efe5a48c",
+        "modifiedAtMs": 1792363669683.5632
+      },
+      "artifacts": []
+    },
+    {
+      "id": "workspace-native",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:47:50.391Z",
+      "finishedAt": "2026-10-18T22:51:30.406Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/05-workspace-native.log",
+        "bytes": 311096,
+        "sha256": "b73a0418e8c297d0c3c095497abb6f52978255b59fd02eb3713956b0728b242d",
+        "modifiedAtMs": 1792363890401.3057
+      },
+      "artifacts": []
+    },
+    {
+      "id": "shared-native",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:51:31.337Z",
+      "finishedAt": "2026-10-18T22:55:21.076Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/06-shared-native.log",
+        "bytes": 68531,
+        "sha256": "d0abfe8d2119ff5a6a283df0de61ed00d28c6d45b2bb93b7aec41ed53402e4e8",
+        "modifiedAtMs": 1792364121071.4714
+      },
+      "artifacts": []
+    },
+    {
+      "id": "input-rules-research",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:55:21.708Z",
+      "finishedAt": "2026-10-18T22:55:52.126Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/07-input-rules-research.log",
+        "bytes": 1984,
+        "sha256": "d2ddb684cb5a78eb446bfa021778300e165c35752c131c838e516dcbed13f271",
+        "modifiedAtMs": 1792364152124.353
+      },
+      "artifacts": []
+    },
+    {
+      "id": "workspace-docs",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:55:52.737Z",
+      "finishedAt": "2026-10-18T22:56:05.863Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/08-workspace-docs.log",
+        "bytes": 444,
+        "sha256": "a12eec82b014d777e174ca7aca80115df9f475b3e12a816f5f75ff7f456d9218",
+        "modifiedAtMs": 1792364165861.592
+      },
+      "artifacts": []
+    },
+    {
+      "id": "shared-docs",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:06.483Z",
+      "finishedAt": "2026-10-18T22:56:10.145Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/09-shared-docs.log",
+        "bytes": 696,
+        "sha256": "7ad8dd21833aaae12d91864f5e2981c887c03055b86460d5f5c00eb5e969baf3",
+        "modifiedAtMs": 1792364170143.6443
+      },
+      "artifacts": []
+    },
+    {
+      "id": "actual-wasm-pair",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:10.737Z",
+      "finishedAt": "2026-10-18T22:56:12.298Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/10-actual-wasm-pair.log",
+        "bytes": 979,
+        "sha256": "5f73dfd143b7597e354d62fed973d00f3851076a2cc56169d0c40c1fad3148d4",
+        "modifiedAtMs": 1792364172292.058
+      },
+      "artifacts": [
+        {
+          "path": "target/input-rules-runtime-yrJqQX/local/breditor_wasm_bg.wasm",
+          "bytes": 5878930,
+          "sha256": "2a71b94024f397879b8233efd7a0bc5ce20c5c2086e18682902aee2f12871eef",
+          "modifiedAtMs": 1792364171173.7139
+        },
+        {
+          "path": "target/input-rules-runtime-yrJqQX/shared/breditor_shared_bg.wasm",
+          "bytes": 12887224,
+          "sha256": "c6aeff4eccdc77321e6517d9740849c25f967de7bdcdb0d4755a3f99aeff3e8a",
+          "modifiedAtMs": 1792364172125.413
+        }
+      ]
+    },
+    {
+      "id": "shared-wasm32-lint",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:12.869Z",
+      "finishedAt": "2026-10-18T22:56:29.384Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/11-shared-wasm32-lint.log",
+        "bytes": 704,
+        "sha256": "2950b55da2b099a953d6b941fa7b0937d34c87cb157bac04ce3345bce2961e19",
+        "modifiedAtMs": 1792364189375.0554
+      },
+      "artifacts": []
+    },
+    {
+      "id": "rich-types",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:29.976Z",
+      "finishedAt": "2026-10-18T22:56:30.359Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/12-rich-types.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "modifiedAtMs": 1792364189976.349
+      },
+      "artifacts": []
+    },
+    {
+      "id": "shared-types",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:30.921Z",
+      "finishedAt": "2026-10-18T22:56:31.191Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/13-shared-types.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "modifiedAtMs": 1792364190921.3525
+      },
+      "artifacts": []
+    },
+    {
+      "id": "actual-sdk-and-earlier-readers",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:31.727Z",
+      "finishedAt": "2026-10-18T22:56:40.652Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/14-actual-sdk-and-earlier-readers.log",
+        "bytes": 1260,
+        "sha256": "d5849d466ab61bda06458433ea9a2cef517fcb5584fc8d74c542146be0fa0b51",
+        "modifiedAtMs": 1792364200642.2065
+      },
+      "artifacts": [
+        {
+          "path": "target/input-rules-sdk-qualified-20261018.json",
+          "bytes": 1260,
+          "sha256": "d5849d466ab61bda06458433ea9a2cef517fcb5584fc8d74c542146be0fa0b51",
+          "modifiedAtMs": 1792364200632.7388
+        }
+      ]
+    },
+    {
+      "id": "search-regression-actual-sdk",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:41.205Z",
+      "finishedAt": "2026-10-18T22:56:43.365Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/15-search-regression-actual-sdk.log",
+        "bytes": 925,
+        "sha256": "32c2e44b26f514eeaef50addf649bd335ebdb100ccb2ffcbf3c3ed0c429a9f29",
+        "modifiedAtMs": 1792364203358.4033
+      },
+      "artifacts": []
+    },
+    {
+      "id": "script-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:43.919Z",
+      "finishedAt": "2026-10-18T22:56:49.586Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/16-script-contracts.log",
+        "bytes": 88125,
+        "sha256": "d01f0f92c7192528f7e1cae9bf588717d054238592a4d361e74c93aef5fccf55",
+        "modifiedAtMs": 1792364209582.3833
+      },
+      "artifacts": []
+    },
+    {
+      "id": "editor-regressions",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:50.147Z",
+      "finishedAt": "2026-10-18T22:56:55.576Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/17-editor-regressions.log",
+        "bytes": 529,
+        "sha256": "647eccc684ed5770adf8f363badf36a1013bd02deef2a745869822943c200eb0",
+        "modifiedAtMs": 1792364215527.8303
+      },
+      "artifacts": []
+    },
+    {
+      "id": "default-dependency-guard",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:56.158Z",
+      "finishedAt": "2026-10-18T22:56:56.358Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/18-default-dependency-guard.log",
+        "bytes": 111,
+        "sha256": "886591c8a0956dfdb6837c7c9e6f65af1f9f409051641d44bd1e0cec537de06a",
+        "modifiedAtMs": 1792364216355.9265
+      },
+      "artifacts": []
+    },
+    {
+      "id": "readiness-ledger",
+      "status": "passed",
+      "startedAt": "2026-10-18T22:56:56.890Z",
+      "finishedAt": "2026-10-18T22:56:56.931Z",
+      "exitCode": 0,
+      "signal": null,
+      "log": {
+        "path": "target/v1-candidate-runs/run-M4IFEP/19-readiness-ledger.log",
+        "bytes": 3916,
+        "sha256": "04a9cd12c6db161116b9560343d10e229c338a19b57f422db33f7e411ef76940",
+        "modifiedAtMs": 1792364216928.9915
+      },
+      "artifacts": []
+    }
+  ],
+  "releaseStatus": {
+    "v1Ready": false,
+    "publicationApproved": false,
+    "gatePromotions": [],
+    "openGates": 13,
+    "inputRulesStatus": "partial",
+    "remaining": [
+      "Immutable explicit vanilla/root/React input-rule auto-routing with composition, replacement, range and target exclusions.",
+      "Installed-package acceptance and current distribution rebuilding for the integrated feature.",
+      "Existing-list task conversion, adjacent/nested automatic list behavior, conventional code-fence Enter and remaining shortcut parity.",
+      "V1 API/migration, unanswered storage lifetime/rotation choice, deployment/auth/assets and dependency/license review.",
+      "Performance/size, browser/platform reliability, accessibility/mobile, pilot and final exact release-candidate approval."
+    ]
+  }
+}

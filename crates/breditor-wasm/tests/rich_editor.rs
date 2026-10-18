@@ -10,6 +10,102 @@ use serde_json::{Value, json};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn named_input_rules_keep_original_commands_closed_and_refused_input_committed() -> TestResult {
+    let profile = profile()?;
+    let mut document: Value = serde_json::from_str(&initial(&profile)?)?;
+    document["root"]["children"] = json!([{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{"breditor/block-id":"p"},"children":[{"kind":"text","text":"-","formats":[]}]}]);
+    for natural in [false, true] {
+        let mut owner =
+            profile.create_editor(&document.to_string(), "128").take_editor().ok_or("owner")?;
+        assert_eq!(owner.markdown_input_rules_version(), "1");
+        if natural {
+            read(owner.enable_typing_history(&owner.observe()))?;
+        }
+        command(&mut owner, &select("1", "1"), "selection")?;
+        let input = json!({"text":" ","namespace":"fresh"});
+        let before = read(owner.checkpoint_json())?;
+        for invalid in [
+            json!({"text":" ","namespace":"fresh","extra":true}),
+            json!({"text":" "}),
+            json!({"namespace":"fresh"}),
+        ] {
+            assert_eq!(
+                owner
+                    .insert_plain_text_with_markdown_rules(&owner.observe(), &invalid.to_string())
+                    .status(),
+                "error"
+            );
+            assert_eq!(read(owner.checkpoint_json())?, before);
+        }
+        assert_eq!(
+            owner
+                .execute(
+                    &owner.observe(),
+                    &json!({"kind":"insertPlainTextWithMarkdownRules","data":input}).to_string()
+                )
+                .status(),
+            "error"
+        );
+        let result = if natural {
+            owner.insert_typing_text_with_markdown_rules(
+                &owner.observe(),
+                &json!({"text":" ","namespace":"fresh","clockMs":"100"}).to_string(),
+            )
+        } else {
+            owner.insert_plain_text_with_markdown_rules(&owner.observe(), &input.to_string())
+        };
+        assert_eq!(read(result)?, "applied");
+        assert_eq!(view(&owner)?["undoDepth"], 2);
+        command(&mut owner, &json!({"kind":"undo"}), "undo")?;
+        let literal = read(owner.observe().document_json())?;
+        assert_eq!(
+            serde_json::from_str::<Value>(&literal)?["root"]["children"][0]["children"][0]["text"],
+            "- "
+        );
+        command(&mut owner, &json!({"kind":"undo"}), "undo")?;
+        assert_eq!(
+            read(owner.insert_plain_text_with_markdown_rules(
+                &owner.observe(),
+                &json!({"text":" ","namespace":"bad namespace"}).to_string()
+            ))?,
+            "refused"
+        );
+        assert_eq!(read(owner.observe().document_json())?, literal);
+        assert_eq!(view(&owner)?["undoDepth"], 1);
+    }
+    Ok(())
+}
+
+#[test]
+fn input_rule_boundary_rejects_stale_readonly_and_noncanonical_clock_before_input() -> TestResult {
+    let profile = profile()?;
+    let mut owner = editor(&profile)?;
+    let stale = owner.observe();
+    command(&mut owner, &select("0", "0"), "selection")?;
+    let before = read(owner.checkpoint_json())?;
+    let rejected = owner.insert_plain_text_with_markdown_rules(&stale, "not json");
+    assert_eq!(rejected.error().ok_or("stale error")?.code(), "breditor_rich.stale_observation");
+    for clock in [json!(1), json!("01"), json!("-1"), json!("18446744073709551616")] {
+        assert_eq!(
+            owner
+                .insert_typing_text_with_markdown_rules(
+                    &owner.observe(),
+                    &json!({"text":"x","namespace":"fresh","clockMs":clock}).to_string()
+                )
+                .status(),
+            "error"
+        );
+        assert_eq!(read(owner.checkpoint_json())?, before);
+    }
+    read(owner.set_read_only(&owner.observe(), true))?;
+    let before = read(owner.checkpoint_json())?;
+    let rejected = owner.insert_plain_text_with_markdown_rules(&owner.observe(), "not json");
+    assert_eq!(rejected.error().ok_or("readonly error")?.code(), "breditor_rich.read_only");
+    assert_eq!(read(owner.checkpoint_json())?, before);
+    Ok(())
+}
+
+#[test]
 fn native_read_only_capability_rejects_commands_but_allows_selection_copy_and_exact_recovery()
 -> TestResult {
     let profile = profile()?;

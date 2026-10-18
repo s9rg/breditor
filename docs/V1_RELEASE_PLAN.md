@@ -43,6 +43,18 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [exclusive typing and SDK checkpoint](qualification/2026-10-18-exclusive-input-rules-sdk.json)
+passes one source-frozen 19-check run. It adds combined native typing/conversion
+calls and complete optional Wasm/SDK capabilities without widening old command
+unions or recovery families. Full workspace/shared regressions pass 2,597 and
+591 tests/doctests; 11 canonical contracts also pass through research
+compatibility. Exact earlier readers restore 84 SDK-created checkpoints and
+match 336 future history boundaries. Strict lint/docs, rebuilt Wasm, types,
+search regressions, 464 script tests and 376 editor regressions pass, with three
+existing script checks skipped. Automatic vanilla/React routing, installed
+acceptance and additional shortcuts remain unfinished; all 13 release gates
+stay open.
+
 The [native input-rule checkpoint](qualification/2026-10-18-native-input-rules.json)
 adds a bounded Rust shortcut planner and explicit local/shared transformations
 using existing semantic actions and history records. Full workspace/shared
@@ -52,10 +64,12 @@ through the research compatibility build. Strict lint/docs, both wasm32 checks,
 checks skipped. Exact earlier Wasm readers restore 16 local and 72 shared rule
 journals and match 352 future history checkpoints. The evidence retains a
 missing-snippet staging failure and the seven-check continuation against the
-same unchanged source, not an invented single green run. Native combined
-typing/transformation outcomes, Wasm/SDK/browser opt-in and additional automatic
-list/Enter behavior remain active functional work; this is not an integrated
-input-rule feature or a release-gate promotion.
+same unchanged source, not an invented single green run. The subsequent
+implementation adds exclusive typing/conversion outcomes and separately
+versioned Wasm/SDK calls. Browser opt-in, installed acceptance and additional
+automatic list/Enter behavior remain active functional work; native/SDK exposure
+does not automatically enable a user-facing input-rule feature or promote a
+release gate.
 
 The [search controls integration checkpoint](qualification/2026-10-18-search-controls-installed.json)
 connects borrowed Find/Replace controls to vanilla and React integrations.

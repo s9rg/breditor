@@ -9,6 +9,7 @@ use breditor_collaboration::{
         selection::{Selection, TextPoint},
     },
 };
+use breditor_core::rich_content::RichInputRuleOutcome;
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 fn setup(version: u8, root: &Value) -> Result<(SharedRichProfile, RichReplica)> {
@@ -127,6 +128,162 @@ fn type_key(owner: &mut RichReplica, key: &str) -> Result {
     } else {
         owner.insert_plain_text_guarded(&observed(owner)?, key)?;
     }
+    Ok(())
+}
+
+fn type_and_rule(
+    owner: &mut RichReplica,
+    key: &str,
+    ns: &str,
+    clock: u64,
+) -> Result<RichInputRuleOutcome> {
+    Ok(if owner.typing_history_enabled() {
+        owner.insert_typing_text_with_markdown_rules_guarded(&observed(owner)?, key, clock, ns)?
+    } else {
+        owner.insert_plain_text_with_markdown_rules_guarded(&observed(owner)?, key, ns)?
+    })
+}
+
+#[test]
+fn exclusive_typing_matches_original_native_commands_in_all_scope_and_history_families() -> Result {
+    for scope in 0..3 {
+        for natural in [false, true] {
+            for search in [false, true] {
+                for (source, key) in [
+                    ("#", " "),
+                    ("-", " "),
+                    (">", " "),
+                    ("[x]", " "),
+                    ("```rust", " "),
+                    ("---", " "),
+                    ("**猫🙂*", "*"),
+                ] {
+                    let (profile, mut owner) = setup(3, &prose(source))?;
+                    if scope == 1 {
+                        owner.enable_general_ranges_guarded(&observed(&owner)?)?;
+                    } else if scope == 2 {
+                        owner.enable_document_selection_guarded(&observed(&owner)?)?;
+                    }
+                    if natural {
+                        owner.enable_typing_history_guarded(&observed(&owner)?)?;
+                    }
+                    if search {
+                        owner.enable_search_history_guarded(&observed(&owner)?)?;
+                    }
+                    select(&mut owner, "body", u32::try_from(source.encode_utf16().count())?)?;
+                    let mut control = restore(&profile, &owner)?;
+                    assert_eq!(
+                        type_and_rule(&mut owner, key, "fresh", 100)?,
+                        RichInputRuleOutcome::Applied
+                    );
+                    type_key(&mut control, key)?;
+                    control.apply_markdown_input_rule_guarded(
+                        &observed(&control)?,
+                        key,
+                        "fresh",
+                    )?;
+                    assert_eq!(save(&owner)?, save(&control)?);
+                    owner.undo()?;
+                    assert_eq!(text(&owner, "body")?, format!("{source}{key}"));
+                    owner.redo()?;
+                    future(&profile, &mut owner)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn exclusive_refusal_retains_input_including_after_causal_identity_reuse() -> Result {
+    for natural in [false, true] {
+        let (profile, mut owner) = setup(3, &prose("-"))?;
+        if natural {
+            owner.enable_typing_history_guarded(&observed(&owner)?)?;
+        }
+        select(&mut owner, "body", 1)?;
+        assert_eq!(
+            type_and_rule(&mut owner, " ", "bad namespace", 100)?,
+            RichInputRuleOutcome::Refused
+        );
+        assert_eq!(text(&owner, "body")?, "- ");
+        assert_eq!(owner.undo_count(), 1);
+        owner.undo()?;
+        assert_eq!(type_and_rule(&mut owner, " ", "fresh", 200)?, RichInputRuleOutcome::Applied);
+        owner.undo()?;
+        owner.undo()?;
+        assert_eq!(text(&owner, "body")?, "-");
+        assert_eq!(type_and_rule(&mut owner, " ", "fresh", 300)?, RichInputRuleOutcome::Refused);
+        assert_eq!(text(&owner, "body")?, "- ");
+        future(&profile, &mut owner)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn exclusive_nonmatches_keep_natural_continuation_and_empty_input_keeps_redo() -> Result {
+    let (profile, mut owner) = setup(3, &prose(""))?;
+    owner.enable_typing_history_guarded(&observed(&owner)?)?;
+    select(&mut owner, "body", 0)?;
+    for (clock, key) in [(1, "h"), (2, "i")] {
+        assert_eq!(
+            type_and_rule(&mut owner, key, "unused", clock)?,
+            RichInputRuleOutcome::Inserted
+        );
+    }
+    assert_eq!(owner.undo_count(), 1);
+    owner.undo()?;
+    let before = save(&owner)?;
+    assert_eq!(type_and_rule(&mut owner, "", "bad namespace", 3)?, RichInputRuleOutcome::Unchanged);
+    assert_eq!(save(&owner)?, before);
+    owner.redo()?;
+    assert_eq!(text(&owner, "body")?, "hi");
+    future(&profile, &mut owner)?;
+    Ok(())
+}
+
+#[test]
+fn exclusive_typing_rejects_stale_range_readonly_and_document_targets_before_mutation() -> Result {
+    let (_, mut owner) = setup(3, &prose("#"))?;
+    select(&mut owner, "body", 1)?;
+    let stale = observed(&owner)?;
+    owner.set_selection(Some(&Selection::TextRange {
+        anchor: point("body", 0),
+        focus: point("body", 1),
+    }))?;
+    let before = save(&owner)?;
+    assert!(owner.insert_plain_text_with_markdown_rules_guarded(&stale, " ", "fresh").is_err());
+    assert!(
+        owner
+            .insert_plain_text_with_markdown_rules_guarded(&observed(&owner)?, " ", "fresh")
+            .is_err()
+    );
+    assert_eq!(save(&owner)?, before);
+    select(&mut owner, "body", 1)?;
+    let before = save(&owner)?;
+    assert!(
+        owner
+            .insert_typing_text_with_markdown_rules_guarded(&observed(&owner)?, " ", 1, "fresh")
+            .is_err()
+    );
+    assert_eq!(save(&owner)?, before);
+    owner.enable_document_selection_guarded(&observed(&owner)?)?;
+    owner.select_document_guarded(&observed(&owner)?)?;
+    let before = save(&owner)?;
+    assert!(
+        owner
+            .insert_plain_text_with_markdown_rules_guarded(&observed(&owner)?, " ", "fresh")
+            .is_err()
+    );
+    assert_eq!(save(&owner)?, before);
+    owner.set_read_only_guarded(&observed(&owner)?, true)?;
+    let before = save(&owner)?;
+    assert!(
+        owner
+            .insert_plain_text_with_markdown_rules_guarded(&observed(&owner)?, " ", "fresh")
+            .is_err()
+    );
+    assert_eq!(save(&owner)?, before);
     Ok(())
 }
 

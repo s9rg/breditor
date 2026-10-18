@@ -7,7 +7,7 @@ mod typing_checkpoint;
 use crate::Error;
 use serde::{Deserialize, Deserializer};
 
-fn clock<'de, D: Deserializer<'de>>(reader: D) -> Result<u64, D::Error> {
+pub(super) fn clock<'de, D: Deserializer<'de>>(reader: D) -> Result<u64, D::Error> {
     let value = String::deserialize(reader)?;
     let parsed =
         value.parse::<u64>().map_err(|_| serde::de::Error::custom("typing clock decimal"))?;

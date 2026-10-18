@@ -135,6 +135,20 @@ class RichCoreEditor {
   #searches=new Set();
   constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
+  supportsMarkdownInputRules(){const r=this.#live();return r.markdownInputRulesVersion?.()==="1"&&[r.insertPlainTextWithMarkdownRules,r.insertTypingTextWithMarkdownRules].every(method=>typeof method==="function");}
+  #markdownInput(method,data,revision){
+    const input=JSON.stringify(data),raw=this.#live();
+    if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The input was prepared from an older rich view");
+    if(!this.supportsMarkdownInputRules())throw new RichCommandError("breditor_rich.input_rules_unavailable","Use complete matching native Markdown input rules");
+    const outcome=read(raw[method](this.#observation,input));
+    const next=raw.observe();this.#observation.free();this.#observation=next;
+    if(!["unchanged","inserted","applied","refused"].includes(outcome))throw new RichCommandError("breditor_rich.boundary","Invalid native input-rule outcome");
+    return outcome;
+  }
+  /** Local plain caret input only; a refused conversion still retained the typed text. */
+  insertPlainTextWithMarkdownRules(text,namespace,revision){return this.#markdownInput("insertPlainTextWithMarkdownRules",{text,namespace},revision);}
+  /** Natural input and conversion complete before this call returns to any subscriber. */
+  insertTypingTextWithMarkdownRules(text,clockMs,namespace,revision){return this.#markdownInput("insertTypingTextWithMarkdownRules",{text,clockMs,namespace},revision);}
   supportsSearch(){const raw=this.#live();return raw.searchVersion?.()==="1"&&[raw.findText,raw.checkSearchResults,raw.selectSearchMatch,raw.replaceSearchOne,raw.replaceSearchAll].every(method=>typeof method==="function");}
   #searchOwner(revision){const raw=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The search request was prepared from an older rich view");if(!this.supportsSearch())throw new RichCommandError("breditor_rich.search_unavailable","Use complete matching native search capabilities");return raw;}
   findText(query,revision){const input=JSON.stringify(query),raw=this.#searchOwner(revision);const native=transfer(raw.findText(this.#observation,input),"results","takeResults");let results;results=new OwnedRichSearchResults(this,native,()=>this.#searches.delete(results));this.#searches.add(results);return results;}

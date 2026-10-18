@@ -4,11 +4,18 @@ Breditor input rules recognize bounded typed shortcuts and prepare ordinary nati
 edits. They are an explicit behavior policy, not a Markdown parser, document
 format, operation protocol or replacement for semantic toolbar commands.
 
-The Rust planner and local/shared application methods implement the first native
-policy. Wasm/SDK exposure, browser opt-in, installed acceptance and additional
-shortcut behavior remain work before this becomes an integrated V1 feature.
+The Rust planner, local/shared application methods and optional Wasm/SDK calls
+implement the first native policy. Browser opt-in, installed acceptance and
+additional shortcut behavior remain work before this becomes an integrated V1 feature.
 Existing typing, paste, composition, programmatic commands and recovery do not
 enable it implicitly.
+
+The [exclusive typing and SDK checkpoint](qualification/2026-10-18-exclusive-input-rules-sdk.json)
+passes 19 selected checks, including full native regressions, strict lint/docs,
+actual rebuilt Wasm, optional SDK types and search regressions. The current
+programmatic calls restore 84 checkpoints in independently pinned earlier Wasm
+readers and match 336 subsequent Undo/Redo checkpoints. Browser auto-routing and
+installed acceptance remain separate work.
 
 The [native foundation checkpoint](qualification/2026-10-18-native-input-rules.json)
 records full Rust regressions, strict lint/docs, wasm32 compilation and exact
@@ -30,17 +37,50 @@ transformation are distinct accepted changes. A failed transformation cannot
 discard already accepted literal input. Report a genuine transformation error;
 do not retry the input or silently publish a partial conversion.
 
-The browser adapter must invoke this policy only for the selected local plain
-typing path, not paste, autocorrection/replacement, remote updates, composition,
-grid/node/document replacement or a browser target different from the admitted
-caret. It must use the same command coordinator and remote holds, and check a
-fresh post-input native observation before applying the transformation. This
-adapter integration is not implemented by the native methods alone.
-The automatic path must keep literal insertion and optional transformation in
-one native call before host callbacks can change the target. It needs an explicit
-accepted-input/rule-refused outcome when literal typing succeeds but conversion
-fails, not a false whole-call rollback or a repeated insertion. That composite
-native intent still needs implementation before Wasm/SDK exposure.
+## Exclusive typing calls
+
+Automatic hosts must use `insert_plain_text_with_markdown_rules` or
+`insert_typing_text_with_markdown_rules` on the local Rust owner, or their
+`_guarded` shared equivalents. The exclusive call retains ordinary input and
+then attempts its conversion before any host callback or remote publication can
+change the target. Do not implement this by invoking ordinary typing, notifying
+subscribers and then reading a fresh target for a separate conversion.
+
+The payload-free `RichInputRuleOutcome` distinguishes four results:
+
+- `Unchanged`: empty input; no rule was attempted.
+- `Inserted`: literal input committed, but no rule matched.
+- `Applied`: input committed and a separately undoable conversion followed it.
+- `Refused`: input committed, but rule planning or complete admission failed.
+  Keep the literal text and report conversion refusal separately; never retry it.
+
+Only a typing failure returns an outer error and leaves the whole call unchanged.
+A nonmatch keeps the natural typing burst open. A successful conversion isolates
+its own existing history group. Existing history capacities and retention still
+apply; the native publication revision can advance twice in one exclusive call.
+
+Wasm exposes the additive `markdownInputRulesVersion()` / shared
+`markdown_input_rules_version()` capability, string version `1`, and separately
+named plain/natural methods. Requests are strict bounded JSON with `text` and
+`namespace`; natural typing additionally requires canonical decimal `clockMs`.
+Read-only/stale observations reject before request parsing. The original
+`execute`/`dispatch` unions and all checkpoint meanings remain unchanged.
+
+Both optional SDKs expose `supportsMarkdownInputRules()`,
+`insertPlainTextWithMarkdownRules(text, namespace, revision?)` and
+`insertTypingTextWithMarkdownRules(text, clockMs, namespace, revision?)`. They
+require the complete matching native pair and return the lowercase outcomes
+above; older runtimes fail explicitly. The shared SDK notifies subscribers once,
+after both native changes finish, and retains its existing reentrancy guard and
+remote queue. Calls require a collapsed text caret; they never replace a range.
+
+Browser auto-routing remains a separate implementation step. It must opt in
+explicitly, use the same command coordinator and remote holds, and invoke the
+exclusive call only for plain local `beforeinput insertText` at the admitted
+caret. Paste, autocorrection/replacement, remote updates, composition,
+grid/node/document replacement and different browser target ranges must keep
+their ordinary paths. Native/SDK exposure alone does not enable shortcuts in
+vanilla or React editors.
 
 ## Native shortcut policy
 

@@ -3,6 +3,7 @@ export {SharedSearchResults} from "./search_results.js";
 export {mountRichSearchPanel as mountSharedSearchPanel,type RichSearchHost,type RichSearchHostState,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState} from "@breditor/experimental-rich-content";
 export {supportsSharedSearchHistory,restoreSharedSearchEditor} from "./profile.js";
 export type {RichSearchQuery,RichSearchReplacement,RichSearchMetadata} from "@breditor/experimental-rich-content";
+export type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
 export {supportsSharedDocumentSelection,restoreSharedDocumentEditor} from "./profile.js";
 export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSharedProfileV2,compileStandardStructuralSharedProfileV2,compileLayoutSharedProfileV3,compileStandardLayoutSharedProfileV3,supportsSharedTypingHistory,restoreSharedTypingEditor,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";

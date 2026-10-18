@@ -154,6 +154,10 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersio
  block_layout_state_json?(observation:unknown):string;
  change_selection_layout?(observation:unknown,input:string):boolean;
  typing_history_version?():string;
+ /** Complete optional native typing+rules pair; no old dispatch or recovery upgrade. */
+ markdown_input_rules_version?():string;
+ insert_plain_text_with_markdown_rules?(observation:unknown,input:string):string;
+ insert_typing_text_with_markdown_rules?(observation:unknown,input:string):string;
  enable_typing_history?(observation:unknown):boolean;
  close_typing_group?(observation:unknown):boolean;
  insert_typing_text?(observation:unknown,input:string):boolean;

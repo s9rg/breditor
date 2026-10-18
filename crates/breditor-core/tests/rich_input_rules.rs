@@ -9,9 +9,9 @@ use breditor_core::{
     identity::QualifiedName,
     position::{Affinity, TextOffset},
     rich_content::{
-        BlockId, RichDocument, RichInputRuleKind, RichLocalOutcome, RichLocalSession,
-        RichPendingFormatsUpdate, RichSelection, RichSelectionKind, RichSelectionUpdate,
-        RichTextPoint, StandardInlineFormatV1,
+        BlockId, RichDocument, RichInputRuleKind, RichInputRuleOutcome, RichLocalOutcome,
+        RichLocalSession, RichPendingFormatsUpdate, RichSelection, RichSelectionKind,
+        RichSelectionUpdate, RichTextPoint, StandardInlineFormatV1,
         actions::{RichAction, RichFormatChange, SetInlineFormat},
         plan_rich_markdown_input_rule, standard_inline_extension_v1,
     },
@@ -118,6 +118,115 @@ fn future(context: &EditorContext, owner: &mut RichLocalSession) -> Result {
         }
         assert_eq!(saved(context, &twin)?, saved(context, owner)?);
     }
+    Ok(())
+}
+
+fn type_and_rule(
+    owner: &mut RichLocalSession,
+    key: &str,
+    ns: &str,
+    clock: u64,
+) -> Result<RichInputRuleOutcome> {
+    Ok(if owner.typing_history_enabled() {
+        owner.insert_typing_text_with_markdown_rules(&owner.snapshot(), key, clock, ns)?
+    } else {
+        owner.insert_plain_text_with_markdown_rules(&owner.snapshot(), key, ns)?
+    })
+}
+
+#[test]
+fn exclusive_typing_matches_two_native_commits_and_exact_old_family_recovery() -> Result {
+    for version in 1..=3 {
+        for natural in [false, true] {
+            let mut cases = vec![("#", " "), ("-", " "), ("7.", " "), ("**猫🙂*", "*")];
+            if version >= 2 {
+                cases.extend([(">", " "), ("[x]", " "), ("```rust", " "), ("---", " ")]);
+            }
+            for (source, key) in cases {
+                let (context, mut owner) =
+                    setup(version, vec![fixture::paragraph("body", source)], natural)?;
+                select(&mut owner, "body", source.encode_utf16().count())?;
+                let mut control = restore(&context, &owner)?;
+                assert_eq!(
+                    type_and_rule(&mut owner, key, "fresh", 100)?,
+                    RichInputRuleOutcome::Applied
+                );
+                trigger(&mut control, key)?;
+                control.apply_markdown_input_rule(&control.snapshot(), key, "fresh")?;
+                assert_eq!(saved(&context, &owner)?, saved(&context, &control)?);
+                owner.undo(&owner.snapshot())?;
+                assert_eq!(text(&owner, "body")?, format!("{source}{key}"));
+                owner.redo(&owner.snapshot())?;
+                future(&context, &mut owner)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn refused_conversion_retains_literal_input_and_never_reports_a_rolled_back_key() -> Result {
+    for natural in [false, true] {
+        let (context, mut owner) = setup(3, vec![fixture::paragraph("body", "-")], natural)?;
+        select(&mut owner, "body", 1)?;
+        assert_eq!(
+            type_and_rule(&mut owner, " ", "bad namespace", 100)?,
+            RichInputRuleOutcome::Refused
+        );
+        assert_eq!(text(&owner, "body")?, "- ");
+        assert_eq!(owner.undo_depth(), 1);
+        future(&context, &mut owner)?;
+        owner.undo(&owner.snapshot())?;
+        assert_eq!(text(&owner, "body")?, "-");
+        owner.redo(&owner.snapshot())?;
+        assert_eq!(text(&owner, "body")?, "- ");
+    }
+    Ok(())
+}
+
+#[test]
+fn exclusive_nonmatches_keep_bursts_empty_input_and_redo_exact() -> Result {
+    let (context, mut owner) = setup(3, vec![fixture::paragraph("body", "")], true)?;
+    select(&mut owner, "body", 0)?;
+    for (clock, key) in [(1, "h"), (2, "i")] {
+        assert_eq!(
+            type_and_rule(&mut owner, key, "ignored", clock)?,
+            RichInputRuleOutcome::Inserted
+        );
+    }
+    assert_eq!(owner.undo_depth(), 1);
+    owner.undo(&owner.snapshot())?;
+    let before = saved(&context, &owner)?;
+    assert_eq!(type_and_rule(&mut owner, "", "bad namespace", 3)?, RichInputRuleOutcome::Unchanged);
+    assert_eq!(saved(&context, &owner)?, before);
+    owner.redo(&owner.snapshot())?;
+    assert_eq!(text(&owner, "body")?, "hi");
+    Ok(())
+}
+
+#[test]
+fn exclusive_typing_rejects_stale_readonly_ranges_and_disabled_grouping_before_input() -> Result {
+    let (context, mut owner) = setup(3, vec![fixture::paragraph("body", "#")], false)?;
+    select(&mut owner, "body", 1)?;
+    let stale = owner.snapshot();
+    owner.set_selection(
+        &owner.snapshot(),
+        Some(RichSelectionKind::TextRange { anchor: point("body", 0)?, focus: point("body", 1)? }),
+    )?;
+    let before = saved(&context, &owner)?;
+    assert!(owner.insert_plain_text_with_markdown_rules(&stale, " ", "fresh").is_err());
+    assert!(owner.insert_plain_text_with_markdown_rules(&owner.snapshot(), " ", "fresh").is_err());
+    assert_eq!(saved(&context, &owner)?, before);
+    select(&mut owner, "body", 1)?;
+    let before = saved(&context, &owner)?;
+    assert!(
+        owner.insert_typing_text_with_markdown_rules(&owner.snapshot(), " ", 1, "fresh").is_err()
+    );
+    assert_eq!(saved(&context, &owner)?, before);
+    owner.set_read_only(&owner.snapshot(), true)?;
+    let before = saved(&context, &owner)?;
+    assert!(owner.insert_plain_text_with_markdown_rules(&owner.snapshot(), " ", "fresh").is_err());
+    assert_eq!(saved(&context, &owner)?, before);
     Ok(())
 }
 

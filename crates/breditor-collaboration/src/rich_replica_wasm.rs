@@ -10,6 +10,7 @@ mod exit_code_block;
 mod flow_navigation;
 mod general_history;
 mod general_range;
+mod input_rules;
 mod insert_general_paragraph;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;

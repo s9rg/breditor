@@ -14,7 +14,7 @@ import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_va
 import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,SharedDocumentSuggestionEffect,SharedSuggestionEffectSummary,SharedSuggestionEffectVerification} from "./reviewed_history_types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
-import type {RichSearchQuery,RichSearchReplacement} from "@breditor/experimental-rich-content";
+import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 export class SharedEditorError extends Error {
  constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
@@ -92,6 +92,17 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
  }
  view():SharedEditorView<P>{this.#live();return JSON.parse(this.#view) as SharedEditorView<P>;}
+ /** Both exclusive calls and version1 are required; old runtimes never match in JavaScript. */
+ supportsMarkdownInputRules():boolean{const r=this.#live();return r.markdown_input_rules_version?.()==="1"&&[r.insert_plain_text_with_markdown_rules,r.insert_typing_text_with_markdown_rules].every(f=>typeof f==="function");}
+ #markdownInput(method:"insert_plain_text_with_markdown_rules"|"insert_typing_text_with_markdown_rules",data:{text:string;namespace:string;clockMs?:string},revision?:string):RichInputRuleOutcome{
+  const input=JSON.stringify(data);this.#check(revision);
+  if(!this.supportsMarkdownInputRules())throw new SharedEditorError("input_rules_unavailable","Use complete matching native Markdown input rules");
+  return this.#run("local",(raw,o)=>{const value=raw[method]!(o,input);if(value!=="unchanged"&&value!=="inserted"&&value!=="applied"&&value!=="refused")throw new SharedEditorError("owner_abi","Invalid native input-rule outcome");return value;},revision);
+ }
+ /** Refused is accepted input with a separate conversion refusal; never retry it. */
+ insertPlainTextWithMarkdownRules(text:string,namespace:string,revision?:string):RichInputRuleOutcome{return this.#markdownInput("insert_plain_text_with_markdown_rules",{text,namespace},revision);}
+ /** One SDK publication follows both native commits; callbacks cannot retarget the rule. */
+ insertTypingTextWithMarkdownRules(text:string,clockMs:string,namespace:string,revision?:string):RichInputRuleOutcome{return this.#markdownInput("insert_typing_text_with_markdown_rules",{text,clockMs,namespace},revision);}
  /** Pure matching/navigation remains available without upgrading history or leaving read-only. */
  supportsSearch():boolean{const r=this.#live();return r.search_version?.()==="1"&&[r.find_text,r.check_search_results,r.select_search_match,r.replace_search_one,r.replace_search_all,r.search_history_enabled,r.enable_search_history,r.search_checkpoint].every(f=>typeof f==="function");}
  searchHistoryPolicy():"search-v1"|null{this.#live();return this.#searchHistory?"search-v1":null;}

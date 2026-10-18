@@ -7,11 +7,13 @@
 mod block_rule;
 mod error;
 mod inline_rule;
+mod outcome;
 mod plan;
 mod source;
 mod step;
 
 pub use error::RichInputRuleError;
+pub use outcome::RichInputRuleOutcome;
 pub use plan::{RichInputRulePlan, plan_rich_markdown_input_rule};
 pub use step::{RichInputRuleKind, RichInputRuleStep};
 
