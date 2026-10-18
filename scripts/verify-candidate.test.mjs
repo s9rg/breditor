@@ -38,6 +38,17 @@ test("manifest flags precede formatter/linter separators and overrides stay one 
  assert.equal(p.checks.find(c=>c.id==="functional-native-fixtures").artifacts.length,4);
  const wasm=p.checks.find(c=>c.id==="shared-wasm-lint");assert.ok(wasm.env.CARGO_ENCODED_RUSTFLAGS.includes(`--remap-path-prefix=${repository}=breditor`),"Actual-target lint must use the same canonical Rust flags as the shipped candidate");
 });
+test("both candidate profiles require portable input rules without reusing or inventing historical fixtures",()=>{
+ for(const profile of ["functional","full"]){
+  const plan=candidateReleasePlan({profile}),find=id=>{const value=plan.checks.find(c=>c.id===id);assert.ok(value,id);return value;};
+  assert.deepEqual(find("input-rules-borrowed-controls").args,["scripts/probe-input-rules-ui.mjs","--current-runtime-only","target/rich-browser-web","target/promoted-shared-web"]);
+  assert.deepEqual(find("input-rules-managed-startup").args,["scripts/probe-input-rules-root-sdk.mjs","target/rich-browser-web","target/promoted-shared-web"]);
+  const installed=find("installed-input-rule-workflows");assert.deepEqual(installed.args,["scripts/check-input-rules-installed.mjs","--current-runtime-only"]);assert.deepEqual(installed.artifacts,[{path:"target/input-rules-current-installed-consumer.json",fresh:true}]);
+  assert.ok(!installed.args.includes("--reuse-runtimes"));assert.ok(plan.deferred.includes("pinned-input-rule-historical-readers"));
+  const index=id=>plan.checks.findIndex(c=>c.id===id);assert.ok(index("paired-local-runtime")<index("input-rules-borrowed-controls"));assert.ok(index("paired-shared-runtime")<index("input-rules-managed-startup"));assert.ok(index("installed-input-rule-workflows")<index("readiness-inventory"));
+  assert.ok(plan.checks.every(c=>c.args.every(arg=>!arg.includes("input-rule-old-readers-")&&!arg.includes("input-rules-runtime-"))),"CI has no dependency on untracked historical caches");
+ }
+});
 test("dry run is cwd-independent and explicitly cannot imply V1 readiness",()=>{
  const script=join(repository,"scripts/verify-candidate.mjs"),r=spawnSync(process.execPath,[script,"--functional","--dry-run"],{cwd:tmpdir(),encoding:"utf8"});assert.equal(r.status,0,r.stderr);const p=JSON.parse(r.stdout);assert.equal(p.executed,false);assert.equal(p.v1Ready,false);assert.equal(p.profile,"functional");assert.ok(p.deferred.length>0);
  for(const args of [["--skip-tests"],["--functional","--functional"],["--help","--functional"]]){const bad=spawnSync(process.execPath,[script,...args],{encoding:"utf8"});assert.equal(bad.status,2);assert.equal(bad.stdout,"");}

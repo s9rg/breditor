@@ -10,6 +10,7 @@ export const deferredFunctionalGates=Object.freeze([
  "native-clipboard-ime-screen-reader-mobile","performance-size-long-session",
  "public-deployment-auth-isolation","storage-lifecycle-and-restore-drills",
  "dependency-license-review","catalog-parity-and-final-rc-approval",
+ "pinned-input-rule-historical-readers",
 ]);
 /** Functional success is deliberately not V1 readiness. Full adds existing browser/default
  * release checks and the fail-closed readiness ledger; it cannot approve manual gates. */
@@ -51,11 +52,15 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("search-persistent-sessions","probe-search-persistence-sdk.mjs",["target/promoted-shared-web"]),
   script("search-borrowed-controls","probe-search-ui.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
   script("search-managed-startup","probe-search-root-sdk.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
+  // Portable feature acceptance is explicit; pinned historical-reader evidence remains separate.
+  script("input-rules-borrowed-controls","probe-input-rules-ui.mjs",["--current-runtime-only","target/rich-browser-web","target/promoted-shared-web"]),
+  script("input-rules-managed-startup","probe-input-rules-root-sdk.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
   stage("workspace-types",npm,["run","typecheck"]),
   stage("collaboration-types",npm,["run","typecheck:candidate","--workspace","@breditor/collaboration"]),
   stage("editor-types",npm,["run","typecheck:candidate","--workspace","@breditor/editor"]),
   script("installed-editor-pairing","check-editor-package.mjs",[],[{path:"target/editor-installed-consumer.json",fresh:true}]),
   script("installed-search-workflows","check-search-installed.mjs",[],[{path:"target/search-installed-consumer.json",fresh:true}]),
+  script("installed-input-rule-workflows","check-input-rules-installed.mjs",["--current-runtime-only"],[{path:"target/input-rules-current-installed-consumer.json",fresh:true}]),
   script("installed-rich-interchange","check-interchange-package.mjs",[],[{path:"target/interchange-installed-consumer.json",fresh:true}]),
   relayCargo("functional-native-fixtures",["build","--features","server","--locked","--offline","--release","--example","transport_v2_functional","--example","suggestions_functional","--example","suggestion_revisions_functional","--example","review_assets_functional"],["transport_v2_functional","suggestions_functional","suggestion_revisions_functional","review_assets_functional"].map(executablePath)),
   script("installed-everyday-mixed-workflows","check-editor-mixed-workflows.mjs",["--reuse-installed",executable("transport_v2_functional")],[{path:"target/editor-mixed-workflows.json",fresh:true}]),

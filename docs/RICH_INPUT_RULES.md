@@ -238,6 +238,22 @@ deletion/Undo/Redo.
 
 ## Remaining functionality and qualification
 
+Both official candidate profiles require current-runtime DOM/root/React and
+independent installed input-rule checks. The
+[candidate pipeline checkpoint](qualification/2026-10-18-input-rules-candidate-pipeline.json)
+records their local execution, 472 passing script contracts and 376 editor tests,
+plus the retained failed runner configurations and same-source continuation.
+Hosted CI and the complete candidate profiles remain unqualified.
+
+`node scripts/check-input-rules-installed.mjs --current-runtime-only` rebuilds
+the producer and verifies fresh installed packages without historical caches.
+It explicitly defers the three pinned-reader proof classes, uses null historical
+digests and writes `target/input-rules-current-installed-consumer.json`.
+The default checker still requires the independently pinned earlier/prior SDK
+runtime pairs and writes its separate full-reference report. Missing references
+never select the portable scope automatically. `--reuse-runtimes` is a separately
+recorded development mode; neither candidate profile selects it.
+
 Continue existing-list task conversion, adjacent/nested automatic list behavior,
 conventional code-fence Enter and the additional shortcut cases above without
 flattening rich bodies or changing saved recipe meanings. Final input, browser,

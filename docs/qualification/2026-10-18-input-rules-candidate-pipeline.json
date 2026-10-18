@@ -1,0 +1,1309 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "9a512496b4aeb66dd91bef7fd34d3f2ad08a61d6",
+  "scope": "Portable input-rule feature checks in both official candidate profiles, with explicitly separate historical-reference proof. Local selected-stage execution, not the entire profile or hosted CI.",
+  "source": {
+    "commit": "9a512496b4aeb66dd91bef7fd34d3f2ad08a61d6",
+    "dirty": true,
+    "sha256": "fd8d61e8e2e71bb3f3fd14e82aafa0aea8a22c2e251d299213c4385413fe2a49",
+    "files": 4231,
+    "bytes": 37383654
+  },
+  "sourceBinding": {
+    "documentationOnlyFollowUp": true,
+    "codeAndBuildInputsUnchangedAfterVerification": true,
+    "productionRustSdkDomAndArchivesUnchanged": true,
+    "changedPaths": [
+      "scripts/candidate-release/plan.mjs",
+      "scripts/check-input-rules-installed.mjs",
+      "scripts/input-rule-probe-policy.mjs",
+      "scripts/input-rule-probe-policy.test.mjs",
+      "scripts/probe-input-rules-ui.mjs",
+      "scripts/verify-candidate.test.mjs"
+    ],
+    "codeAndBuildInputs": [
+      {
+        "path": "Cargo.lock",
+        "bytes": 17432,
+        "sha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c"
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 1892,
+        "sha256": "2dd0e23ab0a4a8d642a1b11607a501c7a57b0bc9e92013538a258a0fa9f0110c"
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.lock",
+        "bytes": 39247,
+        "sha256": "d76d57f59a66c1b6fb52b41ca199d65fd1da19af7e85079c4630f307af011cdb"
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.toml",
+        "bytes": 1634,
+        "sha256": "34c9bbafb8ac65659367874fe6bfcc98d6c44a839f9cc88b16952a6d3f8f2959"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/insert_plain_text_with_markdown_rules.rs",
+        "bytes": 2314,
+        "sha256": "103514aa55feafe1e17b6ac365e7f69fab675f9dae8d1ff7808ed28dcb18c7ed"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/text_flow/anchor.rs",
+        "bytes": 6675,
+        "sha256": "6d40922bba0212e7bcbb799cc88cce817d94b1255c6caddab7991db064c4c90b"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/text_flow/index.rs",
+        "bytes": 17784,
+        "sha256": "4e997271016b0333cb1a7471e98d4980f0f59218919424bcba7daa611825bdbb"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/text_flow/tests.rs",
+        "bytes": 18566,
+        "sha256": "08ea011219434f6dc1d6b4feacbe458280f22541929fc678430571e8b36349db"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica_wasm/input_rules/mod.rs",
+        "bytes": 1370,
+        "sha256": "0f36d2164ac7d2b7d9139c0753e1cbd1a3934c32bb0794bbf1371b8e7392986b"
+      },
+      {
+        "path": "crates/breditor-collaboration/tests/general_range_contracts.rs",
+        "bytes": 24559,
+        "sha256": "b69f7d1ea73fbae06e3cc83c3035532bf8dc7c39df7385996f6ecef201f3b90b"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/mod.rs",
+        "bytes": 1049,
+        "sha256": "87048e7bee3279527b57fe7199101aa10477687497e52c3c7b6cf2e268fb0925"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/plan.rs",
+        "bytes": 10647,
+        "sha256": "8112794a3ce0eea96b4ff2bb9b6c8efe16ebd333747695d782e50ae825b3d00b"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/trigger.rs",
+        "bytes": 465,
+        "sha256": "6f9d9c84c4ec044de116c169da564dbcef26f3ddc044335762344ee8335df468"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/insert_plain_text_with_markdown_rules.rs",
+        "bytes": 1858,
+        "sha256": "87a43cd49ca8b7dbb967ee28b6c75a43ab3f708029236cac5ee549e5e6e9c343"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/mod.rs",
+        "bytes": 5384,
+        "sha256": "45eb3e134964c334bbd7990eac29d51c97c38ac746bb49ca7d40aa3a60fa1e0a"
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_input_rules.rs",
+        "bytes": 23246,
+        "sha256": "3cabd5ad9be1de4b85fb43b7983422016c9a587ce2f7824817c8a391e29276e7"
+      },
+      {
+        "path": "crates/breditor-wasm/src/rich_editor/input_rules/mod.rs",
+        "bytes": 1512,
+        "sha256": "9c5da4653e4eeaa46cd8fe58a1d71c21d45229051794a3fef8fce2827e76ed61"
+      },
+      {
+        "path": "experiments/collaboration/Cargo.lock",
+        "bytes": 39386,
+        "sha256": "d3b1a16695479ab94e4747a3826c69dae55d6a16b8d4306832757299d35d72ca"
+      },
+      {
+        "path": "experiments/collaboration/Cargo.toml",
+        "bytes": 1671,
+        "sha256": "8cff35276066fcff3f345607dd0331500c03a0deb9f2aad463f2bee177ab55d2"
+      },
+      {
+        "path": "package-lock.json",
+        "bytes": 82558,
+        "sha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4"
+      },
+      {
+        "path": "package.json",
+        "bytes": 4684,
+        "sha256": "e969211d47d4270569c11ca11bf42b2bc1a8b84922d39fffcc69c4ff126fbd52"
+      },
+      {
+        "path": "packages/breditor-collaboration/README.md",
+        "bytes": 26730,
+        "sha256": "cc39d9191899146ab017b7e254860a7dcd85369a37720e52f5f60825b94e2a9e"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/controller.ts",
+        "bytes": 49548,
+        "sha256": "351446700be548f9aa1e4ae8448abf6cc3e593dec110e356061f712fecbc5987"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/core.ts",
+        "bytes": 67599,
+        "sha256": "820950ef9f26f70812eeff701c5950cf59f221de458e550b6f8873f91e11b3dc"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/types.ts",
+        "bytes": 15531,
+        "sha256": "3d5b6ff45e942acb961b31eaf7e6a7809b417ac4dacecec2ec9d6c2c0e41ee31"
+      },
+      {
+        "path": "packages/breditor-editor/src/local.ts",
+        "bytes": 9863,
+        "sha256": "e48bb7e0c01477de96c808bf0b100c9c4e55fd6527b100a5b83fab895c552a76"
+      },
+      {
+        "path": "packages/breditor-editor/src/local_document.ts",
+        "bytes": 9335,
+        "sha256": "9eaeaceb9384d89e20641ca12848195ab779a73fadc67d7129cfec9ac5380327"
+      },
+      {
+        "path": "packages/breditor-editor/src/shared_document_session.ts",
+        "bytes": 15414,
+        "sha256": "ea664d3ebc32a2d08dffa6762b5284b4a412498d26c58d7db417e204626c5a0a"
+      },
+      {
+        "path": "packages/breditor-editor/src/shared_session.ts",
+        "bytes": 16386,
+        "sha256": "fdcd786e24afd822802c17cba0adf42aa0bb91e1744b5171084372dee1e6f5c9"
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/README.md",
+        "bytes": 30648,
+        "sha256": "771ded07b8a8eb66c9d115e01a90082602bade7e99197dc322059a73d1b2f80f"
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/index.js",
+        "bytes": 26087,
+        "sha256": "ba7b7760f91df3e5e5983b9f4426e0ce300b98054ae3e2d2b0c5331632829a90"
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/rendering.d.ts",
+        "bytes": 1364,
+        "sha256": "452c6edab265455776ef3b7fb3c8fd1a94050211cd4a998ca6471629854ff35d"
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/rendering.js",
+        "bytes": 2061,
+        "sha256": "b8ee1d9bbfd1dd9e5de8f26706911bf1e71b9eff11f776334296676b2e5978ed"
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/src/controller.ts",
+        "bytes": 54886,
+        "sha256": "ecfcc72f4f9fd5831ad3958809dc7a60981d3f9e8cc8048561bed4586c8fc417"
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/src/core.ts",
+        "bytes": 13255,
+        "sha256": "2b0dd13a02811a39a90e2e299335cbe82f0f589644668c23324e5ab68afc5464"
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/src/input_rule_intent.ts",
+        "bytes": 3462,
+        "sha256": "4b60b14177a33cc0152de0ee0b58c0e9ac4188f609cf3bca55658a9d96c8ce6d"
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 123,
+        "sha256": "81e722cea65ca61d2a17462fc3dc015f3d4c804024d15b6afa395ec454519a9f"
+      },
+      {
+        "path": "scripts/build-collaboration-runtime.mjs",
+        "bytes": 3483,
+        "sha256": "b5684b5ef4045340edd8f5dbb13ec90bce23f0b36ccd54274473d32e6f5d8a29"
+      },
+      {
+        "path": "scripts/build-rich-runtime.mjs",
+        "bytes": 3347,
+        "sha256": "fdeaccbac8ea7a1c76ffcf365ab65608e5198f8da6f00d6fcb1842fa4d04d0b7"
+      },
+      {
+        "path": "scripts/build-runtime-notices.mjs",
+        "bytes": 6033,
+        "sha256": "f922812c35f7f7bc6841d8897cd25f00085b4f5876a98125afab3df0f3ffd4f3"
+      },
+      {
+        "path": "scripts/candidate-release/evidence.mjs",
+        "bytes": 2776,
+        "sha256": "64554e906a09591e442556fc07e75b6e00d220b9debf0e5e8dd6e3054dc29ddb"
+      },
+      {
+        "path": "scripts/candidate-release/plan.mjs",
+        "bytes": 10066,
+        "sha256": "85c671d9c3dcea40566af58a2f0b5a57b8e586a86a757840cce01d2b1b6a2491"
+      },
+      {
+        "path": "scripts/candidate-release/process.mjs",
+        "bytes": 2380,
+        "sha256": "8b3eed3af8d71d2fc59b964b582b28b62f919ce357a7c824f3f3ba00fbca23a8"
+      },
+      {
+        "path": "scripts/candidate-runtime-paths.mjs",
+        "bytes": 1766,
+        "sha256": "66e23594a56a9e8725ad8a5409dcbef07db1ea181c4cc5cde620560b8aab1b26"
+      },
+      {
+        "path": "scripts/check-input-rules-installed.mjs",
+        "bytes": 9473,
+        "sha256": "c9f0b50b202011c0d102e75cd6ca58d6914546de75cce13caaebaed259a1222d"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-input-rules.ts",
+        "bytes": 3303,
+        "sha256": "20e22d8f447308a1000219596aa2c485b1c55d6fd4ea60cb7162e6816ace8f23"
+      },
+      {
+        "path": "scripts/input-rule-intent.test.mjs",
+        "bytes": 2784,
+        "sha256": "ce2ef9b7c52b569c7735951d7288088b597fc248b553e7543ad6765291d8c51c"
+      },
+      {
+        "path": "scripts/input-rule-probe-policy.mjs",
+        "bytes": 2088,
+        "sha256": "9e6db396611e90855ad70d9007bb311c8200d035381d736717e1d0f9a80afc14"
+      },
+      {
+        "path": "scripts/input-rule-probe-policy.test.mjs",
+        "bytes": 2815,
+        "sha256": "42b455681f99944163b6a14bad0d4f8b931611d9fae3e5c861f23a58bbcec326"
+      },
+      {
+        "path": "scripts/probe-input-rules-root-sdk.mjs",
+        "bytes": 11468,
+        "sha256": "f6ff9b476f6b0ec3e6c459fcb0f469fe72ad62bc7ebbbc9ff4008c9835e8e165"
+      },
+      {
+        "path": "scripts/probe-input-rules-ui.mjs",
+        "bytes": 21665,
+        "sha256": "9511f298e7dd28b7f74180c8903d358e3f479d44949669e31de080ef849c83b8"
+      },
+      {
+        "path": "scripts/search-consumer-lock.mjs",
+        "bytes": 2503,
+        "sha256": "d84a07d1ee8bf9e3ed0ebe5b1d91e8865451f20e49f6a76fb8f8a5035b6e5a57"
+      },
+      {
+        "path": "scripts/verify-candidate.mjs",
+        "bytes": 5193,
+        "sha256": "4bc05664c20047c2a151e88b0c370cc5db7506d5aa4657f29ca115f63fd0f64f"
+      },
+      {
+        "path": "scripts/verify-candidate.test.mjs",
+        "bytes": 17689,
+        "sha256": "6759211658dea268f570e9b0cf0a84981743731c418597d3cad2bd080fd391a1"
+      }
+    ],
+    "nonDocumentationTree": {
+      "sha256": "719f9d5a07ed048fa28e66436255e5868b6ced8f372c26a4bdf3f1a9aba22c82",
+      "count": 3801,
+      "bytes": 31410401
+    },
+    "priorProductionQualification": {
+      "path": "docs/qualification/2026-10-18-input-rules-browser-installed.json",
+      "bytes": 68890,
+      "sha256": "ceb01aa524a1e38c4b6f2f4c384a18075cc06eec3b3b9d3effa447fa04bef5d6",
+      "modifiedAtMs": 1792366242366.134
+    }
+  },
+  "verification": {
+    "selectedChecksSatisfied": 10,
+    "oneSingleGreenRun": false,
+    "explanation": "Seven successful selected stages in the second attempt plus a three-stage continuation against the exact same source. Failed runner-configuration attempts are retained, not represented as all-green runs.",
+    "runs": [
+      {
+        "manifest": {
+          "path": "target/v1-candidate-runs/run-pDNdH2/result.json",
+          "bytes": 13604,
+          "sha256": "f1690bc42165fc52b21fd398ad4dcf2c0a61f41a784c46f0df0b28cbc0f8e6f1",
+          "modifiedAtMs": 1792366424361.0325
+        },
+        "status": "failed",
+        "source": {
+          "commit": "9a512496b4aeb66dd91bef7fd34d3f2ad08a61d6",
+          "dirty": true,
+          "sha256": "fd8d61e8e2e71bb3f3fd14e82aafa0aea8a22c2e251d299213c4385413fe2a49",
+          "files": 4231,
+          "bytes": 37383654
+        },
+        "stages": [
+          {
+            "id": "candidate-and-scope-contracts",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "--test",
+              "scripts/input-rule-probe-policy.test.mjs",
+              "scripts/verify-candidate.test.mjs",
+              "scripts/candidate-ci.test.mjs"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-pDNdH2/01-candidate-and-scope-contracts.log",
+              "bytes": 6282,
+              "sha256": "bcf488b305b3027fe591148f145a4e7fcb009b46d1b0f3598f5a4e145cd2765c",
+              "modifiedAtMs": 1792366384134.1458
+            },
+            "artifacts": []
+          },
+          {
+            "id": "input-rules-borrowed-controls",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/probe-input-rules-ui.mjs",
+              "--current-runtime-only",
+              "target/rich-browser-web",
+              "target/promoted-shared-web"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-pDNdH2/02-input-rules-borrowed-controls.log",
+              "bytes": 2097,
+              "sha256": "351c5e56b286474b92f55794cc5a491e310b75ae638efc2ce22bfeef1597133c",
+              "modifiedAtMs": 1792366387848.6355
+            },
+            "artifacts": []
+          },
+          {
+            "id": "input-rules-managed-startup",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/probe-input-rules-root-sdk.mjs",
+              "target/rich-browser-web",
+              "target/promoted-shared-web"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-pDNdH2/03-input-rules-managed-startup.log",
+              "bytes": 1024,
+              "sha256": "666295b9545162636286218594c194eed9f9a2b24371ec8128d053f891a0f613",
+              "modifiedAtMs": 1792366391334.4844
+            },
+            "artifacts": []
+          },
+          {
+            "id": "installed-input-rule-workflows",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/check-input-rules-installed.mjs",
+              "--current-runtime-only"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-pDNdH2/04-installed-input-rule-workflows.log",
+              "bytes": 8225,
+              "sha256": "80bfbc60530ce0874cf68d40e8a63597f4510879f724fc4e9c5e667351f02ca6",
+              "modifiedAtMs": 1792366405371.3638
+            },
+            "artifacts": [
+              {
+                "path": "target/input-rules-current-installed-consumer.json",
+                "bytes": 6590,
+                "sha256": "c9346c463b9da528591402b5f923daea49210bb9e6f9f9e64e39804efc35c343",
+                "modifiedAtMs": 1792366405370.8555
+              }
+            ]
+          },
+          {
+            "id": "historical-mode-preserved",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "--input-type=module",
+              "-e",
+              "import fs from 'node:fs';import {execFileSync} from 'node:child_process';const text=execFileSync(process.execPath,[\"scripts/probe-input-rules-ui.mjs\",\"target/rich-browser-web\",\"target/promoted-shared-web\",\"target/input-rule-old-readers-40e4983/local\",\"target/input-rule-old-readers-40e4983/shared\",\"target/input-rules-runtime-yrJqQX/local\",\"target/input-rules-runtime-yrJqQX/shared\"],{encoding:'utf8',stdio:['ignore','pipe','inherit'],timeout:360000,maxBuffer:1024*1024});JSON.parse(text);fs.writeFileSync(\"target/input-rules-historical-ci-followup.json\",text);console.log(text);"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-pDNdH2/05-historical-mode-preserved.log",
+              "bytes": 2262,
+              "sha256": "a3c8ede75e4c2bed4948831a8534a872bee672599f296128f894d97b9ca39c6d",
+              "modifiedAtMs": 1792366409063.5093
+            },
+            "artifacts": [
+              {
+                "path": "target/input-rules-historical-ci-followup.json",
+                "bytes": 2261,
+                "sha256": "299ceac0a84c067faeb2f734b53a38b4fd0500e2fb9cef735d4db23d62df2eee",
+                "modifiedAtMs": 1792366409062.4092
+              }
+            ]
+          },
+          {
+            "id": "all-script-contracts",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "--test",
+              "scripts/build-collaboration-runtime.test.mjs",
+              "scripts/build-experimental-nested-list.test.mjs",
+              "scripts/build-opt-in-flat-list-package.test.mjs",
+              "scripts/build-opt-in-nested-list-package.test.mjs",
+              "scripts/build-rich-runtime.test.mjs",
+              "scripts/build-runtime-notices.test.mjs",
+              "scripts/build-shared-runtime.test.mjs",
+              "scripts/candidate-ci.test.mjs",
+              "scripts/candidate-dependencies.test.mjs",
+              "scripts/candidate-runtime-paths.test.mjs",
+              "scripts/check-collaboration-runtime-surface.test.mjs",
+              "scripts/check-editor-browser.test.mjs",
+              "scripts/check-flat-list-declarations.test.mjs",
+              "scripts/check-heading-declarations.test.mjs",
+              "scripts/check-nested-list-declarations.test.mjs",
+              "scripts/check-v1-readiness.test.mjs",
+              "scripts/checkpoint-predicate-exits.test.mjs",
+              "scripts/child-count-return-diagnostics.test.mjs",
+              "scripts/collaboration-browser-runs.test.mjs",
+              "scripts/collaboration-native-graph.test.mjs",
+              "scripts/collaboration-promotion.test.mjs",
+              "scripts/composition-failure-diagnostics.test.mjs",
+              "scripts/direct-getter-bridge.test.mjs",
+              "scripts/document-export-diagnostics.test.mjs",
+              "scripts/editor-package-contract.test.mjs",
+              "scripts/element-type-return-diagnostics.test.mjs",
+              "scripts/exception-constructor-probe.test.mjs",
+              "scripts/fixture-completion.test.mjs",
+              "scripts/format-property-diagnostics.test.mjs",
+              "scripts/gecko-profile-summary.test.mjs",
+              "scripts/getter-u32-comparison-mode.test.mjs",
+              "scripts/heading-comparison-trial.test.mjs",
+              "scripts/input-rule-intent.test.mjs",
+              "scripts/input-rule-probe-policy.test.mjs",
+              "scripts/integer-word-diagnostics.test.mjs",
+              "scripts/measure-opt-in-flat-list-size.test.mjs",
+              "scripts/measure-opt-in-nested-list-size.test.mjs",
+              "scripts/nested-list-build-transport.test.mjs",
+              "scripts/nested-list-stress-mode.test.mjs",
+              "scripts/nested-performance-replay-query.test.mjs",
+              "scripts/opt-in-demo-runtime.test.mjs",
+              "scripts/owner-immediate-exits.test.mjs",
+              "scripts/prepare-retained-bootstrap-failure-trace.test.mjs",
+              "scripts/prepare-retained-nested-layout-trace.test.mjs",
+              "scripts/private-word-projection-adapter.test.mjs",
+              "scripts/probe-nested-checkpoint-validator.test.mjs",
+              "scripts/probe-shared-history-clock.test.mjs",
+              "scripts/probe-shared-input-cost.test.mjs",
+              "scripts/projection-word-bindings.test.mjs",
+              "scripts/queue-failure-diagnostics.test.mjs",
+              "scripts/rendering-trace-summary.test.mjs",
+              "scripts/replay-browser.test.mjs",
+              "scripts/retain-nested-list-failure.test.mjs",
+              "scripts/retained-bootstrap-failure-trace.test.mjs",
+              "scripts/retained-nested-layout-trace.test.mjs",
+              "scripts/retained-nested-pair.test.mjs",
+              "scripts/review-assets-workflow.test.mjs",
+              "scripts/rich-structural-module-contract.test.mjs",
+              "scripts/runtime-notice-consumer.test.mjs",
+              "scripts/search-consumer-lock.test.mjs",
+              "scripts/search-metadata.test.mjs",
+              "scripts/shared-browser-runs.test.mjs",
+              "scripts/verify-candidate.test.mjs",
+              "scripts/verify-release.test.mjs",
+              "scripts/wasm-function-names.test.mjs",
+              "scripts/webkit-replay-tier.test.mjs",
+              "scripts/word-capability-admission-diagnostics.test.mjs",
+              "scripts/word-child-count.test.mjs",
+              "scripts/word-editor-stress-mode.test.mjs"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-pDNdH2/06-all-script-contracts.log",
+              "bytes": 89952,
+              "sha256": "a99a4c8056f2de682acccd290263a5c4f869cf942af572f6fcebca929a26b09f",
+              "modifiedAtMs": 1792366415625.0864
+            },
+            "artifacts": []
+          },
+          {
+            "id": "editor-regression",
+            "status": "failed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "node_modules/vitest/vitest.mjs",
+              "run",
+              "--config",
+              "packages/breditor-editor/vitest.config.ts"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-pDNdH2/07-editor-regression.log",
+              "bytes": 43254,
+              "sha256": "eab222af885ead499f44000fa1ab0b6b2bec240d0c64111bd034c1670d2e42ea",
+              "modifiedAtMs": 1792366424019.1123
+            }
+          }
+        ]
+      },
+      {
+        "manifest": {
+          "path": "target/v1-candidate-runs/run-T3jVlu/result.json",
+          "bytes": 14845,
+          "sha256": "18b11789f64b8db2f92f14c3cf31340eb51728be9c6c4a0f379ce9e043704269",
+          "modifiedAtMs": 1792366484516.788
+        },
+        "status": "failed",
+        "source": {
+          "commit": "9a512496b4aeb66dd91bef7fd34d3f2ad08a61d6",
+          "dirty": true,
+          "sha256": "fd8d61e8e2e71bb3f3fd14e82aafa0aea8a22c2e251d299213c4385413fe2a49",
+          "files": 4231,
+          "bytes": 37383654
+        },
+        "stages": [
+          {
+            "id": "candidate-and-scope-contracts",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "--test",
+              "scripts/input-rule-probe-policy.test.mjs",
+              "scripts/verify-candidate.test.mjs",
+              "scripts/candidate-ci.test.mjs"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/01-candidate-and-scope-contracts.log",
+              "bytes": 6278,
+              "sha256": "4ffb3aafd07d82f5ff152297315bc5e8c227e3781decf079957157161952241c",
+              "modifiedAtMs": 1792366446694.173
+            },
+            "artifacts": []
+          },
+          {
+            "id": "input-rules-borrowed-controls",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/probe-input-rules-ui.mjs",
+              "--current-runtime-only",
+              "target/rich-browser-web",
+              "target/promoted-shared-web"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/02-input-rules-borrowed-controls.log",
+              "bytes": 2097,
+              "sha256": "351c5e56b286474b92f55794cc5a491e310b75ae638efc2ce22bfeef1597133c",
+              "modifiedAtMs": 1792366450293.9375
+            },
+            "artifacts": []
+          },
+          {
+            "id": "input-rules-managed-startup",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/probe-input-rules-root-sdk.mjs",
+              "target/rich-browser-web",
+              "target/promoted-shared-web"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/03-input-rules-managed-startup.log",
+              "bytes": 1024,
+              "sha256": "666295b9545162636286218594c194eed9f9a2b24371ec8128d053f891a0f613",
+              "modifiedAtMs": 1792366453742.2817
+            },
+            "artifacts": []
+          },
+          {
+            "id": "installed-input-rule-workflows",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/check-input-rules-installed.mjs",
+              "--current-runtime-only"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/04-installed-input-rule-workflows.log",
+              "bytes": 8225,
+              "sha256": "0ed84d2098b6484ec12bfca06c68ad194dc014b91c922bc475a0443d3a651c4c",
+              "modifiedAtMs": 1792366467470.1208
+            },
+            "artifacts": [
+              {
+                "path": "target/input-rules-current-installed-consumer.json",
+                "bytes": 6590,
+                "sha256": "989068e1422cc4a1ac4d9702b977d73f9ce1a7257ec7990603c6d0becff6c471",
+                "modifiedAtMs": 1792366467469.288
+              }
+            ]
+          },
+          {
+            "id": "historical-mode-preserved",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "--input-type=module",
+              "-e",
+              "import fs from 'node:fs';import {execFileSync} from 'node:child_process';const text=execFileSync(process.execPath,[\"scripts/probe-input-rules-ui.mjs\",\"target/rich-browser-web\",\"target/promoted-shared-web\",\"target/input-rule-old-readers-40e4983/local\",\"target/input-rule-old-readers-40e4983/shared\",\"target/input-rules-runtime-yrJqQX/local\",\"target/input-rules-runtime-yrJqQX/shared\"],{encoding:'utf8',stdio:['ignore','pipe','inherit'],timeout:360000,maxBuffer:1024*1024});JSON.parse(text);fs.writeFileSync('target/input-rules-historical-ci-followup.json',text);console.log(text);"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/05-historical-mode-preserved.log",
+              "bytes": 2262,
+              "sha256": "a3c8ede75e4c2bed4948831a8534a872bee672599f296128f894d97b9ca39c6d",
+              "modifiedAtMs": 1792366471133.1514
+            },
+            "artifacts": [
+              {
+                "path": "target/input-rules-historical-ci-followup.json",
+                "bytes": 2261,
+                "sha256": "299ceac0a84c067faeb2f734b53a38b4fd0500e2fb9cef735d4db23d62df2eee",
+                "modifiedAtMs": 1792366471132.081
+              }
+            ]
+          },
+          {
+            "id": "all-script-contracts",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "--test",
+              "scripts/build-collaboration-runtime.test.mjs",
+              "scripts/build-experimental-nested-list.test.mjs",
+              "scripts/build-opt-in-flat-list-package.test.mjs",
+              "scripts/build-opt-in-nested-list-package.test.mjs",
+              "scripts/build-rich-runtime.test.mjs",
+              "scripts/build-runtime-notices.test.mjs",
+              "scripts/build-shared-runtime.test.mjs",
+              "scripts/candidate-ci.test.mjs",
+              "scripts/candidate-dependencies.test.mjs",
+              "scripts/candidate-runtime-paths.test.mjs",
+              "scripts/check-collaboration-runtime-surface.test.mjs",
+              "scripts/check-editor-browser.test.mjs",
+              "scripts/check-flat-list-declarations.test.mjs",
+              "scripts/check-heading-declarations.test.mjs",
+              "scripts/check-nested-list-declarations.test.mjs",
+              "scripts/check-v1-readiness.test.mjs",
+              "scripts/checkpoint-predicate-exits.test.mjs",
+              "scripts/child-count-return-diagnostics.test.mjs",
+              "scripts/collaboration-browser-runs.test.mjs",
+              "scripts/collaboration-native-graph.test.mjs",
+              "scripts/collaboration-promotion.test.mjs",
+              "scripts/composition-failure-diagnostics.test.mjs",
+              "scripts/direct-getter-bridge.test.mjs",
+              "scripts/document-export-diagnostics.test.mjs",
+              "scripts/editor-package-contract.test.mjs",
+              "scripts/element-type-return-diagnostics.test.mjs",
+              "scripts/exception-constructor-probe.test.mjs",
+              "scripts/fixture-completion.test.mjs",
+              "scripts/format-property-diagnostics.test.mjs",
+              "scripts/gecko-profile-summary.test.mjs",
+              "scripts/getter-u32-comparison-mode.test.mjs",
+              "scripts/heading-comparison-trial.test.mjs",
+              "scripts/input-rule-intent.test.mjs",
+              "scripts/input-rule-probe-policy.test.mjs",
+              "scripts/integer-word-diagnostics.test.mjs",
+              "scripts/measure-opt-in-flat-list-size.test.mjs",
+              "scripts/measure-opt-in-nested-list-size.test.mjs",
+              "scripts/nested-list-build-transport.test.mjs",
+              "scripts/nested-list-stress-mode.test.mjs",
+              "scripts/nested-performance-replay-query.test.mjs",
+              "scripts/opt-in-demo-runtime.test.mjs",
+              "scripts/owner-immediate-exits.test.mjs",
+              "scripts/prepare-retained-bootstrap-failure-trace.test.mjs",
+              "scripts/prepare-retained-nested-layout-trace.test.mjs",
+              "scripts/private-word-projection-adapter.test.mjs",
+              "scripts/probe-nested-checkpoint-validator.test.mjs",
+              "scripts/probe-shared-history-clock.test.mjs",
+              "scripts/probe-shared-input-cost.test.mjs",
+              "scripts/projection-word-bindings.test.mjs",
+              "scripts/queue-failure-diagnostics.test.mjs",
+              "scripts/rendering-trace-summary.test.mjs",
+              "scripts/replay-browser.test.mjs",
+              "scripts/retain-nested-list-failure.test.mjs",
+              "scripts/retained-bootstrap-failure-trace.test.mjs",
+              "scripts/retained-nested-layout-trace.test.mjs",
+              "scripts/retained-nested-pair.test.mjs",
+              "scripts/review-assets-workflow.test.mjs",
+              "scripts/rich-structural-module-contract.test.mjs",
+              "scripts/runtime-notice-consumer.test.mjs",
+              "scripts/search-consumer-lock.test.mjs",
+              "scripts/search-metadata.test.mjs",
+              "scripts/shared-browser-runs.test.mjs",
+              "scripts/verify-candidate.test.mjs",
+              "scripts/verify-release.test.mjs",
+              "scripts/wasm-function-names.test.mjs",
+              "scripts/webkit-replay-tier.test.mjs",
+              "scripts/word-capability-admission-diagnostics.test.mjs",
+              "scripts/word-child-count.test.mjs",
+              "scripts/word-editor-stress-mode.test.mjs"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/06-all-script-contracts.log",
+              "bytes": 89952,
+              "sha256": "248821e93ca9007eac35455ca623dad5346d77f0f451e8f0692b8b89c0c27b81",
+              "modifiedAtMs": 1792366477497.4292
+            },
+            "artifacts": []
+          },
+          {
+            "id": "editor-sdk-tests",
+            "status": "passed",
+            "command": "npm",
+            "args": [
+              "run",
+              "test:candidate",
+              "--workspace",
+              "@breditor/editor"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/07-editor-sdk-tests.log",
+              "bytes": 619,
+              "sha256": "2180fe8d8e47f92e9b90eea851eced8ada984a5a226f306b1b33683da88a321d",
+              "modifiedAtMs": 1792366483564.8093
+            },
+            "artifacts": []
+          },
+          {
+            "id": "default-dependency-guard",
+            "status": "failed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/check-wasm-third-party-notices.mjs"
+            ],
+            "env": {},
+            "log": {
+              "path": "target/v1-candidate-runs/run-T3jVlu/08-default-dependency-guard.log",
+              "bytes": 1091,
+              "sha256": "e833e80f8df18c9e9cd05939d3ed78847f5922352d1e57afa6ad141d627c0e27",
+              "modifiedAtMs": 1792366484230.0105
+            }
+          }
+        ]
+      },
+      {
+        "manifest": {
+          "path": "target/v1-candidate-runs/run-8aCagb/result.json",
+          "bytes": 6723,
+          "sha256": "e3f6a457cab898b47acf15c8addcf2fdaf7acbf99b5eb55524ee00c5f69de94f",
+          "modifiedAtMs": 1792366509823.1006
+        },
+        "status": "passed",
+        "source": {
+          "commit": "9a512496b4aeb66dd91bef7fd34d3f2ad08a61d6",
+          "dirty": true,
+          "sha256": "fd8d61e8e2e71bb3f3fd14e82aafa0aea8a22c2e251d299213c4385413fe2a49",
+          "files": 4231,
+          "bytes": 37383654
+        },
+        "stages": [
+          {
+            "id": "default-dependency-guard",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/check-wasm-third-party-notices.mjs"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-8aCagb/01-default-dependency-guard.log",
+              "bytes": 111,
+              "sha256": "886591c8a0956dfdb6837c7c9e6f65af1f9f409051641d44bd1e0cec537de06a",
+              "modifiedAtMs": 1792366507851.026
+            },
+            "artifacts": []
+          },
+          {
+            "id": "readiness-ledger",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "scripts/check-v1-readiness.mjs"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-8aCagb/02-readiness-ledger.log",
+              "bytes": 3916,
+              "sha256": "04a9cd12c6db161116b9560343d10e229c338a19b57f422db33f7e411ef76940",
+              "modifiedAtMs": 1792366508614.799
+            },
+            "artifacts": []
+          },
+          {
+            "id": "explicit-scope-parity",
+            "status": "passed",
+            "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+            "args": [
+              "--input-type=module",
+              "-e",
+              "import assert from 'node:assert/strict';import fs from 'node:fs';const read=p=>JSON.parse(fs.readFileSync(p,'utf8')),old=read('docs/qualification/2026-10-18-input-rules-browser-installed.json'),installed=read('target/input-rules-current-installed-consumer.json'),current=installed.probes['probe-input-rules-ui'],historical=read('target/input-rules-historical-ci-followup.json');assert.equal(installed.producerRebuildQualified,true);assert.equal(installed.reusedRuntimes,false);assert.equal(installed.proofPolicy.historicalReferences,false);assert.equal(current.earlierWasmSha256,null);assert.equal(current.priorSdkWasmSha256,null);assert.equal(historical.proofPolicy.historicalReferences,true);assert.deepEqual(historical.earlierWasmSha256,old.reports.dom.earlierWasmSha256);assert.deepEqual(historical.priorSdkWasmSha256,old.reports.dom.priorSdkWasmSha256);for(const [key,value] of Object.entries(historical)){if(typeof value!=='number')continue;if(key==='startupRefusals'){assert.equal(value,8);assert.equal(current[key],4);}else if(key==='legacyWholeReplacementRefusals'){assert.equal(value,1);assert.equal(current[key],0);}else assert.equal(current[key],value,key);}for(const key of ['localWasmSha256','sharedWasmSha256']){assert.equal(current[key],historical[key]);assert.equal(current[key],old.reports.dom[key]);}assert.deepEqual(installed.archives.map(({name,sha256})=>({name,sha256})),old.reports.installed.archives.map(({name,sha256})=>({name,sha256})));console.log(JSON.stringify({currentFunctionalCasesUnchanged:true,fullHistoricalProofPreserved:true,currentScopeDeferredHistoricalClasses:current.proofPolicy.deferred,archiveBytesUnchanged:true}));"
+            ],
+            "env": {
+              "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+              "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+              "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+              "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+              "RUSTC": "/Users/s/.cargo/bin/rustc",
+              "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+              "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+              "NPM_BIN": "npm",
+              "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+            },
+            "log": {
+              "path": "target/v1-candidate-runs/run-8aCagb/03-explicit-scope-parity.log",
+              "bytes": 296,
+              "sha256": "704b4379e85cec3266bdb660323f5606f6a24141ecf199ccb73777525c68c74f",
+              "modifiedAtMs": 1792366509256.6252
+            },
+            "artifacts": []
+          }
+        ]
+      }
+    ],
+    "recoveredOverwrittenReports": [
+      {
+        "original": {
+          "path": "target/input-rules-current-installed-consumer.json",
+          "bytes": 6590,
+          "sha256": "c9346c463b9da528591402b5f923daea49210bb9e6f9f9e64e39804efc35c343",
+          "modifiedAtMs": 1792366405370.8555
+        },
+        "retainedLog": {
+          "path": "target/v1-candidate-runs/run-pDNdH2/04-installed-input-rule-workflows.log",
+          "bytes": 8225,
+          "sha256": "80bfbc60530ce0874cf68d40e8a63597f4510879f724fc4e9c5e667351f02ca6",
+          "modifiedAtMs": 1792366405371.3638
+        },
+        "report": {
+          "format": "breditor/input-rules-installed-consumer",
+          "formatVersion": 1,
+          "passed": true,
+          "source": {
+            "commit": "9a512496b4aeb66dd91bef7fd34d3f2ad08a61d6",
+            "dirty": true,
+            "sha256": "fd8d61e8e2e71bb3f3fd14e82aafa0aea8a22c2e251d299213c4385413fe2a49",
+            "files": 4231,
+            "bytes": 37383654
+          },
+          "sourceUnchanged": true,
+          "proofPolicy": {
+            "mode": "current-runtime-only",
+            "historicalReferences": false,
+            "expectedStartupRefusals": 4,
+            "expectedLegacyReplacementRefusals": 0,
+            "deferred": [
+              "pinned-earlier-runtime-capability-refusal",
+              "pinned-programmatic-only-runtime-capability-refusal",
+              "pinned-earlier-whole-replacement-reader-refusal"
+            ]
+          },
+          "reusedRuntimes": false,
+          "producerRebuildQualified": true,
+          "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-4Li86z/consumer",
+          "workspaceLinks": false,
+          "strictConsumerTypes": true,
+          "registryArtifactsPinnedToProducer": 45,
+          "consumerLockSha256": "73a887417bd54bc9293bc3e6d600c3652e4f6694ec0076932a208854e88619c1",
+          "producerLockSha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-4Li86z/archives/breditor-browser-0.3.0-alpha.22.tgz",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-4Li86z/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+              "sha256": "12478da956f80fcf5cec2837f101dff4758b160e1e5e56e6e0f06691db67866c"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-4Li86z/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+              "sha256": "b54e0e733ca2416841f8a8ebb07ee7e3be10fcf7cfc8bc185e162bb18f2e6b3e"
+            },
+            {
+              "name": "@breditor/editor",
+              "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-4Li86z/archives/breditor-editor-0.3.0-alpha.22.tgz",
+              "sha256": "396f646ddb7f047c4530d35582cac8b7749184268d36c9ce233d8544b8da198b"
+            }
+          ],
+          "probes": {
+            "probe-input-rules-ui": {
+              "format": "breditor/input-rules-ui-probe",
+              "formatVersion": 1,
+              "passed": true,
+              "proofPolicy": {
+                "mode": "current-runtime-only",
+                "historicalReferences": false,
+                "expectedStartupRefusals": 4,
+                "expectedLegacyReplacementRefusals": 0,
+                "deferred": [
+                  "pinned-earlier-runtime-capability-refusal",
+                  "pinned-programmatic-only-runtime-capability-refusal",
+                  "pinned-earlier-whole-replacement-reader-refusal"
+                ]
+              },
+              "localWasmSha256": "bd3433279cb86ee5b6128c10136f6176e77eea9e1a5ee06e1ae961408db5a5af",
+              "sharedWasmSha256": "f90e2af62a8525c9751cfe7fce90101c1d5f745fee03b11ed46c58b819c0ae8c",
+              "earlierWasmSha256": null,
+              "priorSdkWasmSha256": null,
+              "localCases": 12,
+              "sharedCases": 18,
+              "exactRestores": 30,
+              "exactFutureCheckpoints": 120,
+              "defaultLiteralCases": 2,
+              "immutablePacks": 4,
+              "excludedPaths": 20,
+              "callbackRetargetRefusals": 2,
+              "finalOnlyCallbacks": 30,
+              "acceptedInputRefusals": 2,
+              "startupRefusals": 4,
+              "peerConvergence": 1,
+              "naturalBurstCases": 2,
+              "legacyWholeReplacementRefusals": 0,
+              "validCaretSyncs": 2,
+              "staleQueuedInputs": 2,
+              "heldRemoteInputs": 1,
+              "affinityPreservingInputs": 4,
+              "scope": "Actual local/shared Wasm through compiled explicitly opted-in browser coordinators, three grammars and original/general/document scopes, both histories, native formatting and exact recovery, immutable defaults, allowed caret synchronization and callback-retarget rejection, preserved native caret affinity/styles with and without rules, stale queued input refusal, held remote convergence, one final notification, real native refusal reporting, composition/paste/replacement/range/target/programmatic/remote exclusions and partial/unknown capability startup refusal before host mutation. Explicit current-runtime-only mode does not load historical reference files or qualify historical reader/capability compatibility; those three proof classes are deferred, not silently passed. Events/DOM/composition are synthetic; no OS IME, clipboard, native browser, installed archive, React or V1 approval is inferred."
+            },
+            "probe-input-rules-root-sdk": {
+              "format": "breditor/input-rules-root-sdk-probe",
+              "formatVersion": 1,
+              "passed": true,
+              "localWasmSha256": "bd3433279cb86ee5b6128c10136f6176e77eea9e1a5ee06e1ae961408db5a5af",
+              "sharedWasmSha256": "f90e2af62a8525c9751cfe7fce90101c1d5f745fee03b11ed46c58b819c0ae8c",
+              "localCases": 12,
+              "sharedCases": 18,
+              "exactRestores": 30,
+              "exactFutureCheckpoints": 120,
+              "disabledReopens": 30,
+              "reactCases": 8,
+              "reactImmutableCases": 8,
+              "reactExactReopens": 8,
+              "invalidPolicies": 4,
+              "scope": "Actual packaged paired runtime bytes through top-level local/document and shared original/general/document startup in three grammars and two histories. Explicit shortcuts, exact checkpoint reopening/future history, no persisted enable flag, React StrictMode and immutable session configuration, exact reopen after retirement, and invalid-policy refusal before host/storage mutation. DOM, events, IndexedDB and locks are fixtures; installed archives and native browser/clipboard/platform qualification remain separate."
+            }
+          },
+          "productionBundles": {
+            "localModules": 44,
+            "sharedReactModules": 66,
+            "localImportsSharedOrReact": false,
+            "workspaceModules": false
+          },
+          "scope": "Independent offline installed archives, public package imports, bundled paired Wasm, strict public policy/old-command types, unchanged explicitly selected DOM proof and complete root/React probes, exact reopen and ephemeral opt-in behavior, source-callback cancellation, exclusion paths and production bundle isolation. Explicit current-runtime-only mode neither requires local historical runtime caches nor qualifies their compatibility; omitted historical proof classes are recorded. DOM/events/IDB/locks remain synthetic; no native input/browser, license, performance or V1 release approval. Reuse mode explicitly excludes a fresh producer rebuild."
+        },
+        "reason": "A subsequent same-source run replaced the standard report; its original exact bytes remain in the hashed stage log."
+      }
+    ],
+    "retainedRunnerFailures": [
+      {
+        "manifest": "target/v1-candidate-runs/run-pDNdH2/result.json",
+        "cause": "The ad-hoc Vitest invocation omitted the package root and incorrectly collected root browser diagnostics under JSDOM. The exact official editor workspace command subsequently passes 39 files / 376 tests."
+      },
+      {
+        "manifest": "target/v1-candidate-runs/run-T3jVlu/result.json",
+        "cause": "The ad-hoc guard omitted the existing CARGO_BIN alias, so cargo could not launch. The same-source continuation uses the existing official candidate toolchain environment; no production source was changed."
+      }
+    ]
+  },
+  "reports": {
+    "currentInstalled": {
+      "format": "breditor/input-rules-installed-consumer",
+      "formatVersion": 1,
+      "passed": true,
+      "source": {
+        "commit": "9a512496b4aeb66dd91bef7fd34d3f2ad08a61d6",
+        "dirty": true,
+        "sha256": "fd8d61e8e2e71bb3f3fd14e82aafa0aea8a22c2e251d299213c4385413fe2a49",
+        "files": 4231,
+        "bytes": 37383654
+      },
+      "sourceUnchanged": true,
+      "proofPolicy": {
+        "mode": "current-runtime-only",
+        "historicalReferences": false,
+        "expectedStartupRefusals": 4,
+        "expectedLegacyReplacementRefusals": 0,
+        "deferred": [
+          "pinned-earlier-runtime-capability-refusal",
+          "pinned-programmatic-only-runtime-capability-refusal",
+          "pinned-earlier-whole-replacement-reader-refusal"
+        ]
+      },
+      "reusedRuntimes": false,
+      "producerRebuildQualified": true,
+      "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-rDeLnT/consumer",
+      "workspaceLinks": false,
+      "strictConsumerTypes": true,
+      "registryArtifactsPinnedToProducer": 45,
+      "consumerLockSha256": "bb04de56ac52139d542ad02bd7063209f7d5db05de2cd1fe117fa518bc06fe83",
+      "producerLockSha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+      "archives": [
+        {
+          "name": "@breditor/browser",
+          "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-rDeLnT/archives/breditor-browser-0.3.0-alpha.22.tgz",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-rDeLnT/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+          "sha256": "12478da956f80fcf5cec2837f101dff4758b160e1e5e56e6e0f06691db67866c"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-rDeLnT/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+          "sha256": "b54e0e733ca2416841f8a8ebb07ee7e3be10fcf7cfc8bc185e162bb18f2e6b3e"
+        },
+        {
+          "name": "@breditor/editor",
+          "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-input-rules-consumer-rDeLnT/archives/breditor-editor-0.3.0-alpha.22.tgz",
+          "sha256": "396f646ddb7f047c4530d35582cac8b7749184268d36c9ce233d8544b8da198b"
+        }
+      ],
+      "probes": {
+        "probe-input-rules-ui": {
+          "format": "breditor/input-rules-ui-probe",
+          "formatVersion": 1,
+          "passed": true,
+          "proofPolicy": {
+            "mode": "current-runtime-only",
+            "historicalReferences": false,
+            "expectedStartupRefusals": 4,
+            "expectedLegacyReplacementRefusals": 0,
+            "deferred": [
+              "pinned-earlier-runtime-capability-refusal",
+              "pinned-programmatic-only-runtime-capability-refusal",
+              "pinned-earlier-whole-replacement-reader-refusal"
+            ]
+          },
+          "localWasmSha256": "bd3433279cb86ee5b6128c10136f6176e77eea9e1a5ee06e1ae961408db5a5af",
+          "sharedWasmSha256": "f90e2af62a8525c9751cfe7fce90101c1d5f745fee03b11ed46c58b819c0ae8c",
+          "earlierWasmSha256": null,
+          "priorSdkWasmSha256": null,
+          "localCases": 12,
+          "sharedCases": 18,
+          "exactRestores": 30,
+          "exactFutureCheckpoints": 120,
+          "defaultLiteralCases": 2,
+          "immutablePacks": 4,
+          "excludedPaths": 20,
+          "callbackRetargetRefusals": 2,
+          "finalOnlyCallbacks": 30,
+          "acceptedInputRefusals": 2,
+          "startupRefusals": 4,
+          "peerConvergence": 1,
+          "naturalBurstCases": 2,
+          "legacyWholeReplacementRefusals": 0,
+          "validCaretSyncs": 2,
+          "staleQueuedInputs": 2,
+          "heldRemoteInputs": 1,
+          "affinityPreservingInputs": 4,
+          "scope": "Actual local/shared Wasm through compiled explicitly opted-in browser coordinators, three grammars and original/general/document scopes, both histories, native formatting and exact recovery, immutable defaults, allowed caret synchronization and callback-retarget rejection, preserved native caret affinity/styles with and without rules, stale queued input refusal, held remote convergence, one final notification, real native refusal reporting, composition/paste/replacement/range/target/programmatic/remote exclusions and partial/unknown capability startup refusal before host mutation. Explicit current-runtime-only mode does not load historical reference files or qualify historical reader/capability compatibility; those three proof classes are deferred, not silently passed. Events/DOM/composition are synthetic; no OS IME, clipboard, native browser, installed archive, React or V1 approval is inferred."
+        },
+        "probe-input-rules-root-sdk": {
+          "format": "breditor/input-rules-root-sdk-probe",
+          "formatVersion": 1,
+          "passed": true,
+          "localWasmSha256": "bd3433279cb86ee5b6128c10136f6176e77eea9e1a5ee06e1ae961408db5a5af",
+          "sharedWasmSha256": "f90e2af62a8525c9751cfe7fce90101c1d5f745fee03b11ed46c58b819c0ae8c",
+          "localCases": 12,
+          "sharedCases": 18,
+          "exactRestores": 30,
+          "exactFutureCheckpoints": 120,
+          "disabledReopens": 30,
+          "reactCases": 8,
+          "reactImmutableCases": 8,
+          "reactExactReopens": 8,
+          "invalidPolicies": 4,
+          "scope": "Actual packaged paired runtime bytes through top-level local/document and shared original/general/document startup in three grammars and two histories. Explicit shortcuts, exact checkpoint reopening/future history, no persisted enable flag, React StrictMode and immutable session configuration, exact reopen after retirement, and invalid-policy refusal before host/storage mutation. DOM, events, IndexedDB and locks are fixtures; installed archives and native browser/clipboard/platform qualification remain separate."
+        }
+      },
+      "productionBundles": {
+        "localModules": 44,
+        "sharedReactModules": 66,
+        "localImportsSharedOrReact": false,
+        "workspaceModules": false
+      },
+      "scope": "Independent offline installed archives, public package imports, bundled paired Wasm, strict public policy/old-command types, unchanged explicitly selected DOM proof and complete root/React probes, exact reopen and ephemeral opt-in behavior, source-callback cancellation, exclusion paths and production bundle isolation. Explicit current-runtime-only mode neither requires local historical runtime caches nor qualifies their compatibility; omitted historical proof classes are recorded. DOM/events/IDB/locks remain synthetic; no native input/browser, license, performance or V1 release approval. Reuse mode explicitly excludes a fresh producer rebuild."
+    },
+    "historical": {
+      "format": "breditor/input-rules-ui-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "proofPolicy": {
+        "mode": "with-historical-references",
+        "historicalReferences": true,
+        "expectedStartupRefusals": 8,
+        "expectedLegacyReplacementRefusals": 1,
+        "deferred": []
+      },
+      "localWasmSha256": "bd3433279cb86ee5b6128c10136f6176e77eea9e1a5ee06e1ae961408db5a5af",
+      "sharedWasmSha256": "f90e2af62a8525c9751cfe7fce90101c1d5f745fee03b11ed46c58b819c0ae8c",
+      "earlierWasmSha256": {
+        "local": "223162260274b7e05bc50985bfc5f121d7b935466c6aa4bdc5423eafbe0a5572",
+        "shared": "ec92c59007ac71822025747547a5324d8b6c42602b0e838e8c5512a261059921"
+      },
+      "priorSdkWasmSha256": {
+        "local": "2a71b94024f397879b8233efd7a0bc5ce20c5c2086e18682902aee2f12871eef",
+        "shared": "c6aeff4eccdc77321e6517d9740849c25f967de7bdcdb0d4755a3f99aeff3e8a"
+      },
+      "localCases": 12,
+      "sharedCases": 18,
+      "exactRestores": 30,
+      "exactFutureCheckpoints": 120,
+      "defaultLiteralCases": 2,
+      "immutablePacks": 4,
+      "excludedPaths": 20,
+      "callbackRetargetRefusals": 2,
+      "finalOnlyCallbacks": 30,
+      "acceptedInputRefusals": 2,
+      "startupRefusals": 8,
+      "peerConvergence": 1,
+      "naturalBurstCases": 2,
+      "legacyWholeReplacementRefusals": 1,
+      "validCaretSyncs": 2,
+      "staleQueuedInputs": 2,
+      "heldRemoteInputs": 1,
+      "affinityPreservingInputs": 4,
+      "scope": "Actual local/shared Wasm through compiled explicitly opted-in browser coordinators, three grammars and original/general/document scopes, both histories, native formatting and exact recovery, immutable defaults, allowed caret synchronization and callback-retarget rejection, preserved native caret affinity/styles with and without rules, stale queued input refusal, held remote convergence, one final notification, real native refusal reporting, composition/paste/replacement/range/target/programmatic/remote exclusions and partial/unknown capability startup refusal before host mutation. Independently pinned earlier/programmatic-only runtimes reject opt-in before mount; an exact earlier reader reproduces its original anchor refusal for the repaired whole-run replacement checkpoint. Events/DOM/composition are synthetic; no OS IME, clipboard, native browser, installed archive, React or V1 approval is inferred."
+    }
+  },
+  "regressions": {
+    "candidateAndScopeContracts": 28,
+    "allScriptContracts": {
+      "passed": 472,
+      "failed": 0,
+      "skipped": 3
+    },
+    "editor": {
+      "files": 39,
+      "passed": 376,
+      "failed": 0
+    },
+    "archiveBytesExactlyMatchPriorQualification": true,
+    "currentFunctionalCaseCountsMatchHistoricalModeExceptExplicitReferenceOnlyChecks": true
+  },
+  "proofScopes": {
+    "default": "with-historical-references",
+    "ci": "current-runtime-only",
+    "portable": "The flag is required for two-directory invocation. Reports list three historical proof classes as deferred, use null earlier runtime digests and a separate installed-report path. Missing historical files never implicitly reduce coverage.",
+    "historical": "Default mode still requires six directories with exact independently pinned binary hashes, all earlier/programmatic-only startup refusals and the old whole-replacement reader refusal.",
+    "producer": "Both candidate profiles require fresh rebuilds. Explicit development --reuse-runtimes is absent from CI.",
+    "parity": "All numeric current functional counts are identical. Historical mode has eight startup refusals and one old replacement-reader refusal; portable mode has four startup refusals and zero old-reader refusals, explicitly deferred."
+  },
+  "notQualified": [
+    "Hosted CI or execution of the entire official functional/full candidate profile.",
+    "Historical-reader qualification by portable CI. The independent local historical proof remains separate.",
+    "Cross-host reproducibility, native browser/clipboard/IME/accessibility/mobile, performance/size/lifetime, license/source availability, pilot and final RC.",
+    "Remaining shortcut functionality and feature parity."
+  ],
+  "readiness": {
+    "openV1Gates": 13,
+    "v1Ready": false,
+    "publicationApproved": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

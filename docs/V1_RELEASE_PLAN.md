@@ -43,6 +43,15 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [input-rule candidate pipeline checkpoint](qualification/2026-10-18-input-rules-candidate-pipeline.json)
+adds mandatory portable DOM/root/React and fresh installed acceptance to both
+official profiles. Ten selected checks are satisfied through seven passing
+stages and a three-stage continuation against identical source. It retains the
+failed runner configurations, 472 passing script contracts and 376 editor tests.
+All current-case counts and packaged bytes match the historical-reference proof.
+The portable CI scope explicitly leaves pinned-reader qualification separate;
+hosted CI, the complete candidate profiles and all 13 V1 gates remain open.
+
 The [browser input rules and installed-package checkpoint](qualification/2026-10-18-input-rules-browser-installed.json)
 passes one source-frozen 27-check run. Immutable opt-in typing shortcuts now work
 through vanilla, root startup and React owners, with exact caret/publication
@@ -57,9 +66,9 @@ Affected older shared readers still reject newly supported replacement
 checkpoints, so participants and backup readers must meet the fixed runtime
 minimum. The evidence records that refusal explicitly; this is not universal
 backward compatibility or a repair of the historical intermittent WebKit fault.
-Remaining shortcuts, portable inclusion in the official candidate plan and all
-13 V1 gates remain open. No release version, push, tag, publication or deployment
-is promoted.
+Portable candidate-plan inclusion was still unfinished at that checkpoint and
+is added separately above. Remaining shortcuts and all 13 V1 gates stay open.
+No release version, push, tag, publication or deployment is promoted.
 
 The earlier [exclusive typing and SDK checkpoint](qualification/2026-10-18-exclusive-input-rules-sdk.json)
 passes one source-frozen 19-check run. It adds combined native typing/conversion

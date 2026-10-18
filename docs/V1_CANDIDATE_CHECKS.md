@@ -30,6 +30,18 @@ lock; it does not use workspace links. Its explicit `--reuse-runtimes` mode is
 available for focused development checks and records that no fresh producer
 rebuild was qualified. The candidate profile does not select that mode.
 
+Input rules add current-runtime DOM/root/React probes and a fresh independent
+installed consumer to both profiles. Their portable
+`--current-runtime-only` scope needs no untracked historical runtime cache and
+records three historical proof classes as deferred, not passed. All current
+functional cases remain required. The stricter default standalone checker still
+requires the exact pinned earlier/prior SDK pairs; it never silently substitutes
+new binaries or falls back when those references are unavailable. The two scopes
+write separate reports. The
+[local pipeline checkpoint](qualification/2026-10-18-input-rules-candidate-pipeline.json)
+retains both scopes, identical current-case counts and unchanged archive bytes.
+It is selected-stage qualification, not hosted CI or a complete profile run.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and
