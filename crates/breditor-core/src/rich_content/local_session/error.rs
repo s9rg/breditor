@@ -3,6 +3,9 @@
 /// Failure of one queued local rich dispatch or exact replay.
 #[derive(Debug, thiserror::Error)]
 pub enum RichLocalSessionError {
+    /// Explicit native Markdown shortcut planning or complete admission failed.
+    #[error(transparent)]
+    InputRule(#[from] crate::rich_content::RichInputRuleError),
     /// Native source-bound search/replacement planning or final admission failed.
     #[error(transparent)]
     Search(#[from] crate::rich_content::RichSearchError),

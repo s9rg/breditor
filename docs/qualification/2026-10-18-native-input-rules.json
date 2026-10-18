@@ -1,0 +1,617 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "40e498339b18082ba7b5058e5408a22f47ed8656",
+  "scope": "Native Rust input-rule recognition/planning, explicit local and shared application, existing-record exact history, peer preservation and recovery in exact earlier Wasm readers. Native foundation only: no new Wasm/SDK/vanilla/React automatic-rule feature or V1 release approval.",
+  "source": {
+    "commit": "40e498339b18082ba7b5058e5408a22f47ed8656",
+    "dirty": true,
+    "sha256": "c54fce9c841c03f7d5b0919af9b48a6be5c2838fecfc880ea23468ffab02470e",
+    "files": 4207,
+    "bytes": 37123760
+  },
+  "sourceBinding": {
+    "sourceIdenticalAcrossNativeRunAndContinuation": true,
+    "codeAndBuildInputsUnchangedAfterVerification": true,
+    "codeAndBuildInputs": [
+      {
+        "path": "Cargo.lock",
+        "bytes": 17432,
+        "sha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c",
+        "modifiedAtMs": 1792350124024.3672
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 1892,
+        "sha256": "2dd0e23ab0a4a8d642a1b11607a501c7a57b0bc9e92013538a258a0fa9f0110c",
+        "modifiedAtMs": 1792093639056.6235
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.lock",
+        "bytes": 39247,
+        "sha256": "d76d57f59a66c1b6fb52b41ca199d65fd1da19af7e85079c4630f307af011cdb",
+        "modifiedAtMs": 1792350663415.8357
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.toml",
+        "bytes": 1634,
+        "sha256": "34c9bbafb8ac65659367874fe6bfcc98d6c44a839f9cc88b16952a6d3f8f2959",
+        "modifiedAtMs": 1792362024879.8743
+      },
+      {
+        "path": "crates/breditor-collaboration/examples/shared_input_rules_checkpoint_probe.rs",
+        "bytes": 5019,
+        "sha256": "aed615c467cc07dbde732fab2bf4cd97a19a9607792171bd6c4a0d59b84d4cb7",
+        "modifiedAtMs": 1792362024779.3433
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/apply_markdown_input_rule.rs",
+        "bytes": 7480,
+        "sha256": "acc774540bf7720eeabcf20fa20395f1d3126b074e6e96cfdfbbbdaaa8896631",
+        "modifiedAtMs": 1792361633140.6067
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/mod.rs",
+        "bytes": 4943,
+        "sha256": "b22e2eb51ec1fd515a2903c6770530573a2dbc5bad156f4cd62642b1fd2ce17e",
+        "modifiedAtMs": 1792361633175.949
+      },
+      {
+        "path": "crates/breditor-collaboration/tests/input_rule_contracts.rs",
+        "bytes": 13985,
+        "sha256": "01dd22a61317fd15e8e58dd50fe91fbbf78da19df8fe09044d816c06fae2315d",
+        "modifiedAtMs": 1792361920995.3801
+      },
+      {
+        "path": "crates/breditor-core/Cargo.toml",
+        "bytes": 1426,
+        "sha256": "476fc36f6fa96f79e6a2bceeb53e2bcbd51d386562f3c08a061d031141308b81",
+        "modifiedAtMs": 1792362024846.0981
+      },
+      {
+        "path": "crates/breditor-core/examples/local_input_rules_checkpoint_probe.rs",
+        "bytes": 4098,
+        "sha256": "70a33c42f9c2505fac9b7f1330cb25fdf0d0bd628766dbba7704e024178d18bb",
+        "modifiedAtMs": 1792362024712.9656
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/block_rule.rs",
+        "bytes": 1700,
+        "sha256": "bacfc2b70cf0ef51d0397e4e60204c47bc4e259f38813129c1efe2d264a439d9",
+        "modifiedAtMs": 1792361632066.7083
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/error.rs",
+        "bytes": 1015,
+        "sha256": "1805c5306383e6d127e3886f1d899ed451ec45bec08533fee8dd090c6bb72b88",
+        "modifiedAtMs": 1792361464776.7349
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/inline_rule.rs",
+        "bytes": 2484,
+        "sha256": "4cc5ece2d2cc7dcc000c0c27b09af488e93e521602771350b6b7b7dc678551bd",
+        "modifiedAtMs": 1792361632067.5295
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/mod.rs",
+        "bytes": 930,
+        "sha256": "5a59f250bc4e35dab849f4f1cdaac6bc937ba1cab1216abae92b41f331de5eb8",
+        "modifiedAtMs": 1792361464744.9807
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/plan.rs",
+        "bytes": 10642,
+        "sha256": "b7fc264611779928e2c6fc4d92a8e4bc98aeaab3d9cde3aef533eaa2755ad056",
+        "modifiedAtMs": 1792361753127.0386
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/source.rs",
+        "bytes": 3748,
+        "sha256": "887ff46c3619c865f58aa36c0221374c2a0557cce1edbd6b161f1a35efef3501",
+        "modifiedAtMs": 1792361632071.3896
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/input_rules/step.rs",
+        "bytes": 2898,
+        "sha256": "281a90ed45efa3070fbee2b850b0d7680d1ea39c0077a08f5e5bee437083e956",
+        "modifiedAtMs": 1792361632071.6304
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/apply_markdown_input_rule.rs",
+        "bytes": 1988,
+        "sha256": "75adac06f9d23f1427e6a6675e237fc1f2a3a4bfe47559cf2ae2812891fe4e37",
+        "modifiedAtMs": 1792361632073.1082
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/error.rs",
+        "bytes": 3015,
+        "sha256": "e2b254f454dade85767c15b51441bd5a3148517974c5dea61d22f702f67798d6",
+        "modifiedAtMs": 1792361465068.4727
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/mod.rs",
+        "bytes": 7745,
+        "sha256": "0d31a23ec0225edf57cf56d878cf24fcd32b1ae6d121871dced1bdc021544002",
+        "modifiedAtMs": 1792361632079.758
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/mod.rs",
+        "bytes": 5321,
+        "sha256": "63a9cfb4482a3c921d879341d4a25d558cdea9e68e70f1b45b3f4be4d543c337",
+        "modifiedAtMs": 1792361632090.9165
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_input_rules.rs",
+        "bytes": 18373,
+        "sha256": "cc2094751de9b6f97fdce923da816c0417c32b9bf5354c0eab0b0ea860d18e47",
+        "modifiedAtMs": 1792362000717.723
+      },
+      {
+        "path": "experiments/collaboration/Cargo.lock",
+        "bytes": 39386,
+        "sha256": "d3b1a16695479ab94e4747a3826c69dae55d6a16b8d4306832757299d35d72ca",
+        "modifiedAtMs": 1792350663998.4712
+      },
+      {
+        "path": "experiments/collaboration/Cargo.toml",
+        "bytes": 1671,
+        "sha256": "8cff35276066fcff3f345607dd0331500c03a0deb9f2aad463f2bee177ab55d2",
+        "modifiedAtMs": 1792093639096.3213
+      },
+      {
+        "path": "experiments/collaboration/tests/input_rule_contracts.rs",
+        "bytes": 265,
+        "sha256": "1e2f5596ea675662cdfd79286713ff9aac1e01ba1542718158d9eb5b4109c5a0",
+        "modifiedAtMs": 1792361715324.0676
+      },
+      {
+        "path": "package-lock.json",
+        "bytes": 82558,
+        "sha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+        "modifiedAtMs": 1792192061899.6638
+      },
+      {
+        "path": "package.json",
+        "bytes": 4684,
+        "sha256": "e969211d47d4270569c11ca11bf42b2bc1a8b84922d39fffcc69c4ff126fbd52",
+        "modifiedAtMs": 1792341117294.9895
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 123,
+        "sha256": "81e722cea65ca61d2a17462fc3dc015f3d4c804024d15b6afa395ec454519a9f",
+        "modifiedAtMs": 1788226262447.9456
+      },
+      {
+        "path": "scripts/candidate-release/evidence.mjs",
+        "bytes": 2776,
+        "sha256": "64554e906a09591e442556fc07e75b6e00d220b9debf0e5e8dd6e3054dc29ddb",
+        "modifiedAtMs": 1792344199096.3271
+      },
+      {
+        "path": "scripts/candidate-release/process.mjs",
+        "bytes": 2380,
+        "sha256": "8b3eed3af8d71d2fc59b964b582b28b62f919ce357a7c824f3f3ba00fbca23a8",
+        "modifiedAtMs": 1792341117228.4475
+      },
+      {
+        "path": "scripts/candidate-runtime-paths.mjs",
+        "bytes": 1766,
+        "sha256": "66e23594a56a9e8725ad8a5409dcbef07db1ea181c4cc5cde620560b8aab1b26",
+        "modifiedAtMs": 1792345742594.004
+      },
+      {
+        "path": "scripts/probe-input-rules-old-readers.mjs",
+        "bytes": 4905,
+        "sha256": "74f27ff03ac0bb34b1380803b6cb4e872e9b94beccbe41be2d900fb90acb6063",
+        "modifiedAtMs": 1792361905654.484
+      },
+      {
+        "path": "scripts/verify-candidate.mjs",
+        "bytes": 5193,
+        "sha256": "4bc05664c20047c2a151e88b0c370cc5db7506d5aa4657f29ca115f63fd0f64f",
+        "modifiedAtMs": 1792344199063.1265
+      }
+    ],
+    "followup": "Qualification documentation/evidence links follow the frozen checks. Code/build hashes remain unchanged; this is not a clean immutable RC or current-source runtime qualification."
+  },
+  "qualification": {
+    "passedSelectedChecks": 18,
+    "oneSinglePassingEighteenStageRun": false,
+    "combinedSameSourceContinuation": true,
+    "originalRun": {
+      "manifest": {
+        "path": "target/v1-candidate-runs/run-nJzyig/result.json",
+        "bytes": 13173,
+        "sha256": "7148cc6672131ef92f82ab5ef08b1a4c51a3c6c58aee8ca6fca66841d7c1a19f",
+        "modifiedAtMs": 1792362743224.558
+      },
+      "status": "failed",
+      "passedPrefixStages": 11,
+      "failedStage": "earlier-actual-wasm-readers",
+      "reason": "Retained local glue imported a generated 240-byte JavaScript snippet which the development baseline copy omitted. Failure happened at module import, not native replay."
+    },
+    "continuation": {
+      "manifest": {
+        "path": "target/v1-candidate-runs/run-tziVZW/result.json",
+        "bytes": 11802,
+        "sha256": "a85eb1c0b3dd9c940c1c1d40d742afbb5c826f477a92b691b0909448d4444ec9",
+        "modifiedAtMs": 1792362885103.6453
+      },
+      "status": "passed",
+      "selectedChecks": 7,
+      "repair": "Copied and hashed the missing generated snippet from the unchanged original old runtime. No source, binary identity, native tests or assertions changed."
+    },
+    "environment": {
+      "node": "v22.14.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "startedAt": "2026-10-18T22:22:47.516Z",
+    "finishedAt": "2026-10-18T22:34:45.103Z",
+    "evidenceRetention": "Ignored local target/temporary evidence, not remote or immutable release artifacts.",
+    "stages": [
+      {
+        "id": "workspace-format",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/01-workspace-format.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "shared-format",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/02-shared-format.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "workspace-lint",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/03-workspace-lint.log",
+        "logSha256": "7b1e4b3ed37ae6580e4fe2aa975ab0f83c8e508529df0445b226b9cf9ad19dfb"
+      },
+      {
+        "id": "shared-lint",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/04-shared-lint.log",
+        "logSha256": "4bf89cf0de273edead944038eec33666cc2b5e3d9fe7ef6b54e4273e17e699f9"
+      },
+      {
+        "id": "workspace-native",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/05-workspace-native.log",
+        "logSha256": "a39ec62bcaae5b32a822c916c654db034ce3238bd42f6782e611caf04c12cf3b"
+      },
+      {
+        "id": "shared-native",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/06-shared-native.log",
+        "logSha256": "4cef90ade2e5442d5e794bca60bd74f3b46224f9723841b0d66eb797028bbe1d"
+      },
+      {
+        "id": "input-rules-research",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/07-input-rules-research.log",
+        "logSha256": "7118a393735f0123e52e587cd06dcbe97e99bfd08dbfeb908a64b9d4910daa94"
+      },
+      {
+        "id": "workspace-docs",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/08-workspace-docs.log",
+        "logSha256": "7c47dcc7bfca328d94c53f7e11fa93a7792ab81374249558df3fc65f42c9ac48"
+      },
+      {
+        "id": "shared-docs",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/09-shared-docs.log",
+        "logSha256": "feb76e5c0d86a1ef990b7635230a7373db05444dc86b14e4773512ad3ed94fae"
+      },
+      {
+        "id": "local-checkpoint-producer",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/10-local-checkpoint-producer.log",
+        "logSha256": "64d0cbd4b7e4c6329fde55978dd3d261407b55f34c21add0feebf7e0575ee531"
+      },
+      {
+        "id": "shared-checkpoint-producer",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-nJzyig/11-shared-checkpoint-producer.log",
+        "logSha256": "4cf1030013cc0680cd92c5e3ba580b55bcdd27fd7d4f342832e1f3c57cac1b12"
+      },
+      {
+        "id": "earlier-actual-wasm-readers",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-tziVZW/01-earlier-actual-wasm-readers.log",
+        "logSha256": "b69161a540afe78df112d5f68fba6abc4d4cbc71fe0918e31dac703e5cb13648",
+        "artifacts": [
+          {
+            "path": "target/input-rule-old-readers-40e4983/manifest.json",
+            "bytes": 2590,
+            "sha256": "3f8a5178293b67b8e7a4ec5b37b0aca13bec7d6446ce723dafeb8b8881dbaf39",
+            "modifiedAtMs": 1792362792853.249
+          }
+        ]
+      },
+      {
+        "id": "core-wasm32-check",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-tziVZW/02-core-wasm32-check.log",
+        "logSha256": "048bed672791f6dcea4fb2b962c8933f67d896f2ec0a3a65df0f244c817f78b1"
+      },
+      {
+        "id": "shared-wasm32-check",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-tziVZW/03-shared-wasm32-check.log",
+        "logSha256": "50b572848d6660a0b36373e082b443904811cd77bd67cb5fa592420002d063da"
+      },
+      {
+        "id": "script-contracts",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-tziVZW/04-script-contracts.log",
+        "logSha256": "941fa96ff1a4a6bc2c49e374aa12e98482932db7094a2051d185b4a0b3a0a254"
+      },
+      {
+        "id": "editor-regressions",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-tziVZW/05-editor-regressions.log",
+        "logSha256": "a6a4776741859f813dc9ff8e61b754e80916493ce8a654786d76efcafc2539d0"
+      },
+      {
+        "id": "default-dependency-guard",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-tziVZW/06-default-dependency-guard.log",
+        "logSha256": "886591c8a0956dfdb6837c7c9e6f65af1f9f409051641d44bd1e0cec537de06a"
+      },
+      {
+        "id": "readiness-ledger",
+        "status": "passed",
+        "log": "target/v1-candidate-runs/run-tziVZW/07-readiness-ledger.log",
+        "logSha256": "04a9cd12c6db161116b9560343d10e229c338a19b57f422db33f7e411ef76940"
+      }
+    ]
+  },
+  "verification": {
+    "native": {
+      "workspace": {
+        "passed": 2591,
+        "failed": 0,
+        "ignored": 0,
+        "groups": 168
+      },
+      "shared": {
+        "passed": 587,
+        "failed": 0,
+        "ignored": 0,
+        "groups": 50
+      },
+      "research": {
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "groups": 1
+      }
+    },
+    "focusedContracts": {
+      "core": 10,
+      "shared": 7,
+      "researchRepeated": 7
+    },
+    "strictWorkspaceAndSharedClippy": true,
+    "strictRustDocumentation": true,
+    "coreAndSharedWasm32Compilation": true,
+    "currentSourceWasmRuntimeProduced": false,
+    "scriptContracts": {
+      "passed": 464,
+      "skipped": 3
+    },
+    "editorRegressions": {
+      "passed": 376,
+      "files": 39
+    },
+    "earlierActualWasmReaders": {
+      "format": "breditor/input-rules-old-reader-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "localWasmSha256": "223162260274b7e05bc50985bfc5f121d7b935466c6aa4bdc5423eafbe0a5572",
+      "sharedWasmSha256": "ec92c59007ac71822025747547a5324d8b6c42602b0e838e8c5512a261059921",
+      "localRestores": 16,
+      "sharedRestores": 72,
+      "exactFutureCheckpoints": 352,
+      "nativeFixtures": {
+        "local": {
+          "bytes": 1692176,
+          "sha256": "6a69b4749ad73577ce64945d0fab9c49072f0fb978692ae991a2003be7aabb04"
+        },
+        "shared": {
+          "bytes": 18224979,
+          "sha256": "cf6bfcdfbe33292925a31079b2560345ab357f50c7890c9979ee753f9239dba5"
+        }
+      },
+      "scope": "New native input-rule journals and future selective/local Undo/Redo are recovered by exact earlier actual Wasm binaries which expose no rule application method. All original local/shared grammar-3, explicit/natural/general/document and sampled reviewed/search families use existing records. No new Wasm feature capability, DOM/React/installed integration, physical input or V1 qualification."
+    },
+    "retainedEarlierRuntime": {
+      "manifest": {
+        "path": "target/input-rule-old-readers-40e4983/manifest.json",
+        "bytes": 2590,
+        "sha256": "3f8a5178293b67b8e7a4ec5b37b0aca13bec7d6446ce723dafeb8b8881dbaf39",
+        "modifiedAtMs": 1792362792853.249
+      },
+      "format": "breditor/pinned-pre-input-rule-runtimes",
+      "formatVersion": 1,
+      "sourceCheckpoint": "40e498339b18082ba7b5058e5408a22f47ed8656",
+      "artifacts": [
+        {
+          "path": "target/input-rule-old-readers-40e4983/local/breditor_wasm.js",
+          "bytes": 170822,
+          "sha256": "49f3bfa4abb9e0c0ee556345cb51f7054b88a2420a553236ef02cfe7b15d277d",
+          "modifiedAtMs": 1792362143089.8772
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/local/breditor_wasm.d.ts",
+          "bytes": 93876,
+          "sha256": "f06d110e144f0f853beceb197adcfe6af84af8990476f92c6dfebc3591afe593",
+          "modifiedAtMs": 1792362143091.3445
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/local/breditor_wasm_bg.wasm",
+          "bytes": 5849604,
+          "sha256": "223162260274b7e05bc50985bfc5f121d7b935466c6aa4bdc5423eafbe0a5572",
+          "modifiedAtMs": 1792362143100.3613
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/local/breditor_wasm_bg.wasm.d.ts",
+          "bytes": 28005,
+          "sha256": "025960ad793ce59ddd84952fbd69a595321ef4b93b45314398ace962538bace5",
+          "modifiedAtMs": 1792362143105.1936
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/shared/breditor_shared.js",
+          "bytes": 161244,
+          "sha256": "ad28624ece0ce1cf6ca80d9c04b7151b29677e40babd9a71fc6c470e78fc1c01",
+          "modifiedAtMs": 1792362143113.034
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/shared/breditor_shared.d.ts",
+          "bytes": 61111,
+          "sha256": "7da2084f61ee7fc94b4826e3489fb65fb3ca8cfe4698ccf4ae546c94e9a4a6e0",
+          "modifiedAtMs": 1792362143114.0903
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/shared/breditor_shared_bg.wasm",
+          "bytes": 12805807,
+          "sha256": "ec92c59007ac71822025747547a5324d8b6c42602b0e838e8c5512a261059921",
+          "modifiedAtMs": 1792362143135.65
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/shared/breditor_shared_bg.wasm.d.ts",
+          "bytes": 24034,
+          "sha256": "6f6ac1c66cebedf38a6e98875197d417ae198c82b22c0e03cad804ddcd52c499",
+          "modifiedAtMs": 1792362143144.0386
+        },
+        {
+          "path": "target/input-rule-old-readers-40e4983/local/snippets/breditor-wasm-f24fc87645faed5a/inline0.js",
+          "bytes": 240,
+          "sha256": "c734f62ce43b5fee47e095fd5b4e94deb2a0c92c0e8a5eb621a6a510e6d17826",
+          "modifiedAtMs": 1792362792852.9905
+        }
+      ],
+      "scope": "Exact pre-feature paired binaries, generated glue/declarations and local JavaScript snippet resource closure for independent backward recovery, not current-source production artifacts."
+    }
+  },
+  "contract": [
+    "Explicit native policy only. Existing typing, composition, paste, replacement, remote input, startup defaults and checkpoint families do not automatically select it.",
+    "Retain literal input normally before a separately guarded native transformation group; one Undo restores the complete shortcut including its trigger.",
+    "Native recognition uses scalar-aligned UTF-16 positions across format runs. It excludes structural caption conversions, incompatible grammar/head positions, code blocks and inline code/link spans.",
+    "Dependent ordinary actions are captured against private admitted snapshots. Shared lowering uses only original causal commands and must equal the pure native preview before adoption.",
+    "Shared source-character splices, field choices and wrapper births preserve peer text under selective Undo/Redo; no shared root JSON publication is used.",
+    "A nonmatch retains observations, source, pending state, Redo and typing continuation. Stale/read-only/foreign/identity/limit/late failures publish no partial transformation.",
+    "The declared inline recognition window is 4096 UTF-16 units and source run ceiling 8192; existing document/action/history/journal/transport limits remain unchanged.",
+    "Fresh namespaces are host-owned and shared history rejects reused birth identities even after Undo. No writer, migration, lease or GC authority is inferred."
+  ],
+  "retainedDevelopmentAttempts": [
+    {
+      "kind": "native-visibility-and-refactor-diagnostics",
+      "evidence": [
+        {
+          "path": "/private/tmp/breditor-input-rules-core-first-20261018.log",
+          "bytes": 1873,
+          "sha256": "ba964ce548c991bcd238997594509d0efebcc727239310a286e3d1da0d06ed17"
+        },
+        {
+          "path": "/private/tmp/breditor-input-rules-core-clippy-first-20261018.log",
+          "bytes": 1120,
+          "sha256": "7770c9cbeca7a52b1cf14dfc670f599ec3f362a4c35d11ab7a6cfbe280917e87"
+        }
+      ],
+      "result": "Restricted internal source methods to pub(super), returned the computed caret without an unused initial assignment, and factored structural step construction to satisfy strict lint without waivers."
+    },
+    {
+      "kind": "test-helper-API-corrections",
+      "evidence": [
+        {
+          "path": "/private/tmp/breditor-input-rules-core-tests-first-20261018.log",
+          "bytes": 683,
+          "sha256": "24c7c4a25e233257ac5736cb1ad6797fb456e87f5b2394794d7eb0f0e8cb7ab3"
+        },
+        {
+          "path": "/private/tmp/breditor-input-rules-core-tests-second-20261018.log",
+          "bytes": 656,
+          "sha256": "ca197a5a296ed76967c38577f6987c82753d4e207dd997e6411283205151488f"
+        }
+      ],
+      "result": "The public immutable Children API has neither last() nor public as_slice(). The test now uses its public double-ended iterator. Native rule semantics did not change."
+    },
+    {
+      "kind": "strict-fixture-and-borrow-diagnostics",
+      "evidence": [
+        {
+          "path": "/private/tmp/breditor-input-rules-core-clippy-second-20261018.log",
+          "bytes": 659,
+          "sha256": "91bcb9109d33c1eb4f7250acf737dd26d1b23c259a34a7499ea443e6f6120fc7"
+        },
+        {
+          "path": "/private/tmp/breditor-input-rules-shared-clippy-first-20261018.log",
+          "bytes": 1583,
+          "sha256": "1899d6a1af15c37af713bd286c54a48cc7a19fc9a8cea2c08de88f65d7bfd86f"
+        }
+      ],
+      "result": "Added real mixed merged-cell/caption coverage instead of an unused fixture/lint waiver, used that mixed fixture for compatibility producers, and borrowed the shared test root."
+    },
+    {
+      "kind": "retained-runtime-resource-copy-failure",
+      "manifest": {
+        "path": "target/v1-candidate-runs/run-nJzyig/result.json",
+        "bytes": 13173,
+        "sha256": "7148cc6672131ef92f82ab5ef08b1a4c51a3c6c58aee8ca6fca66841d7c1a19f",
+        "modifiedAtMs": 1792362743224.558
+      },
+      "failedStageLog": {
+        "path": "target/v1-candidate-runs/run-nJzyig/12-earlier-actual-wasm-readers.log",
+        "bytes": 1111,
+        "sha256": "cad47b83e64a7863b3c367a862de586b1036c5f3eba7c85405e8d4dc9f2375b5",
+        "modifiedAtMs": 1792362742947.756
+      },
+      "result": "Original missing-snippet failure remains failed and retained. Same-source continuation fixes only ignored generated resource staging, then passes the earlier-reader and remaining checks."
+    },
+    {
+      "kind": "fixture-executable-identity",
+      "result": "Local/shared producers have distinct Cargo example names, avoiding collisions in the shared test target directory."
+    }
+  ],
+  "environmentCleanup": {
+    "applicationDataRemoved": false,
+    "releaseBinariesRemoved": false,
+    "qualificationEvidenceRemoved": false,
+    "removedRebuildableCompilerCaches": [
+      {
+        "path": "target/relay-native/debug/incremental",
+        "files": 2752,
+        "logicalBytes": 2103663931
+      },
+      {
+        "path": "target/owned-history-relay-native/debug/incremental",
+        "files": 1713,
+        "logicalBytes": 2021607098
+      }
+    ],
+    "recovery": "Only validated, untracked Cargo incremental object/metadata/lock files were removed. Cargo regenerates them; exact original cache bytes were not archived."
+  },
+  "remaining": [
+    "Automatic browser integration needs a native combined typing-and-rule intent before host callbacks, with accepted-literal/rule-refused outcomes rather than retry or false rollback.",
+    "Wasm/SDK capabilities, explicit vanilla/React opt-in, composition/queue/remote boundaries and installed workflows remain active work.",
+    "Existing-item task conversion, adjacent/nested automatic behavior, conventional code-fence Enter, richer delimiter handling and other parity groups remain unfinished.",
+    "All 13 V1 qualification gates remain open. Public API freeze, explicit migration/long-lived storage and asset policy are not approved or changed.",
+    "Earlier Wasm readers qualify recovery only, not a current-source producer build, new Wasm feature, browser/IME/clipboard/accessibility/performance qualification or WebKit repair.",
+    "Dependency/license/source-availability, production relay/auth/assets, complete catalog parity, pilot and final RC approval remain open."
+  ],
+  "publication": {
+    "versionChanged": false,
+    "apiFrozen": false,
+    "pushed": false,
+    "tagged": false,
+    "published": false,
+    "deployed": false,
+    "v1Ready": false,
+    "approved": false
+  }
+}

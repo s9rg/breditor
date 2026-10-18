@@ -34,3 +34,7 @@ workspace = true
 [[example]]
 name = "general_range_checkpoint_probe"
 required-features = ["experimental-rich-content"]
+
+[[example]]
+name = "local_input_rules_checkpoint_probe"
+required-features = ["experimental-rich-content"]

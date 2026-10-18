@@ -6,6 +6,7 @@
 pub mod actions;
 mod affine_text_range;
 mod annotations;
+mod apply_markdown_input_rule;
 mod atom_edit;
 mod block_layout_state;
 mod captions;

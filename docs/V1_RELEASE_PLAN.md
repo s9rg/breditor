@@ -43,6 +43,20 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native input-rule checkpoint](qualification/2026-10-18-native-input-rules.json)
+adds a bounded Rust shortcut planner and explicit local/shared transformations
+using existing semantic actions and history records. Full workspace/shared
+regressions pass 2,591 and 587 tests/doctests; seven canonical contracts also pass
+through the research compatibility build. Strict lint/docs, both wasm32 checks,
+464 script tests and 376 editor regressions pass, with three existing script
+checks skipped. Exact earlier Wasm readers restore 16 local and 72 shared rule
+journals and match 352 future history checkpoints. The evidence retains a
+missing-snippet staging failure and the seven-check continuation against the
+same unchanged source, not an invented single green run. Native combined
+typing/transformation outcomes, Wasm/SDK/browser opt-in and additional automatic
+list/Enter behavior remain active functional work; this is not an integrated
+input-rule feature or a release-gate promotion.
+
 The [search controls integration checkpoint](qualification/2026-10-18-search-controls-installed.json)
 connects borrowed Find/Replace controls to vanilla and React integrations.
 Separately named shared/document search startup retains

@@ -266,11 +266,11 @@
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {
-      "id":"input-rules","area":"Productivity","status":"missing",
+      "id":"input-rules","area":"Productivity","status":"partial",
       "summary":"Markdown shortcuts and automatic text transformations",
-      "current":"Explicit semantic commands are implemented; typed pattern recognition and reversible input rules are not an integrated feature.",
+      "current":"A new explicit Rust policy plans bounded heading/list/quote/task/code/rule and simple inline shortcuts, retaining literal input before one isolated transformation group. Local/shared application reuses existing semantic actions and exact history families; shared tests cover peer preservation and recovery under existing scope/history choices. Wasm/SDK exposure, browser opt-in, installed acceptance, list-item task conversion, adjacent/nested automatic behavior and final qualification remain unfinished.",
       "acceptance":"Add deterministic opt-in rules with composition exclusion, remote-edit boundaries and one-step Undo behavior.",
-      "evidence":["packages/breditor-collaboration/src/controller.ts"],
+      "evidence":["docs/RICH_INPUT_RULES.md","crates/breditor-core/src/rich_content/input_rules/mod.rs","crates/breditor-core/src/rich_content/local_session/apply_markdown_input_rule.rs","crates/breditor-core/tests/rich_input_rules.rs","crates/breditor-collaboration/src/rich_replica/apply_markdown_input_rule.rs","crates/breditor-collaboration/tests/input_rule_contracts.rs","docs/qualification/2026-10-18-native-input-rules.json"],
       "sources":["tiptap-extension","ckeditor-overview"]
     },
     {

@@ -3,6 +3,7 @@
 //! One dispatch retains one explicit history record. Natural user-input grouping
 //! is separately enabled and persisted; original checkpoints/defaults stay exact.
 
+mod apply_markdown_input_rule;
 mod change_selection_formats;
 mod change_selection_layout;
 mod check_observation;

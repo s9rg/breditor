@@ -23,6 +23,7 @@ mod identity;
 mod image_binding;
 mod image_draft;
 mod inline_format_state;
+mod input_rules;
 mod list_draft;
 pub(crate) mod local_session;
 mod navigate_flow;
@@ -65,6 +66,10 @@ pub use general_range_ids::allocate_general_range_paragraphs;
 pub use image_draft::ImageDraft;
 pub use inline_format_state::{
     RichInlineFormatState, RichInlineFormatStateError, inspect_inline_format,
+};
+pub use input_rules::{
+    RICH_INPUT_RULE_MAX_RUNS, RICH_INPUT_RULE_WINDOW_UTF16, RichInputRuleError, RichInputRuleKind,
+    RichInputRulePlan, RichInputRuleStep, plan_rich_markdown_input_rule,
 };
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use local_session::{

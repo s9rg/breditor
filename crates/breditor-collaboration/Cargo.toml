@@ -53,5 +53,9 @@ name = "general_range_checkpoint_probe"
 required-features = ["research"]
 
 [[example]]
+name = "shared_input_rules_checkpoint_probe"
+required-features = ["research"]
+
+[[example]]
 name = "general_semantic_frame_probe"
 required-features = ["research"]
