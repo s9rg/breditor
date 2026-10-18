@@ -43,6 +43,22 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [search boundary and persistence checkpoint](qualification/2026-10-18-search-wasm-sdk-recovery.json)
+adds optional local/application
+Wasm results, complete metadata and programmatic SDK navigation/replacement.
+Actual-Wasm tests pass 12 local and 36 shared cases, 48 exact restores and 192
+subsequent exact history comparisons. Separate synthetic IndexedDB/Web Locks
+tests pass 18 document-only and 12 paired sessions, 73 exact reopens and 13
+deliberately aborted writes, retaining failed-close recovery and writer leases.
+The new search-aware durable families preserve explicit original/general/document,
+natural and reviewed-history choices while old readers continue rejecting them.
+Borrowed controls, decorations, top-level vanilla/React startup, installed
+combined workflows and release qualification remain unfinished. The linked
+evidence pins the tested source and actual binary identities. All 25 selected
+checks pass, including strict Rust checks, 34 focused canonical native tests,
+23 repeated compatibility tests, 461 script tests and 374 editor regressions;
+three existing script checks remain skipped.
+
 The [shared native search checkpoint](qualification/2026-10-18-native-shared-search.json)
 extends the [local search checkpoint](qualification/2026-10-18-native-search-local-replacement.json)
 with guarded original-character replacement, one selective Undo group and an
@@ -58,8 +74,9 @@ or empty-body reinsertion cases. It documents existing Undo placement behavior:
 peer text is preserved, but restored local chunks need not retain the old
 per-character interleaving. The linked evidence retains the failed diagnostic,
 lint and packaging attempts and proves unchanged canonical inputs for the
-research-wrapper follow-up. Wasm/SDK search controls, decorations and connected
-installed acceptance remain unfinished. This native follow-up is separate from
+research-wrapper follow-up. The subsequent programmatic Wasm/SDK exposure above
+does not complete search controls, decorations or connected installed acceptance.
+These follow-ups are separate from
 the source-pinned functional candidate qualification above and closes no release gate.
 
 The [combined installed checkpoint](qualification/2026-10-16-mixed-workflow-functional.json)

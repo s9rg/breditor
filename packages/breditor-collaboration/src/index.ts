@@ -1,4 +1,7 @@
 export {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "./core.js";
+export {SharedSearchResults} from "./search_results.js";
+export {supportsSharedSearchHistory,restoreSharedSearchEditor} from "./profile.js";
+export type {RichSearchQuery,RichSearchReplacement,RichSearchMetadata} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
 export {supportsSharedDocumentSelection,restoreSharedDocumentEditor} from "./profile.js";
 export {compileSharedProfile,compileStandardSharedProfileV1,compileStructuralSharedProfileV2,compileStandardStructuralSharedProfileV2,compileLayoutSharedProfileV3,compileStandardLayoutSharedProfileV3,supportsSharedTypingHistory,restoreSharedTypingEditor,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,type SharedProfileLimits,type SharedFormatPropertyType,type SharedRustProfile,type SharedProfileModule} from "./profile.js";
@@ -45,8 +48,8 @@ export {createLayoutSharedToolbarV3} from "./layout_toolbar_v3.js";
 export {createSharedFlowNavigationControls} from "./flow_controls.js";
 export {paragraph,imageNode,caret,type SharedToolbarControl,type ActionContext} from "./actions.js";
 export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files.js";
-export {SharedPersistentSession,type SharedSessionOptions,type SharedDocumentSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";
-export {SharedReviewPersistentSession,type SharedReviewSessionOptions,type SharedReviewedReviewSessionOptions,type SharedReviewSessionPolicy,type SharedReviewSaveState} from "./persistence/review_session.js";
+export {SharedPersistentSession,type SharedSessionOptions,type SharedDocumentSessionOptions,type SharedSearchSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";
+export {SharedReviewPersistentSession,type SharedReviewSessionOptions,type SharedReviewedReviewSessionOptions,type SharedSearchReviewSessionOptions,type SharedReviewSessionPolicy,type SharedReviewSaveState} from "./persistence/review_session.js";
 export {SharedRelaySync,createSharedDocumentRelaySync} from "./relay/sync.js";
 export {SharedReviewRelaySync} from "./relay/review_sync.js";
 export {registerSharedReviewWriter,registerSharedReviewObserver} from "./relay/review_registration.js";

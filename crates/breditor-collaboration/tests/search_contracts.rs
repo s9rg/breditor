@@ -24,6 +24,89 @@ use breditor_core::{
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+#[test]
+fn readonly_native_match_navigation_needs_no_search_history_and_keeps_redo_and_causal_state()
+-> Result {
+    let (_, mut owner) = setup(prose("cat🙂cat"))?;
+    owner.apply(vec![Command::InsertText(InsertText {
+        block: "body".into(),
+        offset: 0,
+        text: "X".into(),
+    })])?;
+    owner.undo()?;
+    owner.set_read_only_guarded(&observed(&owner)?, true)?;
+    let found = query(&owner, "cat", RichSearchMode::Literal)?;
+    let before = (
+        owner.document_json().to_owned(),
+        owner.causal_version(),
+        owner.undo_count(),
+        owner.redo_count(),
+    );
+    assert!(owner.select_search_match_guarded(&observed(&owner)?, &found, 1)?);
+    assert_eq!(owner.selection()?, Some(range("body", 5, 8)));
+    assert_eq!(
+        (
+            owner.document_json().to_owned(),
+            owner.causal_version(),
+            owner.undo_count(),
+            owner.redo_count()
+        ),
+        before
+    );
+    assert!(!owner.search_history_enabled());
+    old_saved(&owner)?;
+    owner.validate_search_results_guarded(&observed(&owner)?, &found)?;
+    Ok(())
+}
+
+#[test]
+fn navigation_refuses_old_observations_foreign_results_and_new_causal_equal_text_without_publication()
+-> Result {
+    let (profile, mut owner) = setup(prose("cat cat"))?;
+    let peer = profile.join_frame("room".into(), "102".into(), &owner.update_frame()?)?;
+    let found = query(&owner, "cat", RichSearchMode::Literal)?;
+    let foreign = query(&peer, "cat", RichSearchMode::Literal)?;
+    let old = observed(&owner)?;
+    owner.set_selection(Some(&range("body", 0, 0)))?;
+    let before = old_saved(&owner)?;
+    assert!(owner.select_search_match_guarded(&old, &found, 0).is_err());
+    assert!(owner.select_search_match_guarded(&observed(&owner)?, &foreign, 0).is_err());
+    assert!(owner.select_search_match_guarded(&observed(&owner)?, &found, 4096).is_err());
+    assert_eq!(old_saved(&owner)?, before);
+    owner.apply(vec![Command::InsertText(InsertText {
+        block: "body".into(),
+        offset: 0,
+        text: "X".into(),
+    })])?;
+    owner.undo()?;
+    let before = old_saved(&owner)?;
+    assert!(owner.validate_search_results_guarded(&observed(&owner)?, &found).is_err());
+    assert!(owner.select_search_match_guarded(&observed(&owner)?, &found, 0).is_err());
+    assert_eq!(old_saved(&owner)?, before);
+    Ok(())
+}
+
+#[test]
+fn document_review_and_natural_histories_navigate_to_text_without_content_or_history_upgrade()
+-> Result {
+    let (profile, mut owner) = setup(prose("x cat"))?;
+    configure(&mut owner, 2, true, true)?;
+    owner.select_document_guarded(&observed(&owner)?)?;
+    owner.set_read_only_guarded(&observed(&owner)?, true)?;
+    let found = query(&owner, "cat", RichSearchMode::Literal)?;
+    let causal = owner.causal_version();
+    assert!(owner.select_search_match_guarded(&observed(&owner)?, &found, 0)?);
+    assert!(!owner.document_selected());
+    assert_eq!(owner.selection()?, Some(range("body", 2, 5)));
+    assert_eq!(owner.causal_version(), causal);
+    assert_eq!(owner.undo_count(), 0);
+    assert!(!owner.search_history_enabled());
+    let restored = profile.restore_reviewed("room", &old_saved(&owner)?)?;
+    assert_eq!(restored.selection()?, owner.selection()?);
+    owner.validate_search_results_guarded(&observed(&owner)?, &found)?;
+    Ok(())
+}
+
 fn profile() -> Result<SharedRichProfile> {
     profile_version(3)
 }

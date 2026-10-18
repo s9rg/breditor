@@ -1,12 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,suggestionRevisionMethods,suggestionFormatRebaseMethods,suggestionTextRebaseMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
+import {searchOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 test("clipboard interchange requires the complete separate pure capability",()=>{
  for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
 });
 function fixture(){
- const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},SharedSuggestionEffectProof:class {},default:()=>{},initSync:()=>{}};
+ const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},SharedSuggestionEffectProof:class {},SharedSearchResults:class {},default:()=>{},initSync:()=>{}};
+ for(const name of searchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of ["search_history_version","restore_search"])module.SharedRichProfile.prototype[name]=()=>{};
+ for(const name of ["metadata_json","navigate"])module.SharedSearchResults.prototype[name]=()=>{};
  for(const name of documentOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of documentProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of documentClipboardMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -44,8 +48,14 @@ function fixture(){
  for(const name of ["general_range_version","enable_general_ranges","replace_general_range_text","replace_general_range_plain_text","replace_general_range_typing_text","general_checkpoint","general_typing_checkpoint","general_inline_paste_version","paste_general_inline_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_range_version","restore_general","restore_general_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
- return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
+ return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
+test("search requires complete guarded methods, explicit recovery and an opaque native result",()=>{
+ for(const name of searchOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native search capability/);}
+ for(const name of ["search_history_version","restore_search"]){const f=fixture();delete f.module.SharedRichProfile.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native search recovery/);}
+ for(const name of ["metadata_json","navigate"]){const f=fixture();delete f.module.SharedSearchResults.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing opaque native search read/);}
+ const f=fixture();assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations.replace("export class SharedSearchResults {\n private constructor();","export class SharedSearchResults {\n constructor();")),/no public native constructor/);
+});
 test("owned history requires complete native semantic proofs, explicit recovery and no proof constructor",()=>{
  for(const name of reviewedHistoryMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native reviewed-history/);}
  for(const name of ["reviewed_history_version","restore_reviewed"]){const f=fixture();delete f.module.SharedRichProfile.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing reviewed-history recovery/);}

@@ -10,7 +10,9 @@ mod replace_all;
 mod replace_one;
 mod restore;
 mod results;
+mod select_match;
 mod selection;
+mod validate_results;
 
 pub(super) use history_family::journal;
 pub(super) use record::SearchActionV1;

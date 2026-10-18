@@ -2,6 +2,17 @@
 // All logical mutation and retained history remain Rust-owned. Asset storage and
 // uploads are explicit host services, never command side effects.
 import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
+import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
+
+const searchResults=new WeakMap();
+class OwnedRichSearchResults {
+  #metadata;#closed;
+  constructor(owner,raw,closed){this.#closed=closed;try{this.#metadata=parseRichSearchMetadata(raw.metadataJson());searchResults.set(this,{owner,raw});}catch(error){raw.free();throw error;}}
+  metadata(){return this.#metadata;}
+  navigate(active,direction,wrap){const entry=searchResults.get(this);if(!entry)throw new RichCommandError("breditor_rich.search_disposed","The search result is disposed");return read(entry.raw.navigate(JSON.stringify({active,direction,wrap})),true);}
+  dispose(){const entry=searchResults.get(this);if(!entry)return;searchResults.delete(this);try{entry.raw.free();}finally{this.#closed();}}
+}
+function nativeSearchResults(owner,results){const entry=searchResults.get(results);if(!entry||entry.owner!==owner)throw new RichCommandError("breditor_rich.search_owner","The search result is disposed or belongs to another editor");return entry.raw;}
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,RichLocalSessionStore} from "./dist/browser/index.js";
 export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";
@@ -120,8 +131,16 @@ class RichCoreProfile {
 
 class RichCoreEditor {
   #raw; #observation; #language; #selectionPolicy;
+  #searches=new Set();
   constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
+  supportsSearch(){const raw=this.#live();return raw.searchVersion?.()==="1"&&[raw.findText,raw.checkSearchResults,raw.selectSearchMatch,raw.replaceSearchOne,raw.replaceSearchAll].every(method=>typeof method==="function");}
+  #searchOwner(revision){const raw=this.#live();if(revision!==undefined&&revision!==this.#observation.revision)throw new RichCommandError("breditor_rich.stale_observation","The search request was prepared from an older rich view");if(!this.supportsSearch())throw new RichCommandError("breditor_rich.search_unavailable","Use complete matching native search capabilities");return raw;}
+  findText(query,revision){const input=JSON.stringify(query),raw=this.#searchOwner(revision);const native=transfer(raw.findText(this.#observation,input),"results","takeResults");let results;results=new OwnedRichSearchResults(this,native,()=>this.#searches.delete(results));this.#searches.add(results);return results;}
+  checkSearchResults(results,revision){const raw=this.#searchOwner(revision);read(raw.checkSearchResults(this.#observation,nativeSearchResults(this,results)));}
+  selectSearchMatch(results,index,revision){const raw=this.#searchOwner(revision);return this.#publish(raw.selectSearchMatch(this.#observation,nativeSearchResults(this,results),index));}
+  replaceSearchOne(results,index,replacement,revision){const input=JSON.stringify(replacement),raw=this.#searchOwner(revision);return this.#publish(raw.replaceSearchOne(this.#observation,nativeSearchResults(this,results),index,input));}
+  replaceSearchAll(results,replacement,revision){const input=JSON.stringify(replacement),raw=this.#searchOwner(revision);return this.#publish(raw.replaceSearchAll(this.#observation,nativeSearchResults(this,results),input));}
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich editor is disposed"); return this.#raw; }
   /** Optional exact revision guard for a toolbar/async host operation prepared from view(). */
   execute(command, expectedRevision) {
@@ -205,5 +224,5 @@ class RichCoreEditor {
   }
   clipboard() { this.#live(); const value = read(this.#observation.clipboardJson(), true); return value === null ? null : JSON.parse(value); }
   checkpointJson() { const raw=this.#live();return read(this.#selectionPolicy==="document-v1"?raw.documentCheckpointJson():raw.checkpointJson()); }
-  dispose() { this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }
+  dispose() { for(const results of [...this.#searches])results.dispose();this.#observation?.free(); this.#observation = undefined; this.#raw?.free(); this.#raw = undefined; }
 }

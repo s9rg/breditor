@@ -15,6 +15,7 @@ mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod review;
 mod reviewed_history;
+mod search;
 mod selection_formatting;
 mod suggestions;
 mod typing;
@@ -78,10 +79,11 @@ struct ClipboardPaste {
 pub struct RichReplicaProbe {
     inner: RichReplica,
     review: Option<breditor_core::rich_content::review::ReviewSession>,
+    search_reads: std::sync::Arc<()>,
 }
 impl RichReplicaProbe {
     pub(crate) fn from_replica(inner: RichReplica) -> Self {
-        Self { inner, review: None }
+        Self { inner, review: None, search_reads: std::sync::Arc::new(()) }
     }
 }
 #[cfg_attr(feature = "research", wasm_bindgen)]

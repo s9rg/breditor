@@ -31,7 +31,7 @@ fn point(value: &RichTextPoint) -> Result<TextPoint, Error> {
         },
     })
 }
-fn candidate(kind: &RichSelectionKind) -> Result<Selection, Error> {
+pub(super) fn candidate(kind: &RichSelectionKind) -> Result<Selection, Error> {
     Ok(match kind {
         RichSelectionKind::TextRange { anchor, focus } => {
             Selection::TextRange { anchor: point(anchor)?, focus: point(focus)? }

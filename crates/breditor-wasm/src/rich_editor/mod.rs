@@ -27,10 +27,12 @@ mod replace_document_plain_text;
 mod replace_document_typing_text;
 mod restore_typing_editor;
 mod result;
+mod search;
 mod select_document;
 mod selection;
 mod selection_formatting;
 mod view;
+pub use search::{BreditorRichSearchResults, BreditorRichSearchResultsResult};
 
 pub use editor::BreditorRichEditor;
 pub use observation::BreditorRichObservation;

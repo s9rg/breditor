@@ -23,6 +23,8 @@ mod rich_block_layout_patch;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_block_layout_state;
 #[cfg(feature = "experimental-rich-content")]
+mod rich_search;
+#[cfg(feature = "experimental-rich-content")]
 mod rich_selection_coverage;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_selection_format_changes;
@@ -33,6 +35,12 @@ pub use rich_block_layout_patch::{
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_block_layout_state::{
     RICH_BLOCK_LAYOUT_STATE_FORMAT, RICH_BLOCK_LAYOUT_STATE_VERSION, encode_rich_block_layout_state,
+};
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_search::{
+    RICH_SEARCH_RESULTS_FORMAT, RICH_SEARCH_RESULTS_MAX_JSON_BYTES, RICH_SEARCH_RESULTS_VERSION,
+    RichSearchCodecError, decode_rich_search_index, decode_rich_search_navigation,
+    decode_rich_search_query, decode_rich_search_replacement, encode_rich_search_results,
 };
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_selection_coverage::{

@@ -62,7 +62,7 @@ pub use projection::{BreditorProjection, BreditorProjectionResult, BreditorProje
 pub use rich_editor::{
     BREDITOR_RICH_ABI_VERSION, BreditorRichCommandResult, BreditorRichEditor,
     BreditorRichEditorResult, BreditorRichObservation, BreditorRichProfile,
-    BreditorRichProfileResult,
+    BreditorRichProfileResult, BreditorRichSearchResults, BreditorRichSearchResultsResult,
 };
 pub use selection::{BreditorSelection, BreditorSelectionResult};
 pub use string_result::BreditorStringResult;

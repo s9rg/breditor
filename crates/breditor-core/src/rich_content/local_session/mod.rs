@@ -5,6 +5,7 @@
 
 mod change_selection_formats;
 mod change_selection_layout;
+mod check_observation;
 mod close_typing_group;
 mod collapse_document_selection;
 mod commit_content;

@@ -12,10 +12,11 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[wasm_bindgen]
 pub struct BreditorRichEditor {
     pub(super) inner: RichLocalSession,
+    pub(super) search_owner: std::sync::Arc<()>,
 }
 impl BreditorRichEditor {
-    pub(super) const fn new(inner: RichLocalSession) -> Self {
-        Self { inner }
+    pub(super) fn new(inner: RichLocalSession) -> Self {
+        Self { inner, search_owner: std::sync::Arc::new(()) }
     }
 }
 #[wasm_bindgen]

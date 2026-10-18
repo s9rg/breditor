@@ -14,6 +14,8 @@ import {reviewedHistoryIdentity,sameReviewedHistory} from "./reviewed_history_va
 import type {SharedReviewedHistoryIdentity,SharedOwnedSuggestionAcceptance,SharedDocumentSuggestionEffect,SharedSuggestionEffectSummary,SharedSuggestionEffectVerification} from "./reviewed_history_types.js";
 import {sharedProtocolLanguage} from "./protocol.js";
 import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/rendering";
+import type {RichSearchQuery,RichSearchReplacement} from "@breditor/experimental-rich-content";
+import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 export class SharedEditorError extends Error {
  constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
 }
@@ -35,11 +37,13 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #versionPlans=new Set<SharedDocumentVersionRestorePlan>();
  #suggestionPreviews=new Set<SharedDocumentSuggestionPreview>();
  #suggestionEffects=new Set<SharedDocumentSuggestionEffectProof>();
+ #searches=new Set<SharedSearchResults>();
+ readonly #searchHistory:boolean;
  constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
   const options=(args[0]??{}) as SharedEditorOptions<P>;
   if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
   this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
-  this.#raw=raw;this.#selectionPolicy=options.selectionEditing??"original";
+  this.#raw=raw;this.#selectionPolicy=options.selectionEditing??"original";this.#searchHistory=options.searchHistory==="search-v1";
   try{
    if(this.#selectionPolicy!=="original"&&this.#selectionPolicy!=="document-v1")throw new SharedEditorError("selection_policy","Expected selectionEditing original or document-v1");
    if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");
@@ -59,6 +63,12 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
     const actual=JSON.parse(raw.reviewed_history_identity_json!()) as SharedReviewedHistoryIdentity|null;
     if(!actual||!sameReviewedHistory(identity,reviewedHistoryIdentity(actual)))throw new SharedEditorError("reviewed_history_identity","Recovered native history has another identity");
    }else if(raw.reviewed_history_enabled?.()===true)throw new SharedEditorError("reviewed_history_policy","Reviewed recovery requires explicitly pinned reviewedHistory");
+   if(options.searchHistory!==undefined&&options.searchHistory!=="search-v1")throw new SharedEditorError("search_history_policy","Expected explicit search-v1 history");
+   if(this.#searchHistory){
+    if(!this.supportsSearch())throw new SharedEditorError("search_unavailable","Use complete matching native search capabilities");
+    if(!raw.search_history_enabled!()){const initial=this.#observe(raw);try{raw.enable_search_history!(initial);}finally{initial.free();}}
+    if(!raw.search_history_enabled!())throw new SharedEditorError("search_history_policy","Native search history was not enabled");
+   }else if(raw.search_history_enabled?.()===true)throw new SharedEditorError("search_history_policy","Search recovery requires explicitly selected search-v1 history");
    this.#observation=this.#observe(raw);this.#view=this.#observation.view_json();const view=this.view();
    if(options.reviewedHistory!==undefined?view.historyPolicy!=="reviewed-v1":view.historyPolicy!==undefined)throw new SharedEditorError("reviewed_history_policy","Native view must match explicitly selected reviewed history");
    if(view.format!==(this.#selectionPolicy==="document-v1"?"breditor/shared-document-view":"breditor/shared-rich-view")||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching explicitly selected shared view family");
@@ -82,6 +92,17 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
  }
  view():SharedEditorView<P>{this.#live();return JSON.parse(this.#view) as SharedEditorView<P>;}
+ /** Pure matching/navigation remains available without upgrading history or leaving read-only. */
+ supportsSearch():boolean{const r=this.#live();return r.search_version?.()==="1"&&[r.find_text,r.check_search_results,r.select_search_match,r.replace_search_one,r.replace_search_all,r.search_history_enabled,r.enable_search_history,r.search_checkpoint].every(f=>typeof f==="function");}
+ searchHistoryPolicy():"search-v1"|null{this.#live();return this.#searchHistory?"search-v1":null;}
+ #searchOwner(revision?:string):SharedRustOwner{this.#check(revision);if(!this.supportsSearch())throw new SharedEditorError("search_unavailable","Use complete matching native search capabilities");return this.#live();}
+ /** No query/template/matched text is copied into metadata or recovery records. */
+ findText(query:RichSearchQuery,revision?:string):SharedSearchResults{const input=JSON.stringify(query),raw=this.#searchOwner(revision),native=raw.find_text!(this.#observation,input);let result:SharedSearchResults;result=new SharedSearchResults(this,native,()=>this.#searches.delete(result));this.#searches.add(result);return result;}
+ checkSearchResults(result:SharedSearchResults,revision?:string):void{this.#searchOwner(revision).check_search_results!(this.#observation,nativeSearchResults(this,result));}
+ selectSearchMatch(result:SharedSearchResults,index:string,revision?:string):boolean{this.#searchOwner(revision);return this.#run("local",(raw,o)=>raw.select_search_match!(o,nativeSearchResults(this,result),index),revision,false);}
+ replaceSearchOne(result:SharedSearchResults,index:string,replacement:RichSearchReplacement,revision?:string):boolean{const input=JSON.stringify(replacement);this.#searchOwner(revision);this.#requireSearchHistory();return this.#run("local",(raw,o)=>raw.replace_search_one!(o,nativeSearchResults(this,result),index,input),revision);}
+ replaceSearchAll(result:SharedSearchResults,replacement:RichSearchReplacement,revision?:string):boolean{const input=JSON.stringify(replacement);this.#searchOwner(revision);this.#requireSearchHistory();return this.#run("local",(raw,o)=>raw.replace_search_all!(o,nativeSearchResults(this,result),input),revision);}
+ #requireSearchHistory():void{if(!this.#searchHistory)throw new SharedEditorError("search_history_required","Replacement requires explicit search-v1 history and its matching recovery factory");}
  /** Complete opt-in native pairing; old binaries must not fall back to JavaScript review state. */
  supportsReview():boolean{const r=this.#live();return r.review_version?.()==="1"&&[r.review_enabled,r.enable_review,r.capture_review_anchor,r.resolve_review_anchor,r.review_view_json,r.dispatch_review,r.undo_review,r.redo_review,r.set_review_access,r.receive_review,r.export_review,r.review_checkpoint].every(f=>typeof f==="function");}
  #requireReview():SharedRustOwner{const raw=this.#live();if(!this.#reviewEnabled||!this.supportsReview())throw new SharedEditorError("review_unavailable","Enable the complete matching native review lane first");return raw;}
@@ -258,7 +279,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
  deleteUserRange(selection:Extract<RichSelection,{kind:"text"}>,direction:"backward"|"forward",clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().delete_typing_range!(o,JSON.stringify({selection,direction,clockMs})),revision);}
- checkpointJson():string{const view=this.view();if(view.historyPolicy==="reviewed-v1")return this.#reviewedOwner().reviewed_checkpoint!();if(this.#selectionPolicy==="document-v1")return view.historyGrouping==="typing-v1"?this.#documentOwner().document_typing_checkpoint!():this.#documentOwner().document_checkpoint!();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
+ checkpointJson():string{const view=this.view();if(this.#searchHistory)return this.#live().search_checkpoint!();if(view.historyPolicy==="reviewed-v1")return this.#reviewedOwner().reviewed_checkpoint!();if(this.#selectionPolicy==="document-v1")return view.historyGrouping==="typing-v1"?this.#documentOwner().document_typing_checkpoint!():this.#documentOwner().document_checkpoint!();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
  /** Separate read capability; neither method publishes, imports content or changes local UI. */
  supportsDocumentPresence():boolean{const raw=this.#live();return this.supportsDocumentSelection()&&raw.document_presence_version?.()==="1"&&typeof raw.document_presence_frame==="function"&&typeof raw.resolve_document_presence==="function";}
@@ -321,5 +342,5 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   const error=new SharedEditorError("retired","The shared writer retired before queued remote admission");
   for(const entry of pending){entry.cleanup();entry.reject(error);}
  }
- dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const plan of [...this.#versionPlans])plan.dispose();for(const preview of [...this.#suggestionPreviews])preview.dispose();for(const proof of [...this.#suggestionEffects])proof.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
+ dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const result of [...this.#searches])result.dispose();for(const plan of [...this.#versionPlans])plan.dispose();for(const preview of [...this.#suggestionPreviews])preview.dispose();for(const proof of [...this.#suggestionEffects])proof.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
 }

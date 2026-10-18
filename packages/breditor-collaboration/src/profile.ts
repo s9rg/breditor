@@ -27,6 +27,7 @@ export type SharedProfileDescriptor=SharedProtocolBinding&Pick<SharedOwnerDescri
 };
 /** Independent compiled factory. Caller frees it after all create/restore callbacks finish. */
 export interface SharedRustProfile {
+ search_history_version?():string;restore_search?(room:string,journal:string):SharedRustOwner;
  reviewed_history_version?():string;restore_reviewed?(room:string,journal:string):SharedRustOwner;
  descriptor_json():string;inline_catalog_json():string;create(document:string,writer:string):SharedRustOwner;
  join_frame(room:string,writer:string,frame:string):SharedRustOwner;
@@ -35,6 +36,9 @@ export interface SharedRustProfile {
  general_range_version?():string;restore_general?(room:string,journal:string):SharedRustOwner;restore_general_typing?(room:string,journal:string):SharedRustOwner;
  document_selection_version?():string;restore_document?(room:string,journal:string):SharedRustOwner;restore_document_typing?(room:string,journal:string):SharedRustOwner;
 }
+/** Explicit search replay. Original factories never infer this family from saved JSON. */
+export function supportsSharedSearchHistory(profile:SharedRustProfile):boolean{return profile.search_history_version?.()==="1"&&typeof profile.restore_search==="function";}
+export function restoreSharedSearchEditor(profile:SharedRustProfile,room:string,journal:string):SharedRustOwner{if(!supportsSharedSearchHistory(profile))throw new SharedEditorError("search_history_unavailable","Use matching native search-history recovery");return profile.restore_search!(room,journal);}
 /** Explicit reviewed replay, never a fallback to old factories or document import. */
 export function restoreSharedReviewedEditor(profile:SharedRustProfile,room:string,journal:string):SharedRustOwner{
  if(profile.reviewed_history_version?.()!=="1"||typeof profile.restore_reviewed!=="function")throw new SharedEditorError("reviewed_history_unavailable","Use matching native reviewed-history recovery");

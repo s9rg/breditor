@@ -9,18 +9,19 @@ import {checkReviewRecord,readReviewRecord,writeReviewRecord,type ReviewCheckpoi
 import {checkReviewRelayRecord,readReviewRelayRecord,writeReviewRelayRecord,type ReviewRelayCheckpointRecord} from "./review_relay_database.js";
 import {checkReviewObserverRecord,readReviewObserverRecord,writeReviewObserverRecord,type ReviewObserverCheckpointRecord} from "./review_observer_database.js";
 import {checkReviewedReviewRecord,readReviewedReviewRecord,writeReviewedReviewRecord,type ReviewedReviewCheckpointRecord} from "./reviewed_review_database.js";
+import {checkSearchReviewRecord,readSearchReviewRecord,writeSearchReviewRecord,type SearchReviewCheckpointRecord} from "./search_review_database.js";
 import {reviewedHistoryIdentity,sameReviewedHistory} from "../reviewed_history_validation.js";
 import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 import {reviewProgress,reviewStorageIdentity} from "../relay/review_validation.js";
 import type {SharedReviewRelayStorageIdentity,SharedReviewRelayProgress} from "../relay/review_types.js";
-type PairedRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord;
+type PairedRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord|SearchReviewCheckpointRecord;
 export interface SharedReviewSessionPolicy<P extends SharedSelectionPolicy=SharedSelectionPolicy> {history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:P;richLanguage:1|2|3}
 /** Explicit paired recovery. Factories run only after both document and review writers are leased. */
 export interface SharedReviewSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends SharedReviewSessionPolicy<P> {
  database:string;room:string;writer:string;review:SharedReviewPolicy;
  create:()=>SharedRustOwner|Promise<SharedRustOwner>;
  restore:(documentCheckpoint:string,policy:Readonly<SharedReviewSessionPolicy<P>>)=>SharedRustOwner|Promise<SharedRustOwner>;
- onError?:(error:unknown)=>void;editor?:Omit<SharedEditorOptions<"document-v1">,"selectionEditing"|"reviewedHistory">;
+ onError?:(error:unknown)=>void;editor?:Omit<SharedEditorOptions<"document-v1">,"selectionEditing"|"reviewedHistory"|"searchHistory">;
  /** Explicit new storage family; never infer/upgrade a local-only paired record. Contains no secrets. */
  relay?:SharedReviewRelayStorageIdentity;
 }
@@ -29,7 +30,12 @@ export interface SharedReviewedReviewSessionOptions<P extends SharedSelectionPol
  reviewedHistory:SharedReviewedHistoryIdentity;
  restoreReviewed:(checkpoint:string,policy:Readonly<SharedReviewSessionPolicy<P>>)=>SharedRustOwner|Promise<SharedRustOwner>;
 }
-type SessionOptions<P extends SharedSelectionPolicy>=Omit<SharedReviewSessionOptions<P>,"restore">&{reviewedHistory?:SharedReviewedHistoryIdentity};
+/** Explicit search family, including optional reviewed ownership; no old paired-record migration. */
+export interface SharedSearchReviewSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends Omit<SharedReviewSessionOptions<P>,"restore"> {
+ reviewedHistory?:SharedReviewedHistoryIdentity;
+ restoreSearch:(checkpoint:string,policy:Readonly<SharedReviewSessionPolicy<P>>)=>SharedRustOwner|Promise<SharedRustOwner>;
+}
+type SessionOptions<P extends SharedSelectionPolicy>=Omit<SharedReviewSessionOptions<P>,"restore">&{reviewedHistory?:SharedReviewedHistoryIdentity;searchHistory?:"search-v1"};
 export interface SharedReviewSaveState {status:"saved"|"pending"|"failed"|"closed";documentRevision:string|null;reviewRevision:string|null;error:string|null}
 /** Native document/review owners plus a local immutable packet catalog, saved as one atomic record. */
 export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
@@ -55,22 +61,30 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   if(typeof input.restoreReviewed!=="function"||identity.principal!==input.review.principal)return Promise.reject(new SharedEditorError("reviewed_session_identity","Reviewed recovery/account must be explicitly paired"));
   return this.#open(input,input.restoreReviewed,identity);
  }
- static async #open<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"restore">,restoreSaved:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity):Promise<SharedReviewPersistentSession<Q>>{
+ static async openSearch<Q extends SharedSelectionPolicy>(input:SharedSearchReviewSessionOptions<Q>):Promise<SharedReviewPersistentSession<Q>>{
+  const identity=input.reviewedHistory===undefined?undefined:reviewedHistoryIdentity(input.reviewedHistory);
+  if(typeof input.restoreSearch!=="function"||identity&&identity.principal!==input.review.principal)throw new SharedEditorError("search_review_identity","Search recovery and reviewed account must be explicitly paired");
+  return this.#open(input,input.restoreSearch,identity,true);
+ }
+ static async #open<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"restore">,restoreSaved:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity,search=false):Promise<SharedReviewPersistentSession<Q>>{
+  if("searchHistory" in input&&input.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
+  if(input.editor&&"searchHistory" in input.editor&&input.editor.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
   if(input.editor&&"reviewedHistory" in input.editor&&input.editor.reviewedHistory!==undefined)throw new SharedEditorError("reviewed_session_factory","Select reviewed history through the paired factory, not nested editor options");
   if(input.relay!==undefined&&(!input.relay||typeof input.relay!=="object"||Array.isArray(input.relay)))throw new SharedEditorError("review_relay_identity","Expected an explicit nonsecret relay storage identity");
-  const options:SessionOptions<Q>={...input,review:{...input.review},...(input.relay?{relay:reviewStorageIdentity(input.relay)}:{}),...(reviewed?{reviewedHistory:reviewed}:{})};
+  const options:SessionOptions<Q>={...input,review:{...input.review},...(input.relay?{relay:reviewStorageIdentity(input.relay)}:{}),...(reviewed?{reviewedHistory:reviewed}:{}),...(search?{searchHistory:"search-v1"}:{})};
   if(options.relay?.reviewEditing==="read_only"&&options.review.access!=="read_only")throw new SharedEditorError("review_observer_policy","A fixed metadata observer must start with read-only native policy");
   if(![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))throw new SharedEditorError("review_session_policy","Explicit compatible review session policies are required");
   const documentLease=await SharedWriterLease.acquire(options.room,options.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined;
   try{
    reviewLease=await ReviewWriterLease.acquire(options.room,options.review.actor);db=await openSessionDatabase(options.database);
-   const saved=await(reviewed?readReviewedReviewRecord(db,[options.room,options.writer]):options.relay?.reviewEditing==="read_only"?readReviewObserverRecord(db,[options.room,options.writer]):options.relay?readReviewRelayRecord(db,[options.room,options.writer]):readReviewRecord(db,[options.room,options.writer]));
-   if(reviewed&&saved&&(!("reviewedHistory" in saved)||!sameReviewedHistory(reviewed,saved.reviewedHistory)||!!saved.relay!==!!options.relay))throw new SharedEditorError("reviewed_session_identity","Stored reviewed identity/family differs from the selected source");
+   const saved=await(search?readSearchReviewRecord(db,[options.room,options.writer]):reviewed?readReviewedReviewRecord(db,[options.room,options.writer]):options.relay?.reviewEditing==="read_only"?readReviewObserverRecord(db,[options.room,options.writer]):options.relay?readReviewRelayRecord(db,[options.room,options.writer]):readReviewRecord(db,[options.room,options.writer]));
+   if(search&&saved&&(!("reviewedHistory" in saved)||!!saved.reviewedHistory!==!!reviewed||!!saved.relay!==!!options.relay))throw new SharedEditorError("search_review_identity","Stored search paired family differs from the explicitly selected source");
+   if(reviewed&&saved&&(!("reviewedHistory" in saved)||!saved.reviewedHistory||!sameReviewedHistory(reviewed,saved.reviewedHistory)||!!saved.relay!==!!options.relay))throw new SharedEditorError("reviewed_session_identity","Stored reviewed identity/family differs from the selected source");
    if(options.relay&&(options.relay.room!==options.room||options.relay.documentWriter!==options.writer||options.relay.actor!==options.review.actor||options.relay.principal!==options.review.principal||saved&&("relay" in saved&&saved.relay?JSON.stringify(reviewStorageIdentity(saved.relay))!==JSON.stringify(options.relay):true)))throw new SharedEditorError("review_relay_identity","Stored relay binding does not match this explicitly paired session");
    if(saved&&(saved.reviewActor!==options.review.actor||saved.principal!==options.review.principal||saved.history!==options.history||saved.rangeEditing!==options.rangeEditing||saved.selectionEditing!==options.selectionEditing||saved.richLanguage!==options.richLanguage))throw new SharedEditorError("review_session_identity","Stored review identity/policies do not match the explicitly leased session");
    const selected:SharedReviewSessionPolicy<Q>={history:options.history,rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,richLanguage:options.richLanguage};
    const raw=await(saved?restoreSaved.call(options,saved.documentCheckpointJson,Object.freeze(selected)):options.create());
-   const editor={...options.editor,...(reviewed?{reviewedHistory:reviewed}:{}),...(options.onError&&!options.editor?.onError?{onError:options.onError}:{})};
+   const editor={...options.editor,...(reviewed?{reviewedHistory:reviewed}:{}),...(search?{searchHistory:"search-v1" as const}:{}),...(options.onError&&!options.editor?.onError?{onError:options.onError}:{})};
    // The immutable constructor branch and stored policy check above establish the generic family.
    core=(options.selectionEditing==="document-v1"?createSharedDocumentEditor(raw,editor):new SharedRichEditor<"original">(raw,editor)) as unknown as SharedRichEditor<Q>;
    if(core.richLanguageVersion()!==options.richLanguage)throw new SharedEditorError("review_session_identity","Native language differs from the declared paired session");
@@ -86,12 +100,13 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  #failed(error:unknown):void{this.#failure=error;try{this.#options.onError?.(error);}catch{/* Reporting cannot replace either native history. */}}
  #record(versions=this.#versions):PairedRecord{
   const base={formatVersion:1 as const,history:this.#options.history,rangeEditing:this.#options.rangeEditing,selectionEditing:this.#options.selectionEditing,richLanguage:this.#options.richLanguage,reviewActor:this.#options.review.actor,principal:this.#options.review.principal,documentCheckpointJson:this.core.checkpointJson(),reviewCheckpointJson:this.core.reviewCheckpoint(),versions:[...versions.values()]};
+  if(this.#options.searchHistory)return {format:"breditor/shared-search-review-checkpoint-record",...base,reviewedHistory:this.#options.reviewedHistory?{...this.#options.reviewedHistory}:null,relay:this.#options.relay?{...this.#options.relay}:null,progress:this.#options.relay?structuredClone(this.#relayProgress):null};
   if(this.#options.reviewedHistory)return {format:"breditor/shared-reviewed-review-checkpoint-record",...base,reviewedHistory:{...this.#options.reviewedHistory},relay:this.#options.relay?{...this.#options.relay}:null,progress:this.#options.relay?structuredClone(this.#relayProgress):null};
   if(!this.#options.relay)return {format:"breditor/shared-review-checkpoint-record",...base};
   const relay={...this.#options.relay},progress=structuredClone(this.#relayProgress);
   return relay.reviewEditing==="read_only"?{format:"breditor/shared-review-observer-checkpoint-record",...base,relay:{...relay,reviewEditing:"read_only"},progress}:{format:"breditor/shared-review-relay-checkpoint-record",...base,relay,progress};
  }
- #checkRecord(record:PairedRecord):void{if(record.format==="breditor/shared-reviewed-review-checkpoint-record")checkReviewedReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-observer-checkpoint-record")checkReviewObserverRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-relay-checkpoint-record")checkReviewRelayRecord(record,[this.#options.room,this.#options.writer]);else checkReviewRecord(record,[this.#options.room,this.#options.writer]);}
+ #checkRecord(record:PairedRecord):void{if(record.format==="breditor/shared-search-review-checkpoint-record")checkSearchReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-reviewed-review-checkpoint-record")checkReviewedReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-observer-checkpoint-record")checkReviewObserverRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-relay-checkpoint-record")checkReviewRelayRecord(record,[this.#options.room,this.#options.writer]);else checkReviewRecord(record,[this.#options.room,this.#options.writer]);}
  #validateNativeProgress(progress:SharedReviewRelayProgress):void{if(this.#options.relay?.reviewEditing==="read_only"&&this.core.localReviewClock().through!=="0")throw new SharedEditorError("review_observer_authored","An observer's native recovery cannot contain an authored metadata suffix");if(progress.accepted){const own=this.core.localReviewClock();if(own.actor!==progress.accepted.actor)throw new SharedEditorError("review_relay_identity","Native review writer differs from saved progress");const local=this.core.reviewWriterClock(own.actor,this.#options.review.principal,progress.accepted.through);if(local.prefixDigest!==progress.accepted.prefixDigest)throw new SharedEditorError("review_relay_fork","Saved acceptance does not match native retained history");}}
  /** Exact readable paired export, including after a failed save/close; it grants no live permissions. */
  exportRecovery():PairedRecord{this.#live();return this.#record();}
@@ -110,7 +125,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  /** Synchronously capture both exact native lanes; coalesce only complete superseded pairs. */
  save():void{this.#live();if(this.#options.relay?.reviewEditing==="read_only")this.#validateNativeProgress(this.#relayProgress);const record=this.#record();this.#checkRecord(record);const encoded=JSON.stringify(record);if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=record;this.#failure=undefined;this.#start();}
  #start():void{if(this.#running||this.#closed||!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
- async #drain():Promise<void>{while(this.#pending&&!this.#closed){this.#documentLease.assertLive();this.#reviewLease.assertLive();const next=this.#pending;this.#pending=undefined;try{if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,[this.#options.room,this.#options.writer],next);else await writeReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);}catch(error){this.#pending??=next;throw error;}this.#saved=JSON.stringify(next);if("progress" in next&&next.progress)this.#durableRelayProgress=structuredClone(next.progress);}}
+ async #drain():Promise<void>{while(this.#pending&&!this.#closed){this.#documentLease.assertLive();this.#reviewLease.assertLive();const next=this.#pending;this.#pending=undefined;try{if(next.format==="breditor/shared-search-review-checkpoint-record")await writeSearchReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,[this.#options.room,this.#options.writer],next);else await writeReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);}catch(error){this.#pending??=next;throw error;}this.#saved=JSON.stringify(next);if("progress" in next&&next.progress)this.#durableRelayProgress=structuredClone(next.progress);}}
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  async retry():Promise<void>{this.#live();if(this.#running)await this.#running;this.save();await this.flush();}
  /** Capture and retain one immutable named snapshot; publication and packet persistence are host-local. */

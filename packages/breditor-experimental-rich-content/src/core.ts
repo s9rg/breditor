@@ -10,6 +10,22 @@ export interface RichCell {table: string; row: string; column: string}
 export type RichSelection = {kind: "text"; anchor: RichPoint; focus: RichPoint} | {kind: "node"; block: string} | {kind: "grid"; anchor: RichCell; focus: RichCell};
 export type RichSelectionPolicy="original"|"document-v1";
 export type RichHistoryPolicy="explicit"|"typing-v1";
+/** Explicit native matching intent; never a persisted editor command. */
+export interface RichSearchQuery {pattern:string;mode:"literal"|"regex";caseSensitive:boolean;wholeWords:boolean}
+export interface RichSearchReplacement {text:string;mode:"literal"|"captures"}
+/** Read-only metadata is not an edit/navigation credential; retain the opaque result object. */
+export interface RichSearchMetadata {
+ readonly format:"breditor/rich-search-results";readonly formatVersion:1;
+ readonly schema:Readonly<{name:string;version:number;fingerprint:string}>;readonly document:string;
+ readonly count:string;readonly captureCount:string;
+ readonly matches:readonly Readonly<{block:string;start:string;end:string}>[];
+}
+/** Independently disposable native read. Frozen metadata remains readable after disposal. */
+export interface RichSearchResults {
+ metadata():RichSearchMetadata;
+ navigate(active:string|null,direction:"next"|"previous",wrap:boolean):string|null;
+ dispose():void;
+}
 /** Pure schema-admitted source content. This carries no destination allocation or edit authority. */
 export interface RichClipboardTransfer {format:"breditor/rich-clipboard-transfer";formatVersion:1;kind:"text"|"flow"|"grid";structuredJson:string;plainText:string}
 export type RichDocumentSelection=RichSelection|Readonly<{kind:"document"}>;
@@ -60,6 +76,13 @@ export interface RichView {
 export interface RichDocumentView extends Omit<RichView,"format"|"selection"> {format:"breditor/rich-document-view";selection:RichDocumentSelection|null}
 export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "document-v1"?RichDocumentView:RichView;
 export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
+  /** Complete optional Rust capability; absent/older runtimes never fall back to DOM matching. */
+  supportsSearch?():boolean;
+  findText?(query:RichSearchQuery,expectedRevision?:string):RichSearchResults;
+  checkSearchResults?(results:RichSearchResults,expectedRevision?:string):void;
+  selectSearchMatch?(results:RichSearchResults,index:string,expectedRevision?:string):RichCommandOutcome;
+  replaceSearchOne?(results:RichSearchResults,index:string,replacement:RichSearchReplacement,expectedRevision?:string):RichCommandOutcome;
+  replaceSearchAll?(results:RichSearchResults,replacement:RichSearchReplacement,expectedRevision?:string):RichCommandOutcome;
   /** Separate optional parser/export bridge; old owners remain usable without this capability. */
   supportsClipboardInterchange?():boolean;
   admitClipboardRoot?(kind:"text"|"flow"|"grid",rootJson:string):RichClipboardTransfer;

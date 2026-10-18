@@ -11,8 +11,13 @@ Native query compilation, visible-domain traversal, complete match results,
 source-bound navigation and local/shared replacement are implemented natively.
 Separate Replace One and Replace All entry points stage complete semantic splice
 plans and publish one history group. Shared replacement uses an explicitly
-selected recovery family. Wasm/SDK exposure, controls and decorations remain
-active work.
+selected recovery family. Optional Wasm and programmatic SDK APIs now expose
+owned results and exact persistent-session recovery. Borrowed vanilla/React
+controls, decorations and connected installed acceptance remain active work.
+
+The [Wasm and SDK recovery checkpoint](qualification/2026-10-18-search-wasm-sdk-recovery.json)
+pins the actual runtime binaries, tested source and 25 selected checks. It is not
+the full candidate profile or release approval.
 
 ## Search domains and order
 
@@ -148,8 +153,68 @@ A certified fast path indexes a complete plain birth source once. It keeps the
 same original character operations and provenance marks; formatted, fragmented,
 hidden-source and empty-body reinsertion cases use ordinary logical lowering.
 It does not copy unmatched characters, change causal formats or provide a
-wall-clock performance guarantee. The checkpoint remains a native capability:
-Wasm/SDK recovery and connected installed-editor acceptance are separate work.
+wall-clock performance guarantee. Connected installed-editor acceptance remains
+separate from native and programmatic SDK recovery.
+
+## Wasm and programmatic SDK ownership
+
+The optional local runtime declares `searchVersion() === "1"`; the application
+shared runtime declares `search_version() === "1"`. SDK `supportsSearch()` checks
+the complete matching capability rather than falling back to a JavaScript text
+index. `findText(query, revision?)` returns an opaque owned result, with immutable
+`metadata()`, native `navigate(active, direction, wrap)` and idempotent `dispose()`.
+Metadata includes the schema/document binding, complete count and original block
+intervals, not matched text, query text or captures. Its separate
+`breditor/rich-search-results` format 1 uses canonical decimal strings for counts,
+match indices and UTF-16 offsets, with the existing `sha256:` schema fingerprint.
+
+`checkSearchResults`, `selectSearchMatch`, `replaceSearchOne` and
+`replaceSearchAll` require that opaque result and a current owner observation.
+Cloned metadata is not an edit credential. Native owner/source/causal checks are
+independent of SDK branding. Navigation is allowed in read-only state and does
+not clear Redo. Frozen metadata and pure navigation retain the original read;
+publication must still validate the current source.
+
+Each Wasm owner admits eight live result handles. A complete metadata read has a
+4 MiB encoded ceiling; overflow fails rather than truncating. Dispose results
+when a query is replaced or closed. SDK owner disposal releases every retained
+result; independently retained frozen metadata remains readable. These bounds
+do not change native document, action, history, relay or asset-store ceilings.
+
+Shared reads and navigation need no history upgrade. A shared SDK owner must
+explicitly select `{searchHistory:"search-v1"}` before replacement or recovery.
+`restoreSharedSearchEditor(profile, room, checkpoint)` calls only the matching
+native factory. Adopting a recovered search owner without the explicit option
+fails. The original execute/dispatch unions, ABI defaults and old checkpoint
+factories are not widened.
+
+## Persistent search sessions
+
+`SharedPersistentSession.openSearch` requires explicit grammar, history, range
+and selection policies and a `restoreSearch` callback. It acquires the existing
+exclusive causal writer lease before reading or restoring. Its separately
+declared `breditor/shared-search-checkpoint-record` format 1 stores those policies
+outside the opaque native checkpoint. A stored policy mismatch fails before the
+restore callback. Old durable factories reject the new record and the search
+factory rejects old records; neither rewrites them or imports a fresh AST as a
+substitute for recovery. Migrating an existing durable key needs an explicit
+future host workflow.
+
+`SharedReviewPersistentSession.openSearch` atomically pairs the search source,
+independent comment history, named version catalog and optional reviewed-history
+identity and relay progress in `breditor/shared-search-review-checkpoint-record`
+format 1. Comment/account and relay bindings remain explicit. A failed save or
+close keeps readable recovery and the writer leases until a successful retry or
+explicit discard. Saved bindings are not account credentials or live grants.
+Local search uses the existing exact local checkpoint/store families.
+
+The actual-Wasm functional checks cover 12 local and 36 shared SDK cases, 48
+exact restores and 192 exact subsequent history comparisons. A separate matrix
+uses synthetic IndexedDB/Web Locks for 18 document-only and 12 paired sessions,
+73 exact reopens, 13 aborted writes, 18 corrupt native recoveries refused without
+overwrite, retained versions and optional relay bindings. The matrices qualify
+these programmatic contracts, not native browser storage, installed archives,
+borrowed controls or a production deployment.
 
 ## Resource admission and integration
 
@@ -177,11 +242,11 @@ a zero-operation host transaction policy rejects a changed plan. These bounds do
 not widen ordinary action batches, shared command batches, document admission,
 retained history capacity or checkpoint byte limits.
 
-Local/shared Wasm capabilities, SDK results, borrowed vanilla/React controls and
-decorations must be paired explicitly. An older runtime refuses the optional
-feature without altering ordinary editing. Closing the search UI must preserve
-the editor, drafts and history; asynchronous or stale view results cannot publish
-an edit. Search presentation must remain separate from canonical editing DOM.
+Borrowed vanilla/React controls and decorations still need explicit owner and
+composition/queue integration. An older runtime refuses the optional feature
+without altering ordinary editing. Closing the search UI must preserve the
+editor, drafts and history; asynchronous or stale view results cannot publish an
+edit. Search presentation must remain separate from canonical editing DOM.
 
 Acceptance requires native Unicode/formatting/merged-table fixtures, both local
 and shared ownership, literal and regex/capture replacement, zero-width progress,
