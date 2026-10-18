@@ -1,5 +1,5 @@
 import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountRichEditor,insertImageFiles,type RichCoreEditor,type RichCoreProfile,type RichDomEditor,type RichEditorOptions,type RichCommand,type RichView,type RichCommandOutcome,type RichAssetStore,type AssetInfo,type FlowPosition,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
-import {refreshAssets} from "@breditor/experimental-rich-content/rendering";
+import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -63,6 +63,7 @@ class LocalEditorOwner implements LocalEditor {
 /** One native local owner per host. Failed/cancelled openings retain the original host contents. */
 export async function openLocalEditor(options:LocalEditorOptions):Promise<LocalEditor>{
  options={...options};
+ validateMarkdownInputPolicy(options.inputRules);
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
  if(options.history!==undefined&&options.history!=="explicit"&&options.history!=="typing-v1")throw new TypeError("Expected history explicit or typing-v1");

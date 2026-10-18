@@ -20,6 +20,8 @@ import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClip
 import type {RichSearchQuery,RichSearchReplacement,RichSearchResults} from "./core.js";
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "./search_host.js";
 import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
+import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource} from "./input_rule_intent.js";
+import type {RichInputRuleOutcome} from "./core.js";
 
 export interface RichEditorOptions<P extends RichSelectionPolicy="original"> extends RenderOptions {
  core:RichCoreEditor<P>;
@@ -27,6 +29,10 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  selectionEditing?:P;
  /** Immutable explicit native general-range routing; default keeps original input contracts. */
  rangeEditing?:"original"|"general-v1";
+ /** Immutable explicit browser policy; omitted keeps literal ordinary input. */
+ inputRules?:"markdown-v1";
+ /** Literal input committed, but native shortcut conversion was refused; never retry input. */
+ onInputRuleRefused?:()=>void;
  toolbar?:readonly ToolbarControl<P>[];
  label?:string;
  onChange?:(view:RichEditorView<P>,outcome:RichCommandOutcome)=>void;
@@ -50,7 +56,7 @@ function sameSelection(a:RichDocumentSelection|null,b:RichDocumentSelection|null
  if(a.kind==="text"&&b.kind==="text")return a.anchor.block===b.anchor.block&&a.anchor.offset===b.anchor.offset&&a.anchor.affinity===b.anchor.affinity&&a.focus.block===b.focus.block&&a.focus.offset===b.focus.offset&&a.focus.affinity===b.focus.affinity;
  return false;
 }
-type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never}|{command?:never;search:RichSearchIntent});
+type Work={revision:string;focus:boolean;accepted?:((display:boolean)=>void)|undefined;completion?:RichSearchCompletion}&({command:RichCommand|DocumentIntent;search?:never;inputRule?:never}|{command?:never;search:RichSearchIntent;inputRule?:never}|{command?:never;search?:never;inputRule:MarkdownInputIntent});
 type Composition={block:string;original:string;revision:string;finishing:boolean;target?:Extract<RichSelection,{kind:"text"}>}|{document:true;revision:string;finishing:boolean};
 export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly surface:HTMLDivElement;
@@ -61,6 +67,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #selectionPolicy:P;readonly #document:RichDocumentCoreEditor|undefined;
  #general=false;
  readonly #interchange:RichClipboardInterchange|undefined;
+ readonly #inputRules:boolean;
  readonly #searchEvents=new RichSearchEvents();
  constructor(root:HTMLElement,options:RichEditorOptions<P>&(P extends "document-v1"?RichDocumentEditorOptions:unknown)){
   const policy=options.selectionEditing??"original";
@@ -68,6 +75,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("DOM selection policy must match its explicitly selected native owner");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
+  this.#inputRules=requireMarkdownInputRules(options.inputRules,options.core);
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
   if(this.#document&&options.rangeEditing==="original")throw Error("Document selection requires native general-range browser routing");
   this.#general=!!this.#document||options.rangeEditing==="general-v1";
@@ -126,6 +134,28 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   const selection=readNative(this.surface,this.#model,this.#general?"general-v1":"original");
   if(selection&&!sameSelection(selection,this.#model.view.selection))this.execute({kind:"setSelection",selection},false);
  }
+ #captureMarkdownInput(event:InputEvent):MarkdownInputSource|null {
+  if(!this.#inputRules||event.inputType!=="insertText"||!isPlainInputScalar(event.data??"")||this.#logicalSelection)return null;
+  const ranges=event.getTargetRanges?.()??[];if(ranges.length>1)return null;
+  const target=ranges[0]?readTarget(this.surface,ranges[0]):null;if(ranges.length&&!target)return null;
+  const active=this.surface.ownerDocument.activeElement,owned=active===this.surface||!!active&&this.surface.contains(active);
+  if(this.#document&&owned&&nativeSelectsDocument(this.surface))return null;
+  const native=readNative(this.surface,this.#model,this.#general?"general-v1":"original"),selection=native??this.#model.view.selection;
+  if(selection?.kind!=="text"||target&&!isCurrentCaretTarget(selection,target))return null;
+  const willSync=!this.#busy&&owned&&native!==null&&!sameSelection(native,this.#model.view.selection);
+  return captureMarkdownInputSource(this.#model.view.revision,selection,willSync);
+ }
+ #typeMarkdown(source:MarkdownInputSource,text:string):void {
+  this.#live();if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");
+  const view=this.#options.core.view();checkMarkdownInputSource(view,source);
+  if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
+  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} )});
+  this.#queue.push({inputRule,revision:source.revision,focus:true});this.#drain();
+ }
+ #inputRuleRefused():void {
+  if(this.#disposed)return;this.status.textContent="Typed text was kept; the Markdown shortcut was refused.";
+  try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}
+ }
  /** Commands prepared by asynchronous hosts should pass their observed revision. */
  execute(command:RichCommand,focus=true,expectedRevision=this.#model.view.revision):RichCommandOutcome|"queued" {
   if(isDocumentIntent(command))throw Error("Use the named document-selection DOM methods, not the original execute protocol");
@@ -159,11 +189,12 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   try {while(this.#queue.length){
    if(++drained>128){const error=Error("Rich editor callback command loop exceeded its bound");this.#cancelQueue(error);throw error;}
    const work=this.#queue.shift()!;
-   let published=false,display=true;
+   let published=false,display=true,inputRuleOutcome:RichInputRuleOutcome|undefined;
    try {
     const active=this.surface.ownerDocument.activeElement,ownedFocus=active===this.surface||!!active&&this.surface.contains(active);
     let outcome:RichCommandOutcome;
-    if(work.search)outcome=publishRichSearchIntent(this.#options.core,work.search,work.revision);
+    if(work.inputRule){inputRuleOutcome=publishMarkdownInput(this.#options.core,work.inputRule,work.revision);outcome=inputRuleOutcome==="unchanged"?"unchanged":"content";}
+    else if(work.search)outcome=publishRichSearchIntent(this.#options.core,work.search,work.revision);
     else if(isDocumentIntent(work.command)){if(!this.#document)throw Error("Use the explicit document-selection DOM owner");outcome=publishDocumentIntent(this.#document,work.command,work.revision);}else outcome=this.#options.core.execute(work.command,work.revision);
     published=true;first??=outcome;this.#model=this.#read();this.#logicalSelection=this.#logical();
     if(outcome==="content"||outcome==="undo"||outcome==="redo")render(this.surface,this.#model,this.#options);else paintSelection(this.surface,this.#model);
@@ -173,7 +204,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
     this.#refreshControls();this.status.textContent=`${this.#model.view.readOnly===true?"Read-only · ":""}${outcome} · revision ${this.#model.view.revision}`;
     if(outcome!=="unchanged")this.#options.onChange?.(this.#options.core.view(),outcome);
    }catch(error){display=false;if(!published)work.completion?.reject(error);if(first===undefined)throw error;this.#report(error);}
-   finally{if(published){work.completion?.resolve();work.accepted?.(display);}}
+   finally{if(published){work.completion?.resolve();work.accepted?.(display);if(inputRuleOutcome==="refused")this.#inputRuleRefused();}}
   }}finally{this.#busy=false;this.#notifySearch();}
   return first??"unchanged";
  }
@@ -320,7 +351,9 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   if(this.#model.view.readOnly===true){event.preventDefault();return;}
   if(this.#composition||event.isComposing)return;
   event.preventDefault();this.#attempt(()=>{
-   this.#sync();const type=event.inputType;
+   const markdown=this.#captureMarkdownInput(event);this.#sync();
+   if(markdown){this.#typeMarkdown(markdown,event.data!);return;}
+   const type=event.inputType;
    if(type!=="insertText"&&!type.startsWith("delete"))this.#boundary();
    const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[type],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
    if(this.#selectionFormat(action))return;

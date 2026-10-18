@@ -27,6 +27,15 @@ qualification remain separate from functional checks.
 
 ## Create and use a local owner
 
+Browser owners can explicitly select `inputRules: "markdown-v1"` in mount or
+top-level startup options (React: `initialOptions`). It requires the complete
+native `supportsMarkdownInputRouting()` capability and stays fixed for that
+owner. Omission keeps literal typing; recovery does not persist the opt-in.
+Shortcuts have a separate Undo group restoring their literal trigger. The
+optional `onInputRuleRefused` callback means text was retained but conversion
+was refused, so callers must not retry the input. Paste, composition and
+replacement/range input never invoke automatic rules.
+
 Initialize the bundled opt-in Wasm module once, then pass that exact module to
 the profile factory. Do not mix generated classes from different module heaps.
 Profile-bootstrap V6 contains the same closed typed extension declarations as

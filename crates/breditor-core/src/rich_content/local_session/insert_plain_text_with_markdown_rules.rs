@@ -1,6 +1,6 @@
 //! Exclusive literal typing followed by an optional separately undoable shortcut.
 use super::{RichLocalOutcome, RichLocalSession, RichLocalSessionError, RichLocalSnapshot};
-use crate::rich_content::RichInputRuleOutcome;
+use crate::rich_content::{RichInputRuleOutcome, is_rich_markdown_input_rule_trigger};
 
 impl RichLocalSession {
     /// Retain collapsed-caret plain input and attempt its shortcut before returning.
@@ -29,6 +29,9 @@ impl RichLocalSession {
     ) -> RichInputRuleOutcome {
         if typed != RichLocalOutcome::ContentCommitted {
             return RichInputRuleOutcome::Unchanged;
+        }
+        if !is_rich_markdown_input_rule_trigger(text) {
+            return RichInputRuleOutcome::Inserted;
         }
         match self.apply_markdown_input_rule(&self.snapshot(), text, namespace) {
             Ok(RichLocalOutcome::ContentCommitted) => RichInputRuleOutcome::Applied,

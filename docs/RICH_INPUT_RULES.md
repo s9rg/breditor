@@ -4,18 +4,26 @@ Breditor input rules recognize bounded typed shortcuts and prepare ordinary nati
 edits. They are an explicit behavior policy, not a Markdown parser, document
 format, operation protocol or replacement for semantic toolbar commands.
 
-The Rust planner, local/shared application methods and optional Wasm/SDK calls
-implement the first native policy. Browser opt-in, installed acceptance and
-additional shortcut behavior remain work before this becomes an integrated V1 feature.
-Existing typing, paste, composition, programmatic commands and recovery do not
-enable it implicitly.
+The Rust planner, exclusive local/shared calls and optional Wasm/SDK expose the
+first policy. Vanilla and React browser owners enable it only with
+`inputRules: "markdown-v1"`. Omission keeps ordinary literal input. Additional
+shortcut behavior and final V1 qualification remain unfinished; paste,
+composition, programmatic commands and recovery never enable it implicitly.
 
-The [exclusive typing and SDK checkpoint](qualification/2026-10-18-exclusive-input-rules-sdk.json)
+The [browser and installed-package checkpoint](qualification/2026-10-18-input-rules-browser-installed.json)
+passes 27 selected checks, including fresh official runtime builds, independent
+installed public imports/types, vanilla/root/React routing, exact reload and
+future history. It also reproduces and repairs the shared whole-run replacement
+bug below. Native platform qualification, remaining shortcuts and the V1 gates
+stay open.
+
+The earlier [exclusive typing and SDK checkpoint](qualification/2026-10-18-exclusive-input-rules-sdk.json)
 passes 19 selected checks, including full native regressions, strict lint/docs,
 actual rebuilt Wasm, optional SDK types and search regressions. The current
-programmatic calls restore 84 checkpoints in independently pinned earlier Wasm
-readers and match 336 subsequent Undo/Redo checkpoints. Browser auto-routing and
-installed acceptance remain separate work.
+programmatic cases at that checkpoint restore 84 checkpoints in independently
+pinned earlier Wasm readers and match 336 subsequent Undo/Redo checkpoints.
+That specific compatibility evidence is not a promise that affected older
+readers support the whole-run replacement repair described below.
 
 The [native foundation checkpoint](qualification/2026-10-18-native-input-rules.json)
 records full Rust regressions, strict lint/docs, wasm32 compilation and exact
@@ -74,13 +82,64 @@ above; older runtimes fail explicitly. The shared SDK notifies subscribers once,
 after both native changes finish, and retains its existing reentrancy guard and
 remote queue. Calls require a collapsed text caret; they never replace a range.
 
-Browser auto-routing remains a separate implementation step. It must opt in
-explicitly, use the same command coordinator and remote holds, and invoke the
-exclusive call only for plain local `beforeinput insertText` at the admitted
-caret. Paste, autocorrection/replacement, remote updates, composition,
-grid/node/document replacement and different browser target ranges must keep
-their ordinary paths. Native/SDK exposure alone does not enable shortcuts in
-vanilla or React editors.
+## Browser startup and input routing
+
+Set `inputRules: "markdown-v1"` in local/shared DOM options or top-level startup
+options. React accepts the same policy in `initialOptions`, owned for the current
+`sessionKey`. The coordinator captures the choice at mount; mutating an options
+object or rerendering the same session does not enable or disable shortcuts.
+The option is not a saved setting. Reopening without it keeps literal input,
+even when the restored history contains an earlier shortcut conversion.
+
+Browser routing additionally requires `supportsMarkdownInputRouting()`, backed
+by native `markdownInputRoutingVersion()` / shared
+`markdown_input_routing_version()`, string `1`. This is a separate minimum from
+the unchanged programmatic capability. Older programmatic-only, incomplete or
+unknown packs reject before mount changes the host. Root factories reject an
+unknown policy before acquiring storage or native ownership.
+
+Only one plain local `beforeinput insertText` scalar at an admitted collapsed
+text caret invokes the exclusive call. Different, unreadable or multiple target
+ranges do not trigger rules. Paste, replacement/autocorrection, remote updates,
+composition and node/grid/document/range replacement retain their ordinary
+paths. Browser eligibility checks do not recognize Markdown; native planning
+does that. Ordinary nontrigger characters take a shared native fast path without
+an additional full-view observation read.
+
+The coordinator captures the intended caret before selection synchronization.
+It allows exactly the required selection-only publication, then rejects if a
+callback changed any further publication or retargeted the caret. Queued work
+retains that exact revision and uses the existing bounded queue and remote
+holds. A conversion publishes one final browser notification after both native
+changes, while Undo still restores the complete literal trigger separately.
+
+`onInputRuleRefused?: () => void` reports accepted literal input whose native
+conversion was refused. The status also says the typed text was kept. This is
+not a typing failure and must never cause a retry. It is delivered after the
+accepted input, not while native insertion and conversion are in progress.
+
+## Shared replacement repair and reader compatibility
+
+The browser exclusion checks exposed an older native bug unrelated to shortcut
+recognition: replacing a whole text source could fail while remapping the old
+selection. Deletion removes its birth fragment; replacement characters use the
+distinct empty fragment in that same source. A valid old endpoint could then
+sit at a physical gap that no surviving chunk owned on its captured side.
+
+The fixed reader first keeps every successful original character mapping. Only
+for an unresolved endpoint whose preferred fragment has no visible chunks does
+it try the same physical gap from the other side, then the known fragment gap.
+The retained affinity and coordinates are not rewritten. A floating source-start
+`Before` caret remains before replacement text. General-range tests retain the
+actual resulting caret, exact recovery/Undo/Redo and concurrent peer characters.
+
+A checkpoint containing such a previously refused whole-run replacement needs
+the fixed shared reader. An independently pinned earlier reader still rejects
+that case with its original anchor error. Hosts must match room participants and
+backup readers to the fixed runtime; downgrading those checkpoints to affected
+alpha readers is unsupported. Existing successful mappings, causal writes and
+saved record formats remain unchanged. The browser-routing capability declares
+the minimum runtime, not a new saved policy or automatic history migration.
 
 ## Native shortcut policy
 
@@ -177,10 +236,11 @@ without partial marker deletion. Selective shared Undo preserves peer characters
 the existing causal placement limitations still apply after concurrent
 deletion/Undo/Redo.
 
-## Integration still required
+## Remaining functionality and qualification
 
-Complete the optional Wasm and SDK capability, explicit vanilla/React startup
-selection, composition/queue/remote boundaries and independent installed
-workflow tests. Continue the additional shortcut cases above without changing
-existing saved recipe meanings. Final input, browser, performance, storage,
-compatibility and release qualification remain part of the V1 goal.
+Continue existing-list task conversion, adjacent/nested automatic list behavior,
+conventional code-fence Enter and the additional shortcut cases above without
+flattening rich bodies or changing saved recipe meanings. Final input, browser,
+performance, storage, compatibility and release qualification remain part of the
+V1 goal. Synthetic composition and DOM tests do not qualify an OS input method,
+native clipboard, screen reader or the historical intermittent WebKit fault.

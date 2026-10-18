@@ -21,6 +21,16 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+#[test]
+fn native_trigger_fast_path_keeps_the_exact_complete_event_policy() {
+    use breditor_core::rich_content::is_rich_markdown_input_rule_trigger;
+    for trigger in [" ", "*", "_", "~", "`"] {
+        assert!(is_rich_markdown_input_rule_trigger(trigger));
+    }
+    for other in ["", "#", "x", "🙂", "猫", "\n", "\t", "**", "* ", "# ", "\u{a0}"] {
+        assert!(!is_rich_markdown_input_rule_trigger(other));
+    }
+}
 fn setup(
     version: u8,
     children: Vec<Value>,

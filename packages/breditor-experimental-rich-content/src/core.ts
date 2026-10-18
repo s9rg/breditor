@@ -80,6 +80,8 @@ export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "
 export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
   /** Both exclusive native calls must be present; no JS matching or older-runtime fallback. */
   supportsMarkdownInputRules?():boolean;
+  /** Browser routing has a separate minimum runtime; programmatic version1 stays exact. */
+  supportsMarkdownInputRouting?():boolean;
   insertPlainTextWithMarkdownRules?(text:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
   insertTypingTextWithMarkdownRules?(text:string,clockMs:string,namespace:string,expectedRevision?:string):RichInputRuleOutcome;
   /** Complete optional Rust capability; absent/older runtimes never fall back to DOM matching. */

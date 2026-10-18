@@ -69,7 +69,8 @@ pub use inline_format_state::{
 };
 pub use input_rules::{
     RICH_INPUT_RULE_MAX_RUNS, RICH_INPUT_RULE_WINDOW_UTF16, RichInputRuleError, RichInputRuleKind,
-    RichInputRuleOutcome, RichInputRulePlan, RichInputRuleStep, plan_rich_markdown_input_rule,
+    RichInputRuleOutcome, RichInputRulePlan, RichInputRuleStep,
+    is_rich_markdown_input_rule_trigger, plan_rich_markdown_input_rule,
 };
 pub use list_draft::{RichListDraft, RichListItemDraft, RichListKind};
 pub use local_session::{

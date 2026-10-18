@@ -1,7 +1,7 @@
 //! Guarded literal caret input and optional conversion inside one exclusive owner call.
 use super::{RichReplica, SharedObservation};
 use crate::Error;
-use breditor_core::rich_content::RichInputRuleOutcome;
+use breditor_core::rich_content::{RichInputRuleOutcome, is_rich_markdown_input_rule_trigger};
 
 impl RichReplica {
     /// Retain local caret input, then recognize without a host or remote interleave.
@@ -36,6 +36,9 @@ impl RichReplica {
     ) -> RichInputRuleOutcome {
         if !changed {
             return RichInputRuleOutcome::Unchanged;
+        }
+        if !is_rich_markdown_input_rule_trigger(text) {
+            return RichInputRuleOutcome::Inserted;
         }
         // Even a fallible observation read happens after accepted input. It must
         // therefore be reported as a refusal, never as a rolled-back keystroke.

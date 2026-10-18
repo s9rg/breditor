@@ -289,6 +289,25 @@ impl Index {
             Err(error) => Err(error),
         }
     }
+    pub fn deleted_fragment_gap(
+        &self,
+        source: &str,
+        offset: u32,
+        affinity: Affinity,
+        preferred: &str,
+    ) -> Result<(String, u32), Error> {
+        // A surviving chunk may border this exact source gap from only its
+        // opposite side after full replacement. Do not move the coordinate
+        // or change the retained anchor affinity. In particular, the floating
+        // source-start Before gap stays before newly inserted text.
+        let opposite =
+            if affinity == Affinity::Before { Affinity::After } else { Affinity::Before };
+        match self.source_point(source, offset, opposite, preferred) {
+            Ok(point) => Ok(point),
+            Err(Error::Anchor) => self.empty_point(preferred),
+            Err(error) => Err(error),
+        }
+    }
     fn source_chunk<'a>(
         &'a self,
         source: &str,

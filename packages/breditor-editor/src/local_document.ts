@@ -1,6 +1,6 @@
 /** Explicit document-family SDK owner. Original local startup and checkpoint discriminators stay closed. */
 import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountDocumentRichEditor,type RichCoreProfile,type RichDocumentCoreEditor,type RichDocumentEditorOptions,type RichDomEditor,type RichDocumentView,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
-import {refreshAssets} from "@breditor/experimental-rich-content/rendering";
+import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
 import {initializeLocalRuntime} from "./runtime.js";
 import {claimHost,awaitInitialization} from "./host.js";
@@ -45,6 +45,7 @@ class DocumentOwner implements LocalDocumentEditor {
 /** One explicit document owner per host; rollback preserves the original nodes on failed/cancelled startup. */
 export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions):Promise<LocalDocumentEditor>{
  options={...options};
+ validateMarkdownInputPolicy(options.inputRules);
  if(options.selectionEditing!=="document-v1")throw new TypeError("Expected explicit selectionEditing document-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="general-v1")throw new TypeError("Document editing requires general-v1 ranges");
  if(options.richLanguage!==undefined&&![1,2,3].includes(options.richLanguage))throw new TypeError("Expected richLanguage 1, 2 or 3");

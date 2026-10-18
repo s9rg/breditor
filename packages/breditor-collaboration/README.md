@@ -46,6 +46,18 @@ publication; mutations use the owner's current opaque Rust observation. An
 optional exact revision rejects asynchronous work prepared from an older view.
 Remote publications can be held across input/composition and remain bounded.
 Callback failures cannot rewind content already committed by Rust.
+
+DOM and root/React startup may explicitly select `inputRules: "markdown-v1"`.
+It requires the current native browser-routing capability, is immutable per
+owner and is not persisted in checkpoints. The exclusive native call retains
+literal typing before its separate conversion group, so one Undo restores the
+literal shortcut; callbacks see the final result once. `onInputRuleRefused`
+means the input was accepted and must not be retried. Paste, composition,
+replacement/range edits and remote events stay ordinary input. Whole-source
+replacement now preserves resolvable selection gaps; newly supported cases
+need the fixed shared reader, because affected older alpha readers still
+reject their replay. Match room participants and backup readers to the runtime.
+
 `insertSharedImageFiles` snapshots the bounded file list and insertion position,
 then holds remote publications across asynchronous ingestion. Its original exact
 revision still rejects local UI/history changes; bytes remain available after a

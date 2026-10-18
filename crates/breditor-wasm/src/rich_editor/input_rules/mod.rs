@@ -31,4 +31,11 @@ impl BreditorRichEditor {
     pub fn markdown_input_rules_version(&self) -> String {
         "1".into()
     }
+    /// String1 selects the current source-guarded browser adapter, not a saved policy.
+    #[must_use]
+    #[allow(clippy::unused_self)]
+    #[wasm_bindgen(js_name=markdownInputRoutingVersion)]
+    pub fn markdown_input_routing_version(&self) -> String {
+        "1".into()
+    }
 }

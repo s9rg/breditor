@@ -11,11 +11,13 @@ mod outcome;
 mod plan;
 mod source;
 mod step;
+mod trigger;
 
 pub use error::RichInputRuleError;
 pub use outcome::RichInputRuleOutcome;
 pub use plan::{RichInputRulePlan, plan_rich_markdown_input_rule};
 pub use step::{RichInputRuleKind, RichInputRuleStep};
+pub use trigger::is_rich_markdown_input_rule_trigger;
 
 /// Bounded trailing inline recognition window in original scalar-aligned UTF-16 units.
 /// Block-prefix rules require the complete prefix, never a truncated suffix.

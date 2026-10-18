@@ -135,7 +135,28 @@ impl FlowAnchor {
         {
             return index.empty_point(&self.point.fragment);
         }
-        index.source_point(&self.point.source, offset, self.point.affinity, &self.point.fragment)
+        match index.source_point(
+            &self.point.source,
+            offset,
+            self.point.affinity,
+            &self.point.fragment,
+        ) {
+            // A whole-source replacement deletes the birth fragment, then
+            // inserts into this same source's distinct empty fragment. The
+            // old source still has text, but no surviving chunk owns this
+            // endpoint on its captured side. Resolve that same physical gap
+            // from the other side, then the known fragment gap if necessary.
+            // Successful character routing above
+            // remains exact, including characters moved by concurrent splits.
+            Err(Error::Anchor) if !index.chunks.contains_key(&self.point.fragment) => index
+                .deleted_fragment_gap(
+                    &self.point.source,
+                    offset,
+                    self.point.affinity,
+                    &self.point.fragment,
+                ),
+            result => result,
+        }
     }
     /// Original canonical source identity; paragraph changes never rewrite it.
     #[must_use]

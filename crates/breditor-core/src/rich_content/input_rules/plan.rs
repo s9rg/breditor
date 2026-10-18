@@ -137,7 +137,7 @@ pub fn plan_rich_markdown_input_rule(
     trigger: &str,
     namespace: &str,
 ) -> Result<Option<RichInputRulePlan>, RichInputRuleError> {
-    if !matches!(trigger, " " | "*" | "_" | "~" | "`") {
+    if !super::is_rich_markdown_input_rule_trigger(trigger) {
         return Ok(None);
     }
     let Some(selection) = selection else {

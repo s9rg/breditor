@@ -94,6 +94,8 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  view():SharedEditorView<P>{this.#live();return JSON.parse(this.#view) as SharedEditorView<P>;}
  /** Both exclusive calls and version1 are required; old runtimes never match in JavaScript. */
  supportsMarkdownInputRules():boolean{const r=this.#live();return r.markdown_input_rules_version?.()==="1"&&[r.insert_plain_text_with_markdown_rules,r.insert_typing_text_with_markdown_rules].every(f=>typeof f==="function");}
+ /** Separate browser minimum; older programmatic shortcuts are not silently upgraded. */
+ supportsMarkdownInputRouting():boolean{return this.supportsMarkdownInputRules()&&this.#live().markdown_input_routing_version?.()==="1";}
  #markdownInput(method:"insert_plain_text_with_markdown_rules"|"insert_typing_text_with_markdown_rules",data:{text:string;namespace:string;clockMs?:string},revision?:string):RichInputRuleOutcome{
   const input=JSON.stringify(data);this.#check(revision);
   if(!this.supportsMarkdownInputRules())throw new SharedEditorError("input_rules_unavailable","Use complete matching native Markdown input rules");

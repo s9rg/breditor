@@ -457,6 +457,30 @@ fn deleting_every_character_retains_a_resolvable_empty_fragment_caret() -> TestR
     insert(&doc, "a", 0, Affinity::After, "New🙂")?;
     doc.commit();
     assert_eq!(text(&doc, "a")?, "New🙂");
+    assert_eq!(caret.resolve(&doc)?, ("a".into(), 5));
+    Ok(())
+}
+
+#[test]
+fn replaced_birth_fragment_endpoints_keep_the_known_gap_for_both_affinities() -> TestResult {
+    let doc = seed()?;
+    let anchors = [Affinity::Before, Affinity::After]
+        .into_iter()
+        .flat_map(|affinity| [0, 1, 2, 4, 5, 6].map(move |offset| (offset, affinity)))
+        .map(|(offset, affinity)| {
+            FlowAnchor::capture(&doc, "a", offset, affinity)
+                .map(|anchor| (anchor, offset, affinity))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    delete(&doc, "a", 0, 6)?;
+    doc.commit();
+    insert(&doc, "a", 0, Affinity::After, "New🙂")?;
+    doc.commit();
+    for (anchor, offset, affinity) in &anchors {
+        let expected = if *offset == 0 && *affinity == Affinity::Before { 0 } else { 5 };
+        assert_eq!(anchor.resolve(&doc)?, ("a".into(), expected));
+    }
+    assert_eq!(text(&doc, "a")?, "New🙂");
     Ok(())
 }
 

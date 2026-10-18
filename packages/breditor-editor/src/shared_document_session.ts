@@ -8,6 +8,7 @@ import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSha
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
 import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
+import {validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {SharedInitial,SharedSearchInitial,SharedEditorSessionOptions} from "./shared_session.js";
 import {SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery} from "./shared_document_open_error.js";
 export {SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery} from "./shared_document_open_error.js";
@@ -80,6 +81,7 @@ export async function openSharedDocumentSearchEditor(options:SharedDocumentSearc
 }
 async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptions|SharedDocumentSearchEditorSessionOptions,search:boolean):Promise<SharedDocumentEditorSession>{
  options={...options};
+ validateMarkdownInputPolicy(options.inputRules);
  if(options.coreOptions&&"searchHistory" in options.coreOptions&&options.coreOptions.searchHistory!==undefined)throw new TypeError("Use the separately named search startup factory");
  if(options.selectionEditing!=="document-v1")throw new TypeError("Expected explicit selectionEditing document-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="general-v1")throw new TypeError("Document editing requires general-v1 ranges");

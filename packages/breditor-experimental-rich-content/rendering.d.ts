@@ -16,3 +16,4 @@ export * from "./dist/browser/rich_language.js";
 export * from "./dist/browser/clipboard_interchange.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {RichSearchEvents,type RichSearchHost,type RichSearchHostState,type RichSearchCompletion} from "./dist/browser/search_host.js";
+export * from "./dist/browser/input_rule_intent.js";

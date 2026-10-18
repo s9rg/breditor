@@ -12,6 +12,7 @@ import {initializeSharedRuntime,standardSharedProfileConfiguration,structuralSha
 import {claimHost,awaitInitialization} from "./host.js";
 import {emptyDocumentJson} from "./empty_document.js";
 import {clipboardInterchangeOptions,type ClipboardInterchangeFactory} from "./clipboard_interchange.js";
+import {validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RuntimeInput} from "./runtime_loader.js";
 import {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
 export {SharedEditorOpenError,type SharedEditorRecovery} from "./shared_open_error.js";
@@ -127,6 +128,7 @@ export async function openSharedSearchEditor(options:SharedSearchEditorSessionOp
 }
 async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedSearchEditorSessionOptions,search:boolean):Promise<SharedEditorSession>{
  options={...options};
+ validateMarkdownInputPolicy(options.inputRules);
  if(options.coreOptions&&"searchHistory" in options.coreOptions&&options.coreOptions.searchHistory!==undefined)throw new TypeError("Use the separately named search startup factory");
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");

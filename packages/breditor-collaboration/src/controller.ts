@@ -17,12 +17,18 @@ import {requireClipboardInterchange,readClipboardInput,exportClipboard,writeClip
 import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchQuery,RichSearchReplacement} from "@breditor/experimental-rich-content";
 import type {SharedSearchResults} from "./search_results.js";
+import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputSource} from "@breditor/experimental-rich-content/rendering";
+import type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
  /** Immutable explicit view family; omission keeps the original contract. */
  selectionEditing?:P;
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
  coreOwnership?:"transfer"|"borrow";
+ /** Immutable explicit native shortcut policy; omitted preserves ordinary input. */
+ inputRules?:"markdown-v1";
+ /** Input committed but conversion refused; this is not a failed or repeatable keystroke. */
+ onInputRuleRefused?:()=>void;
  onChange?:(event:SharedPublication<P>)=>void|Promise<void>;onError?:(error:unknown)=>void;
  /** Explicit caption/code text conversion, reported only after successful guarded publication. */
  onPasteLoss?:(report:RichClipboardTextProjection)=>void;
@@ -53,12 +59,14 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
  readonly #interchange:RichClipboardInterchange|undefined;
+ readonly #inputRules:boolean;
  constructor(root:HTMLElement,options:SharedDomOptions<P>&(P extends "document-v1"?SharedDocumentDomOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
   if((options.core.selectionPolicy?.()??"original")!==policy)throw Error("The original shared DOM owner does not admit document-selection facades without an explicit matching policy");
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireSharedDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
+  this.#inputRules=requireMarkdownInputRules(options.inputRules,options.core);
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#isLogical();
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
@@ -105,6 +113,23 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   }finally{this.#refreshing=false;this.#notifySearch();}
  }
  #sync():void{if(this.#busy||this.#composition||this.#logical)return;const active=this.surface.ownerDocument.activeElement;if(active!==this.surface&&(!active||!this.surface.contains(active)))return;if(this.#document&&nativeSelectsDocument(this.surface)){this.#perform(c=>{this.#document!.selectDocument(c.revision);},false);return;}const selection=readNative(this.surface,this.#model);if(selection&&!sameSelection(selection,this.#model.view.selection))this.#perform(c=>{c.core.select(selection,c.revision);},false);}
+ #captureMarkdownInput(event:InputEvent):MarkdownInputSource|null {
+  if(!this.#inputRules||event.inputType!=="insertText"||!isPlainInputScalar(event.data??"")||this.#logical)return null;
+  const ranges=event.getTargetRanges?.()??[];if(ranges.length>1)return null;
+  const target=ranges[0]?readTarget(this.surface,ranges[0]):null;if(ranges.length&&!target)return null;
+  const active=this.surface.ownerDocument.activeElement,owned=active===this.surface||!!active&&this.surface.contains(active);
+  if(this.#document&&owned&&nativeSelectsDocument(this.surface))return null;
+  const native=readNative(this.surface,this.#model),selection=native??this.#model.view.selection;
+  if(selection?.kind!=="text"||target&&!isCurrentCaretTarget(selection,target))return null;
+  const willSync=!this.#busy&&owned&&native!==null&&!sameSelection(native,this.#model.view.selection);
+  return captureMarkdownInputSource(this.#model.view.revision,selection,willSync);
+ }
+ #typeMarkdown(source:MarkdownInputSource,text:string):void {
+  const view=this.#options.core.view();checkMarkdownInputSource(view,source);
+  const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} )});
+  let outcome:RichInputRuleOutcome|undefined;
+  this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused"&&!this.#disposed){this.status.textContent="Typed text was kept; the Markdown shortcut was refused.";try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}});
+ }
  #perform(run:(context:ActionContext<P>)=>void,focus=true,revision=this.#model.view.revision,boundary=false,accepted?:((display:boolean)=>void),completion?:RichSearchCompletion):void{
   this.#live();if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary,accepted,completion});if(this.#busy||this.#composition)return;
   const release=this.#options.core.holdRemotes();this.#busy=true;let error:unknown,drained=0;
@@ -125,7 +150,8 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  replaceSearchOne(results:SharedSearchResults,index:string,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction(c=>{c.core.replaceSearchOne(results,index,frozen,c.revision);},revision);}
  replaceSearchAll(results:SharedSearchResults,replacement:RichSearchReplacement,revision=this.#model.view.revision):Promise<void>{const frozen=JSON.parse(JSON.stringify(replacement)) as RichSearchReplacement;return this.#searchAction(c=>{c.core.replaceSearchAll(results,frozen,c.revision);},revision);}
  execute(request:SharedDispatch,focus=true,revision=this.#model.view.revision):void{const frozen=JSON.parse(JSON.stringify(request)) as SharedDispatch;this.#perform(c=>{c.core.dispatch(frozen,c.revision);},focus,revision);}
- select(selection:RichSelection|null,focus=true):void{const frozen=structuredClone(selection);this.#perform(c=>{c.core.select(frozen,c.revision);},focus);}
+ /** Asynchronous hosts can retain the publication that supplied their selection intent. */
+ select(selection:RichSelection|null,focus=true,revision=this.#model.view.revision):void{const frozen=structuredClone(selection);this.#perform(c=>{c.core.select(frozen,c.revision);},focus,revision);}
  #documentOwner():SharedRichEditor<"document-v1">{this.#live();if(!this.#document)throw new SharedEditorError("selection_policy","Use an explicitly selected shared document DOM owner");return this.#document;}
  selectDocument(this:SharedDomEditor<"document-v1">,revision=this.#options.core.view().revision):void{const core=this.#documentOwner();this.#perform(c=>{core.selectDocument(c.revision);},true,revision);}
  collapseDocumentSelection(this:SharedDomEditor<"document-v1">,side:"before"|"after",revision=this.#options.core.view().revision):void{const core=this.#documentOwner();this.#perform(c=>{core.collapseDocumentSelection(side,c.revision);},true,revision);}
@@ -226,7 +252,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   }
   if((s?.kind==="node"||s?.kind==="grid")&&(event.key==="Backspace"||event.key==="Delete")){event.preventDefault();this.#attempt(()=>this.#perform(c=>removeSelection(c,event.key==="Backspace"?"before":"after")));}
  }
- #input(event:InputEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{this.#sync();const kind=event.inputType;
+ #input(event:InputEvent):void{if(this.#model.view.readOnly===true){event.preventDefault();return;}if(this.#composition||event.isComposing)return;event.preventDefault();this.#attempt(()=>{const markdown=this.#captureMarkdownInput(event);this.#sync();if(markdown){this.#typeMarkdown(markdown,event.data!);return;}const kind=event.inputType;
   if(kind!=="insertText"&&!kind.startsWith("delete"))this.#boundary();
   const action=({formatBold:"bold",formatItalic:"italic",formatUnderline:"underline",formatStrikeThrough:"strike",formatSubscript:"subscript",formatSuperscript:"superscript"} as Record<string,string>)[kind],control=this.#controls.find(item=>item.control.id===action);if(control){control.view.activate();return;}
   if(this.#selectionFormat(action))return;

@@ -19,6 +19,138 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn replacing_a_whole_source_run_keeps_an_admitted_caret_and_exact_future_history() -> Result {
+    for revision in 1..=3 {
+        for document in [false, true] {
+            for natural in [false, true] {
+                for (before, after) in [("#", " "), ("a🙂", "猫🙂"), ("abc", ""), ("猫", "x")]
+                {
+                    let mut root = fixture::root();
+                    root["children"] = json!([
+                        fixture::paragraph("body", before),
+                        fixture::paragraph("other", "untouched")
+                    ]);
+                    let (profile, mut owner) = setup(revision, root)?;
+                    if document {
+                        owner.enable_document_selection_guarded(&owner.observe()?)?;
+                    } else {
+                        owner.enable_general_ranges_guarded(&owner.observe()?)?;
+                    }
+                    let observe = |owner: &RichReplica| {
+                        if document { owner.observe_document() } else { owner.observe() }
+                    };
+                    if natural {
+                        owner.enable_typing_history_guarded(&observe(&owner)?)?;
+                    }
+                    let target =
+                        range("body", 0, "body", u32::try_from(before.encode_utf16().count())?);
+                    owner.set_selection(Some(&target))?;
+                    assert!(owner.replace_general_range_plain_text_guarded(
+                        &observe(&owner)?,
+                        &target,
+                        after,
+                        &[]
+                    )?);
+                    assert_eq!(owner.undo_count(), 1);
+                    let selection = owner.selection()?.ok_or("caret")?;
+                    assert_eq!(
+                        selection,
+                        range(
+                            "body",
+                            u32::try_from(after.encode_utf16().count())?,
+                            "body",
+                            u32::try_from(after.encode_utf16().count())?
+                        )
+                    );
+                    let save = |owner: &RichReplica| {
+                        if document {
+                            if natural {
+                                owner.document_typing_checkpoint()
+                            } else {
+                                owner.document_checkpoint()
+                            }
+                        } else if natural {
+                            owner.general_typing_checkpoint()
+                        } else {
+                            owner.general_checkpoint()
+                        }
+                    };
+                    let bytes = save(&owner)?;
+                    let mut restored = if document {
+                        if natural {
+                            profile.restore_document_typing("room", &bytes)?
+                        } else {
+                            profile.restore_document("room", &bytes)?
+                        }
+                    } else if natural {
+                        profile.restore_general_typing("room", &bytes)?
+                    } else {
+                        profile.restore_general("room", &bytes)?
+                    };
+                    assert_eq!(save(&restored)?, bytes);
+                    for undo in [true, false, true, false] {
+                        if undo {
+                            owner.undo()?;
+                            restored.undo()?;
+                        } else {
+                            owner.redo()?;
+                            restored.redo()?;
+                        }
+                        assert_eq!(save(&owner)?, save(&restored)?);
+                        let document: Value = serde_json::from_str(owner.document_json())?;
+                        let text: String = document["root"]["children"][0]["children"]
+                            .as_array()
+                            .ok_or("body runs")?
+                            .iter()
+                            .filter_map(|n| n["text"].as_str())
+                            .collect();
+                        assert_eq!(text, if undo { before } else { after });
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn whole_source_replacement_preserves_concurrent_peer_text_through_selective_history() -> Result {
+    let mut root = fixture::root();
+    root["children"] =
+        json!([fixture::paragraph("body", "#"), fixture::paragraph("other", "untouched")]);
+    let (profile, mut a) = setup(3, root)?;
+    a.enable_general_ranges_guarded(&a.observe()?)?;
+    let target = range("body", 0, "body", 1);
+    a.set_selection(Some(&target))?;
+    let mut b = profile.join_frame("room".into(), "202".into(), &a.update_frame()?)?;
+    b.apply(vec![Command::InsertText(InsertText {
+        block: "body".into(),
+        offset: 1,
+        text: "PEER".into(),
+    })])?;
+    a.replace_general_range_plain_text_guarded(&a.observe()?, &target, " ", &[])?;
+    a.receive_frame(&b.update_frame()?)?;
+    b.receive_frame(&a.update_frame()?)?;
+    assert_eq!(a.document_json(), b.document_json());
+    assert!(a.document_json().contains("PEER"));
+    for undo in [true, false, true, false] {
+        if undo {
+            a.undo()?;
+        } else {
+            a.redo()?;
+        }
+        b.receive_frame(&a.update_frame()?)?;
+        assert_eq!(a.document_json(), b.document_json());
+        assert!(a.document_json().contains("PEER"));
+        assert!(a.selection()?.is_some());
+        let bytes = a.general_checkpoint()?;
+        let restored = profile.restore_general("room", &bytes)?;
+        assert_eq!(restored.general_checkpoint()?, bytes);
+    }
+    Ok(())
+}
 fn profile(revision: u32) -> Result<SharedRichProfile> {
     let config = json!({"format":"breditor/shared-rich-profile","formatVersion":revision,
         "schema":{"name":"example/shared-general-range","version":1},"extensions":[]})

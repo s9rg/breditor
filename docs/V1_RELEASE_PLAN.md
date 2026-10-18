@@ -43,7 +43,25 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
-The [exclusive typing and SDK checkpoint](qualification/2026-10-18-exclusive-input-rules-sdk.json)
+The [browser input rules and installed-package checkpoint](qualification/2026-10-18-input-rules-browser-installed.json)
+passes one source-frozen 27-check run. Immutable opt-in typing shortcuts now work
+through vanilla, root startup and React owners, with exact caret/publication
+guards, accepted-input refusal reporting and ordinary paste/composition/remote
+exclusions. Fresh official Wasm builds and independent installed archives pass
+public types, reload/history and local-only bundle isolation. Full workspace and
+shared suites pass 2,598 and 594 tests/doctests; 11 research contracts, 468 script
+tests and 376 editor tests pass, with three existing script checks skipped.
+
+The checkpoint also fixes a reproduced native whole-source replacement bug.
+Affected older shared readers still reject newly supported replacement
+checkpoints, so participants and backup readers must meet the fixed runtime
+minimum. The evidence records that refusal explicitly; this is not universal
+backward compatibility or a repair of the historical intermittent WebKit fault.
+Remaining shortcuts, portable inclusion in the official candidate plan and all
+13 V1 gates remain open. No release version, push, tag, publication or deployment
+is promoted.
+
+The earlier [exclusive typing and SDK checkpoint](qualification/2026-10-18-exclusive-input-rules-sdk.json)
 passes one source-frozen 19-check run. It adds combined native typing/conversion
 calls and complete optional Wasm/SDK capabilities without widening old command
 unions or recovery families. Full workspace/shared regressions pass 2,597 and
@@ -51,9 +69,9 @@ unions or recovery families. Full workspace/shared regressions pass 2,597 and
 compatibility. Exact earlier readers restore 84 SDK-created checkpoints and
 match 336 future history boundaries. Strict lint/docs, rebuilt Wasm, types,
 search regressions, 464 script tests and 376 editor regressions pass, with three
-existing script checks skipped. Automatic vanilla/React routing, installed
-acceptance and additional shortcuts remain unfinished; all 13 release gates
-stay open.
+existing script checks skipped. Automatic vanilla/React routing and installed
+acceptance were unfinished at that boundary and are exercised by the checkpoint
+above; additional shortcuts and all 13 release gates stay open.
 
 The [native input-rule checkpoint](qualification/2026-10-18-native-input-rules.json)
 adds a bounded Rust shortcut planner and explicit local/shared transformations

@@ -30,4 +30,9 @@ impl RichReplicaProbe {
     pub fn markdown_input_rules_version(&self) -> String {
         "1".into()
     }
+    /// String1 selects guarded browser routing with resolvable whole-run replacement gaps.
+    #[allow(clippy::unused_self)]
+    pub fn markdown_input_routing_version(&self) -> String {
+        "1".into()
+    }
 }
