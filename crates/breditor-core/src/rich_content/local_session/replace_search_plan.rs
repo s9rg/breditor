@@ -13,16 +13,16 @@ impl RichLocalSession {
         if plan.edits().is_empty() {
             return Ok(RichLocalOutcome::Unchanged);
         }
-        let document = plan.preview(&self.context, &self.state.document)?;
+        let (document, selection) = plan
+            .preview_with_selection(
+                &self.context,
+                &self.state.document,
+                self.state.selection.as_ref(),
+            )?
+            .into_parts();
         if document.document() == self.state.document.document() {
             return Ok(RichLocalOutcome::Unchanged);
         }
-        let selection = self
-            .state
-            .selection
-            .as_ref()
-            .map(|selection| plan.map_selection(selection, &document))
-            .transpose()?;
         // Search never changes block kinds or effective caret policy. Only a
         // mapped caret can retain its explicit pending format override.
         let pending_formats =

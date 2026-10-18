@@ -1,7 +1,9 @@
 //! Snapshot-bound native document search; no DOM, history publication or browser regex.
+mod capture_replacements;
 mod domains;
 mod error;
 mod matcher;
+mod preview_with_selection;
 mod query;
 mod replace_all;
 mod replace_one;
@@ -12,8 +14,10 @@ mod replacement_selection;
 mod replacement_template;
 mod results;
 mod scan;
+mod semantic_replacement;
 
 pub use error::RichSearchError;
+pub use preview_with_selection::RichSearchPreview;
 pub use query::{RichSearchMode, RichSearchQuery};
 pub use replace_all::plan_rich_search_replace_all;
 pub use replace_one::plan_rich_search_replace_one;
@@ -21,6 +25,7 @@ pub use replacement::{RichSearchReplacement, RichSearchReplacementMode};
 pub use replacement_plan::{RichSearchReplacePlan, RichSearchTextEdit};
 pub use results::{RichSearchDirection, RichSearchMatch, RichSearchResults};
 pub use scan::find_rich_text;
+pub use semantic_replacement::RichSearchTextReplacement;
 
 /// Maximum UTF-8 query size before regex compilation or document traversal.
 pub const RICH_SEARCH_MAX_PATTERN_BYTES: usize = 1024;

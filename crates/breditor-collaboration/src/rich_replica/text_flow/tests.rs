@@ -49,7 +49,7 @@ fn restored_original_text_does_not_inherit_a_nearby_unrelated_fragment() -> Test
     Ok(())
 }
 
-fn seed() -> Result<LoroDoc, crate::Error> {
+pub(super) fn seed() -> Result<LoroDoc, crate::Error> {
     let doc = LoroDoc::new();
     doc.set_peer_id(11)?;
     configure(&doc);
@@ -62,7 +62,7 @@ fn seed() -> Result<LoroDoc, crate::Error> {
     doc.commit();
     Ok(doc)
 }
-fn fork(doc: &LoroDoc, writer: u64) -> Result<LoroDoc, crate::Error> {
+pub(super) fn fork(doc: &LoroDoc, writer: u64) -> Result<LoroDoc, crate::Error> {
     let peer = LoroDoc::new();
     peer.set_peer_id(writer)?;
     configure(&peer);
@@ -74,14 +74,19 @@ fn sync(a: &LoroDoc, b: &LoroDoc) -> Result<(), crate::Error> {
     b.import(&a.export(ExportMode::all_updates())?)?;
     Ok(())
 }
-fn split(doc: &LoroDoc, left: &str, offset: u32, right: &str) -> Result<(), crate::Error> {
+pub(super) fn split(
+    doc: &LoroDoc,
+    left: &str,
+    offset: u32,
+    right: &str,
+) -> Result<(), crate::Error> {
     let plan = PreparedSplit::prepare(doc, left, offset, right)?;
     doc.commit();
     plan.apply(doc)?;
     doc.commit();
     Ok(())
 }
-fn join(doc: &LoroDoc, left: &str, right: &str) -> Result<(), crate::Error> {
+pub(super) fn join(doc: &LoroDoc, left: &str, right: &str) -> Result<(), crate::Error> {
     PreparedJoin::prepare(doc, left, right)?.apply(doc)?;
     doc.commit();
     Ok(())

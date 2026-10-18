@@ -260,9 +260,9 @@
     {
       "id":"find-replace","area":"Productivity","status":"partial",
       "summary":"Find and replace",
-      "current":"The optional Rust rich core has source-bound Unicode literal/regex search, semantic table/caption traversal, capture results/navigation and atomic local Replace One/All. Replacement retains untouched formats/identities, maps the actual selection and uses existing replay-proved local branch history rather than persisting queries. Wasm/SDK exposure, search controls/decorations and shared original-character lowering/durable history remain unfinished; this is not an integrated or qualified V1 feature.",
+      "current":"The optional Rust rich core has source-bound Unicode literal/regex search, semantic table/caption traversal, capture results/navigation and atomic local/shared Replace One/All. Shared original-character splices use an explicitly selected recovery family with one selective Undo group, exact mapped UI and source/effect replay rather than saved queries. Wasm/SDK exposure, search controls/decorations and installed combined acceptance remain unfinished; this is not an integrated or qualified V1 feature.",
       "acceptance":"Define literal/Unicode search, navigation and replace-all as one bounded semantic action, excluding hidden or noneditable content by explicit policy.",
-      "evidence":["docs/RICH_SEARCH.md","crates/breditor-core/src/rich_content/search/mod.rs","crates/breditor-core/src/rich_content/local_session/replace_search_all.rs","crates/breditor-core/tests/rich_search.rs","crates/breditor-core/tests/rich_search_replacement.rs"],
+      "evidence":["docs/RICH_SEARCH.md","crates/breditor-core/src/rich_content/search/mod.rs","crates/breditor-core/src/rich_content/local_session/replace_search_all.rs","crates/breditor-core/tests/rich_search.rs","crates/breditor-core/tests/rich_search_replacement.rs","crates/breditor-collaboration/src/rich_replica/search/mod.rs","crates/breditor-collaboration/tests/search_contracts.rs"],
       "sources":["tiptap-catalog","ckeditor-digest"]
     },
     {

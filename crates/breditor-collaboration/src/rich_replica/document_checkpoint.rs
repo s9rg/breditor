@@ -45,6 +45,7 @@ pub(super) fn validate_journal_scope(
                 check(after_ui)?;
             }
             Entry::GeneralRangeV1 { before_ui, after_ui, .. }
+            | Entry::SearchV1 { before_ui, after_ui, .. }
             | Entry::AdoptSuggestionV1 { before_ui, after_ui, .. }
             | Entry::Undo { before_ui, after_ui, .. }
             | Entry::Redo { before_ui, after_ui, .. } => {

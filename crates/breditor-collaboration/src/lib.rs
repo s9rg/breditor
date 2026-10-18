@@ -58,6 +58,9 @@ mod shared_profile_wasm;
 /// Failures isolated before a candidate session replaces published state.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Native search/query/replacement admission failed without echoing user payloads.
+    #[error(transparent)]
+    Search(#[from] breditor_core::rich_content::RichSearchError),
     /// The separate native review lane rejected an action, authority or recovery contract.
     #[error(transparent)]
     Review(#[from] breditor_core::rich_content::review::ReviewError),

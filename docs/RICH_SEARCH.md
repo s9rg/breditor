@@ -8,10 +8,11 @@ atomic Replace All and exact recovered selective history. This work does not
 freeze a V1 API or change existing document, journal or transport meanings.
 
 Native query compilation, visible-domain traversal, complete match results,
-source-bound navigation and local replacement are implemented. Separate Replace
-One and Replace All entry points stage complete semantic splice plans and publish
-one local history group. Wasm/SDK exposure, controls, decorations and shared
-execution/recovery remain active work.
+source-bound navigation and local/shared replacement are implemented natively.
+Separate Replace One and Replace All entry points stage complete semantic splice
+plans and publish one history group. Shared replacement uses an explicitly
+selected recovery family. Wasm/SDK exposure, controls and decorations remain
+active work.
 
 ## Search domains and order
 
@@ -57,9 +58,12 @@ changed tree must fail before replacement; checking the matched string alone is
 insufficient. Search does not publish a selection, change pending formatting,
 consume an ID, create Undo history or clear Redo.
 
-Shared execution must also bind the live causal observation, including peer
-publications that leave the visible AST equal. An AST result is not writer or
-account authority, and cannot replace the owner's stale/read-only/lease guards.
+Shared results bind one live owner, its applied and observed causal versions and
+the exact source tree. UI-only changes may retain a result, but mutation still
+requires the latest observation. New peer operations, Undo/Redo and a different
+or restored owner invalidate it even when the visible AST is equal. An AST
+result is not writer or account authority and cannot replace stale/read-only/lease
+guards.
 
 ## Replacement and history
 
@@ -90,21 +94,62 @@ publication and one explicit Undo group, separate from neighboring typing.
 
 The existing local checkpoint families already support these exact branch
 recipes. No query, capture template or new command is added to their serialized
-history. The local candidate tree is not a shared mutation. Shared lowering must
-target the matched original characters rather than replace a whole text block or
-publish root JSON; foreign characters remain subject to selective-history rules.
+history. The local candidate tree is not a shared mutation. Shared lowering targets
+the matched original characters rather than replacing a whole text block or
+publishing root JSON; foreign characters remain subject to selective-history rules.
 
 Undo/Redo and exact reopen preserve the original before-selection and pending
 formats. A search, stale result, oversized request or late failure leaves no part
-of a replacement installed. Shared history still needs a carrier supporting the
-complete bounded group. If an existing carrier cannot express it without changing
-meaning, use an explicitly selected family rather than adding unknown persisted
-commands to an old journal version. Named versions and review decisions are
-separate histories.
+of a replacement installed. Named versions and review decisions are separate
+histories.
 
 Recovery must record admitted semantic text edits and their source proofs, not
 rerun a saved query against later text or different Unicode tables. A search
 query is transient intent, not a deterministic document-history recipe.
+
+## Shared replacement and recovery
+
+`RichReplica::find_text_guarded` is read-only and needs no history upgrade.
+Replacement requires `enable_search_history_guarded`, then
+`replace_search_one_guarded` or `replace_search_all_guarded`. The explicit
+upgrade retains the writer, accepted content, causal operations and Undo/Redo
+stacks. It preserves independently selected original/general/document scope,
+natural typing and reviewed-history policies in either enable order.
+
+`search_checkpoint` and `SharedRichProfile::restore_search` use
+`breditor/shared-search-session` format 1. Its scope selects a separate version-1
+search journal, with explicit typing and reviewed-history choices. The envelope
+also binds the original causal model and journal versions. Old checkpoint
+encoders refuse search mode; old restore factories refuse the new records and
+family names, even before the first replacement. No automatic family detection,
+schema migration or journal reinterpretation occurs.
+
+Each changed replacement records one source digest, ordered original text
+intervals and expanded insertion text, with exact effects, history identity and
+before/after UI. Replay re-admits semantic ranges through
+`RichSearchReplacePlan::try_from_semantic_replacements`; it derives formats from
+the proved source and never recompiles a saved query. This checked constructor
+does not prove that a search was complete or grant mutation authority.
+
+The staged owner performs descending source-character splices, verifies the
+complete result and mapped actual selection against the native preview, and
+checks update/save/resource bounds before publication. All 4,096 admitted hits
+can belong to one semantic record and one selective Undo group; the ordinary
+64-command batch limit is unchanged. A changed replacement is isolated from
+adjacent typing. True identities, failed admission and reads retain Redo and any
+open typing continuation.
+
+Selective Undo preserves a peer's inserted text but does not promise its old
+per-character interleaving inside a locally deleted chunk. As with ordinary range
+replacement, restored local text can be contiguous beside that peer insertion.
+Search follows the same deterministic causal placement and converges on both peers.
+
+A certified fast path indexes a complete plain birth source once. It keeps the
+same original character operations and provenance marks; formatted, fragmented,
+hidden-source and empty-body reinsertion cases use ordinary logical lowering.
+It does not copy unmatched characters, change causal formats or provide a
+wall-clock performance guarantee. The checkpoint remains a native capability:
+Wasm/SDK recovery and connected installed-editor acceptance are separate work.
 
 ## Resource admission and integration
 

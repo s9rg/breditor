@@ -1,0 +1,641 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "2bbf4a19c0570e597bd2a36010a892c4945172ff",
+  "scope": "Native Rust shared find/replace, one original-character selective history group and explicitly selected semantic recovery, with complete canonical native regressions and focused research compatibility. Not integrated Wasm/SDK search, installed editor acceptance, full candidate qualification or V1 approval.",
+  "source": {
+    "commit": "2bbf4a19c0570e597bd2a36010a892c4945172ff",
+    "dirty": true,
+    "sha256": "b4482bc1eb853a6489568a0b7ac01ec5cac6d6d074135350814adcaa32987425",
+    "files": 4141,
+    "bytes": 36664377
+  },
+  "sourceBinding": {
+    "canonicalNativeSource": {
+      "commit": "2bbf4a19c0570e597bd2a36010a892c4945172ff",
+      "dirty": true,
+      "sha256": "f84111003d45b7d1239aae6575a5bf2ec396c9b8d27e77c076c7ece7aa8c791a",
+      "files": 4140,
+      "bytes": 36664129
+    },
+    "canonicalNativeSnapshotUnchangedAcrossRun": true,
+    "followupSnapshotUnchangedAcrossRun": true,
+    "canonicalCodeAndBuildInputsUnchangedInFollowup": 44,
+    "addedCompatibilityWrapper": "experiments/collaboration/tests/search_contracts.rs",
+    "explanation": "The canonical run passed all eight selected Rust/lint/doc/wasm32 checks, then its script guard failed because the new conformance file lacked a research shim. The only added source in the follow-up is the 248-byte shim. All 44 canonical code/build inputs were checked byte-for-byte before and after the follow-up; the 20 contracts also ran through that shim. No failed manifest is relabeled as passed. This record and the release-plan summary are documentation added after verification.",
+    "codeAndBuildInputs": [
+      {
+        "path": "Cargo.lock",
+        "bytes": 17432,
+        "sha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c"
+      },
+      {
+        "path": "Cargo.toml",
+        "bytes": 1892,
+        "sha256": "2dd0e23ab0a4a8d642a1b11607a501c7a57b0bc9e92013538a258a0fa9f0110c"
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.lock",
+        "bytes": 39247,
+        "sha256": "d76d57f59a66c1b6fb52b41ca199d65fd1da19af7e85079c4630f307af011cdb"
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.toml",
+        "bytes": 1543,
+        "sha256": "c4f235ff7b6fc291acf08d2578d18c4214aa23760091dc2291c964aadc1ce477"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/lib.rs",
+        "bytes": 3746,
+        "sha256": "4e9e3c46e2e4d07a49a42ec9dd8434152e8762dd9e22e47fd0ee43d820499862"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/document_checkpoint.rs",
+        "bytes": 5114,
+        "sha256": "179d643178cc81a065527cf85a2f9bc0c64faae2e900a4806eddb952d424fb94"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/enable_document_selection.rs",
+        "bytes": 1263,
+        "sha256": "e2dab4d2083bd58bee8a35dc9d77c1872aa44c681ec8c1ec4b03fb91b940c3e4"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/enable_typing_history.rs",
+        "bytes": 1129,
+        "sha256": "df6fc7d2b7d756c682a48ee344cde063a53b6416b6f92e4334a49fcc881d38d3"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/general_history.rs",
+        "bytes": 4486,
+        "sha256": "416bdc4c09e096896f3aaccaadd084f4b80e42712c737ae9689d107eec7f77ac"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/mod.rs",
+        "bytes": 4912,
+        "sha256": "7407d37c08b1c8d9aa2dde24c7530b91fd29a6417f67db3f46e14acf0a2bad40"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/reviewed_history/checkpoint_reviewed_history.rs",
+        "bytes": 3269,
+        "sha256": "fb47147772a359c916d1bc6406f0852c0a65031826453afba669045b43287e7a"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/apply.rs",
+        "bytes": 6177,
+        "sha256": "05f9e317a7acc53c4e607d21c8f13e7c08f3e5aecbffaa5c04dfb8877b0c5b66"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/checkpoint.rs",
+        "bytes": 3185,
+        "sha256": "78e10dc05d0977d0006ed5f8d9c219d7191014d81b044b8a76147e8111bd0706"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/enable_history.rs",
+        "bytes": 1501,
+        "sha256": "ec3ca218647e64fd1952f95080275c81bcfb44924dda5390cff29be8f6119771"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/find.rs",
+        "bytes": 966,
+        "sha256": "4ffa71f35f2bfddf710705119d6d87d33586052f4da92cf1b47945e1b9d4d867"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/history_family.rs",
+        "bytes": 1380,
+        "sha256": "6849a7a389ac6bb5d2c0c424c44bc6942a5936dd0569e74f1923e17043ed8d54"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/insert.rs",
+        "bytes": 1636,
+        "sha256": "7c1956fc7f68c312be2eddc9112190fda4e8804832178f06dec3e65c6213c384"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/mod.rs",
+        "bytes": 436,
+        "sha256": "f7a6bcc2f4f4ce45b13a070a453cb21efaddac3757e9f8a8a829a06c3432a861"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/record.rs",
+        "bytes": 6103,
+        "sha256": "19c525ed9c8e9f72949000ecc7a20924c30e57f8e930376772107576ab2ef3c4"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/replace_all.rs",
+        "bytes": 1117,
+        "sha256": "c2fbc44864a966246ebd7c70e5ed1a8f8649b7363ed0517bbae43a176822b7d9"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/replace_one.rs",
+        "bytes": 1119,
+        "sha256": "06445113440e8e70857e1db5c5218abd6ab208db5fcfdbba2a0a4df7e214c8ac"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/restore.rs",
+        "bytes": 2518,
+        "sha256": "4297391284f8ae20cc5a9dce14796bd9db19e0c05f8d16f439dfe8eefdbf11fb"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/results.rs",
+        "bytes": 1835,
+        "sha256": "2ccfb76a306de2a964f5f80d1e59cdcdb2d09a752750344e24bf465017c9aeb4"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/search/selection.rs",
+        "bytes": 3017,
+        "sha256": "7016f2909e146bc3238383bf306a0951795cf2be93249cdac79f01478bd7b806"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/session.rs",
+        "bytes": 52182,
+        "sha256": "f6945e01be09ceb5c03011e4d2ce66d19742a76facfa8c92e510096d0fff8e1e"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/suggestions/prepare_suggestion_effect.rs",
+        "bytes": 8294,
+        "sha256": "ab121346fe012acdb0db3c96f6d04391838b6e2a6ccdcf6ba34954861b7d275e"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/text_flow/mod.rs",
+        "bytes": 4059,
+        "sha256": "d5657e92e69e1de9754aec93655c5aafca0286c726f6581e796f0609f98dbe8f"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/text_flow/plain_search_splices.rs",
+        "bytes": 4991,
+        "sha256": "b5572520022b2ca2f91325eba315307ccd85096b27001212393f838e310d11c4"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/text_flow/plain_search_splices_tests.rs",
+        "bytes": 4419,
+        "sha256": "6116156b0d5a495d32298d97bd6da20bb7cd80376bd9e1b2b0f9d0d29b3a1dd9"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/text_flow/tests.rs",
+        "bytes": 17624,
+        "sha256": "14449e58b439991bdab29bbbcfd3facf982622733386d7542294f2fd1b0cc31b"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/typing_checkpoint.rs",
+        "bytes": 9121,
+        "sha256": "e6df320879d7f3d06b5503f06f437ad7f1e8c6b964ed78da3000eca2d0f9cd56"
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/writer_transport/admission.rs",
+        "bytes": 10065,
+        "sha256": "65162ed35d228b5891f8047d961249f5777c0707ad26ea238031157d9a773d0b"
+      },
+      {
+        "path": "crates/breditor-collaboration/tests/search_contracts.rs",
+        "bytes": 31455,
+        "sha256": "12229a87bf614efd9a8fbb9d3f79bd228d478afae8ed3c30313961ff7e32dd2e"
+      },
+      {
+        "path": "crates/breditor-core/Cargo.toml",
+        "bytes": 1319,
+        "sha256": "e4cbac2873f31a2e07097e5ef5a009e0952c27b6c5ef6800793141897e05b462"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/replace_search_plan.rs",
+        "bytes": 2147,
+        "sha256": "d2b37ce0dad13bbb57ed8810543ccd56fa96e8fa6a519892529dbf77ec6ba164"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/mod.rs",
+        "bytes": 5106,
+        "sha256": "c6e79847958a064e58509cbb8500107369d1ac62627639afd3d892fb58c30c5d"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/capture_replacements.rs",
+        "bytes": 5155,
+        "sha256": "284733868aa0afb9ec7c44f3642af2ffd14ac3950e957b71c571cf3a98c21973"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/error.rs",
+        "bytes": 2674,
+        "sha256": "4ca17478e8243bd92a24d3deb2c7f7735f71f77cfd53285df73421b8bd00fd3c"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/mod.rs",
+        "bytes": 2292,
+        "sha256": "aff7fe8a7e3fa6347e0d36eb416eb1185e588338fbef4e8c30f5a19843168f0a"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/preview_with_selection.rs",
+        "bytes": 2193,
+        "sha256": "8834a72b0c2a7afbbf84777f096f74929ea58735c6b0980f412b56c48d6f4b46"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/replacement_plan.rs",
+        "bytes": 6812,
+        "sha256": "90fed689c351a5efa564f4a0e1c103665b30006a9f145afb6615c0b3028d5442"
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/search/semantic_replacement.rs",
+        "bytes": 1941,
+        "sha256": "c9af16368a884ee802315d4dd86a0c17b27b8bc3cce1d36ff42796abd94bc1f4"
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_search_replacement.rs",
+        "bytes": 35890,
+        "sha256": "6bd7575f8585b1917231606464ebe6db3b5098b89fe52fce3da0ab08fb1802f8"
+      },
+      {
+        "path": "crates/breditor-wasm/Cargo.toml",
+        "bytes": 1998,
+        "sha256": "1b91086afeb453de78cdd0c037adc85c67d0e70187f7b9be250e79a65e2bfe8b"
+      },
+      {
+        "path": "experiments/collaboration/Cargo.lock",
+        "bytes": 39386,
+        "sha256": "d3b1a16695479ab94e4747a3826c69dae55d6a16b8d4306832757299d35d72ca"
+      },
+      {
+        "path": "experiments/collaboration/Cargo.toml",
+        "bytes": 1671,
+        "sha256": "8cff35276066fcff3f345607dd0331500c03a0deb9f2aad463f2bee177ab55d2"
+      },
+      {
+        "path": "experiments/collaboration/tests/search_contracts.rs",
+        "bytes": 248,
+        "sha256": "0a41cc5f226133bb1c1833050e49ad10b2e428e16f0db83f32bce9004ecdc2e9"
+      }
+    ]
+  },
+  "verification": {
+    "canonicalNative": {
+      "path": "/private/tmp/breditor-shared-search-native-matrix-20261018-v2.json",
+      "sha256": "6a2bac9dcaeb9ff20b1f00e3e0e750dea4902a3bcf9e5090caae22a02db7c323",
+      "bytes": 10129,
+      "status": "failed",
+      "source": {
+        "commit": "2bbf4a19c0570e597bd2a36010a892c4945172ff",
+        "dirty": true,
+        "sha256": "f84111003d45b7d1239aae6575a5bf2ec396c9b8d27e77c076c7ece7aa8c791a",
+        "files": 4140,
+        "bytes": 36664129
+      },
+      "finalSource": {
+        "commit": "2bbf4a19c0570e597bd2a36010a892c4945172ff",
+        "dirty": true,
+        "sha256": "f84111003d45b7d1239aae6575a5bf2ec396c9b8d27e77c076c7ece7aa8c791a",
+        "files": 4140,
+        "bytes": 36664129
+      },
+      "startedAt": "2026-10-18T20:47:22.124Z",
+      "finishedAt": "2026-10-18T20:53:51.538Z",
+      "selectedChecksStatus": "passed",
+      "enclosingManifestStatus": "failed-at-script-guard",
+      "selectedChecks": [
+        {
+          "id": "workspace-lint",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-workspace-lint.log",
+          "startedAt": "2026-10-18T20:47:22.125Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:47:22.676Z",
+          "logSha256": "1d4a459075bb084f679636df54054e09c302d0ad0d545b52395925946c48d277",
+          "bytes": 62
+        },
+        {
+          "id": "workspace-native",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-workspace-native.log",
+          "startedAt": "2026-10-18T20:47:22.677Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:47:35.943Z",
+          "logSha256": "b4edeb26ba646444657fcfff2defb0222daf8a993f25a012d0eb9aa0769104bd",
+          "bytes": 307801,
+          "resultGroups": 165,
+          "passed": 2570,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "id": "workspace-docs",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-workspace-docs.log",
+          "startedAt": "2026-10-18T20:47:35.944Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:47:36.037Z",
+          "logSha256": "4cc253e48b1ae784f87252db44b7eb8169f3f1fe5bd487590b68f87334af07c6",
+          "bytes": 176
+        },
+        {
+          "id": "shared-lint",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-shared-lint.log",
+          "startedAt": "2026-10-18T20:47:36.037Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:47:36.412Z",
+          "logSha256": "4e36094a9102c8064debb5c3bb814679504d7d52a58260bb60f9c6290adc1ca2",
+          "bytes": 507
+        },
+        {
+          "id": "shared-native",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-shared-native.log",
+          "startedAt": "2026-10-18T20:47:36.412Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:52:56.246Z",
+          "logSha256": "e205e12cc78a5605ed0a2ec6d4f5ba17053ba62aada2db27e942e40e11d27775",
+          "bytes": 66993,
+          "resultGroups": 49,
+          "passed": 577,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "id": "shared-docs",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-shared-docs.log",
+          "startedAt": "2026-10-18T20:52:56.248Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:52:59.371Z",
+          "logSha256": "37bd9e53670391964426829d6a48be8a8b4998cc5d39a557114e75b2dc8b4531",
+          "bytes": 696
+        },
+        {
+          "id": "local-wasm-typecheck",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-local-wasm-typecheck.log",
+          "startedAt": "2026-10-18T20:52:59.371Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:53:15.162Z",
+          "logSha256": "fbb3a062ea8c476769d4310c33528ea90d1a8966abd76cbc4ceeedf9caa733b2",
+          "bytes": 945
+        },
+        {
+          "id": "shared-wasm-typecheck",
+          "log": "/private/tmp/breditor-shared-search-matrix-20261018-v2-shared-wasm-typecheck.log",
+          "startedAt": "2026-10-18T20:53:15.163Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:53:44.363Z",
+          "logSha256": "8257127eb01b175f7abd3bd43bd4ab8ef2fd5add8c649d0505e86a5bdc4cb9f8",
+          "bytes": 5036
+        }
+      ]
+    },
+    "compatibilityAndPackaging": {
+      "path": "/private/tmp/breditor-shared-search-followup-20261018-v2.json",
+      "sha256": "0722a9d6953b375f1a63de6fba160e2d22f61ba0261c6410fb3bb13cd3891bb0",
+      "bytes": 8544,
+      "status": "passed",
+      "source": {
+        "commit": "2bbf4a19c0570e597bd2a36010a892c4945172ff",
+        "dirty": true,
+        "sha256": "b4482bc1eb853a6489568a0b7ac01ec5cac6d6d074135350814adcaa32987425",
+        "files": 4141,
+        "bytes": 36664377
+      },
+      "finalSource": {
+        "commit": "2bbf4a19c0570e597bd2a36010a892c4945172ff",
+        "dirty": true,
+        "sha256": "b4482bc1eb853a6489568a0b7ac01ec5cac6d6d074135350814adcaa32987425",
+        "files": 4141,
+        "bytes": 36664377
+      },
+      "startedAt": "2026-10-18T20:56:38.042Z",
+      "finishedAt": "2026-10-18T20:57:49.152Z",
+      "canonicalInputsUnchanged": true,
+      "checks": [
+        {
+          "id": "script-contracts",
+          "log": "/private/tmp/breditor-shared-search-followup-20261018-v2-script-contracts.log",
+          "startedAt": "2026-10-18T20:56:38.043Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:56:44.199Z",
+          "logSha256": "85a9175e09f3955693355e6685f20536faa6687082790f47379c1542f550cc5e",
+          "bytes": 85856,
+          "tests": 458,
+          "pass": 455,
+          "fail": 0,
+          "skipped": 3
+        },
+        {
+          "id": "default-dependency-guard",
+          "log": "/private/tmp/breditor-shared-search-followup-20261018-v2-default-dependency-guard.log",
+          "startedAt": "2026-10-18T20:56:44.200Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:56:44.388Z",
+          "logSha256": "886591c8a0956dfdb6837c7c9e6f65af1f9f409051641d44bd1e0cec537de06a",
+          "bytes": 111
+        },
+        {
+          "id": "readiness-ledger",
+          "log": "/private/tmp/breditor-shared-search-followup-20261018-v2-readiness-ledger.log",
+          "startedAt": "2026-10-18T20:56:44.388Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:56:44.430Z",
+          "logSha256": "61b619b020b686189d895a3694f78fee2c132cf15a9e5bb70c1cf6c150715c1c",
+          "bytes": 15486
+        },
+        {
+          "id": "research-search-lint",
+          "log": "/private/tmp/breditor-shared-search-followup-20261018-v2-research-search-lint.log",
+          "startedAt": "2026-10-18T20:56:44.430Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:56:44.640Z",
+          "logSha256": "9802f35a8284dbd9e236286ce42ae244d87667ae147bfdc6dcdc743bf143550b",
+          "bytes": 560
+        },
+        {
+          "id": "research-search-native",
+          "log": "/private/tmp/breditor-shared-search-followup-20261018-v2-research-search-native.log",
+          "startedAt": "2026-10-18T20:56:44.641Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:57:48.813Z",
+          "logSha256": "e95721f809c699bfe23131bbc23cc6b86129930a276a1b09029f1b71272346f8",
+          "bytes": 3053,
+          "passed": 20,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "id": "vendor-unchanged",
+          "log": "/private/tmp/breditor-shared-search-followup-20261018-v2-vendor-unchanged.log",
+          "startedAt": "2026-10-18T20:57:48.814Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:57:48.833Z",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "id": "diff-whitespace",
+          "log": "/private/tmp/breditor-shared-search-followup-20261018-v2-diff-whitespace.log",
+          "startedAt": "2026-10-18T20:57:48.834Z",
+          "status": "passed",
+          "code": 0,
+          "finishedAt": "2026-10-18T20:57:48.863Z",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        }
+      ]
+    },
+    "canonicalRustTestsAndDoctests": 3147,
+    "workspaceRustTestsAndDoctests": 2570,
+    "sharedRustTestsAndDoctests": 577,
+    "focusedResearchCompatibility": {
+      "passed": 20,
+      "failed": 0,
+      "ignored": 0,
+      "scope": "The same 20 canonical search contracts through the retained research manifest, not its complete legacy suite."
+    },
+    "scriptContracts": {
+      "passed": 455,
+      "failed": 0,
+      "skipped": 3,
+      "scope": "The three existing opt-in browser checks are not counted as platform qualification."
+    },
+    "wasm": {
+      "localBoundaryTypecheck": true,
+      "sharedBoundaryTypecheck": true,
+      "canonicalBuildPathRemapping": true,
+      "newSearchExportsImplemented": false,
+      "newSearchRuntimeOrInstalledUiAcceptance": false
+    },
+    "defaultDependencyGuard": {
+      "dependencies": 29,
+      "edges": 50,
+      "exactCrateNotices": 5,
+      "rust": "1.98.0",
+      "result": "check-wasm-third-party-notices: 29 dependencies, 50 graph edges, 5 exact crate notices, and Rust 1.98.0 passed"
+    },
+    "selectedPassedChecks": 15
+  },
+  "contract": {
+    "reads": "find_text_guarded returns complete source-bound native results without a history upgrade or publication, including read-only owners.",
+    "mutation": "Fresh observation, writable owner, same live actor, exact applied/oplog causal basis and complete AST are required before replacement.",
+    "history": "Explicit enable_search_history_guarded; search_checkpoint and SharedRichProfile::restore_search select breditor/shared-search-session format 1.",
+    "journalFamilies": [
+      "breditor/rich-replica-search-journal",
+      "breditor/rich-replica-search-typing-journal",
+      "breditor/rich-replica-general-search-journal",
+      "breditor/rich-replica-general-search-typing-journal",
+      "breditor/rich-replica-document-search-journal",
+      "breditor/rich-replica-document-search-typing-journal"
+    ],
+    "journalFamilyVersion": 1,
+    "replay": "Source digest, ordered semantic intervals, expanded text, exact effects/history identity and before/after UI. Formats are derived from the proved source; queries/templates are not replayed.",
+    "grouping": "Complete changed plan is one isolated selective Undo group, including 4096 admitted hits; ordinary 64-command groups keep their exact limit.",
+    "integration": "Original/general/document scope, natural typing and reviewed history remain independently selectable, including upgrades after an existing search edit or its saved Redo branch."
+  },
+  "verifiedBehavior": [
+    "All three original rich model bindings keep exact search Undo/Redo and recovery; cross-binding restore rejects.",
+    "Visible merged-table sources, captions, nested bodies, code, empty domains, Unicode scalars, multiline and zero-width matches retain native semantic results.",
+    "All 12 scope/typing/review policy combinations preserve mapped real UI, pending caret formats and exact reopened future history.",
+    "Same visible AST does not conceal new peer operations or a different/restored owner; UI-only publications can retain results under a fresh observation.",
+    "Offline replacements converge; insertion inside replaced text survives Undo/Redo and matches existing ordinary replacement placement.",
+    "Large scalar-safe capture expansion uses bounded old insertion chunks without shrinking the native replacement capability to one chunk.",
+    "True identities preserve Redo and open typing continuation; malformed, stale, read-only, foreign and over-budget plans publish no prefix.",
+    "Old save encoders/factories refuse search records/family names; an original-family writer-transport V2 receiver accepts emitted causal text operations without selecting search history.",
+    "Four source-projection/operation-stream unit contracts verify the certified plain fast path, Unicode chunks, rejection before writes, disabled formats, fragmentation and empty-body reinsertion fallback."
+  ],
+  "limits": {
+    "completeMatches": 4096,
+    "aggregateChangedInsertionUtf8Bytes": 1048576,
+    "insertionChunkUtf8Bytes": 65536,
+    "ordinarySharedCommands": 64,
+    "authoredUpdateBytes": 1048576,
+    "journalEntries": 1000,
+    "journalBytes": 16777216,
+    "causalViewBytes": 4194304,
+    "retentionChanged": false,
+    "note": "Native query/work limits and active document/history/transport admission remain in force. These are not total-heap, approved latency or V1 performance guarantees."
+  },
+  "diagnostics": {
+    "cpuSample": {
+      "path": "/private/tmp/breditor-shared-search-4096-first.sample.txt",
+      "bytes": 88590,
+      "sha256": "22ce43f763095bc2d34d348329379763b0d8d21b94c385ba7a5c83f7e2cd1c82"
+    },
+    "earlierAttempts": [
+      {
+        "path": "/private/tmp/breditor-shared-search-first-20261018.log",
+        "bytes": 3021,
+        "sha256": "444b76ae2d73e5683a5e2ff372ccd2b1ceefcab470afd4bd2f7084a20cc139c4",
+        "status": "cancelled-diagnostic-baseline",
+        "reason": "The 4096-hit pre-optimization replay was deliberately stopped after CPU sampling; 13 other cases passed and one fixture appended at offset 11 instead of 12. No maximum-case baseline completion is claimed."
+      },
+      {
+        "path": "/private/tmp/breditor-shared-search-optimized-lowering-20261018-v2.log",
+        "bytes": 322783,
+        "sha256": "c98e742f11b4ebe18006fe0ede47c522858e0db7ea33d7892a227f3d1f986027",
+        "status": "failed",
+        "reason": "The exact operation/projection differential caught empty-body reinsertion routing; the guarded path now declines it and uses ordinary lowering."
+      },
+      {
+        "path": "/private/tmp/breditor-shared-search-optimized-contracts-20261018-v3.log",
+        "bytes": 3356,
+        "sha256": "44c97a807536a9589581bec574a06e22bf0002f7b7c6351dc42a9d011c51031b",
+        "status": "failed",
+        "reason": "18 cases passed, including maximum hits; an undo-placement expectation was disproved by ordinary range replacement. The final test compares exact ordinary/search outcomes and retains peer text."
+      },
+      {
+        "path": "/private/tmp/breditor-shared-search-native-matrix-20261018.json",
+        "bytes": 3354,
+        "sha256": "771062fc9fc4744b14679b661122368d775d654e0c1916f5c5ab979a859a177d",
+        "status": "failed",
+        "reason": "Workspace checks passed; strict shared lint caught two assertion-style errors, corrected before final native verification."
+      },
+      {
+        "path": "/private/tmp/breditor-shared-search-native-matrix-20261018-v2.json",
+        "bytes": 10129,
+        "sha256": "6a2bac9dcaeb9ff20b1f00e3e0e750dea4902a3bcf9e5090caae22a02db7c323",
+        "status": "failed-after-passing-native-stages",
+        "reason": "All eight canonical native checks passed. The script suite required an additive research test shim; it was added without changing canonical inputs."
+      },
+      {
+        "path": "/private/tmp/breditor-shared-search-followup-20261018.json",
+        "bytes": 5597,
+        "sha256": "3a80fb90de5f25ae3d830dbd0a5a18ed53bbf14ca09b65496c2a6ce331334596",
+        "status": "failed-runner-configuration",
+        "reason": "455 scripts passed; dependency verification could not resolve rustc in the runner PATH. The existing RUSTC_BIN override was set explicitly without changing the checker."
+      }
+    ],
+    "performanceRepair": "Repeated full text-flow indexing per match was traced in the pre-optimization maximum case. A certified contiguous plain birth source now uses the same original-character operations directly; complex sources retain ordinary lowering. No baseline completion or isolated speedup ratio is claimed."
+  },
+  "limitations": [
+    "Selective Undo preserves peer content but can restore a locally deleted chunk contiguously beside that peer insertion, rather than restoring the old per-character interleaving. The test compares ordinary and search replacement outcomes.",
+    "The plain-source optimization deliberately declines formatted/fragmented/hidden-source and empty-body reinsertion cases. Their functionality remains supported through ordinary lowering; their performance is not qualified.",
+    "Search capability, opaque result ownership, matching saved-family recovery, controls and noncanonical-DOM decorations are not yet exposed through paired Wasm/SDK/vanilla/React APIs.",
+    "Storage ceilings, writer-lease responsibilities and existing unsupported general editing/interchange cases are unchanged; no rolling retention/GC policy has been inferred.",
+    "Historical WebKit/native input/accessibility/mobile qualification, full installed/new-feature workflows, exact old/new binary comparison and all remaining V1 release gates are still open.",
+    "Vendored source is unchanged. Its existing HasIdSpan warning and the known generic-btree notice/source verification gap were not repaired or waived."
+  ],
+  "preserved": {
+    "originalDocumentGrammar": true,
+    "originalCausalModelsAndFrames": true,
+    "originalCommandUnionAndBatchLimit": true,
+    "originalSavedHistoryMeanings": true,
+    "defaultWasmAbi5": true,
+    "richBoundaryAbi1": true,
+    "lockedDependencyVersions": true,
+    "packageVersions": true
+  },
+  "remaining": [
+    "Add paired optional local/shared Wasm and SDK search capabilities, bounded result presentation and exact search-family persistence.",
+    "Connect borrowed vanilla/React search controls, guarded navigation/replacement, focus return and decorations outside canonical editing DOM.",
+    "Run connected installed/offline/concurrent/restart/failed-save workflows for the feature, then the remaining functional parity and V1 production gates.",
+    "Resolve the pending storage-lifecycle decision explicitly before changing retention, rotation, compaction or writer recovery."
+  ],
+  "release": {
+    "v1Ready": false,
+    "qualificationGatesClosed": 0,
+    "remainingQualificationGates": 13,
+    "fullCandidateProfileRunOnThisSource": false,
+    "publicApiFrozen": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "goalStatus": "active"
+  }
+}

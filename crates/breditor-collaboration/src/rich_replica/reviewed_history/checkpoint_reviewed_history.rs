@@ -70,6 +70,9 @@ impl RichReplica {
     /// # Errors
     /// Disabled contract, invalid retained history/partition or the 16 MiB whole-save bound reject.
     pub fn reviewed_checkpoint(&self) -> Result<String, Error> {
+        if self.search_contract {
+            return Err(Error::Contract("use explicit search checkpoint"));
+        }
         if !self.reviewed_contract {
             return Err(Error::Contract("reviewed history required"));
         }

@@ -18,7 +18,7 @@ use std::{
 pub(super) const MAX_ENTRIES: usize = 1000;
 pub(super) const JOURNAL_VERSION: u32 = 12;
 pub(super) const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
-const MAX_UPDATE_BYTES: usize = 1024 * 1024;
+pub(super) const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
 
 #[cfg(test)]
@@ -37,6 +37,13 @@ enum Origin {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(super) enum Entry {
+    SearchV1 {
+        action: super::search::SearchActionV1,
+        before_ui: UiState,
+        after_ui: UiState,
+        history_key: String,
+        expected: Value,
+    },
     ReviewedHistoryV1 {
         identity: super::ReviewedHistoryIdentity,
         ui: UiState,
@@ -88,7 +95,7 @@ impl Entry {
         matches!(self, Self::ReviewedHistoryV1 { .. } | Self::AdoptSuggestionV1 { .. })
     }
     pub(super) const fn authored(&self) -> bool {
-        matches!(self, Self::Local { .. } | Self::GeneralRangeV1 { .. })
+        matches!(self, Self::Local { .. } | Self::GeneralRangeV1 { .. } | Self::SearchV1 { .. })
     }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,6 +160,8 @@ pub struct RichReplica {
     pub(super) codec: DocumentJsonCodecV2,
     pub(super) protocol: super::protocol::Protocol,
     pub(super) replay_contract: super::general_history::ReplayContract,
+    pub(super) search_contract: bool,
+    pub(super) search_owner: Arc<()>,
     pub(super) journal: Journal,
     header: Value,
     pub(super) document: RichDocument,
@@ -327,6 +336,8 @@ impl RichReplica {
             codec,
             protocol,
             replay_contract: super::general_history::ReplayContract::Original,
+            search_contract: false,
+            search_owner: Arc::new(()),
             journal,
             header,
             document,
@@ -395,8 +406,27 @@ impl RichReplica {
         reviewed: bool,
         replay_projections: Option<super::replay_projections::ReplayProjections>,
     ) -> Result<Self, Error> {
+        Self::from_journal_capabilities_cached(
+            codec,
+            journal,
+            joins,
+            leave_open,
+            super::general_history::ReplayCapabilities { scope: contract, reviewed, search: false },
+            replay_projections,
+        )
+    }
+    pub(super) fn from_journal_capabilities_cached(
+        codec: DocumentJsonCodecV2,
+        journal: Journal,
+        joins: Option<Vec<u32>>,
+        leave_open: bool,
+        capabilities: super::general_history::ReplayCapabilities,
+        replay_projections: Option<super::replay_projections::ReplayProjections>,
+    ) -> Result<Self, Error> {
+        let contract = capabilities.scope;
+        let reviewed = capabilities.reviewed;
         let protocol = super::protocol::Protocol::from_codec(&codec)?;
-        let (format, version) = contract.journal(protocol, joins.is_some());
+        let (format, version) = capabilities.journal(protocol, joins.is_some());
         if journal.format != format || journal.version != version {
             return Err(Error::Contract("rich replica journal version"));
         }
@@ -405,6 +435,11 @@ impl RichReplica {
         }
         if !reviewed && journal.entries.iter().any(Entry::reviewed_only) {
             return Err(Error::Contract("reviewed records require explicit history family"));
+        }
+        if !capabilities.search
+            && journal.entries.iter().any(|entry| matches!(entry, Entry::SearchV1 { .. }))
+        {
+            return Err(Error::Contract("search records require explicit history family"));
         }
         super::document_checkpoint::validate_journal_scope(&journal, contract)?;
         if contract == super::general_history::ReplayContract::Original
@@ -418,6 +453,7 @@ impl RichReplica {
         let mut candidate = Self::base(codec, base)?;
         candidate.replay_contract = contract;
         candidate.reviewed_contract = reviewed;
+        candidate.search_contract = capabilities.search;
         if let Some(replay_projections) = replay_projections {
             candidate.replay_projections = replay_projections;
         }
@@ -631,6 +667,18 @@ impl RichReplica {
         let before = self.doc.oplog_vv();
         let applied_before = self.doc.state_vv();
         let expected = match entry {
+            Entry::SearchV1 { action, before_ui, after_ui, history_key, expected } => {
+                self.journal.ui.clone_from(before_ui);
+                self.validate_ui()?;
+                if join
+                    || keep_open
+                    || self.execute_search(action)? != *history_key
+                    || self.journal.ui != *after_ui
+                {
+                    return Err(Error::ReplayMismatch);
+                }
+                Some(expected)
+            }
             Entry::ReviewedHistoryV1 { identity, ui } => {
                 self.journal.ui.clone_from(ui);
                 self.validate_ui()?;
@@ -724,21 +772,22 @@ impl RichReplica {
         self.staged_for_typing(false)
     }
     fn staged_for_typing(&self, leave_open: bool) -> Result<Self, Error> {
-        let mut candidate = Self::from_journal_contract_cached(
+        let mut candidate = Self::from_journal_capabilities_cached(
             self.codec.clone(),
             self.journal.clone(),
             self.typing.as_ref().map(|history| history.joins.clone()),
             leave_open,
-            self.replay_contract,
-            self.reviewed_contract,
+            self.replay_capabilities(),
             Some(self.replay_projections.fork_for_replay()),
         )?;
         candidate.read_only = self.read_only;
+        candidate.search_owner = Arc::clone(&self.search_owner);
         candidate.read_only_revision.clone_from(&self.read_only_revision);
         Ok(candidate)
     }
 
     pub(super) fn adopt(&mut self, mut candidate: Self) -> Result<(), Error> {
+        candidate.search_owner = Arc::clone(&self.search_owner);
         candidate.note_writer_window(&self.doc.state_vv(), false)?;
         candidate.journal.publication = publication(&self.journal.publication)?
             .checked_add(1)
@@ -891,7 +940,7 @@ impl RichReplica {
 
     fn validate_adoption(&mut self) -> Result<(), Error> {
         self.protocol.require(&self.doc)?;
-        let (format, version) = self.replay_contract.journal(self.protocol, self.typing.is_some());
+        let (format, version) = self.history_family(self.typing.is_some());
         if self.journal.format != format || self.journal.version != version {
             return Err(Error::Contract("shared replay family binding"));
         }
@@ -948,7 +997,9 @@ impl RichReplica {
         if let Some(history) = &self.typing {
             history.validate(&self.journal)?;
         }
-        if self.reviewed_contract {
+        if self.search_contract {
+            self.search_checkpoint()?;
+        } else if self.reviewed_contract {
             self.reviewed_history.as_ref().ok_or(Error::ReplayMismatch)?.validate(self)?;
             self.reviewed_checkpoint()?;
         } else if self.typing.is_some() {
@@ -1153,6 +1204,9 @@ impl RichReplica {
         self.encode_explicit_journal()
     }
     pub(super) fn encode_explicit_journal(&self) -> Result<String, Error> {
+        if self.search_contract {
+            return Err(Error::Contract("use explicit search checkpoint"));
+        }
         if self.reviewed_contract {
             return Err(Error::Contract("use explicit reviewed checkpoint"));
         }

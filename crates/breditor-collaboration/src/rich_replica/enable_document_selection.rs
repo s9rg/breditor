@@ -18,8 +18,7 @@ impl RichReplica {
         self.require_writable()?;
         let mut candidate = self.staged()?;
         candidate.replay_contract = ReplayContract::DocumentV1;
-        let (format, version) =
-            candidate.replay_contract.journal(candidate.protocol, candidate.typing.is_some());
+        let (format, version) = candidate.history_family(candidate.typing.is_some());
         candidate.journal.format = format.into();
         candidate.journal.version = version;
         self.adopt(candidate)?;

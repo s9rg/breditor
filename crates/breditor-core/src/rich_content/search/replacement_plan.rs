@@ -104,13 +104,20 @@ impl fmt::Debug for RichSearchReplacePlan {
     }
 }
 
-struct Domain {
-    text: String,
+pub(super) struct Domain {
+    pub(super) text: String,
     ends: Vec<(usize, FormatSet)>,
 }
 impl Domain {
     fn load(document: &RichDocument, block: &BlockId) -> Result<Self, RichSearchError> {
         let text = domains::text(document, block, RICH_SEARCH_MAX_TEXT_BYTES)?;
+        Self::from_text(document, block, text)
+    }
+    pub(super) fn from_text(
+        document: &RichDocument,
+        block: &BlockId,
+        text: String,
+    ) -> Result<Self, RichSearchError> {
         let node = document
             .block_path(block)
             .and_then(|path| document.document().node_at(path).ok())
@@ -125,7 +132,7 @@ impl Domain {
         }
         Ok(Self { text, ends })
     }
-    fn formats(&self, byte: usize) -> FormatSet {
+    pub(super) fn formats(&self, byte: usize) -> FormatSet {
         let index = self.ends.partition_point(|(end, _)| *end <= byte);
         self.ends
             .get(index)

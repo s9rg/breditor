@@ -53,6 +53,9 @@ impl PreparedDocumentSuggestionEffect {
     /// # Errors
     /// Existing full checkpoint and resource admission applies before a host can append.
     pub fn checkpoint(&self) -> Result<String, Error> {
+        if self.candidate.search_history_enabled() {
+            return self.candidate.search_checkpoint();
+        }
         if self.candidate.reviewed_history_enabled() {
             return self.candidate.reviewed_checkpoint();
         }

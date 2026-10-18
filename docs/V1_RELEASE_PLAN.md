@@ -43,15 +43,24 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
-The [native search checkpoint](qualification/2026-10-18-native-search-local-replacement.json)
-adds bounded Unicode literal/regex search and atomic local replacement under the
-[native contract](RICH_SEARCH.md). All 2,566 workspace and 553 shared native
-tests/doctests pass, including 33 search/replacement integration tests. Strict
-lint, Rust documentation, both wasm32 boundary typechecks and 455 script contracts
-also pass; three existing opt-in browser checks remain skipped. Wasm/SDK search
-controls, decorations and shared replacement/recovery are not connected yet. This
-follow-up is separate from the source-pinned functional candidate qualification
-above and closes no release gate.
+The [shared native search checkpoint](qualification/2026-10-18-native-shared-search.json)
+extends the [local search checkpoint](qualification/2026-10-18-native-search-local-replacement.json)
+with guarded original-character replacement, one selective Undo group and an
+explicit recovery family under the [native contract](RICH_SEARCH.md). All 2,570
+workspace and 577 shared native tests/doctests pass. The 20 search contracts also
+pass through the research compatibility build. Strict lint/documentation, both
+wasm32 boundary typechecks, 455 script contracts and the default dependency guard
+pass; three existing opt-in browser checks remain skipped.
+
+The checkpoint traces repeated full indexing in the 4,096-match case and adds an
+operation-equivalent plain-source fast path, with ordinary lowering for complex
+or empty-body reinsertion cases. It documents existing Undo placement behavior:
+peer text is preserved, but restored local chunks need not retain the old
+per-character interleaving. The linked evidence retains the failed diagnostic,
+lint and packaging attempts and proves unchanged canonical inputs for the
+research-wrapper follow-up. Wasm/SDK search controls, decorations and connected
+installed acceptance remain unfinished. This native follow-up is separate from
+the source-pinned functional candidate qualification above and closes no release gate.
 
 The [combined installed checkpoint](qualification/2026-10-16-mixed-workflow-functional.json)
 completes the selected everyday-editing goal. Two independent installed consumers

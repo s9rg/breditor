@@ -15,8 +15,9 @@ use breditor_core::{
         BlockId, CellId, ColumnId, RICH_SEARCH_MAX_INSERTED_BYTES, RICH_SEARCH_MAX_MATCHES,
         RICH_SEARCH_MAX_REPLACEMENT_BYTES, RichDocument, RichLocalOutcome, RichLocalSession,
         RichLocalSessionError, RichSearchError, RichSearchMode, RichSearchQuery,
-        RichSearchReplacement, RichSearchReplacementMode, RichSearchResults, RichSelectionKind,
-        RichSelectionUpdate, RichTextPoint, RowId, TableId,
+        RichSearchReplacePlan, RichSearchReplacement, RichSearchReplacementMode, RichSearchResults,
+        RichSearchTextReplacement, RichSelection, RichSelectionKind, RichSelectionUpdate,
+        RichTextPoint, RowId, TableId,
         actions::{ReplaceText, RichAction},
         find_rich_text, plan_rich_search_replace_all, plan_rich_search_replace_one,
         standard_inline_extension_v1,
@@ -513,6 +514,149 @@ fn zero_capacity_still_publishes_the_complete_candidate_without_retained_history
     assert_eq!(owner.undo_depth(), 0);
     assert_eq!(owner.redo_depth(), 0);
     assert_eq!(saved(&context, &reopen(&context, &owner)?)?, saved(&context, &owner)?);
+    Ok(())
+}
+
+fn semantic(plan: &RichSearchReplacePlan) -> Result<Vec<RichSearchTextReplacement>> {
+    plan.edits()
+        .iter()
+        .map(|edit| {
+            let text: String = edit.inserted().iter().map(TextRun::text).collect();
+            Ok(RichSearchTextReplacement::try_new(
+                edit.block().clone(),
+                edit.start(),
+                edit.end(),
+                text,
+            )?)
+        })
+        .collect()
+}
+
+#[test]
+fn semantic_replay_reconstructs_the_exact_query_plan_without_saving_query_or_formats() -> Result {
+    for source in [prose("🙂a🙂\n🙂"), fixture::root()] {
+        let (context, document) = setup(source)?;
+        for pattern in ["🙂", "(?m)^|$"] {
+            let results = search(&document, pattern, RichSearchMode::Regex)?;
+            let original = plan_rich_search_replace_all(&results, &literal("日本")?)?;
+            let replay = RichSearchReplacePlan::try_from_semantic_replacements(
+                &document,
+                &semantic(&original)?,
+            )?;
+            assert_eq!(replay.edits(), original.edits());
+            assert_eq!(
+                replay.preview(&context, &document)?.document(),
+                original.preview(&context, &document)?.document()
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn semantic_targets_reject_overlap_duplicate_empty_boundaries_and_half_surrogates() -> Result {
+    let (_, document) = setup(prose("a🙂b"))?;
+    let replacement = |block: &str, start, end| -> Result<RichSearchTextReplacement> {
+        Ok(RichSearchTextReplacement::try_new(
+            BlockId::try_new(block)?,
+            TextOffset::try_new(start)?,
+            TextOffset::try_new(end)?,
+            "X",
+        )?)
+    };
+    for invalid in [
+        vec![replacement("body", 2, 3)?],
+        vec![replacement("body", 0, 9)?],
+        vec![replacement("missing", 0, 0)?],
+        vec![replacement("body", 0, 3)?, replacement("body", 1, 4)?],
+        vec![replacement("body", 0, 0)?, replacement("body", 0, 0)?],
+        vec![replacement("body", 0, 1)?, replacement("body", 1, 1)?],
+    ] {
+        assert_eq!(
+            RichSearchReplacePlan::try_from_semantic_replacements(&document, &invalid).err(),
+            Some(RichSearchError::ReplacementTarget)
+        );
+    }
+    let (_, document) =
+        setup(root(vec![fixture::paragraph("first", "a"), fixture::paragraph("last", "b")]))?;
+    assert!(
+        RichSearchReplacePlan::try_from_semantic_replacements(
+            &document,
+            &[replacement("last", 0, 1)?, replacement("first", 0, 1)?]
+        )
+        .is_err()
+    );
+    assert!(
+        RichSearchTextReplacement::try_new(
+            BlockId::try_new("first")?,
+            TextOffset::from(1u32),
+            TextOffset::ZERO,
+            "X"
+        )
+        .is_err()
+    );
+    Ok(())
+}
+
+#[test]
+fn semantic_replay_has_its_own_complete_count_and_aggregate_insertion_admission() -> Result {
+    let (_, document) = setup(prose("aa"))?;
+    let replacement = |start: u32, end: u32, text: &str| -> Result<RichSearchTextReplacement> {
+        Ok(RichSearchTextReplacement::try_new(
+            BlockId::try_new("body")?,
+            TextOffset::from(start),
+            TextOffset::from(end),
+            text,
+        )?)
+    };
+    let oversized = vec![replacement(0, 1, "x")?; RICH_SEARCH_MAX_MATCHES + 1];
+    assert_eq!(
+        RichSearchReplacePlan::try_from_semantic_replacements(&document, &oversized).err(),
+        Some(RichSearchError::MatchLimit)
+    );
+    let text = "x".repeat(RICH_SEARCH_MAX_INSERTED_BYTES / 2 + 1);
+    assert_eq!(
+        RichSearchReplacePlan::try_from_semantic_replacements(
+            &document,
+            &[replacement(0, 1, &text)?, replacement(1, 2, &text)?]
+        )
+        .err(),
+        Some(RichSearchError::ReplacementLimit)
+    );
+    assert_eq!(
+        RichSearchTextReplacement::try_new(
+            BlockId::try_new("body")?,
+            TextOffset::ZERO,
+            TextOffset::from(1u32),
+            "x".repeat(RICH_SEARCH_MAX_INSERTED_BYTES + 1)
+        )
+        .err(),
+        Some(RichSearchError::ReplacementLimit)
+    );
+    Ok(())
+}
+
+#[test]
+fn public_preview_maps_only_its_proved_source_selection_and_redacts_its_tree() -> Result {
+    let (context, document) = setup(prose("SECRET🙂x"))?;
+    let plan = plan_rich_search_replace_all(
+        &search(&document, "SECRET", RichSearchMode::Literal)?,
+        &literal("replacement")?,
+    )?;
+    let selection = RichSelection::try_new(&document, range("body", 6, 6, Affinity::After)?)?;
+    let preview = plan.preview_with_selection(&context, &document, Some(&selection))?;
+    assert_eq!(
+        preview.selection().ok_or("missing selection")?.kind(),
+        &range("body", 11, 11, Affinity::After)?
+    );
+    preview.selection().ok_or("missing selection")?.resolve(preview.document())?;
+    assert!(!format!("{preview:?}").contains("SECRET"));
+    let (_, foreign) = setup(prose("foreign"))?;
+    let foreign = RichSelection::try_new(&foreign, range("body", 0, 0, Affinity::After)?)?;
+    assert_eq!(
+        plan.preview_with_selection(&context, &document, Some(&foreign)).err(),
+        Some(RichSearchError::Selection)
+    );
     Ok(())
 }
 

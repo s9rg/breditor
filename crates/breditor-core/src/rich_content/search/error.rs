@@ -24,12 +24,18 @@ pub enum RichSearchError {
     /// Replacement input, expansion parts or aggregate changed insertion bytes exceed policy.
     #[error("rich search replacement exceeds its resource limits")]
     ReplacementLimit,
+    /// Semantic replay targets are absent, out of order, overlapping or not scalar aligned.
+    #[error("rich search semantic replacement targets are invalid")]
+    ReplacementTarget,
     /// A capture template is malformed or names an undeclared group, even without matches.
     #[error("rich search replacement template or capture reference is invalid")]
     Template,
     /// The complete replacement tree fails the receiving schema or active document limits.
     #[error("rich search replacement fails document admission")]
     Admission,
+    /// A source selection cannot be admitted or mapped through the complete candidate.
+    #[error("rich search source selection cannot be mapped")]
+    Selection,
     /// Document identity or schema binding differs from the retained source.
     #[error("rich search document or schema binding differs")]
     Binding,

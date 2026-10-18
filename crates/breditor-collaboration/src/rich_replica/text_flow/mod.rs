@@ -28,6 +28,7 @@ mod index;
 mod insert;
 mod join;
 mod markers;
+mod plain_search_splices;
 mod projection;
 pub(in crate::rich_replica) mod provenance;
 mod split;
@@ -41,6 +42,7 @@ pub use index::{Chunk, Point, View};
 pub use insert::insert;
 pub(in crate::rich_replica) use insert::insert_with_activation;
 pub use join::PreparedJoin;
+pub(in crate::rich_replica) use plain_search_splices::PlainSearchSplices;
 pub(in crate::rich_replica) use projection::Projection;
 pub use split::PreparedSplit;
 
@@ -103,5 +105,7 @@ pub fn point(
     index::Index::read(doc)?.point(doc, block, offset, affinity)
 }
 
+#[cfg(test)]
+mod plain_search_splices_tests;
 #[cfg(test)]
 mod tests;

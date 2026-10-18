@@ -49,6 +49,12 @@ pub struct PreparedWriterGroup {
     receipt: WriterReceipt,
 }
 impl PreparedWriterGroup {
+    /// Exact recovery for a receiver explicitly selecting the search history family.
+    /// # Errors
+    /// Disabled search history, invalid retained state or the whole-save budget rejects.
+    pub fn search_checkpoint(&self) -> Result<String, Error> {
+        self.candidate.search_checkpoint()
+    }
     /// Integrated writer range/lineage, before any durability claim.
     #[must_use]
     pub const fn receipt(&self) -> &WriterReceipt {

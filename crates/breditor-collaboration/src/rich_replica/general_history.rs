@@ -14,6 +14,22 @@ pub(super) enum ReplayContract {
     GeneralV1,
     DocumentV1,
 }
+/// Native-only capability selection; never silently inferred from saved records.
+#[derive(Clone, Copy)]
+pub(super) struct ReplayCapabilities {
+    pub scope: ReplayContract,
+    pub reviewed: bool,
+    pub search: bool,
+}
+impl ReplayCapabilities {
+    pub fn journal(self, protocol: super::protocol::Protocol, typing: bool) -> (&'static str, u32) {
+        if self.search {
+            super::search::journal(self.scope, typing)
+        } else {
+            self.scope.journal(protocol, typing)
+        }
+    }
+}
 impl ReplayContract {
     pub const fn journal(
         self,
@@ -53,8 +69,7 @@ impl RichReplica {
         self.require_writable()?;
         let mut candidate = self.staged()?;
         candidate.replay_contract = ReplayContract::GeneralV1;
-        let (format, version) =
-            candidate.replay_contract.journal(candidate.protocol, candidate.typing.is_some());
+        let (format, version) = candidate.history_family(candidate.typing.is_some());
         candidate.journal.format = format.into();
         candidate.journal.version = version;
         self.adopt(candidate)?;

@@ -127,6 +127,9 @@ impl RichReplica {
         self.encode_typing_checkpoint(super::general_history::TYPING_ENVELOPE)
     }
     pub(super) fn encode_typing_checkpoint(&self, format: &'static str) -> Result<String, Error> {
+        if self.search_contract {
+            return Err(Error::Contract("use explicit search checkpoint"));
+        }
         if self.reviewed_contract {
             return Err(Error::Contract("use explicit reviewed checkpoint"));
         }
