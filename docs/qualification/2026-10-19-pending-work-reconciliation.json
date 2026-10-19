@@ -1,0 +1,320 @@
+{
+  "format": "breditor/pending-work-reconciliation-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "passed": true,
+  "qualification": "40-selected-functional-checks-across-source-identical-33-check-prefix-and-7-check-cache-recovery-continuation-not-single-run-full-profile-or-v1-approval",
+  "execution": {
+    "kind": "source-identical-success-prefix-and-cache-recovery-continuation",
+    "singleUninterruptedRun": false,
+    "prefixManifest": {
+      "path": "target/v1-candidate-runs/run-Zq2kaB/result.json",
+      "bytes": 54889,
+      "sha256": "17db61e018682a34aab1a1a3fc194733a6d011a4cad80af98ddedf761e2c67f4",
+      "modifiedAtMs": 1792444161720.8826
+    },
+    "prefixPassed": 33,
+    "prefixTerminalStatus": "failed",
+    "failedAttempt": {
+      "id": "installed-rich-interchange",
+      "status": "failed",
+      "startedAt": "2026-10-19T21:09:18.016Z",
+      "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+      "args": [
+        "scripts/check-interchange-package.mjs"
+      ],
+      "env": {
+        "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+        "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+        "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+        "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+        "RUSTC": "/Users/s/.cargo/bin/rustc",
+        "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+        "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+        "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+        "NPM_BIN": "npm",
+        "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+      },
+      "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-Zq2kaB/34-installed-rich-interchange.log",
+      "finishedAt": "2026-10-19T21:09:21.370Z",
+      "exitCode": 1,
+      "signal": null,
+      "logBytes": 1959,
+      "log": {
+        "path": "target/v1-candidate-runs/run-Zq2kaB/34-installed-rich-interchange.log",
+        "bytes": 1959,
+        "sha256": "6d9d6a7fcd91baac543da41a4320369841d4ffbe1a266ee402c49b246f1e1ccc",
+        "modifiedAtMs": 1792444161367.3733
+      }
+    },
+    "continuationManifest": {
+      "path": "target/v1-candidate-runs/run-Hz24V0/result.json",
+      "bytes": 13543,
+      "sha256": "d9a57eaeafe1c99a9babd012d0a826c982786100328c067e0e7fc7ff415dd409",
+      "modifiedAtMs": 1792446829524.9421
+    },
+    "continuationPassed": 7,
+    "cacheRecovery": {
+      "path": "target/v1-candidate-runs/run-Zq2kaB/cache-recovery.json",
+      "bytes": 1615,
+      "sha256": "18b2d1c67f55cd48f90ce71a9ca8f0622c6201dca864e26cb8582648506c8a79",
+      "modifiedAtMs": 1792444233802.3884
+    },
+    "cachePreflight": {
+      "path": "target/v1-candidate-runs/run-Zq2kaB/cache-recovery-complete.json",
+      "bytes": 18001,
+      "sha256": "5f4f6c74192d343dffc045633760805a9954adad56eb81e79ffdd6353bc9dc38",
+      "modifiedAtMs": 1792444422060.2195
+    },
+    "sourceUnchanged": true
+  },
+  "verificationTools": {
+    "format": "breditor/local-qualification-tooling",
+    "scope": "Retained local verification scripts; absolute repository paths target this Mac. Not product API or a portable/hermetic release harness.",
+    "auditToolingCorrection": "Initial audit used string containment across macOS /var and /private/var aliases. Corrected to strict realpath containment, matching the installed-consumer checker. Product source and passing tests unchanged.",
+    "files": [
+      {
+        "path": "target/v1-candidate-runs/run-Zq2kaB/verification-tools/breditor-qualify-pending-recovery.mjs",
+        "bytes": 2858,
+        "sha256": "7dfc6eb57a77fae1017187ea0bc687ade65ff243ac06231306c2cccf48bc8d25",
+        "modifiedAtMs": 1792446902619.5083
+      },
+      {
+        "path": "target/v1-candidate-runs/run-Zq2kaB/verification-tools/breditor-continue-pending-recovery.mjs",
+        "bytes": 3803,
+        "sha256": "fe23caa99d773791d668d337298ccad86be08ed584ef94a728a04f4f3fddf65a",
+        "modifiedAtMs": 1792446902620.9023
+      },
+      {
+        "path": "target/v1-candidate-runs/run-Zq2kaB/verification-tools/breditor-audit-pending-recovery.mjs",
+        "bytes": 24529,
+        "sha256": "8cda9f00a4c7c28b49f2586da53deb4574de6735f713b2bdcb95fe4628fa3440",
+        "modifiedAtMs": 1792446902621.3052
+      },
+      {
+        "path": "target/v1-candidate-runs/run-Zq2kaB/verification-tools/breditor-record-pending-qualification.mjs",
+        "bytes": 9399,
+        "sha256": "a58be9ea57504b97e648428a8a682fa01d123b8d911e53ed44e71bc2eb95277d",
+        "modifiedAtMs": 1792446902621.5835
+      },
+      {
+        "path": "target/v1-candidate-runs/run-Zq2kaB/verification-tools/breditor-postcommit-pending-recovery.mjs",
+        "bytes": 4029,
+        "sha256": "7c3dc5604d033e05c85b725cda8b288220ce9592d4aca7fbd48e3393aa6fba7d",
+        "modifiedAtMs": 1792446902621.8953
+      },
+      {
+        "path": "target/v1-candidate-runs/run-Zq2kaB/verification-tools/breditor-prime-pending-fixture-cache.mjs",
+        "bytes": 3477,
+        "sha256": "8be5f6b4b35858f21c5d8bef763f6e76e2466677d10772127e4cf85b3c0de4d4",
+        "modifiedAtMs": 1792446902622.6858
+      }
+    ]
+  },
+  "fixtureCachePolicy": "Cache primed in a generated interchange fixture consumer using unchanged exact top-level selectors. Its declared transitive ranges are not root-lock-pinned; the actual fixture dependency tree is retained. The seven backup installed reports remain independently producer-lock-qualified. No project dependency or lockfile changed.",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "selectedStages": 40,
+  "evidence": {
+    "selectedChecks": "target/v1-candidate-runs/run-Zq2kaB/selected-checks.json",
+    "originalFailedRun": "target/v1-candidate-runs/run-Zq2kaB/result.json",
+    "continuation": "target/v1-candidate-runs/run-Hz24V0/result.json",
+    "cachePreflight": "target/v1-candidate-runs/run-Zq2kaB/cache-recovery-complete.json",
+    "sourceFiles": "target/v1-candidate-runs/run-Zq2kaB/frozen-source-files.json",
+    "audit": "target/v1-candidate-runs/run-Zq2kaB/qualification-audit.json",
+    "finalSourceAudit": "target/v1-candidate-runs/run-Zq2kaB/final-source-audit.json",
+    "nativePendingRecovery": "target/v1-candidate-runs/run-Zq2kaB/pending-recovery-sdk.json",
+    "installedPendingRecovery": "target/v1-candidate-runs/run-Zq2kaB/installed-pending-recovery.json",
+    "combinedWorkflows": "target/v1-candidate-runs/run-Zq2kaB/combined/",
+    "delayedConnectBeforeFix": "target/v1-candidate-runs/run-Zq2kaB/regression/",
+    "openingBeforeFix": "target/v1-candidate-runs/run-Zq2kaB/opening-regression/",
+    "constructorBeforeFix": "target/v1-candidate-runs/run-Zq2kaB/constructor-regression/",
+    "unresolvedCatalogAdmission": "target/v1-candidate-runs/run-Zq2kaB/unresolved-catalog-failure.json"
+  },
+  "source": {
+    "baseCommit": "bc4dc1491f671308d118f2a747855f0e9d795fdc",
+    "testedWorkingTreeSha256": "b758adac7246be3cb566253fca4fc71d0f04cb3e3953f9d6f14d87eb59207154",
+    "nonDocumentationSha256": "d2d13ce8c2952b70c7b09935eed469602c6046cf720bdb5f29533811d7c03f9d",
+    "files": 4683,
+    "bytes": 40685715,
+    "postQualificationChanges": "Only this qualification record and its contract evidence link."
+  },
+  "implementation": {
+    "publicApis": [
+      "SharedSuggestionQueue.recoverRetainedSuggestions",
+      "SharedSuggestionRevisions.recoverRetainedRevisions",
+      "SharedSuggestionSync.waitForDisconnected",
+      "SharedSuggestionRevisions.waitForDisconnected"
+    ],
+    "source": "A genuine original SharedParticipantReplay, exact declared queue/outbox identities and actual current native document/review continuity. Pure original native record admission remains mandatory.",
+    "retention": "Current-only packets remain first, followed by missing originals. Packet IDs require exact bytes; revisions also require exact predecessor bytes. Original publication, decision, revision receipt, losing conflict and compatible successor metadata remain retained.",
+    "conflicts": "Contradictory immutable receipts, accepted sequence collisions, duplicate winning successors, conflicting known lineage, differing decision payloads/timestamps and ambiguous unfinalized retry choices refuse without a partial per-store merge. Wall-clock time cannot choose an intent.",
+    "reservation": "One reservation covers the base queue and all registered sync/revision adapters through the save. Opening, connecting, outstanding serial/download/write work and wanted delivery refuse. Mutations, reconnect, retry, close/disposal and new attachment are blocked during recovery. Borrowed ordinary document networking remains host-owned.",
+    "save": "Native source saves first; the revision outbox also flushes its base queue before its own atomic record. Abort preserves old durable data and full merged export; commit-before-acknowledgement preserves the committed union. Retry retains exact captured bytes.",
+    "lifetime": "After admission the operation owns copied records. Borrowed replay disposal cannot roll back an in-progress save. Exact revision export now remains available after a borrowed source/transport failure; it is not a live source proof.",
+    "transactions": "Queue and revision stores commit separately. A completed queue retention is not rolled back or treated as global completion when revision recovery refuses. Original files and historical-copy markers remain retained.",
+    "globalRecoveryOrActivation": false,
+    "nativeForkUploadOrGenerationBridge": false,
+    "originalProtocolsDefaultsVersionsDependenciesFormatsAndBoundsUnchanged": true
+  },
+  "reproducedAndFixed": {
+    "delayedConnect": {
+      "reproducedBeforeFix": true,
+      "previousCommittedSourceVerified": true,
+      "baseCommit": "bc4dc1491f671308d118f2a747855f0e9d795fdc",
+      "beforeExitCode": 1,
+      "scope": "Exact previous committed SDK sync source executed with Node type transformation; only relative import specifiers resolved to current dist. Explicit stub queue/blocked transport proves post-disconnect network restart. Not a native engine fault.",
+      "repeatedWithCurrentTest": true,
+      "detail": "A delayed borrowed transport connection could call refresh after disconnect and restart metadata delivery. Both adapters now recheck the original epoch and wanted state before starting synchronization.",
+      "evidenceFilesHashed": 5
+    },
+    "opening": {
+      "reproducedBeforeFix": true,
+      "actualNative": true,
+      "sourceReconstructed": true,
+      "beforeSource": {
+        "commit": "bc4dc1491f671308d118f2a747855f0e9d795fdc",
+        "dirty": true,
+        "sha256": "355ce8035d2f67d1c13ef0c947b5c44097925c56a57aa427578340c82c022866",
+        "files": 4683,
+        "bytes": 40681781
+      },
+      "sourceSnapshots": 21,
+      "nativeArchivePreserved": true,
+      "controlledOriginalClassRepeated": true,
+      "controlledSourceMatchesQualification": false,
+      "controlledScope": "Only the exact preserved before-fix revision-outbox class is substituted, with import specifiers resolved to the current compiled SDK and Node type transformation. Actual original native participant input, real isolated IDB and public queue recovery reproduce the leaked attachment. This is an explicit controlled class substitution, not a before-full-tree producer qualification.",
+      "detail": "The new revision opening initially registered its busy state after a host check. Reentrant queue recovery could reserve the group, make opening refuse, and leave its attachment marker behind. Startup is now registered before callbacks and stays registered through the initial write and final validation. Failed opening cleanup releases it.",
+      "evidenceFilesHashed": 33
+    },
+    "constructor": {
+      "reproducedBeforeFix": true,
+      "failedContracts": 2,
+      "sourceReconstructed": true,
+      "beforeSource": {
+        "commit": "bc4dc1491f671308d118f2a747855f0e9d795fdc",
+        "dirty": true,
+        "sha256": "728333b459de88d89a410cd3c2003b7fa3ef65d7a9e372c2473412dd67a7ce0a",
+        "files": 4683,
+        "bytes": 40683216
+      },
+      "sourceSnapshots": 21,
+      "compiledClassPreserved": true,
+      "repeatedWithCurrentTests": true,
+      "scope": "Exact compiled current sync class plus matching typed source captured from the frozen worktree. Only relative import specifiers rebased; explicit host/queue stubs. Both single-owner reentrancy and failed-construction delivery assertions fail before repair.",
+      "detail": "Reentrant sync construction could create two adapters for one queue, and a failed constructor could still run a queued delivery task. Opening/attachment markers now precede callbacks; failed construction closes and advances its epoch before cleanup. Real native revision startup additionally refuses seven duplicate openings and verifies no delivery after a subscription failure.",
+      "evidenceFilesHashed": 31
+    }
+  },
+  "tests": {
+    "freshRelayNativeTestsAndDoctests": 216,
+    "freshNoServerRoomBackupTests": 97,
+    "freshNoServerServerBackupTests": 100,
+    "noServerCountsContainRepeatedLibraryTests": true,
+    "scriptsPassed": 719,
+    "existingOptInSkips": 3,
+    "editorTests": 385,
+    "candidateRunnerContracts": 47,
+    "pendingReconciliationContracts": 21,
+    "roomStorageContracts": 16,
+    "strictPublicTypes": true,
+    "nativePendingRecovery": {
+      "format": "breditor/pending-recovery-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 30,
+      "originalProposals": 30,
+      "originalRevisions": 30,
+      "currentProposals": 30,
+      "currentRevisions": 30,
+      "idempotentRetries": 60,
+      "coldStoreReopens": 120,
+      "nativeColdReopens": 30,
+      "futureNativeHistoryComparisons": 180,
+      "forgedSourceRefusals": 60,
+      "closedSourceRefusals": 60,
+      "intentConflictRefusals": 60,
+      "concurrentRefusals": 986,
+      "abortedSaveRetries": 2,
+      "committedBeforeAcknowledgementRetries": 2,
+      "sourceDisposalsAfterAdmission": 2,
+      "delayedConnectRefusals": 2,
+      "openingRecoveryRefusals": 1,
+      "openingAuthorityChecks": 7,
+      "openingFailureReopens": 1,
+      "reentrantOpeningRefusals": 7,
+      "failedSubscriptionRefusals": 1,
+      "networkCalls": 0
+    },
+    "sourceAndInstalledAcceptanceMatch": true,
+    "allSixPreviousInstalledAcceptancesUnchanged": true,
+    "priorRootAndSharedNative": {
+      "workspace": 2625,
+      "shared": 630,
+      "baseline": "bc4dc1491f671308d118f2a747855f0e9d795fdc",
+      "evidence": "target/v1-candidate-runs/run-Pl82F0/result.json",
+      "freshRuns": false
+    }
+  },
+  "combinedWorkflows": [
+    {
+      "id": "installed-everyday-mixed-workflows",
+      "passed": true,
+      "evidence": "target/v1-candidate-runs/run-Zq2kaB/combined/installed-everyday-mixed-workflows.json"
+    },
+    {
+      "id": "installed-text-review-and-readers",
+      "passed": true,
+      "evidence": "target/v1-candidate-runs/run-Zq2kaB/combined/installed-text-review-and-readers.json"
+    },
+    {
+      "id": "installed-formatting-review-and-readers",
+      "passed": true,
+      "evidence": "target/v1-candidate-runs/run-Zq2kaB/combined/installed-formatting-review-and-readers.json"
+    },
+    {
+      "id": "installed-assets-comments-versions",
+      "passed": true,
+      "evidence": "target/v1-candidate-runs/run-Zq2kaB/combined/installed-assets-comments-versions.json"
+    }
+  ],
+  "runtimeAndPackages": {
+    "bothOfficialWasmProducersRebuilt": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "freshSourceBoundBackupInstalledReports": 7,
+    "freshOfflineArchives": true,
+    "workspaceLinks": false,
+    "strictConsumerTypes": true,
+    "productionModules": {
+      "original": 151,
+      "participantOperation": 131,
+      "parentOperation": 152,
+      "historicalReplay": 88,
+      "versionRecovery": 92,
+      "pendingRecovery": 103
+    },
+    "productionApisImported": true,
+    "noWorkspaceReactOrSyntheticStorageInProductionGraph": true,
+    "stageAndArtifactHashesReverified": 60,
+    "nativeFixtureHashesReverified": 150,
+    "combinedInstalledArtifactFilesCompared": 3333,
+    "archiveLockfileAndRuntimeHashesReverified": true
+  },
+  "unresolvedCatalogAdmission": {
+    "confirmedFixed": false,
+    "carriedFrom": "target/v1-candidate-runs/run-iijAWa/qualification-audit.json",
+    "originalEvidence": "target/v1-candidate-runs/run-ZG2CkD/unresolved-catalog-failure.json",
+    "sourceMatchesCurrent": false,
+    "sourceSnapshots": 16,
+    "retainedNativeInputs": 30
+  },
+  "remaining": [
+    "The unexpected earlier Node catalog admission rejection remains unexplained and not confirmed fixed. Its source snapshots, original native inputs and failure log remain retained; later passing runs do not repair it. The first failing JS/IDB file set was not captured.",
+    "Full recovery still needs native offline-branch and whole-upload reconciliation, explicit resolution of contradictory local choices, current native server/provider byte-reference closure, protected credential custody, deployment/writer fencing and a final durable activation barrier. No original source or historical-copy marker is dropped here.",
+    "The approved cross-generation Undo/Redo and outstanding offline-edit bridge remains required. Resets, discarded branches, AST-only export or raised old limits are not substitutes.",
+    "Node storage/lock/raster/transport fixtures, local fault injection, synthetic DOM and clean installed native workflows do not qualify physical browser/clipboard, process/power-loss durability, quota/eviction, cross-device fencing or the large-room performance envelope.",
+    "All 13 V1 release gates remain open. Historical WebKit is not confirmed fixed; physical Japanese input and VoiceOver remain deferred.",
+    "The capped vendored warning, generic-btree notice gap and full dependency/license approval remain unresolved. No push, tag, version bump, publication or deployment occurred."
+  ]
+}

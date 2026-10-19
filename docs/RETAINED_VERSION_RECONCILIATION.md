@@ -95,6 +95,10 @@ decisions, clear historical-copy markers, verify current server/provider closure
 or activate a room. Those sources and conflicts remain retained. The approved
 cross-generation Undo/Redo and offline-edit bridge is still required.
 
+Use the separate [pending-work recovery APIs](PENDING_WORK_RECONCILIATION.md) to
+retain compatible original proposal queues and revision outboxes. Their local
+store saves do not complete the remaining room recovery obligations above.
+
 Native workflow checks use actual original Wasm owners with explicit Node
 storage, lock and raster fixtures. Browser behavior, process/power-loss durability,
 quota, eviction and the large-room operating envelope remain release gates.
