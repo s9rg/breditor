@@ -69,6 +69,7 @@ export {SharedDocumentVersions} from "./versions/catalog.js";
 export type {SharedRetainedVersionRecoveryResult} from "./versions/reconcile_types.js";
 export type {SharedRetainedSuggestionsRecoveryResult} from "./suggestions/reconcile_types.js";
 export type {SharedRetainedRevisionsRecoveryResult} from "./suggestion_revisions/reconcile_types.js";
+export type {SharedParticipantUploadReconciliationOptions} from "./participant_replay/upload_reconciliation.js";
 export {discoverSharedDocumentVersions} from "./versions/discover.js";
 export type {SharedDocumentVersionsOptions,SharedDocumentVersionsIdentity,SharedDocumentVersionsDiscoveryOptions,SharedDocumentVersionsState,SharedDocumentVersionStatus,SharedVersionCatalogRecord,SharedDocumentVersionEntry} from "./versions/types.js";
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeNotice,RichInterchangeFormatReport,RichInterchangeResult} from "@breditor/experimental-rich-content/rendering";

@@ -1,0 +1,169 @@
+{
+  "format": "breditor/upload-state-reconciliation-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "passed": true,
+  "qualification": "26-selected-functional-checks-for-durable-local-whole-upload-reconciliation-not-full-profile-or-v1-approval",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "evidence": {
+    "result": "target/v1-candidate-runs/run-VBHMGs/result.json",
+    "sourceFiles": "target/v1-candidate-runs/run-VBHMGs/frozen-source-files.json",
+    "audit": "target/v1-candidate-runs/run-VBHMGs/qualification-audit.json",
+    "finalSourceAudit": "target/v1-candidate-runs/run-VBHMGs/final-source-audit.json",
+    "native": "target/v1-candidate-runs/run-VBHMGs/native-upload-reconciliation.json",
+    "installed": "target/v1-candidate-runs/run-VBHMGs/installed-upload-reconciliation.json",
+    "assetOnlyInstalled": "target/v1-candidate-runs/run-VBHMGs/asset-only-installed.json",
+    "combined": "target/v1-candidate-runs/run-VBHMGs/combined-assets-comments-versions.json",
+    "before": "target/v1-candidate-runs/run-VBHMGs/before-api/",
+    "verificationTools": [
+      {
+        "path": "target/v1-candidate-runs/run-VBHMGs/verification-tools/breditor-qualify-upload-reconciliation.mjs",
+        "bytes": 3097,
+        "sha256": "170630f84f69ccbce722be77070379e9d8842202cbaac65671126cd4277514f2",
+        "modifiedAtMs": 1792450120466.804
+      },
+      {
+        "path": "target/v1-candidate-runs/run-VBHMGs/verification-tools/breditor-audit-upload-reconciliation.mjs",
+        "bytes": 15150,
+        "sha256": "a73fa2608a957c77df530ee312045e90c022a024205023af2786a894a94f9ceb",
+        "modifiedAtMs": 1792450120467.1182
+      },
+      {
+        "path": "target/v1-candidate-runs/run-VBHMGs/verification-tools/breditor-record-upload-qualification.mjs",
+        "bytes": 7657,
+        "sha256": "c57803ef233733e25d3af31583de08395873d646cf9fadb84b081ca1d842c7d8",
+        "modifiedAtMs": 1792450120467.6348
+      },
+      {
+        "path": "target/v1-candidate-runs/run-VBHMGs/verification-tools/breditor-postcommit-upload-reconciliation.mjs",
+        "bytes": 2939,
+        "sha256": "356fd1c4280dd49f80e1567f1939ee3f084b8712694abb9a02fce4f934b59f12",
+        "modifiedAtMs": 1792450120468.1914
+      },
+      {
+        "path": "target/v1-candidate-runs/run-VBHMGs/verification-tools/breditor-reproduce-upload-api-before.mjs",
+        "bytes": 2013,
+        "sha256": "ae4dc945d1fb5f3b759daeedbddd504aadabb236271c2dcdd20934660f3aaad1",
+        "modifiedAtMs": 1792450120468.6472
+      }
+    ],
+    "unresolvedCatalog": "target/v1-candidate-runs/run-VBHMGs/unresolved-catalog-failure.json"
+  },
+  "source": {
+    "baseCommit": "6464231d9e7e5a7acd38c9c56e769f7670eb8ca3",
+    "testedWorkingTreeSha256": "8a723c237a2e065475bc077078bd55f23922ba10d90ef7f69806d320f96af480",
+    "files": 4700,
+    "bytes": 40797586,
+    "nonDocumentationSha256": "040a789e89bc23013d932e8351cc1aef8d63a3271f7198b8556d3745d7814e9f",
+    "postQualificationChanges": "Only this qualification record and its contract evidence link."
+  },
+  "implementation": {
+    "publicApis": [
+      "RichAssetStore.beginReconciliation",
+      "RichAssetStore.resumeReconciliation",
+      "RichAssetReconciliation.preview",
+      "RichAssetReconciliation.commit",
+      "RichAssetReconciliation.file",
+      "RichAssetReconciliation.close",
+      "SharedParticipantReplay.beginUploadReconciliation",
+      "SharedParticipantReplay.resumeUploadReconciliation"
+    ],
+    "nativeBinding": "The genuine replay supplies its private original upload Blob, checks actual current native document/review continuity, and rejects a resumed attempt retaining a different original file. The target host store is explicit; this is not an operational participant ownership proof.",
+    "durableFiles": "A separate new V1 attempt database retains both exact original-format files before recording choices or changing the target. Original asset database/archive versions and all old limits remain unchanged.",
+    "choices": "Every differing upload status, epoch, attempt counter, failure or receipt requires exactly one original/current choice. Counters never order copies. Immutable payload/raster differences always refuse; both losing and winning source states remain archived.",
+    "transaction": "Exact target records and byte budget compare/apply atomically without eviction. Canonical choices precede the target transaction, and an applied marker follows it. An exact already-applied result is acknowledged without another asset write; a final marker cannot authorize recreating missing target assets.",
+    "failures": "Initial/decision/final ledger and target acknowledgement-loss cases inspect actual files/phase on retry. Abort preserves the old target. Changed targets, files, phases, known choices and foreign/missing schema refuse instead of being repaired.",
+    "lifecycle": "Local active writes/uploads refuse; a local busy reservation blocks mutation/flush/close during work. The upload Web Lock excludes cooperating upload/reconciliation owners; target CAS prevents lost writes from other owners, not a global pause. Version changes still close storage. Close drops large buffers and borrowed ports without closing a native editor/target or deleting files.",
+    "network": "No implicit upload or observer callback. A cancelled provider cannot publish its late receipt even after an explicitly chosen older epoch is restored. Normal later upload requires the host provider and its pre-existing idempotence-by-ID contract.",
+    "globalActivationOrNativeBranchMerge": false,
+    "crossGenerationBridge": false,
+    "originalProtocolsDefaultsVersionsDependenciesFormatsAndBoundsUnchanged": true
+  },
+  "tests": {
+    "selectedChecks": 26,
+    "scriptsPassed": 742,
+    "existingOptInSkips": 3,
+    "editorTests": 385,
+    "newStorageContracts": 22,
+    "existingAssetContracts": 14,
+    "existingAssetSourceContracts": 5,
+    "candidateRunnerContracts": 48,
+    "strictPublicTypes": true,
+    "nativeWorkflows": {
+      "format": "breditor/upload-reconciliation-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 66,
+      "pairedCases": 30,
+      "documentCases": 36,
+      "originalUploadRows": 90,
+      "currentOnlyImages": 66,
+      "sourceOnlyImages": 60,
+      "explicitConflicts": 30,
+      "idempotentRetries": 66,
+      "coldAttemptReopens": 132,
+      "coldStoreReopens": 66,
+      "coldNativeComparisons": 66,
+      "futureDocumentCheckpoints": 198,
+      "futureReviewCheckpoints": 90,
+      "closedSourceRefusals": 132,
+      "forgedSourceRefusals": 66,
+      "wrongOriginalRefusals": 1,
+      "retainedFileComparisons": 198,
+      "recoveryNotifications": 0,
+      "networkCalls": 0
+    },
+    "sourceAndInstalledNativeAcceptanceMatch": true,
+    "allSevenPreviousInstalledAcceptancesUnchanged": true,
+    "allOriginalPairedAndDocumentAssertionsUnchanged": true,
+    "sourceGuardedPriorNative": {
+      "root": 2625,
+      "shared": 630,
+      "relay": 216,
+      "freshRuns": false,
+      "evidence": "target/v1-candidate-runs/run-Zq2kaB/post-commit-audit.json",
+      "scope": "Rust/lockfiles unchanged; both official Wasm producers rebuild; native fixture build is not a fresh Rust test suite."
+    }
+  },
+  "packages": {
+    "bothOfficialWasmProducersRebuilt": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "freshBackupInstalledReports": 8,
+    "additionalAssetOnlyInstalledConsumer": true,
+    "assetOnlyConsumerFunctionalTestsExecuted": false,
+    "combinedLiveAssetsCommentsVersionWorkflow": true,
+    "strictConsumerTypes": true,
+    "producerPinnedRegistryDependencies": true,
+    "workspaceLinks": false,
+    "productionApiModuleImported": true,
+    "productionModules": 87,
+    "noWorkspaceReactOrSyntheticStorageInProductionGraph": true,
+    "installedPackageFilesCompared": 2103,
+    "archiveHashesVerified": 11,
+    "stageAndArtifactHashesVerified": 43,
+    "nativeFixtureHashesVerified": 30
+  },
+  "beforeRegression": {
+    "reproduced": true,
+    "scope": "Original compiled new SDK replay class, imports rebased only, current public Promise contract test. Forged receiver, no native invocation. Not an old full-tree qualification, native engine or historical WebKit repair.",
+    "files": 7,
+    "detail": "The new Promise-returning replay methods initially threw synchronous receiver guards. A preserved original compiled class reproduces that failure with only import paths rebased; current methods reject their Promises and the same contract passes. Not a native engine or historical WebKit repair."
+  },
+  "unresolvedCatalog": {
+    "confirmedFixed": false,
+    "carriedFrom": "target/v1-candidate-runs/run-Zq2kaB",
+    "originalEvidence": "target/v1-candidate-runs/run-ZG2CkD/unresolved-catalog-failure.json",
+    "firstFailingJsIdbFilesCaptured": false,
+    "currentSourceMatchesOriginal": false
+  },
+  "remaining": [
+    "Room activation still requires binding the explicit target store to genuine operational participant custody, complete current native/server/provider reference closure, protected credentials, all writer/deployment fences and a final durable barrier. Local choices and past phase flags grant none of those. Historical-copy markers remain pending.",
+    "Native forked/offline branch joining and explicit conflicting proposal/revision intent resolution remain required. This image-storage transition is not a journal merge.",
+    "The approved cross-generation Undo/Redo and outstanding offline-edit bridge remains mandatory; resets, dropped histories, AST-only export or raised old limits are not substitutes.",
+    "Web Locks and IndexedDB/raster/transport fixtures do not qualify physical browser/clipboard, process/power-loss durability, quota/eviction, cross-device fencing, arbitrary image decoding or the large-room performance envelope.",
+    "All 13 V1 gates remain open. The unexpected earlier catalog rejection and historical WebKit fault are not confirmed fixed. Physical Japanese input and VoiceOver remain deferred.",
+    "The capped vendored warning, generic-btree notice gap and full dependency/license approval remain unresolved. No push, tag, version bump, publication or deployment occurred."
+  ]
+}

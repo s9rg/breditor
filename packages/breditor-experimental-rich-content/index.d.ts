@@ -11,6 +11,7 @@ export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterch
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,type RichEditorOptions,type RichDocumentEditorOptions,type ToolbarControl,type ActionContext,type AssetBinding,type RenderOptions,type RichAssetOptions,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./dist/browser/index.js";
 export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions} from "./dist/browser/index.js";
 export {RichAssetArchive,readRichAssetBackup,type RichAssetSourceBackup,type RichAssetArchiveEntry,type RichAssetArchiveOptions} from "./dist/browser/index.js";
+export {RichAssetReconciliation,RichAssetReconciliationError,type RichAssetReconciliationOptions,type RichAssetReconciliationChoice,type RichAssetReconciliationConflict,type RichAssetReconciliationPreview,type RichAssetUploadState} from "./dist/browser/index.js";
 export {checkRichAssetLimits,inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./dist/browser/index.js";
 export class RichCommandError extends Error {readonly code: string; constructor(code: string, message: string)}
 export function compileRichProfile(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
