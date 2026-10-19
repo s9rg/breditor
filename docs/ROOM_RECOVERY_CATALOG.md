@@ -77,6 +77,16 @@ separately initialized as read-only. Original relay/actor/principal/transport
 identities and persistence families remain unchanged. The matching native
 initializer is required; there is no live-setter or JavaScript-only fallback.
 
+The staging adapter preserves the snapshotted options receiver when calling a
+factory. Native origin replay and later participant reopening recover the raw
+factory behind this SDK-owned adapter and apply their own initial policy once.
+This internal binding is not inferred from function properties, saved metadata
+or a caller-supplied wrapper. An already initialized or observed native owner
+still refuses admission.
+
+The [native factory qualification](qualification/2026-10-19-catalog-native-factory-composition.json)
+covers catalog staging combined with participant operational admission and reopening.
+
 The catalog checks exact document, review, declared retained-store and upload
 bytes through the existing participant coordinator. It then compares actual
 native writer prefixes against the selected inventory. All staged native owners

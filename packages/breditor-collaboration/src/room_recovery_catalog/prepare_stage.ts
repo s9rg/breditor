@@ -1,7 +1,7 @@
 import {prepareRecovery,type PreparedRecovery} from "../participant_recovery/prepare.js";
-import {initializeSharedReadOnly} from "../initialize_read_only.js";
+import {stagedReadOnlyFactory} from "../native_restore_factory.js";
 import type {SharedParticipantRecoveryOptions} from "../participant_recovery/types.js";
-import type {SharedSelectionPolicy,SharedRustOwner} from "../types.js";
+import type {SharedSelectionPolicy} from "../types.js";
 import {id,object,failure,known} from "./policy.js";
 import {MAX_CATALOG_PLAN_BYTES} from "./storage.js";
 import type {CatalogArchiveState} from "./archive.js";
@@ -25,7 +25,7 @@ export async function prepareStage(input:readonly SharedRoomRecoveryCatalogParti
   if(writers.has(identity.source.writer))throw failure("catalog_source");writers.add(identity.source.writer);
   const chosen=row.recovery,kind=chosen.session.kind,key=kind==="document-selection"?"restoreDocument":kind==="search-document"||kind==="search-paired"?"restoreSearch":kind==="reviewed-paired"?"restoreReviewed":"restore",o={...chosen.session.options} as unknown as Record<string,unknown>,restore=o[key];
   if(typeof restore!=="function")throw failure("catalog_policy");
-  o[key]=async(...args:unknown[])=>{guard();const raw=await (restore as (...a:unknown[])=>SharedRustOwner|Promise<SharedRustOwner>)(...args);try{guard();return initializeSharedReadOnly(raw,true);}catch(error){raw.free();throw error;}};
+  o[key]=stagedReadOnlyFactory(restore,o,guard);
   if("review" in o)o["review"]={...o["review"] as Record<string,unknown>,access:"read_only"};
   const options={...chosen,backup,expected:backup.selection(),session:{kind,options:o},checkAuthority:guard,...(signal?{signal}:{})} as SharedParticipantRecoveryOptions<SharedSelectionPolicy>;
   for(const name of [options.database,...Object.values(options.destinations)]){if(names.has(name))throw failure("catalog_policy");names.add(name);}

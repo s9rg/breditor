@@ -1,0 +1,90 @@
+{
+  "format": "breditor/catalog-native-factory-composition-qualification",
+  "formatVersion": 1,
+  "qualification": "selected-native-integration-checkpoint-not-full-functional-profile-or-v1-approval",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "selectedStages": 18,
+  "evidence": {
+    "result": "target/v1-candidate-runs/run-4kp36w/result.json",
+    "sourceFiles": "target/v1-candidate-runs/run-4kp36w/frozen-source-files.json",
+    "audit": "target/v1-candidate-runs/run-4kp36w/qualification-audit.json",
+    "beforeFactoryReceiverFix": "target/v1-candidate-runs/run-4kp36w/before-factory-receiver.log",
+    "beforeDoubleInitializationFix": "target/v1-candidate-runs/run-4kp36w/before-double-initialization.log",
+    "nativeCatalogComposition": "target/v1-candidate-runs/run-4kp36w/native-catalog-participant-operation.json",
+    "installedConsumer": "target/v1-candidate-runs/run-4kp36w/installed-consumer.json",
+    "installedParticipantOperation": "target/v1-candidate-runs/run-4kp36w/installed-participant-operation.json",
+    "installedCatalogComposition": "target/v1-candidate-runs/run-4kp36w/installed-catalog-participant-operation.json"
+  },
+  "source": {
+    "baseCommit": "61419d2ab2665a7c5c29de83af0bd5da1ef9f148",
+    "testedWorkingTreeSha256": "bd39c33dfd8c9fd66f76fecfaccbab48a0aabd7b8fe2286d0d8e3319eb9b70d3",
+    "nonDocumentationSha256": "f4ebe8ef2a6b89c7ad6ce94cc5f1118616f7d5aeea94ae625703d6c8e7a98b33",
+    "files": 4600,
+    "bytes": 40218517,
+    "postQualificationChanges": "This qualification file and its documentation link only."
+  },
+  "regressions": {
+    "factoryReceiver": "Catalog staging called a method-style native factory without its snapshotted options receiver, causing actual native paired replay to refuse.",
+    "doubleInitialization": "The catalog's read-only adapter initialized a fresh owner before origin/current replay attempted its own required one-shot initial policy.",
+    "fix": "Retain private WeakMap provenance for the SDK's own adapter. Staging preserves its receiver and guard; independent origin/current replay resolves the original raw factory and applies its own initial policy exactly once.",
+    "nativeEnforcementChanged": false,
+    "savedPolicyOrFunctionPropertyBypass": false,
+    "callerInitializedOwnerFallback": false,
+    "publicApiAdded": false
+  },
+  "tests": {
+    "scriptsPassed": 663,
+    "existingOptInSkips": 3,
+    "wrapperLifecycleUnitTests": 7,
+    "nativeOriginConfigurations": 66,
+    "nativeOriginColdReopens": 132,
+    "originalOperationalConfigurations": 66,
+    "originalOperationalColdReopens": 198,
+    "catalogStorageRegressions": 17,
+    "strictPublicCatalogAndParticipantTypes": true,
+    "oldInstalledInitialPolicyFamilies": 108,
+    "allEarlierInstalledAssertionsRetained": true
+  },
+  "catalogComposition": {
+    "actualNativeCompilersAndTransports": 10,
+    "participants": 20,
+    "factoryReceiverCalls": 138,
+    "genuineCustodyTransfers": 20,
+    "freshReadOnlyReopens": 20,
+    "currentStateColdReopens": 29,
+    "protectedWriterRefusals": 11,
+    "permittedContinuedEdits": 9,
+    "coldSavedRedoRecoveries": 9,
+    "retainedUploadRecords": 60,
+    "originalParticipantRecordsUnchanged": true,
+    "networkCalls": 0,
+    "repeatedThroughFreshInstalledPackages": true
+  },
+  "runtimeAndPackages": {
+    "rustSourcesUnchanged": true,
+    "bothOfficialProducersRebuilt": true,
+    "strictSharedWasmClippy": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "freshOfflineArchives": true,
+    "workspaceLinks": false,
+    "threeFreshInstalledReportsRequiredByBothProfiles": true,
+    "originalProductionBundleModules": 135,
+    "operationalProductionApiModules": 116,
+    "actualProductionApiImported": true,
+    "stageAndArtifactHashesReverified": 34,
+    "nativeFixtureHashesReverified": 30,
+    "archiveLockfileAndRuntimeHashesReverified": true,
+    "protocolsStoredFamiliesVersionsDefaultsDependenciesAndBoundsUnchanged": true
+  },
+  "remaining": [
+    "The parent catalog still owns its staged participants privately. Durable parent operational intent, partial-transfer/lost-acknowledgement resumption and room-level custody handoff are not implemented by this prerequisite integration fix.",
+    "Retained historical-copy reconciliation, protected original credentials, current authenticated account/server/writer fences and complete provider reference closure remain necessary for activation.",
+    "The approved cross-generation Undo/Redo and outstanding offline-edit bridge remains required.",
+    "Node IndexedDB, lock, raster and wrapper lifecycle fixtures do not qualify browser, process/power-loss durability or the operating envelope.",
+    "All 13 V1 gates remain open. The historical WebKit fault is not confirmed fixed; physical Japanese input and VoiceOver qualification remain deferred.",
+    "The generic-btree notice gap and dependency license approval remain unresolved. No push, tag, publication or deployment occurred."
+  ]
+}

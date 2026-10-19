@@ -5,6 +5,7 @@ import {SharedSuggestionQueue} from "../suggestions/queue.js";
 import {SharedSuggestionRevisions} from "../suggestion_revisions/outbox.js";
 import {SharedDocumentVersions} from "../versions/catalog.js";
 import {initializeSharedReadOnly} from "../initialize_read_only.js";
+import {nativeRestoreBinding} from "../native_restore_factory.js";
 import {inspectUploads} from "../participant_recovery/inspect.js";
 import type {PreparedRecovery} from "../participant_recovery/prepare.js";
 import type {RecoveryOwners,RecoverySession} from "../participant_recovery/components.js";
@@ -17,7 +18,8 @@ import type {SharedParticipantOperationCurrentPolicy} from "./types.js";
 
 function factory<T>(fn:T,receiver:object,readOnly:boolean):T{
  if(typeof fn!=="function")throw operationFailure("operation_policy");
- return (async(...args:unknown[])=>{const raw:SharedRustOwner=await Reflect.apply(fn,receiver,args);try{initializeSharedReadOnly(raw,readOnly);return raw;}catch(error){raw?.free();throw error;}}) as unknown as T;
+ const binding=nativeRestoreBinding(fn,receiver);
+ return (async(...args:unknown[])=>{const raw:SharedRustOwner=await Reflect.apply(binding.factory as (...args:unknown[])=>SharedRustOwner|Promise<SharedRustOwner>,binding.receiver,args);try{initializeSharedReadOnly(raw,readOnly);return raw;}catch(error){raw?.free();throw error;}}) as unknown as T;
 }
 export function operationPolicy(input:SharedParticipantOperationCurrentPolicy,paired:boolean):SharedParticipantOperationCurrentPolicy{
  if(!input||Object.keys(input).sort().join(",")!=="documentReadOnly,reviewAccess"||typeof input.documentReadOnly!=="boolean"||(paired?!["read_only","comment","moderate"].includes(input.reviewAccess!):input.reviewAccess!==null))throw operationFailure("operation_policy");

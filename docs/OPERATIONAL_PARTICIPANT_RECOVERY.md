@@ -80,6 +80,13 @@ options receiver. Original document, document-selection, search-document, paired
 reviewed-paired and search-paired factories remain separate; there is no empty
 document, AST import or older-runtime fallback.
 
+An SDK-owned catalog staging adapter retains an internal raw-factory binding.
+Operational admission uses that binding for each new exclusive native replay,
+preserving the snapshot receiver and applying the newly selected initial policy
+exactly once. Caller wrappers have no such bypass: they must still return an
+uninitialized, unobserved owner. Resolving the internal adapter grants no current
+authority and does not transfer the parent catalog's custody.
+
 Reopen requires every original completed database and ready record. It never
 initializes a missing component or upgrades a foreign schema. Current native
 replay must exactly match the stored checkpoint before its first autosave, and

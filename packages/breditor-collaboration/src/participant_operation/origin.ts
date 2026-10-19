@@ -1,5 +1,6 @@
 import {SharedRichEditor,createSharedDocumentEditor,SharedEditorError} from "../core.js";
 import {initializeSharedReadOnly} from "../initialize_read_only.js";
+import {nativeRestoreBinding} from "../native_restore_factory.js";
 import type {SharedEditorOptions,SharedRustOwner,SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 import type {PreparedRecovery} from "../participant_recovery/prepare.js";
@@ -16,7 +17,8 @@ export class ParticipantOrigin {
   try{
    const factory=chosen.kind==="document-selection"?o["restoreDocument"]:chosen.kind==="search-document"||chosen.kind==="search-paired"?o["restoreSearch"]:chosen.kind==="reviewed-paired"?o["restoreReviewed"]:o["restore"];
    if(typeof factory!=="function")throw unavailable();
-   raw=await(factory as (...args:unknown[])=>SharedRustOwner|Promise<SharedRustOwner>).call(o,document,...(chosen.kind.includes("paired")?[policy]:chosen.kind==="document-selection"?[source.history]:chosen.kind==="search-document"?[]:[source.history,source.rangeEditing]));
+   const binding=nativeRestoreBinding(factory,o);
+   raw=await(binding.factory as (...args:unknown[])=>SharedRustOwner|Promise<SharedRustOwner>).call(binding.receiver,document,...(chosen.kind.includes("paired")?[policy]:chosen.kind==="document-selection"?[source.history]:chosen.kind==="search-document"?[]:[source.history,source.rangeEditing]));
    p.guard();initializeSharedReadOnly(raw,true);
    const editor:SharedEditorOptions<"original">={...(o["editor"] as SharedEditorOptions<"original">|undefined),...(o["reviewedHistory"]?{reviewedHistory:o["reviewedHistory"] as SharedReviewedHistoryIdentity}:{}),...(source.searchHistory?{searchHistory:"search-v1" as const}:{})};
    const owned=raw;raw=undefined;
