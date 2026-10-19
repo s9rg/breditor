@@ -42,10 +42,11 @@ export function existingCatalogDatabase(name:string):Promise<IDBDatabase|undefin
 export function readCatalogDatabase(db:IDBDatabase,manifest?:string):Promise<{record:CatalogRecord;files:Map<string,Blob>}>{
  schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(["catalog","files"],"readonly"),catalog=tx.objectStore("catalog"),files=tx.objectStore("files");let reason:unknown,record:CatalogRecord,values:Blob[],keys:IDBValidKey[];
   const fail=(error:unknown)=>{reason=known(error,"catalog_diverged");try{tx.abort();}catch{}};
+  // Invalid store shape can abort before requests exist. Settle that path too.
+  tx.onabort=()=>reject(reason??failure());tx.oncomplete=()=>{try{if(keys.length!==values.length||keys.some(k=>typeof k!=="string")||values.some(v=>!(v instanceof Blob)))throw failure("catalog_diverged");resolve({record,files:new Map(keys.map((key,index)=>[key as string,values[index]!]))});}catch(error){reject(known(error,"catalog_diverged"));}};
   try{storeShape(catalog);storeShape(files);}catch(error){fail(error);return;}
   const count=catalog.count();count.onsuccess=()=>{if(count.result!==1)fail(failure("catalog_diverged"));};
   const get=catalog.get("state");get.onsuccess=()=>{try{record=checkRecord(get.result,manifest);const n=parseManifest(record.manifest).participants.length+2,c=files.count();c.onsuccess=()=>{if(c.result!==n||c.result>MAX_SHARED_ROOM_RECOVERY_CATALOG_FILES){fail(failure("catalog_diverged"));return;}const ks=files.getAllKeys(),vs=files.getAll();ks.onsuccess=()=>{keys=ks.result;};vs.onsuccess=()=>{values=vs.result;};};}catch(error){fail(error);}};
-  tx.onabort=()=>reject(reason??failure());tx.oncomplete=()=>{try{if(keys.length!==values.length||keys.some(k=>typeof k!=="string")||values.some(v=>!(v instanceof Blob)))throw failure("catalog_diverged");resolve({record,files:new Map(keys.map((key,index)=>[key as string,values[index]!]))});}catch(error){reject(known(error,"catalog_diverged"));}};
  });
 }
 /** Strict compare-and-update. A lost acknowledgement is resolved from actual retained state. */

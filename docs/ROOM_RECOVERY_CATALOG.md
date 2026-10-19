@@ -109,6 +109,10 @@ one transaction: ordered `reserved`, `started` and `complete` markers track its
 progress. Missing inspection aborts creation, and foreign schemas, versions,
 extra keys and occupied destinations refuse without upgrade or overwrite.
 
+Stores with foreign indexes, inline keys or auto-increment keys reject promptly
+without changing their records. The [schema regression qualification](qualification/2026-10-19-catalog-schema-settlement.json)
+covers both catalog stores, including the installed package.
+
 `retained`, `staging` and `checked` are past control-flow markers, not persisted
 proofs. Every staging call checks actual retained files, native participants,
 whole uploads and their original completion records. A lost acknowledgement

@@ -1,0 +1,77 @@
+{
+  "format": "breditor/catalog-schema-settlement-qualification",
+  "formatVersion": 1,
+  "qualification": "selected-storage-regression-checkpoint-not-full-functional-profile-or-v1-approval",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "selectedStages": 7,
+  "evidence": {
+    "result": "target/v1-candidate-runs/run-kg3jQ6/result.json",
+    "sourceFiles": "target/v1-candidate-runs/run-kg3jQ6/frozen-source-files.json",
+    "audit": "target/v1-candidate-runs/run-kg3jQ6/qualification-audit.json",
+    "beforeFix": "target/v1-candidate-runs/run-kg3jQ6/before-fix-regression.log",
+    "installedStorageRegressions": "target/v1-candidate-runs/run-kg3jQ6/installed-catalog-schema-regressions.log",
+    "installedConsumer": "target/v1-candidate-runs/run-kg3jQ6/installed-consumer.json",
+    "installedOperationConsumer": "target/v1-candidate-runs/run-kg3jQ6/installed-participant-operation.json",
+    "priorNativeQualification": "docs/qualification/2026-10-19-operational-participant-recovery.json"
+  },
+  "source": {
+    "baseCommit": "57391e1e422ce6a260314ba492f6af7473b8a0da",
+    "testedWorkingTreeSha256": "4cb04a18159584612015d840d0218f1f6ff996996597243df0c40d25e1a670ae",
+    "nonDocumentationSha256": "49a04064cfaad83103b77bc4455d4f8f8594a115f2f22c99fa29b6fbf0c353a1",
+    "files": 4595,
+    "bytes": 40194172,
+    "codeChanges": [
+      "packages/breditor-collaboration/src/room_recovery_catalog/storage.ts",
+      "scripts/room-recovery-catalog-storage.test.mjs"
+    ],
+    "postQualificationChanges": "This qualification file and its documentation link only."
+  },
+  "regression": {
+    "cause": "A store-shape refusal aborted the read transaction before its abort handler was installed, leaving the returned Promise unsettled.",
+    "fix": "Register settlement handlers before any store-shape validation or early return.",
+    "beforeFixExpectedFailures": 6,
+    "afterFixCatalogTestsPassed": 17,
+    "installedCatalogStorageTestsPassed": 17,
+    "stores": ["catalog", "files"],
+    "foreignShapes": ["index", "inline-key-path", "auto-increment"],
+    "existingKeysAndValuesPreserved": true,
+    "schemaUpgradeOrRepair": false,
+    "resolvesPriorOperationalCheckpointFollowup": true
+  },
+  "scripts": {
+    "passed": 655,
+    "existingOptInSkips": 3,
+    "strictPublicCatalogTypes": true
+  },
+  "runtime": {
+    "rustSourcesUnchanged": true,
+    "bothOfficialProducersRebuilt": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "protocolsStoredFamiliesVersionsDefaultsDependenciesAndBoundsUnchanged": true
+  },
+  "installed": {
+    "freshOfflineArchives": true,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "operationalConfigurations": 66,
+    "currentStateColdReopens": 198,
+    "roomCatalogFamilies": 10,
+    "roomCatalogStagedParticipants": 20,
+    "allEarlierInstalledAssertionsRetained": true,
+    "originalProductionBundleModules": 134,
+    "operationalProductionApiModules": 115,
+    "operationalProductionApiImported": true,
+    "stageArtifactArchiveLockfileAndRuntimeHashesReverified": true,
+    "storageRegressionsUseActualInstalledFiles": true
+  },
+  "remaining": [
+    "The storage harness uses isolated Node IndexedDB fixtures, not physical browser, process-loss or power-loss qualification.",
+    "Durable parent catalog operational handoff, historical-copy reconciliation, protected original credentials, current authenticated account/writer fences and provider reference closure remain unfinished.",
+    "Cross-generation Undo/Redo and outstanding offline-edit preservation remain required.",
+    "All 13 V1 release gates remain open. The historical WebKit fault is not confirmed fixed; physical Japanese input and VoiceOver qualification remain deferred.",
+    "The generic-btree notice gap and dependency license approval remain unresolved. No push, tag, publication or deployment occurred."
+  ]
+}
