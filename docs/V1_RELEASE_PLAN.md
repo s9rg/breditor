@@ -43,6 +43,28 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [catalog qualification](qualification/2026-10-19-room-recovery-catalog.json)
+passes 46 selected checks, including 157 fresh relay tests, 2,647 TypeScript
+tests, 627 script tests, 385 editor tests and strict fresh installed consumers.
+Three existing opt-in script checks remain skipped. Exact source guards carry
+2,620 root and 626 shared native tests; those suites are not fresh runs here.
+Both official Wasm producers are freshly rebuilt with unchanged hashes.
+
+The [durable room catalog](ROOM_RECOVERY_CATALOG.md) retains the selected native
+server bundle, inventory and every supplied client backup, then stages explicit
+original-family participants privately with read-only document and review policy.
+The native-backed probe covers ten server/compiler/transport combinations,
+twenty staged participants, forty retained files and sixty whole-upload entries.
+Lost acknowledgements, aborted parent markers, changed targets/files and false
+completion markers are resolved or refused without overwriting work. Duplicate
+and historical copies stay retained and pending.
+
+Current credential/provider authority, undeclared-store discovery, authenticated
+activation/handoff and the approved cross-generation bridge remain unfinished;
+all 13 release gates remain open.
+
+### Previous initial policy checkpoint
+
 The [initial policy checkpoint](qualification/2026-10-19-initial-shared-policy.json)
 passes 47 selected checks, including 626 shared native tests, 157 relay tests,
 2,647 TypeScript tests, 615 script tests and 385 editor tests. Three existing

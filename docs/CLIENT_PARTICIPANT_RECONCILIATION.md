@@ -137,6 +137,9 @@ The older verification-then-policy workflow remains covered separately.
 After source verification and explicit ownership handoff, the host must recheck
 current authority, apply current policy, and save its new operational checkpoint
 under the activation workflow. A covered report from an older cut must not be
-reused as currentness or permission proof. Durable room-wide cataloguing and
-activation remain separate work, as does the approved cross-generation bridge
-for Undo/Redo and outstanding offline edits.
+reused as currentness or permission proof. The
+[durable room catalog](ROOM_RECOVERY_CATALOG.md) retains supplied server/client
+files and stages chosen original participants privately. Undeclared source
+discovery, protected credentials, current provider closure and authenticated
+activation/handoff remain separate work, as does the approved cross-generation
+bridge for Undo/Redo and outstanding offline edits.
