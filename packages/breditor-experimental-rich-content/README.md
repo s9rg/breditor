@@ -38,6 +38,20 @@ explicit read/panel request without changing default editor startup.
 See [the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md) for traversal,
 resource, stale-source and composition rules.
 
+## Document placeholder
+
+`placeholder: 'Start writing…'` on a DOM mount admits a literal document-level prompt
+outside editable content. `profile.supportsPlaceholder()` can check policy before
+creating an owner; `core.supportsPlaceholder()` and `placeholderEmpty(revision?)`
+provide the guarded native read. Exactly one empty root paragraph/heading
+qualifies; whitespace, extra blocks and structures do not. Read-only/composing
+surfaces hide the prompt. Omission retains existing DOM and old-runtime behavior;
+an unsupported explicit request rejects before host mutation. The label is not
+history, clipboard or durable data. On an admitted DOM owner,
+`setPlaceholderLabel(textOrNull)` updates/hides only its label without replacing
+the editor or altering history; it cannot enable an omitted startup mode. See
+[the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md#document-placeholder).
+
 ## Create and use a local owner
 
 Browser owners can explicitly select `inputRules: "markdown-v1"` in mount or

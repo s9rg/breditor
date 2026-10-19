@@ -3,12 +3,14 @@ mod counts;
 mod error;
 mod inspect;
 mod outline;
+mod placeholder_empty;
 mod result;
 
 pub use counts::RichWritingCounts;
 pub use error::RichWritingError;
 pub use inspect::inspect_rich_writing_tools;
 pub use outline::RichHeadingOutlineEntry;
+pub use placeholder_empty::is_rich_placeholder_empty;
 pub use result::RichWritingTools;
 
 /// Aggregate accepted UTF-8 body limit, shared with native Find's reading policy.

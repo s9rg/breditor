@@ -70,6 +70,23 @@ The [writing-tools checkpoint](qualification/2026-10-18-writing-tools-browser-in
 records the passing selected-stage run, separate pinned-reader proof and exact
 fresh installed archives; it does not claim a complete profile or hosted CI run.
 
+Placeholders add actual paired-Wasm managed/React workflows and a fresh isolated
+four-package consumer to both profiles. These stages use current runtimes without
+requiring local historical caches. The standalone probe can additionally accept
+both exact pinned earlier references for restore/future-history and unsupported-
+option/default-DOM checks; omitted references supply no earlier-reader evidence.
+Prompt fixtures exercise visibility, Copy, composition, read-only state, peers,
+reopen, immutable configuration and early startup refusal, not physical input or
+screen-reader qualification. The full profile additionally requires the installed
+placeholder production-page check in one headless Chromium engine: actual DOM
+placement, responsive prose/heading fonts and RTL, automated typing/history,
+readonly transitions, disposal and unchanged default DOM. It is functional
+layout/input evidence, not a physical-input or cross-browser qualification.
+The [placeholder checkpoint](qualification/2026-10-18-placeholder-browser-installed.json)
+retains the passing frozen 38-stage selection, exact current/pinned-reader proof,
+fresh installed archive hashes and production-page results. It does not promote
+the whole profile or any V1 gate.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and

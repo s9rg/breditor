@@ -1,3 +1,4 @@
+import {validatePlaceholderOption} from "@breditor/experimental-rich-content/rendering";
 import {
  compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,restoreSharedTypingEditor,restoreSharedGeneralEditor,supportsSharedGeneralRanges,SharedPersistentSession,SharedEditorError,mountSharedEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,
  type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,
@@ -65,6 +66,7 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  closeTypingGroup(revision?:string):boolean;
  search():RichSearchHost<SharedSearchResults>;
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
+ setPlaceholderLabel(label:string|null):void;
  rangePolicy():SharedRangePolicy;
  view():ReturnType<SharedRichEditor["view"]>;checkpointJson():string;state():SharedSaveState;
  flush():Promise<void>;retrySave():Promise<void>;
@@ -93,6 +95,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  closeTypingGroup(revision?:string):boolean{this.#active();return this.#dom.closeTypingGroup(revision);}
  search():RichSearchHost<SharedSearchResults>{this.#active();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
+ setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}
  rangePolicy():SharedRangePolicy{return this.core.view().rangeEditing??"original";}
  searchHistoryPolicy():"search-v1"|null{return this.core.searchHistoryPolicy();}
@@ -131,6 +134,7 @@ export async function openSharedSearchEditor(options:SharedSearchEditorSessionOp
 async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedSearchEditorSessionOptions,search:boolean):Promise<SharedEditorSession>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
+ validatePlaceholderOption(options.placeholder);
  if(options.coreOptions&&"searchHistory" in options.coreOptions&&options.coreOptions.searchHistory!==undefined)throw new TypeError("Use the separately named search startup factory");
  if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new TypeError("Expected richLanguage 1, 2 or 3");
  if(options.readOnly!==undefined&&typeof options.readOnly!=="boolean")throw new TypeError("readOnly must be Boolean");
@@ -150,6 +154,7 @@ async function openSharedEditorFamily(options:SharedEditorSessionOptions|SharedS
   const runtime=await awaitInitialization(initializeSharedRuntime(options.runtimeInput),options.signal);claim.assert();
   profile=language===3?compileStandardLayoutSharedProfileV3(runtime,configuration as SharedProfileConfigurationV3):language===2?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
   const factory=profile,binding=JSON.parse(factory.descriptor_json()) as SharedProfileDescriptor;
+  if(options.placeholder!==undefined&&factory.placeholder_version?.()!=="1")throw new SharedEditorError("placeholder_unavailable","Use a matching native placeholder profile before opening durable storage");
   if(ranges==="general-v1"&&!supportsSharedGeneralRanges(factory))throw new SharedEditorError("general_range_unavailable","Use matching native general-range recovery before opening a durable general session");
   if(search&&!supportsSharedSearchHistory(factory))throw new SharedEditorError("search_history_unavailable","Use matching native search recovery before opening a search session");
   const presentation=createStandardRichInlinePresentationV1(factory.inline_catalog_json(),options.additionalInlinePresentation);

@@ -1,4 +1,5 @@
 //! Application-configured shared factory; the fixed fixture probe remains a separate path.
+mod placeholder;
 mod restore_document;
 mod restore_general;
 mod restore_reviewed;

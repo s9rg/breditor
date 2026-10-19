@@ -103,6 +103,7 @@ class RichCoreProfile {
   constructor(raw, descriptor) { this.#raw = raw; this.#descriptor = JSON.stringify(descriptor); }
   #live() { if (!this.#raw) throw new RichCommandError("breditor_rich.disposed", "The rich profile is disposed"); return this.#raw; }
   descriptor() { this.#live(); return JSON.parse(this.#descriptor); }
+  supportsPlaceholder(){return this.#live().placeholderVersion?.()==="1";}
   inlineCatalogJson() { return read(this.#live().inlineCatalogJson()); }
   createEditor(documentJson, historyCapacity = "100") {
     const raw = transfer(this.#live().createEditor(documentJson, historyCapacity), "editor", "takeEditor");
@@ -137,6 +138,8 @@ class RichCoreEditor {
   #searches=new Set();
   constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
+  supportsPlaceholder(){const raw=this.#live();return raw.placeholderVersion?.()==="1"&&typeof raw.placeholderEmpty==="function";}
+  placeholderEmpty(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The placeholder read was prepared from an older rich view");if(!this.supportsPlaceholder())throw new RichCommandError("breditor_rich.placeholder_unavailable","Use complete matching native placeholder reads");const value=read(raw.placeholderEmpty(this.#observation));if(value!=="true"&&value!=="false")throw new RichCommandError("breditor_rich.placeholder_read","Invalid native placeholder eligibility");return value==="true";}
   supportsWritingTools(){const raw=this.#live();return raw.writingToolsVersion?.()==="1"&&typeof raw.writingToolsJson==="function";}
   writingTools(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The writing read was prepared from an older rich view");if(!this.supportsWritingTools())throw new RichCommandError("breditor_rich.writing_tools_unavailable","Use complete matching native writing reads");const value=parseRichWritingTools(read(raw.writingToolsJson(this.#observation)));if(value.revision!==current)throw new RichCommandError("breditor_rich.writing_tools_source","The native writing read has a different source publication");return value;}
   supportsMarkdownInputRules(){const r=this.#live();return r.markdownInputRulesVersion?.()==="1"&&[r.insertPlainTextWithMarkdownRules,r.insertTypingTextWithMarkdownRules].every(method=>typeof method==="function");}

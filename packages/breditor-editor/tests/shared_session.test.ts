@@ -4,6 +4,7 @@ vi.mock("../src/shared_profile.js",()=>({initializeSharedRuntime:mocks.runtime,s
 vi.mock("@breditor/collaboration",()=>({SharedEditorError:class extends Error {constructor(readonly code:string,message:string){super(message);}},restoreSharedTypingEditor:mocks.restoreTyping,restoreSharedGeneralEditor:mocks.restoreGeneral,supportsSharedGeneralRanges:mocks.supportsGeneral,compileStandardSharedProfileV1:mocks.compile,compileStandardStructuralSharedProfileV2:mocks.compileV2,compileStandardLayoutSharedProfileV3:mocks.compileV3,SharedPersistentSession:{open:mocks.open},mountSharedEditor:mocks.mount,createStandardSharedToolbarV1:()=>[],createStructuralSharedToolbarV2:()=>[],createLayoutSharedToolbarV3:()=>[]}));
 vi.mock("@breditor/experimental-rich-content",()=>({createStandardRichInlinePresentationV1:()=>({})}));
 import {openSharedEditor,SharedEditorOpenError} from "../src/shared_session.js";
+import {openSharedDocumentEditor} from "../src/shared_document_session.js";
 
 function setup(){
  const events:string[]=[],host=document.createElement("div"),original=document.createElement("button");host.append(original);
@@ -18,6 +19,10 @@ function setup(){
 }
 beforeEach(()=>{for(const fn of Object.values(mocks))fn.mockReset();});
 describe("durable SDK session coordinator",()=>{
+ it("placeholder capability rejects before durable storage or writer creation in both scopes",async()=>{
+  for(const documentScope of [false,true]){const t=setup();await expect(documentScope?openSharedDocumentEditor({...t.options,selectionEditing:"document-v1",placeholder:"Prompt"}):openSharedEditor({...t.options,placeholder:"Prompt"})).rejects.toMatchObject({code:"placeholder_unavailable"});expect(mocks.open).not.toHaveBeenCalled();expect(t.profile.create).not.toHaveBeenCalled();expect(t.profile.restore).not.toHaveBeenCalled();expect(mocks.mount).not.toHaveBeenCalled();expect(t.profile.free).toHaveBeenCalledOnce();expect(t.host.firstChild).toBe(t.original);}
+  mocks.runtime.mockClear();const bad=setup();mocks.runtime.mockClear();await expect(openSharedEditor({...bad.options,placeholder:"\ud800"})).rejects.toThrow("placeholder");expect(mocks.runtime).not.toHaveBeenCalled();expect(mocks.open).not.toHaveBeenCalled();expect(bad.host.firstChild).toBe(bad.original);
+ });
  it.each(["generalCheckpoint","generalTypingCheckpoint"] as const)("selects %s only through its explicit initial discriminator",async kind=>{
   const t=setup();mocks.supportsGeneral.mockReturnValue(true);mocks.restoreGeneral.mockReturnValue(t.raw);
   const editor=await openSharedEditor({...t.options,initial:{kind,checkpointJson:"opaque general save"}}),history=kind==="generalTypingCheckpoint"?"typing-v1":"explicit";

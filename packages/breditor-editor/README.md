@@ -34,7 +34,24 @@ owner; dispose/unmount them before retiring it. They neither change save formats
 nor enable a new history family. Old runtimes lacking the complete optional
 capability reject the explicit panel request, not ordinary editor startup.
 See [the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md) for bounds,
-label truncation and lifecycle. Placeholder and fullscreen remain unfinished.
+label truncation and lifecycle. Fullscreen remains unfinished.
+
+## Document placeholder
+
+Use `placeholder: 'Start writing…'` in a managed local/shared opening or React
+`initialOptions`. Rust admits the prompt only for one empty top-level paragraph
+or heading; whitespace and structural content suppress it. The literal initial
+label stays outside editable/clipboard content and is never saved. It hides while
+read-only or composing. Labels are well-formed Unicode within 1,024 UTF-8 bytes.
+Profile capability admission precedes owner/durable startup; older runtimes reject
+the explicit option. Omission preserves the previous DOM and startup. See
+[the contract](../../docs/RICH_WRITING_TOOLS.md#document-placeholder) for the exact
+policy and source guards. A placeholder supplements, never replaces, the editor's
+label. After admission, `editor.setPlaceholderLabel('Localized hint')` changes only
+UI text; pass `null` to hide it. The existing owner, focus and saved history remain
+intact. React's `getEditor()`/`onReady` owner exposes the same method, with no rekey
+required. Omitted admission cannot be enabled by this setter. Platform/screen-
+reader qualification remains separate.
 
 ## Find and replace
 

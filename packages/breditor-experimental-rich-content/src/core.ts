@@ -80,6 +80,9 @@ export interface RichView {
 export interface RichDocumentView extends Omit<RichView,"format"|"selection"> {format:"breditor/rich-document-view";selection:RichDocumentSelection|null}
 export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "document-v1"?RichDocumentView:RichView;
 export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
+  /** Native document-level prompt eligibility; independent of counts and saved settings. */
+  supportsPlaceholder?():boolean;
+  placeholderEmpty?(expectedRevision?:string):boolean;
   /** Complete optional native accepted-document counts and outline; no JS fallback. */
   supportsWritingTools?():boolean;
   writingTools?(expectedRevision?:string):RichWritingToolsRead;
@@ -161,6 +164,8 @@ export interface RichDocumentCoreEditor extends RichCoreEditor<"document-v1"> {
   pasteDocumentClipboard(clipboardJson:string,prefix:string,expectedRevision?:string):RichCommandOutcome;
 }
 export interface RichCoreProfile {
+  /** Check optional prompt policy before creating/recovering an owner. */
+  supportsPlaceholder?():boolean;
   descriptor(): RichProfileDescriptor;
   inlineCatalogJson(): string;
   createEditor(documentJson: string, historyCapacity?: string): RichCoreEditor;

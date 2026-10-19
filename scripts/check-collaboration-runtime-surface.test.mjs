@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,suggestionRevisionMethods,suggestionFormatRebaseMethods,suggestionTextRebaseMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
-import {searchOwnerMethods,writingOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
+import {searchOwnerMethods,writingOwnerMethods,placeholderOwnerMethods,placeholderProfileMethods} from "./check-collaboration-runtime-surface.mjs";
 const emptyWasm=Uint8Array.from([0,97,115,109,1,0,0,0]);
 test("clipboard interchange requires the complete separate pure capability",()=>{
  for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
@@ -10,6 +10,8 @@ function fixture(){
  const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},SharedSuggestionEffectProof:class {},SharedSearchResults:class {},default:()=>{},initSync:()=>{}};
  for(const name of searchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of writingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of placeholderOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of placeholderProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["search_history_version","restore_search"])module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["metadata_json","navigate"])module.SharedSearchResults.prototype[name]=()=>{};
  for(const name of documentOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -53,6 +55,10 @@ function fixture(){
 }
 test("writing requires its complete independent guarded capability",()=>{
  for(const name of writingOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native writing capability/);}
+});
+test("placeholder requires the complete independent native empty-state read",()=>{
+ for(const name of placeholderOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native placeholder capability/);}
+ for(const name of placeholderProfileMethods){const f=fixture();delete f.module.SharedRichProfile.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native placeholder profile capability/);}
 });
 test("search requires complete guarded methods, explicit recovery and an opaque native result",()=>{
  for(const name of searchOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native search capability/);}

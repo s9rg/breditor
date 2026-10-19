@@ -116,7 +116,7 @@ pub use table_paste_draft::{TableCellPasteDraft, TablePasteDraft, TablePasteMerg
 pub use writing_tools::{
     RICH_WRITING_MAX_TEXT_BLOCKS, RICH_WRITING_MAX_TEXT_BYTES, RICH_WRITING_MAX_VISITED_NODES,
     RICH_WRITING_OUTLINE_LABEL_BYTES, RichHeadingOutlineEntry, RichWritingCounts, RichWritingError,
-    RichWritingTools, inspect_rich_writing_tools,
+    RichWritingTools, inspect_rich_writing_tools, is_rich_placeholder_empty,
 };
 
 pub use identity::{

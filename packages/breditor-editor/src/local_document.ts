@@ -1,4 +1,5 @@
 /** Explicit document-family SDK owner. Original local startup and checkpoint discriminators stay closed. */
+import {validatePlaceholderOption} from "@breditor/experimental-rich-content/rendering";
 import {compileStandardRichProfileV1,compileStandardStructuralRichProfileV2,compileStandardLayoutRichProfileV3,createStandardRichInlinePresentationV1,createStandardRichToolbarV1,createStructuralRichToolbarV2,createLayoutRichToolbarV3,mountDocumentRichEditor,type RichCoreProfile,type RichDocumentCoreEditor,type RichDocumentEditorOptions,type RichDomEditor,type RichDocumentView,type ToolbarControl,type RenderOptions} from "@breditor/experimental-rich-content";
 import {refreshAssets,validateMarkdownInputPolicy} from "@breditor/experimental-rich-content/rendering";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
@@ -37,6 +38,7 @@ class DocumentOwner implements LocalDocumentEditor {
  closeTypingGroup(...args:Parameters<LocalDocumentEditor["closeTypingGroup"]>):boolean{return this.#dom.closeTypingGroup(...args);}
  search():RichSearchHost{this.#dom.view();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
+ setPlaceholderLabel(label:string|null):void{this.#dom.setPlaceholderLabel(label);}
  selectDocument(...args:Parameters<LocalDocumentEditor["selectDocument"]>):ReturnType<LocalDocumentEditor["selectDocument"]>{return this.#dom.selectDocument(...args);}
  replaceDocumentPlainText(...args:Parameters<LocalDocumentEditor["replaceDocumentPlainText"]>):ReturnType<LocalDocumentEditor["replaceDocumentPlainText"]>{return this.#dom.replaceDocumentPlainText(...args);}
  pasteDocumentClipboard(...args:Parameters<LocalDocumentEditor["pasteDocumentClipboard"]>):ReturnType<LocalDocumentEditor["pasteDocumentClipboard"]>{return this.#dom.pasteDocumentClipboard(...args);}
@@ -47,6 +49,7 @@ class DocumentOwner implements LocalDocumentEditor {
 export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions):Promise<LocalDocumentEditor>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
+ validatePlaceholderOption(options.placeholder);
  if(options.selectionEditing!=="document-v1")throw new TypeError("Expected explicit selectionEditing document-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="general-v1")throw new TypeError("Document editing requires general-v1 ranges");
  if(options.richLanguage!==undefined&&![1,2,3].includes(options.richLanguage))throw new TypeError("Expected richLanguage 1, 2 or 3");
@@ -59,6 +62,7 @@ export async function openLocalDocumentEditor(options:LocalDocumentEditorOptions
  try{
   const runtime=await awaitInitialization(initializeLocalRuntime(options.runtimeInput),options.signal);claim.assert();const language=options.richLanguage??1;
   profile=language===3?compileStandardLayoutRichProfileV3(runtime,options.profileBootstrapJson??layoutProfileBootstrapJsonV3):language===2?compileStandardStructuralRichProfileV2(runtime,options.profileBootstrapJson??structuralProfileBootstrapJsonV2):compileStandardRichProfileV1(runtime,options.profileBootstrapJson??standardProfileBootstrapJson);
+  if(options.placeholder!==undefined&&profile.supportsPlaceholder?.()!==true)throw Error("Use a matching native placeholder profile before creating an editor");
   if(profile.supportsDocumentSelection?.()!==true||!profile.createDocumentEditor||!profile.restoreDocumentEditor||!profile.restoreDocumentTypingEditor)throw Error("Use matching native document-family creation and recovery");
   const presentation=createStandardRichInlinePresentationV1(profile.inlineCatalogJson(),options.additionalInlinePresentation),block=initial.kind==="empty"?initial.blockId??crypto.randomUUID():undefined;
   core=initial.kind==="documentCheckpoint"?profile.restoreDocumentEditor(initial.checkpointJson):initial.kind==="documentTypingCheckpoint"?profile.restoreDocumentTypingEditor(initial.checkpointJson):profile.createDocumentEditor(initial.kind==="document"?initial.documentJson:emptyDocumentJson(profile.descriptor(),initial.documentId??crypto.randomUUID(),block!));

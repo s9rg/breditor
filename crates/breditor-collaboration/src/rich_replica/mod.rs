@@ -70,6 +70,7 @@ mod paste_flow_at_text;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod patch_inline_format_properties;
+mod placeholder_empty;
 mod placement;
 mod plan_general_range_plain_text;
 mod planning;

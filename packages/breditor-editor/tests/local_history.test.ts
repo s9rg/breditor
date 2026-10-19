@@ -1,8 +1,9 @@
 import {beforeEach,expect,it,vi} from "vitest";
 const mocks=vi.hoisted(()=>({compile:vi.fn(),compileV3:vi.fn(),runtime:vi.fn(),mount:vi.fn(),layoutToolbar:vi.fn(()=>[])}));
 vi.mock("../src/runtime.js",()=>({initializeLocalRuntime:mocks.runtime}));
-vi.mock("@breditor/experimental-rich-content",()=>({compileStandardRichProfileV1:mocks.compile,compileStandardStructuralRichProfileV2:mocks.compile,compileStandardLayoutRichProfileV3:mocks.compileV3,createStandardRichInlinePresentationV1:()=>({}),createStandardRichToolbarV1:()=>[],createStructuralRichToolbarV2:()=>[],createLayoutRichToolbarV3:mocks.layoutToolbar,mountRichEditor:mocks.mount,insertImageFiles:vi.fn()}));
+vi.mock("@breditor/experimental-rich-content",()=>({compileStandardRichProfileV1:mocks.compile,compileStandardStructuralRichProfileV2:mocks.compile,compileStandardLayoutRichProfileV3:mocks.compileV3,createStandardRichInlinePresentationV1:()=>({}),createStandardRichToolbarV1:()=>[],createStructuralRichToolbarV2:()=>[],createLayoutRichToolbarV3:mocks.layoutToolbar,mountRichEditor:mocks.mount,mountDocumentRichEditor:mocks.mount,insertImageFiles:vi.fn()}));
 import {openLocalEditor} from "../src/local.js";
+import {openLocalDocumentEditor} from "../src/local_document.js";
 function setup(capable=true){
  let natural=false;
  const core={supportsGeneralRanges:()=>capable,supportsTypingHistory:()=>capable,enableTypingHistory:vi.fn(()=>{const changed=!natural;natural=true;return changed;}),supportsReadOnly:()=>true,setReadOnly:vi.fn(()=>true),dispose:vi.fn(),view:()=>({historyGrouping:natural?"typing-v1":undefined})};
@@ -12,6 +13,11 @@ function setup(capable=true){
  return {host,original,core,profile,dom};
 }
 beforeEach(()=>{vi.clearAllMocks();mocks.runtime.mockResolvedValue({});document.body.replaceChildren();});
+it("placeholder rejection precedes local owner creation/recovery in both scopes, without changing default startup",async()=>{
+ for(const documentScope of [false,true]){const t=setup(),initial={kind:"document" as const,documentJson:"native"};const pending=documentScope?openLocalDocumentEditor({host:t.host,selectionEditing:"document-v1",placeholder:"Prompt",initial}):openLocalEditor({host:t.host,placeholder:"Prompt",initial});await expect(pending).rejects.toThrow("matching native placeholder profile");expect(t.profile.createEditor).not.toHaveBeenCalled();expect(t.profile.restoreEditor).not.toHaveBeenCalled();expect(t.profile.dispose).toHaveBeenCalledOnce();expect(t.core.dispose).not.toHaveBeenCalled();expect(t.host.firstChild).toBe(t.original);}
+ const t=setup(),editor=await openLocalEditor({host:t.host,initial:{kind:"document",documentJson:"native"}});expect(t.profile.createEditor).toHaveBeenCalledOnce();editor.dispose();
+ mocks.runtime.mockClear();const bad=setup();await expect(openLocalEditor({host:bad.host,placeholder:"\ud800"})).rejects.toThrow("placeholder");expect(mocks.runtime).not.toHaveBeenCalled();expect(bad.host.firstChild).toBe(bad.original);
+});
 it("general input routing is explicit, capability checked before mutation, and independent from local save family",async()=>{
  const t=setup(),editor=await openLocalEditor({host:t.host,rangeEditing:"general-v1",history:"typing-v1",initial:{kind:"typingCheckpoint",checkpointJson:"opaque natural local"}});expect(t.profile.restoreTypingEditor).toHaveBeenCalledWith("opaque natural local");expect(mocks.mount.mock.calls[0]![1].rangeEditing).toBe("general-v1");editor.dispose();
  const old=setup(false);mocks.mount.mockClear();await expect(openLocalEditor({host:old.host,rangeEditing:"general-v1",initial:{kind:"document",documentJson:"native"}})).rejects.toThrow("matching native general-range");expect(mocks.mount).not.toHaveBeenCalled();expect(old.core.setReadOnly).not.toHaveBeenCalled();expect(old.core.dispose).toHaveBeenCalledOnce();expect(old.host.firstChild).toBe(old.original);

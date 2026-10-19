@@ -23,6 +23,7 @@ mod inline_format_state;
 mod input_rules;
 mod observation;
 mod paste_document_clipboard;
+mod placeholder_empty;
 mod profile;
 mod replace_document_plain_text;
 mod replace_document_typing_text;

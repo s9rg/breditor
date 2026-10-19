@@ -24,6 +24,7 @@ import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,
 import type {RichInputRuleOutcome} from "./core.js";
 import type {RichWritingToolsRead} from "./writing_tools_types.js";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "./writing_tools_host.js";
+import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "./placeholder.js";
 
 export interface RichEditorOptions<P extends RichSelectionPolicy="original"> extends RenderOptions {
  core:RichCoreEditor<P>;
@@ -37,6 +38,8 @@ export interface RichEditorOptions<P extends RichSelectionPolicy="original"> ext
  onInputRuleRefused?:()=>void;
  toolbar?:readonly ToolbarControl<P>[];
  label?:string;
+ /** Initial label for admitted native prompt mode; omission preserves existing DOM/defaults. */
+ placeholder?:string;
  onChange?:(view:RichEditorView<P>,outcome:RichCommandOutcome)=>void;
  onError?:(error:unknown)=>void;
  /** Called only after an explicitly selected caption/code text paste successfully publishes. */
@@ -72,6 +75,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #inputRules:boolean;
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
+ readonly #placeholder:RichPlaceholderPresentation|undefined;
  constructor(root:HTMLElement,options:RichEditorOptions<P>&(P extends "document-v1"?RichDocumentEditorOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
@@ -79,6 +83,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
   this.#inputRules=requireMarkdownInputRules(options.inputRules,options.core);
+  const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   if(options.rangeEditing!==undefined&&options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")throw new TypeError("Expected rangeEditing original or general-v1");
   if(this.#document&&options.rangeEditing==="original")throw Error("Document selection requires native general-range browser routing");
   this.#general=!!this.#document||options.rangeEditing==="general-v1";
@@ -90,7 +95,8 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   const document=root.ownerDocument;this.surface=document.createElement("div");this.surface.className="breditor-rich-surface";this.surface.contentEditable="true";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Rich text editor");
   this.toolbar=document.createElement("div");this.toolbar.className="breditor-rich-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Rich text formatting");
   this.status=document.createElement("p");this.status.className="breditor-rich-status";this.status.setAttribute("role","status");
-  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(this.#document?documentSelectionStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.surface,this.status);
+  this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
+  const style=document.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2+(this.#document?documentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorRich"]="";root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);
   const seen=new Set<string>();
   for(const control of options.toolbar??defaultToolbarFor<P>()){
    if(seen.has(control.id))throw Error("Duplicate rich toolbar control identity");seen.add(control.id);
@@ -98,6 +104,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
    this.#controls.push({control,view});
   }
   render(this.surface,this.#model,options);this.#refreshControls();
+  if(this.#placeholder){this.#placeholder.update(placeholder!.empty&&this.#model.view.readOnly!==true);this.#writingEvents.subscribe(()=>this.#refreshPlaceholder());}
   if(this.#model.view.readOnly===true)this.status.textContent=`Read-only · revision ${this.#model.view.revision}`;
   this.surface.addEventListener("beforeinput",event=>this.#input(event as InputEvent),{signal:this.#abort.signal});
   this.surface.addEventListener("input",()=>{if(!this.#composition)this.#reconcile();},{signal:this.#abort.signal});
@@ -115,6 +122,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal:this.#abort.signal});
   this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal:this.#abort.signal});
   document.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal:this.#abort.signal});
+  this.#placeholder?.activate();
  }
  #live():void {if(this.#disposed)throw Error("The rich DOM editor is disposed");}
  #allocate=(kind:string):string=>`${this.#namespace}:${kind}:${this.#counter++}`;
@@ -212,6 +220,9 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   return first??"unchanged";
  }
  #notifySearch():void{this.#searchEvents.emit(error=>this.#report(error));this.#writingEvents.emit(error=>this.#report(error));}
+ #refreshPlaceholder():void {if(!this.#placeholder)return;this.#placeholder.update(false);if(this.#disposed||this.#busy||this.#composition||this.#model.view.readOnly===true)return;try{this.#placeholder.update(this.#options.core.placeholderEmpty!(this.#model.view.revision));}catch(error){this.#report(error);}}
+ /** Live UI label only. The native prompt mode must have been admitted at startup. */
+ setPlaceholderLabel(label:string|null):void{this.#live();if(!this.#placeholder)throw Error("Admit a native placeholder at startup before changing its label");this.#placeholder.setLabel(label);}
  writingState():RichWritingToolsHostState{const view=this.#model.view,closed=this.#disposed,core=this.#options.core;return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available:!closed&&core.supportsWritingTools?.()===true&&typeof core.writingTools==="function",readOnly:view.readOnly===true});}
  subscribeWriting(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
  readWritingTools(revision=this.#model.view.revision):RichWritingToolsRead{this.#live();const state=this.writingState();if(state.busy||state.composing)throw Error("Writing reads wait for the current operation or composition");if(!state.available)throw Error("Use complete matching native writing reads");return this.#writingReads.retain(this.#options.core.writingTools!(revision),revision);}
@@ -480,7 +491,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   });
  }
  /** Unmount the surface and release its transferred exclusive core owner. */
- dispose():void {if(this.#disposed)return;this.#disposed=true;this.#abort.abort();this.#cancelQueue(Error("The rich DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
+ dispose():void {if(this.#disposed)return;this.#disposed=true;this.#placeholder?.dispose();this.#abort.abort();this.#cancelQueue(Error("The rich DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
 }
 export function mountRichEditor(root:HTMLElement,options:RichEditorOptions):RichDomEditor{return new RichDomEditor(root,options);}
 /** Opt-in extended coordinator; ordinary mounts and original execute/selection DTOs stay closed. */

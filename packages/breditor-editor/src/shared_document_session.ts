@@ -1,4 +1,5 @@
 /** Explicit top-level document session; ordinary/general startup and durable discriminators remain closed. */
+import {validatePlaceholderOption} from "@breditor/experimental-rich-content/rendering";
 import {compileStandardSharedProfileV1,compileStandardStructuralSharedProfileV2,compileStandardLayoutSharedProfileV3,supportsSharedDocumentSelection,restoreSharedDocumentEditor,restoreSharedGeneralEditor,restoreSharedTypingEditor,SharedPersistentSession,SharedEditorError,mountSharedDocumentEditor,createStandardSharedToolbarV1,createStructuralSharedToolbarV2,createLayoutSharedToolbarV3,type SharedRustProfile,type SharedProfileConfiguration,type SharedProfileConfigurationV2,type SharedProfileConfigurationV3,type SharedProfileDescriptor,type SharedRustOwner,type SharedRichEditor,type SharedDomEditor,type SharedDocumentDomOptions,type SharedToolbarControl,type SharedEditorOptions,type SharedSaveState,type SharedDocumentView,type SharedDispatch} from "@breditor/collaboration";
 import {createStandardRichInlinePresentationV1} from "@breditor/experimental-rich-content";
 import type {RichSearchHost} from "@breditor/experimental-rich-content";
@@ -40,6 +41,7 @@ export interface SharedDocumentEditorSession extends SharedDocumentEditorRecover
  setReadOnly(value:boolean,revision?:string):boolean;closeTypingGroup(revision?:string):boolean;
  search():RichSearchHost<SharedSearchResults>;
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
+ setPlaceholderLabel(label:string|null):void;
  view():SharedDocumentView;state():SharedSaveState;flush():Promise<void>;retrySave():Promise<void>;
 }
 class DocumentSessionOwner implements SharedDocumentEditorSession {
@@ -62,6 +64,7 @@ class DocumentSessionOwner implements SharedDocumentEditorSession {
  closeTypingGroup(...args:Parameters<SharedDocumentEditorSession["closeTypingGroup"]>):boolean{this.#active();return this.#dom.closeTypingGroup(...args);}
  search():RichSearchHost<SharedSearchResults>{this.#active();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
+ setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  view():SharedDocumentView{return this.core.view();}checkpointJson():string{return this.core.checkpointJson();}
  state():SharedSaveState{return this.#session.state();}flush():Promise<void>{return this.#session.flush();}retrySave():Promise<void>{return this.#session.retry();}
  #retireUi():void{
@@ -84,6 +87,7 @@ export async function openSharedDocumentSearchEditor(options:SharedDocumentSearc
 async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptions|SharedDocumentSearchEditorSessionOptions,search:boolean):Promise<SharedDocumentEditorSession>{
  options={...options};
  validateMarkdownInputPolicy(options.inputRules);
+ validatePlaceholderOption(options.placeholder);
  if(options.coreOptions&&"searchHistory" in options.coreOptions&&options.coreOptions.searchHistory!==undefined)throw new TypeError("Use the separately named search startup factory");
  if(options.selectionEditing!=="document-v1")throw new TypeError("Expected explicit selectionEditing document-v1");
  if(options.rangeEditing!==undefined&&options.rangeEditing!=="general-v1")throw new TypeError("Document editing requires general-v1 ranges");
@@ -99,6 +103,7 @@ async function openDocumentEditorFamily(options:SharedDocumentEditorSessionOptio
   const runtime=await awaitInitialization(initializeSharedRuntime(options.runtimeInput),options.signal);claim.assert();
   profile=language===3?compileStandardLayoutSharedProfileV3(runtime,configuration as SharedProfileConfigurationV3):language===2?compileStandardStructuralSharedProfileV2(runtime,configuration as SharedProfileConfigurationV2):compileStandardSharedProfileV1(runtime,configuration as SharedProfileConfiguration);
   const factory=profile,binding=JSON.parse(factory.descriptor_json()) as SharedProfileDescriptor;
+  if(options.placeholder!==undefined&&factory.placeholder_version?.()!=="1")throw new SharedEditorError("placeholder_unavailable","Use a matching native placeholder profile before opening durable storage");
   if(!supportsSharedDocumentSelection(factory))throw new SharedEditorError("document_selection_unavailable","Use matching native document-family recovery before opening a durable document editor");
   if(search&&!supportsSharedSearchHistory(factory))throw new SharedEditorError("search_history_unavailable","Use matching native search recovery before opening a document search session");
   const presentation=createStandardRichInlinePresentationV1(factory.inline_catalog_json(),options.additionalInlinePresentation);

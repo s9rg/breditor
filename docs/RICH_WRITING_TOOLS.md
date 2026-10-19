@@ -9,8 +9,9 @@ publications before reading. Read-only owners are supported.
 Optional Wasm/SDK reads and borrowed vanilla/React controls expose these native
 results without adding fields to old view, command, document, journal or operation
 protocols. Reads do not publish, change selection or pending formats, consume
-writer identities, upgrade history or clear Redo. Placeholder and fullscreen
-behavior remain unfinished.
+writer identities, upgrade history or clear Redo. An independent optional native
+placeholder policy controls a prompt outside editable content. Fullscreen remains
+unfinished.
 
 The [native qualification checkpoint](qualification/2026-10-18-native-writing-tools.json)
 passes all 15 selected checks: 2,607 workspace and 596 shared Rust tests/doctests,
@@ -125,6 +126,61 @@ ordinary rerenders and panel retirement do not create, close or replace a writer
 `onError` may change independently. Keep the editor host stable and remove the
 borrowed component before closing the editor session.
 
+## Document placeholder
+
+Pass `placeholder: 'Start writing…'` to a local/shared DOM mount or managed editor
+opening. React uses the same immutable `initialOptions` field. The label must be
+nonempty, well-formed Unicode within 1,024 UTF-8 bytes. Admission and the initial
+configuration stay fixed per owner; mutating original options does not update it.
+Omit the option to retain the original DOM shape and startup behavior.
+
+For an admitted prompt, `editor.setPlaceholderLabel('Translated hint')` changes
+only its UI label; `setPlaceholderLabel(null)` hides it and removes the ARIA hint.
+Pass a string to show it again when native eligibility permits. These operations
+preserve the owner, focus, selection, checkpoint and history, including while
+read-only or composing. React callers can use their existing editor handle's
+`getEditor()` or `onReady` owner without changing `sessionKey`. Invalid labels fail
+before any presentation change. This setter cannot enable a prompt when startup
+omitted admission; it does not silently wrap or replace an active editing surface.
+
+Rust's `is_rich_placeholder_empty(&RichDocument)` permits the prompt only for one
+top-level paragraph or heading without text leaves. Heading rank and prose layout
+do not suppress it. Whitespace, zero-width characters, additional blocks and
+structural content—including empty code, lists, quotes, tables, hidden tables and
+images—do suppress it. This constant-work read is a presentation policy, never a
+reason to discard saved data or treat an atom-only document as absent.
+
+Profiles advertise native prompt policy V1 before managed startup creates an
+owner or opens durable storage. Owners separately expose the complete guarded
+read through `supportsPlaceholder()` and `placeholderEmpty(revision?)`; shared
+Rust uses `placeholder_empty_guarded(&SharedObservation)`. Read-only owners can
+read eligibility. The DOM displays the hint only when editable and not composing
+or closed. Older runtimes reject an explicit unsupported option without a JS
+empty-text substitute; omitted options keep ordinary startup available.
+
+The literal hint is an `aria-hidden` sibling of the editable surface, inside an
+opt-in positioning wrapper. It does not enter editor Copy/export, the AST,
+checkpoints, history or shared frames. Placement follows the actual prose block
+and its font/direction; long hints clip to the available editor area. Hidden
+prompts release obsolete prose nodes, and observers stop on disposal. `aria-placeholder`
+supplements the existing textbox label; it does not replace that label or supply
+editing behavior. See [MDN's attribute reference](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-placeholder).
+
+`probe-placeholder.mjs` exercises actual paired Wasm, all 30 managed grammar/
+scope/history configurations and React ownership with DOM/storage/input fixtures.
+Optional explicit pinned earlier readers additionally check exact recovery and
+future history. `check-placeholder-installed.mjs` rebuilds and independently
+installs the four packages before repeating the complete current-runtime probe
+and public type/bundle checks. Both candidate profiles require current-runtime
+and fresh installed acceptance; earlier-reader proof is separate.
+
+The [placeholder qualification](qualification/2026-10-18-placeholder-browser-installed.json)
+passes all 38 selected checks, including the complete workspace/shared native
+suites and exact pinned-reader recovery. A fresh installed production page also
+checks real prose/heading geometry, automated typing/history and live labels in
+one headless Chromium engine. This is not physical input, cross-browser or V1
+release qualification; fullscreen remains unfinished.
+
 ## Resource policy and qualification
 
 The first implementation shares native Find's bounded presentation traversal:
@@ -146,9 +202,9 @@ both current-runtime probes without workspace links. Both candidate profiles
 require the current-runtime and fresh installed checks.
 
 DOM events, IDB, locks and composition in these probes are test fixtures, not
-physical browser/IME or screen-reader qualification. Placeholder text must stay
-outside content, and fullscreen must preserve source-bound focus and selection.
+physical browser/IME or screen-reader qualification. Fullscreen must preserve
+source-bound focus and selection when implemented.
 Zero words or text domains does not prove that an atom-only document is empty.
-These remaining features, performance and native-platform qualification stay
+Fullscreen, performance and native-platform qualification stay
 separate V1 requirements; the historical intermittent WebKit fault is not repaired
 by writing reads.

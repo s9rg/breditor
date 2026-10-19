@@ -21,8 +21,11 @@ import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,
 import type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
 import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "@breditor/experimental-rich-content/rendering";
+import {prepareRichPlaceholder,RichPlaceholderPresentation,richPlaceholderStyles} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
+ /** Initial native-prompt label; mode is admitted at startup, never a saved setting. */
+ placeholder?:string;
  /** Immutable explicit view family; omission keeps the original contract. */
  selectionEditing?:P;
  /** Existing default transfers the owner. Borrow only when a persistent session owns its closure. */
@@ -59,6 +62,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #disposed=false;#busy=false;#refreshing=false;#logical=false;#queue:Work<P>[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;
  readonly #searchEvents=new RichSearchEvents();
  readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
+ readonly #placeholder:RichPlaceholderPresentation|undefined;
  #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
  readonly #interchange:RichClipboardInterchange|undefined;
@@ -70,18 +74,21 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.#selectionPolicy=policy as P;this.#document=policy==="document-v1"?requireSharedDocumentBrowserCore(options.core):undefined;
   this.#interchange=requireClipboardInterchange(options.clipboardInterchange,options.core);
   this.#inputRules=requireMarkdownInputRules(options.inputRules,options.core);
+  const placeholder=prepareRichPlaceholder(options.placeholder,options.core);
   this.#root=root;this.#options=options;this.#model=this.#read();this.#logical=this.#isLogical();
   requireRenderOptions(this.#model,options);
   if(this.#model.view.historyGrouping==="typing-v1"&&!options.core.supportsTypingHistory())throw Error("Use matching native shared typing history");
   for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()])if(control.owner!==undefined&&control.owner!==options.core)throw Error("Toolbar control belongs to a different Rust owner");
-  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2.replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"");root.dataset["breditorShared"]="";
+  const d=root.ownerDocument,style=d.createElement("style");style.textContent=styles+standardInlineStylesV1+toolbarControlStyles+structuralBlockStylesV2.replaceAll("[data-breditor-rich]","[data-breditor-shared]")+(this.#document?sharedDocumentSelectionStyles:"")+(placeholder?richPlaceholderStyles:"");root.dataset["breditorShared"]="";
   this.surface=d.createElement("div");this.surface.contentEditable="true";this.surface.className="breditor-shared-surface";this.surface.setAttribute("role","textbox");this.surface.setAttribute("aria-multiline","true");this.surface.setAttribute("aria-label",options.label??"Shared rich text editor");
   this.toolbar=d.createElement("div");this.toolbar.className="breditor-shared-toolbar";this.toolbar.setAttribute("role","toolbar");this.toolbar.setAttribute("aria-label","Shared rich text controls");this.status=d.createElement("p");this.status.setAttribute("role","status");
   const seen=new Set<string>();for(const control of options.toolbar??[...defaultSharedToolbarFor<P>(),...moveSharedToolbarFor<P>()]){
    if(seen.has(control.id))throw Error("Duplicate shared toolbar control");seen.add(control.id);
    const view=mountToolbarControl(this.toolbar,control,{prefix:"shared",signal:this.#abort.signal,sync:()=>this.#sync(),stamp:()=>JSON.stringify(options.core.view()),attempt:work=>this.#attempt(work),focus:()=>this.focus(),run:(value,fields)=>this.#perform(c=>control.run(c,value,fields))});this.#controls.push({control,view});
   }
-  root.replaceChildren(style,this.toolbar,this.surface,this.status);render(this.surface,this.#model,options);this.#refreshControls();
+  this.#placeholder=placeholder?new RichPlaceholderPresentation(this.surface,placeholder.label):undefined;
+  root.replaceChildren(style,this.toolbar,this.#placeholder?.container??this.surface,this.status);render(this.surface,this.#model,options);this.#refreshControls();
+  if(this.#placeholder){this.#placeholder.update(placeholder!.empty&&this.#model.view.readOnly!==true);this.#writingEvents.subscribe(()=>this.#refreshPlaceholder());}
   if(this.#model.view.readOnly===true)this.status.textContent=`Read-only · shared revision ${this.#model.view.revision}`;
   this.#unsubscribe=options.core.subscribe(event=>{const policy=event.view.readOnlyRevision!==this.#model.view.readOnlyRevision||event.view.readOnly!==this.#model.view.readOnly;if(policy){const composition=this.#composition;this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));composition?.release();this.#refresh(false);}else if(!this.#busy&&!this.#composition)this.#refresh(false);try{void Promise.resolve(options.onChange?.(event)).catch(error=>this.#report(error));}catch(error){this.#report(error);}});
   const signal=this.#abort.signal;
@@ -97,6 +104,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.surface.addEventListener("dragover",event=>{if(event.dataTransfer?.types.includes("Files"))event.preventDefault();},{signal});this.surface.addEventListener("drop",event=>{if(event.dataTransfer?.files.length){event.preventDefault();this.#files([...event.dataTransfer.files]);}},{signal});
   this.surface.addEventListener("compositionstart",()=>this.#startComposition(),{signal});this.surface.addEventListener("compositionend",event=>this.#endComposition(event.data),{signal});
   d.addEventListener("selectionchange",()=>{if(!this.#busy&&!this.#composition)this.#attempt(()=>this.#sync());},{signal});
+  this.#placeholder?.activate();
  }
  #read():RichModel<P>{return sharedPresentationModel<P>(this.#options.core.view(),this.#selectionPolicy);}
  #isLogical():boolean{return ["grid","node","document"].includes(this.#model.view.selection?.kind??"");}
@@ -143,6 +151,9 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   }}finally{this.#busy=false;release();this.#notifySearch();}if(error!==undefined)throw error;
  }
  #notifySearch():void{this.#searchEvents.emit(error=>this.#report(error));this.#writingEvents.emit(error=>this.#report(error));}
+ #refreshPlaceholder():void{if(!this.#placeholder)return;this.#placeholder.update(false);if(this.#disposed||this.#busy||this.#composition||this.#model.view.readOnly===true)return;try{this.#placeholder.update(this.#options.core.placeholderEmpty(this.#model.view.revision));}catch(error){this.#report(error);}}
+ /** Pure presentation change, including readonly/composition; never a writer command. */
+ setPlaceholderLabel(label:string|null):void{this.#live();if(!this.#placeholder)throw Error("Admit a native placeholder at startup before changing its label");this.#placeholder.setLabel(label);}
  writingState():RichWritingToolsHostState{const view=this.#model.view,closed=this.#disposed,core=this.#options.core;return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available:!closed&&core.supportsWritingTools()&&typeof core.writingTools==="function",readOnly:view.readOnly===true});}
  subscribeWriting(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
  readWritingTools(revision=this.#model.view.revision):RichWritingToolsRead{this.#live();const state=this.writingState();if(state.busy||state.composing)throw Error("Writing reads wait for the current operation or composition");if(!state.available)throw Error("Use complete matching native writing reads");return this.#writingReads.retain(this.#options.core.writingTools(revision),revision);}
@@ -346,7 +357,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   try{if(composition.original!==final){const point={block:composition.block,affinity:"after" as const};this.#perform(c=>{c.core.replace({kind:"text",anchor:{...point,offset:String(start)},focus:{...point,offset:String(oldEnd)}},final.slice(start,newEnd),c.revision);},true,composition.revision);}}
   catch(error){this.#report(error);}finally{this.#finishComposition(composition,pending,true);}
  });}
- dispose():void{if(this.#disposed)return;this.#disposed=true;this.#unsubscribe();this.#abort.abort();this.#cancelQueue(Error("The shared DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();if(this.#options.coreOwnership!=="borrow")this.#options.core.dispose();this.#composition?.release();this.#composition=undefined;this.#root.replaceChildren();delete this.#root.dataset["breditorShared"];}
+ dispose():void{if(this.#disposed)return;this.#disposed=true;this.#placeholder?.dispose();this.#unsubscribe();this.#abort.abort();this.#cancelQueue(Error("The shared DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();if(this.#options.coreOwnership!=="borrow")this.#options.core.dispose();this.#composition?.release();this.#composition=undefined;this.#root.replaceChildren();delete this.#root.dataset["breditorShared"];}
 }
 export const mountSharedEditor=(root:HTMLElement,options:SharedDomOptions):SharedDomEditor=>new SharedDomEditor(root,options);
 /** Explicit extended coordinator; the default mount/execute/selection DTOs remain closed. */

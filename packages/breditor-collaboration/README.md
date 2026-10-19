@@ -42,6 +42,22 @@ Dispose controls before retiring the writer. No new save, operation or history
 family is selected. The [writing-tools contract](../../docs/RICH_WRITING_TOOLS.md)
 defines bounds, labels and refusal behavior for older runtimes or stale reads.
 
+## Document placeholder
+
+`placeholder: 'Start writing…'` on DOM/managed startup selects a literal prompt
+outside editable content, not an operation or saved setting. Native profile
+`placeholder_version()` allows rejection before a durable writer is opened.
+`SharedRichEditor.supportsPlaceholder()` and `placeholderEmpty(revision?)` expose
+the separate exact-publication read, including read-only eligibility. The DOM
+shows the hint only while editable and not composing. One empty root paragraph/
+heading qualifies; whitespace, additional blocks, code, lists, images and tables
+remain content. Old runtimes reject the explicit option; omission preserves
+startup/DOM defaults. See [the prompt contract](../../docs/RICH_WRITING_TOOLS.md#document-placeholder)
+for label limits and startup configuration. An admitted DOM/managed owner exposes
+`setPlaceholderLabel(textOrNull)` for live cosmetic changes without rekeying or
+reopening its writer. The setter also works while readonly/composing and does not
+enable a mode omitted at startup.
+
 ## Ownership and host responsibilities
 
 The generated module exposes configured `SharedRichProfile` factories,

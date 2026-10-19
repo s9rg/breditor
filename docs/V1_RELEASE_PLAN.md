@@ -43,6 +43,27 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [placeholder and installed-browser checkpoint](qualification/2026-10-18-placeholder-browser-installed.json)
+passes one frozen 38-check run. Optional native prompt eligibility now reaches
+managed local/shared/document startup, vanilla and React owners. Only one empty
+root paragraph or heading qualifies; whitespace, additional blocks and structural
+content do not. Literal hints stay outside editable content, exports, clipboard
+and saved history. Live label/hide updates preserve the admitted owner and exact
+checkpoint. Older profiles reject unsupported options before creating an owner
+or opening storage; omitted defaults retain their original DOM shape.
+
+All 30 grammar/scope/history configurations pass exact reopen and 120 future
+history comparisons. Pinned earlier readers independently restore 30 checkpoints
+and match 120 future boundaries. Fresh official Wasm and an isolated four-package
+consumer pass public types, unchanged complete workflows and production bundle
+isolation. One installed headless Chromium production page verifies responsive
+prose/heading geometry, literal labels, typing, Undo/Redo, readonly state and live
+label changes. The full workspace/shared suites pass 2,612 and 598 tests/doctests;
+four research contracts, 489 script tests and 378 editor tests pass, with three
+existing script checks skipped. This is not the full candidate profile or hosted
+CI. Fullscreen, the reproduced unchanged-host startup-focus bug and all 13 release
+gates remain open; no historical WebKit repair or release promotion is claimed.
+
 The [clean SDK build-order checkpoint](qualification/2026-10-18-clean-sdk-build-order.json)
 repairs a reproduced candidate-pipeline omission: the default workspace build
 does not compile the opt-in rich-browser TypeScript declarations. A warm checkout
