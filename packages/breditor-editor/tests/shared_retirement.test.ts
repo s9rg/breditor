@@ -25,6 +25,12 @@ function setup(){
 }
 beforeEach(()=>{for(const fn of Object.values(storage))fn.mockReset();});
 describe("shared writer retirement and durability",()=>{
+ it("a database version change fences a still-pending native opening before any journal write",async()=>{
+  const t=setup();let finish!:(raw:SharedRustOwner)=>void;const create=vi.fn(()=>new Promise<SharedRustOwner>(resolve=>{finish=resolve;}));let opened:SharedPersistentSession|undefined;
+  const result=SharedPersistentSession.open({...t.options,create}).then(session=>{opened=session;return {error:undefined};},error=>({error}));await vi.waitFor(()=>expect(create).toHaveBeenCalledOnce());
+  const changed=t.db.onversionchange as unknown as (()=>void)|null;if(changed)changed();finish(t.typed);const outcome=await result;
+  try{expect(outcome.error).toMatchObject({code:"session_open_versionchange"});expect(storage.write).not.toHaveBeenCalled();expect(t.db.close).toHaveBeenCalled();expect(t.raw.free).toHaveBeenCalledOnce();expect(t.lease.close).toHaveBeenCalledOnce();}finally{await opened?.discardAndClose();}
+ });
  it("hard break uses its guarded native capability or the identical old-ABI LF path",()=>{
   const first=owner(),legacy=new SharedRichEditor(first.typed);legacy.hardBreak();expect(first.raw.insert_plain_text).toHaveBeenLastCalledWith(expect.anything(),"\n");legacy.dispose();
   const second=owner(),hardBreak=vi.fn((observation:unknown)=>second.raw.insert_plain_text(observation,"\n"));Object.assign(second.raw,{insert_hard_break:hardBreak});const current=new SharedRichEditor(second.typed);current.hardBreak();expect(hardBreak).toHaveBeenCalledTimes(1);current.retire();expect(()=>current.hardBreak()).toThrow("retired");current.dispose();

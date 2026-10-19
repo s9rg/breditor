@@ -44,7 +44,8 @@ infer credentials from content hashes or drop a failed owner's recovery handle.
 Writer transport V2 requires an explicitly created matching room; existing V1
 rooms/logs are not upgraded in place. See the
 [editor recovery APIs](../packages/breditor-editor/README.md),
-[review contract](RICH_REVIEW.md) and [backup contract](SESSION_BACKUPS.md).
+[review contract](RICH_REVIEW.md), [shared history archives](SHARED_SESSION_BACKUPS.md)
+and [default-package backup contract](SESSION_BACKUPS.md).
 
 These are current opt-in source contracts, not a frozen V1 API or an unlimited
 history/asset-retention promise. The [candidate checks](V1_CANDIDATE_CHECKS.md)
@@ -68,7 +69,9 @@ ceilings, not automatic rotation, archival or garbage collection. The
 is not a complete or approved V1 operating envelope.
 
 V1 still needs an explicit lifetime/retention contract and tested rotation,
-backup and restore procedures. A proposed rolling Undo policy is not implemented
+complete-room backup and restore procedures. Shared archives now offer explicit
+insert-only native history recovery, not asset/outbox/server recovery or generation
+rollover. A proposed rolling Undo policy is not implemented
 or approved by this documentation. Rotation must preserve pending updates, writer
 ownership, authenticated receipts and final review decisions, existing reader
 contracts, and retained version/asset references. Raising old counters, copying a

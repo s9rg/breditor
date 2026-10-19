@@ -34,7 +34,7 @@ owner; dispose/unmount them before retiring it. They neither change save formats
 nor enable a new history family. Old runtimes lacking the complete optional
 capability reject the explicit panel request, not ordinary editor startup.
 See [the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md) for bounds,
-label truncation and lifecycle. Fullscreen remains unfinished.
+label truncation and lifecycle. Native fullscreen has the separate contract below.
 
 ## Native fullscreen
 

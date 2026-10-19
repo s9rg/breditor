@@ -1,0 +1,26 @@
+/** Real native factories with synthetic IndexedDB/Web Locks; the factory is deliberately delayed. */
+import assert from "node:assert/strict";
+import {readFileSync,realpathSync} from "node:fs";
+import {createHash} from "node:crypto";
+import {resolve} from "node:path";
+import {fileURLToPath,pathToFileURL} from "node:url";
+import {IDBFactory} from "fake-indexeddb";
+import {SharedPersistentSession} from "../packages/breditor-collaboration/dist/persistence/shared_session.js";
+import {SharedReviewPersistentSession} from "../packages/breditor-collaboration/dist/persistence/review_session.js";
+import {fullscreenSeed} from "./fixtures/editor-consumer/fullscreen-seed.mjs";
+const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return{promise,resolve};};
+export async function probeSessionOpeningUpgrade(directory,{expectation="current"}={}){
+ if(!["current","pre-repair"].includes(expectation))throw Error("Choose an explicit startup upgrade expectation");
+ const bytes=readFileSync(resolve(directory,"breditor_shared_bg.wasm")),wasm=await import(pathToFileURL(resolve(directory,"breditor_shared.js")));await wasm.default({module_or_path:bytes});const originals=new Map(),held=new Set();for(const [name,value]of Object.entries({indexedDB:new IDBFactory(),navigator:{locks:{request(name,_options,run){return Promise.resolve().then(async()=>{if(held.has(name))return run(null);held.add(name);try{return await run({name});}finally{held.delete(name);}});}}}})){originals.set(name,Object.getOwnPropertyDescriptor(globalThis,name));Object.defineProperty(globalThis,name,{value,configurable:true,writable:true});}
+ const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(JSON.stringify({format:"breditor/shared-rich-profile",formatVersion:3,schema:{name:"example/opening-upgrade",version:1},extensions:[]})),seed=fullscreenSeed(JSON.parse(profile.descriptor_json()),3),observations=[];
+ try{for(const paired of [false,true]){
+  const database=`opening-upgrade-${paired}`,started=deferred(),release=deferred();let owner,freed=0,connection;const create=async()=>{const raw=profile.create(seed,"101"),free=raw.free.bind(raw);raw.free=()=>{freed++;free();};started.resolve();await release.promise;return raw;},options={database,room:"room",writer:"101",richLanguage:3,history:"explicit",rangeEditing:"original",selectionEditing:"original",review:{actor:"opening-review",principal:"account",access:"comment"},create,restore:()=>{throw Error("Unexpected saved record");}};
+  const opening=(paired?SharedReviewPersistentSession.open(options):SharedPersistentSession.open(options)).then(value=>{owner=value;return{accepted:true};},error=>({accepted:false,code:error.code??String(error)}));await started.promise;
+  const upgraded=deferred(),first=deferred(),request=indexedDB.open(database,2);request.onupgradeneeded=()=>request.result.createObjectStore("upgrade-marker");request.onblocked=()=>first.resolve("blocked");request.onerror=()=>{first.resolve("error");upgraded.resolve();};request.onsuccess=()=>{connection=request.result;first.resolve("upgraded");upgraded.resolve();};
+  const upgrade=await first.promise;release.resolve();const result=await opening;await owner?.discardAndClose();await upgraded.promise;connection?.close();const observation={paired,upgrade,result,freed,heldWriterLeases:held.size};observations.push(observation);
+  try{if(expectation==="pre-repair"){assert.equal(upgrade,"blocked");assert.deepEqual(result,{accepted:true});}else{assert.equal(upgrade,"upgraded","A pending factory must not block an upgrade after versionchange");assert.equal(result.accepted,false,"A native factory must not publish after its database changed");assert.equal(result.code,paired?"review_open_versionchange":"session_open_versionchange");}assert.equal(freed,1);assert.equal(held.size,0);}catch(error){console.error("opening upgrade observation:",JSON.stringify(observation));throw error;}
+ }
+ return{format:"breditor/session-opening-upgrade-probe",formatVersion:1,passed:true,expectation,sharedWasmSha256:createHash("sha256").update(bytes).digest("hex"),observations,scope:expectation==="pre-repair"?"Explicit negative historical-reference witness: both old SDKs block the upgrade and incorrectly publish an owner against the old connection. Their owners are then explicitly discarded to release the upgrade. This is not repaired-current-runtime acceptance.":"Actual native shared and paired-review creation delayed across a synthetic IndexedDB version upgrade. Upgrade must unblock, opening must reject before publication, raw owner must free and all writer leases release. No native browser/process crash or full storage lifecycle approval."};
+ }finally{profile.free();for(const [name,value]of originals){if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name];}}
+}
+if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){if(process.argv.length!==3&&(process.argv.length!==4||process.argv[3]!=="--expect-pre-repair"))throw Error("Expected actual shared runtime directory and optional explicit --expect-pre-repair");console.log(JSON.stringify(await probeSessionOpeningUpgrade(process.argv[2],{expectation:process.argv[3]?"pre-repair":"current"}),null,2));}

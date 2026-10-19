@@ -1,5 +1,9 @@
 # Explicit session backups
 
+This contract covers the default package. The optional rich/shared editor uses
+the separate [shared session archive contract](SHARED_SESSION_BACKUPS.md); the
+formats and restore factories are not interchangeable.
+
 Status: unpublished `0.3.0-alpha.22` browser API. No durable format or Wasm ABI
 change. This is explicit recovery, not a persistence retry or conflict resolver.
 

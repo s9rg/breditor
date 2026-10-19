@@ -30,6 +30,21 @@ initialize with bytes from the `./wasm-binary` export. Ordinary package-root
 types compile with `ES2022,DOM`; advanced generated-binding types additionally
 use `ESNext.Disposable`.
 
+## Exact session archives
+
+`SharedPersistentSession.exportBackup()` captures exact native history, including
+Redo, without a save or publication. Paired `SharedReviewPersistentSession`
+archives also retain comments, local version packets and selected nonsecret
+review progress. Restore through the separately named `restoreBackup`,
+`restoreDocumentBackup`, `restoreReviewedBackup` or `restoreSearchBackup` factory,
+with explicit source policies, matching native replay and host-reacquired writer
+authority. Only absent durable keys can be inserted; existing records never get
+overwritten. SHA-256 checks corruption, not provenance or permissions. These
+archives exclude assets, credentials, separate offline outboxes and server logs;
+they do not implement rotation. See [the shared backup contract](../../docs/SHARED_SESSION_BACKUPS.md)
+for exact families, limits and failed-close recovery. The default package has a
+different backup format; managed editor startup is not silently redirected.
+
 ## Counts and heading outline
 
 `SharedRichEditor.supportsWritingTools()` reports the complete optional native

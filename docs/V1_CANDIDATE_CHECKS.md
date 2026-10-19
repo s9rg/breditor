@@ -108,6 +108,25 @@ retains the passing frozen 25-stage selection, portable and native-browser resul
 exact installed archives and distinct development preflights. It is not a complete
 candidate profile or hosted CI approval.
 
+Shared recovery adds document and paired archive probes plus a delayed-factory
+database-upgrade regression to both profiles. Exact native replay, Redo, local
+versions, selected review progress and insert-only failure/race handling remain
+required. Fresh installed acceptance exercises the public factories without
+workspace links. Its explicit development `--reuse-runtimes` mode records that
+native producer builds were reused; neither candidate profile selects that mode.
+The full profile additionally requires the installed backup production page in
+headless Chromium, actual IndexedDB/Web Crypto/Web Locks and exact recovery after
+a page reload. These checks do not qualify complete-room backup, cross-device
+writer fencing, retention/rotation, process crashes or V1 readiness. See the
+[shared archive contract](SHARED_SESSION_BACKUPS.md).
+
+The [shared archive checkpoint](qualification/2026-10-18-shared-session-backups.json)
+retains a frozen 23-stage selection, the independently pinned pre-repair installed
+SDK witness and the repaired native-browser reload drill. Its final installed
+stage uses fresh official runtime builders, not the earlier development reuse
+preflight. The 36 document/108 paired portable cases and 20 real-browser workflows
+are distinct evidence scopes; no complete-room restore or V1 gate is promoted.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and

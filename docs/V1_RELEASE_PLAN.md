@@ -43,6 +43,31 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [shared session archive checkpoint](qualification/2026-10-18-shared-session-backups.json)
+passes a frozen 23-check run. Explicit document and paired-review backup factories
+retain exact accepted native histories, Redo, local versions and selected nonsecret
+review progress. Restore requires host-reacquired writer authority, matching native
+replay and canonical byte equality, then an insert-only transaction into an absent
+key. It never overwrites a session or substitutes its visible AST.
+
+A retained pre-repair installed package reproduces a startup storage race in both
+session classes: a database upgrade arrives during the awaited native factory,
+blocks, and the old SDK later publishes against its old connection. The opening
+fence now unblocks the upgrade, rejects/frees the unpublished owner and releases
+writer leases. Existing live-session recovery is preserved.
+
+All 36 document and 108 paired archive cases pass, including 576 exact future
+history comparisons, occupied/racing destination refusal, aborted insertion and
+six readable failed-close exports. Fresh official runtimes and isolated installed
+packages pass 20 public-factory workflows; one headless Chromium production page
+passes the same workflows and 20 exact recoveries after a real reload. All 519
+script and 382 editor tests pass, with three existing script checks skipped.
+Both rebuilt native binaries and native source/lock inputs remain unchanged;
+no new full native-suite claim is made. The archive surface is the lower-level
+public session API, not a managed/React recovery picker. Complete-room recovery
+including assets/outboxes/server state, retention/rotation and all 13 release gates
+remain open. This is not a historical WebKit repair or release approval.
+
 The [native fullscreen checkpoint](qualification/2026-10-18-fullscreen-browser-installed.json)
 passes one frozen 25-check run. A browser controller now borrows the existing
 local/shared/document coordinator without a Rust action, protocol change,
