@@ -43,6 +43,29 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [selected-source recovery checkpoint](qualification/2026-10-19-selected-asset-source-capture.json)
+passes one frozen 37-check selection. Native saved-version, proposal and revision
+reads inventory exact snapshot or conservative source-and-intent image bindings,
+including intermediate/deleted replacements. The shared SDK combines native
+history with explicitly selected paired-session versions, version catalog/cache,
+proposal queue and revision outbox, retaining exact recovery JSON. Missing source
+or an uncached known version remains Pending. Native and producer-record checks
+reject stale, copied, foreign or closed sources without discarding recovery data.
+
+A reproduced catalog bug captured another owner's version while saving the
+original owner's journal. Source continuity is now pinned through startup, live
+capture and awaited saves; failed intent remains exportable and exact retry passes.
+All 3,243 workspace/shared Rust tests/doctests, 13 research contracts, 550 script
+tests and 382 editor tests pass; three existing script checks remain skipped.
+Actual Wasm and fresh installed public packages cover all 18 shared configurations;
+pinned earlier readers preserve the same 72 future checkpoints. Existing installed
+browser archive/reload regressions also pass, not as browser qualification of the
+new packet/capture API. Saved protocols, defaults, dependencies and versions stay
+unchanged. Complete-room byte/server/writer coordination and the approved
+cross-generation Undo/offline bridge remain work. All 13 V1 gates stay open.
+
+### Previous owner-inventory SDK checkpoint
+
 The [retained-reference SDK checkpoint](qualification/2026-10-19-retained-asset-references-sdk.json)
 passes one frozen 33-check run. The native inventory now reaches an independent
 bounded JSON family, optional local/shared Wasm methods, SDKs, DOM controllers and

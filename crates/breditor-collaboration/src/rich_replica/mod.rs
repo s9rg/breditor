@@ -64,6 +64,7 @@ mod model;
 mod navigate_flow;
 mod navigate_grid;
 mod observation;
+mod packet_asset_references;
 mod paragraphs;
 mod paste_document_clipboard;
 mod paste_flow_at_text;
@@ -138,6 +139,10 @@ pub use document_versions::{
 };
 pub use navigate_grid::GridNavigationResult;
 pub use observation::SharedObservation;
+pub use packet_asset_references::{
+    PacketAssetIdentity, PacketAssetOutcome, PacketAssetReferences,
+    SHARED_PACKET_ASSET_REFERENCE_MAX_JSON_BYTES,
+};
 pub use presence::PresenceResolution;
 pub use presence::{DocumentPresenceResolution, DocumentPresenceSelection};
 pub use profile::SharedRichProfile;

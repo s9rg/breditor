@@ -12,6 +12,7 @@ mod general_history;
 mod general_range;
 mod input_rules;
 mod insert_general_paragraph;
+mod packet_asset_references;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod placeholder_empty;

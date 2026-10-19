@@ -1,5 +1,8 @@
 //! Prove the captured command batch against the retained native source, not a supplied AST claim.
-use super::{DocumentSuggestionInfo, evaluate_commands, packet::Packet};
+use super::{
+    DocumentSuggestionInfo,
+    source_evaluation::{SourceEvaluation, evaluate_source},
+};
 use crate::{
     Error,
     rich_replica::{RichReplica, WriterDependency},
@@ -30,23 +33,13 @@ impl RichReplica {
         &self,
         input: &str,
     ) -> Result<DocumentSuggestionSource, Error> {
-        let packet = Packet::read(self, input)?;
-        let Some(source) = self.historical_review_document(&packet.data.source_anchor_json)? else {
-            return Ok(DocumentSuggestionSource::Pending {
-                missing: self
-                    .review_anchor_missing_dependencies(&packet.data.source_anchor_json)?,
-            });
-        };
-        let result = evaluate_commands::evaluate(
-            self,
-            &source.doc,
-            &source.document,
-            &source.canonical,
-            &packet.data.draft,
-        )?;
-        if result == source.canonical {
-            return Err(Error::Contract("suggestion has no source effect"));
-        }
-        Ok(DocumentSuggestionSource::Verified { info: packet.info(), clocks: source.clocks })
+        Ok(match evaluate_source(self, input)? {
+            SourceEvaluation::Pending { missing, .. } => {
+                DocumentSuggestionSource::Pending { missing }
+            }
+            SourceEvaluation::Verified { info, clocks, .. } => {
+                DocumentSuggestionSource::Verified { info, clocks }
+            }
+        })
     }
 }

@@ -58,6 +58,33 @@ versions/outboxes, queued SDK remote frames and extension assets require their o
 coordination. This read never fetches bytes or authorizes asset deletion. See the
 [retained-reference contract](../../docs/RETAINED_ASSET_REFERENCES.md).
 
+`core.supportsPacketAssetReferences()` separately requires matching native packet
+reads. `versionAssetReferences(packet)`, `suggestionAssetReferences(packet)` and
+`suggestionRevisionAssetReferences(previousPacket, revisionPacket)` return frozen
+source-bound metadata. Snapshots inventory their admitted content; proposals and
+revisions inventory conservative native source-and-intent history, including
+intermediate/deleted image bindings. Missing proposal source is explicit
+`outcome.kind === "pending"`, never an empty complete list. Native reads do not
+accept a suggestion or authenticate its creator. Recheck each exact returned
+object with `checkPacketAssetReferences(read)` after asynchronous work.
+
+`captureSharedAssetReferences({core, session?, versions?, suggestions?, revisions?})`
+combines the native inventory with explicitly selected paired-session versions,
+`SharedDocumentVersions` catalog/cache, proposal queue and revision outbox. A
+revision source requires its exact proposal queue. `metadata()` is frozen;
+`records()` retains exact exported recovery JSON; `check()` rechecks native and
+producer-record continuity without flushing or publishing. An uncached known
+version or unavailable proposal source makes the whole capture Pending. Resolve
+that dependency separately and capture again. `dispose()` releases the capture,
+not the borrowed sources; detached metadata remains readable but is not a live
+proof. Omitted stores, SDK remote queues, extensions, provider bytes and server
+state are excluded. This is not a complete-room backup or restore transaction.
+
+Version catalogs pin their original borrowed owner/configuration through startup
+and awaited source saves. Replacing `storage.core` refuses with
+`version_source_replaced`; exact prior recovery records remain exportable. Restore
+the original source before retrying. This guard is not cross-device writer fencing.
+
 ## Counts and heading outline
 
 `SharedRichEditor.supportsWritingTools()` reports the complete optional native

@@ -1,5 +1,6 @@
 //! Named semantic snapshots and guarded restore-as-new-change, never old writer recovery.
 mod apply_version_restore;
+mod asset_references;
 mod capture_version;
 mod compare_version;
 mod packet;

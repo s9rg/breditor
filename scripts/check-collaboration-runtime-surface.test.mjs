@@ -1,5 +1,6 @@
 import test from "node:test";
 import {retainedAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
+import {packetAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import assert from "node:assert/strict";
 import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,suggestionRevisionMethods,suggestionFormatRebaseMethods,suggestionTextRebaseMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
 import {searchOwnerMethods,writingOwnerMethods,placeholderOwnerMethods,placeholderProfileMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -12,6 +13,7 @@ function fixture(){
  for(const name of searchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of writingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of retainedAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of packetAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["search_history_version","restore_search"])module.SharedRichProfile.prototype[name]=()=>{};
@@ -57,6 +59,9 @@ function fixture(){
 }
 test("retained image reads require their complete independent guarded capability",()=>{
  for(const name of retainedAssetOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native retained asset capability/);}
+});
+test("packet dependencies require every independent guarded immutable packet read",()=>{
+ for(const name of packetAssetOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native packet asset capability/);}
 });
 test("writing requires its complete independent guarded capability",()=>{
  for(const name of writingOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native writing capability/);}

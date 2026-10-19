@@ -5,27 +5,33 @@ import {VersionCatalogLease} from "./lease.js";
 import {checkCatalogRecord,openCatalogDatabase,readCatalogRecord,writeCatalogRecord} from "./database.js";
 import {catalogSnapshot,packetText,sameEntry,sameInfo,versionEntry,versionIdentity} from "./validation.js";
 import type {SharedSelectionPolicy} from "../types.js";
+import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsOptions,SharedDocumentVersionEntry,SharedVersionCatalogRecord,RetainedVersionPacket,SharedDocumentVersionStatus,VersionCatalogSnapshot} from "./types.js";
 interface Retained {info:SharedDocumentVersionInfo;value:RetainedVersionPacket}
 export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly options:SharedDocumentVersionsOptions<P>;readonly #db:IDBDatabase;readonly #lease:VersionCatalogLease;
+ readonly #assertSource:()=>void;
  #record:SharedVersionCatalogRecord;#retained=new Map<string,Retained>();#durable=new Map<string,RetainedVersionPacket>();#saved="";
  #pending:SharedVersionCatalogRecord|undefined;#running:Promise<void>|undefined;#failure:unknown;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #listeners=new Set<()=>void>();#notifying=false;
- private constructor(options:SharedDocumentVersionsOptions<P>,db:IDBDatabase,lease:VersionCatalogLease,record:SharedVersionCatalogRecord){
-  this.options=options;this.#db=db;this.#lease=lease;this.#record=record;this.#retained=this.#admit(record);
+ private constructor(options:SharedDocumentVersionsOptions<P>,db:IDBDatabase,lease:VersionCatalogLease,record:SharedVersionCatalogRecord,assertSource:()=>void){
+  this.options=options;this.#db=db;this.#lease=lease;this.#assertSource=()=>{assertSource();if(this.options!==options)throw new SharedRelayError("version_source_replaced");};this.#record=record;this.#retained=this.#admit(record);
   db.onversionchange=()=>{db.close();this.#failure=new SharedRelayError("version_cache_versionchange");this.#notify();};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedDocumentVersionsOptions<Q>):Promise<VersionCatalogStore<Q>>{
-  const options={...input,identity:versionIdentity(input.identity)},core=options.storage.core,identity=options.identity;
+  const source=input.storage,core=source.core;
+  const storage=Object.freeze({core,save():void{assertSource();source.save();assertSource();},async flush():Promise<void>{assertSource();await source.flush();assertSource();}});
+  const options=Object.freeze({...input,identity:Object.freeze(versionIdentity(input.identity)),storage}),identity=options.identity;
+  const assertSource=():void=>{if(source.core!==core||options.storage!==storage||storage.core!==core)throw new SharedRelayError("version_source_replaced");};
+  assertSource();
   if(!core.supportsVersionSourceProofs())throw new SharedRelayError("version_source_unavailable");
   checkSourceCheckpoint(core,identity.room,identity.documentWriter);
   const lease=await VersionCatalogLease.acquire(identity);let db:IDBDatabase|undefined,store:VersionCatalogStore<Q>|undefined;
-  try{db=await openCatalogDatabase(options.database);const saved=await readCatalogRecord(db,identity),record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]};store=new VersionCatalogStore(options,db,lease,record);store.#pending=record;store.#start();await store.flush();return store;}
+  try{assertSource();db=await openCatalogDatabase(options.database);assertSource();const saved=await readCatalogRecord(db,identity);assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]};store=new VersionCatalogStore(options,db,lease,record,assertSource);store.#pending=record;store.#start();await store.flush();assertSource();return store;}
   catch(error){if(store)await store.discardAndClose();else{db?.close();await lease.close();}throw error;}
  }
- #live():void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();}
+ #live(checkSource=true):void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();if(checkSource)this.#assertSource();}
  #writable():void{this.#live();if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
  #admit(record:SharedVersionCatalogRecord):Map<string,Retained>{
   const result=new Map<string,Retained>(),core=this.options.storage.core;
@@ -43,13 +49,16 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  }
  #start():void{if(this.#running||this.#closed||!this.#pending||this.#failure)return;this.#running=this.#drain().catch(error=>{this.#failure=error??new SharedRelayError("local_save_failed");this.#notify();}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
-  try{this.options.storage.save();await this.options.storage.flush();await writeCatalogRecord(this.#db,this.options.identity,next);}catch(error){this.#pending??=next;throw error;}
+  try{this.#assertSource();this.options.storage.save();await this.options.storage.flush();this.#assertSource();await writeCatalogRecord(this.#db,this.options.identity,next);this.#assertSource();}catch(error){this.#pending??=next;throw error;}
   this.#saved=JSON.stringify(next);this.#durable=new Map(next.packets.map(value=>[this.options.storage.core.readVersion(value.packet).id,structuredClone(value)]));this.#notify();
  }}
  #notify():void{if(this.#notifying)return;this.#notifying=true;queueMicrotask(()=>{this.#notifying=false;for(const listener of [...this.#listeners]){try{listener();}catch{/* A borrowed observer cannot replace retained data. */}}});}
  subscribe(listener:()=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  state():{pending:boolean;failed:boolean;closed:boolean;queued:number;catalogEntries:number;cachedPackets:number}{return {pending:!!this.#pending||!!this.#running,failed:this.#failure!==undefined,closed:this.#closed,queued:[...this.#retained.values()].filter(row=>row.value.publish).length,catalogEntries:this.#record.catalog?.entries.length??0,cachedPackets:this.#retained.size};}
- exportRecovery():SharedVersionCatalogRecord{this.#live();return structuredClone(this.#record);}
+ /** Exact previously retained bytes remain recoverable after a borrowed-source continuity failure. */
+ exportRecovery():SharedVersionCatalogRecord{this.#live(false);return structuredClone(this.#record);}
+ /** Borrowed dependency captures require this store's unchanged native source, not matching IDs alone. */
+ checkSource(core:SharedRichEditor<P>):void{this.#live();if(this.options.storage.core!==core)throw new SharedRelayError("version_source_replaced");}
  catalog():VersionCatalogSnapshot|null{this.#live();return this.#record.catalog?structuredClone(this.#record.catalog):null;}
  queued():readonly string[]{this.#live();return [...this.#retained].filter(([,row])=>row.value.publish).map(([id])=>id);}
  versions():readonly SharedDocumentVersionInfo[]{this.#live();const result=new Map(this.#record.catalog?.entries.map(entry=>[entry.version.id,{...entry.version}])??[]);for(const [id,row]of this.#retained)if(!result.has(id))result.set(id,{...row.info});return [...result.values()];}

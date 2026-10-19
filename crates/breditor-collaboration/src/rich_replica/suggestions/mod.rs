@@ -1,5 +1,6 @@
 //! Original immutable proposal intents and pure native previews, separate from comments/decisions.
 //! A proposal is not an accepted document operation, history checkpoint or authority credential.
+mod asset_references;
 mod capture_suggestion;
 mod capture_suggestion_revision;
 mod check_suggestion_effect_proof;
@@ -19,6 +20,7 @@ mod rebase_text_intent;
 mod rebase_text_masked;
 mod rebase_text_target;
 mod revision_packet;
+mod source_evaluation;
 #[cfg(test)]
 mod tests;
 mod text_witness;

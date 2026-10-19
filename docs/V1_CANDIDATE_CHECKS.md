@@ -33,6 +33,17 @@ consumer also repeats this complete probe from fresh bare package imports and
 checks the new public local/shared/managed/React-accessible types. Its previous
 writing and root/React assertions remain required.
 
+Both profiles also require `packet-asset-references` and `version-source-ownership`.
+The former checks all 18 shared grammar/scope/history configurations through actual
+Wasm, including source-and-intent bindings, explicit Pending, pure selected-source
+capture, immutable/provenance/source-record guards and exact future history. The
+latter checks catalog source replacement before startup, during live capture and
+across an awaited save, retaining failed intent for exact retry. Both use explicit
+IDB/lock fixtures, require no network or historical cache and grant no whole-room
+or cross-device authority. Fresh installed writing-tools acceptance repeats their
+unchanged assertions from the packaged public API, with fixture-only cache controls
+resolved inside the installed archive. Pinned earlier readers are separate evidence.
+
 The installed asset-browser stage now also verifies managed owner inventory of
 two invisible Redo images, exclusion of unrelated store files, immutable returned
 data, copied/foreign refusal and fresh native reads after a real reload. Persisted

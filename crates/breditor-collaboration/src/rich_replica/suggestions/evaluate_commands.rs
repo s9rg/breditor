@@ -10,6 +10,7 @@ use loro::{Frontiers, LoroDoc};
 
 pub(super) struct NativeEvaluation {
     pub doc: LoroDoc,
+    pub document: RichDocument,
     pub before: Frontiers,
     pub after: Frontiers,
     pub canonical: String,
@@ -52,8 +53,14 @@ pub(super) fn evaluate_as_writer(
             let before = doc.state_frontiers();
             action.apply(&doc, &owner.codec, document, stamp, &plan)?;
             doc.commit();
-            let canonical = project(owner, &doc, &header)?.1;
-            return Ok(NativeEvaluation { before, after: doc.state_frontiers(), canonical, doc });
+            let (document, canonical) = project(owner, &doc, &header)?;
+            return Ok(NativeEvaluation {
+                before,
+                after: doc.state_frontiers(),
+                canonical,
+                doc,
+                document,
+            });
         }
         DocumentSuggestionEdit::Commands(commands) => commands,
     };
@@ -83,7 +90,7 @@ pub(super) fn evaluate_as_writer(
         doc.commit();
         (document, canonical) = project(owner, &doc, &header)?;
     }
-    Ok(NativeEvaluation { before, after: doc.state_frontiers(), canonical, doc })
+    Ok(NativeEvaluation { before, after: doc.state_frontiers(), canonical, doc, document })
 }
 pub(super) fn project(
     owner: &RichReplica,

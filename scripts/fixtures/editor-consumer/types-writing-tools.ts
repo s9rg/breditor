@@ -13,6 +13,15 @@ void roots;
 import type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "@breditor/editor";
 import type {RichRetainedAssetReferencesRead as SharedRetainedRead} from "@breditor/editor/collaboration";
 import type {BreditorEditorHandle} from "@breditor/editor/react";
+import {captureSharedAssetReferences,SharedAssetReferenceCapture,type SharedDocumentVersions,type SharedPacketAssetReferencesRead} from "@breditor/editor/collaboration";
+declare const versions:SharedDocumentVersions;
+versions.checkSource(shared);
+const packetRead:SharedPacketAssetReferencesRead=shared.versionAssetReferences("packet");shared.checkPacketAssetReferences(packetRead);
+const captured:SharedAssetReferenceCapture=captureSharedAssetReferences({core:shared,versions});captured.check();const captureJson:string|undefined=captured.records()[0]?.json;void captureJson;captured.dispose();
+// @ts-expect-error Captures are created through checked sources, never user constructors.
+new SharedAssetReferenceCapture();
+// @ts-expect-error Pending sources do not provide an empty complete reference list.
+if(packetRead.outcome.kind==="pending")packetRead.outcome.references;
 const retained:RichRetainedAssetReferencesRead=shared.retainedAssetReferences();const sharedRetained:SharedRetainedRead=retained;shared.checkRetainedAssetReferences(sharedRetained);const binding:RichRetainedAssetReference|undefined=retained.references[0];void binding;
 declare const localHandle:BreditorEditorHandle;const managed=localHandle.getEditor();if(managed?.supportsRetainedAssetReferences()){const read=managed.retainedAssetReferences();managed.checkRetainedAssetReferences(read);}
 // @ts-expect-error Retained-reference reads are not shared mutation commands.

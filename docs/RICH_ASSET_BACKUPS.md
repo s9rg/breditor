@@ -110,8 +110,11 @@ current and retained local/shared image bindings, including invisible Redo and
 losing causal contributions. Optional Wasm/SDK reads add immutable owner/source
 guards, including a recheck after asynchronous capture. They can over-retain and
 refuse completeness for unsupported histories or metadata forms. They neither
-resolve missing bytes nor inventory separate versions/outboxes or extension-owned
-assets, and never authorize deletion of an unlisted file.
+resolve missing bytes or extension-owned assets, and never authorize deletion of
+an unlisted file. The separate selected-source capture now includes explicitly
+supplied native, paired-session version, catalog, proposal and revision records;
+missing source or an uncached catalog packet remains Pending. It does not turn
+this whole-store byte archive into a room-consistent backup.
 
 The [SDK checkpoint](qualification/2026-10-19-retained-asset-references-sdk.json)
 also verifies that a fresh installed managed owner inventories invisible native

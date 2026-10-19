@@ -2,7 +2,7 @@
 use breditor_collaboration::{
     anchor::Affinity,
     rich_replica::{
-        Command, RichAssetReference, SharedRichProfile,
+        Command, PacketAssetOutcome, PacketAssetReferences, RichAssetReference, SharedRichProfile,
         actions::ReplaceImage,
         selection::{Selection, TextPoint},
     },
@@ -68,6 +68,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(references.len(), 2);
     assert!(references.iter().any(|r| r.asset().as_str() == "replacement-asset"
         && r.generation().as_str() == "replacement-generation"));
+    let version = restored.capture_document_version_guarded(
+        &observed,
+        "Native snapshot",
+        serde_json::from_value(json!("alice"))?,
+        "0",
+    )?;
+    let packet_read: PacketAssetReferences =
+        restored.document_version_asset_references_guarded(&observed, &version)?;
+    let PacketAssetOutcome::Ready { references: snapshot_references } = packet_read.outcome else {
+        return Err("Admitted snapshot cannot be pending".into());
+    };
+    assert_eq!(snapshot_references.len(), 1);
+    assert_eq!(snapshot_references[0].asset, "native-asset");
+    let packet_encoded: Value = serde_json::from_str(
+        &restored.document_version_asset_references_json_guarded(&observed, &version)?,
+    )?;
+    assert_eq!(packet_encoded["format"], "breditor/shared-packet-asset-references");
     restored.check(&observed)?;
     assert_eq!((restored.checkpoint()?, restored.update_frame()?), before);
     drop(restored);

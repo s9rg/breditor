@@ -1,5 +1,10 @@
 //! Re-prove both original native intents and forward causal source coverage, without accepting either.
-use super::{DocumentSuggestionRevisionInfo, DocumentSuggestionSource, revision_packet::Revision};
+use super::{
+    DocumentSuggestionRevisionInfo,
+    evaluate_commands::NativeEvaluation,
+    revision_packet::Revision,
+    source_evaluation::{SourceEvaluation, evaluate_source},
+};
 use crate::{
     Error,
     rich_replica::{RichReplica, WriterDependency},
@@ -24,6 +29,67 @@ pub enum DocumentSuggestionRevisionSource {
         clocks: Vec<WriterDependency>,
     },
 }
+pub(super) enum RevisionEvaluation {
+    Pending {
+        revision: DocumentSuggestionRevisionInfo,
+        missing: Vec<WriterDependency>,
+    },
+    Verified {
+        revision: DocumentSuggestionRevisionInfo,
+        clocks: Vec<WriterDependency>,
+        parent: Box<NativeEvaluation>,
+        child: Box<NativeEvaluation>,
+    },
+}
+pub(super) fn evaluate_revision(
+    owner: &RichReplica,
+    previous: &str,
+    input: &str,
+) -> Result<RevisionEvaluation, Error> {
+    let envelope = Revision::read(owner, previous, input)?;
+    let revision = envelope.info(owner)?;
+    let (parent, parent_native) = match evaluate_source(owner, previous)? {
+        SourceEvaluation::Pending { missing, .. } => {
+            return Ok(RevisionEvaluation::Pending { revision, missing });
+        }
+        SourceEvaluation::Verified { clocks, native, .. } => (clocks, native),
+    };
+    let (clocks, child_native) =
+        match evaluate_source(owner, &envelope.data.suggestion_packet_json)? {
+            SourceEvaluation::Pending { missing, .. } => {
+                return Ok(RevisionEvaluation::Pending { revision, missing });
+            }
+            SourceEvaluation::Verified { clocks, native, .. } => (clocks, native),
+        };
+    let child = clocks
+        .iter()
+        .map(|clock| {
+            Ok((
+                clock.writer.as_str(),
+                clock
+                    .counter
+                    .parse::<u64>()
+                    .map_err(|_| Error::Contract("suggestion revision source counter"))?,
+            ))
+        })
+        .collect::<Result<BTreeMap<_, _>, Error>>()?;
+    for clock in parent {
+        let end = clock
+            .counter
+            .parse::<u64>()
+            .map_err(|_| Error::Contract("suggestion revision source counter"))?;
+        if child.get(clock.writer.as_str()).copied().unwrap_or(0) < end {
+            return Err(Error::Contract("suggestion revision source precedes predecessor"));
+        }
+    }
+    Ok(RevisionEvaluation::Verified {
+        revision,
+        clocks,
+        parent: parent_native,
+        child: child_native,
+    })
+}
+
 impl RichReplica {
     /// Verify the actual source history of both proposals, not caller-supplied ancestry or an AST.
     /// It changes no selection, history, writer counter, frame or accepted content.
@@ -35,41 +101,13 @@ impl RichReplica {
         previous: &str,
         input: &str,
     ) -> Result<DocumentSuggestionRevisionSource, Error> {
-        let revision = Revision::read(self, previous, input)?;
-        let parent = match self.verify_document_suggestion_source(previous)? {
-            DocumentSuggestionSource::Pending { missing } => {
-                return Ok(DocumentSuggestionRevisionSource::Pending { missing });
+        Ok(match evaluate_revision(self, previous, input)? {
+            RevisionEvaluation::Pending { missing, .. } => {
+                DocumentSuggestionRevisionSource::Pending { missing }
             }
-            DocumentSuggestionSource::Verified { clocks, .. } => clocks,
-        };
-        let clocks =
-            match self.verify_document_suggestion_source(&revision.data.suggestion_packet_json)? {
-                DocumentSuggestionSource::Pending { missing } => {
-                    return Ok(DocumentSuggestionRevisionSource::Pending { missing });
-                }
-                DocumentSuggestionSource::Verified { clocks, .. } => clocks,
-            };
-        let child = clocks
-            .iter()
-            .map(|clock| {
-                Ok((
-                    clock.writer.as_str(),
-                    clock
-                        .counter
-                        .parse::<u64>()
-                        .map_err(|_| Error::Contract("suggestion revision source counter"))?,
-                ))
-            })
-            .collect::<Result<BTreeMap<_, _>, Error>>()?;
-        for clock in parent {
-            let end = clock
-                .counter
-                .parse::<u64>()
-                .map_err(|_| Error::Contract("suggestion revision source counter"))?;
-            if child.get(clock.writer.as_str()).copied().unwrap_or(0) < end {
-                return Err(Error::Contract("suggestion revision source precedes predecessor"));
+            RevisionEvaluation::Verified { revision, clocks, .. } => {
+                DocumentSuggestionRevisionSource::Verified { revision, clocks }
             }
-        }
-        Ok(DocumentSuggestionRevisionSource::Verified { revision: revision.info(self)?, clocks })
+        })
     }
 }

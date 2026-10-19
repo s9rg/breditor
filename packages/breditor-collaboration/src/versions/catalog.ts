@@ -2,6 +2,7 @@ import {VersionCatalogStore} from "./store.js";
 import {VersionCatalogSync} from "./sync.js";
 import {SharedRelayError} from "../relay/validation.js";
 import type {SharedSelectionPolicy} from "../types.js";
+import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsOptions,SharedDocumentVersionsState,SharedDocumentVersionStatus,SharedVersionCatalogRecord} from "./types.js";
 const attached=new WeakSet<object>();
@@ -32,6 +33,8 @@ export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelect
  flushShared():Promise<void>{this.#writable();return this.#sync.flushShared();}
  async retry():Promise<void>{await this.#store.retry();if(!this.#retiring)this.#sync.recoverLocal();}
  exportRecovery():SharedVersionCatalogRecord{return this.#store.exportRecovery();}
+ /** Read-only recovery captures must use this catalog's exact still-live borrowed source. */
+ checkSource(core:SharedRichEditor<P>):void{this.#writable();this.#store.checkSource(core);}
  async stopRetryingVersion(id:string):Promise<void>{this.#writable();this.#store.stopRetrying(id);await this.#store.flush();}
  async forgetCachedVersion(id:string):Promise<void>{this.#writable();if(this.#sync.busy(id))throw new SharedRelayError("version_in_flight");this.#store.forgetCachedPacket(id);await this.#store.flush();}
  /** Stops this adapter and releases its own cache lease only after a successful final save. */

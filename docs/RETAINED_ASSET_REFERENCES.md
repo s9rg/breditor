@@ -114,15 +114,86 @@ dependencies arrive, a fresh guarded inventory can succeed. A refusal neither
 deletes nor acknowledges the pending work. Metadata failures use fixed diagnostic
 classifications rather than returning private strings from malformed fields.
 
+## Saved version, proposal and revision packets
+
+The separate native family `breditor/shared-packet-asset-references`, version one,
+binds schema, document, publication, immutable packet identity and a Ready or
+Pending outcome. `document_version_asset_references_guarded` admits the original
+immutable snapshot and inventories its native image directory. It does not assert
+that an imported snapshot's historical source is locally available or authentic;
+the existing source proof remains separate.
+
+`document_suggestion_asset_references_guarded` reconstructs the original historical
+source and evaluates its original intent on a disposable native fork. It scans
+conservative causal history, not only the final proposed AST: an image replaced
+twice and then deleted can require both intermediate bindings. Rich inserted
+drafts are included; text resembling image JSON is not interpreted as an asset.
+`document_suggestion_revision_asset_references_guarded` first checks the original
+lineage/source contracts and unions predecessor and replacement dependencies.
+Neither read imports an operation into the live owner, changes the accepted
+document or finalizes review. Missing source remains Pending with exact missing
+writer ends and no reference-list property. Unsupported causal forms and complete
+budgets refuse without dropping packets or changing their original admission.
+
+Optional shared SDK methods are `supportsPacketAssetReferences()`,
+`versionAssetReferences(packet, revision?)`,
+`suggestionAssetReferences(packet, revision?)`,
+`suggestionRevisionAssetReferences(previousPacket, revisionPacket, revision?)` and
+`checkPacketAssetReferences(read, revision?)`. The capability requires all matching
+native methods. Deeply frozen results have private per-owner provenance; copied,
+foreign, stale and disposed-owner checks refuse. Each complete packet read is
+bounded to 100,000 sorted unique binding pairs and 8 MiB encoded JSON. These
+separate read budgets do not expand persisted artifact admission.
+
+## Selected retained-source capture
+
+`captureSharedAssetReferences({core, session?, versions?, suggestions?, revisions?})`
+captures exact native checkpoint JSON plus selected existing recovery records.
+`session` is the exact paired review session; `versions` can be the public
+`SharedDocumentVersions` catalog; `suggestions` is the retained proposal queue;
+`revisions` is its exact revision outbox and requires that proposal queue. All
+sources must borrow the same native owner. The combined native/packet references
+are conservative, frozen and sorted by complete pair. Its scope is explicitly
+`native-and-selected-retained-packets`.
+
+A known catalog entry without a locally cached packet yields
+`{kind: "uncached_version", id}`. A proposal/revision without complete historical
+source yields a `source` pending reason. Either makes the whole capture Pending,
+with no references property; no empty or partial inventory is presented as Ready.
+No source is flushed, downloaded, uploaded or acknowledged during this synchronous
+read. Native readonly policy permits it. Admission or budget errors refuse the
+capture without modifying the existing recovery data.
+
+The capture exposes `metadata()`, exact `records()` JSON, `check()` and `dispose()`.
+Call `check()` after every asynchronous byte-resolution/capture step. It rechecks
+the original native read and each producer's exact export and source/lease guard;
+even an outbox/catalog change that does not advance native publication invalidates
+the capture. It is a process-local consistency handle, not a serialized credential.
+Previously captured records remain readable after staleness for rescue; disposal
+releases them and borrowed producer references without closing any source. Detached
+metadata remains readable after disposal but grants no live provenance.
+
+At most 1,024 unique packet inputs, 100,000 combined binding pairs and 160 MiB of
+source JSON are admitted. The byte bound accommodates the four existing 32 MiB
+record families plus the 16 MiB native journal without truncation. It is not a
+performance promise. Missing bytes/provider authority, omitted stores, SDK remote
+queues, extension assets and server state remain outside this capture.
+
+Version catalog startup now pins its original owner and immutable configuration,
+checking continuity around awaited lease/database/source-save steps. A replaced
+borrowed `storage.core` refuses with `version_source_replaced`; it cannot silently
+capture another owner's version while saving the old owner's journal. Raw prior
+records and failed-save intent remain exportable. Restoring the original source
+allows an exact retry; this does not grant cross-device writer authority.
+
 ## Coordinated recovery boundary
 
 These methods expose an owner-only native read boundary, not complete-room backup.
 They inspect native image bindings; extension-owned assets
-need an explicit inventory of their own. A future coordinator must bind a captured
-native source to
-the corresponding inventory, include separate saved-version and suggestion/
-revision/version-outbox references, reconcile pending causal dependencies, resolve
-missing remote/custom bytes under current host authority, and coordinate server
+need an explicit inventory of their own. Selected capture now binds native history
+and the explicitly supplied retained packet sources, but a complete room
+coordinator must still include all omitted participants, reconcile pending causal
+dependencies, resolve missing remote/custom bytes under current host authority, and coordinate server
 and writer recovery. Asynchronous asset resolution cannot itself prove that the
 document source stayed current.
 
@@ -132,6 +203,17 @@ unlisted file must not be deleted on the strength of this owner-only inventory.
 The approved [long-session requirement](COMPATIBILITY.md#current-bounded-lifetime)
 continues to preserve Undo/Redo and outstanding offline edits across generations;
 the native inventory does not implement that bridge.
+
+The [selected-source checkpoint](qualification/2026-10-19-selected-asset-source-capture.json)
+records one frozen 37-check run, 3,243 workspace/shared Rust tests/doctests,
+13 research contracts, 550 script tests and 382 editor tests. Actual Wasm and
+fresh installed packages cover all 18 shared grammar/scope/history configurations,
+five selected record sources, explicit Pending, exact source continuity and
+future history. Pinned earlier readers match all 72 future checkpoint comparisons.
+A retained negative witness reproduces the catalog source-substitution bug;
+startup/live/awaited-save regressions pass after repair. Existing browser archive
+regressions pass separately, not as browser qualification of this new capture API.
+Three existing script checks remain skipped. All V1 gates remain open.
 
 The [native checkpoint](qualification/2026-10-19-native-retained-asset-references.json)
 records the full Rust suites, independent native consumer, six research-manifest

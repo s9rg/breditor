@@ -159,6 +159,54 @@ fn read_operation(
     Ok(())
 }
 
+pub(super) fn collect_causal_asset_references(
+    doc: &LoroDoc,
+    document: &breditor_core::rich_content::RichDocument,
+) -> Result<Vec<RichAssetReference>, Error> {
+    if doc.is_shallow() || doc.state_vv() != doc.oplog_vv() || doc.get_pending_txn_len() != 0 {
+        return Err(Error::Contract("retained asset complete causal history"));
+    }
+    let applied = doc.state_vv();
+    let mut total = 0_usize;
+    for end in applied.values() {
+        total = total
+            .checked_add(usize::try_from(*end).map_err(|_| Error::Offset)?)
+            .filter(|total| *total <= SHARED_ASSET_REFERENCE_MAX_CAUSAL_ATOMS)
+            .ok_or(Error::Limit("retained asset causal read work"))?;
+    }
+    let mut output = inspect_rich_asset_references(document)
+        .map_err(|_| Error::Contract("retained asset admitted document"))?
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    for (peer, end) in applied.iter() {
+        let mut from = 0;
+        while from < *end {
+            let through = from.saturating_add(CHUNK).min(*end);
+            let mut next = from;
+            for change in doc.export_json_in_id_span(IdSpan::new(*peer, from, through)) {
+                if change.id.peer != *peer || change.id.counter != next {
+                    return Err(Error::Contract("retained asset causal change continuity"));
+                }
+                for op in change.ops {
+                    if op.counter != next || op.content.op_len() == 0 {
+                        return Err(Error::Contract("retained asset causal operation continuity"));
+                    }
+                    next = next
+                        .checked_add(i32::try_from(op.content.op_len()).map_err(|_| Error::Offset)?)
+                        .filter(|next| *next <= through)
+                        .ok_or(Error::Contract("retained asset causal operation span"))?;
+                    read_operation(doc, &op.container, &op.content, &mut output)?;
+                }
+            }
+            if next != through {
+                return Err(Error::Contract("retained asset causal history gap"));
+            }
+            from = through;
+        }
+    }
+    Ok(output.into_iter().collect())
+}
+
 impl RichReplica {
     /// Read all image bindings retained by complete causal history, including inactive/losing
     /// contributions, deleted nodes, undone births and Redo. Results may conservatively over-retain.
@@ -191,47 +239,6 @@ impl RichReplica {
                 return Err(Error::Contract("retained asset pending causal dependencies"));
             }
         }
-        let mut total = 0_usize;
-        for end in applied.values() {
-            total = total
-                .checked_add(usize::try_from(*end).map_err(|_| Error::Offset)?)
-                .filter(|total| *total <= SHARED_ASSET_REFERENCE_MAX_CAUSAL_ATOMS)
-                .ok_or(Error::Limit("retained asset causal read work"))?;
-        }
-        let mut output = inspect_rich_asset_references(self.document())
-            .map_err(|_| Error::Contract("retained asset admitted document"))?
-            .into_iter()
-            .collect::<BTreeSet<_>>();
-        for (peer, end) in applied.iter() {
-            let mut from = 0;
-            while from < *end {
-                let through = from.saturating_add(CHUNK).min(*end);
-                let mut next = from;
-                for change in self.doc.export_json_in_id_span(IdSpan::new(*peer, from, through)) {
-                    if change.id.peer != *peer || change.id.counter != next {
-                        return Err(Error::Contract("retained asset causal change continuity"));
-                    }
-                    for op in change.ops {
-                        if op.counter != next || op.content.op_len() == 0 {
-                            return Err(Error::Contract(
-                                "retained asset causal operation continuity",
-                            ));
-                        }
-                        next = next
-                            .checked_add(
-                                i32::try_from(op.content.op_len()).map_err(|_| Error::Offset)?,
-                            )
-                            .filter(|next| *next <= through)
-                            .ok_or(Error::Contract("retained asset causal operation span"))?;
-                        read_operation(&self.doc, &op.container, &op.content, &mut output)?;
-                    }
-                }
-                if next != through {
-                    return Err(Error::Contract("retained asset causal history gap"));
-                }
-                from = through;
-            }
-        }
-        Ok(output.into_iter().collect())
+        collect_causal_asset_references(&self.doc, self.document())
     }
 }

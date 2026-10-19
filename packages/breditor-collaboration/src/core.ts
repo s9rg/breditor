@@ -7,6 +7,7 @@ import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
 import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
 import type {RichRetainedAssetReferencesRead} from "@breditor/experimental-rich-content";
 import {RichRetainedAssetReferenceRegistry} from "@breditor/experimental-rich-content/rendering";
+import {SharedPacketAssetReferenceRegistry,type SharedPacketAssetReferencesRead} from "./packet_asset_references.js";
 import {parseRichWritingTools} from "@breditor/experimental-rich-content/rendering";
 import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
@@ -32,6 +33,7 @@ export function createSharedDocumentEditor(raw:SharedRustOwner,options:Omit<Shar
 /** Owns the exact Rust observation and bounded remote queue; no replicated JS document exists. */
 export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #assetReferences=new RichRetainedAssetReferenceRegistry();
+ readonly #packetAssetReferences=new SharedPacketAssetReferenceRegistry();
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
  #options:SharedEditorOptions<P>;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
@@ -91,6 +93,11 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  supportsRetainedAssetReferences():boolean{const raw=this.#live();return raw.retained_asset_references_version?.()==="1"&&typeof raw.retained_asset_references_json==="function";}
  retainedAssetReferences(revision?:string):RichRetainedAssetReferencesRead{this.#check(revision);if(!this.supportsRetainedAssetReferences())throw new SharedEditorError("asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(this.#live().retained_asset_references_json!(this.#observation),this.view().revision,"shared-causal",this.documentJson());}
  checkRetainedAssetReferences(value:RichRetainedAssetReferencesRead,revision?:string):void{this.#check(revision);this.#assetReferences.check(value,this.view().revision);}
+ supportsPacketAssetReferences():boolean{const r=this.#live();return r.packet_asset_references_version?.()==="1"&&[r.document_version_asset_references_json,r.document_suggestion_asset_references_json,r.document_suggestion_revision_asset_references_json].every(f=>typeof f==="function");}
+ versionAssetReferences(packet:string,revision?:string):SharedPacketAssetReferencesRead{this.#check(revision);if(!this.supportsPacketAssetReferences())throw new SharedEditorError("packet_assets_unavailable","Use complete matching native packet dependency reads");return this.#packetAssetReferences.retain(this.#live().document_version_asset_references_json!(this.#observation,packet),this.view().revision,"version",this.documentJson());}
+ suggestionAssetReferences(packet:string,revision?:string):SharedPacketAssetReferencesRead{this.#check(revision);if(!this.supportsPacketAssetReferences())throw new SharedEditorError("packet_assets_unavailable","Use complete matching native packet dependency reads");return this.#packetAssetReferences.retain(this.#live().document_suggestion_asset_references_json!(this.#observation,packet),this.view().revision,"suggestion",this.documentJson());}
+ suggestionRevisionAssetReferences(previous:string,packet:string,revision?:string):SharedPacketAssetReferencesRead{this.#check(revision);if(!this.supportsPacketAssetReferences())throw new SharedEditorError("packet_assets_unavailable","Use complete matching native packet dependency reads");return this.#packetAssetReferences.retain(this.#live().document_suggestion_revision_asset_references_json!(this.#observation,previous,packet),this.view().revision,"suggestion_revision",this.documentJson());}
+ checkPacketAssetReferences(value:SharedPacketAssetReferencesRead,revision?:string):void{this.#check(revision);this.#packetAssetReferences.check(value,this.view().revision);}
  placeholderEmpty(revision?:string):boolean{this.#check(revision);if(!this.supportsPlaceholder())throw new SharedEditorError("placeholder_unavailable","Use complete matching native placeholder reads");const value=this.#live().placeholder_empty!(this.#observation);if(typeof value!=="boolean")throw new SharedEditorError("placeholder_read","Invalid native placeholder eligibility");return value;}
  supportsWritingTools():boolean{const raw=this.#live();return raw.writing_tools_version?.()==="1"&&typeof raw.writing_tools_json==="function";}
  writingTools(revision?:string):RichWritingToolsRead{this.#check(revision);if(!this.supportsWritingTools())throw new SharedEditorError("writing_tools_unavailable","Use complete matching native writing reads");const current=this.view().revision,value=parseRichWritingTools(this.#live().writing_tools_json!(this.#observation));if(value.revision!==current)throw new SharedEditorError("writing_tools_source","The native writing read has a different source publication");return value;}

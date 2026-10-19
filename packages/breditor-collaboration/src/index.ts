@@ -6,6 +6,9 @@ export type {RichSearchQuery,RichSearchReplacement,RichSearchMetadata} from "@br
 export type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 export type {RichWritingToolsRead,RichWritingCounts,RichWritingHeading} from "@breditor/experimental-rich-content";
 export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "@breditor/experimental-rich-content";
+export type {SharedPacketAssetReferencesRead,SharedPacketAssetIdentity,SharedPacketAssetOutcome} from "./packet_asset_references.js";
+export {captureSharedAssetReferences,SharedAssetReferenceCapture,MAX_SHARED_ASSET_CAPTURE_SOURCE_BYTES,MAX_SHARED_ASSET_CAPTURE_PACKETS} from "./asset_references_capture.js";
+export type {SharedAssetReferenceCaptureOptions,SharedAssetReferenceCaptureMetadata,SharedAssetCaptureRecord,SharedAssetCaptureSourceKind,SharedAssetCapturePending} from "./asset_references_capture.js";
 export {mountRichWritingTools as mountSharedWritingTools,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";
 export {createRichFullscreen as createSharedFullscreen,mountRichFullscreenControls as mountSharedFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
