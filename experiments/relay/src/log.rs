@@ -5,12 +5,15 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{File, OpenOptions, TryLockError},
-    io::{Read, Seek, SeekFrom, Write},
+    io::{Seek, SeekFrom, Write},
     path::Path,
 };
+mod decoder;
+mod snapshot;
+pub(crate) use snapshot::LogSnapshot;
 
 const MAX_RECORD: u64 = 20 * 1024 * 1024;
-const MAX_LOG: u64 = 256 * 1024 * 1024;
+pub(crate) const MAX_LOG: u64 = 256 * 1024 * 1024;
 const MAX_RECORDS: u64 = 4096;
 const HEADER: u64 = 72;
 
@@ -194,68 +197,16 @@ impl Log {
         let mut file = options().open(path)?;
         lock(&file)?;
         let length = file.metadata()?.len();
-        if length > MAX_LOG {
-            return Err(Error::Contract("log byte budget"));
-        }
-        let mut records = Vec::new();
-        let mut offset = 0_u64;
-        let mut previous = [0; 32];
-        let mut recovery = Recovery::default();
-        while offset < length {
-            if length - offset < HEADER {
-                recovery.truncated_bytes = length - offset;
-                break;
-            }
-            let mut header = [0_u8; 72];
-            file.read_exact(&mut header)?;
-            let header_digest: [u8; 32] = Sha256::digest(&header[..40]).into();
-            if header[40..] != header_digest {
-                return Err(Error::Contract("log header checksum"));
-            }
-            let size = u64::from_be_bytes(
-                header[..8].try_into().map_err(|_| Error::Contract("log header"))?,
-            );
-            if size == 0 || size > MAX_RECORD {
-                return Err(Error::Contract("log record budget"));
-            }
-            if size > length - offset - HEADER {
-                recovery.truncated_bytes = length - offset;
-                break;
-            }
-            let mut payload =
-                vec![0; usize::try_from(size).map_err(|_| Error::Contract("log record size"))?];
-            file.read_exact(&mut payload)?;
-            let digest: [u8; 32] = Sha256::digest(&payload).into();
-            if header[8..40] != digest {
-                return Err(Error::Contract("log record checksum"));
-            }
-            let record: Record = serde_json::from_slice(&payload)?;
-            if record.format != "breditor/relay-log"
-                || record.version != 1
-                || record.sequence
-                    != u64::try_from(records.len()).map_err(|_| Error::Contract("log sequence"))?
-                || record.previous != previous
-            {
-                return Err(Error::Contract("log lineage"));
-            }
-            if record.sequence >= MAX_RECORDS {
-                return Err(Error::Contract("log record budget"));
-            }
-            previous = digest;
-            offset += HEADER + size;
-            records.push(record);
-        }
-        if records.is_empty() {
-            return Err(Error::Contract("log has no complete seed"));
-        }
+        let decoder::DecodedLog { records, bytes, previous, recovery } =
+            decoder::read_records(&mut file, length)?;
         // Semantic replay must succeed before a caller authorizes removing even an incomplete tail.
-        file.seek(SeekFrom::Start(offset))?;
+        file.seek(SeekFrom::Start(bytes))?;
         Ok((
             Self {
                 file,
                 next: u64::try_from(records.len()).map_err(|_| Error::Contract("log sequence"))?,
                 previous,
-                bytes: offset,
+                bytes,
                 poisoned: false,
                 #[cfg(test)]
                 read_only_after_append: None,

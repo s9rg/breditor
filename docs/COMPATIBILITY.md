@@ -75,8 +75,11 @@ implemented extension of the current bounded lifetime above.
 
 V1 still needs the native history/identity bridge, tested rotation and coordinated
 room backup/restore. Shared session and raster archives offer separate insert-only
-recovery components, not complete-room asset closure, outbox/server recovery or
-generation rollover. The [native reference reads](RETAINED_ASSET_REFERENCES.md)
+recovery components. The separate [server-log archive](SERVER_ROOM_BACKUPS.md)
+adds exact insert-only server recovery after native replay and host-selected
+identity checks; it excludes the server asset directory and account-authentication
+configuration. These components do not yet provide complete-room asset closure,
+coordinated activation or generation rollover. The [native reference reads](RETAINED_ASSET_REFERENCES.md)
 add a conservative owner-only image-history inventory; unsupported metadata or
 incomplete histories refuse that read. Separate versions, review outboxes and
 extension-owned assets still need their own inventory and coordination.

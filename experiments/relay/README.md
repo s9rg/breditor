@@ -19,6 +19,22 @@ the actual optional server binary. The native tests use the same rich owner
 and single-writer admission used by the Wasm/browser checkpoint; no second CRDT
 or simplified document model is substituted.
 
+## Server room archives
+
+The Rust host also supports `Room::export_backup()`, independent
+`RoomBackup::from_bytes` admission and `Room::restore_backup` with an explicit
+host-selected `RoomBackupIdentity` and `RoomRecoveryPolicy::HostReacquired`.
+The trusted identity pins the exact original profile, genesis and durable log cut;
+same-room but different history cannot silently substitute under fresh checksums.
+Restore replays exact server history on a private staging inode before atomically
+publishing an absent destination; existing files and symlinks never get replaced.
+Original profile/transport, IDs, permission history, review/version/proposal state
+and receipt order remain intact. Old connection leases do not survive; accounts
+resume explicitly. No backup/restore network route is installed. The
+[server-log backup contract](../../docs/SERVER_ROOM_BACKUPS.md) defines framing,
+bounds, ambiguous post-publication failure and the separate raster/client/auth
+components still required for complete-room recovery.
+
 ## Loopback WebSocket host
 
 Build with the optional `server` feature. `scripts/check-relay.mjs` places its

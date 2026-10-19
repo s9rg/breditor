@@ -33,6 +33,19 @@ consumer also repeats this complete probe from fresh bare package imports and
 checks the new public local/shared/managed/React-accessible types. Its previous
 writing and root/React assertions remain required.
 
+Both profiles also require the public native `relay-room-backups` test with the
+locked full-server feature set and the ordinary relay native cache. It exercises
+exact comment/version/revision/final-decision recovery and original duplicate
+receipts without reexecuting Accept. `relay-backups-no-server` repeats public
+and library recovery without enabling networking, and `relay-docs` compiles the
+public server Rust documentation with warnings denied. The full `relay-native` suite additionally
+covers all ten original profile/transport choices, retained offline client work
+and future Undo/Redo without losing a peer's text, strict transport admission,
+trusted cut and identity mismatch, inert revision
+preparation, poisoned sources and insert-only filesystem races. The
+[server-log contract](SERVER_ROOM_BACKUPS.md) remains one recovery component, not
+whole-room activation, asset closure or cross-generation qualification.
+
 Both profiles also require `packet-asset-references` and `version-source-ownership`.
 The former checks all 18 shared grammar/scope/history configurations through actual
 Wasm, including source-and-intent bindings, explicit Pending, pure selected-source

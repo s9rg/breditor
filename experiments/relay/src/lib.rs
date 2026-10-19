@@ -37,6 +37,9 @@ pub use room::{
     ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
     StoredReviewBatch,
 };
+pub use room::{
+    MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
+};
 
 /// Explicit service rejection. An I/O failure may have reached storage without an acknowledgement;
 /// reopen and retry the exact group instead of assuming that the write was lost.

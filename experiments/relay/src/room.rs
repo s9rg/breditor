@@ -11,6 +11,7 @@ use breditor_collab_feasibility::rich_replica::{
 };
 use std::{collections::BTreeMap, path::Path};
 mod atomic_transport_v2;
+mod backup;
 mod document_presence;
 mod layout_v3;
 mod observers;
@@ -19,6 +20,9 @@ mod source_boundaries;
 mod suggestions;
 mod versions;
 pub use atomic_transport_v2::AtomicTransportProfile;
+pub use backup::{
+    MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
+};
 pub use review::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
     ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
@@ -64,6 +68,7 @@ struct Writer {
 /// or replace a live log. It is private service state, not an interchangeable document export.
 pub struct Room {
     atomic_transport_v2: bool,
+    profile_seed: ProfileSeed,
     log: Log,
     profile: SharedRichProfile,
     replica: RichReplica,
@@ -201,6 +206,7 @@ impl Room {
         let log = Log::create(path, seed)?;
         Ok(Self {
             atomic_transport_v2,
+            profile_seed,
             log,
             profile,
             replica,
@@ -279,6 +285,7 @@ impl Room {
         }
         let mut result = Self {
             atomic_transport_v2,
+            profile_seed,
             log,
             profile,
             replica,

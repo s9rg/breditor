@@ -43,6 +43,35 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [server-log backup checkpoint](qualification/2026-10-19-server-room-backups.json)
+passes one final frozen 20-check selection. The Rust host can capture exact durable
+room history and restore it only after original native replay, host-selected
+profile/genesis checks and trusted durable-cut matching. Same-room but different
+history cannot substitute under fresh checksums. A private synced staging inode
+is linked atomically only to an absent destination; no existing file, directory
+or symlink is overwritten. Original events, bounds and ordinary startup stay
+unchanged, and no network recovery route is added.
+
+All 3,339 primary workspace/shared/relay Rust tests and doctests, 573 script tests
+and 382 editor tests pass. Three existing script checks remain skipped. Separate
+public and networking-disabled recovery runs also pass without inflating that
+primary native count. Thirteen new private backup tests and one public full-lane
+integration cover ten original profile/transport combinations, retained offline
+client journals, 60 selective Undo/Redo transitions preserving a peer's text,
+original duplicate receipts, inert revision preparation and real filesystem
+locking/races. The public case retains comments, versions, revisions and final
+Accept order without executing Accept twice.
+
+Client/core/runtime-build inputs and existing paired Wasm hashes match the prior
+checkpoint. The SDK byte regression reuses those runtimes; fresh installed/browser
+and Wasm-producer results are earlier evidence, not newly executed here. Server
+raster recovery, complete participant capture, current auth/provider/writer
+authority and resumable coordinated activation remain work, as does the approved
+cross-generation Undo/offline bridge. All 13 V1 gates remain open. No publication,
+deployment, package-version or V1 promotion is claimed.
+
+### Previous selected byte backup checkpoint
+
 The [selected-byte backup checkpoint](qualification/2026-10-19-selected-asset-bytes.json)
 passes one frozen 31-check selection. A genuine selected-source capture can now
 include exact admitted raster bytes through an explicit guarded host resolver,
