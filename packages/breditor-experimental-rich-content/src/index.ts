@@ -7,6 +7,8 @@ export {RichAssetBackupError} from "./assets/archive/error.js";
 export {MAX_ASSET_BACKUP_BYTES} from "./assets/archive/codec.js";
 export {ASSET_BACKUP_MIME,MAX_ASSET_BACKUP_HEADER_BYTES,type RichAssetBackupOptions,type RichAssetRestoreOptions} from "./assets/archive/types.js";
 export {defaultAssetLimits,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./assets/types.js";
+export {checkedAssetLimits as checkRichAssetLimits} from "./assets/limits.js";
+export {inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./assets/inspect_raster.js";
 export {insertImageFiles} from "./assets/insert_image_files.js";
 export {RichLocalSessionStore} from "./persistence/local_session_store.js";
 export {RichDocumentSessionStore,type RichDocumentSessionStoreOptions} from "./persistence/document_session_store.js";

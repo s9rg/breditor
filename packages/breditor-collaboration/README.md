@@ -59,6 +59,22 @@ Capture/close revisions before their borrowed queue/session. See the
 policies, failure recovery and bounds. Individual store commits do not constitute
 a room-wide restore transaction.
 
+## Selected source and raster byte files
+
+`captureSharedAssetBytes({source, resolveAsset, signal?})` takes a genuine
+`captureSharedAssetReferences` handle and an explicit guarded host byte resolver.
+It admits exact SHA-addressed or host-verified opaque bindings, retaining every
+generation and deduplicating immutable payloads. Missing source/bytes remain
+Pending; producer or provider changes refuse. `exportSharedAssetBytesBackup`
+creates a separate portable binary file. `readSharedAssetBytesBackup` checks
+framing and raster integrity; restored native/component owners must separately
+pass `archive.verifySource(freshCapture)`. Object URLs are local and revoked by
+`archive.dispose()`. `encodeSharedRetainedStoreBackup` wraps exact captured records
+under an explicit host identity for the existing insert-only restore factories.
+See the [selected-byte contract](../../docs/SELECTED_ASSET_BYTES.md). This file
+excludes asset-store upload state, unselected participants and server state; it is
+not a room-wide transaction, provider grant, generation bridge or deletion proof.
+
 ## Retained image references
 
 `core.supportsRetainedAssetReferences()` requires the complete optional native

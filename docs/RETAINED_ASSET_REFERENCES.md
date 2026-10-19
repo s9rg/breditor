@@ -185,6 +185,11 @@ matching native source first, then add each exact record only to an absent key.
 This makes the explicitly selected records restorable; it does not coordinate
 all stores, resolve their asset bytes or authenticate restored server metadata.
 
+The separate [selected raster byte API](SELECTED_ASSET_BYTES.md) can now bind this
+genuine source handle to explicit guarded host bytes and export one portable file.
+Its reader still requires fresh native/component source re-admission; omitted
+stores, upload-state archives and server coordination remain outside its scope.
+
 Version catalog startup now pins its original owner and immutable configuration,
 checking continuity around awaited lease/database/source-save steps. A replaced
 borrowed `storage.core` refuses with `version_source_replaced`; it cannot silently

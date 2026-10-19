@@ -54,6 +54,16 @@ probe in addition to its prior 20 document/paired cases and startup upgrade fenc
 Storage, lock scheduling and server metadata are explicit fixtures; room-wide
 transactions, asset-byte closure and cross-device/server authority remain separate.
 
+Both profiles require `selected-asset-bytes` through actual shared Wasm. Thirty
+configurations capture/read exact source and two PNG payloads, reconstruct 90
+component archives, re-admit selected sources and compare 180 future checkpoints.
+Fresh installed acceptance repeats the unchanged public probe, strict byte/source
+types and production-module isolation. Full browser acceptance additionally uses
+real PNG/JPEG/WebP decoders, exact source verification, local URL revocation and
+IndexedDB Blob recovery after reload. Node storage/decoder fixtures and that one
+Chromium artifact are distinct evidence scopes; neither supplies whole-room,
+asset-upload-state, provider/server authority or cross-generation qualification.
+
 The installed asset-browser stage now also verifies managed owner inventory of
 two invisible Redo images, exclusion of unrelated store files, immutable returned
 data, copied/foreign refusal and fresh native reads after a real reload. Persisted

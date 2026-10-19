@@ -43,6 +43,34 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [selected-byte backup checkpoint](qualification/2026-10-19-selected-asset-bytes.json)
+passes one frozen 31-check selection. A genuine selected-source capture can now
+include exact admitted raster bytes through an explicit guarded host resolver,
+preserving original opaque IDs and generations in an independent portable file.
+Missing dependencies remain Pending. A file reader checks framing and raster
+integrity, then restored native/component sources must independently prove the
+exact selected records and complete reference pairs. Existing formats and
+ordinary startup defaults are unchanged.
+
+Actual shared Wasm and fresh installed packages cover 30 captures/files, 90 exact
+component archive reconstructions, 30 restored-source checks and 180 future
+document/comment checkpoints. The installed production browser additionally
+creates PNG/JPEG/WebP, renders nine exact bindings, checks three restored native
+sources and revokes URLs, then repeats after a real IndexedDB Blob/page reload.
+All 572 script tests and 382 editor tests pass; three existing script checks stay
+skipped. A reproduced limits-validator bug accepted unknown inherited property
+names; own-key validation repairs it, and the identical failure input now passes.
+Officially rebuilt Wasm hashes and native/build inputs match the prior checkpoint;
+the earlier 3,243 Rust tests/doctests are carried evidence, not newly run here.
+
+Selected byte files do not retain upload epochs/statuses/receipts or unrelated
+pending raster files; whole-store archives remain separate. Complete participant/
+server capture, resumable room recovery, current provider/writer authority and the
+approved cross-generation Undo/offline bridge remain work. All 13 V1 gates stay
+open; no publication, deployment or V1 promotion is claimed.
+
+### Previous dependent store backup checkpoint
+
 The [retained-store backup checkpoint](qualification/2026-10-19-retained-store-backups.json)
 passes one corrected frozen 26-check selection. Proposal queues, revision outboxes
 and version catalogs now export exact independent archives and restore them only

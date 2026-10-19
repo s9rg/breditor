@@ -118,6 +118,12 @@ The transport ceiling is 65 MiB, accommodating JSON escaping of an unchanged
 limits are not expanded. Original persisted record, checkpoint and operation
 families and ordinary startup defaults are unchanged.
 
+`encodeSharedRetainedStoreBackup(sourcePolicy, recordJson, {signal?})` also wraps
+exact records recovered from a [selected-byte file](SELECTED_ASSET_BYTES.md).
+The host explicitly supplies the store kind and original identity/owned-history
+or revision binding; structural validation precedes hashing. This pure wrapper
+does not infer policy, write storage, prove native source or grant writer authority.
+
 ## Remaining room recovery work
 
 Each initial insertion is atomic in its own store; restoration of several

@@ -29,6 +29,13 @@ an occupied cache. Store archives do not automatically coordinate with editor or
 review/outbox checkpoints. See the [asset archive contract](../../docs/RICH_ASSET_BACKUPS.md)
 for whole-store scope, sensitive receipt strings, bounds and host responsibilities.
 
+The root also exports pure `inspectRichRaster` and `checkRichAssetLimits`; these
+admit immutable raster bytes without creating a store or uploading. Shared
+selected-source byte capture/read APIs live in `@breditor/collaboration`, with
+explicit guarded host mappings and native source re-admission. Their
+[selected-byte contract](../../docs/SELECTED_ASSET_BYTES.md) does not replace the
+whole-store upload-state archive or coordinate a room-wide restore.
+
 ## Retained image references
 
 Managed local/document editors expose `supportsRetainedAssetReferences()`,

@@ -9,6 +9,12 @@ export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "@
 export type {SharedPacketAssetReferencesRead,SharedPacketAssetIdentity,SharedPacketAssetOutcome} from "./packet_asset_references.js";
 export {captureSharedAssetReferences,SharedAssetReferenceCapture,MAX_SHARED_ASSET_CAPTURE_SOURCE_BYTES,MAX_SHARED_ASSET_CAPTURE_PACKETS} from "./asset_references_capture.js";
 export type {SharedAssetReferenceCaptureOptions,SharedAssetReferenceCaptureMetadata,SharedAssetCaptureRecord,SharedAssetCaptureSourceKind,SharedAssetCapturePending} from "./asset_references_capture.js";
+export {captureSharedAssetBytes,SharedAssetBytesCapture,type SharedAssetBytesCaptureOutcome} from "./asset_bytes/capture.js";
+export {exportSharedAssetBytesBackup} from "./asset_bytes/export_backup.js";
+export {readSharedAssetBytesBackup,SharedAssetBytesArchive} from "./asset_bytes/read_backup.js";
+export {SharedAssetBytesError} from "./asset_bytes/guards.js";
+export {SHARED_ASSET_BYTES_BACKUP_MIME,MAX_SHARED_ASSET_BYTES_BACKUP_BYTES,MAX_SHARED_ASSET_BYTES_BACKUP_HEADER_BYTES} from "./asset_bytes/format.js";
+export type {SharedResolvedAssetBytes,SharedAssetBytesResolver,SharedAssetBytesOptions,SharedAssetBytesCaptureOptions,SharedAssetByteBinding,SharedAssetBytePayload,SharedAssetBytesMetadata,SharedAssetBytesPending} from "./asset_bytes/types.js";
 export {mountRichWritingTools as mountSharedWritingTools,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";
 export {createRichFullscreen as createSharedFullscreen,mountRichFullscreenControls as mountSharedFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";
@@ -60,8 +66,8 @@ export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files
 export {SharedPersistentSession,type SharedSessionOptions,type SharedDocumentSessionOptions,type SharedSearchSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";
 export {encodeSharedSessionBackup,decodeSharedSessionBackup,MAX_SHARED_SESSION_BACKUP_BYTES} from "./backups/session.js";
 export type {SharedBackupIdentity,SharedSessionBackup,SharedBackupRecovery} from "./backups/types.js";
-export {MAX_SHARED_RETAINED_STORE_BACKUP_BYTES} from "./backups/retained_store.js";
-export type {SharedRetainedStoreKind,SharedRetainedStoreBackup,SharedRetainedStoreBackupOptions,SharedRetainedStoreRecovery,SharedSuggestionQueueBackupOptions,SharedSuggestionRevisionsBackupOptions,SharedDocumentVersionsBackupOptions} from "./backups/retained_store_types.js";
+export {MAX_SHARED_RETAINED_STORE_BACKUP_BYTES,encodeSharedRetainedStoreBackup} from "./backups/retained_store.js";
+export type {SharedRetainedStoreKind,SharedRetainedStoreBackup,SharedRetainedStoreBackupOptions,SharedRetainedStoreBackupSource,SharedRetainedStoreRecovery,SharedSuggestionQueueBackupOptions,SharedSuggestionRevisionsBackupOptions,SharedDocumentVersionsBackupOptions} from "./backups/retained_store_types.js";
 export type {SharedSessionBackupOptions,SharedDocumentBackupOptions,SharedSearchBackupOptions} from "./backups/session_options.js";
 export {encodeSharedPairedSessionBackup,decodeSharedPairedSessionBackup,MAX_SHARED_PAIRED_BACKUP_BYTES,type SharedPairedSessionBackup} from "./backups/paired.js";
 export type {SharedReviewBackupOptions,SharedReviewedReviewBackupOptions,SharedSearchReviewBackupOptions} from "./backups/review_options.js";

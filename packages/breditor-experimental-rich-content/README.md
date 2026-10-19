@@ -37,6 +37,13 @@ methods outside composition/operations. Older modules do not fall back to the
 visible AST. This is not complete-room closure, asset fetching or deletion
 authority. See the [retained-reference contract](../../docs/RETAINED_ASSET_REFERENCES.md).
 
+`inspectRichRaster(blob, {limits?, signal?})` performs pure ordinary PNG/JPEG/WebP
+admission and returns frozen SHA identity, MIME, dimensions, length and immutable
+Blob bytes. It performs no database or provider work. `checkRichAssetLimits`
+accepts only known positive integer overrides that tighten the existing defaults.
+The shared package uses this same admission for its optional
+[selected-source byte files](../../docs/SELECTED_ASSET_BYTES.md).
+
 ## Counts and heading outline
 
 `core.supportsWritingTools()` reports the complete optional native capability.

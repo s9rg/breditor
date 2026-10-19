@@ -1,7 +1,13 @@
 /** Exact separate retained-store archive. Existing persisted record families/limits stay unchanged. */
 import {SharedEditorError} from "../core.js";
 import {backupDigest,backupJson,backupUtf8} from "./encoding.js";
-import type {SharedRetainedStoreKind,SharedRetainedStoreBackup,SharedRetainedStoreBackupOptions,SharedRetainedStoreRecovery} from "./retained_store_types.js";
+import type {SharedRetainedStoreKind,SharedRetainedStoreBackup,SharedRetainedStoreBackupOptions,SharedRetainedStoreRecovery,SharedRetainedStoreBackupSource} from "./retained_store_types.js";
+import {checkQueueRecord} from "../suggestions/database.js";
+import {queueIdentity} from "../suggestions/validation.js";
+import {checkRevisionRecord} from "../suggestion_revisions/database.js";
+import {revisionsBinding} from "../suggestion_revisions/transport.js";
+import {checkCatalogRecord} from "../versions/database.js";
+import {versionIdentity} from "../versions/validation.js";
 export const MAX_SHARED_RETAINED_STORE_BACKUP_BYTES=65*1024*1024;
 const MAX_RECORD_BYTES=32*1024*1024;
 const kinds=new Set<SharedRetainedStoreKind>(["suggestions","suggestion-revisions","version-catalog"]);
@@ -30,3 +36,14 @@ export async function decodeRetainedStoreBackup<T>(kind:SharedRetainedStoreKind,
 }
 /** Fixed diagnostic: never return private native packet/title/intent strings from restore admission. */
 export function retainedStoreNativeAdmission<T>(run:()=>T):T{try{return run();}catch{throw new SharedEditorError("backup_native_admission","The matching native source did not admit this retained recovery record");}}
+
+/** Wrap exact captured records for the existing insert-only factories. Not native proof or authority. */
+export async function encodeSharedRetainedStoreBackup(source:SharedRetainedStoreBackupSource,recordJson:string,options:SharedRetainedStoreBackupOptions={}):Promise<string>{
+ checkRetainedStoreSignal(options.signal);
+ if(!source||typeof source!=="object"||!kinds.has(source.kind))throw new SharedEditorError("backup_policy","Choose an explicit retained-store source identity and kind");
+ switch(source.kind){
+  case "suggestions":{const identity=queueIdentity(source.identity),history=source.ownedHistory,validate=(value:unknown)=>checkQueueRecord(value,identity,history);return encodeRetainedStoreBackup(source.kind,record(recordJson,validate),validate,options);}
+  case "suggestion-revisions":{const identity=queueIdentity(source.identity),binding=revisionsBinding({binding:source.binding}).binding,validate=(value:unknown)=>checkRevisionRecord(value,identity,binding);return encodeRetainedStoreBackup(source.kind,record(recordJson,validate),validate,options);}
+  case "version-catalog":{const identity=versionIdentity(source.identity),validate=(value:unknown)=>checkCatalogRecord(value,identity);return encodeRetainedStoreBackup(source.kind,record(recordJson,validate),validate,options);}
+ }
+}

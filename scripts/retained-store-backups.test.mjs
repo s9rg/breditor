@@ -5,6 +5,7 @@ import {encodeRetainedStoreBackup,decodeRetainedStoreBackup,checkRetainedStoreRe
 import {checkQueueRecord} from "../packages/breditor-collaboration/dist/suggestions/database.js";
 import {checkRevisionRecord} from "../packages/breditor-collaboration/dist/suggestion_revisions/database.js";
 import {checkCatalogRecord} from "../packages/breditor-collaboration/dist/versions/database.js";
+import {encodeSharedRetainedStoreBackup} from "../packages/breditor-collaboration/dist/index.js";
 const identity={endpoint:"ws://127.0.0.1:1/",principal:"alice",room:"room",binding:"a".repeat(64),documentWriter:"101",effectWriter:"303",writerTransport:"atomic-v2"},binding="b".repeat(64),versionIdentity={endpoint:identity.endpoint,principal:identity.principal,room:identity.room,binding:identity.binding,documentWriter:identity.documentWriter};
 const fixtures=()=>[
  {kind:"suggestions",value:checkQueueRecord({format:"breditor/shared-suggestion-queue",formatVersion:1,identity,retained:[{packet:"Opaque-native-packet",origin:"local",publish:true,publication:null,intent:null,decision:null}]},identity),check:value=>checkQueueRecord(value,identity)},
@@ -14,6 +15,9 @@ const fixtures=()=>[
 const envelope=(kind,recordJson)=>{const body={format:"breditor/shared-retained-store-backup",formatVersion:1,kind,recordJson};return JSON.stringify({...body,sha256:createHash("sha256").update(JSON.stringify(body)).digest("hex")});};
 test("all three independent retained-store archives preserve exact original strings and do not mutate their source",async()=>{
  for(const f of fixtures()){const before=structuredClone(f.value),encoded=await encodeRetainedStoreBackup(f.kind,f.value,f.check),decoded=await decodeRetainedStoreBackup(f.kind,encoded,f.check);assert.deepEqual(decoded,before);assert.deepEqual(f.value,before);assert.equal(JSON.parse(encoded).recordJson,JSON.stringify(before));assert.equal(await encodeRetainedStoreBackup(f.kind,decoded,f.check),encoded);}
+});
+test("public captured-record wrapping requires explicit source identity and preserves the original archive bytes",async()=>{
+ for(const f of fixtures()){const source=f.kind==="version-catalog"?{kind:f.kind,identity:versionIdentity}:{kind:f.kind,identity,...(f.kind==="suggestion-revisions"?{binding}:{})},recordJson=JSON.stringify(f.value);assert.equal(await encodeSharedRetainedStoreBackup(source,recordJson),await encodeRetainedStoreBackup(f.kind,f.value,f.check));await assert.rejects(encodeSharedRetainedStoreBackup({...source,identity:{...source.identity,documentWriter:"202"}},recordJson));}
 });
 test("archive capture is a synchronous point in time before asynchronous hashing",async()=>{
  for(const f of fixtures()){const before=JSON.stringify(f.value),pending=encodeRetainedStoreBackup(f.kind,f.value,f.check);if(f.kind==="version-catalog")f.value.packets=[];else f.value.retained=[];assert.equal(JSON.parse(await pending).recordJson,before);}
