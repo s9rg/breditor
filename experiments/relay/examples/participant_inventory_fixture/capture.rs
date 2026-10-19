@@ -6,7 +6,10 @@ use breditor_collab_relay::{
     RoomParticipantInventory, RoomParticipantInventoryIdentity, RoomRecoveryPolicy,
     ServerRoomBackup, ServerRoomBackupIdentity, ServerRoomRecovery,
     assets::AssetStore,
-    server::{Authentication, ServerRecoveryCoverage, router_with_server_backups},
+    server::{
+        Authentication, ServerRecoveryContinuationCoverage, ServerRecoveryContinuationIdentity,
+        ServerRecoveryCoverage, router_with_server_backups,
+    },
 };
 use serde_json::{Value, json};
 use std::path::Path;
@@ -15,7 +18,7 @@ struct NativeCapture {
     inventory_json: String,
     selected: RoomParticipantInventoryIdentity,
     server_bytes: Vec<u8>,
-    account_tokens: [String; 2],
+    account_tokens: [String; 3],
 }
 fn fresh_authentication() -> Result<(Authentication, String)> {
     let (token, hash) = Authentication::issue_token()?;
@@ -44,11 +47,12 @@ fn protected_copy(input: &RecoveryRegistrationCredentials) -> RecoveryRegistrati
             .collect(),
     }
 }
-fn reopen_operation(
+async fn reopen_operation(
     directory: &Path,
     backup: &ServerRoomBackup,
     expected: &ServerRoomBackupIdentity,
-) -> Result {
+    protected: &RecoveryRegistrationCredentials,
+) -> Result<String> {
     let destination = directory.join("restored");
     let operation = OperationalServerRoom::resume(
         &destination,
@@ -75,7 +79,48 @@ fn reopen_operation(
     if ServerRoomBackup::capture(&mut authority, &mut assets)?.to_bytes()? != before {
         return Err("operational current cut changed across reopen".into());
     }
-    Ok(())
+    let (authentication, token) = fresh_authentication()?;
+    let (_router, handle) = router_with_server_backups(authority, authentication, assets)?;
+    let current = handle.capture_recovery_state("owner", &token).await?;
+    let selected = ServerRecoveryContinuationIdentity {
+        origin: expected.clone(),
+        current: current.identity(),
+    };
+    let (_, inventory) = current.into_parts();
+    let ServerRecoveryContinuationCoverage::Pending { missing } = handle
+        .verify_continued_recovery_state(
+            "owner",
+            &token,
+            ServerRoomBackup::from_bytes(&backup.to_bytes()?)?,
+            selected.clone(),
+            inventory.clone(),
+            RecoveryRegistrationCredentials::default(),
+        )
+        .await?
+    else {
+        return Err("missing current protected registrations created a continuation proof".into());
+    };
+    if missing.is_empty() {
+        return Err("continued native registered clients missing".into());
+    }
+    let ServerRecoveryContinuationCoverage::Verified(proof) = handle
+        .verify_continued_recovery_state(
+            "owner",
+            &token,
+            ServerRoomBackup::from_bytes(&backup.to_bytes()?)?,
+            selected.clone(),
+            inventory,
+            protected_copy(protected),
+        )
+        .await?
+    else {
+        return Err("current native continuation did not verify".into());
+    };
+    if proof.identity() != selected {
+        return Err("continued native identity changed".into());
+    }
+    proof.check_live(&handle, "owner", &token).await?;
+    Ok(token)
 }
 async fn capture_and_verify(
     directory: &Path,
@@ -143,8 +188,9 @@ async fn capture_and_verify(
         return Err("combined native proof cut changed".into());
     }
     selected_proof.check_live(&handle, "owner", &token).await?;
-    let verified =
-        handle.verify_recovery_registrations("owner", &token, inventory, protected).await?;
+    let verified = handle
+        .verify_recovery_registrations("owner", &token, inventory, protected_copy(&protected))
+        .await?;
     let RecoveryRegistrationCoverage::Verified(proof) = verified else {
         return Err("protected native registrations not complete".into());
     };
@@ -153,12 +199,13 @@ async fn capture_and_verify(
     }
     drop(handle);
     drop(restored_router);
-    reopen_operation(directory, &admitted, &selected.server)?;
+    let continued_token =
+        Box::pin(reopen_operation(directory, &admitted, &selected.server, &protected)).await?;
     Ok(NativeCapture {
         inventory_json,
         selected: selected.participants,
         server_bytes,
-        account_tokens: [old_token, token],
+        account_tokens: [old_token, token, continued_token],
     })
 }
 pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
@@ -171,7 +218,7 @@ pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
         room.grant("owner", "alice", None)?;
     }
     let NativeCapture { inventory_json, selected, server_bytes, account_tokens } =
-        capture_and_verify(&root, room, protected).await?;
+        Box::pin(capture_and_verify(&root, room, protected)).await?;
     let file=json!({"format":"breditor/native-participant-inventory-fixture","formatVersion":1,"language":spec.language,"standard":spec.standard,"atomic":spec.atomic,"configuration":configuration,"inventoryJson":inventory_json,"selected":selected,"clients":records}).to_string();
     for secret in secrets.iter().chain(account_tokens.iter()) {
         if file.contains(secret) {
@@ -182,6 +229,6 @@ pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
     storage::write_new(&root.join("server.backup"), &server_bytes)?;
     storage::write_new(&root.join("fixture.json"), file.as_bytes())?;
     Ok(
-        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"nativeSelectedServerStateVerified":true,"nativeOperationalReopensVerified":true,"rawCredentialsExported":false}),
+        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"nativeSelectedServerStateVerified":true,"nativeOperationalReopensVerified":true,"nativeContinuedServerStateVerified":true,"rawCredentialsExported":false}),
     )
 }

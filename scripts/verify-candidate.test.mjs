@@ -30,6 +30,9 @@ test("functional and full plans cover current candidate work without weakening t
  assert.throws(()=>candidateReleasePlan({profile:"skip-hard-parts"}));
  for(const check of full.checks){assert.ok(Object.isFrozen(check)&&Object.isFrozen(check.args)&&Object.isFrozen(check.artifacts));assert.ok(!check.args.some(arg=>/^(publish|push|tag|--skip-tests|--retries)$/.test(arg)));}
 });
+test("both profiles strictly lint the relay without server-only helpers or default features",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile,environment:{BREDITOR_CARGO:"/tool path/cargo"}}),check=p.checks.find(c=>c.id==="relay-no-server-lint");assert.ok(check);assert.equal(check.command,"/tool path/cargo");assert.deepEqual(check.args,["clippy","--manifest-path","experiments/relay/Cargo.toml","--no-default-features","--all-targets","--locked","--offline","--release","--","-D","warnings"]);assert.equal(check.env.CARGO_TARGET_DIR,p.checks.find(c=>c.id==="relay-native").env.CARGO_TARGET_DIR);assert.ok(!check.args.includes("--features"));}
+});
 test("manifest flags precede formatter/linter separators and overrides stay one argv item",()=>{
  const p=candidateReleasePlan({profile:"functional",environment:{BREDITOR_CARGO:"/tool path/cargo",BREDITOR_NPM:"/tool path/npm"}});
  for(const id of ["shared-format","relay-format","shared-lint","relay-lint"]){const c=p.checks.find(c=>c.id===id);assert.equal(c.command,"/tool path/cargo");assert.ok(c.args.indexOf("--manifest-path")<c.args.indexOf("--"));}

@@ -7,6 +7,11 @@ use crate::{
     assets::AssetStore,
 };
 use std::sync::{Arc, Mutex, Weak};
+mod continuation;
+pub use continuation::{
+    ServerRecoveryContinuationCoverage, ServerRecoveryContinuationIdentity,
+    VerifiedServerRecoveryContinuation,
+};
 
 /// A checked original cut belongs to this exact native host and authenticated owner.
 /// No token, resume secret, writer lease or serialized readiness flag is retained.

@@ -98,6 +98,12 @@ exact source cut on an authenticated host. Later operational edits invalidate
 that earlier exact-cut proof; a saved proof or marker cannot authorize them.
 Fresh current account/registration and deployment authority remain necessary.
 
+[Current server continuity checks](CONTINUED_SERVER_RECOVERY_STATE.md) now combine
+fresh owner authentication and all current protected registrations with a newly
+selected native cut that retains the original log prefix and every original
+raster. Their host-local proof becomes stale after any later selected state
+change; it does not turn the earlier exact-cut proof into activation authority.
+
 This storage handoff does not transfer the browser catalog's private participants,
 merge every historic client copy, establish current provider reference closure,
 or preserve history across generations that exceed existing native bounds.

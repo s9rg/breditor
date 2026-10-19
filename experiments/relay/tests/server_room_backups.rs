@@ -3,6 +3,9 @@
 #[path = "support/server_recovery_check.rs"]
 mod checked;
 #[cfg(feature = "server")]
+#[path = "support/server_continuation.rs"]
+mod continuation;
+#[cfg(feature = "server")]
 #[path = "support/server_recovery_live.rs"]
 mod live;
 #[path = "support/server_operation.rs"]

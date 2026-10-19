@@ -43,6 +43,15 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [current server continuity check](CONTINUED_SERVER_RECOVERY_STATE.md) verifies
+a freshly selected native cut and every current protected registration while
+retaining the independently selected original log and rasters. Later edits do
+not extend an old authentication proof: changed state requires a new current
+selection and verification. Durable browser custody is available through
+[operational room recovery](OPERATIONAL_ROOM_RECOVERY.md); deployment fencing,
+historic-copy/provider reconciliation, the final activation barrier and the
+approved cross-generation history bridge remain separate work.
+
 The [operational server recovery](OPERATIONAL_SERVER_RECOVERY.md) path now
 persists storage handoff before returning native components for service mutation.
 Operational reopen admits later native log appends and complete rasters while

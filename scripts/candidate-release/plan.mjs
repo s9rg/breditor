@@ -39,6 +39,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("shared-docs",cargo,["doc","--manifest-path","crates/breditor-collaboration/Cargo.toml","--no-deps","--locked","--offline","--release"],{CARGO_TARGET_DIR:shared,RUSTDOCFLAGS:"-D warnings"}),
   relayCargo("relay-format",["fmt","--","--check"]),
   stage("relay-lint",cargo,["clippy","--manifest-path","experiments/relay/Cargo.toml","--features","server","--all-targets","--locked","--offline","--release","--","-D","warnings"],{CARGO_TARGET_DIR:relay}),
+  relayCargo("relay-no-server-lint",["clippy","--no-default-features","--all-targets","--locked","--offline","--release","--","-D","warnings"]),
   relayCargo("relay-native",["test","--features","server","--locked","--offline","--release"]),
   relayCargo("relay-room-backups",["test","--features","server","--locked","--offline","--release","--test","room_backups"]),
   relayCargo("relay-asset-backups",["test","--features","server","--locked","--offline","--release","--test","asset_backups"]),

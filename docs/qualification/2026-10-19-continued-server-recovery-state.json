@@ -1,0 +1,141 @@
+{
+  "format": "breditor/continued-server-recovery-state-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "passed": true,
+  "qualification": "selected-functional-recovery-checkpoint-not-full-functional-profile-or-v1-approval",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "selectedStages": 23,
+  "evidence": {
+    "result": "target/v1-candidate-runs/run-P34TZS/result.json",
+    "sourceFiles": "target/v1-candidate-runs/run-P34TZS/frozen-source-files.json",
+    "audit": "target/v1-candidate-runs/run-P34TZS/qualification-audit.json",
+    "finalSourceAudit": "target/v1-candidate-runs/run-P34TZS/final-source-audit.json",
+    "beforeOriginalNativeHeaderFix": "target/v1-candidate-runs/run-P34TZS/before-original-native-header-fix.log",
+    "beforeServerFeatureGating": "target/v1-candidate-runs/run-cjC8vp/04-relay-backups-no-server.log",
+    "nativeParticipantInventory": "target/v1-candidate-runs/run-P34TZS/native-participant-inventory.json",
+    "nativeCatalogComposition": "target/v1-candidate-runs/run-P34TZS/native-catalog-participant-operation.json",
+    "nativeRoomOperation": "target/v1-candidate-runs/run-P34TZS/native-room-operational-recovery.json",
+    "installedSessionBackups": "target/v1-candidate-runs/run-P34TZS/installed-session-backups.json",
+    "installedParticipantOperation": "target/v1-candidate-runs/run-P34TZS/installed-participant-operation.json",
+    "installedCatalogComposition": "target/v1-candidate-runs/run-P34TZS/installed-catalog-participant-operation.json",
+    "installedRoomOperation": "target/v1-candidate-runs/run-P34TZS/installed-room-operational-recovery.json"
+  },
+  "source": {
+    "baseCommit": "cc16e030acb13f82e5c5b9a65f9548a6dec0de7b",
+    "testedWorkingTreeSha256": "42bd1be22b6a409e02a8c8b232cb8535adef927ebd23084ff433d008ce584514",
+    "nonDocumentationSha256": "bc9f21625457bc25bc7add6debb73db0b1be5d9b66682a487540ed7361a02e8a",
+    "files": 4623,
+    "bytes": 40376208,
+    "postQualificationChanges": "This qualification file and its current-server contract link only."
+  },
+  "implementation": {
+    "publicApi": "ServerBackupHandle::verify_continued_recovery_state",
+    "selection": "Retain the independently selected original server archive and a fresh independently selected current native server/inventory cut; never replace the original with incoming metadata.",
+    "atomicNativeCheck": "Under one room-then-assets transaction, require the exact current native files/inventory, actual immutable original native identity, complete original log prefix, every original immutable raster record/manifest and all current protected registrations.",
+    "credentials": "Original and later document/review registrations, revoked accounts and permanent observers remain required. Missing records yield Pending only after native continuity; wrong, duplicate, foreign and malformed supplied credentials reject.",
+    "liveProof": "VerifiedServerRecoveryContinuation weakly binds one actual host and authenticated owner/current cut. check_live authenticates again and rechecks exact current files/inventory. A changed cut or another/restarted host requires a fresh proof.",
+    "automaticWritesLeaseChangesOrNetwork": false,
+    "durableOperationalMarkerVerified": false,
+    "globalActivationGranted": false,
+    "originalSelectedProofSemanticsChanged": false
+  },
+  "regressions": {
+    "originalHeader": {
+      "reproducedBeforeFix": true,
+      "detail": "The new path initially accepted a correctly checksummed original header naming a false compiler profile over matching real log bytes.",
+      "fix": "Compare original document, owner, compiler, transport and namespace with the actual native room, not admitted header metadata. Then require the exact original complete log prefix and all original raster records.",
+      "falseProfileOwnerTransportAndDocumentRefused": true
+    },
+    "serverFeature": {
+      "detail": "The new host-only helper caused strict no-server lint to fail as unused.",
+      "fix": "Compile the helper only with the optional server feature; add mandatory strict no-server all-target lint and its plan contract to both release profiles.",
+      "lintExceptionsAdded": false
+    }
+  },
+  "tests": {
+    "freshRelayNativeTestsAndDoctests": 194,
+    "newPublicNativeTests": 11,
+    "newCompileFailProofContracts": 2,
+    "freshNoServerRoomBackupTests": 91,
+    "freshNoServerServerBackupTests": 94,
+    "noServerCountsContainRepeatedLibraryTests": true,
+    "strictRelayAllTargetsWithAndWithoutServer": true,
+    "strictRelayDocumentation": true,
+    "scriptsPassed": 681,
+    "existingOptInSkips": 3,
+    "candidateRunnerContracts": 44,
+    "roomStorageContracts": 16,
+    "strictPublicRecoveryTypes": true,
+    "originalNativeOriginFamilies": 66,
+    "originalNativeOriginColdReopens": 132,
+    "originalOperationalFamilies": 66,
+    "originalOperationalColdReopens": 198,
+    "priorRootAndSharedNative": {
+      "workspace": 2625,
+      "shared": 630,
+      "freshRuns": false,
+      "sourceGuardedAgainstBaseCommit": true,
+      "evidence": "target/v1-candidate-runs/run-Pl82F0/result.json"
+    },
+    "realLoopbackHttpUploadStalesProof": true,
+    "freshCurrentSelectionAfterUploadVerifies": true,
+    "validSameSeedForkRefused": true,
+    "validCurrentStoreWithMissingOriginalImageRefused": true,
+    "separateLiveAndIdenticalRestartedHostsRefused": true,
+    "stoppedHostLocksReleasedWithProofAlive": true,
+    "oldParticipantAndCatalogAssertionsRetained": true
+  },
+  "nativeFixtures": {
+    "originalCompilerTransportFamilies": 10,
+    "currentNativeContinuationCheckAndRecheck": true,
+    "twoOperationalReopensBeforeCurrentCheck": true,
+    "protectedOriginalCredentialChecksRetained": true,
+    "oldAccountTokensNotRevived": true,
+    "originalSelectedArchivesUnchanged": true,
+    "rawCredentialsExported": false,
+    "sourceAndInstalledRunsFresh": true,
+    "nativeFixtureHashesReverified": 120
+  },
+  "retainedRoomWorkflows": {
+    "nativeFamilies": 10,
+    "participants": 20,
+    "parentColdReopens": 30,
+    "currentParticipantColdReopens": 60,
+    "retainedOriginalFiles": 50,
+    "retainedUnselectedCopies": 10,
+    "pendingProposals": 4,
+    "pendingVersions": 9,
+    "savedRedoRecoveries": 9,
+    "retainedUploadRecords": 60,
+    "bothTransportFaultSuitesRetained": true,
+    "sourceAndInstalledAcceptanceMatchPriorCheckpoint": true
+  },
+  "runtimeAndPackages": {
+    "bothOfficialWasmProducersRebuilt": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "fourFreshSourceBoundInstalledReports": true,
+    "freshOfflineArchives": true,
+    "workspaceLinks": false,
+    "strictConsumerTypes": true,
+    "productionModules": {
+      "original": 135,
+      "participantOperation": 116,
+      "parentOperation": 137
+    },
+    "productionApiModulesImported": true,
+    "stageAndArtifactHashesReverified": 30,
+    "archiveLockfileAndRuntimeHashesReverified": true,
+    "originalProtocolsStoredFormatsDefaultsVersionsDependenciesAndBoundsUnchanged": true
+  },
+  "remaining": [
+    "This proof checks one native host/current cut at one instant. It creates or verifies no operational marker and reserves no later mutation or activation barrier.",
+    "Protected credential custody, current deployment/writer fencing, reconciliation of every historic/offline client copy and complete current provider/reference closure remain activation requirements.",
+    "The approved cross-generation Undo/Redo and outstanding offline-edit bridge remains required; neither a history reset nor a limit increase substitutes for it.",
+    "Node storage/lock/raster fixtures and production module imports do not qualify browser behavior, process/power-loss durability, quota/eviction or the large-room operating envelope.",
+    "All 13 V1 release gates remain open. Historical WebKit is not confirmed fixed; physical Japanese input and VoiceOver qualification remain deferred.",
+    "The existing capped vendored dependency warning, generic-btree notice gap and complete dependency/license approval remain unresolved. No push, tag, publication or deployment occurred."
+  ]
+}

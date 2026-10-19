@@ -50,6 +50,11 @@ durable native storage provenance for later server edits and reopen. It does not
 extend an earlier exact-cut authentication check over those edits or provide the
 remaining global activation barrier.
 
+Use the separate [current continuity check](CONTINUED_SERVER_RECOVERY_STATE.md)
+for a freshly selected later cut that retains the original history and rasters.
+It requires all current protected registrations and leaves this original
+exact-cut proof's semantics unchanged.
+
 ## Remaining activation requirements
 
 The checked raster store contains exactly the selected original server files.
@@ -58,8 +63,9 @@ versions, suggestions or offline client histories exists in the current provider
 Current provider reference closure, protected credential custody, all client and
 historical copies, post-reconciliation operational provenance and cross-generation
 Undo/Redo preservation remain separate requirements. The browser
-[recovery catalog](ROOM_RECOVERY_CATALOG.md) still holds participants privately
-and read-only, with no activation or owner-handoff method.
+[recovery catalog](ROOM_RECOVERY_CATALOG.md) starts with private read-only
+participants. [Operational room recovery](OPERATIONAL_ROOM_RECOVERY.md) now
+provides durable custody handoff, but neither path grants room activation.
 
 Verification reads and hashes complete archives and natively admits every raster
 using the existing bounds. It is an explicit private-host operation, not a cheap

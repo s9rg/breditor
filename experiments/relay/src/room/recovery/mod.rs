@@ -15,6 +15,8 @@ mod restore_finish;
 mod restore_log;
 mod restore_resume;
 mod restore_scan;
+#[cfg(feature = "server")]
+mod retained;
 #[cfg(test)]
 mod tests;
 mod types;
