@@ -15,7 +15,7 @@ export interface RecoveredSharedParticipantParts<P extends SharedSelectionPolicy
 async function verify<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owners:RecoveryOwners<P>):Promise<void>{
  p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await SharedParticipantBackup.prototype.verifyRecovered.call(p.backup,source,owners.uploads!,p.signal?{signal:p.signal}:{});}finally{source.dispose();}p.guard();
 }
-async function release(db:IDBDatabase,leases:RecoveryLease[]):Promise<void>{db.close();const results=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(results.some(r=>r.status==="rejected"))throw recoveryFailure("recovery_storage");}
+async function release(db:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const results=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(results.some(r=>r.status==="rejected"))throw recoveryFailure("recovery_storage");db.close();}
 let readyFactory:<P extends SharedSelectionPolicy>(state:ReadyState<P>)=>RecoveredSharedParticipant<P>;
 /** Held native owners and an exact completion record, not an authenticated connection/activation grant. */
 export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
@@ -25,12 +25,12 @@ export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSe
  /** Revalidate the actual owners and retained completion before releasing only coordinator locks. */
  async intoParts():Promise<Readonly<RecoveredSharedParticipantParts<P>>>{
   if(this.#closed)throw recoveryFailure("recovery_closed");if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;
-  try{const {prepared:p,owners,db,leases}=this.#state;await verify(p,owners);const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();this.#closed=true;await release(db,leases);return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});}finally{this.#busy=false;}
+  try{const {prepared:p,owners,db,leases}=this.#state;await verify(p,owners);const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();await release(db,leases);this.#closed=true;return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});}finally{this.#busy=false;}
  }
  /** Graceful close retains failures for retry through the original owner close contracts. */
- async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;try{const {owners,db,leases}=this.#state;await owners.revisions?.close();await owners.suggestions?.close();await owners.versions?.close();await owners.session?.close();owners.uploads?.close();this.#closed=true;await release(db,leases);}finally{this.#busy=false;}}
+ async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;try{const {owners,db,leases}=this.#state;await owners.revisions?.close();await owners.suggestions?.close();await owners.versions?.close();await owners.session?.close();owners.uploads?.close();await release(db,leases);this.#closed=true;}finally{this.#busy=false;}}
  /** Explicit abandonment never deletes any committed journal, upload or recovery record. */
- async discardAndClose():Promise<void>{if(this.#closed)return;if(this.#busy)throw recoveryFailure("recovery_in_use");this.#closed=true;try{await discardRecoveryOwners(this.#state.owners);}finally{await release(this.#state.db,this.#state.leases);}}
+ async discardAndClose():Promise<void>{if(this.#closed)return;if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;try{await discardRecoveryOwners(this.#state.owners);await release(this.#state.db,this.#state.leases);this.#closed=true;}finally{this.#busy=false;}}
 }
 /** Durable per-participant restart coordinator. Original stored families and startup stay unchanged. */
 export class SharedParticipantRecovery<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
@@ -63,5 +63,5 @@ export class SharedParticipantRecovery<P extends SharedSelectionPolicy=SharedSel
   }finally{if(!transferred)await discardRecoveryOwners(owners);}
  }
  /** Wait for private in-flight cleanup, then release handles; retain all committed destinations. */
- async close():Promise<void>{if(this.#closed)return;this.#closing=true;try{await this.#running;}catch{/* The caller of finish retains its original failure. */}if(this.#closed)return;this.#closed=true;await release(this.#db,this.#leases);}
+ async close():Promise<void>{if(this.#closed)return;this.#closing=true;try{await this.#running;}catch{/* The caller of finish retains its original failure. */}if(this.#closed)return;await release(this.#db,this.#leases);this.#closed=true;}
 }

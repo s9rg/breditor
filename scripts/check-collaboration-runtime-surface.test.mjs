@@ -1,6 +1,7 @@
 import test from "node:test";
 import {retainedAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {packetAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
+import {recoveryOriginOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import assert from "node:assert/strict";
 import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,suggestionRevisionMethods,suggestionFormatRebaseMethods,suggestionTextRebaseMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
 import {searchOwnerMethods,writingOwnerMethods,placeholderOwnerMethods,placeholderProfileMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -15,6 +16,7 @@ function fixture(){
  for(const name of writingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of retainedAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of packetAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of recoveryOriginOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["search_history_version","restore_search"])module.SharedRichProfile.prototype[name]=()=>{};
@@ -60,6 +62,9 @@ function fixture(){
 }
 test("initial policy initialization must ship as a complete native capability",()=>{
  for(const name of ["initial_read_only_version","initialize_read_only"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native read-only capability/);}
+});
+test("recovery continuity requires the complete two-native-owner guarded capability",()=>{
+ for(const name of recoveryOriginOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native recovery origin capability/);}
 });
 test("retained image reads require their complete independent guarded capability",()=>{
  for(const name of retainedAssetOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native retained asset capability/);}

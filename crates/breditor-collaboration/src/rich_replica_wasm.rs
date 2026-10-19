@@ -17,6 +17,7 @@ mod packet_asset_references;
 mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod placeholder_empty;
+mod recovery_origin;
 mod retained_asset_references;
 mod review;
 mod reviewed_history;

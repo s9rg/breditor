@@ -91,6 +91,13 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Native pure reads remain available in read-only mode and never publish to subscribers. */
  supportsPlaceholder():boolean{const raw=this.#live();return raw.placeholder_version?.()==="1"&&typeof raw.placeholder_empty==="function";}
  supportsRetainedAssetReferences():boolean{const raw=this.#live();return raw.retained_asset_references_version?.()==="1"&&typeof raw.retained_asset_references_json==="function";}
+ /** Original checkpoints/actors are not permissions; both actual native owners are checked. */
+ supportsRecoveryOrigin():boolean{const raw=this.#live();return raw.recovery_origin_version?.()==="1"&&typeof raw.verify_recovery_origin==="function";}
+ /** Pure native document and paired-review continuity. Final AST equality is never a fallback. */
+ verifyRecoveryOrigin<Q extends SharedSelectionPolicy>(origin:SharedRichEditor<Q>):void {
+  this.#check();origin.#check();if(!this.supportsRecoveryOrigin()||!origin.supportsRecoveryOrigin())throw new SharedEditorError("recovery_origin_unavailable","Use matching native recovery-origin checks");
+  try{this.#live().verify_recovery_origin!(this.#observation,origin.#live(),origin.#observation);}catch{throw new SharedEditorError("recovery_origin","Native recovery origin continuity did not match");}
+ }
  retainedAssetReferences(revision?:string):RichRetainedAssetReferencesRead{this.#check(revision);if(!this.supportsRetainedAssetReferences())throw new SharedEditorError("asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(this.#live().retained_asset_references_json!(this.#observation),this.view().revision,"shared-causal",this.documentJson());}
  checkRetainedAssetReferences(value:RichRetainedAssetReferencesRead,revision?:string):void{this.#check(revision);this.#assetReferences.check(value,this.view().revision);}
  supportsPacketAssetReferences():boolean{const r=this.#live();return r.packet_asset_references_version?.()==="1"&&[r.document_version_asset_references_json,r.document_suggestion_asset_references_json,r.document_suggestion_revision_asset_references_json].every(f=>typeof f==="function");}

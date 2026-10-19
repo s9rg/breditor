@@ -147,6 +147,9 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersio
  /** One-shot fresh host policy before either observation family is issued. Not persisted. */
  initial_read_only_version?():string;
  initialize_read_only?(value:boolean):void;
+ /** Pure native same-writer journal and optional paired review continuity; never an activation grant. */
+ recovery_origin_version?():string;
+ verify_recovery_origin?(observation:unknown,origin:SharedRustOwner,originObservation:unknown):void;
  code_exit_version?():string;
  exit_code_block?(observation:unknown,paragraph:string):boolean;
  flow_navigation_version?():string;

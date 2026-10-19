@@ -8,7 +8,7 @@ import {SharedPersistentSession,SharedParticipantRecovery,captureSharedParticipa
 import {RichAssetStore} from "../packages/breditor-experimental-rich-content/index.js";
 import {fullscreenSeed} from "./fixtures/editor-consumer/fullscreen-seed.mjs";
 import {pixel,ReviewFixtureImage} from "./fixtures/review-assets/pixels.mjs";
-export async function probeDocumentParticipantRecovery(directory){
+export async function probeDocumentParticipantRecovery(directory,{onRecovered}={}){
  const wasm=await import(pathToFileURL(resolve(directory,"breditor_shared.js")));await wasm.default({module_or_path:readFileSync(resolve(directory,"breditor_shared_bg.wasm"))});const saved=new Map(),held=new Set();
  for(const [name,value]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks:{request(name,options,run){if(typeof options==="function")run=options;return Promise.resolve().then(async()=>{if(held.has(name))return run(null);held.add(name);try{return await run({name});}finally{held.delete(name);}});}}}})){saved.set(name,Object.getOwnPropertyDescriptor(globalThis,name));Object.defineProperty(globalThis,name,{value,configurable:true});}
  let cases=0,restoredComponents=0,exactReopens=0,futureCheckpoints=0;
@@ -22,7 +22,8 @@ export async function probeDocumentParticipantRecovery(directory){
    attempt=await SharedParticipantRecovery.begin(input);recovered=await attempt.finish();attempt=undefined;assert.equal((await recovered.uploads.list()).length,0);restoredComponents+=2;await recovered.close();recovered=undefined;
    attempt=await SharedParticipantRecovery.resume(input);recovered=await attempt.finish();attempt=undefined;const cap=captureSharedAssetReferences(recovered.sources);try{await archive.verifyRecovered(cap,recovered.uploads);}finally{cap.dispose();}exactReopens++;
    const checkpoint=archive.records()[0].json,nativeOptions=search?{searchHistory:"search-v1"}:{};reference=scope==="document-v1"?createSharedDocumentEditor(restore(checkpoint),nativeOptions):new SharedRichEditor(restore(checkpoint),nativeOptions);
-   for(const method of ["redo","undo","redo","undo"]){recovered.session.core[method]();reference[method]();assert.equal(recovered.session.core.checkpointJson(),reference.checkpointJson());futureCheckpoints++;}cases++;
+   for(const method of ["redo","undo","redo","undo"]){recovered.session.core[method]();reference[method]();assert.equal(recovered.session.core.checkpointJson(),reference.checkpointJson());futureCheckpoints++;}
+   if(onRecovered)await onRecovered({input,recovered,config:{language,natural,scope,search},restore});cases++;
   }finally{reference?.dispose();await recovered?.close();await attempt?.close();await source?.discardAndClose();assets?.close();archive?.dispose();p.free();}
  }}finally{for(const [name,value]of saved)if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name];}
  assert.equal(cases,36);assert.equal(restoredComponents,72);assert.equal(exactReopens,36);assert.equal(futureCheckpoints,144);assert.equal(held.size,0);

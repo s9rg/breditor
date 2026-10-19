@@ -1,0 +1,92 @@
+{
+  "format": "breditor/native-participant-origin-qualification",
+  "formatVersion": 1,
+  "qualification": "selected-working-tree-checkpoint-not-full-functional-profile-or-v1-approval",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "selectedStages": 24,
+  "evidence": {
+    "result": "target/v1-candidate-runs/run-xspHna/result.json",
+    "sourceFiles": "target/v1-candidate-runs/run-xspHna/frozen-source-files.json",
+    "installedConsumer": "target/v1-candidate-runs/run-xspHna/installed-consumer.json",
+    "audit": "target/v1-candidate-runs/run-xspHna/qualification-audit.json",
+    "beforeFixReproduction": "target/recovery-release-before-Hv9r0P/result.json"
+  },
+  "source": {
+    "baseCommit": "3a1f22a5676aaa9dcc7031cbcf8e35fc4d97819b",
+    "testedWorkingTreeSha256": "0b1c429afe8afda97e49af8c0ace4a3b66de19feea3fa3374cdbb993e5638e4b",
+    "nonDocumentationSha256": "36897d145ae6a1424dac91dacd1e2ec7ff083dac795f3d88d38e6b344c32846b",
+    "files": 4573,
+    "bytes": 40088447,
+    "postQualificationChanges": "Documentation only; compare the final source audit with the frozen file inventory."
+  },
+  "native": {
+    "workspaceTestsAndDoctestsPassed": 2625,
+    "sharedTestsPassed": 630,
+    "relayTestsAndDoctestsPassed": 181,
+    "additionalNoServerTestsPassed": 91,
+    "nativeTestsIgnored": 0,
+    "strictAllTargetsClippy": true,
+    "strictSharedWasmClippy": true,
+    "nativeOriginModeCombinations": 144
+  },
+  "scripts": {
+    "passed": 636,
+    "existingOptInSkips": 3,
+    "operationalStorageContracts": 7,
+    "earlyVersionChangeFences": ["document", "paired"]
+  },
+  "nativeOriginProbe": {
+    "configurations": 66,
+    "factoryReceiverChecks": 66,
+    "pureNativeReads": 132,
+    "coldReopens": 132,
+    "futureDocumentCheckpoints": 528,
+    "futureReviewCheckpoints": 240,
+    "wrongRestoreRefusals": 66,
+    "missingDatabaseRefusals": 66,
+    "oldExactCoordinatorRefusals": 66,
+    "disposedOriginRefusals": 66,
+    "handoffReleaseRetry": 1,
+    "completionReleaseRetries": 2,
+    "ownerDiscardRetryAndConcurrentExclusion": 1,
+    "attemptReleaseRetry": 1,
+    "allEarlierParticipantAssertionsRetained": true
+  },
+  "runtime": {
+    "bothOfficialProducersRebuilt": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "originalProtocolsAndStoredFamiliesUnchanged": true,
+    "packageVersionsDefaultsDependenciesAndBoundsUnchanged": true
+  },
+  "installed": {
+    "freshOfflineArchives": true,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "originalDocumentPairedWorkflows": 20,
+    "nativeOriginReads": 40,
+    "nativeOriginRollbackRefusals": 20,
+    "exactWorkflowReopens": 20,
+    "startupUpgradeFences": 2,
+    "retainedStoreRestores": 90,
+    "retainedStoreReopens": 90,
+    "nativeRoomFamilies": 10,
+    "registeredStreamsCovered": 40,
+    "catalogStagedParticipants": 20,
+    "catalogRetainedFiles": 40,
+    "catalogUploadEntries": 60,
+    "productionBundleModules": 130,
+    "productionUsesNoWorkspaceReactOrSyntheticStorageModules": true,
+    "archiveLockfileRuntimeAndStageHashesReverified": true
+  },
+  "remaining": [
+    "Durable browser operational phase, retained origin file and actual owner handoff are not implemented by the pure continuity check.",
+    "Parent catalog transfer, reconciliation of all retained historic copies, current account and writer fences, protected original credentials and complete current provider reference closure remain required for global activation.",
+    "Cross-generation Undo/Redo and outstanding offline-edit preservation remain required; no history reset or increased native bound substitutes for that bridge.",
+    "Node IndexedDB, lock and raster fixtures do not qualify browser persistence, process or power loss, physical input, accessibility or mobile behavior.",
+    "All 13 V1 release gates remain open. The historical WebKit fault is not confirmed fixed; Japanese and VoiceOver tests remain deferred.",
+    "The generic-btree notice gap and dependency license approval remain unresolved. No push, tag, publication or deployment is authorized by this qualification."
+  ]
+}

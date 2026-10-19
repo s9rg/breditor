@@ -10,6 +10,8 @@ import {requireBackupRecovery} from "../backups/identity.js";
 import type {SharedBackupIdentity,SharedSessionBackup} from "../backups/types.js";
 import type {SharedSessionBackupOptions,SharedDocumentBackupOptions,SharedSearchBackupOptions} from "../backups/session_options.js";
 import {fenceOpeningDatabase} from "./opening_database.js";
+import {recoveryOriginFor,inheritRecoveryOrigin} from "../participant_operation/admission.js";
+import {existingSessionDatabase} from "../participant_operation/existing_session.js";
 
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
@@ -86,10 +88,10 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  /** Lease before reading/restoring. The host supplies the separately named native search factory. */
  static openSearch<Q extends SharedSelectionPolicy>(options:SharedSearchSessionOptions<Q>):Promise<SharedPersistentSession<Q>>{
   if(typeof options.restoreSearch!=="function"||![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))return Promise.reject(new SharedEditorError("search_session_policy","Explicit compatible search session policies and recovery are required"));
-  return SharedPersistentSession.#open({...options,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}},options.selectionEditing,true);
+  return SharedPersistentSession.#open(inheritRecoveryOrigin(options,{...options,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}}),options.selectionEditing,true);
  }
  static async #open<Q extends SharedSelectionPolicy>(options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:Q,search=false,backup?:SharedSessionBackup):Promise<SharedPersistentSession<Q>>{
-  options={...options};
+  const recoveryOrigin=recoveryOriginFor(options);options={...options};
   if(!search&&options.editor?.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Use the explicit search-aware durable factory");
   if(options.editor?.reviewedHistory!==undefined)throw new SharedEditorError("reviewed_session_factory","Document-only storage cannot retain reviewed ownership; use the explicit reviewed paired session");
   if(options.richLanguage!==undefined&&options.richLanguage!==1&&options.richLanguage!==2&&options.richLanguage!==3)throw new SharedEditorError("session_identity","Expected richLanguage 1, 2 or 3");
@@ -101,13 +103,15 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
   const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,nativeBackupAdmission=false;
   try{
-   db=await openSessionDatabase(options.database);
-   const opening=fenceOpeningDatabase(db,"session_open_versionchange");
+   const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"session_open_versionchange"):undefined;
+   db=retained?.db??await openSessionDatabase(options.database);
+   const opening=retained?.opening??fenceOpeningDatabase(db,"session_open_versionchange");
    if(backup&&await backupDestinationExists(db,[options.room,options.writer]))throw new SharedEditorError("backup_destination_exists","Backup destination already contains a record");
    const searchRecord=search&&!backup?await readSearchRecord(db,[options.room,options.writer]):null;
    if(searchRecord&&(searchRecord.history!==options.history||searchRecord.rangeEditing!==options.rangeEditing||searchRecord.selectionEditing!==selectionPolicy||searchRecord.richLanguage!==options.richLanguage))throw new SharedEditorError("search_session_identity","Stored search policy differs from the explicitly selected session");
    const checkpoint=backup?null:search?(searchRecord?{...searchRecord,json:searchRecord.checkpointJson}:null):await (selectionPolicy==="document-v1"?readDocumentSessionCheckpoint:readSessionCheckpoint)(db,[options.room,options.writer]),history=options.history??"explicit",ranges=options.rangeEditing??(selectionPolicy==="document-v1"?"general-v1":"original"),storedRanges=checkpoint?.rangeEditing??"original",storedDocument=checkpoint!==null&&"selectionEditing" in checkpoint&&checkpoint.selectionEditing==="document-v1";
    if(checkpoint!==null){
+    if(recoveryOrigin&&(checkpoint.history!==history||storedRanges!==ranges||storedDocument!==(selectionPolicy==="document-v1")))throw new SharedEditorError("recovery_origin_policy","Operational recovery cannot upgrade a stored session family");
     if(storedRanges==="general-v1"&&(ranges!=="general-v1"||checkpoint.richLanguage!==(options.richLanguage??1)))throw new SharedEditorError("session_range","General recovery requires explicit matching rangeEditing and richLanguage");
     if(search)checkSearchCheckpoint(checkpoint.json,options.room,options.writer,options.richLanguage??1,history,ranges,selectionPolicy);
     else if(storedDocument)checkDocumentCheckpoint(checkpoint.json,options.room,options.writer,options.richLanguage,checkpoint.history);
@@ -126,6 +130,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    if(search)checkSearchCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage??1,history,ranges,selectionPolicy);
    else if(selectionPolicy==="document-v1")checkDocumentCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history);
    else checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history,ranges);
+   if(recoveryOrigin){if(checkpoint===null)throw new SharedEditorError("recovery_origin_missing","The operational journal is absent");if(core.checkpointJson()!==checkpoint.json)throw new SharedEditorError("recovery_origin_native","Operational native replay must retain the exact stored journal");recoveryOrigin.verify(core as unknown as SharedRichEditor<SharedSelectionPolicy>);}
    opening.assertCurrent();nativeBackupAdmission=false;
    if(backup){const session=new SharedPersistentSession(db,lease,core,true,options,selectionPolicy,search);try{const checkpointJson=core.checkpointJson();if(checkpointJson!==backup.checkpointJson)throw new SharedEditorError("backup_native_replay","Native replay did not preserve the exact canonical checkpoint");await insertSessionBackup(db,checkpointJson,backup.identity);if(session.#failure)throw session.#failure;session.#saved=checkpointJson;session.#savedRevision=core.view().revision;session.#notify();return session;}catch(error){await session.discardAndClose();throw error;}}
    const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options,selectionPolicy,search);session.save();

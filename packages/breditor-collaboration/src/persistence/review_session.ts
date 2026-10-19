@@ -19,6 +19,8 @@ import {checkSearchReviewRecord,readSearchReviewRecord,writeSearchReviewRecord,t
 import {reviewedHistoryIdentity,sameReviewedHistory} from "../reviewed_history_validation.js";
 import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 import {reviewProgress,reviewStorageIdentity} from "../relay/review_validation.js";
+import {recoveryOriginFor} from "../participant_operation/admission.js";
+import {existingSessionDatabase} from "../participant_operation/existing_session.js";
 import type {SharedReviewRelayStorageIdentity,SharedReviewRelayProgress} from "../relay/review_types.js";
 export type SharedPairedCheckpointRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord|SearchReviewCheckpointRecord;
 type PairedRecord=SharedPairedCheckpointRecord;
@@ -89,6 +91,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   return this.#open({...options,create:()=>{throw new SharedEditorError("backup_native_replay","Paired backup import cannot fall back to a new document");}},restoreSaved,reviewed,search,backup);
  }
  static async #open<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"restore">,restoreSaved:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity,search=false,backup?:SharedPairedSessionBackup):Promise<SharedReviewPersistentSession<Q>>{
+  const recoveryOrigin=recoveryOriginFor(input);
   if("searchHistory" in input&&input.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
   if(input.editor&&"searchHistory" in input.editor&&input.editor.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
   if(input.editor&&"reviewedHistory" in input.editor&&input.editor.reviewedHistory!==undefined)throw new SharedEditorError("reviewed_session_factory","Select reviewed history through the paired factory, not nested editor options");
@@ -98,10 +101,11 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   if(![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))throw new SharedEditorError("review_session_policy","Explicit compatible review session policies are required");
   const documentLease=await SharedWriterLease.acquire(options.room,options.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,nativeBackupAdmission=false;
   try{
-   reviewLease=await ReviewWriterLease.acquire(options.room,options.review.actor);db=await openSessionDatabase(options.database);
-   const opening=fenceOpeningDatabase(db,"review_open_versionchange");
+   reviewLease=await ReviewWriterLease.acquire(options.room,options.review.actor);const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"review_open_versionchange"):undefined;db=retained?.db??await openSessionDatabase(options.database);
+   const opening=retained?.opening??fenceOpeningDatabase(db,"review_open_versionchange");
    if(backup&&await backupDestinationExists(db,[options.room,options.writer]))throw new SharedEditorError("backup_destination_exists","Paired backup destination already contains a record");
    const saved=backup?readPairedBackupRecord(backup.recordJson,backup.identity):await(search?readSearchReviewRecord(db,[options.room,options.writer]):reviewed?readReviewedReviewRecord(db,[options.room,options.writer]):options.relay?.reviewEditing==="read_only"?readReviewObserverRecord(db,[options.room,options.writer]):options.relay?readReviewRelayRecord(db,[options.room,options.writer]):readReviewRecord(db,[options.room,options.writer]));
+   if(recoveryOrigin&&!saved)throw new SharedEditorError("recovery_origin_missing","The operational paired journal is absent");
    if(backup&&saved?.format!==(search?"breditor/shared-search-review-checkpoint-record":reviewed?"breditor/shared-reviewed-review-checkpoint-record":options.relay?.reviewEditing==="read_only"?"breditor/shared-review-observer-checkpoint-record":options.relay?"breditor/shared-review-relay-checkpoint-record":"breditor/shared-review-checkpoint-record"))throw new SharedEditorError("backup_paired_identity","The explicitly selected paired recovery family differs from the backup");
    if(search&&saved&&(!("reviewedHistory" in saved)||!!saved.reviewedHistory!==!!reviewed||!!saved.relay!==!!options.relay))throw new SharedEditorError("search_review_identity","Stored search paired family differs from the explicitly selected source");
    if(reviewed&&saved&&(!("reviewedHistory" in saved)||!saved.reviewedHistory||!sameReviewedHistory(reviewed,saved.reviewedHistory)||!!saved.relay!==!!options.relay))throw new SharedEditorError("reviewed_session_identity","Stored reviewed identity/family differs from the selected source");
@@ -118,6 +122,8 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    if(options.rangeEditing==="general-v1")core.enableGeneralRanges();
    core.enableReview(options.review,saved?.reviewCheckpointJson);core.sealReviewPolicies(options.history,options.rangeEditing);
    if(options.relay&&!core.supportsReviewTransport())throw new SharedEditorError("review_transport_unavailable","Paired relay storage needs matching native lineage proofs");
+   if(recoveryOrigin&&(core.checkpointJson()!==saved?.documentCheckpointJson||core.reviewCheckpoint()!==saved?.reviewCheckpointJson))throw new SharedEditorError("recovery_origin_native","Operational native replay must retain both exact stored journals");
+   recoveryOrigin?.verify(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
    opening.assertCurrent();const session=new SharedReviewPersistentSession(db,documentLease,reviewLease,core,options,saved!==null,saved?.versions??[],saved&&"progress" in saved?saved.progress??undefined:undefined);nativeBackupAdmission=false;
    if(backup){try{const record=session.#record();session.#checkRecord(record);if(JSON.stringify(record)!==backup.recordJson)throw new SharedEditorError("backup_native_replay","Native paired replay did not preserve the exact canonical histories/catalog");await insertBackupRecord(db,[options.room,options.writer],record);if(session.#failure)throw session.#failure;session.#saved=backup.recordJson;return session;}catch(error){await session.discardAndClose();throw error;}}
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;

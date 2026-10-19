@@ -30,7 +30,7 @@ mod projection_tests;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-enum Origin {
+pub(super) enum Origin {
     Seed { document_json: String },
     Join { updates: Vec<u8> },
 }
@@ -105,7 +105,7 @@ pub(super) struct Journal<Entries = Vec<Entry>> {
     pub(super) version: u32,
     pub(super) document: String,
     writer: String,
-    origin: Origin,
+    pub(super) origin: Origin,
     pub(super) entries: Entries,
     pub(super) ui: UiState,
     pub(super) publication: String,
@@ -163,7 +163,7 @@ fn contract(_error: impl std::fmt::Display) -> Error {
     Error::Contract("rich replica schema admission")
 }
 
-fn publication(value: &str) -> Result<u64, Error> {
+pub(super) fn publication(value: &str) -> Result<u64, Error> {
     let number = value.parse::<u64>().map_err(|_| Error::Contract("shared publication decimal"))?;
     if number.to_string() != value {
         return Err(Error::Contract("canonical shared publication decimal"));

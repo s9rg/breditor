@@ -148,6 +148,9 @@ coordinator leases. `intoParts()` rechecks the exact recovered cut and completio
 before releasing only coordinator bookkeeping locks; native author leases stay
 with the returned ordinary owners. Do not edit that cut before transfer.
 Concurrent handoff/close refuses rather than transferring ownership twice.
+Failed coordinator release remains retryable and does not mark a handoff
+complete before the ordinary owners have actually been returned. Explicit
+discard also excludes concurrent cleanup and retains failed cleanup for retry.
 
 `RecoveredSharedParticipant.close()` uses ordinary graceful owner saves and
 preserves save failures for retry. `discardAndClose()` explicitly abandons private
@@ -156,6 +159,8 @@ in-flight finish to stop and clean up its private owners. Successful finish has
 already transferred ownership, so closing the old attempt does not close the
 returned participant. Once ordinary editing changes the recovered cut, the old
 attempt must refuse to restore over that newer work.
+The separate [native origin continuity check](NATIVE_RECOVERY_ORIGIN.md) supports
+future operational admission without relaxing this exact-source contract.
 
 ## Whole room and release boundaries
 

@@ -8,6 +8,7 @@ mod codec;
 mod event;
 mod identity;
 mod materialize;
+mod recovery_origin;
 mod session;
 mod types;
 

@@ -84,6 +84,7 @@ mod projection_cache;
 mod protocol;
 mod range_plan;
 mod receive_semantic_remote_v1;
+mod recovery_origin;
 mod replace_atom_plain_text;
 mod replace_atom_typing_text;
 mod replace_document_plain_text;
