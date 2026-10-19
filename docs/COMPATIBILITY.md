@@ -68,14 +68,27 @@ ceilings, not automatic rotation, archival or garbage collection. The
 [asset bounds](../experiments/relay/src/assets/mod.rs) are authoritative; this list
 is not a complete or approved V1 operating envelope.
 
-V1 still needs an explicit lifetime/retention contract and tested rotation,
-complete-room backup and restore procedures. Shared archives now offer explicit
-insert-only native history recovery, not asset/outbox/server recovery or generation
-rollover. A proposed rolling Undo policy is not implemented
-or approved by this documentation. Rotation must preserve pending updates, writer
-ownership, authenticated receipts and final review decisions, existing reader
-contracts, and retained version/asset references. Raising old counters, copying a
-live writer or exporting only the visible AST does not solve those requirements.
+The approved V1 requirement preserves Undo/Redo and outstanding offline edits
+across generations. A rollover that resets history, even with an archived old
+session, does not satisfy that requirement. This is a release target, not an
+implemented extension of the current bounded lifetime above.
+
+V1 still needs the native history/identity bridge, tested rotation and coordinated
+room backup/restore. Shared session and raster archives offer separate insert-only
+recovery components, not asset-reference completeness, outbox/server recovery or
+generation rollover. Rotation must preserve pending updates, writer ownership,
+authenticated receipts and final review decisions, existing reader contracts,
+and retained version/asset references. Raising old counters, copying a live writer
+or exporting only the visible AST does not solve those requirements.
+
+Before this gate can close, tests must exercise Undo and Redo across multiple
+generation boundaries without undoing other authors' work; reconnect an offline
+writer whose base precedes those boundaries without dropping or duplicating
+accepted edits; and retain reachable assets, comments, versions and pending review
+work. Interrupted preparation, publication or recovery must retain a usable prior
+state and retry path. Exact migration semantics, capacity bounds and deletion
+eligibility remain implementation and qualification work. Existing hard-limit
+admission continues to fail closed rather than silently reset or discard history.
 
 ## Current default package policy
 

@@ -1,7 +1,13 @@
 import {openDatabase, readAsset, transact, updateAsset} from "./database.js";
 import {ingestFile} from "./ingest_file.js";
 import {uploadAsset} from "./upload_queue.js";
-import {assetInfo, defaultAssetLimits, type AssetInfo, type AssetLimits, type AssetRecord, type AssetUploader} from "./types.js";
+import {assetInfo, type AssetInfo, type AssetLimits, type AssetRecord, type AssetUploader} from "./types.js";
+import {checkedAssetLimits} from "./limits.js";
+import {exportAssetBackup} from "./archive/export_backup.js";
+import {importAssetBackup} from "./archive/import_backup.js";
+import {insertAssetArchive} from "./archive/database.js";
+import {RichAssetBackupError,checkAssetBackupSignal} from "./archive/error.js";
+import type {RichAssetBackupOptions,RichAssetRestoreOptions} from "./archive/types.js";
 
 export interface RichAssetOptions {
   limits?: Partial<AssetLimits>;
@@ -21,11 +27,7 @@ export class RichAssetStore {
 
   private constructor(db: IDBDatabase, name: string, options: RichAssetOptions) {
     this.#db = db; this.#name = name; this.#options = options;
-    const limits = {...defaultAssetLimits, ...options.limits};
-    for (const [key, value] of Object.entries(limits)) {
-      if (!(key in defaultAssetLimits) || !Number.isSafeInteger(value) || value < 1 || value > defaultAssetLimits[key as keyof AssetLimits]) throw Error("Asset limits can only tighten defaults");
-    }
-    this.limits = Object.freeze(limits);
+    this.limits = checkedAssetLimits(options.limits);
     db.onversionchange = () => this.close();
   }
 
@@ -34,6 +36,18 @@ export class RichAssetStore {
     try { return new RichAssetStore(db, name, options); }
     catch (error) { db.close(); throw error; }
   }
+
+  /** Explicit empty-destination import. Preserve queue epochs/statuses; do not start network work. */
+  static async restoreBackup(name:string,backup:Blob,input:RichAssetRestoreOptions):Promise<RichAssetStore>{
+    const {uploadState,signal,...supplied}={...input};if(uploadState!=="preserve")throw new RichAssetBackupError("asset_backup_policy","Explicit preservation of archived upload state is required");
+    const options={...supplied,limits:checkedAssetLimits(supplied.limits)},records=await importAssetBackup(backup,options.limits,signal);checkAssetBackupSignal(signal);
+    let store:RichAssetStore|undefined,db:IDBDatabase|undefined;
+    try{db=await openDatabase(name);store=new RichAssetStore(db,name,options);await insertAssetArchive(db,records,signal);store.#live();checkAssetBackupSignal(signal);return store;}
+    catch(error){store?.close();db?.close();if(error instanceof RichAssetBackupError)throw error;throw new RichAssetBackupError("asset_backup_storage","Asset archive destination could not commit");}
+  }
+
+  /** One atomic retained snapshot, including cancelled/failed uploads and assets used only by history. */
+  async exportBackup(options:RichAssetBackupOptions={}):Promise<Blob>{this.#live();return exportAssetBackup(this.#db,this.limits,options);}
 
   #live(): void { if (this.#closed) throw Error("Asset store is closed"); }
   #notify(record: AssetRecord): void {

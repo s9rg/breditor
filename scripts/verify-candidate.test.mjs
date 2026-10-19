@@ -40,10 +40,13 @@ test("manifest flags precede formatter/linter separators and overrides stay one 
 });
 test("both profiles require exact shared backups and startup upgrade admission without a runtime reuse shortcut",()=>{
  for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const value=plan.checks.find(c=>c.id===id);assert.ok(value,id);return value;};
-  for(const [id,file]of [["shared-session-backups","probe-session-backups.mjs"],["paired-session-backups","probe-paired-backups.mjs"],["session-opening-upgrade-fence","probe-session-opening-upgrade.mjs"]])assert.deepEqual(find(id).args,[`scripts/${file}`,"target/promoted-shared-web"]);
+  for(const [id,file]of [["shared-session-backups","probe-session-backups.mjs"],["shared-asset-archive-history","probe-shared-asset-backups.mjs"],["paired-session-backups","probe-paired-backups.mjs"],["session-opening-upgrade-fence","probe-session-opening-upgrade.mjs"]])assert.deepEqual(find(id).args,[`scripts/${file}`,"target/promoted-shared-web"]);
   const installed=find("installed-session-backups");assert.deepEqual(installed.args,["scripts/check-session-backups-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/session-backups-installed-consumer.json",fresh:true}]);
   const browser=plan.checks.find(c=>c.id==="installed-session-backups-browser");if(profile==="full"){assert.deepEqual(browser.args,["scripts/check-session-backups-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/session-backups-installed-browser.json",fresh:true}]);}else assert.equal(browser,undefined);
  }
+});
+test("asset archive contracts and fresh public packages are mandatory; full additionally requires native raster/reload acceptance",()=>{
+ for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const check=plan.checks.find(c=>c.id===id);assert.ok(check,id);return check;};assert.deepEqual(find("asset-archive-storage-contracts").args,["--test","scripts/asset-backups.test.mjs"]);const installed=find("installed-asset-backups");assert.deepEqual(installed.args,["scripts/check-asset-backups-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/asset-backups-installed-consumer.json",fresh:true}]);const browser=plan.checks.find(c=>c.id==="installed-asset-backups-browser");if(profile==="full"){assert.deepEqual(browser.args,["scripts/check-asset-backups-browser.mjs"]);assert.deepEqual(browser.artifacts,[{path:"target/asset-backups-installed-browser.json",fresh:true}]);}else assert.equal(browser,undefined);}
 });
 test("both candidate profiles require portable input rules without reusing or inventing historical fixtures",()=>{
  for(const profile of ["functional","full"]){

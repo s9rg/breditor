@@ -19,6 +19,16 @@ fixed per core/`sessionKey`; live policy callbacks may read current host state.
 Close the paired session explicitly after borrowed controls are removed. Existing
 managed document-only openings do not silently enable or persist review metadata.
 
+## Retained raster archives
+
+`RichAssetStore`, re-exported from the default package root, supports explicit
+binary `exportBackup()` and empty-destination `restoreBackup()` with
+`uploadState: 'preserve'`. This retains original raster bytes and upload epochs
+for history and offline references, without starting network work or overwriting
+an occupied cache. Store archives do not automatically coordinate with editor or
+review/outbox checkpoints. See the [asset archive contract](../../docs/RICH_ASSET_BACKUPS.md)
+for whole-store scope, sensitive receipt strings, bounds and host responsibilities.
+
 ## Counts and heading outline
 
 `mountWritingTools(asideHost, editor.writing(), options?)` displays native accepted-

@@ -117,9 +117,14 @@ Session archives neither back them up nor acknowledge their pending work. A
 complete-room backup needs a coordinated host-level contract covering those
 stores, authority and asset references.
 
-The [bounded lifetime](COMPATIBILITY.md#current-bounded-lifetime) still requires an
-approved long-session contract for rotation, cross-generation Undo, offline edits,
-receipts, final review decisions and retention. Native process-crash,
+The separate [raster asset archive](RICH_ASSET_BACKUPS.md) now preserves a whole
+asset store's bytes and upload state with verified empty-destination recovery.
+It does not automatically make document/asset/outbox captures atomic or room-scoped.
+
+The approved [long-session target](COMPATIBILITY.md#current-bounded-lifetime)
+preserves cross-generation Undo/Redo and outstanding offline edits. Its native
+bridge, rotation, receipts, final review decisions and retention still require
+implementation and tests. Native process-crash,
 quota/eviction, supported-platform and long-session restore drills remain release
 qualification, not guarantees supplied by the codec.
 

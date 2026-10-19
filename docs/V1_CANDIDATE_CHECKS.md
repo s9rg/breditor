@@ -127,6 +127,29 @@ stage uses fresh official runtime builders, not the earlier development reuse
 preflight. The 36 document/108 paired portable cases and 20 real-browser workflows
 are distinct evidence scopes; no complete-room restore or V1 gate is promoted.
 
+Raster asset archives add mandatory portable snapshot/metadata/epoch, decode,
+insert-only race and aborted-write contracts to both profiles. An actual shared
+Wasm probe also checks original/general/document selections, both histories,
+comments/versions and retained image bytes through future Undo/Redo. Its storage,
+locks and two exact PNG decoding are explicit fixtures. The fresh three-package
+consumer checks public types and a production bundle with registry
+artifacts pinned to the producer lock, without workspace/shared/React modules.
+The full profile additionally requires native PNG/JPEG/WebP decode, all four
+upload states, atomic partial-add rollback and restored native image-history
+behavior through a real reload in the installed Chromium artifact. The
+[asset archive contract](RICH_ASSET_BACKUPS.md) retains whole-store scope and
+separate authority/room-backup limits. An explicit development `--reuse-runtime`
+mode does not qualify the official runtime builder and is selected by neither
+candidate profile.
+
+The [raster archive checkpoint](qualification/2026-10-18-raster-asset-backups.json)
+retains a passing frozen 23-stage selection, the failing pre-repair opaque-receipt
+regression and fresh official-build installed/browser evidence. Its 14 focused
+storage tests and six shared image/history cases are portable fixtures; actual
+PNG/JPEG/WebP, IndexedDB, crypto and reload are exercised separately in one installed
+Chromium artifact. The earlier disk-exhausted run is retained as incomplete, not
+counted as a pass. Neither complete-room recovery nor a V1 gate is promoted.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and

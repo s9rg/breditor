@@ -9,6 +9,7 @@ export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
 export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscreenControlsOptions} from "./dist/browser/fullscreen_controls.js";
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult} from "./dist/browser/clipboard_interchange.js";
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,type RichEditorOptions,type RichDocumentEditorOptions,type ToolbarControl,type ActionContext,type AssetBinding,type RenderOptions,type RichAssetOptions,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./dist/browser/index.js";
+export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions} from "./dist/browser/index.js";
 export class RichCommandError extends Error {readonly code: string; constructor(code: string, message: string)}
 export function compileRichProfile(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;
 export function compileStandardRichProfileV1(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;

@@ -408,6 +408,18 @@ it does not delete assets. No garbage collection is implemented because history,
 offline peers and backups may still reference them. Session JSON is not a portable
 asset-byte backup.
 
+`exportBackup({signal?})` returns a bounded binary Blob containing every retained
+raster and its exact upload/cancellation state. Explicit
+`RichAssetStore.restoreBackup(name, blob, {uploadState: 'preserve', signal?, limits?})`
+re-decodes and rehashes the whole archive before one insert-only transaction into
+an empty store. No provider runs, occupied data is never replaced and an aborted
+transaction preserves its prior byte counter. The archive covers the entire
+store, including history-only files and any other documents sharing that cache.
+Original bytes and opaque receipt strings can be sensitive; SHA-256 is not
+encryption or server authority. This is separate from document/session recovery,
+not coordinated room backup or retention/rotation. See the
+[raster archive contract](../../docs/RICH_ASSET_BACKUPS.md).
+
 `cacheRemote(asset, blob, storageRef)` admits a downloaded raster through the
 same decode/dimension/digest checks, then verifies the expected content key
 before any storage transaction. A newly cached remote record starts uploaded,

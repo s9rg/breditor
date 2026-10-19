@@ -43,6 +43,35 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [retained raster archive checkpoint](qualification/2026-10-18-raster-asset-backups.json)
+passes one frozen 23-check run. `RichAssetStore` now captures every locally retained
+raster and its exact upload state, attempts and cancellation epoch in one read
+transaction. Canonical binary framing, digest and ordinary PNG/JPEG/WebP admission
+precede atomic insertion into an empty store. Existing files are never overwritten;
+an aborted insertion leaves no partial asset set or byte counter. Network work
+remains explicit.
+
+A retained failing test reproduces an archive-only compatibility bug: the uploader
+already accepts opaque receipt strings containing lone UTF-16 code units, but the
+initial archive encoder rejected them. JSON escapes now retain those code units
+exactly, while the header itself remains strict UTF-8 and canonical JSON. All 14
+focused archive tests, 534 script tests and 382 editor tests pass; three existing
+script checks remain skipped. Six actual shared-history configurations retain
+comments, saved versions, image bytes and 30 exact future checkpoints. Fresh
+installed packages and one Chromium production artifact verify native image
+decoding, all four queue states, occupied/racing refusal, partial-add rollback,
+exact opaque receipts and real reload with retained native Redo. Both native
+binaries and native inputs remain unchanged.
+
+Approved cleanup removed only 111 old temporary dependency copies, reclaiming
+about 2.1 GiB while retaining source, archives, fixtures, logs and pinned readers.
+The disk-exhausted earlier qualification remains incomplete; the passing evidence
+comes from the final rerun. These archives cover a whole local asset store, not
+all remotely referenced assets or a coordinated document/outbox/server backup.
+The approved V1 long-session requirement preserves Undo/Redo and outstanding
+offline edits across generations; its native bridge and safe retention remain
+unfinished. All 13 V1 gates remain open, with no version promotion or publication.
+
 The [shared session archive checkpoint](qualification/2026-10-18-shared-session-backups.json)
 passes a frozen 23-check run. Explicit document and paired-review backup factories
 retain exact accepted native histories, Redo, local versions and selected nonsecret

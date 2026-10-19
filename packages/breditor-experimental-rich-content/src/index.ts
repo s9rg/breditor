@@ -3,6 +3,9 @@ export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterch
 export {defaultToolbar,type ToolbarControl,type ActionContext} from "./actions.js";
 export type {AssetBinding,RenderOptions} from "./render.js";
 export {RichAssetStore,type RichAssetOptions} from "./assets/store.js";
+export {RichAssetBackupError} from "./assets/archive/error.js";
+export {MAX_ASSET_BACKUP_BYTES} from "./assets/archive/codec.js";
+export {ASSET_BACKUP_MIME,MAX_ASSET_BACKUP_HEADER_BYTES,type RichAssetBackupOptions,type RichAssetRestoreOptions} from "./assets/archive/types.js";
 export {defaultAssetLimits,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./assets/types.js";
 export {insertImageFiles} from "./assets/insert_image_files.js";
 export {RichLocalSessionStore} from "./persistence/local_session_store.js";
