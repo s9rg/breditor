@@ -20,7 +20,8 @@ pub enum RoomRecoveryPolicy {
 /// Host-selected original room and durable log cut. Retain in trusted host recovery configuration,
 /// independently of the file being restored; never derive the expected cut from incoming bytes.
 /// Matching this detached value does not authenticate the host or fence another deployment.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RoomBackupIdentity {
     /// Exact original native document identifier.
     pub document: String,
@@ -58,4 +59,14 @@ pub struct RoomBackupInfo {
 pub struct RoomBackup {
     snapshot: LogSnapshot,
     digest: [u8; 32],
+}
+
+impl RoomBackup {
+    // Borrowed only by the owning server coordinator; no public raw-log import or writer is added.
+    pub(super) fn original_log(&self) -> &[u8] {
+        &self.snapshot.bytes
+    }
+    pub(super) fn selected_cut(&self) -> (u64, [u8; 32]) {
+        self.snapshot.cut()
+    }
 }

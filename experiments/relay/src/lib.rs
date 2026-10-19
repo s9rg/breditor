@@ -40,6 +40,10 @@ pub use room::{
 pub use room::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
 };
+pub use room::{
+    MAX_SERVER_ROOM_BACKUP_BYTES, RecoveredServerRoom, ServerRoomBackup, ServerRoomBackupIdentity,
+    ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
+};
 
 /// Explicit service rejection. An I/O failure may have reached storage without an acknowledgement;
 /// reopen and retry the exact group instead of assuming that the write was lost.

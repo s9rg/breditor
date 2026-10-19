@@ -80,8 +80,10 @@ adds exact insert-only server recovery after native replay and host-selected
 identity checks; it excludes the server asset directory and account-authentication
 configuration. The independent [server raster archive](SERVER_ASSET_BACKUPS.md)
 adds complete original raster files and explicit resumable restoration without
-overwriting existing storage. These components do not yet provide complete-room asset closure,
-coordinated activation or generation rollover. The [native reference reads](RETAINED_ASSET_REFERENCES.md)
+overwriting existing storage. The [joined server archive](SERVER_ROOM_RECOVERY.md)
+now selects those two components together and completes their resumable recovery
+behind one durable native barrier. Complete-room client asset closure,
+coordinated activation and generation rollover remain separate. The [native reference reads](RETAINED_ASSET_REFERENCES.md)
 add a conservative owner-only image-history inventory; unsupported metadata or
 incomplete histories refuse that read. Separate versions, review outboxes and
 extension-owned assets still need their own inventory and coordination.

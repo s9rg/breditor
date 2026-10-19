@@ -43,6 +43,37 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [joined server recovery checkpoint](qualification/2026-10-19-server-room-recovery.json)
+passes one frozen 25-check selection. An explicit private host handle captures
+the actual server log and raster store under their common transaction lock order.
+One independently selected file retains both original component archives.
+Resumable inactive recovery fully replays the native log, finishes the original
+raster store and locks both components before publishing a durable completion
+record. No service activates automatically and no backup endpoint is added.
+
+All 3,378 primary workspace/shared/relay Rust tests and doctests, 575 script tests
+and 382 editor tests pass; three existing script checks remain skipped. Fourteen
+new private cases cover all ten original profile/transport choices, seven
+interrupted preparation/publication cuts, exact bytes, occupied/divergent state
+and exclusive ownership. Two public integrations retain an offline writer and
+six future selective Undo/Redo transitions without losing a peer caption, and
+exercise real HTTP upload, live host capture, complete source-host shutdown,
+joined recovery and explicitly fresh authentication. Old account tokens refuse;
+fresh authorized accounts receive the original image bytes. Repeated public and
+networking-disabled runs are not added to the primary native total.
+
+Original room methods, existing router constructors and route registration bytes,
+component formats, authentication and dependencies remain unchanged. Client/core/
+runtime-build inputs and paired Wasm hashes match the prior checkpoint; the SDK
+regression reuses those runtimes. Fresh producer and installed/browser results
+remain earlier evidence. Complete participant and client upload-state capture,
+history-wide asset closure, current host/provider/writer authority, resumable
+whole-room activation and the approved cross-generation history bridge remain
+work. Initial reservation ambiguity and broader crash/platform/distribution gates
+also remain open. All 13 V1 gates stay open; nothing is published or promoted.
+
+### Previous server raster backup checkpoint
+
 The [server raster backup checkpoint](qualification/2026-10-19-server-asset-backups.json)
 passes one frozen 23-check selection. The Rust host captures every original
 immutable raster file, admits actual PNG/JPEG/WebP bytes and restores an

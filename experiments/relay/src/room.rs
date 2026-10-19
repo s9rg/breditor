@@ -15,6 +15,7 @@ mod backup;
 mod document_presence;
 mod layout_v3;
 mod observers;
+mod recovery;
 mod review;
 mod source_boundaries;
 mod suggestions;
@@ -22,6 +23,10 @@ mod versions;
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use backup::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
+};
+pub use recovery::{
+    MAX_SERVER_ROOM_BACKUP_BYTES, RecoveredServerRoom, ServerRoomBackup, ServerRoomBackupIdentity,
+    ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
 };
 pub use review::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,

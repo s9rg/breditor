@@ -56,6 +56,16 @@ exclusive attempts and refusal without deleting divergent work. The
 [server raster contract](SERVER_ASSET_BACKUPS.md) requires explicit host activation
 after completion; these component checks do not provide a whole-room transaction.
 
+Both profiles require `relay-server-room-backups` and
+`relay-server-backups-no-server`. The public cases use real loopback HTTP upload,
+private host capture, a complete source shutdown, joined native recovery and
+fresh account authentication. A separate offline writer retains exact future
+Undo/Redo without undoing an accepted peer caption. The native suite also covers
+all ten original profile/transport choices, exact original component bytes,
+interrupted log/raster/completion prefixes, no-overwrite refusal and exclusive
+attempts. The [joined server barrier](SERVER_ROOM_RECOVERY.md) is not a complete
+participant backup or cross-generation qualification.
+
 Both profiles also require `packet-asset-references` and `version-source-ownership`.
 The former checks all 18 shared grammar/scope/history configurations through actual
 Wasm, including source-and-intent bindings, explicit Pending, pure selected-source

@@ -50,6 +50,16 @@ authentication and cross-generation history remain separate responsibilities.
 
 ## Loopback WebSocket host
 
+The opt-in `server::router_with_server_backups` constructor also returns a private
+host-only capture handle. It snapshots the actual log and raster owners under
+their common transaction lock order; no backup endpoint is added. The resulting
+`ServerRoomBackup` can be independently selected and restored through
+`ServerRoomRecovery::begin`, `resume` and `finish`. Both components undergo native
+admission and remain locked before a durable completion record is published.
+The [joined server recovery contract](../../docs/SERVER_ROOM_RECOVERY.md) defines
+interruption/resumption, fresh authentication and the separate client and host
+activation responsibilities. Existing router constructors retain their defaults.
+
 Build with the optional `server` feature. `scripts/check-relay.mjs` places its
 binary in `target/relay-native/debug/breditor-collab-relay`; the separate cache
 keeps this workspace's locked native identities out of the editor fixture cache.

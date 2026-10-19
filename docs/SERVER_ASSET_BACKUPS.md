@@ -125,8 +125,9 @@ Server log and raster archives remain separate from
 [selected client source bytes](SELECTED_ASSET_BYTES.md),
 [dependent client stores](RETAINED_STORE_BACKUPS.md), whole client upload-state
 archives, authenticated participant inventory and current provider/writer
-authority. Their combined capture and resumable activation still need a room
-coordinator. The approved cross-generation Undo and offline-edit bridge also
+authority. The [joined server layer](SERVER_ROOM_RECOVERY.md) now captures and
+resumes the two server components behind one native completion barrier; client
+participation and room-wide activation still need their coordinator. The approved cross-generation Undo and offline-edit bridge also
 remains separate required work; copying these files does not extend the current
 bounded document lifetime or establish V1 readiness.
 

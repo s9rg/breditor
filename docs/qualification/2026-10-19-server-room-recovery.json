@@ -1,0 +1,472 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "baseCommit": "6e24f626196015b70aac35f1765fa16ef4d2f72b",
+  "scope": "Joined serialized server log/raster capture, independent whole-file selection and explicit resumable inactive recovery with native replay-before-log-publication and a durable two-component completion barrier. Actual private live-host capture and real HTTP/fresh-auth restart. Not complete participant recovery, asset-reference closure, deployment fencing, generation bridge or V1 approval.",
+  "source": {
+    "commit": "6e24f626196015b70aac35f1765fa16ef4d2f72b",
+    "dirty": true,
+    "sha256": "6a583333fa47658f9b7c10bd643921785bf183e0f4c097b516e82f7feed75a33",
+    "files": 4447,
+    "bytes": 39311145
+  },
+  "sourceBinding": {
+    "documentationOnlyFollowUp": "Qualification JSON, scope clarification and release/ledger links are docs-only. Every non-documentation input, including the relay README, remains byte-identical.",
+    "nonDocumentationTree": {
+      "sha256": "222131d0822166f4fb129d361d7d9318c8be486851f360914db4218f9642ae6b",
+      "count": 3992,
+      "bytes": 32412495
+    },
+    "frozenInventory": {
+      "path": "target/server-room-recovery-frozen-inputs.json",
+      "bytes": 1047492,
+      "sha256": "70e48bfc4a0720893349db9385aa5bff20b0cb93985377f6b1dbc96f131e6d9a",
+      "modifiedAtMs": 1792396140564.9634
+    }
+  },
+  "qualification": {
+    "evidence": {
+      "path": "target/v1-candidate-runs/run-l79lmo/result.json",
+      "bytes": 39911,
+      "sha256": "f8525707365ff509306053d73e3f80ef373bcfc0451869eaab104c5d37d01416",
+      "modifiedAtMs": 1792396503596.4602
+    },
+    "all25SelectedChecksPassed": true,
+    "wholeOfficialProfile": false,
+    "stages": [
+      {
+        "id": "unchanged-client-runtime-inputs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/01-unchanged-client-runtime-inputs.log",
+          "bytes": 985,
+          "sha256": "ec99c8ca05c166cad670d0b3bbb99438bdf973e69fc135acab36caa0570b900c",
+          "modifiedAtMs": 1792396141260.2683
+        }
+      },
+      {
+        "id": "candidate-runner-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/02-candidate-runner-contracts.log",
+          "bytes": 7457,
+          "sha256": "8189d3d8f749e9b756bced312499b83818998602a6537287d860c7a3f58919a3",
+          "modifiedAtMs": 1792396143261.9185
+        }
+      },
+      {
+        "id": "workspace-format",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/03-workspace-format.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792396143878.2292
+        }
+      },
+      {
+        "id": "workspace-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/04-workspace-lint.log",
+          "bytes": 62,
+          "sha256": "f18e8aa44b81e7d9d1663536017be739eb80ede7041400fe06bf4e1c755d3d59",
+          "modifiedAtMs": 1792396147134.1055
+        }
+      },
+      {
+        "id": "workspace-native",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/05-workspace-native.log",
+          "bytes": 313604,
+          "sha256": "9219b7fe6cd4e3156ec0e210fa8abdf724a008c03a2855f6c9618eb00524c15f",
+          "modifiedAtMs": 1792396161222.1592
+        }
+      },
+      {
+        "id": "workspace-docs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/06-workspace-docs.log",
+          "bytes": 176,
+          "sha256": "88780985573c10f6215cc5d9b6724d9bb7792906b219ca0757cbe5d1fbb9f3bb",
+          "modifiedAtMs": 1792396161931.5625
+        }
+      },
+      {
+        "id": "shared-format",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/07-shared-format.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792396162508.5227
+        }
+      },
+      {
+        "id": "shared-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/08-shared-lint.log",
+          "bytes": 507,
+          "sha256": "b580a8adf3dc38e1b9dd3c7f903c01d09622f4037014db03026004d41409c752",
+          "modifiedAtMs": 1792396164000.1938
+        }
+      },
+      {
+        "id": "shared-native",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/09-shared-native.log",
+          "bytes": 72878,
+          "sha256": "0413efc1784e7c4dcce185cf4036211d149f954bf6ebaeb03b05f5fbfcb50568",
+          "modifiedAtMs": 1792396358774.2646
+        }
+      },
+      {
+        "id": "shared-docs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/10-shared-docs.log",
+          "bytes": 589,
+          "sha256": "51b16929567f022dbf3426fff3980dd4601ae30d1982b1716fb2dbb4cf32bce9",
+          "modifiedAtMs": 1792396359810.7847
+        }
+      },
+      {
+        "id": "relay-format",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/11-relay-format.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792396360465.989
+        }
+      },
+      {
+        "id": "relay-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/12-relay-lint.log",
+          "bytes": 560,
+          "sha256": "09f4d0fc9e4a5ca15d3787abe8e41b6efdd37b0b112ad68b0cd6d7ad017068d7",
+          "modifiedAtMs": 1792396361578.217
+        }
+      },
+      {
+        "id": "relay-native",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/13-relay-native.log",
+          "bytes": 19077,
+          "sha256": "ed0bfa1a94ceaab79830e9dd86834d2f7762a0e007dc500148ea4d6a07f88f1f",
+          "modifiedAtMs": 1792396403307.2307
+        }
+      },
+      {
+        "id": "relay-room-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/14-relay-room-backups.log",
+          "bytes": 853,
+          "sha256": "427b25c81824658e1be0190813721223ffc538b3ad4ed5ed2e0d67c9da87e381",
+          "modifiedAtMs": 1792396404364.1165
+        }
+      },
+      {
+        "id": "relay-asset-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/15-relay-asset-backups.log",
+          "bytes": 860,
+          "sha256": "98b58ace24d962079b1fe104e6fa2362a913e1fe831c00081b038a416348de42",
+          "modifiedAtMs": 1792396405349.8862
+        }
+      },
+      {
+        "id": "relay-asset-owner-paths",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/16-relay-asset-owner-paths.log",
+          "bytes": 929,
+          "sha256": "f5635cedc445fc5b253a1bedf529f0785f066696beb0a143f4b9204f75fd2be5",
+          "modifiedAtMs": 1792396406176.154
+        }
+      },
+      {
+        "id": "relay-server-room-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/17-relay-server-room-backups.log",
+          "bytes": 970,
+          "sha256": "9c31bcf599c8ff03930ccac488e1d1a19c659aa5384f03e10d380af5f102f880",
+          "modifiedAtMs": 1792396407298.6912
+        }
+      },
+      {
+        "id": "relay-backups-no-server",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/18-relay-backups-no-server.log",
+          "bytes": 9107,
+          "sha256": "ebca8c9cd7126c2cd500d5d8f3147f6d33d331ad30c2f2aa5f6605929efe8714",
+          "modifiedAtMs": 1792396447290.1462
+        }
+      },
+      {
+        "id": "relay-assets-no-server",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/19-relay-assets-no-server.log",
+          "bytes": 9407,
+          "sha256": "ff46a63c472dd067b6b407076a5b1e08a78c63cab044f81af88d771626e3c3be",
+          "modifiedAtMs": 1792396455958.5242
+        }
+      },
+      {
+        "id": "relay-server-backups-no-server",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/20-relay-server-backups-no-server.log",
+          "bytes": 9023,
+          "sha256": "27f21acd5f3c92a99496c07b6be960b6b1daeda9c3aecc139e307b4a02ac92c1",
+          "modifiedAtMs": 1792396464135.297
+        }
+      },
+      {
+        "id": "relay-docs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/21-relay-docs.log",
+          "bytes": 728,
+          "sha256": "11120162b46c8f363db379b458903a9b3e53f992bd11f97f2c5ca03fa2848fdd",
+          "modifiedAtMs": 1792396466929.8516
+        }
+      },
+      {
+        "id": "typescript-tests-and-script-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/22-typescript-tests-and-script-contracts.log",
+          "bytes": 116881,
+          "sha256": "ec9bfb276ff4098e1d2f62297c191762cc6acaf9e42ad40bfb7e2f362213712f",
+          "modifiedAtMs": 1792396487249.341
+        }
+      },
+      {
+        "id": "editor-sdk-tests",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/23-editor-sdk-tests.log",
+          "bytes": 619,
+          "sha256": "f3574d7f63edb15d4f42cbe4aac059c99a223a53841c8d6d6d116da1b66892fd",
+          "modifiedAtMs": 1792396493614.2974
+        }
+      },
+      {
+        "id": "selected-asset-bytes",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/24-selected-asset-bytes.log",
+          "bytes": 1495,
+          "sha256": "15dc81c312a19f9c95ffa467f6d7916ab30cae14fca038be9c6bf29d2f17da43",
+          "modifiedAtMs": 1792396502377.3826
+        }
+      },
+      {
+        "id": "readiness-inventory",
+        "log": {
+          "path": "target/v1-candidate-runs/run-l79lmo/25-readiness-inventory.log",
+          "bytes": 15641,
+          "sha256": "beb28888889c3aae11928bf754605a40c6fd7c641afa2588a90ba51d9094c01c",
+          "modifiedAtMs": 1792396503031.6384
+        }
+      }
+    ],
+    "nativeSuites": {
+      "workspace-native": {
+        "passed": 2620,
+        "ignored": 0,
+        "suites": 171
+      },
+      "shared-native": {
+        "passed": 623,
+        "ignored": 0,
+        "suites": 54
+      },
+      "relay-native": {
+        "passed": 135,
+        "ignored": 0,
+        "suites": 16
+      },
+      "relay-room-backups": {
+        "passed": 1,
+        "ignored": 0,
+        "suites": 1
+      },
+      "relay-asset-backups": {
+        "passed": 1,
+        "ignored": 0,
+        "suites": 1
+      },
+      "relay-asset-owner-paths": {
+        "passed": 2,
+        "ignored": 0,
+        "suites": 1
+      },
+      "relay-server-room-backups": {
+        "passed": 2,
+        "ignored": 0,
+        "suites": 1
+      },
+      "relay-backups-no-server": {
+        "passed": 66,
+        "ignored": 0,
+        "suites": 2
+      },
+      "relay-assets-no-server": {
+        "passed": 68,
+        "ignored": 0,
+        "suites": 3
+      },
+      "relay-server-backups-no-server": {
+        "passed": 66,
+        "ignored": 0,
+        "suites": 2
+      }
+    },
+    "primaryRustTestsAndDoctests": 3378,
+    "duplicatePublicAndOfflineFeatureRunsNotAddedToPrimaryTotal": true,
+    "scriptTests": 575,
+    "scriptSkipped": 3,
+    "editorTests": 382,
+    "strictFirstPartyClippy": true,
+    "strictWorkspaceSharedAndRelayDocs": true,
+    "existingDependencyWarning": "The pinned unmodified loro-internal dependency still reports its existing unused HasIdSpan import; no vendor source or lint rule was weakened."
+  },
+  "recovery": {
+    "newPrivateJoinedRecoveryTests": 14,
+    "newPublicIntegrations": 2,
+    "originalCompilerTransportChoices": 10,
+    "retainedInterruptionCuts": [
+      "reserved",
+      "partial-log-stage",
+      "published-log",
+      "partial-assets",
+      "completed-assets",
+      "partial-completion-stage",
+      "published-completion-before-ack"
+    ],
+    "originalComponentsAndUnreferencedRasterBytesPreserved": true,
+    "trustedWholeFileAndBothOriginalComponentIdentitiesRequired": true,
+    "nativeLogReplayAndIdentityBeforeFinalLogPublication": true,
+    "partialPublishedLogRefusedBeforeOrdinaryTornTailRecovery": true,
+    "noComponentsReturnedBeforeDurableCompletionAndBothLocks": true,
+    "unknownDivergentOccupiedAndSymlinkDestinationsPreserved": true,
+    "exactCompleteRecoveryDoesNotAppendEventsOrRewriteFiles": true,
+    "subsequentServiceEditsRefuseAnOlderRecoveryWithoutOverwrite": true,
+    "initialReservationFailure": "An error before a valid complete owned marker may leave a known path requiring host inspection. No marker is manufactured or directory reset to force adoption. This is an explicit remaining recovery boundary, not full crash qualification.",
+    "publicOffline": "Actual standard V3/transport2 native writer journal keeps an unsent offline edit and six future selective Undo/Redo transitions. An accepted peer caption and original image bytes survive every transition; revoked editor resume refuses.",
+    "publicLiveHost": "Actual loopback HTTP denies Reader upload, accepts Owner PNG upload, captures the live accepted store through the private handle, shuts down source host completely, restores both components, starts explicitly with freshly issued Authentication, rejects old account token with original403 semantics, and returns exact PNG to fresh Reader. Duplicate upload preserves the exact bundle identity. GET /backup remains404.",
+    "authority": "The capture handle is private host capability, not an account-facing endpoint. Source router/connections/all handles must stop before replacement activation. Historical roles and resume digests are retained, but current account/provider/writer and client recovery remain host-managed.",
+    "scope": "Actual local native files/codecs, lock races, path retarget, interrupted owned copies, loopback server/HTTP and current native replay. These are not power-loss, quota, eviction or cross-platform qualification."
+  },
+  "unchangedOriginalContracts": {
+    "comparedAgainstCommit": "6e24f626196015b70aac35f1765fa16ef4d2f72b",
+    "oldRouterConstructorsAndAllRouteRegistrationsByteIdentical": true,
+    "ordinaryRoomMethodsByteIdentical": true,
+    "originalRoomBackupIdentityFieldsByteIdentical": true,
+    "additiveIdentitySerde": "Serialization/deserialization is added only to the detached host-selected identity for the independent joined envelope; original room log/record/profile meanings stay unchanged.",
+    "unchangedPaths": [
+      "experiments/relay/Cargo.toml",
+      "experiments/relay/Cargo.lock",
+      "experiments/relay/src/assets",
+      "experiments/relay/src/log.rs",
+      "experiments/relay/src/log",
+      "experiments/relay/src/protocol.rs",
+      "experiments/relay/src/room/backup/export.rs",
+      "experiments/relay/src/room/backup/restore.rs",
+      "experiments/relay/src/room/backup/identity.rs",
+      "experiments/relay/src/room/backup/format.rs",
+      "experiments/relay/src/room/backup/staging.rs",
+      "experiments/relay/src/server/assets.rs",
+      "experiments/relay/src/server/authentication.rs",
+      "experiments/relay/src/server/http.rs",
+      "experiments/relay/src/server/wire.rs"
+    ],
+    "noNativeDataFamilyDefaultCounterDependencyOrPackageVersionChange": true,
+    "noBackupRestoreNetworkRoute": true,
+    "newIndependentArchive": {
+      "family": "breditor/server-room-backup",
+      "formatVersion": 1,
+      "magicBytes": 17,
+      "prefixBytes": 53,
+      "maxHeaderBytes": 65536,
+      "maxFileBytes": 542228642
+    }
+  },
+  "clientEvidence": {
+    "guard": {
+      "passed": true,
+      "unchangedClientAndCorePaths": [
+        "Cargo.toml",
+        "Cargo.lock",
+        ".cargo",
+        "rust-toolchain.toml",
+        "rustfmt.toml",
+        "crates",
+        "experiments/collaboration",
+        "packages",
+        "package.json",
+        "package-lock.json",
+        "tsconfig.base.json",
+        "scripts/build-rich-runtime.mjs",
+        "scripts/build-collaboration-runtime.mjs",
+        "scripts/candidate-runtime-paths.mjs"
+      ],
+      "againstCommit": "6e24f626196015b70aac35f1765fa16ef4d2f72b",
+      "runtimes": {
+        "local": {
+          "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+          "bytes": 5910494,
+          "sha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81"
+        },
+        "shared": {
+          "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+          "bytes": 13030929,
+          "sha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f"
+        }
+      },
+      "scope": "Existing paired native runtimes are reused for one SDK regression because all client/core/runtime-build inputs are unchanged. This is not a fresh Wasm producer build or installed-browser qualification."
+    },
+    "selectedAssetBytes": {
+      "format": "breditor/selected-asset-bytes-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+      "cases": 30,
+      "pureCaptures": 30,
+      "files": 30,
+      "bytePayloads": 60,
+      "bindingPairs": 270,
+      "restoredSourceVerifications": 30,
+      "exactComponentArchives": 90,
+      "futureCheckpoints": 180,
+      "borrowedDisposals": 30,
+      "closedSourceRefusals": 30,
+      "missingBytesPending": 1,
+      "missingSourcePending": 1,
+      "providerRefusals": 7,
+      "identityRefusals": 2,
+      "sourceChangeRefusals": 2,
+      "declaredSourceRefusals": 2,
+      "cancelRefusals": 3,
+      "providerChecks": 5168,
+      "networkCalls": 0,
+      "heldLeases": 0,
+      "scope": "Actual shared Wasm and public source-byte APIs across three grammars/scopes and both histories plus reviewed/search-owned families. Hidden Redo, losing peer, intermediate/deleted proposal, revision and imported-version references; SHA and host-verified opaque IDs, generation-exact mappings, dedup raster bytes, pure captures, exact binary reads, old component archive reconstruction from file records, real native/component re-admission and 180 future document/comment checkpoints. Missing/provider/source/cancellation refusals preserve source owners. IDB/locks/two-PNG decode/server metadata are fixtures; no native browser, asset-store upload queue snapshot, complete-room/server restore, provider authentication, cross-device fencing, GC, generation bridge, performance or V1 approval."
+    },
+    "previousInstalledAndBrowserCheckpoint": {
+      "path": "docs/qualification/2026-10-19-selected-asset-bytes.json",
+      "bytes": 39459,
+      "sha256": "96ea4a0e0d8c4a69d6b2dd15fc1839497d07bda4cf9aff180651136bf15b468f",
+      "modifiedAtMs": 1792390716434.23
+    },
+    "scope": "All client/core/runtime-build inputs remain unchanged and paired Wasm hashes match. The SDK regression reuses those runtimes; no new producer/installed/browser qualification is claimed."
+  },
+  "remaining": {
+    "v1Ready": false,
+    "publicationApproved": false,
+    "all13GatesRemainOpen": true,
+    "featureCounts": {
+      "implemented": 10,
+      "partial": 27,
+      "missing": 9
+    },
+    "requiredWork": [
+      "Authenticated participant inventory, trusted host recovery catalog, client upload-state and packet/journal capture, current provider/writer authority and resumable whole-room activation.",
+      "Complete history-wide raster reference closure, including bytes absent from a server store and extension/provider mappings, remains separate from a complete server-store inventory.",
+      "Approved cross-generation Undo/Redo and outstanding offline edit preservation remain unimplemented.",
+      "Initial reservation ambiguity, power-loss/quota/eviction/performance, dependency/distribution and required platform gates, including historical WebKit confirmation, remain open."
+    ],
+    "noPushPublishTagDeployVersionPromotion": true
+  }
+}

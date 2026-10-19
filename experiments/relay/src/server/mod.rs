@@ -3,6 +3,7 @@
 //! requires the planned resource-limited import worker, TLS and deployment qualification.
 mod assets;
 mod authentication;
+mod backup;
 mod connection;
 mod http;
 mod versions;
@@ -16,6 +17,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
+pub use backup::{ServerBackupHandle, router_with_server_backups};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
 
@@ -91,13 +93,20 @@ fn build(
     authentication: Authentication,
     assets: Option<crate::assets::AssetStore>,
 ) -> Router {
+    routes(create_host(room, authentication, assets))
+}
+fn create_host(
+    room: Room,
+    authentication: Authentication,
+    assets: Option<crate::assets::AssetStore>,
+) -> Host {
     let (changed, _) = watch::channel(0);
     let (assets_changed, _) = watch::channel(0);
     let (presence_changed, _) = watch::channel(0);
     let (review_changed, _) = watch::channel(0);
     let (versions_changed, _) = watch::channel(0);
     let (suggestions_changed, _) = watch::channel(0);
-    let host = Host {
+    Host {
         room: Arc::new(Mutex::new(room)),
         authentication: Arc::new(authentication),
         changed,
@@ -110,7 +119,9 @@ fn build(
         versions_changed,
         version_operations: Arc::new(Semaphore::new(4)),
         suggestions_changed,
-    };
+    }
+}
+fn routes(host: Host) -> Router {
     Router::new()
         .route("/health", get(|| async { "breditor-relay-v1" }))
         .route("/ws", get(upgrade))
