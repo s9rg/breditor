@@ -10,7 +10,7 @@ pub(super) struct Recipe {
     pub after: UiState,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(super) struct Channel {
     pub push: UndoItemMeta,
     pub popped: Vec<UndoItemMeta>,

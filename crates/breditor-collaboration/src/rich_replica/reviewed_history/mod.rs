@@ -2,6 +2,7 @@
 mod adopt_suggestion_history;
 mod checkpoint_reviewed_history;
 mod enable_reviewed_history;
+mod fork_reviewed_history;
 mod perform_history;
 mod restore_reviewed_history;
 mod types;
@@ -13,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub use types::{OwnedSuggestionAcceptance, ReviewedHistoryIdentity};
 
 pub(super) const FORMAT: &str = "breditor/shared-reviewed-history-session";
+#[derive(Clone)]
 pub(super) struct Item {
     pub key: String,
     pub steps: u32,

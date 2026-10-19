@@ -6,6 +6,7 @@ use super::{
 use crate::Error;
 use loro::VersionVector;
 use std::collections::BTreeMap;
+#[derive(Clone)]
 pub(in crate::rich_replica) struct Window {
     pub from: i32,
     pub through: i32,

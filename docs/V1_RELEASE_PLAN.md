@@ -43,6 +43,17 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native history generation component](SEGMENTED_NATIVE_HISTORY.md) retains
+the exact original root, native Undo and Redo, pending causal inputs and linked
+segments under a separate explicit Rust recovery format. Its
+[qualification](qualification/2026-10-19-segmented-native-history.json) passes
+650 shared Rust checks and nine existing runtime regression stages. A fresh
+shared Wasm build preserves exact original-family checkpoints and future history
+across 144 old/new configurations. Segmented Wasm/SDK selection, durable and
+paired-review storage, participant handoff and activation still need integration;
+this is not the completed approved cross-generation bridge or V1 readiness.
+All 13 release gates remain open.
+
 The [current server continuity check](CONTINUED_SERVER_RECOVERY_STATE.md) verifies
 a freshly selected native cut and every current protected registration while
 retaining the independently selected original log and rasters. Later edits do

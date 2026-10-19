@@ -69,6 +69,7 @@ impl RichReplica {
     /// # Errors
     /// Disabled/wrong modes, invalid retained history or the unchanged 16 MiB bound reject.
     pub fn search_checkpoint(&self) -> Result<String, Error> {
+        self.require_unsegmented_checkpoint()?;
         if !self.search_contract {
             return Err(Error::Contract("search history required"));
         }

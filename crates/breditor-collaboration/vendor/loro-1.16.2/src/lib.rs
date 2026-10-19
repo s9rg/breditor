@@ -153,6 +153,16 @@ impl LoroDoc {
         LoroDoc::_new(doc)
     }
 
+    /// Editor-private serialized staging of this applied document and its actual native history.
+    /// Preserves peer identity; never publish both branches as concurrent authors. Pending causal
+    /// imports must be retained/re-admitted by the editor and callbacks reconnected independently.
+    /// Unlike `fork`, this rejects an unrelated history manager or uncommitted/detached source.
+    #[doc(hidden)]
+    pub fn fork_with_undo_for_staging(&self, history: &loro_internal::UndoManager) -> LoroResult<(Self, loro_internal::UndoManager)> {
+        let (doc, history) = history.fork_for_staging(&self.doc)?;
+        Ok((Self::_new(doc), history))
+    }
+
     /// Fork the document at the given frontiers.
     ///
     /// The created doc will only contain the history before the specified frontiers.

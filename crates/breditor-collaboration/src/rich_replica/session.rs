@@ -21,6 +21,9 @@ pub(super) const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
 pub(super) const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
 
+#[path = "fork_segmented_owner.rs"]
+mod fork_segmented_owner;
+
 #[cfg(test)]
 #[path = "known_remote_tests.rs"]
 mod known_remote_tests;
@@ -127,6 +130,10 @@ impl<Entries> Journal<Entries> {
 }
 
 impl Journal {
+    pub(super) fn writer(&self) -> &str {
+        &self.writer
+    }
+
     /// Exact retained causal inputs, including blobs whose dependencies have not arrived.
     pub(super) fn retained_updates(&self) -> impl Iterator<Item = &[u8]> {
         let origin = match &self.origin {
@@ -183,6 +190,7 @@ pub struct RichReplica {
     pub(super) replay_contract: super::general_history::ReplayContract,
     pub(super) search_contract: bool,
     pub(super) search_owner: Arc<()>,
+    pub(super) segmented: Option<super::segmented_history::SegmentedHistory>,
     pub(super) journal: Journal,
     header: Value,
     pub(super) document: RichDocument,
@@ -359,6 +367,7 @@ impl RichReplica {
             replay_contract: super::general_history::ReplayContract::Original,
             search_contract: false,
             search_owner: Arc::new(()),
+            segmented: None,
             journal,
             header,
             document,
@@ -444,6 +453,26 @@ impl RichReplica {
         capabilities: super::general_history::ReplayCapabilities,
         replay_projections: Option<super::replay_projections::ReplayProjections>,
     ) -> Result<Self, Error> {
+        Self::from_segmented_journal_cached(
+            codec,
+            journal,
+            joins,
+            leave_open,
+            capabilities,
+            replay_projections,
+            None,
+        )
+    }
+
+    pub(super) fn from_segmented_journal_cached(
+        codec: DocumentJsonCodecV2,
+        journal: Journal,
+        joins: Option<Vec<u32>>,
+        leave_open: bool,
+        capabilities: super::general_history::ReplayCapabilities,
+        replay_projections: Option<super::replay_projections::ReplayProjections>,
+        segmented: Option<super::segmented_history::SegmentedHistory>,
+    ) -> Result<Self, Error> {
         let contract = capabilities.scope;
         let reviewed = capabilities.reviewed;
         let protocol = super::protocol::Protocol::from_codec(&codec)?;
@@ -451,7 +480,9 @@ impl RichReplica {
         if journal.format != format || journal.version != version {
             return Err(Error::Contract("rich replica journal version"));
         }
-        if journal.entries.len() > MAX_ENTRIES {
+        if let Some(state) = &segmented {
+            state.validate_journal(&journal, joins.as_deref(), capabilities)?;
+        } else if journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
         if !reviewed && journal.entries.iter().any(Entry::reviewed_only) {
@@ -472,6 +503,10 @@ impl RichReplica {
         let mut base = journal.clone();
         base.ui = UiState::default();
         let mut candidate = Self::base(codec, base)?;
+        candidate.segmented = segmented;
+        if candidate.segmented.is_some() {
+            candidate.undo.enable_staging_group_tracking();
+        }
         candidate.replay_contract = contract;
         candidate.reviewed_contract = reviewed;
         candidate.search_contract = capabilities.search;
@@ -481,8 +516,13 @@ impl RichReplica {
         candidate.typing =
             joins.map(|joins| super::typing_history::TypingHistory { joins, continuation: None });
         if let Some(history) = &candidate.typing {
-            history.validate(&journal)?;
+            if candidate.segmented.is_some() {
+                history.validate_partition(&journal)?;
+            } else {
+                history.validate(&journal)?;
+            }
         }
+        candidate.restore_segment_boundary(0)?;
         for (index, entry) in journal.entries.iter().enumerate() {
             let joining = |at: usize| {
                 candidate.typing.as_ref().is_some_and(|history| {
@@ -496,6 +536,7 @@ impl RichReplica {
                 return Err(Error::ReplayMismatch);
             }
             candidate.replay(entry, join, keep_open)?;
+            candidate.restore_segment_boundary(index + 1)?;
         }
         candidate.journal = journal;
         if reviewed && candidate.reviewed_history.is_none() {
@@ -504,6 +545,14 @@ impl RichReplica {
         candidate.replay_projections.finish_replay();
         candidate.validate_adoption()?;
         Ok(candidate)
+    }
+
+    fn restore_segment_boundary(&mut self, entry: usize) -> Result<(), Error> {
+        if let Some(ui) = self.segmented.as_ref().and_then(|state| state.boundary_ui(entry)) {
+            self.journal.ui = ui;
+            self.validate_ui()?;
+        }
+        Ok(())
     }
 
     /// Publish one explicit group only after all shared effects and its AST validate.
@@ -651,6 +700,9 @@ impl RichReplica {
             self.undo.group_end();
         }
         let authored = self.doc.state_frontiers() != frontier;
+        if authored && !join && undo_count >= MAX_ENTRIES && self.segmented.is_some() {
+            return Err(Error::Limit("segmented retained undo items"));
+        }
         if self.undo.undo_count() != undo_count {
             if join {
                 return Err(Error::ReplayMismatch);
@@ -793,13 +845,17 @@ impl RichReplica {
         self.staged_for_typing(false)
     }
     fn staged_for_typing(&self, leave_open: bool) -> Result<Self, Error> {
-        let mut candidate = Self::from_journal_capabilities_cached(
+        if self.segmented.is_some() {
+            return self.fork_segmented_owner(leave_open);
+        }
+        let mut candidate = Self::from_segmented_journal_cached(
             self.codec.clone(),
             self.journal.clone(),
             self.typing.as_ref().map(|history| history.joins.clone()),
             leave_open,
             self.replay_capabilities(),
             Some(self.replay_projections.fork_for_replay()),
+            self.segmented.clone(),
         )?;
         candidate.read_only = self.read_only;
         candidate.search_owner = Arc::clone(&self.search_owner);
@@ -965,7 +1021,13 @@ impl RichReplica {
         if self.journal.format != format || self.journal.version != version {
             return Err(Error::Contract("shared replay family binding"));
         }
-        if self.journal.entries.len() > MAX_ENTRIES {
+        if let Some(state) = &self.segmented {
+            state.validate_journal(
+                &self.journal,
+                self.typing.as_ref().map(|history| history.joins.as_slice()),
+                self.replay_capabilities(),
+            )?;
+        } else if self.journal.entries.len() > MAX_ENTRIES {
             return Err(Error::Limit("rich journal entries"));
         }
         super::document_checkpoint::validate_journal_scope(&self.journal, self.replay_contract)?;
@@ -1016,9 +1078,15 @@ impl RichReplica {
         self.validate_ui()?;
         self.history_keys.validate(self.undo.undo_count(), self.undo.redo_count())?;
         if let Some(history) = &self.typing {
-            history.validate(&self.journal)?;
+            if self.segmented.is_some() {
+                history.validate_partition(&self.journal)?;
+            } else {
+                history.validate(&self.journal)?;
+            }
         }
-        if self.search_contract {
+        if self.segmented.is_some() {
+            self.segmented_checkpoint()?;
+        } else if self.search_contract {
             self.search_checkpoint()?;
         } else if self.reviewed_contract {
             self.reviewed_history.as_ref().ok_or(Error::ReplayMismatch)?.validate(self)?;
@@ -1225,6 +1293,7 @@ impl RichReplica {
         self.encode_explicit_journal()
     }
     pub(super) fn encode_explicit_journal(&self) -> Result<String, Error> {
+        self.require_unsegmented_checkpoint()?;
         if self.search_contract {
             return Err(Error::Contract("use explicit search checkpoint"));
         }

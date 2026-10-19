@@ -16,6 +16,7 @@ pub(super) enum Kind {
     Backward,
     Forward,
 }
+#[derive(Clone)]
 pub(super) struct Continuation {
     pub key: String,
     pub kind: Kind,
@@ -23,6 +24,7 @@ pub(super) struct Continuation {
     pub caret: TextPoint,
     pub formats: Vec<Value>,
 }
+#[derive(Clone)]
 pub(super) struct TypingHistory {
     pub joins: Vec<u32>,
     pub continuation: Option<Continuation>,
@@ -42,6 +44,13 @@ impl TypingHistory {
         if self.joins.len() > super::session::MAX_ENTRIES {
             return Err(Error::Limit("shared typing join records"));
         }
+        self.validate_partition(journal)
+    }
+
+    pub(in crate::rich_replica) fn validate_partition(
+        &self,
+        journal: &Journal,
+    ) -> Result<(), Error> {
         let mut previous = 0;
         let mut steps = 1;
         for (ordinal, index) in self.joins.iter().copied().enumerate() {

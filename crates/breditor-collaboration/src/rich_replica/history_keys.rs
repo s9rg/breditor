@@ -6,7 +6,7 @@ pub(super) struct Item {
     pub key: String,
     pub steps: u32,
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(super) struct HistoryKeys {
     pub undo: Vec<Item>,
     pub redo: Vec<Item>,

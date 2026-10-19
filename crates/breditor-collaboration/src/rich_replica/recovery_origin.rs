@@ -23,6 +23,18 @@ impl RichReplica {
         origin: &Self,
         origin_observed: &SharedObservation,
     ) -> Result<(), Error> {
+        if self.segmented.is_some() || origin.segmented.is_some() {
+            return Err(Error::Contract("use explicit segmented recovery origin"));
+        }
+        self.verify_native_origin_prefix_guarded(observed, origin, origin_observed)
+    }
+
+    pub(super) fn verify_native_origin_prefix_guarded(
+        &self,
+        observed: &SharedObservation,
+        origin: &Self,
+        origin_observed: &SharedObservation,
+    ) -> Result<(), Error> {
         self.check(observed)?;
         origin.check(origin_observed)?;
         if self.protocol != origin.protocol

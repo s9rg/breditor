@@ -1,0 +1,135 @@
+{
+  "format": "breditor/segmented-native-history-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "classification": "PROGRESS",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13,
+  "scope": "Rust segmented document-history component plus existing original-family Wasm/SDK regressions. Not end-to-end generation activation or an integrated segmented application API.",
+  "source": {
+    "baseCommit": "c83e2657e18961560589a0e8661cfb114b79ad63",
+    "testedWorkingTreeSha256": "6db2800aa930b4ffec684fa31c722ef8ffb4d59aaeb362b7f73aa94a95c1109c",
+    "files": 4721,
+    "bytes": 40898917,
+    "nonDocumentationSha256": "e3a526c6f1a0eb3e73799c57a6d0e39f8aab22a9a2ac191cfca3d6b403acf0dd",
+    "postQualificationChanges": "Only this qualification record, the contract evidence link and the V1 plan's scoped native checkpoint note."
+  },
+  "evidence": {
+    "native": "target/segmented-native-qualification-nGzNA4/result.json",
+    "lintAndRustdoc": "target/segmented-native-qualification-nGzNA4/lint-docs.json",
+    "audit": "target/segmented-native-qualification-nGzNA4/checkpoint-audit.json",
+    "runtime": "target/segmented-runtime-regressions-VQpENR/result.json",
+    "candidate": "target/v1-candidate-runs/run-9xn1N7/result.json",
+    "legacyInterop": "target/segmented-runtime-regressions-VQpENR/legacy-interop.json",
+    "legacyLimitBefore": "target/segmented-history-before-sC0nsA/result.json",
+    "prototypeStyleFailure": "target/segmented-history-regression-TBgyxt/proof.json",
+    "prototypeNaturalGroupFailure": "target/segmented-native-run-CimUBP/result.json",
+    "cleanup": "target/segmented-native-qualification-nGzNA4/cleanup.json"
+  },
+  "implementation": {
+    "nativeApis": [
+      "RichReplica.enable_segmented_history_guarded",
+      "RichReplica.seal_history_segment_guarded",
+      "RichReplica.segmented_checkpoint",
+      "RichReplica.segmented_history_info",
+      "RichReplica.verify_segmented_recovery_origin_guarded",
+      "SharedRichProfile.restore_segmented"
+    ],
+    "newFormats": [
+      "breditor/shared-segmented-history-session version 1",
+      "breditor/shared-history-segment version 1"
+    ],
+    "retention": "Exact canonical old-family root plus exact immutable linked segments and one active segment. Original journal entries, native operations, pending causal inputs, UI, native and owned selective history remain retained. Cold recovery replays every original input and exact expected effect independently of live staging.",
+    "nativeStaging": "Deeply independent native history rows/remaps/cursors, complete default and named text styles, all applied operations, and re-admission of every retained causal input. The exact closed natural-group witness is opt-in, quiescent and cut/span checked. Original owners retain the old staging path.",
+    "familyFence": "All original grammar/preset/scope/natural/reviewed/search choices are pinned before enabling. Old checkpoint getters and old factories refuse the new mode rather than inferring it.",
+    "limits": {
+      "perRootOrSegmentEntries": 1000,
+      "perRootOrSegmentBytes": 16777216,
+      "newGenerationsIncludingRootAndActive": 64,
+      "newArchiveBytes": 67108864,
+      "originalNativeUndoItems": 1000,
+      "originalCausalViewBytes": 4194304,
+      "originalUpdateBytes": 1048576,
+      "evictionOrImplicitReset": false,
+      "unlimitedLifetime": false,
+      "compactionOrGarbageCollection": false
+    },
+    "authority": "Opaque generation IDs and native continuity grant no writer lease, account permission, current provider/server acknowledgement or room activation. Hosts must reacquire/fence the exact writer and establish durable cross-component publication.",
+    "originalVersionsDependenciesDefaultsProtocolMeaningsAndBoundsUnchanged": true,
+    "segmentedWasmSDKOrDurableIntegration": false
+  },
+  "tests": {
+    "sharedRustPassed": 650,
+    "sharedRustFailed": 0,
+    "sharedRustIgnored": 0,
+    "newSegmentedCases": 19,
+    "additionalLegacyLimitRegression": 1,
+    "newNativeFamilyCombinations": 144,
+    "realMoreThan1000JournalEntries": true,
+    "real1000NativeUndoItems": true,
+    "actualSearchAndOwnedTableImageHeadingHistory": true,
+    "pendingCausalInputAndOfflineV2WriterGroups": true,
+    "failedStagingRetainsNaturalContinuation": true,
+    "format": true,
+    "allTargetsClippyWarningsAsErrors": true,
+    "rustdocWarningsAsErrors": true,
+    "runtimeSelectedChecksPassed": 9,
+    "officialSharedWasmRebuilt": true,
+    "legacyInterop": {
+      "format": "breditor/segmented-native-legacy-wasm-regression",
+      "passed": true,
+      "beforeWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+      "afterWasmSha256": "7f40024272d01ed269631d924b97599ba0e67e89917f366c274a8b1bd428e95d",
+      "cases": 144,
+      "exactCheckpointComparisons": 3168,
+      "crossRestores": 288,
+      "futureOwnerSteps": 2880,
+      "scope": "Actual before/after original-family Wasm compatibility only. Segmented APIs are native-only and not exercised through Wasm or SDK."
+    },
+    "artifactAndRetainedInputChecks": 99,
+    "freshRootRustSuite": false,
+    "freshRelayRustSuite": false,
+    "freshInstalledConsumers": false,
+    "physicalBrowserOrClipboardIMEVoiceOver": false,
+    "vendorPrivateUnitTestsExecuted": false,
+    "vendorForkContractPublicIntegrationCases": 6
+  },
+  "repairs": [
+    {
+      "scope": "Prototype native staging, not the historical WebKit fault",
+      "before": "Native Redo omitted provenance mark/mark_end operations after the fork dropped default text-style configuration. Cold restore correctly rejected unequal native effects.",
+      "fix": "Rebuild from all applied operations and copy the complete style map, including its default. Keep exact expected native effects and the independent legacy/cold oracle."
+    },
+    {
+      "scope": "Prototype segmented natural typing",
+      "before": "Live natural edits close the native group after each input. Copying only the closed state made the next joined input create a second item and fail exact replay.",
+      "fix": "Opt-in retention of the last exact closed group and checked reopening on a disposable candidate, with independent mutable rows and failure/reentrancy tests."
+    }
+  ],
+  "probeCorrection": {
+    "initialAdditionalInteropAttemptFailed": true,
+    "cause": "The added JavaScript probe emitted unsorted property maps. The pre-change runtime rejected before editing, with zero compared cases.",
+    "fixtureCanonicalizationOnly": true,
+    "productionAdmissionUnchanged": true,
+    "failure": "target/segmented-runtime-regressions-VQpENR/instrumented-interop.json.failure.json",
+    "originalAndInstrumentedProbeRetained": true,
+    "nineRuntimeStagesWereNotRerunOrHidden": true,
+    "correctedComparisonPassed": true
+  },
+  "cleanup": {
+    "removedOnlyRegenerableIgnoredCaches": true,
+    "allocatedGiBRemoved": 1.7389869689941406,
+    "sourceBackupsAndReleaseFailureEvidencePreserved": true,
+    "recovery": "Deleted generated caches were not trashed; Cargo regenerates them."
+  },
+  "remaining": [
+    "Explicit segmented Wasm/SDK selection and recovery factories, immutable family fences, new durable storage and non-overwriting generation publication remain to be implemented. The new feature is currently native-only.",
+    "Paired comment-history generation retention, complete participant/outbox handoff, current server/provider closure, protected resume credentials, deployment/writer fences and a durable final activation barrier remain required.",
+    "Native fork/offline branch intent reconciliation, remaining V1 feature parity and the full original 13 release gates remain open. This bounded native component is not the completed approved whole-room bridge.",
+    "The 1000 retained native Undo-item ceiling and causal/document/transport budgets remain. Segmentation neither silently evicts nor supplies unlimited lifetime or compaction.",
+    "Fresh installed consumers, full-root/relay suites, cross-host reproducibility, long-session performance/size, process/power-loss durability and platform/accessibility qualification are outside this checkpoint.",
+    "The historical WebKit fault and earlier unexpected catalog rejection are not confirmed fixed. The capped vendored warning, notice gap and full license approval remain unresolved.",
+    "No version bump, push, tag, publication or deployment occurred."
+  ]
+}

@@ -18,6 +18,8 @@ use crate::{
     ContainerDiff, DiffEvent, DocDiff, LoroDoc, Subscription,
 };
 
+mod fork_for_staging;
+
 /// A batch of diffs.
 ///
 /// You can use `loroDoc.apply_diff(diff)` to apply the diff to the document.
@@ -212,6 +214,8 @@ struct UndoManagerInner {
     on_push: Option<OnPush>,
     on_pop: Option<OnPop>,
     group: Option<UndoGroup>,
+    closed_group: Option<ClosedUndoGroup>,
+    staging_groups: bool,
 }
 
 impl std::fmt::Debug for UndoManagerInner {
@@ -234,6 +238,13 @@ impl std::fmt::Debug for UndoManagerInner {
 struct UndoGroup {
     start_counter: Counter,
     affected_cids: FxHashSet<ContainerID>,
+}
+
+#[derive(Clone)]
+struct ClosedUndoGroup {
+    group: UndoGroup,
+    through: Counter,
+    at: Frontiers,
 }
 
 impl UndoGroup {
@@ -522,6 +533,8 @@ impl UndoManagerInner {
             on_pop: None,
             on_push: None,
             group: None,
+            closed_group: None,
+            staging_groups: false,
         }
     }
 
@@ -719,6 +732,8 @@ impl UndoManager {
             return Err(LoroError::UndoGroupAlreadyStarted);
         }
 
+        inner.closed_group = None;
+
         inner.group =
             Some(UndoGroup::new(inner.next_counter.ok_or_else(|| {
                 LoroError::Unknown("UndoManager is not ready".into())
@@ -728,7 +743,27 @@ impl UndoManager {
     }
 
     pub fn group_end(&self) {
-        self.inner.lock().borrow_mut().group = None;
+        let lock = self.inner.lock();
+        let mut inner = lock.borrow_mut();
+        if !inner.staging_groups || inner.group.is_none() {
+            inner.group = None;
+            return;
+        }
+        drop(inner);
+        drop(lock);
+        // Do not acquire document locks while holding the history cell. The staging
+        // owner is serialized; reopening separately rechecks this captured cut/span.
+        let cut = (self.doc.get_pending_txn_len() == 0).then(|| {
+            (
+                get_counter_end(&self.doc, self.peer()),
+                self.doc.state_frontiers(),
+            )
+        });
+        let lock = self.inner.lock();
+        let mut inner = lock.borrow_mut();
+        if let Some(group) = inner.group.take() {
+            inner.closed_group = cut.map(|(through, at)| ClosedUndoGroup { group, through, at });
+        }
     }
 
     pub fn peer(&self) -> PeerID {

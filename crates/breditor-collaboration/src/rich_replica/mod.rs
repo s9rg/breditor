@@ -57,6 +57,8 @@ mod insert_plain_text;
 mod insert_plain_text_with_markdown_rules;
 mod insert_typing_text;
 mod insert_typing_text_with_markdown_rules;
+#[cfg(test)]
+mod journal_capacity_tests;
 mod layout_fields;
 mod list_structure;
 mod list_targets;
@@ -103,6 +105,7 @@ mod review_anchor;
 mod review_comments;
 mod reviewed_history;
 mod search;
+mod segmented_history;
 mod select_document;
 pub mod selection;
 mod selection_coverage;
@@ -160,6 +163,7 @@ pub use review_comments::{
 };
 pub use reviewed_history::{OwnedSuggestionAcceptance, ReviewedHistoryIdentity};
 pub use search::SharedSearchResults;
+pub use segmented_history::SegmentedHistoryInfo;
 pub use session::RichReplica;
 pub use suggestions::{
     DocumentSuggestionDraft, DocumentSuggestionEdit, DocumentSuggestionEffect,
