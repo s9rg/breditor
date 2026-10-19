@@ -5,7 +5,8 @@ review state, selected retained packet stores and whole raster upload store at a
 consistent cut. One portable file retains their original recovery bytes and
 upload epochs. Existing factories restore each component without overwriting
 existing work; a final verification checks the actual recovered owners together.
-This is not yet a durable multi-database recovery or room-activation coordinator.
+The [durable participant coordinator](SHARED_PARTICIPANT_RECOVERY.md) now records
+and resumes those component recoveries. Neither helper activates a whole room.
 
 ## Declare the participant and included stores
 
@@ -129,11 +130,13 @@ digest. Checks repeat around hashing. Different epochs/statuses, missing files,
 changed native sources and metadata-only copies cannot pass this verification.
 It writes no completion record and grants no network-activation permission.
 
-Several restored databases are not one transaction. If a component restore
-fails, retain the original participant file and already committed destinations;
-inspect/reopen exact matching components through their ordinary factories. Never
-clear or overwrite them to retry. Durable attempt recording, restart resolution
-and automatic multi-store adoption still need the wider recovery coordinator.
+Several restored databases are not one transaction. The explicit
+[participant recovery coordinator](SHARED_PARTICIPANT_RECOVERY.md) records the
+selected plan and each component's durable intent, inspects interrupted commits
+and natively reopens only exact retained state. It does not run implicitly through
+the archive APIs above. For manual component recovery, retain the original file
+and committed destinations; inspect/reopen exact matching components through
+their ordinary factories. Never clear or overwrite them to retry.
 
 ## Independent framing and limits
 

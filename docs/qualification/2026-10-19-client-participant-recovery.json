@@ -1,0 +1,758 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "baseCommit": "7cffeab2ce9a8ba86b0c6f4a1b2e5a0f26fb9422",
+  "scope": "Durable exact per-participant component recovery with explicit native factories, immutable selected plan, interrupted commit/adoption, native reopens, genuine source/upload completion and ownership handoff. No authenticated global inventory, protected credential recovery, complete-room activation or cross-generation bridge.",
+  "source": {
+    "commit": "7cffeab2ce9a8ba86b0c6f4a1b2e5a0f26fb9422",
+    "dirty": true,
+    "sha256": "7a77490459ccc7cd7f560d30a13c564452fb203806f488e37f1087b38f59f2e5",
+    "files": 4475,
+    "bytes": 39512814
+  },
+  "sourceBinding": {
+    "documentationOnlyFollowUp": "Qualification JSON and release/ledger links are docs-only. All non-documentation inputs remain byte-identical.",
+    "nonDocumentationTree": {
+      "sha256": "11d51589e93e1cfe39aa3db6fce3e3c00f6c23558a6cedde077ea050fb471447",
+      "count": 4016,
+      "bytes": 32545327
+    },
+    "frozenInventory": {
+      "path": "target/client-participant-recovery-reviewed-frozen-inputs.json",
+      "bytes": 1054069,
+      "sha256": "0a53f7b071d886bf77ad3e0873578e02ac16de2c2dd16530dcc3a585c4ef2836",
+      "modifiedAtMs": 1792401583668.4197
+    }
+  },
+  "qualification": {
+    "evidence": {
+      "path": "target/v1-candidate-runs/run-0oqJpU/result.json",
+      "bytes": 51140,
+      "sha256": "b6f3b026178553b242b91b5d8f20a4532ad13b402e0d28624ae8f3b84031a6bc",
+      "modifiedAtMs": 1792401959331.1804
+    },
+    "all32SelectedChecksPassed": true,
+    "wholeOfficialProfile": false,
+    "stages": [
+      {
+        "id": "unchanged-native-runtime-inputs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/01-unchanged-native-runtime-inputs.log",
+          "bytes": 850,
+          "sha256": "39df7b2326d75fc196ca807dca347213869b02e4e9b159ffb45cefa2bbf42a5e",
+          "modifiedAtMs": 1792401584356.9663
+        }
+      },
+      {
+        "id": "candidate-runner-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/02-candidate-runner-contracts.log",
+          "bytes": 7989,
+          "sha256": "3f342506b4c7891a34d7a9c8298eee9b3e20d2e456d19d71c8d97ee93556df1d",
+          "modifiedAtMs": 1792401586348.1514
+        }
+      },
+      {
+        "id": "default-typescript-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/03-default-typescript-build.log",
+          "bytes": 2421,
+          "sha256": "baaabb65b840b3a063b1c52f8b3f864cca3b172c0a3488edbd5f75233710c28f",
+          "modifiedAtMs": 1792401590222.6
+        }
+      },
+      {
+        "id": "paired-local-runtime",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/04-paired-local-runtime.log",
+          "bytes": 422,
+          "sha256": "c5e0b5412beaf2b91ef9816d1299989772c46e59c038bc746d775aa85433b475",
+          "modifiedAtMs": 1792401591653.0647
+        }
+      },
+      {
+        "id": "paired-shared-runtime",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/05-paired-shared-runtime.log",
+          "bytes": 1185,
+          "sha256": "7262c95f871c838b72ad868e666e29825fdb8f38daf9a72ea434aeb572be72b0",
+          "modifiedAtMs": 1792401593865.0942
+        }
+      },
+      {
+        "id": "shared-wasm-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/06-shared-wasm-lint.log",
+          "bytes": 507,
+          "sha256": "baecfcaf3d98bffde9932f880c3a263ad55d6d2f8c8be270c73e4c0df55336c4",
+          "modifiedAtMs": 1792401594792.8992
+        }
+      },
+      {
+        "id": "rich-browser-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/07-rich-browser-build.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792401595391.4307
+        }
+      },
+      {
+        "id": "collaboration-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/08-collaboration-build.log",
+          "bytes": 82,
+          "sha256": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12",
+          "modifiedAtMs": 1792401596432.6685
+        }
+      },
+      {
+        "id": "editor-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/09-editor-build.log",
+          "bytes": 75,
+          "sha256": "1310c2fdb084ee048dc83520d840d200e7f41bfad549bd6f349c38aef1c38b44",
+          "modifiedAtMs": 1792401597553.4236
+        }
+      },
+      {
+        "id": "clean-candidate-sdk-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/10-clean-candidate-sdk-build.log",
+          "bytes": 4751,
+          "sha256": "ba67065c6a86d9dfd2d7989563eaa092324b5d9b0c412984c2243f7fe34600b6",
+          "modifiedAtMs": 1792401602442.1912
+        }
+      },
+      {
+        "id": "typescript-tests-and-script-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/11-typescript-tests-and-script-contracts.log",
+          "bytes": 120641,
+          "sha256": "22bc9da5b654d87b3f55ed2b2bdb4eec15f875fa6e3a771f27445b47e8c3fe67",
+          "modifiedAtMs": 1792401625036.6562
+        }
+      },
+      {
+        "id": "editor-sdk-tests",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/12-editor-sdk-tests.log",
+          "bytes": 619,
+          "sha256": "84a470560a80125a7841c06a3549949fda31a0e0ab1a1e9e1ce920fb2c7b96b1",
+          "modifiedAtMs": 1792401631524.9106
+        }
+      },
+      {
+        "id": "asset-archive-storage-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/13-asset-archive-storage-contracts.log",
+          "bytes": 3477,
+          "sha256": "7c7596b186caf0f84e2f5b2553fb18f7f5932ada129caa980de5e17a6ba26b58",
+          "modifiedAtMs": 1792401632326.6707
+        }
+      },
+      {
+        "id": "asset-source-snapshot-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/14-asset-source-snapshot-contracts.log",
+          "bytes": 1359,
+          "sha256": "3744b90315c6c8fe3b446d7edfafe70a1651718ca2e7ec90fb4ff51cb8356538",
+          "modifiedAtMs": 1792401633046.8796
+        }
+      },
+      {
+        "id": "asset-source-cancellation-regression",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/15-asset-source-cancellation-regression.log",
+          "bytes": 390,
+          "sha256": "8b462700a364084d1906239ac34fbd7bd2c7d8ceb29e7b40489cf06ab4973f1f",
+          "modifiedAtMs": 1792401633756.0894
+        }
+      },
+      {
+        "id": "shared-session-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/16-shared-session-backups.log",
+          "bytes": 1067,
+          "sha256": "d760b8f892829dc733d95867274e399cc81355372d9747f4beae70198b1acde4",
+          "modifiedAtMs": 1792401662956.696
+        }
+      },
+      {
+        "id": "paired-session-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/17-paired-session-backups.log",
+          "bytes": 1045,
+          "sha256": "f45db216080b188d081c76018be34f70436d779a313952ba38a4727308b47a46",
+          "modifiedAtMs": 1792401752709.285
+        }
+      },
+      {
+        "id": "retained-store-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/18-retained-store-backups.log",
+          "bytes": 1556,
+          "sha256": "3d5869ab85857c5664eb322e4b0f906902c0c0d0c5643adb1d43338fb2fc064d",
+          "modifiedAtMs": 1792401764773.3855
+        }
+      },
+      {
+        "id": "selected-asset-bytes",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/19-selected-asset-bytes.log",
+          "bytes": 1495,
+          "sha256": "15dc81c312a19f9c95ffa467f6d7916ab30cae14fca038be9c6bf29d2f17da43",
+          "modifiedAtMs": 1792401773814.938
+        }
+      },
+      {
+        "id": "participant-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/20-participant-backups.log",
+          "bytes": 2783,
+          "sha256": "654e881c8cd1afe4313cf422899d2c7ca06d64150bfd85fb777d912b7fa3941f",
+          "modifiedAtMs": 1792401790557.5586
+        }
+      },
+      {
+        "id": "participant-recovery-storage-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/21-participant-recovery-storage-contracts.log",
+          "bytes": 2009,
+          "sha256": "8e88a0701de9100d607cd46e41dc60d166f8a87907dc15ea10e22c281c895363",
+          "modifiedAtMs": 1792401791330.5625
+        }
+      },
+      {
+        "id": "participant-recovery-type-fence",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/22-participant-recovery-type-fence.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792401791914.79
+        }
+      },
+      {
+        "id": "participant-recovery",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/23-participant-recovery.log",
+          "bytes": 4111,
+          "sha256": "10b22b5d89cc50eb1b94448aba2229d135c0017272cb104571955df75a9c5234",
+          "modifiedAtMs": 1792401816571.0886
+        }
+      },
+      {
+        "id": "document-participant-recovery",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/24-document-participant-recovery.log",
+          "bytes": 580,
+          "sha256": "a540b7252aaadbab476e1275f56ba210b48b055e5126bb655249aa95072d1510",
+          "modifiedAtMs": 1792401843915.2537
+        }
+      },
+      {
+        "id": "workspace-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/25-workspace-types.log",
+          "bytes": 485,
+          "sha256": "ff2b7d73a790f5c53c02c54cf8b67d6ed1036e66eae4f636f307f8f2d960c48c",
+          "modifiedAtMs": 1792401846439.0496
+        }
+      },
+      {
+        "id": "rich-browser-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/26-rich-browser-types.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792401847485.8997
+        }
+      },
+      {
+        "id": "collaboration-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/27-collaboration-types.log",
+          "bytes": 95,
+          "sha256": "420af9e6b28474243a0fd35510d2c8039b52f408426ec54c2b14dc6177522b1a",
+          "modifiedAtMs": 1792401848448.8892
+        }
+      },
+      {
+        "id": "editor-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/28-editor-types.log",
+          "bytes": 88,
+          "sha256": "4ed1577b26f7965af6b47dde9307902ced45570b6d37297049bd7086fd0d55a2",
+          "modifiedAtMs": 1792401849499.9014
+        }
+      },
+      {
+        "id": "installed-session-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/29-installed-session-backups.log",
+          "bytes": 16421,
+          "sha256": "fc71470d0a55bcec981750930f37ade90f7b1ca1c311d9572f3749937abc947f",
+          "modifiedAtMs": 1792401951254.4087
+        }
+      },
+      {
+        "id": "installed-asset-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/30-installed-asset-backups.log",
+          "bytes": 2554,
+          "sha256": "bec36cbb784e8a3c42bc3bdff872d576e9e0e749b8db05db3698da3796823e57",
+          "modifiedAtMs": 1792401955757.658
+        }
+      },
+      {
+        "id": "installed-asset-backups-browser",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/31-installed-asset-backups-browser.log",
+          "bytes": 2355,
+          "sha256": "6591d44b595c15dbd343ccc5b610ba89ffac60f31fb81e9ba64b2a66f4bd475d",
+          "modifiedAtMs": 1792401958076.8254
+        }
+      },
+      {
+        "id": "readiness-inventory",
+        "log": {
+          "path": "target/v1-candidate-runs/run-0oqJpU/32-readiness-inventory.log",
+          "bytes": 15641,
+          "sha256": "beb28888889c3aae11928bf754605a40c6fd7c641afa2588a90ba51d9094c01c",
+          "modifiedAtMs": 1792401958751.1125
+        }
+      }
+    ],
+    "freshScriptTests": 591,
+    "scriptSkipped": 3,
+    "freshEditorTests": 382,
+    "freshRunnerContracts": 34,
+    "newRecoveryStorageContracts": 9,
+    "nativeTestsCarriedNotFresh": 3378,
+    "nativeSourceUnchangedAgainst": "7cffeab2ce9a8ba86b0c6f4a1b2e5a0f26fb9422",
+    "priorNativeQualification": {
+      "path": "target/v1-candidate-runs/run-l79lmo/result.json",
+      "bytes": 39911,
+      "sha256": "f8525707365ff509306053d73e3f80ef373bcfc0451869eaab104c5d37d01416",
+      "modifiedAtMs": 1792396503596.4602
+    },
+    "freshOfficialRuntimeProducers": true,
+    "runtimes": {
+      "local": {
+        "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+        "bytes": 5910494,
+        "sha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+        "modifiedAtMs": 1792401953082.233
+      },
+      "shared": {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13030929,
+        "sha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+        "modifiedAtMs": 1792401853692.0803
+      }
+    }
+  },
+  "integrationRepair": {
+    "failure": {
+      "path": "target/v1-candidate-runs/run-5hgdHj/result.json",
+      "bytes": 1528,
+      "sha256": "741246277ddae570f4889b7d12a81f3cf8a6d1359e1d120423feda79f002579b",
+      "modifiedAtMs": 1792399864548.5312
+    },
+    "log": {
+      "path": "target/v1-candidate-runs/run-5hgdHj/01-participant-recovery-pre-repair.log",
+      "bytes": 1659,
+      "sha256": "82c0ec4e23fc30d54017e37626b4a14cb732012de7eb97d3886908eaf8061e7a",
+      "modifiedAtMs": 1792399864245.866
+    },
+    "exactCommandArgs": [
+      "scripts/probe-participant-recovery.mjs",
+      "target/promoted-shared-web"
+    ],
+    "passed": {
+      "path": "target/v1-candidate-runs/run-0oqJpU/23-participant-recovery.log",
+      "bytes": 4111,
+      "sha256": "10b22b5d89cc50eb1b94448aba2229d135c0017272cb104571955df75a9c5234",
+      "modifiedAtMs": 1792401816571.0886
+    },
+    "cause": "The new preparation adapter passed binding and transport to the original closed binding-only validator and refused the first legitimate recovery.",
+    "repair": "Project only the original binding before calling the unchanged validator. The same probe command now passes its unchanged first valid-policy case and expanded later recovery assertions; the entire test file is not claimed byte-identical to the earlier failure."
+  },
+  "contractRepairs": {
+    "planPolicy": {
+      "failure": {
+        "path": "target/v1-candidate-runs/run-bpv1j5/result.json",
+        "bytes": 1538,
+        "sha256": "6c3b568cc5d2242bb3c657d043e4ebb7b598ee0e7a5da36c0f1501410fdd9143",
+        "modifiedAtMs": 1792401442364.7068
+      },
+      "log": {
+        "path": "target/v1-candidate-runs/run-bpv1j5/01-recovery-plan-policy-pre-repair.log",
+        "bytes": 1225,
+        "sha256": "546b0208cb84c433b70fbbdbfa6f0b85543d80679a938a1faf8b844963ed7ad2",
+        "modifiedAtMs": 1792401442062.748
+      },
+      "exactArgs": [
+        "scripts/probe-participant-recovery.mjs",
+        "target/promoted-shared-web"
+      ],
+      "passing": {
+        "path": "target/v1-candidate-runs/run-0oqJpU/23-participant-recovery.log",
+        "bytes": 4111,
+        "sha256": "10b22b5d89cc50eb1b94448aba2229d135c0017272cb104571955df75a9c5234",
+        "modifiedAtMs": 1792401816571.0886
+      },
+      "cause": "An undeclared synthetic review-policy field was accepted by the new preparation adapter and could enter its persisted plan.",
+      "repair": "Refuse all but actor/principal/access before persistence and serialize those fields explicitly. Canonicalize destination/review ordering; all 30 reordered-policy resumes now pass, and malformed review fields leave no attempt database."
+    },
+    "runtime": {
+      "failure": {
+        "path": "target/v1-candidate-runs/run-20Lh63/result.json",
+        "bytes": 1505,
+        "sha256": "3e606bc87829688560f90b4bbd7a30eef251b859ed2ce9ecf36bd60a81ab8b0b",
+        "modifiedAtMs": 1792400902121.4524
+      },
+      "log": {
+        "path": "target/v1-candidate-runs/run-20Lh63/01-recovery-handle-pre-repair.log",
+        "bytes": 3104,
+        "sha256": "e4fb8fbd44a4c0226002b36938d9e3df3fbff4ee8f0e2dfd3cc365a442352899",
+        "modifiedAtMs": 1792400901822.4434
+      },
+      "exactArgs": [
+        "--test",
+        "scripts/participant-recovery-storage.test.mjs"
+      ],
+      "passing": {
+        "path": "target/v1-candidate-runs/run-0oqJpU/21-participant-recovery-storage-contracts.log",
+        "bytes": 2009,
+        "sha256": "8e88a0701de9100d607cd46e41dc60d166f8a87907dc15ea10e22c281c895363",
+        "modifiedAtMs": 1792401791330.5625
+      },
+      "cause": "The two new TypeScript-private constructors accepted well-shaped detached objects through JavaScript.",
+      "repair": "Require an unexported runtime key before reading constructor inputs; freeze actual handles. The original negative constructor assertions now pass."
+    },
+    "selectionTypes": {
+      "failure": {
+        "path": "target/v1-candidate-runs/run-QNFZxx/result.json",
+        "bytes": 1753,
+        "sha256": "45be648998234937fde629bec182b18b6d66f57fb8b657257f7c1881e8af4ce4",
+        "modifiedAtMs": 1792400904847.6892
+      },
+      "log": {
+        "path": "target/v1-candidate-runs/run-QNFZxx/01-recovery-type-scope-pre-repair.log",
+        "bytes": 445,
+        "sha256": "f5dc513b1df2b2fbf3a118bd8577c8dde57d83ac9f08570c9ea9563598c9b6c1",
+        "modifiedAtMs": 1792400904546.044
+      },
+      "exactArgs": [
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--strict",
+        "--exactOptionalPropertyTypes",
+        "--target",
+        "ES2022",
+        "--module",
+        "NodeNext",
+        "--lib",
+        "ES2022,DOM",
+        "scripts/fixtures/editor-consumer/types-participant-recovery.ts"
+      ],
+      "passing": {
+        "path": "target/v1-candidate-runs/run-0oqJpU/22-participant-recovery-type-fence.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "modifiedAtMs": 1792401791914.79
+      },
+      "cause": "Fixed original/document native factory variants were not conditional on the declared generic selection scope.",
+      "repair": "Constrain fixed families by the selection generic. Both exact MustBeNever fence assertions now compile without suppressions or broader native capabilities."
+    }
+  },
+  "recovery": {
+    "paired": {
+      "format": "breditor/participant-recovery-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 30,
+      "reorderedPolicyResumes": 30,
+      "unknownReviewRefusals": 1,
+      "restoredComponents": 150,
+      "exactReopens": 30,
+      "interruptionResumes": 5,
+      "ambiguousReadyResumes": 1,
+      "startedBeforeCreateResumes": 1,
+      "closeDuringFinishResumes": 1,
+      "ownershipHandoffs": 1,
+      "nativeAdmissionResumes": 1,
+      "nativeCloneRefusals": 1,
+      "occupiedRefusals": 1,
+      "changedSelectionRefusals": 2,
+      "divergenceRefusals": 1,
+      "concurrentRefusals": 30,
+      "missingCompletedRefusals": 1,
+      "authorityRefusals": 3,
+      "futureDocumentCheckpoints": 180,
+      "futureReviewCheckpoints": 180,
+      "networkCalls": 0,
+      "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+      "originalParticipantAssertions": {
+        "format": "breditor/participant-backup-probe",
+        "formatVersion": 1,
+        "passed": true,
+        "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+        "cases": 30,
+        "files": 30,
+        "restoredParticipants": 30,
+        "restoredUploadRecords": 90,
+        "exactComponentArchives": 90,
+        "futureDocumentCheckpoints": 180,
+        "futureReviewCheckpoints": 180,
+        "unreferencedUploads": 30,
+        "sourceRefusals": 1,
+        "authorityRefusals": 3,
+        "missingBytesPending": 1,
+        "missingSourcePending": 1,
+        "policyRefusals": 3,
+        "formatRefusals": 5,
+        "occupiedRefusals": 1,
+        "uploadMismatchRefusals": 1,
+        "networkCalls": 0,
+        "originalSelectedByteAssertions": {
+          "format": "breditor/selected-asset-bytes-probe",
+          "formatVersion": 1,
+          "passed": true,
+          "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+          "cases": 30,
+          "pureCaptures": 30,
+          "files": 30,
+          "bytePayloads": 60,
+          "bindingPairs": 270,
+          "restoredSourceVerifications": 30,
+          "exactComponentArchives": 90,
+          "futureCheckpoints": 180,
+          "borrowedDisposals": 30,
+          "closedSourceRefusals": 30,
+          "missingBytesPending": 1,
+          "missingSourcePending": 1,
+          "providerRefusals": 7,
+          "identityRefusals": 2,
+          "sourceChangeRefusals": 2,
+          "declaredSourceRefusals": 2,
+          "cancelRefusals": 3,
+          "providerChecks": 5168,
+          "networkCalls": 0,
+          "heldLeases": 0,
+          "scope": "Actual shared Wasm and public source-byte APIs across three grammars/scopes and both histories plus reviewed/search-owned families. Hidden Redo, losing peer, intermediate/deleted proposal, revision and imported-version references; SHA and host-verified opaque IDs, generation-exact mappings, dedup raster bytes, pure captures, exact binary reads, old component archive reconstruction from file records, real native/component re-admission and 180 future document/comment checkpoints. Missing/provider/source/cancellation refusals preserve source owners. IDB/locks/two-PNG decode/server metadata are fixtures; no native browser, asset-store upload queue snapshot, complete-room/server restore, provider authentication, cross-device fencing, GC, generation bridge, performance or V1 approval."
+        },
+        "scope": "Actual native 30-policy source/paired/queue/revision/catalog capture, same active asset transaction cut, exact whole-store upload epochs/receipts including an unreferenced PNG, original insert-only factory restores and 360 future document/comment checkpoints. IDB/WebLocks/three exact PNG decoders and server metadata are explicit fixtures. No participant discovery/authentication, protected resume-credential backup, durable multi-store restart/activation, cross-device fencing, server-currentness, generation bridge, browser/platform or V1 approval."
+      },
+      "scope": "Original actual native policies, five component databases, durable exact attempt markers, lost post-component acknowledgements, ready-before-ack cancellation, same-origin exclusion, exact reopen and genuine source/upload verification. Node IDB/locks/raster fixtures; not process-kill/browser durability, global authenticated inventory, server activation or cross-generation history bridging."
+    },
+    "documentOnly": {
+      "format": "breditor/document-participant-recovery-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 36,
+      "restoredComponents": 72,
+      "exactReopens": 36,
+      "futureCheckpoints": 144,
+      "heldLeases": 0,
+      "scope": "All three grammar/scope and both history/search document-only families with actual native replay, matching original encodings, empty complete upload stores, exact coordinator reopen and future Undo/Redo. Explicit Node storage/locks/PNG fixtures; not cross-device authority, process/browser durability, complete-room activation or generation bridging."
+    },
+    "primaryConfigurations": 66,
+    "primaryComponents": 222,
+    "exactReopens": 66,
+    "primaryFutureCheckpoints": 504,
+    "countsExcludeNestedOriginalAndInstalledRepeats": true,
+    "allSixOriginalFactoryFamilies": true,
+    "atomicInitialMarkerAndSchema": true,
+    "exactReadBeforeNativeReopen": true,
+    "originalFamilyRecordEncodingPreserved": true,
+    "conditionalStrictJournalUpdates": true,
+    "noDeletionOrOverwrite": true,
+    "actualNativeReplays": true,
+    "emptyCompletedUploadsDistinctFromMissing": true,
+    "noAutomaticConnectionsOrUploads": true,
+    "fixtures": "Actual original Rust/Wasm owners and admission factories. Node IndexedDB/Web Locks and exact PNG raster decoders are explicit fixtures, not browser/process/power-loss or cross-device authority proof."
+  },
+  "installed": {
+    "session": {
+      "path": "target/session-backups-installed-consumer.json",
+      "bytes": 14786,
+      "sha256": "d2aa90c9dece0a4b410a5575cdde7ce2ec5746a6bf5624935d1fa75252c9c721",
+      "modifiedAtMs": 1792401951253.8645
+    },
+    "assets": {
+      "path": "target/asset-backups-installed-consumer.json",
+      "bytes": 2105,
+      "sha256": "cb887f193a595305ecd7218b973ca983ac51dd82ab73987aab5f32c25e51a116",
+      "modifiedAtMs": 1792401955757.093
+    },
+    "browser": {
+      "path": "target/asset-backups-installed-browser.json",
+      "bytes": 2355,
+      "sha256": "6591d44b595c15dbd343ccc5b610ba89ffac60f31fb81e9ba64b2a66f4bd475d",
+      "modifiedAtMs": 1792401958076.5708
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-5HeGdJ/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-5HeGdJ/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "39cd826cdb161bffba8d09e1b4e622d0b86f8396421bf3d4e18031a62c4ce7f1"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-5HeGdJ/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d90fa360421f820f4a26b171aba90ad252c5183c0f3ca9f7ef9aba7cac49be5c"
+      },
+      {
+        "name": "@breditor/editor",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-5HeGdJ/archives/breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "7b42f032b04fc75c0de2f6304fa466571d9a52c7a10d57013fc7e0f545ea9081"
+      },
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-NG4Dcv/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-NG4Dcv/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "39cd826cdb161bffba8d09e1b4e622d0b86f8396421bf3d4e18031a62c4ce7f1"
+      },
+      {
+        "name": "@breditor/editor",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-NG4Dcv/archives/breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "7b42f032b04fc75c0de2f6304fa466571d9a52c7a10d57013fc7e0f545ea9081"
+      }
+    ],
+    "freshOfficialProducerRebuilds": true,
+    "strictBareTypes": true,
+    "participantRecovery": {
+      "format": "breditor/participant-recovery-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 30,
+      "reorderedPolicyResumes": 30,
+      "unknownReviewRefusals": 1,
+      "restoredComponents": 150,
+      "exactReopens": 30,
+      "interruptionResumes": 5,
+      "ambiguousReadyResumes": 1,
+      "startedBeforeCreateResumes": 1,
+      "closeDuringFinishResumes": 1,
+      "ownershipHandoffs": 1,
+      "nativeAdmissionResumes": 1,
+      "nativeCloneRefusals": 1,
+      "occupiedRefusals": 1,
+      "changedSelectionRefusals": 2,
+      "divergenceRefusals": 1,
+      "concurrentRefusals": 30,
+      "missingCompletedRefusals": 1,
+      "authorityRefusals": 3,
+      "futureDocumentCheckpoints": 180,
+      "futureReviewCheckpoints": 180,
+      "networkCalls": 0,
+      "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+      "originalParticipantAssertions": {
+        "format": "breditor/participant-backup-probe",
+        "formatVersion": 1,
+        "passed": true,
+        "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+        "cases": 30,
+        "files": 30,
+        "restoredParticipants": 30,
+        "restoredUploadRecords": 90,
+        "exactComponentArchives": 90,
+        "futureDocumentCheckpoints": 180,
+        "futureReviewCheckpoints": 180,
+        "unreferencedUploads": 30,
+        "sourceRefusals": 1,
+        "authorityRefusals": 3,
+        "missingBytesPending": 1,
+        "missingSourcePending": 1,
+        "policyRefusals": 3,
+        "formatRefusals": 5,
+        "occupiedRefusals": 1,
+        "uploadMismatchRefusals": 1,
+        "networkCalls": 0,
+        "originalSelectedByteAssertions": {
+          "format": "breditor/selected-asset-bytes-probe",
+          "formatVersion": 1,
+          "passed": true,
+          "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+          "cases": 30,
+          "pureCaptures": 30,
+          "files": 30,
+          "bytePayloads": 60,
+          "bindingPairs": 270,
+          "restoredSourceVerifications": 30,
+          "exactComponentArchives": 90,
+          "futureCheckpoints": 180,
+          "borrowedDisposals": 30,
+          "closedSourceRefusals": 30,
+          "missingBytesPending": 1,
+          "missingSourcePending": 1,
+          "providerRefusals": 7,
+          "identityRefusals": 2,
+          "sourceChangeRefusals": 2,
+          "declaredSourceRefusals": 2,
+          "cancelRefusals": 3,
+          "providerChecks": 5168,
+          "networkCalls": 0,
+          "heldLeases": 0,
+          "scope": "Actual shared Wasm and public source-byte APIs across three grammars/scopes and both histories plus reviewed/search-owned families. Hidden Redo, losing peer, intermediate/deleted proposal, revision and imported-version references; SHA and host-verified opaque IDs, generation-exact mappings, dedup raster bytes, pure captures, exact binary reads, old component archive reconstruction from file records, real native/component re-admission and 180 future document/comment checkpoints. Missing/provider/source/cancellation refusals preserve source owners. IDB/locks/two-PNG decode/server metadata are fixtures; no native browser, asset-store upload queue snapshot, complete-room/server restore, provider authentication, cross-device fencing, GC, generation bridge, performance or V1 approval."
+        },
+        "scope": "Actual native 30-policy source/paired/queue/revision/catalog capture, same active asset transaction cut, exact whole-store upload epochs/receipts including an unreferenced PNG, original insert-only factory restores and 360 future document/comment checkpoints. IDB/WebLocks/three exact PNG decoders and server metadata are explicit fixtures. No participant discovery/authentication, protected resume-credential backup, durable multi-store restart/activation, cross-device fencing, server-currentness, generation bridge, browser/platform or V1 approval."
+      },
+      "scope": "Original actual native policies, five component databases, durable exact attempt markers, lost post-component acknowledgements, ready-before-ack cancellation, same-origin exclusion, exact reopen and genuine source/upload verification. Node IDB/locks/raster fixtures; not process-kill/browser durability, global authenticated inventory, server activation or cross-generation history bridging."
+    },
+    "documentParticipantRecovery": {
+      "format": "breditor/document-participant-recovery-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 36,
+      "restoredComponents": 72,
+      "exactReopens": 36,
+      "futureCheckpoints": 144,
+      "heldLeases": 0,
+      "scope": "All three grammar/scope and both history/search document-only families with actual native replay, matching original encodings, empty complete upload stores, exact coordinator reopen and future Undo/Redo. Explicit Node storage/locks/PNG fixtures; not cross-device authority, process/browser durability, complete-room activation or generation bridging."
+    },
+    "oldWorkflowCounts": {
+      "documentAndPaired": 20,
+      "retainedStoreRestores": 90,
+      "retainedStoreReopens": 90,
+      "selectedByteCases": 30,
+      "participantBackupCases": 30
+    },
+    "browserScope": "The separate fresh installed local editor/asset fixture uses actual PNG/JPEG/WebP, IDB, crypto and real reload in one Chromium engine. The new shared coordinator probes are Node-only; no combined coordinator browser qualification is inferred.",
+    "browserVersion": "151.0.7922.34"
+  },
+  "originalContracts": {
+    "rustAndCargoInputsUnchanged": true,
+    "pairedWasmHashesUnchanged": true,
+    "noOriginalNativeOrStoredFamilyMeaningChanges": true,
+    "defaultStartupVersionsDependenciesAndBoundsUnchanged": true,
+    "oldComponentAndPublicProbeAssertionsRemainMandatory": true
+  },
+  "remaining": {
+    "v1Ready": false,
+    "openGates": 13,
+    "groupedLedger": {
+      "implemented": 10,
+      "partial": 27,
+      "missing": 9
+    },
+    "work": [
+      "Authenticated global participant and store inventory, trusted client/server recovery catalog and separately protected registration/resume credentials.",
+      "Complete current-provider asset closure and fresh writer/account authority before durable room-wide activation; local markers are not global completion or fencing.",
+      "Approved cross-generation Undo/Redo and outstanding offline-edit bridge remains unimplemented.",
+      "Supported operating/lifetime envelope, power-loss/process/browser/platform reliability including the unresolved historical WebKit fault, distribution/CI, dependency/license review and final RC gates."
+    ]
+  }
+}

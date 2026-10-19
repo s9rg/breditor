@@ -43,6 +43,50 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [durable participant recovery checkpoint](qualification/2026-10-19-client-participant-recovery.json)
+passes one frozen 32-check selection. A new inactive attempt journal pins the
+independently selected participant file, destination databases and explicit native
+policies. Atomic initial reservation and conditional step markers preserve
+interrupted work. Readonly exact record checks precede ordinary native reopening;
+the original insert-only factories restore missing started components. Actual
+native/packet and upload verification precedes completion and ownership transfer.
+Completed missing or divergent data is never silently regenerated or overwritten.
+
+Thirty paired and 36 document-only configurations exercise all six selected native
+factory families, 222 primary component restorations, 66 exact reopens and
+504 future history checkpoints. Five post-component interruptions, committed
+start/ready markers before acknowledgement, close during finish, native admission
+failure and current-writer exclusion all retain their original work. The same
+public workflows repeat through fresh offline installed packages, alongside the
+previous document/paired, retained-store, selected-byte and participant-file
+assertions. These coordinator tests use actual Rust/Wasm with explicit Node
+storage/lock/PNG fixtures; they do not qualify browser/process/power-loss durability.
+
+All 591 script tests and 382 editor tests pass; three existing opt-in script
+checks remain skipped. Nine new storage contracts and a strict public type fence
+are mandatory in both candidate profiles. Four retained failures led to repairs:
+a closed-validator adapter received an extra field, runtime constructors lacked
+private keys, fixed native factories ignored generic selection scope, and an
+undeclared review field could enter the attempt plan. Original validators stay
+closed; constructors now require an unexported key, selection families are typed
+correctly, and known review fields plus destination ordering are normalized.
+All 30 reordered-policy resumes also pass.
+
+Both official Wasm producers are freshly rebuilt with unchanged binary hashes.
+Rust/Cargo/native build inputs remain unchanged; the prior 3,378 native
+tests/doctests are carried evidence, not fresh runs. A separate fresh installed
+local-editor/asset browser test still passes actual codecs, storage and reload;
+it is not claimed as a shared-coordinator browser test.
+
+Authenticated global participant/store inventory, a trusted client/server
+recovery catalog, protected registration/resume credentials, complete current
+provider closure and durable room-wide activation remain work. The approved
+cross-generation Undo/Redo and outstanding offline-edit bridge is unimplemented.
+All 13 V1 gates remain open. No version, push, tag, publication or deployment is
+promoted.
+
+### Previous participant backup checkpoint
+
 The [client participant backup checkpoint](qualification/2026-10-19-client-participant-backups.json)
 passes one frozen 28-check selection. An explicit participant file retains the
 original native/paired history, selected proposal/revision/version stores and

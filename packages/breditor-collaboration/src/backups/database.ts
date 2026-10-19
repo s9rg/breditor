@@ -14,9 +14,13 @@ export function insertBackupRecord(db:IDBDatabase,key:readonly[string,string],re
 }
 /** The existing stored families are retained byte-for-byte; only their first insertion is conditional. */
 export function insertSessionBackup(db:IDBDatabase,checkpointJson:string,identity:SharedBackupIdentity):Promise<void>{
- checkBackupCheckpoint(checkpointJson,identity);const key:[string,string]=[identity.room,identity.writer];
- if(identity.searchHistory)return insertBackupRecord(db,key,{format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:identity.history,rangeEditing:identity.rangeEditing,selectionEditing:identity.selectionEditing,richLanguage:identity.richLanguage,checkpointJson});
- if(identity.selectionEditing==="document-v1")return insertBackupRecord(db,key,{format:"breditor/shared-document-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson});
- if(identity.rangeEditing==="general-v1")return insertBackupRecord(db,key,{format:"breditor/shared-general-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson});
- return insertBackupRecord(db,key,identity.history==="explicit"?checkpointJson:{format:"breditor/shared-typing-checkpoint-record",formatVersion:1,checkpointJson});
+ return insertBackupRecord(db,[identity.room,identity.writer],sessionBackupRecord(checkpointJson,identity));
+}
+/** Shared exact original encoding for insert-only restoration and read-before-adoption checks. */
+export function sessionBackupRecord(checkpointJson:string,identity:SharedBackupIdentity):unknown{
+ checkBackupCheckpoint(checkpointJson,identity);
+ if(identity.searchHistory)return {format:"breditor/shared-search-checkpoint-record",formatVersion:1,history:identity.history,rangeEditing:identity.rangeEditing,selectionEditing:identity.selectionEditing,richLanguage:identity.richLanguage,checkpointJson};
+ if(identity.selectionEditing==="document-v1")return {format:"breditor/shared-document-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson};
+ if(identity.rangeEditing==="general-v1")return {format:"breditor/shared-general-checkpoint-record",formatVersion:1,history:identity.history,richLanguage:identity.richLanguage,checkpointJson};
+ return identity.history==="explicit"?checkpointJson:{format:"breditor/shared-typing-checkpoint-record",formatVersion:1,checkpointJson};
 }

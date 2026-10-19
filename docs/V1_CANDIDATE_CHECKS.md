@@ -6,6 +6,16 @@ does not change package versions, publish, push, tag or deploy anything.
 
 ## Run the checks
 
+Both profiles require `participant-recovery-storage-contracts`,
+`participant-recovery-type-fence`,
+`participant-recovery` and `document-participant-recovery`. These check durable
+per-participant attempt markers, exact interrupted commit/adoption and original
+native reopening across all six selected session families. The fresh installed
+session consumer repeats the new 30 paired and 36 document-only cases through
+bare imports without replacing its existing archive workflows. This is not
+authenticated global participant discovery, room activation, generation bridging
+or browser/power-loss qualification.
+
 Use the documented Rust, wasm-bindgen and Node toolchains with the workspace
 dependencies installed. Native Cargo checks use the locked offline dependency
 graph. Package-consumer checks build fresh archives and install them into

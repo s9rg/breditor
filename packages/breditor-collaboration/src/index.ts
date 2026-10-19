@@ -86,3 +86,6 @@ export type {SharedRelayAssetInfo,SharedRelayAssetCache,SharedRelayAssetsOptions
 export {registerSharedRelayWriter} from "./relay/registration.js";
 export {SharedRelayError} from "./relay/validation.js";
 export type {SharedRelayIdentity,SharedRelayAuthentication,SharedRelayRegistrationOptions,SharedRelayRegistration,SharedRelayOptions,SharedDocumentRelayOptions,SharedRelayState,SharedRelayStatus} from "./relay/types.js";
+export {SharedParticipantRecovery,RecoveredSharedParticipant,type RecoveredSharedParticipantParts} from "./participant_recovery/recovery.js";
+export {SharedParticipantRecoveryError} from "./participant_recovery/errors.js";
+export type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryDestinations,SharedParticipantRecoverySession,SharedParticipantRecoveryStep,SharedParticipantRecoveryProgress} from "./participant_recovery/types.js";
