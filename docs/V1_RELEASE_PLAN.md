@@ -43,6 +43,20 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private native host now has a
+[combined selected server check](SELECTED_SERVER_RECOVERY_STATE.md): current owner
+authentication, protected original registrations and the exact native server
+log/raster cut are verified in one transaction. The native proof is bound to its
+live host and requires rechecking at later use; a byte-identical second restore
+cannot reuse it. The [focused qualification](qualification/2026-10-19-selected-server-recovery-state.json)
+passes 11 stages, including 167 relay tests/doctests, ten fresh native fixture
+families and workspace SDK recovery regressions. Existing Wasm binaries are
+retained unchanged; full installed-consumer checks are not rerun here. This adds a native
+activation prerequisite without starting a service, transferring browser owners,
+or completing provider closure or the cross-generation history bridge.
+
+### Previous catalog qualification checkpoint
+
 The [catalog qualification](qualification/2026-10-19-room-recovery-catalog.json)
 passes 46 selected checks, including 157 fresh relay tests, 2,647 TypeScript
 tests, 627 script tests, 385 editor tests and strict fresh installed consumers.

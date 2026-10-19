@@ -18,8 +18,8 @@ use axum::{
     routing::get,
 };
 pub use backup::{
-    ServerBackupHandle, ServerRecoveryState, ServerRecoveryStateIdentity,
-    router_with_server_backups,
+    ServerBackupHandle, ServerRecoveryCoverage, ServerRecoveryState, ServerRecoveryStateIdentity,
+    VerifiedServerRecoveryState, router_with_server_backups,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

@@ -1,10 +1,11 @@
 //! Actual private Host capture, original native restore and protected registration verification.
 use super::{Result, clients, source, storage};
 use breditor_collab_relay::{
-    RecoveryRegistrationCoverage, RecoveryRegistrationCredentials, Room,
-    RoomParticipantInventoryIdentity, RoomRecoveryPolicy, ServerRoomBackup, ServerRoomRecovery,
+    RecoveryDocumentCredential, RecoveryRegistrationCoverage, RecoveryRegistrationCredentials,
+    RecoveryReviewCredential, Room, RoomParticipantInventory, RoomParticipantInventoryIdentity,
+    RoomRecoveryPolicy, ServerRoomBackup, ServerRoomRecovery,
     assets::AssetStore,
-    server::{Authentication, router_with_server_backups},
+    server::{Authentication, ServerRecoveryCoverage, router_with_server_backups},
 };
 use serde_json::{Value, json};
 use std::path::Path;
@@ -19,6 +20,28 @@ fn fresh_authentication() -> Result<(Authentication, String)> {
     let (token, hash) = Authentication::issue_token()?;
     let config=json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":[{"principal":"owner","tokenHash":hash}]}).to_string();
     Ok((Authentication::from_json(&config)?, token))
+}
+fn protected_copy(input: &RecoveryRegistrationCredentials) -> RecoveryRegistrationCredentials {
+    RecoveryRegistrationCredentials {
+        documents: input
+            .documents
+            .iter()
+            .map(|r| RecoveryDocumentCredential {
+                principal: r.principal.clone(),
+                writer: r.writer.clone(),
+                credential: r.credential.clone(),
+            })
+            .collect(),
+        reviews: input
+            .reviews
+            .iter()
+            .map(|r| RecoveryReviewCredential {
+                principal: r.principal.clone(),
+                actor: r.actor.clone(),
+                credential: r.credential.clone(),
+            })
+            .collect(),
+    }
 }
 async fn capture_and_verify(
     directory: &Path,
@@ -52,6 +75,39 @@ async fn capture_and_verify(
     if handle.capture_recovery_state("owner", &token).await?.identity() != selected {
         return Err("native capture changed across restore".into());
     }
+    let current_inventory =
+        || RoomParticipantInventory::from_json(&inventory_json, &selected.participants);
+    let ServerRecoveryCoverage::Pending { missing } = handle
+        .verify_selected_recovery_state(
+            "owner",
+            &token,
+            selected.clone(),
+            current_inventory()?,
+            RecoveryRegistrationCredentials::default(),
+        )
+        .await?
+    else {
+        return Err("missing original records created a combined native proof".into());
+    };
+    if missing.is_empty() {
+        return Err("fixture must retain registered clients".into());
+    }
+    let ServerRecoveryCoverage::Verified(selected_proof) = handle
+        .verify_selected_recovery_state(
+            "owner",
+            &token,
+            selected.clone(),
+            current_inventory()?,
+            protected_copy(&protected),
+        )
+        .await?
+    else {
+        return Err("combined native original cut not verified".into());
+    };
+    if selected_proof.identity() != selected {
+        return Err("combined native proof cut changed".into());
+    }
+    selected_proof.check_live(&handle, "owner", &token).await?;
     let verified =
         handle.verify_recovery_registrations("owner", &token, inventory, protected).await?;
     let RecoveryRegistrationCoverage::Verified(proof) = verified else {
@@ -88,6 +144,6 @@ pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
     storage::write_new(&root.join("server.backup"), &server_bytes)?;
     storage::write_new(&root.join("fixture.json"), file.as_bytes())?;
     Ok(
-        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"rawCredentialsExported":false}),
+        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"nativeSelectedServerStateVerified":true,"rawCredentialsExported":false}),
     )
 }

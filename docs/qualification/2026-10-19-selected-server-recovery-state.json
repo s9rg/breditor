@@ -1,0 +1,62 @@
+{
+  "format": "breditor/selected-server-recovery-state-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "passed": true,
+  "scope": "Focused private native-host recovery check and existing workspace actual-Wasm participant/catalog regressions; not V1 readiness or activation qualification.",
+  "baselineCommit": "5a0367a81207021651b76ea24e61219576783af3",
+  "testedWorkingSource": {
+    "sha256": "9a0e379832730593bd92c242fc56bcc9abf07350b8e5cfade923f0c1d4c419cc",
+    "files": 4547,
+    "bytes": 39971457,
+    "nonDocumentationSha256": "c6fca5d1ca67d0032959bae92a1c764df8a61ec06dba4fda693fc1524e655853",
+    "followup": "Only repository documentation may differ after the focused run; the final source audit requires exact unchanged non-documentation bytes."
+  },
+  "evidence": {
+    "result": "target/selected-server-recovery-checkpoint/run-cxOrdU/result.json",
+    "sourceManifest": "target/selected-server-recovery-checkpoint/frozen-source-files.json",
+    "finalSourceAudit": "target/selected-server-recovery-checkpoint/final-source-audit.json"
+  },
+  "checks": {
+    "selectedStages": 11,
+    "freshRelayTestsAndDoctests": 167,
+    "newPublicNativeRegressionTests": 8,
+    "newProofCompileFailContracts": 2,
+    "relayStrictAllTargets": true,
+    "relayWithoutServerFeature": true,
+    "freshCollaborationTypeScriptBuild": true,
+    "freshNativeCompilerTransportFamilies": 10,
+    "freshNativeOriginalRestoreAndCurrentAuthentication": true,
+    "freshNativeCombinedCheckAndRecheck": true,
+    "protectedOriginalRegistrationAssertionsRetained": true,
+    "rawCredentialsExported": false,
+    "workspaceInventoryRestoredParticipants": 20,
+    "workspaceInventoryAcceptedStreamsCovered": 40,
+    "workspaceCatalogStagedParticipants": 20,
+    "workspaceCatalogExactReopens": 10,
+    "workspaceCatalogRetainedFiles": 40,
+    "workspaceCatalogUploadEntries": 60,
+    "storageContracts": 11,
+    "readinessContracts": 25,
+    "scriptSkips": 0
+  },
+  "retainedUnchangedRuntimeSha256": {
+    "local": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "shared": "880e770934588a4aafe50a65a616637c051f1eb654951dad538ff494abdc9fbe"
+  },
+  "freshRuntimeRebuild": false,
+  "freshFullInstalledConsumer": false,
+  "freshRootAndSharedNativeSuites": false,
+  "limits": [
+    "No constructor, deserializer, default constructor or persisted readiness Boolean can create the host-bound native proof.",
+    "A proof weakly references one live room owner and must reauthenticate/recheck at later use; it is not an atomic barrier for a later action.",
+    "Exact original native raster files do not prove current provider closure across all retained histories and offline sources.",
+    "Protected credential custody, current deployment fencing, native operational handoff and browser owner transfer remain unfinished.",
+    "Cross-generation Undo/Redo and outstanding offline edit preservation remain unfinished.",
+    "No fresh physical browser, clipboard, Japanese IME, VoiceOver, process-kill or power-loss qualification. Historical WebKit fault remains unconfirmed."
+  ],
+  "openV1Gates": 13,
+  "v1Ready": false,
+  "published": false,
+  "pushed": false
+}

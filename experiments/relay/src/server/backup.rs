@@ -2,7 +2,9 @@
 use super::{Authentication, Host, create_host, routes};
 use crate::{Error, Result, Room, ServerRoomBackup, assets::AssetStore};
 use axum::Router;
+mod recovery_check;
 mod recovery_inventory;
+pub use recovery_check::{ServerRecoveryCoverage, VerifiedServerRecoveryState};
 pub use recovery_inventory::{ServerRecoveryState, ServerRecoveryStateIdentity};
 
 /// Host-only access to a serialized server log/raster capture, not a browser/account capability.

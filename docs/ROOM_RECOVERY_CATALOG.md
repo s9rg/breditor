@@ -43,6 +43,11 @@ Server log replay, native server-raster admission, current owner authentication
 and separately protected original resume credentials remain native-host checks.
 The catalog neither accepts resume credentials nor turns hashes into those checks.
 
+The private native host's [selected server checks](SELECTED_SERVER_RECOVERY_STATE.md)
+combine current owner authentication, original registration credentials and both
+exact native files in one transaction. Their host-local proof still grants no
+catalog activation or provider/client coverage.
+
 ## Stage explicit native factories and destinations
 
 ```ts

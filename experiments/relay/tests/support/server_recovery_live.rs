@@ -12,13 +12,13 @@ use std::{
     net::{SocketAddr, TcpStream},
     time::Duration,
 };
-fn authentication() -> Result<(Authentication, String, String)> {
+pub(super) fn authentication() -> Result<(Authentication, String, String)> {
     let (owner, owner_hash) = Authentication::issue_token()?;
     let (reader, reader_hash) = Authentication::issue_token()?;
     let config=json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":[{"principal":"owner","tokenHash":owner_hash},{"principal":"reader","tokenHash":reader_hash}]}).to_string();
     Ok((Authentication::from_json(&config)?, owner, reader))
 }
-async fn request(
+pub(super) async fn request(
     address: SocketAddr,
     method: &str,
     path: &str,
@@ -51,7 +51,7 @@ async fn request(
         .parse()?;
     Ok((status, response[split + 4..].to_vec()))
 }
-async fn start(
+pub(super) async fn start(
     router: axum::Router,
 ) -> Result<(
     SocketAddr,
