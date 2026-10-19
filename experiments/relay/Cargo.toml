@@ -62,6 +62,11 @@ name = "review_assets_functional"
 path = "examples/review_assets_functional.rs"
 required-features = ["server"]
 
+[[example]]
+name = "participant_inventory_fixture"
+path = "examples/participant_inventory_fixture.rs"
+required-features = ["server"]
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"

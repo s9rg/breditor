@@ -1,6 +1,6 @@
 /** Consistent owner + selected retained packet capture; no provider fetch, save, finality or GC. */
 import type {RichRetainedAssetReference} from "@breditor/experimental-rich-content";
-import type {SharedRichEditor} from "./core.js";
+import {SharedRichEditor} from "./core.js";
 import type {SharedSelectionPolicy} from "./types.js";
 import type {SharedReviewPersistentSession} from "./persistence/review_session.js";
 import type {VersionCatalogStore} from "./versions/store.js";
@@ -33,11 +33,13 @@ export interface SharedAssetReferenceCaptureMetadata {
 // Four current 32 MiB record families plus the 16 MiB native journal fit without truncation.
 export const MAX_SHARED_ASSET_CAPTURE_SOURCE_BYTES=160*1024*1024;
 export const MAX_SHARED_ASSET_CAPTURE_PACKETS=1024;
-const key=Object.freeze({}),proofs=new WeakMap<SharedAssetReferenceCapture,{records:readonly SharedAssetCaptureRecord[];check:()=>void}>();
+/** Internal borrowed canonical facade reads; no editing, connection or owner transfer. */
+export type SharedCapturedRecoveryRead=Pick<SharedRichEditor,"descriptor"|"checkpointJson"|"writerClock"|"writerClockV2"|"writerGroups"|"writerGroupsV2"|"reviewWriterClock"|"reviewCheckpoint"|"localReviewClock">;
+const key=Object.freeze({}),proofs=new WeakMap<SharedAssetReferenceCapture,{records:readonly SharedAssetCaptureRecord[];check:()=>void;native:SharedCapturedRecoveryRead}>();
 const failed=()=>new Error("The selected asset capture source is closed, replaced or no longer current");
 export class SharedAssetReferenceCapture {
  readonly #metadata:SharedAssetReferenceCaptureMetadata;
- private constructor(token:object,metadata:SharedAssetReferenceCaptureMetadata,records:readonly SharedAssetCaptureRecord[],check:()=>void){if(token!==key)throw failed();this.#metadata=metadata;proofs.set(this,{records,check});Object.freeze(this);}
+ private constructor(token:object,metadata:SharedAssetReferenceCaptureMetadata,records:readonly SharedAssetCaptureRecord[],check:()=>void,native:SharedCapturedRecoveryRead){if(token!==key)throw failed();this.#metadata=metadata;proofs.set(this,{records,check,native});Object.freeze(this);}
  /** Frozen detached dependency metadata remains readable after disposal, but grants no authority. */
  metadata():SharedAssetReferenceCaptureMetadata{return this.#metadata;}
  /** Exact captured recovery JSON, not current credentials or a server/writer grant. */
@@ -76,8 +78,17 @@ export class SharedAssetReferenceCapture {
   const outcome=pending.length?Object.freeze({kind:"pending" as const,pending:Object.freeze(pending)}):Object.freeze({kind:"ready" as const,references});
   const metadata:SharedAssetReferenceCaptureMetadata=Object.freeze({format:"breditor/shared-asset-reference-capture",formatVersion:1,document:base.document,revision,scope:"native-and-selected-retained-packets",sources:Object.freeze(sources),packets:Object.freeze(packets),outcome});
   seen.clear();pairs.clear();
-  return new SharedAssetReferenceCapture(key,metadata,Object.freeze(records),check);
+  const {descriptor,checkpointJson,writerClock,writerClockV2,writerGroups,writerGroupsV2,reviewWriterClock,reviewCheckpoint,localReviewClock}=SharedRichEditor.prototype,native:SharedCapturedRecoveryRead=Object.freeze({
+   descriptor:()=>descriptor.call(core),checkpointJson:()=>checkpointJson.call(core),
+   writerClock:(writer:string)=>writerClock.call(core,writer),writerClockV2:(writer:string)=>writerClockV2.call(core,writer),
+   writerGroups:(after:string)=>writerGroups.call(core,after),writerGroupsV2:(after:string)=>writerGroupsV2.call(core,after),
+   reviewWriterClock:(actor:string,principal:string,through?:string)=>reviewWriterClock.call(core,actor,principal,through),
+   reviewCheckpoint:()=>reviewCheckpoint.call(core),localReviewClock:()=>localReviewClock.call(core),
+  });
+  return new SharedAssetReferenceCapture(key,metadata,Object.freeze(records),check,native);
  }
 }
 /** Explicit source list; omitted stores, server state, SDK remote queues and extensions are excluded. */
 export function captureSharedAssetReferences<P extends SharedSelectionPolicy>(input:SharedAssetReferenceCaptureOptions<P>):SharedAssetReferenceCapture{return SharedAssetReferenceCapture.capture(input);}
+/** Internal only: a detached record or lookalike handle cannot obtain native read closures. */
+export function capturedRecoveryRead(source:SharedAssetReferenceCapture):SharedCapturedRecoveryRead{const value=proofs.get(source);if(!value)throw failed();value.check();return value.native;}

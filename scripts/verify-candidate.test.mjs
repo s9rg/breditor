@@ -192,3 +192,17 @@ test("workspace exposes the separate candidate verifier without changing the def
 test("both profiles require durable participant attempts and all explicit native session families",()=>{
  for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const r=plan.checks.find(s=>s.id===id);assert.ok(r,id);return r;};assert.deepEqual(find("participant-recovery-storage-contracts").args,["--test","scripts/participant-recovery-storage.test.mjs"]);assert.deepEqual(find("participant-recovery-type-fence").args,["node_modules/typescript/bin/tsc","--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","scripts/fixtures/editor-consumer/types-participant-recovery.ts"]);for(const [id,file]of [["participant-recovery","probe-participant-recovery.mjs"],["document-participant-recovery","probe-document-participant-recovery.mjs"]]){assert.deepEqual(find(id).args,[`scripts/${file}`,"target/promoted-shared-web"]);assert.ok(plan.checks.indexOf(find(id))>plan.checks.indexOf(find("collaboration-build")));}}
 });
+test("both profiles require exact native inventory, real SDK recovery and public immutable non-authority types",()=>{
+ for(const profile of ["functional","full"]){
+  const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(s=>s.id===id);assert.ok(row,id);return row;};
+  assert.deepEqual(find("room-participant-inventory-contracts").args,["--test","scripts/room-participant-inventory.test.mjs"]);
+  assert.deepEqual(find("room-participant-inventory-type-fence").args,["node_modules/typescript/bin/tsc","--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","scripts/fixtures/editor-consumer/types-room-participant-inventory.ts"]);
+  for(const [id,script,path]of [["native-room-participant-inventory","check-room-participant-inventory-native.mjs","target/room-participant-inventory-native.json"],["room-participant-inventory","check-room-participant-inventory-sdk.mjs","target/room-participant-inventory-sdk.json"]]){const row=find(id);assert.deepEqual(row.args,[`scripts/${script}`]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(row)>p.checks.indexOf(find("collaboration-build")));}
+  assert.ok(p.checks.indexOf(find("native-room-participant-inventory"))<p.checks.indexOf(find("room-participant-inventory")));assert.deepEqual(find("installed-session-backups").args,["scripts/check-session-backups-installed.mjs"]);
+ }
+});
+test("fresh installed backup acceptance retains old assertions and adds bare native inventory and production imports",()=>{
+ const text=readFileSync(join(repository,"scripts/check-session-backups-installed.mjs"),"utf8");
+ for(const required of ["types-room-participant-inventory.ts","buildRoomParticipantInventoryFixtures({saveReport:false})","room-participant-inventory-probe.mjs","room-participant-inventory.html","/node_modules/@breditor/collaboration/dist/room_participant_inventory/","acceptance.cases,20","retainedStores.storeRestores,90","participantBackups","participantRecovery","documentParticipantRecovery","registeredStreamsCovered:40","documentForkRefusals:10","reviewForkRefusals:10","futureDocumentCheckpoints:36","networkCalls:0"])assert.ok(text.includes(required),required);
+ assert.ok(!text.includes('args.includes("--skip')&&!text.includes("--skip-inventory"));
+});

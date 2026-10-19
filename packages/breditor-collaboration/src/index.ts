@@ -19,6 +19,9 @@ export {SharedParticipantBackup,captureSharedParticipantBackup,readSharedPartici
 export {SharedParticipantBackupError} from "./participant_backup/policy.js";
 export {SHARED_PARTICIPANT_BACKUP_MIME,MAX_SHARED_PARTICIPANT_BACKUP_BYTES,MAX_SHARED_PARTICIPANT_BACKUP_HEADER_BYTES} from "./participant_backup/format.js";
 export type {SharedParticipantBackupIdentity,SharedParticipantBackupSelection,SharedParticipantBackupOptions,SharedParticipantBackupCaptureOptions,SharedParticipantBackupPending} from "./participant_backup/types.js";
+export {SharedRoomParticipantInventory,readSharedRoomParticipantInventory} from "./room_participant_inventory/inventory.js";
+export {SharedRoomParticipantInventoryError,MAX_SHARED_ROOM_PARTICIPANT_INVENTORY_BYTES} from "./room_participant_inventory/policy.js";
+export type * from "./room_participant_inventory/types.js";
 export {mountRichWritingTools as mountSharedWritingTools,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";
 export {createRichFullscreen as createSharedFullscreen,mountRichFullscreenControls as mountSharedFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";

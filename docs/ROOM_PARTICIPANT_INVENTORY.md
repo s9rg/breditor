@@ -121,9 +121,11 @@ raw secret. This API neither discovers nor backs up the host's protected identit
 store. The host must retain those secrets independently and decide how to recover
 missing devices without cloning an active author.
 
-A trusted catalog must still reconcile all chosen client databases and historic
-copies with the server inventory, verify accepted prefixes through genuine
-recovered native owners, resolve complete provider and asset dependencies, and
-record a durable room-wide activation barrier. These APIs do not implement that
-catalog, automatic permission restoration or activation. The approved bridge for
-cross-generation Undo/Redo and outstanding offline edits also remains work.
+The SDK's [participant reconciliation](CLIENT_PARTICIPANT_RECONCILIATION.md) can
+compare selected genuine recovered client sources with these accepted document
+and review prefixes. A trusted catalog must still discover and reconcile all
+chosen client databases and historic copies, resolve complete provider and asset
+dependencies, and record a durable room-wide activation barrier. These APIs do
+not implement that catalog, automatic permission restoration or activation. The
+approved bridge for cross-generation Undo/Redo and outstanding offline edits also
+remains work.

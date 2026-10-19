@@ -43,6 +43,55 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [client participant reconciliation checkpoint](qualification/2026-10-19-client-participant-reconciliation.json)
+passes one frozen 41-check selection. The SDK reads the independently selected
+native inventory and checks genuine inactive participant recoveries against
+original accepted document/review prefixes and declared retained-store bindings.
+Pending edits remain local; older sources stay pending, forks refuse, and
+duplicate copies are never silently selected or discarded. Coverage is
+diagnostic data, not a credential proof or activation grant. The
+[reconciliation contract](CLIENT_PARTICIPANT_RECONCILIATION.md) defines these
+boundaries and the separate live-policy step.
+
+Actual native source-stop/server-restore fixtures cover all ten compiler and
+transport combinations, fresh owner authentication and original protected
+registration verification without exporting raw credentials. Twenty recovered
+participants restore 60 primary components and cover 40 registered streams.
+Their offline document/comment suffixes, permanent observers and a revoked
+contributor survive. Another 110 native-backed older, forked, unbound and
+wrong-namespace variants remain pending or refuse without overwriting sources.
+Seventy-two future document/comment history checkpoints match independent native
+restores.
+
+Fresh offline archives repeat these workflows through bare public imports and
+strict consumer types. All previous installed document/paired, retained-store,
+selected-byte, participant-file and 66-configuration recovery assertions remain
+mandatory and pass. The production inventory entry bundles installed code
+without workspace links, React or synthetic storage. Both official Wasm
+runtimes are freshly rebuilt with unchanged Wasm hashes.
+
+The selection freshly passes 157 relay tests/doctests, 2,647 TypeScript unit
+tests, 613 script tests, 382 editor tests, 37 runner contracts and 19 new reader
+contracts. Three existing opt-in script checks remain skipped. The unchanged
+2,620 root and 623 shared native tests are carried evidence, not fresh runs.
+Node storage/lock fixtures and native private-host APIs do not qualify physical
+browser, process-kill or power-loss behavior.
+
+The first round trip correctly refused a source that the fixture changed before
+checking. Reapplying live read-only policy advanced publication one to two,
+because journals deliberately do not revive permissions. The fixture now verifies
+the original inactive cut first; eleven subsequent policy publications explicitly
+invalidate the old proof and refuse edits. Native source and revision checks
+remain strict.
+
+A durable trusted catalog must still discover and reconcile all client/historic
+stores, retain protected resume credentials, resolve current-provider assets and
+coordinate room-wide activation. The approved cross-generation Undo/Redo and
+outstanding offline-edit bridge remains unimplemented. All 13 V1 gates remain
+open; no version, push, publication or deployment is promoted.
+
+### Previous native participant inventory checkpoint
+
 The [native participant inventory checkpoint](qualification/2026-10-19-native-participant-inventory.json)
 passes one frozen 27-check selection. The private host can authenticate the
 current owner, capture every registered document/review stream at the exact

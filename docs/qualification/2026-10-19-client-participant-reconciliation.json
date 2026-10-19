@@ -1,0 +1,1309 @@
+{
+  "format": "breditor/client-participant-reconciliation-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "baseCommit": "2119bc06992f4fcc001f0dfe8be08f299aef15a6",
+  "scope": "Read the independently selected native owner inventory and reconcile genuine inactive native/packet participant recoveries against accepted original document/review prefixes and declared store namespaces. Preserve offline histories; permanent observers, revoked contributors and conflicting/older/unbound inputs remain explicit. Diagnostic coverage only, not global activation or authentication.",
+  "source": {
+    "commit": "2119bc06992f4fcc001f0dfe8be08f299aef15a6",
+    "dirty": true,
+    "sha256": "4c8979da7c55d8d93bd161c60f4176ca55eba0b755ca0cc7272671e83d42f44a",
+    "files": 4514,
+    "bytes": 39748031
+  },
+  "sourceBinding": {
+    "frozenInventory": {
+      "path": "target/sdk-participant-inventory-frozen-inputs.json",
+      "bytes": 1063329,
+      "sha256": "6926536409c094d9bfa7669474ac13aa2d4e036b24fa28bed6ff2c77d7b576b5",
+      "modifiedAtMs": 1792407292383.3403
+    },
+    "nonDocumentation": {
+      "sha256": "104e35bdb7fdcfa8ec71db455cc363566d7f3512934ba9a542945044dc8ce75a",
+      "count": 4051,
+      "bytes": 32704381
+    }
+  },
+  "qualification": {
+    "evidence": {
+      "path": "target/v1-candidate-runs/run-lRfBoe/result.json",
+      "bytes": 65412,
+      "sha256": "8c9edb407c995f22f570cf39c1258d9a838d6a149e887c368b8c4e4fcac12a92",
+      "modifiedAtMs": 1792407740301.3735
+    },
+    "selectedChecksPassed": 41,
+    "wholeOfficialProfile": false,
+    "stages": [
+      {
+        "id": "unchanged-original-native-and-default-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/01-unchanged-original-native-and-default-contracts.log",
+          "bytes": 877,
+          "sha256": "b07e02c01d817b71c808da61eed6024c6219cd36ceb9174d9854e5de9a0660be",
+          "modifiedAtMs": 1792407293086.0627
+        },
+        "artifacts": []
+      },
+      {
+        "id": "candidate-runner-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/02-candidate-runner-contracts.log",
+          "bytes": 8771,
+          "sha256": "2bfde3ed9b9e17d0ef12629f583a665d2c450a3d474ab658db5a512bcafb911e",
+          "modifiedAtMs": 1792407295037.8423
+        },
+        "artifacts": []
+      },
+      {
+        "id": "relay-format",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/03-relay-format.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792407295650.6077
+        },
+        "artifacts": []
+      },
+      {
+        "id": "relay-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/04-relay-lint.log",
+          "bytes": 560,
+          "sha256": "9e75bdb00b6af2cc6b9ebdfdc539464cbcfc3d6826e621a0c62be9a00ddbb659",
+          "modifiedAtMs": 1792407297185.128
+        },
+        "artifacts": []
+      },
+      {
+        "id": "relay-native",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/05-relay-native.log",
+          "bytes": 22123,
+          "sha256": "79ef64fe302fd75b18d1b3d9360c34bff03633376b1d0ea00456c4be3e342980",
+          "modifiedAtMs": 1792407354305.967
+        },
+        "artifacts": []
+      },
+      {
+        "id": "relay-docs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/06-relay-docs.log",
+          "bytes": 728,
+          "sha256": "dcdba1e4114b2366b4fda932ab283a5529ae023127e27fb14c74f92cae28fa50",
+          "modifiedAtMs": 1792407357941.086
+        },
+        "artifacts": []
+      },
+      {
+        "id": "default-typescript-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/07-default-typescript-build.log",
+          "bytes": 2421,
+          "sha256": "7eab9e2abe04e90712ccc1f187a12d4b31d95ce06e8ba3695540b8f89717d57c",
+          "modifiedAtMs": 1792407362341.7708
+        },
+        "artifacts": []
+      },
+      {
+        "id": "paired-local-runtime",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/08-paired-local-runtime.log",
+          "bytes": 422,
+          "sha256": "ce303f726d0c96e3bf7d6d867205e4c615141dcd6d0b8b3c1516f258403965ca",
+          "modifiedAtMs": 1792407363746.91
+        },
+        "artifacts": [
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.js",
+            "bytes": 176594,
+            "sha256": "8ff8899f4d235725a9954623be66565585ca519f557f0f5acc5835d31ff46576",
+            "modifiedAtMs": 1792407363750.869
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+            "bytes": 5910494,
+            "sha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+            "modifiedAtMs": 1792407363756.7356
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts",
+            "bytes": 96700,
+            "sha256": "707887e7fc0cfa40f9210f3035bea41bed9ca040eb89b98d5fd5222195cb6243",
+            "modifiedAtMs": 1792407363751.2258
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_dependency_inventory.json",
+            "bytes": 29157,
+            "sha256": "abe6f0e7f7049ede0c6e65fcda2a2c9319da0e2f1f6f01c01f9694a9650c6e0c",
+            "modifiedAtMs": 1792407363759.5254
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/THIRD_PARTY_NOTICES.txt",
+            "bytes": 353584,
+            "sha256": "b453b4e00e6ab941cce24809a27ce4ed6801585a81592c2bebe501a1f5a15a9b",
+            "modifiedAtMs": 1792407363760.028
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/RUST_COPYRIGHT-library.html",
+            "bytes": 1512520,
+            "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+            "modifiedAtMs": 1792407363761.4905
+          }
+        ]
+      },
+      {
+        "id": "paired-shared-runtime",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/09-paired-shared-runtime.log",
+          "bytes": 1185,
+          "sha256": "7262c95f871c838b72ad868e666e29825fdb8f38daf9a72ea434aeb572be72b0",
+          "modifiedAtMs": 1792407365962.7258
+        },
+        "artifacts": [
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+            "bytes": 172704,
+            "sha256": "3e80dc9f737ad03ab0d50ee80f6a2637595985ce61f58631c2457044bdef5a92",
+            "modifiedAtMs": 1792407365966.8613
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+            "bytes": 13030929,
+            "sha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+            "modifiedAtMs": 1792407365979.283
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+            "bytes": 65399,
+            "sha256": "b1191a86e147957a667d028ff41903fcf3074ee05fdf3d5fd6e4b3bdaf030666",
+            "modifiedAtMs": 1792407365967.4253
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+            "bytes": 124122,
+            "sha256": "251c68eefb1f5a2f2c5b2f8908f4994a9c41eb5f16500a9fa1754b60619555a3",
+            "modifiedAtMs": 1792407365980.8992
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+            "bytes": 1380448,
+            "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+            "modifiedAtMs": 1792407365982.8015
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+            "bytes": 1512520,
+            "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+            "modifiedAtMs": 1792407365984.9265
+          }
+        ]
+      },
+      {
+        "id": "shared-wasm-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/10-shared-wasm-lint.log",
+          "bytes": 507,
+          "sha256": "cee481fea21f4a70d9938f34e0fe79d8082a1cdc0bf8a7aa029a3becf13658bf",
+          "modifiedAtMs": 1792407366848.7383
+        },
+        "artifacts": []
+      },
+      {
+        "id": "rich-browser-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/11-rich-browser-build.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792407367433.8135
+        },
+        "artifacts": []
+      },
+      {
+        "id": "collaboration-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/12-collaboration-build.log",
+          "bytes": 82,
+          "sha256": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12",
+          "modifiedAtMs": 1792407368428.7007
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/13-editor-build.log",
+          "bytes": 75,
+          "sha256": "1310c2fdb084ee048dc83520d840d200e7f41bfad549bd6f349c38aef1c38b44",
+          "modifiedAtMs": 1792407369479.0356
+        },
+        "artifacts": []
+      },
+      {
+        "id": "clean-candidate-sdk-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/14-clean-candidate-sdk-build.log",
+          "bytes": 4751,
+          "sha256": "93a58207f384abca7e1914d8dbdeddd93feaf3d865534802cb7615f4c8d12d2a",
+          "modifiedAtMs": 1792407374067.0356
+        },
+        "artifacts": [
+          {
+            "path": "target/candidate-sdk-build.json",
+            "bytes": 142654,
+            "sha256": "934a261c6b233f9331bf628df734f1f70c68841b0d3ced4357ce5b366f3cd9db",
+            "modifiedAtMs": 1792407374066.3372
+          }
+        ]
+      },
+      {
+        "id": "typescript-tests-and-script-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/15-typescript-tests-and-script-contracts.log",
+          "bytes": 125440,
+          "sha256": "77c08d978549ee3ce8e517b7cb84afb91bec520d80298bd93a71b61e951e1653",
+          "modifiedAtMs": 1792407394993.5488
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-sdk-tests",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/16-editor-sdk-tests.log",
+          "bytes": 619,
+          "sha256": "f6bcd38b9a8c0860e3e376abd824b837f5995a396c6780969567d46c8398f208",
+          "modifiedAtMs": 1792407401263.2627
+        },
+        "artifacts": []
+      },
+      {
+        "id": "asset-archive-storage-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/17-asset-archive-storage-contracts.log",
+          "bytes": 3476,
+          "sha256": "5aba2baca4a4c7b911723d2648d37d73b3736fe447533e2c6d720a0dc781eee6",
+          "modifiedAtMs": 1792407402076.0137
+        },
+        "artifacts": []
+      },
+      {
+        "id": "asset-source-snapshot-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/18-asset-source-snapshot-contracts.log",
+          "bytes": 1355,
+          "sha256": "0338f90268d8d4e9d1588c7783369cfbb8e660d78ed9f0cf5e190fe32844141d",
+          "modifiedAtMs": 1792407402807.1985
+        },
+        "artifacts": []
+      },
+      {
+        "id": "asset-source-cancellation-regression",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/19-asset-source-cancellation-regression.log",
+          "bytes": 386,
+          "sha256": "e50a3ff968927e87a51699d11b82204e55a760fd197eb5ce27a048b41ab602de",
+          "modifiedAtMs": 1792407403531.0254
+        },
+        "artifacts": []
+      },
+      {
+        "id": "participant-recovery-storage-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/20-participant-recovery-storage-contracts.log",
+          "bytes": 2011,
+          "sha256": "2e3fd59fbd3dde4970f50e0dca2d3f6f2289b71240f66f0c51ac281444c8684b",
+          "modifiedAtMs": 1792407404287.8286
+        },
+        "artifacts": []
+      },
+      {
+        "id": "participant-recovery-type-fence",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/21-participant-recovery-type-fence.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792407404882.198
+        },
+        "artifacts": []
+      },
+      {
+        "id": "room-participant-inventory-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/22-room-participant-inventory-contracts.log",
+          "bytes": 4087,
+          "sha256": "326902f16e92b47dfb18293561e296e8ff12d399c4aaabbe2987a0eb604e0331",
+          "modifiedAtMs": 1792407405839.5535
+        },
+        "artifacts": []
+      },
+      {
+        "id": "room-participant-inventory-type-fence",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/23-room-participant-inventory-type-fence.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792407406438.06
+        },
+        "artifacts": []
+      },
+      {
+        "id": "native-room-participant-inventory",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/24-native-room-participant-inventory.log",
+          "bytes": 9655,
+          "sha256": "11105a2da46b97128121962794790345dbc19f70f7382ae62f32163fa5c4679c",
+          "modifiedAtMs": 1792407410190.6157
+        },
+        "artifacts": [
+          {
+            "path": "target/room-participant-inventory-native.json",
+            "bytes": 9119,
+            "sha256": "ebb34393f52b3739f4927034131ae5a30278c741d9f76de680955fd87768929e",
+            "modifiedAtMs": 1792407410180.6777
+          }
+        ]
+      },
+      {
+        "id": "room-participant-inventory",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/25-room-participant-inventory.log",
+          "bytes": 2247,
+          "sha256": "636855fd50191f5d5462c7d89dd92183f74ce98f7954f6a6e7907473cc91546b",
+          "modifiedAtMs": 1792407414746.7761
+        },
+        "artifacts": [
+          {
+            "path": "target/room-participant-inventory-sdk.json",
+            "bytes": 2247,
+            "sha256": "636855fd50191f5d5462c7d89dd92183f74ce98f7954f6a6e7907473cc91546b",
+            "modifiedAtMs": 1792407414735.4172
+          }
+        ]
+      },
+      {
+        "id": "retained-image-references",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/26-retained-image-references.log",
+          "bytes": 1122,
+          "sha256": "83c983d98839966bae6105e602feee60b65193d402b23520c79f44bec7c6750e",
+          "modifiedAtMs": 1792407416387.951
+        },
+        "artifacts": []
+      },
+      {
+        "id": "packet-asset-references",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/27-packet-asset-references.log",
+          "bytes": 1437,
+          "sha256": "af939915566d611cec143554c0b1a511d91b7aa050360063066ff7bdbc2276ee",
+          "modifiedAtMs": 1792407420518.9358
+        },
+        "artifacts": []
+      },
+      {
+        "id": "version-source-ownership",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/28-version-source-ownership.log",
+          "bytes": 657,
+          "sha256": "87b3174df42bf4111f5daa46362c552dc98977c88c6fc0accf1357bdf77a49c9",
+          "modifiedAtMs": 1792407421272.6895
+        },
+        "artifacts": []
+      },
+      {
+        "id": "selected-asset-bytes",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/29-selected-asset-bytes.log",
+          "bytes": 1495,
+          "sha256": "15dc81c312a19f9c95ffa467f6d7916ab30cae14fca038be9c6bf29d2f17da43",
+          "modifiedAtMs": 1792407429982.077
+        },
+        "artifacts": []
+      },
+      {
+        "id": "shared-session-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/30-shared-session-backups.log",
+          "bytes": 1067,
+          "sha256": "d760b8f892829dc733d95867274e399cc81355372d9747f4beae70198b1acde4",
+          "modifiedAtMs": 1792407459290.4475
+        },
+        "artifacts": []
+      },
+      {
+        "id": "paired-session-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/31-paired-session-backups.log",
+          "bytes": 1045,
+          "sha256": "f45db216080b188d081c76018be34f70436d779a313952ba38a4727308b47a46",
+          "modifiedAtMs": 1792407548527.4053
+        },
+        "artifacts": []
+      },
+      {
+        "id": "retained-store-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/32-retained-store-backups.log",
+          "bytes": 1556,
+          "sha256": "3d5869ab85857c5664eb322e4b0f906902c0c0d0c5643adb1d43338fb2fc064d",
+          "modifiedAtMs": 1792407559691.822
+        },
+        "artifacts": []
+      },
+      {
+        "id": "participant-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/33-participant-backups.log",
+          "bytes": 2783,
+          "sha256": "654e881c8cd1afe4313cf422899d2c7ca06d64150bfd85fb777d912b7fa3941f",
+          "modifiedAtMs": 1792407575376.4177
+        },
+        "artifacts": []
+      },
+      {
+        "id": "participant-recovery",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/34-participant-recovery.log",
+          "bytes": 4111,
+          "sha256": "10b22b5d89cc50eb1b94448aba2229d135c0017272cb104571955df75a9c5234",
+          "modifiedAtMs": 1792407599523.9714
+        },
+        "artifacts": []
+      },
+      {
+        "id": "document-participant-recovery",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/35-document-participant-recovery.log",
+          "bytes": 580,
+          "sha256": "a540b7252aaadbab476e1275f56ba210b48b055e5126bb655249aa95072d1510",
+          "modifiedAtMs": 1792407626675.3684
+        },
+        "artifacts": []
+      },
+      {
+        "id": "workspace-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/36-workspace-types.log",
+          "bytes": 485,
+          "sha256": "ff2b7d73a790f5c53c02c54cf8b67d6ed1036e66eae4f636f307f8f2d960c48c",
+          "modifiedAtMs": 1792407629221.821
+        },
+        "artifacts": []
+      },
+      {
+        "id": "rich-browser-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/37-rich-browser-types.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792407630273.3586
+        },
+        "artifacts": []
+      },
+      {
+        "id": "collaboration-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/38-collaboration-types.log",
+          "bytes": 95,
+          "sha256": "420af9e6b28474243a0fd35510d2c8039b52f408426ec54c2b14dc6177522b1a",
+          "modifiedAtMs": 1792407631251.036
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-types",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/39-editor-types.log",
+          "bytes": 88,
+          "sha256": "4ed1577b26f7965af6b47dde9307902ced45570b6d37297049bd7086fd0d55a2",
+          "modifiedAtMs": 1792407632332.9377
+        },
+        "artifacts": []
+      },
+      {
+        "id": "installed-session-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/40-installed-session-backups.log",
+          "bytes": 28707,
+          "sha256": "ed63d10f9de3499d011553eaedd74d19a0bfc3ebdb74ee530aa6667f8397a332",
+          "modifiedAtMs": 1792407739031.8567
+        },
+        "artifacts": [
+          {
+            "path": "target/session-backups-installed-consumer.json",
+            "bytes": 26536,
+            "sha256": "8a657baad09ec37a92ee9a9eef9868cd5e76c55c0f490dbc1aa446dfee263134",
+            "modifiedAtMs": 1792407739031.187
+          }
+        ]
+      },
+      {
+        "id": "readiness-inventory",
+        "log": {
+          "path": "target/v1-candidate-runs/run-lRfBoe/41-readiness-inventory.log",
+          "bytes": 15641,
+          "sha256": "beb28888889c3aae11928bf754605a40c6fd7c641afa2588a90ba51d9094c01c",
+          "modifiedAtMs": 1792407739707.4998
+        },
+        "artifacts": []
+      }
+    ],
+    "freshRelayTestsAndDoctests": 157,
+    "relaySuiteCounts": [
+      {
+        "passed": 85,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "freshTypescriptUnits": 2647,
+    "typescriptSuiteCounts": [
+      2203,
+      21,
+      57,
+      34,
+      332
+    ],
+    "freshScriptTests": 613,
+    "existingOptInScriptSkips": 3,
+    "freshEditorTests": 382,
+    "freshRunnerContracts": 37,
+    "newReaderContracts": 19,
+    "publicTypeFence": true,
+    "carriedNativeNotFresh": {
+      "workspace": 2620,
+      "shared": 623,
+      "total": 3243,
+      "guard": {
+        "path": "target/v1-candidate-runs/run-lRfBoe/01-unchanged-original-native-and-default-contracts.log",
+        "bytes": 877,
+        "sha256": "b07e02c01d817b71c808da61eed6024c6219cd36ceb9174d9854e5de9a0660be",
+        "modifiedAtMs": 1792407293086.0627
+      }
+    },
+    "freshOfficialRuntimeProducers": true,
+    "runtimes": {
+      "local": {
+        "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+        "bytes": 5910494,
+        "sha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+        "modifiedAtMs": 1792407634485.4475
+      },
+      "shared": {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13030929,
+        "sha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+        "modifiedAtMs": 1792407636144.4429
+      }
+    },
+    "freshInstalledPackages": true,
+    "freshBrowserOrPhysicalPlatformQualification": false
+  },
+  "nativeFixture": {
+    "evidence": {
+      "path": "target/room-participant-inventory-native.json",
+      "bytes": 9119,
+      "sha256": "ebb34393f52b3739f4927034131ae5a30278c741d9f76de680955fd87768929e",
+      "modifiedAtMs": 1792407410180.6777
+    },
+    "cases": 10,
+    "source": {
+      "commit": "2119bc06992f4fcc001f0dfe8be08f299aef15a6",
+      "dirty": true,
+      "sha256": "4c8979da7c55d8d93bd161c60f4176ca55eba0b755ca0cc7272671e83d42f44a",
+      "files": 4514,
+      "bytes": 39748031
+    },
+    "manifest": "/Users/s/code/breditor/target/native-participant-inventory-1BZYiK/fixtures.json",
+    "files": [
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-1-standard-false-atomic-false/fixture.json",
+        "bytes": 50039,
+        "sha256": "265793a5e18b1164019b30b0f906618f38ef4d5b4af4e86653dc81e8bc9c60a9",
+        "modifiedAtMs": 1792407408433.5027
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-1-standard-false-atomic-false/inventory.json",
+        "bytes": 2229,
+        "sha256": "a0726655243bebb563031581d1a0496d7576fef67647d3eef327d2d6942ba17f",
+        "modifiedAtMs": 1792407408425.1692
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-1-standard-false-atomic-false/server.backup",
+        "bytes": 11229,
+        "sha256": "8ed46d634321b5c835e33a2ae24629b34898af11d93ec58a271122a16b3eb98c",
+        "modifiedAtMs": 1792407408429.3718
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-1-standard-false-atomic-true/fixture.json",
+        "bytes": 50356,
+        "sha256": "5bc15a2cb8933de0a01b5d21ac9f571eed0da682258caaea28edc1c1901058b3",
+        "modifiedAtMs": 1792407408597.5686
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-1-standard-false-atomic-true/inventory.json",
+        "bytes": 2529,
+        "sha256": "0f07ff870da308bd04ffe36b200b55d13d7e61b7d67f99967ac0533089ca6b28",
+        "modifiedAtMs": 1792407408586.1836
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-1-standard-false-atomic-true/server.backup",
+        "bytes": 12107,
+        "sha256": "de6d4f35d5b1a8b97887d916e963dbb8beac6f7bd6e68870026befa3f4b1e1b6",
+        "modifiedAtMs": 1792407408590.277
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-false-atomic-false/fixture.json",
+        "bytes": 50413,
+        "sha256": "6e8e05a1337a157df5c22e978f3af9dc113a886a2fdedbb48668e4e7375fb2b2",
+        "modifiedAtMs": 1792407408743.285
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-false-atomic-false/inventory.json",
+        "bytes": 2263,
+        "sha256": "7ff0e99564da65154a414974c7ccb0db51befaf4f674726743fa328fe70a5bf4",
+        "modifiedAtMs": 1792407408736.4114
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-false-atomic-false/server.backup",
+        "bytes": 11334,
+        "sha256": "1bf651f730443fea8183f959f4fc088a98e6a49384a5c94ce44c0af4fe1787b6",
+        "modifiedAtMs": 1792407408740.3174
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-false-atomic-true/fixture.json",
+        "bytes": 50718,
+        "sha256": "af6894876e5d0981a3ae94faf1c35d0eaaf156dd1d7ad83b18d14c9bf20591d0",
+        "modifiedAtMs": 1792407408895.3367
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-false-atomic-true/inventory.json",
+        "bytes": 2557,
+        "sha256": "dbd93eec9faf7352929648526404a4de0f88a2c1f410eb6925c84f345c3a23b6",
+        "modifiedAtMs": 1792407408888.2188
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-false-atomic-true/server.backup",
+        "bytes": 12195,
+        "sha256": "c92d85705eb53d7a5c55ebd6ea2694963648c13a22be0b7fee212d3b75d468ac",
+        "modifiedAtMs": 1792407408892.3284
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-true-atomic-false/fixture.json",
+        "bytes": 50365,
+        "sha256": "36ba2422f5e08ac81061282624275a281419639b0113dde0bcdce8d104e1492a",
+        "modifiedAtMs": 1792407409055.345
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-true-atomic-false/inventory.json",
+        "bytes": 2253,
+        "sha256": "35824ca981604d9b7160501f49857e67fdc88ea519082f31b615607af03d6e59",
+        "modifiedAtMs": 1792407409047.3967
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-true-atomic-false/server.backup",
+        "bytes": 11293,
+        "sha256": "cb844ea724334b9ee085fab3c5c47d78e1af13d5776a8c4837462401d6cf2f82",
+        "modifiedAtMs": 1792407409051.5452
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-true-atomic-true/fixture.json",
+        "bytes": 50707,
+        "sha256": "3180c8dba9fb14cf33c1a450384a9d8ebefdf53461537c4c9623a1f39c8bf55d",
+        "modifiedAtMs": 1792407409212.378
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-true-atomic-true/inventory.json",
+        "bytes": 2562,
+        "sha256": "d208506170557a0b4eb3fbf2f9d0ae90f5d3f51b1b652539c628ae2202c4b58b",
+        "modifiedAtMs": 1792407409203.7122
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-2-standard-true-atomic-true/server.backup",
+        "bytes": 12201,
+        "sha256": "2c00534ea034428ccea63f7350929696d97b53adc15c0888332fbb00b864509e",
+        "modifiedAtMs": 1792407409208.3745
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-false-atomic-false/fixture.json",
+        "bytes": 51912,
+        "sha256": "167e58c52f1b649cd227b5106c0d5c0e7412bcc7975889cabbed04fb177a789b",
+        "modifiedAtMs": 1792407409361.1565
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-false-atomic-false/inventory.json",
+        "bytes": 2258,
+        "sha256": "3ca0cc95c8fb606cd8c5641bbe719183820f5bee3efd588a7903e5388d0bd013",
+        "modifiedAtMs": 1792407409353.359
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-false-atomic-false/server.backup",
+        "bytes": 11311,
+        "sha256": "bec943ef2bfeb13d42514e32c145a76315639aa8a5cf25a6829b3babed6e1bdd",
+        "modifiedAtMs": 1792407409357.3027
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-false-atomic-true/fixture.json",
+        "bytes": 52235,
+        "sha256": "c29e6c10028dbe7034a7e23673864e3c65afb6b39790444ba4a4eda128599f40",
+        "modifiedAtMs": 1792407409529.2512
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-false-atomic-true/inventory.json",
+        "bytes": 2559,
+        "sha256": "6772959d57f4d3607c75fee719fa479439722f0a5d098c891199ba53a15cd39f",
+        "modifiedAtMs": 1792407409522.1638
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-false-atomic-true/server.backup",
+        "bytes": 12175,
+        "sha256": "c383b79d678888074f548f39947d56e962d13cf70a10502e28c2ae44cf02c676",
+        "modifiedAtMs": 1792407409526.3647
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-true-atomic-false/fixture.json",
+        "bytes": 51910,
+        "sha256": "7aaa67ea0c45bf22a32adc8327b244c86a7a20546ce7492fd5e2f881c0757567",
+        "modifiedAtMs": 1792407409685.6753
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-true-atomic-false/inventory.json",
+        "bytes": 2255,
+        "sha256": "2ee56b64b6703033ca284c4b20fe7a49c9a3e260d3d7743016b2aa87c1128ab1",
+        "modifiedAtMs": 1792407409675.793
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-true-atomic-false/server.backup",
+        "bytes": 11279,
+        "sha256": "a32cd585f7f737deebedbb9a5ada623655d9ac498d0d51aeda5b6d0a327aaae1",
+        "modifiedAtMs": 1792407409680.565
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-true-atomic-true/fixture.json",
+        "bytes": 52215,
+        "sha256": "b4b820734d2a2962a620e50e56702eba0707a3413764d9647d00d2a3104df418",
+        "modifiedAtMs": 1792407409854.8982
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-true-atomic-true/inventory.json",
+        "bytes": 2546,
+        "sha256": "2925d84559662dcd44bef1fb4e4c319e4e25df59a4b3bc954c47c22756fda0b6",
+        "modifiedAtMs": 1792407409846.4426
+      },
+      {
+        "path": "target/native-participant-inventory-1BZYiK/language-3-standard-true-atomic-true/server.backup",
+        "bytes": 12507,
+        "sha256": "4eccecfbb7204cdfb5cebb5e49c5cd1ae420be490e6f32440eb7a7408a2c0f71",
+        "modifiedAtMs": 1792407409850.7397
+      }
+    ],
+    "stoppedSourceRestoredHostFreshAuthentication": true,
+    "protectedOriginalRegistrationsVerified": true,
+    "rawCredentialsExported": false,
+    "occupiedDestinationRefusedWithoutOverwrite": true,
+    "originalNativeCompilersAndTransports": 10,
+    "actualNativeOlderAndForkedDocumentReviewJournals": true,
+    "validWhitespaceAndSupplementaryUnicodeAccountOrdering": true,
+    "scope": "Actual native Room, private owner-authenticated Host, complete server capture, original inactive server restore and protected original registration verification. No HTTP inventory endpoint, client activation, credential vault, browser/platform or generation bridge."
+  },
+  "sdk": {
+    "evidence": {
+      "path": "target/room-participant-inventory-sdk.json",
+      "bytes": 2247,
+      "sha256": "636855fd50191f5d5462c7d89dd92183f74ce98f7954f6a6e7907473cc91546b",
+      "modifiedAtMs": 1792407414735.4172
+    },
+    "acceptance": {
+      "format": "breditor/room-participant-inventory-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 10,
+      "restoredParticipants": 20,
+      "restoredComponents": 60,
+      "registeredStreamsCovered": 40,
+      "missingRegistrations": 40,
+      "offlineDocumentSuffixes": 10,
+      "offlineReviewSuffixes": 10,
+      "observerZeroPrefixes": 20,
+      "revokedContributorsPreserved": 1,
+      "pureChecks": 40,
+      "canonicalClockReads": 10,
+      "duplicateRefusals": 10,
+      "spoofRefusals": 20,
+      "disposedSourceRefusals": 10,
+      "staleSourceRefusals": 9,
+      "readOnlyPolicyInvalidatesOldCuts": 11,
+      "behindSourcePending": 10,
+      "behindReviewPending": 10,
+      "documentForkRefusals": 10,
+      "observerAuthorRefusals": 10,
+      "foreignPrincipalRefusals": 10,
+      "unboundReviewPending": 10,
+      "reviewForkRefusals": 10,
+      "reviewBindingRefusals": 10,
+      "reviewObserverKindRefusals": 10,
+      "versionBindingRefusals": 10,
+      "suggestionBindingRefusals": 5,
+      "revisionBindingRefusals": 5,
+      "futureDocumentCheckpoints": 36,
+      "futureReviewCheckpoints": 36,
+      "networkCalls": 0,
+      "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+      "scope": "All ten actual native server compiler/transport families, source-stop/native restore/fresh auth fixtures, real native paired and declared retained-store participant recovery, accepted document/review prefix checks with retained offline suffixes, permanent observers, a revoked contributor and future Undo/Redo. Node IDB/Web Locks fixtures; no raw credentials, network/activation, vault backup, complete global store discovery, browser/platform or generation bridge."
+    },
+    "olderOrForkedUnboundOrNamespaceVariants": 110,
+    "scope": "Actual original native factories, paired relay/observer storage, complete participant files and inactive durable component recovery. Native document/review clock readers establish accepted prefixes, not a JavaScript CRDT or account grant. Explicit Node IndexedDB/Web Locks fixtures; no network, browser/process/power-loss, global store discovery or activation evidence."
+  },
+  "installed": {
+    "evidence": {
+      "path": "target/session-backups-installed-consumer.json",
+      "bytes": 26536,
+      "sha256": "8a657baad09ec37a92ee9a9eef9868cd5e76c55c0f490dbc1aa446dfee263134",
+      "modifiedAtMs": 1792407739031.187
+    },
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-shYY2F/consumer",
+    "workspaceLinks": false,
+    "strictConsumerTypes": true,
+    "reusedRuntimes": false,
+    "producerRebuildQualified": true,
+    "registryArtifactsPinnedToProducer": 45,
+    "consumerLockSha256": "bb263f8f9afdc0fa2ae0affc63f71ceffa5bf7613d6e3c5d57a03de12ad31aca",
+    "producerLockSha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-shYY2F/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-shYY2F/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "39cd826cdb161bffba8d09e1b4e622d0b86f8396421bf3d4e18031a62c4ce7f1"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-shYY2F/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "63f0989a2de6e95eaab42f9ae2ede3deb80575aba1c34ba1283a12f9d0209316"
+      },
+      {
+        "name": "@breditor/editor",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-shYY2F/archives/breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "7b42f032b04fc75c0de2f6304fa466571d9a52c7a10d57013fc7e0f545ea9081"
+      }
+    ],
+    "nativeInventoryFixtures": {
+      "format": "breditor/native-participant-inventory-check",
+      "formatVersion": 1,
+      "passed": true,
+      "source": {
+        "commit": "2119bc06992f4fcc001f0dfe8be08f299aef15a6",
+        "dirty": true,
+        "sha256": "4c8979da7c55d8d93bd161c60f4176ca55eba0b755ca0cc7272671e83d42f44a",
+        "files": 4514,
+        "bytes": 39748031
+      },
+      "manifest": "/Users/s/code/breditor/target/native-participant-inventory-ePuNkj/fixtures.json",
+      "cases": 10,
+      "originalNativeCompilersAndTransports": true,
+      "stoppedSourceRestoredHostFreshAuthentication": true,
+      "protectedOriginalRegistrationsVerified": true,
+      "rawCredentialsExported": false,
+      "occupiedDestinationRefusedWithoutOverwrite": true,
+      "files": [
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-1-standard-false-atomic-false/fixture.json",
+          "bytes": 50036,
+          "sha256": "b7ecd8ab2b56b33450d51eb7e1ff317388804087e97b899aaf9ad3bcfee1d341",
+          "modifiedAtMs": 1792407733395.1975
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-1-standard-false-atomic-false/inventory.json",
+          "bytes": 2232,
+          "sha256": "089b060f01e741d4f4af55ce1701b3d439bf249ce4ba288bcf264ef1bd3c480a",
+          "modifiedAtMs": 1792407733387.868
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-1-standard-false-atomic-false/server.backup",
+          "bytes": 11245,
+          "sha256": "3dd0341769a899afe15fea09bb71ce20b9b0071bf7e0104fbdc5522e78605562",
+          "modifiedAtMs": 1792407733392.1672
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-1-standard-false-atomic-true/fixture.json",
+          "bytes": 50371,
+          "sha256": "7c401a74d196576ac656323cc3d0c458b7a3d10aa4fc74313e9b58b19ca967ba",
+          "modifiedAtMs": 1792407733560.3052
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-1-standard-false-atomic-true/inventory.json",
+          "bytes": 2536,
+          "sha256": "d6916306c7500dfac10fd34695699bf9ced4e6f8cebb475d583d46f2ed2d1e2a",
+          "modifiedAtMs": 1792407733551.2842
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-1-standard-false-atomic-true/server.backup",
+          "bytes": 12120,
+          "sha256": "3b8b6b6db92d6833f7daa7db76e29465a2bc978022a5e6a39a0962597da31296",
+          "modifiedAtMs": 1792407733555.9934
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-false-atomic-false/fixture.json",
+          "bytes": 50413,
+          "sha256": "06428004b655dba8c41f36ba8c4fe7814dd961e76838a67a4289fc8795e6b25d",
+          "modifiedAtMs": 1792407733730.7935
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-false-atomic-false/inventory.json",
+          "bytes": 2265,
+          "sha256": "1b079b926eb7e913f911f0f317e984eb5375242c3fd18ae7cef61c1ca7797b18",
+          "modifiedAtMs": 1792407733719.6523
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-false-atomic-false/server.backup",
+          "bytes": 11322,
+          "sha256": "25c737d9d81d572c76d1faf9f5fae70235cf90f9b703df55bb32b506026c2cc3",
+          "modifiedAtMs": 1792407733726.482
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-false-atomic-true/fixture.json",
+          "bytes": 50729,
+          "sha256": "7d9fb4cbd38cf71d4fa5d7f23c5b87b23c8c18b888fc10338524415a0bb36014",
+          "modifiedAtMs": 1792407733893.8809
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-false-atomic-true/inventory.json",
+          "bytes": 2562,
+          "sha256": "7b92a1a2596ef1e880ddceb04a60d72c732af95b8e9b224d573c87d2b121069f",
+          "modifiedAtMs": 1792407733885.6042
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-false-atomic-true/server.backup",
+          "bytes": 12182,
+          "sha256": "dc3ab121eea39f44a1de09c4ad220a6c2819bfd89c1b30f75d65243c082cbac9",
+          "modifiedAtMs": 1792407733889.9749
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-true-atomic-false/fixture.json",
+          "bytes": 50372,
+          "sha256": "1e917ad9cd14549588f48b8ff1e79c6f86dd466811b725d34f409f6637039889",
+          "modifiedAtMs": 1792407734052.1423
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-true-atomic-false/inventory.json",
+          "bytes": 2255,
+          "sha256": "85d92264e2b4b109147ce2f337431ced97443344eb5a9182acdc7aa16906349b",
+          "modifiedAtMs": 1792407734043.9036
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-true-atomic-false/server.backup",
+          "bytes": 11302,
+          "sha256": "53507267c7018afc4f8ba0fcbd1d83c25a0630628b3a59d129add77356d129b0",
+          "modifiedAtMs": 1792407734048.0217
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-true-atomic-true/fixture.json",
+          "bytes": 50712,
+          "sha256": "dd1d90a33ec87dcec3ba4406d9983314d6bd842fd8d812139ef01e15253e792a",
+          "modifiedAtMs": 1792407734218.0383
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-true-atomic-true/inventory.json",
+          "bytes": 2564,
+          "sha256": "a7ac97b71cc70e58608c66ca03147e3b6e77f6d9529b4754fc50135bd4fa7de7",
+          "modifiedAtMs": 1792407734208.2822
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-2-standard-true-atomic-true/server.backup",
+          "bytes": 12208,
+          "sha256": "1c756427c27f1b69909d443d9f7f827c95b262e43a0f9cd846cb0e8b63d9a540",
+          "modifiedAtMs": 1792407734213.225
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-false-atomic-false/fixture.json",
+          "bytes": 51894,
+          "sha256": "d9544b0086f554f3c2d6a970cbc5b3266a911c68ca1cf0ecaa8051bc4e15fc83",
+          "modifiedAtMs": 1792407734377.0215
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-false-atomic-false/inventory.json",
+          "bytes": 2250,
+          "sha256": "bbcbb90ee5007e94751444663b61c082f963648970e307e4fc2412b634692ff6",
+          "modifiedAtMs": 1792407734369.6392
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-false-atomic-false/server.backup",
+          "bytes": 11304,
+          "sha256": "98a9c75ddfb1678da6d5d2334fc61d31c3e3db19aea534f4470e4722614deaa9",
+          "modifiedAtMs": 1792407734373.0159
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-false-atomic-true/fixture.json",
+          "bytes": 52228,
+          "sha256": "0982c38ab27e63dae9aa070f7cda47e17df2d09d3ba53151909e2b4674102f42",
+          "modifiedAtMs": 1792407734559.1892
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-false-atomic-true/inventory.json",
+          "bytes": 2555,
+          "sha256": "87ac3e6f3dbbb4c5be314e0a4b64dc56ef40ec806abe447f6d9d759c04a421a1",
+          "modifiedAtMs": 1792407734551.1548
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-false-atomic-true/server.backup",
+          "bytes": 12201,
+          "sha256": "b43ccc84c216a591aa97c7cc7a86c85874b982f49ae0659de94e1eb89a117cea",
+          "modifiedAtMs": 1792407734554.9912
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-true-atomic-false/fixture.json",
+          "bytes": 51909,
+          "sha256": "424cec2f06a3d232f771121b5c299475732653d8a3ae4ec57105a10c220ebbae",
+          "modifiedAtMs": 1792407734719.3176
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-true-atomic-false/inventory.json",
+          "bytes": 2254,
+          "sha256": "f941df2996d1687eab5fd638c19bfd579705b28e9a839f9aa29bfd7c4b624840",
+          "modifiedAtMs": 1792407734710.9185
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-true-atomic-false/server.backup",
+          "bytes": 11300,
+          "sha256": "3ff0bf4264ed803583f7300d8d3907303561ff7e295cda178f869016c82df88f",
+          "modifiedAtMs": 1792407734714.9497
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-true-atomic-true/fixture.json",
+          "bytes": 52211,
+          "sha256": "2c6836356ebbb7791c4acfca2b1180fca1439de5af15c1798dad8cf6dee05ff4",
+          "modifiedAtMs": 1792407734889.8809
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-true-atomic-true/inventory.json",
+          "bytes": 2543,
+          "sha256": "d31e0e3afc67e180a40e8f916877d7e36bc804bbf22807e9fdbe1761f34b4c3c",
+          "modifiedAtMs": 1792407734882.009
+        },
+        {
+          "path": "target/native-participant-inventory-ePuNkj/language-3-standard-true-atomic-true/server.backup",
+          "bytes": 12509,
+          "sha256": "870a08b48706e2411284a48c791bebf6bbf09c3fe01b99e600b2bea8646b7000",
+          "modifiedAtMs": 1792407734886.0068
+        }
+      ],
+      "scope": "Actual native Room, private owner-authenticated Host, complete server capture, original inactive server restore and protected original registration verification. No HTTP inventory endpoint, client activation, credential vault, browser/platform or generation bridge."
+    },
+    "roomParticipantInventory": {
+      "format": "breditor/room-participant-inventory-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 10,
+      "restoredParticipants": 20,
+      "restoredComponents": 60,
+      "registeredStreamsCovered": 40,
+      "missingRegistrations": 40,
+      "offlineDocumentSuffixes": 10,
+      "offlineReviewSuffixes": 10,
+      "observerZeroPrefixes": 20,
+      "revokedContributorsPreserved": 1,
+      "pureChecks": 40,
+      "canonicalClockReads": 10,
+      "duplicateRefusals": 10,
+      "spoofRefusals": 20,
+      "disposedSourceRefusals": 10,
+      "staleSourceRefusals": 9,
+      "readOnlyPolicyInvalidatesOldCuts": 11,
+      "behindSourcePending": 10,
+      "behindReviewPending": 10,
+      "documentForkRefusals": 10,
+      "observerAuthorRefusals": 10,
+      "foreignPrincipalRefusals": 10,
+      "unboundReviewPending": 10,
+      "reviewForkRefusals": 10,
+      "reviewBindingRefusals": 10,
+      "reviewObserverKindRefusals": 10,
+      "versionBindingRefusals": 10,
+      "suggestionBindingRefusals": 5,
+      "revisionBindingRefusals": 5,
+      "futureDocumentCheckpoints": 36,
+      "futureReviewCheckpoints": 36,
+      "networkCalls": 0,
+      "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+      "scope": "All ten actual native server compiler/transport families, source-stop/native restore/fresh auth fixtures, real native paired and declared retained-store participant recovery, accepted document/review prefix checks with retained offline suffixes, permanent observers, a revoked contributor and future Undo/Redo. Node IDB/Web Locks fixtures; no raw credentials, network/activation, vault backup, complete global store discovery, browser/platform or generation bridge."
+    },
+    "unchangedMandatoryAcceptance": {
+      "documentPairedCases": 20,
+      "documentPairedExactReopens": 20,
+      "retainedStoreRestores": 90,
+      "retainedStoreReopens": 90,
+      "selectedByteCases": 30,
+      "selectedByteFutureCheckpoints": 180,
+      "participantFileCases": 30,
+      "participantRestoredUploadRecords": 90,
+      "pairedRecoveryCases": 30,
+      "pairedRecoveryFutureDocumentCheckpoints": 180,
+      "pairedRecoveryFutureReviewCheckpoints": 180,
+      "documentRecoveryCases": 36,
+      "documentRecoveryFutureCheckpoints": 144
+    },
+    "productionBundleModules": 87,
+    "newInventoryProductionEntry": true,
+    "noWorkspaceReactOrSyntheticStorageInProductionBundle": true,
+    "scope": "Fresh offline archives and public closed backup types. The unchanged 20 installed document/paired workflows and both startup upgrade fences remain mandatory; retained-store recovery adds 90 exact restores/reopens. The unchanged selected-byte probe adds 30 captures/files/native source re-admissions and 180 future checkpoints through public archives. Node storage/locks/two-PNG decode/server metadata are fixtures. Production byte/source and raster modules import no workspace/React/synthetic storage. Participant recovery adds a consistent native/packet and whole-upload-store cut, exact three-PNG states/epochs and 360 future document/comment checkpoints through bare public imports. Durable per-participant recovery adds all six native session families, exact interrupted attempts/reopens/handoff and 504 future history checkpoints. Native owner-authenticated inventory fixtures add all ten original server compilers/transports with native source-stop/restores and separately verified original resume records. Actual installed native participant recoveries reconcile 40 registered streams while preserving offline histories, permanent observers and a revoked contributor; older/forked/unbound/wrong-namespace inputs refuse or remain pending without writes. Live policy reapplication invalidates old cuts and is not a recovered grant. No raw credential export, global client-store discovery, protected credential storage, durable room-wide restart/activation, cross-device fencing, rotation, browser/platform or V1 approval. Runtime reuse explicitly excludes a fresh native producer build."
+  },
+  "orderingRepair": {
+    "witnesses": [
+      {
+        "evidence": {
+          "path": "target/v1-candidate-runs/run-VdiNzQ/result.json",
+          "bytes": 1991,
+          "sha256": "0e420900cc8a17fd19adc4b9d5ea2ed8bb7324b1a9a04741bd84dde3abc8f49e",
+          "modifiedAtMs": 1792406265705.916
+        },
+        "source": {
+          "commit": "2119bc06992f4fcc001f0dfe8be08f299aef15a6",
+          "dirty": true,
+          "sha256": "679084c115c48b7cde5d9f3febf85bb517825ae0fc2342e99dbfc991c97f9b81",
+          "files": 4508,
+          "bytes": 39720599
+        },
+        "stage": "native-sdk-inventory-roundtrip",
+        "log": {
+          "path": "target/v1-candidate-runs/run-VdiNzQ/01-native-sdk-inventory-roundtrip.log",
+          "bytes": 1185,
+          "sha256": "72d7a148bbddf2a3ad23713dd87f7235cd8621f932367a752cb64dd269be20ab",
+          "modifiedAtMs": 1792406265397.2505
+        }
+      },
+      {
+        "evidence": {
+          "path": "target/v1-candidate-runs/run-G1E2B2/result.json",
+          "bytes": 1991,
+          "sha256": "b6219ad3e411f169302e234f1b8b76e072ba5263f29d03b800a4d03d2677eb31",
+          "modifiedAtMs": 1792406361947.4404
+        },
+        "source": {
+          "commit": "2119bc06992f4fcc001f0dfe8be08f299aef15a6",
+          "dirty": true,
+          "sha256": "a56bb583116e7115ed0abe9d47902e5b78332e83ad27ff6062a1f12f944e3896",
+          "files": 4508,
+          "bytes": 39721261
+        },
+        "stage": "native-sdk-inventory-roundtrip",
+        "log": {
+          "path": "target/v1-candidate-runs/run-G1E2B2/01-native-sdk-inventory-roundtrip.log",
+          "bytes": 1425,
+          "sha256": "f0267e985f351158183c11d8aa321fe1249a61acf4993ab48d4e6fdefec77d3c",
+          "modifiedAtMs": 1792406361649.5842
+        }
+      }
+    ],
+    "diagnosis": "The fixture reapplied live read-only policy after exact recovery but before verifying the selected original cut. The native API deliberately does not revive permissions from checkpoints; setting read-only increments the retained publication counter from one to two and changes exact source bytes.",
+    "resolution": "Keep original exact source/revision validation unchanged. Verify the inactive selected cut first, then separately assert that eleven live read-only policy publications invalidate old proofs and refuse local edits. Permission changes belong to later explicit handoff/activation, not source-byte admission.",
+    "libraryNativeOrSourceGuardWasNotRelaxed": true,
+    "readOnlyViewFalseFlagUsesOriginalOmittedFieldContract": true
+  },
+  "originalContracts": {
+    "nativeCoreSharedRelayBodiesTestsLocksDefaultsUnchanged": true,
+    "onlyRelayManifestAddition": "Explicit required-server native fixture example target",
+    "noNewDependenciesOrVersionPromotion": true,
+    "originalDocumentReviewWriterReceiptPacketStorageAndAssetMeaningsUnchanged": true,
+    "noAutomaticallySelectedNativeFactory": true,
+    "noNewRoutesCredentialsLeasesOrActivation": true,
+    "livePermissionsNotRevivedFromCheckpoint": true
+  },
+  "remaining": {
+    "v1Ready": false,
+    "openGates": 13,
+    "groupedLedger": {
+      "implemented": 10,
+      "partial": 27,
+      "missing": 9
+    },
+    "work": [
+      "Discover and reconcile every declared client database and historic copy, including multiple pending copies of one writer/actor; durable trusted client/server recovery catalog and room-wide activation barrier.",
+      "Independently protected raw resume-credential backup/recovery, complete current provider/asset closure and current account/writer/deployment authority.",
+      "Approved cross-generation Undo/Redo and outstanding offline-edit bridge remains unimplemented.",
+      "Operating/lifetime envelope, process/power-loss/platform/browser qualification including the unresolved historical WebKit fault, distribution/CI, dependency/license review and final V1 approval."
+    ]
+  }
+}
