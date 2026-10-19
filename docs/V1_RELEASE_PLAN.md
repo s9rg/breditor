@@ -43,6 +43,39 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [retained-reference SDK checkpoint](qualification/2026-10-19-retained-asset-references-sdk.json)
+passes one frozen 33-check run. The native inventory now reaches an independent
+bounded JSON family, optional local/shared Wasm methods, SDKs, DOM controllers and
+managed local/document owners. Returned pairs and source metadata are deeply
+frozen. A private owner registry rejects copied, foreign, stale and disposed
+reads; restored owners derive their own inventory. DOM reads refuse composition
+or an active operation. No document action, upload, storage write or asset
+deletion is introduced.
+
+All 3,235 workspace/shared Rust tests/doctests, seven research-manifest contracts,
+543 script tests and 382 editor tests pass; three existing script checks remain
+skipped. Five new native cases cover exact encoded bindings, canonical pair order,
+complete count/byte refusal, pure guarded JSON and typed scalar admission before
+historical JSON conversion. All 30 grammar/scope/history configurations pass 90
+pure reads, 30 exact restores and 120 exact future checkpoints. Independently
+pinned earlier runtimes restore the same 30 histories, match 120 future checkpoints
+and correctly refuse the new optional capability. A losing peer image is retained
+before Undo reveals it.
+
+Fresh four-package installed acceptance repeats the complete inventory probe and
+the existing writing/managed/React regressions with no workspace links. Fresh
+three-package browser acceptance reads two invisible Redo image bindings while
+excluding two unrelated raster-store files, rejects copied/foreign sources and
+then rejects serialized/stale provenance after a real reload. Exact native future
+history and all raster/queue archive checks remain intact. Earlier saved protocols,
+default policies, dependency versions and package versions are unchanged.
+
+This is still an owner-only read, not coordinated room recovery, deletion
+eligibility or generation migration. Separate versions/outboxes, queued remote
+frames, extension assets, remote bytes and server/writer authority remain work.
+The approved cross-generation Undo/offline bridge and all 13 V1 gates stay open;
+no full official profile, hosted CI, release promotion or publication is claimed.
+
 The [native retained-reference checkpoint](qualification/2026-10-19-native-retained-asset-references.json)
 adds Rust-only reads for current image bindings, exact local Undo/Redo states and
 conservatively retained shared causal history. It includes invisible losing

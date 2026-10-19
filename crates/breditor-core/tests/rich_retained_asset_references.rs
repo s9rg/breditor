@@ -16,6 +16,84 @@ use breditor_core::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn encoded_retained_pairs_have_independent_scope_binding_and_exact_decimal_revision() -> Result {
+    use breditor_core::codec::{RichAssetRetention, encode_rich_asset_references};
+    let owner = owner(100)?;
+    let pairs = owner.retained_asset_references(&owner.snapshot())?;
+    for (retention, name) in [
+        (RichAssetRetention::LocalHistory, "local-history"),
+        (RichAssetRetention::SharedCausal, "shared-causal"),
+    ] {
+        let input =
+            encode_rich_asset_references(owner.state().document(), u64::MAX, retention, &pairs)?;
+        let value: Value = serde_json::from_str(&input)?;
+        assert_eq!(value["format"], "breditor/rich-retained-asset-references");
+        assert_eq!(value["formatVersion"], 1);
+        assert_eq!(value["revision"], u64::MAX.to_string());
+        assert_eq!(value["retention"], name);
+        assert_eq!(value["document"], "room");
+        assert_eq!(
+            value["schema"]["fingerprint"],
+            owner.state().document().document().schema_fingerprint().to_string()
+        );
+        assert_eq!(value["references"], json!([{"asset":"asset","generation":"generation"}]));
+    }
+    Ok(())
+}
+
+#[test]
+fn retained_pair_encoder_rejects_duplicate_unsorted_and_excessive_results() -> Result {
+    use breditor_core::codec::{
+        RichAssetReferenceCodecError, RichAssetRetention, encode_rich_asset_references,
+    };
+    use breditor_core::rich_content::{RICH_ASSET_REFERENCE_MAX_BINDINGS, RichAssetReference};
+    let owner = owner(100)?;
+    let a = RichAssetReference::try_new("a", "generation")?;
+    let b = RichAssetReference::try_new("b", "generation")?;
+    let encode = |pairs: &[RichAssetReference]| {
+        encode_rich_asset_references(
+            owner.state().document(),
+            0,
+            RichAssetRetention::LocalHistory,
+            pairs,
+        )
+    };
+    assert!(encode(&[]).is_ok());
+    assert!(encode(&[a.clone(), b.clone()]).is_ok());
+    assert_eq!(encode(&[b, a.clone()]), Err(RichAssetReferenceCodecError::Order));
+    assert_eq!(encode(&[a.clone(), a.clone()]), Err(RichAssetReferenceCodecError::Order));
+    assert_eq!(
+        encode(&vec![a; RICH_ASSET_REFERENCE_MAX_BINDINGS + 1]),
+        Err(RichAssetReferenceCodecError::Limit)
+    );
+    Ok(())
+}
+
+#[test]
+fn retained_pair_encoded_byte_limit_rejects_complete_result_without_a_prefix() -> Result {
+    use breditor_core::codec::{
+        RichAssetReferenceCodecError, RichAssetRetention, encode_rich_asset_references,
+    };
+    use breditor_core::rich_content::RichAssetReference;
+    let owner = owner(100)?;
+    let pairs = (0..40000)
+        .map(|n| {
+            RichAssetReference::try_new(&format!("a{n:06}{}", "x".repeat(121)), &"g".repeat(128))
+        })
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    assert_eq!(
+        encode_rich_asset_references(
+            owner.state().document(),
+            0,
+            RichAssetRetention::LocalHistory,
+            &pairs
+        ),
+        Err(RichAssetReferenceCodecError::Limit)
+    );
+    Ok(())
+}
 fn context() -> Result<EditorContext> {
     Ok(EditorContext::new(
         CompiledSchema::try_compile_rich_content_profile(

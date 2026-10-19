@@ -5,6 +5,7 @@ export {supportsSharedSearchHistory,restoreSharedSearchEditor} from "./profile.j
 export type {RichSearchQuery,RichSearchReplacement,RichSearchMetadata} from "@breditor/experimental-rich-content";
 export type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 export type {RichWritingToolsRead,RichWritingCounts,RichWritingHeading} from "@breditor/experimental-rich-content";
+export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "@breditor/experimental-rich-content";
 export {mountRichWritingTools as mountSharedWritingTools,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";
 export {createRichFullscreen as createSharedFullscreen,mountRichFullscreenControls as mountSharedFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";

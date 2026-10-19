@@ -1,4 +1,5 @@
 import test from "node:test";
+import {retainedAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import assert from "node:assert/strict";
 import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,suggestionRevisionMethods,suggestionFormatRebaseMethods,suggestionTextRebaseMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
 import {searchOwnerMethods,writingOwnerMethods,placeholderOwnerMethods,placeholderProfileMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -10,6 +11,7 @@ function fixture(){
  const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},SharedSuggestionEffectProof:class {},SharedSearchResults:class {},default:()=>{},initSync:()=>{}};
  for(const name of searchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of writingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of retainedAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["search_history_version","restore_search"])module.SharedRichProfile.prototype[name]=()=>{};
@@ -53,6 +55,9 @@ function fixture(){
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
+test("retained image reads require their complete independent guarded capability",()=>{
+ for(const name of retainedAssetOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native retained asset capability/);}
+});
 test("writing requires its complete independent guarded capability",()=>{
  for(const name of writingOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native writing capability/);}
 });

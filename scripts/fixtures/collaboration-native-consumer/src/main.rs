@@ -60,6 +60,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let before = (restored.checkpoint()?, restored.update_frame()?);
     let references: Vec<RichAssetReference> =
         restored.retained_asset_references_guarded(&observed)?;
+    let encoded: Value =
+        serde_json::from_str(&restored.retained_asset_references_json_guarded(&observed)?)?;
+    assert_eq!(encoded["format"], "breditor/rich-retained-asset-references");
+    assert_eq!(encoded["retention"], "shared-causal");
+    assert_eq!(encoded["references"].as_array().map(Vec::len), Some(2));
     assert_eq!(references.len(), 2);
     assert!(references.iter().any(|r| r.asset().as_str() == "replacement-asset"
         && r.generation().as_str() == "replacement-generation"));

@@ -93,6 +93,7 @@ mod replace_general_typing_text;
 mod replace_plain_text_range;
 mod replay_projections;
 mod retained_asset_references;
+mod retained_asset_references_json;
 mod retained_history;
 mod review_anchor;
 mod review_comments;

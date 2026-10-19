@@ -12,3 +12,13 @@ async function contracts(store:RichAssetStore,signal:AbortSignal){
  restored.close();
 }
 void contracts;
+import type {LocalEditor,LocalDocumentEditor,RichRetainedAssetReferencesRead,RichRetainedAssetReference,RichCoreEditor} from "@breditor/editor";
+function nativeReferences(owner:LocalEditor|LocalDocumentEditor,core:RichCoreEditor){
+ const supported:boolean=owner.supportsRetainedAssetReferences(),read:RichRetainedAssetReferencesRead=owner.retainedAssetReferences(owner.view().revision);owner.checkRetainedAssetReferences(read);const pair:RichRetainedAssetReference|undefined=read.references[0];void supported;void pair;
+ // @ts-expect-error Detached inventories have no mutation or asset-deletion permission.
+ read.references.push({asset:"forged",generation:"forged"});
+ // @ts-expect-error A generation is an exact native string, not an inferred room number.
+ const invalid:RichRetainedAssetReference={asset:"asset",generation:1};void invalid;
+ if(core.supportsRetainedAssetReferences?.()===true&&core.retainedAssetReferences&&core.checkRetainedAssetReferences){const direct:RichRetainedAssetReferencesRead=core.retainedAssetReferences();core.checkRetainedAssetReferences(direct);}
+}
+void nativeReferences;

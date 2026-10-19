@@ -45,6 +45,19 @@ they do not implement rotation. See [the shared backup contract](../../docs/SHAR
 for exact families, limits and failed-close recovery. The default package has a
 different backup format; managed editor startup is not silently redirected.
 
+## Retained image references
+
+`core.supportsRetainedAssetReferences()` requires the complete optional native
+capability. `retainedAssetReferences(revision?)` returns immutable image bindings
+from retained shared causal history, including inactive or losing replacements,
+deleted images and Redo. After asynchronous host work,
+`checkRetainedAssetReferences(read, revision?)` requires this live owner's exact
+current read; copied/foreign/stale metadata rejects. Unsupported or incomplete
+native histories refuse completeness, without changing recovery bytes. Separate
+versions/outboxes, queued SDK remote frames and extension assets require their own
+coordination. This read never fetches bytes or authorizes asset deletion. See the
+[retained-reference contract](../../docs/RETAINED_ASSET_REFERENCES.md).
+
 ## Counts and heading outline
 
 `SharedRichEditor.supportsWritingTools()` reports the complete optional native

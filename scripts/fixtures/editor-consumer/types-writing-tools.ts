@@ -10,6 +10,15 @@ void mountSharedWritingTools(host,port);void BreditorWritingTools;void SharedWri
 declare const handle:BreditorWritingToolsHandle;void handle.selectHeading(0,"1");
 async function roots(){const local=await openLocalEditor({host});const doc=await openLocalDocumentEditor({host,selectionEditing:"document-v1"});const a:RichWritingToolsHost=local.writing(),b:RichWritingToolsHost=doc.writing();const common={host,room:"room",writer:"1",database:"writing"};const c=await openSharedEditor(common),d=await openSharedDocumentEditor({...common,selectionEditing:"document-v1"});void [a,b,c.writing(),d.writing()];}
 void roots;
+import type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "@breditor/editor";
+import type {RichRetainedAssetReferencesRead as SharedRetainedRead} from "@breditor/editor/collaboration";
+import type {BreditorEditorHandle} from "@breditor/editor/react";
+const retained:RichRetainedAssetReferencesRead=shared.retainedAssetReferences();const sharedRetained:SharedRetainedRead=retained;shared.checkRetainedAssetReferences(sharedRetained);const binding:RichRetainedAssetReference|undefined=retained.references[0];void binding;
+declare const localHandle:BreditorEditorHandle;const managed=localHandle.getEditor();if(managed?.supportsRetainedAssetReferences()){const read=managed.retainedAssetReferences();managed.checkRetainedAssetReferences(read);}
+// @ts-expect-error Retained-reference reads are not shared mutation commands.
+shared.dispatch({commands:[{kind:"retained_asset_references"}]});
+// @ts-expect-error Paired native binding generations remain exact strings.
+const badBinding:RichRetainedAssetReference={asset:"asset",generation:2};void badBinding;
 // @ts-expect-error Parsed read metadata is immutable, including nested counts.
 source.counts.words="2";
 // @ts-expect-error Counts stay exact decimal strings, not JavaScript floats.

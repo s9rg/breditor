@@ -1,6 +1,8 @@
 import type {RichCommand} from "./commands.js";
 import type {RichWritingToolsRead} from "./writing_tools_types.js";
 export type {RichWritingToolsRead,RichWritingCounts,RichWritingHeading} from "./writing_tools_types.js";
+import type {RichRetainedAssetReferencesRead} from "./retained_asset_references_types.js";
+export type {RichRetainedAssetReferencesRead,RichRetainedAssetReference} from "./retained_asset_references_types.js";
 export type {RichCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
@@ -80,6 +82,11 @@ export interface RichView {
 export interface RichDocumentView extends Omit<RichView,"format"|"selection"> {format:"breditor/rich-document-view";selection:RichDocumentSelection|null}
 export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "document-v1"?RichDocumentView:RichView;
 export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
+  /** Native-only owner history, not complete-room closure or asset deletion authority. */
+  supportsRetainedAssetReferences?():boolean;
+  retainedAssetReferences?(expectedRevision?:string):RichRetainedAssetReferencesRead;
+  /** Reject foreign/copied/stale reads before using an asynchronously captured inventory. */
+  checkRetainedAssetReferences?(read:RichRetainedAssetReferencesRead,expectedRevision?:string):void;
   /** Native document-level prompt eligibility; independent of counts and saved settings. */
   supportsPlaceholder?():boolean;
   placeholderEmpty?(expectedRevision?:string):boolean;

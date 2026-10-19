@@ -31,6 +31,9 @@ class DocumentOwner implements LocalDocumentEditor {
  #dom:RichDomEditor<"document-v1">;#release:()=>void;#render:RenderOptions;#disposed=false;
  constructor(dom:RichDomEditor<"document-v1">,release:()=>void,render:RenderOptions){this.#dom=dom;this.#release=release;this.#render=render;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  selectionPolicy():"document-v1"{return "document-v1";}
+ supportsRetainedAssetReferences():boolean{return this.#dom.supportsRetainedAssetReferences();}
+ retainedAssetReferences(revision?:string):import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead{return this.#dom.retainedAssetReferences(revision);}
+ checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision?:string):void{this.#dom.checkRetainedAssetReferences(read,revision);}
  execute(...args:Parameters<LocalDocumentEditor["execute"]>):ReturnType<LocalDocumentEditor["execute"]>{return this.#dom.execute(...args);}
  view():RichDocumentView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}
  focus():void{this.#dom.focus();}refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}

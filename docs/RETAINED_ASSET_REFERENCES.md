@@ -1,6 +1,6 @@
-# Native retained asset references
+# Retained image reference reads
 
-Native asset-reference reads identify image bindings that a document owner can
+Rust and optional Wasm/SDK reads identify image bindings that a document owner can
 still need after Undo, Redo or causal reconciliation. They are a prerequisite for
 coordinated recovery, not an asset downloader, garbage collector or generation
 rollover. Asset bytes and provider authority remain host-owned.
@@ -56,6 +56,36 @@ reachable by this writer's active Undo stack. It is deliberately not a minimal
 reachability or deletion proof. Native readers never fetch bytes, author an
 action, alter a journal, acknowledge an update or grant provider permissions.
 
+## Wasm and SDK contract
+
+`core.supportsRetainedAssetReferences()` requires the complete version-one native
+capability. `core.retainedAssetReferences(revision?)` returns a deeply frozen
+`RichRetainedAssetReferencesRead`: schema name/version/fingerprint, document ID,
+exact decimal publication, retention scope and sorted unique asset/generation
+pairs. `local-history` covers the retained local states; `shared-causal` is the
+conservative shared inventory described above. Older runtimes report unavailable;
+the SDK never substitutes a visible-AST scan or an asset-store listing.
+
+The independent JSON family is `breditor/rich-retained-asset-references`, version
+one, with an 8 MiB complete encoded limit. Native generation, SDK parsing, source
+binding and result limits reject the whole read rather than returning a prefix.
+No original document, operation, view, checkpoint or history family is widened.
+
+`core.checkRetainedAssetReferences(read, revision?)` accepts only this live owner's
+exact returned object at its current publication. Copies, JSON-parsed metadata,
+foreign reads, stale publications and disposed owners reject. After asynchronous
+host work, check the original read again before using it for a capture. A restored
+owner derives a new read instead of adopting old serialized provenance. A
+successful check covers that native publication only, not provider/server state
+or outstanding JavaScript remote queues and external outboxes.
+
+The local/shared DOM controllers forward these reads without publishing, and
+reject reads/checks during composition or an operation. Managed `LocalEditor` and
+`LocalDocumentEditor` expose the same methods; React's `getEditor()` returns that
+same managed owner. Shared managed/durable sessions retain the methods on `core`.
+Read-only owners remain readable. There is no separate editable React state,
+provider fetch, storage transaction, upload, receipt acknowledgement or GC action.
+
 ## Completeness and read limits
 
 Both local and shared results admit at most 100,000 unique binding pairs. An
@@ -86,8 +116,8 @@ classifications rather than returning private strings from malformed fields.
 
 ## Coordinated recovery boundary
 
-These methods currently expose a Rust read boundary, not a Wasm/SDK/React API or
-complete-room backup. They inspect native image bindings; extension-owned assets
+These methods expose an owner-only native read boundary, not complete-room backup.
+They inspect native image bindings; extension-owned assets
 need an explicit inventory of their own. A future coordinator must bind a captured
 native source to
 the corresponding inventory, include separate saved-version and suggestion/
@@ -106,5 +136,12 @@ the native inventory does not implement that bridge.
 The [native checkpoint](qualification/2026-10-19-native-retained-asset-references.json)
 records the full Rust suites, independent native consumer, six research-manifest
 contracts, two reproduced scanner repairs and installed archive regressions.
-Those browser regressions cover the existing archive API, not access to these new
-Rust-only reads. All V1 gates remain open.
+Those earlier browser regressions cover the archive API, not the subsequent SDK
+inventory surface. All V1 gates remain open.
+
+The [SDK checkpoint](qualification/2026-10-19-retained-asset-references-sdk.json)
+records one frozen 33-check run: full native suites, seven research contracts,
+paired current/pinned-earlier history probes, fresh installed package types and
+workflows, and real installed-browser inventory/asset recovery after reload.
+These prove the owner-level read surface, not coordinated room capture or
+cross-generation recovery.

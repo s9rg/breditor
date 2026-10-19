@@ -4,7 +4,7 @@ use crate::{Error, register::read_contribution};
 use breditor_core::rich_content::{
     RICH_ASSET_REFERENCE_MAX_BINDINGS, RichAssetReference, inspect_rich_asset_references,
 };
-use loro::{ContainerID, ContainerType, IdSpan, JsonOpContent, LoroDoc, LoroValue, ToJson};
+use loro::{ContainerID, ContainerType, IdSpan, JsonOpContent, LoroDoc, LoroValue};
 use serde_json::Value;
 use std::collections::BTreeSet;
 
@@ -73,6 +73,43 @@ fn check_metadata_slot(container: &ContainerID, key: &str, value: &LoroValue) ->
     Ok(())
 }
 
+fn contribution_patch<'a>(
+    doc: &LoroDoc,
+    key: &str,
+    value: &'a LoroValue,
+) -> Result<&'a str, Error> {
+    let LoroValue::Map(entry) = value else {
+        return Err(Error::Contract("retained asset contribution map"));
+    };
+    if entry.len() != 4 {
+        return Err(Error::Contract("retained asset contribution fields"));
+    }
+    let string = |field: &str, maximum: usize| {
+        entry
+            .get(field)
+            .and_then(LoroValue::as_string)
+            .filter(|text| text.len() <= maximum)
+            .ok_or(Error::Contract("retained asset contribution scalar"))
+    };
+    let lamport = string("lamport", 20)?;
+    let writer = string("writer", 20)?;
+    let patch = entry
+        .get("value")
+        .and_then(LoroValue::as_string)
+        .ok_or(Error::Contract("retained asset patch string"))?;
+    if patch.len() > MAX_METADATA_BYTES {
+        return Err(Error::Limit("retained asset metadata bytes"));
+    }
+    let Some(LoroValue::I64(counter)) = entry.get("counter") else {
+        return Err(Error::Contract("retained asset contribution counter"));
+    };
+    // Validate the original causal stamp using only bounded typed scalars. Never recursively
+    // convert an arbitrary historical Loro value before checking its shape and byte limits.
+    let entry = serde_json::json!({"lamport":lamport.as_str(), "writer":writer.as_str(), "counter":counter, "value":patch.as_str()});
+    read_contribution(doc, key, &entry)?;
+    Ok(patch.as_str())
+}
+
 fn read_operation(
     doc: &LoroDoc,
     container: &ContainerID,
@@ -96,11 +133,7 @@ fn read_operation(
         return insert(output, &properties);
     }
     if let Some(field) = contribution_field(container) {
-        let (_, patch) = read_contribution(doc, key, &value.to_json_value())?;
-        let raw = patch.as_str().ok_or(Error::Contract("retained asset patch string"))?;
-        if raw.len() > MAX_METADATA_BYTES {
-            return Err(Error::Limit("retained asset metadata bytes"));
-        }
+        let raw = contribution_patch(doc, key, value)?;
         let patch: Patch = serde_json::from_str(raw)
             .map_err(|_| Error::Contract("retained asset patch encoding"))?;
         // Native materialization considers every metadata field, not only our usual

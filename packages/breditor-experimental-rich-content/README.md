@@ -25,6 +25,18 @@ runtime into the package.
 The package is private; publishing is not authorized. Release packaging and size
 qualification remain separate from functional checks.
 
+## Retained image references
+
+`core.supportsRetainedAssetReferences()` requires the complete optional native
+read. `core.retainedAssetReferences(revision?)` returns immutable paired image
+bindings from current and retained local history, including invisible Redo.
+After asynchronous host work, `core.checkRetainedAssetReferences(read, revision?)`
+requires the exact object from this live owner's current publication; copies,
+foreign/stale reads and disposed owners reject. DOM controllers forward the same
+methods outside composition/operations. Older modules do not fall back to the
+visible AST. This is not complete-room closure, asset fetching or deletion
+authority. See the [retained-reference contract](../../docs/RETAINED_ASSET_REFERENCES.md).
+
 ## Counts and heading outline
 
 `core.supportsWritingTools()` reports the complete optional native capability.

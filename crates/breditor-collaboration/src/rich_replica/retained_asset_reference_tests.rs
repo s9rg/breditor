@@ -9,6 +9,26 @@ use serde_json::json;
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[test]
+fn contribution_shape_and_bytes_are_checked_before_recursive_json_conversion() {
+    use loro::loro_value;
+    let doc = LoroDoc::new();
+    for value in [
+        loro_value!({"lamport":"0","writer":"1","counter":0,"value":{"PRIVATE_SECRET":[{"nested":"not a patch string"}]}}),
+        loro_value!({"lamport":"0","writer":"1","counter":0.0,"value":"{}"}),
+        loro_value!({"lamport":"PRIVATE_SECRET","writer":"1","counter":0,"value":"{}"}),
+        loro_value!({"lamport":"0","writer":"1","counter":0,"value":"x".repeat(MAX_METADATA_BYTES + 1)}),
+    ] {
+        let error = contribution_patch(&doc, "1:0", &value).expect_err("malformed contribution");
+        assert!(!error.to_string().contains("PRIVATE_SECRET"));
+    }
+    let oversized = loro_value!({"lamport":"0","writer":"1","counter":0,"value":"x".repeat(MAX_METADATA_BYTES + 1)});
+    assert!(matches!(
+        contribution_patch(&doc, "1:0", &oversized),
+        Err(Error::Limit("retained asset metadata bytes"))
+    ));
+}
+
+#[test]
 fn metadata_topology_rejects_inline_alias_and_wrong_slot_markers() -> Result {
     use loro::loro_value;
     use loro_internal::loro_common::mergeable_marker;

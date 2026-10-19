@@ -107,10 +107,16 @@ completion. Close returned stores to stop owned work and revoke their object URL
 
 The [native retained-reference reads](RETAINED_ASSET_REFERENCES.md) now inventory
 current and retained local/shared image bindings, including invisible Redo and
-losing causal contributions. They are Rust-only, can conservatively over-retain
-and refuse completeness for unsupported histories or metadata forms. They neither
+losing causal contributions. Optional Wasm/SDK reads add immutable owner/source
+guards, including a recheck after asynchronous capture. They can over-retain and
+refuse completeness for unsupported histories or metadata forms. They neither
 resolve missing bytes nor inventory separate versions/outboxes or extension-owned
 assets, and never authorize deletion of an unlisted file.
+
+The [SDK checkpoint](qualification/2026-10-19-retained-asset-references-sdk.json)
+also verifies that a fresh installed managed owner inventories invisible native
+Redo images without including unrelated raster-store files. After a real reload,
+the new owner derives its own read; old serialized provenance remains invalid.
 
 Asset archives do not coordinate the document, comment/version history,
 suggestion/revision/version outboxes, relay/server state or credentials. Those

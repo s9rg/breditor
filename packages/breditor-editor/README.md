@@ -29,6 +29,20 @@ an occupied cache. Store archives do not automatically coordinate with editor or
 review/outbox checkpoints. See the [asset archive contract](../../docs/RICH_ASSET_BACKUPS.md)
 for whole-store scope, sensitive receipt strings, bounds and host responsibilities.
 
+## Retained image references
+
+Managed local/document editors expose `supportsRetainedAssetReferences()`,
+`retainedAssetReferences(revision?)` and `checkRetainedAssetReferences(read, revision?)`.
+React's `getEditor()` returns the same owner; shared managed sessions expose these
+methods on `core`. The frozen native inventory includes invisible retained image
+bindings, not unrelated asset-store files. Recheck the original object after
+asynchronous host work: a copied, restored, foreign or stale source cannot be
+adopted. DOM owners reject reads during composition/operations. Older runtimes
+report unavailable instead of scanning the AST. The
+[retained-reference contract](../../docs/RETAINED_ASSET_REFERENCES.md) defines the
+owner-only scope; complete-room consistency, remote bytes and deletion policy
+remain host/coordinator work.
+
 ## Counts and heading outline
 
 `mountWritingTools(asideHost, editor.writing(), options?)` displays native accepted-

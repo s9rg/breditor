@@ -26,6 +26,9 @@ export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolb
  clipboardInterchange?:ClipboardInterchangeFactory<RichCoreEditor>;
 }
 export interface LocalEditor {
+ supportsRetainedAssetReferences():boolean;
+ retainedAssetReferences(revision?:string):import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead;
+ checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision?:string):void;
  /** Borrow optional native counts/outline controls without transferring this owner. */
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
  fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost;
@@ -57,6 +60,9 @@ class LocalEditorOwner implements LocalEditor {
  #dom:RichDomEditor;#release:()=>void;#render:RenderOptions;#disposed=false;
  constructor(dom:RichDomEditor,release:()=>void,render:RenderOptions){this.#dom=dom;this.#release=release;this.#render=render;this.surface=dom.surface;this.toolbar=dom.toolbar;this.status=dom.status;}
  execute(command:RichCommand,focus=true,revision?:string):RichCommandOutcome|"queued"{return this.#dom.execute(command,focus,revision);}
+ supportsRetainedAssetReferences():boolean{return this.#dom.supportsRetainedAssetReferences();}
+ retainedAssetReferences(revision?:string):import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead{return this.#dom.retainedAssetReferences(revision);}
+ checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision?:string):void{this.#dom.checkRetainedAssetReferences(read,revision);}
  view():RichView{return this.#dom.view();}checkpointJson():string{return this.#dom.checkpointJson();}focus():void{this.#dom.focus();}
  refreshAssets():void{this.#dom.view();refreshAssets(this.surface,this.#render);}
  setReadOnly(value:boolean,revision?:string):boolean{return this.#dom.setReadOnly(value,revision);}

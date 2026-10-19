@@ -154,6 +154,9 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #refreshPlaceholder():void{if(!this.#placeholder)return;this.#placeholder.update(false);if(this.#disposed||this.#busy||this.#composition||this.#model.view.readOnly===true)return;try{this.#placeholder.update(this.#options.core.placeholderEmpty(this.#model.view.revision));}catch(error){this.#report(error);}}
  /** Pure presentation change, including readonly/composition; never a writer command. */
  setPlaceholderLabel(label:string|null):void{this.#live();if(!this.#placeholder)throw Error("Admit a native placeholder at startup before changing its label");this.#placeholder.setLabel(label);}
+ supportsRetainedAssetReferences():boolean{this.#live();return this.#options.core.supportsRetainedAssetReferences();}
+ retainedAssetReferences(revision=this.#model.view.revision):import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead{this.#live();if(this.#busy||this.#composition)throw Error("Asset reference reads wait for the current operation or composition");return this.#options.core.retainedAssetReferences(revision);}
+ checkRetainedAssetReferences(read:import("@breditor/experimental-rich-content").RichRetainedAssetReferencesRead,revision=this.#model.view.revision):void{this.#live();if(this.#busy||this.#composition)throw Error("Asset reference checks wait for the current operation or composition");this.#options.core.checkRetainedAssetReferences(read,revision);}
  writingState():RichWritingToolsHostState{const view=this.#model.view,closed=this.#disposed,core=this.#options.core;return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available:!closed&&core.supportsWritingTools()&&typeof core.writingTools==="function",readOnly:view.readOnly===true});}
  subscribeWriting(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
  get fullscreenRoot():HTMLElement{return this.#root;}

@@ -4,6 +4,7 @@
 import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 import {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
+import {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_references_registry.js";
 export {mountRichSearchPanel} from "./dist/browser/search_panel.js";
 export {mountRichWritingTools} from "./dist/browser/writing_tools_panel.js";
 export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
@@ -138,9 +139,13 @@ class RichCoreProfile {
 
 class RichCoreEditor {
   #raw; #observation; #language; #selectionPolicy;
+  #assetReferences=new RichRetainedAssetReferenceRegistry();
   #searches=new Set();
   constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
+  supportsRetainedAssetReferences(){const raw=this.#live();return raw.retainedAssetReferencesVersion?.()==="1"&&typeof raw.retainedAssetReferencesJson==="function";}
+  retainedAssetReferences(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The asset read was prepared from an older rich publication");if(!this.supportsRetainedAssetReferences())throw new RichCommandError("breditor_rich.asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(read(raw.retainedAssetReferencesJson(this.#observation)),current,"local-history",this.view().documentJson);}
+  checkRetainedAssetReferences(value,revision){this.#live();const current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The asset read was prepared from an older rich publication");this.#assetReferences.check(value,current);}
   supportsPlaceholder(){const raw=this.#live();return raw.placeholderVersion?.()==="1"&&typeof raw.placeholderEmpty==="function";}
   placeholderEmpty(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The placeholder read was prepared from an older rich view");if(!this.supportsPlaceholder())throw new RichCommandError("breditor_rich.placeholder_unavailable","Use complete matching native placeholder reads");const value=read(raw.placeholderEmpty(this.#observation));if(value!=="true"&&value!=="false")throw new RichCommandError("breditor_rich.placeholder_read","Invalid native placeholder eligibility");return value==="true";}
   supportsWritingTools(){const raw=this.#live();return raw.writingToolsVersion?.()==="1"&&typeof raw.writingToolsJson==="function";}

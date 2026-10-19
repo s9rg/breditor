@@ -13,6 +13,8 @@ export {blockLayoutControls,blockLayoutShortcut} from "./dist/browser/block_layo
 export {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
+export {parseRichRetainedAssetReferences} from "./dist/browser/retained_asset_references_metadata.js";
+export {RichRetainedAssetReferenceRegistry} from "./dist/browser/retained_asset_references_registry.js";
 export {RichWritingEvents,RichWritingReadRegistry} from "./dist/browser/writing_tools_host.js";
 export {RichSearchEvents} from "./dist/browser/search_host.js";
 export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresentation,richPlaceholderStyles} from "./dist/browser/placeholder.js";

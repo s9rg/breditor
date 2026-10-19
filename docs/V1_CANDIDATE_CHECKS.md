@@ -23,6 +23,25 @@ local/shared Wasm builds, TypeScript builds/tests/types,
 installed-package checks and installed mixed editing, review and asset workflows.
 It ends with the readiness inventory, not a release-readiness assertion.
 
+Both profiles now require the actual paired-Wasm `retained-image-references`
+probe. It covers all 30 grammar/scope/history combinations, exact pure reads,
+returned-object provenance, invisible Redo and losing peer bindings, and exact
+restore/future history. Its default portable form needs no historical cache;
+earlier-runtime refusal and history comparisons require both explicit pinned
+directories and are not silently counted otherwise. The installed writing-tools
+consumer also repeats this complete probe from fresh bare package imports and
+checks the new public local/shared/managed/React-accessible types. Its previous
+writing and root/React assertions remain required.
+
+The installed asset-browser stage now also verifies managed owner inventory of
+two invisible Redo images, exclusion of unrelated store files, immutable returned
+data, copied/foreign refusal and fresh native reads after a real reload. Persisted
+metadata cannot be adopted as source provenance; an intervening Redo invalidates
+the prior read. The [SDK checkpoint](qualification/2026-10-19-retained-asset-references-sdk.json)
+records one passing frozen 33-check selection, fresh official producer builds,
+separate pinned earlier readers and unchanged complete archive regressions. It
+does not provide room consistency, a generation bridge or V1 approval.
+
 Both profiles require `shared-docs` with `RUSTDOCFLAGS=-D warnings`, alongside
 the strict workspace documentation check. The independent native consumer also
 names the public retained-image reference type, observes a Redo-only binding and
@@ -31,9 +50,9 @@ exclude only each crate-root Cargo `target` cache; vendor/source entries with th
 name remain. The [native reference checkpoint](qualification/2026-10-19-native-retained-asset-references.json)
 records 29 passing selected checks at identical source across an initial 26-stage
 success prefix and a three-stage continuation after locked npm cache recovery.
-It additionally executes the six canonical integration contracts through the
-research compatibility manifest. This is not one complete official-profile run
-or browser access to the new Rust-only read.
+That earlier checkpoint additionally executes six canonical integration contracts
+through the research compatibility manifest. It qualifies the then Rust-only
+read, not a complete official-profile run; subsequent SDK evidence is separate.
 
 The rich-browser TypeScript build is an explicit prerequisite of the shared and
 editor SDK builds. The default workspace build does not generate that opt-in

@@ -5,6 +5,36 @@ use breditor_collaboration::rich_replica::{
 };
 use serde_json::{Value, json};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn encoded_retained_history_is_guarded_pure_and_not_a_new_checkpoint_family() -> Result {
+    let (_, mut a, b) = peers()?;
+    replace(&mut a, "redo-asset", "redo-generation")?;
+    a.undo()?;
+    a.set_read_only_guarded(&a.observe()?, true)?;
+    let observed = a.observe()?;
+    let exact = (saved(&a)?, a.update_frame()?);
+    let input = a.retained_asset_references_json_guarded(&observed)?;
+    let read: Value = serde_json::from_str(&input)?;
+    assert_eq!(read["format"], "breditor/rich-retained-asset-references");
+    assert_eq!(read["retention"], "shared-causal");
+    assert_eq!(read["document"], "room");
+    assert_eq!(read["references"].as_array().map(Vec::len), Some(2));
+    assert!(
+        read["references"]
+            .as_array()
+            .ok_or("missing references")?
+            .contains(&json!({"asset":"redo-asset","generation":"redo-generation"}))
+    );
+    assert_eq!((saved(&a)?, a.update_frame()?), exact);
+    a.check(&observed)?;
+    assert!(a.retained_asset_references_json_guarded(&b.observe()?).is_err());
+    a.set_read_only_guarded(&a.observe()?, false)?;
+    assert!(a.retained_asset_references_json_guarded(&observed).is_err());
+    a.redo()?;
+    assert!(a.document_json().contains("redo-generation"));
+    Ok(())
+}
 fn peers() -> Result<(SharedRichProfile, RichReplica, RichReplica)> {
     peers_for(3)
 }

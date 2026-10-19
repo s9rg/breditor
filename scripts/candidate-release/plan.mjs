@@ -56,6 +56,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("search-persistent-sessions","probe-search-persistence-sdk.mjs",["target/promoted-shared-web"]),
   script("shared-session-backups","probe-session-backups.mjs",["target/promoted-shared-web"]),
   script("shared-asset-archive-history","probe-shared-asset-backups.mjs",["target/promoted-shared-web"]),
+  script("retained-image-references","probe-retained-asset-references.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
   script("paired-session-backups","probe-paired-backups.mjs",["target/promoted-shared-web"]),
   script("session-opening-upgrade-fence","probe-session-opening-upgrade.mjs",["target/promoted-shared-web"]),
   script("search-borrowed-controls","probe-search-ui.mjs",["target/rich-browser-web","target/promoted-shared-web"]),

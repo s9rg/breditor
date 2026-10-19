@@ -41,6 +41,9 @@ test("manifest flags precede formatter/linter separators and overrides stay one 
 test("both profiles compile shared public documentation with warnings denied",()=>{
  for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile,environment:{BREDITOR_CARGO:"/tool path/cargo"}}),docs=plan.checks.find(c=>c.id==="shared-docs"),native=plan.checks.find(c=>c.id==="shared-native");assert.ok(docs);assert.equal(docs.command,"/tool path/cargo");assert.deepEqual(docs.args,["doc","--manifest-path","crates/breditor-collaboration/Cargo.toml","--no-deps","--locked","--offline","--release"]);assert.equal(docs.env.RUSTDOCFLAGS,"-D warnings");assert.equal(docs.env.CARGO_TARGET_DIR,native.env.CARGO_TARGET_DIR);assert.ok(plan.checks.indexOf(docs)>plan.checks.indexOf(native));}
 });
+test("both profiles require actual paired native retained-image reads without a historical cache dependency",()=>{
+ for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),check=plan.checks.find(c=>c.id==="retained-image-references");assert.ok(check);assert.deepEqual(check.args,["scripts/probe-retained-asset-references.mjs","target/rich-browser-web","target/promoted-shared-web"]);assert.ok(plan.checks.indexOf(check)>plan.checks.findIndex(c=>c.id==="paired-shared-runtime"));}
+});
 test("both profiles require exact shared backups and startup upgrade admission without a runtime reuse shortcut",()=>{
  for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const value=plan.checks.find(c=>c.id===id);assert.ok(value,id);return value;};
   for(const [id,file]of [["shared-session-backups","probe-session-backups.mjs"],["shared-asset-archive-history","probe-shared-asset-backups.mjs"],["paired-session-backups","probe-paired-backups.mjs"],["session-opening-upgrade-fence","probe-session-opening-upgrade.mjs"]])assert.deepEqual(find(id).args,[`scripts/${file}`,"target/promoted-shared-web"]);

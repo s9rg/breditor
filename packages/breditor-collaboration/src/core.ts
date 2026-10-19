@@ -5,6 +5,8 @@ import type {RichClipboardTextProjection} from "./types.js";
 import type {SharedSelectionPolicy,SharedEditorView} from "./types.js";
 import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
 import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
+import type {RichRetainedAssetReferencesRead} from "@breditor/experimental-rich-content";
+import {RichRetainedAssetReferenceRegistry} from "@breditor/experimental-rich-content/rendering";
 import {parseRichWritingTools} from "@breditor/experimental-rich-content/rendering";
 import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
@@ -29,6 +31,7 @@ export function createSharedDocumentEditor(raw:SharedRustOwner,options:Omit<Shar
 }
 /** Owns the exact Rust observation and bounded remote queue; no replicated JS document exists. */
 export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
+ readonly #assetReferences=new RichRetainedAssetReferenceRegistry();
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
  #options:SharedEditorOptions<P>;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
@@ -85,6 +88,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
  /** Native pure reads remain available in read-only mode and never publish to subscribers. */
  supportsPlaceholder():boolean{const raw=this.#live();return raw.placeholder_version?.()==="1"&&typeof raw.placeholder_empty==="function";}
+ supportsRetainedAssetReferences():boolean{const raw=this.#live();return raw.retained_asset_references_version?.()==="1"&&typeof raw.retained_asset_references_json==="function";}
+ retainedAssetReferences(revision?:string):RichRetainedAssetReferencesRead{this.#check(revision);if(!this.supportsRetainedAssetReferences())throw new SharedEditorError("asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(this.#live().retained_asset_references_json!(this.#observation),this.view().revision,"shared-causal",this.documentJson());}
+ checkRetainedAssetReferences(value:RichRetainedAssetReferencesRead,revision?:string):void{this.#check(revision);this.#assetReferences.check(value,this.view().revision);}
  placeholderEmpty(revision?:string):boolean{this.#check(revision);if(!this.supportsPlaceholder())throw new SharedEditorError("placeholder_unavailable","Use complete matching native placeholder reads");const value=this.#live().placeholder_empty!(this.#observation);if(typeof value!=="boolean")throw new SharedEditorError("placeholder_read","Invalid native placeholder eligibility");return value;}
  supportsWritingTools():boolean{const raw=this.#live();return raw.writing_tools_version?.()==="1"&&typeof raw.writing_tools_json==="function";}
  writingTools(revision?:string):RichWritingToolsRead{this.#check(revision);if(!this.supportsWritingTools())throw new SharedEditorError("writing_tools_unavailable","Use complete matching native writing reads");const current=this.view().revision,value=parseRichWritingTools(this.#live().writing_tools_json!(this.#observation));if(value.revision!==current)throw new SharedEditorError("writing_tools_source","The native writing read has a different source publication");return value;}

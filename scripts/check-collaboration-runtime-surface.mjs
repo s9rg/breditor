@@ -6,6 +6,7 @@ import {fileURLToPath,pathToFileURL} from "node:url";
 export const applicationExports=Object.freeze(["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults","default","initSync"]);
 export const searchOwnerMethods=Object.freeze(["search_version","find_text","check_search_results","select_search_match","replace_search_one","replace_search_all","search_history_enabled","enable_search_history","search_checkpoint"]);
 export const writingOwnerMethods=Object.freeze(["writing_tools_version","writing_tools_json"]);
+export const retainedAssetOwnerMethods=Object.freeze(["retained_asset_references_version","retained_asset_references_json"]);
 export const placeholderOwnerMethods=Object.freeze(["placeholder_version","placeholder_empty"]);
 export const placeholderProfileMethods=Object.freeze(["placeholder_version"]);
 export const documentOwnerMethods=Object.freeze(["document_selection_version","document_typing_version","document_selection_enabled","enable_document_selection","observe_document","document_view_json","select_document","copy_document_clipboard","replace_document_plain_text","replace_document_typing_text","document_checkpoint","document_typing_checkpoint"]);
@@ -31,6 +32,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of ["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"]){assert.equal(typeof module[name],"function");assert.match(declarations,new RegExp(`export class ${name}\\s*\\{\\s*private constructor\\(\\);`),`${name} must have no public native constructor`);}
  for(const name of searchOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native search capability ${name}`);
  for(const name of writingOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native writing capability ${name}`);
+ for(const name of retainedAssetOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native retained asset capability ${name}`);
  for(const name of placeholderOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native placeholder capability ${name}`);
  for(const name of placeholderProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native placeholder profile capability ${name}`);
  for(const name of ["search_history_version","restore_search"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native search recovery ${name}`);

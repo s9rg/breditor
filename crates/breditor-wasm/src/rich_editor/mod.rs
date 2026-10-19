@@ -29,6 +29,7 @@ mod replace_document_plain_text;
 mod replace_document_typing_text;
 mod restore_typing_editor;
 mod result;
+mod retained_asset_references;
 mod search;
 mod select_document;
 mod selection;

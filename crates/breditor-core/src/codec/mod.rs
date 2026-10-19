@@ -19,6 +19,8 @@ pub use rich_inline_format_state::{
     encode_rich_inline_format_state, encode_rich_selection_format_state,
 };
 #[cfg(feature = "experimental-rich-content")]
+mod rich_asset_references;
+#[cfg(feature = "experimental-rich-content")]
 mod rich_block_layout_patch;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_block_layout_state;
@@ -26,6 +28,12 @@ mod rich_block_layout_state;
 mod rich_search;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_writing_tools;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_asset_references::{
+    RICH_ASSET_REFERENCES_FORMAT, RICH_ASSET_REFERENCES_MAX_JSON_BYTES,
+    RICH_ASSET_REFERENCES_VERSION, RichAssetReferenceCodecError, RichAssetRetention,
+    encode_rich_asset_references,
+};
 #[cfg(feature = "experimental-rich-content")]
 pub use rich_writing_tools::{
     RICH_WRITING_TOOLS_FORMAT, RICH_WRITING_TOOLS_MAX_JSON_BYTES, RICH_WRITING_TOOLS_VERSION,
