@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 const endpoint="ws://127.0.0.1:1/ws";
 export function offlineTransport(counts){const request=async()=>{counts.networkCalls++;throw Error("No network during inactive recovery");};return{checkSuggestionQueue(){},checkSuggestionRevisions(){},suggestionRevisionsReady:()=>false,requestSuggestionRevision:request,requestSuggestion:request,refreshDocument:request,connect:request,flush:request,subscribe:()=>()=>{},suggestionState:()=>({revision:"0",documentRevision:"0"}),state:()=>({status:"offline"})};}
-export async function recoverParticipant({api,rich,profile,fixture,client,tag,counts}){
+export async function recoverParticipant({api,rich,profile,fixture,client,tag,counts,initialReadOnly}){
  const metadata=JSON.parse(fixture.inventoryJson),room=metadata.room.document,writer=client.writer,sourceIdentity={room,writer,richLanguage:fixture.language,history:"explicit",rangeEditing:"original",selectionEditing:"original",searchHistory:null},readOnly=client.observer||metadata.accounts.find(a=>a.principal===client.principal).documentRole===null;
  const review={actor:client.actor,principal:client.principal,access:readOnly?"read_only":"comment"},relay={endpoint,principal:client.principal,room,actor:client.actor,binding:metadata.review.binding,documentWriter:writer,...(fixture.atomic?{writerTransport:"atomic-v2"}:{}),...(client.observer?{reviewEditing:"read_only"}:{})};
  const record={format:client.observer?"breditor/shared-review-observer-checkpoint-record":"breditor/shared-review-relay-checkpoint-record",formatVersion:1,history:"explicit",rangeEditing:"original",selectionEditing:"original",richLanguage:fixture.language,reviewActor:client.actor,principal:client.principal,documentCheckpointJson:client.documentCheckpoint,reviewCheckpointJson:client.reviewCheckpoint,versions:[],relay,progress:{cursor:null,accepted:null,sequence:null}};
@@ -19,11 +19,12 @@ export async function recoverParticipant({api,rich,profile,fixture,client,tag,co
   const stores=["document","paired-session",...(versions?["version-catalog"]:[]),...(suggestions?["suggestions"]:[]),...(revisions?["suggestion-revisions"]:[])],result=await api.captureSharedParticipantBackup({identity:{participant:tag,principal:client.principal,source:sourceIdentity,stores,assets:"whole-store"},source:sources(),assets,checkAuthority(){}});assert.equal(result.kind,"ready");backup=result.backup;
   await revisions?.close();revisions=undefined;await suggestions?.close();suggestions=undefined;await versions?.close();versions=undefined;await source.close();source=undefined;assets.close();assets=undefined;
   const destinations={document:`${tag}-restored-document`,uploads:`${tag}-restored-uploads`,...(!client.observer?{versions:`${tag}-restored-versions`}:{}),...(!client.observer&&fixture.atomic?{suggestions:`${tag}-restored-suggestions`,revisions:`${tag}-restored-revisions`}:{})};
-  const recovery={database:`${tag}-attempt`,backup,expected:backup.selection(),destinations,session:{kind:"paired",options},...(!client.observer?{versions:{identity:versionIdentity,getToken}}:{}),...(!client.observer&&fixture.atomic?{suggestions:{identity},revisions:{binding:metadata.revisionsBinding,transport}}:{}),checkAuthority(){}};
+  const recoveryOptions=initialReadOnly===undefined?options:{...options,review:initialReadOnly?{...options.review,access:"read_only"}:options.review,restore:checkpoint=>api.initializeSharedReadOnly(options.restore(checkpoint),initialReadOnly)};
+  const recovery={database:`${tag}-attempt`,backup,expected:backup.selection(),destinations,session:{kind:"paired",options:recoveryOptions},...(!client.observer?{versions:{identity:versionIdentity,getToken}}:{}),...(!client.observer&&fixture.atomic?{suggestions:{identity},revisions:{binding:metadata.revisionsBinding,transport}}:{}),checkAuthority(){}};
   attempt=await api.SharedParticipantRecovery.begin(recovery);recovered=await attempt.finish();attempt=undefined;
-  // Verify the original inactive cut first. Reapplying live policy is a later publication,
-  // not permission restored from a journal, and deliberately invalidates this exact source.
+  // The default keeps the original publication-changing live-policy witness. The
+  // opt-in factory initializes an unobserved native owner without publishing.
   capture=api.captureSharedAssetReferences(recovered.sources);await backup.verifyRecovered(capture,recovered.uploads);assert.equal((await recovered.uploads.list()).length,0);counts.restoredParticipants++;counts.restoredComponents+=Object.keys(destinations).length;
-  return{backup,source:capture,recovered,options,sourceIdentity,client,readOnly,async close(){capture.dispose();await recovered.close();backup.dispose();}};
+  return{backup,source:capture,recovered,recovery,options,sourceIdentity,client,readOnly,async close(){capture.dispose();await recovered.close();backup.dispose();}};
  }catch(error){capture?.dispose();await recovered?.close();await attempt?.close();await revisions?.close();await suggestions?.close();await versions?.close();await source?.discardAndClose();assets?.close();backup?.dispose();throw error;}
 }

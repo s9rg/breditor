@@ -10,6 +10,7 @@ test("clipboard interchange requires the complete separate pure capability",()=>
 });
 function fixture(){
  const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},SharedSuggestionEffectProof:class {},SharedSearchResults:class {},default:()=>{},initSync:()=>{}};
+ for(const name of ["initial_read_only_version","initialize_read_only"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of searchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of writingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of retainedAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -57,6 +58,9 @@ function fixture(){
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
+test("initial policy initialization must ship as a complete native capability",()=>{
+ for(const name of ["initial_read_only_version","initialize_read_only"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native read-only capability/);}
+});
 test("retained image reads require their complete independent guarded capability",()=>{
  for(const name of retainedAssetOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native retained asset capability/);}
 });

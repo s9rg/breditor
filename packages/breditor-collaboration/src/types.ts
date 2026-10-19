@@ -144,6 +144,9 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersio
  patch_inline_format_properties?(observation:unknown,input:string):boolean;
  read_only_version?():string;
  set_read_only?(observation:unknown,value:boolean):boolean;
+ /** One-shot fresh host policy before either observation family is issued. Not persisted. */
+ initial_read_only_version?():string;
+ initialize_read_only?(value:boolean):void;
  code_exit_version?():string;
  exit_code_block?(observation:unknown,paragraph:string):boolean;
  flow_navigation_version?():string;

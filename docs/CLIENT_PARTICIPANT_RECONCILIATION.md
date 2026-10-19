@@ -110,14 +110,29 @@ resolve every asset provider or prove that each client contains every other
 server-author operation. Preserve the selected server archive and all declared
 client files while those obligations remain open.
 
-## Reapply live policy after the original cut check
+## Initialize policy before the original cut check
 
-Check the exact inactive recovered cut before changing its live policy or
-content. Native checkpoints retain the publication counter but deliberately do
-not restore read-only permissions. Reapplying read-only mode advances that
-counter, so the earlier exact source proof becomes stale even when visible text
-is unchanged. This is intentional; do not relax byte or revision checks to hide
-the change.
+With a matching runtime, initialize document policy in the explicitly selected
+native restore factory using
+[`initializeSharedReadOnly`](INITIAL_SHARED_READ_ONLY.md). It must run before
+the owner issues either observation family or transfers to the SDK. Initial
+locking preserves the selected checkpoint bytes and publication counter, so
+the existing exact source checks can run while document edits are denied. A
+paired inactive participant also needs a fresh read-only review policy.
+
+The initializer is one-shot and does not restore a saved permission. It cannot
+change a live owner's policy without publishing, and it does not select or
+upgrade a recovery family. A required missing capability must refuse rather than
+fall back to writable recovery or rewrite the expected source.
+
+## Preserve the live policy publication contract
+
+The original post-observation `setReadOnly` behavior is unchanged. Native
+checkpoints retain the publication counter but deliberately do not restore
+permissions. Reapplying a different live mode advances that counter, so the
+earlier exact source proof becomes stale even when visible text is unchanged.
+This is intentional; do not relax byte or revision checks to hide the change.
+The older verification-then-policy workflow remains covered separately.
 
 After source verification and explicit ownership handoff, the host must recheck
 current authority, apply current policy, and save its new operational checkpoint

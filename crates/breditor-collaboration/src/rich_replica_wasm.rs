@@ -10,6 +10,7 @@ mod exit_code_block;
 mod flow_navigation;
 mod general_history;
 mod general_range;
+mod initial_read_only;
 mod input_rules;
 mod insert_general_paragraph;
 mod packet_asset_references;
@@ -85,10 +86,16 @@ pub struct RichReplicaProbe {
     inner: RichReplica,
     review: Option<breditor_core::rich_content::review::ReviewSession>,
     search_reads: std::sync::Arc<()>,
+    initial_read_only: crate::rich_replica::initial_read_only::InitialReadOnly,
 }
 impl RichReplicaProbe {
     pub(crate) fn from_replica(inner: RichReplica) -> Self {
-        Self { inner, review: None, search_reads: std::sync::Arc::new(()) }
+        Self {
+            inner,
+            review: None,
+            search_reads: std::sync::Arc::new(()),
+            initial_read_only: crate::rich_replica::initial_read_only::InitialReadOnly::new(),
+        }
     }
 }
 #[cfg_attr(feature = "research", wasm_bindgen)]
@@ -349,9 +356,9 @@ impl RichReplicaProbe {
     /// Join existing causal state with a newly leased writer.
     #[cfg(feature = "research")]
     pub fn join(document: String, writer: String, bytes: &[u8]) -> Result<Self, JsValue> {
-        Ok(Self {
-            inner: RichReplica::join(codec()?, document, writer, bytes.to_vec()).map_err(error)?,
-        })
+        Ok(Self::from_replica(
+            RichReplica::join(codec()?, document, writer, bytes.to_vec()).map_err(error)?,
+        ))
     }
     /// Resume the exact same writer after reacquiring its exclusive lease.
     #[cfg(feature = "research")]

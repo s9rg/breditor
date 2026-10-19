@@ -1,0 +1,101 @@
+{
+  "format": "breditor/initial-shared-policy-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "baseCommit": "bca92e60301425995157304b8df93fed3d0c5b23",
+  "scope": "Opt-in one-shot document read-only policy at the unobserved native Wasm ownership boundary, exact native participant recovery and same-attempt reopening. Functional qualification, not V1 readiness or room activation.",
+  "source": {
+    "commit": "bca92e60301425995157304b8df93fed3d0c5b23",
+    "dirty": true,
+    "sha256": "d55ff1954687a8f309e8c17ff46998ca4bfb90cb5e047c389d5020616695ce3f",
+    "files": 4525,
+    "bytes": 39840925
+  },
+  "sourceBinding": {
+    "inventory": "target/initial-read-only-frozen-inputs.json",
+    "nonDocumentation": {
+      "sha256": "979a8aa889144063ec4293374460c5e9c1aed739bb33bf0460a5e2b72a07c0ee",
+      "count": 4060,
+      "bytes": 32733317
+    },
+    "finalSourceAudit": "target/initial-read-only-final-source.json",
+    "rule": "The 47-check run used one fixed working tree. Subsequent edits only add qualification documentation and clarify the contract/readiness links; the final audit requires every non-documentation input to remain byte-identical to the frozen inventory."
+  },
+  "qualification": {
+    "manifest": "target/v1-candidate-runs/run-zJYpXC/result.json",
+    "selectedChecksPassed": 47,
+    "fullCandidateProfile": false,
+    "freshSharedNativeTests": 626,
+    "freshRelayNativeTests": 157,
+    "freshTypeScriptTests": 2647,
+    "freshScriptTests": 615,
+    "existingOptInScriptSkips": 3,
+    "freshEditorTests": 385,
+    "runnerContracts": 38,
+    "nativeSurfaceContracts": 35,
+    "carriedRootNativeTests": 2620,
+    "carriedRootProof": "unchanged-original-local-native-and-default-contracts",
+    "physicalBrowser": false,
+    "platformAccessibility": false,
+    "processKillOrPowerLoss": false,
+    "publicationApproved": false,
+    "v1Ready": false
+  },
+  "nativeAndSDK": {
+    "format": "breditor/initial-read-only-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "profiles": 6,
+    "families": 108,
+    "initialLocks": 108,
+    "oneShotRefusals": 324,
+    "observedOwnerRefusals": 324,
+    "nativeWriteRefusals": 108,
+    "sdkWriteRefusals": 324,
+    "exactRestarts": 216,
+    "livePolicyInvalidations": 108,
+    "futureHistoryComparisons": 432,
+    "protectedParticipants": 20,
+    "protectedReopens": 20,
+    "reviewWriteRefusals": 40,
+    "coveredStreams": 80,
+    "networkCalls": 0,
+    "restoredParticipants": 20,
+    "restoredComponents": 60,
+    "sharedWasmSha256": "880e770934588a4aafe50a65a616637c051f1eb654951dad538ff494abdc9fbe",
+    "scope": "Actual native Wasm one-shot startup policy across six profile constructors and 108 explicitly selected scope/history families; exact native future history and policy invalidation; twenty protected participant restorations and same-attempt exact reopens against ten native inventory fixtures. Node storage/lock fixtures. Not host permission recovery, global activation, cross-device fencing, generation bridging or browser/platform qualification."
+  },
+  "installed": {
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-backups-consumer-g3YgV9/consumer",
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "freshNativeProducers": true,
+    "productionModules": 90,
+    "productionContainsInitialPolicyHelper": true,
+    "noReactWorkspaceOrSyntheticStorageInProduction": true,
+    "sharedWasmSha256": "880e770934588a4aafe50a65a616637c051f1eb654951dad538ff494abdc9fbe",
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sameNativePolicyCountsAsWorkspace": true,
+    "previousDocumentPairedAndRetainedBackupAssertionsStillMandatory": true
+  },
+  "originalContracts": {
+    "defaultPermissionNotRecovered": true,
+    "existingPublicNativeLiveSetterUnchanged": true,
+    "livePolicyChangesStillPublish": true,
+    "livePolicyChangesInvalidateOldSourceCaptures": true,
+    "initialFalseConsumesGate": true,
+    "eitherObservationSealsForever": true,
+    "freeingObservationCannotReopenGate": true,
+    "reviewPolicySeparate": true,
+    "permissionNeverInferredFromSavedRoles": true,
+    "oldDocumentHistoryAndTransportFormatsUnchanged": true,
+    "defaultsVersionsLocksDependenciesAndVendorUnchanged": true
+  },
+  "remaining": [
+    "Trusted durable room catalog and reconciliation of declared, historic and duplicate sources",
+    "Separately protected original resume credentials and current host/account/writer authority",
+    "Current provider asset closure, cross-device fencing and durable room-wide activation/handoff",
+    "Approved cross-generation Undo/Redo and outstanding offline-edit bridge",
+    "All 13 V1 qualification gates remain open; historical WebKit fault is not confirmed fixed"
+  ]
+}

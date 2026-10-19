@@ -82,6 +82,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("room-participant-inventory-type-fence",node,["node_modules/typescript/bin/tsc","--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","scripts/fixtures/editor-consumer/types-room-participant-inventory.ts"]),
   script("native-room-participant-inventory","check-room-participant-inventory-native.mjs",[],[{path:"target/room-participant-inventory-native.json",fresh:true}]),
   script("room-participant-inventory","check-room-participant-inventory-sdk.mjs",[],[{path:"target/room-participant-inventory-sdk.json",fresh:true}]),
+  stage("initial-read-only-type-fence",node,["node_modules/typescript/bin/tsc","--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","scripts/fixtures/editor-consumer/types-initial-read-only.ts"]),
+  script("initial-read-only-recovery","check-initial-read-only-sdk.mjs",[],[{path:"target/initial-read-only-sdk.json",fresh:true}]),
   script("paired-session-backups","probe-paired-backups.mjs",["target/promoted-shared-web"]),
   script("session-opening-upgrade-fence","probe-session-opening-upgrade.mjs",["target/promoted-shared-web"]),
   script("search-borrowed-controls","probe-search-ui.mjs",["target/rich-browser-web","target/promoted-shared-web"]),

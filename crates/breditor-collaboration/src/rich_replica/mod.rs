@@ -46,6 +46,8 @@ mod general_range_session;
 mod history_cursors;
 mod history_keys;
 mod history_metadata;
+#[cfg(any(target_arch = "wasm32", test))]
+pub(crate) mod initial_read_only;
 mod initialize;
 mod inline_format_state;
 mod insert_general_paragraph;

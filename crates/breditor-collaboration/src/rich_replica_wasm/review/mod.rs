@@ -55,6 +55,7 @@ impl RichReplicaProbe {
         &self,
         inner: SharedObservation,
     ) -> RichSharedObservation {
+        self.initial_read_only.seal();
         RichSharedObservation { inner, review: self.review.as_ref().map(ReviewSession::observe) }
     }
     fn check_review<'a>(

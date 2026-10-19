@@ -43,6 +43,22 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [initial policy checkpoint](qualification/2026-10-19-initial-shared-policy.json)
+passes 47 selected checks, including 626 shared native tests, 157 relay tests,
+2,647 TypeScript tests, 615 script tests and 385 editor tests. Three existing
+opt-in script checks remain skipped. The source guard carries 2,620 unchanged
+local-root native tests; these are not fresh runs.
+
+The [initial shared policy contract](INITIAL_SHARED_READ_ONLY.md) adds one-shot
+native read-only initialization before observation, preserving exact recovery
+bytes without weakening the existing publication-changing live setter. Workspace
+and fresh installed public packages cover 108 explicit scope/history combinations,
+216 exact native restarts, and twenty protected participant restores and reopens.
+The room-wide durable catalog, current credential/provider authority and activation
+workflow remain unfinished; all 13 release gates remain open.
+
+### Previous client reconciliation checkpoint
+
 The [client participant reconciliation checkpoint](qualification/2026-10-19-client-participant-reconciliation.json)
 passes one frozen 41-check selection. The SDK reads the independently selected
 native inventory and checks genuine inactive participant recoveries against
