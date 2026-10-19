@@ -43,6 +43,43 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [client participant backup checkpoint](qualification/2026-10-19-client-participant-backups.json)
+passes one frozen 28-check selection. An explicit participant file retains the
+original native/paired history, selected proposal/revision/version stores and
+every record in the chosen raster upload database. Source capture occurs
+synchronously inside the validated asset read transaction. Independent file
+selection, original insert-only recovery factories and genuine recovered-source
+verification preserve exact component bytes, upload epochs and opaque receipts.
+This is one declared participant, not a durable room-wide recovery coordinator.
+
+Thirty original native policy configurations restore 90 upload records,
+including unreferenced files, and match 180 future document plus 180 future
+review checkpoints. Fresh offline installed packages repeat those new cases
+through bare imports while retaining the old 20 document/paired workflows,
+90 retained-store restores/reopens and 30 selected-byte cases. A separate fresh
+installed production local editor uses actual browser PNG/JPEG/WebP, IndexedDB
+and SHA-256 to check the active source/upload cut, pure archive reader, all four
+queue states and exact native history after a real reload. The complete
+participant probe uses explicit Node storage/decoder fixtures; it is not claimed
+as a combined browser or cross-device test.
+
+All 581 script tests and 382 editor tests pass; three existing opt-in script
+checks remain skipped. A failure in the new cancellation path was retained:
+a second transaction abort masked cancellation with InvalidStateError. Guarding
+both error-path aborts repairs the exact failing command without weakening it.
+Both official Wasm producers are freshly rebuilt with unchanged binary hashes.
+Rust sources, Cargo inputs and native build contracts are unchanged, so the
+prior 3,378 native tests/doctests are carried evidence, not newly run tests.
+
+Authenticated participant discovery, a trusted client/server recovery catalog,
+separately protected registration/resume credentials, durable multi-store
+restart/adoption and current provider/writer authority before explicit
+activation remain work. The approved cross-generation Undo/Redo and outstanding
+offline-edit bridge is still unimplemented. All 13 V1 gates remain open; no
+version, tag, push, publication or deployment is promoted.
+
+### Previous joined server recovery checkpoint
+
 The [joined server recovery checkpoint](qualification/2026-10-19-server-room-recovery.json)
 passes one frozen 25-check selection. An explicit private host handle captures
 the actual server log and raster store under their common transaction lock order.

@@ -136,6 +136,11 @@ receipts or unreferenced pending files. Preserve those separately with the
 [whole-store raster archive](RICH_ASSET_BACKUPS.md). Selected source JSON can contain
 private text, deleted history and review metadata; the file is not encrypted.
 
+The separate [participant backup](SHARED_PARTICIPANT_BACKUPS.md) now coordinates
+a declared native/packet source with a complete upload snapshot inside the active
+asset transaction. It retains both original files and verifies recovered source
+owners and uploads together, without turning several restores into one transaction.
+
 Several restored databases are not one transaction. Complete participant/server
 capture, resumable room recovery, current provider and cross-device writer
 authority, and the approved cross-generation Undo/offline bridge remain separate

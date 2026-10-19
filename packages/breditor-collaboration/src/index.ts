@@ -15,6 +15,10 @@ export {readSharedAssetBytesBackup,SharedAssetBytesArchive} from "./asset_bytes/
 export {SharedAssetBytesError} from "./asset_bytes/guards.js";
 export {SHARED_ASSET_BYTES_BACKUP_MIME,MAX_SHARED_ASSET_BYTES_BACKUP_BYTES,MAX_SHARED_ASSET_BYTES_BACKUP_HEADER_BYTES} from "./asset_bytes/format.js";
 export type {SharedResolvedAssetBytes,SharedAssetBytesResolver,SharedAssetBytesOptions,SharedAssetBytesCaptureOptions,SharedAssetByteBinding,SharedAssetBytePayload,SharedAssetBytesMetadata,SharedAssetBytesPending} from "./asset_bytes/types.js";
+export {SharedParticipantBackup,captureSharedParticipantBackup,readSharedParticipantBackup,type SharedParticipantBackupOutcome} from "./participant_backup/archive.js";
+export {SharedParticipantBackupError} from "./participant_backup/policy.js";
+export {SHARED_PARTICIPANT_BACKUP_MIME,MAX_SHARED_PARTICIPANT_BACKUP_BYTES,MAX_SHARED_PARTICIPANT_BACKUP_HEADER_BYTES} from "./participant_backup/format.js";
+export type {SharedParticipantBackupIdentity,SharedParticipantBackupSelection,SharedParticipantBackupOptions,SharedParticipantBackupCaptureOptions,SharedParticipantBackupPending} from "./participant_backup/types.js";
 export {mountRichWritingTools as mountSharedWritingTools,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";
 export {createRichFullscreen as createSharedFullscreen,mountRichFullscreenControls as mountSharedFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
 export {supportsSharedGeneralRanges,restoreSharedGeneralEditor} from "./profile.js";

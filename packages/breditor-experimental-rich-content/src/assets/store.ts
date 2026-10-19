@@ -3,11 +3,12 @@ import {ingestFile} from "./ingest_file.js";
 import {uploadAsset} from "./upload_queue.js";
 import {assetInfo, type AssetInfo, type AssetLimits, type AssetRecord, type AssetUploader} from "./types.js";
 import {checkedAssetLimits} from "./limits.js";
-import {exportAssetBackup} from "./archive/export_backup.js";
+import {exportAssetBackup,encodeAssetArchiveSnapshot} from "./archive/export_backup.js";
 import {importAssetBackup} from "./archive/import_backup.js";
 import {insertAssetArchive} from "./archive/database.js";
+import {captureAssetArchiveSnapshot} from "./archive/database.js";
 import {RichAssetBackupError,checkAssetBackupSignal} from "./archive/error.js";
-import type {RichAssetBackupOptions,RichAssetRestoreOptions} from "./archive/types.js";
+import type {RichAssetBackupOptions,RichAssetRestoreOptions,RichAssetSourceBackup} from "./archive/types.js";
 
 export interface RichAssetOptions {
   limits?: Partial<AssetLimits>;
@@ -48,6 +49,16 @@ export class RichAssetStore {
 
   /** One atomic retained snapshot, including cancelled/failed uploads and assets used only by history. */
   async exportBackup(options:RichAssetBackupOptions={}):Promise<Blob>{this.#live();return exportAssetBackup(this.#db,this.limits,options);}
+
+  /** Capture immutable source data in the same active asset snapshot before asynchronous encoding.
+   * No flush, upload or notification. The callback must be synchronous; it may run before a later
+   * failure, so retain/dispose any borrowed source handles explicitly on failure. */
+  async captureBackup<T>(captureSource:()=>T&(T extends PromiseLike<unknown>?never:unknown),options:RichAssetBackupOptions={}):Promise<RichAssetSourceBackup<T>>{
+    this.#live();if(typeof captureSource!=="function")throw new RichAssetBackupError("asset_backup_source","A synchronous source capture is required");
+    const {signal}={...options},snapshot=await captureAssetArchiveSnapshot(this.#db,this.limits,()=>{this.#live();return captureSource();},signal);
+    const backup=await encodeAssetArchiveSnapshot(snapshot.records,this.limits,signal);checkAssetBackupSignal(signal);
+    return Object.freeze({source:snapshot.source,backup});
+  }
 
   #live(): void { if (this.#closed) throw Error("Asset store is closed"); }
   #notify(record: AssetRecord): void {

@@ -13,11 +13,16 @@ Run the reproducible functional check from the repository root:
 node scripts/check-relay.mjs
 ```
 
-The check runs formatting, strict first-party Clippy, one real I/O-failure test,
-eight native room contract tests, five asset contracts, three server account/protocol tests, and builds
-the actual optional server binary. The native tests use the same rich owner
+The check runs formatting, strict first-party Clippy and the complete native
+room, asset and recovery suites with and without the optional server feature,
+including real I/O failures, then builds the actual optional server binary and
+functional examples. The native tests use the same rich owner
 and single-writer admission used by the Wasm/browser checkpoint; no second CRDT
 or simplified document model is substituted.
+
+Numerical integration checkpoints below are historical evidence, not the current
+suite totals. Current frozen checks and remaining release gates are recorded in
+the [V1 release plan](../../docs/V1_RELEASE_PLAN.md).
 
 ## Server room archives
 

@@ -1,4 +1,4 @@
-import {RichAssetStore,RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions} from "@breditor/editor";
+import {RichAssetStore,RichAssetBackupError,readRichAssetBackup,MAX_ASSET_BACKUP_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions} from "@breditor/editor";
 import {RichAssetStore as DirectStore,type RichAssetRestoreOptions as DirectOptions} from "@breditor/experimental-rich-content";
 async function contracts(store:RichAssetStore,signal:AbortSignal){
  const capture:RichAssetBackupOptions={signal},archive:Blob=await store.exportBackup(capture),options:RichAssetRestoreOptions={uploadState:"preserve",signal,limits:{maxStoredBytes:1024}},direct:DirectOptions=options;const restored=await RichAssetStore.restoreBackup("new-assets",archive,options);const sameClass:DirectStore=restored;void sameClass;void direct;void MAX_ASSET_BACKUP_BYTES;void ASSET_BACKUP_MIME;
@@ -8,6 +8,9 @@ async function contracts(store:RichAssetStore,signal:AbortSignal){
  RichAssetStore.restoreBackup("reset",archive,{uploadState:"uploaded"});
  // @ts-expect-error The file is a binary Blob archive, not document JSON or a URL to fetch.
  RichAssetStore.restoreBackup("url","https://example.invalid/archive",options);
+ const snapshot=await store.captureBackup(()=>Object.freeze({checkpoint:"native snapshot"}));const captured:string=snapshot.source.checkpoint;void captured;const read=await readRichAssetBackup(snapshot.backup);read.entries();read.dispose();
+ // @ts-expect-error A callback must return before the active snapshot transaction ends.
+ store.captureBackup(async()=>"late");
  try{await store.exportBackup();}catch(error){if(error instanceof RichAssetBackupError){const code:string=error.code;void code;}}
  restored.close();
 }

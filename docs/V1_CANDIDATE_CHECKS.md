@@ -66,6 +66,17 @@ interrupted log/raster/completion prefixes, no-overwrite refusal and exclusive
 attempts. The [joined server barrier](SERVER_ROOM_RECOVERY.md) is not a complete
 participant backup or cross-generation qualification.
 
+Both profiles require `asset-source-snapshot-contracts`, the identical
+`asset-source-cancellation-regression` input and `participant-backups` through
+actual shared Wasm. Thirty native replay configurations capture and restore
+native/paired/retained state with whole-store upload epochs, opaque receipts and
+an unreferenced image. Fresh installed session-backup acceptance repeats this
+public probe and strict type contracts; the original acceptance cases remain
+mandatory. Installed asset-browser acceptance additionally checks the synchronous
+native/source callback and pure upload reader with real PNG/JPEG/WebP and IDB.
+The [participant contract](SHARED_PARTICIPANT_BACKUPS.md) does not claim a durable
+multi-store recovery transaction, discovery or global activation.
+
 Both profiles also require `packet-asset-references` and `version-source-ownership`.
 The former checks all 18 shared grammar/scope/history configurations through actual
 Wasm, including source-and-intent bindings, explicit Pending, pure selected-source
