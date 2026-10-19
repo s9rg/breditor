@@ -22,6 +22,7 @@ import {reviewProgress,reviewStorageIdentity} from "../relay/review_validation.j
 import {recoveryOriginFor} from "../participant_operation/admission.js";
 import {existingSessionDatabase} from "../participant_operation/existing_session.js";
 import type {SharedReviewRelayStorageIdentity,SharedReviewRelayProgress} from "../relay/review_types.js";
+import {admitPairedVersions,checkPairedNativeProgress} from "./review_record_admission.js";
 export type SharedPairedCheckpointRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord|SearchReviewCheckpointRecord;
 type PairedRecord=SharedPairedCheckpointRecord;
 export interface SharedReviewSessionPolicy<P extends SharedSelectionPolicy=SharedSelectionPolicy> {history:SharedHistoryPolicy;rangeEditing:SharedRangePolicy;selectionEditing:P;richLanguage:1|2|3}
@@ -56,7 +57,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  private constructor(db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SessionOptions<P>,recovered:boolean,versions:readonly string[],progress?:SharedReviewRelayProgress){
   this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.core=core;this.#options=options;this.recovered=recovered;
   if(progress){this.#relayProgress=structuredClone(progress);this.#durableRelayProgress=structuredClone(progress);this.#validateNativeProgress(progress);}
-  for(const packet of versions){const info=core.readVersion(packet);if(this.#versions.has(info.id))throw new SharedEditorError("version_catalog","Duplicate immutable version in recovery");this.#versions.set(info.id,packet);}
+  this.#versions=admitPairedVersions(core,versions);
   const autosave=()=>{try{this.save();}catch(error){this.#failed(error);}};
   this.#unsubscribe=[core.subscribe(autosave),core.subscribeReview(autosave)];
   db.onversionchange=()=>{core.retire();db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
@@ -140,7 +141,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   return relay.reviewEditing==="read_only"?{format:"breditor/shared-review-observer-checkpoint-record",...base,relay:{...relay,reviewEditing:"read_only"},progress}:{format:"breditor/shared-review-relay-checkpoint-record",...base,relay,progress};
  }
  #checkRecord(record:PairedRecord):void{if(record.format==="breditor/shared-search-review-checkpoint-record")checkSearchReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-reviewed-review-checkpoint-record")checkReviewedReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-observer-checkpoint-record")checkReviewObserverRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-relay-checkpoint-record")checkReviewRelayRecord(record,[this.#options.room,this.#options.writer]);else checkReviewRecord(record,[this.#options.room,this.#options.writer]);}
- #validateNativeProgress(progress:SharedReviewRelayProgress):void{if(this.#options.relay?.reviewEditing==="read_only"&&this.core.localReviewClock().through!=="0")throw new SharedEditorError("review_observer_authored","An observer's native recovery cannot contain an authored metadata suffix");if(progress.accepted){const own=this.core.localReviewClock();if(own.actor!==progress.accepted.actor)throw new SharedEditorError("review_relay_identity","Native review writer differs from saved progress");const local=this.core.reviewWriterClock(own.actor,this.#options.review.principal,progress.accepted.through);if(local.prefixDigest!==progress.accepted.prefixDigest)throw new SharedEditorError("review_relay_fork","Saved acceptance does not match native retained history");}}
+ #validateNativeProgress(progress:SharedReviewRelayProgress):void{checkPairedNativeProgress(this.core,this.#options.relay,this.#options.review.principal,progress);}
  /** Exact readable paired export, including after a failed save/close; it grants no live permissions. */
  exportRecovery():PairedRecord{this.#live();return this.#record();}
  /** Exact bounded paired history/catalog capture, not assets, credentials or other durable outboxes. */

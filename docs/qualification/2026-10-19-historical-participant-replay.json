@@ -1,0 +1,217 @@
+{
+  "format": "breditor/historical-participant-replay-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "passed": true,
+  "qualification": "selected-functional-readonly-replay-checkpoint-not-full-functional-profile-or-v1-approval",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "selectedStages": 27,
+  "evidence": {
+    "result": "target/v1-candidate-runs/run-yRYZ8A/result.json",
+    "sourceFiles": "target/v1-candidate-runs/run-yRYZ8A/frozen-source-files.json",
+    "audit": "target/v1-candidate-runs/run-yRYZ8A/qualification-audit.json",
+    "finalSourceAudit": "target/v1-candidate-runs/run-yRYZ8A/final-source-audit.json",
+    "participantReplay": "target/v1-candidate-runs/run-yRYZ8A/participant-replay-sdk.json",
+    "roomReplay": "target/v1-candidate-runs/run-yRYZ8A/room-replay-sdk.json",
+    "nativeParticipantInventory": "target/v1-candidate-runs/run-yRYZ8A/native-participant-inventory.json",
+    "nativeCatalogComposition": "target/v1-candidate-runs/run-yRYZ8A/native-catalog-participant-operation.json",
+    "nativeRoomOperation": "target/v1-candidate-runs/run-yRYZ8A/native-room-operational-recovery.json",
+    "installedSessionBackups": "target/v1-candidate-runs/run-yRYZ8A/installed-session-backups.json",
+    "installedParticipantOperation": "target/v1-candidate-runs/run-yRYZ8A/installed-participant-operation.json",
+    "installedCatalogComposition": "target/v1-candidate-runs/run-yRYZ8A/installed-catalog-participant-operation.json",
+    "installedRoomOperation": "target/v1-candidate-runs/run-yRYZ8A/installed-room-operational-recovery.json",
+    "installedReplay": "target/v1-candidate-runs/run-yRYZ8A/installed-participant-replay.json",
+    "regressions": "target/v1-candidate-runs/run-yRYZ8A/regressions/",
+    "failedBeforeRepairRun": "target/v1-candidate-runs/run-WoIeIO/result.json"
+  },
+  "source": {
+    "baseCommit": "4017f51176d8f65f138db9c178b88a03d4dd11dc",
+    "testedWorkingTreeSha256": "bed12e1796c5c06530e8d05f98c85dce82ee39ec64ee654627395d497266a770",
+    "nonDocumentationSha256": "9e2a24595d165629b51d78a01d6a0d3de670aafbefd5e0653840312a33af9165",
+    "files": 4660,
+    "bytes": 40552548,
+    "postQualificationChanges": "This qualification file and the historical replay contract link only."
+  },
+  "implementation": {
+    "participantReplay": "SharedParticipantReplay uses the independently selected original native family and private read-only factory. Exact native document/review and retained packet records are admitted through the same pure functions as live persistence. No destination DB, author lease, token provider or delivery transport is opened.",
+    "roomReplay": "SharedRoomReplay requires every original retained file exactly once, including duplicate writers. Each private native replay is checked against its original registration inventory separately. Unselected copies and existing unreconciled markers remain intact.",
+    "genuineSources": "Returned SharedAssetReferenceCapture handles come from actual native causal/packet readers and exact canonical records, then pass the original backup verifier. Saved reference arrays or lookalike editor objects cannot substitute for native owners.",
+    "nativeContinuity": "Canonical native ordered document and paired-review journal comparison checks the original against the actual current editor, without importing, truncating or discarding either. Supplemental queue, cache and upload reconciliation remains separate.",
+    "lifetimes": "Backup and catalog capabilities are borrowed. Reader disposal frees only private native owners and captures. Source/catalog disposal, authority revocation, cancellation and closure during authority callbacks refuse; partial cohort failures free already acquired readers.",
+    "automaticStorageLeaseNetworkOrNativeEdits": false,
+    "historicalBranchMergeOrMarkerClear": false,
+    "currentProviderAuthorityOrActivationGranted": false,
+    "originalStoredFormatsDefaultsVersionsDependenciesAndBoundsUnchanged": true
+  },
+  "regressions": {
+    "reproducedBeforeFix": 4,
+    "records": [
+      {
+        "kind": "native-brand",
+        "beforeSource": {
+          "commit": "4017f51176d8f65f138db9c178b88a03d4dd11dc",
+          "dirty": true,
+          "sha256": "4765381f7c4b72beaff7b56c25ab2fc77bca65067327239836c96a09cb674736",
+          "files": 4650,
+          "bytes": 40508683
+        },
+        "snapshots": 15,
+        "beforeExitCode": 1,
+        "reproducedBeforeFix": true,
+        "sourceReconstructed": true
+      },
+      {
+        "kind": "reentrant-disposal",
+        "beforeSource": {
+          "commit": "4017f51176d8f65f138db9c178b88a03d4dd11dc",
+          "dirty": true,
+          "sha256": "94ce6ff79ca1f5489c83614f9f8fd56254a44d31007e8c36afb40c50e60efb42",
+          "files": 4650,
+          "bytes": 40508715
+        },
+        "snapshots": 15,
+        "beforeExitCode": 1,
+        "reproducedBeforeFix": true,
+        "sourceReconstructed": true
+      },
+      {
+        "kind": "current-closed",
+        "beforeSource": {
+          "commit": "4017f51176d8f65f138db9c178b88a03d4dd11dc",
+          "dirty": true,
+          "sha256": "f0f48b8c2468bd8c5e63371e961d3fe5b09284010e2997acea6175a7b89614df",
+          "files": 4659,
+          "bytes": 40537637
+        },
+        "snapshots": 27,
+        "beforeExitCode": 1,
+        "reproducedBeforeFix": true,
+        "sourceReconstructed": true
+      },
+      {
+        "kind": "detached-error",
+        "beforeSource": {
+          "commit": "4017f51176d8f65f138db9c178b88a03d4dd11dc",
+          "dirty": true,
+          "sha256": "f5f90bc7239932e2bcaec616c024d100dec91cd628bbf6198a891dce2bd57890",
+          "files": 4660,
+          "bytes": 40552460
+        },
+        "snapshots": 29,
+        "beforeExitCode": 1,
+        "reproducedBeforeFix": true,
+        "sourceReconstructed": true
+      }
+    ],
+    "sourceSnapshots": 86,
+    "beforeEvidenceFilesHashed": 94,
+    "allBeforeSourceDigestsReconstructed": true,
+    "repairs": [
+      "Canonical native editor comparison refuses JavaScript lookalikes instead of trusting an instance method.",
+      "Source proof checks recheck their WeakMap identity after callback-bearing validation, detecting disposal during the same check.",
+      "Current native comparison finishes after all authority callbacks; closure in a callback cannot leave a successful continuity result.",
+      "The existing detached-origin refusal preserves its structured recovery_origin code instead of leaking a private-field TypeError. The unchanged seven storage/origin tests pass."
+    ],
+    "failedRunDisposition": "The first 27-stage run stopped at the unchanged detached-origin contract. Its frozen source and failure are retained; all selected stages were rerun after the repair."
+  },
+  "tests": {
+    "freshRelayNativeTestsAndDoctests": 216,
+    "freshNoServerRoomBackupTests": 97,
+    "freshNoServerServerBackupTests": 100,
+    "noServerCountsContainRepeatedLibraryTests": true,
+    "strictRelayAllTargetsWithAndWithoutServer": true,
+    "strictRelayDocumentation": true,
+    "scriptsPassed": 682,
+    "existingOptInSkips": 3,
+    "candidateRunnerContracts": 45,
+    "roomStorageContracts": 16,
+    "strictPublicReplayTypes": true,
+    "sourceAndInstalledAcceptanceMatch": true,
+    "originalFunctionalAcceptanceUnchanged": true,
+    "participantReplay": {
+      "nativeFamilies": 66,
+      "paired": 30,
+      "document": 36,
+      "simultaneousPrivateReaderPairs": 66,
+      "exactNativeSources": 66,
+      "archivedImageByteCaptures": 66,
+      "retainedImageBindings": 306,
+      "nativeCurrentComparisons": 198,
+      "forgedCurrentRefusals": 66,
+      "closedSourceRefusals": 66,
+      "primaryPrivateReaderDisposals": 132,
+      "reentrantDisposalRefusals": 1,
+      "currentClosedDuringAuthorityRefusals": 1,
+      "authorityRefusals": 4,
+      "cancellationRefusals": 2,
+      "forbiddenStorageLeaseOrNetworkCalls": 0,
+      "localBlobFixtureReads": 576
+    },
+    "roomReplay": {
+      "originalNativeFamilies": 10,
+      "allRetainedCopies": 30,
+      "duplicateWriterCopies": 10,
+      "nativeCurrentComparisons": 30,
+      "wrongCurrentRefusals": 10,
+      "missingDuplicateOrExtraCopyRefusals": 30,
+      "partialNativeFailuresCleanedUp": 10,
+      "borrowedCatalogDisposalsRefused": 10,
+      "currentValidityAfterCallbackChecks": 1,
+      "nativeFactoryCalls": 70,
+      "nativeDisposals": 70,
+      "authorityRefusals": 40,
+      "cancellationRefusals": 20,
+      "forbiddenStorageLeaseOrNetworkCalls": 0
+    },
+    "priorRootAndSharedNative": {
+      "workspace": 2625,
+      "shared": 630,
+      "baseline": "4017f51176d8f65f138db9c178b88a03d4dd11dc",
+      "evidence": "target/v1-candidate-runs/run-Pl82F0/result.json",
+      "freshRuns": false
+    }
+  },
+  "retainedRoomWorkflows": {
+    "nativeFamilies": 10,
+    "participants": 20,
+    "parentColdReopens": 30,
+    "currentParticipantColdReopens": 60,
+    "retainedOriginalFiles": 50,
+    "retainedUnselectedCopies": 10,
+    "pendingProposals": 4,
+    "pendingVersions": 9,
+    "savedRedoRecoveries": 9,
+    "retainedUploadRecords": 60,
+    "bothTransportFaultSuitesRetained": true,
+    "sourceAndInstalledAcceptanceMatchPriorCheckpoint": true
+  },
+  "runtimeAndPackages": {
+    "bothOfficialWasmProducersRebuilt": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "freshSourceBoundInstalledReports": 5,
+    "freshOfflineArchives": true,
+    "workspaceLinks": false,
+    "strictConsumerTypes": true,
+    "productionModules": {
+      "original": 139,
+      "participantOperation": 121,
+      "parentOperation": 142,
+      "historicalReplay": 88
+    },
+    "productionApiModulesImported": true,
+    "newReplayProductionGraphHasNoWorkspaceReactOrSyntheticStorage": true,
+    "stageAndArtifactHashesReverified": 37,
+    "nativeFixtureHashesReverified": 150,
+    "archiveLockfileAndRuntimeHashesReverified": true
+  },
+  "remaining": [
+    "Every supplied historical copy is now natively readable; this does not merge historical/offline branches, reconcile supplemental pending packets/uploads, choose obsolete copies, clear markers or activate a room.",
+    "Current participant sources, all retained sources, native current-server proof and authenticated provider byte/reference closure still need a complete global reconciliation and final activation barrier, with protected credential custody and deployment/writer fencing.",
+    "The approved cross-generation Undo/Redo and outstanding offline-edit bridge remains required. A reset or discarded branch is not a substitute.",
+    "All admitted native readers remain in memory until disposal; the large-room operating envelope, quota/eviction, process/power-loss durability and browser behavior remain unqualified by these Node fixture checks.",
+    "All 13 V1 release gates remain open. The historical WebKit fault is not confirmed fixed; physical Japanese input and VoiceOver qualification remain deferred.",
+    "The existing capped vendored dependency warning, generic-btree notice gap and full dependency/license approval remain unresolved. No push, tag, publication, deployment, version or dependency change occurred."
+  ]
+}

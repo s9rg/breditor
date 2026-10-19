@@ -22,6 +22,7 @@ import {submitRevision} from "./submit.js";
 import {bridgeRevision} from "./bridge.js";
 import {ensureRevisionPrevious} from "./ensure_previous.js";
 import {loadRevision} from "./load.js";
+import {admitRevisionRecord} from "./record_admission.js";
 import type {SharedSuggestionRevisionsOptions,SharedSuggestionRevisionsRecord,SharedSuggestionRevisionRow,SharedSuggestionRevisionReceipt,SharedSuggestionRevisionDraft,SharedSuggestionRevisionRequest,SharedSuggestionFormatRebaseDraft,SharedSuggestionFormatRebaseQueued,SharedSuggestionTextRebaseDraft,SharedSuggestionTextRebaseQueued} from "./types.js";
 const attached=new WeakSet<object>();
 export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
@@ -61,10 +62,7 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #check():void{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");const o=this.#options;if(o.storage.core!==this.#core||o.queue.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");const state=o.queue.state();if(state.closed||state.retiring)throw new SharedRelayError("suggestion_queue_closed");o.transport.checkSuggestionRevisions!(this.#core,this.#record.identity,o.binding);}
  #writable():void{this.#check();if(this.#closing)throw new SharedRelayError("suggestion_revisions_closed");}
  #admit(record:SharedSuggestionRevisionsRecord):void{
-  const infos=new Map<string,SharedSuggestionRevisionInfo>();for(const row of record.retained){const info=this.#core.readSuggestionRevision(row.previousPacket,row.packet);if(info.suggestion.author!==record.identity.principal||this.#core.verifySuggestionRevision(row.previousPacket,row.packet).kind!=="verified"||infos.has(info.id))throw new SharedRelayError("suggestion_revision_local_source_missing");
-   if(row.receipt&&!same(row.receipt.revision,info)||row.conflict&&(row.conflict.decision.suggestionId!==info.previousSuggestionId||row.conflict.successor&&row.conflict.successor.revision.previousSuggestionId!==info.previousSuggestionId))throw new SharedRelayError("suggestion_revision_receipt_mismatch");
-   if(row.conflict?.decision.effect&&this.#core.retainedWriterReceiptV2(row.conflict.decision.effect.writerGroup).kind!=="verified")throw new SharedRelayError("suggestion_revision_conflict_effect_not_retained");infos.set(info.id,info);
-  }this.#infos=infos;
+  this.#infos=admitRevisionRecord(this.#core,record);
  }
  #mark(record:SharedSuggestionRevisionsRecord):void{const checked=checkRevisionRecord(record,this.#record.identity,this.#record.binding);this.#admit(checked);if(same(checked,this.#record)&&!this.#failure)return;this.#record=checked;this.#pending=structuredClone(checked);this.#startWrite();this.#notify();this.#schedule();}
  #row(id:string):SharedSuggestionRevisionRow{const index=[...this.#infos.keys()].indexOf(id);if(index<0)throw new SharedRelayError("suggestion_revision_unknown");return this.#record.retained[index]!;}

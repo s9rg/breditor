@@ -1,7 +1,5 @@
 /** Durable client intent, not a second document, current authority or optimistic accepted content. */
 import {SharedRelayError} from "../relay/validation.js";
-import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
-import {sameReviewedHistory} from "../reviewed_history_validation.js";
 import {SharedEditorError} from "../core.js";
 import {encodeRetainedStoreBackup,decodeRetainedStoreBackup,checkRetainedStoreRecovery,checkRetainedStoreSignal,retainedStoreNativeAdmission} from "../backups/retained_store.js";
 import {retainedStoreDestinationExists,insertRetainedStoreRecord} from "../backups/retained_store_database.js";
@@ -13,6 +11,7 @@ import {isOperationalComponent} from "../participant_operation/component_admissi
 import {existingOperationalComponent} from "../participant_operation/existing_component.js";
 import {operationFailure} from "../participant_operation/errors.js";
 import {queueIdentity,packetText,publication,decision,intent,same} from "./validation.js";
+import {checkSuggestionRecordSource,admitSuggestionRecord,ownedSuggestionAcceptance} from "./record_admission.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo} from "../suggestion_types.js";
@@ -41,10 +40,7 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
   const options={...input,identity:queueIdentity(input.identity),storage:{core,save:()=>{assertSource();source.save();},flush:async()=>{assertSource();await source.flush();assertSource();}}};
   if(options.ownedHistory!==undefined&&options.ownedHistory!=="reviewed-v1")throw new SharedRelayError("suggestion_history_policy");
   if(attached.has(core))throw new SharedRelayError("suggestion_queue_already_attached");
-  if(!core.supportsDocumentSuggestions())throw new SharedRelayError("suggestions_unavailable");
-  const owned=core.reviewedHistoryIdentity?.()??null;
-  if(options.ownedHistory==="reviewed-v1"?(!core.supportsReviewedHistory()||!owned||!sameReviewedHistory(owned,{binding:options.identity.binding,principal:options.identity.principal,effectWriter:options.identity.effectWriter})):owned!==null)throw new SharedRelayError("suggestion_history_source");
-  checkSourceCheckpoint(core,options.identity.room,options.identity.documentWriter);
+  checkSuggestionRecordSource(core,options.identity,options.ownedHistory);
   attached.add(core);let lease:SuggestionQueueLease|undefined,db:IDBDatabase|undefined,queue:SharedSuggestionQueue<Q>|undefined;
   try{checkRetainedStoreSignal(signal);lease=await SuggestionQueueLease.acquire(options.identity);assertSource();checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"suggestions",queueKey(options.identity)):undefined;db=retained?.db??await openQueueDatabase(options.database);let saved:SharedSuggestionQueueRecord|null;
    if(recovered){if(await retainedStoreDestinationExists(db,"suggestions",queueKey(options.identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=await readQueueRecord(db,options.identity,options.ownedHistory);
@@ -59,20 +55,10 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
  identity():SharedSuggestionQueueIdentity{this.#live();return {...this.#record.identity};}
  #writable():void{this.#live();this.#assertSource();if(this.#retiring)throw new SharedRelayError("suggestion_queue_closing");}
  #admit(record:SharedSuggestionQueueRecord):Map<string,{info:SharedDocumentSuggestionInfo;row:SharedRetainedSuggestion}>{
-  const result=new Map<string,{info:SharedDocumentSuggestionInfo;row:SharedRetainedSuggestion}>(),core=this.#options.storage.core;
-  for(const row of record.retained){const info=core.readSuggestion(row.packet);if(result.has(info.id))throw new SharedRelayError("suggestion_queue_duplicate");const source=core.verifySuggestionSource(row.packet);
-   if(row.origin==="local"&&(info.author!==record.identity.principal||source.kind!=="verified"))throw new SharedRelayError("suggestion_local_source_missing");
-   if(row.publication&&!same(row.publication.suggestion,info)||row.decision&&row.decision.suggestionId!==info.id)throw new SharedRelayError("suggestion_receipt_mismatch");
-   if(row.decision?.effect&&core.retainedWriterReceiptV2(row.decision.effect.writerGroup).kind!=="verified")throw new SharedRelayError("suggestion_effect_not_retained");
-   const owned=this.#ownedAcceptance(row.decision);
-   if(owned&&!same(core.adoptedSuggestion(info.id),owned))throw new SharedRelayError("suggestion_owned_history_missing");
-   result.set(info.id,{info,row});
-  }return result;
+  return admitSuggestionRecord(this.#options.storage.core,record,this.#options.ownedHistory);
  }
  #ownedAcceptance(received:SharedSuggestionDecision|null):SharedOwnedSuggestionAcceptance|null{
-  const identity=this.#options.identity;
-  if(this.#options.ownedHistory!=="reviewed-v1"||received?.decision!=="accept"||!received.effect||received.principal!==identity.principal||received.acceptingWriter!==identity.documentWriter)return null;
-  return {binding:identity.binding,sequence:received.sequence,principal:received.principal,acceptingWriter:received.acceptingWriter,effect:{suggestionId:received.suggestionId,writerGroup:received.effect.writerGroup,semanticFrom:received.effect.semanticFrom}};
+  return ownedSuggestionAcceptance(this.#options.identity,this.#options.ownedHistory,received);
  }
  #mark(record:SharedSuggestionQueueRecord):void{const checked=checkQueueRecord(record,this.#options.identity,this.#options.ownedHistory),rows=this.#admit(checked);if(same(checked,this.#record)&&!this.#failure)return;this.#record=checked;this.#rows=rows;this.#pending=structuredClone(checked);this.#notify();this.#start();}
  #replace(id:string,change:(row:SharedRetainedSuggestion)=>SharedRetainedSuggestion):void{const found=this.#rows.get(id);if(!found)throw new SharedRelayError("suggestion_unknown");this.#mark({...this.#record,retained:this.#record.retained.map(row=>row===found.row?change(row):row)});}

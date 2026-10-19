@@ -4,6 +4,8 @@ import {nativeRestoreBinding} from "../native_restore_factory.js";
 import type {SharedEditorOptions,SharedRustOwner,SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 import type {PreparedRecovery} from "../participant_recovery/prepare.js";
+import {captureRecordedAssetReferences,type SharedAssetReferenceCapture} from "../asset_references_capture.js";
+import {participantReplayReaders} from "../participant_replay/record_readers.js";
 const key=Object.freeze({}),states=new WeakMap<ParticipantOrigin,{core:SharedRichEditor<SharedSelectionPolicy>;document:string;review:string|undefined;guard:()=>void}>();
 const unavailable=()=>new SharedEditorError("recovery_origin","The selected native recovery origin is unavailable or changed");
 
@@ -36,9 +38,17 @@ export class ParticipantOrigin {
  }
  /** A live native origin, not a caller-supplied predicate or stored readiness DTO. */
  verify(current:SharedRichEditor<SharedSelectionPolicy>):void {
-  const s=states.get(this);if(!s)throw unavailable();s.guard();
-  if(s.core.view().readOnly!==true||s.core.checkpointJson()!==s.document||s.review!==undefined&&s.core.reviewCheckpoint()!==s.review)throw unavailable();
-  current.verifyRecoveryOrigin(s.core);s.guard();
+  if(!states.has(this))throw unavailable();
+  const s=this.#live();
+  SharedRichEditor.prototype.verifyRecoveryOrigin.call(current,s.core);this.#live();
+  // Authority callbacks above may retire either owner. The final comparison has no callback gap.
+  SharedRichEditor.prototype.verifyRecoveryOrigin.call(current,s.core);
+ }
+ #live(){const s=states.get(this);if(!s)throw unavailable();s.guard();if(states.get(this)!==s||s.core.view().readOnly!==true||s.core.checkpointJson()!==s.document||s.review!==undefined&&s.core.reviewCheckpoint()!==s.review)throw unavailable();return s;}
+ /** Internal immutable archive replay with the same queue/receipt rules as live persistence. */
+ capture(p:PreparedRecovery<SharedSelectionPolicy>):SharedAssetReferenceCapture{
+  if(!states.has(this))throw unavailable();
+  const s=this.#live(),readers=participantReplayReaders(p,s.core);return captureRecordedAssetReferences(s.core,readers,()=>{this.#live();p.guard();this.#live();});
  }
  dispose():void{const s=states.get(this);if(!s)return;states.delete(this);s.core.dispose();}
 }

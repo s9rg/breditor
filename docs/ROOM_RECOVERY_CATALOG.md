@@ -108,6 +108,12 @@ appear in `unreconciledParticipants`; a report stays `pending` while that list
 is nonempty, even when its registered-stream coverage is `covered`. No copy is
 silently selected, merged, marked obsolete or discarded.
 
+The separate [historical participant replay](HISTORICAL_PARTICIPANT_REPLAY.md)
+API can read every retained copy through its original native factory without
+opening another active writer, including duplicate copies. It checks actual
+native and retained-packet sources but neither clears unresolved markers nor
+merges their histories or supplemental stores.
+
 The catalog does not discover undeclared databases or merge historical/offline
 histories. Its file set and staging plan are immutable. A different selection or
 expanded source set needs an explicit new catalog retaining the old files; an

@@ -15,7 +15,7 @@ import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsOptions,SharedDocumentVersionEntry,SharedVersionCatalogRecord,RetainedVersionPacket,SharedDocumentVersionStatus,VersionCatalogSnapshot} from "./types.js";
-interface Retained {info:SharedDocumentVersionInfo;value:RetainedVersionPacket}
+import {admitVersionRecord,type AdmittedVersionRecord as Retained} from "./record_admission.js";
 export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly options:SharedDocumentVersionsOptions<P>;readonly #db:IDBDatabase;readonly #lease:VersionCatalogLease;
  readonly #assertSource:()=>void;
@@ -53,12 +53,7 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  #live(checkSource=true):void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();if(checkSource)this.#assertSource();}
  #writable():void{this.#live();if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
  #admit(record:SharedVersionCatalogRecord):Map<string,Retained>{
-  const result=new Map<string,Retained>(),core=this.options.storage.core;
-  for(const value of record.packets){const info=core.readVersion(value.packet);if(result.has(info.id))throw new SharedRelayError("version_cache_duplicate");
-   const source=core.verifyVersionSource(value.packet);if(value.origin==="local"&&(info.author!==record.identity.principal||source.kind!=="verified"))throw new SharedRelayError("version_local_source_missing");
-   if(value.accepted){if(!sameInfo(value.accepted.version,info))throw new SharedRelayError("version_receipt_mismatch");const listed=record.catalog?.entries.find(entry=>entry.version.id===info.id);if(listed&&!sameEntry(listed,value.accepted)||record.catalog&&BigInt(record.catalog.through)>=BigInt(value.accepted.sequence)&&!listed)throw new SharedRelayError("version_cache_acceptance");}
-   result.set(info.id,{info,value});
-  }return result;
+  return admitVersionRecord(this.options.storage.core,record);
  }
  #mark(record:SharedVersionCatalogRecord):void{
   const checked=checkCatalogRecord(record,this.options.identity),encoded=JSON.stringify(checked);
