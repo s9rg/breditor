@@ -6,10 +6,13 @@ import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsOptions,SharedDocumentVersionsState,SharedDocumentVersionStatus,SharedVersionCatalogRecord} from "./types.js";
 import type {SharedDocumentVersionsBackupOptions,SharedRetainedStoreBackupOptions} from "../backups/retained_store_types.js";
+import type {SharedParticipantReplay} from "../participant_replay/read.js";
+import type {SharedRetainedVersionRecoveryResult} from "./reconcile_types.js";
 const attached=new WeakSet<object>();
 /** Opt-in shared immutable versions: independent cache/intent durability, one borrowed native owner. */
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #store:VersionCatalogStore<P>;readonly #sync:VersionCatalogSync<P>;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
+ #recovering=false;
  private constructor(store:VersionCatalogStore<P>){this.#store=store;this.#sync=new VersionCatalogSync(store);}
  static async open<Q extends SharedSelectionPolicy>(options:SharedDocumentVersionsOptions<Q>):Promise<SharedDocumentVersions<Q>>{
   const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
@@ -20,7 +23,7 @@ export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelect
   const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
   try{store=await VersionCatalogStore.restoreBackup(options);return new SharedDocumentVersions(store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
  }
- #writable():void{if(this.#closed)throw new SharedRelayError("version_cache_closed");if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
+ #writable():void{if(this.#closed)throw new SharedRelayError("version_cache_closed");if(this.#retiring)throw new SharedRelayError("version_cache_closing");if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");}
  state():SharedDocumentVersionsState{return this.#sync.state();}
  versionsState():SharedDocumentVersionsState{return this.state();}
  subscribeVersions(listener:()=>void):()=>void{return this.#sync.subscribe(listener);}
@@ -34,18 +37,28 @@ export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelect
  connect():Promise<void>{this.#writable();return this.#sync.connect();}
  syncVersions():Promise<void>{this.#writable();return this.#sync.refresh();}
  disconnect():void{this.#sync.disconnect();}
+ /** After disconnect(), await outstanding delivery work before explicit local reconciliation. */
+ waitForDisconnected():Promise<void>{this.#writable();return this.#sync.waitForDisconnected();}
  /** Local durability only. Use flushShared for accepted-and-locally-confirmed publication. */
  flush():Promise<void>{return this.#store.flush();}
  flushShared():Promise<void>{this.#writable();return this.#sync.flushShared();}
- async retry():Promise<void>{await this.#store.retry();if(!this.#retiring)this.#sync.recoverLocal();}
+ async retry():Promise<void>{if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");await this.#store.retry();if(!this.#retiring)this.#sync.recoverLocal();}
  exportRecovery():SharedVersionCatalogRecord{return this.#store.exportRecovery();}
  exportBackup(options:SharedRetainedStoreBackupOptions={}):Promise<string>{return this.#store.exportBackup(options);}
  /** Read-only recovery captures must use this catalog's exact still-live borrowed source. */
  checkSource(core:SharedRichEditor<P>):void{this.#writable();this.#store.checkSource(core);}
+ /** Explicit offline-only retention from a genuine original native replay. Incompatible
+  * receipts, catalogs or retry choices refuse without a partial merge. No native edit or
+  * account token/delivery starts. Keep the source live through admission; copied data then
+  * survives source disposal. A save failure retains the complete merged export for retry. */
+ async recoverRetainedVersions(replay:SharedParticipantReplay):Promise<SharedRetainedVersionRecoveryResult>{
+  this.#writable();const release=this.#sync.reserveLocalRecovery();this.#recovering=true;
+  try{return await this.#store.recoverRetainedVersions(replay);}finally{this.#recovering=false;release();}
+ }
  async stopRetryingVersion(id:string):Promise<void>{this.#writable();this.#store.stopRetrying(id);await this.#store.flush();}
  async forgetCachedVersion(id:string):Promise<void>{this.#writable();if(this.#sync.busy(id))throw new SharedRelayError("version_in_flight");this.#store.forgetCachedPacket(id);await this.#store.flush();}
  /** Stops this adapter and releases its own cache lease only after a successful final save. */
- close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#sync.disconnect();this.#closing=Promise.resolve().then(async()=>{await this.#store.close();this.#sync.dispose();this.#closed=true;attached.delete(this.#store.options.storage.core);}).finally(()=>{this.#closing=undefined;});return this.#closing;}
+ close():Promise<void>{if(this.#recovering)return Promise.reject(new SharedRelayError("version_recovery_in_use"));if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#sync.disconnect();this.#closing=Promise.resolve().then(async()=>{await this.#store.close();this.#sync.dispose();this.#closed=true;attached.delete(this.#store.options.storage.core);}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved cache state; the last committed record and native owners remain. */
- discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#retiring=true;this.#closed=true;this.#sync.dispose();this.#released=this.#store.discardAndClose().finally(()=>attached.delete(this.#store.options.storage.core));return this.#released;}
+ discardAndClose():Promise<void>{if(this.#recovering)return Promise.reject(new SharedRelayError("version_recovery_in_use"));if(this.#closed)return this.#released??Promise.resolve();this.#retiring=true;this.#closed=true;this.#sync.dispose();this.#released=this.#store.discardAndClose().finally(()=>attached.delete(this.#store.options.storage.core));return this.#released;}
 }

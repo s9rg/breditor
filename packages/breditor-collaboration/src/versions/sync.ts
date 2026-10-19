@@ -15,6 +15,7 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
  #status:SharedDocumentVersionsState["status"]="offline";#error:string|null=null;#canPublish:boolean|null=null;#waitingForDocument=false;
  #queuedEpoch:number|undefined;#dirty=false;#latestDocument:string|undefined;#retry:ReturnType<typeof setTimeout>|undefined;#attempts=0;#reported:string|null=null;#localSignature="";#working=0;
  #listeners=new Set<()=>void>();#notifying=false;#unsubscribe:(()=>void)[];#waiters=new Set<Waiter>();#publishing=new Set<string>();#downloads=new Map<string,Promise<string>>();
+ #tasks=0;#recovering=false;
  constructor(store:VersionCatalogStore<P>){
   this.#store=store;const options=store.options,identity=options.identity,core=options.storage.core;
   if(transportVersion(identity.writerTransport)===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
@@ -26,7 +27,20 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
  subscribe(listener:()=>void):()=>void{this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  busy(id:string):boolean{return this.#publishing.has(id)||this.#downloads.has(id);}
  #active(epoch:number):boolean{return !this.#closed&&this.#epoch===epoch;}
- #enqueue(work:()=>Promise<void>):Promise<void>{const task=this.#serial.then(work);this.#serial=task.catch(()=>{});return task;}
+ #enqueue(work:()=>Promise<void>):Promise<void>{this.#tasks++;const task=this.#serial.then(work).finally(()=>{this.#tasks--;});this.#serial=task.catch(()=>{});return task;}
+ #networkAllowed():void{if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");}
+ /** Disconnected status alone does not prove old asynchronous work has settled. */
+ reserveLocalRecovery():()=>void{
+  if(this.#closed)throw new SharedRelayError("closed");
+  if(this.#recovering||this.#wanted||this.#status!=="offline"||this.#tasks||this.#working||this.#channel||this.#connecting||this.#downloads.size||this.#publishing.size)throw new SharedRelayError("version_recovery_in_use");
+  this.#recovering=true;let released=false;return()=>{if(!released){released=true;this.#recovering=false;}};
+ }
+ /** Wait only for already-disconnected work; starts no connection or storage mutation. */
+ async waitForDisconnected():Promise<void>{
+  if(this.#closed)throw new SharedRelayError("closed");if(this.#wanted||this.#recovering||this.#status!=="offline")throw new SharedRelayError("version_recovery_in_use");
+  const epoch=this.#epoch;await Promise.allSettled([this.#serial,...this.#downloads.values()]);
+  if(this.#epoch!==epoch)throw new SharedRelayError("version_recovery_in_use");const release=this.reserveLocalRecovery();release();
+ }
  #notify():void{if(this.#notifying)return;this.#notifying=true;queueMicrotask(()=>{this.#notifying=false;try{this.#store.options.onState?.(this.state());}catch{/* Reporting cannot replace recovery. */}for(const listener of [...this.#listeners])try{listener();}catch{/* UI does not own this adapter. */}});}
  #report(error:SharedRelayError):void{if(this.#reported===error.code)return;this.#reported=error.code;queueMicrotask(()=>{try{this.#store.options.onError?.(error);}catch{/* Reporting is isolated. */}});}
  #reject(error:SharedRelayError):void{for(const waiter of this.#waiters){clearTimeout(waiter.timer);waiter.reject(error);}this.#waiters.clear();}
@@ -56,6 +70,7 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
   try{await this.#store.adoptCatalog(catalogSnapshot({through:cursor.through,entries}));}catch(error){throw this.#store.state().failed?new SharedRelayError("local_save_failed"):error;}
  }
  async connect():Promise<void>{
+  this.#networkAllowed();
   if(this.#closed)throw new SharedRelayError("closed");if(this.#ready)return this.refresh();if(this.#connecting)return this.#connecting;clearTimeout(this.#retry);this.#retry=undefined;this.#wanted=true;this.#error=null;this.#status="connecting";this.#notify();
   const epoch=++this.#epoch,abort=new AbortController();this.#abort=abort;const work=this.#enqueue(async()=>{
    await this.#save();const options=this.#store.options,identity=options.identity,token=await accountToken(options.getToken,abort.signal,this.#milliseconds),channel=await RelayChannel.openVersions(identity.endpoint,this.#milliseconds,value=>this.#event(value,epoch),error=>this.#fail(error,epoch),abort.signal);
@@ -80,15 +95,16 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
   if(published)await this.#pull(epoch);
   }finally{this.#working--;if(this.#active(epoch))this.#settle();}
  }
- async refresh():Promise<void>{if(this.#closed)throw new SharedRelayError("closed");if(!this.#ready)return this.connect();const epoch=this.#epoch;return this.#enqueue(()=>this.#synchronize(epoch)).catch(error=>{const failure=error instanceof SharedRelayError?error:new SharedRelayError("version_sync_failed");this.#fail(failure,epoch);throw failure;});}
+ async refresh():Promise<void>{this.#networkAllowed();if(this.#closed)throw new SharedRelayError("closed");if(!this.#ready)return this.connect();const epoch=this.#epoch;return this.#enqueue(()=>this.#synchronize(epoch)).catch(error=>{const failure=error instanceof SharedRelayError?error:new SharedRelayError("version_sync_failed");this.#fail(failure,epoch);throw failure;});}
  async loadVersion(id:string):Promise<string>{
+  this.#networkAllowed();
   try{const packet=this.#store.packet(id);this.#store.options.storage.core.verifyVersionSource(packet);await this.#save();return packet;}catch(error){if(!(error instanceof SharedRelayError)||error.code!=="version_not_cached")throw error;}
   const pending=this.#downloads.get(id);if(pending)return pending;if(this.#downloads.size>=4)throw new SharedRelayError("version_request_budget");if(!this.#wanted)throw new SharedRelayError("version_offline_not_cached");
   const work=(async()=>{if(!this.#ready)await this.connect();const epoch=this.#epoch,entry=this.#store.entry(id);if(!entry)throw new SharedRelayError("version_unknown");const packet=await this.#http.packet(entry,this.#abort!.signal);if(!this.#active(epoch))throw new SharedRelayError("disconnected");try{return await this.#store.cachePacket(packet,entry);}catch(error){throw this.#store.state().failed?new SharedRelayError("local_save_failed"):error;}})();
   this.#downloads.set(id,work);try{return await work;}finally{if(this.#downloads.get(id)===work)this.#downloads.delete(id);}
  }
  /** Captured queued IDs only; no later snapshots or merely local saves can satisfy this barrier. */
- async flushShared():Promise<void>{const ids=this.#store.queued();await this.#save();if(!ids.length||ids.every(id=>{const state=this.#store.versionStatus(id);return !!state.accepted&&state.localSaved;}))return;if(!this.#wanted)throw new SharedRelayError(this.#error??"offline");if(this.#canPublish===false)throw new SharedRelayError("permission_denied");if(this.#waiters.size>=16)throw new SharedRelayError("version_flush_budget");return new Promise((resolve,reject)=>{const waiter:Waiter={ids,resolve,reject,timer:setTimeout(()=>{this.#waiters.delete(waiter);reject(new SharedRelayError("version_sync_timeout"));},30000)};this.#waiters.add(waiter);this.#settle();this.#schedule();});}
+ async flushShared():Promise<void>{this.#networkAllowed();const ids=this.#store.queued();await this.#save();if(!ids.length||ids.every(id=>{const state=this.#store.versionStatus(id);return !!state.accepted&&state.localSaved;}))return;if(!this.#wanted)throw new SharedRelayError(this.#error??"offline");if(this.#canPublish===false)throw new SharedRelayError("permission_denied");if(this.#waiters.size>=16)throw new SharedRelayError("version_flush_budget");return new Promise((resolve,reject)=>{const waiter:Waiter={ids,resolve,reject,timer:setTimeout(()=>{this.#waiters.delete(waiter);reject(new SharedRelayError("version_sync_timeout"));},30000)};this.#waiters.add(waiter);this.#settle();this.#schedule();});}
  /** Local retry is not a network barrier. A failed reconnect is reported through sync state. */
  recoverLocal():void{if(this.#error!=="local_save_failed")return;this.#error=null;this.#status="offline";if(this.#wanted)void this.connect().catch(()=>{});else this.#notify();}
  disconnect():void{if(this.#closed)return;this.#wanted=false;clearTimeout(this.#retry);this.#retry=undefined;this.#stop();this.#status="offline";this.#error=null;this.#reject(new SharedRelayError("disconnected"));this.#notify();}

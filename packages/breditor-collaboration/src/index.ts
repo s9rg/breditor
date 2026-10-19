@@ -66,6 +66,7 @@ export {mountSharedReviewPanel} from "./review_panel/mount.js";
 export type {SharedReviewPanel,SharedReviewPanelCore,SharedReviewPanelOptions,SharedReviewVersionCatalog} from "./review_panel/types.js";
 export {SharedDocumentVersionRestorePlan} from "./version_plan.js";
 export {SharedDocumentVersions} from "./versions/catalog.js";
+export type {SharedRetainedVersionRecoveryResult} from "./versions/reconcile_types.js";
 export {discoverSharedDocumentVersions} from "./versions/discover.js";
 export type {SharedDocumentVersionsOptions,SharedDocumentVersionsIdentity,SharedDocumentVersionsDiscoveryOptions,SharedDocumentVersionsState,SharedDocumentVersionStatus,SharedVersionCatalogRecord,SharedDocumentVersionEntry} from "./versions/types.js";
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeNotice,RichInterchangeFormatReport,RichInterchangeResult} from "@breditor/experimental-rich-content/rendering";

@@ -16,6 +16,10 @@ import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsOptions,SharedDocumentVersionEntry,SharedVersionCatalogRecord,RetainedVersionPacket,SharedDocumentVersionStatus,VersionCatalogSnapshot} from "./types.js";
 import {admitVersionRecord,type AdmittedVersionRecord as Retained} from "./record_admission.js";
+import {replayVersionRecord} from "../participant_replay/version_record.js";
+import type {SharedParticipantReplay} from "../participant_replay/read.js";
+import {reconcileRetainedVersionRecord} from "./reconcile_retained.js";
+import type {SharedRetainedVersionRecoveryResult} from "./reconcile_types.js";
 export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly options:SharedDocumentVersionsOptions<P>;readonly #db:IDBDatabase;readonly #lease:VersionCatalogLease;
  readonly #assertSource:()=>void;
@@ -76,6 +80,12 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  async exportBackup(options:SharedRetainedStoreBackupOptions={}):Promise<string>{return encodeRetainedStoreBackup("version-catalog",this.exportRecovery(),value=>checkCatalogRecord(value,this.options.identity),options);}
  /** Borrowed dependency captures require this store's unchanged native source, not matching IDs alone. */
  checkSource(core:SharedRichEditor<P>):void{this.#live();if(this.options.storage.core!==core)throw new SharedRelayError("version_source_replaced");}
+ /** Internal local retention. The adapter first reserves delivery/mutation quiescence.
+  * Save failure retains the complete merged export for retry, without eviction or rollback. */
+ async recoverRetainedVersions(replay:SharedParticipantReplay):Promise<SharedRetainedVersionRecoveryResult>{
+  this.#writable();const source=replayVersionRecord(replay,this.options.storage.core,this.options.identity);this.#writable();
+  const plan=reconcileRetainedVersionRecord(this.options.storage.core,this.#record,source);this.#mark(plan.record);await this.flush();return plan.result;
+ }
  catalog():VersionCatalogSnapshot|null{this.#live();return this.#record.catalog?structuredClone(this.#record.catalog):null;}
  queued():readonly string[]{this.#live();return [...this.#retained].filter(([,row])=>row.value.publish).map(([id])=>id);}
  versions():readonly SharedDocumentVersionInfo[]{this.#live();const result=new Map(this.#record.catalog?.entries.map(entry=>[entry.version.id,{...entry.version}])??[]);for(const [id,row]of this.#retained)if(!result.has(id))result.set(id,{...row.info});return [...result.values()];}

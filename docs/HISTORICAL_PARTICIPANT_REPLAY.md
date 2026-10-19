@@ -135,6 +135,11 @@ versions even when its native journal is retained. Keep all such sources until
 their contents and current provider bytes are reconciled explicitly. A failed
 continuity check does not authorize choosing the other copy or resetting Undo.
 
+The current offline version cache can now explicitly
+[retain compatible historical version packets](RETAINED_VERSION_RECONCILIATION.md)
+through `recoverRetainedVersions`. This is a separate local write after native
+admission, not a side effect of reading a copy or a complete room reconciliation.
+
 ## Cancellation and release scope
 
 Authority checks must synchronously return no value or throw. False results and
