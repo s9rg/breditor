@@ -22,6 +22,8 @@ import {RichSearchEvents,type RichSearchHostState,type RichSearchCompletion} fro
 import {publishRichSearchIntent,type RichSearchIntent} from "./search_intent.js";
 import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputIntent,type MarkdownInputSource} from "./input_rule_intent.js";
 import type {RichInputRuleOutcome} from "./core.js";
+import type {RichWritingToolsRead} from "./writing_tools_types.js";
+import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "./writing_tools_host.js";
 
 export interface RichEditorOptions<P extends RichSelectionPolicy="original"> extends RenderOptions {
  core:RichCoreEditor<P>;
@@ -69,6 +71,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  readonly #interchange:RichClipboardInterchange|undefined;
  readonly #inputRules:boolean;
  readonly #searchEvents=new RichSearchEvents();
+ readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  constructor(root:HTMLElement,options:RichEditorOptions<P>&(P extends "document-v1"?RichDocumentEditorOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1")throw new TypeError("Expected selectionEditing original or document-v1");
@@ -146,7 +149,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   return captureMarkdownInputSource(this.#model.view.revision,selection,willSync);
  }
  #typeMarkdown(source:MarkdownInputSource,text:string):void {
-  this.#live();if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");
+  this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   const view=this.#options.core.view();checkMarkdownInputSource(view,source);
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
   const inputRule=Object.freeze({text,namespace:this.#allocate("rule"),...(view.historyGrouping==="typing-v1"?{clockMs:this.#clock()}:{} )});
@@ -176,7 +179,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  }
  #executeIntent(command:RichCommand|DocumentIntent,focus=true,expectedRevision=this.#model.view.revision,accepted?:((display:boolean)=>void)):RichCommandOutcome|"queued" {
   this.#live();
-  if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");
+  if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");
   if(this.#queue.length>=128)throw Error("Rich editor command queue is full");
   // Validate layout before the queue's detached JSON snapshot can turn nonfinite values into Clear.
   const intent=command.kind==="changeSelectionLayout"?{...command,data:JSON.parse(encodeBlockLayoutPatch(command.data))}:command;
@@ -208,10 +211,14 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   }}finally{this.#busy=false;this.#notifySearch();}
   return first??"unchanged";
  }
- #notifySearch():void{this.#searchEvents.emit(error=>this.#report(error));}
+ #notifySearch():void{this.#searchEvents.emit(error=>this.#report(error));this.#writingEvents.emit(error=>this.#report(error));}
+ writingState():RichWritingToolsHostState{const view=this.#model.view,closed=this.#disposed,core=this.#options.core;return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available:!closed&&core.supportsWritingTools?.()===true&&typeof core.writingTools==="function",readOnly:view.readOnly===true});}
+ subscribeWriting(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
+ readWritingTools(revision=this.#model.view.revision):RichWritingToolsRead{this.#live();const state=this.writingState();if(state.busy||state.composing)throw Error("Writing reads wait for the current operation or composition");if(!state.available)throw Error("Use complete matching native writing reads");return this.#writingReads.retain(this.#options.core.writingTools!(revision),revision);}
+ selectWritingHeading(read:RichWritingToolsRead,index:number,revision=read.revision):Promise<void>{return new Promise((resolve,reject)=>{try{this.#live();const state=this.writingState();if(state.busy||state.composing||this.#searchEvents.notifying||this.#writingEvents.notifying)throw Error("Writing navigation waits for the current operation, composition or read notification");const entry=this.#writingReads.heading(read,index,revision),point={block:entry.block,offset:"0",affinity:"after" as const};if(this.#queue.length>=128)throw Error("Rich editor command queue is full");this.#queue.push({command:{kind:"setSelection",selection:{kind:"text",anchor:point,focus:point}},revision,focus:true,completion:{resolve,reject}});this.#drain();}catch(error){reject(error);}});}
  #cancelQueue(error:unknown):void{const pending=this.#queue;this.#queue=[];for(const work of pending)work.completion?.reject(error);}
  #repeatWork(work:Work):void{if(this.#disposed){work.completion?.reject(Error("The rich DOM editor is disposed"));return;}if(this.#queue.length>=128){work.completion?.reject(Error("Rich editor command queue is full"));throw Error("Rich editor command queue is full");}this.#queue.push(work);this.#drain();}
- #searchAction(search:RichSearchIntent,revision:string):Promise<void>{return new Promise((resolve,reject)=>{try{this.#live();if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Rich editor command queue is full");this.#queue.push({search,revision,focus:false,completion:{resolve,reject}});this.#drain();}catch(error){reject(error);}});}
+ #searchAction(search:RichSearchIntent,revision:string):Promise<void>{return new Promise((resolve,reject)=>{try{this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Rich editor command queue is full");this.#queue.push({search,revision,focus:false,completion:{resolve,reject}});this.#drain();}catch(error){reject(error);}});}
  searchState():RichSearchHostState{const view=this.#model.view,closed=this.#disposed,available=!closed&&this.#options.core.supportsSearch?.()===true;return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available,readOnly:view.readOnly===true,canReplace:available&&view.readOnly!==true});}
  subscribeSearch(listener:()=>void):()=>void{this.#live();return this.#searchEvents.subscribe(listener);}
  findText(query:RichSearchQuery,revision=this.#model.view.revision):RichSearchResults{this.#live();const core=this.#options.core;if(core.supportsSearch?.()!==true||!core.findText)throw Error("Use matching native search");return core.findText(query,revision);}
@@ -223,7 +230,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  checkpointJson():string {this.#live();return this.#options.core.checkpointJson();}
  /** Close native continuation without rendering, moving focus, or inventing a content outcome. */
  closeTypingGroup(revision=this.#options.core.view().revision):boolean {
-  this.#live();if(this.#busy||this.#composition||this.#searchEvents.notifying)throw Error("History boundaries cannot publish during a command, composition or search notification");
+  this.#live();if(this.#busy||this.#composition||(this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("History boundaries cannot publish during a command, composition or read notification");
   const core=this.#options.core;
   if(core.supportsTypingHistory?.()!==true||!core.closeTypingGroup){if(this.#model.view.historyGrouping==="typing-v1")throw Error("Use matching native typing history");return false;}
   const changed=core.closeTypingGroup(revision);if(changed){this.#model=this.#read();this.#refreshControls();this.#notifySearch();}return changed;
@@ -241,7 +248,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
  }
  /** Change native host policy immediately, cancelling provisional composition and queued edits. */
  setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean {
-  this.#live();if(this.#busy||this.#searchEvents.notifying)throw Error("Editing policy cannot publish reentrantly");
+  this.#live();if(this.#busy||(this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Editing policy cannot publish reentrantly");
   const core=this.#options.core;if(!core.setReadOnly||core.supportsReadOnly?.()!==true)throw Error("Use a matching native owner with read-only enforcement");
   const changed=core.setReadOnly(value,revision);if(changed){this.#composition=undefined;this.#cancelQueue(Error("Editing policy cancelled queued search work"));this.#reconcile();this.status.textContent=`${value?"Read-only":"Editable"} · revision ${this.#model.view.revision}`;this.#notifySearch();}return changed;
  }
@@ -473,7 +480,7 @@ export class RichDomEditor<P extends RichSelectionPolicy="original"> {
   });
  }
  /** Unmount the surface and release its transferred exclusive core owner. */
- dispose():void {if(this.#disposed)return;this.#disposed=true;this.#abort.abort();this.#cancelQueue(Error("The rich DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
+ dispose():void {if(this.#disposed)return;this.#disposed=true;this.#abort.abort();this.#cancelQueue(Error("The rich DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();this.#root.replaceChildren();delete this.#root.dataset["breditorRich"];this.#options.core.dispose();}
 }
 export function mountRichEditor(root:HTMLElement,options:RichEditorOptions):RichDomEditor{return new RichDomEditor(root,options);}
 /** Opt-in extended coordinator; ordinary mounts and original execute/selection DTOs stay closed. */

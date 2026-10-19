@@ -12,6 +12,8 @@ export {applyBlockLayout} from "./dist/browser/block_layout_presentation.js";
 export {blockLayoutControls,blockLayoutShortcut} from "./dist/browser/block_layout_controls.js";
 export {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
+export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
+export {RichWritingEvents,RichWritingReadRegistry} from "./dist/browser/writing_tools_host.js";
 export {RichSearchEvents} from "./dist/browser/search_host.js";
 export {requireMarkdownInputRules,validateMarkdownInputPolicy,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput} from "./dist/browser/input_rule_intent.js";
 export {isStructuralRichLanguage} from "./dist/browser/rich_language.js";

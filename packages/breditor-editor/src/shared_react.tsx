@@ -7,6 +7,7 @@ export {BreditorSharedDocumentEditor,BreditorSharedDocumentSearchEditor,type Bre
 export {BreditorSharedReviewPanel,type BreditorSharedReviewPanelProps,type BreditorSharedReviewPanelHandle} from "./shared_review_react.js";
 export {BreditorSharedSuggestionPanel,type BreditorSharedSuggestionPanelProps,type BreditorSharedSuggestionPanelHandle} from "./shared_suggestion_react.js";
 export {BreditorSearchPanel,type BreditorSearchPanelProps,type BreditorSearchPanelHandle} from "./search_react.js";
+export {BreditorWritingTools,type BreditorWritingToolsProps,type BreditorWritingToolsHandle} from "./writing_tools_react.js";
 
 export interface BreditorSharedEditorProps {
  initialOptions:Omit<SharedEditorSessionOptions,"host"|"signal"|"onChange"|"onError"|"onSaveState"|"onClosing">;

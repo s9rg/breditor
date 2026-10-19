@@ -3,7 +3,9 @@
 // uploads are explicit host services, never command side effects.
 import {encodeBlockLayoutPatch} from "./dist/browser/block_layout_serialization.js";
 import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
+import {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 export {mountRichSearchPanel} from "./dist/browser/search_panel.js";
+export {mountRichWritingTools} from "./dist/browser/writing_tools_panel.js";
 
 const searchResults=new WeakMap();
 class OwnedRichSearchResults {
@@ -135,6 +137,8 @@ class RichCoreEditor {
   #searches=new Set();
   constructor(raw,descriptor,selectionPolicy="original") { this.#raw = raw;this.#selectionPolicy=selectionPolicy;try{this.#language=JSON.parse(descriptor).richLanguageVersion??1;this.#observation = raw.observe();if(this.#language===3&&!this.supportsBlockLayout())throw new RichCommandError("breditor_rich.layout_runtime","Use matching native layout V3 commands and reads");if(selectionPolicy==="document-v1"&&!this.supportsDocumentSelection())throw new RichCommandError("breditor_rich.document_selection_unavailable","Use complete matching native document-selection capabilities");}catch(error){this.#observation?.free();raw.free();this.#raw=undefined;throw error;} }
   richLanguageVersion(){this.#live();return this.#language;}
+  supportsWritingTools(){const raw=this.#live();return raw.writingToolsVersion?.()==="1"&&typeof raw.writingToolsJson==="function";}
+  writingTools(revision){const raw=this.#live(),current=this.#observation.revision;if(revision!==undefined&&revision!==current)throw new RichCommandError("breditor_rich.stale_observation","The writing read was prepared from an older rich view");if(!this.supportsWritingTools())throw new RichCommandError("breditor_rich.writing_tools_unavailable","Use complete matching native writing reads");const value=parseRichWritingTools(read(raw.writingToolsJson(this.#observation)));if(value.revision!==current)throw new RichCommandError("breditor_rich.writing_tools_source","The native writing read has a different source publication");return value;}
   supportsMarkdownInputRules(){const r=this.#live();return r.markdownInputRulesVersion?.()==="1"&&[r.insertPlainTextWithMarkdownRules,r.insertTypingTextWithMarkdownRules].every(method=>typeof method==="function");}
   supportsMarkdownInputRouting(){return this.supportsMarkdownInputRules()&&this.#live().markdownInputRoutingVersion?.()==="1";}
   #markdownInput(method,data,revision){

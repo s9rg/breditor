@@ -1,4 +1,6 @@
 import type {RichCommand} from "./commands.js";
+import type {RichWritingToolsRead} from "./writing_tools_types.js";
+export type {RichWritingToolsRead,RichWritingCounts,RichWritingHeading} from "./writing_tools_types.js";
 export type {RichCommand,RichSelectionFormatChange,FormatLiteral,ImageAlt,ImageSize,TextDraft,ImageDraft,TableColumnDraft,TableCellDraft,TableRowDraft,TableDraft,FlowDraft,FlowPosition,ClipboardAllocation} from "./commands.js";
 /** Initialized generated Wasm module; pass the same instance for all owners using it. */
 export interface RichWasmModule {
@@ -78,6 +80,9 @@ export interface RichView {
 export interface RichDocumentView extends Omit<RichView,"format"|"selection"> {format:"breditor/rich-document-view";selection:RichDocumentSelection|null}
 export type RichEditorView<P extends RichSelectionPolicy="original">=P extends "document-v1"?RichDocumentView:RichView;
 export interface RichCoreEditor<P extends RichSelectionPolicy="original"> {
+  /** Complete optional native accepted-document counts and outline; no JS fallback. */
+  supportsWritingTools?():boolean;
+  writingTools?(expectedRevision?:string):RichWritingToolsRead;
   /** Both exclusive native calls must be present; no JS matching or older-runtime fallback. */
   supportsMarkdownInputRules?():boolean;
   /** Browser routing has a separate minimum runtime; programmatic version1 stays exact. */

@@ -17,3 +17,5 @@ export {createFlowNavigationControls,flowEdgeEligible,selectedFlowAtom} from "./
 export type {RichToolbarField,RichToolbarReading} from "./toolbar_control_view.js";
 export type {RichSearchHost,RichSearchHostState} from "./search_host.js";
 export {mountRichSearchPanel,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState} from "./search_panel.js";
+export type {RichWritingToolsHost,RichWritingToolsHostState} from "./writing_tools_host.js";
+export {mountRichWritingTools,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "./writing_tools_panel.js";

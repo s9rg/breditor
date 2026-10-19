@@ -73,6 +73,12 @@ fn all_grammars_scopes_and_history_modes_read_without_invalidating_readonly_redo
                 let before =
                     (saved(&owner)?, owner.causal_version(), source.view_json().to_owned());
                 let retained = owner.writing_tools_guarded(&source)?;
+                let read: serde_json::Value =
+                    serde_json::from_str(&owner.writing_tools_json_guarded(&source)?)?;
+                let view: serde_json::Value = serde_json::from_str(source.view_json())?;
+                assert_eq!(read["revision"], view["revision"]);
+                assert_eq!(read["counts"]["graphemes"], "5");
+                assert_eq!(read["outline"][0]["label"], "Hello");
                 assert_eq!(retained.counts().graphemes(), 5);
                 assert_eq!(retained.outline()[0].label(), "Hello");
                 for _ in 0..3 {
@@ -131,6 +137,7 @@ fn foreign_and_stale_reads_refuse_while_remote_publications_recompute_counts_wit
     let retained = owner.writing_tools_guarded(&source)?;
     let before = saved(&owner)?;
     assert!(owner.writing_tools_guarded(&observed(&peer)?).is_err());
+    assert!(owner.writing_tools_json_guarded(&observed(&peer)?).is_err());
     assert_eq!(saved(&owner)?, before);
     peer.apply(vec![Command::InsertText(InsertText {
         block: "body".into(),
@@ -140,6 +147,7 @@ fn foreign_and_stale_reads_refuse_while_remote_publications_recompute_counts_wit
     owner.receive_frame(&peer.update_frame()?)?;
     let before = saved(&owner)?;
     assert!(owner.writing_tools_guarded(&source).is_err());
+    assert!(owner.writing_tools_json_guarded(&source).is_err());
     assert_eq!(saved(&owner)?, before);
     let fresh = owner.writing_tools_guarded(&observed(&owner)?)?;
     assert_eq!((fresh.counts().words(), fresh.counts().graphemes()), (2, 10));

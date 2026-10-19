@@ -42,6 +42,19 @@ write separate reports. The
 retains both scopes, identical current-case counts and unchanged archive bytes.
 It is selected-stage qualification, not hosted CI or a complete profile run.
 
+Writing tools add actual paired-Wasm counts/outline, borrowed DOM controls and
+managed persistence/React probes to both profiles, plus a fresh four-package
+installed consumer. These mandatory stages use the current runtimes and need no
+local historical cache. Independently pinned earlier-reference restore/history
+checks require explicit arguments to `probe-writing-tools.mjs`; their absence is
+recorded as no earlier-reader evidence, not silently counted as a pass. Installed
+checks verify public types, exact package/runtime bindings, production bundle
+isolation and unchanged functional probes without workspace source links. DOM,
+storage and input fixtures do not establish physical platform qualification.
+The [writing-tools checkpoint](qualification/2026-10-18-writing-tools-browser-installed.json)
+records the passing selected-stage run, separate pinned-reader proof and exact
+fresh installed archives; it does not claim a complete profile or hosted CI run.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and

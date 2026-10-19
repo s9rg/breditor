@@ -21,6 +21,44 @@ use serde_json::{Value, json};
 use unicode_segmentation::UnicodeSegmentation;
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+#[test]
+fn writing_json_is_an_independent_exact_bound_read_with_decimal_revision_and_counts() -> Result {
+    let (_, document) =
+        setup(3, root(vec![heading("body", 2, "Hi🙂")]), DocumentLimits::default())?;
+    let input = breditor_core::codec::encode_rich_writing_tools(&document, u64::MAX)?;
+    let read: Value = serde_json::from_str(&input)?;
+    assert_eq!(read["format"], "breditor/rich-writing-tools");
+    assert_eq!(read["formatVersion"], 1);
+    assert_eq!(read["document"], "room");
+    assert_eq!(read["revision"], u64::MAX.to_string());
+    assert_eq!(
+        read["counts"],
+        json!({"words":"1","graphemes":"3","unicodeScalars":"3","utf16Units":"4","utf8Bytes":"6","textBlocks":"1"})
+    );
+    assert_eq!(
+        read["outline"],
+        json!([{"block":"body","level":2,"label":"Hi🙂","labelTruncated":false}])
+    );
+    assert_eq!(read["schema"]["fingerprint"], document.document().schema_fingerprint().to_string());
+    Ok(())
+}
+#[test]
+fn escaped_writing_output_has_a_separate_complete_byte_bound_without_partial_counts() -> Result {
+    let children =
+        (0..1536).map(|index| heading(&format!("h-{index}"), 1, &"\0".repeat(1024))).collect();
+    let limits = DocumentLimits::default()
+        .with_max_total_text_bytes(2 * 1024 * 1024)
+        .with_max_children_per_element(2000)
+        .with_max_json_bytes(16 * 1024 * 1024);
+    let (_, document) = setup(3, root(children), limits)?;
+    assert_eq!(inspect_rich_writing_tools(&document)?.counts().text_blocks(), 1536);
+    assert!(matches!(
+        breditor_core::codec::encode_rich_writing_tools(&document, 0),
+        Err(breditor_core::codec::RichWritingCodecError::ReadLimit)
+    ));
+    Ok(())
+}
+
 fn root(children: Vec<Value>) -> Value {
     let mut value = fixture::element("document", "unused", children);
     value["properties"] = json!({"breditor/document-id":"room"});

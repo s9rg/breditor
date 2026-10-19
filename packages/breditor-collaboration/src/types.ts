@@ -94,6 +94,7 @@ export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVer
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
 export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability,SharedSuggestionsRustCapability,SharedReviewedHistoryRustCapability {
  /** Additive opaque search reads; mutations require explicitly selected search history. */
+ writing_tools_version?():string;writing_tools_json?(observation:unknown):string;
  search_version?():string;search_history_enabled?():boolean;enable_search_history?(observation:unknown):boolean;search_checkpoint?():string;
  find_text?(observation:unknown,input:string):SharedNativeSearchResults;check_search_results?(observation:unknown,results:SharedNativeSearchResults):void;
  select_search_match?(observation:unknown,results:SharedNativeSearchResults,index:string):boolean;

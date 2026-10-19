@@ -43,6 +43,28 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [browser writing-tools and installed-package checkpoint](qualification/2026-10-18-writing-tools-browser-installed.json)
+passes one frozen 33-check run. Optional native counts/outline reads now reach
+the SDK, paginated borrowed vanilla/React controls and managed local/shared
+owners. Heading navigation requires this host's exact immutable displayed source;
+stale, foreign and composing actions reject without retrying a different target.
+All 30 grammar/scope/history configurations pass pure reads, exact reopen and
+future-history comparisons. Independently pinned earlier readers restore 30
+checkpoints and match 120 future boundaries. Eight React StrictMode cases retain
+immutable options, explicit rekeys and borrowed ownership.
+
+Fresh official Wasm and isolated four-package installs pass public types,
+unchanged current-runtime workflows and local-only production bundle isolation.
+The complete workspace/shared suites pass 2,609 and 596 tests/doctests; two
+research contracts, 482 script tests and 376 editor tests pass, with three existing
+script checks skipped. Existing input-rule/search regressions and strict native,
+wasm32, documentation and type checks pass. Both candidate profiles now require
+portable current-runtime utility checks and fresh installed acceptance; this
+selected run is not a complete profile or hosted CI run. Placeholder/fullscreen,
+performance, storage lifecycle and the remaining V1 requirements stay open.
+No historical WebKit repair, version promotion, push, tag, publication or deployment
+is claimed; all 13 release gates remain open.
+
 The [native writing-tools checkpoint](qualification/2026-10-18-native-writing-tools.json)
 adds accepted-document Unicode counts and a stable-ID heading outline through
 pure core and guarded shared Rust reads. All 15 selected checks pass: 2,607
@@ -52,10 +74,10 @@ three existing script checks skipped. Counts cross format runs and follow merged
 source order, while reads retain exact observations, saved history and future
 Redo. Heading label truncation is explicit and does not shorten counts.
 
-This is a native foundation, not a browser utility release. Optional Wasm/SDK
-reads, borrowed controls, installed acceptance, placeholder and fullscreen remain
-active work. Writing utilities move from missing to partial; no V1 gate closes
-and no version, push, tag, publication or deployment is promoted.
+That native-only boundary did not include Wasm/SDK reads, borrowed controls or
+installed acceptance; the checkpoint above adds them. Placeholder and fullscreen
+remain active work. Writing utilities remain partial; no V1 gate closes and no
+version, push, tag, publication or deployment is promoted.
 
 The [input-rule candidate pipeline checkpoint](qualification/2026-10-18-input-rules-candidate-pipeline.json)
 adds mandatory portable DOM/root/React and fresh installed acceptance to both

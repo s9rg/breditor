@@ -25,6 +25,8 @@ export interface LocalEditorOptions extends Omit<RichEditorOptions,"core"|"toolb
  clipboardInterchange?:ClipboardInterchangeFactory<RichCoreEditor>;
 }
 export interface LocalEditor {
+ /** Borrow optional native counts/outline controls without transferring this owner. */
+ writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
  readonly surface:HTMLDivElement;readonly toolbar:HTMLDivElement;readonly status:HTMLParagraphElement;
  execute(command:RichCommand,focus?:boolean,revision?:string):RichCommandOutcome|"queued";
  view():RichView;checkpointJson():string;focus():void;refreshAssets():void;
@@ -57,6 +59,7 @@ class LocalEditorOwner implements LocalEditor {
  setReadOnly(value:boolean,revision?:string):boolean{return this.#dom.setReadOnly(value,revision);}
  closeTypingGroup(revision?:string):boolean{return this.#dom.closeTypingGroup(revision);}
  search():RichSearchHost{this.#dom.view();return this.#dom;}
+ writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
  insertImageFiles(store:RichAssetStore,files:readonly File[],position:FlowPosition):Promise<readonly AssetInfo[]>{return insertImageFiles(this.#dom,store,files,position);}
  dispose():void{if(this.#disposed)return;this.#disposed=true;try{this.#dom.dispose();}finally{this.#release();}}
 }

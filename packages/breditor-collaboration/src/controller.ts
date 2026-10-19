@@ -19,6 +19,8 @@ import type {RichSearchQuery,RichSearchReplacement} from "@breditor/experimental
 import type {SharedSearchResults} from "./search_results.js";
 import {requireMarkdownInputRules,isPlainInputScalar,captureMarkdownInputSource,checkMarkdownInputSource,publishMarkdownInput,type MarkdownInputSource} from "@breditor/experimental-rich-content/rendering";
 import type {RichInputRuleOutcome} from "@breditor/experimental-rich-content";
+import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
+import {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHostState} from "@breditor/experimental-rich-content/rendering";
 export interface SharedDomOptions<P extends SharedSelectionPolicy="original"> extends RenderOptions {
  core:SharedRichEditor<P>;toolbar?:readonly SharedToolbarControl<P>[];label?:string;image?:{asset:string;alt:string};
  /** Immutable explicit view family; omission keeps the original contract. */
@@ -56,6 +58,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  #root:HTMLElement;#options:SharedDomOptions<P>;#model:RichModel<P>;#abort=new AbortController();#unsubscribe:()=>void;
  #disposed=false;#busy=false;#refreshing=false;#logical=false;#queue:Work<P>[]=[];#composition:Composition|undefined;#reportedError:{error:unknown}|undefined;
  readonly #searchEvents=new RichSearchEvents();
+ readonly #writingEvents=new RichWritingEvents();readonly #writingReads=new RichWritingReadRegistry();
  #prefix=`shared:${crypto.randomUUID()}`;#counter=0n;#controls:{control:SharedToolbarControl<P>;view:RichControlView<ActionContext<P>>}[]=[];
  readonly #selectionPolicy:P;readonly #document:SharedRichEditor<"document-v1">|undefined;
  readonly #interchange:RichClipboardInterchange|undefined;
@@ -131,7 +134,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   this.#perform(c=>{outcome=publishMarkdownInput(c.core,inputRule,c.revision);},true,source.revision,false,()=>{if(outcome==="refused"&&!this.#disposed){this.status.textContent="Typed text was kept; the Markdown shortcut was refused.";try{this.#options.onInputRuleRefused?.();}catch(error){this.#report(error);}}});
  }
  #perform(run:(context:ActionContext<P>)=>void,focus=true,revision=this.#model.view.revision,boundary=false,accepted?:((display:boolean)=>void),completion?:RichSearchCompletion):void{
-  this.#live();if(this.#searchEvents.notifying)throw Error("Search notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary,accepted,completion});if(this.#busy||this.#composition)return;
+  this.#live();if((this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Read notifications cannot publish reentrantly");if(this.#queue.length>=128)throw Error("Shared editor command queue is full");this.#queue.push({run,focus,revision,boundary,accepted,completion});if(this.#busy||this.#composition)return;
   const release=this.#options.core.holdRemotes();this.#busy=true;let error:unknown,drained=0;
   try{while(!this.#disposed&&this.#queue.length){if(++drained>128){const failure=Error("Shared editor callback command loop exceeded its bound");this.#cancelQueue(failure);throw failure;}const next=this.#queue.shift()!;
    let published=false,display=true;
@@ -139,7 +142,11 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
    finally{if(published){next.completion?.resolve();next.accepted?.(display);}}
   }}finally{this.#busy=false;release();this.#notifySearch();}if(error!==undefined)throw error;
  }
- #notifySearch():void{this.#searchEvents.emit(error=>this.#report(error));}
+ #notifySearch():void{this.#searchEvents.emit(error=>this.#report(error));this.#writingEvents.emit(error=>this.#report(error));}
+ writingState():RichWritingToolsHostState{const view=this.#model.view,closed=this.#disposed,core=this.#options.core;return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available:!closed&&core.supportsWritingTools()&&typeof core.writingTools==="function",readOnly:view.readOnly===true});}
+ subscribeWriting(listener:()=>void):()=>void{this.#live();return this.#writingEvents.subscribe(listener);}
+ readWritingTools(revision=this.#model.view.revision):RichWritingToolsRead{this.#live();const state=this.writingState();if(state.busy||state.composing)throw Error("Writing reads wait for the current operation or composition");if(!state.available)throw Error("Use complete matching native writing reads");return this.#writingReads.retain(this.#options.core.writingTools(revision),revision);}
+ selectWritingHeading(read:RichWritingToolsRead,index:number,revision=read.revision):Promise<void>{return new Promise((resolve,reject)=>{try{this.#live();const state=this.writingState();if(state.busy||state.composing||this.#searchEvents.notifying||this.#writingEvents.notifying)throw Error("Writing navigation waits for the current operation, composition or read notification");const entry=this.#writingReads.heading(read,index,revision),point={block:entry.block,offset:"0",affinity:"after" as const};this.#perform(c=>{c.core.select({kind:"text",anchor:point,focus:point},c.revision);},true,revision,false,undefined,{resolve,reject});}catch(error){reject(error);}});}
  #cancelQueue(error:unknown):void{const pending=this.#queue;this.#queue=[];for(const work of pending)work.completion?.reject(error);}
  #searchAction(run:(context:ActionContext<P>)=>void,revision:string):Promise<void>{return new Promise((resolve,reject)=>{try{this.#perform(run,false,revision,false,undefined,{resolve,reject});}catch(error){reject(error);}});}
  searchState():RichSearchHostState{const view=this.#model.view,closed=this.#disposed,available=!closed&&this.#options.core.supportsSearch();return Object.freeze({revision:view.revision,closed,busy:this.#busy,composing:!!this.#composition,available,readOnly:view.readOnly===true,canReplace:available&&view.readOnly!==true&&this.#options.core.searchHistoryPolicy()==="search-v1"});}
@@ -162,9 +169,9 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
  focus():void{this.#live();this.surface.focus();restoreDocumentNative(this.surface,this.#model.view.selection);}
  /** Read-only retry after independently transferred image bytes become available. */
  refreshAssets():void{this.#live();refreshAssets(this.surface,this.#options);}
- setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean{this.#live();if(this.#busy||this.#searchEvents.notifying)throw Error("Editing policy cannot publish reentrantly");return this.#options.core.setReadOnly(value,revision);}
+ setReadOnly(value:boolean,revision=this.#options.core.view().revision):boolean{this.#live();if(this.#busy||(this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("Editing policy cannot publish reentrantly");return this.#options.core.setReadOnly(value,revision);}
  /** Native intent fence: update cached publication/controls, never replace children or move focus. */
- closeTypingGroup(revision=this.#options.core.view().revision):boolean{this.#live();if(this.#busy||this.#composition||this.#searchEvents.notifying)throw Error("History boundaries cannot publish during a command, composition or search notification");if(this.#model.view.historyGrouping!=="typing-v1")return false;let changed=false;this.#perform(c=>{changed=c.core.closeTypingGroup(c.revision);},false,revision,true);return changed;}
+ closeTypingGroup(revision=this.#options.core.view().revision):boolean{this.#live();if(this.#busy||this.#composition||(this.#searchEvents.notifying||this.#writingEvents.notifying))throw Error("History boundaries cannot publish during a command, composition or read notification");if(this.#model.view.historyGrouping!=="typing-v1")return false;let changed=false;this.#perform(c=>{changed=c.core.closeTypingGroup(c.revision);},false,revision,true);return changed;}
  #boundary():void{if(this.#model.view.historyGrouping==="typing-v1"&&!this.#busy&&!this.#refreshing&&!this.#composition)this.#attempt(()=>{this.closeTypingGroup();});}
  #clock():string{const value=Math.floor(this.surface.ownerDocument.defaultView!.performance.now());if(!Number.isSafeInteger(value)||value<0)throw Error("Expected a finite monotonic typing clock");return String(value);}
  #deleteInput(c:ActionContext<P>,selection:Extract<RichSelection,{kind:"text"}>,backward:boolean,inputType:string):void{
@@ -339,7 +346,7 @@ export class SharedDomEditor<P extends SharedSelectionPolicy="original"> {
   try{if(composition.original!==final){const point={block:composition.block,affinity:"after" as const};this.#perform(c=>{c.core.replace({kind:"text",anchor:{...point,offset:String(start)},focus:{...point,offset:String(oldEnd)}},final.slice(start,newEnd),c.revision);},true,composition.revision);}}
   catch(error){this.#report(error);}finally{this.#finishComposition(composition,pending,true);}
  });}
- dispose():void{if(this.#disposed)return;this.#disposed=true;this.#unsubscribe();this.#abort.abort();this.#cancelQueue(Error("The shared DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();if(this.#options.coreOwnership!=="borrow")this.#options.core.dispose();this.#composition?.release();this.#composition=undefined;this.#root.replaceChildren();delete this.#root.dataset["breditorShared"];}
+ dispose():void{if(this.#disposed)return;this.#disposed=true;this.#unsubscribe();this.#abort.abort();this.#cancelQueue(Error("The shared DOM editor is disposed"));this.#notifySearch();this.#searchEvents.clear();this.#writingEvents.clear();if(this.#options.coreOwnership!=="borrow")this.#options.core.dispose();this.#composition?.release();this.#composition=undefined;this.#root.replaceChildren();delete this.#root.dataset["breditorShared"];}
 }
 export const mountSharedEditor=(root:HTMLElement,options:SharedDomOptions):SharedDomEditor=>new SharedDomEditor(root,options);
 /** Explicit extended coordinator; the default mount/execute/selection DTOs remain closed. */

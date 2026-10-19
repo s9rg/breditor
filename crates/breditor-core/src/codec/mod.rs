@@ -25,6 +25,13 @@ mod rich_block_layout_state;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_search;
 #[cfg(feature = "experimental-rich-content")]
+mod rich_writing_tools;
+#[cfg(feature = "experimental-rich-content")]
+pub use rich_writing_tools::{
+    RICH_WRITING_TOOLS_FORMAT, RICH_WRITING_TOOLS_MAX_JSON_BYTES, RICH_WRITING_TOOLS_VERSION,
+    RichWritingCodecError, encode_rich_writing_tools,
+};
+#[cfg(feature = "experimental-rich-content")]
 mod rich_selection_coverage;
 #[cfg(feature = "experimental-rich-content")]
 mod rich_selection_format_changes;

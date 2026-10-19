@@ -39,6 +39,7 @@ export interface SharedDocumentEditorSession extends SharedDocumentEditorRecover
  focus():void;refreshAssets():void;
  setReadOnly(value:boolean,revision?:string):boolean;closeTypingGroup(revision?:string):boolean;
  search():RichSearchHost<SharedSearchResults>;
+ writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
  view():SharedDocumentView;state():SharedSaveState;flush():Promise<void>;retrySave():Promise<void>;
 }
 class DocumentSessionOwner implements SharedDocumentEditorSession {
@@ -60,6 +61,7 @@ class DocumentSessionOwner implements SharedDocumentEditorSession {
  setReadOnly(...args:Parameters<SharedDocumentEditorSession["setReadOnly"]>):boolean{this.#active();return this.#dom.setReadOnly(...args);}
  closeTypingGroup(...args:Parameters<SharedDocumentEditorSession["closeTypingGroup"]>):boolean{this.#active();return this.#dom.closeTypingGroup(...args);}
  search():RichSearchHost<SharedSearchResults>{this.#active();return this.#dom;}
+ writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
  view():SharedDocumentView{return this.core.view();}checkpointJson():string{return this.core.checkpointJson();}
  state():SharedSaveState{return this.#session.state();}flush():Promise<void>{return this.#session.flush();}retrySave():Promise<void>{return this.#session.retry();}
  #retireUi():void{

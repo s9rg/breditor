@@ -21,6 +21,7 @@ mod selection_formatting;
 mod suggestions;
 mod typing;
 mod writer_transport_v2;
+mod writing_tools;
 use crate::{
     Error,
     rich_replica::{

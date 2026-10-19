@@ -30,6 +30,18 @@ initialize with bytes from the `./wasm-binary` export. Ordinary package-root
 types compile with `ES2022,DOM`; advanced generated-binding types additionally
 use `ESNext.Disposable`.
 
+## Counts and heading outline
+
+`SharedRichEditor.supportsWritingTools()` reports the complete optional native
+capability. `writingTools(revision?)` returns immutable accepted-document counts
+and heading metadata at the exact shared publication, without changing causal
+state or history. The owner must still be active; read-only policy permits reads.
+`mountSharedWritingTools(asideHost, domController, options?)` borrows the existing
+DOM owner, including remote-update refresh and exact-source heading navigation.
+Dispose controls before retiring the writer. No new save, operation or history
+family is selected. The [writing-tools contract](../../docs/RICH_WRITING_TOOLS.md)
+defines bounds, labels and refusal behavior for older runtimes or stale reads.
+
 ## Ownership and host responsibilities
 
 The generated module exposes configured `SharedRichProfile` factories,

@@ -4,6 +4,8 @@ import type {SharedWriterGroupsV2} from "./types.js";
 import type {RichClipboardTextProjection} from "./types.js";
 import type {SharedSelectionPolicy,SharedEditorView} from "./types.js";
 import type {RichClipboardTransfer} from "@breditor/experimental-rich-content";
+import type {RichWritingToolsRead} from "@breditor/experimental-rich-content";
+import {parseRichWritingTools} from "@breditor/experimental-rich-content/rendering";
 import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
@@ -81,6 +83,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
  #observe(raw:SharedRustOwner):ReturnType<SharedRustOwner["observe"]>{return this.#selectionPolicy==="document-v1"?raw.observe_document!():raw.observe();}
  #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
+ /** Native pure reads remain available in read-only mode and never publish to subscribers. */
+ supportsWritingTools():boolean{const raw=this.#live();return raw.writing_tools_version?.()==="1"&&typeof raw.writing_tools_json==="function";}
+ writingTools(revision?:string):RichWritingToolsRead{this.#check(revision);if(!this.supportsWritingTools())throw new SharedEditorError("writing_tools_unavailable","Use complete matching native writing reads");const current=this.view().revision,value=parseRichWritingTools(this.#live().writing_tools_json!(this.#observation));if(value.revision!==current)throw new SharedEditorError("writing_tools_source","The native writing read has a different source publication");return value;}
  #report(error:unknown):void{try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed content. */}}
  #notify(source:"local"|"remote"):void{for(const listener of [...this.#listeners]){if(!this.#raw)break;try{listener({source,view:this.view()});}catch(error){this.#report(error);}}this.#notifyReview();}
  #notifyReview():void{if(!this.#raw||!this.#reviewEnabled||!this.#reviewListeners.size)return;for(const listener of [...this.#reviewListeners]){if(!this.#raw)break;try{listener(this.reviewSnapshot());}catch(error){this.#report(error);}}}

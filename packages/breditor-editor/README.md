@@ -19,6 +19,23 @@ fixed per core/`sessionKey`; live policy callbacks may read current host state.
 Close the paired session explicitly after borrowed controls are removed. Existing
 managed document-only openings do not silently enable or persist review metadata.
 
+## Counts and heading outline
+
+`mountWritingTools(asideHost, editor.writing(), options?)` displays native accepted-
+document counts and a paginated heading outline in a separate host outside the
+editor. Counts distinguish words, graphemes, scalars, UTF-16 units, UTF-8 bytes and
+text domains; all are decimal strings. Heading navigation uses the exact displayed
+source, queues native selection and supports read-only owners. Stale or composing
+sources reject without retrying against a different heading.
+
+`BreditorWritingTools` from either React entry accepts
+`editor={editor.writing()}`, `initialOptions` and `sessionKey`. Controls borrow the
+owner; dispose/unmount them before retiring it. They neither change save formats
+nor enable a new history family. Old runtimes lacking the complete optional
+capability reject the explicit panel request, not ordinary editor startup.
+See [the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md) for bounds,
+label truncation and lifecycle. Placeholder and fullscreen remain unfinished.
+
 ## Find and replace
 
 Local owners expose a borrowed `editor.search()` port. Mount its controls in a

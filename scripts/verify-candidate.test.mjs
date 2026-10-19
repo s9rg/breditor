@@ -49,6 +49,14 @@ test("both candidate profiles require portable input rules without reusing or in
   assert.ok(plan.checks.every(c=>c.args.every(arg=>!arg.includes("input-rule-old-readers-")&&!arg.includes("input-rules-runtime-"))),"CI has no dependency on untracked historical caches");
  }
 });
+test("both profiles require complete current writing utilities, actual root React and fresh installed archives",()=>{
+ for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile}),find=id=>{const value=plan.checks.find(c=>c.id===id);assert.ok(value,id);return value;};
+  assert.deepEqual(find("writing-tools-native-sdk-and-controls").args,["scripts/probe-writing-tools.mjs","target/rich-browser-web","target/promoted-shared-web"]);
+  assert.deepEqual(find("writing-tools-managed-startup").args,["scripts/probe-writing-tools-root-sdk.mjs","target/rich-browser-web","target/promoted-shared-web"]);
+  const installed=find("installed-writing-tools-workflows");assert.deepEqual(installed.args,["scripts/check-writing-tools-installed.mjs"]);assert.deepEqual(installed.artifacts,[{path:"target/writing-tools-installed-consumer.json",fresh:true}]);assert.ok(!installed.args.includes("--reuse-runtimes"));
+  assert.ok(plan.checks.findIndex(c=>c.id==="paired-shared-runtime")<plan.checks.findIndex(c=>c.id==="writing-tools-native-sdk-and-controls"));assert.ok(plan.checks.findIndex(c=>c.id==="installed-writing-tools-workflows")<plan.checks.findIndex(c=>c.id==="readiness-inventory"));
+ }
+});
 test("dry run is cwd-independent and explicitly cannot imply V1 readiness",()=>{
  const script=join(repository,"scripts/verify-candidate.mjs"),r=spawnSync(process.execPath,[script,"--functional","--dry-run"],{cwd:tmpdir(),encoding:"utf8"});assert.equal(r.status,0,r.stderr);const p=JSON.parse(r.stdout);assert.equal(p.executed,false);assert.equal(p.v1Ready,false);assert.equal(p.profile,"functional");assert.ok(p.deferred.length>0);
  for(const args of [["--skip-tests"],["--functional","--functional"],["--help","--functional"]]){const bad=spawnSync(process.execPath,[script,...args],{encoding:"utf8"});assert.equal(bad.status,2);assert.equal(bad.stdout,"");}

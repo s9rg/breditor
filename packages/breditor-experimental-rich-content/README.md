@@ -25,6 +25,19 @@ runtime into the package.
 The package is private; publishing is not authorized. Release packaging and size
 qualification remain separate from functional checks.
 
+## Counts and heading outline
+
+`core.supportsWritingTools()` reports the complete optional native capability.
+`core.writingTools(revision?)` returns deeply frozen native counts and heading
+metadata without publication or history changes. Counts/revision are decimal
+strings, and labels are literal text with explicit truncation.
+`mountRichWritingTools(asideHost, domController, options?)` borrows an existing
+DOM owner and queues exact-source heading selection through it. Remove the panel
+before disposing that owner. An older module lacking this capability rejects the
+explicit read/panel request without changing default editor startup.
+See [the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md) for traversal,
+resource, stale-source and composition rules.
+
 ## Create and use a local owner
 
 Browser owners can explicitly select `inputRules: "markdown-v1"` in mount or

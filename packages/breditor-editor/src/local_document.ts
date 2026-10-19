@@ -36,6 +36,7 @@ class DocumentOwner implements LocalDocumentEditor {
  setReadOnly(...args:Parameters<LocalDocumentEditor["setReadOnly"]>):boolean{return this.#dom.setReadOnly(...args);}
  closeTypingGroup(...args:Parameters<LocalDocumentEditor["closeTypingGroup"]>):boolean{return this.#dom.closeTypingGroup(...args);}
  search():RichSearchHost{this.#dom.view();return this.#dom;}
+ writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#dom.view();return this.#dom;}
  selectDocument(...args:Parameters<LocalDocumentEditor["selectDocument"]>):ReturnType<LocalDocumentEditor["selectDocument"]>{return this.#dom.selectDocument(...args);}
  replaceDocumentPlainText(...args:Parameters<LocalDocumentEditor["replaceDocumentPlainText"]>):ReturnType<LocalDocumentEditor["replaceDocumentPlainText"]>{return this.#dom.replaceDocumentPlainText(...args);}
  pasteDocumentClipboard(...args:Parameters<LocalDocumentEditor["pasteDocumentClipboard"]>):ReturnType<LocalDocumentEditor["pasteDocumentClipboard"]>{return this.#dom.pasteDocumentClipboard(...args);}

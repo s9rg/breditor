@@ -33,6 +33,7 @@ mod select_document;
 mod selection;
 mod selection_formatting;
 mod view;
+mod writing_tools;
 pub use search::{BreditorRichSearchResults, BreditorRichSearchResultsResult};
 
 pub use editor::BreditorRichEditor;

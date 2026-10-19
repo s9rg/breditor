@@ -15,5 +15,7 @@ export * from "./dist/browser/block_layout_serialization.js";
 export * from "./dist/browser/rich_language.js";
 export * from "./dist/browser/clipboard_interchange.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
+export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
+export {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHost,type RichWritingToolsHostState} from "./dist/browser/writing_tools_host.js";
 export {RichSearchEvents,type RichSearchHost,type RichSearchHostState,type RichSearchCompletion} from "./dist/browser/search_host.js";
 export * from "./dist/browser/input_rule_intent.js";
