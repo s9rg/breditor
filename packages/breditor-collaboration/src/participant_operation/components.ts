@@ -1,0 +1,46 @@
+import {RichAssetStore} from "@breditor/experimental-rich-content";
+import {SharedPersistentSession} from "../persistence/shared_session.js";
+import {SharedReviewPersistentSession} from "../persistence/review_session.js";
+import {SharedSuggestionQueue} from "../suggestions/queue.js";
+import {SharedSuggestionRevisions} from "../suggestion_revisions/outbox.js";
+import {SharedDocumentVersions} from "../versions/catalog.js";
+import {initializeSharedReadOnly} from "../initialize_read_only.js";
+import {inspectUploads} from "../participant_recovery/inspect.js";
+import type {PreparedRecovery} from "../participant_recovery/prepare.js";
+import type {RecoveryOwners,RecoverySession} from "../participant_recovery/components.js";
+import type {SharedRustOwner,SharedSelectionPolicy} from "../types.js";
+import {withRecoveryOrigin} from "./admission.js";
+import {withOperationalComponent} from "./component_admission.js";
+import {operationFailure} from "./errors.js";
+import type {ParticipantOrigin} from "./origin.js";
+import type {SharedParticipantOperationCurrentPolicy} from "./types.js";
+
+function factory<T>(fn:T,receiver:object,readOnly:boolean):T{
+ if(typeof fn!=="function")throw operationFailure("operation_policy");
+ return (async(...args:unknown[])=>{const raw:SharedRustOwner=await Reflect.apply(fn,receiver,args);try{initializeSharedReadOnly(raw,readOnly);return raw;}catch(error){raw?.free();throw error;}}) as unknown as T;
+}
+export function operationPolicy(input:SharedParticipantOperationCurrentPolicy,paired:boolean):SharedParticipantOperationCurrentPolicy{
+ if(!input||Object.keys(input).sort().join(",")!=="documentReadOnly,reviewAccess"||typeof input.documentReadOnly!=="boolean"||(paired?!["read_only","comment","moderate"].includes(input.reviewAccess!):input.reviewAccess!==null))throw operationFailure("operation_policy");
+ return Object.freeze({documentReadOnly:input.documentReadOnly,reviewAccess:input.reviewAccess});
+}
+/** The original declared family selects the factory; current host policy is initialized separately. */
+async function session<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,origin:ParticipantOrigin,policy:SharedParticipantOperationCurrentPolicy):Promise<RecoverySession<P>>{
+ const selected=p.session,common={database:p.destinations.document,create:()=>{throw operationFailure("operation_missing");}},wrap=<T>(fn:T)=>factory(fn,selected.options,policy.documentReadOnly);
+ switch(selected.kind){
+  case"document":return await SharedPersistentSession.open(withRecoveryOrigin({...selected.options,...common,restore:wrap(selected.options.restore)},origin)) as unknown as RecoverySession<P>;
+  case"document-selection":return await SharedPersistentSession.openDocument(withRecoveryOrigin({...selected.options,...common,restore:wrap(selected.options.restoreDocument),restoreDocument:wrap(selected.options.restoreDocument)},origin)) as unknown as RecoverySession<P>;
+  case"search-document":return await SharedPersistentSession.openSearch(withRecoveryOrigin({...selected.options,...common,restoreSearch:wrap(selected.options.restoreSearch)},origin)) as unknown as RecoverySession<P>;
+  case"paired":return SharedReviewPersistentSession.open(withRecoveryOrigin({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restore:wrap(selected.options.restore)},origin));
+  case"reviewed-paired":return SharedReviewPersistentSession.openReviewed(withRecoveryOrigin({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restoreReviewed:wrap(selected.options.restoreReviewed)},origin));
+  case"search-paired":return SharedReviewPersistentSession.openSearch(withRecoveryOrigin({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restoreSearch:wrap(selected.options.restoreSearch)},origin));
+ }
+}
+/** Open actual existing native/retained/upload owners. No source restore or auto network work. */
+export async function openOperationalComponents<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,origin:ParticipantOrigin,policy:SharedParticipantOperationCurrentPolicy,owners:RecoveryOwners<P>):Promise<void>{
+ p.guard();if(await inspectUploads(p.destinations.uploads)==="missing")throw operationFailure("operation_missing");p.guard();
+ owners.session=await session(p,origin,policy);p.guard();
+ if(p.suggestions){owners.suggestions=await SharedSuggestionQueue.open(withOperationalComponent({...p.suggestions,database:p.destinations.suggestions!,storage:owners.session}));p.guard();}
+ if(p.revisions){owners.revisions=await SharedSuggestionRevisions.open(withOperationalComponent({...p.revisions,database:p.destinations.revisions!,storage:owners.session,queue:owners.suggestions!,autoStart:false}));p.guard();}
+ if(p.versions){owners.versions=await SharedDocumentVersions.open(withOperationalComponent({...p.versions,database:p.destinations.versions!,storage:owners.session,autoConnect:false}));p.guard();}
+ owners.uploads=await RichAssetStore.openRetained(p.destinations.uploads,{limits:p.limits});p.guard();
+}

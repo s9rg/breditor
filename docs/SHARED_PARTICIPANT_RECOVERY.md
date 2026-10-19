@@ -159,8 +159,10 @@ in-flight finish to stop and clean up its private owners. Successful finish has
 already transferred ownership, so closing the old attempt does not close the
 returned participant. Once ordinary editing changes the recovered cut, the old
 attempt must refuse to restore over that newer work.
-The separate [native origin continuity check](NATIVE_RECOVERY_ORIGIN.md) supports
-future operational admission without relaxing this exact-source contract.
+For later edits and restart, first transfer the genuine completed handle into
+[operational participant recovery](OPERATIONAL_PARTICIPANT_RECOVERY.md). Its
+retained original file and native continuity checks do not relax this coordinator's
+exact-source contract.
 
 ## Whole room and release boundaries
 

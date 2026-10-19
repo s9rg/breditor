@@ -1,0 +1,67 @@
+/** Actual native custody plus interrupted operational intent and current-store faults. */
+import assert from "node:assert/strict";
+import {IDBObjectStore} from "fake-indexeddb";
+import {SharedParticipantRecovery,OperationalSharedParticipant,SharedRichEditor} from "../../../packages/breditor-collaboration/dist/index.js";
+import {RecoveryLease} from "../../../packages/breditor-collaboration/dist/participant_recovery/lease.js";
+import {existingDatabase} from "../../../packages/breditor-collaboration/dist/participant_recovery/journal.js";
+import {readOperationDatabase} from "../../../packages/breditor-collaboration/dist/participant_operation/read_database.js";
+async function snapshot(database){const db=await existingDatabase(database);if(!db)return null;try{return await new Promise((resolve,reject)=>{const names=[...db.objectStoreNames],tx=db.transaction(names,"readonly"),result={};for(const name of names){const store=tx.objectStore(name),keys=store.getAllKeys(),values=store.getAll();keys.onsuccess=()=>{result[name]??={};result[name].keys=keys.result;};values.onsuccess=()=>{result[name]??={};result[name].values=values.result;};}tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
+async function phase(database){const db=await existingDatabase(database);if(!db)return null;try{return(await readOperationDatabase(db)).record.phase;}finally{db.close();}}
+async function mutate(database,store,key,change){const db=await existingDatabase(database);try{await new Promise((resolve,reject)=>{const tx=db.transaction(store,"readwrite"),s=tx.objectStore(store),r=s.get(key);let reason;r.onsuccess=()=>{try{const value=change(r.result);if(s.keyPath===null)s.put(value,key);else s.put(value);}catch(error){reason=error;tx.abort();}};tx.oncomplete=resolve;tx.onabort=()=>reject(reason??tx.error);});}finally{db.close();}}
+async function closeParts(parts){await parts.sources.revisions?.close();await parts.sources.suggestions?.close();await parts.sources.versions?.close();await parts.session.close();parts.uploads.close();}
+async function deleteDatabase(name){await new Promise((resolve,reject)=>{const r=indexedDB.deleteDatabase(name);r.onsuccess=resolve;r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error("Fixture delete unexpectedly blocked"));});}
+export async function checkParticipantOperationFaults(input,profile){
+ const counts={interruptedIntentResumes:0,unpublishedAppendRefusals:0,lostAcknowledgementSuffixes:0,missingStoreRefusals:0,changedSourceRefusals:0,changedPlanRefusals:0,nativeForkRefusals:0,upgradeFences:0,currentAssetRollbackRefusals:0,foreignStoreRefusals:0,handoffReleaseRetries:0,closeReleaseRetries:0,discardReleaseRetries:0,reentrancyRefusals:0,authorityRefusals:0};
+ const make=name=>{const recovery={...input,database:`${input.database}-fault-${name}`,destinations:Object.fromEntries(Object.entries(input.destinations).map(([k,v])=>[k,`${v}-fault-${name}`]))},database=`${input.database}-operation-fault-${name}`,{backup:_backup,database:recoveryDatabase,...selected}=recovery;return{recovery,database,resume:{...selected,database,recoveryDatabase,currentPolicy:{documentReadOnly:false,reviewAccess:"comment"}}};};
+ async function ready(context){const attempt=await SharedParticipantRecovery.begin(context.recovery);try{return await attempt.finish();}finally{await attempt.close();}}
+ const begin=(context,recovered,extra={})=>OperationalSharedParticipant.begin({database:context.database,recovered,expected:input.expected,checkAuthority(){},...extra});
+ async function retain(context){const recovered=await ready(context);try{return await begin(context,recovered);}finally{await recovered.close();}}
+ for(const boundary of ["origin-commit","publication-abort","publication-commit"]){
+  const context=make(boundary),recovered=await ready(context),controller=new AbortController(),add=IDBObjectStore.prototype.add,put=IDBObjectStore.prototype.put;let operation,changed=false;
+  try{
+   if(boundary==="origin-commit")IDBObjectStore.prototype.add=function(value,...args){const r=add.call(this,value,...args);if(this.name==="origin"&&!changed){changed=true;this.transaction.addEventListener("complete",()=>controller.abort(),{once:true});}return r;};
+   else IDBObjectStore.prototype.put=function(value,...args){const r=put.call(this,value,...args);if(this.name==="operation"&&!changed){changed=true;if(boundary==="publication-abort")this.transaction.abort();else this.transaction.addEventListener("complete",()=>controller.abort(),{once:true});}return r;};
+   await assert.rejects(begin(context,recovered,{signal:controller.signal}),e=>e.code?.startsWith("operation_"));assert.equal(changed,true);
+  }finally{IDBObjectStore.prototype.add=add;IDBObjectStore.prototype.put=put;}
+  try{
+   const expected=boundary==="publication-commit"?"operational":"prepared";assert.equal(await phase(context.database),expected);
+   if(boundary==="publication-commit"){const core=recovered.session.core,point={block:"p",offset:"0",affinity:"after"};core.select({kind:"text",anchor:point,focus:point});core.type("Lost acknowledgement ");}
+   const before=recovered.session.core.checkpointJson();await recovered.close();operation=await OperationalSharedParticipant.resume(context.resume);await operation.check();const parts=await operation.intoParts();operation=undefined;assert.equal(parts.session.core.checkpointJson(),before);await closeParts(parts);assert.equal(await phase(context.database),"operational");counts.interruptedIntentResumes++;if(boundary==="publication-commit")counts.lostAcknowledgementSuffixes++;
+  }finally{await operation?.discardAndClose();await recovered.discardAndClose();}
+ }
+ {
+  const context=make("unpublished-append"),recovered=await ready(context),put=IDBObjectStore.prototype.put;try{IDBObjectStore.prototype.put=function(value,...args){const r=put.call(this,value,...args);if(this.name==="operation")this.transaction.abort();return r;};await assert.rejects(begin(context,recovered));}finally{IDBObjectStore.prototype.put=put;}
+  const core=recovered.session.core,point={block:"p",offset:"0",affinity:"after"};core.select({kind:"text",anchor:point,focus:point});core.type("Not yet operational ");await recovered.close();const before=await snapshot(context.recovery.destinations.document);await assert.rejects(OperationalSharedParticipant.resume(context.resume),e=>e.code?.startsWith("operation_"));assert.deepEqual(await snapshot(context.recovery.destinations.document),before);assert.equal(await phase(context.database),"prepared");counts.unpublishedAppendRefusals++;
+ }
+ for(const component of ["document","suggestions","revisions","versions","uploads","recovery"]){const context=make(`missing-${component}`),operation=await retain(context);await operation.close();const target=component==="recovery"?context.recovery.database:context.recovery.destinations[component];await deleteDatabase(target);const inventory=await indexedDB.databases();await assert.rejects(OperationalSharedParticipant.resume(context.resume),e=>e.code?.startsWith("operation_"));assert.deepEqual(await indexedDB.databases(),inventory);assert.equal(await existingDatabase(target),undefined);counts.missingStoreRefusals++;}
+ for(const change of ["source","plan"]){const context=make(`changed-${change}`),operation=await retain(context);await operation.close();if(change==="source")await mutate(context.database,"origin","participant",()=>new Blob(["different source"]));else await mutate(context.database,"operation","state",value=>({...value,plan:value.plan+" "}));const before=await snapshot(context.recovery.destinations.document);await assert.rejects(OperationalSharedParticipant.resume(context.resume),e=>e.code?.startsWith("operation_"));assert.deepEqual(await snapshot(context.recovery.destinations.document),before);counts[change==="source"?"changedSourceRefusals":"changedPlanRefusals"]++;}
+ {
+  const context=make("native-fork"),operation=await retain(context),parts=await operation.intoParts(),fork=new SharedRichEditor(profile.create(parts.session.core.documentJson(),"101"));let forged;
+  try{forged=fork.checkpointJson();}finally{fork.dispose();await closeParts(parts);}await mutate(context.recovery.destinations.document,"journals",["room","101"],record=>({...record,documentCheckpointJson:forged}));const before=await snapshot(context.recovery.destinations.document);await assert.rejects(OperationalSharedParticipant.resume(context.resume),e=>e.code==="operation_admission");assert.deepEqual(await snapshot(context.recovery.destinations.document),before);counts.nativeForkRefusals++;
+ }
+ for(const target of ["operation","recovery","document"]){
+  const context=make(`upgrade-${target}`),operation=await retain(context);await operation.close();const name=target==="operation"?context.database:target==="recovery"?context.recovery.database:context.recovery.destinations.document,before=await snapshot(context.recovery.destinations.document),restore=context.resume.session.options.restore;let release,started,freed=0,calls=0;
+  const gate=new Promise(resolve=>{release=resolve;}),entered=new Promise(resolve=>{started=resolve;}),options={...context.resume.session.options,restore:async function(...args){const raw=await restore.apply(this,args);if(++calls===2){const free=raw.free.bind(raw);raw.free=()=>{freed++;free();};started();await gate;}return raw;}};
+  const pending=OperationalSharedParticipant.resume({...context.resume,session:{...context.resume.session,options}}),rejected=assert.rejects(pending,e=>e.code?.startsWith("operation_"));await entered;
+  try{await new Promise((resolve,reject)=>{const r=indexedDB.open(name,2);r.onupgradeneeded=()=>r.result.createObjectStore("upgrade-marker");r.onsuccess=()=>{r.result.close();resolve();};r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error("The opening fence must unblock the upgrade"));});}finally{release();}
+  await rejected;assert.equal(freed,1);const after=await snapshot(context.recovery.destinations.document);if(target==="document"){assert.deepEqual(after.journals,before.journals);assert.deepEqual(after["upgrade-marker"],{keys:[],values:[]});}else assert.deepEqual(after,before);counts.upgradeFences++;
+ }
+ {
+  const context=make("asset-rollback"),operation=await retain(context);await operation.close();const original=input.backup.uploadEntries().find(row=>row.epoch>0||row.attempts>0);assert.ok(original);await mutate(context.recovery.destinations.uploads,"assets",original.asset,value=>({...value,epoch:0,attempts:0}));const before=await snapshot(context.recovery.destinations.uploads);await assert.rejects(OperationalSharedParticipant.resume(context.resume),e=>e.code==="operation_diverged");assert.deepEqual(await snapshot(context.recovery.destinations.uploads),before);counts.currentAssetRollbackRefusals++;
+ }
+ {
+  const context=make("extra-queue-key"),operation=await retain(context);await operation.close();await mutate(context.recovery.destinations.suggestions,"suggestions","unrelated",()=>({keep:"unrelated data"}));const before=await snapshot(context.recovery.destinations.suggestions);await assert.rejects(OperationalSharedParticipant.resume(context.resume),e=>e.code==="operation_missing");assert.deepEqual(await snapshot(context.recovery.destinations.suggestions),before);counts.foreignStoreRefusals++;
+ }
+ for(const method of ["intoParts","close","discardAndClose"]){const context=make(`${method}-release`),operation=await retain(context),close=RecoveryLease.prototype.close;let failed=false,parts;
+  try{RecoveryLease.prototype.close=async function(){if(!failed){failed=true;throw Error("Injected operation release failure");}return close.call(this);};await assert.rejects(operation[method](),e=>e.code==="operation_storage");if(method==="intoParts"){await operation.check();parts=await operation.intoParts();counts.handoffReleaseRetries++;}else{await operation[method]();counts[method==="close"?"closeReleaseRetries":"discardReleaseRetries"]++;}}finally{RecoveryLease.prototype.close=close;if(parts)await closeParts(parts);await operation.discardAndClose();}
+  const reopened=await OperationalSharedParticipant.resume(context.resume);await reopened.close();
+ }
+ {
+  const context=make("reentry"),recovered=await ready(context);let operation,pending,checked=false;
+  try{operation=await begin(context,recovered,{checkAuthority(){if(operation&&!checked){checked=true;pending=assert.rejects(operation.intoParts(),e=>e.code==="operation_in_use");}}});await operation.check();await pending;assert.equal(checked,true);counts.reentrancyRefusals++;}finally{await operation?.close();await recovered.close();}
+ }
+ {
+  const context=make("authority"),recovered=await ready(context),before=await indexedDB.databases();try{for(const checkAuthority of [()=>{throw Error("PRIVATE-OPERATION-AUTHORITY");},async()=>{},()=>false]){await assert.rejects(begin(context,recovered,{checkAuthority}),e=>!String(e).includes("PRIVATE"));assert.deepEqual(await indexedDB.databases(),before);counts.authorityRefusals++;}}finally{await recovered.close();}
+ }
+ assert.deepEqual(counts,{interruptedIntentResumes:3,unpublishedAppendRefusals:1,lostAcknowledgementSuffixes:1,missingStoreRefusals:6,changedSourceRefusals:1,changedPlanRefusals:1,nativeForkRefusals:1,upgradeFences:3,currentAssetRollbackRefusals:1,foreignStoreRefusals:1,handoffReleaseRetries:1,closeReleaseRetries:1,discardReleaseRetries:1,reentrancyRefusals:1,authorityRefusals:3});return counts;
+}

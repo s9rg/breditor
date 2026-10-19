@@ -2,6 +2,9 @@
 import {SharedRelayError} from "../relay/validation.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {SharedEditorError} from "../core.js";
+import {isOperationalComponent} from "../participant_operation/component_admission.js";
+import {existingOperationalComponent} from "../participant_operation/existing_component.js";
+import {operationFailure} from "../participant_operation/errors.js";
 import {encodeRetainedStoreBackup,decodeRetainedStoreBackup,checkRetainedStoreRecovery,checkRetainedStoreSignal,retainedStoreNativeAdmission} from "../backups/retained_store.js";
 import {retainedStoreDestinationExists,insertRetainedStoreRecord} from "../backups/retained_store_database.js";
 import type {SharedDocumentVersionsBackupOptions,SharedRetainedStoreBackupOptions} from "../backups/retained_store_types.js";
@@ -41,9 +44,10 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
   if(!core.supportsVersionSourceProofs())throw new SharedRelayError("version_source_unavailable");
   checkSourceCheckpoint(core,identity.room,identity.documentWriter);
   checkRetainedStoreSignal(signal);const lease=await VersionCatalogLease.acquire(identity);let db:IDBDatabase|undefined,store:VersionCatalogStore<Q>|undefined;
-  try{assertSource();checkRetainedStoreSignal(signal);db=await openCatalogDatabase(options.database);assertSource();let saved:SharedVersionCatalogRecord|null;
+  try{assertSource();checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"catalogs",cacheKey(identity)):undefined;db=retained?.db??await openCatalogDatabase(options.database);assertSource();let saved:SharedVersionCatalogRecord|null;
    if(recovered){if(await retainedStoreDestinationExists(db,"catalogs",cacheKey(identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=await readCatalogRecord(db,identity);
-   assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(options,db!,lease,record,assertSource);store=recovered?retainedStoreNativeAdmission(create):create();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkRetainedStoreSignal(signal);return store;}
+   if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
+   assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(options,db!,lease,record,assertSource);store=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkRetainedStoreSignal(signal);return store;}
   catch(error){if(store)await store.discardAndClose();else{db?.close();await lease.close();}throw error;}
  }
  #live(checkSource=true):void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();if(checkSource)this.#assertSource();}

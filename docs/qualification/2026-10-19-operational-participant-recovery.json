@@ -1,0 +1,102 @@
+{
+  "format": "breditor/operational-participant-recovery-qualification",
+  "formatVersion": 1,
+  "qualification": "selected-working-tree-checkpoint-not-full-functional-profile-or-v1-approval",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "selectedStages": 27,
+  "evidence": {
+    "result": "target/v1-candidate-runs/run-d1fGkc/result.json",
+    "sourceFiles": "target/v1-candidate-runs/run-d1fGkc/frozen-source-files.json",
+    "installedConsumer": "target/v1-candidate-runs/run-d1fGkc/installed-consumer.json",
+    "installedOperationConsumer": "target/v1-candidate-runs/run-d1fGkc/installed-participant-operation.json",
+    "audit": "target/v1-candidate-runs/run-d1fGkc/qualification-audit.json",
+    "cleanup": "target/v1-candidate-runs/run-d1fGkc/old-build-cleanup.json"
+  },
+  "source": {
+    "baseCommit": "5dea1f22fe05f19dd32838f5ba7bdde9e3337d5d",
+    "testedWorkingTreeSha256": "9cd7ae76a4e678d810cd96cd23b305b1f76d8c3feacb655e5c7fd57e122c3ee1",
+    "nonDocumentationSha256": "9afe2a97e9c9e671e8789bac7ec1755a7889fc9a972be279ed610f83f82c7f26",
+    "files": 4594,
+    "bytes": 40187409,
+    "postQualificationChanges": "This qualification file and its documentation link only; all other bytes match the frozen source inventory."
+  },
+  "native": {
+    "workspaceTestsAndDoctestsPassed": 2625,
+    "sharedTestsPassed": 630,
+    "relayTestsAndDoctestsPassed": 181,
+    "additionalNoServerTestsPassed": 91,
+    "nativeTestsIgnored": 0,
+    "strictAllTargetsClippy": true,
+    "strictSharedWasmClippy": true,
+    "rustSourcesUnchanged": true
+  },
+  "scripts": {
+    "passed": 649,
+    "existingOptInSkips": 3,
+    "operationalStorageContracts": 12,
+    "nativeOriginProbeConfigurations": 66,
+    "nativeOriginColdReopens": 132
+  },
+  "operationalProbe": {
+    "configurations": 66,
+    "genuineCustodyTransfers": 66,
+    "borrowedBackupDisposals": 66,
+    "currentStateColdReopens": 198,
+    "freshReadOnlyReopens": 66,
+    "peerImports": 66,
+    "futureDocumentCheckpoints": 264,
+    "futureReviewCheckpoints": 120,
+    "newPendingProposals": 30,
+    "newPendingVersions": 30,
+    "retainedOldAndNewUploadRecords": 156,
+    "networkCalls": 0,
+    "faults": {
+      "interruptedIntentResumes": 3,
+      "unpublishedAppendRefusals": 1,
+      "lostAcknowledgementSuffixes": 1,
+      "missingStoreRefusals": 6,
+      "changedSourceRefusals": 1,
+      "changedPlanRefusals": 1,
+      "nativeForkRefusals": 1,
+      "actualIndexedDbUpgradeFences": 3,
+      "currentAssetRollbackRefusals": 1,
+      "foreignStoreRefusals": 1,
+      "handoffReleaseRetries": 1,
+      "closeReleaseRetries": 1,
+      "discardReleaseRetries": 1,
+      "reentrancyRefusals": 1,
+      "authorityRefusals": 3
+    },
+    "allEarlierParticipantAssertionsRetained": true
+  },
+  "runtime": {
+    "bothOfficialProducersRebuilt": true,
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "sharedWasmSha256": "9fea63179d7606864eb52b35c4a606504e0204c86a504b7994a3b1ffb6a0114e",
+    "protocolsStoredFamiliesVersionsDefaultsDependenciesAndBoundsUnchanged": true
+  },
+  "installed": {
+    "freshOfflineArchives": true,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "repeatedOperationalConfigurations": 66,
+    "repeatedCurrentStateColdReopens": 198,
+    "allOperationalFaultAssertionsRepeated": true,
+    "allEarlierInstalledBackupInventoryPolicyAndCatalogAssertionsRetained": true,
+    "originalProductionBundleModules": 134,
+    "operationalProductionApiModules": 115,
+    "operationalProductionApiImported": true,
+    "productionUsesNoWorkspaceReactOrSyntheticStorageModules": true,
+    "stageArtifactArchiveLockfileAndRuntimeHashesReverified": true
+  },
+  "remaining": [
+    "Parent catalog operational transfer, reconciliation of every retained historic copy, protected original credentials, current authenticated account and writer fences, and complete provider reference closure remain required for activation.",
+    "Cross-generation Undo/Redo and outstanding offline-edit preservation remain required; no history reset or increased native bound substitutes for that bridge.",
+    "Explicit Node IndexedDB, lock and raster fixtures do not qualify browser persistence, quota, eviction, process or power loss, operating-envelope performance, physical input, accessibility or mobile behavior.",
+    "A separate pre-existing catalog foreign-index read hang was reproduced in an isolated fixture and remains a follow-up, not covered by these passing catalog cases.",
+    "All 13 V1 release gates remain open. The historical WebKit fault is not confirmed fixed; physical Japanese input and VoiceOver qualification remain deferred.",
+    "The generic-btree notice gap and dependency license approval remain unresolved. This qualification authorizes no push, tag, publication or deployment."
+  ]
+}

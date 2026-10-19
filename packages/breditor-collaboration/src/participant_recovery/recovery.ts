@@ -10,18 +10,29 @@ import {recoveryFailure} from "./errors.js";
 import type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryProgress} from "./types.js";
 import type {SharedSelectionPolicy} from "../types.js";
 const recoveryKey=Object.freeze({});
-interface ReadyState<P extends SharedSelectionPolicy>{prepared:PreparedRecovery<P>;owners:RecoveryOwners<P>;db:IDBDatabase;leases:RecoveryLease[]}
+export interface ReadyState<P extends SharedSelectionPolicy>{prepared:PreparedRecovery<P>;owners:RecoveryOwners<P>;db:IDBDatabase;leases:RecoveryLease[]}
 export interface RecoveredSharedParticipantParts<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly sources:SharedAssetReferenceCaptureOptions<P>;readonly session:RecoverySession<P>;readonly uploads:RichAssetStore}
 async function verify<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owners:RecoveryOwners<P>):Promise<void>{
  p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await SharedParticipantBackup.prototype.verifyRecovered.call(p.backup,source,owners.uploads!,p.signal?{signal:p.signal}:{});}finally{source.dispose();}p.guard();
 }
 async function release(db:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const results=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(results.some(r=>r.status==="rejected"))throw recoveryFailure("recovery_storage");db.close();}
 let readyFactory:<P extends SharedSelectionPolicy>(state:ReadyState<P>)=>RecoveredSharedParticipant<P>;
+let transferReady:<P extends SharedSelectionPolicy,T>(owner:RecoveredSharedParticipant<P>,take:(state:ReadyState<P>)=>Promise<T>)=>Promise<T>;
+/** Internal custody transfer keeps native and coordinator leases held; no detached ready DTO. */
+export function transferRecoveredParticipant<P extends SharedSelectionPolicy,T>(owner:RecoveredSharedParticipant<P>,take:(state:ReadyState<P>)=>Promise<T>):Promise<T>{return transferReady(owner,take);}
 /** Held native owners and an exact completion record, not an authenticated connection/activation grant. */
 export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly sources;readonly session;readonly uploads;readonly #state:ReadyState<P>;#closed=false;#busy=false;
  private constructor(token:object,state:ReadyState<P>){if(token!==recoveryKey)throw recoveryFailure("recovery_closed");this.#state=state;this.sources=Object.freeze(ownerSources(state.prepared,state.owners));this.session=state.owners.session!;this.uploads=state.owners.uploads!;Object.freeze(this);}
- static{readyFactory=<Q extends SharedSelectionPolicy>(state:ReadyState<Q>)=>new RecoveredSharedParticipant(recoveryKey,state);}
+ static{
+  readyFactory=<Q extends SharedSelectionPolicy>(state:ReadyState<Q>)=>new RecoveredSharedParticipant(recoveryKey,state);
+  transferReady=async<Q extends SharedSelectionPolicy,T>(owner:RecoveredSharedParticipant<Q>,take:(state:ReadyState<Q>)=>Promise<T>)=>{
+   if(owner.#closed)throw recoveryFailure("recovery_closed");if(owner.#busy)throw recoveryFailure("recovery_in_use");owner.#busy=true;
+   try{const state=owner.#state,{prepared:p,owners,db}=state;await verify(p,owners);if((await readRecoveryJournal(db,p.record)).phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();
+    const result=await take(state);await verify(p,owners);if((await readRecoveryJournal(db,p.record)).phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();owner.#closed=true;return result;
+   }finally{owner.#busy=false;}
+  };
+ }
  /** Revalidate the actual owners and retained completion before releasing only coordinator locks. */
  async intoParts():Promise<Readonly<RecoveredSharedParticipantParts<P>>>{
   if(this.#closed)throw recoveryFailure("recovery_closed");if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;

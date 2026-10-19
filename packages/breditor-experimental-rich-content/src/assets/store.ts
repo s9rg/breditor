@@ -8,6 +8,7 @@ import {importAssetBackup} from "./archive/import_backup.js";
 import {insertAssetArchive} from "./archive/database.js";
 import {captureAssetArchiveSnapshot} from "./archive/database.js";
 import {RichAssetBackupError,checkAssetBackupSignal} from "./archive/error.js";
+import {openRetainedAssetDatabase} from "./archive/open_retained.js";
 import type {RichAssetBackupOptions,RichAssetRestoreOptions,RichAssetSourceBackup} from "./archive/types.js";
 
 export interface RichAssetOptions {
@@ -36,6 +37,13 @@ export class RichAssetStore {
     const db = await openDatabase(name);
     try { return new RichAssetStore(db, name, options); }
     catch (error) { db.close(); throw error; }
+  }
+
+  /** Existing complete retained storage only. Fully admit all bytes without initializing or uploading. */
+  static async openRetained(name:string,options:RichAssetOptions={}):Promise<RichAssetStore>{
+    const selected={...options,limits:checkedAssetLimits(options.limits)},retained=await openRetainedAssetDatabase(name);let store:RichAssetStore|undefined;
+    try{retained.assertCurrent();store=new RichAssetStore(retained.db,name,selected);await store.exportBackup();retained.assertCurrent();store.#live();return store;}
+    catch(error){store?.close();retained.db.close();throw error;}
   }
 
   /** Explicit empty-destination import. Preserve queue epochs/statuses; do not start network work. */

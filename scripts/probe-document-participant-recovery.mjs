@@ -23,7 +23,7 @@ export async function probeDocumentParticipantRecovery(directory,{onRecovered}={
    attempt=await SharedParticipantRecovery.resume(input);recovered=await attempt.finish();attempt=undefined;const cap=captureSharedAssetReferences(recovered.sources);try{await archive.verifyRecovered(cap,recovered.uploads);}finally{cap.dispose();}exactReopens++;
    const checkpoint=archive.records()[0].json,nativeOptions=search?{searchHistory:"search-v1"}:{};reference=scope==="document-v1"?createSharedDocumentEditor(restore(checkpoint),nativeOptions):new SharedRichEditor(restore(checkpoint),nativeOptions);
    for(const method of ["redo","undo","redo","undo"]){recovered.session.core[method]();reference[method]();assert.equal(recovered.session.core.checkpointJson(),reference.checkpointJson());futureCheckpoints++;}
-   if(onRecovered)await onRecovered({input,recovered,config:{language,natural,scope,search},restore});cases++;
+   if(onRecovered)await onRecovered({input,recovered,config:{language,natural,scope,search},restore,profile:p});cases++;
   }finally{reference?.dispose();await recovered?.close();await attempt?.close();await source?.discardAndClose();assets?.close();archive?.dispose();p.free();}
  }}finally{for(const [name,value]of saved)if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name];}
  assert.equal(cases,36);assert.equal(restoredComponents,72);assert.equal(exactReopens,36);assert.equal(futureCheckpoints,144);assert.equal(held.size,0);

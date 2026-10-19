@@ -585,3 +585,16 @@ and production Vite pages. The application-network browser matrix uses the same
 strict assertions as the legacy installed matrix, but with this package's own
 runtime and coordinators. Native IME, accessibility, historical WebKit fault,
 performance budgets and public deployment remain separate qualification gates.
+
+## Operational participant recovery
+
+`OperationalSharedParticipant.begin` transfers a genuine completed
+`RecoveredSharedParticipant` into durable operation custody before ordinary
+editing. `resume` retains the original backup/plan and reopens actual later
+native histories, packet stores and whole upload queues with explicit fresh
+`currentPolicy`. `intoParts` returns ordinary owners while preserving their
+native author leases. The original exact-cut recovery coordinator stays strict.
+See [the operational contract](../../docs/OPERATIONAL_PARTICIPANT_RECOVERY.md)
+for source retention, interrupted commits and retryable cleanup. Parent catalog
+handoff, current authentication/provider closure and cross-generation history
+preservation remain separate work; an operational marker is not activation.

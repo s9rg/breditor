@@ -4,6 +4,9 @@ import {SharedRelayError} from "../relay/validation.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {same} from "../suggestions/validation.js";
 import {SharedEditorError} from "../core.js";
+import {isOperationalComponent} from "../participant_operation/component_admission.js";
+import {existingOperationalComponent} from "../participant_operation/existing_component.js";
+import {operationFailure} from "../participant_operation/errors.js";
 import {encodeRetainedStoreBackup,decodeRetainedStoreBackup,checkRetainedStoreRecovery,checkRetainedStoreSignal,retainedStoreNativeAdmission} from "../backups/retained_store.js";
 import {retainedStoreDestinationExists,insertRetainedStoreRecord} from "../backups/retained_store_database.js";
 import type {SharedSuggestionRevisionsBackupOptions,SharedRetainedStoreBackupOptions} from "../backups/retained_store_types.js";
@@ -49,9 +52,10 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
   if(input.storage.core!==core||!core.supportsSuggestionRevisions()||!input.transport.checkSuggestionRevisions||!input.transport.requestSuggestionRevision||!input.transport.suggestionRevisionsReady)throw new SharedRelayError("suggestion_revisions_unavailable");
   input.transport.checkSuggestionRevisions(core,queue.identity(),binding);checkSourceCheckpoint(core,queue.identity().room,queue.identity().documentWriter);attached.add(queue);
   let db:IDBDatabase|undefined,outbox:SharedSuggestionRevisions<Q>|undefined;
-  try{checkRetainedStoreSignal(signal);db=await openRevisionDatabase(input.database);let saved:SharedSuggestionRevisionsRecord|null;
+  try{checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(input.database,"revisions",revisionKey(queue.identity(),binding)):undefined;db=retained?.db??await openRevisionDatabase(input.database);let saved:SharedSuggestionRevisionsRecord|null;
    if(recovered){if(await retainedStoreDestinationExists(db,"revisions",revisionKey(queue.identity(),binding),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=await readRevisionRecord(db,queue.identity(),binding);
-   const create=()=>new SharedSuggestionRevisions(options,db!,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]});outbox=recovered?retainedStoreNativeAdmission(create):create();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();outbox.#check();checkRetainedStoreSignal(signal);outbox.#changed();return outbox;}
+   if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
+   const create=()=>new SharedSuggestionRevisions(options,db!,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]});outbox=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();outbox.#check();checkRetainedStoreSignal(signal);outbox.#changed();return outbox;}
   catch(error){if(outbox)await outbox.discardAndClose();else{db?.close();attached.delete(queue);}throw error;}
  }
  #check():void{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");const o=this.#options;if(o.storage.core!==this.#core||o.queue.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");const state=o.queue.state();if(state.closed||state.retiring)throw new SharedRelayError("suggestion_queue_closed");o.transport.checkSuggestionRevisions!(this.#core,this.#record.identity,o.binding);}

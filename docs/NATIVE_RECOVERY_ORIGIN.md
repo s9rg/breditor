@@ -3,8 +3,8 @@
 Breditor can check whether a live shared editor retains a selected original
 native document and comment history. This is a pure continuity check: it neither
 imports history nor grants editing, writer, account or room activation authority.
-It provides the native admission needed for a future durable browser operational
-handoff. That handoff and the room catalog transfer remain unfinished.
+It supplies native admission for [operational participant recovery](OPERATIONAL_PARTICIPANT_RECOVERY.md).
+Parent room catalog transfer and authenticated activation remain unfinished.
 
 ## Compare actual native owners
 
@@ -57,10 +57,11 @@ older valid origin must not overwrite a later saved journal merely because it
 passes the original-history check. Failed admission closes its private owners
 and leaves the stored record unchanged.
 
-This admission is internal infrastructure, not a new public operational startup
-factory. The original `SharedParticipantRecovery` and room catalog still require
-their exact selected cuts. They refuse later operational edits, and this change
-does not weaken those non-overwrite guards.
+These admission helpers stay internal. The public `OperationalSharedParticipant`
+combines them with durable origin retention and explicit custody transfer. The
+original `SharedParticipantRecovery` and room catalog still require their exact
+selected cuts. They refuse later operational edits; the operational path does
+not weaken those non-overwrite guards.
 
 ## Retry failed coordinator cleanup
 
@@ -94,7 +95,7 @@ durability remains separate. History comparisons scan bounded native journals;
 this is not compaction, streaming replay, a performance improvement or an
 increase in existing limits. Original files and policies still need retention.
 
-Durable browser operation phases, parent catalog ownership transfer, current
+Parent catalog ownership transfer, current
 authenticated writer/account fences, reconciliation of all retained offline
 copies and complete provider reference closure remain required before room
 activation. The approved cross-generation Undo/Redo and outstanding offline-edit
