@@ -43,6 +43,20 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [clean SDK build-order checkpoint](qualification/2026-10-18-clean-sdk-build-order.json)
+repairs a reproduced candidate-pipeline omission: the default workspace build
+does not compile the opt-in rich-browser TypeScript declarations. A warm checkout
+hid the missing prerequisite before shared/editor compilation. Both profiles now
+build rich-browser explicitly, type-check it and retain a two-tree regression:
+the former order produces the expected missing-module failure, while the corrected
+order builds/types all three SDKs without their previous compiled outputs.
+The frozen 15-check follow-up passes 483 script tests, 376 editor tests, actual
+writing-tool workflows and fresh installed acceptance. All four archives and both
+candidate Wasm binaries match the preceding checkpoint byte-for-byte. Only three
+pipeline/checker files changed outside documentation. Default browser/Wasm and
+native bindings remain explicit copied prerequisites; complete cold bootstrap,
+hosted CI and all 13 V1 gates remain open.
+
 The [browser writing-tools and installed-package checkpoint](qualification/2026-10-18-writing-tools-browser-installed.json)
 passes one frozen 33-check run. Optional native counts/outline reads now reach
 the SDK, paginated borrowed vanilla/React controls and managed local/shared

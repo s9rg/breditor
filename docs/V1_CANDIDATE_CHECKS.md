@@ -23,6 +23,21 @@ builds, TypeScript builds/tests/types,
 installed-package checks and installed mixed editing, review and asset workflows.
 It ends with the readiness inventory, not a release-readiness assertion.
 
+The rich-browser TypeScript build is an explicit prerequisite of the shared and
+editor SDK builds. The default workspace build does not generate that opt-in
+package's `dist/browser` declarations. Both profiles also type-check it explicitly
+and require `check-candidate-sdk-build.mjs`: two copied-source trees begin without
+compiled rich-browser/shared/editor SDK files. The former shared-first order must
+reproduce its missing-module diagnostics, while the declared order must build and
+type-check all three. The check retains logs and verifies unchanged producer
+source/outputs. It borrows external development dependencies and copies previously
+built default browser/Wasm artifacts and candidate native bindings as explicit
+prerequisites; this is SDK dependency-order qualification, not a full clean native
+bootstrap, npm installation or hosted CI run.
+The [build-order checkpoint](qualification/2026-10-18-clean-sdk-build-order.json)
+retains that negative reproduction, corrected commands and exact fresh installed
+archive comparisons in a frozen 15-check follow-up.
+
 Search adds actual-Wasm programmatic, persistence, borrowed-control and managed
 startup probes, plus independent installed vanilla/React workflows. The installed
 search check seeds and verifies external registry artifacts against the producer

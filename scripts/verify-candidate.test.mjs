@@ -57,6 +57,16 @@ test("both profiles require complete current writing utilities, actual root Reac
   assert.ok(plan.checks.findIndex(c=>c.id==="paired-shared-runtime")<plan.checks.findIndex(c=>c.id==="writing-tools-native-sdk-and-controls"));assert.ok(plan.checks.findIndex(c=>c.id==="installed-writing-tools-workflows")<plan.checks.findIndex(c=>c.id==="readiness-inventory"));
  }
 });
+test("clean candidate SDK prerequisites and explicit rich types precede dependent checks in both profiles",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),index=id=>{const n=p.checks.findIndex(c=>c.id===id);assert.ok(n>=0,id);return n;},find=id=>p.checks[index(id)];
+  assert.deepEqual(find("rich-browser-build").args,["node_modules/typescript/bin/tsc","-p","packages/breditor-experimental-rich-content/tsconfig.json"]);
+  assert.deepEqual(find("rich-browser-types").args,["node_modules/typescript/bin/tsc","-p","packages/breditor-experimental-rich-content/tsconfig.json","--noEmit"]);
+  assert.equal(find("rich-browser-build").command,process.execPath);assert.equal(find("rich-browser-types").command,process.execPath);
+  assert.ok(index("paired-shared-runtime")<index("rich-browser-build"));assert.ok(index("rich-browser-build")<index("collaboration-build"));assert.ok(index("collaboration-build")<index("editor-build"));assert.ok(index("editor-build")<index("clean-candidate-sdk-build"));
+  for(const id of ["search-programmatic-sdk","input-rules-borrowed-controls","writing-tools-native-sdk-and-controls","installed-editor-pairing"])assert.ok(index("clean-candidate-sdk-build")<index(id));
+  const clean=find("clean-candidate-sdk-build");assert.deepEqual(clean.args,["scripts/check-candidate-sdk-build.mjs"]);assert.deepEqual(clean.artifacts,[{path:"target/candidate-sdk-build.json",fresh:true}]);assert.ok(index("rich-browser-types")<index("readiness-inventory"));
+ }
+});
 test("dry run is cwd-independent and explicitly cannot imply V1 readiness",()=>{
  const script=join(repository,"scripts/verify-candidate.mjs"),r=spawnSync(process.execPath,[script,"--functional","--dry-run"],{cwd:tmpdir(),encoding:"utf8"});assert.equal(r.status,0,r.stderr);const p=JSON.parse(r.stdout);assert.equal(p.executed,false);assert.equal(p.v1Ready,false);assert.equal(p.profile,"functional");assert.ok(p.deferred.length>0);
  for(const args of [["--skip-tests"],["--functional","--functional"],["--help","--functional"]]){const bad=spawnSync(process.execPath,[script,...args],{encoding:"utf8"});assert.equal(bad.status,2);assert.equal(bad.stdout,"");}
