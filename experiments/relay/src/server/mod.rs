@@ -17,7 +17,10 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
 };
-pub use backup::{ServerBackupHandle, router_with_server_backups};
+pub use backup::{
+    ServerBackupHandle, ServerRecoveryState, ServerRecoveryStateIdentity,
+    router_with_server_backups,
+};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
 

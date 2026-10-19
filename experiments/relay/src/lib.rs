@@ -41,6 +41,14 @@ pub use room::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
 };
 pub use room::{
+    MAX_ROOM_PARTICIPANT_INVENTORY_BYTES, MissingRecoveryRegistration, RecoveryAccount,
+    RecoveryDocumentClock, RecoveryDocumentCredential, RecoveryDocumentRegistration,
+    RecoveryRegistrationCoverage, RecoveryRegistrationCredentials, RecoveryReviewCredential,
+    RecoveryReviewInventory, RecoveryReviewRegistration, RecoveryServerAuthor,
+    RecoveryServerAuthorKind, RoomParticipantInventory, RoomParticipantInventoryIdentity,
+    RoomParticipantInventoryMetadata, VerifiedRecoveryRegistrations,
+};
+pub use room::{
     MAX_SERVER_ROOM_BACKUP_BYTES, RecoveredServerRoom, ServerRoomBackup, ServerRoomBackupIdentity,
     ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
 };

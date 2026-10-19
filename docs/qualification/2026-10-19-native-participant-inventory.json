@@ -1,0 +1,625 @@
+{
+  "format": "breditor/room-participant-inventory-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "baseCommit": "6c7b1e439e05e414cfa6f78462d3945ef57a509e",
+  "scope": "Owner-authenticated complete native registration inventory and non-mutating original resume-credential continuity verification at an exact server cut. Not client-database discovery, credential vault backup, global activation or a generation bridge.",
+  "source": {
+    "commit": "6c7b1e439e05e414cfa6f78462d3945ef57a509e",
+    "dirty": true,
+    "sha256": "3eec4d33c6ec165bdfd7a9ba6d3ef48844c1e953faa1a1226bdd305a5912b9ee",
+    "files": 4491,
+    "bytes": 39629748
+  },
+  "sourceBinding": {
+    "frozenInventory": {
+      "path": "target/room-participant-inventory-reviewed-frozen-inputs.json",
+      "bytes": 1057844,
+      "sha256": "ba41fbcaf6cc5afb962a3f9c0fcbab8ec27b0227ebdb4552744398fa88c8f92f",
+      "modifiedAtMs": 1792404546583.222
+    },
+    "nonDocumentation": {
+      "sha256": "537d992cbc535d33e129f4655dcbb4df808c796292da38ee8a6909610f20df08",
+      "count": 4030,
+      "bytes": 32617756
+    }
+  },
+  "qualification": {
+    "evidence": {
+      "path": "target/v1-candidate-runs/run-t8lWzd/result.json",
+      "bytes": 43301,
+      "sha256": "8a369583615b7b7f22d42b71d52be181023b48438a1985b51d95fe1b45048858",
+      "modifiedAtMs": 1792404829781.6753
+    },
+    "selectedChecksPassed": 27,
+    "wholeOfficialProfile": false,
+    "stages": [
+      {
+        "id": "unchanged-core-client-and-runtime-inputs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/01-unchanged-core-client-and-runtime-inputs.log",
+          "bytes": 1664,
+          "sha256": "9bd2bea95920aba7cea5ff9cb239d1877557f20bc3aca1c0789dbae2a96cb581",
+          "modifiedAtMs": 1792404547352.7947
+        }
+      },
+      {
+        "id": "candidate-runner-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/02-candidate-runner-contracts.log",
+          "bytes": 8235,
+          "sha256": "8aebdf369734453297731c0f36a5d3898d66a194807a2e8ee528eee2b8fe2f05",
+          "modifiedAtMs": 1792404549774.3257
+        }
+      },
+      {
+        "id": "relay-format",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/03-relay-format.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792404550438.1719
+        }
+      },
+      {
+        "id": "relay-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/04-relay-lint.log",
+          "bytes": 560,
+          "sha256": "75a21a03e815892f33323aaae8fa8c8ed95aefde425d343ca5c609ea7ed930ca",
+          "modifiedAtMs": 1792404551610.8545
+        }
+      },
+      {
+        "id": "relay-native",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/05-relay-native.log",
+          "bytes": 22122,
+          "sha256": "d60a85d7a540bc998e8da5fdf892d6a13a52a0a7a8e0e9ba3a08f85ec06bbd31",
+          "modifiedAtMs": 1792404587803.527
+        }
+      },
+      {
+        "id": "relay-room-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/06-relay-room-backups.log",
+          "bytes": 853,
+          "sha256": "65e7a168e2ee22da9a4ba192095ec3b81f5ed3c1c881b27a760988ff5a3ceba3",
+          "modifiedAtMs": 1792404589891.3171
+        }
+      },
+      {
+        "id": "relay-asset-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/07-relay-asset-backups.log",
+          "bytes": 860,
+          "sha256": "f2e1074131ffaf50d75171cedef96ad6799f6ce21d42c90da9f0f4d83c22e109",
+          "modifiedAtMs": 1792404591030.3801
+        }
+      },
+      {
+        "id": "relay-asset-owner-paths",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/08-relay-asset-owner-paths.log",
+          "bytes": 929,
+          "sha256": "1b8ba7060f3013a8828a286c015475ac6ba7e53bee53868e38ec4c6045ea36ff",
+          "modifiedAtMs": 1792404591908.6504
+        }
+      },
+      {
+        "id": "relay-server-room-backups",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/09-relay-server-room-backups.log",
+          "bytes": 1144,
+          "sha256": "0e60be2b1c2b433992c6da4596fe10a31e9802b65e006892fe413245a108ef8e",
+          "modifiedAtMs": 1792404593160.4155
+        }
+      },
+      {
+        "id": "relay-participant-inventory",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/10-relay-participant-inventory.log",
+          "bytes": 1272,
+          "sha256": "79cffa64f48cceaeef940d4884591f8d6ac375ab29317f68c4f6b52c9ed7559a",
+          "modifiedAtMs": 1792404594430.415
+        }
+      },
+      {
+        "id": "relay-backups-no-server",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/11-relay-backups-no-server.log",
+          "bytes": 11087,
+          "sha256": "0633c9db22b7795dbdf39c232c89bfeadbb7e28b0407454aaf6310546121ce34",
+          "modifiedAtMs": 1792404649143.0972
+        }
+      },
+      {
+        "id": "relay-assets-no-server",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/12-relay-assets-no-server.log",
+          "bytes": 11387,
+          "sha256": "12a5fa99721603559b113a1f0b00708cd0ad93f819d72929c5105b5f1645ce06",
+          "modifiedAtMs": 1792404669728.5989
+        }
+      },
+      {
+        "id": "relay-server-backups-no-server",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/13-relay-server-backups-no-server.log",
+          "bytes": 11178,
+          "sha256": "bef5e768de5ef59defd3985fae2b6997726452b47d33fd9ece02b7bedf025c25",
+          "modifiedAtMs": 1792404688811.36
+        }
+      },
+      {
+        "id": "relay-inventory-no-server",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/14-relay-inventory-no-server.log",
+          "bytes": 11194,
+          "sha256": "1819728715071e9bdeb50549826a4008f57d97fe4df54358d9e9e812cfab35aa",
+          "modifiedAtMs": 1792404707092.3333
+        }
+      },
+      {
+        "id": "relay-docs",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/15-relay-docs.log",
+          "bytes": 728,
+          "sha256": "fd99470265a2f963a9dc16c987afd10657b048bfac6506ff92e9f4333c81c462",
+          "modifiedAtMs": 1792404710614.6672
+        }
+      },
+      {
+        "id": "relay-no-server-lint",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/16-relay-no-server-lint.log",
+          "bytes": 1608,
+          "sha256": "fc7d0b7e8e89ab8fc4a2e9d0387076fff26db008f92171a983481a241e22d425",
+          "modifiedAtMs": 1792404730776.1558
+        }
+      },
+      {
+        "id": "rich-browser-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/17-rich-browser-build.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792404732330.711
+        }
+      },
+      {
+        "id": "collaboration-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/18-collaboration-build.log",
+          "bytes": 82,
+          "sha256": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12",
+          "modifiedAtMs": 1792404733581.404
+        }
+      },
+      {
+        "id": "editor-build",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/19-editor-build.log",
+          "bytes": 75,
+          "sha256": "1310c2fdb084ee048dc83520d840d200e7f41bfad549bd6f349c38aef1c38b44",
+          "modifiedAtMs": 1792404734669.9646
+        }
+      },
+      {
+        "id": "typescript-tests-and-script-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/20-typescript-tests-and-script-contracts.log",
+          "bytes": 120876,
+          "sha256": "d64759c4e9d3dd7b10424bddaa64a724e509fc5f90bae0658512bdbc6e479dd9",
+          "modifiedAtMs": 1792404757693.9854
+        }
+      },
+      {
+        "id": "editor-sdk-tests",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/21-editor-sdk-tests.log",
+          "bytes": 619,
+          "sha256": "81709b180eebe575e96f14326d3b5d338b7b84154bb5ef016943ad375e657cec",
+          "modifiedAtMs": 1792404764619.9143
+        }
+      },
+      {
+        "id": "participant-recovery-storage-contracts",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/22-participant-recovery-storage-contracts.log",
+          "bytes": 2009,
+          "sha256": "104c3f631292d9e4f1b2eb9070b10731a42e420bc9bf4177eb1ff35cacf725d2",
+          "modifiedAtMs": 1792404765468.2163
+        }
+      },
+      {
+        "id": "participant-recovery-type-fence",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/23-participant-recovery-type-fence.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792404766097.565
+        }
+      },
+      {
+        "id": "selected-asset-bytes",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/24-selected-asset-bytes.log",
+          "bytes": 1495,
+          "sha256": "15dc81c312a19f9c95ffa467f6d7916ab30cae14fca038be9c6bf29d2f17da43",
+          "modifiedAtMs": 1792404775353.202
+        }
+      },
+      {
+        "id": "participant-recovery",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/25-participant-recovery.log",
+          "bytes": 4111,
+          "sha256": "10b22b5d89cc50eb1b94448aba2229d135c0017272cb104571955df75a9c5234",
+          "modifiedAtMs": 1792404800516.1587
+        }
+      },
+      {
+        "id": "document-participant-recovery",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/26-document-participant-recovery.log",
+          "bytes": 580,
+          "sha256": "a540b7252aaadbab476e1275f56ba210b48b055e5126bb655249aa95072d1510",
+          "modifiedAtMs": 1792404828222.4275
+        }
+      },
+      {
+        "id": "readiness-inventory",
+        "log": {
+          "path": "target/v1-candidate-runs/run-t8lWzd/27-readiness-inventory.log",
+          "bytes": 15641,
+          "sha256": "beb28888889c3aae11928bf754605a40c6fd7c641afa2588a90ba51d9094c01c",
+          "modifiedAtMs": 1792404829151.7961
+        }
+      }
+    ],
+    "freshRelayTestsAndDoctests": 157,
+    "relaySuiteCounts": [
+      {
+        "passed": 85,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "freshScriptTests": 592,
+    "existingScriptSkips": 3,
+    "freshEditorTests": 382,
+    "freshRunnerContracts": 35,
+    "freshRecoveryStorageContracts": 9,
+    "carriedNativeNotFresh": {
+      "workspace": 2620,
+      "shared": 623,
+      "total": 3243,
+      "sourceGuard": {
+        "path": "target/v1-candidate-runs/run-t8lWzd/01-unchanged-core-client-and-runtime-inputs.log",
+        "bytes": 1664,
+        "sha256": "9bd2bea95920aba7cea5ff9cb239d1877557f20bc3aca1c0789dbae2a96cb581",
+        "modifiedAtMs": 1792404547352.7947
+      },
+      "priorQualification": {
+        "path": "target/v1-candidate-runs/run-l79lmo/result.json",
+        "bytes": 39911,
+        "sha256": "f8525707365ff509306053d73e3f80ef373bcfc0451869eaab104c5d37d01416",
+        "modifiedAtMs": 1792396503596.4602
+      }
+    },
+    "reusedMatchingOfficialRuntimeFiles": [
+      {
+        "path": "target/rich-browser-web/breditor_wasm.js",
+        "bytes": 176594,
+        "sha256": "8ff8899f4d235725a9954623be66565585ca519f557f0f5acc5835d31ff46576"
+      },
+      {
+        "path": "target/rich-browser-web/breditor_wasm_bg.wasm",
+        "bytes": 5910494,
+        "sha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81"
+      },
+      {
+        "path": "target/rich-browser-web/breditor_wasm.d.ts",
+        "bytes": 96700,
+        "sha256": "707887e7fc0cfa40f9210f3035bea41bed9ca040eb89b98d5fd5222195cb6243"
+      },
+      {
+        "path": "target/promoted-shared-web/breditor_shared.js",
+        "bytes": 172704,
+        "sha256": "3e80dc9f737ad03ab0d50ee80f6a2637595985ce61f58631c2457044bdef5a92"
+      },
+      {
+        "path": "target/promoted-shared-web/breditor_shared_bg.wasm",
+        "bytes": 13030929,
+        "sha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f"
+      },
+      {
+        "path": "target/promoted-shared-web/breditor_shared.d.ts",
+        "bytes": 65399,
+        "sha256": "b1191a86e147957a667d028ff41903fcf3074ee05fdf3d5fd6e4b3bdaf030666"
+      }
+    ],
+    "freshWasmProducerBuild": false,
+    "freshInstalledPackageOrBrowserQualification": false
+  },
+  "nativeCoverage": {
+    "originalProfileTransportCombinations": 10,
+    "emptyAndAcceptedDocumentReviewPrefixes": true,
+    "maximumRegisteredDocumentStreams": 1024,
+    "maximumRegisteredReviewActors": 1023,
+    "all2047EmptyStreamsRetained": true,
+    "revokedRegistrationsRetained": true,
+    "permanentObserversNotPromoted": true,
+    "allEnabledMetadataBindings": true,
+    "acceptedSuggestionServiceAuthorNotInventedAsClient": true,
+    "missingRecordsPendingWithoutPartialProof": true,
+    "wrongUnknownDuplicateForeignOrMalformedRecordsReject": true,
+    "accountTokensNotResumeCredentials": true,
+    "sourceLeasesNotReplaced": true,
+    "restoredOldLeasesNotRevived": true,
+    "staleCutsAndFreshlyChecksummedOmissionsReject": true,
+    "actualNativeLogBytesRechecked": true,
+    "stoppedSourceRestoredPrivateHostWithFreshAuthentication": true,
+    "hostTestsScope": "Actual native Host and private handle with fresh Authentication; the new inventory APIs are not exposed or tested as HTTP routes.",
+    "actualRestoredRasterFormats": [
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ],
+    "futureOfflineDocumentUndoRedoCheckpoints": 6
+  },
+  "sdkRegression": {
+    "selectedAssetBytes": {
+      "format": "breditor/selected-asset-bytes-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f",
+      "cases": 30,
+      "pureCaptures": 30,
+      "files": 30,
+      "bytePayloads": 60,
+      "bindingPairs": 270,
+      "restoredSourceVerifications": 30,
+      "exactComponentArchives": 90,
+      "futureCheckpoints": 180,
+      "borrowedDisposals": 30,
+      "closedSourceRefusals": 30,
+      "missingBytesPending": 1,
+      "missingSourcePending": 1,
+      "providerRefusals": 7,
+      "identityRefusals": 2,
+      "sourceChangeRefusals": 2,
+      "declaredSourceRefusals": 2,
+      "cancelRefusals": 3,
+      "providerChecks": 5168,
+      "networkCalls": 0,
+      "heldLeases": 0
+    },
+    "paired": {
+      "format": "breditor/participant-recovery-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 30,
+      "reorderedPolicyResumes": 30,
+      "unknownReviewRefusals": 1,
+      "restoredComponents": 150,
+      "exactReopens": 30,
+      "interruptionResumes": 5,
+      "ambiguousReadyResumes": 1,
+      "startedBeforeCreateResumes": 1,
+      "closeDuringFinishResumes": 1,
+      "ownershipHandoffs": 1,
+      "nativeAdmissionResumes": 1,
+      "nativeCloneRefusals": 1,
+      "occupiedRefusals": 1,
+      "changedSelectionRefusals": 2,
+      "divergenceRefusals": 1,
+      "concurrentRefusals": 30,
+      "missingCompletedRefusals": 1,
+      "authorityRefusals": 3,
+      "futureDocumentCheckpoints": 180,
+      "futureReviewCheckpoints": 180,
+      "networkCalls": 0,
+      "sharedWasmSha256": "fc3986a2e0dcf1ba5d17830003ef3cf0eb943f33454d2f7c8441f65b9139e34f"
+    },
+    "document": {
+      "format": "breditor/document-participant-recovery-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 36,
+      "restoredComponents": 72,
+      "exactReopens": 36,
+      "futureCheckpoints": 144,
+      "heldLeases": 0,
+      "scope": "All three grammar/scope and both history/search document-only families with actual native replay, matching original encodings, empty complete upload stores, exact coordinator reopen and future Undo/Redo. Explicit Node storage/locks/PNG fixtures; not cross-device authority, process/browser durability, complete-room activation or generation bridging."
+    },
+    "combinedCases": 66,
+    "combinedRestoredPrimaryComponents": 222,
+    "combinedExactReopens": 66,
+    "combinedFutureHistoryCheckpoints": 504,
+    "scope": "Unchanged SDK/native producers use byte-checked prior official Wasm; actual native restore and history regressions with Node IndexedDB/Web Locks/raster fixtures. Not native browser/process/power-loss qualification."
+  },
+  "fixtureRepair": {
+    "witnesses": [
+      {
+        "evidence": {
+          "path": "target/v1-candidate-runs/run-MUHwPe/result.json",
+          "bytes": 10074,
+          "sha256": "d95187a1cf5dc9b95be1f888a5ac25847ad9b6ce2e08690b1ee7291ab92aa650",
+          "modifiedAtMs": 1792404436105.5889
+        },
+        "source": {
+          "commit": "6c7b1e439e05e414cfa6f78462d3945ef57a509e",
+          "dirty": true,
+          "sha256": "6b25b42a08913411b25e33d14ab941818027478257de47ab896176709228e14f",
+          "files": 4491,
+          "bytes": 39628471
+        },
+        "failedStage": "relay-native",
+        "log": {
+          "path": "target/v1-candidate-runs/run-MUHwPe/05-relay-native.log",
+          "bytes": 19015,
+          "sha256": "6d66a0f067354ab0fb72a1ca4675e25f14d06e8920b17494534d279d755ca1be",
+          "modifiedAtMs": 1792404435105.9453
+        }
+      },
+      {
+        "evidence": {
+          "path": "target/v1-candidate-runs/run-r84AGw/result.json",
+          "bytes": 2764,
+          "sha256": "42de48e57960d929e9f777091d935940a3ee9518780da007032c1c29f1046bad",
+          "modifiedAtMs": 1792404492822.5837
+        },
+        "source": {
+          "commit": "6c7b1e439e05e414cfa6f78462d3945ef57a509e",
+          "dirty": true,
+          "sha256": "18db9d60149690e904492a65279c1928a2c71c191f6dd4e3fa3634dc85426447",
+          "files": 4491,
+          "bytes": 39628764
+        },
+        "failedStage": "native-fixture-same-clock-tick",
+        "log": {
+          "path": "target/v1-candidate-runs/run-r84AGw/01-native-fixture-same-clock-tick.log",
+          "bytes": 1252,
+          "sha256": "33ccfe0e94034b66245be827b47975bdc07b047ed7c4005834c6f1539d04760e",
+          "modifiedAtMs": 1792404492489.8276
+        }
+      }
+    ],
+    "rootCause": "The shared public server-recovery test fixture named directories with only PID and wall-clock timestamp. Equal timestamps under parallel test execution collided at exclusive create_dir.",
+    "repair": "Preserve exclusive creation and add an atomic process-local sequence to the timestamp-based test names. No production retry, admission weakening or skipped test.",
+    "onlySourceDeltaFromFirstFrozenAttempt": [
+      "experiments/relay/tests/support/server_recovery.rs"
+    ],
+    "sameTickRegression": true,
+    "simultaneousSameTickReservations": 16,
+    "sharedFixtureTargets": [
+      "participant_inventory",
+      "server_room_backups"
+    ]
+  },
+  "originalContracts": {
+    "originalBodiesComparedWithOnlyModuleAndExportAdditions": [
+      "experiments/relay/src/lib.rs",
+      "experiments/relay/src/room.rs",
+      "experiments/relay/src/room/review/mod.rs",
+      "experiments/relay/src/room/suggestions/mod.rs",
+      "experiments/relay/src/server/backup.rs",
+      "experiments/relay/src/server/mod.rs"
+    ],
+    "coreSharedClientCargoDependenciesDefaultsAndVersionsUnchanged": true,
+    "originalRoomLogArchiveWriterReviewReceiptAndAssetFormatsUnchanged": true,
+    "noNewNetworkRoutesOrAutomaticActivation": true,
+    "noRawSecretOrCredentialDigestInInventory": true,
+    "noRawCredentialStorageImplemented": true
+  },
+  "cleanup": {
+    "removedObsoleteMachOBinaries": 1047,
+    "logicalRemovedBytes": 11792347144,
+    "logicalGiB": 10.98,
+    "availableGiBAfterCleanup": 32,
+    "scope": [
+      "target/collaboration-native/debug",
+      "target/structural-v2-native/debug",
+      "target/shared-v2-root-regression/debug",
+      "target/collaboration-native-v2-actions/debug"
+    ],
+    "recovery": "Removed compiler binaries can be rebuilt; source, Git history, reports, logs, backup archives and current build caches were preserved."
+  },
+  "remaining": {
+    "v1Ready": false,
+    "openGates": 13,
+    "groupedLedger": {
+      "implemented": 10,
+      "partial": 27,
+      "missing": 9
+    },
+    "work": [
+      "SDK admission and accepted-prefix reconciliation of genuine selected participant backups against this trusted native inventory; discover and reconcile explicitly chosen client and historic stores.",
+      "Trusted durable client/server recovery catalog, independently protected resume credential storage/recovery, complete current-provider asset closure and durable room-wide activation.",
+      "Approved cross-generation Undo/Redo and outstanding offline edits remain unimplemented.",
+      "Operating/lifetime envelope, process/power-loss/browser/platform reliability including the historical unresolved WebKit fault, distribution/CI, dependency/license review and final RC approval."
+    ]
+  }
+}

@@ -7,6 +7,7 @@ mod prepare_effect;
 mod prepare_publication;
 mod publish;
 mod read;
+mod recovery_inventory;
 mod replay;
 mod revisions;
 #[cfg(test)]

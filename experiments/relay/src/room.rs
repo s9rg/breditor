@@ -15,6 +15,7 @@ mod backup;
 mod document_presence;
 mod layout_v3;
 mod observers;
+mod participant_inventory;
 mod recovery;
 mod review;
 mod source_boundaries;
@@ -23,6 +24,14 @@ mod versions;
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use backup::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
+};
+pub use participant_inventory::{
+    MAX_ROOM_PARTICIPANT_INVENTORY_BYTES, MissingRecoveryRegistration, RecoveryAccount,
+    RecoveryDocumentClock, RecoveryDocumentCredential, RecoveryDocumentRegistration,
+    RecoveryRegistrationCoverage, RecoveryRegistrationCredentials, RecoveryReviewCredential,
+    RecoveryReviewInventory, RecoveryReviewRegistration, RecoveryServerAuthor,
+    RecoveryServerAuthorKind, RoomParticipantInventory, RoomParticipantInventoryIdentity,
+    RoomParticipantInventoryMetadata, VerifiedRecoveryRegistrations,
 };
 pub use recovery::{
     MAX_SERVER_ROOM_BACKUP_BYTES, RecoveredServerRoom, ServerRoomBackup, ServerRoomBackupIdentity,

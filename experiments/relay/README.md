@@ -65,6 +65,15 @@ The [joined server recovery contract](../../docs/SERVER_ROOM_RECOVERY.md) define
 interruption/resumption, fresh authentication and the separate client and host
 activation responsibilities. Existing router constructors retain their defaults.
 
+The same private handle can authenticate the current owner and capture the
+complete native document/review registration inventory alongside the server
+archive. A separate non-mutating check matches host-protected original resume
+records, retaining revoked registrations and permanently non-authoring observers.
+Missing records remain pending; matching them neither resumes a lease nor grants
+access. The [participant inventory contract](../../docs/ROOM_PARTICIPANT_INVENTORY.md)
+defines independent file selection, native verification and the remaining global
+catalog, credential-storage and activation work. No network endpoint is added.
+
 Build with the optional `server` feature. `scripts/check-relay.mjs` places its
 binary in `target/relay-native/debug/breditor-collab-relay`; the separate cache
 keeps this workspace's locked native identities out of the editor fixture cache.

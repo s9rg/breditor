@@ -4,8 +4,10 @@ The Rust reference relay can capture one serialized server log and raster-store
 cut, then restore both through one inactive recovery directory and a durable
 completion record. A private live-host handle takes the same room-then-assets
 locks as ordinary transactions. This coordinates the two server components; it
-does not capture client journals, offline queues, participant inventory or current
-account/provider authority.
+does not capture client journals, offline queues or current account/provider
+authority. The separate owner-authenticated
+[participant inventory](ROOM_PARTICIPANT_INVENTORY.md) can be captured at the same
+server cut without changing this archive's format.
 
 ## Capture through the actual host
 

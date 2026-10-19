@@ -14,11 +14,46 @@ pub struct Directory(pub PathBuf);
 impl Directory {
     pub fn new() -> Result<Self> {
         let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos();
-        let root = std::env::temp_dir()
-            .join(format!("breditor-public-server-recovery-{}-{stamp}", std::process::id()));
+        Self::at_stamp(stamp)
+    }
+    fn at_stamp(stamp: u128) -> Result<Self> {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let unique = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let root = std::env::temp_dir().join(format!(
+            "breditor-public-server-recovery-{}-{stamp}-{unique}",
+            std::process::id()
+        ));
         fs::create_dir(&root)?;
         Ok(Self(root))
     }
+}
+#[test]
+fn same_clock_tick_keeps_independent_fixture_directories() -> Result {
+    let first = Directory::at_stamp(0)?;
+    let second = Directory::at_stamp(0)?;
+    assert_ne!(first.0, second.0);
+    Ok(())
+}
+#[test]
+fn simultaneous_fixture_reservations_keep_distinct_owners_at_the_same_clock_tick() -> Result {
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(16));
+    let threads: Vec<_> = (0..16)
+        .map(|_| {
+            let barrier = barrier.clone();
+            std::thread::spawn(move || {
+                barrier.wait();
+                Directory::at_stamp(0).map_err(|error| error.to_string())
+            })
+        })
+        .collect();
+    let mut directories = Vec::new();
+    for thread in threads {
+        directories.push(thread.join().map_err(|_| "fixture reservation panicked")??);
+    }
+    let distinct: std::collections::BTreeSet<_> =
+        directories.iter().map(|directory| &directory.0).collect();
+    assert_eq!(distinct.len(), 16);
+    Ok(())
 }
 impl Drop for Directory {
     fn drop(&mut self) {

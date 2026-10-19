@@ -43,6 +43,46 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native participant inventory checkpoint](qualification/2026-10-19-native-participant-inventory.json)
+passes one frozen 27-check selection. The private host can authenticate the
+current owner, capture every registered document/review stream at the exact
+server-archive cut, and check independently protected original resume records.
+Empty streams, revoked accounts and permanently non-authoring observers remain
+listed. Missing records stay pending; matching them creates neither leases nor
+new permissions. Native verification rejects freshly checksummed omissions and
+false prefixes. The [inventory contract](ROOM_PARTICIPANT_INVENTORY.md) keeps file
+integrity, native registration continuity and current authority distinct.
+
+All ten original compiler/transport combinations pass empty and accepted
+document/review prefix checks. The maximum 1,024 document registrations and 1,023
+review actors remain represented. Public workflows restore actual PNG/JPEG/WebP
+files and offline history, stop the source host, and require fresh account
+authentication while retaining original resume records. Accepted suggestion
+effects remain server authors rather than invented client registrations.
+
+The run freshly passes 157 relay tests/doctests, 592 script tests, 382 editor tests
+and 35 candidate-runner contracts. Three existing opt-in script checks remain
+skipped. Unchanged SDK recovery regressions pass 66 native configurations,
+222 primary restorations, 66 exact reopens and 504 future history checkpoints.
+The unchanged 2,620 root and 623 shared native tests are carried evidence; matching
+previous official Wasm files are byte-checked and reused, not freshly produced
+or installed/browser-qualified here.
+
+The first full run exposed timestamp-only temporary directory names colliding
+between parallel tests. A deterministic same-clock-tick failure is retained.
+Adding an atomic sequence preserves exclusive creation, and both the same-tick
+regression and 16 simultaneous reservations pass. No production admission was
+relaxed and no retry or skipped test hides the failure.
+
+SDK reconciliation of genuine selected client backups with the trusted native
+inventory, a durable global recovery catalog, protected credential storage,
+complete current-provider asset closure and room-wide activation remain work.
+The approved cross-generation Undo/Redo and outstanding offline-edit bridge is
+still unimplemented. All 13 V1 gates remain open; no version, push, publication
+or deployment is promoted.
+
+### Previous durable participant recovery checkpoint
+
 The [durable participant recovery checkpoint](qualification/2026-10-19-client-participant-recovery.json)
 passes one frozen 32-check selection. A new inactive attempt journal pins the
 independently selected participant file, destination databases and explicit native

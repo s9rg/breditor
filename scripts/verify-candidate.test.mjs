@@ -59,6 +59,16 @@ test("both profiles require atomic source-upload cuts, the exact cancellation re
 test("both profiles require joined server recovery, real host capture and the non-networked host APIs",()=>{
  for(const profile of ["functional","full"]){const plan=candidateReleasePlan({profile,environment:{BREDITOR_CARGO:"/tool path/cargo"}}),native=plan.checks.find(row=>row.id==="relay-native");for(const [id,flags]of [["relay-server-room-backups",["--features","server"]],["relay-server-backups-no-server",[]]]){const check=plan.checks.find(row=>row.id===id);assert.ok(check,id);assert.equal(check.command,"/tool path/cargo");assert.deepEqual(check.args,["test","--manifest-path","experiments/relay/Cargo.toml",...flags,"--locked","--offline","--release",...(flags.length?[]:["--lib"]),"--test","server_room_backups"]);assert.equal(check.env.CARGO_TARGET_DIR,native.env.CARGO_TARGET_DIR);assert.ok(plan.checks.indexOf(check)>plan.checks.indexOf(native));}}
 });
+test("both profiles require owner-authenticated participant inventory and the non-networked native API",()=>{
+ for(const profile of ["functional","full"]){
+  const plan=candidateReleasePlan({profile,environment:{BREDITOR_CARGO:"/tool path/cargo"}}),native=plan.checks.find(row=>row.id==="relay-native");
+  for(const [id,flags]of [["relay-participant-inventory",["--features","server"]],["relay-inventory-no-server",[]]]){
+   const check=plan.checks.find(row=>row.id===id);assert.ok(check,id);assert.equal(check.command,"/tool path/cargo");
+   assert.deepEqual(check.args,["test","--manifest-path","experiments/relay/Cargo.toml",...flags,"--locked","--offline","--release",...(flags.length?[]:["--lib"]),"--test","participant_inventory"]);
+   assert.equal(check.env.CARGO_TARGET_DIR,native.env.CARGO_TARGET_DIR);assert.ok(plan.checks.indexOf(check)>plan.checks.indexOf(native));
+  }
+ }
+});
 test("both profiles require retained-store recovery and fresh installed backup acceptance without reuse",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),check=p.checks.find(c=>c.id==="retained-store-backups"),installed=p.checks.find(c=>c.id==="installed-session-backups");assert.deepEqual(check.args,["scripts/probe-retained-store-backups.mjs","target/promoted-shared-web"]);assert.deepEqual(installed.args,["scripts/check-session-backups-installed.mjs"]);assert.ok(p.checks.indexOf(check)>p.checks.findIndex(c=>c.id==="collaboration-build"));}
 });

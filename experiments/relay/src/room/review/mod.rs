@@ -3,6 +3,7 @@ mod admit;
 mod catchup;
 mod enable;
 mod grant;
+mod recovery_inventory;
 mod register;
 mod register_observer;
 mod replay;
